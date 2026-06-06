@@ -1,12 +1,14 @@
-export const metadata = {
-  title: "Earthline",
-  description: "Aquifer Recharge Starts Here",
-};
-
-export default function RootLayout({ children }) {
+export default function Home() {
   return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
+    <main style={{ padding: "40px", fontFamily: "Arial, sans-serif" }}>
+      <h1>Earthline</h1>
+
+      <h2>Aquifer Recharge Starts Here</h2>
+
+      <p>
+        How can this landscape recharge more water,
+        retain more soil, and become more resilient?
+      </p>
+    </main>
   );
 }
