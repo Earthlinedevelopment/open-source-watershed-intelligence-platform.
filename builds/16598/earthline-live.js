@@ -2,6 +2,9 @@
   'use strict';
   const IMG_UP='earthline-swale-natural-uphill-16174';
   const IMG_FLIP='earthline-swale-natural-uphill-flipped-16174';
+  const CASING='earthline-property-swale-natural-casing-16174';
+  const LAYER_UP='earthline-property-swale-natural-up-16174';
+  const LAYER_FLIP='earthline-property-swale-natural-flip-16174';
   const SOURCE_URL='/index.html';
   let sourcePromise=null;
 
@@ -26,20 +29,35 @@
       if((!flipped&&y>43)||(flipped&&y<84))continue;
       for(let xx=0;xx<c.width;xx++){
         const i=(y*c.width+xx)*4,r=p[i],g=p[i+1],b=p[i+2];
-        if(b>r+25&&g>r+20&&g>55){p[i]=20;p[i+1]=156;p[i+2]=255;}
+        if(b>r+25&&g>r+20&&g>55){p[i]=0;p[i+1]=140;p[i+2]=255;}
       }
     }
     x.putImageData(data,0,0);
     const segs=[[0,101],[111,235],[248,361],[378,512]];
     x.save();x.lineCap='round';
     const mid=flipped?103:24;
-    x.strokeStyle='rgba(20,156,255,.52)';x.lineWidth=12;
+    x.strokeStyle='rgba(0,140,255,.86)';x.lineWidth=16;
     for(const [a,b] of segs){x.beginPath();x.moveTo(a+3,mid);x.lineTo(b-3,mid);x.stroke()}
-    x.strokeStyle='#63c7ff';x.lineWidth=2.4;x.setLineDash([10,8]);
-    const ys=flipped?[99,107]:[20,28];
+    x.strokeStyle='#8edcff';x.lineWidth=3.2;x.setLineDash([9,7]);
+    const ys=flipped?[96,110]:[17,31];
     for(const y of ys)for(const [a,b] of segs){x.beginPath();x.moveTo(a+5,y);x.lineTo(b-5,y);x.stroke()}
     x.restore();
     return await load(c.toDataURL('image/png'));
+  }
+  function strengthenExistingOwner(mp){
+    try{
+      if(mp.getLayer?.(CASING)){
+        mp.setPaintProperty(CASING,'line-color','#071a16');
+        mp.setPaintProperty(CASING,'line-opacity',.92);
+        mp.setPaintProperty(CASING,'line-width',30);
+      }
+      for(const id of [LAYER_UP,LAYER_FLIP]){
+        if(mp.getLayer?.(id)){
+          mp.setPaintProperty(id,'line-opacity',.98);
+          mp.setPaintProperty(id,'line-width',22);
+        }
+      }
+    }catch(_){ }
   }
   async function apply(){
     const mp=map();if(!mp||typeof mp.updateImage!=='function')return false;
@@ -49,8 +67,9 @@
       if(!up||!flip)return false;
       if(mp.hasImage?.(IMG_UP))mp.updateImage(IMG_UP,up);else mp.addImage(IMG_UP,up,{pixelRatio:2});
       if(mp.hasImage?.(IMG_FLIP))mp.updateImage(IMG_FLIP,flip);else mp.addImage(IMG_FLIP,flip,{pixelRatio:2});
+      strengthenExistingOwner(mp);
       mp.triggerRepaint?.();
-      window.EARTHLINE_LAB_BLUE_16598={applied:true,at:new Date().toISOString()};
+      window.EARTHLINE_LAB_BLUE_16598={applied:true,owner:'earthline-property-swale-texture-16174',at:new Date().toISOString()};
       return true;
     }catch(e){window.EARTHLINE_LAB_BLUE_16598={applied:false,error:String(e),at:new Date().toISOString()};return false}
   }
