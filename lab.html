@@ -3,93 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Earthline Live Lab</title>
-  <style>
-    html,body,#earthline-lab-frame{width:100%;height:100%;margin:0;border:0;overflow:hidden;display:block;}
-  </style>
+  <title>Earthline 16584 Baseline</title>
+  <style>html,body,#earthline-lab-frame{width:100%;height:100%;margin:0;border:0;overflow:hidden;display:block;}</style>
 </head>
 <body>
-  <iframe id="earthline-lab-frame" title="Earthline live test"></iframe>
+  <iframe id="earthline-lab-frame" title="Earthline 16584 baseline"></iframe>
   <script>
-  (async function(){
-    const stamp=Date.now();
-    const pointer=await fetch('/lab/current.json?t='+stamp,{cache:'no-store'}).then(r=>{
-      if(!r.ok) throw new Error('current.json '+r.status);
-      return r.json();
-    });
-    const build=String(pointer.build);
-    const cssText=await fetch('/builds/'+build+'/earthline-live.css?t='+stamp,{cache:'no-store'}).then(r=>{
-      if(!r.ok) throw new Error('candidate css '+r.status);
-      return r.text();
-    });
-    const frame=document.getElementById('earthline-lab-frame');
-    frame.addEventListener('load',async function(){
-      const doc=frame.contentDocument;
-      const css=doc.createElement('style');
-      css.id='earthline-lab-css-'+build;
-      css.dataset.earthlineLab='1';
-      css.dataset.earthlineLabBuild=build;
-      css.textContent=cssText;
-      doc.head.appendChild(css);
-
-      const jsUrl='/builds/'+build+'/earthline-live.js?t='+stamp;
-      try{
-        const probe=await fetch(jsUrl,{cache:'no-store'});
-        if(probe.ok){
-          const js=doc.createElement('script');
-          js.src=jsUrl;
-          js.dataset.earthlineLabBuild=build;
-          doc.body.appendChild(js);
-        }
-      }catch(e){}
-      console.info('[Earthline lab] candidate build '+build+' CSS injected directly over /index.html');
-    },{once:true});
-    frame.src='/index.html?earthlineLab='+stamp;
-  })().catch(err=>{
-    console.error('[Earthline lab] failed',err);
-    document.body.textContent='Earthline lab failed to load. See console.';
-  });
-
-  setTimeout(() => {
-    const f = document.querySelector('iframe');
-    let d = null, err = null;
-    try { d = f && (f.contentDocument || f.contentWindow.document); }
-    catch (e) { err = String(e); }
-
-    const out = {};
-    if (!d) {
-      Object.assign(out, { verdict: 'CROSS-ORIGIN', iframeSrc: f && f.src, error: err });
-    } else {
-      const w = f.contentWindow;
-      const paths = d.querySelectorAll('[class*="earthline-swale"]');
-      const p = paths[0];
-      let mapLayers = null, firstColor = null;
-      try {
-        const m = w.earthlineMap || w.map || (w.M && w.M.map);
-        if (m && m.getStyle) {
-          mapLayers = m.getStyle().layers.map(l => l.id).filter(id => /swale|corridor/i.test(id));
-          if (mapLayers[0]) firstColor = JSON.stringify(m.getPaintProperty(mapLayers[0], 'line-color'));
-        }
-      } catch (e) { firstColor = 'err: ' + e.message; }
-
-      Object.assign(out, {
-        iframeHref: d.location.href,
-        labStyleBlocks: d.querySelectorAll('style[data-earthline-lab]').length,
-        swaleDomElements: paths.length,
-        firstElementClass: p ? p.getAttribute('class') : null,
-        firstComputedStroke: p ? w.getComputedStyle(p).stroke : null,
-        firstBBoxWidth: p ? Math.round(p.getBoundingClientRect().width) : null,
-        mapboxSwaleLayers: mapLayers,
-        mapboxFirstLayerColor: firstColor,
-        canvasCount: d.querySelectorAll('canvas').length
-      });
-    }
-
-    const box = document.createElement('pre');
-    box.style.cssText = 'position:fixed;top:0;left:0;z-index:99999;background:#000;color:#0f0;font:12px monospace;padding:12px;max-width:60vw;max-height:60vh;overflow:auto';
-    box.textContent = JSON.stringify(out, null, 2);
-    document.body.appendChild(box);
-  }, 6000);
+    document.getElementById('earthline-lab-frame').src='/index.html?baseline=16584&t='+Date.now();
   </script>
 </body>
 </html>
