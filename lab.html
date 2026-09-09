@@ -27,6 +27,7 @@
       const doc=frame.contentDocument;
       const css=doc.createElement('style');
       css.id='earthline-lab-css-'+build;
+      css.dataset.earthlineLab='1';
       css.dataset.earthlineLabBuild=build;
       css.textContent=cssText;
       doc.head.appendChild(css);
@@ -48,6 +49,47 @@
     console.error('[Earthline lab] failed',err);
     document.body.textContent='Earthline lab failed to load. See console.';
   });
+
+  setTimeout(() => {
+    const f = document.querySelector('iframe');
+    let d = null, err = null;
+    try { d = f && (f.contentDocument || f.contentWindow.document); }
+    catch (e) { err = String(e); }
+
+    const out = {};
+    if (!d) {
+      Object.assign(out, { verdict: 'CROSS-ORIGIN', iframeSrc: f && f.src, error: err });
+    } else {
+      const w = f.contentWindow;
+      const paths = d.querySelectorAll('[class*="earthline-swale"]');
+      const p = paths[0];
+      let mapLayers = null, firstColor = null;
+      try {
+        const m = w.earthlineMap || w.map || (w.M && w.M.map);
+        if (m && m.getStyle) {
+          mapLayers = m.getStyle().layers.map(l => l.id).filter(id => /swale|corridor/i.test(id));
+          if (mapLayers[0]) firstColor = JSON.stringify(m.getPaintProperty(mapLayers[0], 'line-color'));
+        }
+      } catch (e) { firstColor = 'err: ' + e.message; }
+
+      Object.assign(out, {
+        iframeHref: d.location.href,
+        labStyleBlocks: d.querySelectorAll('style[data-earthline-lab]').length,
+        swaleDomElements: paths.length,
+        firstElementClass: p ? p.getAttribute('class') : null,
+        firstComputedStroke: p ? w.getComputedStyle(p).stroke : null,
+        firstBBoxWidth: p ? Math.round(p.getBoundingClientRect().width) : null,
+        mapboxSwaleLayers: mapLayers,
+        mapboxFirstLayerColor: firstColor,
+        canvasCount: d.querySelectorAll('canvas').length
+      });
+    }
+
+    const box = document.createElement('pre');
+    box.style.cssText = 'position:fixed;top:0;left:0;z-index:99999;background:#000;color:#0f0;font:12px monospace;padding:12px;max-width:60vw;max-height:60vh;overflow:auto';
+    box.textContent = JSON.stringify(out, null, 2);
+    document.body.appendChild(box);
+  }, 6000);
   </script>
 </body>
 </html>
