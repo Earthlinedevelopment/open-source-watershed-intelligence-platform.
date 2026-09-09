@@ -12,7 +12,7 @@ const host=await page.waitForSelector('#earthline-lab-frame',{timeout:20000});
 const frame=await host.contentFrame();
 if(!frame)throw new Error('lab iframe unavailable');
 await frame.waitForSelector('#searchInput',{timeout:30000});
-await frame.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16600?.installed===true,null,{timeout:20000});
+await frame.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});
 
 await frame.evaluate(()=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='New York';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
 await frame.waitForFunction(()=>{const r=window.earthlineRegional15778||{};const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{};return r.active!==true&&/new york/i.test(String(d.name||d.label||d.location||M?.loc?.name||''))&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';},null,{timeout:30000,polling:200});
@@ -45,7 +45,7 @@ await frame.waitForFunction(()=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_161
 const elapsedMs=Date.now()-started;
 const result=await frame.evaluate(()=>{
   const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
-  const w=M?.vectorNoBuildCoverage?.mappedWater16600||null;
+  const w=M?.vectorNoBuildCoverage?.mappedWater16601||null;
   const s=M?.safetyAudit15806||null;
   const lock=M?.propertyResultLock15815||null;
   let rechargeAllClear=true,rechargeChecked=0;
@@ -53,7 +53,7 @@ const result=await frame.evaluate(()=>{
   return {audit:a,water:w,safety:s,lock,rechargeSelection:M?.rechargeTargetSelection16332||null,rechargeCount:Number(M?.rechZones?.length||0),rechargeChecked,rechargeAllClear,swaleCount:Number(M?.swales?.length||0),finalMaskAvailable:!!(M?.noBuildMask&&M.noBuildMask.length),status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||''),debugVisible:(()=>{const e=document.getElementById('earthlineWhyNotHere15803');if(!e)return false;const c=getComputedStyle(e),b=e.getBoundingClientRect();return c.display!=='none'&&c.visibility!=='hidden'&&b.width>1&&b.height>1})()};
 });
 const pass=shoreline.landConfirmed&&shoreline.waterConfirmed&&elapsedMs<=HARD_CEILING_MS&&result.audit?.result===true&&result.water?.status==='verified'&&Number(result.water?.waterCells||0)>0&&result.finalMaskAvailable&&result.safety?.verified===true&&Number(result.safety?.acceptedIntersections)===0&&result.lock?.safetyVerified===true&&result.rechargeAllClear===true&&!result.debugVisible;
-const report={test:'NY shoreline mapped-water exclusion',labBuild:16600,acceptedParent:16584,url:URL,shoreline,elapsedMs,hardCeilingMs:HARD_CEILING_MS,pass,result,errors:errors.slice(0,30)};
+const report={test:'NY shoreline mapped-water exclusion',labBuild:16601,acceptedParent:16584,url:URL,shoreline,elapsedMs,hardCeilingMs:HARD_CEILING_MS,pass,result,errors:errors.slice(0,30)};
 console.log('EARTHLINE_NY_WATER '+JSON.stringify(report));
 await browser.close();
 if(!pass)process.exitCode=1;
