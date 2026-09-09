@@ -18,13 +18,17 @@
       return r.json();
     });
     const build=String(pointer.build);
+    const cssText=await fetch('/builds/'+build+'/earthline-live.css?t='+stamp,{cache:'no-store'}).then(r=>{
+      if(!r.ok) throw new Error('candidate css '+r.status);
+      return r.text();
+    });
     const frame=document.getElementById('earthline-lab-frame');
     frame.addEventListener('load',async function(){
       const doc=frame.contentDocument;
-      const css=doc.createElement('link');
-      css.rel='stylesheet';
-      css.href='/builds/'+build+'/earthline-live.css?t='+stamp;
+      const css=doc.createElement('style');
+      css.id='earthline-lab-css-'+build;
       css.dataset.earthlineLabBuild=build;
+      css.textContent=cssText;
       doc.head.appendChild(css);
 
       const jsUrl='/builds/'+build+'/earthline-live.js?t='+stamp;
@@ -37,7 +41,7 @@
           doc.body.appendChild(js);
         }
       }catch(e){}
-      console.info('[Earthline lab] candidate build '+build+' layered over /index.html');
+      console.info('[Earthline lab] candidate build '+build+' CSS injected directly over /index.html');
     },{once:true});
     frame.src='/index.html?earthlineLab='+stamp;
   })().catch(err=>{
