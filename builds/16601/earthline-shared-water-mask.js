@@ -131,6 +131,7 @@
     for(let i=0;i<N;i++)if(rawWaterMask[i]){waterCells++;if(!merged[i])addedCells++;merged[i]=1;}
 
     M.vectorNoBuildMask=merged;
+    M.mappedWaterMask16601=rawWaterMask;
     M.vectorNoBuildStamp=String(M.vectorNoBuildStamp||'')+'|mapped-water-16601:'+waterCells+':'+addedCells;
     M._noBuildStamp=null;
     M.noBuildProvenance15843=null;
