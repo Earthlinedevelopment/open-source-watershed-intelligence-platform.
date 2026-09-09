@@ -10,9 +10,11 @@ const errors=[];
 page.on('pageerror',e=>errors.push(String(e)));
 page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
 page.on('request',r=>{
-  if(/overpass/i.test(r.url())){
+  const type=r.resourceType();
+  if(type==='xhr'||type==='fetch'){
     const body=String(r.postData()||'');
-    console.log('EARTHLINE_OVERPASS_REQUEST '+JSON.stringify({url:r.url(),method:r.method(),body:body.slice(0,12000)}));
+    const url=r.url();
+    if(!/mapbox\.com|tiles|fonts|sprite|events\.mapbox/i.test(url))console.log('EARTHLINE_DATA_REQUEST '+JSON.stringify({type,url,method:r.method(),body:body.slice(0,12000)}));
   }
 });
 
@@ -26,15 +28,6 @@ await frame.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===tr
 await frame.evaluate(query=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value=query;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},REGION_QUERY);
 await frame.waitForFunction(()=>/new york|lake george/i.test(String([M?.loc?.name,M?.loc?.fullName].filter(Boolean).join(' '))),null,{timeout:20000,polling:100});
 
-await frame.evaluate(target=>{
-  const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
-  if(mp)mp.jumpTo({center:[target.lng,target.lat],zoom:17});
-  try{M.centerLng=target.lng;M.centerLat=target.lat}catch(_){ }
-  try{if(M.loc){if('lng' in M.loc)M.loc.lng=target.lng;if('lon' in M.loc)M.loc.lon=target.lng;if('lat' in M.loc)M.loc.lat=target.lat;}}catch(_){ }
-  if(typeof window.earthlineSetTarget==='function')window.earthlineSetTarget(target.lng,target.lat,false);
-  else if(typeof earthlineSetTarget==='function')earthlineSetTarget(target.lng,target.lat,false);
-},TARGET);
-
 try{
   await frame.waitForFunction(()=>{const b=document.getElementById('earthlineDeclareProperty16169');return !!b&&document.documentElement.classList.contains('earthline-property-ready-16188')&&!b.disabled;},null,{timeout:60000,polling:150});
 }catch(_){
@@ -42,6 +35,20 @@ try{
   console.log('EARTHLINE_NY_PROPERTY_UNAVAILABLE '+JSON.stringify(pre));
   throw new Error('Property control unavailable or disabled');
 }
+
+// Move only after the Regional camera has finished and Property is actually available.
+await frame.evaluate(async target=>{
+  const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+  if(!mp)throw new Error('map unavailable');
+  mp.jumpTo({center:[target.lng,target.lat],zoom:17});
+  await new Promise(resolve=>setTimeout(resolve,250));
+  try{M.centerLng=target.lng;M.centerLat=target.lat}catch(_){ }
+  try{if(M.loc){M.loc.lat=target.lat;M.loc.lng=target.lng;}}catch(_){ }
+},TARGET);
+
+await frame.waitForFunction(target=>{
+  try{const c=(window.earthlineMap||earthlineMap).getCenter();return Math.abs(c.lng-target.lng)<1e-6&&Math.abs(c.lat-target.lat)<1e-6}catch(_){return false}
+},TARGET,{timeout:5000,polling:50});
 
 const before=await frame.evaluate(()=>({center:{lng:M?.centerLng,lat:M?.centerLat},loc:M?.loc||null,mapCenter:(()=>{try{const c=(window.earthlineMap||earthlineMap).getCenter();return {lng:c.lng,lat:c.lat}}catch(_){return null}})()}));
 console.log('EARTHLINE_NY_TARGET_BEFORE '+JSON.stringify(before));
