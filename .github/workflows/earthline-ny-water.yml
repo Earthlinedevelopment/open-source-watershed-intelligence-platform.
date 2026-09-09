@@ -1,0 +1,32 @@
+name: Earthline NY Water Regression
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/ny-water-regression.mjs'
+      - 'builds/16600/**'
+      - 'lab.html'
+      - '.github/workflows/earthline-ny-water.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ny-water:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run New York shoreline water regression
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/lab.html
+        run: node tests/ny-water-regression.mjs
