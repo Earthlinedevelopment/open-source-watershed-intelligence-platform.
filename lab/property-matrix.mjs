@@ -33,7 +33,7 @@ async function openSurface(){
   const host=await page.$('#earthline-lab-frame');
   if(host){const nested=await host.contentFrame();if(!nested)throw new Error('lab iframe unavailable');frame=nested;}
   await frame.waitForSelector('#searchInput',{timeout:30000});
-  await frame.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});
+  await frame.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true&&window.EARTHLINE_REGIONAL_CAMERA_SCALE_16602?.auditOnly===true,null,{timeout:20000});
   return frame;
 }
 
@@ -45,6 +45,7 @@ function snap(){
   const p=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null;
   const why=document.getElementById('earthlineWhyNotHere15803');
   const btn=document.getElementById('earthlineDeclareProperty16169');
+  const run=[...document.querySelectorAll('button')].find(x=>/\brun\s+analysis\b/i.test(String(x.textContent||''))&&!x.disabled)||document.getElementById('runBtn');
   let debug=false;
   if(why){const cs=getComputedStyle(why),b=why.getBoundingClientRect();debug=cs.display!=='none'&&cs.visibility!=='hidden'&&Number(cs.opacity||1)>0&&b.width>1&&b.height>1;}
   let mapCenter=null,mapZoom=null;
@@ -58,7 +59,9 @@ function snap(){
     audit:a,publication:p,lock:m&&m.propertyResultLock15815||null,safety:m&&m.safetyAudit15806||null,vector:m&&m.vectorNoBuildCoverage||null,
     water16601:window.EARTHLINE_LAB_WATER_16601||null,camera16602:window.EARTHLINE_REGIONAL_CAMERA_SCALE_16602||null,
     swales:Number(m&&m.swales&&m.swales.length||0),recharge:Number(m&&m.rechZones&&m.rechZones.length||0),analysisReady:!!(m&&m.analysisReady),debugVisible:debug,
-    status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim().slice(0,900),runBusy:document.getElementById('runBtn')?.getAttribute('aria-busy')==='true'
+    status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim().slice(0,900),
+    runControl:run?{id:run.id||'',text:String(run.textContent||'').trim().slice(0,120),disabled:!!run.disabled}:null,
+    runBusy:!!(run&&(run.getAttribute('aria-busy')==='true'||run.dataset.busy==='1'))
   };
 }
 
@@ -82,19 +85,33 @@ async function chooseLocation(frame,target){
   return picked.chosen;
 }
 
+async function clickRunAnalysis(frame){
+  return await frame.evaluate(()=>{
+    const all=[...document.querySelectorAll('button')];
+    const b=all.find(x=>/\brun\s+analysis\b/i.test(String(x.textContent||''))&&!x.disabled)||document.getElementById('runBtn');
+    if(!b||b.disabled)return {ok:false,buttons:all.map(x=>({id:x.id||'',text:String(x.textContent||'').trim().slice(0,100),disabled:!!x.disabled})).filter(x=>x.text)};
+    const picked={id:b.id||'',text:String(b.textContent||'').trim().slice(0,120)};b.click();return {ok:true,picked};
+  });
+}
+
 async function regional(frame,target){
   const started=Date.now(),chosen=await chooseLocation(frame,target),selected=await frame.evaluate(snap);
   const selectionName=String(selected.loc?.name||selected.loc?.query||'').toLowerCase();
   const geographicPass=selectionName.includes(target.name.toLowerCase());
   if(!geographicPass)return {target,chosen,selected,elapsedMs:Date.now()-started,timeout:false,geographicPass:false,pass:false,reason:'authoritative location selection mismatch'};
-  const clicked=await frame.evaluate(()=>{const b=document.getElementById('runBtn');if(!b||b.disabled)return false;b.click();return true;});
-  if(!clicked)return {target,chosen,selected,elapsedMs:Date.now()-started,timeout:false,geographicPass:true,pass:false,reason:'Run Analysis control unavailable'};
+  const runClick=await clickRunAnalysis(frame);
+  if(!runClick.ok)return {target,chosen,selected,runClick,elapsedMs:Date.now()-started,timeout:false,geographicPass:true,pass:false,reason:'visible Run Analysis control unavailable'};
   let timeout=false;
-  try{await frame.waitForFunction(()=>{const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{};return document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true'&&String(d.tier||d.mode||'').toLowerCase()==='regional';},null,{timeout:WAIT_LIMIT_MS,polling:200});}catch(_){timeout=true;}
+  try{await frame.waitForFunction(()=>{
+    const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{};
+    const b=[...document.querySelectorAll('button')].find(x=>/\brun\s+analysis\b/i.test(String(x.textContent||'')))||document.getElementById('runBtn');
+    const busy=!!(b&&(b.getAttribute('aria-busy')==='true'||b.dataset.busy==='1'));
+    return !busy&&String(d.tier||d.mode||'').toLowerCase()==='regional';
+  },null,{timeout:WAIT_LIMIT_MS,polling:200});}catch(_){timeout=true;}
   const s=await frame.evaluate(snap),elapsedMs=Date.now()-started;
   const failed=/analysis failed/i.test(s.status);
-  const settled=!timeout&&String(s.displayed?.tier||'').toLowerCase()==='regional'&&s.runBusy===false;
-  return {target,chosen,selected,elapsedMs,timeout,geographicPass,s,pass:settled&&!failed&&elapsedMs<=HARD_CEILING_MS&&!s.debugVisible};
+  const settled=!timeout&&String(s.displayed?.tier||'').toLowerCase()==='regional'&&!s.runBusy;
+  return {target,chosen,selected,runClick,elapsedMs,timeout,geographicPass,s,pass:settled&&!failed&&elapsedMs<=HARD_CEILING_MS&&!s.debugVisible};
 }
 
 async function property(frame){
@@ -127,7 +144,7 @@ for(const target of TESTS){
   try{frame=await openSurface();}catch(e){console.error('surface reload failed',e);break;}
 }
 const summary={area:AREA,shardIndex:SHARD_INDEX,shardTotal:SHARD_TOTAL,expected:TESTS.length,run:rows.length,pass:rows.filter(r=>r.classification==='PASS').length,safeBlock:rows.filter(r=>r.classification==='SAFE_BLOCK').length,fail:rows.filter(r=>!['PASS','SAFE_BLOCK'].includes(r.classification)).length,geographicPass:rows.filter(r=>r.regional?.geographicPass===true).length};
-const report={generatedAt:new Date().toISOString(),url:URL,currentPatches:[16601,16602],acceptedParent:16584,protocol:{hardCeilingMs:HARD_CEILING_MS,realPropertyControl:true,acceptedParentUnchanged:true,sharedCoreOnly:true,safetyRequiredForPublishedProperty:true,authoritativeSuggestionSelection:true},summary,rows};
+const report={generatedAt:new Date().toISOString(),url:URL,currentPatches:[16601,16602],acceptedParent:16584,protocol:{hardCeilingMs:HARD_CEILING_MS,realPropertyControl:true,acceptedParentUnchanged:true,sharedCoreOnly:true,safetyRequiredForPublishedProperty:true,authoritativeSuggestionSelection:true,visibleRunAnalysisControl:true,exactPublicSurface:true},summary,rows};
 await fs.mkdir('lab-results',{recursive:true});
 const out=`lab-results/property-${AREA.toLowerCase()}-${SHARD_INDEX}-of-${SHARD_TOTAL}.json`;await fs.writeFile(out,JSON.stringify(report,null,2));
 console.log('EARTHLINE_PROPERTY_MATRIX '+JSON.stringify(report));
