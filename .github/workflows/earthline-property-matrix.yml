@@ -5,7 +5,8 @@ on:
     branches: [pages-live]
     paths:
       - 'lab/property-matrix.mjs'
-      - 'builds/16600/**'
+      - 'builds/16601/**'
+      - 'builds/16602/**'
       - 'lab.html'
       - '.github/workflows/earthline-property-matrix.yml'
   workflow_dispatch:
@@ -31,9 +32,9 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Run real Property tests
+      - name: Run current public Property tests
         env:
-          EARTHLINE_URL: https://earthlinedevelopment.org/lab.html
+          EARTHLINE_URL: https://earthlinedevelopment.org/
           EARTHLINE_AREA: US
           EARTHLINE_SHARD_INDEX: ${{ matrix.shard }}
           EARTHLINE_SHARD_TOTAL: 5
@@ -60,9 +61,9 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Run real Property tests
+      - name: Run current public Property tests
         env:
-          EARTHLINE_URL: https://earthlinedevelopment.org/lab.html
+          EARTHLINE_URL: https://earthlinedevelopment.org/
           EARTHLINE_AREA: SEA
           EARTHLINE_SHARD_INDEX: 0
           EARTHLINE_SHARD_TOTAL: 1
