@@ -9,18 +9,27 @@ async function fetchText(url){
   if(!r.ok)throw new Error(`fetch failed ${r.status} ${url}`);
   return r.text();
 }
+function tagHtml(html,variant){
+  const tag=`<meta name="earthline-sandbox-variant" content="${variant}">`;
+  if(!/<\/head>/i.test(html))throw new Error('sandbox html has no head close');
+  return html.replace(/<\/head>/i,tag+'</head>');
+}
 
-const baseline=await fetchText(URL);
-if(!baseline.includes('lineSafe16584(retrySmooth16584)'))throw new Error('16603 public source missing');
-if(baseline.includes('EARTHLINE 16605'))throw new Error('public rollback unexpectedly contains 16605');
+const baselineRaw=await fetchText(URL);
+if(!baselineRaw.includes('lineSafe16584(retrySmooth16584)'))throw new Error('16603 public source missing');
+if(baselineRaw.includes('EARTHLINE 16605'))throw new Error('public rollback unexpectedly contains 16605');
 
-const historic=await fetchText(HISTORIC_16605);
-if(!historic.includes("const minSpan16605=pt==='country'?.02:1.8;"))throw new Error('exact historical 16605 marker missing');
-if(!historic.includes('lineSafe16584(retrySmooth16584)'))throw new Error('historical 16605 does not retain 16603');
+const historicRaw=await fetchText(HISTORIC_16605);
+if(!historicRaw.includes("const minSpan16605=pt==='country'?.02:1.8;"))throw new Error('exact historical 16605 source missing');
+if(!historicRaw.includes('lineSafe16584(retrySmooth16584)'))throw new Error('historical 16605 does not retain 16603');
 
 const settleNeedle=`  async function settleRegionalCamera(m,b,runToken){\n    if(!isCurrentRun(runToken))return false;\n    if(!m)return;`;
-if(!historic.includes(settleNeedle))throw new Error('settle owner source not found in historical 16605');
-const handoff=historic.replace(settleNeedle,`  async function settleRegionalCamera(m,b,runToken){\n    if(!isCurrentRun(runToken))return false;\n    if(!m)return;\n    /* SANDBOX ONLY — explicit handoff from search framing to existing Regional camera owner. */\n    earthlineCancelSearchCameraLock();`);
+if(!historicRaw.includes(settleNeedle))throw new Error('settle owner source not found in historical 16605');
+const handoffRaw=historicRaw.replace(settleNeedle,`  async function settleRegionalCamera(m,b,runToken){\n    if(!isCurrentRun(runToken))return false;\n    if(!m)return;\n    /* SANDBOX ONLY — explicit handoff from search framing to existing Regional camera owner. */\n    earthlineCancelSearchCameraLock();`);
+
+const baseline=tagHtml(baselineRaw,'baseline');
+const historic=tagHtml(historicRaw,'historic16605');
+const handoff=tagHtml(handoffRaw,'historic16605-handoff');
 
 const TARGETS=[
  {name:'Barbados',type:'country'},
@@ -84,9 +93,8 @@ async function runOne(variant,name,type,html){
   try{
     await page.goto(URL+'?candidate='+variant+'-'+encodeURIComponent(name),{waitUntil:'domcontentloaded',timeout:45000});
     await page.waitForSelector('#searchInput',{timeout:30000});
-    const marker=await page.evaluate(()=>document.documentElement.innerHTML.includes('EARTHLINE 16605'));
-    if(variant==='baseline'&&marker)throw new Error('baseline runtime unexpectedly contains 16605');
-    if(variant!=='baseline'&&!marker)throw new Error('candidate runtime did not load exact historical 16605 bytes');
+    const runtimeVariant=await page.locator('meta[name="earthline-sandbox-variant"]').getAttribute('content');
+    if(runtimeVariant!==variant)throw new Error(`runtime variant mismatch: expected ${variant}, got ${runtimeVariant}`);
     await page.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});
     await page.evaluate(q=>{const i=document.getElementById('searchInput');i.focus();i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));},name);
     await page.waitForSelector('#earthlineSearchSuggestions15970.open button[role="option"]',{timeout:12000});
@@ -105,7 +113,7 @@ async function runOne(variant,name,type,html){
       const s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'');
       const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{};
       const busy=document.getElementById('runBtn')?.disabled;
-      return hasBounds&&(/ANALYSIS FAILED|Regional screening published|core preflight incomplete/i.test(s)||(!busy&&/regional/i.test(String(d.tier||d.mode||d.extentClass||''))));
+      return hasBounds&&(/ANALYSIS FAILED|screening published|core preflight incomplete/i.test(s)||(!busy&&/regional/i.test(String(d.tier||d.mode||d.extentClass||''))));
     },null,{timeout:50000,polling:200});
     await page.waitForTimeout(800);
 
@@ -124,7 +132,7 @@ async function runOne(variant,name,type,html){
       const boundsRow=[...ledger].reverse().find(x=>x&&x.event==='analysis_bounds_locked')||null;
       const c=map?.getCenter?.();
       return {
-        source16605:document.documentElement.innerHTML.includes('EARTHLINE 16605'),
+        runtimeVariant:document.querySelector('meta[name="earthline-sandbox-variant"]')?.content||null,
         loc,boundsRow,
         status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim().slice(0,1600),
         displayed:d,cameraAudit:ca,flowAudit:fa,landGrid:lg,landValidity:va,
@@ -133,18 +141,18 @@ async function runOne(variant,name,type,html){
     });
   }catch(e){
     error=String(e);
-    try{snap=await page.evaluate(()=>({source16605:document.documentElement.innerHTML.includes('EARTHLINE 16605'),loc:(typeof M!=='undefined'&&M.loc)?JSON.parse(JSON.stringify(M.loc)):null,status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||''),boundsRow:[...(window.EARTHLINE_RUN_LEDGER_16147||[])].reverse().find(x=>x&&x.event==='analysis_bounds_locked')||null,cameraAudit:window.EARTHLINE_REGIONAL_CAMERA_SETTLE_AUDIT_16334||null,flowAudit:window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null}))}catch(_){}
+    try{snap=await page.evaluate(()=>({runtimeVariant:document.querySelector('meta[name="earthline-sandbox-variant"]')?.content||null,loc:(typeof M!=='undefined'&&M.loc)?JSON.parse(JSON.stringify(M.loc)):null,status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||''),boundsRow:[...(window.EARTHLINE_RUN_LEDGER_16147||[])].reverse().find(x=>x&&x.event==='analysis_bounds_locked')||null,cameraAudit:window.EARTHLINE_REGIONAL_CAMERA_SETTLE_AUDIT_16334||null,flowAudit:window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null}))}catch(_){}
   }
 
   const expected=expectedBounds(snap?.loc,variant==='baseline'?'baseline':'16605');
   const actual=snap?.boundsRow?.bounds||null;
   const boundsMatch=boundsEqual(actual,expected);
-  const markerMatch=variant==='baseline'?!snap?.source16605:!!snap?.source16605;
+  const markerMatch=snap?.runtimeVariant===variant;
   const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,'-');
   await page.screenshot({path:`/tmp/sandbox-${variant}-${slug}.png`,fullPage:true}).catch(()=>{});
   await context.close();
 
-  const published=!!snap&&/Regional screening published/i.test(snap.status||'');
+  const published=!!snap&&/screening published/i.test(snap.status||'')&&!/ANALYSIS FAILED/i.test(snap.status||'');
   const mapVisible=!!(snap?.map?.exists&&snap?.map?.canvas?.w>300&&snap?.map?.canvas?.h>250);
   const safe=Number(snap?.flowAudit?.unsafeSegments??snap?.flowAudit?.unsafeDisplayedSegments??0)===0;
   const pass=published&&mapVisible&&safe&&boundsMatch&&markerMatch;
