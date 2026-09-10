@@ -7,8 +7,16 @@ const SHARD_INDEX=Number(process.env.EARTHLINE_SHARD_INDEX||0);
 const SHARD_TOTAL=Math.max(1,Number(process.env.EARTHLINE_SHARD_TOTAL||1));
 const HARD_CEILING_MS=15000;
 const WAIT_LIMIT_MS=26000;
-const STATES=['Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut','Delaware','Florida','Georgia','Hawaii','Idaho','Illinois','Indiana','Iowa','Kansas','Kentucky','Louisiana','Maine','Maryland','Massachusetts','Michigan','Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada','New Hampshire','New Jersey','New Mexico','New York','North Carolina','North Dakota','Ohio','Oklahoma','Oregon','Pennsylvania','Rhode Island','South Carolina','South Dakota','Tennessee','Texas','Utah','Vermont','Virginia','Washington','West Virginia','Wisconsin','Wyoming'];
-const SEA=['Brunei','Cambodia','Indonesia','Laos','Malaysia','Myanmar','Philippines','Singapore','Thailand','Timor-Leste','Vietnam'];
+const STATES=[
+{name:'Alabama',lat:32.377716,lng:-86.300568},{name:'Alaska',lat:58.301598,lng:-134.420212},{name:'Arizona',lat:33.448143,lng:-112.096962},{name:'Arkansas',lat:34.746613,lng:-92.288986},{name:'California',lat:38.576668,lng:-121.493629},{name:'Colorado',lat:39.739227,lng:-104.984856},{name:'Connecticut',lat:41.764046,lng:-72.682198},{name:'Delaware',lat:39.157307,lng:-75.519722},{name:'Florida',lat:30.438118,lng:-84.281296},{name:'Georgia',lat:33.749027,lng:-84.388229},
+{name:'Hawaii',lat:21.307442,lng:-157.857376},{name:'Idaho',lat:43.617775,lng:-116.199722},{name:'Illinois',lat:39.798363,lng:-89.654961},{name:'Indiana',lat:39.768623,lng:-86.162643},{name:'Iowa',lat:41.591087,lng:-93.603729},{name:'Kansas',lat:39.048191,lng:-95.677956},{name:'Kentucky',lat:38.186722,lng:-84.875374},{name:'Louisiana',lat:30.457069,lng:-91.187393},{name:'Maine',lat:44.307167,lng:-69.781693},{name:'Maryland',lat:38.978764,lng:-76.490936},
+{name:'Massachusetts',lat:42.358162,lng:-71.063698},{name:'Michigan',lat:42.733635,lng:-84.555328},{name:'Minnesota',lat:44.955097,lng:-93.102211},{name:'Mississippi',lat:32.303848,lng:-90.182106},{name:'Missouri',lat:38.579201,lng:-92.172935},{name:'Montana',lat:46.585709,lng:-112.018417},{name:'Nebraska',lat:40.808075,lng:-96.699654},{name:'Nevada',lat:39.163914,lng:-119.766121},{name:'New Hampshire',lat:43.206898,lng:-71.537994},{name:'New Jersey',lat:40.220596,lng:-74.769913},
+{name:'New Mexico',lat:35.68224,lng:-105.939728},{name:'New York',lat:42.652843,lng:-73.757874},{name:'North Carolina',lat:35.78043,lng:-78.639099},{name:'North Dakota',lat:46.82085,lng:-100.783318},{name:'Ohio',lat:39.961346,lng:-82.999069},{name:'Oklahoma',lat:35.492207,lng:-97.503342},{name:'Oregon',lat:44.938461,lng:-123.030403},{name:'Pennsylvania',lat:40.264378,lng:-76.883598},{name:'Rhode Island',lat:41.830914,lng:-71.414963},{name:'South Carolina',lat:34.000343,lng:-81.033211},
+{name:'South Dakota',lat:44.367031,lng:-100.346405},{name:'Tennessee',lat:36.16581,lng:-86.784241},{name:'Texas',lat:30.27467,lng:-97.740349},{name:'Utah',lat:40.777477,lng:-111.888237},{name:'Vermont',lat:44.262436,lng:-72.580536},{name:'Virginia',lat:37.538857,lng:-77.43364},{name:'Washington',lat:47.035805,lng:-122.905014},{name:'West Virginia',lat:38.336246,lng:-81.612328},{name:'Wisconsin',lat:43.074684,lng:-89.384445},{name:'Wyoming',lat:41.140259,lng:-104.820236}
+];
+const SEA=[
+{name:'Brunei',lat:4.9031,lng:114.9398},{name:'Cambodia',lat:11.5564,lng:104.9282},{name:'Indonesia',lat:-6.2088,lng:106.8456},{name:'Laos',lat:17.9757,lng:102.6331},{name:'Malaysia',lat:3.139,lng:101.6869},{name:'Myanmar',lat:19.7633,lng:96.0785},{name:'Philippines',lat:14.5995,lng:120.9842},{name:'Singapore',lat:1.3521,lng:103.8198},{name:'Thailand',lat:13.7563,lng:100.5018},{name:'Timor-Leste',lat:-8.5569,lng:125.5603},{name:'Vietnam',lat:21.0278,lng:105.8342}
+];
 const source=AREA==='SEA'?SEA:STATES;
 const TESTS=source.filter((_,i)=>i%SHARD_TOTAL===SHARD_INDEX);
 
@@ -52,15 +60,25 @@ function snap(){
   };
 }
 
-async function regional(frame,q){
+async function regional(frame,target){
   const before=await frame.evaluate(snap),started=Date.now();
-  await frame.evaluate(query=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');if(!i||!b)throw new Error('search controls unavailable');i.focus();i.value=query;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},q);
+  await frame.evaluate(({name,lat,lng})=>{
+    const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;
+    if(map&&typeof map.jumpTo==='function')map.jumpTo({center:[lng,lat],zoom:9});
+    if(typeof M!=='undefined'&&M){M.centerLat=lat;M.centerLng=lng;if(M.loc){M.loc.name=name;M.loc.fullName=name;}}
+  },target);
+  await frame.waitForTimeout(250);
+  await frame.evaluate(({name,lat,lng})=>{
+    if(typeof M!=='undefined'&&M){M.centerLat=lat;M.centerLng=lng;if(M.loc){M.loc.name=name;M.loc.fullName=name;}}
+    const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');if(!i||!b)throw new Error('search controls unavailable');i.focus();i.value=name;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();
+  },target);
   let timeout=false;
-  try{await frame.waitForFunction(({q,g})=>{const n=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();const m=typeof M!=='undefined'&&M,d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{};const text=n([m&&m.loc&&m.loc.name,m&&m.loc&&m.loc.fullName,d.name,d.label,d.location].join(' '));return Number(m&&m.searchGen||0)>=Number(g||0)&&n(q).split(' ').filter(Boolean).every(w=>text.includes(w))&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true'&&String(d.tier||d.mode||'').toLowerCase()==='regional';},{q,g:before.searchGen},{timeout:WAIT_LIMIT_MS,polling:200});}catch(_){timeout=true;}
+  try{await frame.waitForFunction(({target,g})=>{const m=typeof M!=='undefined'&&M,d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{};const close=Math.abs(Number(m&&m.centerLat)-target.lat)<0.75&&Math.abs(Number(m&&m.centerLng)-target.lng)<0.75;return Number(m&&m.searchGen||0)>=Number(g||0)&&close&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true'&&String(d.tier||d.mode||'').toLowerCase()==='regional';},{target,g:before.searchGen},{timeout:WAIT_LIMIT_MS,polling:200});}catch(_){timeout=true;}
   const s=await frame.evaluate(snap),elapsedMs=Date.now()-started;
-  const settled=!timeout&&String(s.displayed?.tier||'').toLowerCase()==='regional'&&s.runBusy===false;
+  const geographicPass=Math.abs(Number(s.center.lat)-target.lat)<0.75&&Math.abs(Number(s.center.lng)-target.lng)<0.75;
+  const settled=!timeout&&String(s.displayed?.tier||'').toLowerCase()==='regional'&&s.runBusy===false&&geographicPass;
   const failed=/analysis failed/i.test(s.status);
-  return {elapsedMs,timeout,s,pass:settled&&!failed&&elapsedMs<=HARD_CEILING_MS&&!s.debugVisible};
+  return {target,elapsedMs,timeout,geographicPass,s,pass:settled&&!failed&&elapsedMs<=HARD_CEILING_MS&&!s.debugVisible};
 }
 
 async function property(frame){
@@ -84,16 +102,16 @@ async function property(frame){
 
 const rows=[];
 let frame=await openSurface();
-for(const q of TESTS){
-  let row={query:q,area:AREA};
-  try{const reg=await regional(frame,q);row.regional=reg;if(!reg.pass){row.classification='REGIONAL_FAIL';row.pass=false;}else{const prop=await property(frame);row.property=prop;row.classification=prop.classification;row.pass=prop.pass;}}
+for(const target of TESTS){
+  let row={query:target.name,target,area:AREA};
+  try{const reg=await regional(frame,target);row.regional=reg;if(!reg.pass){row.classification='REGIONAL_FAIL';row.pass=false;}else{const prop=await property(frame);row.property=prop;row.classification=prop.classification;row.pass=prop.pass;}}
   catch(e){row.classification='HARNESS_FAIL';row.pass=false;row.error=String(e);}
   rows.push(row);
-  console.log(`${AREA} ${q}: ${row.classification} regional=${row.regional?.elapsedMs??'n/a'}ms property=${row.property?.elapsedMs??'n/a'}ms camera16602=${row.property?.post?.camera16602?.installed===true||row.regional?.s?.camera16602?.installed===true?'ON':'OFF'}`);
+  console.log(`${AREA} ${target.name}: ${row.classification} geo=${row.regional?.geographicPass===true?'OK':'BAD'} regional=${row.regional?.elapsedMs??'n/a'}ms property=${row.property?.elapsedMs??'n/a'}ms camera16602=${row.property?.post?.camera16602?.installed===true||row.regional?.s?.camera16602?.installed===true?'ON':'OFF'}`);
   try{frame=await openSurface();}catch(e){console.error('surface reload failed',e);break;}
 }
-const summary={area:AREA,shardIndex:SHARD_INDEX,shardTotal:SHARD_TOTAL,expected:TESTS.length,run:rows.length,pass:rows.filter(r=>r.classification==='PASS').length,safeBlock:rows.filter(r=>r.classification==='SAFE_BLOCK').length,fail:rows.filter(r=>!['PASS','SAFE_BLOCK'].includes(r.classification)).length};
-const report={generatedAt:new Date().toISOString(),url:URL,currentPatches:[16601,16602],acceptedParent:16584,protocol:{hardCeilingMs:HARD_CEILING_MS,realPropertyControl:true,acceptedParentUnchanged:true,sharedCoreOnly:true,safetyRequiredForPublishedProperty:true},summary,rows};
+const summary={area:AREA,shardIndex:SHARD_INDEX,shardTotal:SHARD_TOTAL,expected:TESTS.length,run:rows.length,pass:rows.filter(r=>r.classification==='PASS').length,safeBlock:rows.filter(r=>r.classification==='SAFE_BLOCK').length,fail:rows.filter(r=>!['PASS','SAFE_BLOCK'].includes(r.classification)).length,geographicPass:rows.filter(r=>r.regional?.geographicPass===true).length};
+const report={generatedAt:new Date().toISOString(),url:URL,currentPatches:[16601,16602],acceptedParent:16584,protocol:{hardCeilingMs:HARD_CEILING_MS,realPropertyControl:true,acceptedParentUnchanged:true,sharedCoreOnly:true,safetyRequiredForPublishedProperty:true,coordinatePinned:true},summary,rows};
 await fs.mkdir('lab-results',{recursive:true});
 const out=`lab-results/property-${AREA.toLowerCase()}-${SHARD_INDEX}-of-${SHARD_TOTAL}.json`;await fs.writeFile(out,JSON.stringify(report,null,2));
 console.log('EARTHLINE_PROPERTY_MATRIX '+JSON.stringify(report));
