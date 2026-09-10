@@ -1,0 +1,60 @@
+name: Earthline Global Country Matrix v2
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'lab/global-country-matrix.mjs'
+      - 'lab/global-country-matrix-v2.mjs'
+      - '.github/workflows/earthline-global-country-matrix-v2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  global-country-v2:
+    name: Global v2 shard ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify exact public Earthline patch identity
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 24); do
+            WATER=$(curl -fsSL --max-time 15 "https://earthlinedevelopment.org/builds/16601/earthline-shared-water-mask.js?globalv2=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${i}" || true)
+            CAMERA=$(curl -fsSL --max-time 15 "https://earthlinedevelopment.org/builds/16602/earthline-regional-camera-scale.js?globalv2=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${i}" || true)
+            if printf '%s' "$WATER" | grep -q 'EARTHLINE_LAB_WATER_16601' && printf '%s' "$CAMERA" | grep -q 'auditOnly'; then
+              echo "Exact public 16601 + audit-only 16602 surface verified."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Public surface identity gate failed."
+          exit 1
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run corrected global country matrix
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_SHARD_INDEX: ${{ matrix.shard }}
+          EARTHLINE_SHARD_TOTAL: 16
+        run: node lab/global-country-matrix-v2.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-global-v2-${{ matrix.shard }}
+          path: lab-results/global-${{ matrix.shard }}-of-16.json
+          if-no-files-found: warn
+          retention-days: 7
