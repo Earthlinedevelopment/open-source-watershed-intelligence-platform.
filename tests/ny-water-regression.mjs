@@ -1,5 +1,6 @@
 import { chromium } from 'playwright';
 const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/lab.html';
+const SEED={lng:-73.6078954739776,lat:43.5736782555177};
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1440,height:1000}});
 await page.goto(URL,{waitUntil:'domcontentloaded',timeout:45000});
@@ -7,9 +8,17 @@ const host=await page.waitForSelector('#earthline-lab-frame',{timeout:20000});
 const frame=await host.contentFrame();if(!frame)throw new Error('lab iframe unavailable');
 await frame.waitForSelector('#searchInput',{timeout:30000});
 await frame.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});
-const d=await frame.evaluate(()=>{
- const names=['earthlineCrosshairMappedOpenWater16529','earthlineMappedFeatureClass15862J','earthlineProcessMappedFeature','earthlineFeatureBBox15862J','earthlineWaterPolygonContainsPoint16529'];
- const out={};for(const n of names){try{out[n]=typeof window[n]==='function'?String(window[n]).slice(0,12000):null}catch(e){out[n]='ERR '+String(e)}}return out;
-});
-console.log('EARTHLINE_WATER_API '+JSON.stringify(d));
+const d=await frame.evaluate(async seed=>{
+  if(typeof window.earthlineSelectedSiteFromCenter!=='function'||typeof window.applyLocation!=='function')throw new Error('location preparation API unavailable');
+  const site=window.earthlineSelectedSiteFromCenter(M?.loc||null,seed.lng,seed.lat,20);
+  const applied=await window.applyLocation(site,null,M.searchGen,{analyzeNow:false,preserveMapView:false});
+  if(!applied)throw new Error('applyLocation rejected seed');
+  await new Promise(r=>setTimeout(r,2500));
+  const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);if(!mp)throw new Error('map unavailable');
+  const read=layer=>{try{return mp.querySourceFeatures('composite',{sourceLayer:layer})||[]}catch(e){return [{__error:String(e)}]}};
+  const water=read('water'),waterway=read('waterway'),road=read('road');
+  const summarize=(arr)=>({count:arr.length,types:Array.from(new Set(arr.map(f=>f?.geometry?.type).filter(Boolean))),sample:arr.slice(0,12).map(f=>({type:f?.geometry?.type||null,props:f?.properties||{},coords:f?.geometry?.coordinates||null}))});
+  const c=mp.getCenter();return {modelCenter:{lng:M?.centerLng,lat:M?.centerLat},mapCenter:{lng:c.lng,lat:c.lat,zoom:mp.getZoom()},water:summarize(water),waterway:summarize(waterway),road:summarize(road)};
+},SEED);
+console.log('EARTHLINE_SOURCE_AT_NY '+JSON.stringify(d));
 await browser.close();process.exitCode=1;
