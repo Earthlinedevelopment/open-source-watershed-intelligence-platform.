@@ -43,13 +43,12 @@ function snap(){
     searchGen:Number(m&&m.searchGen||0),locName:String(m&&m.loc&&m.loc.name||''),locFullName:String(m&&m.loc&&m.loc.fullName||''),
     center:{lat:Number(m&&m.centerLat),lng:Number(m&&m.centerLng)},
     displayed:{tier:String(d.tier||d.mode||''),name:String(d.name||d.label||d.location||''),runToken:d.runToken||d.token||null},
-    regional:{active:!!r.active,mode:String(r.mode||'')},
-    propertyState:String(document.documentElement.dataset.earthlinePropertyRunState||''),
+    regional:{active:!!r.active,mode:String(r.mode||'')},propertyState:String(document.documentElement.dataset.earthlinePropertyRunState||''),
     propertyReady:document.documentElement.classList.contains('earthline-property-ready-16188'),propertyButton:!!btn,propertyButtonDisabled:!!(btn&&btn.disabled),
     audit:a,publication:p,lock:m&&m.propertyResultLock15815||null,safety:m&&m.safetyAudit15806||null,vector:m&&m.vectorNoBuildCoverage||null,
     water16601:window.EARTHLINE_LAB_WATER_16601||null,camera16602:window.EARTHLINE_REGIONAL_CAMERA_SCALE_16602||null,
     swales:Number(m&&m.swales&&m.swales.length||0),recharge:Number(m&&m.rechZones&&m.rechZones.length||0),analysisReady:!!(m&&m.analysisReady),debugVisible:debug,
-    status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim().slice(0,900)
+    status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim().slice(0,900),runBusy:document.getElementById('runBtn')?.getAttribute('aria-busy')==='true'
   };
 }
 
@@ -57,9 +56,11 @@ async function regional(frame,q){
   const before=await frame.evaluate(snap),started=Date.now();
   await frame.evaluate(query=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');if(!i||!b)throw new Error('search controls unavailable');i.focus();i.value=query;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},q);
   let timeout=false;
-  try{await frame.waitForFunction(({q,g})=>{const n=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();const m=typeof M!=='undefined'&&M,r=window.earthlineRegional15778||{},d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{};const text=n([m&&m.loc&&m.loc.name,m&&m.loc&&m.loc.fullName,d.name,d.label,d.location].join(' '));return Number(m&&m.searchGen||0)>=Number(g||0)&&n(q).split(' ').filter(Boolean).every(w=>text.includes(w))&&r.active!==true&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';},{q,g:before.searchGen},{timeout:WAIT_LIMIT_MS,polling:200});}catch(_){timeout=true;}
+  try{await frame.waitForFunction(({q,g})=>{const n=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();const m=typeof M!=='undefined'&&M,d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{};const text=n([m&&m.loc&&m.loc.name,m&&m.loc&&m.loc.fullName,d.name,d.label,d.location].join(' '));return Number(m&&m.searchGen||0)>=Number(g||0)&&n(q).split(' ').filter(Boolean).every(w=>text.includes(w))&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true'&&String(d.tier||d.mode||'').toLowerCase()==='regional';},{q,g:before.searchGen},{timeout:WAIT_LIMIT_MS,polling:200});}catch(_){timeout=true;}
   const s=await frame.evaluate(snap),elapsedMs=Date.now()-started;
-  return {elapsedMs,timeout,s,pass:!timeout&&elapsedMs<=HARD_CEILING_MS&&!s.debugVisible};
+  const settled=!timeout&&String(s.displayed?.tier||'').toLowerCase()==='regional'&&s.runBusy===false;
+  const failed=/analysis failed/i.test(s.status);
+  return {elapsedMs,timeout,s,pass:settled&&!failed&&elapsedMs<=HARD_CEILING_MS&&!s.debugVisible};
 }
 
 async function property(frame){
@@ -73,7 +74,7 @@ async function property(frame){
   const published=a.settled===true&&a.result===true&&(String(post.displayed.tier).toLowerCase()==='property'||post.analysisReady);
   const safe=post.safety?.verified===true&&post.lock?.safetyVerified===true;
   const safelyBlocked=a.settled===true&&a.result===false&&(/stopped safely|blocked|unverified|unavailable|failed/i.test(String(a.error||'')+' '+post.status));
-  const staleRegional=post.regional.active===true||(/regional opportunity/i.test(post.status)&&!safelyBlocked);
+  const staleRegional=post.regional.active===true&&String(post.displayed.tier).toLowerCase()!=='property';
   const perf=elapsedMs<=HARD_CEILING_MS;
   let classification='FAIL';
   if(!timeout&&!post.debugVisible&&!staleRegional&&perf&&published&&safe)classification='PASS';
