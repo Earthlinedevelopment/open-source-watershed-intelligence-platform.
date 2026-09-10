@@ -70,7 +70,10 @@
       try{
         sourceQueries++;
         const rows=mp.querySourceFeatures(pair.source,{sourceLayer:pair.sourceLayer})||[];
-        for(const f of rows)all.push(Object.assign({},f,{sourceLayer:(f&&f.sourceLayer)||pair.sourceLayer}));
+        for(const f of rows){
+          const sourceLayer=String((f&&f.sourceLayer)||pair.sourceLayer||'');
+          all.push(Object.assign({},f,{sourceLayer,layer:Object.assign({},(f&&f.layer)||{}, {'source-layer':sourceLayer})}));
+        }
         sourceSuccess++;
       }catch(_){queryErrors++;}
     }
@@ -78,8 +81,10 @@
 
     const seen=new Set(),water=[];
     for(const f of all){
+      const sourceLayer=String((f&&(f.sourceLayer||(f.layer&&f.layer['source-layer'])))||'').toLowerCase();
+      const sourceLayerWater=sourceLayer==='water'||sourceLayer==='waterway';
       let info=null;try{info=earthlineMappedFeatureClass15862J(f)}catch(_){ }
-      if(!info||info.water!==true||!f||!f.geometry)continue;
+      if((!sourceLayerWater&&(!info||info.water!==true))||!f||!f.geometry)continue;
       let bb=null;try{bb=typeof featureBBox==='function'?featureBBox(f):null}catch(_){ }
       if(tb&&!intersects(bb,tb))continue;
       const key=(f.id!=null?String(f.id):'')+'|'+String(f.sourceLayer||'')+'|'+(bb?[Number(bb.minX).toFixed(6),Number(bb.minY).toFixed(6),Number(bb.maxX).toFixed(6),Number(bb.maxY).toFixed(6)].join(','):JSON.stringify(f.geometry).slice(0,240));
