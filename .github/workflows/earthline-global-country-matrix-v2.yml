@@ -4,6 +4,7 @@ on:
   push:
     branches: [pages-live]
     paths:
+      - 'index.html'
       - 'lab/global-country-matrix.mjs'
       - 'lab/global-country-matrix-v2.mjs'
       - '.github/workflows/earthline-global-country-matrix-v2.yml'
@@ -32,8 +33,9 @@ jobs:
           for i in $(seq 1 24); do
             WATER=$(curl -fsSL --max-time 15 "https://earthlinedevelopment.org/builds/16601/earthline-shared-water-mask.js?globalv2=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${i}" || true)
             CAMERA=$(curl -fsSL --max-time 15 "https://earthlinedevelopment.org/builds/16602/earthline-regional-camera-scale.js?globalv2=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${i}" || true)
-            if printf '%s' "$WATER" | grep -q 'EARTHLINE_LAB_WATER_16601' && printf '%s' "$CAMERA" | grep -q 'auditOnly'; then
-              echo "Exact public 16601 + audit-only 16602 surface verified."
+            PAGE=$(curl -fsSL --max-time 20 "https://earthlinedevelopment.org/?globalv2=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${i}" || true)
+            if printf '%s' "$WATER" | grep -q 'EARTHLINE_LAB_WATER_16601' && printf '%s' "$CAMERA" | grep -q 'auditOnly' && printf '%s' "$PAGE" | grep -q 'lineSafe16584(retrySmooth16584)'; then
+              echo "Exact public 16601 + audit-only 16602 + 16603 flow containment verified."
               exit 0
             fi
             sleep 5
