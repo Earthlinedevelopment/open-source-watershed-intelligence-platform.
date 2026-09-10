@@ -1,0 +1,31 @@
+name: Earthline NY Regional Water Audit
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'lab/ny-regional-water-audit.mjs'
+      - '.github/workflows/earthline-ny-regional-water-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Audit live New York Regional water crossings
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+        run: node lab/ny-regional-water-audit.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-ny-regional-water-audit
+          path: lab-results/ny-regional-water-audit.*
+          retention-days: 7
