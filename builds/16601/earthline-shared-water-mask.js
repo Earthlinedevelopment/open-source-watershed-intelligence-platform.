@@ -64,7 +64,16 @@
         const rows=mp.querySourceFeatures(pair.source,{sourceLayer:pair.sourceLayer})||[];
         for(const f of rows){
           const sourceLayer=String((f&&f.sourceLayer)||pair.sourceLayer||'');
-          all.push(Object.assign({},f,{sourceLayer,layer:Object.assign({},(f&&f.layer)||{}, {'source-layer':sourceLayer})}));
+          all.push({
+            type:(f&&f.type)||'Feature',
+            id:f&&f.id,
+            source:(f&&f.source)||pair.source,
+            sourceLayer,
+            geometry:f&&f.geometry,
+            properties:(f&&f.properties)||{},
+            state:(f&&f.state)||{},
+            layer:Object.assign({},(f&&f.layer)||{}, {'source-layer':sourceLayer})
+          });
         }
         sourceSuccess++;
       }catch(_){queryErrors++;}
@@ -83,10 +92,6 @@
       geometryCandidates++;
       let bb=null;try{bb=typeof featureBBox==='function'?featureBBox(f):null}catch(_){ }
       if(!tb||!bb||intersects(bb,tb))bboxOverlapCandidates++;
-      /* Do not discard source-layer-confirmed water here. querySourceFeatures may return
-         tile-clipped geometries whose helper bbox metadata is unsuitable for this gate.
-         The existing grid rasterizer remains the authoritative spatial containment step:
-         geometry outside the Property grid marks zero cells. */
       const key=(f.id!=null?String(f.id):'')+'|'+String(f.sourceLayer||'')+'|'+(bb?[Number(bb.minX).toFixed(6),Number(bb.minY).toFixed(6),Number(bb.maxX).toFixed(6),Number(bb.maxY).toFixed(6)].join(','):JSON.stringify(f.geometry).slice(0,240));
       if(seen.has(key))continue;seen.add(key);water.push(f);
     }
@@ -106,7 +111,7 @@
     M.vectorNoBuildMask=merged;M.mappedWaterMask16601=waterMask;
     M.vectorNoBuildStamp=String(M.vectorNoBuildStamp||'')+'|mapped-water-16601:'+waterCells+':'+addedCells;M._noBuildStamp=null;M.noBuildProvenance15843=null;
     const c=M.vectorNoBuildCoverage||{};
-    c.mappedWater16601={owner:'vectorNoBuild15778',status:'verified',source:'loaded-authoritative-vector-source',acquisitionResult:'verified-source-query',queryMode:'same loaded vector source; rasterizer owns Property-grid containment',vectorSourceCount:pairs.length/2,sourceQueries,sourceSuccess,queryErrors,rawFeatures:all.length,sourceLayerWaterCandidates,geometryCandidates,bboxOverlapCandidates,waterFeatures:water.length,processedWaterGeometries:processed,rawWaterCells,waterCells,addedCells,sharedFinalMask:'M.vectorNoBuildMask -> M.noBuildMask',corridorGate:'existing final no-build mask',rechargeGate:'existing final hard-block prefilter/containment gate',build:BUILD,at:new Date().toISOString()};
+    c.mappedWater16601={owner:'vectorNoBuild15778',status:'verified',source:'loaded-authoritative-vector-source',acquisitionResult:'verified-source-query',queryMode:'same loaded vector source; explicit GeoJSON handoff; rasterizer owns Property-grid containment',vectorSourceCount:pairs.length/2,sourceQueries,sourceSuccess,queryErrors,rawFeatures:all.length,sourceLayerWaterCandidates,geometryCandidates,bboxOverlapCandidates,waterFeatures:water.length,processedWaterGeometries:processed,rawWaterCells,waterCells,addedCells,sharedFinalMask:'M.vectorNoBuildMask -> M.noBuildMask',corridorGate:'existing final no-build mask',rechargeGate:'existing final hard-block prefilter/containment gate',build:BUILD,at:new Date().toISOString()};
     M.vectorNoBuildCoverage=c;
     window.EARTHLINE_LAB_WATER_16601={installed:true,lastRun:{gen:Number(gen),rawFeatures:all.length,waterFeatures:water.length,rawWaterCells,waterCells,addedCells,sourceSuccess,at:new Date().toISOString()},build:BUILD};
     return baseResult;
