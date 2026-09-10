@@ -1,0 +1,42 @@
+name: Earthline 16605 Country Extent Repair
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tools/apply-16605-country-extent.mjs'
+      - '.github/workflows/earthline-16605-country-extent.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply exact 16605 country extent repair
+        run: node tools/apply-16605-country-extent.mjs
+      - name: Verify bounded source change
+        run: |
+          set -euo pipefail
+          grep -F 'const minSpan16605=pt==='"'"'country'"'"'?.02:1.8;' index.html >/dev/null
+          grep -F 'const c=pt==='"'"'country'"'"'&&Number.isFinite(lng)?lng:(b[0]+b[2])/2' index.html >/dev/null
+          grep -F 'const c=pt==='"'"'country'"'"'&&Number.isFinite(lat)?lat:(b[1]+b[3])/2' index.html >/dev/null
+          grep -F 'lineSafe16584(retrySmooth16584)' index.html >/dev/null
+          grep -F 'regional land-validity flow audit failed: ' index.html >/dev/null
+          CHANGED=$(git diff --name-only)
+          test "$CHANGED" = "index.html"
+      - name: Commit repaired public source
+        run: |
+          git config user.name 'Earthlinedevelopment'
+          git config user.email 'info@earthlinedevelopment.org'
+          git add index.html
+          git commit -m 'fix: preserve compact country Regional extent'
+          git push origin pages-live
