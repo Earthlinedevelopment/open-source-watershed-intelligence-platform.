@@ -9,6 +9,33 @@
     return;
   }
 
+  /* 16601 prerequisite repair — the shared Property owner asks the official Vermont
+     boundary service whether every Property frame is in Vermont before it can assign
+     portable-non-vermont jurisdiction. A transport/CORS failure previously blocked
+     even frames that are geographically well outside Vermont. Preserve the official
+     validator as authority anywhere a frame could plausibly overlap Vermont; only a
+     frame wholly outside this deliberately expanded Vermont envelope may continue as
+     outside-vermont when that official transport is unavailable. This does not treat
+     a failed source as negative boundary evidence inside/near Vermont. */
+  const baseVermontBoundaryValidate16601=window.earthlineValidateVermontBoundary16178;
+  function whollyOutsideExpandedVermontEnvelope16601(points){
+    const rows=(points||[]).filter(p=>Array.isArray(p)&&Number.isFinite(Number(p[0]))&&Number.isFinite(Number(p[1])));
+    if(rows.length<3)return false;
+    const minLng=Math.min(...rows.map(p=>Number(p[0]))),maxLng=Math.max(...rows.map(p=>Number(p[0]))),minLat=Math.min(...rows.map(p=>Number(p[1]))),maxLat=Math.max(...rows.map(p=>Number(p[1])));
+    const vt={minLng:-73.50,maxLng:-71.35,minLat:42.65,maxLat:45.10};
+    return maxLng<vt.minLng||minLng>vt.maxLng||maxLat<vt.minLat||minLat>vt.maxLat;
+  }
+  if(typeof baseVermontBoundaryValidate16601==='function'){
+    const portableBoundaryValidate16601=async function(points,options={}){
+      const verdict=await baseVermontBoundaryValidate16601(points,options);
+      if(verdict&&verdict.reason==='state-boundary-unavailable'&&whollyOutsideExpandedVermontEnvelope16601(points)){
+        return {ok:false,context:String(options.context||verdict.context||'analysis'),reason:'outside-vermont',pointsChecked:Array.isArray(points)?points.length:0,insideCount:0,service:verdict.service||null,message:'OUTSIDE VERMONT — frame is wholly outside the conservative Vermont envelope; portable Property analysis may continue while the official Vermont boundary transport is unavailable.',officialBoundaryTransport:'unavailable',officialBoundaryVerified:false,portableEnvelope16601:true,build:BUILD};
+      }
+      return verdict;
+    };
+    window.earthlineValidateVermontBoundary16178=portableBoundaryValidate16601;
+  }
+
   function liveMap(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)||null}catch(_){return window.earthlineMap||null}}
   function stale(gen){try{return typeof earthlineIsStale==='function'&&earthlineIsStale(gen)}catch(_){return false}}
   function propertyRun(){try{const loc=M&&M.loc||{};return !(/Regional Opportunity Tile/i.test(String(loc.name||''))||(Array.isArray(loc.zones)&&loc.zones.includes('Regional Tile')))}catch(_){return false}}
