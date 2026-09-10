@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
 
-const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/lab.html';
+const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
 const TARGET={lng:-73.6077454739776,lat:43.5729282555177,label:'Lake George shoreline-adjacent land'};
 const HARD_CEILING_MS=15000;
 const browser=await chromium.launch({headless:true});
@@ -8,8 +8,9 @@ const page=await browser.newPage({viewport:{width:1440,height:1000}});
 const errors=[];page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
 
 await page.goto(URL,{waitUntil:'domcontentloaded',timeout:45000});
-const host=await page.waitForSelector('#earthline-lab-frame',{timeout:20000});
-const frame=await host.contentFrame();if(!frame)throw new Error('lab iframe unavailable');
+let frame=page;
+const host=await page.$('#earthline-lab-frame');
+if(host){const nested=await host.contentFrame();if(!nested)throw new Error('lab iframe unavailable');frame=nested;}
 await frame.waitForSelector('#searchInput',{timeout:30000});
 await frame.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});
 
@@ -42,6 +43,6 @@ if(!prepared.ok||prepared.sourceWaterFeatures<1){await browser.close();process.e
   const settled=result.audit?.settled===true&&result.propertyState!=='running';
   const portable=result.jurisdiction?.mode==='portable-non-vermont';
   const pass=!callError&&settled&&centerMatches&&portable&&elapsedMs<=HARD_CEILING_MS&&result.audit?.result===true&&result.water?.status==='verified'&&five.mappedWaterFeatures>0&&five.mappedWaterCells>0&&five.cellsInFinalNoBuildMask>0&&five['swale ∩ water/no-build']===0&&five['recharge ∩ water/no-build']===0&&result.finalMaskAvailable&&result.safety?.verified===true&&result.lock?.safetyVerified===true&&result.rechargeGateAvailable&&!result.debugVisible;
-  console.log('EARTHLINE_NY_WATER '+JSON.stringify({test:'NY fixed Property mapped-water exclusion',labBuild:16601,acceptedParent:16584,target:TARGET,sourceWaterFeaturesBeforeRun:prepared.sourceWaterFeatures,centerMatches,portable,settled,elapsedMs,hardCeilingMs:HARD_CEILING_MS,callResult,callError,five,pass,result,errors:errors.slice(0,30)}));
+  console.log('EARTHLINE_NY_WATER '+JSON.stringify({test:'NY fixed Property mapped-water exclusion',surface:host?'lab':'public-index',labBuild:host?16601:null,acceptedParent:16584,target:TARGET,sourceWaterFeaturesBeforeRun:prepared.sourceWaterFeatures,centerMatches,portable,settled,elapsedMs,hardCeilingMs:HARD_CEILING_MS,callResult,callError,five,pass,result,errors:errors.slice(0,30)}));
   await browser.close();if(!pass)process.exitCode=1;
 }
