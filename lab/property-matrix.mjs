@@ -47,9 +47,11 @@ function snap(){
   const btn=document.getElementById('earthlineDeclareProperty16169');
   let debug=false;
   if(why){const cs=getComputedStyle(why),b=why.getBoundingClientRect();debug=cs.display!=='none'&&cs.visibility!=='hidden'&&Number(cs.opacity||1)>0&&b.width>1&&b.height>1;}
+  let mapCenter=null,mapZoom=null;
+  try{const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;if(map&&map.getCenter){const c=map.getCenter();mapCenter={lat:Number(c.lat),lng:Number(c.lng)};mapZoom=Number(map.getZoom&&map.getZoom());}}catch(_){}
   return {
-    searchGen:Number(m&&m.searchGen||0),locName:String(m&&m.loc&&m.loc.name||''),locFullName:String(m&&m.loc&&m.loc.fullName||''),
-    center:{lat:Number(m&&m.centerLat),lng:Number(m&&m.centerLng)},
+    searchGen:Number(m&&m.searchGen||0),loc:m&&m.loc?JSON.parse(JSON.stringify(m.loc)):null,
+    center:{lat:Number(m&&m.centerLat),lng:Number(m&&m.centerLng)},mapCenter,mapZoom,
     displayed:{tier:String(d.tier||d.mode||''),name:String(d.name||d.label||d.location||''),runToken:d.runToken||d.token||null},
     regional:{active:!!r.active,mode:String(r.mode||'')},propertyState:String(document.documentElement.dataset.earthlinePropertyRunState||''),
     propertyReady:document.documentElement.classList.contains('earthline-property-ready-16188'),propertyButton:!!btn,propertyButtonDisabled:!!(btn&&btn.disabled),
@@ -60,25 +62,39 @@ function snap(){
   };
 }
 
-async function regional(frame,target){
-  const before=await frame.evaluate(snap),started=Date.now();
-  await frame.evaluate(({name,lat,lng})=>{
-    const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;
-    if(map&&typeof map.jumpTo==='function')map.jumpTo({center:[lng,lat],zoom:9});
-    if(typeof M!=='undefined'&&M){M.centerLat=lat;M.centerLng=lng;if(M.loc){M.loc.name=name;M.loc.fullName=name;}}
-  },target);
+async function chooseLocation(frame,target){
+  await frame.evaluate(name=>{
+    const i=document.getElementById('searchInput');if(!i)throw new Error('search input unavailable');i.focus();i.value=name;i.dispatchEvent(new Event('input',{bubbles:true}));
+  },target.name);
+  await frame.waitForSelector('#earthlineSearchSuggestions15970.open button[role="option"]',{timeout:12000});
+  const picked=await frame.evaluate(({name,area})=>{
+    const box=document.getElementById('earthlineSearchSuggestions15970');
+    const opts=box?[...box.querySelectorAll('button[role="option"]')]:[];
+    let b=null;
+    if(area==='US') b=opts.find(x=>/Registered U\.S\. state profile/i.test(x.textContent||'')&&(x.dataset.query||'').trim().toLowerCase()===name.toLowerCase())||opts.find(x=>/State \/ Region/i.test(x.textContent||''));
+    else b=opts.find(x=>/Country/i.test(x.textContent||'')&&(x.dataset.query||'').toLowerCase().includes(name.toLowerCase()))||opts.find(x=>/Country/i.test(x.textContent||''));
+    if(!b)return {ok:false,options:opts.map(x=>({text:(x.textContent||'').trim().slice(0,180),q:x.dataset.query||''}))};
+    const chosen={text:(b.textContent||'').trim().slice(0,220),q:b.dataset.query||''};b.click();return {ok:true,chosen};
+  },{name:target.name,area:AREA});
+  if(!picked.ok)throw new Error('no authoritative suggestion '+JSON.stringify(picked.options));
+  await frame.waitForFunction(name=>{const m=typeof M!=='undefined'&&M;return !!(m&&m.loc&&String(m.loc.name||m.loc.query||'').toLowerCase().includes(name.toLowerCase()));},target.name,{timeout:12000,polling:150});
   await frame.waitForTimeout(250);
-  await frame.evaluate(({name,lat,lng})=>{
-    if(typeof M!=='undefined'&&M){M.centerLat=lat;M.centerLng=lng;if(M.loc){M.loc.name=name;M.loc.fullName=name;}}
-    const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');if(!i||!b)throw new Error('search controls unavailable');i.focus();i.value=name;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();
-  },target);
+  return picked.chosen;
+}
+
+async function regional(frame,target){
+  const started=Date.now(),chosen=await chooseLocation(frame,target),selected=await frame.evaluate(snap);
+  const selectionName=String(selected.loc?.name||selected.loc?.query||'').toLowerCase();
+  const geographicPass=selectionName.includes(target.name.toLowerCase());
+  if(!geographicPass)return {target,chosen,selected,elapsedMs:Date.now()-started,timeout:false,geographicPass:false,pass:false,reason:'authoritative location selection mismatch'};
+  const clicked=await frame.evaluate(()=>{const b=document.getElementById('runBtn');if(!b||b.disabled)return false;b.click();return true;});
+  if(!clicked)return {target,chosen,selected,elapsedMs:Date.now()-started,timeout:false,geographicPass:true,pass:false,reason:'Run Analysis control unavailable'};
   let timeout=false;
-  try{await frame.waitForFunction(({target,g})=>{const m=typeof M!=='undefined'&&M,d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{};const close=Math.abs(Number(m&&m.centerLat)-target.lat)<0.75&&Math.abs(Number(m&&m.centerLng)-target.lng)<0.75;return Number(m&&m.searchGen||0)>=Number(g||0)&&close&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true'&&String(d.tier||d.mode||'').toLowerCase()==='regional';},{target,g:before.searchGen},{timeout:WAIT_LIMIT_MS,polling:200});}catch(_){timeout=true;}
+  try{await frame.waitForFunction(()=>{const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{};return document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true'&&String(d.tier||d.mode||'').toLowerCase()==='regional';},null,{timeout:WAIT_LIMIT_MS,polling:200});}catch(_){timeout=true;}
   const s=await frame.evaluate(snap),elapsedMs=Date.now()-started;
-  const geographicPass=Math.abs(Number(s.center.lat)-target.lat)<0.75&&Math.abs(Number(s.center.lng)-target.lng)<0.75;
-  const settled=!timeout&&String(s.displayed?.tier||'').toLowerCase()==='regional'&&s.runBusy===false&&geographicPass;
   const failed=/analysis failed/i.test(s.status);
-  return {target,elapsedMs,timeout,geographicPass,s,pass:settled&&!failed&&elapsedMs<=HARD_CEILING_MS&&!s.debugVisible};
+  const settled=!timeout&&String(s.displayed?.tier||'').toLowerCase()==='regional'&&s.runBusy===false;
+  return {target,chosen,selected,elapsedMs,timeout,geographicPass,s,pass:settled&&!failed&&elapsedMs<=HARD_CEILING_MS&&!s.debugVisible};
 }
 
 async function property(frame){
@@ -111,7 +127,7 @@ for(const target of TESTS){
   try{frame=await openSurface();}catch(e){console.error('surface reload failed',e);break;}
 }
 const summary={area:AREA,shardIndex:SHARD_INDEX,shardTotal:SHARD_TOTAL,expected:TESTS.length,run:rows.length,pass:rows.filter(r=>r.classification==='PASS').length,safeBlock:rows.filter(r=>r.classification==='SAFE_BLOCK').length,fail:rows.filter(r=>!['PASS','SAFE_BLOCK'].includes(r.classification)).length,geographicPass:rows.filter(r=>r.regional?.geographicPass===true).length};
-const report={generatedAt:new Date().toISOString(),url:URL,currentPatches:[16601,16602],acceptedParent:16584,protocol:{hardCeilingMs:HARD_CEILING_MS,realPropertyControl:true,acceptedParentUnchanged:true,sharedCoreOnly:true,safetyRequiredForPublishedProperty:true,coordinatePinned:true},summary,rows};
+const report={generatedAt:new Date().toISOString(),url:URL,currentPatches:[16601,16602],acceptedParent:16584,protocol:{hardCeilingMs:HARD_CEILING_MS,realPropertyControl:true,acceptedParentUnchanged:true,sharedCoreOnly:true,safetyRequiredForPublishedProperty:true,authoritativeSuggestionSelection:true},summary,rows};
 await fs.mkdir('lab-results',{recursive:true});
 const out=`lab-results/property-${AREA.toLowerCase()}-${SHARD_INDEX}-of-${SHARD_TOTAL}.json`;await fs.writeFile(out,JSON.stringify(report,null,2));
 console.log('EARTHLINE_PROPERTY_MATRIX '+JSON.stringify(report));
