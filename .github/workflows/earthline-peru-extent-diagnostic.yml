@@ -1,0 +1,41 @@
+name: Earthline Peru Extent Diagnostic
+on:
+  push:
+    branches: [pages-live]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - name: Verify public 16605 bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in {1..18}; do
+            html="$(curl -fsSL --max-time 30 https://earthlinedevelopment.org/)"
+            if grep -F 'EARTHLINE 16605' <<<"$html" >/dev/null && grep -F 'lineSafe16584(retrySmooth16584)' <<<"$html" >/dev/null; then exit 0; fi
+            sleep 10
+          done
+          echo 'public 16605 bytes not ready' >&2
+          exit 1
+      - name: Run diagnostic
+        run: node lab/peru-extent-diagnostic.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: peru-extent-diagnostic
+          path: |
+            /tmp/peru-extent-diagnostic.json
+            /tmp/peru.png
+            /tmp/thailand.png
+            /tmp/portugal.png
+          if-no-files-found: warn
