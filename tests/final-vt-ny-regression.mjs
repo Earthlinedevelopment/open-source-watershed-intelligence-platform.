@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
 
-const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/lab.html';
+const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
 const HARD_CEILING_MS=15000;
 const WAIT_LIMIT_MS=26000;
 const browser=await chromium.launch({headless:true});
@@ -10,10 +10,12 @@ page.on('pageerror',e=>errors.push({type:'pageerror',message:String(e)}));
 page.on('console',m=>{if(m.type()==='error')errors.push({type:'console',message:m.text()});});
 
 await page.goto(URL,{waitUntil:'domcontentloaded',timeout:45000});
-const host=await page.waitForSelector('#earthline-lab-frame',{timeout:20000});
-const frame=await host.contentFrame();if(!frame)throw new Error('lab iframe unavailable');
+let frame=page;
+const host=await page.$('#earthline-lab-frame');
+if(host){const nested=await host.contentFrame();if(!nested)throw new Error('lab iframe unavailable');frame=nested;}
 await frame.waitForSelector('#searchInput',{timeout:30000});
 await frame.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});
+await frame.waitForFunction(()=>window.EARTHLINE_REGIONAL_CAMERA_SCALE_16602?.installed===true,null,{timeout:20000});
 
 /* Test-only probe. It does not alter rendering; it records the projected screen geometry
    passed to the existing authoritative Regional renderer before that renderer returns. */
@@ -75,6 +77,7 @@ const snap=()=>{
     corridorPublicationAudit:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,
     generationAudit:window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null,
     regionalRenderProbe16601:window.EARTHLINE_REGIONAL_RENDER_PROBE_16601||null,
+    regionalCamera16602:window.EARTHLINE_REGIONAL_CAMERA_SCALE_16602||null,
     mapZoom:Number((window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null))?.getZoom?.()||0),
     debugVisible:debug,
     status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim().slice(0,1200)
@@ -89,8 +92,10 @@ async function regional(query){
   let timeout=false;
   try{await frame.waitForFunction(({q,g})=>{const n=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();const m=typeof M!=='undefined'&&M,r=window.earthlineRegional15778||{},d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{};const text=n([m&&m.loc&&m.loc.name,m&&m.loc&&m.loc.fullName,d.name,d.label,d.location].join(' '));const words=n(q).split(' ').filter(Boolean);const identity=words.every(w=>text.includes(w));return identity&&Number(m&&m.searchGen||0)>=Number(g||0)&&r.active!==true&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';},{q:query,g:before.searchGen},{timeout:WAIT_LIMIT_MS,polling:200});}catch(_){timeout=true;}
   const elapsedMs=Date.now()-started;const after=await frame.evaluate(snap);const text=norm([after.locName,after.locFullName,after.displayed.name].join(' '));const identity=norm(query).split(' ').filter(Boolean).every(w=>text.includes(w));
-  const pass=!timeout&&elapsedMs<=HARD_CEILING_MS&&identity&&!after.debugVisible&&after.regional.active!==true;
-  return {stage:`${query} Regional`,query,pass,timeout,elapsedMs,identity,after,errors:errors.slice(startErr,startErr+12)};
+  const cameraReady=after.regionalCamera16602?.installed===true&&after.regionalCamera16602?.ready===true;
+  const presentationCorridors=Number(after.regionalRenderProbe16601?.ge22||0)>0;
+  const pass=!timeout&&elapsedMs<=HARD_CEILING_MS&&identity&&cameraReady&&presentationCorridors&&!after.debugVisible&&after.regional.active!==true;
+  return {stage:`${query} Regional`,query,pass,timeout,elapsedMs,identity,cameraReady,presentationCorridors,after,errors:errors.slice(startErr,startErr+12)};
 }
 
 async function property(label){
@@ -117,7 +122,7 @@ if(stages.at(-1).pass)stages.push(await property('New York'));
 else stages.push({stage:'New York Property',pass:false,skipped:true,reason:'New York Regional failed'});
 
 const pass=stages.length===4&&stages.every(x=>x.pass===true);
-const report={test:'Earthline final VT/NY end-to-end launch regression',labBuild:16601,acceptedParent:16584,sequence:['Vermont Regional','Vermont Property','New York Regional','New York Property'],hardCeilingMs:HARD_CEILING_MS,pass,stages,browserErrors:errors.slice(0,40)};
+const report={test:'Earthline final VT/NY end-to-end launch regression',surface:host?'lab':'public-index',labBuild:host?16601:null,requiredLivePatches:[16601,16602],acceptedParent:16584,sequence:['Vermont Regional','Vermont Property','New York Regional','New York Property'],hardCeilingMs:HARD_CEILING_MS,pass,stages,browserErrors:errors.slice(0,40)};
 console.log('EARTHLINE_FINAL_VT_NY '+JSON.stringify(report));
 await browser.close();
 if(!pass)process.exitCode=1;
