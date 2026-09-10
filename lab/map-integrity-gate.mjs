@@ -80,11 +80,17 @@ async function runRegional(frame){
 }
 
 function integrity(s){
-  const canvasVisible=s.mapExists&&s.styleLoaded&&s.canvas.width>300&&s.canvas.height>250&&s.canvas.display!=='none'&&s.canvas.visibility!=='hidden'&&Number(s.canvas.opacity??1)>0;
+  /* isStyleLoaded() can be transiently false while non-blocking watershed/aquifer
+     context continues loading after core Regional publication. A disappearing-map
+     gate must test the rendered map itself, not promote that transient flag into
+     a second publication verdict. */
+  const canvasVisible=s.mapExists&&s.canvas.width>300&&s.canvas.height>250&&s.canvas.display!=='none'&&s.canvas.visibility!=='hidden'&&Number(s.canvas.opacity??1)>0;
   const basemapPresent=(s.styleLayerCount||0)>0&&(s.renderedCount===null||s.renderedCount>0);
+  const earthlineLayersPresent=(s.earthlineLayerIds?.length||0)>0;
+  const coreVisible=s.displayRun?.renderSettlement?.coreVisible!==false;
   const regionalPublished=/regional/i.test(String(s.displayRun?.tier||s.displayRun?.mode||''))||/Regional screening/i.test(s.status||'');
   const unsafe=Number(s.flowAudit?.unsafeDisplayedSegments??s.flowAudit?.unsafeSegments??0);
-  return {canvasVisible,basemapPresent,regionalPublished,unsafe,pass:canvasVisible&&basemapPresent&&regionalPublished&&unsafe===0};
+  return {canvasVisible,basemapPresent,earthlineLayersPresent,coreVisible,regionalPublished,unsafe,styleLoadedObserved:s.styleLoaded,pass:canvasVisible&&basemapPresent&&earthlineLayersPresent&&coreVisible&&regionalPublished&&unsafe===0};
 }
 
 for(const target of TARGETS){
