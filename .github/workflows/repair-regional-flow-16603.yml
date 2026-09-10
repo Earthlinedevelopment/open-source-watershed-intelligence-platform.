@@ -1,0 +1,45 @@
+name: Earthline 16603 Regional Flow Repair
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tools/repair-regional-flow-16603.mjs'
+      - '.github/workflows/repair-regional-flow-16603.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply exact 16603 source repair
+        run: node tools/repair-regional-flow-16603.mjs
+      - name: Verify bounded change and preserved audit
+        run: |
+          set -euo pipefail
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+          grep -q 'return lineSafe16584(retrySmooth16584)?retrySmooth16584:safeBase16584;' index.html
+          grep -q 'regional land-validity flow audit failed:' index.html
+          if grep -q 'return safe16584?smooth16584:base16584;' index.html; then
+            echo 'Unsafe fallback still present.'
+            exit 1
+          fi
+      - name: Commit repaired public source
+        run: |
+          set -euo pipefail
+          git config user.name 'Earthlinedevelopment'
+          git config user.email 'info@earthlinedevelopment.org'
+          git add index.html
+          git commit -m 'fix: contain Regional flows to valid terrain'
+          git push origin HEAD:pages-live
