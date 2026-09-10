@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
 
-const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/lab.html';
+const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
 const TARGET={lng:-73.012909,lat:44.513845,label:'61 Sleepy Hollow Rd, Essex, Vermont, USA'};
 const HARD_CEILING_MS=15000;
 const browser=await chromium.launch({headless:true});
@@ -8,8 +8,9 @@ const page=await browser.newPage({viewport:{width:1440,height:1000}});
 const errors=[];page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
 
 await page.goto(URL,{waitUntil:'domcontentloaded',timeout:45000});
-const host=await page.waitForSelector('#earthline-lab-frame',{timeout:20000});
-const frame=await host.contentFrame();if(!frame)throw new Error('lab iframe unavailable');
+let frame=page;
+const host=await page.$('#earthline-lab-frame');
+if(host){const nested=await host.contentFrame();if(!nested)throw new Error('lab iframe unavailable');frame=nested;}
 await frame.waitForSelector('#searchInput',{timeout:30000});
 await frame.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});
 
@@ -39,6 +40,6 @@ if(!prepared.ok){await browser.close();process.exitCode=1;}else{
   const vermont=(result.jurisdiction?.insideVermont===true||result.boundaryAudit?.ok===true)&&result.jurisdiction?.mode!=='portable-non-vermont';
   const corridors=Number(result.audit?.corridors??result.safeSwaleCount??result.swaleCount);
   const pass=!callError&&settled&&centerMatches&&vermont&&elapsedMs<=HARD_CEILING_MS&&result.audit?.result===true&&corridors>0&&result.safety?.verified===true&&result.lock?.safetyVerified===true&&!result.debugVisible;
-  console.log('EARTHLINE_VT_PROPERTY '+JSON.stringify({test:'Vermont fixed Property control',labBuild:16601,acceptedParent:16584,target:TARGET,centerMatches,vermont,settled,elapsedMs,hardCeilingMs:HARD_CEILING_MS,callResult,callError,corridors,pass,result,errors:errors.slice(0,30)}));
+  console.log('EARTHLINE_VT_PROPERTY '+JSON.stringify({test:'Vermont fixed Property control',surface:host?'lab':'public-index',labBuild:host?16601:null,acceptedParent:16584,target:TARGET,centerMatches,vermont,settled,elapsedMs,hardCeilingMs:HARD_CEILING_MS,callResult,callError,corridors,pass,result,errors:errors.slice(0,30)}));
   await browser.close();if(!pass)process.exitCode=1;
 }
