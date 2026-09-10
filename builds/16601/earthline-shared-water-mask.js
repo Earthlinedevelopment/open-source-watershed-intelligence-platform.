@@ -123,5 +123,27 @@
 
   window.earthlineBuildVectorNoBuildMask=sharedMappedWater16601;
   try{earthlineBuildVectorNoBuildMask=sharedMappedWater16601}catch(_){ }
-  window.EARTHLINE_LAB_WATER_16601={installed:true,build:BUILD,at:new Date().toISOString()};
+
+  const baseMakeSwales16601=window.makeSwales;
+  const segmentValid16601=window.earthlineRegionalSegmentValid16584;
+  if(typeof baseMakeSwales16601==='function'&&typeof segmentValid16601==='function'){
+    const sharedRegionalSwales16601=function(hy,contours,focusMode=false){
+      const result=baseMakeSwales16601(hy,contours,focusMode);
+      if(focusMode||!hy||!hy.validityMask16584||!result||!Array.isArray(result.features))return result;
+      const before=result.features.length;
+      const kept=result.features.filter(f=>{
+        const c=f&&f.geometry&&f.geometry.type==='LineString'?(f.geometry.coordinates||[]):[];
+        if(c.length<2)return false;
+        for(let i=1;i<c.length;i++)if(!segmentValid16601(hy,c[i-1],c[i]))return false;
+        return true;
+      });
+      result.features=kept;
+      window.EARTHLINE_REGIONAL_SWALE_WATER_AUDIT_16601={build:BUILD,before,after:kept.length,rejected:before-kept.length,safe:true,rule:'final Regional swale segments must remain inside the existing 16584 land/water validity mask',at:new Date().toISOString()};
+      return result;
+    };
+    window.makeSwales=sharedRegionalSwales16601;
+    try{makeSwales=sharedRegionalSwales16601}catch(_){ }
+  }
+
+  window.EARTHLINE_LAB_WATER_16601={installed:true,build:BUILD,regionalSwaleWaterGate:typeof baseMakeSwales16601==='function'&&typeof segmentValid16601==='function',at:new Date().toISOString()};
 })();
