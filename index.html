@@ -29644,10 +29644,10 @@ body { overflow-x:hidden!important; }
         usedEdges.add(edge);i=j;
       }
       if(raw.length<5)return false;
-      const coords=earthlineRegionalSmoothFlow16584(hy,raw);if(coords.length<5)return false;
+      const coords=earthlineRegionalSmoothFlow16584(hy,raw);if(coords.length<8)return false;
       const rank=Math.min(1,Math.log1p(maxAcc)/Math.log1p(hy.w*hy.h));
       features.push({type:'Feature',properties:{feature_type:'flow',rank,downstream:1},geometry:{type:'LineString',coordinates:coords}});lineCount++;
-      const desired=Math.max(1,Math.min(12,Math.floor((coords.length-1)/5)||1)),stride=(coords.length-1)/(desired+1);
+      const desired=Math.max(3,Math.min(12,Math.floor(coords.length/14))),stride=(coords.length-1)/(desired+1);
       for(let a=1;a<=desired;a++){
         const pos=Math.max(2,Math.min(coords.length-3,Math.round(stride*a))),bearing=flowBearing(coords[pos-2],coords[pos+2]);
         features.push({type:'Feature',properties:{feature_type:'flow-arrow',rank,bearing,rotation:(bearing+270)%360},geometry:{type:'Point',coordinates:coords[pos]}});
