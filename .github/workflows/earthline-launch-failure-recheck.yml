@@ -1,0 +1,55 @@
+name: Earthline Launch Failure Recheck
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'lab/launch-failure-recheck.mjs'
+      - '.github/workflows/earthline-launch-failure-recheck.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  recheck:
+    name: Recheck shard ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0,1,2,3,4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify protected public product
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 24); do
+            if curl -fsSL --max-time 20 "https://earthlinedevelopment.org/?recheck=${GITHUB_RUN_ID}-${i}" -o /tmp/earthline.html; then
+              has03=0; has05=0
+              grep -Fq 'lineSafe16584(retrySmooth16584)' /tmp/earthline.html && has03=1 || true
+              grep -Fq 'EARTHLINE 16605' /tmp/earthline.html && has05=1 || true
+              if [ "$has03" -eq 1 ] && [ "$has05" -eq 0 ]; then exit 0; fi
+            fi
+            sleep 5
+          done
+          exit 1
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Recheck prior launch failures via real search path
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_SHARD_INDEX: ${{ matrix.shard }}
+          EARTHLINE_SHARD_TOTAL: 5
+        run: node lab/launch-failure-recheck.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: launch-failure-recheck-${{ matrix.shard }}
+          path: lab-results/launch-failure-recheck-${{ matrix.shard }}-of-5.json
+          retention-days: 7
