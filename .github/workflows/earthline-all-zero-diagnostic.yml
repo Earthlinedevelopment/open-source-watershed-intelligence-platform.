@@ -1,0 +1,50 @@
+name: Earthline All-Zero Country Diagnostic
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'lab/all-zero-diagnostic.mjs'
+      - '.github/workflows/earthline-all-zero-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify exact public 16604 bytes
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            if curl -fsSL --max-time 20 "https://earthlinedevelopment.org/?zero16604=${GITHUB_RUN_ID}-${i}" -o /tmp/earthline-zero.html; then
+              if grep -Fq 'coords.length<5' /tmp/earthline-zero.html && grep -Fq 'lineSafe16584(retrySmooth16584)' /tmp/earthline-zero.html; then exit 0; fi
+            fi
+            sleep 4
+          done
+          exit 1
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Diagnose all-zero countries
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_SHARD_INDEX: 0
+          EARTHLINE_SHARD_TOTAL: 1
+        run: node lab/all-zero-diagnostic.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-all-zero-diagnostic
+          path: lab-results/global-0-of-1.json
+          if-no-files-found: warn
+          retention-days: 7
