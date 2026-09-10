@@ -28,6 +28,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Wait for exact public 16602 audit marker
+        run: |
+          for i in $(seq 1 36); do
+            body="$(curl -fsSL "https://earthlinedevelopment.org/builds/16602/earthline-regional-camera-scale.js?gate=${GITHUB_SHA}" || true)"
+            if printf '%s' "$body" | grep -q 'auditOnly:true'; then
+              echo 'Exact 16602 audit-only surface is live.'
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'Public surface did not expose exact 16602 audit marker.' >&2
+          exit 1
       - name: Install Playwright
         run: |
           npm install --no-save playwright
@@ -57,6 +69,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Wait for exact public 16602 audit marker
+        run: |
+          for i in $(seq 1 36); do
+            body="$(curl -fsSL "https://earthlinedevelopment.org/builds/16602/earthline-regional-camera-scale.js?gate=${GITHUB_SHA}" || true)"
+            if printf '%s' "$body" | grep -q 'auditOnly:true'; then
+              echo 'Exact 16602 audit-only surface is live.'
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'Public surface did not expose exact 16602 audit marker.' >&2
+          exit 1
       - name: Install Playwright
         run: |
           npm install --no-save playwright
