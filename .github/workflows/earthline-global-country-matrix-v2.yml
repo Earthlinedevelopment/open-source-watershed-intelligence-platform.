@@ -33,8 +33,11 @@ jobs:
           for i in $(seq 1 24); do
             WATER=$(curl -fsSL --max-time 15 "https://earthlinedevelopment.org/builds/16601/earthline-shared-water-mask.js?globalv2=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${i}" || true)
             CAMERA=$(curl -fsSL --max-time 15 "https://earthlinedevelopment.org/builds/16602/earthline-regional-camera-scale.js?globalv2=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${i}" || true)
-            PAGE=$(curl -fsSL --max-time 20 "https://earthlinedevelopment.org/?globalv2=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${i}" || true)
-            if printf '%s' "$WATER" | grep -q 'EARTHLINE_LAB_WATER_16601' && printf '%s' "$CAMERA" | grep -q 'auditOnly' && printf '%s' "$PAGE" | grep -q 'lineSafe16584(retrySmooth16584)'; then
+            PAGE_OK=0
+            if curl -fsSL --max-time 20 "https://earthlinedevelopment.org/?globalv2=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${i}" -o /tmp/earthline-global-v2.html; then
+              if grep -Fq 'lineSafe16584(retrySmooth16584)' /tmp/earthline-global-v2.html; then PAGE_OK=1; fi
+            fi
+            if grep -Fq 'EARTHLINE_LAB_WATER_16601' <<< "$WATER" && grep -Fq 'auditOnly' <<< "$CAMERA" && [ "$PAGE_OK" -eq 1 ]; then
               echo "Exact public 16601 + audit-only 16602 + 16603 flow containment verified."
               exit 0
             fi
