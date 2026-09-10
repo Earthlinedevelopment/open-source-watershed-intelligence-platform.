@@ -2,21 +2,13 @@ import { chromium } from 'playwright';
 
 const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/lab.html';
 const REGION_QUERY='Lake George, New York';
-const TARGET={lng:-73.6078954739776,lat:43.5736782555177,label:'Lake George east-shore fixed Property target'};
+const TARGET={lng:-73.6078954739776,lat:43.5736782555177,label:'Lake George fixed mapped-water test center'};
 const HARD_CEILING_MS=15000;
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1440,height:1000}});
 const errors=[];
 page.on('pageerror',e=>errors.push(String(e)));
 page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
-page.on('request',r=>{
-  const type=r.resourceType();
-  if(type==='xhr'||type==='fetch'){
-    const body=String(r.postData()||'');
-    const url=r.url();
-    if(!/mapbox\.com|tiles|fonts|sprite|events\.mapbox/i.test(url))console.log('EARTHLINE_DATA_REQUEST '+JSON.stringify({type,url,method:r.method(),body:body.slice(0,12000)}));
-  }
-});
 
 await page.goto(URL,{waitUntil:'domcontentloaded',timeout:45000});
 const host=await page.waitForSelector('#earthline-lab-frame',{timeout:20000});
@@ -36,25 +28,23 @@ try{
   throw new Error('Property control unavailable or disabled');
 }
 
-// Move only after the Regional camera has finished and Property is actually available.
-await frame.evaluate(async target=>{
+const started=Date.now();
+const clickState=await frame.evaluate(target=>{
   const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
   if(!mp)throw new Error('map unavailable');
+  mp.stop();
   mp.jumpTo({center:[target.lng,target.lat],zoom:17});
-  await new Promise(resolve=>setTimeout(resolve,250));
   try{M.centerLng=target.lng;M.centerLat=target.lat}catch(_){ }
   try{if(M.loc){M.loc.lat=target.lat;M.loc.lng=target.lng;}}catch(_){ }
+  const c=mp.getCenter();
+  const b=document.getElementById('earthlineDeclareProperty16169');
+  if(!b||b.disabled)return {clicked:false,mapCenter:{lng:c.lng,lat:c.lat},modelCenter:{lng:M?.centerLng,lat:M?.centerLat}};
+  b.click();
+  return {clicked:true,mapCenter:{lng:c.lng,lat:c.lat},modelCenter:{lng:M?.centerLng,lat:M?.centerLat}};
 },TARGET);
+console.log('EARTHLINE_NY_TARGET_AT_CLICK '+JSON.stringify(clickState));
+if(!clickState.clicked)throw new Error('Property control unavailable or disabled');
 
-await frame.waitForFunction(target=>{
-  try{const c=(window.earthlineMap||earthlineMap).getCenter();return Math.abs(c.lng-target.lng)<1e-6&&Math.abs(c.lat-target.lat)<1e-6}catch(_){return false}
-},TARGET,{timeout:5000,polling:50});
-
-const before=await frame.evaluate(()=>({center:{lng:M?.centerLng,lat:M?.centerLat},loc:M?.loc||null,mapCenter:(()=>{try{const c=(window.earthlineMap||earthlineMap).getCenter();return {lng:c.lng,lat:c.lat}}catch(_){return null}})()}));
-console.log('EARTHLINE_NY_TARGET_BEFORE '+JSON.stringify(before));
-const started=Date.now();
-const clicked=await frame.evaluate(()=>{const b=document.getElementById('earthlineDeclareProperty16169');if(!b||b.disabled)return false;b.click();return true});
-if(!clicked)throw new Error('Property control unavailable or disabled');
 await frame.waitForFunction(()=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};return a.settled===true&&String(document.documentElement.dataset.earthlinePropertyRunState||'')!=='running';},null,{timeout:30000,polling:150});
 const elapsedMs=Date.now()-started;
 
@@ -74,8 +64,9 @@ const result=await frame.evaluate(()=>{
 });
 
 const five={mappedWaterFeatures:result.mappedWaterFeatures,mappedWaterCells:result.mappedWaterCells,cellsInFinalNoBuildMask:result.cellsInFinalNoBuildMask,'swale ∩ water':result.swaleWaterIntersections,'recharge ∩ water':result.rechargeWaterIntersections};
-const pass=elapsedMs<=HARD_CEILING_MS&&result.audit?.result===true&&result.water?.status==='verified'&&five.mappedWaterFeatures>0&&five.mappedWaterCells>0&&five.cellsInFinalNoBuildMask>0&&five['swale ∩ water']===0&&five['recharge ∩ water']===0&&result.finalMaskAvailable&&result.safety?.verified===true&&result.lock?.safetyVerified===true&&result.rechargeGateAvailable&&!result.debugVisible;
-const report={test:'NY fixed Property mapped-water exclusion',labBuild:16601,acceptedParent:16584,url:URL,target:TARGET,elapsedMs,hardCeilingMs:HARD_CEILING_MS,five,pass,result,errors:errors.slice(0,30)};
+const centerMatches=Math.abs(Number(result.audit?.center?.lng)-TARGET.lng)<1e-6&&Math.abs(Number(result.audit?.center?.lat)-TARGET.lat)<1e-6;
+const pass=centerMatches&&elapsedMs<=HARD_CEILING_MS&&result.audit?.result===true&&result.water?.status==='verified'&&five.mappedWaterFeatures>0&&five.mappedWaterCells>0&&five.cellsInFinalNoBuildMask>0&&five['swale ∩ water']===0&&five['recharge ∩ water']===0&&result.finalMaskAvailable&&result.safety?.verified===true&&result.lock?.safetyVerified===true&&result.rechargeGateAvailable&&!result.debugVisible;
+const report={test:'NY fixed Property mapped-water exclusion',labBuild:16601,acceptedParent:16584,url:URL,target:TARGET,centerMatches,elapsedMs,hardCeilingMs:HARD_CEILING_MS,five,pass,result,errors:errors.slice(0,30)};
 console.log('EARTHLINE_NY_WATER '+JSON.stringify(report));
 await browser.close();
 if(!pass)process.exitCode=1;
