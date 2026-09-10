@@ -1,0 +1,28 @@
+name: Earthline Regional Source Probe
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-regional-source-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract Regional flow source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='replace')
+          for needle in ['function makeFlows(hy){','function earthlineRegionalSmoothFlow16584','regional core preflight incomplete','function earthlineBuildRegionalValidityMask16584','validityMask16584']:
+              i=s.find(needle)
+              print('\n===== NEEDLE',needle,'INDEX',i,'=====')
+              if i>=0:
+                  print(s[max(0,i-3500):i+12000])
+          PY
