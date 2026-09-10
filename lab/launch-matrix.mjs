@@ -1,4 +1,4 @@
-// Current-public launch rerun marker: 2026-09-10T11:50Z
+// Current-public launch rerun marker: 2026-09-10T12:58Z
 import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
 
@@ -50,17 +50,68 @@ function snapshotScript(){
   };
 }
 
+async function selectAuthoritativeResult(frame,query,kind){
+  await frame.evaluate(q=>{
+    const input=document.getElementById('searchInput');
+    if(!input)throw new Error('search input unavailable');
+    input.focus();input.value=q;
+    input.dispatchEvent(new Event('input',{bubbles:true}));
+    input.dispatchEvent(new Event('change',{bubbles:true}));
+  },query);
+  await frame.waitForSelector('#earthlineSearchSuggestions15970.open button[role="option"]',{timeout:12000});
+  const started=Date.now();
+  const picked=await frame.evaluate(({q,kind})=>{
+    const n=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+    const wantCountry=kind==='se-asia-regional';
+    const opts=[...document.querySelectorAll('#earthlineSearchSuggestions15970 button[role="option"]')];
+    const qn=n(q);
+    const nameMatch=b=>n(b.dataset.query||'')===qn||n(b.textContent||'').includes(qn);
+    const typeMatch=b=>wantCountry?/country/i.test(b.textContent||''):/state|region/i.test(b.textContent||'');
+    const b=opts.find(x=>nameMatch(x)&&typeMatch(x))||opts.find(nameMatch);
+    if(!b)return null;
+    const r={text:String(b.textContent||'').trim(),query:String(b.dataset.query||''),matchesTarget:nameMatch(b),typeMatched:typeMatch(b)};
+    b.click();
+    return r;
+  },{q:query,kind});
+  return {picked,started};
+}
+
 async function runQuery(frame,query,kind){
-  const before=await frame.evaluate(snapshotScript),errorStart=consoleErrors.length,started=Date.now();
-  await frame.evaluate(q=>{const input=document.getElementById('searchInput'),btn=document.getElementById('runBtn');if(!input||!btn)throw new Error('search controls unavailable');input.focus();input.value=q;input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));btn.click();},query);
+  const before=await frame.evaluate(snapshotScript),errorStart=consoleErrors.length;
+  let selected;
+  try{selected=await selectAuthoritativeResult(frame,query,kind);}catch(e){
+    const after=await frame.evaluate(snapshotScript).catch(()=>null);
+    return {query,kind,pass:false,timedOut:false,elapsedMs:null,performancePass:false,terminalPass:false,identity:false,uiPass:after?!after.diagnosticVisible:false,selection:null,after,errors:[{type:'harness',message:String(e)}]};
+  }
+  if(!selected.picked){
+    const after=await frame.evaluate(snapshotScript);
+    return {query,kind,pass:false,timedOut:false,elapsedMs:null,performancePass:false,terminalPass:false,identity:false,uiPass:!after.diagnosticVisible,selection:null,after,errors:[{type:'harness',message:'authoritative suggestion missing'}]};
+  }
+
   let timedOut=false;
-  try{await frame.waitForFunction(({q,beforeGen})=>{const n=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();const m=typeof M!=='undefined'&&M,d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{},btn=document.getElementById('runBtn');const loc=[m&&m.loc&&m.loc.name,m&&m.loc&&m.loc.fullName,d&&d.name,d&&d.label,d&&d.location].map(n).join(' | '),qn=n(q),words=qn.split(' ').filter(Boolean);const identity=words.every(w=>loc.includes(w))||loc.includes(qn);const advanced=Number(m&&m.searchGen||0)>Number(beforeGen||0)||identity;return advanced&&identity&&btn?.getAttribute('aria-busy')!=='true'&&String(d.tier||d.mode||'').toLowerCase()==='regional';},{q:query,beforeGen:before.searchGen},{timeout:WAIT_LIMIT_MS,polling:200});}catch(_){timedOut=true;}
-  const elapsedMs=Date.now()-started,after=await frame.evaluate(snapshotScript),locText=norm([after.locName,after.locFullName,after.displayed&&after.displayed.name].filter(Boolean).join(' ')),identity=norm(query).split(' ').filter(Boolean).every(w=>locText.includes(w));
+  try{
+    await frame.waitForFunction(()=>{
+      const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{};
+      const btn=document.getElementById('runBtn');
+      const s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'');
+      const terminal=/screening published|analysis failed/i.test(s);
+      const regional=String(d.tier||d.mode||'').toLowerCase()==='regional';
+      return btn?.getAttribute('aria-busy')!=='true'&&terminal&&(regional||/analysis failed/i.test(s));
+    },null,{timeout:WAIT_LIMIT_MS,polling:200});
+  }catch(_){timedOut=true;}
+
+  const elapsedMs=Date.now()-selected.started,after=await frame.evaluate(snapshotScript);
+  const locText=norm([after.locName,after.locFullName,after.displayed&&after.displayed.name].filter(Boolean).join(' '));
+  const qn=norm(query),words=qn.split(' ').filter(Boolean),tokenText=norm(after.displayed?.runToken||'');
+  const locIdentity=words.length>0&&words.every(w=>locText.includes(w));
+  const tokenIdentity=words.length>0&&words.every(w=>tokenText.includes(w));
+  const failedForSelected=/analysis failed/i.test(after.statusText)&&selected.picked.matchesTarget&&locIdentity;
+  const identity=!!selected.picked.matchesTarget&&(locIdentity||tokenIdentity||failedForSelected);
   const newErrors=consoleErrors.slice(errorStart).filter(e=>!/(favicon|ERR_BLOCKED_BY_CLIENT|Failed to load resource.*favicon)/i.test(e.message));
   const performancePass=elapsedMs<=HARD_CEILING_MS;
   const terminalPass=!timedOut&&identity&&after.runBusy===false&&String(after.displayed?.tier||'').toLowerCase()==='regional'&&!/analysis failed/i.test(after.statusText);
   const uiPass=!after.diagnosticVisible;
-  return {query,kind,pass:terminalPass&&performancePass&&uiPass,timedOut,elapsedMs,performancePass,terminalPass,identity,uiPass,after,errors:newErrors.slice(0,12)};
+  return {query,kind,pass:terminalPass&&performancePass&&uiPass,timedOut,elapsedMs,performancePass,terminalPass,identity,uiPass,selection:selected.picked,after,errors:newErrors.slice(0,12)};
 }
 
 let frame=await openSurface();
@@ -74,7 +125,7 @@ for(const q of TESTS){
   try{frame=await openSurface();}catch(e){console.error('surface reload failed',e);break;}
 }
 const summary={area:AREA,shardIndex:SHARD_INDEX,shardTotal:SHARD_TOTAL,expected:TESTS.length,run:results.length,pass:results.filter(r=>r.pass).length,fail:results.filter(r=>!r.pass).length,camera16602On:results.filter(r=>r.after?.camera16602?.installed===true).length,camera16602Off:results.filter(r=>r.after&&r.after.camera16602?.installed!==true).length};
-const report={generatedAt:new Date().toISOString(),url:URL,currentPatches:[16601,16602],acceptedParent:16584,protocol:{hardCeilingMs:HARD_CEILING_MS,acceptedParentUnchanged:true,sharedCoreOnly:true,noStateScienceBranches:true},summary,results,browserErrors:consoleErrors.slice(0,100)};
+const report={generatedAt:new Date().toISOString(),url:URL,currentPatches:[16601,16602],acceptedParent:16584,protocol:{hardCeilingMs:HARD_CEILING_MS,acceptedParentUnchanged:true,sharedCoreOnly:true,noStateScienceBranches:true,authoritativeSearchSelection:true},summary,results,browserErrors:consoleErrors.slice(0,100)};
 await fs.mkdir('lab-results',{recursive:true});
 const out=`lab-results/regional-${AREA.toLowerCase()}-${SHARD_INDEX}-of-${SHARD_TOTAL}.json`;await fs.writeFile(out,JSON.stringify(report,null,2));
 console.log('EARTHLINE_REGIONAL_MATRIX '+JSON.stringify(report));
