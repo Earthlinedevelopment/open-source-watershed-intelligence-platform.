@@ -1,4 +1,4 @@
-name: Promote 16601 water mask to live index
+name: Promote tested live patches to index
 
 on:
   push:
@@ -17,19 +17,28 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Append tested 16601 shared-water owner at absolute EOF
+      - name: Append tested late owners at absolute EOF
         shell: bash
         run: |
           set -euo pipefail
-          marker='builds/16601/earthline-shared-water-mask.js'
-          if grep -Fq "$marker" index.html; then
-            echo '16601 live water loader already present; no change.'
+          changed=0
+          water='builds/16601/earthline-shared-water-mask.js'
+          camera='builds/16602/earthline-regional-camera-scale.js'
+          if ! grep -Fq "$water" index.html; then
+            printf '\n<script src="/builds/16601/earthline-shared-water-mask.js?v=16601-live-water-20260909"></script>\n' >> index.html
+            changed=1
+          fi
+          if ! grep -Fq "$camera" index.html; then
+            printf '\n<script src="/builds/16602/earthline-regional-camera-scale.js?v=16602-live-regional-20260909"></script>\n' >> index.html
+            changed=1
+          fi
+          tail -n 7 index.html
+          if [ "$changed" -eq 0 ]; then
+            echo 'All tested live loaders already present; no change.'
             exit 0
           fi
-          printf '\n<script src="/builds/16601/earthline-shared-water-mask.js?v=16601-live-water-20260909"></script>\n' >> index.html
-          tail -n 5 index.html
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
-          git commit -m 'fix(live): promote tested 16601 shared water mask'
+          git commit -m 'fix(live): promote Regional camera scale gate'
           git push origin HEAD:pages-live
