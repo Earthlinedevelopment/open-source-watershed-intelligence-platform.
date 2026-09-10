@@ -1,0 +1,30 @@
+name: Earthline Revert 16605
+on:
+  push:
+    branches: [pages-live]
+permissions:
+  contents: write
+jobs:
+  revert:
+    if: github.event.head_commit.message == 'ops: trigger rollback 16605'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Revert only the 16605 product change
+        run: |
+          set -euo pipefail
+          git config user.name 'Earthlinedevelopment'
+          git config user.email 'info@earthlinedevelopment.org'
+          git revert --no-edit 618aeb8207e5f08329dfceb71172f0ad451d8f6a
+          grep -F "if(w<1.8){const d=(1.8-w)/2;b[0]-=d;b[2]+=d;}" index.html >/dev/null
+          grep -F "if(h<1.8){const d=(1.8-h)/2;b[1]-=d;b[3]+=d;}" index.html >/dev/null
+          grep -F "if(w>18){const c=(b[0]+b[2])/2;b[0]=c-9;b[2]=c+9;}if(h>14){const c=(b[1]+b[3])/2;b[1]=c-7;b[3]=c+7;}" index.html >/dev/null
+          grep -F 'lineSafe16584(retrySmooth16584)' index.html >/dev/null
+          if grep -F 'EARTHLINE 16605' index.html >/dev/null; then
+            echo '16605 marker still present' >&2
+            exit 1
+          fi
+          git push origin pages-live
