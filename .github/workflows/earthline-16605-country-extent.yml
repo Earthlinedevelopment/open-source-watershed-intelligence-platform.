@@ -1,10 +1,10 @@
-name: Earthline 16605 Country Extent Repair
+name: Earthline 16605 Exact Rollback
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tools/apply-16605-country-extent.mjs'
+      - 'tools/revert-16605-country-extent.mjs'
       - '.github/workflows/earthline-16605-country-extent.yml'
   workflow_dispatch:
 
@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 jobs:
-  repair:
+  rollback:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,22 +21,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Apply exact 16605 country extent repair
-        run: node tools/apply-16605-country-extent.mjs
-      - name: Verify bounded source change
+      - name: Revert exact 16605 product edits
+        run: node tools/revert-16605-country-extent.mjs
+      - name: Verify 16603 preserved and 16605 removed
         run: |
           set -euo pipefail
-          grep -F 'const minSpan16605=pt==='"'"'country'"'"'?.02:1.8;' index.html >/dev/null
-          grep -F 'const c=pt==='"'"'country'"'"'&&Number.isFinite(lng)?lng:(b[0]+b[2])/2' index.html >/dev/null
-          grep -F 'const c=pt==='"'"'country'"'"'&&Number.isFinite(lat)?lat:(b[1]+b[3])/2' index.html >/dev/null
+          grep -F "if(w<1.8){const d=(1.8-w)/2;b[0]-=d;b[2]+=d;}" index.html >/dev/null
+          grep -F "if(h<1.8){const d=(1.8-h)/2;b[1]-=d;b[3]+=d;}" index.html >/dev/null
+          grep -F "if(w>18){const c=(b[0]+b[2])/2;b[0]=c-9;b[2]=c+9;}if(h>14){const c=(b[1]+b[3])/2;b[1]=c-7;b[3]=c+7;}" index.html >/dev/null
           grep -F 'lineSafe16584(retrySmooth16584)' index.html >/dev/null
           grep -F 'regional land-validity flow audit failed: ' index.html >/dev/null
+          if grep -F 'EARTHLINE 16605' index.html >/dev/null; then exit 1; fi
           CHANGED=$(git diff --name-only)
           test "$CHANGED" = "index.html"
-      - name: Commit repaired public source
+      - name: Commit rollback
         run: |
           git config user.name 'Earthlinedevelopment'
           git config user.email 'info@earthlinedevelopment.org'
           git add index.html
-          git commit -m 'fix: preserve compact country Regional extent'
+          git commit -m 'Revert 16605 country extent regression'
           git push origin pages-live
