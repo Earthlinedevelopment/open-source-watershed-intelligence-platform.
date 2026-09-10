@@ -1,0 +1,36 @@
+name: Earthline Runtime Introspection
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tools/runtime-introspect.mjs'
+      - '.github/workflows/earthline-runtime-introspect.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-introspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Inspect live Earthline runtime
+        run: node tools/runtime-introspect.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-runtime-introspect
+          path: runtime-results/earthline-runtime-introspect.json
+          if-no-files-found: warn
+          retention-days: 7
