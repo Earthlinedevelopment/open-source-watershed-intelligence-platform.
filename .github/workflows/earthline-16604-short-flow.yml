@@ -1,0 +1,42 @@
+name: Earthline 16604 Short Flow Repair
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tools/apply-16604-short-flow.mjs'
+      - '.github/workflows/earthline-16604-short-flow.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply exact 16604 short-flow repair
+        run: node tools/apply-16604-short-flow.mjs
+      - name: Verify bounded source change
+        run: |
+          set -euo pipefail
+          grep -Fq 'coords.length<5' index.html
+          grep -Fq 'Math.floor((coords.length-1)/5)||1' index.html
+          grep -Fq 'lineSafe16584(retrySmooth16584)' index.html
+          grep -Fq 'regional land-validity flow audit failed: ' index.html
+          ! grep -Fq 'coords.length<8' index.html
+          CHANGED=$(git diff --name-only)
+          test "$CHANGED" = "index.html"
+      - name: Commit repaired public source
+        run: |
+          git config user.name 'Earthlinedevelopment'
+          git config user.email 'info@earthlinedevelopment.org'
+          git add index.html
+          git commit -m 'fix: retain short valid Regional flow paths'
+          git push origin pages-live
