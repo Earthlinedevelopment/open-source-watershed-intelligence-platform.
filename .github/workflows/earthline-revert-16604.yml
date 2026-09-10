@@ -1,0 +1,30 @@
+name: Earthline Revert 16604
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-revert-16604.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  revert:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Revert ineffective 16604 product change
+        run: |
+          set -euo pipefail
+          git config user.name 'Earthlinedevelopment'
+          git config user.email 'info@earthlinedevelopment.org'
+          git revert --no-edit 71c2fbeb9a16132fc69886de14629cf973400020
+          grep -Fq 'coords.length<8' index.html
+          grep -Fq 'lineSafe16584(retrySmooth16584)' index.html
+          grep -Fq 'regional land-validity flow audit failed: ' index.html
+          git push origin pages-live
