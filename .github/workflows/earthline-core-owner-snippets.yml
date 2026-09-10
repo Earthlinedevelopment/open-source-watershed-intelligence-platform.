@@ -1,0 +1,29 @@
+name: Earthline Core Owner Snippets
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-core-owner-snippets.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Print exact owner snippets
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          text=Path('index.html').read_text(encoding='utf-8')
+          for needle in ['function analysisBounds(loc)', 'function clearForSubmission', 'async function resolveSearch']:
+              i=text.find(needle)
+              print('\n===== '+needle+' @ '+str(i)+' =====')
+              if i < 0:
+                  continue
+              print(text[max(0,i-700):min(len(text),i+4200)])
+          PY
