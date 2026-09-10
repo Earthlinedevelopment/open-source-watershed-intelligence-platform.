@@ -32,12 +32,10 @@ const started=Date.now();
 const clickState=await frame.evaluate(target=>{
   const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
   if(!mp)throw new Error('map unavailable');
-  mp.stop();
-  mp.jumpTo({center:[target.lng,target.lat],zoom:17});
+  mp.stop();mp.jumpTo({center:[target.lng,target.lat],zoom:17});
   try{M.centerLng=target.lng;M.centerLat=target.lat}catch(_){ }
   try{if(M.loc){M.loc.lat=target.lat;M.loc.lng=target.lng;}}catch(_){ }
-  const c=mp.getCenter();
-  const b=document.getElementById('earthlineDeclareProperty16169');
+  const c=mp.getCenter(),b=document.getElementById('earthlineDeclareProperty16169');
   if(!b||b.disabled)return {clicked:false,mapCenter:{lng:c.lng,lat:c.lat},modelCenter:{lng:M?.centerLng,lat:M?.centerLat}};
   b.click();
   return {clicked:true,mapCenter:{lng:c.lng,lat:c.lat},modelCenter:{lng:M?.centerLng,lat:M?.centerLat}};
@@ -45,28 +43,42 @@ const clickState=await frame.evaluate(target=>{
 console.log('EARTHLINE_NY_TARGET_AT_CLICK '+JSON.stringify(clickState));
 if(!clickState.clicked)throw new Error('Property control unavailable or disabled');
 
-await frame.waitForFunction(()=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};return a.settled===true&&String(document.documentElement.dataset.earthlinePropertyRunState||'')!=='running';},null,{timeout:30000,polling:150});
+let settled=true;
+try{
+  await frame.waitForFunction(()=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};return a.settled===true&&String(document.documentElement.dataset.earthlinePropertyRunState||'')!=='running';},null,{timeout:18000,polling:150});
+}catch(_){settled=false;}
 const elapsedMs=Date.now()-started;
-
-const result=await frame.evaluate(()=>{
-  const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
-  const w=M?.vectorNoBuildCoverage?.mappedWater16601||null;
-  const wm=M?.mappedWaterMask16601||null;
-  const nm=M?.noBuildMask||null;
-  const s=M?.safetyAudit15806||null;
-  const lock=M?.propertyResultLock15815||null;
-  let cellsInFinalNoBuildMask=0;
-  if(wm&&nm&&wm.length===nm.length){for(let i=0;i<wm.length;i++)if(wm[i]&&nm[i])cellsInFinalNoBuildMask++;}
-  let rechargeWaterIntersections=0,rechargeChecked=0,rechargeGateAvailable=false;
-  try{if(typeof earthlineRechargeZoneFitsProperty16326==='function'){rechargeGateAvailable=true;for(const z of (M.rechZones||[])){rechargeChecked++;if(!earthlineRechargeZoneFitsProperty16326(z,1))rechargeWaterIntersections++;}}}catch(_){rechargeWaterIntersections=-1;}
-  const swaleWaterIntersections=Number.isFinite(Number(s?.acceptedIntersections))?Number(s.acceptedIntersections):-1;
-  return {audit:a,water:w,safety:s,lock,jurisdiction:M?.propertyJurisdiction16516||null,mappedWaterFeatures:Number(w?.waterFeatures||0),mappedWaterCells:Number(w?.waterCells||0),cellsInFinalNoBuildMask,swaleWaterIntersections,rechargeWaterIntersections,rechargeChecked,rechargeGateAvailable,swaleCount:Number(M?.swales?.length||0),rechargeCount:Number(M?.rechZones?.length||0),finalMaskAvailable:!!(nm&&nm.length),status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||''),debugVisible:(()=>{const e=document.getElementById('earthlineWhyNotHere15803');if(!e)return false;const c=getComputedStyle(e),b=e.getBoundingClientRect();return c.display!=='none'&&c.visibility!=='hidden'&&b.width>1&&b.height>1})()};
-});
-
-const five={mappedWaterFeatures:result.mappedWaterFeatures,mappedWaterCells:result.mappedWaterCells,cellsInFinalNoBuildMask:result.cellsInFinalNoBuildMask,'swale ∩ water':result.swaleWaterIntersections,'recharge ∩ water':result.rechargeWaterIntersections};
-const centerMatches=Math.abs(Number(result.audit?.center?.lng)-TARGET.lng)<1e-6&&Math.abs(Number(result.audit?.center?.lat)-TARGET.lat)<1e-6;
-const pass=centerMatches&&elapsedMs<=HARD_CEILING_MS&&result.audit?.result===true&&result.water?.status==='verified'&&five.mappedWaterFeatures>0&&five.mappedWaterCells>0&&five.cellsInFinalNoBuildMask>0&&five['swale ∩ water']===0&&five['recharge ∩ water']===0&&result.finalMaskAvailable&&result.safety?.verified===true&&result.lock?.safetyVerified===true&&result.rechargeGateAvailable&&!result.debugVisible;
-const report={test:'NY fixed Property mapped-water exclusion',labBuild:16601,acceptedParent:16584,url:URL,target:TARGET,centerMatches,elapsedMs,hardCeilingMs:HARD_CEILING_MS,five,pass,result,errors:errors.slice(0,30)};
-console.log('EARTHLINE_NY_WATER '+JSON.stringify(report));
-await browser.close();
-if(!pass)process.exitCode=1;
+if(!settled){
+  const stuck=await frame.evaluate(()=>({
+    audit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+    labWater:window.EARTHLINE_LAB_WATER_16601||null,
+    jurisdiction:M?.propertyJurisdiction16516||null,
+    vectorCoverage:M?.vectorNoBuildCoverage||null,
+    vectorMask:!!(M?.vectorNoBuildMask&&M.vectorNoBuildMask.length),
+    noBuildMask:!!(M?.noBuildMask&&M.noBuildMask.length),
+    mapCenter:(()=>{try{const c=(window.earthlineMap||earthlineMap).getCenter();return {lng:c.lng,lat:c.lat}}catch(_){return null}})(),
+    state:String(document.documentElement.dataset.earthlinePropertyRunState||''),
+    status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim().slice(0,1600)
+  }));
+  console.log('EARTHLINE_NY_STUCK '+JSON.stringify({elapsedMs,stuck,errors:errors.slice(0,30)}));
+  await browser.close();
+  process.exitCode=1;
+}else{
+  const result=await frame.evaluate(()=>{
+    const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
+    const w=M?.vectorNoBuildCoverage?.mappedWater16601||null;
+    const wm=M?.mappedWaterMask16601||null,nm=M?.noBuildMask||null,s=M?.safetyAudit15806||null,lock=M?.propertyResultLock15815||null;
+    let cellsInFinalNoBuildMask=0;if(wm&&nm&&wm.length===nm.length){for(let i=0;i<wm.length;i++)if(wm[i]&&nm[i])cellsInFinalNoBuildMask++;}
+    let rechargeWaterIntersections=0,rechargeChecked=0,rechargeGateAvailable=false;
+    try{if(typeof earthlineRechargeZoneFitsProperty16326==='function'){rechargeGateAvailable=true;for(const z of (M.rechZones||[])){rechargeChecked++;if(!earthlineRechargeZoneFitsProperty16326(z,1))rechargeWaterIntersections++;}}}catch(_){rechargeWaterIntersections=-1;}
+    const swaleWaterIntersections=Number.isFinite(Number(s?.acceptedIntersections))?Number(s.acceptedIntersections):-1;
+    return {audit:a,water:w,safety:s,lock,jurisdiction:M?.propertyJurisdiction16516||null,mappedWaterFeatures:Number(w?.waterFeatures||0),mappedWaterCells:Number(w?.waterCells||0),cellsInFinalNoBuildMask,swaleWaterIntersections,rechargeWaterIntersections,rechargeChecked,rechargeGateAvailable,swaleCount:Number(M?.swales?.length||0),rechargeCount:Number(M?.rechZones?.length||0),finalMaskAvailable:!!(nm&&nm.length),status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||''),debugVisible:(()=>{const e=document.getElementById('earthlineWhyNotHere15803');if(!e)return false;const c=getComputedStyle(e),b=e.getBoundingClientRect();return c.display!=='none'&&c.visibility!=='hidden'&&b.width>1&&b.height>1})()};
+  });
+  const five={mappedWaterFeatures:result.mappedWaterFeatures,mappedWaterCells:result.mappedWaterCells,cellsInFinalNoBuildMask:result.cellsInFinalNoBuildMask,'swale ∩ water':result.swaleWaterIntersections,'recharge ∩ water':result.rechargeWaterIntersections};
+  const centerMatches=Math.abs(Number(result.audit?.center?.lng)-TARGET.lng)<1e-6&&Math.abs(Number(result.audit?.center?.lat)-TARGET.lat)<1e-6;
+  const pass=centerMatches&&elapsedMs<=HARD_CEILING_MS&&result.audit?.result===true&&result.water?.status==='verified'&&five.mappedWaterFeatures>0&&five.mappedWaterCells>0&&five.cellsInFinalNoBuildMask>0&&five['swale ∩ water']===0&&five['recharge ∩ water']===0&&result.finalMaskAvailable&&result.safety?.verified===true&&result.lock?.safetyVerified===true&&result.rechargeGateAvailable&&!result.debugVisible;
+  const report={test:'NY fixed Property mapped-water exclusion',labBuild:16601,acceptedParent:16584,url:URL,target:TARGET,centerMatches,elapsedMs,hardCeilingMs:HARD_CEILING_MS,five,pass,result,errors:errors.slice(0,30)};
+  console.log('EARTHLINE_NY_WATER '+JSON.stringify(report));
+  await browser.close();
+  if(!pass)process.exitCode=1;
+}
