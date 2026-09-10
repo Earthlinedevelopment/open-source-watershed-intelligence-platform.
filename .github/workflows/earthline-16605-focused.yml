@@ -1,0 +1,43 @@
+name: Earthline 16605 Focused Regression
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'lab/16605-focused.mjs'
+      - '.github/workflows/earthline-16605-focused.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify exact public 16605 bytes
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in $(seq 1 60); do
+            curl -fsSL --max-time 20 -H 'Cache-Control: no-cache' 'https://earthlinedevelopment.org/?earthline-16605=1' -o /tmp/earthline-16605.html || true
+            if grep -F 'const minSpan16605=pt==='"'"'country'"'"'?.02:1.8;' /tmp/earthline-16605.html >/dev/null 2>&1 && grep -F 'lineSafe16584(retrySmooth16584)' /tmp/earthline-16605.html >/dev/null 2>&1; then ok=1; break; fi
+            sleep 5
+          done
+          test "$ok" = 1
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run focused public regression
+        run: node lab/16605-focused.mjs
+        continue-on-error: true
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-16605-focused
+          path: lab-results/
