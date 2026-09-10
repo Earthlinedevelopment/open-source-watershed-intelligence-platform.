@@ -6,6 +6,7 @@ on:
     paths:
       - 'tests/ny-water-regression.mjs'
       - 'tests/vt-property-control.mjs'
+      - 'tests/final-vt-ny-regression.mjs'
       - 'builds/16601/**'
       - 'lab.html'
       - '.github/workflows/earthline-ny-water.yml'
@@ -17,7 +18,7 @@ permissions:
 jobs:
   ny-water:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,3 +36,7 @@ jobs:
         env:
           EARTHLINE_URL: https://earthlinedevelopment.org/lab.html
         run: node tests/vt-property-control.mjs
+      - name: Run final Vermont New York regression
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/lab.html
+        run: node tests/final-vt-ny-regression.mjs
