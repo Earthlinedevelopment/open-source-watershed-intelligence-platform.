@@ -28,15 +28,15 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Run Earthline launch matrix
+      - name: Run Earthline current public launch matrix
         env:
-          EARTHLINE_URL: https://earthlinedevelopment.org/lab.html
+          EARTHLINE_URL: https://earthlinedevelopment.org/
         run: node lab/launch-matrix.mjs
       - name: Upload matrix evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: earthline-launch-matrix-16600
-          path: lab-results/earthline-launch-matrix-16600.json
+          name: earthline-launch-matrix-current
+          path: lab-results/earthline-launch-matrix-current.json
           if-no-files-found: warn
           retention-days: 7
