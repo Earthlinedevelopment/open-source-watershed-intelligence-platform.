@@ -1,0 +1,38 @@
+name: Earthline Same-Page Geography Gate
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'lab/same-page-geography-sequence.mjs'
+      - '.github/workflows/earthline-same-page-geography.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sequence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Run same-page geography sequence
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+        run: node lab/same-page-geography-sequence.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-same-page-geography
+          path: |
+            lab-results/same-page-geography-sequence.json
+            lab-results/same-page-geography-sequence.png
+          if-no-files-found: warn
+          retention-days: 7
