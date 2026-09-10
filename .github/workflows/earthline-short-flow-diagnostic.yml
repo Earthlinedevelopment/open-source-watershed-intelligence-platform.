@@ -1,0 +1,33 @@
+name: Earthline Short Flow Diagnostic
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'lab/short-flow-diagnostic.mjs'
+      - '.github/workflows/earthline-short-flow-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Diagnose short-flow countries
+        run: node lab/short-flow-diagnostic.mjs
+        continue-on-error: true
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-short-flow-diagnostic
+          path: lab-results/
