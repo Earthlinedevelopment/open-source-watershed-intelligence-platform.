@@ -1,3 +1,4 @@
+// Current-public rerun marker: exact Lake George shoreline safety gate.
 import { chromium } from 'playwright';
 
 const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
