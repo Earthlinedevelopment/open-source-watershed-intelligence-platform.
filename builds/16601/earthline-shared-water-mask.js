@@ -9,14 +9,6 @@
     return;
   }
 
-  /* 16601 prerequisite repair — the shared Property owner asks the official Vermont
-     boundary service whether every Property frame is in Vermont before it can assign
-     portable-non-vermont jurisdiction. A transport/CORS failure previously blocked
-     even frames that are geographically well outside Vermont. Preserve the official
-     validator as authority anywhere a frame could plausibly overlap Vermont; only a
-     frame wholly outside this deliberately expanded Vermont envelope may continue as
-     outside-vermont when that official transport is unavailable. This does not treat
-     a failed source as negative boundary evidence inside/near Vermont. */
   const baseVermontBoundaryValidate16601=window.earthlineValidateVermontBoundary16178;
   function whollyOutsideExpandedVermontEnvelope16601(points){
     const rows=(points||[]).filter(p=>Array.isArray(p)&&Number.isFinite(Number(p[0]))&&Number.isFinite(Number(p[1])));
@@ -56,7 +48,7 @@
     if(!propertyRun()||!portableRun()||stale(gen))return baseResult;
     const mp=liveMap();
     if(!mp||typeof mp.getStyle!=='function'||typeof mp.querySourceFeatures!=='function')return failClosed('mapped-water-query-capability-unavailable',{mapAvailable:!!mp});
-    if(typeof earthlineMappedFeatureClass15862J!=='function'||typeof earthlineProcessMappedFeature!=='function')return failClosed('mapped-water-rasterizer-unavailable',{});
+    if(typeof earthlineProcessMappedFeature!=='function')return failClosed('mapped-water-rasterizer-unavailable',{});
 
     const style=mp.getStyle()||{},tb=analysisBox(),all=[];
     const pairs=[];
@@ -80,13 +72,21 @@
     if(sourceSuccess===0)return failClosed('mapped-water-source-query-unverified',{sourceQueries,queryErrors,vectorSourceCount:pairs.length/2});
 
     const seen=new Set(),water=[];
+    let sourceLayerWaterCandidates=0,geometryCandidates=0,bboxOverlapCandidates=0;
     for(const f of all){
       const sourceLayer=String((f&&(f.sourceLayer||(f.layer&&f.layer['source-layer'])))||'').toLowerCase();
       const sourceLayerWater=sourceLayer==='water'||sourceLayer==='waterway';
-      let info=null;try{info=earthlineMappedFeatureClass15862J(f)}catch(_){ }
-      if((!sourceLayerWater&&(!info||info.water!==true))||!f||!f.geometry)continue;
+      if(sourceLayerWater)sourceLayerWaterCandidates++;
+      let info=null;try{if(typeof earthlineMappedFeatureClass15862J==='function')info=earthlineMappedFeatureClass15862J(f)}catch(_){ }
+      if(!sourceLayerWater&&(!info||info.water!==true))continue;
+      if(!f||!f.geometry)continue;
+      geometryCandidates++;
       let bb=null;try{bb=typeof featureBBox==='function'?featureBBox(f):null}catch(_){ }
-      if(tb&&!intersects(bb,tb))continue;
+      if(!tb||!bb||intersects(bb,tb))bboxOverlapCandidates++;
+      /* Do not discard source-layer-confirmed water here. querySourceFeatures may return
+         tile-clipped geometries whose helper bbox metadata is unsuitable for this gate.
+         The existing grid rasterizer remains the authoritative spatial containment step:
+         geometry outside the Property grid marks zero cells. */
       const key=(f.id!=null?String(f.id):'')+'|'+String(f.sourceLayer||'')+'|'+(bb?[Number(bb.minX).toFixed(6),Number(bb.minY).toFixed(6),Number(bb.maxX).toFixed(6),Number(bb.maxY).toFixed(6)].join(','):JSON.stringify(f.geometry).slice(0,240));
       if(seen.has(key))continue;seen.add(key);water.push(f);
     }
@@ -97,6 +97,7 @@
       processed+=Number(earthlineProcessMappedFeature(rawWaterMask,dummy,water[i])||0);
       if((i&63)===63){try{if(typeof earthlineTaskYield16464==='function')await earthlineTaskYield16464()}catch(_){ }}
     }
+    let rawWaterCells=0;for(let i=0;i<N;i++)if(rawWaterMask[i])rawWaterCells++;
     const waterMask=(typeof earthlineDilateMask==='function')?earthlineDilateMask(rawWaterMask,Math.max(1,2.5/Math.max(.2,Number(M.cellM||1)))):rawWaterMask;
     const merged=(M.vectorNoBuildMask&&M.vectorNoBuildMask.length===N)?new Uint8Array(M.vectorNoBuildMask):new Uint8Array(N);
     let waterCells=0,addedCells=0;
@@ -105,9 +106,9 @@
     M.vectorNoBuildMask=merged;M.mappedWaterMask16601=waterMask;
     M.vectorNoBuildStamp=String(M.vectorNoBuildStamp||'')+'|mapped-water-16601:'+waterCells+':'+addedCells;M._noBuildStamp=null;M.noBuildProvenance15843=null;
     const c=M.vectorNoBuildCoverage||{};
-    c.mappedWater16601={owner:'vectorNoBuild15778',status:'verified',source:'loaded-authoritative-vector-source',acquisitionResult:'verified-source-query',queryMode:'same loaded vector source; no second network owner',vectorSourceCount:pairs.length/2,sourceQueries,sourceSuccess,queryErrors,rawFeatures:all.length,waterFeatures:water.length,processedWaterGeometries:processed,waterCells,addedCells,sharedFinalMask:'M.vectorNoBuildMask -> M.noBuildMask',corridorGate:'existing final no-build mask',rechargeGate:'existing final hard-block prefilter/containment gate',build:BUILD,at:new Date().toISOString()};
+    c.mappedWater16601={owner:'vectorNoBuild15778',status:'verified',source:'loaded-authoritative-vector-source',acquisitionResult:'verified-source-query',queryMode:'same loaded vector source; rasterizer owns Property-grid containment',vectorSourceCount:pairs.length/2,sourceQueries,sourceSuccess,queryErrors,rawFeatures:all.length,sourceLayerWaterCandidates,geometryCandidates,bboxOverlapCandidates,waterFeatures:water.length,processedWaterGeometries:processed,rawWaterCells,waterCells,addedCells,sharedFinalMask:'M.vectorNoBuildMask -> M.noBuildMask',corridorGate:'existing final no-build mask',rechargeGate:'existing final hard-block prefilter/containment gate',build:BUILD,at:new Date().toISOString()};
     M.vectorNoBuildCoverage=c;
-    window.EARTHLINE_LAB_WATER_16601={installed:true,lastRun:{gen:Number(gen),rawFeatures:all.length,waterFeatures:water.length,waterCells,addedCells,sourceSuccess,at:new Date().toISOString()},build:BUILD};
+    window.EARTHLINE_LAB_WATER_16601={installed:true,lastRun:{gen:Number(gen),rawFeatures:all.length,waterFeatures:water.length,rawWaterCells,waterCells,addedCells,sourceSuccess,at:new Date().toISOString()},build:BUILD};
     return baseResult;
   }
 
