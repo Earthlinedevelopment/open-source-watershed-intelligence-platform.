@@ -1,15 +1,10 @@
 /* EARTHLINE 16602 — REGIONAL CAMERA PRESENTATION-SCALE GATE
    Repair only: strengthen the existing exported Regional camera-ready gate.
-   No science, corridor geometry, renderer, listener, timer, polling, or UI owner added.
+   One-shot late install is allowed so the gate can wrap the parent after page bootstrap.
+   No science, corridor geometry, renderer, map listener, timer, polling, or UI owner added.
 */
 (function(){
   'use strict';
-  var prior=window.earthlineRegionalCameraReady16336;
-  if(typeof prior!=='function'){
-    window.EARTHLINE_REGIONAL_CAMERA_SCALE_16602={installed:false,reason:'camera-ready-gate-unavailable'};
-    return;
-  }
-  if(prior.__earthline16602)return;
 
   function validBBox(b){
     return Array.isArray(b)&&b.length===4&&b.every(Number.isFinite)&&b[2]>b[0]&&b[3]>b[1];
@@ -31,34 +26,57 @@
   }
   function pause(ms){return new Promise(function(resolve){setTimeout(resolve,ms);});}
 
-  async function cameraReady16602(b,m,timeoutMs){
-    var before=scaleAudit(b,m),forcedFit=false,fitError=null;
-    if(validBBox(b)&&m&&!presentationScale(before)){
-      try{
-        if(m.stop)m.stop();
-        if(m.setProjection)m.setProjection('mercator');
-        if(typeof m.fitBounds==='function'){
-          m.fitBounds([[b[0],b[1]],[b[2],b[3]]],{
-            padding:{top:70,bottom:145,left:80,right:80},
-            maxZoom:9,
-            duration:0,
-            linear:true
-          });
-          forcedFit=true;
-          await pause(90);
-        }
-      }catch(e){fitError=String(e&&e.message||e);}
+  function install16602(){
+    var prior=window.earthlineRegionalCameraReady16336;
+    if(typeof prior!=='function'){
+      window.EARTHLINE_REGIONAL_CAMERA_SCALE_16602={installed:false,pending:true,reason:'camera-ready-gate-unavailable'};
+      return false;
     }
-    var delegated=false;
-    try{delegated=!!(await prior.call(this,b,m,timeoutMs));}catch(_){delegated=false;}
-    var after=scaleAudit(b,m);
-    var scaleReady=presentationScale(after);
-    var ready=delegated&&scaleReady;
-    window.EARTHLINE_REGIONAL_CAMERA_SCALE_16602={installed:true,forcedFit:forcedFit,fitError:fitError,before:before,after:after,delegated:delegated,scaleReady:scaleReady,ready:ready};
-    return ready;
+    if(prior.__earthline16602){
+      window.EARTHLINE_REGIONAL_CAMERA_SCALE_16602=Object.assign({},window.EARTHLINE_REGIONAL_CAMERA_SCALE_16602||{}, {installed:true,pending:false,armed:true});
+      return true;
+    }
+
+    async function cameraReady16602(b,m,timeoutMs){
+      var before=scaleAudit(b,m),forcedFit=false,fitError=null;
+      if(validBBox(b)&&m&&!presentationScale(before)){
+        try{
+          if(m.stop)m.stop();
+          if(m.setProjection)m.setProjection('mercator');
+          if(typeof m.fitBounds==='function'){
+            m.fitBounds([[b[0],b[1]],[b[2],b[3]]],{
+              padding:{top:70,bottom:145,left:80,right:80},
+              maxZoom:9,
+              duration:0,
+              linear:true
+            });
+            forcedFit=true;
+            await pause(90);
+          }
+        }catch(e){fitError=String(e&&e.message||e);}
+      }
+      var delegated=false;
+      try{delegated=!!(await prior.call(this,b,m,timeoutMs));}catch(_){delegated=false;}
+      var after=scaleAudit(b,m);
+      var scaleReady=presentationScale(after);
+      var ready=delegated&&scaleReady;
+      window.EARTHLINE_REGIONAL_CAMERA_SCALE_16602={installed:true,pending:false,forcedFit:forcedFit,fitError:fitError,before:before,after:after,delegated:delegated,scaleReady:scaleReady,ready:ready};
+      return ready;
+    }
+    cameraReady16602.__earthline16602=true;
+    cameraReady16602.__earthlinePrior=prior;
+    window.earthlineRegionalCameraReady16336=cameraReady16602;
+    window.EARTHLINE_REGIONAL_CAMERA_SCALE_16602={installed:true,pending:false,armed:true};
+    return true;
   }
-  cameraReady16602.__earthline16602=true;
-  cameraReady16602.__earthlinePrior=prior;
-  window.earthlineRegionalCameraReady16336=cameraReady16602;
-  window.EARTHLINE_REGIONAL_CAMERA_SCALE_16602={installed:true,armed:true};
+
+  if(!install16602()){
+    if(document.readyState==='loading'){
+      window.addEventListener('load',install16602,{once:true});
+    }else if(typeof queueMicrotask==='function'){
+      queueMicrotask(install16602);
+    }else{
+      Promise.resolve().then(install16602);
+    }
+  }
 })();
