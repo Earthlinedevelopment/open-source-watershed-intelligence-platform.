@@ -15,14 +15,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Extract Regional flow source
+      - name: Extract Regional extent source
         run: |
           python - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(errors='replace')
-          for needle in ['function makeFlows(hy){','function earthlineRegionalSmoothFlow16584','regional core preflight incomplete','function earthlineBuildRegionalValidityMask16584','validityMask16584']:
+          for needle in ['async function runRegional(','jurisdictionBoundaryPromise16539','const b=','regionalAnalysisBounds','earthlineClipRegionalProducts16539','function regionalBounds']:
               i=s.find(needle)
               print('\n===== NEEDLE',needle,'INDEX',i,'=====')
               if i>=0:
-                  print(s[max(0,i-3500):i+12000])
+                  print(s[max(0,i-6500):i+18000])
           PY
