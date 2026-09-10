@@ -1,0 +1,66 @@
+name: Earthline 16603 Focused Regression
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'index.html'
+      - '.github/workflows/earthline-16603-focused-regression.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused-regional:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify public 16603 flow containment bytes
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            PAGE=$(curl -fsSL --max-time 20 "https://earthlinedevelopment.org/?flow16603=${GITHUB_RUN_ID}-${i}" || true)
+            if printf '%s' "$PAGE" | grep -q 'lineSafe16584(retrySmooth16584)' && ! printf '%s' "$PAGE" | grep -q 'return safe16584?smooth16584:base16584;'; then
+              echo 'Public 16603 flow containment verified.'
+              exit 0
+            fi
+            sleep 4
+          done
+          echo 'Public 16603 bytes did not settle.'
+          exit 1
+      - name: Restrict matrix to 16603 controls
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const p='lab/global-country-matrix.mjs';
+          let s=fs.readFileSync(p,'utf8');
+          const old='const TESTS=COUNTRIES.filter((_,i)=>i%SHARD_TOTAL===SHARD_INDEX);';
+          const names=['United States','Canada','Germany','Mexico','Australia','Indonesia','Vietnam','France','China','Singapore','Switzerland','Brazil'];
+          const replacement=`const TESTS=COUNTRIES.filter(c=>${JSON.stringify(names)}.includes(c.name));`;
+          if(!s.includes(old))throw new Error('TESTS selector not found');
+          s=s.replace(old,replacement);
+          fs.writeFileSync(p,s);
+          NODE
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run 16603 focused public regression
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_SHARD_INDEX: 0
+          EARTHLINE_SHARD_TOTAL: 1
+        run: node lab/global-country-matrix-v2.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-16603-focused
+          path: lab-results/global-0-of-1.json
+          if-no-files-found: warn
+          retention-days: 7
