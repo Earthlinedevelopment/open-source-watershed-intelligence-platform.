@@ -17,6 +17,9 @@ on:
 permissions:
   contents: read
 
+env:
+  EARTHLINE_LIVE_URL: https://live.earthlinedevelopment.org/
+
 jobs:
   ny-water:
     runs-on: ubuntu-latest
@@ -26,19 +29,33 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Verify exact live host has both promoted patches
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 48); do
+            html="$(curl -fsSL -A 'Earthline-launch-gate/16602' "${EARTHLINE_LIVE_URL}?earthline_probe=${GITHUB_SHA}-${i}" || true)"
+            if grep -Fq 'builds/16601/earthline-shared-water-mask.js' <<<"$html" && grep -Fq 'builds/16602/earthline-regional-camera-scale.js' <<<"$html"; then
+              echo "EARTHLINE_LIVE_PATCHES_READY host=${EARTHLINE_LIVE_URL} sha=${GITHUB_SHA} attempt=${i}"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Exact live host did not expose both 16601 and 16602 loaders."
+          exit 1
       - name: Install Playwright
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Run New York shoreline water regression on public index
+      - name: Run New York shoreline water regression on exact live host
         env:
-          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_URL: ${{ env.EARTHLINE_LIVE_URL }}
         run: node tests/ny-water-regression.mjs
-      - name: Run Vermont fixed Property control
+      - name: Run Vermont fixed Property control on exact live host
         env:
-          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_URL: ${{ env.EARTHLINE_LIVE_URL }}
         run: node tests/vt-property-control.mjs
-      - name: Run final Vermont New York regression on public index
+      - name: Run final Vermont New York regression on exact live host
         env:
-          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_URL: ${{ env.EARTHLINE_LIVE_URL }}
         run: node tests/final-vt-ny-regression.mjs
