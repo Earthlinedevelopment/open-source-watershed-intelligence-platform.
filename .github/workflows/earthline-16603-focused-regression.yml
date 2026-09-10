@@ -24,10 +24,11 @@ jobs:
         run: |
           set -euo pipefail
           for i in $(seq 1 30); do
-            PAGE=$(curl -fsSL --max-time 20 "https://earthlinedevelopment.org/?flow16603=${GITHUB_RUN_ID}-${i}" || true)
-            if printf '%s' "$PAGE" | grep -q 'lineSafe16584(retrySmooth16584)' && ! printf '%s' "$PAGE" | grep -q 'return safe16584?smooth16584:base16584;'; then
-              echo 'Public 16603 flow containment verified.'
-              exit 0
+            if curl -fsSL --max-time 20 "https://earthlinedevelopment.org/?flow16603=${GITHUB_RUN_ID}-${i}" -o /tmp/earthline-16603.html; then
+              if grep -Fq 'lineSafe16584(retrySmooth16584)' /tmp/earthline-16603.html && ! grep -Fq 'return safe16584?smooth16584:base16584;' /tmp/earthline-16603.html; then
+                echo 'Public 16603 flow containment verified.'
+                exit 0
+              fi
             fi
             sleep 4
           done
