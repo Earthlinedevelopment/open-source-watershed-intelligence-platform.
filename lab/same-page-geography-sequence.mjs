@@ -29,6 +29,7 @@ page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
 await page.goto(URL,{waitUntil:'domcontentloaded',timeout:45000});
 let frame=page;const host=await page.$('#earthline-lab-frame');if(host){frame=await host.contentFrame()||page;}
 await frame.waitForSelector('#searchInput',{timeout:30000});
+await frame.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE 16610 — DIRECT VECTOR WATER SOURCE QUERY'),null,{timeout:90000,polling:500});
 
 async function choose(q,kind){
   await frame.evaluate(q=>{const i=document.getElementById('searchInput');i.focus();i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));},q);
