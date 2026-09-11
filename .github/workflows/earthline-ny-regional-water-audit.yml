@@ -1,16 +1,27 @@
-name: Earthline NY Regional Water Audit
+name: Earthline US Core Water Audit
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'lab/ny-regional-water-audit.mjs'
       - '.github/workflows/earthline-ny-regional-water-audit.yml'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   audit:
+    name: Water audit ${{ matrix.target.name }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - { name: 'New York', key: 'new-york' }
+          - { name: 'California', key: 'california' }
+          - { name: 'Texas', key: 'texas' }
+          - { name: 'Florida', key: 'florida' }
+          - { name: 'Hawaii', key: 'hawaii' }
+          - { name: 'Vermont', key: 'vermont' }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,14 +29,27 @@ jobs:
           node-version: '20'
       - run: npm install --no-save playwright
       - run: npx playwright install --with-deps chromium
-      - name: Audit live New York Regional water crossings
+      - name: Build state-specific audit from the independent NY audit harness
+        env:
+          STATE: ${{ matrix.target.name }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          state=os.environ['STATE']
+          src=Path('lab/ny-regional-water-audit.mjs').read_text(encoding='utf-8')
+          src=src.replace('New York',state).replace('new york',state.lower())
+          Path('lab/state-water-audit-runtime.mjs').write_text(src,encoding='utf-8')
+          PY
+      - name: Audit live Regional water crossings
         env:
           EARTHLINE_URL: https://earthlinedevelopment.org/
-        run: node lab/ny-regional-water-audit.mjs
+        run: node lab/state-water-audit-runtime.mjs
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: earthline-ny-regional-water-audit
+          name: earthline-water-${{ matrix.target.key }}
           path: lab-results/ny-regional-water-audit.*
+          if-no-files-found: warn
           retention-days: 7
