@@ -1,0 +1,51 @@
+name: Earthline Regional Water Owner Snippet
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-regional-water-owner-snippet.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Print authoritative Regional mapped-water owner context
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8',errors='replace')
+          needles=[
+            'EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609',
+            'rawWaterFeatures',
+            'waterPolygonParts',
+            'sourceQueries',
+            'mappedWater',
+            'nativeWater',
+            'queryRenderedFeatures',
+            'querySourceFeatures'
+          ]
+          seen=[]
+          for needle in needles:
+              start=0
+              hits=[]
+              while True:
+                  i=s.find(needle,start)
+                  if i<0: break
+                  hits.append(i); start=i+1
+              print(f'\n===== {needle} hits={hits[:20]} count={len(hits)} =====')
+              for i in hits[:8]:
+                  lo=max(0,i-5000); hi=min(len(s),i+9000)
+                  key=(lo,hi)
+                  if key in seen: continue
+                  seen.append(key)
+                  print(f'\n--- chars {lo}:{hi} ---\n{s[lo:hi]}')
+          PY
