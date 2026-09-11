@@ -8575,6 +8575,34 @@ async function applyLocation(loc,zone,myGen=M.searchGen,options={}){
   const analyzeNow=!!(options&&options.analyzeNow);
   const preserveMapView=!!(options&&options.preserveMapView);
   if(!loc.userSelectedSite&&!preserveMapView)earthlineClearTarget();
+  /* EARTHLINE 16608 — RUN ISOLATION / CLEAN LOCATION HANDOFF.
+     A newly selected geography must own all scientific presentation. Retire prior
+     Regional/aquifer state and invalidate older groundwater work before assigning
+     the new location. No new listener, renderer, data source, or science rule. */
+  try{
+    M.usgsAquiferRequestSeq16388=(Number(M.usgsAquiferRequestSeq16388)||0)+1;
+    M.usgsAquiferRequestActiveId16393=null;M.usgsAquiferRequestKey16388="";M.usgsAquiferLoading=false;
+    M.usgsAquifers=[];M.usgsAquiferBox=null;M.usgsAquiferStatus="idle";
+    M.vtGroundwaterWells16398=[];M.vtGroundwaterSummaryPoint16398=null;
+    window.EARTHLINE_PROPERTY_INHERITED_AQUIFER_CONTEXT_16373=null;
+    window.EARTHLINE_REGIONAL_VISUAL_DATA_16020=null;
+    window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970=null;
+    window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;
+    window.EARTHLINE_DISPLAYED_RUN_16147=null;window.EARTHLINE_DISPLAYED_RUN_16151=null;
+    const mp16608=(typeof earthlineMap!=="undefined"&&earthlineMap)||window.earthlineMap||null;
+    const empty16608={type:"FeatureCollection",features:[]};
+    if(mp16608){
+      for(const sid16608 of ["el-live-basin-15970","el-live-aquifer-15970","el-live-contours-15970","el-live-flows-15970","el-live-swales-15970"]){
+        try{const src16608=mp16608.getSource&&mp16608.getSource(sid16608);if(src16608&&typeof src16608.setData==="function")src16608.setData(empty16608)}catch(_){}
+      }
+      for(const lid16608 of ["el-live-aquifer-raster-layer-15970","el-live-groundwater-layer-15970","el-live-grace-groundwater-layer-15970"]){
+        try{if(mp16608.getLayer&&mp16608.getLayer(lid16608))mp16608.setPaintProperty(lid16608,"raster-opacity",0)}catch(_){}
+      }
+    }
+    try{earthlineSyncAquiferLayer()}catch(_){}
+    const ov16608=document.getElementById("earthlineRegionalVectorOverlay16020");if(ov16608)ov16608.replaceChildren();
+    document.getElementById("earthlineRegionalCorridorTabs16323")?.remove();
+  }catch(_){}
   M.loc=loc;M.zone=zone||loc.zones[0];M.measurePts=[];
   M.analysisBoundaryLngLat=Array.isArray(loc.analysisBoundaryLngLat)?loc.analysisBoundaryLngLat.map(p=>p.slice()):[];
   M.analysisBoundary=[];M.vectorNoBuildMask=new Uint8Array(N);M.vectorNoBuildCount=0;M.vectorNoBuildStamp="";M._noBuildStamp="";
