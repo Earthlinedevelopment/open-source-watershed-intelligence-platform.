@@ -23,8 +23,8 @@ jobs:
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          old="""    if(w>18){const c=(b[0]+b[2])/2;b=[c-9,b[1],c+9,b[3]];}\n    if(h>14){const c=(b[1]+b[3])/2;b=[b[0],c-7,b[2],c+7];}"""
-          new="""    if(w>18){const c=locked&&Number.isFinite(lng)&&lng>=b[0]&&lng<=b[2]?lng:(b[0]+b[2])/2;b=[Math.max(b[0],c-9),b[1],Math.min(b[2],c+9),b[3]];}\n    if(h>14){const c=locked&&Number.isFinite(lat)&&lat>=b[1]&&lat<=b[3]?lat:(b[1]+b[3])/2;b=[b[0],Math.max(b[1],c-7),b[2],Math.min(b[3],c+7)];}"""
+          old="if(w>18){const c=(b[0]+b[2])/2;b[0]=c-9;b[2]=c+9;}if(h>14){const c=(b[1]+b[3])/2;b[1]=c-7;b[3]=c+7;}"
+          new="if(w>18){const c=locked&&Number.isFinite(lng)&&lng>=b[0]&&lng<=b[2]?lng:(b[0]+b[2])/2;b[0]=Math.max(b[0],c-9);b[2]=Math.min(b[2],c+9);}if(h>14){const c=locked&&Number.isFinite(lat)&&lat>=b[1]&&lat<=b[3]?lat:(b[1]+b[3])/2;b[1]=Math.max(b[1],c-7);b[3]=Math.min(b[3],c+7);}"
           count=s.count(old)
           if count!=1:
               raise SystemExit(f'FAIL CLOSED: expected one exact analysisBounds cap block, found {count}')
