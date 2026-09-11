@@ -1,0 +1,51 @@
+name: Earthline Run Isolation Repair
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-run-isolation-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Patch authoritative location handoff
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          marker='EARTHLINE 16608 — RUN ISOLATION / CLEAN LOCATION HANDOFF'
+          if marker in s:
+              print('16608 already present')
+              raise SystemExit(0)
+          old='''  M.loc=loc;M.zone=zone||loc.zones[0];M.measurePts=[];'''
+          if s.count(old)!=1:
+              raise SystemExit(f'FAIL CLOSED: expected one applyLocation anchor, found {s.count(old)}')
+          new='''  /* EARTHLINE 16608 — RUN ISOLATION / CLEAN LOCATION HANDOFF.\n     A newly selected geography must own all scientific presentation. Retire prior\n     Regional/aquifer state and invalidate older groundwater work before assigning\n     the new location. No new listener, renderer, data source, or science rule. */\n  try{\n    M.usgsAquiferRequestSeq16388=(Number(M.usgsAquiferRequestSeq16388)||0)+1;\n    M.usgsAquiferRequestActiveId16393=null;M.usgsAquiferRequestKey16388=\"\";M.usgsAquiferLoading=false;\n    M.usgsAquifers=[];M.usgsAquiferBox=null;M.usgsAquiferStatus=\"idle\";\n    M.vtGroundwaterWells16398=[];M.vtGroundwaterSummaryPoint16398=null;\n    window.EARTHLINE_PROPERTY_INHERITED_AQUIFER_CONTEXT_16373=null;\n    window.EARTHLINE_REGIONAL_VISUAL_DATA_16020=null;\n    window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970=null;\n    window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;\n    window.EARTHLINE_DISPLAYED_RUN_16147=null;window.EARTHLINE_DISPLAYED_RUN_16151=null;\n    const mp16608=(typeof earthlineMap!==\"undefined\"&&earthlineMap)||window.earthlineMap||null;\n    const empty16608={type:\"FeatureCollection\",features:[]};\n    if(mp16608){\n      for(const sid16608 of [\"el-live-basin-15970\",\"el-live-aquifer-15970\",\"el-live-contours-15970\",\"el-live-flows-15970\",\"el-live-swales-15970\"]){\n        try{const src16608=mp16608.getSource&&mp16608.getSource(sid16608);if(src16608&&typeof src16608.setData===\"function\")src16608.setData(empty16608)}catch(_){}\n      }\n      for(const lid16608 of [\"el-live-aquifer-raster-layer-15970\",\"el-live-groundwater-layer-15970\",\"el-live-grace-groundwater-layer-15970\"]){\n        try{if(mp16608.getLayer&&mp16608.getLayer(lid16608))mp16608.setPaintProperty(lid16608,\"raster-opacity\",0)}catch(_){}\n      }\n    }\n    try{earthlineSyncAquiferLayer()}catch(_){}\n    const ov16608=document.getElementById(\"earthlineRegionalVectorOverlay16020\");if(ov16608)ov16608.replaceChildren();\n    document.getElementById(\"earthlineRegionalCorridorTabs16323\")?.remove();\n  }catch(_){}\n  M.loc=loc;M.zone=zone||loc.zones[0];M.measurePts=[];'''
+          p.write_text(s.replace(old,new),encoding='utf-8')
+          print('patched 16608 clean handoff')
+          PY
+          git diff --check
+          git diff --stat
+      - name: Commit repair
+        shell: bash
+        run: |
+          if git diff --quiet -- index.html; then
+            echo 'No index change required.'
+            exit 0
+          fi
+          git config user.name 'Earthline Build Bot'
+          git config user.email 'info@earthlinedevelopment.org'
+          git add index.html
+          git commit -m 'fix: clear prior science state on location handoff'
+          git push origin HEAD:pages-live
