@@ -1,0 +1,49 @@
+name: Earthline Regional Cap Anchor Repair
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-regional-cap-anchor-repair.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Patch existing analysisBounds cap owner
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old="""    if(w>18){const c=(b[0]+b[2])/2;b=[c-9,b[1],c+9,b[3]];}\n    if(h>14){const c=(b[1]+b[3])/2;b=[b[0],c-7,b[2],c+7];}"""
+          new="""    if(w>18){const c=locked&&Number.isFinite(lng)&&lng>=b[0]&&lng<=b[2]?lng:(b[0]+b[2])/2;b=[Math.max(b[0],c-9),b[1],Math.min(b[2],c+9),b[3]];}\n    if(h>14){const c=locked&&Number.isFinite(lat)&&lat>=b[1]&&lat<=b[3]?lat:(b[1]+b[3])/2;b=[b[0],Math.max(b[1],c-7),b[2],Math.min(b[3],c+7)];}"""
+          count=s.count(old)
+          if count!=1:
+              raise SystemExit(f'FAIL CLOSED: expected one exact analysisBounds cap block, found {count}')
+          s2=s.replace(old,new,1)
+          if s2.count(new)!=1:
+              raise SystemExit('FAIL CLOSED: replacement verification failed')
+          p.write_text(s2,encoding='utf-8')
+          print('Patched exactly one existing analysisBounds cap owner.')
+          PY
+      - name: Verify only intended owner changed
+        run: |
+          git diff --check
+          git diff -- index.html | sed -n '1,120p'
+          test "$(git diff --name-only | wc -l)" -eq 1
+          test "$(git diff --name-only)" = "index.html"
+      - name: Commit repair
+        run: |
+          git config user.name 'Earthline Build Bot'
+          git config user.email 'info@earthlinedevelopment.org'
+          git add index.html
+          git commit -m 'fix: anchor capped regional extent to authoritative location'
+          git push origin HEAD:pages-live
