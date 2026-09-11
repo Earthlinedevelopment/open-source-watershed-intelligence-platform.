@@ -1,0 +1,54 @@
+name: Earthline US14 Seven Run Gate
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'lab/us14-seven-run-gate.mjs'
+      - '.github/workflows/earthline-us14-seven-run-gate.yml'
+      - 'index.html'
+      - 'builds/**'
+  workflow_dispatch:
+
+jobs:
+  seven-run:
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        state:
+          - Vermont
+          - Maryland
+          - New York
+          - Massachusetts
+          - Arizona
+          - Colorado
+          - New Mexico
+          - Nevada
+          - Utah
+          - Oklahoma
+          - California
+          - Nebraska
+          - North Carolina
+          - Texas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Seven consecutive Regional runs
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_STATE: ${{ matrix.state }}
+          EARTHLINE_REPEATS: '7'
+        run: node lab/us14-seven-run-gate.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: us14-${{ matrix.state }}
+          path: lab-results/
+          if-no-files-found: ignore
