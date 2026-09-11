@@ -8,7 +8,7 @@ const oldTests='const TESTS=SOURCE.filter((_,i)=>i%SHARD_TOTAL===SHARD_INDEX);';
 if(!src.includes(oldTests))throw new Error('launch-matrix TESTS selector missing');
 src=src.replace(oldTests,"const TESTS=['Hawaii'];");
 const oldSurface="await frame.waitForSelector('#searchInput',{timeout:30000});\n  await frame.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});";
-const newSurface="await frame.waitForSelector('#searchInput',{timeout:30000});\n  await frame.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE 16610 — DIRECT VECTOR WATER SOURCE QUERY'),null,{timeout:90000,polling:500});\n  await frame.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});";
+const newSurface="await frame.waitForSelector('#searchInput',{timeout:30000});\n  await frame.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE 16611 — SPARSE-LAND COVERAGE RETRY'),null,{timeout:90000,polling:500});\n  await frame.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});";
 if(!src.includes(oldSurface))throw new Error('launch-matrix openSurface target missing');
 src=src.replace(oldSurface,newSurface);
 const oldSnap="diagnosticVisible,statusText:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim().slice(0,700),runBusy:document.getElementById('runBtn')?.getAttribute('aria-busy')==='true'";
@@ -17,6 +17,6 @@ if(!src.includes(oldSnap))throw new Error('launch-matrix snapshot target missing
 src=src.replace(oldSnap,newSnap);
 src=src.replace("const out=`lab-results/regional-${AREA.toLowerCase()}-${SHARD_INDEX}-of-${SHARD_TOTAL}.json`;","const out='lab-results/hawaii-state-diagnostic.json';");
 src=src.replace("console.log('EARTHLINE_REGIONAL_MATRIX '+JSON.stringify(report));","console.log('EARTHLINE_HAWAII_DIAGNOSTIC '+JSON.stringify(report));");
-src=src.replace("if(summary.fail>0)process.exitCode=1;","const h=results[0]||{}; const a=h.after||{}; const sparse=a.sparseGrid16609||{}; const water=a.mappedWater16609||{}; if(summary.fail>0||!a.locDetail||String(a.locDetail.name||a.locDetail.fullName||'').toLowerCase().indexOf('hawaii')<0||Number(a.landGrid?.validLandCellCount||0)<=0||water.verified!==true)process.exitCode=1;");
+src=src.replace("if(summary.fail>0)process.exitCode=1;","const h=results[0]||{}; const a=h.after||{}; const sparse=a.sparseGrid16609||{}; const water=a.mappedWater16609||{}; if(summary.fail>0||!a.locDetail||String(a.locDetail.name||a.locDetail.fullName||'').toLowerCase().indexOf('hawaii')<0||Number(a.landGrid?.validLandCellCount||0)<=0||sparse.retried!==true||Number(a.preflight?.swales||0)<=0||water.verified!==true)process.exitCode=1;");
 await fs.writeFile(outPath,src);
 await import(pathToFileURL(process.cwd()+'/'+outPath).href+'?diag='+Date.now());
