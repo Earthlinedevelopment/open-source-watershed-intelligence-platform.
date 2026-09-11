@@ -1,0 +1,41 @@
+name: Earthline Hawaii State Diagnostic
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'lab/hawaii-state-diagnostic.mjs'
+      - '.github/workflows/earthline-hawaii-state-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Diagnose Hawaii on public Earthline
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_AREA: US
+          EARTHLINE_SHARD_INDEX: 0
+          EARTHLINE_SHARD_TOTAL: 1
+        run: node lab/hawaii-state-diagnostic.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-hawaii-state-diagnostic
+          path: lab-results/hawaii-state-diagnostic.json
+          if-no-files-found: warn
+          retention-days: 7
