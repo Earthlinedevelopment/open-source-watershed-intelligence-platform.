@@ -8,7 +8,7 @@ const oldTests='const TESTS=SOURCE.filter((_,i)=>i%SHARD_TOTAL===SHARD_INDEX);';
 if(!src.includes(oldTests))throw new Error('launch-matrix TESTS selector missing');
 src=src.replace(oldTests,"const TESTS=['Hawaii'];");
 const oldSurface="await frame.waitForSelector('#searchInput',{timeout:30000});\n  await frame.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});";
-const newSurface="await frame.waitForSelector('#searchInput',{timeout:30000});\n  await frame.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE 16609 — U.S. LAUNCH CORE REPAIR'),null,{timeout:90000,polling:500});\n  await frame.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});";
+const newSurface="await frame.waitForSelector('#searchInput',{timeout:30000});\n  await frame.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE 16610 — DIRECT VECTOR WATER SOURCE QUERY'),null,{timeout:90000,polling:500});\n  await frame.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});";
 if(!src.includes(oldSurface))throw new Error('launch-matrix openSurface target missing');
 src=src.replace(oldSurface,newSurface);
 const oldSnap="diagnosticVisible,statusText:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim().slice(0,700),runBusy:document.getElementById('runBtn')?.getAttribute('aria-busy')==='true'";
