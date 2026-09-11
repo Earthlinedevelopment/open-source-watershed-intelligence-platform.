@@ -18,16 +18,16 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Apply guarded mapped-water source repair
+      - name: Apply guarded sparse-land coverage repair
         run: |
-          python3 lab/patch-us-mapped-water-16610.py
+          python3 lab/patch-us-sparse-land-coverage-16611.py
           git diff --check
           git diff --numstat -- index.html
-          git diff -- index.html | sed -n '1,180p'
+          git diff -- index.html | sed -n '1,160p'
       - name: Commit product repair
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
           git add index.html
-          git commit -m 'fix: query loaded vector water sources directly'
+          git commit -m 'fix: resample sparse US state land coverage'
           git push origin HEAD:pages-live
