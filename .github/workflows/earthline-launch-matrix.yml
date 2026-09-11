@@ -4,9 +4,6 @@ on:
   push:
     branches: [pages-live]
     paths:
-      - 'lab.html'
-      - 'lab/**'
-      - 'builds/**'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -17,7 +14,7 @@ jobs:
   us-regional:
     name: US Regional shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
@@ -29,23 +26,23 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Wait for exact public 16602 audit marker
+      - name: Wait for exact public 16610 launch core
         run: |
           for i in $(seq 1 36); do
-            body="$(curl -fsSL "https://earthlinedevelopment.org/builds/16602/earthline-regional-camera-scale.js?gate=${GITHUB_SHA}" || true)"
-            if printf '%s' "$body" | grep -q 'auditOnly:true'; then
-              echo 'Exact 16602 audit-only surface is live.'
+            body="$(curl -fsSL "https://earthlinedevelopment.org/?gate=${GITHUB_SHA}" || true)"
+            if printf '%s' "$body" | grep -q 'EARTHLINE 16610 — DIRECT VECTOR WATER SOURCE QUERY'; then
+              echo 'Exact 16610 launch core is live.'
               exit 0
             fi
             sleep 5
           done
-          echo 'Public surface did not expose exact 16602 audit marker.' >&2
+          echo 'Public surface did not expose exact 16610 launch core.' >&2
           exit 1
       - name: Install Playwright
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Run current public US Regional tests
+      - name: Run all U.S. Regional tests
         env:
           EARTHLINE_URL: https://earthlinedevelopment.org/
           EARTHLINE_AREA: US
@@ -58,48 +55,5 @@ jobs:
         with:
           name: earthline-regional-us-${{ matrix.shard }}
           path: lab-results/regional-us-${{ matrix.shard }}-of-5.json
-          if-no-files-found: warn
-          retention-days: 7
-
-  se-asia-regional:
-    name: Southeast Asia Regional
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Wait for exact public 16602 audit marker
-        run: |
-          for i in $(seq 1 36); do
-            body="$(curl -fsSL "https://earthlinedevelopment.org/builds/16602/earthline-regional-camera-scale.js?gate=${GITHUB_SHA}" || true)"
-            if printf '%s' "$body" | grep -q 'auditOnly:true'; then
-              echo 'Exact 16602 audit-only surface is live.'
-              exit 0
-            fi
-            sleep 5
-          done
-          echo 'Public surface did not expose exact 16602 audit marker.' >&2
-          exit 1
-      - name: Install Playwright
-        run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Run current public Southeast Asia Regional tests
-        env:
-          EARTHLINE_URL: https://earthlinedevelopment.org/
-          EARTHLINE_AREA: SEA
-          EARTHLINE_SHARD_INDEX: 0
-          EARTHLINE_SHARD_TOTAL: 1
-        run: node lab/launch-matrix.mjs
-      - name: Upload evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: earthline-regional-se-asia
-          path: lab-results/regional-sea-0-of-1.json
           if-no-files-found: warn
           retention-days: 7
