@@ -5,46 +5,26 @@ on:
     branches: [pages-live]
     paths:
       - '.github/workflows/earthline-black-paragraph-diagnostic.yml'
-      - 'index.html'
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
-  inspect:
+  live-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: pages-live
-      - name: Capture legend positioning source
+      - name: Verify public site serves panel-overlap repair
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          s=Path('index.html').read_text(encoding='utf-8')
-          needles=['earthlineSwaleLegend16050','earthlineAquiferLegend16070','earthlineDiagramLegend16080','el-grade']
-          out=[]
-          for needle in needles:
-              pos=0; hits=0
-              while True:
-                  i=s.find(needle,pos)
-                  if i<0: break
-                  hits+=1
-                  out.append(f'\n===== {needle} HIT {hits} @ {i} =====\n')
-                  out.append(s[max(0,i-2200):min(len(s),i+3600)])
-                  out.append('\n')
-                  pos=i+len(needle)
-                  if hits>=50: break
-              out.append(f'\nTOTAL {needle}: {hits}\n')
-          Path('lab-results').mkdir(exist_ok=True)
-          Path('lab-results/black-paragraph-legends.txt').write_text(''.join(out),encoding='utf-8')
-          PY
-      - name: Commit diagnostic result
-        run: |
-          git config user.name 'earthline-ci'
-          git config user.email 'actions@users.noreply.github.com'
-          git add lab-results/black-paragraph-legends.txt
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m 'test: record legend positioning source'
-          git push origin HEAD:pages-live
+          set -euo pipefail
+          for i in 1 2 3 4 5 6; do
+            curl -fsSL --retry 2 --retry-delay 2 'https://earthlinedevelopment.org/?earthline-live-check=legend-panel' -o /tmp/live.html
+            if grep -Fq 'Keep the existing Regional map legends on the map, never underneath the translucent panel.' /tmp/live.html; then
+              break
+            fi
+            if [ "$i" = 6 ]; then
+              echo 'Live site has not served the repaired index yet.' >&2
+              exit 1
+            fi
+            sleep 10
+          done
+          grep -Fq 'html.earthline-panel-open-16188 #earthlineSwaleLegend16050' /tmp/live.html
+          grep -Fq 'left:calc(var(--el-rail-16188) + var(--el-panel-16188) + 18px)!important' /tmp/live.html
+          echo 'PASS: public site serves the Regional legend panel-overlap repair.'
