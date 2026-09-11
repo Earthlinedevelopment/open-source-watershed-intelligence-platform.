@@ -9,7 +9,7 @@ page.on('pageerror',e=>errors.push(String(e)));
 page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
 await page.goto(URL,{waitUntil:'domcontentloaded',timeout:45000});
 await page.waitForSelector('#searchInput',{timeout:30000});
-await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE 16609 — U.S. LAUNCH CORE REPAIR'),null,{timeout:90000,polling:500});
+await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE 16610 — DIRECT VECTOR WATER SOURCE QUERY'),null,{timeout:90000,polling:500});
 await page.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});
 await page.evaluate(()=>{
   const input=document.getElementById('searchInput');
@@ -63,7 +63,7 @@ const audit=await page.evaluate(()=>{
       }catch(_){}
     }
   }catch(_){}
-  const segInter=(a,b,c,d)=>{const cross=(p,q,r)=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]);const ab1=cross(a,b,c),ab2=cross(a,b,d),cd1=cross(c,d,a),cd2=cross(c,d,b);return ((ab1===0||ab2===0||Math.sign(ab1)!==Math.sign(ab2))&&(cd1===0||cd2===0||Math.sign(cd1)!==Math.sign(cd2)));};
+  const segInter=(a,b,c,d)=>{const cross=(p,q,r)=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1]);const ab1=cross(a,b,c),ab2=cross(a,b,d),cd1=cross(c,d,a),cd2=cross(c,d,b);return ((ab1===0||ab2===0||Math.sign(ab1)!==Math.sign(ab2))&&(cd1===0||cd2===0||Math.sign(cd1)!==Math.sign(cd2)));};
   function inRing(p,r){let inside=false;for(let i=0,j=r.length-1;i<r.length;j=i++){const a=r[i],b=r[j];if(!finite(a)||!finite(b))continue;const hit=((b[1]>p[1])!==(a[1]>p[1]))&&(p[0]<(a[0]-b[0])*(p[1]-b[1])/((a[1]-b[1])||1e-15)+b[0]);if(hit)inside=!inside;}return inside}
   function inPoly(p,rings){if(!rings?.length||!inRing(p,rings[0]))return false;for(let i=1;i<rings.length;i++)if(inRing(p,rings[i]))return false;return true}
   function segmentHitsPart(a,b,p){const sb=[Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[0],b[0]),Math.max(a[1],b[1])],bb=p.bbox;if(sb[2]<bb[0]||sb[0]>bb[2]||sb[3]<bb[1]||sb[1]>bb[3])return false;if(inPoly(a,p.rings)||inPoly(b,p.rings))return true;for(const ring of p.rings||[])for(let i=1;i<ring.length;i++)if(segInter(a,b,ring[i-1],ring[i]))return true;return false}
