@@ -30676,7 +30676,12 @@ body { overflow-x:hidden!important; }
         /* Sparse/disconnected states (notably island and very large states) need enough
            samples to preserve actual land on the same authoritative statewide extent.
            The terrain tiles are already cached; only the grid is resampled. */
-        if(usStateRun16609&&validLand16609<32){
+        /* EARTHLINE 16611 — SPARSE-LAND COVERAGE RETRY.
+           Keep the same authoritative statewide extent, but resample when land
+           occupies less than 2% of the fixed Regional grid. The prior absolute
+           <32-cell guard remains as the zero/tiny-land fail-safe. */
+        const landCoverage16611=(dem&&dem.w&&dem.h)?validLand16609/(dem.w*dem.h):0;
+        if(usStateRun16609&&(validLand16609<32||landCoverage16611<0.02)){
           const sparseStarted16609=performance.now();
           dem=await loadDEM(b,240,240,6500,'open sparse-state elevation');
           if(!isCurrentRun(runToken))return false;
