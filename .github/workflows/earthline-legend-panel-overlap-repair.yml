@@ -1,0 +1,46 @@
+name: Earthline Regional Legend Panel Overlap Repair
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-legend-panel-overlap-repair.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Patch existing final UI ownership only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          anchor='''html[data-earthline-analysis-tier="property"] #earthlineAquiferLegend16070,\nhtml[data-earthline-analysis-tier="property"] #earthlineDiagramLegend16080{display:none!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important}\n#earthlineResultsSlot16188:empty'''
+          replacement='''html[data-earthline-analysis-tier="property"] #earthlineAquiferLegend16070,\nhtml[data-earthline-analysis-tier="property"] #earthlineDiagramLegend16080{display:none!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important}\n/* Keep the existing Regional map legends on the map, never underneath the translucent panel. */\n#earthlineSwaleLegend16050,#earthlineAquiferLegend16070,#earthlineDiagramLegend16080{left:calc(var(--el-rail-16188) + 18px)!important}\nhtml.earthline-panel-open-16188 #earthlineSwaleLegend16050,\nhtml.earthline-panel-open-16188 #earthlineAquiferLegend16070,\nhtml.earthline-panel-open-16188 #earthlineDiagramLegend16080{left:calc(var(--el-rail-16188) + var(--el-panel-16188) + 18px)!important}\n#earthlineResultsSlot16188:empty'''
+          n=s.count(anchor)
+          if n != 1:
+              raise SystemExit(f'guard failed: expected anchor once, found {n}')
+          s=s.replace(anchor,replacement,1)
+          if s.count('Keep the existing Regional map legends on the map, never underneath the translucent panel.') != 1:
+              raise SystemExit('guard failed: repair marker count')
+          p.write_text(s,encoding='utf-8')
+          PY
+          git diff --check
+          git diff --numstat -- index.html
+          git diff -- index.html | sed -n '1,120p'
+      - name: Commit repair
+        run: |
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix: keep regional legends out of sidebar'
+          git push origin HEAD:pages-live
