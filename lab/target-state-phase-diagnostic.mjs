@@ -21,13 +21,13 @@ page.on('request',req=>{
 
 let deployed=false;
 for(let attempt=0;attempt<60;attempt++){
-  await page.goto(URL+'?ny-16622='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+  await page.goto(URL+'?ny-16624='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
   await page.waitForSelector('#searchInput',{timeout:30000});
-  deployed=await page.evaluate(()=>document.documentElement.innerHTML.includes('EARTHLINE 16622 — LOCAL REGIONAL CONTOUR WINDOW'));
+  deployed=await page.evaluate(()=>document.documentElement.innerHTML.includes('EARTHLINE 16624 — REGIONAL LOCAL-CORRIDOR RENDER THRESHOLD'));
   if(deployed)break;
   await page.waitForTimeout(2000);
 }
-if(!deployed)throw new Error('16622 not deployed');
+if(!deployed)throw new Error('16624 not deployed');
 
 await page.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true&&typeof window.applyLocation==='function',null,{timeout:30000});
 await page.evaluate(()=>{const i=document.getElementById('searchInput');i.focus();i.value='New York';i.dispatchEvent(new Event('input',{bubbles:true}));});
@@ -43,9 +43,8 @@ if(!picked)throw new Error('NY state suggestion missing');
 
 try{
   await page.waitForFunction(()=>{
-    const a=window.EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609||null;
     const status=String(document.getElementById('earthlineVermontStatus16147')?.textContent||'');
-    return (a?.tigerHydroRequested===true&&a?.tigerHydroVerified===true)||/ANALYSIS FAILED|FAILED|ERROR/i.test(status);
+    return /published|ANALYSIS FAILED|FAILED|ERROR/i.test(status);
   },null,{timeout:90000,polling:200});
 }catch(_){}
 await page.waitForTimeout(1000);
@@ -53,6 +52,9 @@ await page.waitForTimeout(1000);
 const state=await page.evaluate(()=>({
   audit:window.EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609||null,
   generation:window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null,
+  display:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null,
+  publication:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,
+  labelAudit:window.EARTHLINE_REGIONAL_CORRIDOR_LABEL_AUDIT_16336||null,
   status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||'').trim(),
   loc:{name:M?.loc?.name||null,bbox:M?.loc?.bbox||null,analysisBBox:M?.loc?.analysisBBox||null}
 }));
@@ -61,15 +63,19 @@ const unique=[];const seen=new Set();
 for(const r of tigerRequests){const k=JSON.stringify([r.points,r.bbox]);if(seen.has(k))continue;seen.add(k);unique.push(r);}
 const spans=unique.filter(r=>r.span).map(r=>({points:r.points,bbox:r.bbox,span:r.span,maxSpan:Math.max(...r.span)}));
 spans.sort((a,b)=>b.maxSpan-a.maxSpan);
-const audit=state.audit||{};
+const audit=state.audit||{},display=state.display||{};
 const metrics={
-  deployed16622:deployed,
+  deployed16624:deployed,
   before:Number(audit.before||0),
   after:Number(audit.after||0),
   rejected:Number(audit.rejected||0),
   tigerRejectedSwales:Number(audit.tigerRejectedSwales||0),
   tigerVerified:audit.tigerHydroVerified===true,
   tigerHydroMs:Number(audit.tigerHydroMs||0),
+  overlaySwaleLines:Number(display.swaleLines||0),
+  overlayGradeLabels:Number(display.swaleGradeLabels||0),
+  gradeA:Number(display.swaleGradeCounts?.A||0),
+  sourceFeatures:Number(state.publication?.sourceFeatures||0),
   uniqueSwaleGeometries:spans.length,
   maxSpanDegrees:spans[0]?.maxSpan??null,
   status:state.status
@@ -77,6 +83,6 @@ const metrics={
 const out={generatedAt:new Date().toISOString(),url:URL,picked,metrics,state,largest:spans.slice(0,15),errors:errors.slice(0,30)};
 await fs.mkdir('lab-results',{recursive:true});
 await fs.writeFile('lab-results/target-state-phase-diagnostic.json',JSON.stringify(out,null,2));
-console.log('NY_16622_RESULT '+JSON.stringify(out));
+console.log('NY_16624_RESULT '+JSON.stringify(out));
 await browser.close();
-if(!deployed||!picked||!metrics.tigerVerified||metrics.after<=0||!/published/i.test(metrics.status))process.exitCode=1;
+if(!deployed||!picked||!metrics.tigerVerified||metrics.after<=0||metrics.overlaySwaleLines<=0||metrics.overlayGradeLabels<=0||metrics.gradeA<=0||!/published/i.test(metrics.status))process.exitCode=1;
