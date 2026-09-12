@@ -20,14 +20,14 @@ page.on('request',req=>{
 });
 
 let deployed=false;
-for(let attempt=0;attempt<50;attempt++){
-  await page.goto(URL+'?ny-16621='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+for(let attempt=0;attempt<60;attempt++){
+  await page.goto(URL+'?ny-16622='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
   await page.waitForSelector('#searchInput',{timeout:30000});
-  deployed=await page.evaluate(()=>document.documentElement.innerHTML.includes('EARTHLINE 16621 — CONTIGUOUS REGIONAL CLIP SEGMENTS'));
+  deployed=await page.evaluate(()=>document.documentElement.innerHTML.includes('EARTHLINE 16622 — LOCAL REGIONAL CONTOUR WINDOW'));
   if(deployed)break;
   await page.waitForTimeout(2000);
 }
-if(!deployed)throw new Error('16621 not deployed');
+if(!deployed)throw new Error('16622 not deployed');
 
 await page.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true&&typeof window.applyLocation==='function',null,{timeout:30000});
 await page.evaluate(()=>{const i=document.getElementById('searchInput');i.focus();i.value='New York';i.dispatchEvent(new Event('input',{bubbles:true}));});
@@ -50,18 +50,12 @@ try{
 }catch(_){}
 await page.waitForTimeout(1000);
 
-const state=await page.evaluate(()=>{
-  const a=window.EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609||null;
-  const status=String(document.getElementById('earthlineVermontStatus16147')?.textContent||'').trim();
-  let rendered=null;
-  try{
-    const map=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
-    const style=map?.getStyle?.();
-    const swaleLayers=(style?.layers||[]).filter(l=>/swale/i.test(String(l.id||'')));
-    rendered=swaleLayers.map(l=>({id:l.id,source:l.source}));
-  }catch(_){rendered=null;}
-  return {audit:a,status,rendered,loc:{name:M?.loc?.name||null,bbox:M?.loc?.bbox||null,analysisBBox:M?.loc?.analysisBBox||null}};
-});
+const state=await page.evaluate(()=>({
+  audit:window.EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609||null,
+  generation:window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null,
+  status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||'').trim(),
+  loc:{name:M?.loc?.name||null,bbox:M?.loc?.bbox||null,analysisBBox:M?.loc?.analysisBBox||null}
+}));
 
 const unique=[];const seen=new Set();
 for(const r of tigerRequests){const k=JSON.stringify([r.points,r.bbox]);if(seen.has(k))continue;seen.add(k);unique.push(r);}
@@ -69,7 +63,7 @@ const spans=unique.filter(r=>r.span).map(r=>({points:r.points,bbox:r.bbox,span:r
 spans.sort((a,b)=>b.maxSpan-a.maxSpan);
 const audit=state.audit||{};
 const metrics={
-  deployed16621:deployed,
+  deployed16622:deployed,
   before:Number(audit.before||0),
   after:Number(audit.after||0),
   rejected:Number(audit.rejected||0),
@@ -78,12 +72,11 @@ const metrics={
   tigerHydroMs:Number(audit.tigerHydroMs||0),
   uniqueSwaleGeometries:spans.length,
   maxSpanDegrees:spans[0]?.maxSpan??null,
-  p95SpanDegrees:spans.length?spans[Math.min(spans.length-1,Math.floor(spans.length*0.05))]?.maxSpan:null,
   status:state.status
 };
-const out={generatedAt:new Date().toISOString(),url:URL,picked,metrics,state,largest:spans.slice(0,20),errors:errors.slice(0,30)};
+const out={generatedAt:new Date().toISOString(),url:URL,picked,metrics,state,largest:spans.slice(0,15),errors:errors.slice(0,30)};
 await fs.mkdir('lab-results',{recursive:true});
 await fs.writeFile('lab-results/target-state-phase-diagnostic.json',JSON.stringify(out,null,2));
-console.log('NY_16621_RESULT '+JSON.stringify(out));
+console.log('NY_16622_RESULT '+JSON.stringify(out));
 await browser.close();
-if(!deployed||!picked||!metrics.tigerVerified||!/published/i.test(metrics.status))process.exitCode=1;
+if(!deployed||!picked||!metrics.tigerVerified||metrics.after<=0||!/published/i.test(metrics.status))process.exitCode=1;
