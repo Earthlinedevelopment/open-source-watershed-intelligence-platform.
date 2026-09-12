@@ -1,4 +1,4 @@
-// Earthline 16614 exact-lab viewport and mapped-water readiness diagnostic; fail closed on empty NY water evidence.
+// Earthline 16614 top-level exact-build lab diagnostic; fail closed on empty NY water evidence.
 import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
 
@@ -13,21 +13,20 @@ for(let run=1;run<=RUNS;run++){
   page.on('pageerror',e=>errors.push(String(e)));
   page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
   await page.goto(URL+'&run='+run,{waitUntil:'domcontentloaded',timeout:45000});
-  await page.waitForFunction(()=>document.getElementById('state')?.textContent==='VERIFIED EXACT',null,{timeout:45000});
-  const handle=await page.waitForSelector('#earthline-lab-frame',{timeout:15000});
-  const frame=await handle.contentFrame();
-  if(!frame)throw new Error('exact lab iframe unavailable');
-  await frame.waitForSelector('#searchInput',{timeout:30000});
-  await frame.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE 16610 — DIRECT VECTOR WATER SOURCE QUERY'),null,{timeout:90000,polling:500});
-  await frame.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});
-  await frame.evaluate(()=>{
+  await page.waitForURL(u=>u.pathname.endsWith('/index.html')&&u.searchParams.get('earthlineVerifiedLab16611')==='1',{timeout:45000});
+  const verified=await page.evaluate(()=>String(sessionStorage.getItem('EARTHLINE_EXACT_LAB_16611')||''));
+  if(!verified.includes('32664a8271eb7a345b50f1f69aabd7aafb328dbc'))throw new Error('exact-build handoff marker missing');
+  await page.waitForSelector('#searchInput',{timeout:30000});
+  await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE 16610 — DIRECT VECTOR WATER SOURCE QUERY'),null,{timeout:90000,polling:500});
+  await page.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});
+  await page.evaluate(()=>{
     const input=document.getElementById('searchInput');
     input.focus();input.value='New York';
     input.dispatchEvent(new Event('input',{bubbles:true}));
     input.dispatchEvent(new Event('change',{bubbles:true}));
   });
-  await frame.waitForSelector('#earthlineSearchSuggestions15970.open button[role="option"]',{timeout:15000});
-  const selected=await frame.evaluate(()=>{
+  await page.waitForSelector('#earthlineSearchSuggestions15970.open button[role="option"]',{timeout:15000});
+  const selected=await page.evaluate(()=>{
     const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
     const opts=[...document.querySelectorAll('#earthlineSearchSuggestions15970 button[role="option"]')];
     const chosen=opts.find(b=>norm(b.dataset.query||'')==='new york'&&/state|region/i.test(String(b.textContent||'')))||opts.find(b=>norm(b.dataset.query||'')==='new york');
@@ -35,16 +34,16 @@ for(let run=1;run<=RUNS;run++){
     const out={text:String(chosen.textContent||'').trim(),query:String(chosen.dataset.query||'')};chosen.click();return out;
   });
   if(!selected)throw new Error('New York state suggestion unavailable');
-  await frame.waitForFunction(()=>{
+  await page.waitForFunction(()=>{
     const name=String((typeof M!=='undefined'&&M?.loc?.name)||'').toLowerCase();
     return name.includes('new york');
   },null,{timeout:15000,polling:100});
-  await frame.waitForFunction(()=>{
+  await page.waitForFunction(()=>{
     const s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||'');
     return !!window.EARTHLINE_REGIONAL_VISUAL_DATA_16020||/ANALYSIS FAILED/i.test(s);
   },null,{timeout:60000,polling:200});
-  await frame.waitForTimeout(1500);
-  const audit=await frame.evaluate(()=>{
+  await page.waitForTimeout(1500);
+  const audit=await page.evaluate(()=>{
     const map=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
     const style=map?.getStyle?.()||{};
     const vectorSources=Object.entries(style.sources||{}).filter(([,d])=>String(d?.type||'').toLowerCase()==='vector').map(([id])=>id);
@@ -59,7 +58,7 @@ for(let run=1;run<=RUNS;run++){
     return {
       status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||''),
       loc:typeof M!=='undefined'&&M?.loc?{name:M.loc.name,lat:M.loc.lat,lng:M.loc.lng}:null,
-      iframe:{w:innerWidth,h:innerHeight,devicePixelRatio},
+      viewport:{w:innerWidth,h:innerHeight,devicePixelRatio},
       vectorSources,sourceState,postQueryCounts:post,
       mappedWaterAudit16609:window.EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609||null,
       landAudit:window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584||null,
@@ -68,14 +67,14 @@ for(let run=1;run<=RUNS;run++){
       water16601:window.EARTHLINE_LAB_WATER_16601||null
     };
   });
-  results.push({run,selected,audit,errors});
+  results.push({run,verified,selected,audit,errors});
   if(run===1)await page.screenshot({path:'lab-results/ny-exact-lab-16614.png',fullPage:true});
   await page.close();
 }
 
 await fs.mkdir('lab-results',{recursive:true});
 await fs.writeFile('lab-results/ny-exact-lab-16614.json',JSON.stringify({generatedAt:new Date().toISOString(),url:URL,runs:results},null,2));
-console.log('EARTHLINE_NY_EXACT_LAB_16614 '+JSON.stringify(results.map(r=>({run:r.run,status:r.audit.status,iframe:r.audit.iframe,sourceState:r.audit.sourceState,postQueryCounts:r.audit.postQueryCounts,mapped:r.audit.mappedWaterAudit16609,swales:r.audit.swales}))));
+console.log('EARTHLINE_NY_EXACT_LAB_16614 '+JSON.stringify(results.map(r=>({run:r.run,status:r.audit.status,viewport:r.audit.viewport,postQueryCounts:r.audit.postQueryCounts,mapped:r.audit.mappedWaterAudit16609,swales:r.audit.swales}))));
 await browser.close();
 const ok=results.every(r=>{
   const a=r.audit?.mappedWaterAudit16609;
