@@ -3,29 +3,58 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Earthline 16601 Launch Lab</title>
-  <style>html,body,#earthline-lab-frame{width:100%;height:100%;margin:0;border:0;overflow:hidden;display:block;}</style>
+  <title>Earthline 16611 Exact Launch Lab</title>
+  <style>
+    html,body{width:100%;height:100%;margin:0;overflow:hidden;font-family:Arial,sans-serif;background:#111;color:#fff;}
+    #identity{height:34px;box-sizing:border-box;display:flex;align-items:center;gap:14px;padding:0 12px;background:#111;border-bottom:1px solid #444;font-size:12px;white-space:nowrap;}
+    #state{font-weight:700;}
+    #earthline-lab-frame{width:100%;height:calc(100% - 34px);margin:0;border:0;display:block;background:#fff;}
+    .ok{color:#8ee89a}.bad{color:#ff8d8d}.checking{color:#ffd36a}
+  </style>
 </head>
 <body>
-  <iframe id="earthline-lab-frame" title="Earthline 16601 launch lab"></iframe>
+  <div id="identity">
+    <span id="state" class="checking">VERIFYING</span>
+    <span>Candidate 16611</span>
+    <span>index blob 32664a8271eb7a345b50f1f69aabd7aafb328dbc</span>
+    <span>no injected build scripts</span>
+  </div>
+  <iframe id="earthline-lab-frame" title="Earthline 16611 exact launch lab"></iframe>
   <script>
+    const EXPECTED_BLOB='32664a8271eb7a345b50f1f69aabd7aafb328dbc';
     const frame=document.getElementById('earthline-lab-frame');
-    function inject(src,build){
-      return new Promise((resolve,reject)=>{
-        const s=frame.contentDocument.createElement('script');
-        s.src=src+'?t='+Date.now();
-        s.async=false;
-        s.dataset.earthlineLabBuild=build;
-        s.onload=resolve;
-        s.onerror=reject;
-        frame.contentDocument.body.appendChild(s);
-      });
+    const state=document.getElementById('state');
+
+    async function gitBlobSha1(text){
+      const body=new TextEncoder().encode(text);
+      const header=new TextEncoder().encode(`blob ${body.byteLength}\0`);
+      const all=new Uint8Array(header.byteLength+body.byteLength);
+      all.set(header,0); all.set(body,header.byteLength);
+      const digest=await crypto.subtle.digest('SHA-1',all);
+      return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');
     }
-    frame.addEventListener('load',async()=>{
-      await inject('/builds/16598/earthline-live.js','16598-blue');
-      await inject('/builds/16601/earthline-shared-water-mask.js','16601-shared-water-mask');
-    },{once:true});
-    frame.src='/index.html?baseline=16584&t='+Date.now();
+
+    (async()=>{
+      try{
+        const res=await fetch('/index.html?earthlineExact16611='+Date.now(),{cache:'no-store'});
+        if(!res.ok) throw new Error(`index fetch ${res.status}`);
+        const html=await res.text();
+        const actual=await gitBlobSha1(html);
+        if(actual!==EXPECTED_BLOB){
+          state.textContent='BLOCKED — BUILD MISMATCH';
+          state.className='bad';
+          frame.srcdoc=`<body style="font-family:Arial;padding:32px"><h2>Earthline exact-build check failed</h2><p>Expected ${EXPECTED_BLOB}</p><p>Received ${actual}</p><p>The lab will not run a mixed or stale build.</p></body>`;
+          return;
+        }
+        state.textContent='VERIFIED EXACT';
+        state.className='ok';
+        frame.srcdoc=html;
+      }catch(err){
+        state.textContent='BLOCKED — VERIFY ERROR';
+        state.className='bad';
+        frame.srcdoc=`<body style="font-family:Arial;padding:32px"><h2>Earthline exact-build verification failed</h2><pre>${String(err)}</pre></body>`;
+      }
+    })();
   </script>
 </body>
 </html>
