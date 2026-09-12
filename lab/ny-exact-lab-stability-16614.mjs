@@ -1,4 +1,4 @@
-// Earthline 16614 exact-lab viewport and mapped-water readiness diagnostic.
+// Earthline 16614 exact-lab viewport and mapped-water readiness diagnostic; fail closed on empty NY water evidence.
 import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
 
@@ -75,5 +75,17 @@ await fs.mkdir('lab-results',{recursive:true});
 await fs.writeFile('lab-results/ny-exact-lab-16614.json',JSON.stringify({generatedAt:new Date().toISOString(),url:URL,runs:results},null,2));
 console.log('EARTHLINE_NY_EXACT_LAB_16614 '+JSON.stringify(results.map(r=>({run:r.run,status:r.audit.status,iframe:r.audit.iframe,sourceState:r.audit.sourceState,postQueryCounts:r.audit.postQueryCounts,mapped:r.audit.mappedWaterAudit16609,swales:r.audit.swales}))));
 await browser.close();
-const ok=results.every(r=>r.audit?.mappedWaterAudit16609?.verified===true&&r.audit?.swales>0&&!/ANALYSIS FAILED/i.test(r.audit?.status||''));
+const ok=results.every(r=>{
+  const a=r.audit?.mappedWaterAudit16609;
+  const post=Object.values(r.audit?.postQueryCounts||{});
+  const postWater=post.reduce((n,x)=>n+Math.max(0,Number(x?.water)||0),0);
+  return a?.verified===true &&
+    Number(a.rawWaterFeatures)>0 &&
+    Number(a.waterPolygonParts)>0 &&
+    Number(a.rejected)>0 &&
+    Number(a.after)<Number(a.before) &&
+    postWater>0 &&
+    r.audit?.swales===Number(a.after) &&
+    !/ANALYSIS FAILED/i.test(r.audit?.status||'');
+});
 if(!ok)process.exitCode=1;
