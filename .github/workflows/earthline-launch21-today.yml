@@ -1,0 +1,69 @@
+name: Earthline Launch21 Today
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-launch21-today.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  launch21-regional:
+    name: Launch21 shard ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Wait for public Earthline surface
+        run: |
+          for i in $(seq 1 30); do
+            body="$(curl -fsSL "https://earthlinedevelopment.org/?launch21=${GITHUB_SHA}" || true)"
+            if printf '%s' "$body" | grep -q 'Aquifer Recharging Starts Here'; then
+              exit 0
+            fi
+            sleep 4
+          done
+          echo 'Public Earthline surface unavailable.' >&2
+          exit 1
+      - name: Restrict existing matrix harness to launch 21
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('lab/launch-matrix.mjs')
+          s=p.read_text(encoding='utf-8')
+          a=s.index("const STATES=[")
+          b=s.index(";\nconst SE_ASIA=",a)
+          launch21="const STATES=['Vermont','Maryland','New York','Massachusetts','Arizona','Colorado','New Mexico','Nevada','Utah','Oklahoma','California','Nebraska','North Carolina','Texas','Alabama','Alaska','Florida','Hawaii','Idaho','Missouri','Virginia']"
+          p.write_text(s[:a]+launch21+s[b:],encoding='utf-8')
+          PY
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run launch 21 Regional matrix
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_AREA: US
+          EARTHLINE_SHARD_INDEX: ${{ matrix.shard }}
+          EARTHLINE_SHARD_TOTAL: 3
+        run: node lab/launch-matrix.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-launch21-${{ matrix.shard }}
+          path: lab-results/regional-us-${{ matrix.shard }}-of-3.json
+          if-no-files-found: warn
+          retention-days: 7
