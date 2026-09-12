@@ -1,4 +1,4 @@
-name: Earthline Rollback 16621
+name: Earthline Inspect Regional Clip Helper
 
 on:
   push:
@@ -7,24 +7,14 @@ on:
       - '.github/workflows/earthline-run-16621.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  rollback:
+  inspect:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
-          fetch-depth: 0
-      - name: Roll back incorrect 16621 owner replacement
-        run: python3 lab/apply-16621.py
-      - name: Commit rollback
-        run: |
-          git diff --check
-          git config user.name 'earthline-ci'
-          git config user.email 'actions@users.noreply.github.com'
-          if git diff --quiet -- index.html; then exit 0; fi
-          git add index.html
-          git commit -m 'revert: restore regional boundary clip owner after 16621 test'
-          git push origin HEAD:pages-live
+      - name: Inspect helper
+        run: python3 -c "from pathlib import Path; s=Path('index.html').read_text(encoding='utf-8'); n='earthlineClipFeatureCollection16539'; i=s.find(n); print('INDEX',i); print(s[max(0,i-5000):i+9000])"
