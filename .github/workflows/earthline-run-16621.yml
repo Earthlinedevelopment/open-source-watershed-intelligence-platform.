@@ -1,4 +1,4 @@
-name: Earthline Inspect Regional Clip Helper
+name: Earthline Inspect Regional Swale Generation
 
 on:
   push:
@@ -16,5 +16,5 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
-      - name: Inspect helper
-        run: python3 -c "from pathlib import Path; s=Path('index.html').read_text(encoding='utf-8'); n='earthlineClipFeatureCollection16539'; i=s.find(n); print('INDEX',i); print(s[max(0,i-5000):i+9000])"
+      - name: Inspect generation path
+        run: python3 -c "from pathlib import Path; s=Path('index.html').read_text(encoding='utf-8'); ns=[\"feature_type:'swale-opportunity'\",'REGIONAL BIOSWALE OPPORTUNITY','swalesRaw','regionalSwales','const swales=','let swales=']; [print('\\n===== '+n+' @'+str(i)+' =====\\n'+s[max(0,i-5000):i+9000]) for n in ns for i in [s.find(n)] if i>=0]"
