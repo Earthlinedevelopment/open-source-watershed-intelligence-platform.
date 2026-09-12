@@ -36,7 +36,9 @@
 
     (async()=>{
       try{
-        const res=await fetch('/index.html?earthlineExact16611='+Date.now(),{cache:'no-store'});
+        const exactToken=Date.now();
+        const exactUrl='/index.html?earthlineExact16611='+exactToken;
+        const res=await fetch(exactUrl,{cache:'no-store'});
         if(!res.ok) throw new Error(`index fetch ${res.status}`);
         const html=await res.text();
         const actual=await gitBlobSha1(html);
@@ -48,7 +50,10 @@
         }
         state.textContent='VERIFIED EXACT';
         state.className='ok';
-        frame.srcdoc=html;
+        /* 16614: after byte verification, navigate the iframe to the verified URL.
+           Do not execute the application through srcdoc: Mapbox vector source
+           queries need the normal document URL/runtime to return mapped water. */
+        frame.src=exactUrl;
       }catch(err){
         state.textContent='BLOCKED — VERIFY ERROR';
         state.className='bad';
