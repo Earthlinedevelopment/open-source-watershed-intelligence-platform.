@@ -11,4 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: node lab/inspect-regional-publication-16613.mjs
+      - name: Capture Regional publication owner context
+        run: node lab/inspect-regional-publication-16613.mjs > regional-publication-16613.txt
+      - name: Upload inspection artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: regional-publication-16613
+          path: regional-publication-16613.txt
+          retention-days: 1
