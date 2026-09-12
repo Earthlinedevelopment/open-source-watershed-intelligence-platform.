@@ -2,11 +2,6 @@ from pathlib import Path
 
 p = Path('index.html')
 s = p.read_text(encoding='utf-8')
-marker = 'EARTHLINE 16621 — CONTIGUOUS REGIONAL CLIP SEGMENTS'
-if marker in s:
-    print('16621 already present')
-    raise SystemExit(0)
-
 needle = 'function earthlineClipRegionalProducts16539'
 start = s.find(needle)
 if start < 0:
@@ -15,103 +10,44 @@ if s.find(needle, start + 1) >= 0:
     raise SystemExit('guard failed: multiple clip owners found')
 brace = s.find('{', start)
 if brace < 0:
-    raise SystemExit('guard failed: clip owner opening brace not found')
+    raise SystemExit('guard failed: opening brace not found')
 
-depth = 0
-quote = None
-escape = False
-line_comment = False
-block_comment = False
-i = brace
-end = None
+depth=0; quote=None; escape=False; line_comment=False; block_comment=False; end=None; i=brace
 while i < len(s):
-    ch = s[i]
-    nxt = s[i + 1] if i + 1 < len(s) else ''
+    ch=s[i]; nxt=s[i+1] if i+1<len(s) else ''
     if line_comment:
-        if ch == '\n': line_comment = False
+        if ch=='\n': line_comment=False
     elif block_comment:
-        if ch == '*' and nxt == '/':
-            block_comment = False
-            i += 1
+        if ch=='*' and nxt=='/': block_comment=False; i+=1
     elif quote:
-        if escape:
-            escape = False
-        elif ch == '\\':
-            escape = True
-        elif ch == quote:
-            quote = None
+        if escape: escape=False
+        elif ch=='\\': escape=True
+        elif ch==quote: quote=None
     else:
-        if ch in ('\'', '"', '`'):
-            quote = ch
-        elif ch == '/' and nxt == '/':
-            line_comment = True
-            i += 1
-        elif ch == '/' and nxt == '*':
-            block_comment = True
-            i += 1
-        elif ch == '{':
-            depth += 1
-        elif ch == '}':
-            depth -= 1
-            if depth == 0:
-                end = i + 1
-                break
-    i += 1
+        if ch in ('\'', '"', '`'): quote=ch
+        elif ch=='/' and nxt=='/': line_comment=True; i+=1
+        elif ch=='/' and nxt=='*': block_comment=True; i+=1
+        elif ch=='{': depth+=1
+        elif ch=='}':
+            depth-=1
+            if depth==0: end=i+1; break
+    i+=1
 if end is None:
-    raise SystemExit('guard failed: clip owner closing brace not found')
+    raise SystemExit('guard failed: closing brace not found')
 
-indent_start = s.rfind('\n', 0, start) + 1
-indent = s[indent_start:start]
-new = indent + '''function earthlineClipRegionalProducts16539(water,swales,center,contains){
-    /* EARTHLINE 16621 — CONTIGUOUS REGIONAL CLIP SEGMENTS.
-       A rejected vertex terminates a LineString run. Never reconnect surviving
-       coordinates across jurisdiction, land-validity, or other rejected gaps. */
-    const finite=p=>Array.isArray(p)&&Number.isFinite(+p[0])&&Number.isFinite(+p[1]);
-    const nearestIndex=(dem,lng,lat)=>{
-      if(!dem||!dem.w||!dem.h)return -1;
-      const gx=(lng-dem.bbox.w)/((dem.bbox.e-dem.bbox.w)||1)*(dem.w-1);
-      const gy=(dem.bbox.n-lat)/((dem.bbox.n-dem.bbox.s)||1)*(dem.h-1);
-      const x=Math.max(0,Math.min(dem.w-1,Math.round(gx)));
-      const y=Math.max(0,Math.min(dem.h-1,Math.round(gy)));
-      return y*dem.w+x;
-    };
-    const pointAllowed=p=>{
-      if(!finite(p))return false;
-      if(contains&&!contains(p[0],p[1]))return false;
-      const idx=nearestIndex(M.dem,p[0],p[1]);
-      return idx<0||earthlineCellLandValid16538(idx);
-    };
-    const sanitize=fc=>{
-      const out=[];
-      for(const f of (fc&&fc.features||[])){
-        const g=f&&f.geometry;
-        if(!g)continue;
-        if(g.type==='Point'){
-          if(pointAllowed(g.coordinates))out.push(f);
-          continue;
-        }
-        if(g.type==='LineString'){
-          let run=[];
-          const flush=()=>{
-            if(run.length>=2)out.push({...f,geometry:{...g,coordinates:run}});
-            run=[];
-          };
-          for(const p of (g.coordinates||[])){
-            if(pointAllowed(p))run.push(p);
-            else flush();
-          }
-          flush();
-          continue;
-        }
-        out.push(f);
-      }
-      return {...fc,features:out};
-    };
-    return {water:sanitize(water),swales:sanitize(swales)};
+indent_start=s.rfind('\n',0,start)+1
+indent=s[indent_start:start]
+original=indent+'''function earthlineClipRegionalProducts16539(payload,boundary){
+    const g=boundary&&(boundary.prepared||boundary.geometry);if(!g)throw new Error('administrative boundary geometry unavailable');
+    const before={contours:Number(payload.contours&&payload.contours.features&&payload.contours.features.length||0),flows:Number(payload.flows&&payload.flows.features&&payload.flows.features.length||0),swales:Number(payload.swales&&payload.swales.features&&payload.swales.features.length||0)};
+    const contours=earthlineClipFeatureCollection16539(payload.contours,g),flows=earthlineClipFeatureCollection16539(payload.flows,g),swales=earthlineRerankRegionalSwales16539(earthlineClipFeatureCollection16539(payload.swales,g));
+    const after={contours:contours.features.length,flows:flows.features.length,swales:swales.features.length};
+    const audit={build:'EARTHLINE 16539',runToken:payload.runToken||null,query:String(payload.query||''),placeType:boundary.placeType,capability:boundary.capability,source:boundary.source,sourceTier:boundary.sourceTier,sourceVintage:boundary.sourceVintage||null,before,after,removed:{contours:Math.max(0,before.contours-after.contours),flows:Math.max(0,before.flows-after.flows),swales:Math.max(0,before.swales-after.swales)},rule:'hydrology computed continuously on the full DEM envelope; only published Regional products are clipped to the selected administrative polygon',at:new Date().toISOString()};
+    return {contours,flows,swales,audit};
   }'''
 
-new_s = s[:indent_start] + new + s[end:]
-if marker not in new_s:
-    raise SystemExit('guard failed: replacement marker missing')
-p.write_text(new_s, encoding='utf-8')
-print(f'16621 mutation applied at bytes {indent_start}:{end}')
+current=s[indent_start:end]
+if 'EARTHLINE 16621 — CONTIGUOUS REGIONAL CLIP SEGMENTS' not in current:
+    raise SystemExit('guard failed: incorrect 16621 function not present')
+p.write_text(s[:indent_start]+original+s[end:],encoding='utf-8')
+print('incorrect 16621 owner replacement rolled back')
