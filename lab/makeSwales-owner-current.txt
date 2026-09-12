@@ -1,0 +1,116 @@
+function makeSwales(hy,contours,focusMode=false){
+    const lines=(contours&&contours.features||[]).filter(f=>f&&f.properties&&f.properties.feature_type==='contour'&&f.geometry&&f.geometry.type==='LineString');
+    const channel=percentile(hy.acc,.972),accLow=percentile(hy.acc,.22),accMid=percentile(hy.acc,.72),accHigh=percentile(hy.acc,.91),candidates=[];
+    function sampleSegment(coords,center,relaxed){
+      const half=Math.max(10,Math.min(52,Math.floor(coords.length*.18))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);
+      const raw=coords.slice(start,end);if(raw.length<10)return null;
+      const segment=chaikin(raw,2,false);if(segment.length<10||lineLengthPixels(hy,segment)<10)return null;
+      const stride=Math.max(1,Math.floor(segment.length/22));let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null;
+      for(let k=1;k<segment.length-1;k+=stride){
+        const g=llGrid(hy,segment[k]),x=Math.max(1,Math.min(hy.w-2,Math.round(g.x))),y=Math.max(1,Math.min(hy.h-2,Math.round(g.y))),i=y*hy.w+x;
+        const slope=hy.slope[i],acc=hy.acc[i],minSlope=relaxed?.05:.20,maxSlope=relaxed?18:13.5;
+        if(!Number.isFinite(slope)||slope<minSlope||slope>maxSlope||acc>=channel)continue;
+        valid++;sumSlope+=slope;sumAcc+=acc;maxAcc=Math.max(maxAcc,acc);if(!anchor)anchor={x,y};
+      }
+      if(valid<(relaxed?1:2)||!anchor)return null;
+      const meanSlope=sumSlope/valid,meanAcc=sumAcc/valid;
+      const slopeScore=Math.max(0,1-Math.abs(meanSlope-3.4)/(relaxed?12:7.5));
+      const flowScore=meanAcc<=accLow?.18:meanAcc<=accMid?.18+.70*(meanAcc-accLow)/Math.max(1,accMid-accLow):Math.max(.18,.88-.48*(meanAcc-accMid)/Math.max(1,accHigh-accMid));
+      const lengthScore=Math.min(1,lineLengthPixels(hy,segment)/85);
+      return {segment,x:anchor.x,y:anchor.y,slope:meanSlope,acc:meanAcc,maxAcc,score:slopeScore*.56+flowScore*.28+lengthScore*.16,confidence:relaxed?'screening':'preferred'};
+    }
+    for(const f of lines){
+      const coords=f.geometry.coordinates;if(coords.length<16)continue;
+      const fractions=coords.length>110?[.18,.36,.54,.72,.86]:coords.length>55?[.26,.52,.78]:[.38,.68];
+      for(const frac of fractions){const c=sampleSegment(coords,Math.max(3,Math.min(coords.length-4,Math.round((coords.length-1)*frac))),false);if(c)candidates.push(c);}
+    }
+    if(candidates.length<36){
+      for(const f of lines){const coords=f.geometry.coordinates;if(coords.length<12)continue;for(const frac of [.28,.56,.82]){const c=sampleSegment(coords,Math.max(3,Math.min(coords.length-4,Math.round((coords.length-1)*frac))),true);if(c)candidates.push(c);}}
+    }
+    candidates.sort((a,b)=>b.score-a.score);
+    const chosen=[],primarySpacing=Math.max(6,Math.round(hy.w/31));
+    for(const c of candidates){
+      if(chosen.length>=52)break;
+      const spacing=chosen.length<20?primarySpacing:Math.max(4,Math.round(primarySpacing*.72));
+      if(chosen.some(p=>Math.hypot(p.x-c.x,p.y-c.y)<spacing))continue;
+      chosen.push(c);
+    }
+    // Fail visibly rather than silently: use the best remaining terrain-derived contour segments when strict thinning produced too few.
+    if(chosen.length<14){for(const c of candidates){if(chosen.length>=24)break;if(chosen.includes(c))continue;if(chosen.some(p=>Math.hypot(p.x-c.x,p.y-c.y)<4))continue;chosen.push(c);}}
+    const contourToleranceM16166=5.0;
+    function contourAudit16166(candidate){
+      const values=[],coords=candidate&&candidate.segment||[],stride=Math.max(1,Math.floor(coords.length/28));
+      for(let i=0;i<coords.length;i+=stride){
+        const g=llGrid(hy,coords[i]),x=Math.max(0,Math.min(hy.w-1,Math.round(g.x))),y=Math.max(0,Math.min(hy.h-1,Math.round(g.y))),v=Number(hy.elev[y*hy.w+x]);
+        if(Number.isFinite(v))values.push(v);
+      }
+      if(coords.length&&values.length<2){
+        for(const p of [coords[0],coords[coords.length-1]]){const g=llGrid(hy,p),x=Math.max(0,Math.min(hy.w-1,Math.round(g.x))),y=Math.max(0,Math.min(hy.h-1,Math.round(g.y))),v=Number(hy.elev[y*hy.w+x]);if(Number.isFinite(v))values.push(v);}
+      }
+      const min=values.length?Math.min(...values):Infinity,max=values.length?Math.max(...values):-Infinity;
+      const relief=values.length?max-min:Infinity,endDrop=values.length>1?Math.abs(values[values.length-1]-values[0]):Infinity;
+      return {reliefM:relief,endDropM:endDrop,valid:Number.isFinite(relief)&&relief<=contourToleranceM16166&&endDrop<=contourToleranceM16166};
+    }
+    const auditedCandidates=chosen.map(c=>Object.assign(c,{contourAudit16166:contourAudit16166(c)}));
+    /* BUILD-CHECK-16167: the 5 m longitudinal gate is a focus-screening gate.
+       Applying that tolerance to Vermont's coarse regional DEM rejected every
+       regional corridor because nearest-cell sampling can vary by more than 5 m.
+       Regional corridors remain indicative and carry the audit values, but are
+       not silently erased by a property/focus-scale tolerance. */
+    /* EARTHLINE 16609 — U.S. LAUNCH CORE REPAIR: final Regional contour geometry
+       must remain on the already-authoritative 16584 land/water validity mask after smoothing. */
+    let regionalLandWaterRejected16609=0;
+    const acceptedChosen=focusMode?auditedCandidates.filter(c=>c.contourAudit16166.valid):auditedCandidates.filter(c=>{
+      const segment16609=c&&c.segment||[];
+      if(segment16609.length<2){regionalLandWaterRejected16609++;return false;}
+      for(let i16609=1;i16609<segment16609.length;i16609++){
+        if(!earthlineRegionalSegmentValid16584(hy,segment16609[i16609-1],segment16609[i16609])){regionalLandWaterRejected16609++;return false;}
+      }
+      return true;
+    });
+    const contourAudit={
+      build:'EARTHLINE 16167',tier:focusMode?'focus':'regional',enforced:!!focusMode,
+      evaluated:chosen.length,accepted:acceptedChosen.length,rejected:chosen.length-acceptedChosen.length,
+      toleranceM:contourToleranceM16166,
+      maxAcceptedReliefM:acceptedChosen.length?Math.max(...acceptedChosen.map(c=>Number(c.contourAudit16166.reliefM)||0)):0,
+      rule:focusMode?'focus corridors must remain within 5 m longitudinal relief and 5 m end-to-end elevation change':'regional corridors retain modeled contour geometry; the 5 m focus tolerance is recorded but not enforced at regional DEM scale',
+      at:new Date().toISOString()
+    };
+    window.EARTHLINE_CONTOUR_VALIDITY_AUDIT_16167=contourAudit;
+    window.EARTHLINE_CONTOUR_VALIDITY_AUDIT_16166=contourAudit;
+    const features=[],total=Math.max(1,acceptedChosen.length);
+    const gradeACount=Math.max(3,Math.ceil(total*.16));
+    const gradeBEnd=Math.max(gradeACount+4,Math.ceil(total*.48));
+    for(let index=0;index<acceptedChosen.length;index++){
+      const c=acceptedChosen[index],rank=index+1,score=Math.max(0,Math.min(100,Math.round(c.score*100)));
+      const grade=index<gradeACount?'A':index<gradeBEnd?'B':'C';
+      const gradeLabel=grade==='A'?'BEST':grade==='B'?'STRONG':'GENERAL';
+      const slopeFit=Math.max(0,Math.min(100,Math.round(100-Math.abs(c.slope-3.4)*9)));
+      const relief=Number(c.contourAudit16166.reliefM),drop=Number(c.contourAudit16166.endDropM);
+      features.push({type:'Feature',properties:{
+        feature_type:'swale-opportunity',
+        grade,rank,score,
+        grade_label:gradeLabel,
+        slope_pct:Number(c.slope.toFixed(1)),
+        slope_fit_score:slopeFit,
+        confidence:c.confidence,
+        contour_valid:focusMode?true:null,
+        contour_validation_class:focusMode?'focus-screening-validated':'regional-screening-not-enforced',
+        contour_tolerance_m:contourToleranceM16166,
+        longitudinal_relief_m:Number.isFinite(relief)?Number(relief.toFixed(2)):null,
+        end_to_end_drop_m:Number.isFinite(drop)?Number(drop.toFixed(2)):null,
+        label:grade+rank+' — '+gradeLabel+' '+(focusMode?'FOCUS':'REGIONAL')+' BIOSWALE OPPORTUNITY',
+        screening:focusMode?'Earthline focus corridor derived from a modeled contour; longitudinal relief and end-to-end elevation change are each limited to 5 m. Field and bare-earth verification remain required.':'Earthline regional opportunity corridor derived from modeled contour geometry. The 5 m focus tolerance is not enforced against coarse regional DEM cells; a focus or property run is required before placement.'
+      },geometry:{type:'LineString',coordinates:c.segment}});
+    }
+    const generationAudit={
+      build:'EARTHLINE 16167',tier:focusMode?'focus':'regional',candidates:candidates.length,
+      chosenBeforeTierGate:chosen.length,publishedFeatures:features.length,
+      focusContourGateEnforced:!!focusMode,focusContourGateRejected:focusMode?chosen.length-acceptedChosen.length:0,
+      regionalLandWaterGateRejected:focusMode?0:regionalLandWaterRejected16609,
+      nullReason:features.length?'corridors published':(candidates.length?'all candidates rejected by the active tier gate':'no terrain-derived contour segments met slope, flow and spacing criteria'),
+      at:new Date().toISOString()
+    };
+    window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
+    return {type:'FeatureCollection',features};
+  }
