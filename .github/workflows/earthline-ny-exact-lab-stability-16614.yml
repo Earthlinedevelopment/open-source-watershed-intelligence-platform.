@@ -1,0 +1,31 @@
+name: Earthline NY Exact Lab Stability 16614
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'lab/ny-exact-lab-stability-16614.mjs'
+      - '.github/workflows/earthline-ny-exact-lab-stability-16614.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ny-exact-lab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Run five exact-lab New York Regional analyses
+        run: node lab/ny-exact-lab-stability-16614.mjs
+      - name: Upload exact-lab evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-ny-exact-lab-16614
+          path: lab-results/ny-exact-lab-16614.*
+          if-no-files-found: warn
+          retention-days: 2
