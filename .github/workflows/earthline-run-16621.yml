@@ -1,4 +1,4 @@
-name: Earthline Inspect Swale Segment Construction
+name: Earthline Extract MakeSwales Owner
 
 on:
   push:
@@ -7,27 +7,63 @@ on:
       - '.github/workflows/earthline-run-16621.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  inspect:
+  extract:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
-      - name: Inspect swale segment construction
+          fetch-depth: 0
+      - name: Extract makeSwales function
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
-          for n in ['function makeSwales','function sampleSegment','sampleSegment=','const sampleSegment','traceLevelContour','earthlineSplitUsableSegments']:
-            pos=[];i=0
+          needles=['function makeSwales','async function makeSwales']
+          hits=[]
+          for n in needles:
+            pos=0
             while True:
-              i=s.find(n,i)
+              i=s.find(n,pos)
               if i<0: break
-              pos.append(i);i+=len(n)
-              if len(pos)>=6: break
-            print('\nPOSITIONS',n,pos)
-            for j in pos[:3]: print('\n===== @',j,'=====\n',s[max(0,j-7000):j+14000])
+              hits.append((i,n));pos=i+len(n)
+          hits=sorted(set(hits))
+          if len(hits)!=1: raise SystemExit(f'expected one makeSwales owner, got {hits}')
+          start=hits[0][0]
+          brace=s.find('{',start)
+          if brace<0: raise SystemExit('opening brace missing')
+          depth=0;quote=None;escape=False;line=False;block=False;end=None;i=brace
+          while i<len(s):
+            ch=s[i];nxt=s[i+1] if i+1<len(s) else ''
+            if line:
+              if ch=='\n': line=False
+            elif block:
+              if ch=='*' and nxt=='/': block=False;i+=1
+            elif quote:
+              if escape: escape=False
+              elif ch=='\\': escape=True
+              elif ch==quote: quote=None
+            else:
+              if ch in ("'",'"','`'): quote=ch
+              elif ch=='/' and nxt=='/': line=True;i+=1
+              elif ch=='/' and nxt=='*': block=True;i+=1
+              elif ch=='{': depth+=1
+              elif ch=='}':
+                depth-=1
+                if depth==0: end=i+1;break
+            i+=1
+          if end is None: raise SystemExit('closing brace missing')
+          out=s[start:end]
+          Path('lab/makeSwales-owner-current.txt').write_text(out,encoding='utf-8')
+          print('extracted bytes',len(out),'at',start,end)
           PY
+      - name: Commit extract
+        run: |
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add lab/makeSwales-owner-current.txt
+          git commit -m 'test: capture makeSwales owner for 16622 repair' || exit 0
+          git push origin HEAD:pages-live
