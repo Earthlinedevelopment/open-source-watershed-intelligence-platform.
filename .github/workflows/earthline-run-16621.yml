@@ -1,4 +1,4 @@
-name: Earthline Extract NY Visible Overlay Owner
+name: Earthline Inspect Regional Overlay Renderer
 
 on:
   push:
@@ -7,45 +7,28 @@ on:
       - '.github/workflows/earthline-run-16621.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  extract:
+  inspect:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
-          fetch-depth: 0
-      - name: Extract current visible overlay publication path
+      - name: Print renderer owner contexts
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
-          needles=[
-            'corridor rendering incomplete',
-            'EARTHLINE_REGIONAL_VISUAL_DATA_16020',
-            'earthlineRenderRegionalOverlay16020',
-            'visible overlay rendered zero',
-            'rendered zero'
-          ]
-          out=[]
-          for n in needles:
-            start=0;k=0
-            while True:
-              i=s.find(n,start)
-              if i<0: break
-              k+=1
-              out.append(f'===== {n} #{k} @ {i} =====\n'+s[max(0,i-7000):min(len(s),i+12000)])
-              start=i+len(n)
-              if k>=6: break
-            if k==0: out.append(f'===== {n}: NOT FOUND =====')
-          Path('lab/ny-visible-overlay-owner.txt').write_text('\n\n'.join(out),encoding='utf-8')
+          needle='earthlineRenderRegionalOverlay16020'
+          pos=0;k=0
+          while True:
+            i=s.find(needle,pos)
+            if i<0: break
+            k+=1
+            print(f'\n===== OCCURRENCE {k} @ {i} =====')
+            print(s[max(0,i-2500):min(len(s),i+7000)])
+            pos=i+len(needle)
+          print(f'\nTOTAL={k}')
           PY
-      - name: Commit extract
-        run: |
-          git config user.name 'earthline-ci'
-          git config user.email 'actions@users.noreply.github.com'
-          git add lab/ny-visible-overlay-owner.txt
-          git commit -m 'test: capture NY visible overlay owner' || exit 0
-          git push origin HEAD:pages-live
