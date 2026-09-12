@@ -29760,7 +29760,7 @@ body { overflow-x:hidden!important; }
         const half=Math.max(10,Math.min(52,Math.floor(coords.length*.18))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);
         raw=coords.slice(start,end);if(raw.length<10)return null;
       }else{
-        const maxHalfPixels16622=2.0,maxHopPixels16622=1.5;
+        const maxHalfPixels16622=0.25,maxHopPixels16622=0.75; /* EARTHLINE 16623 — REGIONAL SWALE LOCALITY TIGHTENING */
         const gridDistance16622=(a,b)=>{const ga=llGrid(hy,a),gb=llGrid(hy,b);return Math.hypot(gb.x-ga.x,gb.y-ga.y);};
         const left=[coords[center]],right=[];let dLeft16622=0,dRight16622=0;
         for(let i16622=center-1;i16622>=0;i16622--){
@@ -29773,10 +29773,10 @@ body { overflow-x:hidden!important; }
           if(!Number.isFinite(d16622)||d16622>maxHopPixels16622||dRight16622+d16622>maxHalfPixels16622)break;
           right.push(coords[i16622]);dRight16622+=d16622;
         }
-        raw=left.concat(right);if(raw.length<6)return null;
+        raw=left.concat(right);if(raw.length<3)return null;
       }
       const segment=chaikin(raw,2,false),segmentPixels16622=lineLengthPixels(hy,segment);
-      if(segment.length<(focusMode?10:6)||segmentPixels16622<(focusMode?10:2.5))return null;
+      if(segment.length<(focusMode?10:6)||segmentPixels16622<(focusMode?10:0.30))return null;
       const stride=Math.max(1,Math.floor(segment.length/22));let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null;
       for(let k=1;k<segment.length-1;k+=stride){
         const g=llGrid(hy,segment[k]),x=Math.max(1,Math.min(hy.w-2,Math.round(g.x))),y=Math.max(1,Math.min(hy.h-2,Math.round(g.y))),i=y*hy.w+x;
@@ -29788,7 +29788,7 @@ body { overflow-x:hidden!important; }
       const meanSlope=sumSlope/valid,meanAcc=sumAcc/valid;
       const slopeScore=Math.max(0,1-Math.abs(meanSlope-3.4)/(relaxed?12:7.5));
       const flowScore=meanAcc<=accLow?.18:meanAcc<=accMid?.18+.70*(meanAcc-accLow)/Math.max(1,accMid-accLow):Math.max(.18,.88-.48*(meanAcc-accMid)/Math.max(1,accHigh-accMid));
-      const lengthScore=Math.min(1,segmentPixels16622/(focusMode?85:4));
+      const lengthScore=Math.min(1,segmentPixels16622/(focusMode?85:0.50));
       return {segment,x:anchor.x,y:anchor.y,slope:meanSlope,acc:meanAcc,maxAcc,score:slopeScore*.56+flowScore*.28+lengthScore*.16,confidence:relaxed?'screening':'preferred'};
     }
     for(const f of lines){
