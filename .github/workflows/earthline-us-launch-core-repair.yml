@@ -18,32 +18,72 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Roll back 16611 broad sparse-state retry only
+      - name: Add deterministic Regional river evidence to existing 16609 owner
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          old="if(usStateRun16609&&(validLand16609<32||landCoverage16611<0.02)){"
-          new="if(usStateRun16609&&validLand16609<32){"
-          if s.count(old)!=1:
-              raise SystemExit(f'guard failed: expected one 16611 trigger, found {s.count(old)}')
-          s=s.replace(old,new,1)
-          anchor="const landCoverage16611=(dem&&dem.w&&dem.h)?validLand16609/(dem.w*dem.h):0;"
-          marker="EARTHLINE 16615 — NY RESAMPLE REGRESSION ROLLBACK"
-          if marker not in s:
-              if s.count(anchor)!=1:
-                  raise SystemExit(f'guard failed: expected one coverage audit line, found {s.count(anchor)}')
-              s=s.replace(anchor,anchor+"\n        /* "+marker+": retain coverage telemetry, but only tiny/zero land (<32 cells) may enter the 240x240 retry. */",1)
+          marker='EARTHLINE 16616 — VIEWPORT-INDEPENDENT REGIONAL WATERWAYS'
+          if marker in s:
+              raise SystemExit('guard failed: 16616 marker already present')
+
+          def one(old,new,label):
+              global s
+              n=s.count(old)
+              if n!=1:
+                  raise SystemExit(f'guard failed: {label}: expected 1 occurrence, found {n}')
+              s=s.replace(old,new,1)
+
+          old='''  const EARTHLINE_NE50_LAND_16584="https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ace5fed0eaf3c6c03c951e75b439ba8fffbc218e/geojson/ne_50m_land.geojson";\n  const EARTHLINE_NE50_LAKES_16584="https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ace5fed0eaf3c6c03c951e75b439ba8fffbc218e/geojson/ne_50m_lakes.geojson";'''
+          new=old+'''\n  const EARTHLINE_NE50_RIVERS_16616="https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ace5fed0eaf3c6c03c951e75b439ba8fffbc218e/geojson/ne_50m_rivers_lake_centerlines.geojson";'''
+          one(old,new,'Natural Earth constants')
+
+          old='''    const url16584=kind16584==="land"?EARTHLINE_NE50_LAND_16584:EARTHLINE_NE50_LAKES_16584;'''
+          new='''    const url16584=kind16584==="land"?EARTHLINE_NE50_LAND_16584:(kind16584==="rivers"?EARTHLINE_NE50_RIVERS_16616:EARTHLINE_NE50_LAKES_16584);'''
+          one(old,new,'Natural Earth URL selector')
+
+          anchor='''  async function earthlineResolveLandValidity16584(bounds16584,runToken16584){'''
+          helper='''  function earthlineExtractLineEvidence16616(fc16616,bounds16616){\n    const features16616=[],lines16616=[];\n    for(const f16616 of (fc16616&&fc16616.features||[])){\n      const fb16616=earthlineFeatureBBox16584(f16616);\n      if(fb16616&&!earthlineBBoxIntersects16584(fb16616,bounds16616))continue;\n      const g16616=f16616&&f16616.geometry;\n      const parts16616=g16616&&g16616.type==="LineString"?[g16616.coordinates]:(g16616&&g16616.type==="MultiLineString"?(g16616.coordinates||[]):[]);\n      let kept16616=0;\n      for(const line16616 of parts16616){\n        if(!Array.isArray(line16616)||line16616.length<2)continue;\n        const lb16616=earthlineGeometryBBox16584({coordinates:line16616});\n        if(lb16616&&earthlineBBoxIntersects16584(lb16616,bounds16616)){lines16616.push(line16616);kept16616++;}\n      }\n      if(kept16616)features16616.push(f16616);\n    }\n    return {features:features16616,lines:lines16616};\n  }\n\n'''+anchor
+          one(anchor,helper,'line evidence helper insertion')
+
+          old='''      landSurfaceGeometry:null,inlandWaterGeometry:null,\n      at:new Date().toISOString()'''
+          new='''      landSurfaceGeometry:null,inlandWaterGeometry:null,riverCenterlineGeometry:null,\n      at:new Date().toISOString()'''
+          one(old,new,'product river metadata slot')
+
+          old='''    const [landFetch16584,lakeFetch16584]=await Promise.all([\n      earthlineNE50Fetch16584("land"),earthlineNE50Fetch16584("lakes")\n    ]);'''
+          new='''    /* EARTHLINE 16616 — VIEWPORT-INDEPENDENT REGIONAL WATERWAYS.\n       Fetch pinned Natural Earth river/lake centerlines beside the existing land/lake\n       evidence so the 16609 safety verdict never depends on displayed Mapbox zoom. */\n    const [landFetch16584,lakeFetch16584,riverFetch16616]=await Promise.all([\n      earthlineNE50Fetch16584("land"),earthlineNE50Fetch16584("lakes"),earthlineNE50Fetch16584("rivers")\n    ]);'''
+          one(old,new,'parallel river fetch')
+
+          old='''    product16584.inlandWaterGeometry={\n      sourceTier:"open-data",source:lakeFetch16584.url||EARTHLINE_NE50_LAKES_16584,\n      sourceVintage:product16584.sourceVintage,\n      acquisitionResult:lakeFetch16584.ok?"features-found":"unavailable",\n      downloadFeatureCount:Number(lakeFetch16584.downloadFeatureCount||0),\n      downloadMs:Number(lakeFetch16584.elapsedMs||0),error:lakeFetch16584.error||null\n    };'''
+          new=old+'''\n    product16584.riverCenterlineGeometry={\n      sourceTier:"open-data",source:riverFetch16616.url||EARTHLINE_NE50_RIVERS_16616,\n      sourceVintage:product16584.sourceVintage,\n      acquisitionResult:riverFetch16616.ok?"features-found":"unavailable",\n      downloadFeatureCount:Number(riverFetch16616.downloadFeatureCount||0),\n      downloadMs:Number(riverFetch16616.elapsedMs||0),error:riverFetch16616.error||null\n    };'''
+          one(old,new,'river metadata')
+
+          old='''    const landEvidence16584=earthlineExtractAreaEvidence16584(landFetch16584.data,bounds16584);\n    const waterEvidence16584=earthlineExtractAreaEvidence16584(lakeFetch16584.data,bounds16584);'''
+          new='''    const landEvidence16584=earthlineExtractAreaEvidence16584(landFetch16584.data,bounds16584);\n    const waterEvidence16584=earthlineExtractAreaEvidence16584(lakeFetch16584.data,bounds16584);\n    const riverEvidence16616=riverFetch16616.ok?earthlineExtractLineEvidence16616(riverFetch16616.data,bounds16584):{features:[],lines:[]};'''
+          one(old,new,'river evidence extraction')
+
+          old='''    product16584.inlandWaterGeometry.sampleNames=waterEvidence16584.features\n      .map(f16584=>String(f16584&&f16584.properties&&(f16584.properties.name||f16584.properties.name_en)||"").trim())\n      .filter(Boolean).slice(0,12);\n    product16584.landParts=landEvidence16584.parts;\n    product16584.waterParts=waterEvidence16584.parts;'''
+          new='''    product16584.inlandWaterGeometry.sampleNames=waterEvidence16584.features\n      .map(f16584=>String(f16584&&f16584.properties&&(f16584.properties.name||f16584.properties.name_en)||"").trim())\n      .filter(Boolean).slice(0,12);\n    product16584.riverCenterlineGeometry.mappedFeatureCount=riverEvidence16616.features.length;\n    product16584.riverCenterlineGeometry.mappedLineCount=riverEvidence16616.lines.length;\n    product16584.riverCenterlineGeometry.sampleNames=riverEvidence16616.features\n      .map(f16616=>String(f16616&&f16616.properties&&(f16616.properties.name||f16616.properties.name_en)||"").trim())\n      .filter(Boolean).slice(0,12);\n    product16584.landParts=landEvidence16584.parts;\n    product16584.waterParts=waterEvidence16584.parts;\n    product16584.riverLines16616=riverEvidence16616.lines;'''
+          one(old,new,'attach deterministic river lines')
+
+          old='''    try{\n      /* EARTHLINE 16610 — DIRECT VECTOR WATER SOURCE QUERY.'''
+          new='''    const deterministicRiverProduct16616=window.EARTHLINE_LAND_VALIDITY_16584||null;\n    const deterministicRiverLines16616=Array.isArray(deterministicRiverProduct16616&&deterministicRiverProduct16616.riverLines16616)?deterministicRiverProduct16616.riverLines16616:[];\n    for(const line16616 of deterministicRiverLines16616)if(Array.isArray(line16616)&&line16616.length>1)lines16609.push(line16616);\n    const deterministicRiverVerified16616=!!(deterministicRiverProduct16616&&deterministicRiverProduct16616.riverCenterlineGeometry&&deterministicRiverProduct16616.riverCenterlineGeometry.acquisitionResult==="features-found");\n    try{\n      /* EARTHLINE 16610 — DIRECT VECTOR WATER SOURCE QUERY.'''
+          one(old,new,'merge deterministic lines into 16609 owner')
+
+          old='''    const verified16609=sourceQueries16609>0&&sourceSuccess16609>0;\n    const out16609=earthlineRerankRegionalSwales16539({type:'FeatureCollection',features:safe16609});\n    window.EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609={build:'EARTHLINE 16609',runToken:runToken16609,sourceQueries:sourceQueries16609,sourceSuccess:sourceSuccess16609,rawWaterFeatures:rawFeatures16609,waterPolygonParts:polys16609.length,waterwayLines:lines16609.length,before:before16609,after:out16609.features.length,rejected:rejected16609,verified:verified16609,safe:true,at:new Date().toISOString()};'''
+          new='''    const verified16609=sourceQueries16609>0&&sourceSuccess16609>0&&deterministicRiverVerified16616;\n    const out16609=earthlineRerankRegionalSwales16539({type:'FeatureCollection',features:safe16609});\n    window.EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609={build:'EARTHLINE 16609',runToken:runToken16609,sourceQueries:sourceQueries16609,sourceSuccess:sourceSuccess16609,rawWaterFeatures:rawFeatures16609,waterPolygonParts:polys16609.length,waterwayLines:lines16609.length,mapWaterwayLines:Math.max(0,lines16609.length-deterministicRiverLines16616.length),deterministicRiverLines:deterministicRiverLines16616.length,deterministicRiverVerified:deterministicRiverVerified16616,deterministicRiverSource:deterministicRiverProduct16616&&deterministicRiverProduct16616.riverCenterlineGeometry&&deterministicRiverProduct16616.riverCenterlineGeometry.source||null,before:before16609,after:out16609.features.length,rejected:rejected16609,verified:verified16609,safe:true,at:new Date().toISOString()};'''
+          one(old,new,'tighten 16609 verification and audit')
+
           p.write_text(s,encoding='utf-8')
           PY
           git diff --check
           git diff --numstat -- index.html
-          git diff -- index.html
-      - name: Commit 16615 repair
+          git diff -- index.html | sed -n '1,260p'
+      - name: Commit 16616 repair
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
           git add index.html
-          git commit -m 'fix: stop NY from entering broad sparse-state resample'
+          git commit -m 'fix: make Regional waterway gate viewport-independent'
           git push origin HEAD:pages-live
