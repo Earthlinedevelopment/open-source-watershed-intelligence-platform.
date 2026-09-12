@@ -1,14 +1,11 @@
 name: Earthline Run 16624 Repair
-
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/earthline-run-16621.yml'
-
 permissions:
   contents: write
-
 jobs:
   repair:
     runs-on: ubuntu-latest
@@ -17,40 +14,14 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Apply 16624 regional overlay threshold repair
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
-          marker='EARTHLINE 16624 — REGIONAL LOCAL-CORRIDOR RENDER THRESHOLD'
-          if marker in s:
-              raise SystemExit('guard failed: 16624 already present')
-          old="""      const pts=points(f.geometry.coordinates),len=polyLength(pts);if(pts.length<3||len<22)continue;
-      const props=f.properties||{},grade=/^[ABC]$/.test(String(props.grade||''))?String(props.grade):'C';
-      const rank=(gradeCounts[grade]||0)+1,score=Math.max(0,Math.min(100,Number(props.score||0)));props.display_rank=rank;props.display_code=grade+rank;
-      const main=grade==='A'?'#42ff83':grade==='B'?'#ffc12f':'#ff8a2d';
-      const light=grade==='A'?'#e1ffeb':grade==='B'?'#fff2b0':'#ffe0bd';
-      const activeTier=activeTier16168();"""
-          new="""      /* EARTHLINE 16624 — REGIONAL LOCAL-CORRIDOR RENDER THRESHOLD.
-         Regional science now keeps corridors geographically local. At statewide zoom those
-         valid local lines project to only a few pixels, so the old 22 px display threshold
-         incorrectly erased every surviving corridor. Focus keeps the 22 px requirement. */
-      const pts=points(f.geometry.coordinates),len=polyLength(pts),activeTier=activeTier16168();
-      if(pts.length<3||len<(activeTier==='focus'?22:1.5))continue;
-      const props=f.properties||{},grade=/^[ABC]$/.test(String(props.grade||''))?String(props.grade):'C';
-      const rank=(gradeCounts[grade]||0)+1,score=Math.max(0,Math.min(100,Number(props.score||0)));props.display_rank=rank;props.display_code=grade+rank;
-      const main=grade==='A'?'#42ff83':grade==='B'?'#ffc12f':'#ff8a2d';
-      const light=grade==='A'?'#e1ffeb':grade==='B'?'#fff2b0':'#ffe0bd';"""
-          if s.count(old)!=1:
-              raise SystemExit(f'guard failed: regional renderer block count {s.count(old)}')
-          p.write_text(s.replace(old,new,1),encoding='utf-8')
-          PY
-          git diff --check
+      - name: Apply 16624
+        run: python3 lab/apply-16624.py
       - name: Commit 16624
         run: |
+          git diff --check
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
+          if git diff --quiet -- index.html; then exit 0; fi
           git add index.html
           git commit -m 'fix: render local regional corridors at statewide scale'
           git push origin HEAD:pages-live
