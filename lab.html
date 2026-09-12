@@ -5,11 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Earthline 16611 Exact Launch Lab</title>
   <style>
-    html,body{width:100%;height:100%;margin:0;overflow:hidden;font-family:Arial,sans-serif;background:#111;color:#fff;}
-    #identity{height:34px;box-sizing:border-box;display:flex;align-items:center;gap:14px;padding:0 12px;background:#111;border-bottom:1px solid #444;font-size:12px;white-space:nowrap;}
-    #state{font-weight:700;}
-    #earthline-lab-frame{width:100%;height:calc(100% - 34px);margin:0;border:0;display:block;background:#fff;}
-    .ok{color:#8ee89a}.bad{color:#ff8d8d}.checking{color:#ffd36a}
+    html,body{width:100%;height:100%;margin:0;font-family:Arial,sans-serif;background:#111;color:#fff;}
+    #identity{box-sizing:border-box;display:flex;min-height:34px;align-items:center;gap:14px;padding:10px 12px;background:#111;border-bottom:1px solid #444;font-size:12px;}
+    #state{font-weight:700;}.ok{color:#8ee89a}.bad{color:#ff8d8d}.checking{color:#ffd36a}
+    #detail{padding:24px 12px;font-size:13px;line-height:1.45;}
   </style>
 </head>
 <body>
@@ -19,11 +18,11 @@
     <span>index blob 32664a8271eb7a345b50f1f69aabd7aafb328dbc</span>
     <span>no injected build scripts</span>
   </div>
-  <iframe id="earthline-lab-frame" title="Earthline 16611 exact launch lab"></iframe>
+  <div id="detail">Checking the deployed index before launch.</div>
   <script>
     const EXPECTED_BLOB='32664a8271eb7a345b50f1f69aabd7aafb328dbc';
-    const frame=document.getElementById('earthline-lab-frame');
     const state=document.getElementById('state');
+    const detail=document.getElementById('detail');
 
     async function gitBlobSha1(text){
       const body=new TextEncoder().encode(text);
@@ -45,19 +44,18 @@
         if(actual!==EXPECTED_BLOB){
           state.textContent='BLOCKED — BUILD MISMATCH';
           state.className='bad';
-          frame.srcdoc=`<body style="font-family:Arial;padding:32px"><h2>Earthline exact-build check failed</h2><p>Expected ${EXPECTED_BLOB}</p><p>Received ${actual}</p><p>The lab will not run a mixed or stale build.</p></body>`;
+          detail.textContent=`Expected ${EXPECTED_BLOB}; received ${actual}. The lab will not run a mixed or stale build.`;
           return;
         }
         state.textContent='VERIFIED EXACT';
         state.className='ok';
-        /* 16614: after byte verification, navigate the iframe to the verified URL.
-           Do not execute the application through srcdoc: Mapbox vector source
-           queries need the normal document URL/runtime to return mapped water. */
-        frame.src=exactUrl;
+        detail.textContent='Verified. Opening the exact deployed build in the normal top-level runtime.';
+        sessionStorage.setItem('EARTHLINE_EXACT_LAB_16611','verified:'+EXPECTED_BLOB+':'+exactToken);
+        window.location.replace(exactUrl+'&earthlineVerifiedLab16611=1');
       }catch(err){
         state.textContent='BLOCKED — VERIFY ERROR';
         state.className='bad';
-        frame.srcdoc=`<body style="font-family:Arial;padding:32px"><h2>Earthline exact-build verification failed</h2><pre>${String(err)}</pre></body>`;
+        detail.textContent=String(err);
       }
     })();
   </script>
