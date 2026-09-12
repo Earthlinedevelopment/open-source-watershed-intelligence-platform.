@@ -1,0 +1,48 @@
+name: Earthline NY Resample Regression 16615
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-ny-resample-regression-16615.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Roll back only the 16611 broad sparse-state trigger
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old="if(usStateRun16609&&(validLand16609<32||landCoverage16611<0.02)){"
+          new="if(usStateRun16609&&validLand16609<32){"
+          if s.count(old)!=1:
+              raise SystemExit(f'guard failed: expected one 16611 trigger, found {s.count(old)}')
+          s=s.replace(old,new,1)
+          marker="EARTHLINE 16615 — NY RESAMPLE REGRESSION ROLLBACK"
+          anchor="const landCoverage16611=(dem&&dem.w&&dem.h)?validLand16609/(dem.w*dem.h):0;"
+          if s.count(anchor)!=1:
+              raise SystemExit(f'guard failed: expected one 16611 coverage line, found {s.count(anchor)}')
+          s=s.replace(anchor,anchor+"\n        /* "+marker+": preserve the coverage measurement for audit continuity, but only tiny/zero land (<32 cells) may enter the 240x240 retry. */",1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          git diff --check
+          git diff --numstat -- index.html
+          git diff -- index.html
+      - name: Commit NY regression repair
+        run: |
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix: stop NY from entering broad sparse-state resample'
+          git push origin HEAD:pages-live
