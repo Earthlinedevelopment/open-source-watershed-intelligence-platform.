@@ -1,4 +1,4 @@
-name: Earthline Extract Contour Owners
+name: Earthline Run 16622 Repair
 
 on:
   push:
@@ -10,38 +10,21 @@ permissions:
   contents: write
 
 jobs:
-  extract:
+  repair:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Extract relevant owners
+      - name: Apply 16622
+        run: python3 lab/apply-16622.py
+      - name: Commit 16622
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          s=Path('index.html').read_text(encoding='utf-8')
-          names=['makeContours','lineLengthPixels','chaikin','llGrid']
-          out=[]
-          for name in names:
-            hits=[]
-            for prefix in ['function '+name,'async function '+name,'const '+name+'=','let '+name+'=']:
-              pos=0
-              while True:
-                i=s.find(prefix,pos)
-                if i<0: break
-                hits.append(i);pos=i+len(prefix)
-            hits=sorted(set(hits))
-            out.append(f'===== {name} hits {hits} =====')
-            for start in hits[:4]:
-              out.append(s[max(0,start-2500):min(len(s),start+16000)])
-          Path('lab/contour-owners-current.txt').write_text('\n\n'.join(out),encoding='utf-8')
-          PY
-      - name: Commit extract
-        run: |
+          git diff --check
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
-          git add lab/contour-owners-current.txt
-          git commit -m 'test: capture contour owners for 16622 repair' || exit 0
+          if git diff --quiet -- index.html; then exit 0; fi
+          git add index.html
+          git commit -m 'fix: keep regional swales local to contour geometry'
           git push origin HEAD:pages-live
