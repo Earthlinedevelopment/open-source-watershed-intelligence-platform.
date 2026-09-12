@@ -1,4 +1,5 @@
 name: Earthline Inspect Shared Engine Owners 16612
+
 on:
   push:
     branches: [pages-live]
@@ -6,8 +7,10 @@ on:
       - 'lab/inspect-shared-engine-owners-16612.mjs'
       - '.github/workflows/earthline-inspect-shared-engine-owners-16612.yml'
   workflow_dispatch:
+
 permissions:
-  contents: write
+  contents: read
+
 jobs:
   inspect:
     runs-on: ubuntu-latest
@@ -16,105 +19,5 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Apply 16621 contiguous regional clip repair
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
-          marker='EARTHLINE 16621 — CONTIGUOUS REGIONAL CLIP SEGMENTS'
-          if marker in s:
-              print('16621 already present; no mutation needed')
-              raise SystemExit(0)
-          old='''  function earthlineClipRegionalProducts16539(water,swales,center,contains){
-    const finite=p=>Array.isArray(p)&&Number.isFinite(+p[0])&&Number.isFinite(+p[1]);
-    const nearestIndex=(dem,lng,lat)=>{
-      if(!dem||!dem.w||!dem.h)return -1;
-      const gx=(lng-dem.bbox.w)/((dem.bbox.e-dem.bbox.w)||1)*(dem.w-1);
-      const gy=(dem.bbox.n-lat)/((dem.bbox.n-dem.bbox.s)||1)*(dem.h-1);
-      const x=Math.max(0,Math.min(dem.w-1,Math.round(gx)));
-      const y=Math.max(0,Math.min(dem.h-1,Math.round(gy)));
-      return y*dem.w+x;
-    };
-    const pointAllowed=p=>{
-      if(!finite(p))return false;
-      if(contains&&!contains(p[0],p[1]))return false;
-      const idx=nearestIndex(M.dem,p[0],p[1]);
-      return idx<0||earthlineCellLandValid16538(idx);
-    };
-    const sanitize=fc=>({
-      ...fc,
-      features:(fc&&fc.features||[]).map(f=>{
-        const g=f&&f.geometry;
-        if(!g)return null;
-        if(g.type==='Point')return pointAllowed(g.coordinates)?f:null;
-        if(g.type==='LineString'){
-          const c=(g.coordinates||[]).filter(pointAllowed);
-          return c.length>=2?{...f,geometry:{...g,coordinates:c}}:null;
-        }
-        return f;
-      }).filter(Boolean)
-    });
-    return {water:sanitize(water),swales:sanitize(swales)};
-  }'''
-          new='''  function earthlineClipRegionalProducts16539(water,swales,center,contains){
-    /* EARTHLINE 16621 — CONTIGUOUS REGIONAL CLIP SEGMENTS.
-       A rejected vertex terminates a LineString run. Never reconnect surviving
-       coordinates across jurisdiction, land-validity, or other rejected gaps. */
-    const finite=p=>Array.isArray(p)&&Number.isFinite(+p[0])&&Number.isFinite(+p[1]);
-    const nearestIndex=(dem,lng,lat)=>{
-      if(!dem||!dem.w||!dem.h)return -1;
-      const gx=(lng-dem.bbox.w)/((dem.bbox.e-dem.bbox.w)||1)*(dem.w-1);
-      const gy=(dem.bbox.n-lat)/((dem.bbox.n-dem.bbox.s)||1)*(dem.h-1);
-      const x=Math.max(0,Math.min(dem.w-1,Math.round(gx)));
-      const y=Math.max(0,Math.min(dem.h-1,Math.round(gy)));
-      return y*dem.w+x;
-    };
-    const pointAllowed=p=>{
-      if(!finite(p))return false;
-      if(contains&&!contains(p[0],p[1]))return false;
-      const idx=nearestIndex(M.dem,p[0],p[1]);
-      return idx<0||earthlineCellLandValid16538(idx);
-    };
-    const sanitize=fc=>{
-      const out=[];
-      for(const f of (fc&&fc.features||[])){
-        const g=f&&f.geometry;
-        if(!g)continue;
-        if(g.type==='Point'){
-          if(pointAllowed(g.coordinates))out.push(f);
-          continue;
-        }
-        if(g.type==='LineString'){
-          let run=[];
-          const flush=()=>{
-            if(run.length>=2)out.push({...f,geometry:{...g,coordinates:run}});
-            run=[];
-          };
-          for(const p of (g.coordinates||[])){
-            if(pointAllowed(p))run.push(p);
-            else flush();
-          }
-          flush();
-          continue;
-        }
-        out.push(f);
-      }
-      return {...fc,features:out};
-    };
-    return {water:sanitize(water),swales:sanitize(swales)};
-  }'''
-          if s.count(old)!=1:
-              raise SystemExit(f'guard failed: exact clip owner count {s.count(old)}')
-          p.write_text(s.replace(old,new,1),encoding='utf-8')
-          PY
-          git diff --check
-          if git diff --quiet -- index.html; then
-            echo 'No index mutation required.'
-            exit 0
-          fi
-          git config user.name 'earthline-ci'
-          git config user.email 'actions@users.noreply.github.com'
-          git add index.html
-          git commit -m 'fix: preserve contiguous regional corridor segments'
-          git push origin HEAD:pages-live
+      - name: Inspect current shared owners only
+        run: node lab/inspect-shared-engine-owners-16612.mjs
