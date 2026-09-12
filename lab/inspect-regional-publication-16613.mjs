@@ -5,6 +5,12 @@ const needles=[
  'earthlineRenderRegionalOverlay16020',
  'function earthlineClipRegionalProducts16539',
  'function earthlineClipFeatureCollection16539',
+ 'function earthlineMappedWaterSwaleGate16609',
+ 'EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609',
+ 'waterPolygonParts',
+ 'rawWaterFeatures',
+ 'queryRenderedFeatures',
+ 'querySourceFeatures',
  'jurisdictionCapability16539',
  'el-live-basin-15970',
  'el-live-aquifer-15970',
@@ -14,6 +20,6 @@ const needles=[
 ];
 for(const n of needles){
  let from=0,k=0;
- while(true){const i=s.indexOf(n,from); if(i<0)break; k++; const a=Math.max(0,i-3000),b=Math.min(s.length,i+6500); console.log(`\n### ${n} #${k} @${i}\n${s.slice(a,b)}\n### END ${n} #${k}`); from=i+n.length; if(k>=12)break;}
+ while(true){const i=s.indexOf(n,from); if(i<0)break; k++; const a=Math.max(0,i-5000),b=Math.min(s.length,i+10000); console.log(`\n### ${n} #${k} @${i}\n${s.slice(a,b)}\n### END ${n} #${k}`); from=i+n.length; if(k>=12)break;}
  if(!k)console.log(`\n### ${n}: NOT FOUND`);
 }
