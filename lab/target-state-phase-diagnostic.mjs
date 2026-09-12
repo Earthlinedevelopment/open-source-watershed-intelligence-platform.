@@ -2,118 +2,97 @@ import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
 
 const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
-const VT={lng:-73.012909,lat:44.513845};
 const browser=await chromium.launch({headless:true});
-const results=[];
+const page=await browser.newPage({viewport:{width:1440,height:1000}});
+const errors=[];
+page.on('pageerror',e=>errors.push(String(e)));
+page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
 
-async function openPage(){
-  const page=await browser.newPage({viewport:{width:1440,height:1000}});
-  await page.goto(URL+'?ny-transition-ab='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
-  await page.waitForSelector('#searchInput',{timeout:30000});
-  await page.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});
-  return page;
-}
+await page.goto(URL+'?ny-water-source-diagnostic='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+await page.waitForSelector('#searchInput',{timeout:30000});
+await page.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});
 
-async function snap(page){return page.evaluate(()=>({
-  searchGen:Number(M?.searchGen||0),
-  appliedSearchText:String(M?.appliedSearchText||''),
-  displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,
-  renderSettlement:(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null)?.renderSettlement||null,
-  flow:window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null,
-  water:window.EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609||null,
-  crossTier:window.EARTHLINE_CROSS_TIER_SUPERSEDE_AUDIT_16327||null,
-  tierCommit:window.EARTHLINE_REGIONAL_TIER_COMMIT_16327||null,
-  propertyAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
-  propertyPublication:M?.propertyPublication15816||null,
-  propertyLock:M?.propertyResultLock15815||null,
-  propertyFrame:M?.authoritativePropertyFrame15821||null,
-  pendingFrame:M?.pendingAnalysisFrame15827||null,
-  propertyState:String(document.documentElement.dataset.earthlinePropertyRunState||''),
-  analysisTier:String(document.documentElement.dataset.earthlineAnalysisTier||''),
-  regionalState:window.earthlineRegional15778?{mode:window.earthlineRegional15778.mode,running:!!window.earthlineRegional15778.running,active:!!window.earthlineRegional15778.active,queued:Number(window.earthlineRegional15778.queuedRunCount15786||0)}:null,
-  runBusy:document.getElementById('runBtn')?.getAttribute('aria-busy')==='true',
-  status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim()
-}));}
-
-async function chooseRegion(page,name,timeout=22000){
-  const started=Date.now();
-  await page.evaluate(q=>{const i=document.getElementById('searchInput');i.focus();i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));},name);
+async function chooseNewYork(){
+  await page.evaluate(()=>{const i=document.getElementById('searchInput');i.focus();i.value='New York';i.dispatchEvent(new Event('input',{bubbles:true}));});
   await page.waitForSelector('#earthlineSearchSuggestions15970.open button[role="option"]',{timeout:12000});
-  const picked=await page.evaluate(name=>{
+  const picked=await page.evaluate(()=>{
     const n=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
     const opts=[...document.querySelectorAll('#earthlineSearchSuggestions15970 button[role="option"]')];
-    const b=opts.find(x=>/state|region/i.test(x.textContent||'')&&(n(x.dataset.query||'')===n(name)||n(x.textContent||'').includes(n(name))))||opts.find(x=>n(x.textContent||'').includes(n(name)));
+    const b=opts.find(x=>/state|region/i.test(x.textContent||'')&&(n(x.dataset.query||'')==='new york'||n(x.dataset.query||'')==='new york state'||n(x.textContent||'').includes('new york')))||opts.find(x=>n(x.textContent||'').includes('new york'));
     if(!b)return null;const r={text:(b.textContent||'').trim(),q:b.dataset.query||''};b.click();return r;
-  },name);
-  if(!picked)return {name,picked:null,timeout:true,elapsedMs:Date.now()-started,snap:await snap(page),error:'suggestion missing'};
-  let timeoutHit=false;
-  try{await page.waitForFunction(()=>{
+  });
+  if(!picked)throw new Error('New York regional suggestion missing');
+  await page.waitForFunction(()=>{
     const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
-    const s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'');
-    const rs=d?.renderSettlement;
-    return /ANALYSIS FAILED|screening published/i.test(s)&&(rs?.coreVisible===true||/ANALYSIS FAILED/i.test(s));
-  },null,{timeout,polling:150});}catch(_){timeoutHit=true;}
-  return {name,picked,timeout:timeoutHit,elapsedMs:Date.now()-started,snap:await snap(page)};
+    const s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||'');
+    return /screening published/i.test(s)&&String(d?.query||'').toLowerCase().includes('new york');
+  },null,{timeout:45000,polling:150});
+  return picked;
 }
 
-async function runVermontProperty(page){
-  const started=Date.now();
-  const prepared=await page.evaluate(async target=>{
-    const site=window.earthlineSelectedSiteFromCenter(M?.loc||null,target.lng,target.lat,20);
-    const applied=await window.applyLocation(site,null,M.searchGen,{analyzeNow:false,preserveMapView:false});
-    if(!applied)return {ok:false,reason:'applyLocation rejected'};
-    await new Promise(r=>setTimeout(r,800));
-    const set=window.earthlineSetPropertyTarget16201({lng:target.lng,lat:target.lat,source:'ny-transition-ab'},{openPanel:false});
-    const b=document.getElementById('earthlineDeclareProperty16169');
-    return {ok:!!set&&!!b&&!b.disabled};
-  },VT);
-  if(!prepared.ok)return {prepared,timeout:true,elapsedMs:Date.now()-started,snap:await snap(page)};
-  const call=await page.evaluate(async()=>{try{return {result:await window.earthlineDeclarePropertyAtCrosshair16169(),error:null}}catch(e){return {result:null,error:String(e)}}});
-  let timeoutHit=false;
-  try{await page.waitForFunction(()=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};return a.settled===true&&String(document.documentElement.dataset.earthlinePropertyRunState||'')!=='running';},null,{timeout:18000,polling:120});}catch(_){timeoutHit=true;}
-  return {prepared,call,timeout:timeoutHit,elapsedMs:Date.now()-started,snap:await snap(page)};
-}
+const picked=await chooseNewYork();
 
-for(const intervention of [false,true]){
-  const page=await openPage();
-  const vt=await chooseRegion(page,'Vermont',26000);
-  let property=null,preNy=null,ny=null;
-  if(!vt.timeout){
-    property=await runVermontProperty(page);
-    preNy=await snap(page);
-    if(intervention && !property.timeout){
-      // Test-only: make the completed Property result visible to the EXISTING 16327 supersede owner.
-      // Product code remains unchanged. If this makes NY pass, the defect is the priorProperty predicate.
-      await page.evaluate(()=>{document.documentElement.dataset.earthlinePropertyRunState='running';});
+async function capture(label){
+  return page.evaluate(label=>{
+    const map=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+    const style=map?.getStyle?.()||{};
+    const vectorSources=Object.entries(style.sources||{}).filter(([,d])=>String(d?.type||'').toLowerCase()==='vector');
+    const sourceCounts={};
+    for(const [id] of vectorSources){
+      sourceCounts[id]={loaded:null,water:null,waterway:null};
+      try{sourceCounts[id].loaded=typeof map?.isSourceLoaded==='function'?!!map.isSourceLoaded(id):null}catch(_){ }
+      for(const layer of ['water','waterway']){
+        try{const rows=map.querySourceFeatures(id,{sourceLayer:layer})||[];sourceCounts[id][layer]=rows.length;}catch(e){sourceCounts[id][layer]='ERR:'+String(e)}
+      }
     }
-    ny=await chooseRegion(page,'New York',26000);
-  }
-  const row={case:intervention?'existing-16327-owner-forced-visible':'control',vt,property,preNy,ny};
-  results.push(row);
-  console.log('NY_TRANSITION_AB '+JSON.stringify(row));
-  await page.close();
+    const waterStyleLayers=(style.layers||[]).filter(l=>{
+      const sl=String(l?.['source-layer']||'').toLowerCase();
+      const id=String(l?.id||'').toLowerCase();
+      return sl==='water'||sl==='waterway'||id.includes('water')||id.includes('river')||id.includes('stream');
+    }).map(l=>({id:l.id,type:l.type,source:l.source,sourceLayer:l['source-layer']||null,minzoom:l.minzoom??null,maxzoom:l.maxzoom??null,visibility:l.layout?.visibility||null}));
+    let renderedWater=0,renderedWaterway=0;
+    try{for(const f of (map.queryRenderedFeatures?.()||[])){const sl=String(f?.sourceLayer||f?.layer?.['source-layer']||'').toLowerCase();if(sl==='water')renderedWater++;if(sl==='waterway')renderedWaterway++;}}catch(_){ }
+    const c=map?.getCenter?.();
+    return {
+      label,
+      camera:{center:c?{lng:c.lng,lat:c.lat}:null,zoom:map?.getZoom?.()??null,bearing:map?.getBearing?.()??null,pitch:map?.getPitch?.()??null},
+      vectorSources:vectorSources.map(([id,d])=>({id,url:d.url||null,tiles:Array.isArray(d.tiles)?d.tiles.length:null,minzoom:d.minzoom??null,maxzoom:d.maxzoom??null})),
+      sourceCounts,
+      waterStyleLayers,
+      renderedWater,
+      renderedWaterway,
+      mappedAudit:window.EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609||null,
+      flowAudit:window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null,
+      displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,
+      status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||'').trim()
+    };
+  },label);
 }
 
+async function jumpAndWait(center,zoom,label){
+  await page.evaluate(({center,zoom})=>{
+    const map=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+    map.jumpTo({center,zoom});
+  },{center,zoom});
+  await page.waitForTimeout(500);
+  try{await page.waitForFunction(()=>{const map=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);return !!map&&(!map.isMoving||!map.isMoving())&&(!map.areTilesLoaded||map.areTilesLoaded());},null,{timeout:12000,polling:150});}catch(_){ }
+  await page.waitForTimeout(1200);
+  return capture(label);
+}
+
+const baseline=await capture('published-statewide-camera');
+const albanyZ8=await jumpAndWait([-73.7562,42.6526],8,'albany-hudson-z8');
+const albanyZ9=await jumpAndWait([-73.7562,42.6526],9,'albany-hudson-z9');
+const lakeGeorgeZ8=await jumpAndWait([-73.6077,43.5729],8,'lake-george-z8');
+
+const out={generatedAt:new Date().toISOString(),url:URL,picked,baseline,albanyZ8,albanyZ9,lakeGeorgeZ8,errors:errors.slice(0,50)};
 await fs.mkdir('lab-results',{recursive:true});
-await fs.writeFile('lab-results/target-state-phase-diagnostic.json',JSON.stringify({generatedAt:new Date().toISOString(),url:URL,results},null,2));
-console.log('NY_TRANSITION_AB_SUMMARY '+JSON.stringify(results.map(r=>({
-  case:r.case,
-  vtTimeout:r.vt?.timeout,
-  propertyTimeout:r.property?.timeout,
-  preNySearchGen:r.preNy?.searchGen,
-  preNyDisplayedTier:String(r.preNy?.displayed?.tier||r.preNy?.displayed?.mode||''),
-  preNyPropertyState:r.preNy?.propertyState,
-  propertyCommitted:r.preNy?.propertyPublication?.committed===true,
-  publicationGen:r.preNy?.propertyPublication?.searchGen??null,
-  lockGen:r.preNy?.propertyLock?.searchGen??null,
-  nyTimeout:r.ny?.timeout,
-  nyElapsedMs:r.ny?.elapsedMs,
-  nySearchGen:r.ny?.snap?.searchGen,
-  nyFlowToken:r.ny?.snap?.flow?.runToken||null,
-  nyWaterToken:r.ny?.snap?.water?.runToken||null,
-  nyDisplayedToken:r.ny?.snap?.displayed?.runToken||null,
-  nyRunBusy:r.ny?.snap?.runBusy,
-  crossTier:r.ny?.snap?.crossTier||null,
-  nyStatus:r.ny?.snap?.status||null
-}))));
+await fs.writeFile('lab-results/target-state-phase-diagnostic.json',JSON.stringify(out,null,2));
+console.log('NY_WATER_SOURCE_DIAGNOSTIC '+JSON.stringify({
+  baseline:{camera:baseline.camera,sourceCounts:baseline.sourceCounts,renderedWater:baseline.renderedWater,renderedWaterway:baseline.renderedWaterway,mapped:baseline.mappedAudit},
+  albanyZ8:{camera:albanyZ8.camera,sourceCounts:albanyZ8.sourceCounts,renderedWater:albanyZ8.renderedWater,renderedWaterway:albanyZ8.renderedWaterway},
+  albanyZ9:{camera:albanyZ9.camera,sourceCounts:albanyZ9.sourceCounts,renderedWater:albanyZ9.renderedWater,renderedWaterway:albanyZ9.renderedWaterway},
+  lakeGeorgeZ8:{camera:lakeGeorgeZ8.camera,sourceCounts:lakeGeorgeZ8.sourceCounts,renderedWater:lakeGeorgeZ8.renderedWater,renderedWaterway:lakeGeorgeZ8.renderedWaterway},
+  waterStyleLayers:baseline.waterStyleLayers
+}));
 await browser.close();
