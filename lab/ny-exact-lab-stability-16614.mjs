@@ -18,6 +18,8 @@ for(let run=1;run<=RUNS;run++){
   const frame=await handle.contentFrame();
   if(!frame)throw new Error('exact lab iframe unavailable');
   await frame.waitForSelector('#searchInput',{timeout:30000});
+  await frame.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE 16610 — DIRECT VECTOR WATER SOURCE QUERY'),null,{timeout:90000,polling:500});
+  await frame.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});
   await frame.evaluate(()=>{
     const input=document.getElementById('searchInput');
     input.focus();input.value='New York';
