@@ -8,19 +8,16 @@ const errors=[];
 page.on('pageerror',e=>errors.push(String(e)));
 page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
 
-let deployed16619=false;
+let deployed16620=false;
 for(let attempt=0;attempt<45;attempt++){
-  await page.goto(URL+'?ny-16619-deploy-guard='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+  await page.goto(URL+'?ny-16620-deploy-guard='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
   await page.waitForSelector('#searchInput',{timeout:30000});
-  deployed16619=await page.evaluate(()=>{
-    const h=document.documentElement.innerHTML;
-    return h.includes('EARTHLINE 16618 — BATCHED US HYDROGRAPHY QUERY')&&h.includes('EARTHLINE 16619 — 16618 PARSE REPAIR');
-  });
-  if(deployed16619)break;
+  deployed16620=await page.evaluate(()=>document.documentElement.innerHTML.includes('EARTHLINE 16620 — PER-SWALE TIGER INTERSECTION COUNTS'));
+  if(deployed16620)break;
   await page.waitForTimeout(2000);
 }
-if(!deployed16619){
-  console.log('NY_16619_LIVE_VALIDATION '+JSON.stringify({deployed:false,error:'public root never exposed 16618+16619 markers'}));
+if(!deployed16620){
+  console.log('NY_16620_LIVE_VALIDATION '+JSON.stringify({deployed:false,error:'public root never exposed 16620 marker'}));
   await browser.close();
   process.exit(1);
 }
@@ -58,13 +55,12 @@ const result=await page.evaluate(()=>{
 });
 const audit=result.mappedAudit||{};
 const checks={
-  deployed16619,
+  deployed16620,
   tigerRequested:audit.tigerHydroRequested===true,
   tigerVerified:audit.tigerHydroVerified===true,
   tigerBatchCount:Number(audit.tigerBatchCount||0),
-  tigerFeatures:Number(audit.tigerArealFeatures||0)+Number(audit.tigerLinearFeatures||0),
-  tigerArealFeatures:Number(audit.tigerArealFeatures||0),
-  tigerLinearFeatures:Number(audit.tigerLinearFeatures||0),
+  tigerHits:Number(audit.tigerArealFeatures||0)+Number(audit.tigerLinearFeatures||0),
+  tigerRejectedSwales:Number(audit.tigerRejectedSwales||0),
   before:Number(audit.before||0),
   rejected:Number(audit.rejected||0),
   after:Number(audit.after||0),
@@ -74,8 +70,8 @@ const checks={
 const out={generatedAt:new Date().toISOString(),url:URL,picked,checks,result,errors:errors.slice(0,50)};
 await fs.mkdir('lab-results',{recursive:true});
 await fs.writeFile('lab-results/target-state-phase-diagnostic.json',JSON.stringify(out,null,2));
-console.log('NY_16619_LIVE_VALIDATION '+JSON.stringify(out));
-const expectedConsoleFailure=errors.filter(e=>!/U\.S\. state mapped-water verification unavailable/.test(e));
-const pass=checks.deployed16619&&checks.tigerRequested&&checks.tigerVerified&&checks.tigerBatchCount>0&&checks.tigerFeatures>0&&checks.published&&expectedConsoleFailure.length===0;
+console.log('NY_16620_LIVE_VALIDATION '+JSON.stringify(out));
+const unexpectedErrors=errors.filter(e=>!/U\.S\. state mapped-water verification unavailable/.test(e));
+const pass=checks.deployed16620&&checks.tigerRequested&&checks.tigerVerified&&checks.tigerBatchCount>0&&checks.published&&checks.after>0&&checks.after<checks.before&&unexpectedErrors.length===0;
 await browser.close();
 if(!pass)process.exitCode=1;
