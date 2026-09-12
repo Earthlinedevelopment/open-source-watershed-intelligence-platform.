@@ -8,22 +8,26 @@ const errors=[];
 page.on('pageerror',e=>errors.push(String(e)));
 page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
 
-let has16618Marker=false;
+let deployed16619=false;
 for(let attempt=0;attempt<45;attempt++){
-  await page.goto(URL+'?ny-16618-deploy-guard='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+  await page.goto(URL+'?ny-16619-deploy-guard='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
   await page.waitForSelector('#searchInput',{timeout:30000});
-  has16618Marker=await page.evaluate(()=>document.documentElement.innerHTML.includes('EARTHLINE 16618 — BATCHED US HYDROGRAPHY QUERY'));
-  if(has16618Marker)break;
+  deployed16619=await page.evaluate(()=>{
+    const h=document.documentElement.innerHTML;
+    return h.includes('EARTHLINE 16618 — BATCHED US HYDROGRAPHY QUERY')&&h.includes('EARTHLINE 16619 — 16618 PARSE REPAIR');
+  });
+  if(deployed16619)break;
   await page.waitForTimeout(2000);
 }
-if(!has16618Marker){
-  console.log('NY_16618_LIVE_VALIDATION '+JSON.stringify({deployed:false,error:'public root never exposed 16618 marker'}));
+if(!deployed16619){
+  console.log('NY_16619_LIVE_VALIDATION '+JSON.stringify({deployed:false,error:'public root never exposed 16618+16619 markers'}));
   await browser.close();
   process.exit(1);
 }
 
+await page.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true&&typeof window.applyLocation==='function',null,{timeout:30000});
 await page.evaluate(()=>{const i=document.getElementById('searchInput');i.focus();i.value='New York';i.dispatchEvent(new Event('input',{bubbles:true}));});
-await page.waitForSelector('#earthlineSearchSuggestions15970.open button[role="option"]',{timeout:12000});
+await page.waitForSelector('#earthlineSearchSuggestions15970.open button[role="option"]',{timeout:15000});
 const picked=await page.evaluate(()=>{
   const n=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
   const opts=[...document.querySelectorAll('#earthlineSearchSuggestions15970 button[role="option"]')];
@@ -54,7 +58,7 @@ const result=await page.evaluate(()=>{
 });
 const audit=result.mappedAudit||{};
 const checks={
-  has16618Marker,
+  deployed16619,
   tigerRequested:audit.tigerHydroRequested===true,
   tigerVerified:audit.tigerHydroVerified===true,
   tigerBatchCount:Number(audit.tigerBatchCount||0),
@@ -70,8 +74,8 @@ const checks={
 const out={generatedAt:new Date().toISOString(),url:URL,picked,checks,result,errors:errors.slice(0,50)};
 await fs.mkdir('lab-results',{recursive:true});
 await fs.writeFile('lab-results/target-state-phase-diagnostic.json',JSON.stringify(out,null,2));
-console.log('NY_16618_LIVE_VALIDATION '+JSON.stringify(out));
+console.log('NY_16619_LIVE_VALIDATION '+JSON.stringify(out));
 const expectedConsoleFailure=errors.filter(e=>!/U\.S\. state mapped-water verification unavailable/.test(e));
-const pass=checks.has16618Marker&&checks.tigerRequested&&checks.tigerVerified&&checks.tigerBatchCount>0&&checks.tigerFeatures>0&&checks.published&&expectedConsoleFailure.length===0;
+const pass=checks.deployed16619&&checks.tigerRequested&&checks.tigerVerified&&checks.tigerBatchCount>0&&checks.tigerFeatures>0&&checks.published&&expectedConsoleFailure.length===0;
 await browser.close();
 if(!pass)process.exitCode=1;
