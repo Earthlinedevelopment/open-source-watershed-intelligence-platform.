@@ -30543,7 +30543,7 @@ body { overflow-x:hidden!important; }
       Number(a16584.outsideLandCellCount||0)+" ocean/coast + "+Number(a16584.inlandWaterCellCount||0)+" inland)";
   }
 
-  function earthlineMappedWaterSwaleGate16609(map16609,swales16609,runToken16609){
+  async function earthlineMappedWaterSwaleGate16609(map16609,swales16609,runToken16609,useTiger16617=false){
     const before16609=Number(swales16609&&swales16609.features&&swales16609.features.length||0),polys16609=[],lines16609=[];
     let sourceQueries16609=0,sourceSuccess16609=0,rawFeatures16609=0;
     const finite16609=p=>Array.isArray(p)&&Number.isFinite(Number(p[0]))&&Number.isFinite(Number(p[1]));
@@ -30583,6 +30583,46 @@ body { overflow-x:hidden!important; }
         }
       }
     }catch(_){}
+    /* EARTHLINE 16617 — OFFICIAL US FINAL-SWALE HYDROGRAPHY.
+       U.S. state publication must not depend on the displayed Mapbox zoom. Query
+       Census TIGERweb Hydro only around the already-generated final swale geometry,
+       then feed those official areal + linear features into this same 16609 gate. */
+    let tigerVerified16617=!useTiger16617,tigerArealFeatures16617=0,tigerLinearFeatures16617=0,tigerPolygonParts16617=0,tigerLines16617=0,tigerMs16617=0,tigerError16617=null;
+    if(useTiger16617&&before16609>0){
+      const rings16617=[];
+      for(const f16617 of (swales16609&&swales16609.features||[])){
+        const c16617=f16617&&f16617.geometry&&f16617.geometry.type==='LineString'?f16617.geometry.coordinates:[];
+        let w16617=Infinity,s16617=Infinity,e16617=-Infinity,n16617=-Infinity;
+        for(const p16617 of c16617){if(!finite16609(p16617))continue;w16617=Math.min(w16617,+p16617[0]);s16617=Math.min(s16617,+p16617[1]);e16617=Math.max(e16617,+p16617[0]);n16617=Math.max(n16617,+p16617[1]);}
+        if(!Number.isFinite(w16617))continue;
+        const pad16617=.005;
+        rings16617.push([[w16617-pad16617,s16617-pad16617],[w16617-pad16617,n16617+pad16617],[e16617+pad16617,n16617+pad16617],[e16617+pad16617,s16617-pad16617],[w16617-pad16617,s16617-pad16617]]);
+      }
+      if(rings16617.length){
+        const geometry16617=JSON.stringify({rings:rings16617,spatialReference:{wkid:4326}});
+        const queryTiger16617=async layer16617=>{
+          const controller16617=new AbortController(),timer16617=setTimeout(()=>controller16617.abort(),5000);
+          const body16617=new URLSearchParams({where:'1=1',geometry:geometry16617,geometryType:'esriGeometryPolygon',inSR:'4326',spatialRel:'esriSpatialRelIntersects',outFields:'NAME',returnGeometry:'true',outSR:'4326',maxAllowableOffset:'0.00002',f:'geojson'});
+          try{
+            const response16617=await fetch('https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Hydro/MapServer/'+layer16617+'/query',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:body16617,signal:controller16617.signal,cache:'no-store'});
+            const data16617=await response16617.json();
+            if(!response16617.ok||!data16617||!Array.isArray(data16617.features)||data16617.error)throw new Error(String(data16617&&data16617.error&&data16617.error.message||'TIGERweb Hydro query failed'));
+            return data16617.features;
+          }finally{clearTimeout(timer16617);}
+        };
+        const tigerStart16617=performance.now(),polyBefore16617=polys16609.length,lineBefore16617=lines16609.length;
+        try{
+          const [linear16617,areal16617]=await Promise.all([queryTiger16617(0),queryTiger16617(1)]);
+          tigerLinearFeatures16617=linear16617.length;tigerArealFeatures16617=areal16617.length;
+          for(const f16617 of areal16617)addGeometry16609(f16617&&f16617.geometry);
+          for(const f16617 of linear16617)addGeometry16609(f16617&&f16617.geometry);
+          tigerPolygonParts16617=Math.max(0,polys16609.length-polyBefore16617);
+          tigerLines16617=Math.max(0,lines16609.length-lineBefore16617);
+          tigerVerified16617=true;
+        }catch(e16617){tigerVerified16617=false;tigerError16617=String(e16617&&e16617.message||e16617||'TIGERweb Hydro unavailable');}
+        tigerMs16617=Math.round(performance.now()-tigerStart16617);
+      }else tigerVerified16617=true;
+    }
     const segmentHits16609=(a,b)=>{
       const sb=[Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[0],b[0]),Math.max(a[1],b[1])];
       for(const p of polys16609){const bb=p.bbox;if(sb[2]<bb[0]||sb[0]>bb[2]||sb[3]<bb[1]||sb[1]>bb[3])continue;if(polyInside16609(a,p.rings)||polyInside16609(b,p.rings))return true;for(const r of p.rings||[])for(let i=1;i<r.length;i++)if(segInter16609(a,b,r[i-1],r[i]))return true;}
@@ -30595,9 +30635,9 @@ body { overflow-x:hidden!important; }
       for(let i16609=1;i16609<c16609.length&&!bad16609;i16609++)if(segmentHits16609(c16609[i16609-1],c16609[i16609]))bad16609=true;
       if(bad16609)rejected16609++;else safe16609.push(f16609);
     }
-    const verified16609=sourceQueries16609>0&&sourceSuccess16609>0&&deterministicRiverVerified16616;
+    const verified16609=sourceQueries16609>0&&sourceSuccess16609>0&&deterministicRiverVerified16616&&(!useTiger16617||tigerVerified16617);
     const out16609=earthlineRerankRegionalSwales16539({type:'FeatureCollection',features:safe16609});
-    window.EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609={build:'EARTHLINE 16609',runToken:runToken16609,sourceQueries:sourceQueries16609,sourceSuccess:sourceSuccess16609,rawWaterFeatures:rawFeatures16609,waterPolygonParts:polys16609.length,waterwayLines:lines16609.length,mapWaterwayLines:Math.max(0,lines16609.length-deterministicRiverLines16616.length),deterministicRiverLines:deterministicRiverLines16616.length,deterministicRiverVerified:deterministicRiverVerified16616,deterministicRiverSource:deterministicRiverProduct16616&&deterministicRiverProduct16616.riverCenterlineGeometry&&deterministicRiverProduct16616.riverCenterlineGeometry.source||null,before:before16609,after:out16609.features.length,rejected:rejected16609,verified:verified16609,safe:true,at:new Date().toISOString()};
+    window.EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609={build:'EARTHLINE 16609',runToken:runToken16609,sourceQueries:sourceQueries16609,sourceSuccess:sourceSuccess16609,rawWaterFeatures:rawFeatures16609,waterPolygonParts:polys16609.length,waterwayLines:lines16609.length,mapWaterwayLines:Math.max(0,lines16609.length-deterministicRiverLines16616.length-tigerLines16617),deterministicRiverLines:deterministicRiverLines16616.length,deterministicRiverVerified:deterministicRiverVerified16616,deterministicRiverSource:deterministicRiverProduct16616&&deterministicRiverProduct16616.riverCenterlineGeometry&&deterministicRiverProduct16616.riverCenterlineGeometry.source||null,tigerHydroRequested:!!useTiger16617,tigerHydroVerified:tigerVerified16617,tigerArealFeatures:tigerArealFeatures16617,tigerLinearFeatures:tigerLinearFeatures16617,tigerPolygonParts:tigerPolygonParts16617,tigerLines:tigerLines16617,tigerHydroMs:tigerMs16617,tigerHydroError:tigerError16617,tigerHydroSource:useTiger16617?'U.S. Census Bureau TIGERweb/Hydro':null,before:before16609,after:out16609.features.length,rejected:rejected16609,verified:verified16609,safe:verified16609,at:new Date().toISOString()};
     return {swales:out16609,verified:verified16609,audit:window.EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609};
   }
 
@@ -30827,8 +30867,8 @@ body { overflow-x:hidden!important; }
     await cameraSettle16310;
     if(!isCurrentRun(runToken))return false;
     if(!focusMode){
-      const mappedWaterGate16609=earthlineMappedWaterSwaleGate16609(m,swales,runToken);
       const usStateWaterRun16609=!!(profile16549&&loc&&String(loc.countryCode||'').toLowerCase()==='us'&&loc.jurisdictionProfileId16556);
+      const mappedWaterGate16609=await earthlineMappedWaterSwaleGate16609(m,swales,runToken,usStateWaterRun16609);
       if(usStateWaterRun16609&&mappedWaterGate16609.verified!==true)throw new Error('U.S. state mapped-water verification unavailable; unverified swales were not published');
       swales=mappedWaterGate16609.swales;
     }
