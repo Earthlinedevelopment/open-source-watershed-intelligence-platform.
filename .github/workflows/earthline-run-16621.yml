@@ -1,4 +1,4 @@
-name: Earthline Inspect Regional Swale Generation
+name: Earthline Inspect Swale Segment Construction
 
 on:
   push:
@@ -16,5 +16,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
-      - name: Inspect generation path
-        run: python3 -c "from pathlib import Path; s=Path('index.html').read_text(encoding='utf-8'); ns=[\"feature_type:'swale-opportunity'\",'REGIONAL BIOSWALE OPPORTUNITY','swalesRaw','regionalSwales','const swales=','let swales=']; [print('\\n===== '+n+' @'+str(i)+' =====\\n'+s[max(0,i-5000):i+9000]) for n in ns for i in [s.find(n)] if i>=0]"
+      - name: Inspect swale segment construction
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for n in ['function makeSwales','function sampleSegment','sampleSegment=','const sampleSegment','traceLevelContour','earthlineSplitUsableSegments']:
+            pos=[];i=0
+            while True:
+              i=s.find(n,i)
+              if i<0: break
+              pos.append(i);i+=len(n)
+              if len(pos)>=6: break
+            print('\nPOSITIONS',n,pos)
+            for j in pos[:3]: print('\n===== @',j,'=====\n',s[max(0,j-7000):j+14000])
+          PY
