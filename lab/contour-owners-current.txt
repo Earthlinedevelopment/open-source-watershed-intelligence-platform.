@@ -1,0 +1,1786 @@
+===== makeContours hits [2144457, 2144463] =====
+
+break;}
+        usedEdges.add(edge);i=j;
+      }
+      if(raw.length<5)return false;
+      const coords=earthlineRegionalSmoothFlow16584(hy,raw);if(coords.length<8)return false;
+      const rank=Math.min(1,Math.log1p(maxAcc)/Math.log1p(hy.w*hy.h));
+      features.push({type:'Feature',properties:{feature_type:'flow',rank,downstream:1},geometry:{type:'LineString',coordinates:coords}});lineCount++;
+      const desired=Math.max(3,Math.min(12,Math.floor(coords.length/14))),stride=(coords.length-1)/(desired+1);
+      for(let a=1;a<=desired;a++){
+        const pos=Math.max(2,Math.min(coords.length-3,Math.round(stride*a))),bearing=flowBearing(coords[pos-2],coords[pos+2]);
+        features.push({type:'Feature',properties:{feature_type:'flow-arrow',rank,bearing,rotation:(bearing+270)%360},geometry:{type:'Point',coordinates:coords[pos]}});
+      }
+      return true;
+    }
+    for(const seed of seeds){if(lineCount>=230)break;trace(seed);}
+    if(lineCount<55){
+      const extra=[];for(let i=0;i<N;i++)if(channel[i])extra.push(i);extra.sort((a,b)=>hy.acc[b]-hy.acc[a]);
+      for(const seed of extra){if(lineCount>=180)break;const j=hy.to[seed];if(j<0||usedEdges.has(seed+'>'+j))continue;trace(seed);}
+    }
+    return {type:'FeatureCollection',features};
+  }
+  function niceInterval(range,target=15){
+    const raw=Math.max(1,range/Math.max(4,target)),p=Math.pow(10,Math.floor(Math.log10(raw))),m=raw/p;
+    return (m<=1?1:m<=2?2:m<=5?5:10)*p;
+  }
+  function stitchContourSegments(segments){
+    const used=new Uint8Array(segments.length),adj=new Map(),factor=100000;
+    const key=p=>Math.round(p[0]*factor)+','+Math.round(p[1]*factor);
+    function add(k,i){let a=adj.get(k);if(!a)adj.set(k,a=[]);a.push(i);}
+    segments.forEach((s,i)=>{add(key(s[0]),i);add(key(s[1]),i);});
+    const paths=[];
+    function walk(startKey,startIndex){
+      let currentKey=startKey,index=startIndex,guard=0,path=[];
+      while(index!=null&&!used[index]&&guard++<segments.length+8){
+        used[index]=1;const s=segments[index],forward=key(s[0])===currentKey,from=forward?s[0]:s[1],to=forward?s[1]:s[0];
+        if(!path.length)path.push(from);path.push(to);currentKey=key(to);
+        const next=(adj.get(currentKey)||[]).find(i=>!used[i]);index=next==null?null:next;
+      }
+      if(path.length>=4)paths.push(path);
+    }
+    for(const [k,list] of adj)if(list.length===1&&!used[list[0]])walk(k,list[0]);
+    for(let i=0;i<segments.length;i++)if(!used[i])walk(key(segments[i][0]),i);
+    return paths;
+  }
+  async function makeContours(hy){
+    const min=percentile(hy.elev,0.02),max=percentile(hy.elev,0.98),range=Math.max(1,max-min),step=niceInterval(range,20),levels=[];
+    for(let l=Math.ceil(min/step)*step;l<=max+step*.001;l+=step)levels.push(l);
+    const features=[],majorEvery=levels.length>20?4:3,labelEvery=2;let labelCount=0;
+    function interp(a,b,l){const d=b-a;return Math.abs(d)<1e-9?.5:Math.max(0,Math.min(1,(l-a)/d));}
+    for(let li=0;li<levels.length;li++){
+      const level=levels[li],major=(li%majorEvery===0)?1:0,labelable=(li%labelEvery===0)?1:0,segments=[];
+      for(let y=0;y<hy.h-1;y++)for(let x=0;x<hy.w-1;x++){
+        if(hy.validityMask16584){
+          const i016584=y*hy.w+x,i116584=i016584+1,i316584=(y+1)*hy.w+x,i216584=i316584+1;
+          if(!hy.validityMask16584[i016584]||!hy.validityMask16584[i116584]||!hy.validityMask16584[i216584]||!hy.validityMask16584[i316584])continue;
+        }
+        const a=hy.elev[y*hy.w+x],bb=hy.elev[y*hy.w+x+1],c=hy.elev[(y+1)*hy.w+x+1],d=hy.elev[(y+1)*hy.w+x],pts=[];
+        if((a<level)!=(bb<level))pts.push([x+interp(a,bb,level),y]);
+        if((bb<level)!=(c<level))pts.push([x+1,y+interp(bb,c,level)]);
+        if((c<level)!=(d<level))pts.push([x+1-interp(c,d,level),y+1]);
+        if((d<level)!=(a<level))pts.push([x,y+1-interp(d,a,level)]);
+        if(pts.length===2)segments.push([pts[0],pts[1]]);
+        else if(pts.length===4){const center=(a+bb+c+d)/4;if(center<level){segments.push([pts[0],pts[3]],[pts[1],pts[2]]);}else{segments.push([pts[0],pts[1]],[pts[2],pts[3]]);}}
+      }
+      const paths=stitchContourSegments(segments);
+      for(const path of paths){
+        if(path.length<5)continue;const raw=path.map(p=>gridLL(hy,p[0],p[1])),closed=Math.abs(path[0][0]-path[path.length-1][0])<.001&&Math.abs(path[0][1]-path[path.length-1][1])<.001,coords=chaikin(raw,2,closed);
+        if(coords.length<10||lineLengthPixels(hy,coords)<5)continue;
+        features.push({type:'Feature',properties:{feature_type:'contour',elev_m:Math.round(level),major,labelable,label:Math.round(level)+' m'},geometry:{type:'LineString',coordinates:coords}});
+        if(labelable&&labelCount<84){
+          const positions=coords.length>80?[.25,.50,.75]:[.5];
+          for(const frac of positions){if(labelCount>=84)break;const p=coords[Math.max(1,Math.min(coords.length-2,Math.floor((coords.length-1)*frac)))];features.push({type:'Feature',properties:{feature_type:'contour-label',elev_m:Math.round(level),major,label:Math.round(level)+' m'},geometry:{type:'Point',coordinates:p}});labelCount++;}
+        }
+      }
+      noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · CONTOURS '+(li+1)+'/'+levels.length);
+      await wait(0);
+    }
+    return {type:'FeatureCollection',features};
+  }
+  function makeSwales(hy,contours,focusMode=false){
+    const lines=(contours&&contours.features||[]).filter(f=>f&&f.properties&&f.properties.feature_type==='contour'&&f.geometry&&f.geometry.type==='LineString');
+    const channel=percentile(hy.acc,.972),accLow=percentile(hy.acc,.22),accMid=percentile(hy.acc,.72),accHigh=percentile(hy.acc,.91),candidates=[];
+    function sampleSegment(coords,center,relaxed){
+      const half=Math.max(10,Math.min(52,Math.floor(coords.length*.18))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);
+      const raw=coords.slice(start,end);if(raw.length<10)return null;
+      const segment=chaikin(raw,2,false);if(segment.length<10||lineLengthPixels(hy,segment)<10)return null;
+      const stride=Math.max(1,Math.floor(segment.length/22));let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null;
+      for(let k=1;k<segment.length-1;k+=stride){
+        const g=llGrid(hy,segment[k]),x=Math.max(1,Math.min(hy.w-2,Math.round(g.x))),y=Math.max(1,Math.min(hy.h-2,Math.round(g.y))),i=y*hy.w+x;
+        const slope=hy.slope[i],acc=hy.acc[i],minSlope=relaxed?.05:.20,maxSlope=relaxed?18:13.5;
+        if(!Number.isFinite(slope)||slope<minSlope||slope>maxSlope||acc>=channel)continue;
+        valid++;sumSlope+=slope;sumAcc+=acc;maxAcc=Math.max(maxAcc,acc);if(!anchor)anchor={x,y};
+      }
+      if(valid<(relaxed?1:2)||!anchor)return null;
+      const meanSlope=sumSlope/valid,meanAcc=sumAcc/valid;
+      const slopeScore=Math.max(0,1-Math.abs(meanSlope-3.4)/(relaxed?12:7.5));
+      const flowScore=meanAcc<=accLow?.18:meanAcc<=accMid?.18+.70*(meanAcc-accLow)/Math.max(1,accMid-accLow):Math.max(.18,.88-.48*(meanAcc-accMid)/Math.max(1,accHigh-accMid));
+      const lengthScore=Math.min(1,lineLengthPixels(hy,segment)/85);
+      return {segment,x:anchor.x,y:anchor.y,slope:meanSlope,acc:meanAcc,maxAcc,score:slopeScore*.56+flowScore*.28+lengthScore*.16,confidence:relaxed?'screening':'preferred'};
+    }
+    for(const f of lines){
+      const coords=f.geometry.coordinates;if(coords.length<16)continue;
+      const fractions=coords.length>110?[.18,.36,.54,.72,.86]:coords.length>55?[.26,.52,.78]:[.38,.68];
+      for(const frac of fractions){const c=sampleSegment(coords,Math.max(3,Math.min(coords.length-4,Math.round((coords.length-1)*frac))),false);if(c)candidates.push(c);}
+    }
+    if(candidates.length<36){
+      for(const f of lines){const coords=f.geometry.coordinates;if(coords.length<12)continue;for(const frac of [.28,.56,.82]){const c=sampleSegment(coords,Math.max(3,Math.min(coords.length-4,Math.round((coords.length-1)*frac))),true);if(c)candidates.push(c);}}
+    }
+    candidates.sort((a,b)=>b.score-a.score);
+    const chosen=[],primarySpacing=Math.max(6,Math.round(hy.w/31));
+    for(const c of candidates){
+      if(chosen.length>=52)break;
+      const spacing=chosen.length<20?primarySpacing:Math.max(4,Math.round(primarySpacing*.72));
+      if(chosen.some(p=>Math.hypot(p.x-c.x,p.y-c.y)<spacing))continue;
+      chosen.push(c);
+    }
+    // Fail visibly rather than silently: use the best remaining terrain-derived contour segments when strict thinning produced too few.
+    if(chosen.length<14){for(const c of candidates){if(chosen.length>=24)break;if(chosen.includes(c))continue;if(chosen.some(p=>Math.hypot(p.x-c.x,p.y-c.y)<4))continue;chosen.push(c);}}
+    const contourToleranceM16166=5.0;
+    function contourAudit16166(candidate){
+      const values=[],coords=candidate&&candidate.segment||[],stride=Math.max(1,Math.floor(coords.length/28));
+      for(let i=0;i<coords.length;i+=stride){
+        const g=llGrid(hy,coords[i]),x=Math.max(0,Math.min(hy.w-1,Math.round(g.x))),y=Math.max(0,Math.min(hy.h-1,Math.round(g.y))),v=Number(hy.elev[y*hy.w+x]);
+        if(Number.isFinite(v))values.push(v);
+      }
+      if(coords.length&&values.length<2){
+        for(const p of [coords[0],coords[coords.length-1]]){const g=llGrid(hy,p),x=Math.max(0,Math.min(hy.w-1,Math.round(g.x))),y=Math.max(0,Math.min(hy.h-1,Math.round(g.y))),v=Number(hy.elev[y*hy.w+x]);if(Number.isFinite(v))values.push(v);}
+      }
+      const min=values.length?Math.min(...values):Infinity,max=values.length?Math.max(...values):-Infinity;
+      const relief=values.length?max-min:Infinity,endDrop=values.length>1?Math.abs(values[values.length-1]-values[0]):Infinity;
+      return {reliefM:relief,endDropM:endDrop,valid:Number.isFinite(relief)&&relief<=contourToleranceM16166&&endDrop<=contourToleranceM16166};
+    }
+    const auditedCandidates=chosen.map(c=>Object.assign(c,{contourAudit16166:contourAudit16166(c)}));
+    /* BUILD-CHECK-16167: the 5 m longitudinal gate is a focus-screening gate.
+       Applying that tolerance to Vermont's coarse regional DEM rejected every
+       regional corridor because nearest-cell sampling can vary by more than 5 m.
+       Regional corridors remain indicative and carry the audit values, but are
+       not silently erased by a property/focus-scale tolerance. */
+    /* EARTHLINE 16609 — U.S. LAUNCH CORE REPAIR: final Regional contour geometry
+       must remain on the already-authoritative 16584 land/water validity mask after smoothing. */
+    let regionalLandWaterRejected16609=0;
+    const acceptedChosen=focusMode?auditedCandidates.filter(c=>c.contourAudit16166.valid):auditedCandidates.filter(c=>{
+      const segment16609=c&&c.segment||[];
+      if(segment16609.length<2){regionalLandWaterRejected16609++;return false;}
+      for(let i16609=1;i16609<segment16609.length;i16609++){
+        if(!earthlineRegionalSegmentValid16584(hy,segment16609[i16609-1],segment16609[i16609])){regionalLandWaterRejected16609++;return false;}
+      }
+      return true;
+    });
+    const contourAudit={
+      build:'EARTHLINE 16167',tier:focusMode?'focus':'regional',enforced:!!focusMode,
+      evaluated:chosen.length,accepted:acceptedChosen.length,rejected:chosen.length-acceptedChosen.length,
+      toleranceM:contourToleranceM16166,
+      maxAcceptedReliefM:acceptedChosen.length?Math.max(...acceptedChosen.map(c=>Number(c.contourAudit16166.reliefM)||0)):0,
+      rule:focusMode?'focus corridors must remain within 5 m longitudinal relief and 5 m end-to-end elevation change':'regional corridors retain modeled contour geometry; the 5 m focus tolerance is recorded but not enforced at regional DEM scale',
+      at:new Date().toISOString()
+    };
+    window.EARTHLINE_CONTOUR_VALIDITY_AUDIT_16167=contourAudit;
+    window.EARTHLINE_CONTOUR_VALIDITY_AUDIT_16166=contourAudit;
+    const features=[],total=Math.max(1,acceptedChosen.length);
+    const gradeACount=Math.max(3,Math.ceil(total*.16));
+    const gradeBEnd=Math.max(gradeACount+4,Math.ceil(total*.48));
+    for(let index=0;index<acceptedChosen.length;index++){
+      const c=acceptedChosen[index],rank=index+1,score=Math.max(0,Math.min(100,Math.round(c.score*100)));
+      const grade=index<gradeACount?'A':index<gradeBEnd?'B':'C';
+      const gradeLabel=grade==='A'?'BEST':grade==='B'?'STRONG':'GENERAL';
+      const slopeFit=Math.max(0,Math.min(100,Math.round(100-Math.abs(c.slope-3.4)*9)));
+      const relief=Number(c.contourAudit16166.reliefM),drop=Number(c.contourAudit16166.endDropM);
+      features.push({type:'Feature',properties:{
+        feature_type:'swale-opportunity',
+        grade,rank,score,
+        grade_label:gradeLabel,
+        slope_pct:Number(c.slope.toFixed(1)),
+        slope_fit_score:slopeFit,
+        confidence:c.confidence,
+        contour_valid:focusMode?true:null,
+        contour_validation_class:focusMode?'focus-screening-validated':'regional-screening-not-enforced',
+        contour_tolerance_m:contourToleranceM16166,
+        longitudinal_relief_m:Number.isFinite(relief)?Number(relief.toFixed(2)):null,
+        end_to_end_drop_m:Number.isFinite(drop)?Number(drop.toFixed(2)):null,
+        label:grade+rank+' — '+gradeLabel+' '+(focusMode?'FOCUS':'REGIONAL')+' BIOSWALE OPPORTUNITY',
+        screening:focusMode?'Earthline focus corridor derived from a modeled contour; longitudinal relief and end-to-end elevation change are each limited to 5 m. Field and bare-earth verification remain required.':'Earthline regional opportunity corridor derived from modeled contour geometry. The 5 m focus tolerance is not enforced against coarse regional DEM cells; a focus or property run is required before placement.'
+      },geometry:{type:'LineString',coordinates:c.segment}});
+    }
+    const generationAudit={
+      build:'EARTHLINE 16167',tier:focusMode?'focus':'regional',candidates:candidates.length,
+      chosenBeforeTierGate:chosen.length,publishedFeatures:features.length,
+      focusContourGateEnforced:!!focusMode,focusContourGateRejected:focusMode?chosen.length-acceptedChosen.length:0,
+      regionalLandWaterGateRejected:focusMode?0:regionalLandWaterRejected16609,
+      nullReason:features.length?'corridors published':(candidates.length?'all candidates rejected by the active tier gate':'no terrain-derived contour segments met slope, flow and spacing criteria'),
+      at:new Date().toISOString()
+    };
+    window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
+    return {type:'FeatureCollection',features};
+  }
+  function jsonp(url,params,ms=22000){
+    return new Promise((resolve,reject)=>{
+      const cb='__earthlineJsonp15970_'+Date.now()+'_'+Math.random().toString(36).slice(2),script=document.createElement('script');
+      const cleanup=()=>{try{delete window[cb];}catch(_){window[cb]=undefined;}script.remove();clearTimeout(timer);};
+      const timer=setTimeout(()=>{cleanup();reject(new Error('JSONP request timed out'));},ms);
+      window[cb]=data=>{cleanup();resolve(data);};
+      const p=new URLSearchParams(params||{});p.set('callback',cb);p.set('f','json');
+      script.async=true;script.onerror=()=>{cleanup();reject(new Error('JSONP request failed'));};
+      script.src=url+'?'+p.toString();document.head.appendChild(script);
+    });
+  }
+  function esriPolygonToGeoJSON(feature){
+    const g=feature&&feature.geometry,attrs=feature&&feature.attributes||{};if(!g||!Array.isArray(g.rings))return null;
+    const polys=g.rings.filter(r=>Array.isArray(r)&&r.length>=4).map(r=>[r.map(p=>[Number(p[0]),Number(p[1])])]);
+    if(!polys.length)return null;
+    return {type:'Feature',properties:attrs,geometry:polys.length===1?{type:'Polygon',coordinates:polys[0]}:{type:'MultiPolygon',coordinates:polys}};
+  }
+  function esriSetToGeoJSON(data){
+    const features=(data&&data.features||[]).map(esriPolygonToGeoJSON).filter(Boolean);
+    return {type:'FeatureCollection',features};
+  }
+  async function loadWatersheds(b,runToken){
+    const base={where:'1=1',geometry:b.join(','),geometryType:'esriGeometryEnvelope',inSR:'4326',spatialRel:'esriSpatialRelIntersects',outFields:'HYBAS_ID,Shape__Area,Shape__Length',returnGeometry:'true',outSR:'4326',resultRecordCount:'2000'};
+    const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),7000);
+    let geo=null,firstError=null;
+    try{
+      try{
+        const p=new URLSearchParams(Object.assign({},base,{f:'geojson'}));
+        const r=await fetch(HYDRO+'?'+p.toString(),{mode:'cors',cache:'no-store',signal:ctl.signal});
+        if(!r.ok)throw new Error('HydroBASINS HTTP '+r.status);
+        const j=await r.json();if(j.error)throw new Error(j.error.message||'HydroBASINS error');
+        if(j&&Array.isArray(j.features)&&j.features.length)geo=j;else throw new Error('no HydroBASINS polygons returned');
+      }catch(err){
+        firstError=err;
+        const j=await jsonp(HYDRO,base,7000);if(j&&j.error)throw new Error(j.error.message||'HydroBASINS JSONP error');
+        geo=esriSetToGeoJSON(j);if(!geo.features.length)throw firstError||new Error('no HydroBASINS polygons returned');
+      }
+      if(!guardedSetGeo(runToken,map(),IDS.basin,geo,'hydrobasins-temporary-mirror'))return 0;return geo.features.length;
+    }finally{clearTimeout(timer);}
+  }
+  function bboxIntersectsContiguousUS(b){
+    return Array.isArray(b)&&b.length===4&&!(b[2]<-125.1||b[0]>-66.2||b[3]<24.0||b[1]>50.2);
+  }
+  function normalizeUSGSKarst(geo){
+    const features=(geo&&geo.features||[]).filter(f=>f&&f.geometry).map(f=>{
+      const p=Object.assign({},f.properties||{});
+      const kind=clean(p.NPS_Type||p.K_TYPE||p.AGI_Type||'Carbonate');
+      const description=clean(p.USGS_Desc1||p.DESCRIPT||p.Type_Desc||p.AGI_Desc||'Mapped carbonate/karst groundwater terrain');
+      p.name=(kind?kind+' karst groundwater context':'Karst groundwater context');
+      p.source='USGS Open-File Report 2004-1352';
+      p.boundary_class='national/regional guidance — not a parcel boundary';
+      p.description=description;
+      return {type:'Feature',properties:p,geometry:f.geometry};
+    });
+    return {type:'FeatureCollection',features};
+  }
+  async function loadUSGSKarstAquifers(b,runToken){
+    const span=Math.max(Math.abs(b[2]-b[0]),Math.abs(b[3]-b[1]));
+    const params={where:"NPS_Type='Carbonate'",geometry:b.join(','),geometryType:'esriGeometryEnvelope',inSR:'4326',spatialRel:'esriSpatialRelIntersects',outFields:'K_TYPE,DESCRIPT,AGI_Type,AGI_Desc,USGS_Desc1,USGS_Desc2,NPS_Type,Type_Desc',returnGeometry:'true',outSR:'4326',maxAllowableOffset:String(span>5?.01:span>2?.004:.001),geometryPrecision:'5',resultRecordCount:'2000'};
+    let raw=null,transport='fetch';
+    const c
+
+}
+        usedEdges.add(edge);i=j;
+      }
+      if(raw.length<5)return false;
+      const coords=earthlineRegionalSmoothFlow16584(hy,raw);if(coords.length<8)return false;
+      const rank=Math.min(1,Math.log1p(maxAcc)/Math.log1p(hy.w*hy.h));
+      features.push({type:'Feature',properties:{feature_type:'flow',rank,downstream:1},geometry:{type:'LineString',coordinates:coords}});lineCount++;
+      const desired=Math.max(3,Math.min(12,Math.floor(coords.length/14))),stride=(coords.length-1)/(desired+1);
+      for(let a=1;a<=desired;a++){
+        const pos=Math.max(2,Math.min(coords.length-3,Math.round(stride*a))),bearing=flowBearing(coords[pos-2],coords[pos+2]);
+        features.push({type:'Feature',properties:{feature_type:'flow-arrow',rank,bearing,rotation:(bearing+270)%360},geometry:{type:'Point',coordinates:coords[pos]}});
+      }
+      return true;
+    }
+    for(const seed of seeds){if(lineCount>=230)break;trace(seed);}
+    if(lineCount<55){
+      const extra=[];for(let i=0;i<N;i++)if(channel[i])extra.push(i);extra.sort((a,b)=>hy.acc[b]-hy.acc[a]);
+      for(const seed of extra){if(lineCount>=180)break;const j=hy.to[seed];if(j<0||usedEdges.has(seed+'>'+j))continue;trace(seed);}
+    }
+    return {type:'FeatureCollection',features};
+  }
+  function niceInterval(range,target=15){
+    const raw=Math.max(1,range/Math.max(4,target)),p=Math.pow(10,Math.floor(Math.log10(raw))),m=raw/p;
+    return (m<=1?1:m<=2?2:m<=5?5:10)*p;
+  }
+  function stitchContourSegments(segments){
+    const used=new Uint8Array(segments.length),adj=new Map(),factor=100000;
+    const key=p=>Math.round(p[0]*factor)+','+Math.round(p[1]*factor);
+    function add(k,i){let a=adj.get(k);if(!a)adj.set(k,a=[]);a.push(i);}
+    segments.forEach((s,i)=>{add(key(s[0]),i);add(key(s[1]),i);});
+    const paths=[];
+    function walk(startKey,startIndex){
+      let currentKey=startKey,index=startIndex,guard=0,path=[];
+      while(index!=null&&!used[index]&&guard++<segments.length+8){
+        used[index]=1;const s=segments[index],forward=key(s[0])===currentKey,from=forward?s[0]:s[1],to=forward?s[1]:s[0];
+        if(!path.length)path.push(from);path.push(to);currentKey=key(to);
+        const next=(adj.get(currentKey)||[]).find(i=>!used[i]);index=next==null?null:next;
+      }
+      if(path.length>=4)paths.push(path);
+    }
+    for(const [k,list] of adj)if(list.length===1&&!used[list[0]])walk(k,list[0]);
+    for(let i=0;i<segments.length;i++)if(!used[i])walk(key(segments[i][0]),i);
+    return paths;
+  }
+  async function makeContours(hy){
+    const min=percentile(hy.elev,0.02),max=percentile(hy.elev,0.98),range=Math.max(1,max-min),step=niceInterval(range,20),levels=[];
+    for(let l=Math.ceil(min/step)*step;l<=max+step*.001;l+=step)levels.push(l);
+    const features=[],majorEvery=levels.length>20?4:3,labelEvery=2;let labelCount=0;
+    function interp(a,b,l){const d=b-a;return Math.abs(d)<1e-9?.5:Math.max(0,Math.min(1,(l-a)/d));}
+    for(let li=0;li<levels.length;li++){
+      const level=levels[li],major=(li%majorEvery===0)?1:0,labelable=(li%labelEvery===0)?1:0,segments=[];
+      for(let y=0;y<hy.h-1;y++)for(let x=0;x<hy.w-1;x++){
+        if(hy.validityMask16584){
+          const i016584=y*hy.w+x,i116584=i016584+1,i316584=(y+1)*hy.w+x,i216584=i316584+1;
+          if(!hy.validityMask16584[i016584]||!hy.validityMask16584[i116584]||!hy.validityMask16584[i216584]||!hy.validityMask16584[i316584])continue;
+        }
+        const a=hy.elev[y*hy.w+x],bb=hy.elev[y*hy.w+x+1],c=hy.elev[(y+1)*hy.w+x+1],d=hy.elev[(y+1)*hy.w+x],pts=[];
+        if((a<level)!=(bb<level))pts.push([x+interp(a,bb,level),y]);
+        if((bb<level)!=(c<level))pts.push([x+1,y+interp(bb,c,level)]);
+        if((c<level)!=(d<level))pts.push([x+1-interp(c,d,level),y+1]);
+        if((d<level)!=(a<level))pts.push([x,y+1-interp(d,a,level)]);
+        if(pts.length===2)segments.push([pts[0],pts[1]]);
+        else if(pts.length===4){const center=(a+bb+c+d)/4;if(center<level){segments.push([pts[0],pts[3]],[pts[1],pts[2]]);}else{segments.push([pts[0],pts[1]],[pts[2],pts[3]]);}}
+      }
+      const paths=stitchContourSegments(segments);
+      for(const path of paths){
+        if(path.length<5)continue;const raw=path.map(p=>gridLL(hy,p[0],p[1])),closed=Math.abs(path[0][0]-path[path.length-1][0])<.001&&Math.abs(path[0][1]-path[path.length-1][1])<.001,coords=chaikin(raw,2,closed);
+        if(coords.length<10||lineLengthPixels(hy,coords)<5)continue;
+        features.push({type:'Feature',properties:{feature_type:'contour',elev_m:Math.round(level),major,labelable,label:Math.round(level)+' m'},geometry:{type:'LineString',coordinates:coords}});
+        if(labelable&&labelCount<84){
+          const positions=coords.length>80?[.25,.50,.75]:[.5];
+          for(const frac of positions){if(labelCount>=84)break;const p=coords[Math.max(1,Math.min(coords.length-2,Math.floor((coords.length-1)*frac)))];features.push({type:'Feature',properties:{feature_type:'contour-label',elev_m:Math.round(level),major,label:Math.round(level)+' m'},geometry:{type:'Point',coordinates:p}});labelCount++;}
+        }
+      }
+      noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · CONTOURS '+(li+1)+'/'+levels.length);
+      await wait(0);
+    }
+    return {type:'FeatureCollection',features};
+  }
+  function makeSwales(hy,contours,focusMode=false){
+    const lines=(contours&&contours.features||[]).filter(f=>f&&f.properties&&f.properties.feature_type==='contour'&&f.geometry&&f.geometry.type==='LineString');
+    const channel=percentile(hy.acc,.972),accLow=percentile(hy.acc,.22),accMid=percentile(hy.acc,.72),accHigh=percentile(hy.acc,.91),candidates=[];
+    function sampleSegment(coords,center,relaxed){
+      const half=Math.max(10,Math.min(52,Math.floor(coords.length*.18))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);
+      const raw=coords.slice(start,end);if(raw.length<10)return null;
+      const segment=chaikin(raw,2,false);if(segment.length<10||lineLengthPixels(hy,segment)<10)return null;
+      const stride=Math.max(1,Math.floor(segment.length/22));let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null;
+      for(let k=1;k<segment.length-1;k+=stride){
+        const g=llGrid(hy,segment[k]),x=Math.max(1,Math.min(hy.w-2,Math.round(g.x))),y=Math.max(1,Math.min(hy.h-2,Math.round(g.y))),i=y*hy.w+x;
+        const slope=hy.slope[i],acc=hy.acc[i],minSlope=relaxed?.05:.20,maxSlope=relaxed?18:13.5;
+        if(!Number.isFinite(slope)||slope<minSlope||slope>maxSlope||acc>=channel)continue;
+        valid++;sumSlope+=slope;sumAcc+=acc;maxAcc=Math.max(maxAcc,acc);if(!anchor)anchor={x,y};
+      }
+      if(valid<(relaxed?1:2)||!anchor)return null;
+      const meanSlope=sumSlope/valid,meanAcc=sumAcc/valid;
+      const slopeScore=Math.max(0,1-Math.abs(meanSlope-3.4)/(relaxed?12:7.5));
+      const flowScore=meanAcc<=accLow?.18:meanAcc<=accMid?.18+.70*(meanAcc-accLow)/Math.max(1,accMid-accLow):Math.max(.18,.88-.48*(meanAcc-accMid)/Math.max(1,accHigh-accMid));
+      const lengthScore=Math.min(1,lineLengthPixels(hy,segment)/85);
+      return {segment,x:anchor.x,y:anchor.y,slope:meanSlope,acc:meanAcc,maxAcc,score:slopeScore*.56+flowScore*.28+lengthScore*.16,confidence:relaxed?'screening':'preferred'};
+    }
+    for(const f of lines){
+      const coords=f.geometry.coordinates;if(coords.length<16)continue;
+      const fractions=coords.length>110?[.18,.36,.54,.72,.86]:coords.length>55?[.26,.52,.78]:[.38,.68];
+      for(const frac of fractions){const c=sampleSegment(coords,Math.max(3,Math.min(coords.length-4,Math.round((coords.length-1)*frac))),false);if(c)candidates.push(c);}
+    }
+    if(candidates.length<36){
+      for(const f of lines){const coords=f.geometry.coordinates;if(coords.length<12)continue;for(const frac of [.28,.56,.82]){const c=sampleSegment(coords,Math.max(3,Math.min(coords.length-4,Math.round((coords.length-1)*frac))),true);if(c)candidates.push(c);}}
+    }
+    candidates.sort((a,b)=>b.score-a.score);
+    const chosen=[],primarySpacing=Math.max(6,Math.round(hy.w/31));
+    for(const c of candidates){
+      if(chosen.length>=52)break;
+      const spacing=chosen.length<20?primarySpacing:Math.max(4,Math.round(primarySpacing*.72));
+      if(chosen.some(p=>Math.hypot(p.x-c.x,p.y-c.y)<spacing))continue;
+      chosen.push(c);
+    }
+    // Fail visibly rather than silently: use the best remaining terrain-derived contour segments when strict thinning produced too few.
+    if(chosen.length<14){for(const c of candidates){if(chosen.length>=24)break;if(chosen.includes(c))continue;if(chosen.some(p=>Math.hypot(p.x-c.x,p.y-c.y)<4))continue;chosen.push(c);}}
+    const contourToleranceM16166=5.0;
+    function contourAudit16166(candidate){
+      const values=[],coords=candidate&&candidate.segment||[],stride=Math.max(1,Math.floor(coords.length/28));
+      for(let i=0;i<coords.length;i+=stride){
+        const g=llGrid(hy,coords[i]),x=Math.max(0,Math.min(hy.w-1,Math.round(g.x))),y=Math.max(0,Math.min(hy.h-1,Math.round(g.y))),v=Number(hy.elev[y*hy.w+x]);
+        if(Number.isFinite(v))values.push(v);
+      }
+      if(coords.length&&values.length<2){
+        for(const p of [coords[0],coords[coords.length-1]]){const g=llGrid(hy,p),x=Math.max(0,Math.min(hy.w-1,Math.round(g.x))),y=Math.max(0,Math.min(hy.h-1,Math.round(g.y))),v=Number(hy.elev[y*hy.w+x]);if(Number.isFinite(v))values.push(v);}
+      }
+      const min=values.length?Math.min(...values):Infinity,max=values.length?Math.max(...values):-Infinity;
+      const relief=values.length?max-min:Infinity,endDrop=values.length>1?Math.abs(values[values.length-1]-values[0]):Infinity;
+      return {reliefM:relief,endDropM:endDrop,valid:Number.isFinite(relief)&&relief<=contourToleranceM16166&&endDrop<=contourToleranceM16166};
+    }
+    const auditedCandidates=chosen.map(c=>Object.assign(c,{contourAudit16166:contourAudit16166(c)}));
+    /* BUILD-CHECK-16167: the 5 m longitudinal gate is a focus-screening gate.
+       Applying that tolerance to Vermont's coarse regional DEM rejected every
+       regional corridor because nearest-cell sampling can vary by more than 5 m.
+       Regional corridors remain indicative and carry the audit values, but are
+       not silently erased by a property/focus-scale tolerance. */
+    /* EARTHLINE 16609 — U.S. LAUNCH CORE REPAIR: final Regional contour geometry
+       must remain on the already-authoritative 16584 land/water validity mask after smoothing. */
+    let regionalLandWaterRejected16609=0;
+    const acceptedChosen=focusMode?auditedCandidates.filter(c=>c.contourAudit16166.valid):auditedCandidates.filter(c=>{
+      const segment16609=c&&c.segment||[];
+      if(segment16609.length<2){regionalLandWaterRejected16609++;return false;}
+      for(let i16609=1;i16609<segment16609.length;i16609++){
+        if(!earthlineRegionalSegmentValid16584(hy,segment16609[i16609-1],segment16609[i16609])){regionalLandWaterRejected16609++;return false;}
+      }
+      return true;
+    });
+    const contourAudit={
+      build:'EARTHLINE 16167',tier:focusMode?'focus':'regional',enforced:!!focusMode,
+      evaluated:chosen.length,accepted:acceptedChosen.length,rejected:chosen.length-acceptedChosen.length,
+      toleranceM:contourToleranceM16166,
+      maxAcceptedReliefM:acceptedChosen.length?Math.max(...acceptedChosen.map(c=>Number(c.contourAudit16166.reliefM)||0)):0,
+      rule:focusMode?'focus corridors must remain within 5 m longitudinal relief and 5 m end-to-end elevation change':'regional corridors retain modeled contour geometry; the 5 m focus tolerance is recorded but not enforced at regional DEM scale',
+      at:new Date().toISOString()
+    };
+    window.EARTHLINE_CONTOUR_VALIDITY_AUDIT_16167=contourAudit;
+    window.EARTHLINE_CONTOUR_VALIDITY_AUDIT_16166=contourAudit;
+    const features=[],total=Math.max(1,acceptedChosen.length);
+    const gradeACount=Math.max(3,Math.ceil(total*.16));
+    const gradeBEnd=Math.max(gradeACount+4,Math.ceil(total*.48));
+    for(let index=0;index<acceptedChosen.length;index++){
+      const c=acceptedChosen[index],rank=index+1,score=Math.max(0,Math.min(100,Math.round(c.score*100)));
+      const grade=index<gradeACount?'A':index<gradeBEnd?'B':'C';
+      const gradeLabel=grade==='A'?'BEST':grade==='B'?'STRONG':'GENERAL';
+      const slopeFit=Math.max(0,Math.min(100,Math.round(100-Math.abs(c.slope-3.4)*9)));
+      const relief=Number(c.contourAudit16166.reliefM),drop=Number(c.contourAudit16166.endDropM);
+      features.push({type:'Feature',properties:{
+        feature_type:'swale-opportunity',
+        grade,rank,score,
+        grade_label:gradeLabel,
+        slope_pct:Number(c.slope.toFixed(1)),
+        slope_fit_score:slopeFit,
+        confidence:c.confidence,
+        contour_valid:focusMode?true:null,
+        contour_validation_class:focusMode?'focus-screening-validated':'regional-screening-not-enforced',
+        contour_tolerance_m:contourToleranceM16166,
+        longitudinal_relief_m:Number.isFinite(relief)?Number(relief.toFixed(2)):null,
+        end_to_end_drop_m:Number.isFinite(drop)?Number(drop.toFixed(2)):null,
+        label:grade+rank+' — '+gradeLabel+' '+(focusMode?'FOCUS':'REGIONAL')+' BIOSWALE OPPORTUNITY',
+        screening:focusMode?'Earthline focus corridor derived from a modeled contour; longitudinal relief and end-to-end elevation change are each limited to 5 m. Field and bare-earth verification remain required.':'Earthline regional opportunity corridor derived from modeled contour geometry. The 5 m focus tolerance is not enforced against coarse regional DEM cells; a focus or property run is required before placement.'
+      },geometry:{type:'LineString',coordinates:c.segment}});
+    }
+    const generationAudit={
+      build:'EARTHLINE 16167',tier:focusMode?'focus':'regional',candidates:candidates.length,
+      chosenBeforeTierGate:chosen.length,publishedFeatures:features.length,
+      focusContourGateEnforced:!!focusMode,focusContourGateRejected:focusMode?chosen.length-acceptedChosen.length:0,
+      regionalLandWaterGateRejected:focusMode?0:regionalLandWaterRejected16609,
+      nullReason:features.length?'corridors published':(candidates.length?'all candidates rejected by the active tier gate':'no terrain-derived contour segments met slope, flow and spacing criteria'),
+      at:new Date().toISOString()
+    };
+    window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
+    return {type:'FeatureCollection',features};
+  }
+  function jsonp(url,params,ms=22000){
+    return new Promise((resolve,reject)=>{
+      const cb='__earthlineJsonp15970_'+Date.now()+'_'+Math.random().toString(36).slice(2),script=document.createElement('script');
+      const cleanup=()=>{try{delete window[cb];}catch(_){window[cb]=undefined;}script.remove();clearTimeout(timer);};
+      const timer=setTimeout(()=>{cleanup();reject(new Error('JSONP request timed out'));},ms);
+      window[cb]=data=>{cleanup();resolve(data);};
+      const p=new URLSearchParams(params||{});p.set('callback',cb);p.set('f','json');
+      script.async=true;script.onerror=()=>{cleanup();reject(new Error('JSONP request failed'));};
+      script.src=url+'?'+p.toString();document.head.appendChild(script);
+    });
+  }
+  function esriPolygonToGeoJSON(feature){
+    const g=feature&&feature.geometry,attrs=feature&&feature.attributes||{};if(!g||!Array.isArray(g.rings))return null;
+    const polys=g.rings.filter(r=>Array.isArray(r)&&r.length>=4).map(r=>[r.map(p=>[Number(p[0]),Number(p[1])])]);
+    if(!polys.length)return null;
+    return {type:'Feature',properties:attrs,geometry:polys.length===1?{type:'Polygon',coordinates:polys[0]}:{type:'MultiPolygon',coordinates:polys}};
+  }
+  function esriSetToGeoJSON(data){
+    const features=(data&&data.features||[]).map(esriPolygonToGeoJSON).filter(Boolean);
+    return {type:'FeatureCollection',features};
+  }
+  async function loadWatersheds(b,runToken){
+    const base={where:'1=1',geometry:b.join(','),geometryType:'esriGeometryEnvelope',inSR:'4326',spatialRel:'esriSpatialRelIntersects',outFields:'HYBAS_ID,Shape__Area,Shape__Length',returnGeometry:'true',outSR:'4326',resultRecordCount:'2000'};
+    const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),7000);
+    let geo=null,firstError=null;
+    try{
+      try{
+        const p=new URLSearchParams(Object.assign({},base,{f:'geojson'}));
+        const r=await fetch(HYDRO+'?'+p.toString(),{mode:'cors',cache:'no-store',signal:ctl.signal});
+        if(!r.ok)throw new Error('HydroBASINS HTTP '+r.status);
+        const j=await r.json();if(j.error)throw new Error(j.error.message||'HydroBASINS error');
+        if(j&&Array.isArray(j.features)&&j.features.length)geo=j;else throw new Error('no HydroBASINS polygons returned');
+      }catch(err){
+        firstError=err;
+        const j=await jsonp(HYDRO,base,7000);if(j&&j.error)throw new Error(j.error.message||'HydroBASINS JSONP error');
+        geo=esriSetToGeoJSON(j);if(!geo.features.length)throw firstError||new Error('no HydroBASINS polygons returned');
+      }
+      if(!guardedSetGeo(runToken,map(),IDS.basin,geo,'hydrobasins-temporary-mirror'))return 0;return geo.features.length;
+    }finally{clearTimeout(timer);}
+  }
+  function bboxIntersectsContiguousUS(b){
+    return Array.isArray(b)&&b.length===4&&!(b[2]<-125.1||b[0]>-66.2||b[3]<24.0||b[1]>50.2);
+  }
+  function normalizeUSGSKarst(geo){
+    const features=(geo&&geo.features||[]).filter(f=>f&&f.geometry).map(f=>{
+      const p=Object.assign({},f.properties||{});
+      const kind=clean(p.NPS_Type||p.K_TYPE||p.AGI_Type||'Carbonate');
+      const description=clean(p.USGS_Desc1||p.DESCRIPT||p.Type_Desc||p.AGI_Desc||'Mapped carbonate/karst groundwater terrain');
+      p.name=(kind?kind+' karst groundwater context':'Karst groundwater context');
+      p.source='USGS Open-File Report 2004-1352';
+      p.boundary_class='national/regional guidance — not a parcel boundary';
+      p.description=description;
+      return {type:'Feature',properties:p,geometry:f.geometry};
+    });
+    return {type:'FeatureCollection',features};
+  }
+  async function loadUSGSKarstAquifers(b,runToken){
+    const span=Math.max(Math.abs(b[2]-b[0]),Math.abs(b[3]-b[1]));
+    const params={where:"NPS_Type='Carbonate'",geometry:b.join(','),geometryType:'esriGeometryEnvelope',inSR:'4326',spatialRel:'esriSpatialRelIntersects',outFields:'K_TYPE,DESCRIPT,AGI_Type,AGI_Desc,USGS_Desc1,USGS_Desc2,NPS_Type,Type_Desc',returnGeometry:'true',outSR:'4326',maxAllowableOffset:String(span>5?.01:span>2?.004:.001),geometryPrecision:'5',resultRecordCount:'2000'};
+    let raw=null,transport='fetch';
+    const ctl=new
+
+===== lineLengthPixels hits [2138258] =====
+
+n=0,total=0,slopeComponent=0,flowComponent=0;
+    for(let i=0;i<hy.acc.length;i++){
+      const sp=Number(hy.slope[i]),ac=Number(hy.acc[i]);if(!Number.isFinite(sp)||!Number.isFinite(ac))continue;
+      const sl=clamp16492(1-sp/12),fa=clamp16492(Math.log(ac+1)/logMax);
+      const base=.45*.30+.55*.20+sl*.18+fa*.17+.15*.5;
+      total+=clamp16492(base*mult);slopeComponent+=sl;flowComponent+=fa;n++;
+    }
+    if(!n)return null;
+    return {score:Math.round(total/n*100),rainfallIn:precip,mode:'regional-model-fallback',components:{aquifer:45,soil:55,slope:Math.round(slopeComponent/n*100),flow:Math.round(flowComponent/n*100)},weights:{aquifer:.30,soil:.20,slope:.18,flow:.17,climate:.15},climate:{need:Number(need.toFixed(4)),multiplier:Number(mult.toFixed(4)),baseTerm:50},basis:'Existing Earthline recharge formula applied to the already-computed Regional slope/flow grid; aquifer permeability and soil infiltration remain model fallback at Regional screening scale.'};
+  }
+  function percentile(arr,p){const v=[];for(let i=0;i<arr.length;i++)if(Number.isFinite(arr[i]))v.push(arr[i]);v.sort((a,b)=>a-b);return v[Math.max(0,Math.min(v.length-1,Math.floor((v.length-1)*p)))]||0;}
+  function gridLL(hy,x,y){const b=hy.bounds;return [b[0]+(b[2]-b[0])*(x/(hy.w-1)),b[3]-(b[3]-b[1])*(y/(hy.h-1))];}
+  function llGrid(hy,ll){
+    const b=hy.bounds;return {x:Math.max(0,Math.min(hy.w-1,(ll[0]-b[0])/(b[2]-b[0])*(hy.w-1))),y:Math.max(0,Math.min(hy.h-1,(b[3]-ll[1])/(b[3]-b[1])*(hy.h-1)))};
+  }
+  function cleanLine(coords){
+    const out=[];for(const p of coords||[]){if(!p||!Number.isFinite(p[0])||!Number.isFinite(p[1]))continue;const q=out[out.length-1];if(!q||Math.abs(q[0]-p[0])>1e-10||Math.abs(q[1]-p[1])>1e-10)out.push([p[0],p[1]]);}return out;
+  }
+  function chaikin(coords,iterations=2,closed=false){
+    let pts=cleanLine(coords);if(pts.length<4)return pts;
+    const wasClosed=closed||(Math.abs(pts[0][0]-pts[pts.length-1][0])<1e-9&&Math.abs(pts[0][1]-pts[pts.length-1][1])<1e-9);
+    if(wasClosed)pts=pts.slice(0,-1);
+    for(let k=0;k<iterations;k++){
+      const next=[];if(!wasClosed)next.push(pts[0]);
+      const count=wasClosed?pts.length:pts.length-1;
+      for(let i=0;i<count;i++){
+        const a=pts[i],b=pts[(i+1)%pts.length];
+        next.push([a[0]*.75+b[0]*.25,a[1]*.75+b[1]*.25],[a[0]*.25+b[0]*.75,a[1]*.25+b[1]*.75]);
+      }
+      if(!wasClosed)next.push(pts[pts.length-1]);pts=next;
+    }
+    if(wasClosed&&pts.length)pts.push(pts[0].slice());return cleanLine(pts);
+  }
+  function lineLengthPixels(hy,coords){
+    let d=0,last=null;for(const ll of coords||[]){const p=llGrid(hy,ll);if(last)d+=Math.hypot(p.x-last.x,p.y-last.y);last=p;}return d;
+  }
+  function flowBearing(a,b){
+    const p1=a[1]*Math.PI/180,p2=b[1]*Math.PI/180,dl=(b[0]-a[0])*Math.PI/180;
+    const y=Math.sin(dl)*Math.cos(p2),x=Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl);
+    return (Math.atan2(y,x)*180/Math.PI+360)%360;
+  }
+
+  function earthlineRegionalPointValid16584(hy16584,ll16584){
+    if(!hy16584||!hy16584.validityMask16584)return true;
+    const g16584=llGrid(hy16584,ll16584),
+          x16584=Math.max(0,Math.min(hy16584.w-1,Math.round(g16584.x))),
+          y16584=Math.max(0,Math.min(hy16584.h-1,Math.round(g16584.y)));
+    return !!hy16584.validityMask16584[y16584*hy16584.w+x16584];
+  }
+  function earthlineRegionalSegmentValid16584(hy16584,a16584,b16584){
+    if(!hy16584||!hy16584.validityMask16584)return true;
+    const ga16584=llGrid(hy16584,a16584),gb16584=llGrid(hy16584,b16584),
+          steps16584=Math.max(2,Math.ceil(Math.hypot(gb16584.x-ga16584.x,gb16584.y-ga16584.y)*4));
+    for(let s16584=0;s16584<=steps16584;s16584++){
+      const t16584=s16584/steps16584,
+            p16584=[a16584[0]+(b16584[0]-a16584[0])*t16584,a16584[1]+(b16584[1]-a16584[1])*t16584];
+      if(!earthlineRegionalPointValid16584(hy16584,p16584))return false;
+    }
+    return true;
+  }
+  function earthlineRegionalSmoothFlow16584(hy16584,raw16584){
+    const base16584=cleanLine(raw16584);if(base16584.length<2)return [];
+    const lineSafe16584=line16584=>{
+      if(!Array.isArray(line16584)||line16584.length<2)return false;
+      for(let i16584=0;i16584<line16584.length;i16584++){
+        if(!earthlineRegionalPointValid16584(hy16584,line16584[i16584]))return false;
+        if(i16584>0&&!earthlineRegionalSegmentValid16584(hy16584,line16584[i16584-1],line16584[i16584]))return false;
+      }
+      return true;
+    };
+    const smooth16584=chaikin(base16584,2,false);
+    if(lineSafe16584(smooth16584))return smooth16584;
+
+    const runs16584=[];let run16584=[];
+    for(const p16584 of base16584){
+      const pointSafe16584=earthlineRegionalPointValid16584(hy16584,p16584);
+      const segmentSafe16584=pointSafe16584&&(!run16584.length||earthlineRegionalSegmentValid16584(hy16584,run16584[run16584.length-1],p16584));
+      if(pointSafe16584&&segmentSafe16584)run16584.push(p16584);
+      else{
+        if(run16584.length>=2)runs16584.push(run16584);
+        run16584=pointSafe16584?[p16584]:[];
+      }
+    }
+    if(run16584.length>=2)runs16584.push(run16584);
+    if(!runs16584.length)return [];
+    runs16584.sort((a16584,b16584)=>b16584.length-a16584.length);
+    const safeBase16584=runs16584[0];
+    const retrySmooth16584=chaikin(safeBase16584,2,false);
+    return lineSafe16584(retrySmooth16584)?retrySmooth16584:safeBase16584;
+  }
+
+  function makeFlows(hy){
+    const N=hy.acc.length,th=percentile(hy.acc,0.84),channel=new Uint8Array(N),upstream=new Uint16Array(N);
+    for(let i=0;i<N;i++)if(hy.acc[i]>=th&&hy.to[i]>=0)channel[i]=1;
+    for(let i=0;i<N;i++){const j=hy.to[i];if(channel[i]&&j>=0&&channel[j])upstream[j]++;}
+    const seeds=[];for(let i=0;i<N;i++)if(channel[i]&&upstream[i]===0)seeds.push(i);
+    seeds.sort((a,b)=>hy.acc[b]-hy.acc[a]);
+    const features=[],usedEdges=new Set();let lineCount=0;
+    function trace(seed){
+      let i=seed,raw=[],guard=0,maxAcc=hy.acc[seed];
+      while(i>=0&&guard++<hy.w*8){
+        const x=i%hy.w,y=(i/hy.w)|0;raw.push(gridLL(hy,x,y));maxAcc=Math.max(maxAcc,hy.acc[i]);
+        const j=hy.to[i];if(j<0||j===i)break;const edge=i+'>'+j;
+        if(usedEdges.has(edge)){raw.push(gridLL(hy,j%hy.w,(j/hy.w)|0));break;}
+        usedEdges.add(edge);i=j;
+      }
+      if(raw.length<5)return false;
+      const coords=earthlineRegionalSmoothFlow16584(hy,raw);if(coords.length<8)return false;
+      const rank=Math.min(1,Math.log1p(maxAcc)/Math.log1p(hy.w*hy.h));
+      features.push({type:'Feature',properties:{feature_type:'flow',rank,downstream:1},geometry:{type:'LineString',coordinates:coords}});lineCount++;
+      const desired=Math.max(3,Math.min(12,Math.floor(coords.length/14))),stride=(coords.length-1)/(desired+1);
+      for(let a=1;a<=desired;a++){
+        const pos=Math.max(2,Math.min(coords.length-3,Math.round(stride*a))),bearing=flowBearing(coords[pos-2],coords[pos+2]);
+        features.push({type:'Feature',properties:{feature_type:'flow-arrow',rank,bearing,rotation:(bearing+270)%360},geometry:{type:'Point',coordinates:coords[pos]}});
+      }
+      return true;
+    }
+    for(const seed of seeds){if(lineCount>=230)break;trace(seed);}
+    if(lineCount<55){
+      const extra=[];for(let i=0;i<N;i++)if(channel[i])extra.push(i);extra.sort((a,b)=>hy.acc[b]-hy.acc[a]);
+      for(const seed of extra){if(lineCount>=180)break;const j=hy.to[seed];if(j<0||usedEdges.has(seed+'>'+j))continue;trace(seed);}
+    }
+    return {type:'FeatureCollection',features};
+  }
+  function niceInterval(range,target=15){
+    const raw=Math.max(1,range/Math.max(4,target)),p=Math.pow(10,Math.floor(Math.log10(raw))),m=raw/p;
+    return (m<=1?1:m<=2?2:m<=5?5:10)*p;
+  }
+  function stitchContourSegments(segments){
+    const used=new Uint8Array(segments.length),adj=new Map(),factor=100000;
+    const key=p=>Math.round(p[0]*factor)+','+Math.round(p[1]*factor);
+    function add(k,i){let a=adj.get(k);if(!a)adj.set(k,a=[]);a.push(i);}
+    segments.forEach((s,i)=>{add(key(s[0]),i);add(key(s[1]),i);});
+    const paths=[];
+    function walk(startKey,startIndex){
+      let currentKey=startKey,index=startIndex,guard=0,path=[];
+      while(index!=null&&!used[index]&&guard++<segments.length+8){
+        used[index]=1;const s=segments[index],forward=key(s[0])===currentKey,from=forward?s[0]:s[1],to=forward?s[1]:s[0];
+        if(!path.length)path.push(from);path.push(to);currentKey=key(to);
+        const next=(adj.get(currentKey)||[]).find(i=>!used[i]);index=next==null?null:next;
+      }
+      if(path.length>=4)paths.push(path);
+    }
+    for(const [k,list] of adj)if(list.length===1&&!used[list[0]])walk(k,list[0]);
+    for(let i=0;i<segments.length;i++)if(!used[i])walk(key(segments[i][0]),i);
+    return paths;
+  }
+  async function makeContours(hy){
+    const min=percentile(hy.elev,0.02),max=percentile(hy.elev,0.98),range=Math.max(1,max-min),step=niceInterval(range,20),levels=[];
+    for(let l=Math.ceil(min/step)*step;l<=max+step*.001;l+=step)levels.push(l);
+    const features=[],majorEvery=levels.length>20?4:3,labelEvery=2;let labelCount=0;
+    function interp(a,b,l){const d=b-a;return Math.abs(d)<1e-9?.5:Math.max(0,Math.min(1,(l-a)/d));}
+    for(let li=0;li<levels.length;li++){
+      const level=levels[li],major=(li%majorEvery===0)?1:0,labelable=(li%labelEvery===0)?1:0,segments=[];
+      for(let y=0;y<hy.h-1;y++)for(let x=0;x<hy.w-1;x++){
+        if(hy.validityMask16584){
+          const i016584=y*hy.w+x,i116584=i016584+1,i316584=(y+1)*hy.w+x,i216584=i316584+1;
+          if(!hy.validityMask16584[i016584]||!hy.validityMask16584[i116584]||!hy.validityMask16584[i216584]||!hy.validityMask16584[i316584])continue;
+        }
+        const a=hy.elev[y*hy.w+x],bb=hy.elev[y*hy.w+x+1],c=hy.elev[(y+1)*hy.w+x+1],d=hy.elev[(y+1)*hy.w+x],pts=[];
+        if((a<level)!=(bb<level))pts.push([x+interp(a,bb,level),y]);
+        if((bb<level)!=(c<level))pts.push([x+1,y+interp(bb,c,level)]);
+        if((c<level)!=(d<level))pts.push([x+1-interp(c,d,level),y+1]);
+        if((d<level)!=(a<level))pts.push([x,y+1-interp(d,a,level)]);
+        if(pts.length===2)segments.push([pts[0],pts[1]]);
+        else if(pts.length===4){const center=(a+bb+c+d)/4;if(center<level){segments.push([pts[0],pts[3]],[pts[1],pts[2]]);}else{segments.push([pts[0],pts[1]],[pts[2],pts[3]]);}}
+      }
+      const paths=stitchContourSegments(segments);
+      for(const path of paths){
+        if(path.length<5)continue;const raw=path.map(p=>gridLL(hy,p[0],p[1])),closed=Math.abs(path[0][0]-path[path.length-1][0])<.001&&Math.abs(path[0][1]-path[path.length-1][1])<.001,coords=chaikin(raw,2,closed);
+        if(coords.length<10||lineLengthPixels(hy,coords)<5)continue;
+        features.push({type:'Feature',properties:{feature_type:'contour',elev_m:Math.round(level),major,labelable,label:Math.round(level)+' m'},geometry:{type:'LineString',coordinates:coords}});
+        if(labelable&&labelCount<84){
+          const positions=coords.length>80?[.25,.50,.75]:[.5];
+          for(const frac of positions){if(labelCount>=84)break;const p=coords[Math.max(1,Math.min(coords.length-2,Math.floor((coords.length-1)*frac)))];features.push({type:'Feature',properties:{feature_type:'contour-label',elev_m:Math.round(level),major,label:Math.round(level)+' m'},geometry:{type:'Point',coordinates:p}});labelCount++;}
+        }
+      }
+      noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · CONTOURS '+(li+1)+'/'+levels.length);
+      await wait(0);
+    }
+    return {type:'FeatureCollection',features};
+  }
+  function makeSwales(hy,contours,focusMode=false){
+    const lines=(contours&&contours.features||[]).filter(f=>f&&f.properties&&f.properties.feature_type==='contour'&&f.geometry&&f.geometry.type==='LineString');
+    const channel=percentile(hy.acc,.972),accLow=percentile(hy.acc,.22),accMid=percentile(hy.acc,.72),accHigh=percentile(hy.acc,.91),candidates=[];
+    function sampleSegment(coords,center,relaxed){
+      const half=Math.max(10,Math.min(52,Math.floor(coords.length*.18))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);
+      const raw=coords.slice(start,end);if(raw.length<10)return null;
+      const segment=chaikin(raw,2,false);if(segment.length<10||lineLengthPixels(hy,segment)<10)return null;
+      const stride=Math.max(1,Math.floor(segment.length/22));let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null;
+      for(let k=1;k<segment.length-1;k+=stride){
+        const g=llGrid(hy,segment[k]),x=Math.max(1,Math.min(hy.w-2,Math.round(g.x))),y=Math.max(1,Math.min(hy.h-2,Math.round(g.y))),i=y*hy.w+x;
+        const slope=hy.slope[i],acc=hy.acc[i],minSlope=relaxed?.05:.20,maxSlope=relaxed?18:13.5;
+        if(!Number.isFinite(slope)||slope<minSlope||slope>maxSlope||acc>=channel)continue;
+        valid++;sumSlope+=slope;sumAcc+=acc;maxAcc=Math.max(maxAcc,acc);if(!anchor)anchor={x,y};
+      }
+      if(valid<(relaxed?1:2)||!anchor)return null;
+      const meanSlope=sumSlope/valid,meanAcc=sumAcc/valid;
+      const slopeScore=Math.max(0,1-Math.abs(meanSlope-3.4)/(relaxed?12:7.5));
+      const flowScore=meanAcc<=accLow?.18:meanAcc<=accMid?.18+.70*(meanAcc-accLow)/Math.max(1,accMid-accLow):Math.max(.18,.88-.48*(meanAcc-accMid)/Math.max(1,accHigh-accMid));
+      const lengthScore=Math.min(1,lineLengthPixels(hy,segment)/85);
+      return {segment,x:anchor.x,y:anchor.y,slope:meanSlope,acc:meanAcc,maxAcc,score:slopeScore*.56+flowScore*.28+lengthScore*.16,confidence:relaxed?'screening':'preferred'};
+    }
+    for(const f of lines){
+      const coords=f.geometry.coordinates;if(coords.length<16)continue;
+      const fractions=coords.length>110?[.18,.36,.54,.72,.86]:coords.length>55?[.26,.52,.78]:[.38,.68];
+      for(const frac of fractions){const c=sampleSegment(coords,Math.max(3,Math.min(coords.length-4,Math.round((coords.length-1)*frac))),false);if(c)candidates.push(c);}
+    }
+    if(candidates.length<36){
+      for(const f of lines){const coords=f.geometry.coordinates;if(coords.length<12)continue;for(const frac of [.28,.56,.82]){const c=sampleSegment(coords,Math.max(3,Math.min(coords.length-4,Math.round((coords.length-1)*frac))),true);if(c)candidates.push(c);}}
+    }
+    candidates.sort((a,b)=>b.score-a.score);
+    const chosen=[],primarySpacing=Math.max(6,Math.round(hy.w/31));
+    for(const c of candidates){
+      if(chosen.length>=52)break;
+      const spacing=chosen.length<20?primarySpacing:Math.max(4,Math.round(primarySpacing*.72));
+      if(chosen.some(p=>Math.hypot(p.x-c.x,p.y-c.y)<spacing))continue;
+      chosen.push(c);
+    }
+    // Fail visibly rather than silently: use the best remaining terrain-derived contour segments when strict thinning produced too few.
+    if(chosen.length<14){for(const c of candidates){if(chosen.length>=24)break;if(chosen.includes(c))continue;if(chosen.some(p=>Math.hypot(p.x-c.x,p.y-c.y)<4))continue;chosen.push(c);}}
+    const contourToleranceM16166=5.0;
+    function contourAudit16166(candidate){
+      const values=[],coords=candidate&&candidate.segment||[],stride=Math.max(1,Math.floor(coords.length/28));
+      for(let i=0;i<coords.length;i+=stride){
+        const g=llGrid(hy,coords[i]),x=Math.max(0,Math.min(hy.w-1,Math.round(g.x))),y=Math.max(0,Math.min(hy.h-1,Math.round(g.y))),v=Number(hy.elev[y*hy.w+x]);
+        if(Number.isFinite(v))values.push(v);
+      }
+      if(coords.length&&values.length<2){
+        for(const p of [coords[0],coords[coords.length-1]]){const g=llGrid(hy,p),x=Math.max(0,Math.min(hy.w-1,Math.round(g.x))),y=Math.max(0,Math.min(hy.h-1,Math.round(g.y))),v=Number(hy.elev[y*hy.w+x]);if(Number.isFinite(v))values.push(v);}
+      }
+      const min=values.length?Math.min(...values):Infinity,max=values.length?Math.max(...values):-Infinity;
+      const relief=values.length?max-min:Infinity,endDrop=values.length>1?Math.abs(values[values.length-1]-values[0]):Infinity;
+      return {reliefM:relief,endDropM:endDrop,valid:Number.isFinite(relief)&&relief<=contourToleranceM16166&&endDrop<=contourToleranceM16166};
+    }
+    const auditedCandidates=chosen.map(c=>Object.assign(c,{contourAudit16166:contourAudit16166(c)}));
+    /* BUILD-CHECK-16167: the 5 m longitudinal gate is a focus-screening gate.
+       Applying that tolerance to Vermont's coarse regional DEM rejected every
+       regional corridor because nearest-cell sampling can vary by more than 5 m.
+       Regional corridors remain indicative and carry the audit values, but are
+       not silently erased by a property/focus-scale tolerance. */
+    /* EARTHLINE 16609 — U.S. LAUNCH CORE REPAIR: final Regional contour geometry
+       must remain on the already-authoritative 16584 land/water validity mask after smoothing. */
+    let regionalLandWaterRejected16609=0;
+    const acceptedChosen=focusMode?auditedCandidates.filter(c=>c.contourAudit16166.valid):auditedCandidates.filter(c=>{
+      const segment16609=c&&c.segment||[];
+      if(segment16609.length<2){regionalLandWaterRejected16609++;return false;}
+      for(let i16609=1;i16609<segment16609.length;i16609++){
+        if(!earthlineRegionalSegmentValid16584(hy,segment16609[i16609-1],segment16609[i16609])){regionalLandWaterRejected16609++;return false;}
+      }
+      return true;
+    });
+    const contourAudit={
+      build:'EARTHLINE 16167',tier:focusMode?'focus':'regional',enforced:!!focusMode,
+      evaluated:chosen.length,accepted:acceptedChosen.length,rejected:chosen.length-acceptedChosen.length,
+      toleranceM:contourToleranceM16166,
+      maxAcceptedReliefM:acceptedChosen.length?Math.max(...acceptedChosen.map(c=>Number(c.contourAudit16166.reliefM)||0)):0,
+      rule:focusMode?'focus corridors must remain within 5 m longitudinal relief and 5 m end-to-end elevation change':'regional corridors retain modeled contour geometry; the 5 m focus tolerance is recorded but not enforced at regional DEM scale',
+      at:new Date().toISOString()
+    };
+    window.EARTHLINE_CONTOUR_VALIDITY_AUDIT_16167=contourAudit;
+    window.EARTHLINE_CONTOUR_VALIDITY_AUDIT_16166=contourAudit;
+    const features=[],total=Math.max(1,acceptedChosen.length);
+    const gradeACount=Math.max(3,Math.ceil(total*.16));
+    const gradeBEnd=Math.max(gradeACount+4,Math.ceil(total*.48));
+    for(let index=0;index<acceptedChosen.length;index++){
+      const c=acceptedChosen[index],rank=index+1,score=Math.max(0,Math.min(100,Math.round(c.score*100)));
+      const grade=index<gradeACount?'A':index<gradeBEnd?'B':'C';
+      const gradeLabel=grade==='A'?'BEST':grade==='B'?'STRONG':'GENERAL';
+      const slopeFit=Math.max(0,Math.min(100,Math.round(100-Math.abs(c.slope-3.4)*9)));
+      const
+
+===== chaikin hits [1067543, 2137513] =====
+
+f((c&1)!==((c&2)>>1))pts.push([x+lerp(h00,h10),y]);
+      if(((c&2)>>1)!==((c&4)>>2))pts.push([x+1,y+lerp(h10,h11)]);
+      if(((c&8)>>3)!==((c&4)>>2))pts.push([x+lerp(h01,h11),y+1]);
+      if((c&1)!==((c&8)>>3))pts.push([x,y+lerp(h00,h01)]);
+      if(pts.length>=2){
+        const[ax,ay]=G2S(pts[0][0],pts[0][1]),[bx,by]=G2S(pts[1][0],pts[1][1]);
+        ctx.moveTo(ax,ay);ctx.lineTo(bx,by);segCount++;
+        if(pts.length===4){
+          const[cx2,cy2]=G2S(pts[2][0],pts[2][1]),[dx2,dy2]=G2S(pts[3][0],pts[3][1]);
+          ctx.moveTo(cx2,cy2);ctx.lineTo(dx2,dy2);
+        }
+      }
+    }
+    if(segCount){
+      ctx.strokeStyle="rgba(255,255,255,0.52)";
+      ctx.lineWidth=0.78;
+      ctx.stroke();
+      ctx.strokeStyle="rgba(42,215,255,0.24)";
+      ctx.lineWidth=0.32;
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+function flowStyle(a,thr){
+  // BUILD-CHECK-15760: blue water movement must read above contours, recharge and swales.
+  const t=clamp(Math.log(a/thr+1)/Math.log(M.maxAcc/thr+1),0,1);
+  const w=(1.7+t*5.8)*Math.max(0.78,view.s/5);
+  let col;
+  if(t<0.33)col="rgba(46,190,255,"+(0.78+t*0.45)+")";
+  else if(t<0.66)col="rgba(34,198,255,0.98)";
+  else col="rgba(138,241,255,1)";
+  return{w,col,t};
+}
+function drawFlow(thr){
+  ctx.save();ctx.lineCap="round";ctx.lineJoin="round";
+
+  // BUILD-CHECK-15672: extract fewer, longer, terrain-supported channels. D8 remains the
+  // routing model, but short raster branches are pruned and each display point is shifted
+  // within its DEM cell toward the local valley low before restrained curve smoothing.
+  const active=new Uint8Array(N);
+  const upstreamCount=new Uint8Array(N);
+  const displayThr=Math.max(2,thr*0.78);
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+    const i=idx(x,y);
+    if(M.acc[i]>=displayThr&&(!M.inP||M.inP[i]))active[i]=1;
+  }
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+    const i=idx(x,y);if(!active[i])continue;
+    const d=M.dir[i];if(d<0)continue;
+    const nx=x+D8X[d],ny=y+D8Y[d];
+    if(nx<0||ny<0||nx>=GW||ny>=GH)continue;
+    const ni=idx(nx,ny);if(active[ni]&&upstreamCount[ni]<255)upstreamCount[ni]++;
+  }
+
+  const valleyPoint=(x,y,d)=>{
+    if(d<0)return [x+0.5,y+0.5];
+    const vx=D8X[d],vy=D8Y[d],mag=Math.hypot(vx,vy)||1;
+    const px=-vy/mag,py=vx/mag;
+    let best=[x+0.5,y+0.5],bestH=hAt(best[0],best[1]);
+    for(const off of [-0.42,-0.24,0,0.24,0.42]){
+      const q=[x+0.5+px*off,y+0.5+py*off],hh=hAt(q[0],q[1]);
+      if(hh<bestH){bestH=hh;best=q;}
+    }
+    return best;
+  };
+  const chaikin=(pts,passes)=>{
+    let out=pts;
+    for(let p=0;p<passes;p++){
+      if(out.length<4)break;
+      const q=[out[0]];
+      for(let i=0;i<out.length-1;i++){
+        const a=out[i],b=out[i+1];
+        q.push([a[0]*0.72+b[0]*0.28,a[1]*0.72+b[1]*0.28]);
+        q.push([a[0]*0.28+b[0]*0.72,a[1]*0.28+b[1]*0.72]);
+      }
+      q.push(out[out.length-1]);out=q;
+    }
+    return out;
+  };
+  const lineLengthCells=pts=>{
+    let d=0;for(let i=1;i<pts.length;i++)d+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);return d;
+  };
+
+  const segments=[];
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+    const start=idx(x,y);if(!active[start]||upstreamCount[start]===1)continue;
+    const d0=M.dir[start];if(d0<0)continue;
+    let cx=x,cy=y,ci=start,guard=0,maxA=M.acc[start];
+    const pts=[valleyPoint(cx,cy,d0)];
+    while(guard++<700){
+      const d=M.dir[ci];if(d<0)break;
+      const nx=cx+D8X[d],ny=cy+D8Y[d];
+      if(nx<0||ny<0||nx>=GW||ny>=GH)break;
+      const ni=idx(nx,ny);if(!active[ni])break;
+      cx=nx;cy=ny;ci=ni;maxA=Math.max(maxA,M.acc[ni]);
+      pts.push(valleyPoint(cx,cy,M.dir[ci]));
+      if(upstreamCount[ci]!==1)break;
+    }
+    const len=lineLengthCells(pts),strength=maxA/displayThr;
+    // Remove short isolated twigs and low-confidence diagonal strokes.
+    if(len<2.4&&strength<2.2)continue;
+    if(len<1.8)continue;
+    segments.push({pts,maxA,len,strength});
+  }
+
+  // Major channels first, then credible tributaries merging into them.
+  segments.sort((a,b)=>a.maxA-b.maxA);
+  for(const seg of segments){
+    const st=flowStyle(seg.maxA,displayThr);
+    const passes=seg.pts.length>12?3:(seg.pts.length>6?2:1);
+    const pts=chaikin(seg.pts,passes);
+    if(pts.length<2)continue;
+
+    const trace=()=>{
+      ctx.beginPath();
+      const p0=G2S(pts[0][0],pts[0][1]);ctx.moveTo(p0[0],p0[1]);
+      if(pts.length===2){
+        const p1=G2S(pts[1][0],pts[1][1]);ctx.lineTo(p1[0],p1[1]);return;
+      }
+      for(let k=1;k<pts.length-1;k++){
+        const p=G2S(pts[k][0],pts[k][1]),n=G2S(pts[k+1][0],pts[k+1][1]);
+        ctx.quadraticCurveTo(p[0],p[1],(p[0]+n[0])/2,(p[1]+n[1])/2);
+      }
+      const last=G2S(pts[pts.length-1][0],pts[pts.length-1][1]);ctx.lineTo(last[0],last[1]);
+    };
+
+    if(st.t>0.48){
+      ctx.shadowColor="rgba(70,210,255,.64)";ctx.shadowBlur=7;
+      ctx.strokeStyle="rgba(0,8,20,.82)";ctx.lineWidth=st.w*2.55;
+      trace();ctx.stroke();
+    }
+    ctx.shadowBlur=0;
+    ctx.strokeStyle=st.col;ctx.lineWidth=Math.max(2.2,st.w*1.08);
+    trace();ctx.stroke();
+  }
+  ctx.restore();
+}
+// REGIONAL PRIORITY ZONES (zoomed-out view) — where is swale work highest-impact?
+// At regional/national scale individual swales are sub-pixel, so instead we surface the
+// AREAS where slowing/spreading/sinking water matters most: places that combine
+// concentrated runoff, workable terrain (not cliffs), and water stress / recharge need.
+// This is an honest suitability surface, not fake individual swales.
+function regionalPriorityAt(x,y){
+  const i=idx(x,y);
+  if(!M.inP[i])return 0;
+  const fa=Math.log(M.acc[i]+1)/Math.log(M.maxAcc+1);     // concentrated runoff
+  const sp=slopePct(x,y);
+  const work=sp<=15?1:Math.max(0,1-(sp-15)/15);           // workable terrain (<~15%)
+  const precip=(M.loc&&M.loc.precipIn)||30;
+  const stress=clamp(1-(precip-8)/55,0.15,1);             // drier => more needed
+  return fa*0.5*work + work*0.2*stress + fa*work*stress*0.3;
+}
+function drawRegionalPoliticalFrame(){
+  // BUILD-CHECK-15672: no neighboring-state rectangles. Actual satellite context supplies
+  // the surrounding geography; we draw only the searched region outline and quiet labels.
+  if(!M.loc||!M.loc.bbox||typeof lngLatToGrid!=="function")return;
+  const nm=(M.loc.name||"").toLowerCase();
+  const drawOutline=(bbox)=>{
+    const [w,s,e,n]=bbox;
+    const pts=[[w,n],[e,n],[e,s],[w,s]].map(p=>lngLatToGrid(p[0],p[1])).map(p=>G2S(p[0],p[1]));
+    ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();
+    ctx.strokeStyle="rgba(255,255,255,0.92)";ctx.lineWidth=2.4;ctx.setLineDash([]);ctx.stroke();
+  };
+  const label=(lng,lat,text,primary=false)=>{
+    const g=lngLatToGrid(lng,lat),p=G2S(g[0],g[1]);
+    const w=cv.width/(window.devicePixelRatio||1),h=cv.height/(window.devicePixelRatio||1);
+    if(p[0]<-80||p[1]<-30||p[0]>w+80||p[1]>h+30)return;
+    ctx.font=primary?"900 18px system-ui":"800 11px system-ui";
+    ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.lineWidth=4;ctx.strokeStyle="rgba(5,9,15,0.80)";ctx.strokeText(text,p[0],p[1]);
+    ctx.fillStyle=primary?"rgba(255,255,255,0.95)":"rgba(220,230,240,0.72)";ctx.fillText(text,p[0],p[1]);
+  };
+  ctx.save();ctx.lineJoin="round";ctx.lineCap="round";
+  drawOutline(M.loc.bbox);
+  if(nm.includes("colorado")){
+    label(-105.55,39.0,"COLORADO",true);
+    label(-110.1,39.0,"UTAH");label(-105.5,41.75,"WYOMING");
+    label(-100.9,41.0,"NEBRASKA");label(-100.9,38.5,"KANSAS");
+    label(-105.5,35.9,"NEW MEXICO");label(-100.9,36.2,"OKLAHOMA");
+  }else label((M.loc.bbox[0]+M.loc.bbox[2])/2,(M.loc.bbox[1]+M.loc.bbox[3])/2,(M.loc.name||"REGION").toUpperCase(),true);
+  ctx.restore();
+}
+
+function drawArrows(thr){
+  // BUILD-CHECK-15760: water movement must be visible live, not only in screenshots.
+  // Draw a continuous downstream blue water line first, then smaller arrowheads on top.
+  // This is rendering-only: it reads the existing D8 direction + flow accumulation arrays.
+  ctx.save();
+  ctx.lineCap="round";ctx.lineJoin="round";
+  const arrThr=Math.max(2,thr*0.88);
+  const active=new Uint8Array(N);
+  const upstreamCount=new Uint8Array(N);
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+    const i=idx(x,y);
+    if(M.acc[i]>=arrThr&&(!M.inP||M.inP[i]))active[i]=1;
+  }
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+    const i=idx(x,y);if(!active[i])continue;
+    const d=M.dir[i];if(d<0)continue;
+    const nx=x+D8X[d],ny=y+D8Y[d];
+    if(nx<0||ny<0||nx>=GW||ny>=GH)continue;
+    const ni=idx(nx,ny);if(active[ni]&&upstreamCount[ni]<255)upstreamCount[ni]++;
+  }
+  const pointLen=pts=>{let L=0;for(let i=1;i<pts.length;i++)L+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);return L;};
+  const pointAt=(pts,target)=>{
+    let walked=0;
+    for(let i=1;i<pts.length;i++){
+      const a=pts[i-1],b=pts[i],dx=b[0]-a[0],dy=b[1]-a[1],seg=Math.hypot(dx,dy);
+      if(seg<0.001)continue;
+      if(walked+seg>=target){const t=(target-walked)/seg;return{x:a[0]+dx*t,y:a[1]+dy*t,a:Math.atan2(dy,dx)};}
+      walked+=seg;
+    }
+    return null;
+  };
+  const drawArrow=(p,size)=>{
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.a);
+    ctx.shadowColor="rgba(40,205,255,.55)";ctx.shadowBlur=4;
+    ctx.strokeStyle="rgba(0,7,18,0.92)";ctx.lineWidth=2.1;
+    ctx.fillStyle="rgba(88,230,255,0.98)";
+    ctx.beginPath();
+    ctx.moveTo(size,0);
+    ctx.lineTo(-size*.55,size*.42);
+    ctx.lineTo(-size*.24,0);
+    ctx.lineTo(-size*.55,-size*.42);
+    ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+  };
+  const drawPath=(pts,maxA)=>{
+    if(pts.length<2)return;
+    const st=flowStyle(maxA,arrThr);
+    const w=Math.max(2.8,Math.min(6.2,2.6+st.t*3.2));
+    ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);
+    for(let k=1;k<pts.length;k++)ctx.lineTo(pts[k][0],pts[k][1]);
+    ctx.strokeStyle="rgba(0,7,18,0.90)";ctx.lineWidth=w+5.2;ctx.stroke();
+    ctx.strokeStyle="rgba(112,232,255,0.52)";ctx.lineWidth=w+2.0;ctx.stroke();
+    ctx.strokeStyle="rgba(30,186,255,1)";ctx.lineWidth=w;ctx.stroke();
+    const L=pointLen(pts);
+    if(L<42)return;
+    const gap=Math.max(62,Math.min(92,80*Math.max(.88,view.s/5)));
+    const count=Math.max(1,Math.floor(L/gap));
+    const size=Math.max(7.5,Math.min(11,7.8+st.t*2.6));
+    for(let n=0;n<count;n++){
+      const p=pointAt(pts,L*((n+1)/(count+1)));
+      if(p)drawArrow(p,size);
+    }
+  };
+  const visited=new Uint8Array(N);
+  const paths=[];
+  for(let sy=0;sy<GH;sy++)for(let sx=0;sx<GW;sx++){
+    const si=idx(sx,sy);
+    if(!active[si]||visited[si])continue;
+    // Start at tributary heads and confluences, so each path becomes a readable stream stroke.
+    if(upstreamCount[si]===1)continue;
+    let x=sx,y=sy,ci=si,steps=0,maxA=M.acc[si];
+    const pts=[];
+    while(steps++<650){
+      if(x<0||y<0||x>=GW||y>=GH)break;
+      ci=idx(x,y);
+      if(!active[ci]||visited[ci])break;
+      visited[ci]=1;maxA=Math.max(maxA,M.acc[ci]);
+      pts.push(G2S(x+0.5,y+0.5));
+      const d=M.dir[ci];if(d<0)break;
+      x+=D8X[d];y+=D8Y[d];
+      if(x<0||y<0||x>=GW||y>=GH)break;
+      const ni=idx(x,y);
+      if(active[ni]&&upstreamCount[ni]!==1){pts.push(G2S(x+0.5,y+0.5));break;}
+    }
+    if(pts.length>=2)paths.push({pts,maxA});
+  }
+  paths.sort((a,b)=>a.maxA-b.maxA);
+  for(const p of paths)drawPath(p.pts,p.maxA);
+  ctx.restore();
+}
+function drawRecharge(){
+  // BUILD-CHECK-15672: these are the orange Aquifer Recharge Potential zones the user
+  // sees by default. The former `lighter` blend washed out over snow, pale rock and bright
+  // high-elevation satellite imagery. Draw with normal compositing, an opaque warm center,
+  // a dark casing, a bright perimeter and a labeled center so the layer remains unmistakable.
+  const zNow=earthlineMapActive()&&earthlineMap.getZoom?earthlineMap.getZoom():Number(M.viewZoom||16);
+  const close=zNow>=14;
+  ctx.save();
+  ctx.globalCompositeOperation="source-over";
+  ctx.lineJoin="round";
+  for(const z of M.rechZones){
+    const[ax,ay]=G2S(z.gx,z.gy);
+    const rx=Math.max(18,z.rx*view.s),ry=Math.max(10,z.ry*view.s);
+
+    // Dark translucent base separates the recharge target from bright imagery.
+    ctx.save();
+    ctx.beginPath();ctx.ellipse(ax,ay,rx+7,ry+7,z.a,0,Math.PI*2);
+    ctx.fillStyle=close?"rgba(54,18,0,0.54)":"rgba(54,18,0,0.48)";ctx.fill();
+    ctx.restore();
+
+    // Solid orange footprint. This is intentionally strong enough to survive snow/rock.
+    ctx.save();
+    ctx.beginPath();ctx.ellipse(ax,ay,rx,ry,z.a,0,Math.PI*2);
+    ctx.fillStyle=close?"rgba(255,104,0,0.72)":"rgba(255,112,0,0.66)";ctx.fill();
+    ctx.restore();
+
+    // Warm internal core gives the target a readable center without additive blending.
+    ctx.save();
+    ctx.beginPath();ctx.ellipse(ax,ay,rx*.64,ry*.64,z.a,0,Math.PI*2);
+    ctx.fillStyle=close?"rgba(255,197,55,0.46)":"rgba(255,193,48,0.40)";ctx.fill();
+    ctx.restore();
+
+    // Three-stage perimeter: black-brown casing, saturated orange, pale highlight.
+    ctx.save();ctx.beginPath();ctx.ellipse(ax,ay,rx,ry,z.a,0,Math.PI*2);
+    ctx.strokeStyle="rgba(40,10,0,0.98)";ctx.lineWidth=close?10:9;ctx.stroke();ctx.restore();
+    ctx.save();ctx.beginPath();ctx.ellipse(ax,ay,rx,ry,z.a,0,Math.PI*2);
+    ctx.shadowColor="rgba(255,104,0,0.95)";ctx.shadowBlur=close?15:12;
+    ctx.strokeStyle="#ff7200";ctx.lineWidth=close?6:5.5;ctx.stroke();ctx.restore();
+    ctx.save();ctx.beginPath();ctx.ellipse(ax,ay,rx,ry,z.a,0,Math.PI*2);
+    ctx.setLineDash(close?[7,5]:[6,5]);ctx.strokeStyle="#fff0c8";ctx.lineWidth=2.2;ctx.stroke();ctx.restore();
+
+    // Compact identifier ties the visible feature to the recharge model, not USGS polygons.
+    const label="RECHARGE "+(z.id||"");
+    ctx.save();ctx.font=(close?"900 11px":"900 10px")+" Segoe UI, sans-serif";
+    ctx.textAlign="center";ctx.textBaseline="middle";
+    const tw=ctx.measureText(label).width;
+    ctx.fillStyle="rgba(41,11,0,0.90)";
+    ctx.beginPath();ctx.roundRect(ax-tw/2-7,ay-10,tw+14,20,6);ctx.fill();
+    ctx.strokeStyle="#ffb13b";ctx.lineWidth=1.4;ctx.stroke();
+    ctx.fillStyle="#fff4d2";ctx.fillText(label,ax,ay+.5);ctx.restore();
+  }
+  ctx.restore();
+}
+function drawSoil(){
+  // Real NRCS SSURGO perc grid when loaded: green = ideal perc, amber = fast/sandy,
+  // red = slow/clay. Falls back to the illustrative blobs when no real data is present.
+  if(_soilData){
+    ctx.save();ctx.globalCompositeOperation="overlay";
+    for(let gy=0;gy<GH;gy+=2)for(let gx=0;gx<GW;gx+=2){
+      const v=_soilData[gy*_soilW+gx];
+      if(v<=0)continue;
+      const[ax,ay]=G2S(gx,gy);
+      // v: 0.4(poor)->1.0(ideal). map to red..green
+      const rr=Math.round(255*(1-Math.min(1,(v-0.4)/0.55)));
+      const gg=Math.round(180*Math.min(1,(v-0.4)/0.55)+60);
+      ctx.fillStyle="rgba("+rr+","+gg+",40,0.20)";
+      ctx.fillRect(ax-view.s, ay-view.s, view.s*2.2, view.s*2.2);
+    }
+    ctx.restore();
+    return;
+  }
+  ctx.save();ctx.globalCompositeOperation="overlay";
+  const R=mulberry32(M.seed^77);
+  for(let i=0;i<7;i++){
+    const gx=GW/2+(R()-0.5)*GW*0.7,gy=GH/2+(R()-0.5)*GH*0.7;
+    const[ax,ay]=G2S(gx,gy);
+    const r=(14+R()*18)*view.s;
+    const gr=ctx.createRadialGradient(ax,ay,0,ax,ay,r);
+    const warm=R()>0.5;
+    gr.addColorStop(0,warm?"rgba(253,216,53,0.18)":"rgba(124,179,66,0.18)");
+    gr.addColorStop(1,"rgba(0,0,0,0)");
+    ctx.fillStyle=gr;ctx.beginPath();ctx.arc(ax,ay,r,0,7);ctx.fill();
+  }
+  ctx.restore();
+}
+function drawLandcover(){
+  ctx.save();ctx.globalCompositeOperation="overlay";
+  const R=mulberry32(M.seed^913);
+  for(let i=0;i<9;i++){
+    const gx=GW/2+(R()-0.5)*GW*0.8,gy=GH/2+(R()-0.5)*GH*0.8;
+    const[ax,ay]=G2S(gx,gy);
+    const r=(10+R()*16)*view.s;
+    const gr=ctx.createRadialGradient(ax,ay,0,ax,ay,r);
+    gr.addColorStop(0,"rgba(46,157,143,0.22)");gr.addColorStop(1,"rgba(0,0,0,0)");
+    ctx.fillStyle=gr;ctx.beginPath();ctx.arc(ax,ay,r,0,7);ctx.fill();
+  }
+  ctx.restore();
+}
+function drawErosion(thr){
+  ctx.save();ctx.fillStyle="rgba(229,57,53,0.6)";
+  for(let y=0;y<GH;y+=2)for(let x=0;x<GW;x+=2){
+    const i=idx(x,y);
+    if(!M.inP[i])continue;
+    if(slopePct(x,y)>8&&M.acc[i]>thr*0.5){
+      const[ax,ay]=G2S(x,y);
+      ctx.fillRect(ax,ay,2,2);
+    }
+  }
+  ctx.restore();
+}
+function drawPonds(){
+  ctx.save();ctx.fillStyle="rgba(64,224,208,0.30)";
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+    const i=idx(x,y);
+    if(!M.pond[i]||!M.inP[i])continue;
+    const[ax,ay]=G2S(x,y);
+    ctx.fillRect(ax,ay,view.s,view.s);
+  }
+  ctx.restore();
+}
+// Earthline bioswale = a calm living line. A single smooth stroke along the contour,
+// carrying a subtle green/brown/blue gradient (the logo waves) so it reads as a living
+// vein of water+soil+plants without looking like a rope. Soft glow lifts it off the land.
+function smoothPts(pts){
+  // convert to screen space, then apply a light moving-average so the swale reads as a
+  // clean flowing contour (rounds off any residual kinks without distorting the line).
+  const scr=pts.map(p=>{const[ax,ay]=G2S(p[0]+0.5,p[1]+0.5);return [ax,ay];});
+  if(scr.length<4)return scr;
+  const out=[scr[0]];
+  for(let i=1;i<scr.length-1;i++){
+    const a=scr[i-1],b=scr[i],c=scr[i+1];
+    out.push([(a[0]+2*b[0]+c[0])/4,(a[1]+2*b[1]+c[1])/4]);
+  }
+  out.push(scr[scr.length-1]);
+  return out;
+}
+function drawSwaleLine(sp,baseW,forested,infil,alpha=1){
+  // Clean single swale line: one smooth stroke with a soft glow so it reads clearly on
+  // the imagery without the busy braided-rope look. Forested swales use a warmer tint.
+  const L=sp.length;if(L<2)return;
+  ctx.lineCap="round";ctx.lineJoin="round";
+  const w=Math.max(baseW*0.9,3);
+  // soft dark base for contrast against bright/varied ground
+  ctx.save();
+  ctx.globalAlpha=Math.max(0.12,alpha*0.66);
+  ctx.strokeStyle="rgba(8,22,12,0.62)";
+  ctx.lineWidth=w+2.1;
+  ctx.beginPath();sp.forEach((p,i)=>{i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]);});ctx.stroke();
+  ctx.restore();
+  // main line with a gentle glow
+  ctx.save();
+  ctx.globalAlpha=alpha;
+  ctx.shadowColor=forested?"rgba(120,230,90,0.42)":"rgba(60,220,90,0.42)";
+  ctx.shadowBlur=Math.max(1.6,w*0.42);
+  ctx.strokeStyle=forested?"#8be05a":"#46d86a";   // forested slightly warmer green
+  ctx.lineWidth=w;
+  ctx.beginPath();sp.forEach((p,i)=>{i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]);});ctx.stroke();
+  ctx.restore();
+}
+function drawSwales(){
+  ctx.save();
+  const z=Number(M.viewZoom||16);
+  const alpha=z>=20?0.28:(z>=18?0.36:(z>=16?0.50:0.64));
+  const lw=z>=20?2.1:(z>=18?2.4:(z>=16?2.8:3.2));
+  // 14700: final render clipping. Even if a calculated contour contains a tiny unsafe
+  //
+
+lid16584||valid16584[j]))acc[j]+=acc[i];
+      if((oi&4095)===4095){
+        noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · FLOW ACCUMULATION');
+        await wait(0);
+      }
+    }
+    return {filled,to,slope,acc,cellX,cellY,w,h,bounds:b,elev:terrainElev16584,validityMask16584:valid16584};
+  }
+  function regionalRechargeModel16492(hy,loc){
+    if(!hy||!hy.slope||!hy.acc||!hy.acc.length)return null;
+    const clamp16492=v=>Math.max(0,Math.min(1,Number(v)||0));
+    let maxAcc=1;for(let i=0;i<hy.acc.length;i++)if(Number.isFinite(Number(hy.acc[i])))maxAcc=Math.max(maxAcc,Number(hy.acc[i]));
+    const logMax=Math.log(maxAcc+1)||1,precip=Number(loc&&loc.precipIn||30),need=clamp16492((45-precip)/40),mult=.82+need*.33;
+    let n=0,total=0,slopeComponent=0,flowComponent=0;
+    for(let i=0;i<hy.acc.length;i++){
+      const sp=Number(hy.slope[i]),ac=Number(hy.acc[i]);if(!Number.isFinite(sp)||!Number.isFinite(ac))continue;
+      const sl=clamp16492(1-sp/12),fa=clamp16492(Math.log(ac+1)/logMax);
+      const base=.45*.30+.55*.20+sl*.18+fa*.17+.15*.5;
+      total+=clamp16492(base*mult);slopeComponent+=sl;flowComponent+=fa;n++;
+    }
+    if(!n)return null;
+    return {score:Math.round(total/n*100),rainfallIn:precip,mode:'regional-model-fallback',components:{aquifer:45,soil:55,slope:Math.round(slopeComponent/n*100),flow:Math.round(flowComponent/n*100)},weights:{aquifer:.30,soil:.20,slope:.18,flow:.17,climate:.15},climate:{need:Number(need.toFixed(4)),multiplier:Number(mult.toFixed(4)),baseTerm:50},basis:'Existing Earthline recharge formula applied to the already-computed Regional slope/flow grid; aquifer permeability and soil infiltration remain model fallback at Regional screening scale.'};
+  }
+  function percentile(arr,p){const v=[];for(let i=0;i<arr.length;i++)if(Number.isFinite(arr[i]))v.push(arr[i]);v.sort((a,b)=>a-b);return v[Math.max(0,Math.min(v.length-1,Math.floor((v.length-1)*p)))]||0;}
+  function gridLL(hy,x,y){const b=hy.bounds;return [b[0]+(b[2]-b[0])*(x/(hy.w-1)),b[3]-(b[3]-b[1])*(y/(hy.h-1))];}
+  function llGrid(hy,ll){
+    const b=hy.bounds;return {x:Math.max(0,Math.min(hy.w-1,(ll[0]-b[0])/(b[2]-b[0])*(hy.w-1))),y:Math.max(0,Math.min(hy.h-1,(b[3]-ll[1])/(b[3]-b[1])*(hy.h-1)))};
+  }
+  function cleanLine(coords){
+    const out=[];for(const p of coords||[]){if(!p||!Number.isFinite(p[0])||!Number.isFinite(p[1]))continue;const q=out[out.length-1];if(!q||Math.abs(q[0]-p[0])>1e-10||Math.abs(q[1]-p[1])>1e-10)out.push([p[0],p[1]]);}return out;
+  }
+  function chaikin(coords,iterations=2,closed=false){
+    let pts=cleanLine(coords);if(pts.length<4)return pts;
+    const wasClosed=closed||(Math.abs(pts[0][0]-pts[pts.length-1][0])<1e-9&&Math.abs(pts[0][1]-pts[pts.length-1][1])<1e-9);
+    if(wasClosed)pts=pts.slice(0,-1);
+    for(let k=0;k<iterations;k++){
+      const next=[];if(!wasClosed)next.push(pts[0]);
+      const count=wasClosed?pts.length:pts.length-1;
+      for(let i=0;i<count;i++){
+        const a=pts[i],b=pts[(i+1)%pts.length];
+        next.push([a[0]*.75+b[0]*.25,a[1]*.75+b[1]*.25],[a[0]*.25+b[0]*.75,a[1]*.25+b[1]*.75]);
+      }
+      if(!wasClosed)next.push(pts[pts.length-1]);pts=next;
+    }
+    if(wasClosed&&pts.length)pts.push(pts[0].slice());return cleanLine(pts);
+  }
+  function lineLengthPixels(hy,coords){
+    let d=0,last=null;for(const ll of coords||[]){const p=llGrid(hy,ll);if(last)d+=Math.hypot(p.x-last.x,p.y-last.y);last=p;}return d;
+  }
+  function flowBearing(a,b){
+    const p1=a[1]*Math.PI/180,p2=b[1]*Math.PI/180,dl=(b[0]-a[0])*Math.PI/180;
+    const y=Math.sin(dl)*Math.cos(p2),x=Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl);
+    return (Math.atan2(y,x)*180/Math.PI+360)%360;
+  }
+
+  function earthlineRegionalPointValid16584(hy16584,ll16584){
+    if(!hy16584||!hy16584.validityMask16584)return true;
+    const g16584=llGrid(hy16584,ll16584),
+          x16584=Math.max(0,Math.min(hy16584.w-1,Math.round(g16584.x))),
+          y16584=Math.max(0,Math.min(hy16584.h-1,Math.round(g16584.y)));
+    return !!hy16584.validityMask16584[y16584*hy16584.w+x16584];
+  }
+  function earthlineRegionalSegmentValid16584(hy16584,a16584,b16584){
+    if(!hy16584||!hy16584.validityMask16584)return true;
+    const ga16584=llGrid(hy16584,a16584),gb16584=llGrid(hy16584,b16584),
+          steps16584=Math.max(2,Math.ceil(Math.hypot(gb16584.x-ga16584.x,gb16584.y-ga16584.y)*4));
+    for(let s16584=0;s16584<=steps16584;s16584++){
+      const t16584=s16584/steps16584,
+            p16584=[a16584[0]+(b16584[0]-a16584[0])*t16584,a16584[1]+(b16584[1]-a16584[1])*t16584];
+      if(!earthlineRegionalPointValid16584(hy16584,p16584))return false;
+    }
+    return true;
+  }
+  function earthlineRegionalSmoothFlow16584(hy16584,raw16584){
+    const base16584=cleanLine(raw16584);if(base16584.length<2)return [];
+    const lineSafe16584=line16584=>{
+      if(!Array.isArray(line16584)||line16584.length<2)return false;
+      for(let i16584=0;i16584<line16584.length;i16584++){
+        if(!earthlineRegionalPointValid16584(hy16584,line16584[i16584]))return false;
+        if(i16584>0&&!earthlineRegionalSegmentValid16584(hy16584,line16584[i16584-1],line16584[i16584]))return false;
+      }
+      return true;
+    };
+    const smooth16584=chaikin(base16584,2,false);
+    if(lineSafe16584(smooth16584))return smooth16584;
+
+    const runs16584=[];let run16584=[];
+    for(const p16584 of base16584){
+      const pointSafe16584=earthlineRegionalPointValid16584(hy16584,p16584);
+      const segmentSafe16584=pointSafe16584&&(!run16584.length||earthlineRegionalSegmentValid16584(hy16584,run16584[run16584.length-1],p16584));
+      if(pointSafe16584&&segmentSafe16584)run16584.push(p16584);
+      else{
+        if(run16584.length>=2)runs16584.push(run16584);
+        run16584=pointSafe16584?[p16584]:[];
+      }
+    }
+    if(run16584.length>=2)runs16584.push(run16584);
+    if(!runs16584.length)return [];
+    runs16584.sort((a16584,b16584)=>b16584.length-a16584.length);
+    const safeBase16584=runs16584[0];
+    const retrySmooth16584=chaikin(safeBase16584,2,false);
+    return lineSafe16584(retrySmooth16584)?retrySmooth16584:safeBase16584;
+  }
+
+  function makeFlows(hy){
+    const N=hy.acc.length,th=percentile(hy.acc,0.84),channel=new Uint8Array(N),upstream=new Uint16Array(N);
+    for(let i=0;i<N;i++)if(hy.acc[i]>=th&&hy.to[i]>=0)channel[i]=1;
+    for(let i=0;i<N;i++){const j=hy.to[i];if(channel[i]&&j>=0&&channel[j])upstream[j]++;}
+    const seeds=[];for(let i=0;i<N;i++)if(channel[i]&&upstream[i]===0)seeds.push(i);
+    seeds.sort((a,b)=>hy.acc[b]-hy.acc[a]);
+    const features=[],usedEdges=new Set();let lineCount=0;
+    function trace(seed){
+      let i=seed,raw=[],guard=0,maxAcc=hy.acc[seed];
+      while(i>=0&&guard++<hy.w*8){
+        const x=i%hy.w,y=(i/hy.w)|0;raw.push(gridLL(hy,x,y));maxAcc=Math.max(maxAcc,hy.acc[i]);
+        const j=hy.to[i];if(j<0||j===i)break;const edge=i+'>'+j;
+        if(usedEdges.has(edge)){raw.push(gridLL(hy,j%hy.w,(j/hy.w)|0));break;}
+        usedEdges.add(edge);i=j;
+      }
+      if(raw.length<5)return false;
+      const coords=earthlineRegionalSmoothFlow16584(hy,raw);if(coords.length<8)return false;
+      const rank=Math.min(1,Math.log1p(maxAcc)/Math.log1p(hy.w*hy.h));
+      features.push({type:'Feature',properties:{feature_type:'flow',rank,downstream:1},geometry:{type:'LineString',coordinates:coords}});lineCount++;
+      const desired=Math.max(3,Math.min(12,Math.floor(coords.length/14))),stride=(coords.length-1)/(desired+1);
+      for(let a=1;a<=desired;a++){
+        const pos=Math.max(2,Math.min(coords.length-3,Math.round(stride*a))),bearing=flowBearing(coords[pos-2],coords[pos+2]);
+        features.push({type:'Feature',properties:{feature_type:'flow-arrow',rank,bearing,rotation:(bearing+270)%360},geometry:{type:'Point',coordinates:coords[pos]}});
+      }
+      return true;
+    }
+    for(const seed of seeds){if(lineCount>=230)break;trace(seed);}
+    if(lineCount<55){
+      const extra=[];for(let i=0;i<N;i++)if(channel[i])extra.push(i);extra.sort((a,b)=>hy.acc[b]-hy.acc[a]);
+      for(const seed of extra){if(lineCount>=180)break;const j=hy.to[seed];if(j<0||usedEdges.has(seed+'>'+j))continue;trace(seed);}
+    }
+    return {type:'FeatureCollection',features};
+  }
+  function niceInterval(range,target=15){
+    const raw=Math.max(1,range/Math.max(4,target)),p=Math.pow(10,Math.floor(Math.log10(raw))),m=raw/p;
+    return (m<=1?1:m<=2?2:m<=5?5:10)*p;
+  }
+  function stitchContourSegments(segments){
+    const used=new Uint8Array(segments.length),adj=new Map(),factor=100000;
+    const key=p=>Math.round(p[0]*factor)+','+Math.round(p[1]*factor);
+    function add(k,i){let a=adj.get(k);if(!a)adj.set(k,a=[]);a.push(i);}
+    segments.forEach((s,i)=>{add(key(s[0]),i);add(key(s[1]),i);});
+    const paths=[];
+    function walk(startKey,startIndex){
+      let currentKey=startKey,index=startIndex,guard=0,path=[];
+      while(index!=null&&!used[index]&&guard++<segments.length+8){
+        used[index]=1;const s=segments[index],forward=key(s[0])===currentKey,from=forward?s[0]:s[1],to=forward?s[1]:s[0];
+        if(!path.length)path.push(from);path.push(to);currentKey=key(to);
+        const next=(adj.get(currentKey)||[]).find(i=>!used[i]);index=next==null?null:next;
+      }
+      if(path.length>=4)paths.push(path);
+    }
+    for(const [k,list] of adj)if(list.length===1&&!used[list[0]])walk(k,list[0]);
+    for(let i=0;i<segments.length;i++)if(!used[i])walk(key(segments[i][0]),i);
+    return paths;
+  }
+  async function makeContours(hy){
+    const min=percentile(hy.elev,0.02),max=percentile(hy.elev,0.98),range=Math.max(1,max-min),step=niceInterval(range,20),levels=[];
+    for(let l=Math.ceil(min/step)*step;l<=max+step*.001;l+=step)levels.push(l);
+    const features=[],majorEvery=levels.length>20?4:3,labelEvery=2;let labelCount=0;
+    function interp(a,b,l){const d=b-a;return Math.abs(d)<1e-9?.5:Math.max(0,Math.min(1,(l-a)/d));}
+    for(let li=0;li<levels.length;li++){
+      const level=levels[li],major=(li%majorEvery===0)?1:0,labelable=(li%labelEvery===0)?1:0,segments=[];
+      for(let y=0;y<hy.h-1;y++)for(let x=0;x<hy.w-1;x++){
+        if(hy.validityMask16584){
+          const i016584=y*hy.w+x,i116584=i016584+1,i316584=(y+1)*hy.w+x,i216584=i316584+1;
+          if(!hy.validityMask16584[i016584]||!hy.validityMask16584[i116584]||!hy.validityMask16584[i216584]||!hy.validityMask16584[i316584])continue;
+        }
+        const a=hy.elev[y*hy.w+x],bb=hy.elev[y*hy.w+x+1],c=hy.elev[(y+1)*hy.w+x+1],d=hy.elev[(y+1)*hy.w+x],pts=[];
+        if((a<level)!=(bb<level))pts.push([x+interp(a,bb,level),y]);
+        if((bb<level)!=(c<level))pts.push([x+1,y+interp(bb,c,level)]);
+        if((c<level)!=(d<level))pts.push([x+1-interp(c,d,level),y+1]);
+        if((d<level)!=(a<level))pts.push([x,y+1-interp(d,a,level)]);
+        if(pts.length===2)segments.push([pts[0],pts[1]]);
+        else if(pts.length===4){const center=(a+bb+c+d)/4;if(center<level){segments.push([pts[0],pts[3]],[pts[1],pts[2]]);}else{segments.push([pts[0],pts[1]],[pts[2],pts[3]]);}}
+      }
+      const paths=stitchContourSegments(segments);
+      for(const path of paths){
+        if(path.length<5)continue;const raw=path.map(p=>gridLL(hy,p[0],p[1])),closed=Math.abs(path[0][0]-path[path.length-1][0])<.001&&Math.abs(path[0][1]-path[path.length-1][1])<.001,coords=chaikin(raw,2,closed);
+        if(coords.length<10||lineLengthPixels(hy,coords)<5)continue;
+        features.push({type:'Feature',properties:{feature_type:'contour',elev_m:Math.round(level),major,labelable,label:Math.round(level)+' m'},geometry:{type:'LineString',coordinates:coords}});
+        if(labelable&&labelCount<84){
+          const positions=coords.length>80?[.25,.50,.75]:[.5];
+          for(const frac of positions){if(labelCount>=84)break;const p=coords[Math.max(1,Math.min(coords.length-2,Math.floor((coords.length-1)*frac)))];features.push({type:'Feature',properties:{feature_type:'contour-label',elev_m:Math.round(level),major,label:Math.round(level)+' m'},geometry:{type:'Point',coordinates:p}});labelCount++;}
+        }
+      }
+      noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · CONTOURS '+(li+1)+'/'+levels.length);
+      await wait(0);
+    }
+    return {type:'FeatureCollection',features};
+  }
+  function makeSwales(hy,contours,focusMode=false){
+    const lines=(contours&&contours.features||[]).filter(f=>f&&f.properties&&f.properties.feature_type==='contour'&&f.geometry&&f.geometry.type==='LineString');
+    const channel=percentile(hy.acc,.972),accLow=percentile(hy.acc,.22),accMid=percentile(hy.acc,.72),accHigh=percentile(hy.acc,.91),candidates=[];
+    function sampleSegment(coords,center,relaxed){
+      const half=Math.max(10,Math.min(52,Math.floor(coords.length*.18))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);
+      const raw=coords.slice(start,end);if(raw.length<10)return null;
+      const segment=chaikin(raw,2,false);if(segment.length<10||lineLengthPixels(hy,segment)<10)return null;
+      const stride=Math.max(1,Math.floor(segment.length/22));let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null;
+      for(let k=1;k<segment.length-1;k+=stride){
+        const g=llGrid(hy,segment[k]),x=Math.max(1,Math.min(hy.w-2,Math.round(g.x))),y=Math.max(1,Math.min(hy.h-2,Math.round(g.y))),i=y*hy.w+x;
+        const slope=hy.slope[i],acc=hy.acc[i],minSlope=relaxed?.05:.20,maxSlope=relaxed?18:13.5;
+        if(!Number.isFinite(slope)||slope<minSlope||slope>maxSlope||acc>=channel)continue;
+        valid++;sumSlope+=slope;sumAcc+=acc;maxAcc=Math.max(maxAcc,acc);if(!anchor)anchor={x,y};
+      }
+      if(valid<(relaxed?1:2)||!anchor)return null;
+      const meanSlope=sumSlope/valid,meanAcc=sumAcc/valid;
+      const slopeScore=Math.max(0,1-Math.abs(meanSlope-3.4)/(relaxed?12:7.5));
+      const flowScore=meanAcc<=accLow?.18:meanAcc<=accMid?.18+.70*(meanAcc-accLow)/Math.max(1,accMid-accLow):Math.max(.18,.88-.48*(meanAcc-accMid)/Math.max(1,accHigh-accMid));
+      const lengthScore=Math.min(1,lineLengthPixels(hy,segment)/85);
+      return {segment,x:anchor.x,y:anchor.y,slope:meanSlope,acc:meanAcc,maxAcc,score:slopeScore*.56+flowScore*.28+lengthScore*.16,confidence:relaxed?'screening':'preferred'};
+    }
+    for(const f of lines){
+      const coords=f.geometry.coordinates;if(coords.length<16)continue;
+      const fractions=coords.length>110?[.18,.36,.54,.72,.86]:coords.length>55?[.26,.52,.78]:[.38,.68];
+      for(const frac of fractions){const c=sampleSegment(coords,Math.max(3,Math.min(coords.length-4,Math.round((coords.length-1)*frac))),false);if(c)candidates.push(c);}
+    }
+    if(candidates.length<36){
+      for(const f of lines){const coords=f.geometry.coordinates;if(coords.length<12)continue;for(const frac of [.28,.56,.82]){const c=sampleSegment(coords,Math.max(3,Math.min(coords.length-4,Math.round((coords.length-1)*frac))),true);if(c)candidates.push(c);}}
+    }
+    candidates.sort((a,b)=>b.score-a.score);
+    const chosen=[],primarySpacing=Math.max(6,Math.round(hy.w/31));
+    for(const c of candidates){
+      if(chosen.length>=52)break;
+      const spacing=chosen.length<20?primarySpacing:Math.max(4,Math.round(primarySpacing*.72));
+      if(chosen.some(p=>Math.hypot(p.x-c.x,p.y-c.y)<spacing))continue;
+      chosen.push(c);
+    }
+    // Fail visibly rather than silently: use the best remaining terrain-derived contour segments when strict thinning produced too few.
+    if(chosen.length<14){for(const c of candidates){if(chosen.length>=24)break;if(chosen.includes(c))continue;if(chosen.some(p=>Math.hypot(p.x-c.x,p.y-c.y)<4))continue;chosen.push(c);}}
+    const contourToleranceM16166=5.0;
+    function contourAudit16166(candidate){
+      const values=[],coords=candidate&&candidate.segment||[],stride=Math.max(1,Math.floor(coords.length/28));
+      for(let i=0;i<coords.length;i+=stride){
+        const g=llGrid(hy,coords[i]),x=Math.max(0,Math.min(hy.w-1,Math.round(g.x))),y=Math.max(0,Math.min(hy.h-1,Math.round(g.y))),v=Number(hy.elev[y*hy.w+x]);
+        if(Number.isFinite(v))values.push(v);
+      }
+      if(coords.length&&values.length<2){
+        for(const p of [coords[0],coords[coords.length-1]]){const g=llGrid(hy,p),x=Math.max(0,Math.min(hy.w-1,Math.round(g.x))),y=Math.max(0,Math.min(hy.h-1,Math.round(g.y))),v=Number(hy.elev[y*hy.w+x]);if(Number.isFinite(v))values.push(v);}
+      }
+      const min=values.length?Math.min(...values):Infinity,max=values.length?Math.max(...values):-Infinity;
+      const relief=values.length?max-min:Infinity,endDrop=values.length>1?Math.abs(values[values.length-1]-values[0]):Infinity;
+      return {reliefM:relief,endDropM:endDrop,valid:Number.isFinite(relief)&&relief<=contourToleranceM16166&&endDrop<=contourToleranceM16166};
+    }
+    const auditedCandidates=chosen.map(c=>Object.assign(c,{contourAudit16166:contourAudit16166(c)}));
+    /* BUILD-CHECK-16167: the 5 m longitudinal gate is a focus-screening gate.
+       Applying that tolerance to Vermont's coarse regional DEM rejected every
+       regional corridor because nearest-cell sampling can vary by more than 5 m.
+       Regional corridors remain indicative and carry the audit values, but are
+       not silently erased by a property/focus-scale tolerance. */
+    /* EARTHLINE 16609 — U.S. LAUNCH CORE REPAIR: final Regional contour geometry
+       must remain on the already-authoritative 16584 land/water validity mask after smoothing. */
+    let regionalLandWaterRejected16609=0;
+    const acceptedChosen=focusMode?auditedCandidates.filter(c=>c.contourAudit16166.valid):auditedCandidates.filter(c=>{
+      const segment16609=c&&c.segment||[];
+      if(segment16609.length<2){regionalLandWaterRejected16609++;return false;}
+      for(let i16609=1;i16609<segment16609.length;i16609++){
+        if(!earthlineRegionalSegmentValid16584(hy,segment16609[i16609-1],segment16609[i16609])){regionalLandWaterRejected16609++;return false;}
+      }
+      return true;
+    });
+    const contourAudit={
+      build:'EARTHLINE 16167',tier:focusMode?'focus':'regional',enforced:!!focusMode,
+      evaluated:chosen.length,accepted:acceptedChosen.length,rejected:chosen.length-acceptedChosen.length,
+      toleranceM:contourToleranceM16166,
+      maxAcceptedReliefM:acceptedChosen.length?Math.max(...acceptedChosen.map(c=>Number(c.contourAudit16166.reliefM)||0)):0,
+      rule:focusMode?'focus corridors must remain within 5 m longitudinal relief and 5 m end-to-end elevation change':'regional corridors retain modeled contour geometry; the 5 m focus tolerance is recorded but not enforced at regional DEM scale',
+      at:ne
+
+===== llGrid hits [2137059] =====
+
+gionalProgress16347('DERIVING WATER PATHS + BIOSWALES · FLOW DIRECTIONS');
+        await wait(0);
+      }
+    }
+    const order=[];
+    for(let i=0;i<N;i++)if(!valid16584||valid16584[i])order.push(i);
+    order.sort((a,c)=>filled[c]-filled[a]);
+    const acc=new Float32Array(N);
+    if(valid16584){acc.fill(NaN);for(const i of order)acc[i]=1;}else acc.fill(1);
+    for(let oi=0;oi<order.length;oi++){
+      const i=order[oi],j=to[i];
+      if(j>=0&&(!valid16584||valid16584[j]))acc[j]+=acc[i];
+      if((oi&4095)===4095){
+        noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · FLOW ACCUMULATION');
+        await wait(0);
+      }
+    }
+    return {filled,to,slope,acc,cellX,cellY,w,h,bounds:b,elev:terrainElev16584,validityMask16584:valid16584};
+  }
+  function regionalRechargeModel16492(hy,loc){
+    if(!hy||!hy.slope||!hy.acc||!hy.acc.length)return null;
+    const clamp16492=v=>Math.max(0,Math.min(1,Number(v)||0));
+    let maxAcc=1;for(let i=0;i<hy.acc.length;i++)if(Number.isFinite(Number(hy.acc[i])))maxAcc=Math.max(maxAcc,Number(hy.acc[i]));
+    const logMax=Math.log(maxAcc+1)||1,precip=Number(loc&&loc.precipIn||30),need=clamp16492((45-precip)/40),mult=.82+need*.33;
+    let n=0,total=0,slopeComponent=0,flowComponent=0;
+    for(let i=0;i<hy.acc.length;i++){
+      const sp=Number(hy.slope[i]),ac=Number(hy.acc[i]);if(!Number.isFinite(sp)||!Number.isFinite(ac))continue;
+      const sl=clamp16492(1-sp/12),fa=clamp16492(Math.log(ac+1)/logMax);
+      const base=.45*.30+.55*.20+sl*.18+fa*.17+.15*.5;
+      total+=clamp16492(base*mult);slopeComponent+=sl;flowComponent+=fa;n++;
+    }
+    if(!n)return null;
+    return {score:Math.round(total/n*100),rainfallIn:precip,mode:'regional-model-fallback',components:{aquifer:45,soil:55,slope:Math.round(slopeComponent/n*100),flow:Math.round(flowComponent/n*100)},weights:{aquifer:.30,soil:.20,slope:.18,flow:.17,climate:.15},climate:{need:Number(need.toFixed(4)),multiplier:Number(mult.toFixed(4)),baseTerm:50},basis:'Existing Earthline recharge formula applied to the already-computed Regional slope/flow grid; aquifer permeability and soil infiltration remain model fallback at Regional screening scale.'};
+  }
+  function percentile(arr,p){const v=[];for(let i=0;i<arr.length;i++)if(Number.isFinite(arr[i]))v.push(arr[i]);v.sort((a,b)=>a-b);return v[Math.max(0,Math.min(v.length-1,Math.floor((v.length-1)*p)))]||0;}
+  function gridLL(hy,x,y){const b=hy.bounds;return [b[0]+(b[2]-b[0])*(x/(hy.w-1)),b[3]-(b[3]-b[1])*(y/(hy.h-1))];}
+  function llGrid(hy,ll){
+    const b=hy.bounds;return {x:Math.max(0,Math.min(hy.w-1,(ll[0]-b[0])/(b[2]-b[0])*(hy.w-1))),y:Math.max(0,Math.min(hy.h-1,(b[3]-ll[1])/(b[3]-b[1])*(hy.h-1)))};
+  }
+  function cleanLine(coords){
+    const out=[];for(const p of coords||[]){if(!p||!Number.isFinite(p[0])||!Number.isFinite(p[1]))continue;const q=out[out.length-1];if(!q||Math.abs(q[0]-p[0])>1e-10||Math.abs(q[1]-p[1])>1e-10)out.push([p[0],p[1]]);}return out;
+  }
+  function chaikin(coords,iterations=2,closed=false){
+    let pts=cleanLine(coords);if(pts.length<4)return pts;
+    const wasClosed=closed||(Math.abs(pts[0][0]-pts[pts.length-1][0])<1e-9&&Math.abs(pts[0][1]-pts[pts.length-1][1])<1e-9);
+    if(wasClosed)pts=pts.slice(0,-1);
+    for(let k=0;k<iterations;k++){
+      const next=[];if(!wasClosed)next.push(pts[0]);
+      const count=wasClosed?pts.length:pts.length-1;
+      for(let i=0;i<count;i++){
+        const a=pts[i],b=pts[(i+1)%pts.length];
+        next.push([a[0]*.75+b[0]*.25,a[1]*.75+b[1]*.25],[a[0]*.25+b[0]*.75,a[1]*.25+b[1]*.75]);
+      }
+      if(!wasClosed)next.push(pts[pts.length-1]);pts=next;
+    }
+    if(wasClosed&&pts.length)pts.push(pts[0].slice());return cleanLine(pts);
+  }
+  function lineLengthPixels(hy,coords){
+    let d=0,last=null;for(const ll of coords||[]){const p=llGrid(hy,ll);if(last)d+=Math.hypot(p.x-last.x,p.y-last.y);last=p;}return d;
+  }
+  function flowBearing(a,b){
+    const p1=a[1]*Math.PI/180,p2=b[1]*Math.PI/180,dl=(b[0]-a[0])*Math.PI/180;
+    const y=Math.sin(dl)*Math.cos(p2),x=Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl);
+    return (Math.atan2(y,x)*180/Math.PI+360)%360;
+  }
+
+  function earthlineRegionalPointValid16584(hy16584,ll16584){
+    if(!hy16584||!hy16584.validityMask16584)return true;
+    const g16584=llGrid(hy16584,ll16584),
+          x16584=Math.max(0,Math.min(hy16584.w-1,Math.round(g16584.x))),
+          y16584=Math.max(0,Math.min(hy16584.h-1,Math.round(g16584.y)));
+    return !!hy16584.validityMask16584[y16584*hy16584.w+x16584];
+  }
+  function earthlineRegionalSegmentValid16584(hy16584,a16584,b16584){
+    if(!hy16584||!hy16584.validityMask16584)return true;
+    const ga16584=llGrid(hy16584,a16584),gb16584=llGrid(hy16584,b16584),
+          steps16584=Math.max(2,Math.ceil(Math.hypot(gb16584.x-ga16584.x,gb16584.y-ga16584.y)*4));
+    for(let s16584=0;s16584<=steps16584;s16584++){
+      const t16584=s16584/steps16584,
+            p16584=[a16584[0]+(b16584[0]-a16584[0])*t16584,a16584[1]+(b16584[1]-a16584[1])*t16584];
+      if(!earthlineRegionalPointValid16584(hy16584,p16584))return false;
+    }
+    return true;
+  }
+  function earthlineRegionalSmoothFlow16584(hy16584,raw16584){
+    const base16584=cleanLine(raw16584);if(base16584.length<2)return [];
+    const lineSafe16584=line16584=>{
+      if(!Array.isArray(line16584)||line16584.length<2)return false;
+      for(let i16584=0;i16584<line16584.length;i16584++){
+        if(!earthlineRegionalPointValid16584(hy16584,line16584[i16584]))return false;
+        if(i16584>0&&!earthlineRegionalSegmentValid16584(hy16584,line16584[i16584-1],line16584[i16584]))return false;
+      }
+      return true;
+    };
+    const smooth16584=chaikin(base16584,2,false);
+    if(lineSafe16584(smooth16584))return smooth16584;
+
+    const runs16584=[];let run16584=[];
+    for(const p16584 of base16584){
+      const pointSafe16584=earthlineRegionalPointValid16584(hy16584,p16584);
+      const segmentSafe16584=pointSafe16584&&(!run16584.length||earthlineRegionalSegmentValid16584(hy16584,run16584[run16584.length-1],p16584));
+      if(pointSafe16584&&segmentSafe16584)run16584.push(p16584);
+      else{
+        if(run16584.length>=2)runs16584.push(run16584);
+        run16584=pointSafe16584?[p16584]:[];
+      }
+    }
+    if(run16584.length>=2)runs16584.push(run16584);
+    if(!runs16584.length)return [];
+    runs16584.sort((a16584,b16584)=>b16584.length-a16584.length);
+    const safeBase16584=runs16584[0];
+    const retrySmooth16584=chaikin(safeBase16584,2,false);
+    return lineSafe16584(retrySmooth16584)?retrySmooth16584:safeBase16584;
+  }
+
+  function makeFlows(hy){
+    const N=hy.acc.length,th=percentile(hy.acc,0.84),channel=new Uint8Array(N),upstream=new Uint16Array(N);
+    for(let i=0;i<N;i++)if(hy.acc[i]>=th&&hy.to[i]>=0)channel[i]=1;
+    for(let i=0;i<N;i++){const j=hy.to[i];if(channel[i]&&j>=0&&channel[j])upstream[j]++;}
+    const seeds=[];for(let i=0;i<N;i++)if(channel[i]&&upstream[i]===0)seeds.push(i);
+    seeds.sort((a,b)=>hy.acc[b]-hy.acc[a]);
+    const features=[],usedEdges=new Set();let lineCount=0;
+    function trace(seed){
+      let i=seed,raw=[],guard=0,maxAcc=hy.acc[seed];
+      while(i>=0&&guard++<hy.w*8){
+        const x=i%hy.w,y=(i/hy.w)|0;raw.push(gridLL(hy,x,y));maxAcc=Math.max(maxAcc,hy.acc[i]);
+        const j=hy.to[i];if(j<0||j===i)break;const edge=i+'>'+j;
+        if(usedEdges.has(edge)){raw.push(gridLL(hy,j%hy.w,(j/hy.w)|0));break;}
+        usedEdges.add(edge);i=j;
+      }
+      if(raw.length<5)return false;
+      const coords=earthlineRegionalSmoothFlow16584(hy,raw);if(coords.length<8)return false;
+      const rank=Math.min(1,Math.log1p(maxAcc)/Math.log1p(hy.w*hy.h));
+      features.push({type:'Feature',properties:{feature_type:'flow',rank,downstream:1},geometry:{type:'LineString',coordinates:coords}});lineCount++;
+      const desired=Math.max(3,Math.min(12,Math.floor(coords.length/14))),stride=(coords.length-1)/(desired+1);
+      for(let a=1;a<=desired;a++){
+        const pos=Math.max(2,Math.min(coords.length-3,Math.round(stride*a))),bearing=flowBearing(coords[pos-2],coords[pos+2]);
+        features.push({type:'Feature',properties:{feature_type:'flow-arrow',rank,bearing,rotation:(bearing+270)%360},geometry:{type:'Point',coordinates:coords[pos]}});
+      }
+      return true;
+    }
+    for(const seed of seeds){if(lineCount>=230)break;trace(seed);}
+    if(lineCount<55){
+      const extra=[];for(let i=0;i<N;i++)if(channel[i])extra.push(i);extra.sort((a,b)=>hy.acc[b]-hy.acc[a]);
+      for(const seed of extra){if(lineCount>=180)break;const j=hy.to[seed];if(j<0||usedEdges.has(seed+'>'+j))continue;trace(seed);}
+    }
+    return {type:'FeatureCollection',features};
+  }
+  function niceInterval(range,target=15){
+    const raw=Math.max(1,range/Math.max(4,target)),p=Math.pow(10,Math.floor(Math.log10(raw))),m=raw/p;
+    return (m<=1?1:m<=2?2:m<=5?5:10)*p;
+  }
+  function stitchContourSegments(segments){
+    const used=new Uint8Array(segments.length),adj=new Map(),factor=100000;
+    const key=p=>Math.round(p[0]*factor)+','+Math.round(p[1]*factor);
+    function add(k,i){let a=adj.get(k);if(!a)adj.set(k,a=[]);a.push(i);}
+    segments.forEach((s,i)=>{add(key(s[0]),i);add(key(s[1]),i);});
+    const paths=[];
+    function walk(startKey,startIndex){
+      let currentKey=startKey,index=startIndex,guard=0,path=[];
+      while(index!=null&&!used[index]&&guard++<segments.length+8){
+        used[index]=1;const s=segments[index],forward=key(s[0])===currentKey,from=forward?s[0]:s[1],to=forward?s[1]:s[0];
+        if(!path.length)path.push(from);path.push(to);currentKey=key(to);
+        const next=(adj.get(currentKey)||[]).find(i=>!used[i]);index=next==null?null:next;
+      }
+      if(path.length>=4)paths.push(path);
+    }
+    for(const [k,list] of adj)if(list.length===1&&!used[list[0]])walk(k,list[0]);
+    for(let i=0;i<segments.length;i++)if(!used[i])walk(key(segments[i][0]),i);
+    return paths;
+  }
+  async function makeContours(hy){
+    const min=percentile(hy.elev,0.02),max=percentile(hy.elev,0.98),range=Math.max(1,max-min),step=niceInterval(range,20),levels=[];
+    for(let l=Math.ceil(min/step)*step;l<=max+step*.001;l+=step)levels.push(l);
+    const features=[],majorEvery=levels.length>20?4:3,labelEvery=2;let labelCount=0;
+    function interp(a,b,l){const d=b-a;return Math.abs(d)<1e-9?.5:Math.max(0,Math.min(1,(l-a)/d));}
+    for(let li=0;li<levels.length;li++){
+      const level=levels[li],major=(li%majorEvery===0)?1:0,labelable=(li%labelEvery===0)?1:0,segments=[];
+      for(let y=0;y<hy.h-1;y++)for(let x=0;x<hy.w-1;x++){
+        if(hy.validityMask16584){
+          const i016584=y*hy.w+x,i116584=i016584+1,i316584=(y+1)*hy.w+x,i216584=i316584+1;
+          if(!hy.validityMask16584[i016584]||!hy.validityMask16584[i116584]||!hy.validityMask16584[i216584]||!hy.validityMask16584[i316584])continue;
+        }
+        const a=hy.elev[y*hy.w+x],bb=hy.elev[y*hy.w+x+1],c=hy.elev[(y+1)*hy.w+x+1],d=hy.elev[(y+1)*hy.w+x],pts=[];
+        if((a<level)!=(bb<level))pts.push([x+interp(a,bb,level),y]);
+        if((bb<level)!=(c<level))pts.push([x+1,y+interp(bb,c,level)]);
+        if((c<level)!=(d<level))pts.push([x+1-interp(c,d,level),y+1]);
+        if((d<level)!=(a<level))pts.push([x,y+1-interp(d,a,level)]);
+        if(pts.length===2)segments.push([pts[0],pts[1]]);
+        else if(pts.length===4){const center=(a+bb+c+d)/4;if(center<level){segments.push([pts[0],pts[3]],[pts[1],pts[2]]);}else{segments.push([pts[0],pts[1]],[pts[2],pts[3]]);}}
+      }
+      const paths=stitchContourSegments(segments);
+      for(const path of paths){
+        if(path.length<5)continue;const raw=path.map(p=>gridLL(hy,p[0],p[1])),closed=Math.abs(path[0][0]-path[path.length-1][0])<.001&&Math.abs(path[0][1]-path[path.length-1][1])<.001,coords=chaikin(raw,2,closed);
+        if(coords.length<10||lineLengthPixels(hy,coords)<5)continue;
+        features.push({type:'Feature',properties:{feature_type:'contour',elev_m:Math.round(level),major,labelable,label:Math.round(level)+' m'},geometry:{type:'LineString',coordinates:coords}});
+        if(labelable&&labelCount<84){
+          const positions=coords.length>80?[.25,.50,.75]:[.5];
+          for(const frac of positions){if(labelCount>=84)break;const p=coords[Math.max(1,Math.min(coords.length-2,Math.floor((coords.length-1)*frac)))];features.push({type:'Feature',properties:{feature_type:'contour-label',elev_m:Math.round(level),major,label:Math.round(level)+' m'},geometry:{type:'Point',coordinates:p}});labelCount++;}
+        }
+      }
+      noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · CONTOURS '+(li+1)+'/'+levels.length);
+      await wait(0);
+    }
+    return {type:'FeatureCollection',features};
+  }
+  function makeSwales(hy,contours,focusMode=false){
+    const lines=(contours&&contours.features||[]).filter(f=>f&&f.properties&&f.properties.feature_type==='contour'&&f.geometry&&f.geometry.type==='LineString');
+    const channel=percentile(hy.acc,.972),accLow=percentile(hy.acc,.22),accMid=percentile(hy.acc,.72),accHigh=percentile(hy.acc,.91),candidates=[];
+    function sampleSegment(coords,center,relaxed){
+      const half=Math.max(10,Math.min(52,Math.floor(coords.length*.18))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);
+      const raw=coords.slice(start,end);if(raw.length<10)return null;
+      const segment=chaikin(raw,2,false);if(segment.length<10||lineLengthPixels(hy,segment)<10)return null;
+      const stride=Math.max(1,Math.floor(segment.length/22));let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null;
+      for(let k=1;k<segment.length-1;k+=stride){
+        const g=llGrid(hy,segment[k]),x=Math.max(1,Math.min(hy.w-2,Math.round(g.x))),y=Math.max(1,Math.min(hy.h-2,Math.round(g.y))),i=y*hy.w+x;
+        const slope=hy.slope[i],acc=hy.acc[i],minSlope=relaxed?.05:.20,maxSlope=relaxed?18:13.5;
+        if(!Number.isFinite(slope)||slope<minSlope||slope>maxSlope||acc>=channel)continue;
+        valid++;sumSlope+=slope;sumAcc+=acc;maxAcc=Math.max(maxAcc,acc);if(!anchor)anchor={x,y};
+      }
+      if(valid<(relaxed?1:2)||!anchor)return null;
+      const meanSlope=sumSlope/valid,meanAcc=sumAcc/valid;
+      const slopeScore=Math.max(0,1-Math.abs(meanSlope-3.4)/(relaxed?12:7.5));
+      const flowScore=meanAcc<=accLow?.18:meanAcc<=accMid?.18+.70*(meanAcc-accLow)/Math.max(1,accMid-accLow):Math.max(.18,.88-.48*(meanAcc-accMid)/Math.max(1,accHigh-accMid));
+      const lengthScore=Math.min(1,lineLengthPixels(hy,segment)/85);
+      return {segment,x:anchor.x,y:anchor.y,slope:meanSlope,acc:meanAcc,maxAcc,score:slopeScore*.56+flowScore*.28+lengthScore*.16,confidence:relaxed?'screening':'preferred'};
+    }
+    for(const f of lines){
+      const coords=f.geometry.coordinates;if(coords.length<16)continue;
+      const fractions=coords.length>110?[.18,.36,.54,.72,.86]:coords.length>55?[.26,.52,.78]:[.38,.68];
+      for(const frac of fractions){const c=sampleSegment(coords,Math.max(3,Math.min(coords.length-4,Math.round((coords.length-1)*frac))),false);if(c)candidates.push(c);}
+    }
+    if(candidates.length<36){
+      for(const f of lines){const coords=f.geometry.coordinates;if(coords.length<12)continue;for(const frac of [.28,.56,.82]){const c=sampleSegment(coords,Math.max(3,Math.min(coords.length-4,Math.round((coords.length-1)*frac))),true);if(c)candidates.push(c);}}
+    }
+    candidates.sort((a,b)=>b.score-a.score);
+    const chosen=[],primarySpacing=Math.max(6,Math.round(hy.w/31));
+    for(const c of candidates){
+      if(chosen.length>=52)break;
+      const spacing=chosen.length<20?primarySpacing:Math.max(4,Math.round(primarySpacing*.72));
+      if(chosen.some(p=>Math.hypot(p.x-c.x,p.y-c.y)<spacing))continue;
+      chosen.push(c);
+    }
+    // Fail visibly rather than silently: use the best remaining terrain-derived contour segments when strict thinning produced too few.
+    if(chosen.length<14){for(const c of candidates){if(chosen.length>=24)break;if(chosen.includes(c))continue;if(chosen.some(p=>Math.hypot(p.x-c.x,p.y-c.y)<4))continue;chosen.push(c);}}
+    const contourToleranceM16166=5.0;
+    function contourAudit16166(candidate){
+      const values=[],coords=candidate&&candidate.segment||[],stride=Math.max(1,Math.floor(coords.length/28));
+      for(let i=0;i<coords.length;i+=stride){
+        const g=llGrid(hy,coords[i]),x=Math.max(0,Math.min(hy.w-1,Math.round(g.x))),y=Math.max(0,Math.min(hy.h-1,Math.round(g.y))),v=Number(hy.elev[y*hy.w+x]);
+        if(Number.isFinite(v))values.push(v);
+      }
+      if(coords.length&&values.length<2){
+        for(const p of [coords[0],coords[coords.length-1]]){const g=llGrid(hy,p),x=Math.max(0,Math.min(hy.w-1,Math.round(g.x))),y=Math.max(0,Math.min(hy.h-1,Math.round(g.y))),v=Number(hy.elev[y*hy.w+x]);if(Number.isFinite(v))values.push(v);}
+      }
+      const min=values.length?Math.min(...values):Infinity,max=values.length?Math.max(...values):-Infinity;
+      const relief=values.length?max-min:Infinity,endDrop=values.length>1?Math.abs(values[values.length-1]-values[0]):Infinity;
+      return {reliefM:relief,endDropM:endDrop,valid:Number.isFinite(relief)&&relief<=contourToleranceM16166&&endDrop<=contourToleranceM16166};
+    }
+    const auditedCandidates=chosen.map(c=>Object.assign(c,{contourAudit16166:contourAudit16166(c)}));
+    /* BUILD-CHECK-16167: the 5 m longitudinal gate is a focus-screening gate.
+       Applying that tolerance to Vermont's coarse regional DEM rejected every
+       regional corridor because nearest-cell sampling can vary by more than 5 m.
+       Regional corridors remain indicative and carry the audit values, but are
+       not silently erased by a property/focus-scale tolerance. */
+    /* EARTHLINE 16609 — U.S. LAUNCH CORE REPAIR: final Regional contour geometry
+       must remain on the already-authoritative 16584 land/water validity mask after smoothing. */
+    let regionalLandWaterRejected16609=0;
+    const acceptedChosen=focusMode?auditedCandidates.filter(c=>c.contourAudit16166.valid):auditedCandidates.filter(c=>{
+      const segment16609=c&&c.segment||[];
+      if(segment16609.length<2){regionalLandWaterRejected16609++;return false;}
+      for(let i16609=1;i16609<segment16609.length;i16609++){
+        if(!earthlineRegionalSegmentValid16584(hy,segment16609[i16609-1],segment16609[i16609])){regionalLandWaterRejected16609++;return false;}
+      }
+      return true;
+    });
+    const contourAudit={
+      build:'EARTHLINE 16167',tier:focusMode?'focus':'regional',enforced:!!focusMode,
+      evaluated:chosen.length,accepted:acceptedChosen.length,rejected:chosen.l
