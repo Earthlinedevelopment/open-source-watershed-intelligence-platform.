@@ -18,39 +18,52 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Repair 16618 JavaScript parse regression only
+      - name: Replace expensive TIGER geometry download with per-swale count gate
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          marker='EARTHLINE 16619 — 16618 PARSE REPAIR'
+          marker='EARTHLINE 16620 — PER-SWALE TIGER INTERSECTION COUNTS'
           if marker in s:
-              raise SystemExit('guard failed: 16619 marker already present')
+              raise SystemExit('guard failed: 16620 marker already present')
 
-          old="const k16618=String(f16618&&f16618.id??f16618&&f16618.properties&&f16618.properties.OBJECTID??JSON.stringify(f16618&&f16618.geometry));"
-          new="const k16618=String((f16618&&f16618.id)??(f16618&&f16618.properties&&f16618.properties.OBJECTID)??JSON.stringify(f16618&&f16618.geometry));"
-          count=s.count(old)
-          if count!=2:
-              raise SystemExit(f'guard failed: expected exactly 2 invalid dedupe expressions, found {count}')
-          s=s.replace(old,new)
+          old_decl="    let tigerVerified16617=!useTiger16617,tigerArealFeatures16617=0,tigerLinearFeatures16617=0,tigerPolygonParts16617=0,tigerLines16617=0,tigerMs16617=0,tigerError16617=null,tigerBatchCount16618=0;"
+          new_decl="    let tigerVerified16617=!useTiger16617,tigerArealFeatures16617=0,tigerLinearFeatures16617=0,tigerPolygonParts16617=0,tigerLines16617=0,tigerMs16617=0,tigerError16617=null,tigerBatchCount16618=0,tigerRejected16620=0;"
+          if s.count(old_decl)!=1:
+              raise SystemExit(f'guard failed: TIGER declaration count {s.count(old_decl)}')
+          s=s.replace(old_decl,new_decl,1)
 
-          anchor='        /* EARTHLINE 16618 — BATCHED US HYDROGRAPHY QUERY.'
-          if s.count(anchor)!=1:
-              raise SystemExit(f'guard failed: 16618 anchor count {s.count(anchor)}')
-          s=s.replace(anchor,"        /* EARTHLINE 16619 — 16618 PARSE REPAIR: parenthesize nullish-coalescing operands; no science or behavior change. */\n"+anchor,1)
+          start_marker='        /* EARTHLINE 16619 — 16618 PARSE REPAIR:'
+          end_marker='        tigerMs16617=Math.round(performance.now()-tigerStart16617);'
+          if s.count(start_marker)!=1 or s.count(end_marker)!=1:
+              raise SystemExit(f'guard failed: old TIGER block markers start={s.count(start_marker)} end={s.count(end_marker)}')
+          a=s.index(start_marker)
+          b=s.index(end_marker,a)+len(end_marker)
+          new_block='''        /* EARTHLINE 16620 — PER-SWALE TIGER INTERSECTION COUNTS.\n           Do not download statewide hydrography geometry. For each final swale, ask the\n           official Census TIGERweb Hydro service whether its exact LineString intersects\n           Areal Hydrography or Linear Hydrography. Small bounded request groups keep the\n           existing 16609 publication owner fast and independent of display zoom. */\n        const tigerStart16617=performance.now();\n        const candidates16620=[...(swales16609&&swales16609.features||[])];\n        const queryTigerCount16620=async(layer16620,coords16620)=>{\n          const controller16620=new AbortController(),timer16620=setTimeout(()=>controller16620.abort(),3000);\n          const geometry16620=JSON.stringify({paths:[coords16620],spatialReference:{wkid:4326}});\n          const body16620=new URLSearchParams({where:'1=1',geometry:geometry16620,geometryType:'esriGeometryPolyline',inSR:'4326',spatialRel:'esriSpatialRelIntersects',returnCountOnly:'true',f:'json'});\n          try{\n            const response16620=await fetch('https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Hydro/MapServer/'+layer16620+'/query',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:body16620,signal:controller16620.signal,cache:'no-store'});\n            const data16620=await response16620.json();\n            const count16620=Number(data16620&&data16620.count);\n            if(!response16620.ok||data16620&&data16620.error||!Number.isFinite(count16620))throw new Error(String(data16620&&data16620.error&&data16620.error.message||'TIGERweb Hydro count query failed'));\n            return count16620;\n          }finally{clearTimeout(timer16620);}\n        };\n        try{\n          const safe16620=[];\n          const chunkSize16620=6;\n          tigerBatchCount16618=Math.ceil(candidates16620.length/chunkSize16620);\n          for(let i16620=0;i16620<candidates16620.length;i16620+=chunkSize16620){\n            const chunk16620=candidates16620.slice(i16620,i16620+chunkSize16620);\n            const verdicts16620=await Promise.all(chunk16620.map(async f16620=>{\n              const coords16620=f16620&&f16620.geometry&&f16620.geometry.type==='LineString'?f16620.geometry.coordinates:[];\n              if(coords16620.length<2)return {feature:f16620,areal:0,linear:0};\n              const [linear16620,areal16620]=await Promise.all([queryTigerCount16620(0,coords16620),queryTigerCount16620(1,coords16620)]);\n              return {feature:f16620,areal:areal16620,linear:linear16620};\n            }));\n            for(const v16620 of verdicts16620){\n              tigerArealFeatures16617+=v16620.areal;\n              tigerLinearFeatures16617+=v16620.linear;\n              if(v16620.areal>0||v16620.linear>0)tigerRejected16620++;else safe16620.push(v16620.feature);\n            }\n          }\n          swales16609={...swales16609,features:safe16620};\n          tigerVerified16617=true;\n        }catch(e16620){\n          tigerVerified16617=false;\n          tigerError16617=String(e16620&&e16620.message||e16620||'TIGERweb Hydro count query unavailable');\n        }\n        tigerMs16617=Math.round(performance.now()-tigerStart16617);'''
+          s=s[:a]+new_block+s[b:]
 
-          if old in s:
-              raise SystemExit('guard failed: invalid expression remains')
+          old_rejected='rejected:rejected16609,verified:verified16609'
+          new_rejected='rejected:rejected16609+tigerRejected16620,verified:verified16609'
+          if s.count(old_rejected)!=1:
+              raise SystemExit(f'guard failed: audit rejected field count {s.count(old_rejected)}')
+          s=s.replace(old_rejected,new_rejected,1)
+
+          old_a='tigerHydroMs:tigerMs16617,tigerBatchCount:tigerBatchCount16618,tigerHydroError:tigerError16617'
+          new_a='tigerHydroMs:tigerMs16617,tigerBatchCount:tigerBatchCount16618,tigerRejectedSwales:tigerRejected16620,tigerHydroError:tigerError16617'
+          if s.count(old_a)!=1:
+              raise SystemExit(f'guard failed: audit TIGER fields count {s.count(old_a)}')
+          s=s.replace(old_a,new_a,1)
+
           p.write_text(s,encoding='utf-8')
           PY
           git diff --check
           git diff --numstat -- index.html
-          grep -n "EARTHLINE 16619\|const k16618" index.html | head -10
-      - name: Commit 16619 repair
+          grep -n "EARTHLINE 16620\|tigerRejectedSwales\|queryTigerCount16620" index.html | head -20
+      - name: Commit 16620 repair
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
           git add index.html
-          git commit -m 'fix: repair 16618 JavaScript parse regression'
+          git commit -m 'fix: screen final US swales with TIGER intersection counts'
           git push origin HEAD:pages-live
