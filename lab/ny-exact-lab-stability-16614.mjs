@@ -1,3 +1,4 @@
+// Earthline 16614 exact-lab viewport and mapped-water readiness diagnostic.
 import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
 
