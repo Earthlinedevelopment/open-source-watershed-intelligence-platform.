@@ -1,30 +1,25 @@
-name: Earthline Run 16624 Repair
+name: Earthline Validate NY 16624
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/earthline-run-16621.yml'
 permissions:
-  contents: write
+  contents: read
 jobs:
-  repair:
-    runs-on: ubuntu-latest
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
-          fetch-depth: 0
-      - name: Apply 16624
-        shell: bash
-        run: |
-          python3 -c "from pathlib import Path; p=Path('index.html'); s=p.read_text(); old=\"const pts=points(f.geometry.coordinates),len=polyLength(pts);if(pts.length<3||len<22)continue;\"; new=\"/* EARTHLINE 16624 — REGIONAL LOCAL-CORRIDOR RENDER THRESHOLD */ const pts=points(f.geometry.coordinates),len=polyLength(pts),activeTier=activeTier16168();if(pts.length<3||len<(activeTier==='focus'?22:1.5))continue;\"; assert s.count(old)==1, s.count(old); s=s.replace(old,new,1); old2=\"const activeTier=activeTier16168();\"; assert s.count(old2)>=1; s=s.replace(old2,'',1); p.write_text(s)"
-          sed -i 's/[[:space:]]\+$//' index.html
-          git diff --check
-      - name: Commit 16624
-        shell: bash
-        run: |
-          git config user.name earthline-ci
-          git config user.email actions@users.noreply.github.com
-          git add index.html
-          git commit -m 'fix: render local regional corridors at statewide scale'
-          git push origin HEAD:pages-live
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Validate New York 16624 on deployed site
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+        run: node lab/target-state-phase-diagnostic.mjs
