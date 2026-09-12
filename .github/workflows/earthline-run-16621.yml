@@ -1,4 +1,4 @@
-name: Earthline Inspect Regional Overlay Renderer
+name: Earthline Inspect Regional SVG Render Function
 
 on:
   push:
@@ -16,19 +16,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
-      - name: Print renderer owner contexts
+      - name: Print exact render function
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
-          needle='earthlineRenderRegionalOverlay16020'
-          pos=0;k=0
-          while True:
-            i=s.find(needle,pos)
-            if i<0: break
-            k+=1
-            print(f'\n===== OCCURRENCE {k} @ {i} =====')
-            print(s[max(0,i-2500):min(len(s),i+7000)])
-            pos=i+len(needle)
-          print(f'\nTOTAL={k}')
+          anchor=s.find('window.earthlineRenderRegionalOverlay16020=render')
+          if anchor<0: raise SystemExit('renderer assignment not found')
+          start=s.rfind('function render(',0,anchor)
+          if start<0: raise SystemExit('render function start not found')
+          end=s.find('function schedule()',start)
+          if end<0: end=min(len(s),anchor+8000)
+          print(s[start:end])
           PY
