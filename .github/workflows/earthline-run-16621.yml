@@ -1,4 +1,4 @@
-name: Earthline Validate NY 16622
+name: Earthline Run 16623 Repair
 
 on:
   push:
@@ -7,22 +7,24 @@ on:
       - '.github/workflows/earthline-run-16621.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  validate:
+  repair:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: npm install --no-save playwright
-      - run: npx playwright install --with-deps chromium
-      - name: Validate NY 16622 on deployed site
-        env:
-          EARTHLINE_URL: https://earthlinedevelopment.org/
-        run: node lab/target-state-phase-diagnostic.mjs
+          fetch-depth: 0
+      - name: Apply 16623
+        run: python3 lab/apply-16623.py
+      - name: Commit 16623
+        run: |
+          git diff --check
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          if git diff --quiet -- index.html; then exit 0; fi
+          git add index.html
+          git commit -m 'fix: tighten regional swale locality'
+          git push origin HEAD:pages-live
