@@ -30681,7 +30681,8 @@ body { overflow-x:hidden!important; }
            occupies less than 2% of the fixed Regional grid. The prior absolute
            <32-cell guard remains as the zero/tiny-land fail-safe. */
         const landCoverage16611=(dem&&dem.w&&dem.h)?validLand16609/(dem.w*dem.h):0;
-        if(usStateRun16609&&(validLand16609<32||landCoverage16611<0.02)){
+        /* EARTHLINE 16615 — NY RESAMPLE REGRESSION ROLLBACK: preserve the coverage measurement for audit continuity, but only tiny/zero land (<32 cells) may enter the 240x240 retry. */
+        if(usStateRun16609&&validLand16609<32){
           const sparseStarted16609=performance.now();
           dem=await loadDEM(b,240,240,6500,'open sparse-state elevation');
           if(!isCurrentRun(runToken))return false;
