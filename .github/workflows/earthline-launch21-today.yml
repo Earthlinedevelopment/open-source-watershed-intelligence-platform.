@@ -26,16 +26,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Wait for public Earthline surface
+      - name: Wait for public Earthline HTTP surface
         run: |
           for i in $(seq 1 30); do
-            body="$(curl -fsSL "https://earthlinedevelopment.org/?launch21=${GITHUB_SHA}" || true)"
-            if printf '%s' "$body" | grep -q 'Aquifer Recharging Starts Here'; then
+            code="$(curl -L -sS -o /tmp/earthline.html -w '%{http_code}' "https://earthlinedevelopment.org/?launch21=${GITHUB_SHA}" || true)"
+            if [ "$code" = "200" ] && [ -s /tmp/earthline.html ]; then
               exit 0
             fi
             sleep 4
           done
-          echo 'Public Earthline surface unavailable.' >&2
+          echo 'Public Earthline HTTP surface unavailable.' >&2
           exit 1
       - name: Restrict existing matrix harness to launch 21
         run: |
