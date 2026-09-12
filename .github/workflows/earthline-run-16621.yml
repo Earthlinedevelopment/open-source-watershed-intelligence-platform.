@@ -18,6 +18,7 @@ jobs:
         shell: bash
         run: |
           python3 -c "from pathlib import Path; p=Path('index.html'); s=p.read_text(); old=\"const pts=points(f.geometry.coordinates),len=polyLength(pts);if(pts.length<3||len<22)continue;\"; new=\"/* EARTHLINE 16624 — REGIONAL LOCAL-CORRIDOR RENDER THRESHOLD */ const pts=points(f.geometry.coordinates),len=polyLength(pts),activeTier=activeTier16168();if(pts.length<3||len<(activeTier==='focus'?22:1.5))continue;\"; assert s.count(old)==1, s.count(old); s=s.replace(old,new,1); old2=\"const activeTier=activeTier16168();\"; assert s.count(old2)>=1; s=s.replace(old2,'',1); p.write_text(s)"
+          sed -i 's/[[:space:]]\+$//' index.html
           git diff --check
       - name: Commit 16624
         shell: bash
