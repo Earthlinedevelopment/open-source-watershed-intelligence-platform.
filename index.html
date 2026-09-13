@@ -30629,43 +30629,66 @@ body { overflow-x:hidden!important; }
            existing 16609 publication owner fast and independent of display zoom. */
         const tigerStart16617=performance.now();
         const candidates16620=[...(swales16609&&swales16609.features||[])];
-        const queryTigerCount16620=async(layer16620,coords16620)=>{
-          const controller16620=new AbortController(),timer16620=setTimeout(()=>controller16620.abort(),3000);
-          const geometry16620=JSON.stringify({paths:[coords16620],spatialReference:{wkid:4326}});
-          const body16620=new URLSearchParams({where:'1=1',geometry:geometry16620,geometryType:'esriGeometryPolyline',inSR:'4326',spatialRel:'esriSpatialRelIntersects',returnCountOnly:'true',f:'json'});
-          try{
-            const response16620=await fetch('https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Hydro/MapServer/'+layer16620+'/query',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:body16620,signal:controller16620.signal,cache:'no-store'});
-            const data16620=await response16620.json();
-            const count16620=Number(data16620&&data16620.count);
-            if(!response16620.ok||data16620&&data16620.error||!Number.isFinite(count16620))throw new Error(String(data16620&&data16620.error&&data16620.error.message||'TIGERweb Hydro count query failed'));
-            return count16620;
-          }finally{clearTimeout(timer16620);}
-        };
+        /* EARTHLINE 16626 — BATCHED OFFICIAL TIGER HYDRO GEOMETRY.
+         Preserve Census TIGERweb/Hydro as the U.S. final-safety authority, but stop
+         issuing two network requests per candidate swale. Up to 24 candidate paths
+         are submitted in one official polyline-intersection request per Hydro layer;
+         returned official geometry is then evaluated by the existing local exact
+         segment-intersection owner below. No water rule or source is weakened. */
+      const queryTigerGeometry16626=async(layer16626,paths16626)=>{
+        const controller16626=new AbortController(),timer16626=setTimeout(()=>controller16626.abort(),5000);
+        const geometry16626=JSON.stringify({paths:paths16626,spatialReference:{wkid:4326}});
+        const body16626=new URLSearchParams({
+          where:'1=1',geometry:geometry16626,geometryType:'esriGeometryPolyline',inSR:'4326',
+          spatialRel:'esriSpatialRelIntersects',outFields:'OBJECTID',returnGeometry:'true',
+          outSR:'4326',f:'geojson'
+        });
         try{
-          const safe16620=[];
-          const chunkSize16620=6;
-          tigerBatchCount16618=Math.ceil(candidates16620.length/chunkSize16620);
-          for(let i16620=0;i16620<candidates16620.length;i16620+=chunkSize16620){
-            const chunk16620=candidates16620.slice(i16620,i16620+chunkSize16620);
-            const verdicts16620=await Promise.all(chunk16620.map(async f16620=>{
-              const coords16620=f16620&&f16620.geometry&&f16620.geometry.type==='LineString'?f16620.geometry.coordinates:[];
-              if(coords16620.length<2)return {feature:f16620,areal:0,linear:0};
-              const [linear16620,areal16620]=await Promise.all([queryTigerCount16620(0,coords16620),queryTigerCount16620(1,coords16620)]);
-              return {feature:f16620,areal:areal16620,linear:linear16620};
-            }));
-            for(const v16620 of verdicts16620){
-              tigerArealFeatures16617+=v16620.areal;
-              tigerLinearFeatures16617+=v16620.linear;
-              if(v16620.areal>0||v16620.linear>0)tigerRejected16620++;else safe16620.push(v16620.feature);
-            }
+          const response16626=await fetch('https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Hydro/MapServer/'+layer16626+'/query',{
+            method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+            body:body16626,signal:controller16626.signal,cache:'no-store'
+          });
+          const data16626=await response16626.json();
+          if(!response16626.ok||data16626&&data16626.error||data16626?.type!=='FeatureCollection')
+            throw new Error(String(data16626&&data16626.error&&data16626.error.message||'TIGERweb Hydro geometry query failed'));
+          if(data16626.exceededTransferLimit===true)
+            throw new Error('TIGERweb Hydro geometry transfer limit exceeded');
+          return Array.isArray(data16626.features)?data16626.features:[];
+        }finally{clearTimeout(timer16626);}
+      };
+      try{
+        const chunkSize16626=24,batches16626=[];
+        for(let i16626=0;i16626<candidates16620.length;i16626+=chunkSize16626){
+          const paths16626=[];
+          for(const f16626 of candidates16620.slice(i16626,i16626+chunkSize16626)){
+            const coords16626=f16626&&f16626.geometry&&f16626.geometry.type==='LineString'?f16626.geometry.coordinates:[];
+            if(coords16626.length>1)paths16626.push(coords16626);
           }
-          swales16609={...swales16609,features:safe16620};
-          tigerVerified16617=true;
-        }catch(e16620){
-          tigerVerified16617=false;
-          tigerError16617=String(e16620&&e16620.message||e16620||'TIGERweb Hydro count query unavailable');
+          if(paths16626.length)batches16626.push(paths16626);
         }
-        tigerMs16617=Math.round(performance.now()-tigerStart16617);
+        tigerBatchCount16618=batches16626.length;
+        const batchResults16626=await Promise.all(batches16626.map(async paths16626=>{
+          const [linear16626,areal16626]=await Promise.all([
+            queryTigerGeometry16626(0,paths16626),queryTigerGeometry16626(1,paths16626)
+          ]);
+          return {linear16626,areal16626};
+        }));
+        for(const result16626 of batchResults16626){
+          tigerLinearFeatures16617+=result16626.linear16626.length;
+          tigerArealFeatures16617+=result16626.areal16626.length;
+          const lineBefore16626=lines16609.length,polyBefore16626=polys16609.length;
+          for(const f16626 of result16626.linear16626)addGeometry16609(f16626&&f16626.geometry);
+          for(const f16626 of result16626.areal16626)addGeometry16609(f16626&&f16626.geometry);
+          tigerLines16617+=Math.max(0,lines16609.length-lineBefore16626);
+          tigerPolygonParts16617+=Math.max(0,polys16609.length-polyBefore16626);
+        }
+        tigerRejected16620=0; /* counted once by the shared exact filter below */
+        tigerVerified16617=true;
+      }catch(e16626){
+        tigerVerified16617=false;
+        tigerError16617=String(e16626&&e16626.message||e16626||'TIGERweb Hydro batched geometry unavailable');
+      }
+      tigerMs16617=Math.round(performance.now()-tigerStart16617);
       }else tigerVerified16617=true;
     }
     const segmentHits16609=(a,b)=>{
