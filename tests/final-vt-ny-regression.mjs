@@ -26,6 +26,7 @@ async function snap(){return await page.evaluate(()=>{
   const rd=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null;
   const ca=window.EARTHLINE_REGIONAL_CAMERA_SETTLE_AUDIT_16334||null;
   const fa=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null;
+  const fwa=window.EARTHLINE_FINAL_MAPPED_WATER_FLOW_AUDIT_16628||null;
   const pa=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
   const safety=m?.safetyAudit15806||null;
   const lock=m?.propertyResultLock15815||null;
@@ -44,6 +45,7 @@ async function snap(){return await page.evaluate(()=>{
     regionalDisplay:rd,
     cameraAudit:ca,
     flowAudit:fa,
+    finalWaterFlowAudit:fwa,
     propertyAudit:pa,
     safety,lock,water,
     analysisReady:!!m?.analysisReady,
@@ -80,12 +82,14 @@ async function chooseRegion(name){
   const identity=norm(name).split(' ').every(w=>identityText.includes(w));
   const mapVisible=after.map.exists&&after.map.canvas.w>300&&after.map.canvas.h>250&&after.map.canvas.display!=='none'&&after.map.canvas.visibility!=='hidden'&&Number(after.map.rendered||0)>0;
   const cameraReady=after.cameraAudit?.settled===true&&Number(after.cameraAudit?.coverage||0)>=0.98;
-  const flowSafe=after.flowAudit?.safe===true&&Number(after.flowAudit?.unsafeSegments??after.flowAudit?.unsafeDisplayedSegments??0)===0;
+  const landFlowSafe=after.flowAudit?.safe===true&&Number(after.flowAudit?.unsafeSegments??after.flowAudit?.unsafeDisplayedSegments??0)===0;
+  const finalWaterFlowSafe=after.finalWaterFlowAudit?.safe===true&&after.finalWaterFlowAudit?.sharedFinalMask===true&&Number(after.finalWaterFlowAudit?.outputSegments||0)<=Number(after.finalWaterFlowAudit?.inputSegments||0);
+  const flowSafe=landFlowSafe&&finalWaterFlowSafe;
   const presentation=Number(after.regionalDisplay?.waterPaths||0)>0&&Number(after.regionalDisplay?.swaleLines||0)>0;
   const noStaleProperty=after.map.propertyLayersVisible===0;
   const published=/screening published/i.test(after.status)&&after.renderSettlement?.coreVisible===true&&!/ANALYSIS FAILED/i.test(after.status);
   const pass=!timeout&&elapsedMs<=HARD_CEILING_MS&&identity&&mapVisible&&cameraReady&&flowSafe&&presentation&&noStaleProperty&&published&&!after.debugVisible;
-  return {stage:`${name} Regional`,pass,timeout,elapsedMs,identity,mapVisible,cameraReady,flowSafe,presentation,noStaleProperty,published,picked,after,errors:browserErrors.slice(err0)};
+  return {stage:`${name} Regional`,pass,timeout,elapsedMs,identity,mapVisible,cameraReady,landFlowSafe,finalWaterFlowSafe,flowSafe,presentation,noStaleProperty,published,picked,after,errors:browserErrors.slice(err0)};
 }
 
 async function property(name){
@@ -124,7 +128,7 @@ stages.push(await chooseRegion('New York'));
 if(stages.at(-1).pass)stages.push(await property('New York'));else stages.push({stage:'New York Property',pass:false,skipped:true,reason:'New York Regional failed'});
 
 const pass=stages.length===4&&stages.every(s=>s.pass===true);
-const report={test:'Earthline final VT/NY no-scab launch transition gate',surface:'public-index',acceptedParent:16584,requiredLivePatches:[16601,16602,16603],hardCeilingMs:HARD_CEILING_MS,sequence:['Vermont Regional','Vermont Property','New York Regional','New York Property'],pass,stages,browserErrors:browserErrors.slice(0,40)};
+const report={test:'Earthline final VT/NY no-scab launch transition gate',surface:'public-index',acceptedParent:16584,requiredLivePatches:[16601,16602,16628],hardCeilingMs:HARD_CEILING_MS,sequence:['Vermont Regional','Vermont Property','New York Regional','New York Property'],pass,stages,browserErrors:browserErrors.slice(0,40)};
 console.log('EARTHLINE_FINAL_VT_NY '+JSON.stringify(report));
 await browser.close();
 if(!pass)process.exitCode=1;
