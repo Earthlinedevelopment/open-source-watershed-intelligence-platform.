@@ -1,5 +1,5 @@
-# 16627 NY-first rerun after direct-grid Regional validity optimization.
-# strict launch trigger 16627
+# 16628 NY-first rerun after final mapped-water mask is applied to Regional flows.
+# strict launch trigger 16628
 name: Earthline NY Water Regression
 
 on:
@@ -31,19 +31,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Verify exact live host has 16627 and promoted patches
+      - name: Verify exact live host has 16628 and promoted patches
         shell: bash
         run: |
           set -euo pipefail
           for i in $(seq 1 48); do
-            html="$(curl -fsSL -A 'Earthline-launch-gate/16627' "${EARTHLINE_LIVE_URL}?earthline_probe=${GITHUB_SHA}-${i}" || true)"
-            if grep -Fq 'builds/16601/earthline-shared-water-mask.js' <<<"$html" && grep -Fq 'builds/16602/earthline-regional-camera-scale.js' <<<"$html" && grep -Fq 'EARTHLINE 16627 — FAST EQUIVALENT REGIONAL VALIDITY WALK' <<<"$html"; then
-              echo "EARTHLINE_LIVE_16627_READY host=${EARTHLINE_LIVE_URL} sha=${GITHUB_SHA} attempt=${i}"
+            html="$(curl -fsSL -A 'Earthline-launch-gate/16628' "${EARTHLINE_LIVE_URL}?earthline_probe=${GITHUB_SHA}-${i}" || true)"
+            if grep -Fq 'builds/16601/earthline-shared-water-mask.js' <<<"$html" && grep -Fq 'builds/16602/earthline-regional-camera-scale.js' <<<"$html" && grep -Fq 'EARTHLINE 16628 — FINAL MAPPED-WATER MASK OWNS REGIONAL FLOWS' <<<"$html"; then
+              echo "EARTHLINE_LIVE_16628_READY host=${EARTHLINE_LIVE_URL} sha=${GITHUB_SHA} attempt=${i}"
               exit 0
             fi
             sleep 5
           done
-          echo "Exact live host did not expose 16627 plus base promoted patches."
+          echo "Exact live host did not expose 16628 plus base promoted patches."
           exit 1
       - name: Install Playwright
         run: |
