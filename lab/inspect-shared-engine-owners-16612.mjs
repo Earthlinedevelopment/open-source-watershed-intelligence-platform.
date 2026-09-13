@@ -1,42 +1,36 @@
 import fs from 'node:fs';
-const s = fs.readFileSync('index.html','utf8');
+const s=fs.readFileSync('index.html','utf8');
+const one=x=>String(x).replace(/\s+/g,' ').trim();
+const ctx=(needle,b=1200,a=2600)=>{const i=s.indexOf(needle);console.log(`\n### ${needle} @${i}\n${i<0?'NOT FOUND':one(s.slice(Math.max(0,i-b),Math.min(s.length,i+a)))}`)};
 
-const one = x => String(x).replace(/\s+/g,' ').trim();
-const around = (i,n=260) => one(s.slice(Math.max(0,i-n), Math.min(s.length,i+n)));
-
-function collect(label,re,max=8){
-  re.lastIndex=0;
-  const a=[]; let m;
-  while((m=re.exec(s)) && a.length<max){
-    a.push({at:m.index,hit:one(m[0]).slice(0,180),ctx:around(m.index)});
-    if(!m[0].length) re.lastIndex++;
+function extractFunction(name,max=14000){
+  const call=s.indexOf(name);
+  if(call<0){console.log(`\n### FUNCTION ${name}: NOT FOUND`);return;}
+  let start=s.lastIndexOf('function ',call);
+  if(start<0||call-start>5000) start=Math.max(0,call-2500);
+  const brace=s.indexOf('{',start);
+  if(brace<0){ctx(name);return;}
+  let depth=0,q=null,esc=false,line=false,block=false;
+  for(let i=brace;i<s.length&&i<brace+max;i++){
+    const c=s[i],n=s[i+1];
+    if(line){if(c==='\n')line=false;continue}
+    if(block){if(c==='*'&&n==='/'){block=false;i++}continue}
+    if(q){if(esc){esc=false;continue}if(c==='\\'){esc=true;continue}if(c===q)q=null;continue}
+    if(c==='/'&&n==='/'){line=true;i++;continue}
+    if(c==='/'&&n==='*'){block=true;i++;continue}
+    if(c==='"'||c==="'"||c==='`'){q=c;continue}
+    if(c==='{')depth++;
+    else if(c==='}'&&--depth===0){console.log(`\n### FUNCTION ${name} START ${start} END ${i}\n${one(s.slice(start,i+1))}`);return}
   }
-  console.log(label+'='+JSON.stringify(a));
+  console.log(`\n### FUNCTION ${name} (TRUNCATED)\n${one(s.slice(start,Math.min(s.length,start+max)))}`);
 }
 
-const ids=[...new Set([...s.matchAll(/\b[$A-Za-z_][$\w]*(?:water|Water|WATER)[$\w]*\b/g)].map(m=>m[0]))].sort();
-console.log('WATER_IDS='+JSON.stringify(ids.slice(0,100)));
+extractFunction('nativeWater16350');
+extractFunction('hideNative');
+ctx('EARTHLINE_REGIONAL_WATER_OWNERSHIP_AUDIT_16350',3200,5200);
+extractFunction('earthlineMappedWaterSwaleGate16609');
+ctx('EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609',2400,3600);
+ctx('native-mapbox',3000,5000);
 
-collect('MAPPED_WATER',/mapped[\s_-]*water|water[\s_-]*mask|water[^\n]{0,80}(?:exclusion|validity)|(?:exclusion|validity)[^\n]{0,80}water/gi,12);
-collect('WATER_AUDIT',/water[^\n]{0,100}audit|audit[^\n]{0,100}water/gi,10);
-collect('REGIONAL_WATER',/regional[^\n]{0,140}water|water[^\n]{0,140}regional/gi,12);
-collect('MAP_ADD',/(?:addSource|addLayer)\s*\([^;\n]{0,260}water|water[^;\n]{0,260}(?:addSource|addLayer)\s*\(/gi,12);
-collect('MAP_SET',/setData\s*\([^;\n]{0,260}water|water[^;\n]{0,260}setData\s*\(/gi,12);
-collect('FILTER_WATER',/filter\s*\([^;\n]{0,220}water|water[^;\n]{0,220}filter\s*\(/gi,10);
-
-for(const needle of ['getSource(','addSource(','addLayer(','setData(','removeLayer(','removeSource(']){
-  const hits=[]; let from=0;
-  while(hits.length<12){
-    const i=s.indexOf(needle,from); if(i<0) break;
-    const c=around(i,420);
-    if(/water/i.test(c)) hits.push({at:i,ctx:c});
-    from=i+needle.length;
-  }
-  console.log('CALL_'+needle.replace(/\W/g,'_')+'='+JSON.stringify(hits));
-}
-
-const interesting=ids.filter(x=>/(regional|mapped|mask|audit|layer|source|flow|path|hydro|water)/i.test(x)).slice(0,50);
-for(const id of interesting){
-  const i=s.indexOf(id);
-  console.log('IDCTX '+id+' @'+i+' '+(i>=0?around(i,340):''));
-}
+// Find every hideNative call in the current product and show compact call-site ownership.
+let from=0,n=0;while(n<20){const i=s.indexOf('hideNative()',from);if(i<0)break;n++;console.log(`\n### hideNative CALL ${n} @${i}\n${one(s.slice(Math.max(0,i-900),Math.min(s.length,i+1300)))}`);from=i+12}
