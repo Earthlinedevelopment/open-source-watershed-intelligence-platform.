@@ -24,13 +24,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: mantra36-16584-control
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Verify exact accepted index remains untouched
+      - name: Verify exact accepted published index
         run: |
-          actual="$(sha256sum index.html | awk '{print $1}')"
-          test "$actual" = "19f075d67cc19b12c6169be69aad78dc37acee0cdcb62c957f94d423bd45c33f"
+          actual_blob="$(git hash-object index.html)"
+          accepted_blob="$(git rev-parse 74343a24f90fed7d7abbe9267ef11a2836220de7:index.html)"
+          echo "working_blob=$actual_blob"
+          echo "accepted_blob=$accepted_blob"
+          test "$accepted_blob" = "1c217d9486f0e234c08e1b6890e28d1db7dc03cf"
+          test "$actual_blob" = "$accepted_blob"
+          test -z "$(git diff 74343a24f90fed7d7abbe9267ef11a2836220de7 -- index.html)"
       - name: Serve exact accepted artifact
         run: |
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-m36-http.log 2>&1 &
