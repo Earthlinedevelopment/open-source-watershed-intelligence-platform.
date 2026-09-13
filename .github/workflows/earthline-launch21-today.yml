@@ -1,3 +1,4 @@
+# 16626 launch-21 live matrix.
 name: Earthline Launch21 Today
 
 on:
@@ -26,16 +27,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Wait for public Earthline HTTP surface
+      - name: Wait for public Earthline 16626 surface
         run: |
           for i in $(seq 1 30); do
-            code="$(curl -L -sS -o /tmp/earthline.html -w '%{http_code}' "https://earthlinedevelopment.org/?launch21=${GITHUB_SHA}" || true)"
-            if [ "$code" = "200" ] && [ -s /tmp/earthline.html ]; then
+            code="$(curl -L -sS -o /tmp/earthline.html -w '%{http_code}' "https://earthlinedevelopment.org/?launch21=${GITHUB_SHA}-${i}" || true)"
+            if [ "$code" = "200" ] && grep -Fq 'EARTHLINE 16626 — BATCHED OFFICIAL TIGER HYDRO GEOMETRY' /tmp/earthline.html; then
               exit 0
             fi
             sleep 4
           done
-          echo 'Public Earthline HTTP surface unavailable.' >&2
+          echo 'Public Earthline 16626 surface unavailable.' >&2
           exit 1
       - name: Restrict existing matrix harness to launch 21
         run: |
