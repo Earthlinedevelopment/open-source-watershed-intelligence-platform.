@@ -18,17 +18,17 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Apply guarded 16625 shared Regional water mask repair
-        run: python3 lab/repair-16625-shared-water-mask.py
+      - name: Apply guarded 16626 TIGER batch optimization
+        run: python3 lab/repair-16626-tiger-batched-geometry.py
       - name: Verify patch
         run: |
           git diff --check
           git diff --numstat -- index.html
-          grep -n "EARTHLINE 16625\|sharedFinalMask16625\|regionalRecharge16492=regionalRechargeModel16492" index.html | head -20
-      - name: Commit 16625 repair
+          grep -n "EARTHLINE 16626\|queryTigerGeometry16626\|chunkSize16626=24" index.html | head -20
+      - name: Commit 16626 repair
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
           git add index.html
-          git commit -m 'fix: unify mapped-water mask for regional swales and recharge'
+          git commit -m 'fix: batch official TIGER hydro geometry for US Regional'
           git push origin HEAD:pages-live
