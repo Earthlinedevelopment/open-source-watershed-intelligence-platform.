@@ -1,0 +1,79 @@
+name: Mantra36 Accepted 16584 Connected Control
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/mantra36-16584-connected-control.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-control:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Publish exact accepted 16584 as isolated control page
+        run: |
+          git show 74343a24f90fed7d7abbe9267ef11a2836220de7:index.html > mantra36-16584-control.html
+          test "$(git hash-object mantra36-16584-control.html)" = "1c217d9486f0e234c08e1b6890e28d1db7dc03cf"
+          if git diff --quiet -- mantra36-16584-control.html && git ls-files --error-unmatch mantra36-16584-control.html >/dev/null 2>&1; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add mantra36-16584-control.html
+          git commit -m 'test: publish isolated accepted-16584 control page'
+          git push origin HEAD:pages-live
+
+  connected-control:
+    needs: publish-control
+    name: Connected accepted 16584 shard ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify connected control is exact accepted Git content
+        run: |
+          expected="$(git show 74343a24f90fed7d7abbe9267ef11a2836220de7:index.html | sha256sum | awk '{print $1}')"
+          for i in $(seq 1 60); do
+            if curl -L -fsS "https://earthlinedevelopment.org/mantra36-16584-control.html?verify=${GITHUB_SHA}-${i}" -o /tmp/m36.html; then
+              got="$(sha256sum /tmp/m36.html | awk '{print $1}')"
+              if [ "$got" = "$expected" ]; then
+                echo "served_sha256=$got"
+                exit 0
+              fi
+            fi
+            sleep 5
+          done
+          echo 'Connected control never matched accepted Git content.' >&2
+          exit 1
+      - name: Load control harness from isolated branch
+        run: |
+          git fetch origin mantra36-16584-control
+          git show origin/mantra36-16584-control:tests/mantra36-16584-launch21.mjs > m36-connected-control.mjs
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run connected launch-21 control shard
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/mantra36-16584-control.html
+          EARTHLINE_SHARD_INDEX: ${{ matrix.shard }}
+          EARTHLINE_SHARD_TOTAL: 3
+        run: node m36-connected-control.mjs
