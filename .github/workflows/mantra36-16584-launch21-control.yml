@@ -1,0 +1,49 @@
+name: Mantra36 Accepted 16584 Launch21 Control
+
+on:
+  push:
+    branches: [mantra36-16584-control]
+    paths:
+      - '.github/workflows/mantra36-16584-launch21-control.yml'
+      - 'tests/mantra36-16584-launch21.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regional-control:
+    name: Accepted 16584 shard ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra36-16584-control
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify exact accepted index remains untouched
+        run: |
+          actual="$(sha256sum index.html | awk '{print $1}')"
+          test "$actual" = "19f075d67cc19b12c6169be69aad78dc37acee0cdcb62c957f94d423bd45c33f"
+      - name: Serve exact accepted artifact
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-m36-http.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/earthline-m36-http.log
+          exit 1
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run launch-21 control shard
+        env:
+          EARTHLINE_URL: http://127.0.0.1:8787/
+          EARTHLINE_SHARD_INDEX: ${{ matrix.shard }}
+          EARTHLINE_SHARD_TOTAL: 3
+        run: node tests/mantra36-16584-launch21.mjs
