@@ -18,19 +18,23 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Apply guarded 16629 final mapped-water flow-arrow repair
-        run: python3 lab/repair-16629-final-water-flow-arrows.py
-      - name: Verify patch
+      - name: Apply guarded 16630 single-owner flow validity repair
+        run: python3 lab/repair-16630-deduplicate-flow-validity-audit.py
+      - name: Verify repair
         run: |
           git diff --check
           git diff --numstat -- index.html
-          grep -n "EARTHLINE 16629\|FINAL WATER MASK PRESERVES VALID FLOW ARROWS\|inputArrows16629\|outputArrows16629" index.html | head -20
-      - name: Commit 16629 repair
+          grep -n "EARTHLINE 16630\|SINGLE VALIDITY OWNER / NO DUPLICATE FLOW WALK\|validationOwner:\"earthlineRegionalSmoothFlow16584\"" index.html | head -20
+          if grep -Fq 'if(unsafe16584>0)throw new Error("regional land-validity flow audit failed:' index.html; then
+            echo 'duplicate post-generation flow verdict remains' >&2
+            exit 1
+          fi
+      - name: Commit 16630 repair
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
           git add index.html
-          git commit -m 'fix: preserve valid Regional flow arrows after water masking'
+          git commit -m 'fix: keep one Regional flow-validity owner'
           git push origin HEAD:pages-live
 
-# launch trigger 16629
+# launch trigger 16630
