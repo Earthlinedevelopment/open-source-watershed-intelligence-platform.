@@ -18,19 +18,19 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Apply guarded 16627 Regional validity optimization
-        run: python3 lab/repair-16627-fast-regional-validity.py
+      - name: Apply guarded 16628 final mapped-water flow mask
+        run: python3 lab/repair-16628-final-water-flow-mask.py
       - name: Verify patch
         run: |
           git diff --check
           git diff --numstat -- index.html
-          grep -n "EARTHLINE 16627\|FAST EQUIVALENT REGIONAL VALIDITY WALK\|invSteps16584" index.html | head -20
-      - name: Commit 16627 repair
+          grep -n "EARTHLINE 16628\|FINAL MAPPED-WATER MASK OWNS REGIONAL FLOWS\|EARTHLINE_FINAL_MAPPED_WATER_FLOW_AUDIT_16628" index.html | head -20
+      - name: Commit 16628 repair
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
           git add index.html
-          git commit -m 'perf: preserve Regional validity verdict with direct grid walk'
+          git commit -m 'fix: enforce final mapped-water mask on Regional flows'
           git push origin HEAD:pages-live
 
-# launch trigger 16627
+# launch trigger 16628
