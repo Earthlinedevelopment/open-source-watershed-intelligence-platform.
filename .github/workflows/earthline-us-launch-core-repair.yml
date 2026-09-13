@@ -18,17 +18,17 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Apply guarded 16626 TIGER batch optimization
-        run: python3 lab/repair-16626-tiger-batched-geometry.py
+      - name: Apply guarded 16627 Regional validity optimization
+        run: python3 lab/repair-16627-fast-regional-validity.py
       - name: Verify patch
         run: |
           git diff --check
           git diff --numstat -- index.html
-          grep -n "EARTHLINE 16626\|queryTigerGeometry16626\|chunkSize16626=24" index.html | head -20
-      - name: Commit 16626 repair
+          grep -n "EARTHLINE 16627\|FAST EQUIVALENT REGIONAL VALIDITY WALK\|invSteps16584" index.html | head -20
+      - name: Commit 16627 repair
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
           git add index.html
-          git commit -m 'fix: batch official TIGER hydro geometry for US Regional'
+          git commit -m 'perf: preserve Regional validity verdict with direct grid walk'
           git push origin HEAD:pages-live
