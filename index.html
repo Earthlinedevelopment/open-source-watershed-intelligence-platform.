@@ -30566,7 +30566,7 @@ body { overflow-x:hidden!important; }
       Number(a16584.outsideLandCellCount||0)+" ocean/coast + "+Number(a16584.inlandWaterCellCount||0)+" inland)";
   }
 
-  async function earthlineMappedWaterSwaleGate16609(map16609,swales16609,runToken16609,useTiger16617=false){
+  async function earthlineMappedWaterSwaleGate16609(map16609,swales16609,runToken16609,useTiger16617=false,hy16609=null){
     const before16609=Number(swales16609&&swales16609.features&&swales16609.features.length||0),polys16609=[],lines16609=[];
     let sourceQueries16609=0,sourceSuccess16609=0,rawFeatures16609=0;
     const finite16609=p=>Array.isArray(p)&&Number.isFinite(Number(p[0]))&&Number.isFinite(Number(p[1]));
@@ -30674,15 +30674,53 @@ body { overflow-x:hidden!important; }
       for(const line of lines16609)for(let i=1;i<line.length;i++)if(finite16609(line[i-1])&&finite16609(line[i])&&segInter16609(a,b,line[i-1],line[i]))return true;
       return false;
     };
+    /* EARTHLINE 16625 — SHARED REGIONAL MAPPED-WATER FINAL MASK.
+       Extend the existing 16584 validity mask in place with the exact mapped-water
+       evidence already acquired by the authoritative 16609 gate. Swales and the
+       Regional recharge calculation below therefore consume one final no-build mask. */
+    let sharedMaskApplied16625=false,sharedMaskInvalidatedCells16625=0;
+    if(hy16609&&hy16609.validityMask16584&&hy16609.validityMask16584.length===hy16609.w*hy16609.h){
+      const mask16625=hy16609.validityMask16584;
+      const invalidate16625=(x16625,y16625)=>{
+        if(x16625<0||y16625<0||x16625>=hy16609.w||y16625>=hy16609.h)return;
+        const i16625=y16625*hy16609.w+x16625;
+        if(mask16625[i16625]){mask16625[i16625]=0;sharedMaskInvalidatedCells16625++;}
+        if(hy16609.slope&&i16625<hy16609.slope.length)hy16609.slope[i16625]=NaN;
+        if(hy16609.acc&&i16625<hy16609.acc.length)hy16609.acc[i16625]=NaN;
+      };
+      for(const poly16625 of polys16609){
+        const bb16625=poly16625&&poly16625.bbox;if(!bb16625)continue;
+        const gA16625=llGrid(hy16609,[bb16625[0],bb16625[1]]),gB16625=llGrid(hy16609,[bb16625[2],bb16625[3]]);
+        const x016625=Math.max(0,Math.floor(Math.min(gA16625.x,gB16625.x))-1),x116625=Math.min(hy16609.w-1,Math.ceil(Math.max(gA16625.x,gB16625.x))+1);
+        const y016625=Math.max(0,Math.floor(Math.min(gA16625.y,gB16625.y))-1),y116625=Math.min(hy16609.h-1,Math.ceil(Math.max(gA16625.y,gB16625.y))+1);
+        for(let y16625=y016625;y16625<=y116625;y16625++)for(let x16625=x016625;x16625<=x116625;x16625++){
+          const ll16625=gridLL(hy16609,x16625,y16625);
+          if(polyInside16609(ll16625,poly16625.rings))invalidate16625(x16625,y16625);
+        }
+      }
+      for(const line16625 of lines16609){
+        for(let j16625=1;j16625<line16625.length;j16625++){
+          const a16625=line16625[j16625-1],b16625=line16625[j16625];if(!finite16609(a16625)||!finite16609(b16625))continue;
+          const ga16625=llGrid(hy16609,a16625),gb16625=llGrid(hy16609,b16625),steps16625=Math.max(1,Math.ceil(Math.hypot(gb16625.x-ga16625.x,gb16625.y-ga16625.y)*4));
+          for(let q16625=0;q16625<=steps16625;q16625++){
+            const t16625=q16625/steps16625,x16625=Math.round(ga16625.x+(gb16625.x-ga16625.x)*t16625),y16625=Math.round(ga16625.y+(gb16625.y-ga16625.y)*t16625);
+            for(let oy16625=-1;oy16625<=1;oy16625++)for(let ox16625=-1;ox16625<=1;ox16625++)invalidate16625(x16625+ox16625,y16625+oy16625);
+          }
+        }
+      }
+      sharedMaskApplied16625=true;
+    }
     const safe16609=[];let rejected16609=0;
     for(const f16609 of (swales16609&&swales16609.features||[])){
       const c16609=f16609&&f16609.geometry&&f16609.geometry.type==='LineString'?f16609.geometry.coordinates:[];let bad16609=false;
-      for(let i16609=1;i16609<c16609.length&&!bad16609;i16609++)if(segmentHits16609(c16609[i16609-1],c16609[i16609]))bad16609=true;
+      for(let i16609=1;i16609<c16609.length&&!bad16609;i16609++){
+        if(segmentHits16609(c16609[i16609-1],c16609[i16609])||(sharedMaskApplied16625&&!earthlineRegionalSegmentValid16584(hy16609,c16609[i16609-1],c16609[i16609])))bad16609=true;
+      }
       if(bad16609)rejected16609++;else safe16609.push(f16609);
     }
     const verified16609=sourceQueries16609>0&&sourceSuccess16609>0&&deterministicRiverVerified16616&&(!useTiger16617||tigerVerified16617);
     const out16609=earthlineRerankRegionalSwales16539({type:'FeatureCollection',features:safe16609});
-    window.EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609={build:'EARTHLINE 16609',runToken:runToken16609,sourceQueries:sourceQueries16609,sourceSuccess:sourceSuccess16609,rawWaterFeatures:rawFeatures16609,waterPolygonParts:polys16609.length,waterwayLines:lines16609.length,mapWaterwayLines:Math.max(0,lines16609.length-deterministicRiverLines16616.length-tigerLines16617),deterministicRiverLines:deterministicRiverLines16616.length,deterministicRiverVerified:deterministicRiverVerified16616,deterministicRiverSource:deterministicRiverProduct16616&&deterministicRiverProduct16616.riverCenterlineGeometry&&deterministicRiverProduct16616.riverCenterlineGeometry.source||null,tigerHydroRequested:!!useTiger16617,tigerHydroVerified:tigerVerified16617,tigerArealFeatures:tigerArealFeatures16617,tigerLinearFeatures:tigerLinearFeatures16617,tigerPolygonParts:tigerPolygonParts16617,tigerLines:tigerLines16617,tigerHydroMs:tigerMs16617,tigerBatchCount:tigerBatchCount16618,tigerRejectedSwales:tigerRejected16620,tigerHydroError:tigerError16617,tigerHydroSource:useTiger16617?'U.S. Census Bureau TIGERweb/Hydro':null,before:before16609,after:out16609.features.length,rejected:rejected16609+tigerRejected16620,verified:verified16609,safe:verified16609,at:new Date().toISOString()};
+    window.EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609={build:'EARTHLINE 16609',runToken:runToken16609,sourceQueries:sourceQueries16609,sourceSuccess:sourceSuccess16609,rawWaterFeatures:rawFeatures16609,waterPolygonParts:polys16609.length,waterwayLines:lines16609.length,mapWaterwayLines:Math.max(0,lines16609.length-deterministicRiverLines16616.length-tigerLines16617),deterministicRiverLines:deterministicRiverLines16616.length,deterministicRiverVerified:deterministicRiverVerified16616,deterministicRiverSource:deterministicRiverProduct16616&&deterministicRiverProduct16616.riverCenterlineGeometry&&deterministicRiverProduct16616.riverCenterlineGeometry.source||null,tigerHydroRequested:!!useTiger16617,tigerHydroVerified:tigerVerified16617,tigerArealFeatures:tigerArealFeatures16617,tigerLinearFeatures:tigerLinearFeatures16617,tigerPolygonParts:tigerPolygonParts16617,tigerLines:tigerLines16617,tigerHydroMs:tigerMs16617,tigerBatchCount:tigerBatchCount16618,tigerRejectedSwales:tigerRejected16620,tigerHydroError:tigerError16617,tigerHydroSource:useTiger16617?'U.S. Census Bureau TIGERweb/Hydro':null,sharedFinalMask16625:sharedMaskApplied16625,sharedMaskInvalidatedCells16625:sharedMaskInvalidatedCells16625,rechargeUsesSharedMask16625:sharedMaskApplied16625,before:before16609,after:out16609.features.length,rejected:rejected16609+tigerRejected16620,verified:verified16609,safe:verified16609,at:new Date().toISOString()};
     return {swales:out16609,verified:verified16609,audit:window.EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609};
   }
 
@@ -30839,7 +30877,7 @@ body { overflow-x:hidden!important; }
 
     setBusy(true,'DERIVING WATER PATHS + BIOSWALES');setRunStatus(focusMode?'Deriving focus contours, flow paths and bioswale corridors…':'Deriving regional contours, flow paths and bioswale corridors…','pending');await wait(20);if(!isCurrentRun(runToken))return false;
     const productsStarted16198=performance.now();
-    if(!hy)hy=await hydrology(dem,validityGrid16584&&validityGrid16584.mask||null);const regionalRecharge16492=regionalRechargeModel16492(hy,loc);const contoursStarted16245=performance.now();
+    if(!hy)hy=await hydrology(dem,validityGrid16584&&validityGrid16584.mask||null);let regionalRecharge16492=null;const contoursStarted16245=performance.now();
     let contours=await makeContours(hy);noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · CONTOURS COMPLETE',runToken);await wait(0);
     /* 16249: swales are the primary decision product. Build them immediately after contours,
        then publish a VERIFIED Vermont-clipped swale-only preview before the heavier flow
@@ -30913,10 +30951,12 @@ body { overflow-x:hidden!important; }
     if(!isCurrentRun(runToken))return false;
     if(!focusMode){
       const usStateWaterRun16609=!!(profile16549&&loc&&String(loc.countryCode||'').toLowerCase()==='us'&&loc.jurisdictionProfileId16556);
-      const mappedWaterGate16609=await earthlineMappedWaterSwaleGate16609(m,swales,runToken,usStateWaterRun16609);
+      const mappedWaterGate16609=await earthlineMappedWaterSwaleGate16609(m,swales,runToken,usStateWaterRun16609,hy);
       if(usStateWaterRun16609&&mappedWaterGate16609.verified!==true)throw new Error('U.S. state mapped-water verification unavailable; unverified swales were not published');
       swales=mappedWaterGate16609.swales;
     }
+    /* 16625: calculate Regional recharge only after the shared final water mask is frozen. */
+    regionalRecharge16492=regionalRechargeModel16492(hy,loc);
 
     /* EARTHLINE 16329 — core preflight occurs before any final Regional display
        publication. A failed run cannot leave a visually convincing partial result. */
