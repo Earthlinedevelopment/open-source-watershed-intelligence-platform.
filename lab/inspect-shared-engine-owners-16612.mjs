@@ -12,6 +12,9 @@ function show(label,needle,before=3500,after=6500,max=6){
   if(!k)console.log(`\n===== ${label}: NOT FOUND =====`);
 }
 
+show('VISIBLE WATER OWNER 16625','EARTHLINE 16625',7000,18000,8);
+show('ADD WATER LAYER','addWaterLayer',7000,18000,8);
+show('REMOVE WATER LAYER','removeWaterLayer',7000,18000,8);
 show('CORRIDOR LABEL THROW','Regional corridor-label publication incomplete',5000,9000,4);
 show('DISPLAY AUDIT','EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040',5000,9000,8);
 show('REGIONAL RENDERER','earthlineRenderRegionalOverlay16020',5000,10000,8);
