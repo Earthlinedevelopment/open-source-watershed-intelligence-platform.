@@ -5,7 +5,7 @@ function bodyFrom(start){const open=s.indexOf('{',start);if(open<0)return null;l
 function extract(name){const re=new RegExp('(?:async\\s+)?function\\s+'+name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*\\(');const m=re.exec(s);if(!m)return `### ${name}: NOT FOUND\n`;const b=bodyFrom(m.index);return `### ${name} @ line ${lineAt(m.index)}\n${b||'UNTERMINATED'}\n### END ${name}\n`;}
 const names=['earthlineFinitePoint16539','earthlinePointOnSegment16539','earthlinePointInRing16539','earthlinePointInJurisdiction16539','earthlineBoundaryPoint16539','earthlineClipLine16539','earthlineClipFeatureCollection16539','earthlineClipRegionalProducts16539','earthlineResolveJurisdictionBoundary16539','earthlinePrepareJurisdiction16539','earthlinePointInRing16584','earthlineRegionalSegmentValid16584','earthlineRegionalSmoothFlow16584','earthlineMappedWaterSwaleGate16609'];
 let out='';for(const n of names)out+=extract(n)+'\n';
-const regions=['jurisdictionBoundaryPromise16539','earthlinePointInJurisdiction16539(','earthlineMappedWaterSwaleGate16609(','polys16609.push','lines16609.push'];
-for(const n of regions){out+=`\n### CONTEXT ${n}\n`;let from=0,k=0;while(true){const i=s.indexOf(n,from);if(i<0)break;from=i+n.length;if(++k>16)break;out+=`\n-- ${k} @ line ${lineAt(i)} --\n${s.slice(Math.max(0,i-3500),Math.min(s.length,i+7000))}\n`;}}
+const regions=['jurisdictionBoundaryPromise16539','earthlinePointInJurisdiction16539(','earthlineMappedWaterSwaleGate16609(','polys16609.push','lines16609.push','makeFlows','Deriving regional contours','contoursStarted16245','EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584'];
+for(const n of regions){out+=`\n### CONTEXT ${n}\n`;let from=0,k=0;while(true){const i=s.indexOf(n,from);if(i<0)break;from=i+n.length;if(++k>20)break;out+=`\n-- ${k} @ line ${lineAt(i)} --\n${s.slice(Math.max(0,i-8000),Math.min(s.length,i+16000))}\n`;}}
 fs.mkdirSync('lab-results',{recursive:true});fs.writeFileSync('lab-results/mantra37-hot-owner-extract.txt',out);console.log('M37_HOT_OWNER_EXTRACT bytes='+out.length);
-// trigger expanded boundary extraction
+// trigger flow-loop extraction
