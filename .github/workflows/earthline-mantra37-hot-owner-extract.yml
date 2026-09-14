@@ -1,0 +1,25 @@
+name: Earthline Mantra 37 Hot Owner Extract
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'lab/mantra37-hot-owner-extract.mjs'
+      - '.github/workflows/earthline-mantra37-hot-owner-extract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract hot owner code
+        run: node lab/mantra37-hot-owner-extract.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mantra37-hot-owner-extract
+          path: lab-results/mantra37-hot-owner-extract.txt
+          retention-days: 1
