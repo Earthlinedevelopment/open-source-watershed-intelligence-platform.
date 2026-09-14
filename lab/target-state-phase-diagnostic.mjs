@@ -76,3 +76,5 @@ fs.mkdirSync('lab-results',{recursive:true});
 fs.writeFileSync('lab-results/target-state-phase-diagnostic.json',JSON.stringify(report,null,2));
 console.log('EARTHLINE_NY_PHASE '+JSON.stringify(report));
 await browser.close();
+
+// Mantra 37: test-only rerun trigger; product index.html is unchanged.
