@@ -30908,7 +30908,16 @@ body { overflow-x:hidden!important; }
       }
       if(bad16609)rejected16609++;else safe16609.push(f16609);
     }
-    const verified16609=sourceQueries16609>0&&sourceSuccess16609>0&&deterministicRiverVerified16616&&(!useTiger16617||tigerVerified16617);
+    /* EARTHLINE 16635 — U.S. MAPPED-WATER AUTHORITY CONSISTENCY.
+       16617/16626 already define Census TIGERweb/Hydro as the authoritative final
+       U.S. swale-safety source specifically so U.S. publication does not depend on
+       display zoom or Mapbox source-layer availability. Make the final verdict match
+       that ownership: U.S. runs require successful TIGER verification; non-U.S. runs
+       retain the existing Mapbox + deterministic-river evidence requirement. The
+       exact intersection filter, final shared mask, and fail-closed publication rule
+       are unchanged. */
+    const mapWaterVerified16635=sourceQueries16609>0&&sourceSuccess16609>0&&deterministicRiverVerified16616;
+    const verified16609=useTiger16617?tigerVerified16617:mapWaterVerified16635;
     const out16609=earthlineRerankRegionalSwales16539({type:'FeatureCollection',features:safe16609});
     window.EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609={build:'EARTHLINE 16609',runToken:runToken16609,sourceQueries:sourceQueries16609,sourceSuccess:sourceSuccess16609,rawWaterFeatures:rawFeatures16609,waterPolygonParts:polys16609.length,waterwayLines:lines16609.length,mapWaterwayLines:Math.max(0,lines16609.length-deterministicRiverLines16616.length-tigerLines16617),deterministicRiverLines:deterministicRiverLines16616.length,deterministicRiverVerified:deterministicRiverVerified16616,deterministicRiverSource:deterministicRiverProduct16616&&deterministicRiverProduct16616.riverCenterlineGeometry&&deterministicRiverProduct16616.riverCenterlineGeometry.source||null,tigerHydroRequested:!!useTiger16617,tigerHydroVerified:tigerVerified16617,tigerArealFeatures:tigerArealFeatures16617,tigerLinearFeatures:tigerLinearFeatures16617,tigerPolygonParts:tigerPolygonParts16617,tigerLines:tigerLines16617,tigerHydroMs:tigerMs16617,tigerBatchCount:tigerBatchCount16618,tigerRejectedSwales:tigerRejected16620,tigerHydroError:tigerError16617,tigerHydroSource:useTiger16617?'U.S. Census Bureau TIGERweb/Hydro':null,sharedFinalMask16625:sharedMaskApplied16625,sharedMaskInvalidatedCells16625:sharedMaskInvalidatedCells16625,rechargeUsesSharedMask16625:sharedMaskApplied16625,before:before16609,after:out16609.features.length,rejected:rejected16609+tigerRejected16620,verified:verified16609,safe:verified16609,at:new Date().toISOString()};
     return {swales:out16609,verified:verified16609,audit:window.EARTHLINE_REGIONAL_MAPPED_WATER_AUDIT_16609};
