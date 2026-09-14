@@ -1,5 +1,4 @@
-# 16629 NY-first rerun after final mapped-water mask is applied to Regional flows and valid flow arrows.
-# strict launch trigger 16629 — rerun 2026-09-13
+# 16630 NY-first launch gate after single Regional flow-validity owner repair.
 name: Earthline NY Water Regression
 
 on:
@@ -31,19 +30,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Verify exact live host has 16629 and promoted patches
+      - name: Verify exact live host has 16630 and promoted water path
         shell: bash
         run: |
           set -euo pipefail
           for i in $(seq 1 48); do
-            html="$(curl -fsSL -A 'Earthline-launch-gate/16629' "${EARTHLINE_LIVE_URL}?earthline_probe=${GITHUB_SHA}-${i}" || true)"
-            if grep -Fq 'builds/16601/earthline-shared-water-mask.js' <<<"$html" && grep -Fq 'builds/16602/earthline-regional-camera-scale.js' <<<"$html" && grep -Fq 'EARTHLINE 16628 — FINAL MAPPED-WATER MASK OWNS REGIONAL FLOWS' <<<"$html" && grep -Fq 'EARTHLINE 16629 — FINAL WATER MASK PRESERVES VALID FLOW ARROWS' <<<"$html"; then
-              echo "EARTHLINE_LIVE_16629_READY host=${EARTHLINE_LIVE_URL} sha=${GITHUB_SHA} attempt=${i}"
+            html="$(curl -fsSL -A 'Earthline-launch-gate/16630' "${EARTHLINE_LIVE_URL}?earthline_probe=${GITHUB_SHA}-${i}" || true)"
+            if grep -Fq 'builds/16601/earthline-shared-water-mask.js' <<<"$html" && grep -Fq 'builds/16602/earthline-regional-camera-scale.js' <<<"$html" && grep -Fq 'EARTHLINE 16628 — FINAL MAPPED-WATER MASK OWNS REGIONAL FLOWS' <<<"$html" && grep -Fq 'EARTHLINE 16629 — FINAL WATER MASK PRESERVES VALID FLOW ARROWS' <<<"$html" && grep -Fq 'EARTHLINE 16630 — SINGLE VALIDITY OWNER / NO DUPLICATE FLOW WALK' <<<"$html"; then
+              echo "EARTHLINE_LIVE_16630_READY host=${EARTHLINE_LIVE_URL} sha=${GITHUB_SHA} attempt=${i}"
               exit 0
             fi
             sleep 5
           done
-          echo "Exact live host did not expose 16629 plus final mapped-water flow mask and base promoted patches."
+          echo "Exact live host did not expose the full 16630 production lineage."
           exit 1
       - name: Install Playwright
         run: |
