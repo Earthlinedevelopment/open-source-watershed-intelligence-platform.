@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   repair:
-    if: ${{ github.event.head_commit.message == 'ops: apply mantra37 ny repair' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,34 +17,21 @@ jobs:
           ref: pages-live
           fetch-depth: 0
 
-      - name: Apply 16633 exact Regional sampler
-        run: python lab/mantra37-repair-16633.py
-
-      - name: Apply 16634 exact Regional hot-path optimization
-        run: python lab/mantra37-repair-16634.py
-
-      - name: Verify JavaScript syntax and ownership
+      - name: Apply and publish only on the repair trigger
+        shell: bash
         run: |
-          node - <<'NODE'
-          const fs = require('fs');
-          const s = fs.readFileSync('index.html','utf8');
-          if ((s.match(/function earthlineRegionalSegmentValid16584\(/g)||[]).length !== 1) throw new Error('Regional validity owner count changed');
-          if ((s.match(/function makeFlows\(hy\)\{/g)||[]).length !== 1) throw new Error('makeFlows owner count changed');
-          if ((s.match(/async function makeContours\(hy\)\{/g)||[]).length !== 1) throw new Error('makeContours owner count changed');
-          if (!s.includes('EARTHLINE 16633 — EXACT PREFIX-PRUNED SAMPLE WALK.')) throw new Error('16633 missing');
-          if (!s.includes('EARTHLINE 16634 — EXACT REGIONAL HOT-PATH OPTIMIZATION.')) throw new Error('16634 missing');
-          for (const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()) {
-            const src = m[1];
-            if (!src.trim()) continue;
-            try { new Function(src); } catch (e) { throw new Error(`script ${i} syntax: ${e.message}`); }
-          }
-          NODE
+          set -euo pipefail
+          message="$(git log -1 --pretty=%s)"
+          if [ "$message" != "ops: apply mantra37 ny repair" ]; then
+            echo "Not the Mantra 37 repair trigger; no change."
+            exit 0
+          fi
+          python lab/mantra37-repair-16633.py
+          python lab/mantra37-repair-16634.py
+          node lab/mantra37-verify.js
           git diff --check
-
-      - name: Publish repaired index
-        run: |
           if git diff --quiet -- index.html; then
-            echo "No index change required"
+            echo "No index change required."
             exit 0
           fi
           git config user.name earthline-ci
