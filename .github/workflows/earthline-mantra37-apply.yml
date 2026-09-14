@@ -19,45 +19,38 @@ jobs:
           ref: pages-live
           fetch-depth: 0
 
-      - name: Verify existing exact NY Regional repairs
+      - name: Apply NY Regional mapped-water repair
         shell: bash
         run: |
           set -euo pipefail
           python lab/mantra37-repair-16633.py
           python lab/mantra37-repair-16634.py
+          python lab/mantra37-repair-16635.py
           node lab/mantra37-verify.js
+          node - <<'NODE'
+          const fs=require('fs');
+          const s=fs.readFileSync('index.html','utf8');
+          if(!s.includes('EARTHLINE 16635 — U.S. MAPPED-WATER AUTHORITY CONSISTENCY.')) throw new Error('16635 marker missing');
+          if((s.match(/async function earthlineMappedWaterSwaleGate16609\(/g)||[]).length!==1) throw new Error('mapped-water gate owner count changed');
+          if((s.match(/const verified16609=/g)||[]).length!==1) throw new Error('mapped-water verdict count changed');
+          if(!s.includes('const verified16609=useTiger16617?tigerVerified16617:mapWaterVerified16635;')) throw new Error('16635 authority verdict missing');
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim()) continue;
+            try{new Function(m[1]);}catch(e){throw new Error('script '+i+' syntax: '+e.message);}
+          }
+          NODE
           git diff --check
 
-      - name: Extract complete mapped-water gate
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          s=Path('index.html').read_text(encoding='utf-8')
-          start=s.find('  async function earthlineMappedWaterSwaleGate16609(')
-          if start < 0:
-            raise SystemExit('mapped-water gate owner not found')
-          candidates=[x for x in [s.find('\n  function ',start+20),s.find('\n  async function ',start+20)] if x>start]
-          end=min(candidates) if candidates else min(len(s),start+40000)
-          gate=s[start:end]
-          call=s.find("U.S. state mapped-water verification unavailable")
-          callctx=s[max(0,call-3000):min(len(s),call+3000)] if call>=0 else 'CALL SITE NOT FOUND'
-          out='===== COMPLETE GATE =====\n'+gate+'\n\n===== CALL SITE =====\n'+callctx+'\n'
-          Path('lab/mantra37-mappedwater-diagnostic.txt').write_text(out,encoding='utf-8')
-          print('diagnostic bytes',len(out))
-          PY
-
-      - name: Publish diagnostic only
+      - name: Publish repaired pages-live index
         shell: bash
         run: |
           set -euo pipefail
           git config user.name earthline-ci
           git config user.email actions@users.noreply.github.com
-          git add lab/mantra37-mappedwater-diagnostic.txt
+          git add index.html
           if git diff --cached --quiet; then
-            echo "No diagnostic change."
+            echo "No index change required."
             exit 0
           fi
-          git commit -m "diag: capture complete NY mapped-water gate"
+          git commit -m "fix: make TIGER authoritative for U.S. mapped-water verification 16635"
           git push origin HEAD:pages-live
