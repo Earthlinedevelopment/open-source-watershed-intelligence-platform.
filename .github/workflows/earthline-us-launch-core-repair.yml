@@ -18,24 +18,28 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Apply guarded 16631 exact validity optimization
-        run: python3 lab/repair-16631-fast-exact-validity-sampler.py
+      - name: Apply guarded 16636 accepted flow fallback repair
+        run: python3 lab/repair-16636-restore-accepted-flow-fallback.py
       - name: Verify repair
         run: |
           git diff --check
           git diff --numstat -- index.html
-          grep -n "EARTHLINE 16631\|FAST EXACT IN-BOUNDS VALIDITY SAMPLER\|EARTHLINE 16630\|validationOwner:\"earthlineRegionalSmoothFlow16584\"" index.html | head -30
-          test "$(grep -c 'function earthlineRegionalSegmentValid16584' index.html)" -eq 1
-          if grep -Fq 'if(unsafe16584>0)throw new Error("regional land-validity flow audit failed:' index.html; then
-            echo 'duplicate post-generation flow verdict remains' >&2
+          grep -n "EARTHLINE 16636\|RESTORE ACCEPTED 16584 FLOW FALLBACK\|function earthlineRegionalSmoothFlow16584" index.html | head -20
+          test "$(grep -c 'function earthlineRegionalSmoothFlow16584' index.html)" -eq 1
+          if grep -Fq 'const runs16584=[];let run16584=[];' index.html; then
+            echo 'post-16584 split fallback still present' >&2
             exit 1
           fi
-      - name: Commit 16631 repair
+          if grep -Fq 'const retrySmooth16584=chaikin(safeBase16584,2,false);' index.html; then
+            echo 'second smoothing pass still present' >&2
+            exit 1
+          fi
+      - name: Commit 16636 repair
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
           git add index.html
-          git commit -m 'perf: optimize existing Regional validity owner'
+          git commit -m 'perf: restore accepted 16584 flow fallback 16636'
           git push origin HEAD:pages-live
 
-# launch trigger 16631 mantra36
+# launch trigger 16636 ny-hard-fail
