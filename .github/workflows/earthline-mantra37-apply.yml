@@ -28,16 +28,48 @@ jobs:
           node lab/mantra37-verify.js
           git diff --check
 
-      - name: Publish repaired pages-live index
+      - name: Extract mapped-water failure owner
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet -- index.html; then
-            echo "No index change required."
-            exit 0
-          fi
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          needles=[
+            'U.S. state mapped-water verification unavailable',
+            'mapped-water verification unavailable',
+            'mapped water verification unavailable',
+            'earthlineMappedWaterSwaleGate16609',
+            'mappedWater'
+          ]
+          chunks=[]
+          seen=set()
+          for needle in needles:
+            start=0
+            while True:
+              i=s.find(needle,start)
+              if i<0: break
+              a=max(0,i-6000); b=min(len(s),i+9000)
+              key=(a,b)
+              if key not in seen:
+                seen.add(key)
+                chunks.append(f'\n===== {needle} @ {i} =====\n'+s[a:b])
+              start=i+max(1,len(needle))
+          out=''.join(chunks) or 'NO MATCH\n'
+          Path('lab/mantra37-mappedwater-diagnostic.txt').write_text(out,encoding='utf-8')
+          print('diagnostic bytes',len(out))
+          PY
+
+      - name: Publish repair and diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
           git config user.name earthline-ci
           git config user.email actions@users.noreply.github.com
-          git add index.html
-          git commit -m "perf: apply exact NY Regional repair 16633-16634"
+          git add index.html lab/mantra37-mappedwater-diagnostic.txt
+          if git diff --cached --quiet; then
+            echo "No change required."
+            exit 0
+          fi
+          git commit -m "diag: capture NY mapped-water failure owner"
           git push origin HEAD:pages-live
