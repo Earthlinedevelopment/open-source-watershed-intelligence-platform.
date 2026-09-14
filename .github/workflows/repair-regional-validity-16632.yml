@@ -1,0 +1,43 @@
+name: Earthline 16632 Regional Validity Acceleration
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tools/repair-regional-validity-16632.mjs'
+      - '.github/workflows/repair-regional-validity-16632.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply exact-equivalent Regional validity acceleration
+        run: node tools/repair-regional-validity-16632.mjs
+      - name: Verify bounded source change and owner locks
+        run: |
+          set -euo pipefail
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+          grep -q 'EARTHLINE 16632 — EXACT EMPTY-RECTANGLE FAST PATH' index.html
+          grep -q 'EARTHLINE 16630 — SINGLE VALIDITY OWNER / NO DUPLICATE FLOW WALK' index.html
+          test "$(grep -c 'function earthlineRegionalSegmentValid16584(' index.html)" = "1"
+          test "$(grep -c 'function earthlineRegionalValidityPrefix16584(' index.html)" = "1"
+      - name: Commit unaccepted 16632 candidate
+        run: |
+          set -euo pipefail
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'perf: add exact Regional validity rectangle fast path'
+          git push origin HEAD:pages-live
