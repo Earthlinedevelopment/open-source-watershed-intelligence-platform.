@@ -29650,6 +29650,11 @@ body { overflow-x:hidden!important; }
     hy16584.__earthlineValidityPrefix16632=built16584;
     return built16584;
   }
+  /* EARTHLINE 16633 — EXACT PREFIX-PRUNED SAMPLE WALK.
+     Same 16584 owner, mask, 4-samples-per-grid-cell density, and Math.round verdict.
+     Clear sample intervals are proven from the existing validity prefix index and skipped;
+     intervals near invalid cells are subdivided until the original samples are checked.
+     Out-of-bounds inputs retain the prior exact path. */
   function earthlineRegionalSegmentValid16584(hy16584,a16584,b16584){
     if(!hy16584||!hy16584.validityMask16584)return true;
     const bounds16584=hy16584.bounds,w16584=hy16584.w,h16584=hy16584.h,
@@ -29669,15 +29674,35 @@ body { overflow-x:hidden!important; }
           dx16584=rbx16584-rax16584,dy16584=rby16584-ray16584,
           mask16584=hy16584.validityMask16584;
     if(inBounds16584){
-      const ax16584=Math.round(rax16584),ay16584=Math.round(ray16584),
-            bx16584=Math.round(rbx16584),by16584=Math.round(rby16584),
-            x016584=Math.min(ax16584,bx16584),x116584=Math.max(ax16584,bx16584),
-            y016584=Math.min(ay16584,by16584),y116584=Math.max(ay16584,by16584),
-            fast16584=earthlineRegionalValidityPrefix16584(hy16584);
+      const fast16584=earthlineRegionalValidityPrefix16584(hy16584);
       if(fast16584){
-        const p16584=fast16584.prefix,s16584=fast16584.stride,
-              invalid16584=p16584[(y116584+1)*s16584+x116584+1]-p16584[y016584*s16584+x116584+1]-p16584[(y116584+1)*s16584+x016584]+p16584[y016584*s16584+x016584];
-        if(invalid16584===0)return true;
+        const p16584=fast16584.prefix,stride16584=fast16584.stride;
+        const rectClear16584=(lo16584,hi16584)=>{
+          const t016584=lo16584*invSteps16584,t116584=hi16584*invSteps16584,
+                ax16584=Math.round(rax16584+dx16584*t016584),ay16584=Math.round(ray16584+dy16584*t016584),
+                bx16584=Math.round(rax16584+dx16584*t116584),by16584=Math.round(ray16584+dy16584*t116584),
+                x016584=Math.min(ax16584,bx16584),x116584=Math.max(ax16584,bx16584),
+                y016584=Math.min(ay16584,by16584),y116584=Math.max(ay16584,by16584),
+                invalid16584=p16584[(y116584+1)*stride16584+x116584+1]-p16584[y016584*stride16584+x116584+1]-p16584[(y116584+1)*stride16584+x016584]+p16584[y016584*stride16584+x016584];
+          return invalid16584===0;
+        };
+        const stack16584=[[0,steps16584]];
+        while(stack16584.length){
+          const r16584=stack16584.pop(),lo16584=r16584[0],hi16584=r16584[1];
+          if(rectClear16584(lo16584,hi16584))continue;
+          if(hi16584-lo16584<=8){
+            for(let s16584=lo16584;s16584<=hi16584;s16584++){
+              const t16584=s16584*invSteps16584,
+                    x16584=Math.round(rax16584+dx16584*t16584),
+                    y16584=Math.round(ray16584+dy16584*t16584);
+              if(!mask16584[y16584*w16584+x16584])return false;
+            }
+            continue;
+          }
+          const mid16584=(lo16584+hi16584)>>1;
+          stack16584.push([mid16584,hi16584],[lo16584,mid16584]);
+        }
+        return true;
       }
       for(let s16584=0;s16584<=steps16584;s16584++){
         const t16584=s16584*invSteps16584,
