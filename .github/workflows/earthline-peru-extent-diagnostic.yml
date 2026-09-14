@@ -1,116 +1,56 @@
-name: Earthline Peru Portugal Thailand Rollback Gate
+name: Earthline Mantra 37 NY Repair
+
 on:
   push:
-    branches: [pages-live]
+    branches:
+      - pages-live
+    paths:
+      - '.github/workflows/earthline-peru-extent-diagnostic.yml'
+      - 'lab/mantra37-exact-prune.py'
+
 permissions:
   contents: write
+
 jobs:
   repair:
-    if: github.event.head_commit.message == 'ops: trigger recognized ny fix'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Apply 16633 exact prefix-pruned sampler
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Apply exact repair
+        run: python lab/mantra37-exact-prune.py
+
+      - name: Verify browser script syntax
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const s = fs.readFileSync('index.html','utf8');
+          if ((s.match(/function earthlineRegionalSegmentValid16584\(/g)||[]).length !== 1) throw new Error('Regional validity owner count changed');
+          if (!s.includes('EARTHLINE 16633 — EXACT PREFIX-PRUNED SAMPLE WALK.')) throw new Error('16633 marker missing');
+          for (const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()) {
+            const src = m[1];
+            if (!src.trim()) continue;
+            try { new Function(src); } catch (e) { throw new Error(`script ${i} syntax: ${e.message}`); }
+          }
+          console.log('browser script syntax verified');
+          NODE
+
+      - name: Publish repaired candidate to pages-live
         run: |
           set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
-          marker='EARTHLINE 16633 — EXACT PREFIX-PRUNED SAMPLE WALK.'
-          if marker in s:
-              print('16633 already installed')
-              raise SystemExit(0)
-          start=s.find('  function earthlineRegionalSegmentValid16584(hy16584,a16584,b16584){')
-          end=s.find('  function earthlineRegionalSmoothFlow16584', start)
-          if start < 0 or end < 0:
-              raise SystemExit('Expected Regional validity owner markers not found')
-          replacement=r'''  /* EARTHLINE 16633 — EXACT PREFIX-PRUNED SAMPLE WALK.
-     Same 16584 owner, mask, 4-samples-per-grid-cell density, and Math.round verdict.
-     Clear sample intervals are proven from the existing 16632 prefix index and skipped;
-     intervals near invalid cells are subdivided until the original samples are checked.
-     Out-of-bounds inputs retain the prior exact path. */
-  function earthlineRegionalSegmentValid16584(hy16584,a16584,b16584){
-    if(!hy16584||!hy16584.validityMask16584)return true;
-    const bounds16584=hy16584.bounds,w16584=hy16584.w,h16584=hy16584.h,
-          sx16584=(w16584-1)/(bounds16584[2]-bounds16584[0]),
-          sy16584=(h16584-1)/(bounds16584[3]-bounds16584[1]),
-          rax16584=(a16584[0]-bounds16584[0])*sx16584,
-          ray16584=(bounds16584[3]-a16584[1])*sy16584,
-          rbx16584=(b16584[0]-bounds16584[0])*sx16584,
-          rby16584=(bounds16584[3]-b16584[1])*sy16584,
-          inBounds16584=rax16584>=0&&rax16584<=w16584-1&&ray16584>=0&&ray16584<=h16584-1&&rbx16584>=0&&rbx16584<=w16584-1&&rby16584>=0&&rby16584<=h16584-1,
-          gax16584=inBounds16584?rax16584:Math.max(0,Math.min(w16584-1,rax16584)),
-          gay16584=inBounds16584?ray16584:Math.max(0,Math.min(h16584-1,ray16584)),
-          gbx16584=inBounds16584?rbx16584:Math.max(0,Math.min(w16584-1,rbx16584)),
-          gby16584=inBounds16584?rby16584:Math.max(0,Math.min(h16584-1,rby16584)),
-          steps16584=Math.max(2,Math.ceil(Math.hypot(gbx16584-gax16584,gby16584-gay16584)*4)),
-          invSteps16584=1/steps16584,
-          dx16584=rbx16584-rax16584,dy16584=rby16584-ray16584,
-          mask16584=hy16584.validityMask16584;
-    if(inBounds16584){
-      const fast16584=earthlineRegionalValidityPrefix16584(hy16584);
-      if(fast16584){
-        const p16584=fast16584.prefix,stride16584=fast16584.stride;
-        const rectClear16584=(lo16584,hi16584)=>{
-          const t016584=lo16584*invSteps16584,t116584=hi16584*invSteps16584,
-                ax16584=Math.round(rax16584+dx16584*t016584),ay16584=Math.round(ray16584+dy16584*t016584),
-                bx16584=Math.round(rax16584+dx16584*t116584),by16584=Math.round(ray16584+dy16584*t116584),
-                x016584=Math.min(ax16584,bx16584),x116584=Math.max(ax16584,bx16584),
-                y016584=Math.min(ay16584,by16584),y116584=Math.max(ay16584,by16584),
-                invalid16584=p16584[(y116584+1)*stride16584+x116584+1]-p16584[y016584*stride16584+x116584+1]-p16584[(y116584+1)*stride16584+x016584]+p16584[y016584*stride16584+x016584];
-          return invalid16584===0;
-        };
-        const stack16584=[[0,steps16584]];
-        while(stack16584.length){
-          const r16584=stack16584.pop(),lo16584=r16584[0],hi16584=r16584[1];
-          if(rectClear16584(lo16584,hi16584))continue;
-          if(hi16584-lo16584<=8){
-            for(let s16584=lo16584;s16584<=hi16584;s16584++){
-              const t16584=s16584*invSteps16584,
-                    x16584=Math.round(rax16584+dx16584*t16584),
-                    y16584=Math.round(ray16584+dy16584*t16584);
-              if(!mask16584[y16584*w16584+x16584])return false;
-            }
-            continue;
-          }
-          const mid16584=(lo16584+hi16584)>>1;
-          stack16584.push([mid16584,hi16584],[lo16584,mid16584]);
-        }
-        return true;
-      }
-      for(let s16584=0;s16584<=steps16584;s16584++){
-        const t16584=s16584*invSteps16584,
-              x16584=Math.round(rax16584+dx16584*t16584),
-              y16584=Math.round(ray16584+dy16584*t16584);
-        if(!mask16584[y16584*w16584+x16584])return false;
-      }
-      return true;
-    }
-    for(let s16584=0;s16584<=steps16584;s16584++){
-      const t16584=s16584*invSteps16584,
-            gx16584=Math.max(0,Math.min(w16584-1,rax16584+dx16584*t16584)),
-            gy16584=Math.max(0,Math.min(h16584-1,ray16584+dy16584*t16584)),
-            x16584=Math.round(gx16584),y16584=Math.round(gy16584);
-      if(!mask16584[y16584*w16584+x16584])return false;
-    }
-    return true;
-  }
-'''
-          p.write_text(s[:start]+replacement+s[end:],encoding='utf-8')
-          PY
-          node - <<'NODE'
-          const fs=require('fs');
-          const s=fs.readFileSync('index.html','utf8');
-          if((s.match(/function earthlineRegionalSegmentValid16584\(/g)||[]).length!==1)throw new Error('owner count changed');
-          if(!s.includes('EARTHLINE 16633 — EXACT PREFIX-PRUNED SAMPLE WALK.'))throw new Error('marker missing');
-          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){const src=m[1];if(!src.trim())continue;try{new Function(src)}catch(e){throw new Error('script '+i+' syntax: '+e.message)}}
-          NODE
-          git config user.name earthline-ci
-          git config user.email actions@users.noreply.github.com
+          if git diff --quiet -- index.html; then
+            echo 'Repair already present; no index delta.'
+            exit 0
+          fi
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
           git add index.html
-          git commit -m 'perf: exact-prune Regional validity samples for NY'
+          git commit -m 'repair: 16633 exact NY Regional prefix prune'
           git push origin HEAD:pages-live
