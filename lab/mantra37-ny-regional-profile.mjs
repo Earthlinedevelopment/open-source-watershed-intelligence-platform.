@@ -126,3 +126,5 @@ await fs.writeFile('lab-results/mantra37-ny-regional-profile.json',JSON.stringif
 console.log('M37_FRESH_NY '+JSON.stringify({published:fresh.published,elapsedMs:fresh.elapsedMs,hot:fresh.hot.slice(0,12),final:fresh.final}));
 console.log('M37_TRANSITION_NY '+JSON.stringify({vtPublished:transition.vt.published,property:transition.property,nyPublished:transition.ny.published,elapsedMs:transition.ny.elapsedMs,hot:transition.ny.hot.slice(0,12),final:transition.ny.final}));
 await browser.close();
+
+// trigger after workflow registration
