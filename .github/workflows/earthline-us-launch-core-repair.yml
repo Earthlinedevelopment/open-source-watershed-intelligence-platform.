@@ -18,28 +18,24 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Apply guarded 16636 accepted flow fallback repair
-        run: python3 lab/repair-16636-restore-accepted-flow-fallback.py
+      - name: Apply guarded 16637 accepted segment sampler repair
+        run: python3 lab/repair-16637-restore-accepted-segment-sampler.py
       - name: Verify repair
         run: |
           git diff --check
           git diff --numstat -- index.html
-          grep -n "EARTHLINE 16636\|RESTORE ACCEPTED 16584 FLOW FALLBACK\|function earthlineRegionalSmoothFlow16584" index.html | head -20
-          test "$(grep -c 'function earthlineRegionalSmoothFlow16584' index.html)" -eq 1
-          if grep -Fq 'const runs16584=[];let run16584=[];' index.html; then
-            echo 'post-16584 split fallback still present' >&2
+          grep -n "EARTHLINE 16637\|RESTORE ACCEPTED 16584 SEGMENT SAMPLER\|function earthlineRegionalSegmentValid16584" index.html | head -20
+          test "$(grep -c 'function earthlineRegionalSegmentValid16584' index.html)" -eq 1
+          if grep -Fq 'EXACT PREFIX-PRUNED SAMPLE WALK' index.html; then
+            echo '16633 recursive sampler remains' >&2
             exit 1
           fi
-          if grep -Fq 'const retrySmooth16584=chaikin(safeBase16584,2,false);' index.html; then
-            echo 'second smoothing pass still present' >&2
-            exit 1
-          fi
-      - name: Commit 16636 repair
+      - name: Commit 16637 repair
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
           git add index.html
-          git commit -m 'perf: restore accepted 16584 flow fallback 16636'
+          git commit -m 'perf: restore accepted 16584 segment sampler 16637'
           git push origin HEAD:pages-live
 
-# launch trigger 16636 ny-hard-fail
+# launch trigger 16637 ny-hard-fail
