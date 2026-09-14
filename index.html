@@ -29623,6 +29623,33 @@ body { overflow-x:hidden!important; }
      Regional flow coordinates are normally already inside the analysis grid, so avoid
      four redundant clamp operations per sample. Out-of-bounds inputs retain the exact
      prior clamp path. No mask, source, rule, renderer, listener, or lifecycle owner added. */
+  /* EARTHLINE 16632 — EXACT EMPTY-RECTANGLE FAST PATH.
+     Same 16584 validity owner and mask. Build one immutable prefix index per hydrology
+     result solely to prove when a segment's entire rounded-cell bounding rectangle has
+     zero invalid cells. A zero-invalid rectangle is a strict superset proof that every
+     cell the existing 4-samples-per-grid-cell walk could inspect is valid, so the
+     verdict is identical. Any rectangle containing even one invalid cell falls through
+     to the exact 16631 sampler unchanged. No new mask, rule, renderer, listener,
+     publication owner, or lifecycle owner. */
+  function earthlineRegionalValidityPrefix16584(hy16584){
+    if(!hy16584||!hy16584.validityMask16584)return null;
+    const mask16584=hy16584.validityMask16584,w16584=hy16584.w|0,h16584=hy16584.h|0;
+    if(w16584<1||h16584<1)return null;
+    const cached16584=hy16584.__earthlineValidityPrefix16632;
+    if(cached16584&&cached16584.mask===mask16584&&cached16584.w===w16584&&cached16584.h===h16584)return cached16584;
+    const stride16584=w16584+1,prefix16584=new Uint32Array((w16584+1)*(h16584+1));
+    for(let y16584=0;y16584<h16584;y16584++){
+      let rowInvalid16584=0;
+      const maskRow16584=y16584*w16584,prefixRow16584=(y16584+1)*stride16584,priorRow16584=y16584*stride16584;
+      for(let x16584=0;x16584<w16584;x16584++){
+        if(!mask16584[maskRow16584+x16584])rowInvalid16584++;
+        prefix16584[prefixRow16584+x16584+1]=prefix16584[priorRow16584+x16584+1]+rowInvalid16584;
+      }
+    }
+    const built16584={mask:mask16584,w:w16584,h:h16584,stride:stride16584,prefix:prefix16584};
+    hy16584.__earthlineValidityPrefix16632=built16584;
+    return built16584;
+  }
   function earthlineRegionalSegmentValid16584(hy16584,a16584,b16584){
     if(!hy16584||!hy16584.validityMask16584)return true;
     const bounds16584=hy16584.bounds,w16584=hy16584.w,h16584=hy16584.h,
@@ -29642,6 +29669,16 @@ body { overflow-x:hidden!important; }
           dx16584=rbx16584-rax16584,dy16584=rby16584-ray16584,
           mask16584=hy16584.validityMask16584;
     if(inBounds16584){
+      const ax16584=Math.round(rax16584),ay16584=Math.round(ray16584),
+            bx16584=Math.round(rbx16584),by16584=Math.round(rby16584),
+            x016584=Math.min(ax16584,bx16584),x116584=Math.max(ax16584,bx16584),
+            y016584=Math.min(ay16584,by16584),y116584=Math.max(ay16584,by16584),
+            fast16584=earthlineRegionalValidityPrefix16584(hy16584);
+      if(fast16584){
+        const p16584=fast16584.prefix,s16584=fast16584.stride,
+              invalid16584=p16584[(y116584+1)*s16584+x116584+1]-p16584[y016584*s16584+x116584+1]-p16584[(y116584+1)*s16584+x016584]+p16584[y016584*s16584+x016584];
+        if(invalid16584===0)return true;
+      }
       for(let s16584=0;s16584<=steps16584;s16584++){
         const t16584=s16584*invSteps16584,
               x16584=Math.round(rax16584+dx16584*t16584),
@@ -29654,8 +29691,7 @@ body { overflow-x:hidden!important; }
       const t16584=s16584*invSteps16584,
             gx16584=Math.max(0,Math.min(w16584-1,rax16584+dx16584*t16584)),
             gy16584=Math.max(0,Math.min(h16584-1,ray16584+dy16584*t16584)),
-            x16584=Math.max(0,Math.min(w16584-1,Math.round(gx16584))),
-            y16584=Math.max(0,Math.min(h16584-1,Math.round(gy16584)));
+            x16584=Math.round(gx16584),y16584=Math.round(gy16584);
       if(!mask16584[y16584*w16584+x16584])return false;
     }
     return true;
