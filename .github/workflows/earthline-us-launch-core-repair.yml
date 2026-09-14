@@ -18,23 +18,24 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Apply guarded 16630 single-owner flow validity repair
-        run: python3 lab/repair-16630-deduplicate-flow-validity-audit.py
+      - name: Apply guarded 16631 exact validity optimization
+        run: python3 lab/repair-16631-fast-exact-validity-sampler.py
       - name: Verify repair
         run: |
           git diff --check
           git diff --numstat -- index.html
-          grep -n "EARTHLINE 16630\|SINGLE VALIDITY OWNER / NO DUPLICATE FLOW WALK\|validationOwner:\"earthlineRegionalSmoothFlow16584\"" index.html | head -20
+          grep -n "EARTHLINE 16631\|FAST EXACT IN-BOUNDS VALIDITY SAMPLER\|EARTHLINE 16630\|validationOwner:\"earthlineRegionalSmoothFlow16584\"" index.html | head -30
+          test "$(grep -c 'function earthlineRegionalSegmentValid16584' index.html)" -eq 1
           if grep -Fq 'if(unsafe16584>0)throw new Error("regional land-validity flow audit failed:' index.html; then
             echo 'duplicate post-generation flow verdict remains' >&2
             exit 1
           fi
-      - name: Commit 16630 repair
+      - name: Commit 16631 repair
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
           git add index.html
-          git commit -m 'fix: keep one Regional flow-validity owner'
+          git commit -m 'perf: optimize existing Regional validity owner'
           git push origin HEAD:pages-live
 
-# launch trigger 16630 mantra36
+# launch trigger 16631 mantra36
