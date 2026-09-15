@@ -22,14 +22,14 @@ jobs:
         run: |
           set -euo pipefail
           message="$(git log -1 --pretty=%s)"
-          if [ "$message" != "ops: apply mantra37 ny repair" ]; then
-            echo "Not the Mantra 37 repair trigger; no change."
+          if [ "$message" != "ops: apply mantra37 regional handoff repair" ]; then
+            echo "Not the 16638 Regional handoff trigger; no change."
             exit 0
           fi
-          python lab/mantra37-repair-16633.py
-          python lab/mantra37-repair-16634.py
-          node lab/mantra37-verify.js
+          python lab/repair-16638-regional-presentation-handoff.py
           git diff --check
+          grep -n "EARTHLINE 16638 — REGIONAL PRESENTATION HANDOFF BEFORE CAMERA" index.html
+          test "$(grep -c "regionalState16638.active=true;regionalState16638.mode='regional';" index.html)" -eq 1
           if git diff --quiet -- index.html; then
             echo "No index change required."
             exit 0
@@ -37,7 +37,7 @@ jobs:
           git config user.name earthline-ci
           git config user.email actions@users.noreply.github.com
           git add index.html
-          git commit -m "perf: apply exact NY Regional repair 16633-16634"
+          git commit -m "perf: hand Regional ownership over before camera motion"
           git push origin HEAD:pages-live
 
-# exact repair trigger retained for Mantra 37
+# 16638 exact transition repair trigger
