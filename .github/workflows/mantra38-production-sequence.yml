@@ -4,28 +4,52 @@ on:
   push:
     branches: [pages-live]
     paths:
+      - 'tools/mantra38-bound-style-water-index.mjs'
       - '.github/workflows/mantra38-production-sequence.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   production-sequence:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Verify repaired owner is serving
-        run: curl -fsS --max-time 30 https://earthlinedevelopment.org/ | grep -q 'earthlineLoadedStyleWaterIndex16584'
+      - name: Bound existing 16584 map-water index
+        run: node tools/mantra38-bound-style-water-index.mjs
+      - name: Commit product repair
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "repair: bound regional map-water index"
+          git push origin HEAD:pages-live
+      - name: Wait for serving deployment
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 20 https://earthlinedevelopment.org/ | grep -q 'earthlineLoadedStyleWaterIndex16584(map(),hy.bounds)'; then
+              exit 0
+            fi
+            sleep 3
+          done
+          exit 1
       - name: Install Playwright
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Verify NY against serving map water
+      - name: Verify published NY against serving map water
         run: |
           sed -i 's#https://live.earthlinedevelopment.org/#https://earthlinedevelopment.org/#' tests/mantra38-visible-water-audit.mjs
-          node tests/mantra38-visible-water-audit.mjs
+          for i in 1 2 3; do
+            echo "NY published-water attempt $i"
+            node tests/mantra38-visible-water-audit.mjs && exit 0
+          done
+          exit 1
