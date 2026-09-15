@@ -1,0 +1,28 @@
+name: Mantra 38 Production Sequence
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mantra38-production-sequence.mjs'
+      - '.github/workflows/mantra38-production-sequence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production-sequence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run neutral production sequence
+        run: node tests/mantra38-production-sequence.mjs
