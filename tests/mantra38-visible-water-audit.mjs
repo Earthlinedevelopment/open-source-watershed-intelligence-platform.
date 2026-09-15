@@ -23,11 +23,12 @@ try{
     const flows=(fc.features||[]).filter(f=>f?.properties?.feature_type==='flow'&&f?.geometry);
     const style=mp?.getStyle?.()||{};
     const layers=(style.layers||[]);
-    const waterLayers=layers.filter(l=>{const tag=((l.id||'')+' '+(l['source-layer']||'')).toLowerCase();return /water|lake|reservoir|riverbank|ocean|sea/.test(tag)}).map(l=>l.id).filter(Boolean);
+    const surfaceWaterLayer=l=>{const tag=((l?.id||'')+' '+(l?.['source-layer']||'')).toLowerCase();return /water|lake|reservoir|riverbank|ocean|sea/.test(tag)&&!/groundwater|aquifer|grace/.test(tag)};
+    const waterLayers=layers.filter(surfaceWaterLayer).map(l=>l.id).filter(Boolean);
     const candidates=[];
     try{candidates.push(...(mp.queryRenderedFeatures(undefined,{layers:waterLayers})||[]));}catch(_){}
     const pairs=new Map();
-    for(const l of layers){const tag=((l.id||'')+' '+(l['source-layer']||'')).toLowerCase();if(!/water|lake|reservoir|riverbank|ocean|sea/.test(tag))continue;if(l.source&&l['source-layer'])pairs.set(l.source+'|'+l['source-layer'],[l.source,l['source-layer']])}
+    for(const l of layers){if(!surfaceWaterLayer(l))continue;if(l.source&&l['source-layer'])pairs.set(l.source+'|'+l['source-layer'],[l.source,l['source-layer']])}
     for(const [source,sourceLayer] of pairs.values()){try{candidates.push(...(mp.querySourceFeatures(source,{sourceLayer})||[]))}catch(_) {}}
     for(const [sourceId,sourceDef] of Object.entries(style.sources||{})){if(String(sourceDef?.type||'').toLowerCase()!=='vector')continue;try{candidates.push(...(mp.querySourceFeatures(sourceId,{sourceLayer:'water'})||[]))}catch(_) {}}
     const finite=p=>Array.isArray(p)&&Number.isFinite(+p[0])&&Number.isFinite(+p[1]);
