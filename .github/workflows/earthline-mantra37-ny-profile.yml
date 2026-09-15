@@ -5,6 +5,7 @@ on:
     branches: [pages-live]
     paths:
       - 'lab/mantra37-ny-regional-profile.mjs'
+      - 'lab/mantra37-property-retire-diagnostic.mjs'
       - '.github/workflows/earthline-mantra37-ny-profile.yml'
   workflow_dispatch:
 
@@ -22,14 +23,7 @@ jobs:
           node-version: '20'
       - run: npm install --no-save playwright
       - run: npx playwright install --with-deps chromium
-      - name: Profile fresh and transition New York Regional
-        run: node lab/mantra37-ny-regional-profile.mjs
-      - name: Upload profile evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mantra37-ny-regional-profile
-          path: lab-results/mantra37-ny-regional-profile.json
-          retention-days: 1
+      - name: Test Property presentation retirement before New York Regional
+        run: node lab/mantra37-property-retire-diagnostic.mjs
 
-# live-profile-trigger: verify 16638 after manual NY hard fail 2026-09-14
+# diagnostic: isolate prior Property presentation cost before NY transition
