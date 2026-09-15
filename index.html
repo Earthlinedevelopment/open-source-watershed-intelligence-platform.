@@ -32076,6 +32076,11 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
     window.EARTHLINE_PROPERTY_BASEMAP_AUDIT_16348=audit;
     const sample=(label)=>{
       try{
+        const regionalOwner16640c=window.earthlineRegional15778||null;
+        if(regionalOwner16640c&&regionalOwner16640c.active===true&&regionalOwner16640c.mode==='regional'){
+          if(!audit.retiredAt){audit.retiredAt=new Date().toISOString();audit.retiredReason='regional-owner-handoff-16640';}
+          return null;
+        }
         mp.resize?.();mp.triggerRepaint?.();
         const host=mp.getContainer?.(),canvas=mp.getCanvas?.(),dpr=window.devicePixelRatio||1;
         const hostW=Number(host?.clientWidth||0),hostH=Number(host?.clientHeight||0);
@@ -32278,7 +32283,12 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
         const md=model()||{};
         const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
         const tier=String(displayed&&(displayed.tier||displayed.mode)||'').toLowerCase();
-        if(serial!==runSerial||Number(md.searchGen||0)!==Number(searchGen)||tier==='regional')return;
+        /* EARTHLINE 16640 — REGIONAL HANDOFF RETIRES PROPERTY PRESENTATION TAIL.
+           15778/15805 already own the tier handoff before Regional camera motion.
+           Honor that existing owner here so bounded Property presentation work cannot
+           run behind the next Regional terrain pass. No new owner/timer/listener/rule. */
+        const regionalOwner16640=window.earthlineRegional15778||null;
+        if(serial!==runSerial||Number(md.searchGen||0)!==Number(searchGen)||tier==='regional'||(regionalOwner16640&&regionalOwner16640.active===true&&regionalOwner16640.mode==='regional'))return;
         let safeOk=count===0;
         try{const safe=syncSafePropertyFallback16221('bounded-postpublish-16521-'+delay);safeOk=count===0||!!(safe&&safe.ok);last=Object.assign({},last||{},{safe})}catch(_){ }
         try{if(typeof window.earthlineSchedulePropertyWater15823==='function')window.earthlineSchedulePropertyWater15823('bounded-postpublish-16521-'+delay)}catch(_){ }
@@ -32405,7 +32415,8 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
       let last=null;
       for(const delay of [120,280,520,900,1300,1800]){
         await new Promise(r=>setTimeout(r,delay));
-        if(serial!==runSerial)return;
+        const regionalOwner16640b=window.earthlineRegional15778||null;
+        if(serial!==runSerial||(regionalOwner16640b&&regionalOwner16640b.active===true&&regionalOwner16640b.mode==='regional'))return;
         const living16262=propertyLivingMapVisible16262(count);
         if(living16262.ok){
           const current=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
