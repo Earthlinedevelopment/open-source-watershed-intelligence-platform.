@@ -17,19 +17,19 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Wait for exact live 16639 repair
+      - name: Wait for exact live 16640 repair
         shell: bash
         run: |
           set -euo pipefail
           for i in $(seq 1 48); do
-            html="$(curl -fsSL -A 'Earthline-mantra37/16639' "https://earthlinedevelopment.org/?m37_16639=${GITHUB_SHA}-${i}" || true)"
-            if grep -Fq 'EARTHLINE 16639 — STALE REGIONAL CONTEXT CANNOT RECLAIM PROPERTY' <<<"$html"; then
-              echo "LIVE_16639_READY attempt=$i"
+            html="$(curl -fsSL -A 'Earthline-mantra37/16640' "https://earthlinedevelopment.org/?m37_16640=${GITHUB_SHA}-${i}" || true)"
+            if grep -Fq 'EARTHLINE 16640 — REGIONAL HANDOFF RETIRES PROPERTY PRESENTATION TAIL' <<<"$html"; then
+              echo "LIVE_16640_READY attempt=$i"
               exit 0
             fi
             sleep 5
           done
-          echo '16639 was not served by the production root.' >&2
+          echo '16640 was not served by the production root.' >&2
           exit 1
       - uses: actions/setup-node@v4
         with:
@@ -39,4 +39,4 @@ jobs:
       - name: Measure exact New York Regional phases
         run: node lab/mantra37-regional-phase-timing.mjs
 
-# 16639 live cross-tier proof gate
+# 16640 live cross-tier proof gate
