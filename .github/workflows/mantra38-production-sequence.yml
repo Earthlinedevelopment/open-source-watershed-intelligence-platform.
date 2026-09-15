@@ -4,31 +4,25 @@ on:
   push:
     branches: [pages-live]
     paths:
-      - 'tools/mantra38-restore-16565-context-containment.mjs'
+      - 'tests/mantra38-ny-context-containment-audit.mjs'
       - '.github/workflows/mantra38-production-sequence.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   production-sequence:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Restore 16565 optional-context containment
-        run: node tools/mantra38-restore-16565-context-containment.mjs
-      - name: Commit product repair
+      - name: Install Playwright
         run: |
-          git config user.name "Earthlinedevelopment"
-          git config user.email "info@earthlinedevelopment.org"
-          git add index.html
-          git diff --cached --quiet && exit 0
-          git commit -m "repair: restore 16565 state context containment"
-          git push origin HEAD:pages-live
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Verify NY optional context is inside Census boundary
+        run: node tests/mantra38-ny-context-containment-audit.mjs
