@@ -5,6 +5,7 @@ on:
     branches: [pages-live]
     paths:
       - 'tools/mantra38-final-publication-water-clip.mjs'
+      - 'tests/mantra38-visible-water-audit.mjs'
       - '.github/workflows/mantra38-production-sequence.yml'
   workflow_dispatch:
 
@@ -45,11 +46,11 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Verify published NY against serving map water
+      - name: Verify published NY against serving surface water
         run: |
           sed -i 's#https://live.earthlinedevelopment.org/#https://earthlinedevelopment.org/#' tests/mantra38-visible-water-audit.mjs
           for i in 1 2 3; do
-            echo "NY final-publication water attempt $i"
+            echo "NY final-publication surface-water attempt $i"
             node tests/mantra38-visible-water-audit.mjs && exit 0
           done
           exit 1
