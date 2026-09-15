@@ -41,9 +41,18 @@ if(!s.includes('function earthlineFinalWaterClip16584(')){
 }
 
 if(!s.includes('flows=earthlineFinalWaterClip16584(hy,flows,map(),runToken);')){
-  const settleMatches=[...s.matchAll(/[^\n;]*await\s+cameraSettle16310\([^;\n]*\);/g)].map(m=>m[0]);
-  const candidates=settleMatches.filter(x=>x.includes('regionalCenter')||x.includes('runBounds'));
-  if(candidates.length!==1)throw new Error('expected one governed regional camera settle call, found '+candidates.length+' candidates from '+settleMatches.length+' total');
+  const needle='cameraSettle16310(';
+  const calls=[];
+  let pos=0;
+  while((pos=s.indexOf(needle,pos))!==-1){
+    const start=Math.max(0,s.lastIndexOf(';',pos)+1,s.lastIndexOf('\n',pos)+1);
+    const end=s.indexOf(';',pos);
+    if(end<0)throw new Error('unterminated camera settle call');
+    calls.push(s.slice(start,end+1));
+    pos=end+1;
+  }
+  const candidates=calls.filter(x=>x.includes('regionalCenter')||x.includes('runBounds'));
+  if(candidates.length!==1)throw new Error('expected one governed regional camera settle call, found '+candidates.length+' candidates from '+calls.length+' total: '+calls.join(' || '));
   const settle=candidates[0];
   const finalClip=`${settle}\n    if(!focusMode&&hy&&hy.validityMask16584){\n      flows=earthlineFinalWaterClip16584(hy,flows,map(),runToken);\n    }`;
   s=s.replace(settle,finalClip);
