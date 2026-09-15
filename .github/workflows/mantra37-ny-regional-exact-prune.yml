@@ -22,14 +22,14 @@ jobs:
         run: |
           set -euo pipefail
           message="$(git log -1 --pretty=%s)"
-          if [ "$message" != "ops: apply mantra37 stale regional context repair" ]; then
-            echo "Not the 16639 stale-context trigger; no change."
+          if [ "$message" != "ops: apply mantra37 property-tail retirement" ]; then
+            echo "Not the 16640 Property-tail trigger; no change."
             exit 0
           fi
-          python lab/mantra37-repair-16639-stale-regional-context.py
+          python lab/mantra37-repair-16640-retire-property-tail-on-regional.py
           git diff --check
-          grep -n "EARTHLINE 16639 — STALE REGIONAL CONTEXT CANNOT RECLAIM PROPERTY" index.html
-          test "$(grep -c 'publishDisplayedRun16151(enriched16198);' index.html)" -eq 1
+          grep -n "EARTHLINE 16640 — REGIONAL HANDOFF RETIRES PROPERTY PRESENTATION TAIL" index.html
+          test "$(grep -c 'regional-owner-handoff-16640' index.html)" -eq 1
           if git diff --quiet -- index.html; then
             echo "No index change required."
             exit 0
@@ -37,7 +37,7 @@ jobs:
           git config user.name earthline-ci
           git config user.email actions@users.noreply.github.com
           git add index.html
-          git commit -m "fix: prevent stale Regional context from overwriting Property"
+          git commit -m "perf: retire Property presentation tail at Regional handoff"
           git push origin HEAD:pages-live
 
-# 16639 exact cross-tier stale-context repair trigger
+# 16640 exact cross-tier performance repair trigger
