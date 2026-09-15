@@ -4,13 +4,12 @@ on:
   push:
     branches: [pages-live]
     paths:
-      - 'tools/mantra38-final-publication-water-clip.mjs'
-      - 'tests/mantra38-visible-water-audit.mjs'
+      - 'tests/mantra38-lake-render-owner.mjs'
       - '.github/workflows/mantra38-production-sequence.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   production-sequence:
@@ -18,39 +17,12 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Final 16584 water clip after camera settle
-        run: node tools/mantra38-final-publication-water-clip.mjs
-      - name: Commit product repair
-        run: |
-          git config user.name "Earthlinedevelopment"
-          git config user.email "info@earthlinedevelopment.org"
-          git add index.html
-          git diff --cached --quiet && exit 0
-          git commit -m "repair: clip regional flows to serving water after camera settle"
-          git push origin HEAD:pages-live
-      - name: Wait for serving deployment
-        run: |
-          for i in $(seq 1 60); do
-            if curl -fsS --max-time 20 https://earthlinedevelopment.org/ | grep -q 'earthlineFinalWaterClip16584'; then
-              exit 0
-            fi
-            sleep 3
-          done
-          exit 1
       - name: Install Playwright
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Verify published NY against serving surface water
-        run: |
-          sed -i 's#https://live.earthlinedevelopment.org/#https://earthlinedevelopment.org/#' tests/mantra38-visible-water-audit.mjs
-          for i in 1 2 3; do
-            echo "NY final-publication surface-water attempt $i"
-            node tests/mantra38-visible-water-audit.mjs && exit 0
-          done
-          exit 1
+      - name: Identify rendered Lake Ontario blue-line owner
+        run: node tests/mantra38-lake-render-owner.mjs
