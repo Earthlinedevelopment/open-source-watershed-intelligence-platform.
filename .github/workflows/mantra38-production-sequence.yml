@@ -4,25 +4,47 @@ on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/mantra38-visible-water-audit.mjs'
+      - 'tools/mantra38-repair-style-water-final.mjs'
       - '.github/workflows/mantra38-production-sequence.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   production-sequence:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Repair existing 16584 water-validity owner
+        run: node tools/mantra38-repair-style-water-final.mjs
+      - name: Commit product repair
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "repair: align regional flows to loaded map water"
+          git push origin HEAD:pages-live
+      - name: Wait for connected live deployment
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 15 https://live.earthlinedevelopment.org/ | grep -q 'earthlineLoadedStyleWaterIndex16584'; then
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "Connected live deployment did not expose repaired owner"
+          exit 1
       - name: Install Playwright
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Diagnose NY rendered-water overlap
+      - name: Verify NY against connected map water
         run: node tests/mantra38-visible-water-audit.mjs
