@@ -40,10 +40,14 @@ if(!s.includes('function earthlineFinalWaterClip16584(')){
   s=s.replace(helperMarker,helper+helperMarker);
 }
 
-const settle='const cameraReady16334=await cameraSettle16310(runToken,regionalCenter,runBounds16334);';
-if(!s.includes(settle))throw new Error('camera settle call not found');
-const finalClip=`${settle}\n    if(cameraReady16334&&!focusMode&&hy&&hy.validityMask16584){\n      flows=earthlineFinalWaterClip16584(hy,flows,map(),runToken);\n    }`;
-if(!s.includes('flows=earthlineFinalWaterClip16584(hy,flows,map(),runToken);'))s=s.replace(settle,finalClip);
+if(!s.includes('flows=earthlineFinalWaterClip16584(hy,flows,map(),runToken);')){
+  const settleMatches=[...s.matchAll(/[^\n;]*await\s+cameraSettle16310\([^;\n]*\);/g)].map(m=>m[0]);
+  const candidates=settleMatches.filter(x=>x.includes('regionalCenter')||x.includes('runBounds'));
+  if(candidates.length!==1)throw new Error('expected one governed regional camera settle call, found '+candidates.length+' candidates from '+settleMatches.length+' total');
+  const settle=candidates[0];
+  const finalClip=`${settle}\n    if(!focusMode&&hy&&hy.validityMask16584){\n      flows=earthlineFinalWaterClip16584(hy,flows,map(),runToken);\n    }`;
+  s=s.replace(settle,finalClip);
+}
 
 fs.writeFileSync(path,s);
 console.log('Final 16584 flow containment refresh now runs after the existing camera/tile settle and before atomic publication; no source, layer, listener, renderer, camera, idle, polling, or verdict owner added.');
