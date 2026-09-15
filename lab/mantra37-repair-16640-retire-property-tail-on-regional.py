@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 p=Path('index.html')
 s=p.read_text(encoding='utf-8')
@@ -8,8 +9,6 @@ if marker in s:
     raise SystemExit(0)
 
 # 1) The bounded Property post-publish presentation loop already knows how to stop.
-# Teach it to honor the existing 15778 owner immediately, rather than waiting for
-# the displayed snapshot to change to Regional after publication.
 old1="""        const tier=String(displayed&&(displayed.tier||displayed.mode)||'').toLowerCase();
         if(serial!==runSerial||Number(md.searchGen||0)!==Number(searchGen)||tier==='regional')return;"""
 new1="""        const tier=String(displayed&&(displayed.tier||displayed.mode)||'').toLowerCase();
@@ -23,8 +22,7 @@ if s.count(old1)!=1:
     raise SystemExit(f'guard1 failed count={s.count(old1)}')
 s=s.replace(old1,new1,1)
 
-# 2) Stop the separate visibility-settlement tail as soon as the same existing
-# Regional owner has taken control.
+# 2) Stop the separate visibility-settlement tail when the existing Regional owner takes control.
 old2="""        if(serial!==runSerial)return;
         const living16262=propertyLivingMapVisible16262(count);"""
 new2="""        const regionalOwner16640b=window.earthlineRegional15778||null;
@@ -34,24 +32,24 @@ if s.count(old2)!=1:
     raise SystemExit(f'guard2 failed count={s.count(old2)}')
 s=s.replace(old2,new2,1)
 
-# 3) Property basemap settlement uses finite delayed samples plus one-shot move/idle
-# callbacks. Make each sample a no-op once 15778 says Regional owns presentation.
-old3="""    const sample=(label)=>{
-      try{
-        const host=mp.getContainer?.(),canvas=mp.getCanvas?.();"""
-new3="""    const sample=(label)=>{
-      try{
+# 3) Property basemap settlement is minified differently in this lineage. Match the
+# exact existing owner/function rather than formatting whitespace.
+pat=r"(function earthlineSettlePropertyBasemap16348\(reason='property-frame'\)\{.*?const sample=\(label\)=>\{\s*try\{)"
+matches=list(re.finditer(pat,s,re.S))
+if len(matches)!=1:
+    raise SystemExit(f'guard3 failed count={len(matches)}')
+insert="""
         const regionalOwner16640c=window.earthlineRegional15778||null;
         if(regionalOwner16640c&&regionalOwner16640c.active===true&&regionalOwner16640c.mode==='regional'){
           if(!audit.retiredAt){audit.retiredAt=new Date().toISOString();audit.retiredReason='regional-owner-handoff-16640';}
           return null;
-        }
-        const host=mp.getContainer?.(),canvas=mp.getCanvas?.();"""
-if s.count(old3)!=1:
-    raise SystemExit(f'guard3 failed count={s.count(old3)}')
-s=s.replace(old3,new3,1)
+        }"""
+m=matches[0]
+s=s[:m.end()]+insert+s[m.end():]
 
 if s.count(marker)!=1:
     raise SystemExit('post-guard failed: marker count != 1')
+if s.count('regional-owner-handoff-16640')!=1:
+    raise SystemExit('post-guard failed: basemap retirement marker count != 1')
 p.write_text(s,encoding='utf-8')
 print('16640 applied: existing Regional owner now retires all bounded Property presentation tails immediately')
