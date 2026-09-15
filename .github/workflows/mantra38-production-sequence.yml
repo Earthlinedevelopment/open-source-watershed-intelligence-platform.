@@ -4,31 +4,25 @@ on:
   push:
     branches: [pages-live]
     paths:
-      - 'tools/mantra38-fix-regional-swale-scale.mjs'
+      - 'tests/mantra38-ny-geometry-jump-audit.mjs'
       - '.github/workflows/mantra38-production-sequence.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   production-sequence:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Patch existing Regional swale scale owner
-        run: node tools/mantra38-fix-regional-swale-scale.mjs
-      - name: Commit product repair
+      - name: Install Playwright
         run: |
-          git config user.name "Earthlinedevelopment"
-          git config user.email "info@earthlinedevelopment.org"
-          git add index.html
-          git diff --cached --quiet && exit 0
-          git commit -m "repair: bound Regional swale geometry to display scale"
-          git push origin HEAD:pages-live
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Audit NY published geometry jumps
+        run: node tests/mantra38-ny-geometry-jump-audit.mjs
