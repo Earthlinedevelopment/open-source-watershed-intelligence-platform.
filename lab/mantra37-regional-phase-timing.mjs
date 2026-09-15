@@ -29,7 +29,9 @@ async function snap(){return page.evaluate(()=>{
     busy:document.getElementById('runBtn')?.getAttribute('aria-busy')==='true',
     propertyState:String(document.documentElement.dataset.earthlinePropertyRunState||''),
     status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim().slice(0,500),
-    perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191?JSON.parse(JSON.stringify(window.EARTHLINE_REGIONAL_PERFORMANCE_16191)):null
+    perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191?JSON.parse(JSON.stringify(window.EARTHLINE_REGIONAL_PERFORMANCE_16191)):null,
+    regionalContext:window.EARTHLINE_REGIONAL_CONTEXT_16198?JSON.parse(JSON.stringify(window.EARTHLINE_REGIONAL_CONTEXT_16198)):null,
+    propertyPublication:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220?JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220)):null
   };
 });}
 
@@ -44,7 +46,6 @@ async function runRegion(name,maxMs=26000){
   return {ok:false,elapsedMs:Date.now()-started,final:await snap()};
 }
 
-const freshStart=Date.now();
 const fresh=await runRegion('New York');
 console.log('M37_PHASE_FRESH '+JSON.stringify(fresh));
 
@@ -76,4 +77,13 @@ const property={call:propertyCall,elapsedMs:Date.now()-propertyStart,after:await
 const transition=await runRegion('New York',26000);
 console.log('M37_PHASE_TRANSITION '+JSON.stringify({vt,property,ny:transition}));
 
+const failures=[];
+if(!fresh.ok||fresh.elapsedMs>15000)failures.push('fresh New York exceeded launch gate: '+fresh.elapsedMs+' ms');
+if(!vt.ok||vt.elapsedMs>15000)failures.push('Vermont control exceeded launch gate: '+vt.elapsedMs+' ms');
+if(!property.call?.ok||property.call?.result!==true||String(property.after?.tier||'').toLowerCase()!=='property')failures.push('Property did not become canonical displayed tier: '+JSON.stringify(property));
+if(!transition.ok||transition.elapsedMs>15000)failures.push('VT→Property→New York exceeded launch gate: '+transition.elapsedMs+' ms');
+if(Number(transition.final?.perf?.waterPaths||0)<1)failures.push('New York published without visible water paths');
+
 await browser.close();
+if(failures.length)throw new Error('M37_16639_GATE_FAIL '+failures.join(' | '));
+console.log('M37_16639_GATE_PASS freshNY='+fresh.elapsedMs+' vt='+vt.elapsedMs+' property='+property.elapsedMs+' transitionNY='+transition.elapsedMs);
