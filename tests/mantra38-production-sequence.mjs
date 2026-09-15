@@ -110,12 +110,10 @@ async function runProperty(page,label,errors){
   return {stage:`${label} Property`,clicked:true,elapsedMs:Date.now()-started,settled:after.propertyAudit?.settled===true,after,checkpoints,errors:errors.slice(0,20)};
 }
 
-// A: Fresh-load NY control.
 const A=await loadPage('fresh-ny');
 const freshNY=await runRegional(A.page,'New York',A.errors);
 await A.page.close();
 
-// B: Same-page Vermont -> Property -> New York.
 const B=await loadPage('vt-property-ny');
 const vt=await runRegional(B.page,'Vermont',B.errors);
 const prop=await runProperty(B.page,'Vermont',B.errors);
@@ -125,6 +123,6 @@ await B.page.close();
 const report={test:'Mantra 38 production root diagnostic',url:URL,expectedIndexBlob:'1c217d9486f0e234c08e1b6890e28d1db7dc03cf',freshNY,sequence:{vt,prop,nyAfterProperty}};
 console.log('MANTRA38_PRODUCTION '+JSON.stringify(report));
 await browser.close();
-
-// Diagnostic exit: fail only if browser/test infrastructure itself could not run.
 if(!freshNY || !nyAfterProperty) process.exitCode=1;
+
+// trigger 2026-09-15 neutral production diagnostic
