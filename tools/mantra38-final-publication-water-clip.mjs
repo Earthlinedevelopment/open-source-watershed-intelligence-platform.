@@ -40,16 +40,9 @@ if(!s.includes('function earthlineFinalWaterClip16584(')){
   s=s.replace(helperMarker,helper+helperMarker);
 }
 
-const lineDecl='const preFlowLineCount16329=flows.features.filter(f=>f&&f.properties&&f.properties.feature_type===\'flow\').length';
-const arrowDecl='const preFlowArrowCount16329=flows.features.filter(f=>f&&f.properties&&f.properties.feature_type===\'flow-arrow\').length';
-if(s.includes(lineDecl))s=s.replace(lineDecl,lineDecl.replace(/^const /,'let '));
-else if(!s.includes(lineDecl.replace(/^const /,'let ')))throw new Error('preFlowLineCount16329 declaration not found');
-if(s.includes(arrowDecl))s=s.replace(arrowDecl,arrowDecl.replace(/^const /,'let '));
-else if(!s.includes(arrowDecl.replace(/^const /,'let ')))throw new Error('preFlowArrowCount16329 declaration not found');
-
 const settle='const cameraReady16334=await cameraSettle16310(runToken,regionalCenter,runBounds16334);';
 if(!s.includes(settle))throw new Error('camera settle call not found');
-const finalClip=`${settle}\n    if(cameraReady16334&&!focusMode&&hy&&hy.validityMask16584){\n      flows=earthlineFinalWaterClip16584(hy,flows,map(),runToken);\n      preFlowLineCount16329=flows.features.filter(f=>f&&f.properties&&f.properties.feature_type==='flow').length;\n      preFlowArrowCount16329=flows.features.filter(f=>f&&f.properties&&f.properties.feature_type==='flow-arrow').length;\n    }`;
+const finalClip=`${settle}\n    if(cameraReady16334&&!focusMode&&hy&&hy.validityMask16584){\n      flows=earthlineFinalWaterClip16584(hy,flows,map(),runToken);\n    }`;
 if(!s.includes('flows=earthlineFinalWaterClip16584(hy,flows,map(),runToken);'))s=s.replace(settle,finalClip);
 
 fs.writeFileSync(path,s);
