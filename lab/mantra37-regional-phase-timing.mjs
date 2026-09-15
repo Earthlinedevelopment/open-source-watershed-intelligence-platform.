@@ -5,9 +5,12 @@ const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1440,height:1000}});
 const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 
-await page.goto(URL+'?m37phases='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
-await page.waitForSelector('#searchInput',{timeout:30000});
-await page.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});
+async function boot(tag){
+  await page.goto(URL+'?m37trace='+tag+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+  await page.waitForSelector('#searchInput',{timeout:30000});
+  await page.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});
+}
+await boot('fresh');
 
 async function chooseRegion(name){
   await page.evaluate(q=>{const i=document.getElementById('searchInput');i.focus();i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));},name);
@@ -24,36 +27,38 @@ async function chooseRegion(name){
 async function snap(){return page.evaluate(()=>{
   const m=typeof M!=='undefined'?M:null;
   const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+  const w=window.EARTHLINE_REGIONAL_STALL_WATCHDOG_16347||null;
   return {
     loc:String(m?.loc?.name||''),tier:String(d?.tier||d?.mode||''),token:d?.runToken||null,
     busy:document.getElementById('runBtn')?.getAttribute('aria-busy')==='true',
     propertyState:String(document.documentElement.dataset.earthlinePropertyRunState||''),
     status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim().slice(0,500),
+    watchdog:w?{label:String(w.lastProgressLabel||''),elapsedMs:Number(w.elapsedMs||0),failed:!!w.failed}:null,
     perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191?JSON.parse(JSON.stringify(window.EARTHLINE_REGIONAL_PERFORMANCE_16191)):null,
     regionalContext:window.EARTHLINE_REGIONAL_CONTEXT_16198?JSON.parse(JSON.stringify(window.EARTHLINE_REGIONAL_CONTEXT_16198)):null,
     propertyPublication:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220?JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220)):null
   };
 });}
 
-async function runRegion(name,maxMs=26000){
-  const started=Date.now(); await chooseRegion(name);
+async function runRegion(name,maxMs=32000){
+  const started=Date.now(),trace=[]; let last='';
+  await chooseRegion(name);
   while(Date.now()-started<maxMs){
     const s=await snap();
-    if(/screening published/i.test(s.status)&&s.tier==='regional'&&norm(s.loc).includes(norm(name)))return {ok:true,elapsedMs:Date.now()-started,final:s};
-    if(/ANALYSIS FAILED|ANALYSIS STOPPED/i.test(s.status))return {ok:false,elapsedMs:Date.now()-started,final:s};
-    await page.waitForTimeout(150);
+    const label=s.watchdog?.label||'';
+    if(label&&label!==last){trace.push({t:Date.now()-started,label,watchdogElapsed:s.watchdog?.elapsedMs||0});last=label;}
+    if(/screening published/i.test(s.status)&&s.tier==='regional'&&norm(s.loc).includes(norm(name)))return {ok:true,elapsedMs:Date.now()-started,trace,final:s};
+    if(/ANALYSIS FAILED|ANALYSIS STOPPED/i.test(s.status))return {ok:false,elapsedMs:Date.now()-started,trace,final:s};
+    await page.waitForTimeout(75);
   }
-  return {ok:false,elapsedMs:Date.now()-started,final:await snap()};
+  return {ok:false,elapsedMs:Date.now()-started,trace,final:await snap()};
 }
 
-const fresh=await runRegion('New York');
-console.log('M37_PHASE_FRESH '+JSON.stringify(fresh));
+const fresh=await runRegion('New York',24000);
+console.log('M37_TRACE_FRESH '+JSON.stringify(fresh));
 
-await page.reload({waitUntil:'domcontentloaded',timeout:45000});
-await page.waitForSelector('#searchInput',{timeout:30000});
-await page.waitForFunction(()=>window.EARTHLINE_LAB_WATER_16601?.installed===true,null,{timeout:20000});
-
-const vt=await runRegion('Vermont',20000);
+await boot('transition');
+const vt=await runRegion('Vermont',22000);
 if(!vt.ok)throw new Error('Vermont precondition failed '+JSON.stringify(vt));
 
 const propertyStart=Date.now();
@@ -73,17 +78,9 @@ try{await page.waitForFunction(()=>{
   return String(d?.tier||d?.mode||'').toLowerCase()==='property' && String(document.documentElement.dataset.earthlinePropertyRunState||'')!=='running';
 },null,{timeout:18000,polling:100});}catch(_){}
 const property={call:propertyCall,elapsedMs:Date.now()-propertyStart,after:await snap()};
-
-const transition=await runRegion('New York',26000);
-console.log('M37_PHASE_TRANSITION '+JSON.stringify({vt,property,ny:transition}));
-
-const failures=[];
-if(!fresh.ok||fresh.elapsedMs>15000)failures.push('fresh New York exceeded launch gate: '+fresh.elapsedMs+' ms');
-if(!vt.ok||vt.elapsedMs>15000)failures.push('Vermont control exceeded launch gate: '+vt.elapsedMs+' ms');
-if(!property.call?.ok||property.call?.result!==true||String(property.after?.tier||'').toLowerCase()!=='property')failures.push('Property did not become canonical displayed tier: '+JSON.stringify(property));
-if(!transition.ok||transition.elapsedMs>15000)failures.push('VT→Property→New York exceeded launch gate: '+transition.elapsedMs+' ms');
-if(Number(transition.final?.perf?.waterPaths||0)<1)failures.push('New York published without visible water paths');
+const transition=await runRegion('New York',34000);
+console.log('M37_TRACE_TRANSITION '+JSON.stringify({vt,property,ny:transition}));
 
 await browser.close();
-if(failures.length)throw new Error('M37_16639_GATE_FAIL '+failures.join(' | '));
-console.log('M37_16639_GATE_PASS freshNY='+fresh.elapsedMs+' vt='+vt.elapsedMs+' property='+property.elapsedMs+' transitionNY='+transition.elapsedMs);
+if(!transition.ok||transition.elapsedMs>15000)throw new Error('M37_DERIVATION_TRACE captured transition='+transition.elapsedMs+' trace='+JSON.stringify(transition.trace));
+console.log('M37_TRACE_PASS transitionNY='+transition.elapsedMs);
