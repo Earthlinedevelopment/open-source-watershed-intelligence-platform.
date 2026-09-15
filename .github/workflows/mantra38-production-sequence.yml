@@ -4,12 +4,13 @@ on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/mantra38-adaptive-shore-buffer-ab.mjs'
+      - 'tools/mantra38-apply-global-shoreline-setback.mjs'
+      - 'tests/mantra38-deployed-global-shoreline.mjs'
       - '.github/workflows/mantra38-production-sequence.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   production-sequence:
@@ -17,12 +18,33 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Apply shared global shoreline publication rule
+        run: node tools/mantra38-apply-global-shoreline-setback.mjs
+      - name: Commit product repair
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "repair: global adaptive shoreline setback"
+          git push origin HEAD:pages-live
+      - name: Wait for serving deployment
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 20 https://earthlinedevelopment.org/ | grep -q 'earthlineRegionalShoreBufferKm16584'; then
+              exit 0
+            fi
+            sleep 3
+          done
+          exit 1
       - name: Install Playwright
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Test adaptive global shoreline setback
-        run: node tests/mantra38-adaptive-shore-buffer-ab.mjs
+      - name: Verify deployed global shoreline gate with NY regression
+        run: node tests/mantra38-deployed-global-shoreline.mjs
