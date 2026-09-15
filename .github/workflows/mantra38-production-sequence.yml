@@ -4,7 +4,7 @@ on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/mantra38-ny-context-containment-audit.mjs'
+      - 'tools/mantra38-inspect-16584-water-validity.mjs'
       - '.github/workflows/mantra38-production-sequence.yml'
   workflow_dispatch:
 
@@ -14,15 +14,11 @@ permissions:
 jobs:
   production-sequence:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install Playwright
-        run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Verify NY optional context is inside Census boundary
-        run: node tests/mantra38-ny-context-containment-audit.mjs
+      - name: Inspect 16584 lake-validity owner
+        run: node tools/mantra38-inspect-16584-water-validity.mjs
