@@ -1,0 +1,30 @@
+import fs from 'node:fs';
+const path='index.html';
+let s=fs.readFileSync(path,'utf8');
+const oldLake='const EARTHLINE_NE50_LAKES_16584="https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ace5fed0eaf3c6c03c951e75b439ba8fffbc218e/geojson/ne_50m_lakes.geojson";';
+const newLake='const EARTHLINE_NE50_LAKES_16584="https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ace5fed0eaf3c6c03c951e75b439ba8fffbc218e/geojson/ne_10m_lakes.geojson"; /* shared global shoreline evidence: higher-resolution lakes; land remains 1:50m */';
+if(!s.includes(oldLake)) throw new Error('Expected pinned 1:50m lake source not found');
+s=s.replace(oldLake,newLake);
+
+const marker='  function earthlineFinalWaterClip16584(hy16584,flows16584,mp16584,runToken16584){';
+const pos=s.indexOf(marker); if(pos<0) throw new Error('final water clip owner not found');
+const helper=`  /* MANTRA 38 — shared Regional shoreline uncertainty rule.\n     Water-path publication uses the same global mapped-water evidence everywhere.\n     The setback is half the local DEM-cell diagonal, so it scales with analysis\n     resolution rather than jurisdiction or a hard-coded distance. */\n  function earthlineRegionalShoreBufferKm16584(hy16584){\n    if(!hy16584||!Array.isArray(hy16584.bounds)||hy16584.bounds.length!==4)return 0;\n    const b16584=hy16584.bounds,w16584=Math.max(2,Number(hy16584.w)||96),h16584=Math.max(2,Number(hy16584.h)||96),\n          midLat16584=(Number(b16584[1])+Number(b16584[3]))/2,rad16584=Math.PI/180,R16584=6371.0088,\n          hav16584=(a,b)=>{const p116584=a[1]*rad16584,p216584=b[1]*rad16584,dp16584=(b[1]-a[1])*rad16584,dl16584=(b[0]-a[0])*rad16584,q16584=Math.sin(dp16584/2)**2+Math.cos(p116584)*Math.cos(p216584)*Math.sin(dl16584/2)**2;return 2*R16584*Math.asin(Math.min(1,Math.sqrt(q16584)))};\n    const dx16584=hav16584([Number(b16584[0]),midLat16584],[Number(b16584[0])+(Number(b16584[2])-Number(b16584[0]))/(w16584-1),midLat16584]),\n          dy16584=hav16584([Number(b16584[0]),midLat16584],[Number(b16584[0]),midLat16584+(Number(b16584[3])-Number(b16584[1]))/(h16584-1)]);\n    return .5*Math.hypot(dx16584,dy16584);\n  }\n  function earthlineRegionalShoreDistanceKm16584(hy16584,ll16584,maxKm16584){\n    if(!hy16584||!ll16584||!Number.isFinite(Number(ll16584[0]))||!Number.isFinite(Number(ll16584[1])))return Infinity;\n    const parts16584=Array.isArray(hy16584.waterParts16584)?hy16584.waterParts16584:[];if(!parts16584.length)return Infinity;\n    const lng16584=Number(ll16584[0]),lat16584=Number(ll16584[1]),R16584=6371.0088,rad16584=Math.PI/180,cos16584=Math.max(.15,Math.cos(lat16584*rad16584)),\n          x16584=p=>[R16584*Number(p[0])*rad16584*cos16584,R16584*Number(p[1])*rad16584],\n          padLat16584=(Number(maxKm16584)||0)/111,padLng16584=(Number(maxKm16584)||0)/(111*cos16584);\n    let best16584=Infinity;\n    const pointSeg16584=(p,a,b)=>{const P=x16584(p),A=x16584(a),B=x16584(b),dx=B[0]-A[0],dy=B[1]-A[1],l2=dx*dx+dy*dy;if(l2<1e-20)return Math.hypot(P[0]-A[0],P[1]-A[1]);let t=((P[0]-A[0])*dx+(P[1]-A[1])*dy)/l2;t=Math.max(0,Math.min(1,t));return Math.hypot(P[0]-(A[0]+t*dx),P[1]-(A[1]+t*dy))};\n    for(const part16584 of parts16584){\n      if(!part16584||!part16584.bbox||!part16584.rings)continue;const bb16584=part16584.bbox;\n      if(lng16584<bb16584[0]-padLng16584||lng16584>bb16584[2]+padLng16584||lat16584<bb16584[1]-padLat16584||lat16584>bb16584[3]+padLat16584)continue;\n      for(const ring16584 of part16584.rings||[])for(let j16584=1;j16584<ring16584.length;j16584++){const d16584=pointSeg16584(ll16584,ring16584[j16584-1],ring16584[j16584]);if(d16584<best16584)best16584=d16584;if(best16584<=maxKm16584)return best16584;}\n    }\n    return best16584;\n  }\n\n`;
+if(s.includes('function earthlineRegionalShoreBufferKm16584')) throw new Error('shoreline helper already present');
+s=s.slice(0,pos)+helper+s.slice(pos);
+
+const fnStart=s.indexOf(marker); if(fnStart<0) throw new Error('final water clip owner missing after helper insert');
+let i=s.indexOf('{',fnStart),depth=0,end=-1;for(;i<s.length;i++){if(s[i]==='{')depth++;else if(s[i]==='}'){depth--;if(depth===0){end=i+1;break;}}}if(end<0)throw new Error('could not parse final water clip owner');
+const oldFn=s.slice(fnStart,end);
+if(!oldFn.includes('const kept16584=[],arrows16584=[];')) throw new Error('final clip structure changed: kept/arrows anchor absent');
+if(!oldFn.includes('const src16584=f16584.geometry.coordinates,out16584=[];')) throw new Error('final clip structure changed: source anchor absent');
+let newFn=oldFn.replace('const kept16584=[],arrows16584=[];','const kept16584=[],arrows16584=[],shoreBufferKm16584=earthlineRegionalShoreBufferKm16584(hy16584);');
+newFn=newFn.replace('const src16584=f16584.geometry.coordinates,out16584=[];','const src16584=f16584.geometry.coordinates,out16584=[];');
+const pointAnchor='        if(!Array.isArray(p16584)||!Number.isFinite(Number(p16584[0]))||!Number.isFinite(Number(p16584[1])))break;';
+if(!newFn.includes(pointAnchor))throw new Error('final clip point anchor absent');
+newFn=newFn.replace(pointAnchor,pointAnchor+'\n        if(shoreBufferKm16584>0&&earthlineRegionalShoreDistanceKm16584(hy16584,p16584,shoreBufferKm16584)<=shoreBufferKm16584)break;');
+const auditAnchor='inputLines:inputLines16584,outputLines:outputLines16584,clippedLines:clippedLines16584,droppedLines:droppedLines16584,';
+if(!newFn.includes(auditAnchor))throw new Error('final clip audit anchor absent');
+newFn=newFn.replace(auditAnchor,auditAnchor+'\n      shorelineEvidence:\'Natural Earth 1:10m lakes\',shoreBufferRule:\'half-local-DEM-cell-diagonal\',shoreBufferKm:Number(shoreBufferKm16584.toFixed(3)),');
+s=s.slice(0,fnStart)+newFn+s.slice(end);
+fs.writeFileSync(path,s);
+console.log('MANTRA38_GLOBAL_SHORELINE_PATCH '+JSON.stringify({patched:true,jurisdictionSpecific:false,waterEvidence:'Natural Earth 1:10m lakes',bufferRule:'half-local-DEM-cell-diagonal'}));
