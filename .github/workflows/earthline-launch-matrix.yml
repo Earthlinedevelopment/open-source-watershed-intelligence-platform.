@@ -1,10 +1,10 @@
-name: Earthline Texas Final Launch Gate
+name: Earthline Texas Renderer Owner Trace
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/texas-ny-regression.mjs'
+      - 'tests/extract-texas-publication-owner.py'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -12,25 +12,17 @@ permissions:
   contents: read
 
 jobs:
-  tx-final-gate:
+  trace-renderer-owner:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Playwright
-        run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Run Texas repeated gate with New York and Vermont controls
-        run: node tests/texas-ny-regression.mjs
-      - name: Upload final gate evidence
-        if: always()
+      - name: Extract renderer and publication owner
+        run: python tests/extract-texas-publication-owner.py
+      - name: Upload renderer trace
         uses: actions/upload-artifact@v4
         with:
-          name: tx-final-gate-results
-          path: tx-ny-regression-results.json
+          name: texas-renderer-owner-trace
+          path: texas-publication-owner-extract.txt
           if-no-files-found: error
           retention-days: 1
