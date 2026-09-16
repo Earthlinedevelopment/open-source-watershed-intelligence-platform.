@@ -42,14 +42,16 @@ for(let attempt=1;attempt<=RUNS;attempt++){
       const gen=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null;
       const audit=window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||null;
       const status=String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim();
-      return {pkg,perf,gen,audit,status,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null};
+      const html=document.documentElement.outerHTML;
+      const repairMarker=html.includes("maxAllowableOffset:'0.0025'")&&html.includes('const raw=await jsonp(cap.endpoint,params,6500)');
+      return {pkg,perf,gen,audit,status,repairMarker,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null};
     });
   }catch(e){loadError=loadError||String(e);}
   const vertices=vertexCount(after?.pkg?.boundary?.geometry);
-  const r={attempt,elapsedMs:Date.now()-started,timedOut,loadError,coreMs:Number(after?.perf?.totalMs||Infinity),vertices,generated:Number(after?.gen?.published||after?.gen?.selected||after?.gen?.accepted||0),status:after?.status||'',lastError:after?.lastError||null,pageErrors:errors.slice(0,10)};
+  const r={attempt,elapsedMs:Date.now()-started,timedOut,loadError,coreMs:Number(after?.perf?.totalMs||Infinity),vertices,repairMarker:!!after?.repairMarker,generated:Number(after?.gen?.published||after?.gen?.selected||after?.gen?.accepted||0),status:after?.status||'',lastError:after?.lastError||null,pageErrors:errors.slice(0,10)};
   results.push(r);console.log('EARTHLINE_TEXAS_CANDIDATE '+JSON.stringify(r));
   await page.close();
 }
 await browser.close();
-const bad=results.some(r=>r.timedOut||r.loadError||r.lastError||!Number.isFinite(r.coreMs)||r.coreMs>15000||!/screening published\./i.test(r.status)||r.vertices<100);
+const bad=results.some(r=>r.timedOut||r.loadError||r.lastError||!r.repairMarker||!Number.isFinite(r.coreMs)||r.coreMs>15000||!/screening published\./i.test(r.status)||r.vertices<100);
 if(bad)process.exitCode=1;
