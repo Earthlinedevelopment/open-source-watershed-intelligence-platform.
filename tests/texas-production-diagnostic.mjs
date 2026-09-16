@@ -19,6 +19,9 @@ function snapshot(){
     flows=Number(f?._data?.features?.length||f?._options?.data?.features?.length||0);
   }catch(_){}
   const sm=m?.swaleMeta||null;
+  const html=document.documentElement.outerHTML;
+  const needle='corridor rendering incomplete';
+  const sourceAt=html.indexOf(needle);
   return {
     readyState:document.readyState,
     mapReady:!!map,
@@ -37,6 +40,7 @@ function snapshot(){
     labelAudit:window.EARTHLINE_REGIONAL_CORRIDOR_LABEL_AUDIT_16336||null,
     flowValidity:window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null,
     corridorAudit:a?{tier:a.tier,generated:a.generated,sourceFeatures:a.sourceFeatures,overlaySwaleLines:a.overlaySwaleLines,checkedAt:a.checkedAt}:null,
+    sourceExcerpt:sourceAt>=0?html.slice(Math.max(0,sourceAt-18000),Math.min(html.length,sourceAt+22000)):'',
     swales,flows
   };
 }
@@ -75,11 +79,11 @@ for(const query of CASES){
   const elapsedMs=Date.now()-started;
   const result={query,elapsedMs,timedOut,loadError,after,errors:errors.slice(0,20)};
   results.push(result);
-  console.log('EARTHLINE_TEXAS_DIAGNOSTIC '+JSON.stringify(result));
+  console.log('EARTHLINE_TEXAS_DIAGNOSTIC '+JSON.stringify({...result,after:{...after,sourceExcerpt:after?.sourceExcerpt?'[captured]':''}}));
   await page.close();
 }
 
-console.log('EARTHLINE_TEXAS_DIAGNOSTIC_SUMMARY '+JSON.stringify(results));
+console.log('EARTHLINE_TEXAS_DIAGNOSTIC_SUMMARY '+JSON.stringify(results.map(x=>({...x,after:{...x.after,sourceExcerpt:x.after?.sourceExcerpt?'[captured]':''}}))));
 writeFileSync('texas-production-diagnostic-results.json',JSON.stringify(results,null,2));
 const texas=results.find(x=>x.query==='Texas');
 const control=results.find(x=>x.query==='Vermont');
