@@ -1,20 +1,20 @@
-name: Earthline Vermont Render Threshold Probe
+name: Earthline Shared Regional Spacing Regression
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/vermont-render-threshold-probe.mjs'
+      - 'tests/shared-regional-spacing-regression.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  vermont-render-threshold:
+  spacing-regression:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,23 +24,13 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Measure Vermont rendered corridor lengths
-        run: node tests/vermont-render-threshold-probe.mjs
-      - name: Persist evidence on pages-live
-        if: always()
-        run: |
-          mkdir -p tests/evidence
-          cp vermont-render-threshold-probe.json tests/evidence/vermont-render-threshold-probe.json
-          git config user.name "Earthlinedevelopment"
-          git config user.email "info@earthlinedevelopment.org"
-          git add tests/evidence/vermont-render-threshold-probe.json
-          git diff --cached --quiet || git commit -m "test: record Vermont render-threshold evidence [skip ci]"
-          git push origin HEAD:pages-live
-      - name: Upload evidence
+      - name: Run Texas-first shared spacing regression
+        run: node tests/shared-regional-spacing-regression.mjs
+      - name: Upload regression evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: vermont-render-threshold-probe
-          path: vermont-render-threshold-probe.json
+          name: shared-regional-spacing-regression
+          path: shared-regional-spacing-regression.json
           if-no-files-found: error
           retention-days: 1
