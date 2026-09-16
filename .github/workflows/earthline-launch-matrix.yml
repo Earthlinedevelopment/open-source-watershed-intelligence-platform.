@@ -1,10 +1,10 @@
-name: Earthline Texas Visual Containment Gate
+name: Earthline Texas Corridor Selection Trace
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/texas-containment-probe.mjs'
+      - 'tests/extract-texas-publication-owner.py'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -12,27 +12,17 @@ permissions:
   contents: read
 
 jobs:
-  tx-visual-gate:
+  trace-corridor-selection:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Playwright
-        run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Run live Texas visual containment gate
-        run: node tests/texas-containment-probe.mjs
-      - name: Upload visual evidence
-        if: always()
+      - name: Extract shared corridor selection owner
+        run: python tests/extract-texas-publication-owner.py
+      - name: Upload corridor selection trace
         uses: actions/upload-artifact@v4
         with:
-          name: texas-visual-containment-gate
-          path: |
-            texas-containment-probe.json
-            texas-containment-probe.png
+          name: texas-corridor-selection-owner-trace
+          path: texas-corridor-selection-owner-extract.txt
           if-no-files-found: error
           retention-days: 1
