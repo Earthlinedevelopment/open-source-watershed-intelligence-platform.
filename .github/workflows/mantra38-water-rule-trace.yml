@@ -4,7 +4,7 @@ on:
   push:
     branches: [mantra38-water-rule-trace]
     paths:
-      - 'tests/mantra38-water-publish-capture.mjs'
+      - 'tests/mantra38-ny-visual-capture.mjs'
       - '.github/workflows/mantra38-water-rule-trace.yml'
   workflow_dispatch:
 
@@ -24,5 +24,11 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Capture flow and water evidence at publication
-        run: node tests/mantra38-water-publish-capture.mjs
+      - name: Capture live New York result
+        run: node tests/mantra38-ny-visual-capture.mjs
+      - name: Upload NY visual
+        uses: actions/upload-artifact@v4
+        with:
+          name: mantra38-ny-live
+          path: ny-live.png
+          if-no-files-found: error
