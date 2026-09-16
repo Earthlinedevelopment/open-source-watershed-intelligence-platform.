@@ -1,0 +1,28 @@
+name: Mantra 38 Water Rule Trace
+
+on:
+  push:
+    branches: [mantra38-water-rule-trace]
+    paths:
+      - 'tests/mantra38-water-rule-trace.mjs'
+      - '.github/workflows/mantra38-water-rule-trace.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Compare Vermont and New York water validity
+        run: node tests/mantra38-water-rule-trace.mjs
