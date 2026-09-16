@@ -4,7 +4,7 @@ on:
   push:
     branches: [mantra38-water-rule-trace]
     paths:
-      - 'tests/mantra38-lake-owner-source-intersections.mjs'
+      - 'tests/mantra38-production-basin-line-visual.mjs'
       - '.github/workflows/mantra38-water-rule-trace.yml'
   workflow_dispatch:
 
@@ -24,5 +24,11 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Compare every Earthline line source with Lake Ontario
-        run: node tests/mantra38-lake-owner-source-intersections.mjs
+      - name: Verify deployed New York basin line geometry
+        run: node tests/mantra38-production-basin-line-visual.mjs
+      - name: Upload production visual proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: mantra38-ny-production-after-basin-fix
+          path: mantra38-ny-production-after-basin-fix.png
+          if-no-files-found: error
