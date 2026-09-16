@@ -1,10 +1,10 @@
-name: Earthline Texas Spacing Anchor Probe
+name: Earthline Texas Jurisdiction Contour Probe
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/probe-texas-spacing-anchor.py'
+      - 'tests/probe-texas-jurisdiction-contour-sampling.py'
       - 'tests/texas-spacing-anchor-probe.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  texas-spacing-anchor:
+  texas-jurisdiction-contours:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -22,18 +22,18 @@ jobs:
         with:
           node-version: '20'
       - name: Build local A/B product variant only
-        run: python tests/probe-texas-spacing-anchor.py
+        run: python tests/probe-texas-jurisdiction-contour-sampling.py
       - name: Install Playwright
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Run Texas spacing-anchor variant under production origin
+      - name: Run Texas contour-sampling variant under production origin
         run: node tests/texas-spacing-anchor-probe.mjs
       - name: Upload probe evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: texas-spacing-anchor-probe
+          name: texas-jurisdiction-contour-probe
           path: texas-spacing-anchor-probe.json
           if-no-files-found: error
           retention-days: 1
