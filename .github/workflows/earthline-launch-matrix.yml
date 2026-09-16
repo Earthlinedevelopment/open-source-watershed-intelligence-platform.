@@ -1,10 +1,10 @@
-name: Earthline Shared Spacing Fresh A-B
+name: Earthline Vermont Render Threshold Probe
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/shared-spacing-fresh-ab.mjs'
+      - 'tests/vermont-render-threshold-probe.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -12,9 +12,9 @@ permissions:
   contents: write
 
 jobs:
-  shared-spacing-fresh-ab:
+  vermont-render-threshold:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,23 +24,23 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Run fresh-page baseline vs 3-2 spacing
-        run: node tests/shared-spacing-fresh-ab.mjs
+      - name: Measure Vermont rendered corridor lengths
+        run: node tests/vermont-render-threshold-probe.mjs
       - name: Persist evidence on pages-live
         if: always()
         run: |
           mkdir -p tests/evidence
-          cp shared-spacing-fresh-ab.json tests/evidence/shared-spacing-fresh-ab.json
+          cp vermont-render-threshold-probe.json tests/evidence/vermont-render-threshold-probe.json
           git config user.name "Earthlinedevelopment"
           git config user.email "info@earthlinedevelopment.org"
-          git add tests/evidence/shared-spacing-fresh-ab.json
-          git diff --cached --quiet || git commit -m "test: record fresh shared spacing AB evidence [skip ci]"
+          git add tests/evidence/vermont-render-threshold-probe.json
+          git diff --cached --quiet || git commit -m "test: record Vermont render-threshold evidence [skip ci]"
           git push origin HEAD:pages-live
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: shared-spacing-fresh-ab
-          path: shared-spacing-fresh-ab.json
+          name: vermont-render-threshold-probe
+          path: vermont-render-threshold-probe.json
           if-no-files-found: error
           retention-days: 1
