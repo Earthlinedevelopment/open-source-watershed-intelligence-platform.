@@ -1,4 +1,4 @@
-name: Earthline Publication Owner Extract
+name: Earthline Boundary Owner Extract
 
 on:
   push:
@@ -11,43 +11,43 @@ permissions:
   contents: read
 
 jobs:
-  extract-publication-owner:
+  extract-boundary-owner:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
-      - name: Extract exact Regional publication owner
+      - name: Extract exact boundary owner
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
+          s=Path('index.html').read_text(encoding='utf-8')
           needles=[
-            'corridor rendering incomplete',
-            'EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167',
-            'EARTHLINE_REGIONAL_CORRIDOR_LABEL_AUDIT_16336',
-            'regionalOverlayRenderOk16336',
-            'EARTHLINE_REGIONAL_ATOMIC_PREFLIGHT_16329'
+            'earthlineResolveJurisdictionBoundary16539',
+            'earthlineAdministrativeCapability16539',
+            'earthlineClipRegionalProducts16539',
+            'EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556',
+            'appliedAtomically',
+            'matchingAtomicBoundary16556',
+            'profile16549'
           ]
           chunks=[]
           for needle in needles:
-            pos=0
-            found=0
+            pos=0; found=0
             while True:
               i=s.find(needle,pos)
               if i<0: break
               found+=1
-              a=max(0,i-18000); b=min(len(s),i+22000)
+              a=max(0,i-22000); b=min(len(s),i+26000)
               chunks.append(f'\n===== {needle} occurrence {found} at char {i} =====\n'+s[a:b])
               pos=i+len(needle)
-          Path('publication-owner-source.txt').write_text('\n'.join(chunks),encoding='utf-8')
+          Path('boundary-owner-source.txt').write_text('\n'.join(chunks),encoding='utf-8')
           print('extracted',len(chunks),'source windows')
           PY
-      - name: Upload publication owner source
+      - name: Upload boundary owner source
         uses: actions/upload-artifact@v4
         with:
-          name: earthline-publication-owner-source
-          path: publication-owner-source.txt
+          name: earthline-boundary-owner-source
+          path: boundary-owner-source.txt
           if-no-files-found: error
           retention-days: 1
