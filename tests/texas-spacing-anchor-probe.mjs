@@ -1,10 +1,17 @@
 import { chromium } from 'playwright';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 
-const URL=process.env.EARTHLINE_TEST_URL||'http://127.0.0.1:8787/';
+const URL='https://earthlinedevelopment.org/?earthline_probe=tx_spacing_anchor_'+Date.now();
 const CASES=['Texas','Texas','Texas'];
+const diagnosticHtml=readFileSync('index.html','utf8');
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1600,height:1000}});
+await page.route('https://earthlinedevelopment.org/**',async route=>{
+  const req=route.request();
+  if(req.isNavigationRequest()&&req.resourceType()==='document'){
+    await route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:diagnosticHtml});
+  }else await route.continue();
+});
 const pageErrors=[];page.on('pageerror',e=>pageErrors.push(String(e)));
 const results=[];let loadError=null;
 try{await page.goto(URL,{waitUntil:'domcontentloaded',timeout:45000});await page.waitForSelector('#searchInput',{timeout:30000});}catch(e){loadError=String(e);}
