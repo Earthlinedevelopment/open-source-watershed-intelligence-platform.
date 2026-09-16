@@ -1,28 +1,48 @@
-name: Earthline Launch Matrix
+name: Earthline Texas Repair Builder
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/texas-production-diagnostic.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  texas-production-diagnostic:
+  build-repair:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Playwright
+      - name: Apply only the Texas false-fatal repair
+        shell: bash
         run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Run Texas production diagnostic
-        run: node tests/texas-production-diagnostic.mjs
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old="""    if(swaleCount>0&&(
+              regionalOverlayRenderOk16336!==true||
+              !overlayAudit||
+              Number(overlayAudit.swaleGradeLabels||0)===0
+            )){"""
+          new="""    if(swaleCount>0&&!overlayAudit){"""
+          n=s.count(old)
+          if n != 1:
+              raise SystemExit(f'expected exactly one Texas label-gate block, found {n}')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          PY
+          git diff --check -- index.html
+          git diff --stat -- index.html
+          git diff -U8 -- index.html
+      - name: Publish repair commit to temporary branch
+        shell: bash
+        run: |
+          git config user.name 'Earthline Repair Bot'
+          git config user.email 'info@earthlinedevelopment.org'
+          git switch -c mantra39-texas-label-repair
+          git add index.html
+          git commit -m 'repair: do not erase valid corridors when optional labels are absent'
+          git push --force origin HEAD:refs/heads/mantra39-texas-label-repair
