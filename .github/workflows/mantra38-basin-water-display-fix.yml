@@ -1,0 +1,45 @@
+name: Mantra 38 Basin Water Display Fix
+
+on:
+  push:
+    branches: [mantra38-basin-water-display-fix]
+    paths:
+      - 'scripts/mantra38-basin-water-display-fix.py'
+      - '.github/workflows/mantra38-basin-water-display-fix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra38-basin-water-display-fix
+      - name: Apply measured basin display repair
+        run: python3 scripts/mantra38-basin-water-display-fix.py
+      - name: Validate exact delta
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          checks={
+            'helper':s.count('function earthlineBasinDisplayLandSplitMantra38('),
+            'publish':s.count('geo=earthlineBasinDisplayLandSplitMantra38(geo,runToken);'),
+            'fill-filter':s.count("id:IDS.basinFill,type:'fill',source:IDS.basin,filter:['==',['geometry-type'],'Polygon']"),
+            'line-filter':s.count("id:IDS.basinLine,type:'line',source:IDS.basin,filter:['==',['geometry-type'],'LineString']"),
+          }
+          print('MANTRA38_BASIN_PATCH_VALIDATION',checks)
+          assert all(v==1 for v in checks.values()), checks
+          PY
+          git diff --check
+          git diff --stat -- index.html
+      - name: Commit candidate index only
+        run: |
+          git config user.name Earthlinedevelopment
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git commit -m 'repair: keep basin context lines out of mapped inland water'
+          git push origin HEAD:mantra38-basin-water-display-fix
