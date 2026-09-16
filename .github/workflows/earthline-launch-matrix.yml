@@ -1,4 +1,4 @@
-name: Earthline Texas Boundary Repair
+name: Earthline Texas New York Regression
 
 on:
   push:
@@ -8,42 +8,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  repair-and-verify:
+  tx-ny-regression:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - name: Apply shared Census boundary owner repair
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
-          old=(
-              "    const params=new URLSearchParams({where:\"NAME='\"+earthlineSqlLiteral16539(stateName)+\"'\",outFields:'NAME,STUSAB,GEOID,INTPTLAT,INTPTLON',returnGeometry:'true',outSR:'4326',maxAllowableOffset:'0.00015',geometryPrecision:'5',f:'geojson'});\n"
-              "    const signal=(typeof AbortSignal!=='undefined'&&typeof AbortSignal.timeout==='function')?AbortSignal.timeout(6500):undefined;\n"
-              "    const response=await fetch(cap.endpoint+'?'+params.toString(),{mode:'cors',cache:'force-cache',signal,headers:{Accept:'application/geo+json,application/json'}});\n"
-              "    if(!response.ok)throw new Error('administrative boundary HTTP '+response.status);\n"
-              "    const data=await response.json();if(runToken&&!isCurrentRun(runToken))return null;"
-          )
-          new=(
-              "    const params={where:\"NAME='\"+earthlineSqlLiteral16539(stateName)+\"'\",outFields:'NAME,STUSAB,GEOID,INTPTLAT,INTPTLON',returnGeometry:'true',outSR:'4326',maxAllowableOffset:'0.0025',geometryPrecision:'5'};\n"
-              "    const raw=await jsonp(cap.endpoint,params,6500);\n"
-              "    if(raw&&raw.error)throw new Error(raw.error.message||'administrative boundary service error');\n"
-              "    const data=esriSetToGeoJSON(raw);if(runToken&&!isCurrentRun(runToken))return null;"
-          )
-          n=s.count(old)
-          if n!=1:
-              raise SystemExit(f'expected exactly one Census boundary transport block, found {n}')
-          p.write_text(s.replace(old,new,1),encoding='utf-8')
-          PY
-          git diff --check -- index.html
-          git diff --stat -- index.html
-          git diff -U6 -- index.html
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -51,42 +23,13 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Serve candidate locally
-        run: |
-          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
-          echo $! >/tmp/earthline-http.pid
-          sleep 2
-      - name: Gate candidate with two Texas runs
-        env:
-          EARTHLINE_URL: 'http://127.0.0.1:8787/'
-        run: node tests/texas-candidate-diagnostic.mjs
-      - name: Publish tested repair to pages-live
-        shell: bash
-        run: |
-          git config user.name 'Earthline Repair Bot'
-          git config user.email 'info@earthlinedevelopment.org'
-          git add index.html
-          git commit -m 'repair: stabilize and right-size shared state boundary owner'
-          git push origin HEAD:pages-live
-      - name: Wait for production candidate
-        shell: bash
-        run: |
-          python - <<'PY'
-          import time,urllib.request,sys
-          url='https://earthlinedevelopment.org/?earthline_boundary_repair=1'
-          for i in range(36):
-              try:
-                  req=urllib.request.Request(url,headers={'Cache-Control':'no-cache','User-Agent':'Earthline-verify'})
-                  text=urllib.request.urlopen(req,timeout=15).read().decode('utf-8','replace')
-                  if "maxAllowableOffset:'0.0025'" in text and 'const raw=await jsonp(cap.endpoint,params,6500)' in text:
-                      print('production candidate is live')
-                      sys.exit(0)
-              except Exception as e:
-                  print('waiting',i+1,type(e).__name__)
-              time.sleep(5)
-          raise SystemExit('production candidate marker did not appear')
-          PY
-      - name: Verify Texas twice on production
-        env:
-          EARTHLINE_URL: 'https://earthlinedevelopment.org/?earthline_boundary_repair=1'
-        run: node tests/texas-candidate-diagnostic.mjs
+      - name: Run production Texas New York regression
+        run: node tests/texas-ny-regression.mjs
+      - name: Upload regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tx-ny-regression-results
+          path: tx-ny-regression-results.json
+          if-no-files-found: error
+          retention-days: 1
