@@ -1,9 +1,10 @@
-name: Earthline Boundary Owner Extract
+name: Earthline Texas Boundary Timing
 
 on:
   push:
     branches: [pages-live]
     paths:
+      - 'tests/texas-production-diagnostic.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -11,43 +12,25 @@ permissions:
   contents: read
 
 jobs:
-  extract-boundary-owner:
+  texas-boundary-timing:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - name: Extract exact boundary owner
-        shell: bash
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          s=Path('index.html').read_text(encoding='utf-8')
-          needles=[
-            'earthlineResolveJurisdictionBoundary16539',
-            'earthlineAdministrativeCapability16539',
-            'earthlineClipRegionalProducts16539',
-            'EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556',
-            'appliedAtomically',
-            'matchingAtomicBoundary16556',
-            'profile16549'
-          ]
-          chunks=[]
-          for needle in needles:
-            pos=0; found=0
-            while True:
-              i=s.find(needle,pos)
-              if i<0: break
-              found+=1
-              a=max(0,i-22000); b=min(len(s),i+26000)
-              chunks.append(f'\n===== {needle} occurrence {found} at char {i} =====\n'+s[a:b])
-              pos=i+len(needle)
-          Path('boundary-owner-source.txt').write_text('\n'.join(chunks),encoding='utf-8')
-          print('extracted',len(chunks),'source windows')
-          PY
-      - name: Upload boundary owner source
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run Texas boundary timing
+        run: node tests/texas-production-diagnostic.mjs
+      - name: Upload Texas boundary timing
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: earthline-boundary-owner-source
-          path: boundary-owner-source.txt
+          name: texas-boundary-timing-results
+          path: texas-production-diagnostic-results.json
           if-no-files-found: error
           retention-days: 1
