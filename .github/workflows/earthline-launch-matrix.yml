@@ -1,36 +1,34 @@
-name: Earthline Texas Swale Cap Probe
+name: Earthline Shared Regional Swale Capacity Repair
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/texas-swale-cap-probe.mjs'
+      - 'tests/repair-shared-regional-swale-cap.py'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  tx-cap-probe:
+  repair-shared-swale-cap:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Playwright
+      - name: Apply exact shared-owner capacity repair
+        run: python tests/repair-shared-regional-swale-cap.py
+      - name: Verify exact delta
         run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Compare shared swale cap variants
-        run: node tests/texas-swale-cap-probe.mjs
-      - name: Upload cap evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: texas-swale-cap-probe
-          path: texas-swale-cap-probe.json
-          if-no-files-found: error
-          retention-days: 1
+          git diff --check
+          git diff -- index.html
+          test "$(grep -o "if(chosen.length>=80)break;" index.html | wc -l)" -eq 1
+          test "$(grep -o "if(chosen.length>=52)break;" index.html | wc -l)" -eq 0
+      - name: Commit repaired product
+        run: |
+          git config user.name "Earthline Repair Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "repair: raise shared Regional swale capacity to validated 80"
+          git push
