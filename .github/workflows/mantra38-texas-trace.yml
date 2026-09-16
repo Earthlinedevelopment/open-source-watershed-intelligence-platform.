@@ -4,7 +4,8 @@ on:
   push:
     branches: [mantra38-texas-trace]
     paths:
-      - 'tests/mantra38-texas-reg-p-p-reg.mjs'
+      - 'tests/mantra38-texas-candidate.mjs'
+      - 'tools/mantra38-texas-product-fix.mjs'
       - '.github/workflows/mantra38-texas-trace.yml'
   workflow_dispatch:
 
@@ -20,9 +21,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Stage product repair locally
+        run: |
+          node tools/mantra38-texas-product-fix.mjs index.html
+          git diff --check
+          git diff -- index.html
       - name: Install Playwright
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Texas Regional Property Property Regional
-        run: node tests/mantra38-texas-reg-p-p-reg.mjs
+      - name: Serve staged candidate
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 > /tmp/earthline-http.log 2>&1 &
+          echo $! > /tmp/earthline-http.pid
+          sleep 2
+          curl -fsS http://127.0.0.1:8787/ >/dev/null
+      - name: Texas staged candidate — four fresh runs
+        env:
+          EARTHLINE_URL: http://127.0.0.1:8787/
+        run: node tests/mantra38-texas-candidate.mjs
