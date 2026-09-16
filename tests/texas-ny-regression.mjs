@@ -1,37 +1,87 @@
 import { chromium } from 'playwright';
 import { writeFileSync } from 'node:fs';
 
-const URL='https://earthlinedevelopment.org/?earthline_regression=tx_ny_click';
+const URL='https://earthlinedevelopment.org/?earthline_regression=tx_same_session';
 const CASES=['Texas','Texas','Texas','New York'];
 const browser=await chromium.launch({headless:true});
+const page=await browser.newPage({viewport:{width:1600,height:1000}});
+const pageErrors=[];page.on('pageerror',e=>pageErrors.push(String(e)));
 const results=[];
-for(let run=0;run<CASES.length;run++){
+let loadError=null;
+try{
+  await page.goto(URL,{waitUntil:'domcontentloaded',timeout:45000});
+  await page.waitForSelector('#searchInput',{timeout:30000});
+}catch(e){loadError=String(e);}
+
+for(let run=0;run<CASES.length&&!loadError;run++){
   const query=CASES[run];
-  const page=await browser.newPage({viewport:{width:1600,height:1000}});
-  const errors=[];page.on('pageerror',e=>errors.push(String(e)));
-  let timedOut=false,loadError=null,clickStarted=0,terminalAt=0;
+  const before=await page.evaluate(()=>({
+    flowToken:window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584?.runToken||null,
+    errorToken:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970?.runToken||null
+  }));
+  const prevToken=before.flowToken||before.errorToken||null;
+  let timedOut=false,clickStarted=Date.now(),terminalAt=0;
+  await page.evaluate(q=>{
+    const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+    if(!i||!b)throw new Error('search controls unavailable');
+    i.focus();i.value=q;
+    i.dispatchEvent(new Event('input',{bubbles:true}));
+    i.dispatchEvent(new Event('change',{bubbles:true}));
+    b.click();
+  },query);
   try{
-    await page.goto(URL,{waitUntil:'domcontentloaded',timeout:45000});
-    await page.waitForSelector('#searchInput',{timeout:30000});
-    clickStarted=Date.now();
-    await page.evaluate(q=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');if(!i||!b)throw new Error('search controls unavailable');i.focus();i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},query);
-    try{
-      await page.waitForFunction(q=>{
-        const m=typeof M!=='undefined'&&M?M:null;
-        const status=String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'');
-        const loc=[m?.loc?.name,m?.loc?.fullName].filter(Boolean).join(' ');
-        const identity=q.toLowerCase().split(/\s+/).every(w=>loc.toLowerCase().includes(w));
-        return !!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||(identity&&/screening published\./i.test(status)&&!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191);
-      },query,{timeout:30000,polling:50});
-      terminalAt=Date.now();
-    }catch(_){timedOut=true;terminalAt=Date.now();}
-  }catch(e){loadError=String(e);terminalAt=Date.now();}
-  let after={};
-  try{after=await page.evaluate(()=>({perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,boundaryAudit:window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||null,status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim(),flowAudit:window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null}));}catch(e){loadError=loadError||String(e);}
-  const clickToTerminalMs=clickStarted?terminalAt-clickStarted:Infinity;
-  const r={run:run+1,query,clickToTerminalMs,timedOut,loadError,coreMs:Number(after?.perf?.totalMs||Infinity),phase:after?.perf?.phase||null,status:after?.status||'',boundaryAfter:after?.boundaryAudit?.after||null,lastError:after?.lastError||null,flowAudit:after?.flowAudit||null,pageErrors:errors.slice(0,10)};
-  results.push(r);console.log('EARTHLINE_TX_NY_CLICK_GATE '+JSON.stringify(r));await page.close();
+    await page.waitForFunction(({q,prev})=>{
+      const flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null;
+      const err=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null;
+      const token=(err&&err.runToken)||(flow&&flow.runToken)||null;
+      if(!token||token===prev)return false;
+      if(err&&err.runToken===token)return true;
+      const m=typeof M!=='undefined'&&M?M:null;
+      const status=String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'');
+      const loc=[m?.loc?.name,m?.loc?.fullName].filter(Boolean).join(' ');
+      const identity=q.toLowerCase().split(/\s+/).every(w=>loc.toLowerCase().includes(w));
+      return identity&&/screening published\./i.test(status)&&!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191;
+    },{q:query,prev:prevToken},{timeout:30000,polling:50});
+    terminalAt=Date.now();
+  }catch(_){timedOut=true;terminalAt=Date.now();}
+  const after=await page.evaluate(()=>{
+    const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null;
+    const label=window.EARTHLINE_REGIONAL_CORRIDOR_LABEL_AUDIT_16336||null;
+    const visual=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020||null;
+    return {
+      perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,
+      lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,
+      boundaryAudit:window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||null,
+      publicationAudit:pub,
+      labelAudit:label,
+      visualSwales:Array.isArray(visual?.swales?.features)?visual.swales.features.length:null,
+      visualFlows:Array.isArray(visual?.flows?.features)?visual.flows.features.length:null,
+      flowAudit:window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null,
+      status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim()
+    };
+  });
+  const r={
+    run:run+1,query,clickToTerminalMs:terminalAt-clickStarted,timedOut,
+    coreMs:Number(after?.perf?.totalMs||Infinity),status:after?.status||'',
+    boundaryAfter:after?.boundaryAudit?.after||null,
+    generated:after?.publicationAudit?.generated??null,
+    sourceFeatures:after?.publicationAudit?.sourceFeatures??null,
+    overlaySwaleLines:after?.publicationAudit?.overlaySwaleLines??null,
+    overlayLocationPills:after?.publicationAudit?.overlayLocationPills??null,
+    renderedCorridors:after?.labelAudit?.renderedCorridors??null,
+    renderedLabels:after?.labelAudit?.renderedLabels??null,
+    visualSwales:after?.visualSwales,visualFlows:after?.visualFlows,
+    lastError:after?.lastError||null,flowAudit:after?.flowAudit||null,
+    pageErrors:pageErrors.slice(0,20)
+  };
+  results.push(r);
+  console.log('EARTHLINE_TX_SAME_SESSION '+JSON.stringify(r));
 }
 await browser.close();
 writeFileSync('tx-ny-regression-results.json',JSON.stringify(results,null,2));
-if(results.some(r=>r.timedOut||r.loadError||r.lastError||!Number.isFinite(r.coreMs)||r.coreMs>15000||r.clickToTerminalMs>15000||!/screening published\./i.test(r.status)))process.exitCode=1;
+const tx=results.filter(r=>r.query==='Texas');
+const txGenerated=new Set(tx.map(r=>r.generated));
+const txVisible=new Set(tx.map(r=>r.overlaySwaleLines));
+const bad=loadError||results.length!==CASES.length||results.some(r=>r.timedOut||r.lastError||!Number.isFinite(r.coreMs)||r.coreMs>15000||r.clickToTerminalMs>15000||!/screening published\./i.test(r.status)||(Number(r.generated||0)>0&&Number(r.overlaySwaleLines||0)===0)||(r.sourceFeatures!=null&&r.generated!=null&&Number(r.sourceFeatures)!==Number(r.generated)))||txGenerated.size!==1||txVisible.size!==1;
+if(loadError)console.error('LOAD_ERROR',loadError);
+if(bad)process.exitCode=1;
