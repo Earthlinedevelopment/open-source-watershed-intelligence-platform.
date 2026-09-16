@@ -21,18 +21,14 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          old="""    if(swaleCount>0&&(
-              regionalOverlayRenderOk16336!==true||
-              !overlayAudit||
-              Number(overlayAudit.swaleGradeLabels||0)===0
-            )){""".replace('              ','      ').replace('            ','    ')
-          new="""    if(swaleCount>0&&!overlayAudit){"""
-          n=s.count(old)
+          pat=r"if\(swaleCount>0&&\(\s*regionalOverlayRenderOk16336!==true\|\|\s*!overlayAudit\|\|\s*Number\(overlayAudit\.swaleGradeLabels\|\|0\)===0\s*\)\)\{"
+          s2,n=re.subn(pat,"if(swaleCount>0&&!overlayAudit){",s,count=1)
           if n != 1:
               raise SystemExit(f'expected exactly one Texas label-gate block, found {n}')
-          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          p.write_text(s2,encoding='utf-8')
           PY
           git diff --check -- index.html
           git diff --stat -- index.html
