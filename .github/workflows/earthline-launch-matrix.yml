@@ -1,10 +1,10 @@
-name: Earthline Texas Spacing Policy Probe
+name: Earthline Shared Regional Spacing Regression
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/texas-spacing-policy-probe.mjs'
+      - 'tests/shared-regional-spacing-regression.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -12,9 +12,9 @@ permissions:
   contents: write
 
 jobs:
-  texas-spacing-policy:
+  shared-regional-spacing:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 7
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,23 +24,23 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Compare Texas Regional spacing policies
-        run: node tests/texas-spacing-policy-probe.mjs
+      - name: Regress Texas New York Vermont with shared 3-2 spacing
+        run: node tests/shared-regional-spacing-regression.mjs
       - name: Persist evidence on pages-live
         if: always()
         run: |
           mkdir -p tests/evidence
-          cp texas-spacing-policy-probe.json tests/evidence/texas-spacing-policy-probe.json
+          cp shared-regional-spacing-regression.json tests/evidence/shared-regional-spacing-regression.json
           git config user.name "Earthlinedevelopment"
           git config user.email "info@earthlinedevelopment.org"
-          git add tests/evidence/texas-spacing-policy-probe.json
-          git diff --cached --quiet || git commit -m "test: record Texas spacing policy evidence [skip ci]"
+          git add tests/evidence/shared-regional-spacing-regression.json
+          git diff --cached --quiet || git commit -m "test: record shared spacing regression evidence [skip ci]"
           git push origin HEAD:pages-live
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: texas-spacing-policy-probe
-          path: texas-spacing-policy-probe.json
+          name: shared-regional-spacing-regression
+          path: shared-regional-spacing-regression.json
           if-no-files-found: error
           retention-days: 1
