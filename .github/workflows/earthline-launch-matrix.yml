@@ -1,44 +1,28 @@
-name: Earthline Texas Repair Builder
+name: Earthline Launch Matrix
 
 on:
   push:
     branches: [pages-live]
     paths:
+      - 'tests/texas-production-diagnostic.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  build-repair:
+  texas-production-diagnostic:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - name: Apply only the Texas false-fatal repair
-        shell: bash
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          import re
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
-          pat=r"if\(swaleCount>0&&\(\s*regionalOverlayRenderOk16336!==true\|\|\s*!overlayAudit\|\|\s*Number\(overlayAudit\.swaleGradeLabels\|\|0\)===0\s*\)\)\{"
-          s2,n=re.subn(pat,"if(swaleCount>0&&!overlayAudit){",s,count=1)
-          if n != 1:
-              raise SystemExit(f'expected exactly one Texas label-gate block, found {n}')
-          p.write_text(s2,encoding='utf-8')
-          PY
-          git diff --check -- index.html
-          git diff --stat -- index.html
-          git diff -U8 -- index.html
-      - name: Publish repair commit to temporary branch
-        shell: bash
-        run: |
-          git config user.name 'Earthline Repair Bot'
-          git config user.email 'info@earthlinedevelopment.org'
-          git switch -c mantra39-texas-label-repair
-          git add index.html
-          git commit -m 'repair: do not erase valid corridors when optional labels are absent'
-          git push --force origin HEAD:refs/heads/mantra39-texas-label-repair
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run Texas production diagnostic
+        run: node tests/texas-production-diagnostic.mjs
