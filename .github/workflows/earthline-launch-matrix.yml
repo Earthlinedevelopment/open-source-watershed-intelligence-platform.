@@ -1,10 +1,11 @@
-name: Earthline Jurisdiction-First Texas Gate
+name: Earthline Texas Spacing Anchor Probe
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/texas-ny-regression.mjs'
+      - 'tests/probe-texas-spacing-anchor.py'
+      - 'tests/texas-spacing-anchor-probe.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -12,25 +13,27 @@ permissions:
   contents: read
 
 jobs:
-  jurisdiction-first-gate:
+  texas-spacing-anchor:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Build local A/B product variant only
+        run: python tests/probe-texas-spacing-anchor.py
       - name: Install Playwright
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Run Texas R-R-R plus New York and Vermont controls
-        run: node tests/texas-ny-regression.mjs
-      - name: Upload gate evidence
+      - name: Run Texas spacing-anchor variant under production origin
+        run: node tests/texas-spacing-anchor-probe.mjs
+      - name: Upload probe evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jurisdiction-first-texas-results
-          path: tx-ny-regression-results.json
+          name: texas-spacing-anchor-probe
+          path: texas-spacing-anchor-probe.json
           if-no-files-found: error
           retention-days: 1
