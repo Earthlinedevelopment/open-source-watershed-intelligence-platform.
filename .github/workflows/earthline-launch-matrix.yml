@@ -1,35 +1,36 @@
-name: Earthline Shared Regional Terrain Repair
+name: Earthline Texas Final Launch Gate
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/repair-shared-terrain-deadline.py'
+      - 'tests/texas-ny-regression.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  repair-terrain-owner:
+  tx-final-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - name: Apply exact shared terrain-owner repair
-        run: python tests/repair-shared-terrain-deadline.py
-      - name: Verify delta
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
         run: |
-          git diff --check
-          git diff -- index.html
-          grep -F "const openGrid16201=focusMode?220:96,mapGrid16201=focusMode?180:96;" index.html >/dev/null
-          grep -F "const openBudget16353=focusMode?14000:6000;" index.html >/dev/null
-          grep -F "const fallbackBudget16353=focusMode?10000:6500;" index.html >/dev/null
-      - name: Commit repaired product
-        run: |
-          git config user.name "Earthline Repair Bot"
-          git config user.email "info@earthlinedevelopment.org"
-          git add index.html
-          git commit -m "repair: stabilize shared Regional terrain source deadlines"
-          git push
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run Texas repeated gate with New York and Vermont controls
+        run: node tests/texas-ny-regression.mjs
+      - name: Upload final gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tx-final-gate-results
+          path: tx-ny-regression-results.json
+          if-no-files-found: error
+          retention-days: 1
