@@ -1,34 +1,36 @@
-name: Earthline Shared Regional Swale Capacity Repair
+name: Earthline Texas Cap-80 Product Gate
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/repair-shared-regional-swale-cap.py'
+      - 'tests/texas-ny-regression.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  repair-shared-swale-cap:
+  tx-cap80-product:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Apply exact shared-owner capacity repair
-        run: python tests/repair-shared-regional-swale-cap.py
-      - name: Verify exact delta
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
         run: |
-          git diff --check
-          git diff -- index.html
-          test "$(grep -o "if(chosen.length>=80)break;" index.html | wc -l)" -eq 1
-          test "$(grep -o "if(chosen.length>=52)break;" index.html | wc -l)" -eq 0
-      - name: Commit repaired product
-        run: |
-          git config user.name "Earthline Repair Bot"
-          git config user.email "info@earthlinedevelopment.org"
-          git add index.html
-          git commit -m "repair: raise shared Regional swale capacity to validated 80"
-          git push
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run Texas cap-80 product and New York control
+        run: node tests/texas-ny-regression.mjs
+      - name: Upload final evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: texas-cap80-product-results
+          path: tx-ny-regression-results.json
+          if-no-files-found: error
+          retention-days: 1
