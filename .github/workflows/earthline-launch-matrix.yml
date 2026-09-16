@@ -1,10 +1,10 @@
-name: Earthline Shared Regional Spacing Regression
+name: Earthline Shared Spacing Fresh A-B
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/shared-regional-spacing-regression.mjs'
+      - 'tests/shared-spacing-fresh-ab.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -12,9 +12,9 @@ permissions:
   contents: write
 
 jobs:
-  shared-regional-spacing:
+  shared-spacing-fresh-ab:
     runs-on: ubuntu-latest
-    timeout-minutes: 7
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,23 +24,23 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Regress Texas New York Vermont with shared 3-2 spacing
-        run: node tests/shared-regional-spacing-regression.mjs
+      - name: Run fresh-page baseline vs 3-2 spacing
+        run: node tests/shared-spacing-fresh-ab.mjs
       - name: Persist evidence on pages-live
         if: always()
         run: |
           mkdir -p tests/evidence
-          cp shared-regional-spacing-regression.json tests/evidence/shared-regional-spacing-regression.json
+          cp shared-spacing-fresh-ab.json tests/evidence/shared-spacing-fresh-ab.json
           git config user.name "Earthlinedevelopment"
           git config user.email "info@earthlinedevelopment.org"
-          git add tests/evidence/shared-regional-spacing-regression.json
-          git diff --cached --quiet || git commit -m "test: record shared spacing regression evidence [skip ci]"
+          git add tests/evidence/shared-spacing-fresh-ab.json
+          git diff --cached --quiet || git commit -m "test: record fresh shared spacing AB evidence [skip ci]"
           git push origin HEAD:pages-live
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: shared-regional-spacing-regression
-          path: shared-regional-spacing-regression.json
+          name: shared-spacing-fresh-ab
+          path: shared-spacing-fresh-ab.json
           if-no-files-found: error
           retention-days: 1
