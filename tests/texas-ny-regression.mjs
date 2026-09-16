@@ -1,4 +1,5 @@
 import { chromium } from 'playwright';
+import { writeFileSync } from 'node:fs';
 
 const URL='https://earthlinedevelopment.org/?earthline_regression=tx_ny';
 const CASES=['New York','Texas'];
@@ -28,4 +29,5 @@ for(const query of CASES){
   results.push(r);console.log('EARTHLINE_TX_NY_REGRESSION '+JSON.stringify(r));await page.close();
 }
 await browser.close();
+writeFileSync('tx-ny-regression-results.json',JSON.stringify(results,null,2));
 if(results.some(r=>r.timedOut||r.loadError||r.lastError||!r.repairMarker||!Number.isFinite(r.coreMs)||r.coreMs>15000||!/screening published\./i.test(r.status)))process.exitCode=1;
