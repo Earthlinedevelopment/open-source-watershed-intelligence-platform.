@@ -1,0 +1,28 @@
+name: Mantra 38 Texas Trace
+
+on:
+  push:
+    branches: [mantra38-texas-trace]
+    paths:
+      - 'tests/mantra38-texas-reg-p-p-reg.mjs'
+      - '.github/workflows/mantra38-texas-trace.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Texas Regional Property Property Regional
+        run: node tests/mantra38-texas-reg-p-p-reg.mjs
