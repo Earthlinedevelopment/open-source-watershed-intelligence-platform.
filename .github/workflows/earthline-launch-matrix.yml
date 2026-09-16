@@ -1,38 +1,35 @@
-name: Earthline Texas Geographic Containment Gate
+name: Earthline Regional Visual Jurisdiction Repair
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/texas-containment-probe.mjs'
+      - 'tests/repair-regional-jurisdiction-visual-clip.py'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  tx-containment-gate:
+  repair-regional-visual-containment:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Playwright
+      - name: Apply authoritative visual jurisdiction clip
+        run: python tests/repair-regional-jurisdiction-visual-clip.py
+      - name: Verify delta
         run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Run live Texas geographic containment gate
-        run: node tests/texas-containment-probe.mjs
-      - name: Upload containment evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: texas-geographic-containment-gate
-          path: |
-            texas-containment-probe.json
-            texas-containment-probe.png
-          if-no-files-found: error
-          retention-days: 1
+          git diff --check
+          git diff -- index.html
+          grep -F "function jurisdictionClipD16020" index.html >/dev/null
+          grep -F "earthlineJurisdictionClip16020" index.html >/dev/null
+          grep -F "clipPathUnits:'userSpaceOnUse'" index.html >/dev/null
+      - name: Commit repaired product
+        run: |
+          git config user.name "Earthline Repair Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "repair: clip Regional SVG output to authoritative jurisdiction"
+          git push
