@@ -30812,12 +30812,12 @@ body { overflow-x:hidden!important; }
 
     // 16297: DEM acquisition is independent of Mapbox style/camera readiness. Start
     // the exact same open-elevation request immediately and let it overlap map startup.
-    const openGrid16201=focusMode?220:96,mapGrid16201=focusMode?180:80;
+    const openGrid16201=focusMode?220:96,mapGrid16201=focusMode?180:96;
     const landValidityPromise16584=!focusMode
       ?earthlineResolveLandValidity16584(b,runToken)
       :Promise.resolve(null);
     const terrainStarted16198=performance.now();
-    const openBudget16353=focusMode?14000:4300;
+    const openBudget16353=focusMode?14000:6000;
     const openLabel16353=focusMode?'open focus elevation':'open regional elevation';
     /* EARTHLINE 16353 — the open DEM deadline is enforced by loadDEM's own
        AbortController so a timed-out tile acquisition cannot survive into fallback. */
@@ -30852,7 +30852,7 @@ body { overflow-x:hidden!important; }
     }catch(openError16198){
       if(!isCurrentRun(runToken))return false;
       const fallbackStarted16281=performance.now();
-      const fallbackBudget16353=focusMode?10000:30000;
+      const fallbackBudget16353=focusMode?10000:6500;
       const fallbackLabel16353=focusMode?'Mapbox focus elevation fallback':'Mapbox regional elevation fallback';
       const fallbackCtl16353=new AbortController();
       const fallbackTimer16353=setTimeout(()=>fallbackCtl16353.abort(new Error(fallbackLabel16353+' timed out')),fallbackBudget16353);
