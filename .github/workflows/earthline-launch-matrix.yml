@@ -1,36 +1,34 @@
-name: Earthline Texas Renderer Resize Probe
+name: Earthline Existing Renderer Cold-Run Repair
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/texas-ny-regression.mjs'
+      - 'tests/repair-shared-renderer-resize.py'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  tx-resize-probe:
+  repair-existing-renderer:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Playwright
+      - name: Apply exact renderer repair
+        run: python tests/repair-shared-renderer-resize.py
+      - name: Verify delta
         run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Run Texas renderer resize probe
-        run: node tests/texas-ny-regression.mjs
-      - name: Upload resize probe evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: tx-renderer-resize-probe
-          path: tx-ny-regression-results.json
-          if-no-files-found: error
-          retention-days: 1
+          git diff --check
+          git diff -- index.html
+          grep -F "lastResizeRunToken16020" index.html >/dev/null
+          grep -F "map.resize&&map.resize()" index.html >/dev/null
+      - name: Commit repaired product
+        run: |
+          git config user.name "Earthline Repair Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "repair: synchronize existing Regional renderer before projection"
+          git push
