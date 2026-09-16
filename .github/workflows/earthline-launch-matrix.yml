@@ -1,9 +1,10 @@
-name: Earthline Texas New York Regression
+name: Earthline Texas Publication Owner Extract
 
 on:
   push:
     branches: [pages-live]
     paths:
+      - 'tests/extract-texas-publication-owner.py'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -11,25 +12,17 @@ permissions:
   contents: read
 
 jobs:
-  tx-ny-regression:
+  extract-publication-owner:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Playwright
-        run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Run production Texas New York regression
-        run: node tests/texas-ny-regression.mjs
-      - name: Upload regression evidence
-        if: always()
+      - name: Extract exact publication owner
+        run: python tests/extract-texas-publication-owner.py
+      - name: Upload publication owner evidence
         uses: actions/upload-artifact@v4
         with:
-          name: tx-ny-regression-results
-          path: tx-ny-regression-results.json
+          name: texas-publication-owner-extract
+          path: texas-publication-owner-extract.txt
           if-no-files-found: error
           retention-days: 1
