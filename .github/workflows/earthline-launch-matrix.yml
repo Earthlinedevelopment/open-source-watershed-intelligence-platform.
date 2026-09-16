@@ -1,10 +1,10 @@
-name: Earthline Texas Spacing Loop Trace
+name: Earthline Texas Spacing Policy Probe
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/extract-texas-publication-owner.py'
+      - 'tests/texas-spacing-policy-probe.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -12,10 +12,25 @@ permissions:
   contents: read
 
 jobs:
-  texas-spacing-loop:
+  texas-spacing-policy:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
-      - name: Extract exact Regional spacing loop
-        run: python tests/extract-texas-publication-owner.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Compare Texas Regional spacing policies
+        run: node tests/texas-spacing-policy-probe.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: texas-spacing-policy-probe
+          path: texas-spacing-policy-probe.json
+          if-no-files-found: error
+          retention-days: 1
