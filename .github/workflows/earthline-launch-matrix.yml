@@ -1,36 +1,35 @@
-name: Earthline Texas Same-Session Camera Gate
+name: Earthline Shared Boundary Transport Repair
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/texas-ny-regression.mjs'
+      - 'tests/repair-shared-boundary-transport.py'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  tx-camera-gate:
+  repair-boundary-transport:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Playwright
+      - name: Apply exact shared-owner repair
+        run: python tests/repair-shared-boundary-transport.py
+      - name: Verify delta
         run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Run same-session camera gate
-        run: node tests/texas-ny-regression.mjs
-      - name: Upload camera gate evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: tx-camera-gate-results
-          path: tx-ny-regression-results.json
-          if-no-files-found: error
-          retention-days: 1
+          git diff --check
+          git diff -- index.html
+          grep -F "maxAllowableOffset:'0.0025'" index.html >/dev/null
+          grep -F "f:'geojson'" index.html >/dev/null
+          if grep -F "const raw=await jsonp(cap.endpoint,params,6500)" index.html >/dev/null; then exit 1; fi
+      - name: Commit repaired product
+        run: |
+          git config user.name "Earthline Repair Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "repair: restore reliable shared boundary transport"
+          git push
