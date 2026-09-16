@@ -23,15 +23,19 @@ jobs:
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          old="""    const params=new URLSearchParams({where:"NAME='"+earthlineSqlLiteral16539(stateName)+"'",outFields:'NAME,STUSAB,GEOID,INTPTLAT,INTPTLON',returnGeometry:'true',outSR:'4326',maxAllowableOffset:'0.00015',geometryPrecision:'5',f:'geojson'});
-    const signal=(typeof AbortSignal!=='undefined'&&typeof AbortSignal.timeout==='function')?AbortSignal.timeout(6500):undefined;
-    const response=await fetch(cap.endpoint+'?'+params.toString(),{mode:'cors',cache:'force-cache',signal,headers:{Accept:'application/geo+json,application/json'}});
-    if(!response.ok)throw new Error('administrative boundary HTTP '+response.status);
-    const data=await response.json();if(runToken&&!isCurrentRun(runToken))return null;"""
-          new="""    const params={where:"NAME='"+earthlineSqlLiteral16539(stateName)+"'",outFields:'NAME,STUSAB,GEOID,INTPTLAT,INTPTLON',returnGeometry:'true',outSR:'4326',maxAllowableOffset:'0.0025',geometryPrecision:'5'};
-    const raw=await jsonp(cap.endpoint,params,6500);
-    if(raw&&raw.error)throw new Error(raw.error.message||'administrative boundary service error');
-    const data=esriSetToGeoJSON(raw);if(runToken&&!isCurrentRun(runToken))return null;"""
+          old=(
+              "    const params=new URLSearchParams({where:\"NAME='\"+earthlineSqlLiteral16539(stateName)+\"'\",outFields:'NAME,STUSAB,GEOID,INTPTLAT,INTPTLON',returnGeometry:'true',outSR:'4326',maxAllowableOffset:'0.00015',geometryPrecision:'5',f:'geojson'});\n"
+              "    const signal=(typeof AbortSignal!=='undefined'&&typeof AbortSignal.timeout==='function')?AbortSignal.timeout(6500):undefined;\n"
+              "    const response=await fetch(cap.endpoint+'?'+params.toString(),{mode:'cors',cache:'force-cache',signal,headers:{Accept:'application/geo+json,application/json'}});\n"
+              "    if(!response.ok)throw new Error('administrative boundary HTTP '+response.status);\n"
+              "    const data=await response.json();if(runToken&&!isCurrentRun(runToken))return null;"
+          )
+          new=(
+              "    const params={where:\"NAME='\"+earthlineSqlLiteral16539(stateName)+\"'\",outFields:'NAME,STUSAB,GEOID,INTPTLAT,INTPTLON',returnGeometry:'true',outSR:'4326',maxAllowableOffset:'0.0025',geometryPrecision:'5'};\n"
+              "    const raw=await jsonp(cap.endpoint,params,6500);\n"
+              "    if(raw&&raw.error)throw new Error(raw.error.message||'administrative boundary service error');\n"
+              "    const data=esriSetToGeoJSON(raw);if(runToken&&!isCurrentRun(runToken))return null;"
+          )
           n=s.count(old)
           if n!=1:
               raise SystemExit(f'expected exactly one Census boundary transport block, found {n}')
@@ -54,7 +58,7 @@ jobs:
           sleep 2
       - name: Gate candidate with two Texas runs
         env:
-          EARTHLINE_URL: http://127.0.0.1:8787/
+          EARTHLINE_URL: 'http://127.0.0.1:8787/'
         run: node tests/texas-candidate-diagnostic.mjs
       - name: Publish tested repair to pages-live
         shell: bash
@@ -84,5 +88,5 @@ jobs:
           PY
       - name: Verify Texas twice on production
         env:
-          EARTHLINE_URL: https://earthlinedevelopment.org/?earthline_boundary_repair=1
+          EARTHLINE_URL: 'https://earthlinedevelopment.org/?earthline_boundary_repair=1'
         run: node tests/texas-candidate-diagnostic.mjs
