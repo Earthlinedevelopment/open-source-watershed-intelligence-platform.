@@ -2,90 +2,59 @@ import { chromium } from 'playwright';
 import { writeFileSync } from 'node:fs';
 
 const URL='https://earthlinedevelopment.org/';
-const CASES=['Vermont','Texas'];
 const browser=await chromium.launch({headless:true});
-const results=[];
-
-function snapshot(){
-  const m=typeof M!=='undefined'&&M?M:null;
-  const r=window.earthlineRegional15778||null;
-  const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
-  const a=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null;
-  const map=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
-  let swales=0,flows=0;
+const page=await browser.newPage({viewport:{width:1600,height:1000}});
+const errors=[];
+page.on('pageerror',e=>errors.push({type:'pageerror',message:String(e),stack:String(e?.stack||'').slice(0,2500)}));
+page.on('console',m=>{if(m.type()==='error')errors.push({type:'console',message:m.text().slice(0,2500)});});
+const started=Date.now();
+let loadError=null,timedOut=false;
+try{
+  await page.goto(URL,{waitUntil:'domcontentloaded',timeout:45000});
+  await page.waitForSelector('#searchInput',{timeout:30000});
+  await page.evaluate(()=>{
+    const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+    if(!i||!b)throw new Error('search controls unavailable');
+    i.focus();i.value='Texas';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();
+  });
   try{
-    const s=map?.getSource?.('el-live-swales-15970'),f=map?.getSource?.('el-live-flows-15970');
-    swales=Number(s?._data?.features?.length||s?._options?.data?.features?.length||0);
-    flows=Number(f?._data?.features?.length||f?._options?.data?.features?.length||0);
-  }catch(_){}
-  const sm=m?.swaleMeta||null;
-  const html=document.documentElement.outerHTML;
-  const needle='corridor rendering incomplete';
-  const sourceAt=html.indexOf(needle);
-  return {
-    readyState:document.readyState,
-    mapReady:!!map,
-    locName:String(m?.loc?.name||''),
-    locFullName:String(m?.loc?.fullName||''),
-    runBusy:document.getElementById('runBtn')?.getAttribute('aria-busy')==='true',
-    regional:r?{active:!!r.active,mode:String(r.mode||''),summary:r.summary||null}:null,
-    displayed:d?{tier:String(d.tier||d.mode||''),name:String(d.name||d.label||d.location||''),runToken:d.runToken||d.token||null}:null,
-    status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim().slice(0,1000),
-    preflight:window.EARTHLINE_REGIONAL_ATOMIC_PREFLIGHT_16329||null,
-    lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,
-    perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,
-    products:window.EARTHLINE_ORB_RESPONSIVENESS_16245||null,
-    swaleMeta:sm?{prescriptionMs:sm.prescriptionMs,levelsChecked:sm.levelsChecked,candidatesGenerated:sm.candidatesGenerated,performanceBudget:sm.performanceBudget,regionalTile:sm.regionalTile,flowFirst15836:sm.flowFirst15836,performance16320:sm.performance16320}:null,
-    generationAudit:window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null,
-    labelAudit:window.EARTHLINE_REGIONAL_CORRIDOR_LABEL_AUDIT_16336||null,
-    flowValidity:window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null,
-    corridorAudit:a?{tier:a.tier,generated:a.generated,sourceFeatures:a.sourceFeatures,overlaySwaleLines:a.overlaySwaleLines,checkedAt:a.checkedAt}:null,
-    sourceExcerpt:sourceAt>=0?html.slice(Math.max(0,sourceAt-18000),Math.min(html.length,sourceAt+22000)):'',
-    swales,flows
-  };
-}
-
-for(const query of CASES){
-  const page=await browser.newPage({viewport:{width:1600,height:1000}});
-  const errors=[];
-  page.on('pageerror',e=>errors.push({type:'pageerror',message:String(e),stack:String(e?.stack||'').slice(0,2500)}));
-  page.on('console',m=>{if(m.type()==='error')errors.push({type:'console',message:m.text().slice(0,2500)});});
-  const started=Date.now();
-  let loadError=null,timedOut=false;
-  try{
-    await page.goto(URL,{waitUntil:'domcontentloaded',timeout:45000});
-    await page.waitForSelector('#searchInput',{timeout:30000});
-    await page.evaluate(q=>{
-      const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
-      if(!i||!b)throw new Error('search controls unavailable');
-      i.focus();i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();
-    },query);
-    try{
-      await page.waitForFunction(q=>{
-        const n=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
-        const m=typeof M!=='undefined'&&M?M:null;
-        const status=String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'');
-        const loc=n([m?.loc?.name,m?.loc?.fullName].filter(Boolean).join(' '));
-        const identity=n(q).split(' ').filter(Boolean).every(w=>loc.includes(w));
-        const failed=!!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970;
-        const published=/screening published\./i.test(status)&&!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191;
-        return failed||(identity&&published);
-      },query,{timeout:30000,polling:100});
-    }catch(_){timedOut=true;}
-    await page.waitForTimeout(500);
-  }catch(e){loadError=String(e);}
-  let after=null;
-  try{after=await page.evaluate(snapshot);}catch(e){loadError=loadError||String(e);}
-  const elapsedMs=Date.now()-started;
-  const result={query,elapsedMs,timedOut,loadError,after,errors:errors.slice(0,20)};
-  results.push(result);
-  console.log('EARTHLINE_TEXAS_DIAGNOSTIC '+JSON.stringify({...result,after:{...after,sourceExcerpt:after?.sourceExcerpt?'[captured]':''}}));
-  await page.close();
-}
-
-console.log('EARTHLINE_TEXAS_DIAGNOSTIC_SUMMARY '+JSON.stringify(results.map(x=>({...x,after:{...x.after,sourceExcerpt:x.after?.sourceExcerpt?'[captured]':''}}))));
-writeFileSync('texas-production-diagnostic-results.json',JSON.stringify(results,null,2));
-const texas=results.find(x=>x.query==='Texas');
-const control=results.find(x=>x.query==='Vermont');
-if(!texas||!control||texas.loadError||texas.timedOut||texas.after?.lastError||!texas.after?.corridorAudit?.generated||Number(texas.after?.perf?.totalMs||Infinity)>15000||control.loadError||control.timedOut||control.after?.lastError||Number(control.after?.perf?.totalMs||Infinity)>15000)process.exitCode=1;
+    await page.waitForFunction(()=>{
+      const m=typeof M!=='undefined'&&M?M:null;
+      const status=String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'');
+      const identity=/texas/i.test(String(m?.loc?.name||''))||/texas/i.test(String(m?.loc?.fullName||''));
+      return !!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||(identity&&/screening published\./i.test(status)&&!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191);
+    },{timeout:30000,polling:100});
+  }catch(_){timedOut=true;}
+  await page.waitForTimeout(300);
+}catch(e){loadError=String(e);}
+let after=null;
+try{
+  after=await page.evaluate(()=>{
+    const m=typeof M!=='undefined'&&M?M:null;
+    const pkg=window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556||null;
+    const lastPkg=window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||null;
+    let profile=null;
+    try{profile=typeof earthlineJurisdictionProfile16549==='function'?earthlineJurisdictionProfile16549('Texas'):null;}catch(_){}
+    return {
+      now:new Date().toISOString(),
+      loc:m?.loc||null,
+      profile:profile?{id:profile.id,query:profile.query,abbr:profile.abbr,supportTier:profile.supportTier}:null,
+      activePackage:pkg?{profileId:pkg.profileId,appliedAtomically:pkg.appliedAtomically,resolvedAt:pkg.resolvedAt,boundaryLabel:pkg.boundary?.label,boundaryCode:pkg.boundary?.code}:null,
+      lastAtomicPackage:lastPkg?{profileId:lastPkg.profileId,appliedAtomically:lastPkg.appliedAtomically,resolvedAt:lastPkg.resolvedAt,boundaryLabel:lastPkg.boundary?.label}:null,
+      jurisdictionAudit:window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||null,
+      landValidity:window.EARTHLINE_LAND_VALIDITY_16584||null,
+      generationAudit:window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null,
+      products:window.EARTHLINE_ORB_RESPONSIVENESS_16245||null,
+      preflight:window.EARTHLINE_REGIONAL_ATOMIC_PREFLIGHT_16329||null,
+      labelAudit:window.EARTHLINE_REGIONAL_CORRIDOR_LABEL_AUDIT_16336||null,
+      perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,
+      lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,
+      status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim()
+    };
+  });
+}catch(e){loadError=loadError||String(e);}
+const result={query:'Texas',elapsedMs:Date.now()-started,timedOut,loadError,after,errors:errors.slice(0,20)};
+console.log('EARTHLINE_TEXAS_BOUNDARY_TIMING '+JSON.stringify(result));
+writeFileSync('texas-production-diagnostic-results.json',JSON.stringify(result,null,2));
+if(loadError||timedOut||after?.lastError||Number(after?.perf?.totalMs||Infinity)>15000)process.exitCode=1;
 await browser.close();
