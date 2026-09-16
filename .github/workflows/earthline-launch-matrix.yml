@@ -1,35 +1,36 @@
-name: Earthline Shared Boundary Transport Repair
+name: Earthline Texas Post-Boundary Regression
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/repair-shared-boundary-transport.py'
+      - 'tests/texas-ny-regression.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  repair-boundary-transport:
+  tx-post-boundary:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Apply exact shared-owner repair
-        run: python tests/repair-shared-boundary-transport.py
-      - name: Verify delta
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
         run: |
-          git diff --check
-          git diff -- index.html
-          grep -F "maxAllowableOffset:'0.0025'" index.html >/dev/null
-          grep -F "f:'geojson'" index.html >/dev/null
-          if grep -F "const raw=await jsonp(cap.endpoint,params,6500)" index.html >/dev/null; then exit 1; fi
-      - name: Commit repaired product
-        run: |
-          git config user.name "Earthline Repair Bot"
-          git config user.email "info@earthlinedevelopment.org"
-          git add index.html
-          git commit -m "repair: restore reliable shared boundary transport"
-          git push
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run Texas same-session and New York control
+        run: node tests/texas-ny-regression.mjs
+      - name: Upload regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tx-post-boundary-results
+          path: tx-ny-regression-results.json
+          if-no-files-found: error
+          retention-days: 1
