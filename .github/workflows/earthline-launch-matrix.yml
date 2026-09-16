@@ -1,10 +1,9 @@
-name: Earthline Launch Matrix
+name: Earthline Publication Owner Extract
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/texas-production-diagnostic.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -12,25 +11,43 @@ permissions:
   contents: read
 
 jobs:
-  texas-production-diagnostic:
+  extract-publication-owner:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Playwright
+      - name: Extract exact Regional publication owner
+        shell: bash
         run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Run Texas production diagnostic
-        run: node tests/texas-production-diagnostic.mjs
-      - name: Upload Texas diagnostic result
-        if: always()
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          needles=[
+            'corridor rendering incomplete',
+            'EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167',
+            'EARTHLINE_REGIONAL_CORRIDOR_LABEL_AUDIT_16336',
+            'regionalOverlayRenderOk16336',
+            'EARTHLINE_REGIONAL_ATOMIC_PREFLIGHT_16329'
+          ]
+          chunks=[]
+          for needle in needles:
+            pos=0
+            found=0
+            while True:
+              i=s.find(needle,pos)
+              if i<0: break
+              found+=1
+              a=max(0,i-18000); b=min(len(s),i+22000)
+              chunks.append(f'\n===== {needle} occurrence {found} at char {i} =====\n'+s[a:b])
+              pos=i+len(needle)
+          Path('publication-owner-source.txt').write_text('\n'.join(chunks),encoding='utf-8')
+          print('extracted',len(chunks),'source windows')
+          PY
+      - name: Upload publication owner source
         uses: actions/upload-artifact@v4
         with:
-          name: texas-production-diagnostic-results
-          path: texas-production-diagnostic-results.json
+          name: earthline-publication-owner-source
+          path: publication-owner-source.txt
           if-no-files-found: error
           retention-days: 1
