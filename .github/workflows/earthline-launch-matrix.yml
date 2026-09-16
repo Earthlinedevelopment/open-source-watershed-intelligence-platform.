@@ -1,10 +1,10 @@
-name: Earthline Texas Corridor Selection Trace
+name: Earthline Texas Swale Cap Probe
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/extract-texas-publication-owner.py'
+      - 'tests/texas-swale-cap-probe.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -12,17 +12,25 @@ permissions:
   contents: read
 
 jobs:
-  trace-corridor-selection:
+  tx-cap-probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - name: Extract shared corridor selection owner
-        run: python tests/extract-texas-publication-owner.py
-      - name: Upload corridor selection trace
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Compare shared swale cap variants
+        run: node tests/texas-swale-cap-probe.mjs
+      - name: Upload cap evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: texas-corridor-selection-owner-trace
-          path: texas-corridor-selection-owner-extract.txt
+          name: texas-swale-cap-probe
+          path: texas-swale-cap-probe.json
           if-no-files-found: error
           retention-days: 1
