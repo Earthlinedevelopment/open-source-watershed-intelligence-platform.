@@ -26,3 +26,11 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Run Texas production diagnostic
         run: node tests/texas-production-diagnostic.mjs
+      - name: Upload Texas diagnostic result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: texas-production-diagnostic-results
+          path: texas-production-diagnostic-results.json
+          if-no-files-found: error
+          retention-days: 1
