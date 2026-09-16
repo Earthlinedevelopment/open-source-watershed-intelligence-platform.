@@ -1,10 +1,10 @@
-name: Earthline Texas Duplicate Jurisdiction A-B
+name: Earthline Terrain Hydrology Trace
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/shared-regional-spacing-regression.mjs'
+      - 'tests/extract-texas-publication-owner.py'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -12,25 +12,10 @@ permissions:
   contents: read
 
 jobs:
-  texas-dedupe-ab:
+  terrain-hydrology-trace:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Playwright
-        run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Run Texas duplicate-jurisdiction A-B
-        run: node tests/shared-regional-spacing-regression.mjs
-      - name: Upload evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: texas-dedupe-ab
-          path: shared-regional-spacing-regression.json
-          if-no-files-found: error
-          retention-days: 1
+      - name: Trace shared terrain and hydrology internals
+        run: python tests/extract-texas-publication-owner.py
