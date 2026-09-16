@@ -1,35 +1,38 @@
-name: Earthline Regional Visual Jurisdiction Repair
+name: Earthline Texas Visual Containment Gate
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/repair-regional-jurisdiction-visual-clip.py'
+      - 'tests/texas-containment-probe.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  repair-regional-visual-containment:
+  tx-visual-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Apply authoritative visual jurisdiction clip
-        run: python tests/repair-regional-jurisdiction-visual-clip.py
-      - name: Verify delta
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
         run: |
-          git diff --check
-          git diff -- index.html
-          grep -F "function jurisdictionClipD16020" index.html >/dev/null
-          grep -F "earthlineJurisdictionClip16020" index.html >/dev/null
-          grep -F "clipPathUnits:'userSpaceOnUse'" index.html >/dev/null
-      - name: Commit repaired product
-        run: |
-          git config user.name "Earthline Repair Bot"
-          git config user.email "info@earthlinedevelopment.org"
-          git add index.html
-          git commit -m "repair: clip Regional SVG output to authoritative jurisdiction"
-          git push
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run live Texas visual containment gate
+        run: node tests/texas-containment-probe.mjs
+      - name: Upload visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: texas-visual-containment-gate
+          path: |
+            texas-containment-probe.json
+            texas-containment-probe.png
+          if-no-files-found: error
+          retention-days: 1
