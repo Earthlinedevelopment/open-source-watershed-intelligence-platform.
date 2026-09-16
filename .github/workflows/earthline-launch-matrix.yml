@@ -1,10 +1,10 @@
-name: Earthline Texas Publication Owner Extract
+name: Earthline Texas Click-to-Publication Gate
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/extract-texas-publication-owner.py'
+      - 'tests/texas-ny-regression.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -12,17 +12,25 @@ permissions:
   contents: read
 
 jobs:
-  extract-publication-owner:
+  tx-click-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Extract exact publication owner
-        run: python tests/extract-texas-publication-owner.py
-      - name: Upload publication owner evidence
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run Texas x3 and New York control
+        run: node tests/texas-ny-regression.mjs
+      - name: Upload click gate evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: texas-publication-owner-extract
-          path: texas-publication-owner-extract.txt
+          name: tx-click-gate-results
+          path: tx-ny-regression-results.json
           if-no-files-found: error
           retention-days: 1
