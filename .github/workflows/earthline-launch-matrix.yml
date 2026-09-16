@@ -1,35 +1,36 @@
-name: Earthline Shared Jurisdiction Selection Repair
+name: Earthline Jurisdiction-First Texas Gate
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/repair-regional-jurisdiction-before-selection.py'
+      - 'tests/texas-ny-regression.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  repair-jurisdiction-selection:
+  jurisdiction-first-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - name: Apply exact shared selection-order repair
-        run: python tests/repair-regional-jurisdiction-before-selection.py
-      - name: Verify delta
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
         run: |
-          git diff --check
-          git diff -- index.html
-          grep -F "jurisdiction-before-ranking-spacing-capacity" index.html >/dev/null
-          grep -F "selectionBoundary16539=await jurisdictionBoundaryPromise16539" index.html >/dev/null
-          grep -F "const boundary16539=selectionBoundary16539||await jurisdictionBoundaryPromise16539" index.html >/dev/null
-      - name: Commit repaired product
-        run: |
-          git config user.name "Earthline Repair Bot"
-          git config user.email "info@earthlinedevelopment.org"
-          git add index.html
-          git commit -m "repair: select Regional corridors inside jurisdiction first"
-          git push
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run Texas R-R-R plus New York and Vermont controls
+        run: node tests/texas-ny-regression.mjs
+      - name: Upload gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jurisdiction-first-texas-results
+          path: tx-ny-regression-results.json
+          if-no-files-found: error
+          retention-days: 1
