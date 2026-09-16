@@ -1,28 +1,15 @@
 from pathlib import Path
 src=Path('index.html').read_text(encoding='utf-8')
 lines=src.splitlines()
-anchors=[
- ('async function loadDEM',160,260),
- ('function loadDEM(',160,260),
- ('async function loadDEMFromMap',160,260),
- ('function loadDEMFromMap',160,260),
- ('earthlineResolveLandValidity16584',140,220),
- ('function hydrology',140,260),
- ('function contours',120,220),
- ('function makeSwales',180,360),
- ('earthlineEnforceRegionalJurisdictionBoundary16539',140,220),
- ('earthlineRenderRegionalOverlay16020',140,240),
- ('EARTHLINE_REGIONAL_PERFORMANCE_16191',220,300),
- ('terrainProductsAndPublishMs',220,300),
- ('terrainMs',220,300),
-]
-seen=[]
-for anchor,before,after in anchors:
+anchors=['loadDEM','loadDEMFromMap','earthlineResolveLandValidity16584','function hydrology','function contours','function makeSwales','earthlineEnforceRegionalJurisdictionBoundary16539','earthlineRenderRegionalOverlay16020','EARTHLINE_REGIONAL_PERFORMANCE_16191','terrainProductsAndPublishMs','terrainMs']
+seen=set()
+for anchor in anchors:
     hits=[i for i,l in enumerate(lines) if anchor.lower() in l.lower()]
-    print(f'===== {anchor} HITS {len(hits)} =====')
-    for i in hits[:8]:
-        if any(abs(i-c)<80 for c in seen): continue
-        seen.append(i)
-        lo=max(0,i-before);hi=min(len(lines),i+after)
+    print(f'===== {anchor} HITS {len(hits)} {[(i+1) for i in hits[:12]]} =====')
+    for i in hits[:4]:
+        key=i//20
+        if key in seen: continue
+        seen.add(key)
+        lo=max(0,i-18);hi=min(len(lines),i+32)
         print(f'--- LINES {lo+1}-{hi} ---')
         for j in range(lo,hi): print(f'{j+1:06d}: {lines[j]}')
