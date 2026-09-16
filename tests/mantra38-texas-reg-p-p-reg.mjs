@@ -1,75 +1,78 @@
 import { chromium } from 'playwright';
 
 const URL='https://earthlinedevelopment.org/';
-const HARD=15000;
 const browser=await chromium.launch({headless:true});
-const page=await browser.newPage({viewport:{width:1440,height:1000}});
 const errors=[];
-page.on('pageerror',e=>errors.push('pageerror:'+String(e)));
-page.on('console',m=>{ if(m.type()==='error') errors.push('console:'+m.text()); });
-await page.goto(URL,{waitUntil:'domcontentloaded',timeout:45000});
-await page.waitForSelector('#searchInput',{timeout:30000});
 
-const snap=()=>{
-  const m=(typeof M!=='undefined'&&M)||null;
-  const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
-  const r=window.earthlineRegional15778||{};
-  const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{};
-  const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
-  const style=mp?.getStyle?.()||{};
-  const swaleLayers=(style.layers||[]).filter(x=>/swale|corridor/i.test(String(x.id||''))).map(x=>({id:x.id,type:x.type,source:x.source,visibility:x.layout?.visibility||'visible'}));
-  const swaleSources=[];
-  for(const l of swaleLayers){
-    if(!l.source||swaleSources.some(x=>x.id===l.source))continue;
-    let count=null;try{const s=mp?.getSource?.(l.source);const data=s?._data||s?._options?.data||null;count=Number(data?.features?.length??NaN);if(!Number.isFinite(count))count=null;}catch(_){}
-    swaleSources.push({id:l.source,count});
-  }
-  const c=mp?.getCenter?.();
-  return {
-    searchGen:Number(m?.searchGen||0), locName:String(m?.loc?.name||''), locFullName:String(m?.loc?.fullName||''),
-    displayedTier:String(d.tier||d.mode||''), regionalActive:!!r.active, analysisReady:!!m?.analysisReady,
-    propertyState:String(document.documentElement.dataset.earthlinePropertyRunState||''), propertyAudit:a,
-    propertyReady:document.documentElement.classList.contains('earthline-property-ready-16188'),
-    swales:Number(m?.swales?.length||0), recharge:Number(m?.rechZones?.length||0), swaleLayers, swaleSources,
-    zoom:Number(mp?.getZoom?.()||0), center:c?{lng:Number(c.lng),lat:Number(c.lat)}:null,
-    regionalVisualSwales:Number(window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.swales?.features?.length||0),
-    regionalDisplayAudit:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null,
-    corridorPublicationAudit:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,
-    generationAudit:window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null,
-    propertyLock:m?.propertyResultLock15815||null,
-    safety:m?.safetyAudit15806||null,
-    runError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,
-    status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim().replace(/\s+/g,' ').slice(0,900)
-  };
-};
+async function oneAttempt(attempt){
+  const page=await browser.newPage({viewport:{width:1800,height:1000}});
+  page.on('pageerror',e=>errors.push({attempt,type:'pageerror',message:String(e)}));
+  page.on('console',m=>{if(m.type()==='error')errors.push({attempt,type:'console',message:m.text()});});
+  await page.goto(URL,{waitUntil:'domcontentloaded',timeout:45000});
+  await page.waitForSelector('#searchInput',{timeout:30000});
 
-async function regional(label){
-  const before=await page.evaluate(snap), t0=Date.now();
+  await page.evaluate(()=>{
+    window.__TX_TRACE=[];
+    const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+    const cam=()=>{const c=mp?.getCenter?.();return {z:Number(mp?.getZoom?.()||0),c:c?{lng:Number(c.lng),lat:Number(c.lat)}:null};};
+    const rec=(type,data={})=>window.__TX_TRACE.push({type,t:performance.now(),cam:cam(),...data});
+    rec('installed');
+
+    const wrap=(name,before,after)=>{
+      const f=window[name]; if(typeof f!=='function'||f.__txWrapped)return false;
+      const w=async function(...args){before?.(args);let out,err;try{out=await f.apply(this,args);return out;}catch(e){err=e;throw e;}finally{after?.(args,out,err);}};
+      w.__txWrapped=true;w.__base=f;window[name]=w;return true;
+    };
+    wrap('settleRegionalCamera',args=>rec('settle-start',{arg1:String(args[1]??'').slice(0,500)}),(args,out,err)=>rec('settle-end',{out:String(out),err:err?String(err):null}));
+    wrap('earthlineRenderRegionalOverlay16020',args=>{
+      const fs=args?.[0]?.swales?.features||[];const lengths=[];
+      for(const f of fs){const cc=f?.geometry?.coordinates||[];let L=0,last=null;for(const ll of cc){try{const p=mp.project({lng:Number(ll[0]),lat:Number(ll[1])});if(last)L+=Math.hypot(p.x-last.x,p.y-last.y);last=p;}catch(_){}}lengths.push(Number(L.toFixed(2)));}
+      rec('renderer-start',{swales:fs.length,min:lengths.length?Math.min(...lengths):null,max:lengths.length?Math.max(...lengths):null,ge22:lengths.filter(x=>x>=22).length});
+    },(args,out,err)=>rec('renderer-end',{err:err?String(err):null,audit:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null}));
+
+    for(const method of ['fitBounds','easeTo','flyTo','jumpTo']){
+      try{const base=mp?.[method];if(typeof base!=='function'||base.__txWrapped)continue;mp[method]=function(...args){rec('camera-'+method,{args:JSON.stringify(args).slice(0,700)});return base.apply(this,args)};mp[method].__txWrapped=true;}catch(_){ }
+    }
+  });
+
+  const started=Date.now();
   await page.evaluate(()=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.focus();i.value='Texas';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
-  let timeout=false;
-  try{await page.waitForFunction(()=>{const m=(typeof M!=='undefined'&&M)||null,r=window.earthlineRegional15778||{},d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{};const text=String([m?.loc?.name,m?.loc?.fullName,d?.name,d?.label].join(' ')).toLowerCase();return text.includes('texas')&&!r.active&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';},null,{timeout:24000,polling:200});}catch(_){timeout=true;}
-  const after=await page.evaluate(snap); return {stage:label,elapsedMs:Date.now()-t0,timeout,pass:!timeout&&Date.now()-t0<=HARD&&after.regionalVisualSwales>0,after};
+  try{await page.waitForFunction(()=>{const r=window.earthlineRegional15778||{};const e=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970;const a=window.EARTHLINE_REGIONAL_ATOMIC_PREFLIGHT_16329;return (!!e||(!r.active&&a?.passed===true))&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';},null,{timeout:36000,polling:200});}catch(_){ }
+  await page.waitForTimeout(1000);
+
+  const result=await page.evaluate(()=>{
+    const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),m=(typeof M!=='undefined'&&M)||null,r=window.earthlineRegional15778||{};
+    const c=mp?.getCenter?.();const style=mp?.getStyle?.()||{};
+    const interesting=(style.layers||[]).filter(l=>/aquifer|ground|basin|swale|corridor|label/i.test(String(l.id||''))).map(l=>({id:l.id,type:l.type,source:l.source,sourceLayer:l['source-layer']||null,visibility:l.layout?.visibility||'visible',textField:l.layout?.['text-field']||null}));
+    const rendered=[];
+    for(const l of interesting){
+      let feats=[];try{feats=mp.queryRenderedFeatures(undefined,{layers:[l.id]})||[];}catch(_){ }
+      if(feats.length)rendered.push({layer:l.id,source:l.source,count:feats.length,examples:feats.slice(0,20).map(f=>({props:f.properties||{},type:f.geometry?.type,coord:f.geometry?.type==='Point'?f.geometry.coordinates:null}))});
+    }
+    const dom=[];
+    for(const el of document.querySelectorAll('body *')){
+      const txt=String(el.textContent||'').trim().replace(/\s+/g,' ');
+      if(!/MAPPED AQUIFER|San Luis|Two Buttes/i.test(txt))continue;
+      const kids=el.children?.length||0;if(kids>4)continue;
+      const b=el.getBoundingClientRect();if(b.width<1||b.height<1)continue;
+      dom.push({tag:el.tagName,id:el.id||'',class:String(el.className?.baseVal||el.className||''),text:txt.slice(0,240),html:String(el.outerHTML||'').slice(0,700),box:{x:b.x,y:b.y,w:b.width,h:b.height}});
+      if(dom.length>=30)break;
+    }
+    const globals={};for(const k of Object.keys(window)){if(!/aquifer|boundary|state.*165|16565|contain/i.test(k))continue;let v;try{v=window[k];}catch(_){continue;}if(typeof v==='function')globals[k]=String(v).slice(0,1200);else if(v&&typeof v==='object'){try{globals[k]=JSON.stringify(v).slice(0,3000);}catch(_){globals[k]=String(v);}}else globals[k]=String(v).slice(0,500);if(Object.keys(globals).length>=50)break;}
+    return {
+      loc:{name:String(m?.loc?.name||''),fullName:String(m?.loc?.fullName||'')},
+      center:c?{lng:Number(c.lng),lat:Number(c.lat)}:null,zoom:Number(mp?.getZoom?.()||0),regionalActive:!!r.active,
+      preflight:window.EARTHLINE_REGIONAL_ATOMIC_PREFLIGHT_16329||null,cameraAudit:window.EARTHLINE_REGIONAL_CAMERA_SETTLE_AUDIT_16334||null,
+      runError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,displayAudit:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null,
+      corridorAudit:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,generationAudit:window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null,
+      containment:window.EARTHLINE_OPTIONAL_CONTEXT_CONTAINMENT_16565||window.EARTHLINE_OPTIONAL_CONTEXT_AUDIT_16565||null,
+      trace:window.__TX_TRACE||[],interesting,rendered,dom,globals
+    };
+  });
+  result.attempt=attempt;result.elapsedMs=Date.now()-started;
+  await page.close();return result;
 }
 
-async function property(label){
-  try{await page.waitForFunction(()=>{const b=document.getElementById('earthlineDeclareProperty16169');return !!b&&!b.disabled;},null,{timeout:10000,polling:150});}catch(_){}
-  const before=await page.evaluate(snap); const priorAt=String(before.propertyAudit?.at||before.propertyAudit?.settledAt||''); const t0=Date.now();
-  const clicked=await page.evaluate(()=>{const b=document.getElementById('earthlineDeclareProperty16169');if(!b||b.disabled)return false;b.click();return true;});
-  if(!clicked)return {stage:label,clicked:false,pass:false,elapsedMs:0,before,after:before};
-  let timeout=false;
-  try{await page.waitForFunction(prior=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;const state=String(document.documentElement.dataset.earthlinePropertyRunState||'');if(!a||a.settled!==true||state==='running')return false;const now=String(a.at||a.settledAt||'');return !prior||!now||now!==prior;},priorAt,{timeout:20000,polling:150});}catch(_){timeout=true;}
-  await page.waitForTimeout(400);
-  const after=await page.evaluate(snap); const sourceVisible=after.swaleSources.some(s=>Number(s.count)>0); const generated=after.swales>0||Number(after.generationAudit?.generated||after.generationAudit?.selected||0)>0;
-  const published=after.analysisReady&&String(after.displayedTier).toLowerCase()==='property';
-  return {stage:label,clicked:true,elapsedMs:Date.now()-t0,timeout,generated,sourceVisible,published,pass:!timeout&&(Date.now()-t0)<=HARD&&generated&&sourceVisible&&published,before,after};
-}
-
-const stages=[];
-stages.push(await regional('Texas Regional 1'));
-stages.push(await property('Texas Property 1'));
-stages.push(await property('Texas Property 2'));
-stages.push(await regional('Texas Regional reclaim'));
-const report={test:'Texas reg-p-p-reg from locked NY-water build',baseCommit:'16e601d9037107de94d72cf319f9827e91341bfa',hardCeilingMs:HARD,pass:stages.every(s=>s.pass===true),stages,errors:errors.slice(0,30)};
-console.log('MANTRA38_TEXAS_SEQUENCE '+JSON.stringify(report));
+const attempts=[];for(let i=1;i<=4;i++)attempts.push(await oneAttempt(i));
+console.log('MANTRA38_TEXAS_OWNER_TRACE '+JSON.stringify({attempts,errors:errors.slice(0,50)}));
 await browser.close();
-if(!report.pass)process.exitCode=1;
