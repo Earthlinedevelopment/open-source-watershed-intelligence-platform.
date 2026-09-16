@@ -30481,10 +30481,11 @@ body { overflow-x:hidden!important; }
     const stateName=String(loc&&loc.name||q||'').trim();if(!stateName)throw new Error('selected state name is unavailable');
     const key=[cap.id,stateName.toLowerCase()].join('|');
     if(jurisdictionBoundaryCache16539.has(key))return jurisdictionBoundaryCache16539.get(key);
-    const params={where:"NAME='"+earthlineSqlLiteral16539(stateName)+"'",outFields:'NAME,STUSAB,GEOID,INTPTLAT,INTPTLON',returnGeometry:'true',outSR:'4326',maxAllowableOffset:'0.0025',geometryPrecision:'5'};
-    const raw=await jsonp(cap.endpoint,params,6500);
-    if(raw&&raw.error)throw new Error(raw.error.message||'administrative boundary service error');
-    const data=esriSetToGeoJSON(raw);if(runToken&&!isCurrentRun(runToken))return null;
+    const params=new URLSearchParams({where:"NAME='"+earthlineSqlLiteral16539(stateName)+"'",outFields:'NAME,STUSAB,GEOID,INTPTLAT,INTPTLON',returnGeometry:'true',outSR:'4326',maxAllowableOffset:'0.0025',geometryPrecision:'5',f:'geojson'});
+    const signal=(typeof AbortSignal!=='undefined'&&typeof AbortSignal.timeout==='function')?AbortSignal.timeout(6500):undefined;
+    const response=await fetch(cap.endpoint+'?'+params.toString(),{mode:'cors',cache:'force-cache',signal,headers:{Accept:'application/geo+json,application/json'}});
+    if(!response.ok)throw new Error('administrative boundary HTTP '+response.status);
+    const data=await response.json();if(runToken&&!isCurrentRun(runToken))return null;
     const rows=Array.isArray(data&&data.features)?data.features.filter(f=>f&&f.geometry&&(f.geometry.type==='Polygon'||f.geometry.type==='MultiPolygon')):[];
     const named=rows.filter(f=>earthlinePlaceKey16537(f&&f.properties&&f.properties.NAME||'')===earthlinePlaceKey16537(stateName));
     const containing=(Number.isFinite(center[0])&&Number.isFinite(center[1]))?(named.length?named:rows).filter(f=>earthlinePointInJurisdiction16539(center,f.geometry)):[];
