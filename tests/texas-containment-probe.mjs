@@ -31,10 +31,10 @@ const result=await page.evaluate(()=>{
     mapSources:{swales:auditFC(sourceData('el-live-swales-15970'),g),flows:auditFC(sourceData('el-live-flows-15970'),g),basin:auditFC(sourceData('el-live-basin-15970'),g)},
     svgLabels:auditFC({features:labelFeatures},g),
     displayAudit:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||null,
-    status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||''),
-    errors
+    status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||'')
   };
 });
+result.errors=errors;
 console.log('EARTHLINE_TX_CONTAINMENT_PROBE '+JSON.stringify(result));
 writeFileSync('texas-containment-probe.json',JSON.stringify(result,null,2));
 await page.screenshot({path:'texas-containment-probe.png',fullPage:true});
