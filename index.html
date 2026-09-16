@@ -29713,7 +29713,7 @@ body { overflow-x:hidden!important; }
 
     const hasGrid16584=!!hy16584.validityMask16584;
     const evidenceReady16584=hasGrid16584||styleCoverageReady16584;
-    /* Shared global shoreline uncertainty: half of this run's local DEM-cell diagonal.
+    /* Shared global shoreline uncertainty: one full local DEM-cell diagonal.
        No jurisdiction-specific distance is used. Natural Earth 1:10m lakes and any
        live style surface-water polygons feed the same final publication validator. */
     const shoreBufferKm16584=(()=>{
@@ -29723,7 +29723,7 @@ body { overflow-x:hidden!important; }
             hav16584=(a,b)=>{const p1=a[1]*r16584,p2=b[1]*r16584,dp=(b[1]-a[1])*r16584,dl=(b[0]-a[0])*r16584,q=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R16584*Math.asin(Math.min(1,Math.sqrt(q)))};
       const dx16584=hav16584([Number(b16584[0]),mid16584],[Number(b16584[0])+(Number(b16584[2])-Number(b16584[0]))/(w16584-1),mid16584]),
             dy16584=hav16584([Number(b16584[0]),mid16584],[Number(b16584[0]),mid16584+(Number(b16584[3])-Number(b16584[1]))/(h16584-1)]);
-      return .5*Math.hypot(dx16584,dy16584);
+      return Math.hypot(dx16584,dy16584);
     })();
     const shoreDistanceKm16584=p16584=>{
       if(!(shoreBufferKm16584>0)||!finitePoint16584(p16584))return Infinity;
@@ -29803,7 +29803,7 @@ body { overflow-x:hidden!important; }
       jurisdictionAgnostic:true,landGridAvailable:hasGrid16584,styleCoverageReady:styleCoverageReady16584,
       featureCount:styleFeatureCount16584,partCount:stylePartCount16584,sourceCount:styleSourceCount16584,
       inputLines:inputLines16584,outputLines:outputLines16584,clippedLines:clippedLines16584,droppedLines:droppedLines16584,
-      shorelineEvidence:'Natural Earth 1:10m lakes + live surface-water polygons',shoreBufferRule:'half-local-DEM-cell-diagonal',shoreBufferKm:Number(shoreBufferKm16584.toFixed(3)),
+      shorelineEvidence:'Natural Earth 1:10m lakes + live surface-water polygons',shoreBufferRule:'one-local-DEM-cell-diagonal',shoreBufferKm:Number(shoreBufferKm16584.toFixed(3)),
       failClosedNoEvidence:!evidenceReady16584,at:new Date().toISOString()
     };
     return {...flows16584,features:kept16584.concat(arrows16584)};
