@@ -1,0 +1,40 @@
+name: Mantra 39 Texas Now
+
+on:
+  push:
+    branches: [mantra39-texas-test]
+    paths:
+      - 'lab/mantra39-texas-now.mjs'
+      - '.github/workflows/mantra39-texas-now.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  texas-now:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run Texas production check
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/lab.html
+        run: node lab/mantra39-texas-now.mjs
+      - name: Upload Texas evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mantra39-texas-now
+          path: lab-results/mantra39-texas-now.json
+          if-no-files-found: warn
+          retention-days: 7
