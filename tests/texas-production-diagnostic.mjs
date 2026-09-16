@@ -2,7 +2,7 @@ import { chromium } from 'playwright';
 import { writeFileSync } from 'node:fs';
 
 const URL='https://earthlinedevelopment.org/';
-const CASES=['Oklahoma','Texas'];
+const CASES=['Vermont','Texas'];
 const browser=await chromium.launch({headless:true});
 const results=[];
 
@@ -82,6 +82,6 @@ for(const query of CASES){
 console.log('EARTHLINE_TEXAS_DIAGNOSTIC_SUMMARY '+JSON.stringify(results));
 writeFileSync('texas-production-diagnostic-results.json',JSON.stringify(results,null,2));
 const texas=results.find(x=>x.query==='Texas');
-const control=results.find(x=>x.query==='Oklahoma');
+const control=results.find(x=>x.query==='Vermont');
 if(!texas||!control||texas.loadError||texas.timedOut||texas.after?.lastError||!texas.after?.corridorAudit?.generated||Number(texas.after?.perf?.totalMs||Infinity)>15000||control.loadError||control.timedOut||control.after?.lastError||Number(control.after?.perf?.totalMs||Infinity)>15000)process.exitCode=1;
 await browser.close();
