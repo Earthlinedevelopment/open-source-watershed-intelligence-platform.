@@ -1,0 +1,35 @@
+name: Mantra 38 Basin Water Candidate
+
+on:
+  push:
+    branches: [mantra38-basin-water-display-fix]
+    paths:
+      - 'tests/mantra38-basin-water-candidate.mjs'
+      - '.github/workflows/mantra38-basin-water-candidate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra38-basin-water-display-fix
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Serve candidate
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 > /tmp/earthline-http.log 2>&1 &
+          echo $! > /tmp/earthline-http.pid
+          sleep 2
+      - name: Verify New York basin lines remain out of mapped inland water
+        run: node tests/mantra38-basin-water-candidate.mjs
