@@ -1,34 +1,36 @@
-name: Earthline Existing Renderer Cold-Run Repair
+name: Earthline Texas Product Final Gate
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/repair-shared-renderer-resize.py'
+      - 'tests/texas-ny-regression.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  repair-existing-renderer:
+  tx-product-final:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - name: Apply exact renderer repair
-        run: python tests/repair-shared-renderer-resize.py
-      - name: Verify delta
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
         run: |
-          git diff --check
-          git diff -- index.html
-          grep -F "lastResizeRunToken16020" index.html >/dev/null
-          grep -F "map.resize&&map.resize()" index.html >/dev/null
-      - name: Commit repaired product
-        run: |
-          git config user.name "Earthline Repair Bot"
-          git config user.email "info@earthlinedevelopment.org"
-          git add index.html
-          git commit -m "repair: synchronize existing Regional renderer before projection"
-          git push
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run repaired-product Texas gate
+        run: node tests/texas-ny-regression.mjs
+      - name: Upload final evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tx-product-final-results
+          path: tx-ny-regression-results.json
+          if-no-files-found: error
+          retention-days: 1
