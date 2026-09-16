@@ -4,9 +4,9 @@ import { writeFileSync } from 'node:fs';
 const BASE='https://earthlinedevelopment.org/';
 const variants=[
   {name:'baseline-6-4',primary:6,secondary:4},
-  {name:'5-4',primary:5,secondary:4},
-  {name:'5-3',primary:5,secondary:3},
-  {name:'4-3',primary:4,secondary:3}
+  {name:'4-3',primary:4,secondary:3},
+  {name:'3-3',primary:3,secondary:3},
+  {name:'3-2',primary:3,secondary:2}
 ];
 
 function coverageFrom(features,boundary){
