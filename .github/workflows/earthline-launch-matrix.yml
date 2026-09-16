@@ -1,21 +1,35 @@
-name: Earthline Texas Selection Order Trace
+name: Earthline Shared Jurisdiction Selection Repair
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/extract-texas-publication-owner.py'
+      - 'tests/repair-regional-jurisdiction-before-selection.py'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  tx-selection-order:
+  repair-jurisdiction-selection:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
-      - name: Extract generator, capacity, boundary and publication owners
-        run: python tests/extract-texas-publication-owner.py
+      - name: Apply exact shared selection-order repair
+        run: python tests/repair-regional-jurisdiction-before-selection.py
+      - name: Verify delta
+        run: |
+          git diff --check
+          git diff -- index.html
+          grep -F "jurisdiction-before-ranking-spacing-capacity" index.html >/dev/null
+          grep -F "selectionBoundary16539=await jurisdictionBoundaryPromise16539" index.html >/dev/null
+          grep -F "const boundary16539=selectionBoundary16539||await jurisdictionBoundaryPromise16539" index.html >/dev/null
+      - name: Commit repaired product
+        run: |
+          git config user.name "Earthline Repair Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "repair: select Regional corridors inside jurisdiction first"
+          git push
