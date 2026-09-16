@@ -1,28 +1,35 @@
-name: Earthline Shared Terrain Owner Trace
+name: Earthline Shared Regional Terrain Repair
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/extract-texas-publication-owner.py'
+      - 'tests/repair-shared-terrain-deadline.py'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  trace-terrain-owner:
+  repair-terrain-owner:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
-      - name: Extract shared terrain owner
-        run: python tests/extract-texas-publication-owner.py
-      - name: Upload terrain owner trace
-        uses: actions/upload-artifact@v4
-        with:
-          name: shared-terrain-owner-trace
-          path: texas-publication-owner-extract.txt
-          if-no-files-found: error
-          retention-days: 1
+      - name: Apply exact shared terrain-owner repair
+        run: python tests/repair-shared-terrain-deadline.py
+      - name: Verify delta
+        run: |
+          git diff --check
+          git diff -- index.html
+          grep -F "const openGrid16201=focusMode?220:96,mapGrid16201=focusMode?180:96;" index.html >/dev/null
+          grep -F "const openBudget16353=focusMode?14000:6000;" index.html >/dev/null
+          grep -F "const fallbackBudget16353=focusMode?10000:6500;" index.html >/dev/null
+      - name: Commit repaired product
+        run: |
+          git config user.name "Earthline Repair Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "repair: stabilize shared Regional terrain source deadlines"
+          git push
