@@ -1,0 +1,28 @@
+name: Earthline Texas Regional Grid Sweep
+
+on:
+  push:
+    branches: [diag-aquifer-east-texas]
+    paths:
+      - 'tests/texas-regional-grid-resolution-sweep.mjs'
+      - '.github/workflows/earthline-texas-grid-sweep.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  texas-grid-sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Sweep Texas Regional grid
+        run: node tests/texas-regional-grid-resolution-sweep.mjs
