@@ -1,0 +1,21 @@
+name: Earthline Fast Source Owner Scan
+
+on:
+  push:
+    branches: [diag-aquifer-east-texas]
+    paths:
+      - 'tests/source-owner-fast.py'
+      - '.github/workflows/earthline-fast-source-owner.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fast-source-owner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan grid and renderer owners
+        run: python tests/source-owner-fast.py
