@@ -1,0 +1,21 @@
+name: Earthline Texas Aquifer Owner Trace
+
+on:
+  push:
+    branches: [diag-aquifer-east-texas]
+    paths:
+      - 'tests/trace-texas-aquifer-owner.py'
+      - '.github/workflows/earthline-texas-aquifer-trace.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  texas-aquifer-owner-trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trace Texas aquifer owner
+        run: python tests/trace-texas-aquifer-owner.py
