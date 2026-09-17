@@ -1,10 +1,10 @@
-name: Earthline Shared Regional Scale-Aware Length Control
+name: Earthline Regional Grid Source Trace
 
 on:
   push:
     branches: [diag-aquifer-east-texas]
     paths:
-      - 'tests/shared-regional-scale-aware-length-control.mjs'
+      - 'tests/regional-grid-source-window.mjs'
       - '.github/workflows/earthline-aquifer-runtime-diag.yml'
   workflow_dispatch:
 
@@ -12,17 +12,13 @@ permissions:
   contents: read
 
 jobs:
-  shared-regional-scale-aware-length-control:
+  regional-grid-source-trace:
     runs-on: ubuntu-latest
-    timeout-minutes: 24
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install Playwright
-        run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Run scale-aware Regional length control
-        run: node tests/shared-regional-scale-aware-length-control.mjs
+      - name: Trace Regional grid source owner
+        run: node tests/regional-grid-source-window.mjs
