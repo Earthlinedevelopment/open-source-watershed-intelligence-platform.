@@ -1,10 +1,10 @@
-name: Earthline Final Shared Regional Candidate Gate
+name: Earthline Shared Regional Renderer Extract
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/shared-regional-candidate-final.mjs'
+      - 'tests/extract-regional-renderer-owner.py'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -12,25 +12,17 @@ permissions:
   contents: read
 
 jobs:
-  final-shared-regional-candidate:
+  extract-regional-renderer:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Playwright
-        run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Run final TX NY VT shared Regional candidate gate
-        run: node tests/shared-regional-candidate-final.mjs
-      - name: Upload final shared gate evidence
-        if: always()
+      - name: Extract shared Regional renderer owner
+        run: python tests/extract-regional-renderer-owner.py
+      - name: Upload renderer extract
         uses: actions/upload-artifact@v4
         with:
-          name: shared-regional-candidate-final
-          path: shared-regional-candidate-final.json
+          name: regional-renderer-owner-extract
+          path: regional-renderer-owner-extract.txt
           if-no-files-found: error
           retention-days: 1
