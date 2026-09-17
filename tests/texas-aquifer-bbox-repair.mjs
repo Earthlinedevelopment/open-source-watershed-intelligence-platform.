@@ -19,10 +19,10 @@ await page.goto(URL+'?tx_aquifer_bbox='+Date.now(),{waitUntil:'domcontentloaded'
 await page.waitForSelector('#searchInput',{timeout:30000});
 await page.evaluate(()=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='Texas';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
 let timedOut=false;
-try{await page.waitForFunction(()=>{const a=window.M?.usgsAquiferAudit||null;return a&&String(a.status||'')!=='loading';},{timeout:25000,polling:100});}catch(_){timedOut=true;}
+try{await page.waitForFunction(()=>{const mm=(typeof M!=='undefined'?M:null);const a=mm&&mm.usgsAquiferAudit||null;return a&&String(a.status||'')!=='loading';},{timeout:25000,polling:100});}catch(_){timedOut=true;}
 await page.waitForTimeout(500);
 const state=await page.evaluate(()=>{
- const M0=window.M||{};const a=M0.usgsAquiferAudit||null;const src=(window.earthlineMap||window.earthlineMap)?.getSource?.('earthline-aquifers')||null;const data=src&&(src._data||src._options?.data)||null;
+ const M0=(typeof M!=='undefined'&&M)||{};const a=M0.usgsAquiferAudit||null;const src=(window.earthlineMap||window.earthlineMap)?.getSource?.('earthline-aquifers')||null;const data=src&&(src._data||src._options?.data)||null;
  return {audit:a,box:M0.usgsAquiferBox||null,status:M0.usgsAquiferStatus||null,count:Array.isArray(M0.usgsAquifers)?M0.usgsAquifers.length:null,layerOn:M0.layers?.usgsAquifer?.on??null,sourceFeatures:Array.isArray(data?.features)?data.features.length:null,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null};
 });
 console.log('EARTHLINE_TX_AQUIFER_BBOX_REPAIR '+JSON.stringify({patchPlanning,patchSearch,timedOut,state,errors:errors.slice(0,20)}));
