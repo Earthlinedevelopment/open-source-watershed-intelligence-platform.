@@ -3,9 +3,11 @@ import { writeFileSync } from 'node:fs';
 
 const BASE='https://earthlinedevelopment.org/';
 const CASES=[
-  {query:'Texas',minPublished:40},
-  {query:'New York',minPublished:70},
-  {query:'Vermont',minPublished:40},
+  {query:'Texas',minPublished:40,tag:'tx'},
+  {query:'New York',minPublished:70,tag:'ny'},
+  {query:'Vermont',minPublished:40,tag:'vt1'},
+  {query:'Vermont',minPublished:40,tag:'vt2'},
+  {query:'Vermont',minPublished:40,tag:'vt3'},
 ];
 
 const browser=await chromium.launch({headless:true});
@@ -57,6 +59,15 @@ function patchBody(body){
     '        stagger=setTimeout(startAlternate,250);',
     '        stagger=setTimeout(startAlternate,1200);');
 
+  r('preCameraResize',
+    '    const cameraSettle16310=Promise.resolve(settleRegionalCamera(m,b,runToken)).catch(()=>false);',
+    '    try{m.resize&&m.resize();}catch(_){}\n    const cameraSettle16310=Promise.resolve(settleRegionalCamera(m,b,runToken)).catch(()=>false);');
+
+  r('removeLateRendererResize',
+    "const resizeRunToken16020=String(lastData&&lastData.runToken||'');if(resizeRunToken16020&&resizeRunToken16020!==lastResizeRunToken16020){lastResizeRunToken16020=resizeRunToken16020;try{map.resize&&map.resize();}catch(_){}}",
+    "const resizeRunToken16020=String(lastData&&lastData.runToken||'');if(resizeRunToken16020&&resizeRunToken16020!==lastResizeRunToken16020){lastResizeRunToken16020=resizeRunToken16020;}"
+  );
+
   return {body,patch};
 }
 
@@ -81,7 +92,7 @@ for(const testCase of CASES){
   });
 
   try{
-    await page.goto(BASE+'?earthline_final_shared_gate='+encodeURIComponent(testCase.query)+'_'+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+    await page.goto(BASE+'?earthline_final_shared_gate='+testCase.tag+'_'+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
     await page.waitForSelector('#searchInput',{timeout:30000});
   }catch(e){loadError=String(e);}
 
@@ -121,6 +132,7 @@ for(const testCase of CASES){
 
   const row={
     query:testCase.query,
+    tag:testCase.tag,
     minPublished:testCase.minPublished,
     patch,
     loadError,
