@@ -29346,7 +29346,7 @@ body { overflow-x:hidden!important; }
           fetchImageData(alternate,signal).then(finishSuccess,finishFailure);
         };
         fetchImageData(primary,signal).then(finishSuccess,finishFailure);
-        stagger=setTimeout(startAlternate,250);
+        stagger=setTimeout(startAlternate,1200);
       });
     })().finally(()=>EARTHLINE_REGIONAL_TERRAIN_INFLIGHT_16297.delete(key));
     EARTHLINE_REGIONAL_TERRAIN_INFLIGHT_16297.set(key,promise);
@@ -29953,21 +29953,25 @@ body { overflow-x:hidden!important; }
     /* EARTHLINE 16591 — jurisdiction eligibility must precede Regional ranking/spacing/capacity.
        Hydrology and contours still span the full DEM envelope; this only prevents candidates
        that cannot be published in the selected jurisdiction from consuming selection slots. */
+    const jurisdictionScreenCache16592=new WeakMap();
     function screenJurisdictionCandidate16539(candidate16539){
       if(focusMode||!jurisdictionGeometry16539)return candidate16539;
+      if(candidate16539&&jurisdictionScreenCache16592.has(candidate16539))return jurisdictionScreenCache16592.get(candidate16539);
       const runs16539=earthlineClipLine16539(candidate16539&&candidate16539.segment||[],jurisdictionGeometry16539);
-      if(!runs16539.length)return null;
+      if(!runs16539.length){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
       runs16539.sort((a16539,b16539)=>lineLengthPixels(hy,b16539)-lineLengthPixels(hy,a16539));
       const segment16539=runs16539[0];
-      if(!segment16539||segment16539.length<2||lineLengthPixels(hy,segment16539)<10)return null;
+      if(!segment16539||segment16539.length<2||lineLengthPixels(hy,segment16539)<10){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
       const mid16539=segment16539[Math.floor((segment16539.length-1)/2)],grid16539=llGrid(hy,mid16539);
-      if(!grid16539||!Number.isFinite(grid16539.x)||!Number.isFinite(grid16539.y))return null;
-      return Object.assign({},candidate16539,{
+      if(!grid16539||!Number.isFinite(grid16539.x)||!Number.isFinite(grid16539.y)){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
+      const screenedCandidate16592=Object.assign({},candidate16539,{
         segment:segment16539,
         x:Math.max(1,Math.min(hy.w-2,Math.round(grid16539.x))),
         y:Math.max(1,Math.min(hy.h-2,Math.round(grid16539.y))),
         jurisdiction_screened:true
       });
+      if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,screenedCandidate16592);
+      return screenedCandidate16592;
     }
     function jurisdictionEligibleCount16539(list16539){
       if(focusMode||!jurisdictionGeometry16539)return list16539.length;
@@ -29996,10 +30000,10 @@ body { overflow-x:hidden!important; }
     }
     const jurisdictionEligibleCandidates16539=candidates.length;
     candidates.sort((a,b)=>b.score-a.score);
-    const chosen=[],primarySpacing=Math.max(6,Math.round(hy.w/31));
+    const chosen=[],primarySpacing=Math.max(3,Math.round(hy.w/31));
     for(const c of candidates){
       if(chosen.length>=80)break;
-      const spacing=chosen.length<20?primarySpacing:Math.max(4,Math.round(primarySpacing*.72));
+      const spacing=chosen.length<20?primarySpacing:Math.max(2,Math.round(primarySpacing*.72));
       if(chosen.some(p=>Math.hypot(p.x-c.x,p.y-c.y)<spacing))continue;
       chosen.push(c);
     }
@@ -30550,7 +30554,7 @@ body { overflow-x:hidden!important; }
     if(run.length>=2)runs.push(run);return runs;
   }
   function earthlineClipFeatureCollection16539(fc,g){
-    const out=[];for(const feature of (fc&&fc.features||[])){if(!feature||!feature.geometry)continue;const geom=feature.geometry,props=Object.assign({},feature.properties||{});if(geom.type==='Point'){if(earthlinePointInJurisdiction16539(geom.coordinates,g))out.push({type:'Feature',properties:props,geometry:JSON.parse(JSON.stringify(geom))});continue;}const lines=geom.type==='LineString'?[geom.coordinates]:geom.type==='MultiLineString'?(geom.coordinates||[]):[];for(const line of lines)for(const run of earthlineClipLine16539(line,g)){const safe=run.filter(p=>earthlinePointInJurisdiction16539(p,g));if(safe.length>=2)out.push({type:'Feature',properties:Object.assign({},props,{jurisdiction_boundary_screened:true}),geometry:{type:'LineString',coordinates:safe}});}}return {type:'FeatureCollection',features:out};
+    const out=[];for(const feature of (fc&&fc.features||[])){if(!feature||!feature.geometry)continue;const geom=feature.geometry,props=Object.assign({},feature.properties||{});if(geom.type==='Point'){if(earthlinePointInJurisdiction16539(geom.coordinates,g))out.push({type:'Feature',properties:props,geometry:JSON.parse(JSON.stringify(geom))});continue;}const lines=geom.type==='LineString'?[geom.coordinates]:geom.type==='MultiLineString'?(geom.coordinates||[]):[];for(const line of lines)for(const run of earthlineClipLine16539(line,g)){const safe=run;if(safe.length>=2)out.push({type:'Feature',properties:Object.assign({},props,{jurisdiction_boundary_screened:true}),geometry:{type:'LineString',coordinates:safe}});}}return {type:'FeatureCollection',features:out};
   }
   function earthlineOutsideCoordinateCount16539(fc,g){let outside=0;for(const f of (fc&&fc.features||[])){const geom=f&&f.geometry;if(!geom)continue;if(geom.type==='Point'){if(!earthlinePointInJurisdiction16539(geom.coordinates,g))outside++;continue;}const lines=geom.type==='LineString'?[geom.coordinates]:geom.type==='MultiLineString'?(geom.coordinates||[]):[];for(const line of lines)for(const p of (line||[]))if(earthlineFinitePoint16539(p)&&!earthlinePointInJurisdiction16539(p,g))outside++;}return outside;}
   function earthlineRerankRegionalSwales16539(fc){
