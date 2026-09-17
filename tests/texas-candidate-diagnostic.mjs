@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 
 const URL=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
-const RUNS=2;
+const RUNS=5;
 const browser=await chromium.launch({headless:true});
 const results=[];
 
