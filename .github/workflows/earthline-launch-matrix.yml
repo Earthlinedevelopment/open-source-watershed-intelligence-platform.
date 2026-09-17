@@ -1,10 +1,10 @@
-name: Earthline Texas Hotspot Extract
+name: Earthline Texas Duplicate-Work A/B
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/extract-texas-hotspots.py'
+      - 'tests/shared-regional-spacing-regression.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -12,17 +12,25 @@ permissions:
   contents: read
 
 jobs:
-  extract-hotspots:
+  texas-dedupe-ab:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Extract swale and boundary hotspots
-        run: python tests/extract-texas-hotspots.py
-      - name: Upload hotspot extract
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run Texas duplicate-work A/B
+        run: node tests/shared-regional-spacing-regression.mjs
+      - name: Upload A/B evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: texas-hotspots-extract
-          path: texas-hotspots-extract.txt
+          name: texas-dedupe-ab
+          path: shared-regional-spacing-regression.json
           if-no-files-found: error
           retention-days: 1
