@@ -29894,9 +29894,12 @@ body { overflow-x:hidden!important; }
     for(let i=0;i<segments.length;i++)if(!used[i])walk(key(segments[i][0]),i);
     return paths;
   }
-  async function makeContours(hy){
+  async function makeContours(hy,candidateQuantile16609=false){
     const min=percentile(hy.elev,0.02),max=percentile(hy.elev,0.98),range=Math.max(1,max-min),step=niceInterval(range,20),levels=[];
-    for(let l=Math.ceil(min/step)*step;l<=max+step*.001;l+=step)levels.push(l);
+    if(candidateQuantile16609){
+      const seen16609=new Set();
+      for(let qi16609=1;qi16609<20;qi16609++){const v16609=percentile(hy.elev,qi16609/20),k16609=Math.round(v16609*10)/10;if(k16609>min&&k16609<max&&!seen16609.has(k16609)){seen16609.add(k16609);levels.push(k16609);}}
+    }else{for(let l=Math.ceil(min/step)*step;l<=max+step*.001;l+=step)levels.push(l);}
     const features=[],majorEvery=levels.length>20?4:3,labelEvery=2;let labelCount=0;
     function interp(a,b,l){const d=b-a;return Math.abs(d)<1e-9?.5:Math.max(0,Math.min(1,(l-a)/d));}
     for(let li=0;li<levels.length;li++){
@@ -30948,7 +30951,10 @@ body { overflow-x:hidden!important; }
       if(!selectionBoundary16539||!selectionBoundary16539.geometry)throw new Error('selected administrative boundary could not be resolved; no uncontained Regional result was published');
     }
     const swaleJurisdictionGeometry16539=selectionBoundary16539&&(selectionBoundary16539.prepared||selectionBoundary16539.geometry)||null;
-    let swales=makeSwales(hy,contours,focusMode,swaleJurisdictionGeometry16539);noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · SWALES COMPLETE',runToken);await wait(0);
+    const min16609=percentile(hy.elev,0.02),max16609=percentile(hy.elev,0.98),step16609=niceInterval(Math.max(1,max16609-min16609),20);
+    const useSupplemental16609=!focusMode&&step16609>=200;
+    const swaleCandidateContours16609=useSupplemental16609?await makeContours(hy,true):contours;
+    let swales=makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539);noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · SWALES COMPLETE',runToken);await wait(0);
     const priorityPreviewEnabled16329=false;
     window.EARTHLINE_REGIONAL_PREVIEW_POLICY_16329={
       build:"EARTHLINE 16329",
