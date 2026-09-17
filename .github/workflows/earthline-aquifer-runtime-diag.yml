@@ -1,10 +1,10 @@
-name: Earthline Selector Source Diagnostic
+name: Earthline Texas Selector Fate Diagnostic
 
 on:
   push:
     branches: [diag-aquifer-east-texas]
     paths:
-      - 'tests/selector-source-window.mjs'
+      - 'tests/texas-selector-fate-diag.mjs'
       - '.github/workflows/earthline-aquifer-runtime-diag.yml'
   workflow_dispatch:
 
@@ -12,13 +12,17 @@ permissions:
   contents: read
 
 jobs:
-  selector-source-diag:
+  texas-selector-fate-diag:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Inspect live selector source
-        run: node tests/selector-source-window.mjs
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run Texas selector fate diagnostic
+        run: node tests/texas-selector-fate-diag.mjs
