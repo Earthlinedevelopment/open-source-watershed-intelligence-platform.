@@ -1,10 +1,10 @@
-name: Earthline Texas Contour Resolution AB
+name: Earthline Shared Contour Resolution Control Matrix
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/texas-contour-resolution-ab.mjs'
+      - 'tests/shared-contour-resolution-control-matrix.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -12,9 +12,9 @@ permissions:
   contents: read
 
 jobs:
-  texas-contour-resolution-ab:
+  shared-contour-resolution-control-matrix:
     runs-on: ubuntu-latest
-    timeout-minutes: 16
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,5 +24,5 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Run Texas contour resolution A-B
-        run: node tests/texas-contour-resolution-ab.mjs
+      - name: Run shared contour resolution control matrix
+        run: node tests/shared-contour-resolution-control-matrix.mjs
