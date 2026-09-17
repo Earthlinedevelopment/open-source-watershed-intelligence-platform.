@@ -1,10 +1,10 @@
-name: Earthline Texas Terrain Owner Extract
+name: Earthline Texas Terrain Stagger A/B
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/extract-terrain-hotspots.py'
+      - 'tests/texas-terrain-stagger-ab.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -12,17 +12,25 @@ permissions:
   contents: read
 
 jobs:
-  extract-terrain:
+  texas-terrain-stagger-ab:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - name: Extract terrain owner hotspots
-        run: python tests/extract-terrain-hotspots.py
-      - name: Upload terrain extract
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run Texas terrain stagger A/B
+        run: node tests/texas-terrain-stagger-ab.mjs
+      - name: Upload A/B evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: terrain-owner-hotspots
-          path: terrain-owner-hotspots.txt
+          name: texas-terrain-stagger-ab
+          path: texas-terrain-stagger-ab.json
           if-no-files-found: error
           retention-days: 1
