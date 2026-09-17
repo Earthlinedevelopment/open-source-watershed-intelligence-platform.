@@ -1,10 +1,10 @@
-name: Earthline Paired Regional Length 10 vs 8 Controls
+name: Earthline Shared Regional Hydrology Scale Metadata
 
 on:
   push:
     branches: [diag-aquifer-east-texas]
     paths:
-      - 'tests/shared-regional-length-10-vs-8-paired.mjs'
+      - 'tests/shared-regional-hy-scale-metadata.mjs'
       - '.github/workflows/earthline-aquifer-runtime-diag.yml'
   workflow_dispatch:
 
@@ -12,9 +12,9 @@ permissions:
   contents: read
 
 jobs:
-  paired-regional-length-10-vs-8:
+  shared-regional-hy-scale-metadata:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 16
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,5 +24,5 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Run paired regional length 10 vs 8 controls
-        run: node tests/shared-regional-length-10-vs-8-paired.mjs
+      - name: Inspect Regional hydrology scale metadata
+        run: node tests/shared-regional-hy-scale-metadata.mjs
