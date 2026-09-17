@@ -1,10 +1,10 @@
-name: Earthline Regional Grid Source Trace
+name: Earthline Direct Regional Grid Owner Trace
 
 on:
   push:
     branches: [diag-aquifer-east-texas]
     paths:
-      - 'tests/regional-grid-source-window.mjs'
+      - 'tests/trace-regional-grid-owner.py'
       - '.github/workflows/earthline-aquifer-runtime-diag.yml'
   workflow_dispatch:
 
@@ -12,13 +12,10 @@ permissions:
   contents: read
 
 jobs:
-  regional-grid-source-trace:
+  direct-regional-grid-owner-trace:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Trace Regional grid source owner
-        run: node tests/regional-grid-source-window.mjs
+      - name: Trace Regional grid owner directly from source
+        run: python tests/trace-regional-grid-owner.py
