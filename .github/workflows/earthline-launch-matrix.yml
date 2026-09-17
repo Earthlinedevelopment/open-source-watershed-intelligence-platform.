@@ -1,28 +1,35 @@
-name: Earthline Coarse-Step Quantile Candidate Gate
+name: Earthline Apply Coarse-Step Candidate Repair
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/shared-coarse-step-quantile-gate.mjs'
+      - 'tools/apply-coarse-step-quantile-candidate.py'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  coarse-step-quantile-candidate-gate:
+  apply-coarse-step-candidate-repair:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      - name: Install Playwright
+          fetch-depth: 0
+      - name: Apply validated shared repair
+        run: python tools/apply-coarse-step-quantile-candidate.py
+      - name: Verify product diff
         run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Run coarse-step quantile candidate gate
-        run: node tests/shared-coarse-step-quantile-gate.mjs
+          git diff --check
+          git diff --stat -- index.html
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+      - name: Commit live product candidate
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "repair: add coarse-step candidate contours"
+          git push origin HEAD:pages-live
