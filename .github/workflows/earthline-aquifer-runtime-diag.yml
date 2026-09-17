@@ -1,10 +1,10 @@
-name: Earthline Candidate Sampling Source Diagnostic
+name: Earthline Texas Panhandle Border Diagnostic
 
 on:
   push:
     branches: [diag-aquifer-east-texas]
     paths:
-      - 'tests/selector-source-window.mjs'
+      - 'tests/texas-panhandle-border-diag.mjs'
       - '.github/workflows/earthline-aquifer-runtime-diag.yml'
   workflow_dispatch:
 
@@ -12,13 +12,17 @@ permissions:
   contents: read
 
 jobs:
-  candidate-sampling-source-diag:
+  texas-panhandle-border-diag:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Inspect candidate sampling source
-        run: node tests/selector-source-window.mjs
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run Texas panhandle border diagnostic
+        run: node tests/texas-panhandle-border-diag.mjs
