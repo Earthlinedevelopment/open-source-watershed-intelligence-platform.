@@ -1,10 +1,10 @@
-name: Earthline Direct Regional Grid Owner Trace
+name: Earthline Salida Regional Renderer AB
 
 on:
   push:
     branches: [diag-aquifer-east-texas]
     paths:
-      - 'tests/trace-regional-grid-owner.py'
+      - 'tests/salida-regional-renderer-ab.mjs'
       - '.github/workflows/earthline-aquifer-runtime-diag.yml'
   workflow_dispatch:
 
@@ -12,10 +12,17 @@ permissions:
   contents: read
 
 jobs:
-  direct-regional-grid-owner-trace:
+  salida-regional-renderer-ab:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
-      - name: Trace Regional grid owner directly from source
-        run: python tests/trace-regional-grid-owner.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run Salida renderer baseline vs repair
+        run: node tests/salida-regional-renderer-ab.mjs
