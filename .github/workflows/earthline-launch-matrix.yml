@@ -1,10 +1,10 @@
-name: Earthline Texas Terrain Stagger A/B
+name: Earthline Final Shared Regional Candidate Gate
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/texas-terrain-stagger-ab.mjs'
+      - 'tests/shared-regional-candidate-final.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 jobs:
-  texas-terrain-stagger-ab:
+  final-shared-regional-candidate:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -24,13 +24,13 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Run Texas terrain stagger A/B
-        run: node tests/texas-terrain-stagger-ab.mjs
-      - name: Upload A/B evidence
+      - name: Run final TX NY VT shared Regional candidate gate
+        run: node tests/shared-regional-candidate-final.mjs
+      - name: Upload final shared gate evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: texas-terrain-stagger-ab
-          path: texas-terrain-stagger-ab.json
+          name: shared-regional-candidate-final
+          path: shared-regional-candidate-final.json
           if-no-files-found: error
           retention-days: 1
