@@ -1,28 +1,29 @@
-name: Earthline Shared Regional No-Camera Gate
+name: Earthline Apply Shared Texas Repair Candidate
 
 on:
+  workflow_dispatch:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/shared-regional-candidate-no-camera.mjs'
       - '.github/workflows/earthline-launch-matrix.yml'
-  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  shared-regional-no-camera-gate:
+  apply-shared-texas-repair:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      - name: Install Playwright
+          fetch-depth: 0
+      - name: Apply validated shared Regional repair
+        run: python tests/apply-shared-regional-candidate.py
+      - name: Commit unaccepted product candidate
         run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Run Texas New York Vermont shared no-camera gate
-        run: node tests/shared-regional-candidate-no-camera.mjs
+          git config user.name 'Earthline Repair Bot'
+          git config user.email 'info@earthlinedevelopment.org'
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'repair: shared Regional Texas density and timing candidate'
+          git push origin HEAD:pages-live
