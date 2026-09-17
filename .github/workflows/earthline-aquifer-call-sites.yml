@@ -1,0 +1,17 @@
+name: Earthline Aquifer Call-Site Trace
+on:
+  push:
+    branches: [diag-aquifer-east-texas]
+    paths:
+      - 'tests/trace-aquifer-call-sites.py'
+      - '.github/workflows/earthline-aquifer-call-sites.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - run: python tests/trace-aquifer-call-sites.py
