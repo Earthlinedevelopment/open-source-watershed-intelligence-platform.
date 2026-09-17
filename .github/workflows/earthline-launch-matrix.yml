@@ -1,10 +1,10 @@
-name: Earthline Texas Publication Phase Probe
+name: Earthline Texas Hotspot Extract
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tests/texas-publication-phase-probe.mjs'
+      - 'tests/extract-texas-hotspots.py'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -12,25 +12,17 @@ permissions:
   contents: read
 
 jobs:
-  texas-publication-phase:
+  extract-hotspots:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Playwright
-        run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Run Texas publication phase probe
-        run: node tests/texas-publication-phase-probe.mjs
-      - name: Upload phase evidence
-        if: always()
+      - name: Extract swale and boundary hotspots
+        run: python tests/extract-texas-hotspots.py
+      - name: Upload hotspot extract
         uses: actions/upload-artifact@v4
         with:
-          name: texas-publication-phase-probe
-          path: texas-publication-phase-probe.json
+          name: texas-hotspots-extract
+          path: texas-hotspots-extract.txt
           if-no-files-found: error
           retention-days: 1
