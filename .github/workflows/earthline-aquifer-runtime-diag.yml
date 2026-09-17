@@ -1,10 +1,10 @@
-name: Earthline Shared Regional Hydrology Scale Metadata
+name: Earthline Shared Regional Scale-Aware Length Control
 
 on:
   push:
     branches: [diag-aquifer-east-texas]
     paths:
-      - 'tests/shared-regional-hy-scale-metadata.mjs'
+      - 'tests/shared-regional-scale-aware-length-control.mjs'
       - '.github/workflows/earthline-aquifer-runtime-diag.yml'
   workflow_dispatch:
 
@@ -12,9 +12,9 @@ permissions:
   contents: read
 
 jobs:
-  shared-regional-hy-scale-metadata:
+  shared-regional-scale-aware-length-control:
     runs-on: ubuntu-latest
-    timeout-minutes: 16
+    timeout-minutes: 24
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,5 +24,5 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Inspect Regional hydrology scale metadata
-        run: node tests/shared-regional-hy-scale-metadata.mjs
+      - name: Run scale-aware Regional length control
+        run: node tests/shared-regional-scale-aware-length-control.mjs
