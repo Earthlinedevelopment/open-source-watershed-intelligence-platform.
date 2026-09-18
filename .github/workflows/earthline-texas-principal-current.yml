@@ -1,0 +1,19 @@
+name: Earthline Texas Principal Aquifer Current Owner
+on:
+  push:
+    branches: [diag-aquifer-east-texas]
+    paths: ['tests/texas-principal-current-owner.mjs','.github/workflows/earthline-texas-principal-current.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node tests/texas-principal-current-owner.mjs
