@@ -1,0 +1,21 @@
+name: Earthline Texas Coastal Short4 Diagnostic
+on:
+  push:
+    branches: [diag-aquifer-east-texas]
+    paths:
+      - 'tests/texas-coastal-short4-diagnostic.mjs'
+      - '.github/workflows/earthline-texas-coastal-short4.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node tests/texas-coastal-short4-diagnostic.mjs
