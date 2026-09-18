@@ -1,0 +1,25 @@
+name: Earthline Texas Baseline vs Final Candidate
+on:
+  push:
+    branches: [diag-aquifer-east-texas]
+    paths:
+      - 'tests/texas-current-baseline-repeat.mjs'
+      - 'tests/texas-single-pass-edge-pip-coast.mjs'
+      - '.github/workflows/earthline-texas-baseline-vs-candidate.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Baseline three repeats
+        run: node tests/texas-current-baseline-repeat.mjs
+      - name: Candidate three repeats
+        run: node tests/texas-single-pass-edge-pip-coast.mjs
