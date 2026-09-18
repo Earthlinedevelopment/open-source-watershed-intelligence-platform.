@@ -1,0 +1,19 @@
+name: Earthline Texas Panhandle Slope Audit
+on:
+  push:
+    branches: [diag-aquifer-east-texas]
+    paths: ['tests/texas-panhandle-slope-audit.mjs','.github/workflows/earthline-texas-panhandle-slope.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node tests/texas-panhandle-slope-audit.mjs
