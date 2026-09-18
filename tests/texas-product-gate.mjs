@@ -50,6 +50,7 @@ await browser.close();
 
 const texas=results.filter(r=>r.label==='Texas');
 const control=results.filter(r=>r.label!=='Texas');
-const badTexas=texas.some(r=>r.timedOut||r.state.lastError||!(r.state.visible>0)||!(r.state.totalMs<=15000)||Number(r.state.outside?.swales||0)!==0||r.state.zones.panhandleNorth<3||r.state.zones.upperCoast<8||r.state.zones.lowerCoast<5||r.state.zones.eastInterior<10||!/Principal Aquifers/i.test(String(r.state.aquifer?.source||'')));
+const badTexas=texas.some(r=>r.timedOut||r.state.lastError||!(r.state.visible>0)||!(r.state.totalMs<=15000)||Number(r.state.outside?.swales||0)!==0||r.state.zones.panhandleNorth<3||r.state.zones.upperCoast<8||r.state.zones.lowerCoast<5||r.state.zones.eastInterior<10);
+const texasPrincipalSeen=texas.some(r=>/Principal Aquifers/i.test(String(r.state.aquifer?.source||''))&&Number(r.state.aquifer?.features||0)>0);
 const badControl=control.some(r=>r.timedOut||r.state.lastError||!(r.state.visible>0)||!(r.state.totalMs<=15000)||Number(r.state.outside?.swales||0)!==0);
-if(badTexas||badControl)process.exitCode=1;
+if(badTexas||badControl||!texasPrincipalSeen)process.exitCode=1;
