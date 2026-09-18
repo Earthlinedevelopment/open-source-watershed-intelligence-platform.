@@ -1,0 +1,16 @@
+name: Earthline Regional Aquifer Loader Trace
+on:
+  push:
+    branches: [diag-aquifer-east-texas]
+    paths:
+      - 'tests/trace-regional-aquifer-loader.py'
+      - '.github/workflows/earthline-regional-aquifer-loader.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python tests/trace-regional-aquifer-loader.py
