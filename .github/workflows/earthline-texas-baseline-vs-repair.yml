@@ -1,0 +1,28 @@
+name: Earthline Texas Baseline vs Repair Performance
+
+on:
+  push:
+    branches: [diag-aquifer-east-texas]
+    paths:
+      - 'tests/texas-live-baseline-repeat.mjs'
+      - 'tests/texas-single-pass-jurisdiction-prefilter.mjs'
+      - '.github/workflows/earthline-texas-baseline-vs-repair.yml'
+  workflow_dispatch:
+
+permissions: {contents: read}
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Live baseline x3
+        run: node tests/texas-live-baseline-repeat.mjs
+      - name: Repaired candidate x3
+        run: node tests/texas-single-pass-jurisdiction-prefilter.mjs
