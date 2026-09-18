@@ -36,7 +36,7 @@ await page.route('**/*',async route=>{
       mix16627(packed16627);
     }
     const b16627=Array.isArray(dem&&dem.bounds)?dem.bounds:[];
-    return [Number(dem&&dem.w)||0,Number(dem&&dem.h)||0,String(dem&&dem.source||''),String(dem&&dem.z??''),b16627.map(v16627=>Number(v16627).toFixed(8)).join(','),mask16627.length,hash16627.toString(16)].join('|');
+    return [Number(dem&&dem.w)||0,Number(dem&&dem.h)||0,String(dem&&dem.source||''),String(dem&&dem.z!=null?dem.z:''),b16627.map(v16627=>Number(v16627).toFixed(8)).join(','),mask16627.length,hash16627.toString(16)].join('|');
   }
   function earthlineCloneHydrology16627(hy16627){
     return {
