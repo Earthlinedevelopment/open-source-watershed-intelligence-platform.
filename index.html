@@ -29938,7 +29938,24 @@ body { overflow-x:hidden!important; }
     function sampleSegment(coords,center,relaxed){
       const half=Math.max(10,Math.min(52,Math.floor(coords.length*.18))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);
       const raw=coords.slice(start,end);if(raw.length<10)return null;
-      const segment=chaikin(raw,2,false);if(segment.length<10||lineLengthPixels(hy,segment)<10)return null;
+      const segment=chaikin(raw,2,false);if(segment.length<10)return null;
+      const linePx16632=lineLengthPixels(hy,segment);let minLinePx16632=10;
+      if(!focusMode&&linePx16632<10&&linePx16632>=4&&Math.max(Number(hy.cellX)||0,Number(hy.cellY)||0)>10000){
+        const mp16632=segment[Math.floor((segment.length-1)/2)],mg16632=llGrid(hy,mp16632);
+        if(mg16632&&Number.isFinite(mg16632.x)&&Number.isFinite(mg16632.y)){
+          const nsEdge16632=Math.min(Number(mg16632.y),Math.max(0,(Number(hy.h)-1)-Number(mg16632.y)));
+          if(nsEdge16632<=6)minLinePx16632=4;
+          else if(hy.outsideLandMask16632){
+            const cx16632=Math.max(0,Math.min(hy.w-1,Math.round(Number(mg16632.x)))),cy16632=Math.max(0,Math.min(hy.h-1,Math.round(Number(mg16632.y))));
+            outer16632:for(let dy16632=-9;dy16632<=9;dy16632++)for(let dx16632=-9;dx16632<=9;dx16632++){
+              const x16632=cx16632+dx16632,y16632=cy16632+dy16632;
+              if(x16632<0||x16632>=hy.w||y16632<0||y16632>=hy.h)continue;
+              if(hy.outsideLandMask16632[y16632*hy.w+x16632]){minLinePx16632=4;break outer16632;}
+            }
+          }
+        }
+      }
+      if(linePx16632<minLinePx16632)return null;
       const stride=Math.max(1,Math.floor(segment.length/22));let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null;
       for(let k=1;k<segment.length-1;k+=stride){
         const g=llGrid(hy,segment[k]),x=Math.max(1,Math.min(hy.w-2,Math.round(g.x))),y=Math.max(1,Math.min(hy.h-2,Math.round(g.y))),i=y*hy.w+x;
@@ -29951,7 +29968,7 @@ body { overflow-x:hidden!important; }
       const slopeScore=Math.max(0,1-Math.abs(meanSlope-3.4)/(relaxed?12:7.5));
       const flowScore=meanAcc<=accLow?.18:meanAcc<=accMid?.18+.70*(meanAcc-accLow)/Math.max(1,accMid-accLow):Math.max(.18,.88-.48*(meanAcc-accMid)/Math.max(1,accHigh-accMid));
       const lengthScore=Math.min(1,lineLengthPixels(hy,segment)/85);
-      return {segment,x:anchor.x,y:anchor.y,slope:meanSlope,acc:meanAcc,maxAcc,score:slopeScore*.56+flowScore*.28+lengthScore*.16,confidence:relaxed?'screening':'preferred'};
+      return {segment,x:anchor.x,y:anchor.y,slope:meanSlope,acc:meanAcc,maxAcc,score:slopeScore*.56+flowScore*.28+lengthScore*.16,confidence:relaxed?'screening':'preferred',minLinePx16632};
     }
     /* EARTHLINE 16591 — jurisdiction eligibility must precede Regional ranking/spacing/capacity.
        Hydrology and contours still span the full DEM envelope; this only prevents candidates
@@ -29964,7 +29981,7 @@ body { overflow-x:hidden!important; }
       if(!runs16539.length){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
       runs16539.sort((a16539,b16539)=>lineLengthPixels(hy,b16539)-lineLengthPixels(hy,a16539));
       const segment16539=runs16539[0];
-      if(!segment16539||segment16539.length<2||lineLengthPixels(hy,segment16539)<10){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
+      if(!segment16539||segment16539.length<2||lineLengthPixels(hy,segment16539)<Math.max(4,Math.min(10,Number(candidate16539&&candidate16539.minLinePx16632)||10))){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
       const mid16539=segment16539[Math.floor((segment16539.length-1)/2)],grid16539=llGrid(hy,mid16539);
       if(!grid16539||!Number.isFinite(grid16539.x)||!Number.isFinite(grid16539.y)){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
       const screenedCandidate16592=Object.assign({},candidate16539,{
@@ -30793,7 +30810,7 @@ body { overflow-x:hidden!important; }
 
   function earthlineLandValidityMask16584(dem16584,product16584){
     const w16584=dem16584.w,h16584=dem16584.h,b16584=dem16584.bounds;
-    const valid16584=new Uint8Array(w16584*h16584);
+    const valid16584=new Uint8Array(w16584*h16584),outsideLandMask16632=new Uint8Array(w16584*h16584),inlandWaterMask16632=new Uint8Array(w16584*h16584);
     const landParts16584=Array.isArray(product16584&&product16584.landParts)?product16584.landParts:[];
     const waterParts16584=Array.isArray(product16584&&product16584.waterParts)?product16584.waterParts:[];
     let outsideLand16584=0,inlandWater16584=0,validCount16584=0;
@@ -30807,14 +30824,14 @@ body { overflow-x:hidden!important; }
              lat16584<part16584.bbox[1]||lat16584>part16584.bbox[3])continue;
           if(earthlinePointInPolygon16584(lng16584,lat16584,part16584.rings)){onLand16584=true;break;}
         }
-        if(!onLand16584){outsideLand16584++;continue;}
+        if(!onLand16584){outsideLand16584++;outsideLandMask16632[y16584*w16584+x16584]=1;continue;}
         let inWater16584=false;
         for(const part16584 of waterParts16584){
           if(lng16584<part16584.bbox[0]||lng16584>part16584.bbox[2]||
              lat16584<part16584.bbox[1]||lat16584>part16584.bbox[3])continue;
           if(earthlinePointInPolygon16584(lng16584,lat16584,part16584.rings)){inWater16584=true;break;}
         }
-        if(inWater16584){inlandWater16584++;continue;}
+        if(inWater16584){inlandWater16584++;inlandWaterMask16632[y16584*w16584+x16584]=1;continue;}
         valid16584[y16584*w16584+x16584]=1;validCount16584++;
       }
     }
@@ -30836,7 +30853,7 @@ body { overflow-x:hidden!important; }
       at:new Date().toISOString()
     };
     window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=audit16584;
-    return {mask:valid16584,audit:audit16584};
+    return {mask:valid16584,audit:audit16584,outsideLandMask16632,inlandWaterMask16632};
   }
   function earthlineLandValidityStatus16584(){
     const p16584=window.EARTHLINE_LAND_VALIDITY_16584||null,a16584=window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584||null;
@@ -30924,6 +30941,7 @@ body { overflow-x:hidden!important; }
     /* EARTHLINE 16310: settleRegionalCamera performs the duration:0 fitBounds before its
        first await. Let its later loaded/idle verification finish in the background while
        terrain science continues; camera readiness is presentation, not a science input. */
+    try{m.resize&&m.resize();}catch(_){}
     const cameraSettle16310=Promise.resolve(settleRegionalCamera(m,b,runToken)).catch(()=>false);
     phase16198.cameraKickoffMs=Math.round(performance.now()-cameraStarted16198);if(!isCurrentRun(runToken))return false;
     try{
@@ -30963,6 +30981,8 @@ body { overflow-x:hidden!important; }
         if(validityGrid16584&&validityGrid16584.mask&&Number(validityGrid16584.audit&&validityGrid16584.audit.validLandCellCount||0)>0){
           hy=await hydrology(dem,validityGrid16584.mask);
           hy.waterParts16584=Array.isArray(landValidity16584.waterParts)?landValidity16584.waterParts:[];
+          hy.outsideLandMask16632=validityGrid16584.outsideLandMask16632||null;
+          hy.inlandWaterMask16632=validityGrid16584.inlandWaterMask16632||null;
         }else{
           landValidity16584.acquisitionResult="unavailable";
           landValidity16584.failureReason="land-validity produced zero valid land cells";
@@ -33708,7 +33728,7 @@ body{display:block!important}
     return {owner:'native-mapbox',ready,layers};
   }
   function activeTier16168(){const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null;return String(d&&((d.tier||d.mode))||'regional').toLowerCase();}
-  function render(data){lastData=data||lastData;if(!lastData)return false;const map=m(),el=overlay();if(!map||!el)return false;const resizeRunToken16020=String(lastData&&lastData.runToken||'');if(resizeRunToken16020&&resizeRunToken16020!==lastResizeRunToken16020){lastResizeRunToken16020=resizeRunToken16020;try{map.resize&&map.resize();}catch(_){}}const h=host(),w=Math.max(1,h.clientWidth||window.innerWidth),hh=Math.max(1,h.clientHeight||window.innerHeight);el.setAttribute('viewBox','0 0 '+w+' '+hh);el.replaceChildren();
+  function render(data){lastData=data||lastData;if(!lastData)return false;const map=m(),el=overlay();if(!map||!el)return false;const resizeRunToken16020=String(lastData&&lastData.runToken||'');if(resizeRunToken16020&&resizeRunToken16020!==lastResizeRunToken16020){lastResizeRunToken16020=resizeRunToken16020;}const h=host(),w=Math.max(1,h.clientWidth||window.innerWidth),hh=Math.max(1,h.clientHeight||window.innerHeight);el.setAttribute('viewBox','0 0 '+w+' '+hh);el.replaceChildren();
     const defs=svgEl('defs');const glow=svgEl('filter',{id:'elGlow16020',x:'-30%',y:'-30%',width:'160%',height:'160%'});glow.appendChild(svgEl('feGaussianBlur',{stdDeviation:'1.6',result:'b'}));const merge=svgEl('feMerge');merge.appendChild(svgEl('feMergeNode',{in:'b'}));merge.appendChild(svgEl('feMergeNode',{in:'SourceGraphic'}));glow.appendChild(merge);defs.appendChild(glow);const jurisdictionClipD=jurisdictionClipD16020(),jurisdictionClipId='earthlineJurisdictionClip16020';if(jurisdictionClipD){const cp=svgEl('clipPath',{id:jurisdictionClipId,clipPathUnits:'userSpaceOnUse'});cp.appendChild(svgEl('path',{d:jurisdictionClipD,'fill-rule':'evenodd','clip-rule':'evenodd'}));defs.appendChild(cp);}el.appendChild(defs);
     const clipAttrs=jurisdictionClipD?{'clip-path':'url(#'+jurisdictionClipId+')'}:{},cg=svgEl('g',Object.assign({'data-layer':'numbered-elevation-contours'},clipAttrs)),sg=svgEl('g',Object.assign({'data-layer':'swale-opportunities'},clipAttrs)),lg=svgEl('g',Object.assign({'data-layer':'always-visible-labels'},clipAttrs));el.append(cg,sg,lg);
     let contourLines=0,labels=0,waterPaths=0,arrows=0,swales=0;
