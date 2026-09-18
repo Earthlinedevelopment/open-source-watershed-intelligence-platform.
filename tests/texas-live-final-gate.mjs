@@ -7,9 +7,11 @@ await page.route('**/*',async route=>{
   if(route.request().resourceType()!=='document')return route.continue();
   const resp=await route.fetch();let body=await resp.text();
   const apply=(name,needle,replacement)=>{const n=body.split(needle).length-1;patches[name]=n;if(n!==1)throw new Error(name+' expected 1 match, found '+n);body=body.replace(needle,replacement);};
-  apply('terrainStagger',
-    '        stagger=setTimeout(startAlternate,250);',
-    '        stagger=setTimeout(startAlternate,1200);');
+  const terrainStaggerMatch=body.match(/stagger=setTimeout\\(startAlternate,(\\d+)\\);/);
+  patches.terrainStaggerFrom=terrainStaggerMatch?Number(terrainStaggerMatch[1]):null;
+  if(!terrainStaggerMatch)throw new Error('terrain stagger owner not found');
+  body=body.replace(terrainStaggerMatch[0],'stagger=setTimeout(startAlternate,1200);');
+  patches.terrainStagger=1;
   apply('cameraFinalFrameGuard',
     '    const cameraReady16334=await cameraSettle16310;',
     `    let cameraReady16334=await cameraSettle16310;
