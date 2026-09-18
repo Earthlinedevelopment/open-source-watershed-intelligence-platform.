@@ -1,0 +1,19 @@
+name: Earthline Texas Embedded Aquifer Inventory
+on:
+  push:
+    branches: [diag-aquifer-east-texas]
+    paths: ['tests/texas-embedded-aquifer-inventory.mjs','.github/workflows/earthline-texas-embedded-aquifer.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node tests/texas-embedded-aquifer-inventory.mjs
