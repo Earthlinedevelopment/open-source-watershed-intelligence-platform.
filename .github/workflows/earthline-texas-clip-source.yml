@@ -1,0 +1,16 @@
+name: Earthline Texas Clip Source Trace
+on:
+  push:
+    branches: [diag-aquifer-east-texas]
+    paths:
+      - 'tests/trace-texas-clip-source.py'
+      - '.github/workflows/earthline-texas-clip-source.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python tests/trace-texas-clip-source.py
