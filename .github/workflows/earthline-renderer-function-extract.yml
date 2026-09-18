@@ -1,0 +1,16 @@
+name: Earthline Renderer Function Extract
+on:
+  push:
+    branches: [diag-aquifer-east-texas]
+    paths:
+      - 'tests/extract-renderer-function.py'
+      - '.github/workflows/earthline-renderer-function-extract.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - run: python tests/extract-renderer-function.py
