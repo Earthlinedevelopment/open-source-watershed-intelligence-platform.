@@ -1,0 +1,21 @@
+name: Earthline Texas Ranked Local Gap 48
+on:
+  push:
+    branches: [diag-aquifer-east-texas]
+    paths:
+      - 'tests/texas-local-gap-ranked48.mjs'
+      - '.github/workflows/earthline-texas-local-gap-ranked48.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node tests/texas-local-gap-ranked48.mjs
