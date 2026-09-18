@@ -1,0 +1,26 @@
+name: Earthline Texas Product Gate
+on:
+  push:
+    branches: [texas-closeout-16632]
+    paths:
+      - 'index.html'
+      - 'tests/texas-product-gate.mjs'
+      - '.github/workflows/earthline-texas-product-gate.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Serve candidate
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          sleep 2
+      - run: node tests/texas-product-gate.mjs
