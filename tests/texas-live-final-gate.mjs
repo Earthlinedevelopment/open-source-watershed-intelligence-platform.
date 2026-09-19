@@ -4,7 +4,8 @@ const browser=await chromium.launch({headless:true});
 const rows=[];
 const page=await browser.newPage({viewport:{width:1800,height:1000}});
 await page.goto(URL+'?tx_live_final='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
-await page.waitForSelector('#searchInput',{timeout:30000});\nconst served=await page.content();if(!served.includes('earthlineCooperativeYield16661'))throw new Error('responsive Regional repair is not yet served');
+await page.waitForSelector('#searchInput',{timeout:30000});
+const served=await page.content();if(!served.includes('earthlineCooperativeYield16661'))throw new Error('responsive Regional repair is not yet served');
 for(let repeat=1;repeat<=3;repeat++){
   const prior=await page.evaluate(()=>String(window.EARTHLINE_SWALE_GENERATION_AUDIT_16167?.at||''));
   const started=Date.now();
