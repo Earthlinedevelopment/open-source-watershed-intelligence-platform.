@@ -29376,7 +29376,7 @@ body { overflow-x:hidden!important; }
         if(!img)throw new Error('terrain tile missing');const px=Math.max(0,Math.min(img.width-1,Math.floor((tx-ix)*img.width))),py=Math.max(0,Math.min(img.height-1,Math.floor((ty-iy)*img.height))),o=(py*img.width+px)*4;
         const v=img.data[o]*256+img.data[o+1]+img.data[o+2]/256-32768;elev[gy*w+gx]=v;if(v<min)min=v;if(v>max)max=v;
       }
-      if((gy&7)===7)await wait(0);
+      if((gy&7)===7)await Promise.resolve();
     }
     return {elev,w,h,bounds:b,z,min,max,source:'Open Terrarium elevation tiles'};
   }
@@ -29496,7 +29496,7 @@ body { overflow-x:hidden!important; }
       }
       if((++heapSteps16245&1023)===0){
         if((heapSteps16245&8191)===0)noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · PIT FILL');
-        await wait(0);
+        await Promise.resolve();
       }
     }
     const mid=(b[1]+b[3])/2,cellX=(b[2]-b[0])*111320*Math.cos(mid*Math.PI/180)/(w-1),
@@ -29515,7 +29515,7 @@ body { overflow-x:hidden!important; }
       }
       if((y&7)===7){
         if((y&31)===31)noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · FLOW DIRECTIONS');
-        await wait(0);
+        await Promise.resolve();
       }
     }
     const order=[];
@@ -29528,7 +29528,7 @@ body { overflow-x:hidden!important; }
       if(j>=0&&(!valid16584||valid16584[j]))acc[j]+=acc[i];
       if((oi&4095)===4095){
         noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · FLOW ACCUMULATION');
-        await wait(0);
+        await Promise.resolve();
       }
     }
     return {filled,to,slope,acc,cellX,cellY,w,h,bounds:b,elev:terrainElev16584,validityMask16584:valid16584};
@@ -29928,7 +29928,7 @@ body { overflow-x:hidden!important; }
         }
       }
       noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · CONTOURS '+(li+1)+'/'+levels.length);
-      await wait(0);
+      await Promise.resolve();
     }
     return {type:'FeatureCollection',features};
   }
