@@ -31142,7 +31142,20 @@ body { overflow-x:hidden!important; }
     if(cameraReady16334!==true){
       throw new Error('regional basemap/camera did not settle completely; partial tile display was not published');
     }
-
+    try{
+      const cb16691=m&&m.getBounds&&m.getBounds();
+      const targetSpan16691=Math.max(Math.abs(b[2]-b[0]),Math.abs(b[3]-b[1]));
+      const currentSpan16691=cb16691?Math.max(Math.abs(cb16691.getEast()-cb16691.getWest()),Math.abs(cb16691.getNorth()-cb16691.getSouth())):Infinity;
+      const ratio16691=targetSpan16691>0?currentSpan16691/targetSpan16691:Infinity;
+      const coverage16691=cameraCoverage(m,b);
+      let reasserted16691=false;
+      if(!Number.isFinite(ratio16691)||ratio16691>4||coverage16691<.98){
+        reasserted16691=true;
+        const repaired16691=await settleRegionalCamera(m,b,runToken);
+        if(repaired16691!==true)throw new Error('regional final-frame camera reassert failed');
+      }
+      window.EARTHLINE_FINAL_FRAME_CAMERA_AUDIT_16691={runToken,targetSpan:targetSpan16691,currentSpanBefore:currentSpan16691,ratioBefore:ratio16691,coverageBefore:coverage16691,reasserted:reasserted16691,coverageAfter:cameraCoverage(m,b),at:new Date().toISOString()};
+    }catch(e16691){if(e16691&&/camera reassert failed/.test(String(e16691.message||e16691)))throw e16691;}
     if(!focusMode&&hy&&hy.validityMask16584){
       flows=earthlineFinalWaterClip16584(hy,flows,m,runToken);
     }
