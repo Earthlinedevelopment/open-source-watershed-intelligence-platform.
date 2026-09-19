@@ -6,42 +6,42 @@ const patches={};
 await page.route('**/*',async route=>{
  if(route.request().resourceType()!=='document')return route.continue();
  const resp=await route.fetch();let body=await resp.text();
- const needle=`    let swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539);noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · SWALES COMPLETE',runToken);await wait(0);`;
- const repl=`    let swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539);
-    if(!focusMode&&/texas/i.test(String(q||''))){
-      try{
-        const start16668=performance.now(),coastPts16668=[];
-        const nearOutMain16668=(x16668,y16668)=>{for(let dy16668=-2;dy16668<=2;dy16668++)for(let dx16668=-2;dx16668<=2;dx16668++){const xx16668=x16668+dx16668,yy16668=y16668+dy16668;if(xx16668<0||xx16668>=hy.w||yy16668<0||yy16668>=hy.h)continue;if(validityGrid16584.outsideLandMask16632[yy16668*hy.w+xx16668])return true;}return false;};
-        for(let y16668=1;y16668<hy.h-1;y16668++)for(let x16668=1;x16668<hy.w-1;x16668++){const i16668=y16668*hy.w+x16668;if(validityGrid16584.mask[i16668]===1&&nearOutMain16668(x16668,y16668))coastPts16668.push(gridLL(hy,x16668,y16668));}
-        if(coastPts16668.length){
-          const minX16668=Math.min(...coastPts16668.map(p=>p[0])),maxX16668=Math.max(...coastPts16668.map(p=>p[0])),minY16668=Math.min(...coastPts16668.map(p=>p[1])),maxY16668=Math.max(...coastPts16668.map(p=>p[1]));
-          const cb16668=[Math.max(b[0],minX16668-1.25),Math.max(b[1],minY16668-.55),Math.min(b[2],maxX16668+.55),Math.min(b[3],maxY16668+1.35)];
-          const savedLandAudit16668=window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584,savedGen16668=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167;
-          const cd16668=await loadDEM(cb16668,240,240,7000,'coastal detail elevation');
-          const cg16668=earthlineLandValidityMask16584(cd16668,landValidity16584);window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16668;
-          const ch16668=await hydrology(cd16668,cg16668.mask);
-          ch16668.waterParts16584=Array.isArray(landValidity16584.waterParts)?landValidity16584.waterParts:[];
-          ch16668.outsideLandMask16632=cg16668.outsideLandMask16632||null;ch16668.inlandWaterMask16632=cg16668.inlandWaterMask16632||null;
-          const cc16668=await makeContours(ch16668,true);
-          const cs16668=await makeSwales(ch16668,cc16668,false,swaleJurisdictionGeometry16539);
-          window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16668;
-          const coastDist16668=ll16668=>{const g16668=llGrid(ch16668,ll16668);if(!g16668||!Number.isFinite(g16668.x)||!Number.isFinite(g16668.y))return null;const cx16668=Math.max(0,Math.min(ch16668.w-1,Math.round(g16668.x))),cy16668=Math.max(0,Math.min(ch16668.h-1,Math.round(g16668.y)));for(let r16668=0;r16668<=24;r16668++)for(let dy16668=-r16668;dy16668<=r16668;dy16668++)for(let dx16668=-r16668;dx16668<=r16668;dx16668++){if(Math.max(Math.abs(dx16668),Math.abs(dy16668))!==r16668)continue;const xx16668=cx16668+dx16668,yy16668=cy16668+dy16668;if(xx16668<0||xx16668>=ch16668.w||yy16668<0||yy16668>=ch16668.h)continue;if(cg16668.outsideLandMask16632[yy16668*ch16668.w+xx16668])return r16668;}return null;};
-          const rows16668=(cs16668.features||[]).map(f16668=>{const c16668=f16668.geometry&&f16668.geometry.coordinates||[],m16668=c16668[Math.floor((c16668.length-1)/2)]||null,d16668=m16668?coastDist16668(m16668):null;return {rank:f16668.properties&&f16668.properties.rank,score:f16668.properties&&f16668.properties.score,mid:m16668,distCells:d16668,distKm:Number.isFinite(d16668)?Number((d16668*Math.max(ch16668.cellX,ch16668.cellY)/1000).toFixed(1)):null};}).filter(r=>Number.isFinite(r.distCells)).sort((a,b)=>a.distCells-b.distCells);
-          window.EARTHLINE_TX_LOCAL_SWALES_16668={bounds:cb16668,cellKm:Number((Math.max(ch16668.cellX,ch16668.cellY)/1000).toFixed(2)),elapsedMs:Math.round(performance.now()-start16668),total:(cs16668.features||[]).length,within2:rows16668.filter(r=>r.distCells<=2).length,within4:rows16668.filter(r=>r.distCells<=4).length,within6:rows16668.filter(r=>r.distCells<=6).length,within8:rows16668.filter(r=>r.distCells<=8).length,within12:rows16668.filter(r=>r.distCells<=12).length,rows:rows16668.slice(0,30)};
-        }
-      }catch(e){window.EARTHLINE_TX_LOCAL_SWALES_16668={error:String(e)};}
-    }
-    noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · SWALES COMPLETE',runToken);await wait(0);`;
- const n=body.split(needle).length-1;patches.localSwales=n;if(n!==1)throw new Error('localSwales expected 1, found '+n);body=body.replace(needle,repl);
+ const apply=(name,needle,replacement)=>{const n=body.split(needle).length-1;patches[name]=n;if(n!==1)throw new Error(name+' expected 1, found '+n);body=body.replace(needle,replacement);};
+
+ apply('candidateMin',
+ `    const min=percentile(hy.elev,0.02),max=percentile(hy.elev,0.98),range=Math.max(1,max-min),step=niceInterval(range,20),levels=[];`,
+ `    const min=percentile(hy.elev,candidateQuantile16609?0.002:0.02),max=percentile(hy.elev,0.98),range=Math.max(1,max-min),step=niceInterval(range,20),levels=[];`);
+
+ apply('candidateLowTail',
+ `      const seen16609=new Set();
+      for(let qi16609=1;qi16609<20;qi16609++){const v16609=percentile(hy.elev,qi16609/20),k16609=Math.round(v16609*10)/10;if(k16609>min&&k16609<max&&!seen16609.has(k16609)){seen16609.add(k16609);levels.push(k16609);}}`,
+ `      const seen16609=new Set();
+      for(const q16669 of [.005,.01,.015,.02,.025,.03,.04]){const v16669=percentile(hy.elev,q16669),k16669=Math.round(v16669*10)/10;if(k16669>min&&k16669<max&&!seen16609.has(k16669)){seen16609.add(k16669);levels.push(k16669);}}
+      for(let qi16609=1;qi16609<20;qi16609++){const v16609=percentile(hy.elev,qi16609/20),k16609=Math.round(v16609*10)/10;if(k16609>min&&k16609<max&&!seen16609.has(k16609)){seen16609.add(k16609);levels.push(k16609);}}`);
+
+ apply('coastAudit',
+ `    const auditedCandidates=chosen.map(c=>Object.assign(c,{contourAudit16166:contourAudit16166(c)}));`,
+ `    const coastDist16669=ll16669=>{if(!Array.isArray(ll16669)||!hy.outsideLandMask16632)return null;const g16669=llGrid(hy,ll16669);if(!g16669||!Number.isFinite(g16669.x)||!Number.isFinite(g16669.y))return null;const cx16669=Math.max(0,Math.min(hy.w-1,Math.round(g16669.x))),cy16669=Math.max(0,Math.min(hy.h-1,Math.round(g16669.y)));for(let r16669=0;r16669<=12;r16669++)for(let dy16669=-r16669;dy16669<=r16669;dy16669++)for(let dx16669=-r16669;dx16669<=r16669;dx16669++){if(Math.max(Math.abs(dx16669),Math.abs(dy16669))!==r16669)continue;const xx16669=cx16669+dx16669,yy16669=cy16669+dy16669;if(xx16669<0||xx16669>=hy.w||yy16669<0||yy16669>=hy.h)continue;if(hy.outsideLandMask16632[yy16669*hy.w+xx16669])return r16669;}return null;};
+    const ds16669=chosen.map(c16669=>{const s16669=c16669.segment||[],m16669=s16669[Math.floor((s16669.length-1)/2)]||null;return coastDist16669(m16669);}).filter(Number.isFinite).sort((a,b)=>a-b);
+    window.EARTHLINE_TX_LOWTAIL2_16669={finite:ds16669.length,min:ds16669[0]??null,le1:ds16669.filter(x=>x<=1).length,le2:ds16669.filter(x=>x<=2).length,le3:ds16669.filter(x=>x<=3).length,le4:ds16669.filter(x=>x<=4).length,le6:ds16669.filter(x=>x<=6).length};
+    const auditedCandidates=chosen.map(c=>Object.assign(c,{contourAudit16166:contourAudit16166(c)}));`);
+
  return route.fulfill({response:resp,body});
 });
-await page.goto(URL+'?tx_local_swales='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+await page.goto(URL+'?tx_lowtail2='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
 await page.waitForSelector('#searchInput',{timeout:30000});
-const prev=await page.evaluate(()=>String(window.EARTHLINE_SWALE_GENERATION_AUDIT_16167?.at||'')),started=Date.now();
-await page.evaluate(()=>{window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='Texas';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
-let timedOut=false;try{await page.waitForFunction(prev=>{const at=String(window.EARTHLINE_SWALE_GENERATION_AUDIT_16167?.at||''),s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||'');return !!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||((!prev||at!==prev)&&/screening published\./i.test(s));},prev,{timeout:60000,polling:100});}catch(_){timedOut=true;}
-await page.waitForTimeout(300);
-const state=await page.evaluate(()=>({local:window.EARTHLINE_TX_LOCAL_SWALES_16668||null,gen:window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null,perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null}));
-console.log('EARTHLINE_TX_LOCAL_SWALES '+JSON.stringify({patches,elapsedMs:Date.now()-started,timedOut,state}));
+const rows=[];
+for(let repeat=1;repeat<=3;repeat++){
+ const prev=await page.evaluate(()=>String(window.EARTHLINE_SWALE_GENERATION_AUDIT_16167?.at||'')),started=Date.now();
+ await page.evaluate(()=>{window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='Texas';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
+ let timedOut=false;try{await page.waitForFunction(prev=>{const at=String(window.EARTHLINE_SWALE_GENERATION_AUDIT_16167?.at||''),s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||'');return !!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||((!prev||at!==prev)&&/screening published\./i.test(s));},prev,{timeout:35000,polling:100});}catch(_){timedOut=true;}
+ await page.waitForTimeout(400);
+ const state=await page.evaluate(()=>{const v=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020||null,sw=Array.isArray(v?.swales?.features)?v.swales.features:[];const mid=f=>{const c=f?.geometry?.coordinates||[];return c.length?c[Math.floor((c.length-1)/2)]:null;};const count=pred=>sw.reduce((n,f)=>{const m=mid(f);return n+(m&&pred(+m[0],+m[1])?1:0);},0);const p=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||null,b=window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||null,g=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null,flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null,a=window.EARTHLINE_REGIONAL_AQUIFER_AUDIT_16126||null;return {coast:window.EARTHLINE_TX_LOWTAIL2_16669||null,swales:sw.length,visible:d?.swaleLines??null,published:g?.publishedFeatures??null,candidates:g?.candidates??null,eligible:g?.jurisdictionEligibleCandidates??null,totalMs:p?.totalMs??null,unsafe:flow?.unsafeSegments??null,outside:b?.outsideAfterClip??null,aquifer:a,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,zones:{panhandleNorth:count((x,y)=>x>-103.1&&x<-100&&y>35&&y<36.6),upperCoast:count((x,y)=>x>-96.5&&x<-93.45&&y>28.8&&y<31.2),midCoast:count((x,y)=>x>-99.3&&x<-96&&y>27.4&&y<30.2),lowerCoast:count((x,y)=>x>-99.5&&x<-97&&y>25.7&&y<28.2),eastInterior:count((x,y)=>x>-96&&x<-93.45&&y>30.5&&y<34.3)}};});
+ const row={repeat,elapsedMs:Date.now()-started,timedOut,state};rows.push(row);console.log('EARTHLINE_TX_LOWTAIL2 '+JSON.stringify(row));
+}
+console.log('EARTHLINE_TX_LOWTAIL2_SUMMARY '+JSON.stringify({patches,rows}));
 await browser.close();
-if(timedOut||state.local?.error||patches.localSwales!==1)process.exitCode=1;
+const ok=rows.filter(r=>!r.timedOut&&!r.state.lastError&&r.state.visible===r.state.published&&Number(r.state.visible||0)>0);
+const bad=ok.some(r=>!(r.state.totalMs<=15000)||Number(r.state.unsafe)!==0||Number(r.state.outside?.swales||0)!==0||r.state.zones.panhandleNorth<3||r.state.zones.upperCoast<8||r.state.zones.lowerCoast<5||r.state.zones.eastInterior<10);
+const coast=ok.length>=2&&ok.every(r=>Number(r.state.coast?.min||99)<=2&&Number(r.state.coast?.le2||0)>0);
+if(Object.values(patches).some(v=>v!==1)||ok.length<2||bad||!coast)process.exitCode=1;
