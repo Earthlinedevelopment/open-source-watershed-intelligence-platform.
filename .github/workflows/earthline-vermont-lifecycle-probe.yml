@@ -1,0 +1,28 @@
+name: Earthline Vermont Lifecycle Probe
+
+on:
+  push:
+    branches: [diag-aquifer-east-texas]
+    paths:
+      - 'tests/vermont-render-threshold-probe.mjs'
+      - '.github/workflows/earthline-vermont-lifecycle-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Governance preflight
+        run: python tests/earthline-governance-preflight.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node tests/vermont-render-threshold-probe.mjs
