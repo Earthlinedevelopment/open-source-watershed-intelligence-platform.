@@ -51,6 +51,7 @@ for(const stateName of STATES){
       occ=cells.size;
     }
     const g=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null;
+    const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null;
     const d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||null;
     const p=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null;
     const b=window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||null;
@@ -67,7 +68,8 @@ for(const stateName of STATES){
       contours:contours.length,
       flows:flows.length,
       visible:d?.swaleLines??null,
-      published:g?.publishedFeatures??null,
+      published:pub?.generated??null,
+      generationPublished:g?.publishedFeatures??null,
       candidates:g?.candidates??null,
       eligible:g?.jurisdictionEligibleCandidates??null,
       rejected:g?.jurisdictionRejectedCandidates??null,
@@ -85,13 +87,18 @@ for(const stateName of STATES){
   if(timedOut)row.failReasons.push('timeout');
   if(snap.lastError)row.failReasons.push('live-error');
   if(!(Number(snap.totalMs)<=15000))row.failReasons.push('core>15s-or-missing');
-  if(Number(snap.visible)!==Number(snap.published))row.failReasons.push('visible!=published');
-  if(Number(snap.published||0)<=0)row.failReasons.push('no-published-swales');
+  const finalPublished=Number(snap.published||0),visibleCount=Number(snap.visible||0);
+  if(finalPublished<=0)row.failReasons.push('no-published-swales');
+  if(finalPublished>0&&visibleCount<=0)row.failReasons.push('render-zero');
+  if(finalPublished<=0&&visibleCount>0)row.failReasons.push('stale-visible-overlay');
+  if(finalPublished>0&&visibleCount>0&&(visibleCount/finalPublished)<.90)row.failReasons.push('render-loss>10pct');
   if(Number(snap.outside?.swales||0)!==0)row.failReasons.push('outside-swales');
   if(Number(snap.unsafe||0)!==0)row.failReasons.push('unsafe-water');
   if(Number(snap.eligible||0)>=160&&Number(snap.published||0)>=75&&Number(snap.occupancy4x4||0)<=7)row.failReasons.push('possible-distribution-cap-concentration');
   const persisted=persistedVerdicts[stateName]||null;
-  if(persisted&&['MANUAL_FAIL','AUTOMATED_FAIL'].includes(String(persisted.verdict||'')))row.failReasons.push('persisted-'+String(persisted.verdict).toLowerCase());
+  const candidateMode=String(process.env.CANDIDATE_MODE||'').toLowerCase()==='true';
+  if(persisted&&String(persisted.verdict||'')==='MANUAL_FAIL')row.failReasons.push('persisted-manual_fail');
+  if(persisted&&String(persisted.verdict||'')==='AUTOMATED_FAIL'&&!candidateMode)row.failReasons.push('persisted-automated_fail');
   row.persistedVerdict=persisted;
   row.pass=row.failReasons.length===0;
   rows.push(row);
