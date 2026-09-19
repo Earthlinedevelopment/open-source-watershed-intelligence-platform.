@@ -1,10 +1,10 @@
-name: Earthline Apply Coarse-Step Candidate Repair
+name: Earthline Apply Responsive Regional Repair
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tools/apply-coarse-step-quantile-candidate.py'
+      - 'tests/apply-shared-regional-candidate.py'
       - '.github/workflows/earthline-launch-matrix.yml'
   workflow_dispatch:
 
@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 jobs:
-  apply-coarse-step-candidate-repair:
+  apply-responsive-regional-repair:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -20,16 +20,19 @@ jobs:
         with:
           fetch-depth: 0
       - name: Apply validated shared repair
-        run: python tools/apply-coarse-step-quantile-candidate.py
+        run: python tests/apply-shared-regional-candidate.py
       - name: Verify product diff
         run: |
           git diff --check
           git diff --stat -- index.html
           test "$(git diff --name-only | tr -d '\r')" = "index.html"
+          grep -q "earthlineCooperativeYield16661" index.html
+          grep -q "await makeSwales" index.html
+          grep -q "await earthlineClipRegionalProducts16539" index.html
       - name: Commit live product candidate
         run: |
           git config user.name "Earthlinedevelopment"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m "repair: add coarse-step candidate contours"
+          git commit -m "performance: keep Regional map responsive during screening"
           git push origin HEAD:pages-live
