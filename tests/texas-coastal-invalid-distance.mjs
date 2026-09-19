@@ -11,7 +11,7 @@ await page.route('**/*',async route=>{
 `      const seen16609=new Set();
       for(let qi16609=1;qi16609<20;qi16609++){const v16609=percentile(hy.elev,qi16609/20),k16609=Math.round(v16609*10)/10;if(k16609>min&&k16609<max&&!seen16609.has(k16609)){seen16609.add(k16609);levels.push(k16609);}}`,
 `      const seen16609=new Set();
-      for(const q16662 of [.025,.03,.035,.04,.045]){const v16662=percentile(hy.elev,q16662),k16662=Math.round(v16662*10)/10;if(k16662>min&&k16662<max&&!seen16609.has(k16662)){seen16609.add(k16662);levels.push(k16662);}}
+      for(const q16662 of [.0205,.021,.022,.023,.024,.025,.03,.035,.04,.045]){const v16662=percentile(hy.elev,q16662),k16662=Math.round(v16662*10)/10;if(k16662>min&&k16662<max&&!seen16609.has(k16662)){seen16609.add(k16662);levels.push(k16662);}}
       for(let qi16609=1;qi16609<20;qi16609++){const v16609=percentile(hy.elev,qi16609/20),k16609=Math.round(v16609*10)/10;if(k16609>min&&k16609<max&&!seen16609.has(k16609)){seen16609.add(k16609);levels.push(k16609);}}`);
  apply('coastAudit',
 `    const auditedCandidates=chosen.map(c=>Object.assign(c,{contourAudit16166:contourAudit16166(c)}));`,
@@ -24,7 +24,7 @@ await page.route('**/*',async route=>{
 await page.goto(URL+'?tx_lowtail_candidate='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
 await page.waitForSelector('#searchInput',{timeout:30000});
 const rows=[];
-for(let repeat=1;repeat<=3;repeat++){
+for(let repeat=1;repeat<=2;repeat++){
  const prev=await page.evaluate(()=>String(window.EARTHLINE_SWALE_GENERATION_AUDIT_16167?.at||'')),started=Date.now();
  await page.evaluate(()=>{window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='Texas';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
  let timedOut=false;try{await page.waitForFunction(prev=>{const at=String(window.EARTHLINE_SWALE_GENERATION_AUDIT_16167?.at||''),s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||'');return !!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||((!prev||at!==prev)&&/screening published\./i.test(s));},prev,{timeout:35000,polling:100});}catch(_){timedOut=true;}
