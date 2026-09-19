@@ -187,4 +187,4 @@ const summary={
 console.log('EARTHLINE_CANDIDATE_STATE_SUMMARY '+JSON.stringify(summary));
 await browser.close();
 
-if(rows.some(r=>!r.pass))process.exitCode=1;
+if(rows.some(r=>!r.pass)||rows.some(r=>r.reviewRequired))process.exitCode=1;
