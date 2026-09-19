@@ -1,0 +1,44 @@
+name: Earthline Accepted 16584 State Matrix
+on:
+  push:
+    branches: [diag-aquifer-east-texas]
+    paths:
+      - 'tests/all-state-accepted-16584-audit.mjs'
+      - '.github/workflows/earthline-accepted-16584-matrix.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - "Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia"
+          - "Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland"
+          - "Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey"
+          - "New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina"
+          - "South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Governance preflight
+        run: python tests/earthline-governance-preflight.py
+      - name: Recover exact accepted 16584 HTML
+        run: |
+          git show 376ccfe59f04aaf5638374c981c1bdc63f2bbd43:"index (2).html" > accepted-16584.html
+          grep -q "EARTHLINE 16584" accepted-16584.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Audit accepted baseline
+        env:
+          STATES: ${{ matrix.shard }}
+          ACCEPTED_HTML_PATH: accepted-16584.html
+        run: node tests/all-state-accepted-16584-audit.mjs
