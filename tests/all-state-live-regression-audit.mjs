@@ -4,7 +4,7 @@ const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
 const STATES=String(process.env.STATES||'').split('|').map(s=>s.trim()).filter(Boolean);
 if(!STATES.length) throw new Error('STATES is empty');
 
-const browser=await chromium.launch({headless:true,channel:'chrome'});
+const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1800,height:1000}});
 const rows=[];
 
