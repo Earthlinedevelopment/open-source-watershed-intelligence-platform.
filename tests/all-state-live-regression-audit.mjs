@@ -1,8 +1,11 @@
+import fs from 'node:fs';
 import { chromium } from 'playwright';
 
 const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
 const STATES=String(process.env.STATES||'').split('|').map(s=>s.trim()).filter(Boolean);
 if(!STATES.length) throw new Error('STATES is empty');
+const verdictPath=new URL('../earthline-state-verdicts.json',import.meta.url);
+const persistedVerdicts=JSON.parse(fs.readFileSync(verdictPath,'utf8')).states||{};
 
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1800,height:1000}});
@@ -87,6 +90,9 @@ for(const stateName of STATES){
   if(Number(snap.outside?.swales||0)!==0)row.failReasons.push('outside-swales');
   if(Number(snap.unsafe||0)!==0)row.failReasons.push('unsafe-water');
   if(Number(snap.eligible||0)>=160&&Number(snap.published||0)>=75&&Number(snap.occupancy4x4||0)<=7)row.failReasons.push('possible-distribution-cap-concentration');
+  const persisted=persistedVerdicts[stateName]||null;
+  if(persisted&&['MANUAL_FAIL','AUTOMATED_FAIL'].includes(String(persisted.verdict||'')))row.failReasons.push('persisted-'+String(persisted.verdict).toLowerCase());
+  row.persistedVerdict=persisted;
   row.pass=row.failReasons.length===0;
   rows.push(row);
   console.log('EARTHLINE_ALL_STATE '+JSON.stringify(row));
