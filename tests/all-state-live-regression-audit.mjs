@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
 
-const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
+const BASE_URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
 const STATES=String(process.env.STATES||'').split('|').map(s=>s.trim()).filter(Boolean);
 if(!STATES.length) throw new Error('STATES is empty');
 
@@ -29,7 +29,7 @@ const rows=[];
 
 page.on('pageerror',e=>console.log('PAGEERROR '+String(e)));
 
-const origin=new URL(URL).origin;
+const origin=new globalThis.URL(BASE_URL).origin;
 await page.route('**/*',async route=>{
   const req=route.request();
   if(req.resourceType()==='document'){
@@ -44,7 +44,7 @@ await page.route('**/*',async route=>{
   return route.continue();
 });
 
-await page.goto(URL+'?candidate_state_regression='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+await page.goto(BASE_URL+'?candidate_state_regression='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
 await page.waitForSelector('#searchInput',{timeout:30000});
 
 function bboxSpan(b){
