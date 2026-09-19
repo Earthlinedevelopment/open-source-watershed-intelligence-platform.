@@ -45,10 +45,28 @@ await page.route('**/*',async route=>{
           const c16672=await makeContours(h16672,true,levels16672),s16672=await makeSwales(h16672,c16672,false,swaleJurisdictionGeometry16539);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16672;
           const dist16672=ll16672=>{const gg16672=llGrid(h16672,ll16672);if(!gg16672||!Number.isFinite(gg16672.x)||!Number.isFinite(gg16672.y))return null;const cx16672=Math.max(0,Math.min(h16672.w-1,Math.round(gg16672.x))),cy16672=Math.max(0,Math.min(h16672.h-1,Math.round(gg16672.y)));for(let r16672=0;r16672<=30;r16672++)for(let dy16672=-r16672;dy16672<=r16672;dy16672++)for(let dx16672=-r16672;dx16672<=r16672;dx16672++){if(Math.max(Math.abs(dx16672),Math.abs(dy16672))!==r16672)continue;const xx16672=cx16672+dx16672,yy16672=cy16672+dy16672;if(xx16672<0||xx16672>=h16672.w||yy16672<0||yy16672>=h16672.h)continue;if(g16672.outsideLandMask16632[yy16672*h16672.w+xx16672])return r16672;}return null;};
           const rows16672=(s16672.features||[]).map(f16672=>{const cc16672=f16672.geometry&&f16672.geometry.coordinates||[],m16672=cc16672[Math.floor((cc16672.length-1)/2)]||null,dd16672=m16672?dist16672(m16672):null;return {feature:f16672,mid:m16672,distCells:dd16672,distKm:Number.isFinite(dd16672)?Number((dd16672*Math.max(h16672.cellX,h16672.cellY)/1000).toFixed(1)):null};}).filter(r=>Number.isFinite(r.distCells)).sort((a,b)=>a.distCells-b.distCells);
-          return {id:tile16672.id,cellKm:Number((Math.max(h16672.cellX,h16672.cellY)/1000).toFixed(2)),elapsedMs:Math.round(performance.now()-st16672),levels:levels16672,coastalEligibleElevations:elevs16672.length,swales:(s16672.features||[]).length,minKm:rows16672[0]?.distKm??null,within10km:rows16672.filter(r=>r.distKm<=10).length,within20km:rows16672.filter(r=>r.distKm<=20).length,rows:rows16672.slice(0,8).map(r=>({mid:r.mid,distKm:r.distKm,rank:r.feature.properties&&r.feature.properties.rank,score:r.feature.properties&&r.feature.properties.score}))};
+          const selected16673=[];
+          const km16673=(a16673,b16673)=>{const lat16673=((a16673[1]+b16673[1])*.5)*Math.PI/180,dx16673=(a16673[0]-b16673[0])*111.32*Math.cos(lat16673),dy16673=(a16673[1]-b16673[1])*110.57;return Math.hypot(dx16673,dy16673);};
+          for(const r16673 of rows16672){if(!Number.isFinite(r16673.distKm)||r16673.distKm>10||!Array.isArray(r16673.mid))continue;if(selected16673.some(q16673=>km16673(q16673.mid,r16673.mid)<24))continue;selected16673.push(r16673);if(selected16673.length>=4)break;}
+          return {id:tile16672.id,cellKm:Number((Math.max(h16672.cellX,h16672.cellY)/1000).toFixed(2)),elapsedMs:Math.round(performance.now()-st16672),levels:levels16672,coastalEligibleElevations:elevs16672.length,swales:(s16672.features||[]).length,minKm:rows16672[0]?.distKm??null,within10km:rows16672.filter(r=>r.distKm<=10).length,within20km:rows16672.filter(r=>r.distKm<=20).length,selectedFeatures:selected16673.map(r=>({feature:r.feature,mid:r.mid,distKm:r.distKm})),rows:rows16672.slice(0,8).map(r=>({mid:r.mid,distKm:r.distKm,rank:r.feature.properties&&r.feature.properties.rank,score:r.feature.properties&&r.feature.properties.score}))};
         }));
         out16672.push(...tileResults16672);
-        window.EARTHLINE_TX_COAST_FAST_TILES_16672={elapsedMs:Math.round(performance.now()-allStart16672),tiles:out16672};
+        const base16673=Array.isArray(swales&&swales.features)?swales.features.slice():[],added16673=[];
+        const midpoint16673=f16673=>{const cc16673=f16673&&f16673.geometry&&f16673.geometry.coordinates||[];return cc16673.length?cc16673[Math.floor((cc16673.length-1)/2)]:null;};
+        const km16673=(a16673,b16673)=>{const lat16673=((a16673[1]+b16673[1])*.5)*Math.PI/180,dx16673=(a16673[0]-b16673[0])*111.32*Math.cos(lat16673),dy16673=(a16673[1]-b16673[1])*110.57;return Math.hypot(dx16673,dy16673);};
+        const existingMids16673=base16673.map(midpoint16673).filter(Array.isArray);
+        for(const tile16673 of tileResults16672){
+          for(const row16673 of (tile16673.selectedFeatures||[])){
+            const m16673=row16673.mid;if(!Array.isArray(m16673))continue;
+            if(existingMids16673.some(p16673=>km16673(p16673,m16673)<18))continue;
+            if(added16673.some(f16673=>{const p16673=midpoint16673(f16673);return p16673&&km16673(p16673,m16673)<24;}))continue;
+            const f16673=JSON.parse(JSON.stringify(row16673.feature));f16673.properties=Object.assign({},f16673.properties||{},{coastal_refinement_16673:true,coastal_tile_16673:tile16673.id,coastal_distance_km_16673:row16673.distKm});
+            added16673.push(f16673);existingMids16673.push(m16673);
+          }
+        }
+        swales={type:'FeatureCollection',features:base16673.concat(added16673)};
+        if(savedGen16672){savedGen16672.publishedFeatures=swales.features.length;savedGen16672.chosenBeforeTierGate=swales.features.length;savedGen16672.coastalRefinementAdded16673=added16673.length;}
+        window.EARTHLINE_TX_COAST_FAST_TILES_16672={elapsedMs:Math.round(performance.now()-allStart16672),tiles:out16672.map(t16673=>Object.assign({},t16673,{selectedFeatures:undefined,selectedCount:(t16673.selectedFeatures||[]).length})),mergedAdded:added16673.length,mergedTotal:swales.features.length,mergedRows:added16673.map(f16673=>({mid:midpoint16673(f16673),tile:f16673.properties&&f16673.properties.coastal_tile_16673,distKm:f16673.properties&&f16673.properties.coastal_distance_km_16673,score:f16673.properties&&f16673.properties.score}))};
       }catch(e){window.EARTHLINE_TX_COAST_FAST_TILES_16672={error:String(e)};}
       finally{window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16672;window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16672;}
     }
@@ -58,11 +76,23 @@ await page.route('**/*',async route=>{
 });
 await page.goto(URL+'?tx_fast_coast_tiles='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
 await page.waitForSelector('#searchInput',{timeout:30000});
-const prev=await page.evaluate(()=>String(window.EARTHLINE_SWALE_GENERATION_AUDIT_16167?.at||'')),started=Date.now();
-await page.evaluate(()=>{window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='Texas';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
-let timedOut=false;try{await page.waitForFunction(prev=>{const at=String(window.EARTHLINE_SWALE_GENERATION_AUDIT_16167?.at||''),s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||'');return !!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||((!prev||at!==prev)&&/screening published\./i.test(s));},prev,{timeout:60000,polling:100});}catch(_){timedOut=true;}
-await page.waitForTimeout(300);
-const state=await page.evaluate(()=>({fast:window.EARTHLINE_TX_COAST_FAST_TILES_16672||null,gen:window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null,perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null}));
-console.log('EARTHLINE_TX_FAST_COAST_TILES '+JSON.stringify({patches,elapsedMs:Date.now()-started,timedOut,state}));
+const rows=[];
+for(let repeat=1;repeat<=3;repeat++){
+ const prev=await page.evaluate(()=>String(window.EARTHLINE_SWALE_GENERATION_AUDIT_16167?.at||'')),started=Date.now();
+ await page.evaluate(()=>{window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='Texas';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
+ let timedOut=false;try{await page.waitForFunction(prev=>{const at=String(window.EARTHLINE_SWALE_GENERATION_AUDIT_16167?.at||''),s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||'');return !!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||((!prev||at!==prev)&&/screening published\\./i.test(s));},prev,{timeout:60000,polling:100});}catch(_){timedOut=true;}
+ await page.waitForTimeout(500);
+ const state=await page.evaluate(()=>{
+   const v=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020||null,sw=Array.isArray(v?.swales?.features)?v.swales.features:[];
+   const d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||null,b=window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||null,g=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null,p=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null,a=window.EARTHLINE_REGIONAL_AQUIFER_AUDIT_16126||null;
+   const mid=f=>{const c=f&&f.geometry&&f.geometry.coordinates||[];return c.length?c[Math.floor((c.length-1)/2)]:null;};
+   const count=pred=>sw.reduce((n,f)=>{const m=mid(f);return n+(m&&pred(+m[0],+m[1])?1:0);},0);
+   return {fast:window.EARTHLINE_TX_COAST_FAST_TILES_16672||null,swales:sw.length,visible:d?.swaleLines??null,published:g?.publishedFeatures??null,totalMs:p?.totalMs??null,unsafe:flow?.unsafeSegments??null,outside:b?.outsideAfterClip??null,aquifer:a,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,zones:{panhandleNorth:count((x,y)=>x>-103.1&&x<-100&&y>35&&y<36.6),upperCoast:count((x,y)=>x>-96.5&&x<-93.45&&y>28.8&&y<31.2),midCoast:count((x,y)=>x>-99.3&&x<-96&&y>27.4&&y<30.2),lowerCoast:count((x,y)=>x>-99.5&&x<-97&&y>25.7&&y<28.2),eastInterior:count((x,y)=>x>-96&&x<-93.45&&y>30.5&&y<34.3)}};
+ });
+ const row={repeat,elapsedMs:Date.now()-started,timedOut,state};rows.push(row);console.log('EARTHLINE_TX_COAST_MERGE '+JSON.stringify(row));
+}
+console.log('EARTHLINE_TX_COAST_MERGE_SUMMARY '+JSON.stringify({patches,rows}));
 await browser.close();
-if(timedOut||state.fast?.error||patches.tiles!==1||patches.contourSignature!==1||patches.contourLevels!==1)process.exitCode=1;
+const good=rows.filter(r=>!r.timedOut&&!r.state.lastError&&r.state.visible===r.state.published&&r.state.swales===r.state.visible);
+const bad=good.some(r=>!(r.state.totalMs<=15000)||Number(r.state.unsafe)!==0||Number(r.state.outside?.swales||0)!==0||r.state.zones.panhandleNorth<3||r.state.zones.upperCoast<8||r.state.zones.lowerCoast<5||r.state.zones.eastInterior<10||Number(r.state.fast?.mergedAdded||0)<4||Number(r.state.fast?.mergedTotal||0)<=66);
+if(good.length<3||bad)process.exitCode=1;
