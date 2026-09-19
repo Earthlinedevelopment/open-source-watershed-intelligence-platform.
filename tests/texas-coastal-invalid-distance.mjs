@@ -12,17 +12,17 @@ await page.route('**/*',async route=>{
   const apply=(name,needle,replacement)=>{const n=body.split(needle).length-1;patches[name]=n;if(n!==1)throw new Error(name+' expected once, found '+n);body=body.replace(needle,replacement);};
 
   apply('preJurisdictionSpatial',
-`    const preferredCandidateCount16539=candidates.length;
+`    const candidatesBeforeJurisdiction16539=candidates.length;
     let jurisdictionRejectedCandidates16539=0;`,
-`    const preferredCandidateCount16539=candidates.length;
+`    const candidatesBeforeJurisdiction16539=candidates.length;
     const midpoint16696=c16696=>{const seg16696=c16696&&c16696.segment||[],m16696=seg16696[Math.floor((seg16696.length-1)/2)]||null;return Array.isArray(m16696)?{lng:Number(m16696[0]),lat:Number(m16696[1]),score:Number(c16696.score||0),slope:Number(c16696.slope||0),acc:Number(c16696.acc||0),x:Number(c16696.x),y:Number(c16696.y)}:null;};
     const preJurisdictionSpatial16696=candidates.map(midpoint16696).filter(Boolean);
     const rejectionRows16696=[];
     let jurisdictionRejectedCandidates16539=0;`);
 
   apply('screenRejectCapture',
-`      if(!screened16539){jurisdictionRejectedCandidates16539++;continue;}`,
-`      if(!screened16539){jurisdictionRejectedCandidates16539++;const r16696=midpoint16696(candidate16539);if(r16696)rejectionRows16696.push(r16696);continue;}`);
+`        if(screened16539)eligible16539.push(screened16539);else jurisdictionRejectedCandidates16539++;`,
+`        if(screened16539)eligible16539.push(screened16539);else {jurisdictionRejectedCandidates16539++;const r16696=midpoint16696(candidate16539);if(r16696)rejectionRows16696.push(r16696);}`);
 
   apply('eligibleAudit',
 `    const jurisdictionEligibleCandidates16539=candidates.length;
