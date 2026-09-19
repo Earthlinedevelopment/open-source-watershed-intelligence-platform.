@@ -39,20 +39,24 @@ await page.route('**/*',async route=>{
  await route.continue();
 });
 
-await page.goto(BASE+'?vt_final_camera='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+await page.goto(BASE+'?shared_final_camera='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
 await page.waitForSelector('#searchInput',{timeout:30000});
+const states=['Vermont','Massachusetts','Texas','California','Maryland','New York'];
 const rows=[];
-for(let repeat=1;repeat<=5;repeat++){
- const prior=await page.evaluate(()=>String(window.EARTHLINE_SWALE_GENERATION_AUDIT_16167?.at||''));
- const started=Date.now();
- await page.evaluate(()=>{window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='Vermont';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
- let timedOut=false;
- try{await page.waitForFunction(prev=>{const at=String(window.EARTHLINE_SWALE_GENERATION_AUDIT_16167?.at||''),s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||'');return !!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||((!prev||at!==prev)&&/screening published\./i.test(s));},prior,{timeout:35000,polling:100});}catch(_){timedOut=true;}
- await page.waitForTimeout(300);
- const state=await page.evaluate(()=>({camera:window.EARTHLINE_FINAL_FRAME_CAMERA_AUDIT_16691||null,publication:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,display:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||null,generation:window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null,perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null}));
- const row={repeat,elapsedMs:Date.now()-started,timedOut,state};rows.push(row);console.log('EARTHLINE_VT_FINAL_CAMERA '+JSON.stringify(row));
+for(const stateName of states){
+ for(let repeat=1;repeat<=2;repeat++){
+  const prior=await page.evaluate(()=>String(window.EARTHLINE_SWALE_GENERATION_AUDIT_16167?.at||''));
+  const started=Date.now();
+  await page.evaluate(q=>{window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},stateName);
+  let timedOut=false;
+  try{await page.waitForFunction(prev=>{const at=String(window.EARTHLINE_SWALE_GENERATION_AUDIT_16167?.at||''),s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||'');return !!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||((!prev||at!==prev)&&/screening published\./i.test(s));},prior,{timeout:35000,polling:100});}catch(_){timedOut=true;}
+  await page.waitForTimeout(250);
+  const state=await page.evaluate(()=>{const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,disp=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||null,gen=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null,p=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,b=window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||null,flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null;return {camera:window.EARTHLINE_FINAL_FRAME_CAMERA_AUDIT_16691||null,publication:pub,display:disp,generation:gen,perf:p,outside:b?.outsideAfterClip??null,unsafe:flow?.unsafeSegments??null,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null};});
+  const published=Number(state.publication?.generated||0),visible=Number(state.display?.swaleLines||0);
+  const row={state:stateName,repeat,elapsedMs:Date.now()-started,timedOut,published,visible,visibleRatio:published?Number((visible/published).toFixed(3)):null,detail:state};rows.push(row);console.log('EARTHLINE_SHARED_FINAL_CAMERA '+JSON.stringify(row));
+ }
 }
-console.log('EARTHLINE_VT_FINAL_CAMERA_SUMMARY '+JSON.stringify({patchMatches,rows}));
+console.log('EARTHLINE_SHARED_FINAL_CAMERA_SUMMARY '+JSON.stringify({patchMatches,rows}));
 await browser.close();
-const good=rows.filter(r=>!r.timedOut&&!r.state.lastError&&Number(r.state.publication?.generated||0)>0&&Number(r.state.display?.swaleLines||0)>0);
-if(patchMatches!==1||good.length<5||good.some(r=>Number(r.state.display?.swaleLines||0)!==Number(r.state.publication?.generated||0)||!(Number(r.state.perf?.totalMs)<=15000)))process.exitCode=1;
+const bad=rows.some(r=>r.timedOut||r.detail.lastError||!(Number(r.detail.perf?.totalMs)<=15000)||Number(r.detail.outside?.swales||0)!==0||Number(r.detail.unsafe||0)!==0||r.published<=0||r.visible<=0||(r.visible/r.published)<.90);
+if(patchMatches!==1||bad)process.exitCode=1;
