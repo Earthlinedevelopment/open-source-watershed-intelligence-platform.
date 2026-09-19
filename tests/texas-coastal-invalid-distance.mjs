@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
 const URL='https://earthlinedevelopment.org/';
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,channel:'chrome'});
 const page=await browser.newPage({viewport:{width:1800,height:1000}});
 const patches={};
 await page.route('**/*',async route=>{
