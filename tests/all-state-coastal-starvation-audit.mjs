@@ -11,13 +11,14 @@ await page.route('**/*',async route=>{
   if(route.request().resourceType()!=='document')return route.continue();
   const resp=await route.fetch();let body=await resp.text();
   const needle=`    const preferredEligibleCount16539=await jurisdictionEligibleCount16539(candidates);`;
-  const repl=`    let coastalValidCells16704=0,preferredNearCoast16704=0;
+  const repl=`    let coastalValidCells16704=0,coastalScreenPass16704=0,preferredNearCoast16704=0;
     if(!focusMode&&hy&&hy.validityMask16584&&hy.outsideLandMask16632){
       const nearOcean16704=(x16704,y16704,r16704=2)=>{for(let dy16704=-r16704;dy16704<=r16704;dy16704++)for(let dx16704=-r16704;dx16704<=r16704;dx16704++){const xx16704=x16704+dx16704,yy16704=y16704+dy16704;if(xx16704<0||xx16704>=hy.w||yy16704<0||yy16704>=hy.h)continue;if(hy.outsideLandMask16632[yy16704*hy.w+xx16704])return true;}return false;};
-      for(let y16704=1;y16704<hy.h-1;y16704++)for(let x16704=1;x16704<hy.w-1;x16704++){const i16704=y16704*hy.w+x16704;if(hy.validityMask16584[i16704]===1&&nearOcean16704(x16704,y16704,2))coastalValidCells16704++;}
+      const channel16704=percentile(hy.acc,.972);
+      for(let y16704=1;y16704<hy.h-1;y16704++)for(let x16704=1;x16704<hy.w-1;x16704++){const i16704=y16704*hy.w+x16704;if(hy.validityMask16584[i16704]!==1||!nearOcean16704(x16704,y16704,2))continue;coastalValidCells16704++;const sp16704=Number(hy.slope[i16704]),ac16704=Number(hy.acc[i16704]);if(Number.isFinite(sp16704)&&sp16704>=.20&&sp16704<=13.5&&Number.isFinite(ac16704)&&ac16704<channel16704)coastalScreenPass16704++;}
       for(const c16704 of candidates){if(c16704&&Number.isFinite(c16704.x)&&Number.isFinite(c16704.y)&&nearOcean16704(Math.round(c16704.x),Math.round(c16704.y),2))preferredNearCoast16704++;}
     }
-    window.EARTHLINE_COASTAL_STARVATION_AUDIT_16704={maxCellM:Math.max(Number(hy.cellX)||0,Number(hy.cellY)||0),cellX:Number(hy.cellX)||0,cellY:Number(hy.cellY)||0,coastalValidCells2:coastalValidCells16704,preferredCandidates:candidates.length,preferredNearCoast2:preferredNearCoast16704,starvationRatio:coastalValidCells16704>0?preferredNearCoast16704/coastalValidCells16704:null,at:new Date().toISOString()};
+    window.EARTHLINE_COASTAL_STARVATION_AUDIT_16704={maxCellM:Math.max(Number(hy.cellX)||0,Number(hy.cellY)||0),cellX:Number(hy.cellX)||0,cellY:Number(hy.cellY)||0,coastalValidCells2:coastalValidCells16704,coastalScreenPass2:coastalScreenPass16704,screenPassRatio:coastalValidCells16704>0?coastalScreenPass16704/coastalValidCells16704:null,preferredCandidates:candidates.length,preferredNearCoast2:preferredNearCoast16704,starvationRatio:coastalValidCells16704>0?preferredNearCoast16704/coastalValidCells16704:null,at:new Date().toISOString()};
     const preferredEligibleCount16539=await jurisdictionEligibleCount16539(candidates);`;
   patchMatches=body.split(needle).length-1;
   if(patchMatches!==1)throw new Error('coastal starvation audit anchor expected once, found '+patchMatches);
