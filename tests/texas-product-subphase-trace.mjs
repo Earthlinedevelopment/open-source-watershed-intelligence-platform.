@@ -1,5 +1,5 @@
 import { chromium } from 'playwright';
-const URL='https://earthlinedevelopment.org/';
+const URL='https://earthlinedevelopment.org/'; // retry swale subphase
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1800,height:1000}});
 const patches={};
