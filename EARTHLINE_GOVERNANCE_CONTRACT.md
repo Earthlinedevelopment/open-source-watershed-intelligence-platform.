@@ -6,14 +6,14 @@ Last updated: 2026-09-19
 
 ## 1. Product architecture — four authoritative design owners
 
-Every hydrology correction must belong to one and only one of these existing owners:
+Every SCIENCE correction must belong to one and only one of these four core owners:
 
 1. SLOPE
 2. WATER PATHS
 3. AQUIFERS
 4. EXCLUSIONS
 
-A repair that cannot be assigned to one of these existing owners must not ship without Jon's explicit approval.
+A science repair that cannot be assigned to one of these four core owners must not ship without Jon's explicit approval. Presentation, lifecycle, renderer, camera, publication, and performance repairs must remain inside their already-existing authoritative software owner and must not create a second owner.
 
 Earthline is not a patch stack. Do not add a second owner for an existing verdict.
 
