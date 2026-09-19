@@ -1,0 +1,22 @@
+name: Earthline Vermont Preselection Boundary AB
+on:
+  push:
+    branches: [earthline-regression-candidate]
+    paths:
+      - 'tests/vermont-preselection-boundary-ab.mjs'
+      - '.github/workflows/earthline-vermont-preselection-ab.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node tests/vermont-preselection-boundary-ab.mjs
