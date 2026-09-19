@@ -1,0 +1,23 @@
+name: Earthline Texas Refinement Resolution Sweep
+on:
+  push:
+    branches: [diag-aquifer-east-texas]
+    paths:
+      - 'tests/texas-refinement-resolution-sweep.mjs'
+      - '.github/workflows/earthline-texas-refinement-resolution-sweep.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Governance preflight
+        run: python tests/earthline-governance-preflight.py
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node tests/texas-refinement-resolution-sweep.mjs
