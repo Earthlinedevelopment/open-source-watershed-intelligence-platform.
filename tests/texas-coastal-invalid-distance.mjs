@@ -16,7 +16,7 @@ await page.route('**/*',async route=>{
           {id:'lower',b:[-99.55,25.82,-96.0,29.15]}
         ],out16671=[];
         for(const tile16671 of tiles16671){
-          const st16671=performance.now(),d16671=await loadDEM(tile16671.b,128,128,6000,'coastal tile '+tile16671.id);
+          const st16671=performance.now(),d16671=await loadDEM(tile16671.b,96,96,6000,'coastal tile '+tile16671.id);
           const g16671=earthlineLandValidityMask16584(d16671,landValidity16584);
           window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16671;
           const h16671=await hydrology(d16671,g16671.mask);
@@ -30,7 +30,7 @@ await page.route('**/*',async route=>{
         }
         window.EARTHLINE_TX_COAST_TILES_16671=out16671;
       }catch(e){window.EARTHLINE_TX_COAST_TILES_16671={error:String(e)};}
-      finally{window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16671;window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16671;}
+      
     }
     noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · SWALES COMPLETE',runToken);await wait(0);`;
  const n=body.split(needle).length-1;patches.tiles=n;if(n!==1)throw new Error('tiles expected 1, found '+n);body=body.replace(needle,repl);
