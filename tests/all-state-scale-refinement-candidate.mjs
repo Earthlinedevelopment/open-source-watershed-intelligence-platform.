@@ -44,7 +44,7 @@ await page.route('**/*',async route=>{
 
   const needle=`    let swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539);noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · SWALES COMPLETE',runToken);await wait(0);`;
   const repl=`    let supplementalCandidates16702=[];
-    if(!focusMode&&Math.max(Number(hy.cellX)||0,Number(hy.cellY)||0)>8000&&hy.outsideLandMask16632&&hy.validityMask16584){
+    if(!focusMode&&Math.max(Number(hy.cellX)||0,Number(hy.cellY)||0)>10000&&hy.outsideLandMask16632&&hy.validityMask16584){
       const savedLandAudit16702=window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584,savedGen16702=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167;
       try{
         const coastCells16702=[];
@@ -63,7 +63,7 @@ await page.route('**/*',async route=>{
         }
         const start16702=performance.now();
         const tileResults16702=await Promise.all(tiles16702.map(async tile16702=>{
-          const d16702=await loadDEM(tile16702.b,128,128,6000,'scale refinement '+tile16702.id),g16702=earthlineLandValidityMask16584(d16702,landValidity16584);window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16702;
+          const d16702=await loadDEM(tile16702.b,112,112,6000,'scale refinement '+tile16702.id),g16702=earthlineLandValidityMask16584(d16702,landValidity16584);window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16702;
           const h16702=await hydrology(d16702,g16702.mask);h16702.outsideLandMask16632=g16702.outsideLandMask16632||null;h16702.inlandWaterMask16632=g16702.inlandWaterMask16632||null;
           const channel16702=percentile(h16702.acc,.972),elevs16702=[];
           const nearOut16702=(x,y,r=4)=>{for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){const xx=x+dx,yy=y+dy;if(xx<0||xx>=h16702.w||yy<0||yy>=h16702.h)continue;if(g16702.outsideLandMask16632[yy*h16702.w+xx])return true;}return false;};
