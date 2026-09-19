@@ -1,0 +1,40 @@
+name: Earthline 50-State Coastal Starvation Audit
+
+on:
+  push:
+    branches: [diag-aquifer-east-texas]
+    paths:
+      - 'tests/all-state-coastal-starvation-audit.mjs'
+      - '.github/workflows/earthline-all-state-coastal-starvation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - "Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia"
+          - "Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland"
+          - "Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey"
+          - "New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina"
+          - "South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Governance preflight
+        run: python tests/earthline-governance-preflight.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run coastal starvation audit
+        env:
+          STATES: ${{ matrix.shard }}
+        run: node tests/all-state-coastal-starvation-audit.mjs
