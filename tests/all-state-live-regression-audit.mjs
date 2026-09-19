@@ -119,3 +119,5 @@ console.log('EARTHLINE_ALL_STATE_SUMMARY '+JSON.stringify({
 }));
 await browser.close();
 if(rows.some(r=>!r.pass))process.exitCode=1;
+
+// LIVE VERIFY 5a00c33db90942ca0c19592851be7e4bba07bb35
