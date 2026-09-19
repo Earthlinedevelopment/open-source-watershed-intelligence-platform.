@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 
 const URL='https://earthlinedevelopment.org/';
-const STATES=['Texas','California','Maryland'];
+const STATES=['California'];
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1800,height:1000}});
 const patches={};
