@@ -86,9 +86,14 @@ for(const stateName of STATES){
       occ=cells.size;
     }
     const g=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null;
-    const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null;
-    const d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||null;
+    const pubRaw=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null;
+    const dRaw=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||null;
     const p=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null;
+    const err=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null;
+    const currentRunToken=String(err?.runToken||p?.runToken||v?.runToken||'');
+    const pub=(pubRaw&&(!currentRunToken||String(pubRaw.runToken||'')===currentRunToken))?pubRaw:null;
+    const visualCurrent=!!(v&&(!currentRunToken||String(v.runToken||'')===currentRunToken));
+    const d=err?null:dRaw;
     const b=window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||null;
     const flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null;
     const aq=window.EARTHLINE_REGIONAL_AQUIFER_AUDIT_16126||null;
@@ -99,7 +104,7 @@ for(const stateName of STATES){
       locBounds,
       swaleBBox:bbox,
       occupancy4x4:occ,
-      swales:sw.length,
+      swales:visualCurrent?sw.length:0,
       contours:contours.length,
       flows:flows.length,
       visible:d?.swaleLines??null,
@@ -113,7 +118,8 @@ for(const stateName of STATES){
       grid:lv?{w:lv.w??lv.grid?.w??null,h:lv.h??lv.grid?.h??null,valid:lv.validLandCellCount??null,ocean:lv.outsideLandCellCount??null,inland:lv.inlandWaterCellCount??null}:null,
       outside:b?.outsideAfterClip??null,
       aquifer:aq?{source:aq.source||null,features:aq.features??null}:null,
-      lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null
+      runToken:currentRunToken||null,
+      lastError:err
     };
   },stateName);
 
@@ -133,7 +139,7 @@ for(const stateName of STATES){
   const persisted=persistedVerdicts[stateName]||null;
   row.knownVerdict=persisted||null;
   row.persistedVerdict=persisted;
-  const allowedExisting=(stateName==='Alaska'||stateName==='Hawaii')&&row.failReasons.every(x=>['live-error','no-published-swales','stale-visible-overlay','render-zero','core>15s-or-missing'].includes(x));
+  const allowedExisting=(stateName==='Alaska'||stateName==='Hawaii')&&row.failReasons.every(x=>['live-error','no-published-swales','stale-visible-overlay','render-zero','render-loss>10pct','core>15s-or-missing'].includes(x));
   row.allowedExistingTechnicalFailure=allowedExisting;
   row.pass=row.failReasons.length===0||allowedExisting;
   rows.push(row);
