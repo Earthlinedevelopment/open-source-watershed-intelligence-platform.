@@ -43,7 +43,7 @@ async function runVariant(name,endpointCandidate){
     }
 
     apply('coastDistanceAudit',
-`    let swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539);noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · SWALES COMPLETE',runToken);await wait(0);`,
+`    let swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539);`,
 `    let swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539);
     try{
       const coastDist16652=ll16652=>{
@@ -61,8 +61,7 @@ async function runVariant(name,endpointCandidate){
       for(const f16652 of (swales&&swales.features||[])){const c16652=f16652&&f16652.geometry&&f16652.geometry.coordinates||[];const m16652=c16652.length?c16652[Math.floor((c16652.length-1)/2)]:null;rows16652.push({mid:m16652,dist:coastDist16652(m16652)});}
       const ds16652=rows16652.map(x=>x.dist).filter(Number.isFinite).sort((a,b)=>a-b);
       window.EARTHLINE_TX_COAST_DISTANCE_16652={rows:rows16652,finite:ds16652.length,min:ds16652[0]??null,median:ds16652.length?ds16652[Math.floor(ds16652.length/2)]:null,le1:ds16652.filter(x=>x<=1).length,le2:ds16652.filter(x=>x<=2).length,le3:ds16652.filter(x=>x<=3).length,le4:ds16652.filter(x=>x<=4).length,le6:ds16652.filter(x=>x<=6).length};
-    }catch(e){window.EARTHLINE_TX_COAST_DISTANCE_16652={error:String(e)};}
-    noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · SWALES COMPLETE',runToken);await wait(0);`);
+    }catch(e){window.EARTHLINE_TX_COAST_DISTANCE_16652={error:String(e)};}`);
     return route.fulfill({response:resp,body});
   });
 
