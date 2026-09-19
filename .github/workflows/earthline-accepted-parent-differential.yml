@@ -1,0 +1,46 @@
+name: Earthline 16584 Historical Differential
+
+on:
+  push:
+    branches: [earthline-regression-candidate]
+    paths:
+      - 'index.html'
+      - 'tests/accepted-parent-differential.mjs'
+      - '.github/workflows/earthline-accepted-parent-differential.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  differential:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - "Vermont|Maryland|New York|Massachusetts|Arizona"
+          - "Colorado|New Mexico|Nevada|Utah|Oklahoma"
+          - "California|Nebraska|North Carolina|Texas|Alabama"
+          - "Alaska|Florida|Hawaii|Idaho|Missouri|Virginia"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: candidate
+      - uses: actions/checkout@v4
+        with:
+          ref: 74343a24f90fed7d7abbe9267ef11a2836220de7
+          path: candidate/accepted16584
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - working-directory: candidate
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Compare candidate to accepted 16584
+        working-directory: candidate
+        env:
+          STATES: ${{ matrix.shard }}
+        run: node tests/accepted-parent-differential.mjs
