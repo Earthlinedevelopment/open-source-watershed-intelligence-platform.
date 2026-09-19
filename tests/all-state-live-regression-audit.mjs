@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { chromium } from 'playwright';
 
-const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
+const SITE_URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
 const STATES=String(process.env.STATES||'').split('|').map(s=>s.trim()).filter(Boolean);
 if(!STATES.length) throw new Error('STATES is empty');
 const verdictPath=new URL('../earthline-state-verdicts.json',import.meta.url);
@@ -12,7 +12,7 @@ const page=await browser.newPage({viewport:{width:1800,height:1000}});
 const rows=[];
 
 page.on('pageerror',e=>console.log('PAGEERROR '+String(e)));
-await page.goto(URL+'?all_state_regression='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+await page.goto(SITE_URL+'?all_state_regression='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
 await page.waitForSelector('#searchInput',{timeout:30000});
 
 for(const stateName of STATES){
