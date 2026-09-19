@@ -84,3 +84,33 @@ Canonical governance must live in-repo and be checked before release work.
 
 Status:
 REPAIR IN PROGRESS — governance contract, baseline manifest, error ledger, and preflight checker added on diagnostic branch.
+
+## E-008 — Cross-state audit inherited stale globals after a failed run
+Failure:
+When a state failed before publication, global publication/display objects could still contain the previous state's counts, producing false evidence such as Alaska appearing to inherit prior-state swales.
+
+Rule:
+Every diagnostic must bind publication evidence to the current run token. A failed run must never inherit publication/display evidence from a previous run.
+
+Status:
+LOCKED.
+
+## E-009 — Candidate generation count was mislabeled as final publication
+Failure:
+EARTHLINE_SWALE_GENERATION_AUDIT_16167.publishedFeatures was treated as the final published count even though administrative clipping/publication occurs later.
+
+Rule:
+Use EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167.generated for final publication. Generation audit describes the generation/tier stage only.
+
+Status:
+LOCKED.
+
+## E-010 — Four-point science doctrine incorrectly applied to software lifecycle owners
+Failure:
+A camera/lifecycle diagnostic was temporarily declared under the Slope owner merely because the governance preflight allowed only the four science owners.
+
+Rule:
+The four-point core governs SCIENCE: Slope, Water Paths, Aquifers, Exclusions. Presentation/lifecycle/performance repairs must remain inside their already-existing software owner and must not create a second owner.
+
+Status:
+LOCKED.
