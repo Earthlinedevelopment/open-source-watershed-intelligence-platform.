@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
 
-const URL='https://earthlinedevelopment.org/';
+const BASE_URL='https://earthlinedevelopment.org/';
 const STATES=String(process.env.STATES||'').split('|').map(s=>s.trim()).filter(Boolean);
 const candidateHtml=await fs.readFile('index.html','utf8');
 const acceptedHtml=await fs.readFile('accepted16584/index.html','utf8');
@@ -9,7 +9,7 @@ const browser=await chromium.launch({headless:true});
 
 async function makePage(body,label){
   const page=await browser.newPage({viewport:{width:1800,height:1000}});
-  const origin=new URL(URL).origin;
+  const origin=new globalThis.URL(BASE_URL).origin;
   await page.route('**/*',async route=>{
     const req=route.request();
     if(req.resourceType()==='document'){
@@ -23,7 +23,7 @@ async function makePage(body,label){
     }
     return route.continue();
   });
-  await page.goto(URL+'?historical_diff='+label+'_'+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+  await page.goto(BASE_URL+'?historical_diff='+label+'_'+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
   await page.waitForSelector('#searchInput',{timeout:30000});
   return page;
 }
