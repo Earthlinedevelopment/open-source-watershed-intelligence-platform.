@@ -72,22 +72,34 @@ await page.route('**/*',async route=>{
     }
     noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · SWALES COMPLETE',runToken);await wait(0);`;
  const n=body.split(needle).length-1;patches.tiles=n;if(n!==1)throw new Error('tiles expected 1, found '+n);body=body.replace(needle,repl);
+ apply('cameraGuard',
+`    const cameraReady16334=await cameraSettle16310;
+    phase16198.cameraReadyBeforePublishMs=Math.round(performance.now()-cameraFinalStarted16329);`,
+`    let cameraReady16334=await cameraSettle16310;
+    let cameraReasserted16674=false,cameraSpanRatio16674=null;
+    try{
+      const cb16674=m.getBounds&&m.getBounds(),currentSpan16674=cb16674?Math.abs(Number(cb16674.getEast())-Number(cb16674.getWest())):null,targetSpan16674=Math.abs(Number(b[2])-Number(b[0]));
+      cameraSpanRatio16674=Number.isFinite(currentSpan16674)&&targetSpan16674>0?currentSpan16674/targetSpan16674:null;
+      if(Number.isFinite(cameraSpanRatio16674)&&(cameraSpanRatio16674>4||cameraSpanRatio16674<.25)){cameraReady16334=await settleRegionalCamera(m,b,runToken);cameraReasserted16674=true;}
+      window.EARTHLINE_REGIONAL_CAMERA_GUARD_16674={runToken,ratio:cameraSpanRatio16674,reasserted:cameraReasserted16674,at:new Date().toISOString()};
+    }catch(_){}
+    phase16198.cameraReadyBeforePublishMs=Math.round(performance.now()-cameraFinalStarted16329);`);
  return route.fulfill({response:resp,body});
 });
 await page.goto(URL+'?tx_fast_coast_tiles='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
 await page.waitForSelector('#searchInput',{timeout:30000});
 const rows=[];
 for(let repeat=1;repeat<=3;repeat++){
- const prev=await page.evaluate(()=>String(window.EARTHLINE_SWALE_GENERATION_AUDIT_16167?.at||'')),started=Date.now();
+ const prev=await page.evaluate(()=>String(window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.runToken||'')),started=Date.now();
  await page.evaluate(()=>{window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='Texas';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
- let timedOut=false;try{await page.waitForFunction(prev=>{const at=String(window.EARTHLINE_SWALE_GENERATION_AUDIT_16167?.at||''),s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||'');return !!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||((!prev||at!==prev)&&/screening published\\./i.test(s));},prev,{timeout:60000,polling:100});}catch(_){timedOut=true;}
+ let timedOut=false;try{await page.waitForFunction(prev=>{const token=String(window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.runToken||'');return !!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||((!prev||token!==prev)&&!!token);},prev,{timeout:30000,polling:100});}catch(_){timedOut=true;}
  await page.waitForTimeout(500);
  const state=await page.evaluate(()=>{
    const v=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020||null,sw=Array.isArray(v?.swales?.features)?v.swales.features:[];
    const d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||null,b=window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||null,g=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null,p=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null,a=window.EARTHLINE_REGIONAL_AQUIFER_AUDIT_16126||null;
    const mid=f=>{const c=f&&f.geometry&&f.geometry.coordinates||[];return c.length?c[Math.floor((c.length-1)/2)]:null;};
    const count=pred=>sw.reduce((n,f)=>{const m=mid(f);return n+(m&&pred(+m[0],+m[1])?1:0);},0);
-   return {fast:window.EARTHLINE_TX_COAST_FAST_TILES_16672||null,swales:sw.length,visible:d?.swaleLines??null,published:g?.publishedFeatures??null,totalMs:p?.totalMs??null,unsafe:flow?.unsafeSegments??null,outside:b?.outsideAfterClip??null,aquifer:a,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,zones:{panhandleNorth:count((x,y)=>x>-103.1&&x<-100&&y>35&&y<36.6),upperCoast:count((x,y)=>x>-96.5&&x<-93.45&&y>28.8&&y<31.2),midCoast:count((x,y)=>x>-99.3&&x<-96&&y>27.4&&y<30.2),lowerCoast:count((x,y)=>x>-99.5&&x<-97&&y>25.7&&y<28.2),eastInterior:count((x,y)=>x>-96&&x<-93.45&&y>30.5&&y<34.3)}};
+   return {fast:window.EARTHLINE_TX_COAST_FAST_TILES_16672||null,camera:window.EARTHLINE_REGIONAL_CAMERA_GUARD_16674||null,swales:sw.length,visible:d?.swaleLines??null,published:g?.publishedFeatures??null,totalMs:p?.totalMs??null,unsafe:flow?.unsafeSegments??null,outside:b?.outsideAfterClip??null,aquifer:a,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,zones:{panhandleNorth:count((x,y)=>x>-103.1&&x<-100&&y>35&&y<36.6),upperCoast:count((x,y)=>x>-96.5&&x<-93.45&&y>28.8&&y<31.2),midCoast:count((x,y)=>x>-99.3&&x<-96&&y>27.4&&y<30.2),lowerCoast:count((x,y)=>x>-99.5&&x<-97&&y>25.7&&y<28.2),eastInterior:count((x,y)=>x>-96&&x<-93.45&&y>30.5&&y<34.3)}};
  });
  const row={repeat,elapsedMs:Date.now()-started,timedOut,state};rows.push(row);console.log('EARTHLINE_TX_COAST_MERGE '+JSON.stringify(row));
 }
