@@ -33,7 +33,7 @@ await page.route('**/*',async route=>{
           {id:'upper',b:[-96.9,28.45,-93.5,31.15]},
           {id:'lower',b:[-99.55,25.82,-96.0,29.15]}
         ],out16672=[];
-        for(const tile16672 of tiles16672){
+        const tileResults16672=await Promise.all(tiles16672.map(async tile16672=>{
           const st16672=performance.now(),d16672=await loadDEM(tile16672.b,128,128,6000,'coastal tile '+tile16672.id);
           const g16672=earthlineLandValidityMask16584(d16672,landValidity16584);window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16672;
           const h16672=await hydrology(d16672,g16672.mask);h16672.outsideLandMask16632=g16672.outsideLandMask16632||null;h16672.inlandWaterMask16632=g16672.inlandWaterMask16632||null;
@@ -45,8 +45,9 @@ await page.route('**/*',async route=>{
           const c16672=await makeContours(h16672,true,levels16672),s16672=await makeSwales(h16672,c16672,false,swaleJurisdictionGeometry16539);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16672;
           const dist16672=ll16672=>{const gg16672=llGrid(h16672,ll16672);if(!gg16672||!Number.isFinite(gg16672.x)||!Number.isFinite(gg16672.y))return null;const cx16672=Math.max(0,Math.min(h16672.w-1,Math.round(gg16672.x))),cy16672=Math.max(0,Math.min(h16672.h-1,Math.round(gg16672.y)));for(let r16672=0;r16672<=30;r16672++)for(let dy16672=-r16672;dy16672<=r16672;dy16672++)for(let dx16672=-r16672;dx16672<=r16672;dx16672++){if(Math.max(Math.abs(dx16672),Math.abs(dy16672))!==r16672)continue;const xx16672=cx16672+dx16672,yy16672=cy16672+dy16672;if(xx16672<0||xx16672>=h16672.w||yy16672<0||yy16672>=h16672.h)continue;if(g16672.outsideLandMask16632[yy16672*h16672.w+xx16672])return r16672;}return null;};
           const rows16672=(s16672.features||[]).map(f16672=>{const cc16672=f16672.geometry&&f16672.geometry.coordinates||[],m16672=cc16672[Math.floor((cc16672.length-1)/2)]||null,dd16672=m16672?dist16672(m16672):null;return {feature:f16672,mid:m16672,distCells:dd16672,distKm:Number.isFinite(dd16672)?Number((dd16672*Math.max(h16672.cellX,h16672.cellY)/1000).toFixed(1)):null};}).filter(r=>Number.isFinite(r.distCells)).sort((a,b)=>a.distCells-b.distCells);
-          out16672.push({id:tile16672.id,cellKm:Number((Math.max(h16672.cellX,h16672.cellY)/1000).toFixed(2)),elapsedMs:Math.round(performance.now()-st16672),levels:levels16672,coastalEligibleElevations:elevs16672.length,swales:(s16672.features||[]).length,minKm:rows16672[0]?.distKm??null,within10km:rows16672.filter(r=>r.distKm<=10).length,within20km:rows16672.filter(r=>r.distKm<=20).length,rows:rows16672.slice(0,8).map(r=>({mid:r.mid,distKm:r.distKm,rank:r.feature.properties&&r.feature.properties.rank,score:r.feature.properties&&r.feature.properties.score}))});
-        }
+          return {id:tile16672.id,cellKm:Number((Math.max(h16672.cellX,h16672.cellY)/1000).toFixed(2)),elapsedMs:Math.round(performance.now()-st16672),levels:levels16672,coastalEligibleElevations:elevs16672.length,swales:(s16672.features||[]).length,minKm:rows16672[0]?.distKm??null,within10km:rows16672.filter(r=>r.distKm<=10).length,within20km:rows16672.filter(r=>r.distKm<=20).length,rows:rows16672.slice(0,8).map(r=>({mid:r.mid,distKm:r.distKm,rank:r.feature.properties&&r.feature.properties.rank,score:r.feature.properties&&r.feature.properties.score}))};
+        }));
+        out16672.push(...tileResults16672);
         window.EARTHLINE_TX_COAST_FAST_TILES_16672={elapsedMs:Math.round(performance.now()-allStart16672),tiles:out16672};
       }catch(e){window.EARTHLINE_TX_COAST_FAST_TILES_16672={error:String(e)};}
       finally{window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16672;window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16672;}
