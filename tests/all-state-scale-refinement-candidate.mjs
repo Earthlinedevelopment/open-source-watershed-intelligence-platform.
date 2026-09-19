@@ -75,8 +75,10 @@ await page.route('**/*',async route=>{
           const picked=[];for(const r of rows){if(picked.length>=12)break;if(picked.some(p=>Math.hypot(p.f.properties?.rank||0-r.f.properties?.rank||0,0)<0))continue;picked.push(r);}
           return picked.map(r=>{const mg=llGrid(hy,r.mid);return {segment:r.seg,x:Math.max(1,Math.min(hy.w-2,Math.round(mg.x))),y:Math.max(1,Math.min(hy.h-2,Math.round(mg.y))),slope:Number(r.f.properties?.slope_pct||.2),acc:0,maxAcc:0,score:Math.max(0,Math.min(1,Number(r.f.properties?.score||0)/100)),confidence:'preferred',minLinePx16632:4,refined16702:true,coastKm16702:Number(r.km.toFixed(1)),tile16702:tile16702.id};});
         }));
-        supplementalCandidates16702=tileResults16702.flat();
-        window.EARTHLINE_SCALE_REFINED_INPUT_16702={tiles:tiles16702.length,input:supplementalCandidates16702.length,elapsedMs:Math.round(performance.now()-start16702),rows:supplementalCandidates16702.map(c=>({x:c.x,y:c.y,score:c.score,coastKm:c.coastKm16702,tile:c.tile16702}))};
+        const rawSupplemental16702=tileResults16702.flat().sort((a16702,b16702)=>(Number(b16702.score)||0)-(Number(a16702.score)||0)||(Number(a16702.coastKm16702)||Infinity)-(Number(b16702.coastKm16702)||Infinity));
+        const seenMainCell16702=new Set();supplementalCandidates16702=[];
+        for(const c16702 of rawSupplemental16702){const k16702=String(c16702.x)+','+String(c16702.y);if(seenMainCell16702.has(k16702))continue;seenMainCell16702.add(k16702);supplementalCandidates16702.push(c16702);}
+        window.EARTHLINE_SCALE_REFINED_INPUT_16702={tiles:tiles16702.length,rawInput:rawSupplemental16702.length,input:supplementalCandidates16702.length,elapsedMs:Math.round(performance.now()-start16702),rows:supplementalCandidates16702.map(c=>({x:c.x,y:c.y,score:c.score,coastKm:c.coastKm16702,tile:c.tile16702}))};
       }catch(e16702){window.EARTHLINE_SCALE_REFINED_INPUT_16702={error:String(e16702)};}
       finally{window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16702;window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16702;}
     }
