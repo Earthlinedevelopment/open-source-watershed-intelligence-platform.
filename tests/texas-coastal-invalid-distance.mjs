@@ -35,7 +35,7 @@ await page.route('**/*',async route=>{
 
 await page.goto(URL+'?coastal_crossref='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
 await page.waitForSelector('#searchInput',{timeout:30000});
-const states=['Texas','Florida','Alabama','North Carolina','Maryland','Massachusetts','New York','California'];
+const states=['Florida'];
 const rows=[];
 for(const stateName of states){
   const prior=await page.evaluate(()=>String(window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.runToken||'')),started=Date.now();
