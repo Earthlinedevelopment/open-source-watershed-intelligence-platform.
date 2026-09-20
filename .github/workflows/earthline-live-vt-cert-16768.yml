@@ -1,0 +1,29 @@
+name: Earthline 16768 Live Vermont Certification
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-live-vt-cert-16768.yml']
+permissions:
+  contents: read
+jobs:
+  certify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Verify live build marker
+        run: |
+          curl -fsSL 'https://earthlinedevelopment.org/?vt16768=marker' | grep -q "EARTHLINE 16767"
+      - name: Four live Vermont passes
+        shell: bash
+        run: |
+          set -e
+          for n in 1 2 3 4; do
+            echo "=== LIVE VERMONT $n ==="
+            EARTHLINE_URL="https://earthlinedevelopment.org/?vt16768=$n-$(date +%s)" STATES='Vermont' OUT="/tmp/vt-live-$n.json" node lab/validate-16753-final-us.mjs
+          done
