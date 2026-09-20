@@ -21,24 +21,40 @@ jobs:
           git show origin/main:lab/apply-16710-flat-coast-refinement.py > /tmp/apply-16710.py
           git show origin/main:lab/validate-16710.mjs > ./validate-16710-run.mjs
       - name: Apply shared flat-coast repair
+        id: apply
+        shell: bash
         run: |
-          python3 /tmp/apply-16710.py
-          git diff --check
-      - name: Publish repaired pages-live
+          set +e
+          mkdir -p lab
+          python3 /tmp/apply-16710.py > lab/16710-apply.txt 2>&1
+          code=$?
+          cat lab/16710-apply.txt
+          if [ "$code" -eq 0 ]; then
+            git diff --check
+            echo "ok=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=0" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+      - name: Record apply result
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
-          git add index.html
-          git commit -m 'repair: refine starved coarse flat coasts at <=4 pct'
+          git add lab/16710-apply.txt
+          if [ "${{ steps.apply.outputs.ok }}" = "1" ]; then git add index.html; fi
+          git commit -m 'repair: record 16710 flat-coast apply result' || true
           git push origin HEAD:pages-live
       - uses: actions/setup-node@v4
+        if: steps.apply.outputs.ok == '1'
         with:
           node-version: '20'
       - name: Install browser
+        if: steps.apply.outputs.ok == '1'
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
       - name: Validate Texas and regression controls
+        if: steps.apply.outputs.ok == '1'
         id: validate
         shell: bash
         run: |
@@ -53,10 +69,12 @@ jobs:
           echo "pass=$pass" >> "$GITHUB_OUTPUT"
           exit 0
       - name: Record validation evidence
+        if: steps.apply.outputs.ok == '1'
         run: |
           git add lab/16710-validation.json
           git commit -m 'test: record 16710 Texas closeout validation' || true
           git push origin HEAD:pages-live
-      - name: Enforce validation
+      - name: Enforce result
         run: |
+          test "${{ steps.apply.outputs.ok }}" = "1"
           test "${{ steps.validate.outputs.pass }}" = "1"
