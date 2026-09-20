@@ -1,0 +1,31 @@
+name: Earthline 16764 Inspect Vermont Density Owner
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-inspect-vt-density-owner-16764.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Inspect Regional density owner
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          needles=['EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731','terrain-proportional','16755','coverageBins','recovery','targetCount','spatial','selected.length']
+          for needle in needles:
+              print('\n===== '+needle+' =====')
+              start=0;n=0
+              while True:
+                  i=s.find(needle,start)
+                  if i<0 or n>=10: break
+                  print('\n--- @',i,'---')
+                  print(s[max(0,i-5000):min(len(s),i+10000)])
+                  start=i+len(needle);n+=1
+          PY
