@@ -19,11 +19,13 @@ async function runRegional(page,stateName){
   },stateName);
   await page.waitForFunction(expected=>{
     const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,err=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null;
-    const status=String(document.getElementById('earthlineVermontStatus16147')?.textContent||'');
+    const disp=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null;
+    const audit=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731||null;
     const pkg=window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||null;
     const exact=String(pkg?.identity?.name||'').toLowerCase()===String(expected).toLowerCase();
     const vt=String(expected).toLowerCase()==='vermont'&&String(pub?.runToken||'').toLowerCase().includes('vermont');
-    return (exact||vt)&& (!!err|| (!!pub?.runToken&&/screening published\./i.test(status)));
+    const generated=Number(pub?.generated??0),visible=Number(disp?.swaleLines??0);
+    return (exact||vt)&& (!!err|| (!!audit&&generated>0&&visible===generated));
   },stateName,{timeout:60000,polling:100});
   const err=await page.evaluate(()=>window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null);
   if(err)throw new Error('regional '+JSON.stringify(err));
