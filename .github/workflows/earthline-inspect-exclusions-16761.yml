@@ -1,0 +1,31 @@
+name: Earthline 16761 Inspect Exclusion Source Fallback
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-inspect-exclusions-16761.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Inspect exclusion acquisition owner
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          needles=['overpass-api.de','api/interpreter','external-infrastructure-unavailable','all-attempted-open-data-exclusion-sources-failed','openDataSources16539']
+          for needle in needles:
+              print('\n===== '+needle+' =====')
+              start=0;n=0
+              while True:
+                  i=s.find(needle,start)
+                  if i<0 or n>=6: break
+                  print('\n--- @',i,'---')
+                  print(s[max(0,i-4500):min(len(s),i+9000)])
+                  start=i+len(needle);n+=1
+          PY
