@@ -1,34 +1,62 @@
-name: Earthline Texas Owner Extract
+name: Earthline 16710 Texas Flat-Coast Repair
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/earthline-run-16621.yml'
 permissions:
-  contents: read
+  contents: write
 jobs:
-  inspect:
+  repair-and-validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
-      - name: Extract current slope and swale owners
+          fetch-depth: 0
+      - name: Fetch repair from main
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          s=Path('index.html').read_text(encoding='utf-8')
-          needles=['async function makeContours','async function makeSwales','function sampleSegment','const sampleSegment','slope_pct','hy.slope','jurisdictionEligibleCount16539','const chosen=','chosen=']
-          for n in needles:
-              start=0
-              hits=[]
-              while True:
-                  i=s.find(n,start)
-                  if i<0: break
-                  hits.append(i); start=i+len(n)
-                  if len(hits)>=8: break
-              print('\n###',n,hits)
-              for i in hits[:4]:
-                  print(s[max(0,i-4500):min(len(s),i+14000)])
-          PY
+          git fetch origin main
+          git show origin/main:lab/apply-16710-flat-coast-refinement.py > /tmp/apply-16710.py
+          git show origin/main:lab/validate-16710.mjs > ./validate-16710-run.mjs
+      - name: Apply shared flat-coast repair
+        run: |
+          python3 /tmp/apply-16710.py
+          git diff --check
+      - name: Publish repaired pages-live
+        run: |
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'repair: refine starved coarse flat coasts at <=4 pct'
+          git push origin HEAD:pages-live
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Validate Texas and regression controls
+        id: validate
+        shell: bash
+        run: |
+          set +e
+          pass=0
+          for attempt in 1 2 3; do
+            EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Texas|California|New York|Massachusetts' OUT='lab/16710-validation.json' node ./validate-16710-run.mjs
+            code=$?
+            if [ "$code" -eq 0 ]; then pass=1; break; fi
+            sleep 10
+          done
+          echo "pass=$pass" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Record validation evidence
+        run: |
+          git add lab/16710-validation.json
+          git commit -m 'test: record 16710 Texas closeout validation' || true
+          git push origin HEAD:pages-live
+      - name: Enforce validation
+        run: |
+          test "${{ steps.validate.outputs.pass }}" = "1"
