@@ -1,0 +1,60 @@
+name: Earthline Mantra45 Origin Fingerprint
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-origin-fingerprint.yml']
+permissions:
+  contents: write
+jobs:
+  fingerprint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Compare served origins
+        shell: bash
+        run: |
+          mkdir -p lab /tmp/m45fp
+          python3 - <<'PY'
+          import subprocess, json, hashlib, pathlib, time
+          urls=[
+            "https://earthlinedevelopment.org/",
+            "https://www.earthlinedevelopment.org/",
+            "https://earthlinedevelopment.github.io/open-source-watershed-intelligence-platform./",
+            "https://earthlinedevelopment.github.io/open-source-watershed-intelligence-platform./index.html"
+          ]
+          out=[]
+          for u in urls:
+            body=pathlib.Path('/tmp/m45fp/body')
+            hdr=pathlib.Path('/tmp/m45fp/hdr')
+            cmd=['curl','-L','-sS','--max-time','30','-D',str(hdr),'-o',str(body),'-w','%{http_code}\n%{url_effective}\n',u+'?m45fp='+str(time.time_ns())]
+            p=subprocess.run(cmd,text=True,capture_output=True)
+            raw=body.read_bytes() if body.exists() else b''
+            headers=hdr.read_text(errors='replace') if hdr.exists() else ''
+            row={
+              'url':u,'curlExit':p.returncode,'writeout':p.stdout.strip().splitlines(),
+              'stderr':p.stderr[-1000:],
+              'length':len(raw),'sha256':hashlib.sha256(raw).hexdigest() if raw else None,
+              'marker16771':b'EARTHLINE 16771' in raw,'marker16767':b'EARTHLINE 16767' in raw,
+              'etag':next((x.split(':',1)[1].strip() for x in headers.splitlines() if x.lower().startswith('etag:')),None),
+              'lastModified':next((x.split(':',1)[1].strip() for x in headers.splitlines() if x.lower().startswith('last-modified:')),None),
+              'server':next((x.split(':',1)[1].strip() for x in headers.splitlines() if x.lower().startswith('server:')),None),
+              'via':next((x.split(':',1)[1].strip() for x in headers.splitlines() if x.lower().startswith('via:')),None),
+              'cacheControl':next((x.split(':',1)[1].strip() for x in headers.splitlines() if x.lower().startswith('cache-control:')),None),
+              'headersTail':headers[-4000:]
+            }
+            out.append(row)
+          pathlib.Path('lab/mantra45-origin-fingerprint.json').write_text(json.dumps(out,indent=2))
+          print(json.dumps(out,indent=2))
+          PY
+      - name: Persist
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-origin-fingerprint.json
+          git commit -m "diag: persist Mantra45 origin fingerprint [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
