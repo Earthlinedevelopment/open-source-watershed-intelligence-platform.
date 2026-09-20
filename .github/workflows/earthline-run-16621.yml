@@ -1,4 +1,4 @@
-name: Earthline All 50 States Matrix
+name: Earthline Last-Three Failure Probe
 on:
   push:
     branches: [main]
@@ -7,9 +7,9 @@ on:
 permissions:
   contents: write
 jobs:
-  all-states:
+  probe:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,58 +28,13 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-
-      - name: Batch 1
+      - name: Probe Alaska Hawaii Vermont
         run: |
           set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia' OUT='lab/16710-allstates-b1.json' node ./validate-16710-run.mjs
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Alaska|Hawaii|Vermont' OUT='lab/16710-last-three.json' node ./validate-16710-run.mjs
           exit 0
-      - name: Save batch 1
+      - name: Save probe
         run: |
-          git add lab/16710-allstates-b1.json
-          git commit -m 'test: record all-states batch 1' || true
-          git push origin HEAD:pages-live
-
-      - name: Batch 2
-        run: |
-          set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland' OUT='lab/16710-allstates-b2.json' node ./validate-16710-run.mjs
-          exit 0
-      - name: Save batch 2
-        run: |
-          git add lab/16710-allstates-b2.json
-          git commit -m 'test: record all-states batch 2' || true
-          git push origin HEAD:pages-live
-
-      - name: Batch 3
-        run: |
-          set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey' OUT='lab/16710-allstates-b3.json' node ./validate-16710-run.mjs
-          exit 0
-      - name: Save batch 3
-        run: |
-          git add lab/16710-allstates-b3.json
-          git commit -m 'test: record all-states batch 3' || true
-          git push origin HEAD:pages-live
-
-      - name: Batch 4
-        run: |
-          set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina' OUT='lab/16710-allstates-b4.json' node ./validate-16710-run.mjs
-          exit 0
-      - name: Save batch 4
-        run: |
-          git add lab/16710-allstates-b4.json
-          git commit -m 'test: record all-states batch 4' || true
-          git push origin HEAD:pages-live
-
-      - name: Batch 5
-        run: |
-          set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming' OUT='lab/16710-allstates-b5.json' node ./validate-16710-run.mjs
-          exit 0
-      - name: Save batch 5
-        run: |
-          git add lab/16710-allstates-b5.json
-          git commit -m 'test: record all-states batch 5' || true
+          git add lab/16710-last-three.json
+          git commit -m 'test: capture last-three failure owners' || true
           git push origin HEAD:pages-live
