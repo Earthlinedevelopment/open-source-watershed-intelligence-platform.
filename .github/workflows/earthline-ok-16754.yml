@@ -1,0 +1,20 @@
+name: Earthline 16754 Oklahoma North Diagnostic
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-ok-16754.yml']
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: EARTHLINE_URL='https://earthlinedevelopment.org/' OUT='ok16754.json' node lab/diag-16754-oklahoma-north.mjs
