@@ -6,7 +6,7 @@ on:
       - 'tests/texas-live-final-gate.mjs'
       - '.github/workflows/earthline-texas-live-final-gate.yml'
   workflow_dispatch:
-permissions: {contents: read}
+permissions: {contents: write}
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -18,4 +18,24 @@ jobs:
       - run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - run: node tests/texas-live-final-gate.mjs
+      - name: Run live Texas final gate
+        run: |
+          set +e
+          node tests/texas-live-final-gate.mjs 2>&1 | tee texas-live-final.log
+          code=${PIPESTATUS[0]}
+          echo "EARTHLINE_TX_GATE_EXIT=$code" >> "$GITHUB_ENV"
+          exit 0
+      - name: Record live Texas final gate
+        run: |
+          {
+            echo "EARTHLINE TEXAS LIVE FINAL GATE — diagnostic only"
+            echo "Commit: $GITHUB_SHA"
+            echo "GateExit: $EARTHLINE_TX_GATE_EXIT"
+            echo
+            cat texas-live-final.log
+          } > EARTHLINE_TEXAS_LIVE_FINAL_LATEST.txt
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add EARTHLINE_TEXAS_LIVE_FINAL_LATEST.txt
+          git commit -m "diag: record Texas live final gate" || exit 0
+          git push origin HEAD:diag-aquifer-east-texas
