@@ -1,0 +1,10 @@
+import { chromium } from 'playwright';
+const URL='https://earthlinedevelopment.org/';
+const page=await (await chromium.launch({headless:true})).newPage({viewport:{width:1600,height:900}});
+await page.goto(URL+'?nc16739='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+await page.waitForSelector('#searchInput',{timeout:30000});
+await page.evaluate(()=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='North Carolina';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
+await page.waitForFunction(()=>{const p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||'');return !!p?.runToken&&/screening published\./i.test(s);},{timeout:60000,polling:100});
+const out=await page.evaluate(()=>({spatial:window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||null,refined:window.EARTHLINE_REFINED_COVERAGE_SELECTION_16713||null,coverage:window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731||null,refine:window.EARTHLINE_COVERAGE_GAP_REFINEMENT_16731||null,perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null}));
+console.log(JSON.stringify(out));
+process.exit(0);
