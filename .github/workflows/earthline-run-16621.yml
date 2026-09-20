@@ -1,4 +1,4 @@
-name: Earthline 16710 Owner Capture
+name: Earthline 16710 Texas Flat-Coast Repair
 on:
   push:
     branches: [main]
@@ -7,36 +7,74 @@ on:
 permissions:
   contents: write
 jobs:
-  capture:
+  repair-and-validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Capture current owners
+      - name: Fetch repair from main
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          s=Path('index.html').read_text(encoding='utf-8')
-          out=[]
-          for n in ['makeContours(','makeSwales(','candidateQuantile16609','jurisdictionEligibleCount16539','DERIVING WATER PATHS + BIOSWALES','const preferredEligibleCount16539','slope_pct']:
-              hits=[];pos=0
-              while True:
-                  i=s.find(n,pos)
-                  if i<0: break
-                  hits.append(i);pos=i+len(n)
-                  if len(hits)>=8: break
-              out.append('\n===== '+n+' '+str(hits)+' =====\n')
-              for i in hits[:4]:
-                  out.append(s[max(0,i-5000):min(len(s),i+16000)])
-          Path('lab/16710-owner.txt').write_text(''.join(out),encoding='utf-8')
-          PY
-      - name: Publish owner capture
+          git fetch origin main
+          git show origin/main:lab/apply-16710-flat-coast-refinement.py > /tmp/apply-16710.py
+          git show origin/main:lab/validate-16710.mjs > ./validate-16710-run.mjs
+      - name: Apply in-place flat-coast repair
+        id: apply
+        shell: bash
+        run: |
+          set +e
+          mkdir -p lab
+          python3 /tmp/apply-16710.py > lab/16710-apply.txt 2>&1
+          code=$?
+          cat lab/16710-apply.txt
+          if [ "$code" -eq 0 ]; then
+            git diff --check
+            echo "ok=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=0" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+      - name: Publish apply result
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
-          git add lab/16710-owner.txt
-          git commit -m 'test: capture live flat-coast owners' || true
+          git add lab/16710-apply.txt
+          if [ "${{ steps.apply.outputs.ok }}" = "1" ]; then git add index.html; fi
+          git commit -m 'repair: narrow existing flat-coast refinement to <=4 pct' || true
           git push origin HEAD:pages-live
+      - uses: actions/setup-node@v4
+        if: steps.apply.outputs.ok == '1'
+        with:
+          node-version: '20'
+      - name: Install browser
+        if: steps.apply.outputs.ok == '1'
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Validate Texas and regression controls
+        if: steps.apply.outputs.ok == '1'
+        id: validate
+        shell: bash
+        run: |
+          set +e
+          pass=0
+          for attempt in 1 2 3; do
+            EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Texas|California|New York|Massachusetts' OUT='lab/16710-validation.json' node ./validate-16710-run.mjs
+            code=$?
+            if [ "$code" -eq 0 ]; then pass=1; break; fi
+            sleep 10
+          done
+          echo "pass=$pass" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Record validation evidence
+        if: steps.apply.outputs.ok == '1'
+        run: |
+          git add lab/16710-validation.json
+          git commit -m 'test: record 16710 Texas closeout validation' || true
+          git push origin HEAD:pages-live
+      - name: Enforce result
+        run: |
+          test "${{ steps.apply.outputs.ok }}" = "1"
+          test "${{ steps.validate.outputs.pass }}" = "1"
