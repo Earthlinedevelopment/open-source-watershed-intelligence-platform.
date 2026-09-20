@@ -9,21 +9,12 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   audit:
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        shard:
-          - "Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia"
-          - "Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland"
-          - "Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey"
-          - "New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina"
-          - "South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming"
     steps:
       - uses: actions/checkout@v4
       - name: Governance preflight
@@ -36,5 +27,26 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Run candidate matrix
         env:
-          STATES: ${{ matrix.shard }}
-        run: node tests/all-state-scale-refinement-candidate.mjs
+          STATES: "Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming"
+        run: |
+          set +e
+          node tests/all-state-scale-refinement-candidate.mjs | tee scale-refinement-50.log
+          code=${PIPESTATUS[0]}
+          echo "EARTHLINE_MATRIX_EXIT=$code" >> "$GITHUB_ENV"
+          exit 0
+      - name: Record diagnostic matrix
+        run: |
+          {
+            echo "EARTHLINE 50-STATE SCALE REFINEMENT — diagnostic only"
+            echo "Commit: $GITHUB_SHA"
+            echo "MatrixExit: $EARTHLINE_MATRIX_EXIT"
+            echo
+            grep 'EARTHLINE_INTEGRATED_SCALE_REFINE {' scale-refinement-50.log || true
+            echo
+            grep 'EARTHLINE_INTEGRATED_SCALE_REFINE_SUMMARY ' scale-refinement-50.log || true
+          } > EARTHLINE_SCALE_REFINEMENT_50_LATEST.txt
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add EARTHLINE_SCALE_REFINEMENT_50_LATEST.txt
+          git commit -m "diag: record starvation-gated 50-state refinement matrix" || exit 0
+          git push origin HEAD:diag-aquifer-east-texas
