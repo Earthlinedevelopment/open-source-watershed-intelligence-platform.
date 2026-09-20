@@ -1,0 +1,25 @@
+name: Earthline 16751 Vermont Source Race
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-vt-source-race-16751.yml']
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    strategy:
+      fail-fast: false
+      matrix:
+        attempt: [one, two, three, four]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Diagnose Vermont source
+        run: node lab/diag-16751-vt-publication.mjs
