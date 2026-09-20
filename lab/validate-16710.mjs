@@ -12,8 +12,8 @@ for(const stateName of STATES){
   const prior=await page.evaluate(()=>String(window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.runToken||'')),started=Date.now();
   await page.evaluate(q=>{
     window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;
-    window.EARTHLINE_SCALE_REFINEMENT_TRIGGER_16710=null;
-    window.EARTHLINE_SCALE_REFINED_INPUT_16710=null;
+    window.EARTHLINE_SCALE_REFINEMENT_TRIGGER_16705=null;
+    window.EARTHLINE_SCALE_REFINED_INPUT_16702=null;
     const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
     i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();
   },stateName);
@@ -30,7 +30,7 @@ for(const stateName of STATES){
     let regions=null;
     if(/texas/i.test(q))regions={panhandle:reg((x,y)=>x>-103.1&&x<-100&&y>35&&y<36.6),upperGulf:reg((x,y)=>x>-96.5&&x<-93.45&&y>28.8&&y<31.2),lowerGulf:reg((x,y)=>x>-99.5&&x<-97&&y>25.7&&y<28.2),east:reg((x,y)=>x>-96&&x<-93.45&&y>30.5&&y<34.3)};
     const g=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||null,p=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,b=window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||null,flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null;
-    return {trigger:window.EARTHLINE_SCALE_REFINEMENT_TRIGGER_16710||null,input:window.EARTHLINE_SCALE_REFINED_INPUT_16710||null,swales:sw.length,visible:d?.swaleLines??null,published:g?.publishedFeatures??null,candidates:g?.candidates??null,eligible:g?.jurisdictionEligibleCandidates??null,totalMs:p?.totalMs??null,unsafe:flow?.unsafeSegments??null,outside:b?.outsideAfterClip??null,regions,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null};
+    return {trigger:window.EARTHLINE_SCALE_REFINEMENT_TRIGGER_16705||null,input:window.EARTHLINE_SCALE_REFINED_INPUT_16702||null,swales:sw.length,visible:d?.swaleLines??null,published:g?.publishedFeatures??null,candidates:g?.candidates??null,eligible:g?.jurisdictionEligibleCandidates??null,totalMs:p?.totalMs??null,unsafe:flow?.unsafeSegments??null,outside:b?.outsideAfterClip??null,regions,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null};
   },stateName);
   rows.push({state:stateName,elapsedMs:Date.now()-started,timedOut,snap});
 }
