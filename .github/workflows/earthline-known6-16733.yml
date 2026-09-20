@@ -1,0 +1,42 @@
+name: Earthline 16733 Known Six Parallel Coverage
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/earthline-known6-16733.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        state: [Texas, Louisiana, Florida, New York, Colorado, California]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Validate state
+        shell: bash
+        run: |
+          set +e
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='${{ matrix.state }}' OUT='known6.json' node lab/validate-16731-coverage-gap.mjs
+          code=$?
+          echo "$code" > known6.exit
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: "known6-${{ matrix.state }}"
+          path: |
+            known6.json
+            known6.exit
+          if-no-files-found: error
