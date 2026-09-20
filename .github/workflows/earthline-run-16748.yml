@@ -1,0 +1,57 @@
+name: Earthline 16748 Vermont Prepared Boundary
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-run-16748.yml']
+permissions:
+  contents: write
+jobs:
+  repair-and-validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - run: |
+          git fetch origin main
+          git show origin/main:lab/apply-16748-vermont-prepared-boundary.py > /tmp/apply-16748.py
+          git show origin/main:lab/validate-16731-coverage-gap.mjs > ./validate-16748.mjs
+      - name: Apply prepared Vermont boundary
+        run: |
+          python3 /tmp/apply-16748.py
+          git diff --check
+      - name: Publish pages-live
+        run: |
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'repair: prepare Vermont selection boundary once'
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Validate Vermont performance and controls
+        id: validate
+        shell: bash
+        run: |
+          sleep 5
+          set +e
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Vermont|Oklahoma|Maryland|Massachusetts' OUT='lab/16748-validation.json' node ./validate-16748.mjs
+          code=$?
+          echo "pass=$([ "$code" -eq 0 ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Record evidence
+        run: |
+          git pull --rebase origin pages-live
+          git add lab/16748-validation.json
+          git commit -m 'test: record 16748 Vermont prepared-boundary validation' || true
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live
+      - name: Enforce validation
+        run: test "${{ steps.validate.outputs.pass }}" = "1"
