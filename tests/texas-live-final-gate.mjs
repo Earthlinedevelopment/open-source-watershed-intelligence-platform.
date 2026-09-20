@@ -27,3 +27,4 @@ await browser.close();
 const bad=rows.some(r=>r.timedOut||r.state.lastError||r.state.swales!==77||r.state.visible!==77||r.state.published!==77||!(r.state.totalMs<=15000)||Number(r.state.unsafe||0)!==0||Number(r.state.outside?.swales||0)!==0||r.state.trigger?.triggered!==true||Number(r.state.trigger?.screenPassRatio??1)>.02||Number(r.state.input?.input||0)!==20||Number(r.state.selection?.chosenRefined||0)!==10||r.state.zones.panhandleNorth<3||r.state.zones.upperCoast<13||r.state.zones.lowerCoast<6||r.state.zones.eastInterior<10);
 const principal=rows.every(r=>/Principal Aquifers/i.test(String(r.state.aquifer?.source||''))&&Number(r.state.aquifer?.features||0)===83);
 if(bad||!principal)process.exitCode=1;
+// MANTRA42 LIVE RERUN 2026-09-20
