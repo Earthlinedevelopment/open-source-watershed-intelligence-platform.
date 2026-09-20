@@ -1,0 +1,30 @@
+name: Earthline 16735 Reported Region Check
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/earthline-reported-regions-16735.yml'
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Check reported blank regions
+        run: |
+          EARTHLINE_URL='https://earthlinedevelopment.org/' OUT='reported-regions.json' node lab/diag-16734-reported-regions.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reported-regions
+          path: reported-regions.json
