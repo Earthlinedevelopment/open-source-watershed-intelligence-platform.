@@ -1,0 +1,20 @@
+name: Earthline 16751 Vermont Publication Diagnostic
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-vt-pub-16751.yml']
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node lab/diag-16751-vt-publication.mjs
