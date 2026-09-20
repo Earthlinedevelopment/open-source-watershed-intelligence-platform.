@@ -1,0 +1,16 @@
+name: Earthline Grep Vermont Boundary 16750
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-grep-vt-boundary-16750.yml']
+permissions:
+  contents: read
+jobs:
+  grep:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          grep -n -E 'VermontBoundary|vermontBoundary|earthlineClipVermontProducts16178|VCGI_services/VCGI_BASEMAP' index.html | head -120
