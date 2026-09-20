@@ -1,4 +1,4 @@
-name: Earthline 16714B Texas Coverage Audit
+name: Earthline 16715 Renderer Publication Repair
 on:
   push:
     branches: [main]
@@ -7,18 +7,30 @@ on:
 permissions:
   contents: write
 jobs:
-  validate:
+  repair-and-validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Fetch corrected validator
+      - name: Fetch 16715 repair and validator
         run: |
           git fetch origin main
-          git show origin/main:lab/validate-16714b.mjs > ./validate-16714b-run.mjs
+          git show origin/main:lab/apply-16715-render-published-corridors.py > /tmp/apply-16715.py
+          git show origin/main:lab/validate-16715.mjs > ./validate-16715-run.mjs
+      - name: Apply renderer publication repair
+        run: |
+          python3 /tmp/apply-16715.py
+          git diff --check
+      - name: Publish pages-live
+        run: |
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'repair: render every valid published regional corridor'
+          git push origin HEAD:pages-live
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -26,21 +38,19 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Validate Texas live coverage
+      - name: Validate renderer against publication owner
         id: validate
         shell: bash
         run: |
           set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Texas' OUT='lab/16714b-validation.json' node ./validate-16714b-run.mjs
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Vermont|New York|Massachusetts|Texas' OUT='lab/16715-validation.json' node ./validate-16715-run.mjs
           code=$?
           echo "pass=$([ "$code" -eq 0 ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
           exit 0
       - name: Record evidence
         run: |
-          git config user.name 'earthline-ci'
-          git config user.email 'actions@users.noreply.github.com'
-          git add lab/16714b-validation.json
-          git commit -m 'test: record corrected Texas coastal coverage audit' || true
+          git add lab/16715-validation.json
+          git commit -m 'test: record 16715 renderer publication validation' || true
           git push origin HEAD:pages-live
       - name: Enforce validation
         run: |
