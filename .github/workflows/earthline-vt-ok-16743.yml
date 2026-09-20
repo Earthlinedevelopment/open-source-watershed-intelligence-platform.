@@ -1,0 +1,24 @@
+name: Earthline 16743 Vermont Oklahoma Diagnostic
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-vt-ok-16743.yml']
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: EARTHLINE_URL='https://earthlinedevelopment.org/' OUT='vt-ok-16743.json' node lab/diag-16743-vt-ok.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vt-ok-16743
+          path: vt-ok-16743.json
