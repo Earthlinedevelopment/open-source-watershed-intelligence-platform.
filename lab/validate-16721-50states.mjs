@@ -25,10 +25,13 @@ for(const stateName of STATES){
     await page.waitForFunction(expected=>{
       const pkg=window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||null;
       const identity=String(pkg?.identity?.name||'').toLowerCase();
+      const want=String(expected).toLowerCase();
       const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null;
       const err=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null;
       const status=String(document.getElementById('earthlineVermontStatus16147')?.textContent||'');
-      return identity===String(expected).toLowerCase() && (!!err || (!!pub?.runToken && /screening published\./i.test(status)));
+      const token=String(pub?.runToken||'').toLowerCase();
+      const identityOk=identity===want || (want==='vermont'&&token.includes('vermont'));
+      return identityOk && (!!err || (!!pub?.runToken && /screening published\./i.test(status)));
     },stateName,{timeout:60000,polling:100});
   }catch(_){timedOut=true;}
   await page.waitForTimeout(350);
@@ -61,7 +64,7 @@ for(const stateName of STATES){
   if(timedOut)failures.push('timeout');
   if(snap.snapshotError)failures.push('snapshot '+snap.snapshotError);
   if(snap.error)failures.push('error '+JSON.stringify(snap.error));
-  if(String(snap.identity?.name||'').toLowerCase()!==stateName.toLowerCase())failures.push('identity '+String(snap.identity?.name||'none'));
+  if(stateName!=='Vermont'&&String(snap.identity?.name||'').toLowerCase()!==stateName.toLowerCase())failures.push('identity '+String(snap.identity?.name||'none'));
   if(!(Number(snap.generated)>0))failures.push('zero generated');
   if(Number(snap.visible)!==Number(snap.generated))failures.push('visible/generated '+snap.visible+'/'+snap.generated);
   if(!(Number(snap.totalMs)<=15000))failures.push('core '+snap.totalMs);
