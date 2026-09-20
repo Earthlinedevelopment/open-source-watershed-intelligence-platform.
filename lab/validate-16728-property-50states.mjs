@@ -73,6 +73,9 @@ async function snap(page){
       published:pa?.published===true,
       publicationCount:Number(pa?.publicationCount||0),
       stage:ra?.stage||null,settled:ra?.settled===true,result:ra?.result===true,timedOut:ra?.timedOut===true,renderVerified:ra?.renderVerified===true,
+      runError:ra?.error||null,stageTimings:ra?.stageTimings||null,
+      publicationBlock:window.EARTHLINE_PROPERTY_PUBLICATION_BLOCK_16176||null,
+      handoff:window.EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347||null,
       corridors:Number(ra?.corridors??pa?.publicationCount??0),
       safeVisible:sv?.visible===true,safeCount:Number(sv?.count||0),
       integrity:window.EARTHLINE_LOCATION_INTEGRITY_15801||null,
@@ -105,7 +108,7 @@ for(const stateName of STATES){
   if(error)failures.push(error);
   if(s.snapshotError)failures.push('snapshot '+s.snapshotError);
   if(!s.published)failures.push('Property not published');
-  if(!s.settled||!s.result||s.timedOut)failures.push('Property run not settled successfully');
+  if(!s.settled||!s.result||s.timedOut)failures.push('Property run not settled successfully'+(s.runError?' — '+s.runError:''));
   if(!s.renderVerified)failures.push('Property render not verified');
   if(Number(s.corridors)>0&&!s.safeVisible)failures.push('safe Property corridors not visible');
   if(s.displayedTier!=='property'||s.documentTier!=='property')failures.push('canonical tier '+s.displayedTier+'/'+s.documentTier);
