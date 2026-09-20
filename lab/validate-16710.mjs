@@ -47,13 +47,15 @@ for(const r of rows){
   if(Number(r.snap.visible)!==Number(r.snap.published))failures.push(r.state+': visible/published '+r.snap.visible+'/'+r.snap.published);
 }
 const tx=rows.find(r=>r.state==='Texas');
-if(!tx?.snap?.trigger?.triggered)failures.push('Texas: refinement did not trigger');
-if(!(Number(tx?.snap?.input?.input||0)>0))failures.push('Texas: no refined input');
-if(!(Number(tx?.snap?.regions?.panhandle||0)>0))failures.push('Texas: Panhandle lost');
-if(!(Number(tx?.snap?.regions?.east||0)>0))failures.push('Texas: east lost');
-if(!(Number(tx?.snap?.regions?.upperGulf||0)+Number(tx?.snap?.regions?.lowerGulf||0)>=8))failures.push('Texas: Gulf still sparse');
+if(STATES.includes('Texas')){
+  if(!tx?.snap?.trigger?.triggered)failures.push('Texas: refinement did not trigger');
+  if(!(Number(tx?.snap?.input?.input||0)>0))failures.push('Texas: no refined input');
+  if(!(Number(tx?.snap?.regions?.panhandle||0)>0))failures.push('Texas: Panhandle lost');
+  if(!(Number(tx?.snap?.regions?.east||0)>0))failures.push('Texas: east lost');
+  if(!(Number(tx?.snap?.regions?.upperGulf||0)+Number(tx?.snap?.regions?.lowerGulf||0)>=8))failures.push('Texas: Gulf still sparse');
+}
 const ca=rows.find(r=>r.state==='California');
-if(ca?.snap?.trigger?.triggered)failures.push('California: refinement should not trigger at this grid scale');
+if(STATES.includes('California')&&ca?.snap?.trigger?.triggered)failures.push('California: refinement should not trigger at this grid scale');
 
 const out={at:new Date().toISOString(),url:URL,rows,failures,pass:failures.length===0};
 fs.writeFileSync(process.env.OUT||'lab/16710-validation.json',JSON.stringify(out,null,2));
