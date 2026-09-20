@@ -33893,7 +33893,7 @@ body{display:block!important}
     for(const f of (lastData.swales&&lastData.swales.features||[])){
       if(!f.geometry||f.geometry.type!=='LineString')continue;
       const pts=points(f.geometry.coordinates),len=polyLength(pts),activeTier=activeTier16168();
-      if(pts.length<3||len<(activeTier==='focus'?22:1.5))continue;
+      if(activeTier==='focus'?(pts.length<3||len<22):(pts.length<2||len<0.1))continue;
       const props=f.properties||{},grade=/^[ABC]$/.test(String(props.grade||''))?String(props.grade):'C';
       const rank=(gradeCounts[grade]||0)+1,score=Math.max(0,Math.min(100,Number(props.score||0)));props.display_rank=rank;props.display_code=grade+rank;
       const main=grade==='A'?'#42ff83':grade==='B'?'#ffc12f':'#ff8a2d';
