@@ -1,0 +1,16 @@
+name: Earthline Grep Renderer 16751
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-grep-renderer-16751.yml']
+permissions:
+  contents: read
+jobs:
+  grep:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          grep -n -E 'EARTHLINE_REGIONAL_DISPLAY_AUDIT|swaleLines|activeTier.*focus.*pts.length|lineLengthPixels' index.html | head -160
