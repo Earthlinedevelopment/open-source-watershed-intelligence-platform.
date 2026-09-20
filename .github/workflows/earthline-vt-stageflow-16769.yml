@@ -99,9 +99,20 @@ jobs:
               if(Array.isArray(m)&&Number.isFinite(m[0])&&Number.isFinite(m[1]))coords.push(m);
             }
             const bbox=coords.length?[Math.min(...coords.map(p=>p[0])),Math.min(...coords.map(p=>p[1])),Math.max(...coords.map(p=>p[0])),Math.max(...coords.map(p=>p[1]))]:null;
+            const rect=o=>{if(!o)return null;const r=o.getBoundingClientRect();return {left:r.left,top:r.top,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
+            const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');
+            const canvas=(window.earthlineMap||null)?.getCanvas?.()||document.querySelector('.mapboxgl-canvas');
+            const mapContainer=(window.earthlineMap||null)?.getContainer?.()||document.getElementById('map');
+            const host=document.querySelector('.map-area')||document.getElementById('mapboxBase');
+            const firstFeature=v?.swales?.features?.[0]||null, firstCoords=firstFeature?.geometry?.coordinates||[];
+            const firstMid=firstCoords[Math.floor((firstCoords.length-1)/2)]||null;
+            let firstProjected=null,firstSvgPoint=null;
+            try{if(firstMid){const pp=(window.earthlineMap||null).project(firstMid);firstProjected={x:pp.x,y:pp.y};}}catch(_){}
+            try{const pth=overlay?.querySelector('[data-layer="swale-opportunities"] .earthline-swale-core-16168');if(pth){const len=pth.getTotalLength(),pt=pth.getPointAtLength(len/2);firstSvgPoint={x:pt.x,y:pt.y};}}catch(_){}
             return {
               build:a.build||null,
               timestamp:new Date().toISOString(),
+              layout:{overlay:rect(overlay),canvas:rect(canvas),mapContainer:rect(mapContainer),host:rect(host),firstMid,firstProjected,firstSvgPoint},
               summary:{
                 bins:bins.length,
                 significant:significant.length,
