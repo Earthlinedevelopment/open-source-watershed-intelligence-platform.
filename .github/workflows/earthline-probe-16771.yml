@@ -1,0 +1,103 @@
+name: Earthline 16771 Vermont Subsector Probe
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-probe-16771.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build candidate from pages-live
+        shell: bash
+        run: |
+          git fetch origin pages-live
+          mkdir -p /tmp/earthline16771
+          git show origin/pages-live:index.html > /tmp/earthline16771/index.html
+          cp lab/apply-16771-subsector-spread.py /tmp/earthline16771/apply.py
+          cd /tmp/earthline16771
+          python3 apply.py
+          grep -q "EARTHLINE 16771" index.html
+      - name: Install browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run candidate Vermont
+        shell: bash
+        run: |
+          cd /tmp/earthline16771
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline16771.log 2>&1 &
+          cd "$GITHUB_WORKSPACE"
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1800,height:1000}});
+          await page.goto('http://127.0.0.1:8787/index.html?probe16771='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.evaluate(()=>{
+            window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731=null;
+            const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+            i.value='vermont state';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();
+          });
+          await page.waitForFunction(()=>{
+            const a=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731,p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;
+            return a?.passed===true&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);
+          },null,{timeout:60000,polling:100});
+          await page.waitForTimeout(500);
+          const out=await page.evaluate(()=>{
+            const spatial=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||{};
+            const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{};
+            const disp=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{};
+            const perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{};
+            const vis=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020||{};
+            const pkg=window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556||window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||{};
+            const bbox=pkg?.regionalExtent?.bbox||null,fine=new Set();
+            if(Array.isArray(bbox)&&bbox.length===4){
+              const [w,s,e,n]=bbox;
+              for(const f of vis?.swales?.features||[]){
+                const c=f?.geometry?.coordinates;if(!Array.isArray(c)||!c.length)continue;
+                const m=c[Math.floor((c.length-1)/2)];
+                const bx=Math.max(0,Math.min(11,Math.floor((Number(m[0])-w)/Math.max(1e-12,e-w)*12)));
+                const by=Math.max(0,Math.min(11,Math.floor((n-Number(m[1]))/Math.max(1e-12,n-s)*12)));
+                fine.add(bx+','+by);
+              }
+            }
+            const plan=Array.isArray(spatial?.subsectorPlan)?spatial.subsectorPlan:[];
+            return {
+              spatialBuild:spatial?.build||null,
+              generated:Number(pub?.generated||0),
+              visible:Number(disp?.swaleLines||0),
+              coreMs:Number(perf?.totalMs||NaN),
+              unsafe:Number(window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584?.unsafeSegments||0),
+              waterPaths:Number(vis?.flows?.features?.length||0),
+              fine12Occupied:fine.size,
+              candidateBins:Number(spatial?.candidateBins||0),
+              reserved:Number(spatial?.reserved||0),
+              subsectorExtraSelected:Number(spatial?.subsectorExtraSelected||0),
+              weakPlans:plan.filter(r=>Number(r.candidateSubcells||0)>=3&&Number(r.reservedSubcells||0)<3),
+              plan
+            };
+          });
+          await browser.close();
+          fs.writeFileSync('lab/earthline-16771-vt-probe.json',JSON.stringify(out,null,2));
+          console.log(JSON.stringify(out));
+          JS
+      - name: Persist probe
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/earthline-16771-vt-probe.json
+          git commit -m "diag: persist 16771 Vermont subsector probe [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
