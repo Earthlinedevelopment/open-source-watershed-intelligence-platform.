@@ -1,0 +1,56 @@
+name: Earthline 16750 Exact Vermont Clip Owner
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-run-16750.yml']
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Apply exact Vermont clip owner
+        run: |
+          git fetch origin main
+          git show origin/main:lab/apply-16750-vermont-exact-clip-owner.py > /tmp/apply-16750.py
+          python3 /tmp/apply-16750.py
+          git diff --check
+      - name: Publish pages-live
+        run: |
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'repair: use exact VCGI line clip before Vermont ranking'
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live
+  validate:
+    needs: repair
+    strategy:
+      fail-fast: false
+      matrix:
+        attempt: [one, two, three]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Confirm Vermont
+        shell: bash
+        run: |
+          sleep 5
+          set +e
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Vermont' OUT='vt.json' node lab/validate-16731-coverage-gap.mjs
+          code=$?
+          cat vt.json
+          exit "$code"
