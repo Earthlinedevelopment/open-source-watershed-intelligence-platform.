@@ -32,7 +32,7 @@ for(const stateName of STATES){
     const audit=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731||null,refine=window.EARTHLINE_COVERAGE_GAP_REFINEMENT_16731||null,gap=window.EARTHLINE_TERRAIN_GAP_REFINEMENT_16730||null;
     const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,disp=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null,perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null,boundary=window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||window.EARTHLINE_VERMONT_PRODUCT_BOUNDARY_AUDIT_16178||null,order=window.EARTHLINE_REGIONAL_SCORE_ORDER_16717||null;
     return {
-      audit:audit?{passed:audit.passed,unresolved:audit.unresolved,bins:audit.bins}:null,
+      audit:audit?{build:audit.build,passed:audit.passed,unresolved:audit.unresolved,bins:audit.bins}:null,
       refine:refine?{selected:refine.selected,added:refine.added,elapsedMs:refine.elapsedMs,error:refine.error}:null,
       gap:gap?{selectedTiles:gap.selectedTiles,added:gap.added,elapsedMs:gap.elapsedMs,error:gap.error}:null,
       generated:Number(pub?.generated??0),visible:Number(disp?.swaleLines??0),totalMs:Number(perf?.totalMs??NaN),unsafe:Number(flow?.unsafeSegments??0),outside:boundary?.outsideAfterClip||null,orderMonotonic:order?.monotonic??true
@@ -43,6 +43,7 @@ for(const stateName of STATES){
   if(error)failures.push('error '+JSON.stringify(error));
   if(snap.snapshotError)failures.push('snapshot '+snap.snapshotError);
   if(!snap.audit)failures.push('coverage audit missing');
+  if(snap.audit&&snap.audit.build!=='EARTHLINE 16733')failures.push('coverage build '+String(snap.audit.build||'none'));
   if(snap.audit&&snap.audit.passed!==true)failures.push('unresolved '+JSON.stringify(snap.audit.unresolved||[]));
   if(!(snap.generated>0))failures.push('zero generated');
   if(snap.visible!==snap.generated)failures.push('visible/generated '+snap.visible+'/'+snap.generated);
