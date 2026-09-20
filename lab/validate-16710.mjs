@@ -13,7 +13,7 @@ for(const stateName of STATES){
   await page.evaluate(q=>{
     window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;
     window.EARTHLINE_SCALE_REFINEMENT_TRIGGER_16705=null;
-    window.EARTHLINE_SCALE_REFINED_INPUT_16702=null;
+    window.EARTHLINE_SCALE_REFINED_INPUT_16702=null;window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167=null;window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040=null;window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=null;window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=null;window.EARTHLINE_LAND_VALIDITY_16584=null;window.EARTHLINE_REGIONAL_CAMERA_AUDIT_16147=null;
     const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
     i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();
   },stateName);
