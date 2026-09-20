@@ -1,4 +1,4 @@
-name: Earthline 16726 Property Display Ownership Repair
+name: Earthline 16727 Property Owner + Integrity Repair
 on:
   push:
     branches: [main]
@@ -9,7 +9,7 @@ permissions:
 jobs:
   repair-and-validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -18,19 +18,19 @@ jobs:
       - name: Fetch repair and validators
         run: |
           git fetch origin main
-          git show origin/main:lab/apply-16726-regional-context-property-race.py > /tmp/apply-16726.py
-          git show origin/main:lab/validate-16726-property-handoff.mjs > ./validate-16726-run.mjs
+          git show origin/main:lab/apply-16727-property-owner-integrity.py > /tmp/apply-16727.py
+          git show origin/main:lab/validate-16727-property-owner-integrity.mjs > ./validate-16727-run.mjs
           git show origin/main:lab/validate-16715.mjs > ./validate-regression-run.mjs
-      - name: Apply Property display-ownership repair
+      - name: Apply Property owner and integrity repair
         run: |
-          python3 /tmp/apply-16726.py
+          python3 /tmp/apply-16727.py
           git diff --check
       - name: Publish pages-live
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
           git add index.html
-          git commit -m 'repair: preserve Property display against late Regional context'
+          git commit -m 'repair: keep governed Property frame and publication authoritative'
           git pull --rebase origin pages-live
           git push origin HEAD:pages-live
       - uses: actions/setup-node@v4
@@ -40,12 +40,12 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Validate Property ownership
+      - name: Validate Property owner and integrity
         id: property
         shell: bash
         run: |
           set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' OUT='lab/16726-validation.json' node ./validate-16726-run.mjs
+          EARTHLINE_URL='https://earthlinedevelopment.org/' OUT='lab/16727-validation.json' node ./validate-16727-run.mjs
           code=$?
           echo "pass=$([ "$code" -eq 0 ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
           exit 0
@@ -54,15 +54,15 @@ jobs:
         shell: bash
         run: |
           set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Vermont|New York|Massachusetts|Texas' OUT='lab/16726-regional.json' node ./validate-regression-run.mjs
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Vermont|New York|Massachusetts|Texas' OUT='lab/16727-regional.json' node ./validate-regression-run.mjs
           code=$?
           echo "pass=$([ "$code" -eq 0 ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
           exit 0
       - name: Record evidence
         run: |
           git pull --rebase origin pages-live
-          git add lab/16726-validation.json lab/16726-regional.json
-          git commit -m 'test: record 16726 Property ownership validation' || true
+          git add lab/16727-validation.json lab/16727-regional.json
+          git commit -m 'test: record 16727 Property and Regional validation' || true
           git pull --rebase origin pages-live
           git push origin HEAD:pages-live
       - name: Enforce validation
