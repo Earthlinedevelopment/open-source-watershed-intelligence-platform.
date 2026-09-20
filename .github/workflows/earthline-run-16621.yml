@@ -1,4 +1,4 @@
-name: Earthline 16739 Dual Border-Bin Repair
+name: Earthline 16740 Line-Footprint Coverage Repair
 on:
   push:
     branches: [main]
@@ -18,18 +18,18 @@ jobs:
       - name: Fetch repair and validator
         run: |
           git fetch origin main
-          git show origin/main:lab/apply-16739-dual-border-bin-reserve.py > /tmp/apply-16739.py
-          git show origin/main:lab/validate-16731-coverage-gap.mjs > ./validate-16739-run.mjs
-      - name: Apply dual border-bin repair
+          git show origin/main:lab/apply-16740-line-footprint-coverage.py > /tmp/apply-16740.py
+          git show origin/main:lab/validate-16731-coverage-gap.mjs > ./validate-16740-run.mjs
+      - name: Apply line-footprint coverage repair
         run: |
-          python3 /tmp/apply-16739.py
+          python3 /tmp/apply-16740.py
           git diff --check
       - name: Publish pages-live
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
           git add index.html
-          git commit -m 'repair: preserve border corridors in source and clipped bins'
+          git commit -m 'repair: measure statewide corridor coverage by line footprint'
           git pull --rebase origin pages-live
           git push origin HEAD:pages-live
       - uses: actions/setup-node@v4
@@ -39,20 +39,20 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Validate final border states and controls
+      - name: Validate former border failures
         id: validate
         shell: bash
         run: |
           set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='North Carolina|Tennessee|Louisiana|New York|Texas|South Carolina' OUT='lab/16739-validation.json' node ./validate-16739-run.mjs
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='North Carolina|Tennessee|Louisiana|South Carolina|New York|Texas' OUT='lab/16740-validation.json' node ./validate-16740-run.mjs
           code=$?
           echo "pass=$([ "$code" -eq 0 ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
           exit 0
       - name: Record evidence
         run: |
           git pull --rebase origin pages-live
-          git add lab/16739-validation.json
-          git commit -m 'test: record 16739 border-state validation' || true
+          git add lab/16740-validation.json
+          git commit -m 'test: record 16740 line-footprint validation' || true
           git pull --rebase origin pages-live
           git push origin HEAD:pages-live
       - name: Enforce validation
