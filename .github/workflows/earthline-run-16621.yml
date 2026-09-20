@@ -1,4 +1,4 @@
-name: Earthline 16737 Boundary Gap Corridor Repair
+name: Earthline 16738 Resilient Gap Refinement
 on:
   push:
     branches: [main]
@@ -9,7 +9,7 @@ permissions:
 jobs:
   repair-and-validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 28
     steps:
       - uses: actions/checkout@v4
         with:
@@ -18,18 +18,18 @@ jobs:
       - name: Fetch repair and validator
         run: |
           git fetch origin main
-          git show origin/main:lab/apply-16737-boundary-gap-corridors.py > /tmp/apply-16737.py
-          git show origin/main:lab/validate-16731-coverage-gap.mjs > ./validate-16737-run.mjs
-      - name: Apply boundary-gap repair
+          git show origin/main:lab/apply-16738-resilient-gap-refinement.py > /tmp/apply-16738.py
+          git show origin/main:lab/validate-16731-coverage-gap.mjs > ./validate-16738-run.mjs
+      - name: Apply resilient gap refinement
         run: |
-          python3 /tmp/apply-16737.py
+          python3 /tmp/apply-16738.py
           git diff --check
       - name: Publish pages-live
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
           git add index.html
-          git commit -m 'repair: retain valid short boundary gap corridors'
+          git commit -m 'repair: keep gap refinement fail-soft and cover up to 18 sectors'
           git pull --rebase origin pages-live
           git push origin HEAD:pages-live
       - uses: actions/setup-node@v4
@@ -39,20 +39,20 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Validate reported coverage states
+      - name: Validate final failing states plus controls
         id: validate
         shell: bash
         run: |
           set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Texas|Louisiana|Florida|New York|Colorado|California' OUT='lab/16737-validation.json' node ./validate-16737-run.mjs
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='North Carolina|Tennessee|Louisiana|New York|Texas' OUT='lab/16738-validation.json' node ./validate-16738-run.mjs
           code=$?
           echo "pass=$([ "$code" -eq 0 ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
           exit 0
       - name: Record evidence
         run: |
           git pull --rebase origin pages-live
-          git add lab/16737-validation.json
-          git commit -m 'test: record 16737 boundary-gap validation' || true
+          git add lab/16738-validation.json
+          git commit -m 'test: record 16738 final failing-state validation' || true
           git pull --rebase origin pages-live
           git push origin HEAD:pages-live
       - name: Enforce validation
