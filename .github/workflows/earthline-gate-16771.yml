@@ -1,0 +1,86 @@
+name: Earthline 16771 Parallel State Gate and Publish
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-gate-16771.yml']
+permissions:
+  contents: write
+
+jobs:
+  state-gate:
+    strategy:
+      fail-fast: true
+      matrix:
+        state: [Vermont, Texas, Florida, Louisiana, Colorado, Oklahoma, Maryland, New York, California]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build candidate from current pages-live
+        shell: bash
+        run: |
+          git fetch origin pages-live
+          mkdir -p /tmp/e16771
+          git show origin/pages-live:index.html > /tmp/e16771/index.html
+          if ! grep -q "EARTHLINE 16771" /tmp/e16771/index.html; then
+            cp lab/apply-16771-subsector-spread.py /tmp/e16771/apply.py
+            cd /tmp/e16771
+            python3 apply.py
+          fi
+          grep -q "EARTHLINE 16771" /tmp/e16771/index.html
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Serve candidate
+        shell: bash
+        run: |
+          cd /tmp/e16771
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/e16771-server.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8787/index.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/e16771-server.log
+          exit 1
+      - name: Gate \${{ matrix.state }}
+        shell: bash
+        run: |
+          cp lab/validate-16753-final-us.mjs /tmp/validate-state.mjs
+          cd /tmp
+          EARTHLINE_URL='http://127.0.0.1:8787/index.html' STATES='\${{ matrix.state }}' OUT='state.json' node validate-state.mjs
+          cat state.json
+
+  publish:
+    needs: state-gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Apply only if not already live
+        shell: bash
+        run: |
+          git fetch origin main pages-live
+          if grep -q "EARTHLINE 16771" index.html; then
+            echo "16771 already present on pages-live"
+            exit 0
+          fi
+          git show origin/main:lab/apply-16771-subsector-spread.py > /tmp/apply-16771.py
+          python3 /tmp/apply-16771.py
+          grep -q "EARTHLINE 16771" index.html
+          git diff --check
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'repair: spread Regional corridors across terrain subsectors'
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live
