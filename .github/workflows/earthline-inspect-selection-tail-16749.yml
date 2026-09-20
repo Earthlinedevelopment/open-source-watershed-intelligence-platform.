@@ -1,0 +1,23 @@
+name: Earthline Inspect Selection Tail 16749
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-inspect-selection-tail-16749.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          base=s.find("EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736")
+          i=s.find("for(const c of candidates){",base)
+          print('INDEX',i)
+          print(s[i:min(len(s),i+18000)])
+          PY
