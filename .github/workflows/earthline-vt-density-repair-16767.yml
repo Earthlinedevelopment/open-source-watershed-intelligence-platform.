@@ -1,0 +1,201 @@
+name: Earthline 16767 Vermont Density Repair
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-vt-density-repair-16767.yml']
+permissions:
+  contents: write
+jobs:
+  repair-test-deploy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Patch existing density owners
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          
+          # 1) Existing Regional selector: use the same published-midpoint sector truth as the
+          # coverage audit, and reserve up to three terrain-derived candidates per occupied
+          # sector before statewide score/spacing fills the remaining capacity.
+          start=s.index("    const coverageGroups16736=new Map(),coverageReserved16736=[];")
+          end_marker="    window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736={build:'EARTHLINE 16755'"
+          end_start=s.index(end_marker,start)
+          end=s.index("\n",end_start)+1
+          selection="""    const coverageGroups16736=new Map(),coverageReserved16736=[];
+              if(!focusMode){
+                for(const c16736 of candidates){
+                  if(!c16736)continue;
+                  const seg16736=Array.isArray(c16736.segment)?c16736.segment:[],mid16736=seg16736[Math.floor((seg16736.length-1)/2)]||null;
+                  const mg16736=mid16736?llGrid(hy,mid16736):null;
+                  let gx16767=null,gy16767=null,binBasis16767='clipped-midpoint';
+                  if(mg16736&&Number.isFinite(Number(mg16736.x))&&Number.isFinite(Number(mg16736.y))){
+                    gx16767=Number(mg16736.x);gy16767=Number(mg16736.y);
+                  }else if(Number.isFinite(Number(c16736.x))&&Number.isFinite(Number(c16736.y))){
+                    gx16767=Number(c16736.x);gy16767=Number(c16736.y);binBasis16767='source-fallback';
+                  }
+                  if(!Number.isFinite(gx16767)||!Number.isFinite(gy16767))continue;
+                  const bx16736=Math.max(0,Math.min(5,Math.floor(gx16767*6/Math.max(1,hy.w))));
+                  const by16736=Math.max(0,Math.min(5,Math.floor(gy16767*6/Math.max(1,hy.h))));
+                  const key16736=bx16736+','+by16736;
+                  let list16736=coverageGroups16736.get(key16736);
+                  if(!list16736)coverageGroups16736.set(key16736,list16736=[]);
+                  list16736.push(c16736);c16736.coverageBinBasis16767=binBasis16767;
+                }
+                for(const [key16736,list16736] of coverageGroups16736){
+                  list16736.sort((a16736,b16736)=>(Number(b16736.score)||0)-(Number(a16736.score)||0));
+                  const reserveTarget16767=Math.min(3,list16736.length),reserve16767=[];
+                  for(const c16767 of list16736){
+                    if(reserve16767.length>=reserveTarget16767)break;
+                    if(!reserve16767.length||reserve16767.every(p16767=>Math.hypot(Number(c16767.x)-Number(p16767.x),Number(c16767.y)-Number(p16767.y))>=2))reserve16767.push(c16767);
+                  }
+                  if(reserve16767.length<reserveTarget16767){
+                    for(const c16767 of list16736){
+                      if(reserve16767.length>=reserveTarget16767)break;
+                      if(!reserve16767.includes(c16767))reserve16767.push(c16767);
+                    }
+                  }
+                  for(const c16736 of reserve16767){
+                    if(c16736&&!chosen.includes(c16736)){
+                      chosen.push(c16736);
+                      coverageReserved16736.push({key:key16736,x:c16736.x,y:c16736.y,score:Number(c16736.score)||0,refined:!!(c16736.refined16710||c16736.refined16702),coverageGap:!!c16736.coverageGap16731,densityReserve16767:true,binBasis:c16736.coverageBinBasis16767||'clipped-midpoint'});
+                    }
+                  }
+                }
+              }
+              const regionalCapacity16755=focusMode?80:Math.min(120,Math.max(80,coverageGroups16736.size*4));
+              window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736={build:'EARTHLINE 16767',candidateBins:coverageGroups16736.size,reserved:coverageReserved16736.length,capacity:regionalCapacity16755,rows:coverageReserved16736,midpointOwnedBins:true,reservePerBin:3,densityReserve:true,rule:'group candidates by the actual clipped corridor midpoint used by the coverage audit, reserve up to three spatially distinct valid terrain-derived candidates per occupied 6x6 sector, then let the existing score/spacing owner fill remaining capacity; science gates and final score ordering are unchanged',at:new Date().toISOString()};
+          """
+          s=s[:start]+selection+s[end:]
+          
+          # 2) Existing exact-cell refinement: significant terrain sectors must meet a small
+          # terrain-proportional density floor instead of merely being nonzero.
+          old_gap="""      const gaps16731=bins16731.filter(r16731=>{
+                  const ratio16731=r16731.valid?r16731.opportunity/r16731.valid:0;
+                  return r16731.valid>=45&&r16731.opportunity>=8&&ratio16731>=.035&&r16731.swales===0;
+                }).sort((a16731,b16731)=>{
+                  const pa16731=(a16731.opportunity/Math.max(1,a16731.valid))*100+a16731.opportunity/20;
+                  const pb16731=(b16731.opportunity/Math.max(1,b16731.valid))*100+b16731.opportunity/20;
+                  return pb16731-pa16731;
+                });
+          """
+          new_gap="""      const earthlineCoverageDensityTarget16767=r16767=>{
+                  const preferred16767=Number(r16767&&r16767.preferred||0);
+                  if(preferred16767>=60)return 3;
+                  if(preferred16767>=30)return 2;
+                  return 1;
+                };
+                const gaps16731=bins16731.filter(r16731=>{
+                  const ratio16731=r16731.valid?r16731.opportunity/r16731.valid:0;
+                  return r16731.valid>=45&&r16731.opportunity>=8&&ratio16731>=.035&&r16731.swales<earthlineCoverageDensityTarget16767(r16731);
+                }).sort((a16731,b16731)=>{
+                  const da16767=earthlineCoverageDensityTarget16767(a16731)-Number(a16731.swales||0),db16767=earthlineCoverageDensityTarget16767(b16731)-Number(b16731.swales||0);
+                  if(db16767!==da16767)return db16767-da16767;
+                  const pa16731=(a16731.opportunity/Math.max(1,a16731.valid))*100+a16731.opportunity/20;
+                  const pb16731=(b16731.opportunity/Math.max(1,b16731.valid))*100+b16731.opportunity/20;
+                  return pb16731-pa16731;
+                });
+          """
+          if s.count(old_gap)!=1: raise SystemExit(f'gap block count {s.count(old_gap)}')
+          s=s.replace(old_gap,new_gap)
+          
+          # 3) The final and late audits use the same density truth. There are two final
+          # unresolved checks in this owner (before and after late verification).
+          old_unresolved="r16731.swales===0&&!confirmedNullKeys16735.has(String(r16731.bx)+','+String(r16731.by))"
+          cnt=s.count(old_unresolved)
+          if cnt!=2: raise SystemExit(f'unresolved expression count {cnt}')
+          s=s.replace(old_unresolved,"r16731.swales<earthlineCoverageDensityTarget16767(r16731)&&!confirmedNullKeys16735.has(String(r16731.bx)+','+String(r16731.by))")
+          
+          # 4) Make the audit itself report and enforce the density target.
+          old_audit="""      window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731={build:'EARTHLINE 16749',coverageMetric:'corridor-midpoint-in-6x6-terrain-bin',confirmedNull16735:Array.from(confirmedNullKeys16735),bins:after16731.map(r16731=>({bx:r16731.bx,by:r16731.by,valid:r16731.valid,opportunity:r16731.opportunity,preferred:r16731.preferred,swales:r16731.swales})),unresolved:unresolved16731.map(r16731=>({bx:r16731.bx,by:r16731.by,valid:r16731.valid,opportunity:r16731.opportunity,preferred:r16731.preferred})),passed:unresolved16731.length===0,at:new Date().toISOString()};
+          """
+          new_audit="""      window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731={build:'EARTHLINE 16767',coverageMetric:'corridor-midpoint-in-6x6-terrain-bin',densityRule:'significant terrain sectors: preferred >=60 => 3 corridors; >=30 => 2; otherwise >=1; exact-cell high-resolution scientific null may explain a lower count',confirmedNull16735:Array.from(confirmedNullKeys16735),bins:after16731.map(r16731=>({bx:r16731.bx,by:r16731.by,valid:r16731.valid,opportunity:r16731.opportunity,preferred:r16731.preferred,swales:r16731.swales,densityTarget:earthlineCoverageDensityTarget16767(r16731),densityDeficit:Math.max(0,earthlineCoverageDensityTarget16767(r16731)-Number(r16731.swales||0))})),unresolved:unresolved16731.map(r16731=>({bx:r16731.bx,by:r16731.by,valid:r16731.valid,opportunity:r16731.opportunity,preferred:r16731.preferred,swales:r16731.swales,densityTarget:earthlineCoverageDensityTarget16767(r16731)})),passed:unresolved16731.length===0,at:new Date().toISOString()};
+          """
+          if s.count(old_audit)!=1: raise SystemExit(f'audit line count {s.count(old_audit)}')
+          s=s.replace(old_audit,new_audit)
+          
+          # 5) Preserve audit provenance for the same existing coverage/refinement owner.
+          s=s.replace("window.EARTHLINE_COVERAGE_POLICY_16733={build:'EARTHLINE 16746'","window.EARTHLINE_COVERAGE_POLICY_16733={build:'EARTHLINE 16767'",1)
+          s=s.replace("rule:'a significant opportunity cell is covered only when a corridor is actually anchored in that cell; mere line crossover cannot hide a border gap'","rule:'a significant opportunity cell must meet the terrain-proportional midpoint-anchored density floor; exact-cell refinement verifies deficits and line crossover cannot hide a sparse sector'",1)
+          
+          p.write_text(s,encoding='utf-8')
+          print('16767 patched existing Regional selection + coverage/refinement owners')
+          
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Serve candidate
+        shell: bash
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline16767-http.log 2>&1 &
+          sleep 2
+      - name: Vermont density truth gate
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1800,height:1000}});
+          await page.goto('http://127.0.0.1:8787/?vt16767='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.evaluate(()=>{
+            window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731=null;
+            const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+            i.value='vermont state';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();
+          });
+          await page.waitForFunction(()=>{
+            const a=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731,p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;
+            return a?.build==='EARTHLINE 16767'&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);
+          },null,{timeout:60000,polling:100});
+          await page.waitForTimeout(500);
+          const out=await page.evaluate(()=>{
+           const a=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731,p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020,perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191,vt=window.EARTHLINE_VERMONT_PRODUCT_BOUNDARY_AUDIT_16178,sel=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736,flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584;
+           const significant=(a?.bins||[]).filter(b=>Number(b.valid)>=45&&Number(b.opportunity)>=8&&(Number(b.opportunity)/Math.max(1,Number(b.valid)))>=.035);
+           const deficits=significant.filter(b=>Number(b.swales)<Number(b.densityTarget));
+           return {passed:a?.passed,generated:p?.generated,visible:d?.swaleLines,totalMs:perf?.totalMs,boundaryAfter:vt?.after?.swales,unsafe:flow?.unsafeSegments,selection:sel,deficits,bins:significant};
+          });
+          console.log(JSON.stringify(out));
+          await browser.close();
+          if(out.passed!==true||out.generated!==out.visible||out.generated!==out.boundaryAfter||out.deficits.length||!(Number(out.totalMs)<=15000)||Number(out.unsafe)!==0)process.exit(1);
+          JS
+      - name: Vermont four-run certification
+        shell: bash
+        run: |
+          set -e
+          for n in 1 2 3 4; do
+            echo "=== Vermont density run $n ==="
+            EARTHLINE_URL='http://127.0.0.1:8787/' STATES='Vermont' OUT="/tmp/earthline-16767-vt-$n.json" node lab/validate-16753-final-us.mjs
+            node --input-type=module - "/tmp/earthline-16767-vt-$n.json" <<'JS'
+          import fs from 'fs';
+          const path=process.argv[2], j=JSON.parse(fs.readFileSync(path,'utf8'));
+          const rows=Array.isArray(j)?j:(j.results||j.states||[]);
+          const r=rows[0]||j.Vermont||j.vermont||j;
+          console.log(JSON.stringify(r));
+          JS
+          done
+      - name: Cross-state regression gate
+        shell: bash
+        env:
+          EARTHLINE_URL: 'http://127.0.0.1:8787/'
+          STATES: 'Vermont|Texas|Maryland|California|Florida|Oklahoma|New York|Colorado'
+          OUT: '/tmp/earthline-16767-controls.json'
+        run: node lab/validate-16753-final-us.mjs
+      - name: Commit repaired live candidate
+        shell: bash
+        run: |
+          git config user.name "Earthline automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "repair: refine under-dense Regional terrain sectors"
+          git push origin HEAD:pages-live
