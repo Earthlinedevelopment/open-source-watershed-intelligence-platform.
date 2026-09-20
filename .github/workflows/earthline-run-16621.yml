@@ -1,4 +1,4 @@
-name: Earthline 16712 Last-Three Repair
+name: Earthline 16712 Validator Debug
 on:
   push:
     branches: [main]
@@ -7,66 +7,52 @@ on:
 permissions:
   contents: write
 jobs:
-  repair:
+  debug:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Fetch repair and validator
+      - name: Fetch validator
         run: |
           git fetch origin main
-          git show origin/main:lab/apply-16712-last-three.py > /tmp/apply-16712.py
           git show origin/main:lab/validate-16710.mjs > ./validate-16712-run.mjs
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
-      - name: Apply repair
-        id: apply
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Diagnose validator
         shell: bash
         run: |
           set +e
           mkdir -p lab
-          python3 /tmp/apply-16712.py > lab/16712-apply.txt 2>&1
-          code=$?
-          cat lab/16712-apply.txt
-          if [ "$code" -eq 0 ]; then
-            git diff --check
-            echo "ok=1" >> "$GITHUB_OUTPUT"
-          else
-            echo "ok=0" >> "$GITHUB_OUTPUT"
-          fi
-          exit 0
-      - name: Publish repair
-        run: |
-          git add lab/16712-apply.txt
-          if [ "${{ steps.apply.outputs.ok }}" = "1" ]; then git add index.html; fi
-          git commit -m 'repair: fix multipart regional extent and statewide renderer omissions' || true
-          git push origin HEAD:pages-live
-      - uses: actions/setup-node@v4
-        if: steps.apply.outputs.ok == '1'
-        with:
-          node-version: '20'
+          {
+            echo "bytes $(wc -c < ./validate-16712-run.mjs)"
+            echo "lines $(wc -l < ./validate-16712-run.mjs)"
+            node --version
+            node --check ./validate-16712-run.mjs
+            echo "check_exit=$?"
+            grep -n "EARTHLINE_REGIONAL_ANALYSIS_EXTENT_16712" ./validate-16712-run.mjs | head
+          } > lab/16712-validator-debug.txt 2>&1
+          cat lab/16712-validator-debug.txt
       - name: Install browser
-        if: steps.apply.outputs.ok == '1'
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Validate last three plus controls
-        if: steps.apply.outputs.ok == '1'
+      - name: Run one-state diagnostic
         shell: bash
         run: |
           set +e
-          rm -f lab/16712-validation.json
-          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Alaska|Hawaii|Vermont|Texas|California|New York' OUT='lab/16712-validation.json' node ./validate-16712-run.mjs > lab/16712-validator-console.txt 2>&1
-          code=$?
-          echo "$code" > lab/16712-validator-exit.txt
-          cat lab/16712-validator-console.txt
-          exit 0
-      - name: Save validation
-        if: steps.apply.outputs.ok == '1'
+          rm -f lab/16712-one.json
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Vermont' OUT='lab/16712-one.json' node ./validate-16712-run.mjs > lab/16712-one-console.txt 2>&1
+          echo "$?" > lab/16712-one-exit.txt
+          cat lab/16712-one-console.txt
+      - name: Save evidence
         run: |
-          git add lab/16712-validation.json lab/16712-validator-console.txt lab/16712-validator-exit.txt
-          git commit -m 'test: record 16712 last-three validation' || true
+          git add lab/16712-validator-debug.txt lab/16712-one-console.txt lab/16712-one-exit.txt
+          test -f lab/16712-one.json && git add lab/16712-one.json || true
+          git commit -m 'test: diagnose 16712 validator harness' || true
           git push origin HEAD:pages-live
