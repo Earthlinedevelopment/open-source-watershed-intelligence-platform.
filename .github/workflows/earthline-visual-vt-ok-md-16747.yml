@@ -1,0 +1,51 @@
+name: Earthline 16747 Visual VT OK MD
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-visual-vt-ok-md-16747.yml']
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Capture states
+        run: |
+          node - <<'NODE'
+          const {chromium}=require('playwright');
+          const fs=require('fs');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            for(const state of ['Vermont','Oklahoma','Maryland']){
+              const p=await browser.newPage({viewport:{width:1908,height:882}});
+              await p.goto('https://earthlinedevelopment.org/?visual16747='+encodeURIComponent(state)+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await p.waitForSelector('#searchInput',{timeout:30000});
+              await p.evaluate(q=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},state);
+              await p.waitForFunction(()=>/screening published\./i.test(String(document.getElementById('earthlineVermontStatus16147')?.textContent||'')),{timeout:60000,polling:100});
+              await p.waitForTimeout(500);
+              await p.screenshot({path:state.toLowerCase().replace(/ /g,'-')+'.png',fullPage:true});
+              const snap=await p.evaluate(()=>({coverage:window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731||null,publication:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,performance:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,vt:window.EARTHLINE_VERMONT_PRESELECTION_BOUNDARY_16747||null}));
+              fs.writeFileSync(state.toLowerCase().replace(/ /g,'-')+'.json',JSON.stringify(snap,null,2));
+              await p.close();
+            }
+            await browser.close();
+          })();
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: visual-vt-ok-md-16747
+          path: |
+            vermont.png
+            vermont.json
+            oklahoma.png
+            oklahoma.json
+            maryland.png
+            maryland.json
