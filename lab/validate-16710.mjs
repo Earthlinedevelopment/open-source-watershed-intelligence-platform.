@@ -22,7 +22,7 @@ for(const stateName of STATES){
     await page.waitForFunction(prev=>{
       const token=String(window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.runToken||''),err=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,status=String(document.getElementById('earthlineVermontStatus16147')?.textContent||'');
       return !!err||((!prev||token!==prev)&&!!token&&/screening published\./i.test(status));
-    },prior,{timeout:50000,polling:100});
+    },prior,{timeout:35000,polling:100});
   }catch(_){timedOut=true;}
   await page.waitForTimeout(400);
   const snap=await page.evaluate(q=>{
@@ -33,6 +33,7 @@ for(const stateName of STATES){
     return {trigger:window.EARTHLINE_SCALE_REFINEMENT_TRIGGER_16705||null,input:window.EARTHLINE_SCALE_REFINED_INPUT_16702||null,swales:sw.length,visible:d?.swaleLines??null,published:g?.publishedFeatures??null,candidates:g?.candidates??null,eligible:g?.jurisdictionEligibleCandidates??null,totalMs:p?.totalMs??null,unsafe:flow?.unsafeSegments??null,outside:b?.outsideAfterClip??null,regions,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null};
   },stateName);
   rows.push({state:stateName,elapsedMs:Date.now()-started,timedOut,snap});
+  fs.writeFileSync(process.env.OUT||'lab/16710-validation.json',JSON.stringify({at:new Date().toISOString(),url:URL,rows,checkpoint:true},null,2));
 }
 await browser.close();
 
