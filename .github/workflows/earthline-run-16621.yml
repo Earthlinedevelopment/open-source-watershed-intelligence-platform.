@@ -1,4 +1,4 @@
-name: Earthline 16727 Property Owner + Integrity Repair
+name: Earthline 16730 General Terrain-Gap Repair
 on:
   push:
     branches: [main]
@@ -15,22 +15,21 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Fetch repair and validators
+      - name: Fetch repair and validator
         run: |
           git fetch origin main
-          git show origin/main:lab/apply-16727-property-owner-integrity.py > /tmp/apply-16727.py
-          git show origin/main:lab/validate-16727-property-owner-integrity.mjs > ./validate-16727-run.mjs
-          git show origin/main:lab/validate-16715.mjs > ./validate-regression-run.mjs
-      - name: Apply Property owner and integrity repair
+          git show origin/main:lab/apply-16730-terrain-gap-refinement.py > /tmp/apply-16730.py
+          git show origin/main:lab/validate-16730-terrain-gap.mjs > ./validate-16730-run.mjs
+      - name: Apply generalized terrain-gap refinement
         run: |
-          python3 /tmp/apply-16727.py
+          python3 /tmp/apply-16730.py
           git diff --check
       - name: Publish pages-live
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
           git add index.html
-          git commit -m 'repair: keep governed Property frame and publication authoritative'
+          git commit -m 'repair: refine statewide low-relief terrain gaps without jurisdiction exceptions'
           git pull --rebase origin pages-live
           git push origin HEAD:pages-live
       - uses: actions/setup-node@v4
@@ -40,32 +39,22 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Validate Property owner and integrity
-        id: property
+      - name: Validate reported coverage failures
+        id: validate
         shell: bash
         run: |
           set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' OUT='lab/16727-validation.json' node ./validate-16727-run.mjs
-          code=$?
-          echo "pass=$([ "$code" -eq 0 ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
-          exit 0
-      - name: Validate Regional controls
-        id: regional
-        shell: bash
-        run: |
-          set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Vermont|New York|Massachusetts|Texas' OUT='lab/16727-regional.json' node ./validate-regression-run.mjs
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Texas|Louisiana|Florida|New York|Colorado|California' OUT='lab/16730-validation.json' node ./validate-16730-run.mjs
           code=$?
           echo "pass=$([ "$code" -eq 0 ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
           exit 0
       - name: Record evidence
         run: |
           git pull --rebase origin pages-live
-          git add lab/16727-validation.json lab/16727-regional.json
-          git commit -m 'test: record 16727 Property and Regional validation' || true
+          git add lab/16730-validation.json
+          git commit -m 'test: record 16730 generalized terrain-gap validation' || true
           git pull --rebase origin pages-live
           git push origin HEAD:pages-live
       - name: Enforce validation
         run: |
-          test "${{ steps.property.outputs.pass }}" = "1"
-          test "${{ steps.regional.outputs.pass }}" = "1"
+          test "${{ steps.validate.outputs.pass }}" = "1"
