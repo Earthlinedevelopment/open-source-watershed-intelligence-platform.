@@ -1,4 +1,4 @@
-name: Earthline Validate NY 16624
+name: Earthline Texas Owner Extract
 on:
   push:
     branches: [main]
@@ -7,19 +7,28 @@ on:
 permissions:
   contents: read
 jobs:
-  validate:
+  inspect:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: npm install --no-save playwright
-      - run: npx playwright install --with-deps chromium
-      - name: Validate New York 16624 on deployed site
-        env:
-          EARTHLINE_URL: https://earthlinedevelopment.org/
-        run: node lab/target-state-phase-diagnostic.mjs
+      - name: Extract current slope and swale owners
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          needles=['async function makeContours','async function makeSwales','function sampleSegment','const sampleSegment','slope_pct','hy.slope','jurisdictionEligibleCount16539','const chosen=','chosen=']
+          for n in needles:
+              start=0
+              hits=[]
+              while True:
+                  i=s.find(n,start)
+                  if i<0: break
+                  hits.append(i); start=i+len(n)
+                  if len(hits)>=8: break
+              print('\n###',n,hits)
+              for i in hits[:4]:
+                  print(s[max(0,i-4500):min(len(s),i+14000)])
+          PY
