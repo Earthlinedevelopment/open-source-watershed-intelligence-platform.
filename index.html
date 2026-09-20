@@ -29998,7 +29998,9 @@ body { overflow-x:hidden!important; }
     function screenJurisdictionCandidate16539(candidate16539){
       if(focusMode||!jurisdictionGeometry16539)return candidate16539;
       if(candidate16539&&jurisdictionScreenCache16592.has(candidate16539))return jurisdictionScreenCache16592.get(candidate16539);
-      const runs16539=earthlineClipLine16539(candidate16539&&candidate16539.segment||[],jurisdictionGeometry16539);
+      const runs16539=(jurisdictionGeometry16539&&jurisdictionGeometry16539.earthlineVermontExactClip16750===true&&typeof window.earthlineClipVermontLine16178==='function')
+        ?window.earthlineClipVermontLine16178(candidate16539&&candidate16539.segment||[],jurisdictionGeometry16539.earthlineVermontGeometry16750)
+        :earthlineClipLine16539(candidate16539&&candidate16539.segment||[],jurisdictionGeometry16539);
       if(!runs16539.length){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
       runs16539.sort((a16539,b16539)=>lineLengthPixels(hy,b16539)-lineLengthPixels(hy,a16539));
       const segment16539=runs16539[0];
@@ -31238,8 +31240,10 @@ body { overflow-x:hidden!important; }
       if(!geometry16747)throw new Error('official Vermont state boundary could not be resolved before corridor selection');
       const prepared16748=earthlinePrepareJurisdiction16539(geometry16747);
       if(!prepared16748)throw new Error('official Vermont state boundary could not be prepared for corridor selection');
-      selectionBoundary16539={geometry:geometry16747,prepared:prepared16748,source:'official VCGI Vermont state boundary',vermontPreselection16747:true,preparedBoundary16748:true};
-      window.EARTHLINE_VERMONT_PRESELECTION_BOUNDARY_16747={build:'EARTHLINE 16748',runToken,applied:true,prepared:true,source:'official VCGI Vermont state boundary',rule:'prepared Vermont corridor eligibility precedes ranking, spacing and capacity; final VCGI clip remains publication safety',at:new Date().toISOString()};
+      prepared16748.earthlineVermontExactClip16750=true;
+      prepared16748.earthlineVermontGeometry16750=geometry16747;
+      selectionBoundary16539={geometry:geometry16747,prepared:prepared16748,source:'official VCGI Vermont state boundary',vermontPreselection16747:true,preparedBoundary16748:true,exactClipOwner16750:true};
+      window.EARTHLINE_VERMONT_PRESELECTION_BOUNDARY_16747={build:'EARTHLINE 16750',runToken,applied:true,prepared:true,exactClipOwner:true,source:'official VCGI Vermont state boundary',rule:'the same exact VCGI line-clip owner screens Vermont corridors before ranking and verifies them again at final publication',at:new Date().toISOString()};
     }else if(jurisdictionCapability16539){
       selectionBoundary16539=await jurisdictionBoundaryPromise16539;
       if(!selectionBoundary16539||!selectionBoundary16539.geometry)throw new Error('selected administrative boundary could not be resolved; no uncontained Regional result was published');
@@ -36191,7 +36195,7 @@ html[data-earthline-analysis-tier="property"] #earthlineDiagramLegend16080{displ
   }
   function audit(){return {build:BUILD,boundaryLoaded:!!boundaryGeometry,boundarySource:window.EARTHLINE_VERMONT_BOUNDARY_SOURCE_16178||null,lastError:lastError&&String(lastError.message||lastError),tierReset:window.EARTHLINE_TIER_RESET_AUDIT_16178||null,productBoundary:window.EARTHLINE_VERMONT_PRODUCT_BOUNDARY_AUDIT_16178||null,propertyBoundary:window.EARTHLINE_PROPERTY_BOUNDARY_AUDIT_16178||null,propertyTimeout:window.EARTHLINE_PROPERTY_TIMEOUT_AUDIT_16178||null,at:new Date().toISOString()};}
   function stamp(){window.EARTHLINE_BUILD=BUILD;document.documentElement.dataset.earthlineVermontBuild='16250';const e=document.getElementById('earthlineBuildStamp16154');if(e)e.textContent=BUILD;}
-  window.earthlineEnsureVermontBoundary16178=ensureBoundary;window.earthlineValidateVermontBoundary16178=validateBoundary;window.earthlineClipVermontProducts16178=clipProducts;window.earthlineIsVermontRequest16178=isVermontRequest;window.earthlinePointInVermont16178=async p=>inGeometry(p,await ensureBoundary());window.earthlineBuild16178Audit=audit;
+  window.earthlineEnsureVermontBoundary16178=ensureBoundary;window.earthlineValidateVermontBoundary16178=validateBoundary;window.earthlineClipVermontProducts16178=clipProducts;window.earthlineClipVermontLine16178=(coords,g)=>clipLine(coords,g||boundaryGeometry);window.earthlineIsVermontRequest16178=isVermontRequest;window.earthlinePointInVermont16178=async p=>inGeometry(p,await ensureBoundary());window.earthlineBuild16178Audit=audit;
   /* EARTHLINE 16482 — the state boundary is static governing Vermont evidence and
      does not depend on the selected Property. Begin the unchanged official owner
      as soon as this script installs so normal user interaction overlaps its network
