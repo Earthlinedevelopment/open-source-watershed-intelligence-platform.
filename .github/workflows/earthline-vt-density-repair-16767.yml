@@ -128,6 +128,10 @@ jobs:
           print('16767 patched existing Regional selection + coverage/refinement owners')
           
           PY
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: _validation
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -175,7 +179,7 @@ jobs:
           set -e
           for n in 1 2 3 4; do
             echo "=== Vermont density run $n ==="
-            EARTHLINE_URL='http://127.0.0.1:8787/' STATES='Vermont' OUT="/tmp/earthline-16767-vt-$n.json" node lab/validate-16753-final-us.mjs
+            EARTHLINE_URL='http://127.0.0.1:8787/' STATES='Vermont' OUT="/tmp/earthline-16767-vt-$n.json" node _validation/lab/validate-16753-final-us.mjs
             node --input-type=module - "/tmp/earthline-16767-vt-$n.json" <<'JS'
           import fs from 'fs';
           const path=process.argv[2], j=JSON.parse(fs.readFileSync(path,'utf8'));
@@ -190,7 +194,7 @@ jobs:
           EARTHLINE_URL: 'http://127.0.0.1:8787/'
           STATES: 'Vermont|Texas|Maryland|California|Florida|Oklahoma|New York|Colorado'
           OUT: '/tmp/earthline-16767-controls.json'
-        run: node lab/validate-16753-final-us.mjs
+        run: node _validation/lab/validate-16753-final-us.mjs
       - name: Commit repaired live candidate
         shell: bash
         run: |
