@@ -1,4 +1,4 @@
-name: Earthline 16717 Texas Score Rank Restore
+name: Earthline 16718 Alaska Hawaii Fresh Diagnostic
 on:
   push:
     branches: [main]
@@ -7,7 +7,7 @@ on:
 permissions:
   contents: write
 jobs:
-  repair-and-validate:
+  diagnose:
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:
@@ -15,23 +15,10 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Fetch 16717 repair and validator
+      - name: Fetch diagnostic
         run: |
           git fetch origin main
-          git show origin/main:lab/apply-16717-restore-score-rank.py > /tmp/apply-16717.py
-          git show origin/main:lab/validate-16717.mjs > ./validate-16717-run.mjs
-      - name: Restore score-owned ranking
-        run: |
-          python3 /tmp/apply-16717.py
-          git diff --check
-      - name: Publish pages-live
-        run: |
-          git config user.name 'earthline-ci'
-          git config user.email 'actions@users.noreply.github.com'
-          git add index.html
-          git commit -m 'repair: preserve coastal coverage while restoring statewide score ranking'
-          git pull --rebase origin pages-live
-          git push origin HEAD:pages-live
+          git show origin/main:lab/diag-16718-ak-hi-fresh.mjs > ./diag-16718-run.mjs
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -39,22 +26,15 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Validate Texas ranking and coverage
-        id: validate
-        shell: bash
+      - name: Diagnose Alaska and Hawaii fresh
         run: |
-          set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' OUT='lab/16717-validation.json' node ./validate-16717-run.mjs
-          code=$?
-          echo "pass=$([ "$code" -eq 0 ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
-          exit 0
-      - name: Record evidence
+          EARTHLINE_URL='https://earthlinedevelopment.org/' OUT='lab/16718-ak-hi-fresh.json' node ./diag-16718-run.mjs
+      - name: Record diagnostic
         run: |
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
           git pull --rebase origin pages-live
-          git add lab/16717-validation.json
-          git commit -m 'test: record 16717 Texas rank and coverage validation' || true
+          git add lab/16718-ak-hi-fresh.json
+          git commit -m 'test: record fresh Alaska Hawaii diagnostic' || true
           git pull --rebase origin pages-live
           git push origin HEAD:pages-live
-      - name: Enforce validation
-        run: |
-          test "${{ steps.validate.outputs.pass }}" = "1"
