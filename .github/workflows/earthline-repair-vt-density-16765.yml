@@ -20,96 +20,56 @@ jobs:
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          old="""    const coverageGroups16736=new Map(),coverageReserved16736=[];
-    if(!focusMode){
-      for(const c16736 of candidates){
-        if(!c16736)continue;
-        const seg16736=Array.isArray(c16736.segment)?c16736.segment:[],mid16736=seg16736[Math.floor((seg16736.length-1)/2)]||null;
-        const mg16736=mid16736?llGrid(hy,mid16736):null;
-        const coords16739=[];
-        if(Number.isFinite(Number(c16736.x))&&Number.isFinite(Number(c16736.y)))coords16739.push([Number(c16736.x),Number(c16736.y),'source']);
-        if(mg16736&&Number.isFinite(Number(mg16736.x))&&Number.isFinite(Number(mg16736.y)))coords16739.push([Number(mg16736.x),Number(mg16736.y),'clipped-midpoint']);
-        const seenBins16739=new Set();
-        for(const row16739 of coords16739){
-          const gx16736=row16739[0],gy16736=row16739[1];
-          const bx16736=Math.max(0,Math.min(5,Math.floor(gx16736*6/Math.max(1,hy.w))));
-          const by16736=Math.max(0,Math.min(5,Math.floor(gy16736*6/Math.max(1,hy.h))));
-          const key16736=bx16736+','+by16736;
-          if(seenBins16739.has(key16736))continue;seenBins16739.add(key16736);
-          let list16736=coverageGroups16736.get(key16736);
-          if(!list16736)coverageGroups16736.set(key16736,list16736=[]);
-          list16736.push(c16736);
-        }
-      }
-      for(const [key16736,list16736] of coverageGroups16736){
-        list16736.sort((a16736,b16736)=>(Number(b16736.score)||0)-(Number(a16736.score)||0));
-        const reserve16755=[];
-        if(list16736[0])reserve16755.push(list16736[0]);
-        if(list16736.length>=6){
-          const first16755=list16736[0];
-          const second16755=list16736.find((c16755,i16755)=>i16755>0&&Math.hypot(Number(c16755.x)-Number(first16755.x),Number(c16755.y)-Number(first16755.y))>=2);
-          if(second16755)reserve16755.push(second16755);
-        }
-        for(const c16736 of reserve16755){
-          if(c16736&&!chosen.includes(c16736)){
-            chosen.push(c16736);
-            coverageReserved16736.push({key:key16736,x:c16736.x,y:c16736.y,score:Number(c16736.score)||0,refined:!!(c16736.refined16710||c16736.refined16702),coverageGap:!!c16736.coverageGap16731,densityReserve16755:true});
-          }
-        }
-      }
-    }
-    const regionalCapacity16755=focusMode?80:Math.min(120,Math.max(80,coverageGroups16736.size*4));
-    window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736={build:'EARTHLINE 16755',candidateBins:coverageGroups16736.size,reserved:coverageReserved16736.length,capacity:regionalCapacity16755,rows:coverageReserved16736,dualBorderBin:true,densityReserve:true,rule:'reserve a second spatially distinct valid candidate in candidate-rich 6x6 sectors and scale Regional capacity from 80 up to 120 by occupied terrain sectors; science gates and final score ordering are unchanged',at:new Date().toISOString()};
-"""
+          start=s.index("    const coverageGroups16736=new Map(),coverageReserved16736=[];")
+          end_marker="    window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736={build:'EARTHLINE 16755'"
+          end_start=s.index(end_marker,start)
+          end=s.index("\n",end_start)+1
           new="""    const coverageGroups16736=new Map(),coverageReserved16736=[];
-    if(!focusMode){
-      for(const c16736 of candidates){
-        if(!c16736)continue;
-        const seg16736=Array.isArray(c16736.segment)?c16736.segment:[],mid16736=seg16736[Math.floor((seg16736.length-1)/2)]||null;
-        const mg16736=mid16736?llGrid(hy,mid16736):null;
-        let gx16765=null,gy16765=null,binBasis16765='clipped-midpoint';
-        if(mg16736&&Number.isFinite(Number(mg16736.x))&&Number.isFinite(Number(mg16736.y))){
-          gx16765=Number(mg16736.x);gy16765=Number(mg16736.y);
-        }else if(Number.isFinite(Number(c16736.x))&&Number.isFinite(Number(c16736.y))){
-          gx16765=Number(c16736.x);gy16765=Number(c16736.y);binBasis16765='source-fallback';
-        }
-        if(!Number.isFinite(gx16765)||!Number.isFinite(gy16765))continue;
-        const bx16736=Math.max(0,Math.min(5,Math.floor(gx16765*6/Math.max(1,hy.w))));
-        const by16736=Math.max(0,Math.min(5,Math.floor(gy16765*6/Math.max(1,hy.h))));
-        const key16736=bx16736+','+by16736;
-        let list16736=coverageGroups16736.get(key16736);
-        if(!list16736)coverageGroups16736.set(key16736,list16736=[]);
-        list16736.push(c16736);
-        c16736.coverageBinBasis16765=binBasis16765;
-      }
-      for(const [key16736,list16736] of coverageGroups16736){
-        list16736.sort((a16736,b16736)=>(Number(b16736.score)||0)-(Number(a16736.score)||0));
-        const reserveTarget16765=Math.min(3,list16736.length),reserve16765=[];
-        for(const c16765 of list16736){
-          if(reserve16765.length>=reserveTarget16765)break;
-          if(!reserve16765.length||reserve16765.every(p16765=>Math.hypot(Number(c16765.x)-Number(p16765.x),Number(c16765.y)-Number(p16765.y))>=2))reserve16765.push(c16765);
-        }
-        if(reserve16765.length<reserveTarget16765){
-          for(const c16765 of list16736){
-            if(reserve16765.length>=reserveTarget16765)break;
-            if(!reserve16765.includes(c16765))reserve16765.push(c16765);
-          }
-        }
-        for(const c16736 of reserve16765){
-          if(c16736&&!chosen.includes(c16736)){
-            chosen.push(c16736);
-            coverageReserved16736.push({key:key16736,x:c16736.x,y:c16736.y,score:Number(c16736.score)||0,refined:!!(c16736.refined16710||c16736.refined16702),coverageGap:!!c16736.coverageGap16731,densityReserve16765:true,binBasis:c16736.coverageBinBasis16765||'clipped-midpoint'});
-          }
-        }
-      }
-    }
-    const regionalCapacity16755=focusMode?80:Math.min(120,Math.max(80,coverageGroups16736.size*4));
-    window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736={build:'EARTHLINE 16765',candidateBins:coverageGroups16736.size,reserved:coverageReserved16736.length,capacity:regionalCapacity16755,rows:coverageReserved16736,dualBorderBin:false,midpointOwnedBins:true,reservePerBin:3,densityReserve:true,rule:'group candidates by the actual clipped corridor midpoint used by the coverage audit, reserve up to three spatially distinct valid terrain-derived candidates per occupied 6x6 sector, then let the existing score/spacing owner fill remaining capacity; science gates and final score ordering are unchanged',at:new Date().toISOString()};
-"""
-          n=s.count(old)
-          if n!=1:
-              raise SystemExit(f'Expected exactly one 16755 selection block, found {n}')
-          s=s.replace(old,new)
+              if(!focusMode){
+                for(const c16736 of candidates){
+                  if(!c16736)continue;
+                  const seg16736=Array.isArray(c16736.segment)?c16736.segment:[],mid16736=seg16736[Math.floor((seg16736.length-1)/2)]||null;
+                  const mg16736=mid16736?llGrid(hy,mid16736):null;
+                  let gx16765=null,gy16765=null,binBasis16765='clipped-midpoint';
+                  if(mg16736&&Number.isFinite(Number(mg16736.x))&&Number.isFinite(Number(mg16736.y))){
+                    gx16765=Number(mg16736.x);gy16765=Number(mg16736.y);
+                  }else if(Number.isFinite(Number(c16736.x))&&Number.isFinite(Number(c16736.y))){
+                    gx16765=Number(c16736.x);gy16765=Number(c16736.y);binBasis16765='source-fallback';
+                  }
+                  if(!Number.isFinite(gx16765)||!Number.isFinite(gy16765))continue;
+                  const bx16736=Math.max(0,Math.min(5,Math.floor(gx16765*6/Math.max(1,hy.w))));
+                  const by16736=Math.max(0,Math.min(5,Math.floor(gy16765*6/Math.max(1,hy.h))));
+                  const key16736=bx16736+','+by16736;
+                  let list16736=coverageGroups16736.get(key16736);
+                  if(!list16736)coverageGroups16736.set(key16736,list16736=[]);
+                  list16736.push(c16736);
+                  c16736.coverageBinBasis16765=binBasis16765;
+                }
+                for(const [key16736,list16736] of coverageGroups16736){
+                  list16736.sort((a16736,b16736)=>(Number(b16736.score)||0)-(Number(a16736.score)||0));
+                  const reserveTarget16765=Math.min(3,list16736.length),reserve16765=[];
+                  for(const c16765 of list16736){
+                    if(reserve16765.length>=reserveTarget16765)break;
+                    if(!reserve16765.length||reserve16765.every(p16765=>Math.hypot(Number(c16765.x)-Number(p16765.x),Number(c16765.y)-Number(p16765.y))>=2))reserve16765.push(c16765);
+                  }
+                  if(reserve16765.length<reserveTarget16765){
+                    for(const c16765 of list16736){
+                      if(reserve16765.length>=reserveTarget16765)break;
+                      if(!reserve16765.includes(c16765))reserve16765.push(c16765);
+                    }
+                  }
+                  for(const c16736 of reserve16765){
+                    if(c16736&&!chosen.includes(c16736)){
+                      chosen.push(c16736);
+                      coverageReserved16736.push({key:key16736,x:c16736.x,y:c16736.y,score:Number(c16736.score)||0,refined:!!(c16736.refined16710||c16736.refined16702),coverageGap:!!c16736.coverageGap16731,densityReserve16765:true,binBasis:c16736.coverageBinBasis16765||'clipped-midpoint'});
+                    }
+                  }
+                }
+              }
+              const regionalCapacity16755=focusMode?80:Math.min(120,Math.max(80,coverageGroups16736.size*4));
+              window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736={build:'EARTHLINE 16765',candidateBins:coverageGroups16736.size,reserved:coverageReserved16736.length,capacity:regionalCapacity16755,rows:coverageReserved16736,dualBorderBin:false,midpointOwnedBins:true,reservePerBin:3,densityReserve:true,rule:'group candidates by the actual clipped corridor midpoint used by the coverage audit, reserve up to three spatially distinct valid terrain-derived candidates per occupied 6x6 sector, then let the existing score/spacing owner fill remaining capacity; science gates and final score ordering are unchanged',at:new Date().toISOString()};
+          """
+          s=s[:start]+new+s[end:]
           p.write_text(s,encoding='utf-8')
           print('patched existing Regional selection owner to 16765')
           PY
@@ -162,7 +122,7 @@ jobs:
             if(s.vtAfter!==s.generated)fail.push('boundary '+s.vtAfter+'/'+s.generated);
             if(s.thin.length)fail.push('preferred>=30 with <2 swales '+JSON.stringify(s.thin));
             if(s.strong.length)fail.push('preferred>=60 with <3 swales '+JSON.stringify(s.strong));
-            rows.push({run,elapsedMs:Date.now()-start,...s,fail});
+            rows.push({run,elapsedMs:Date.now()-start,generated:s.generated,visible:s.visible,totalMs:s.totalMs,unsafe:s.unsafe,vtAfter:s.vtAfter,selection:s.selection,thin:s.thin,strong:s.strong,fail});
             console.log(JSON.stringify(rows.at(-1)));
             await page.close();
           }
@@ -172,9 +132,9 @@ jobs:
       - name: Cross-state regression gate
         shell: bash
         env:
-          EARTHLINE_URL: http://127.0.0.1:8787/
-          STATES: Vermont|Texas|Maryland|California|Florida|Oklahoma|New York|Colorado
-          OUT: /tmp/earthline-16765-controls.json
+          EARTHLINE_URL: 'http://127.0.0.1:8787/'
+          STATES: 'Vermont|Texas|Maryland|California|Florida|Oklahoma|New York|Colorado'
+          OUT: '/tmp/earthline-16765-controls.json'
         run: node lab/validate-16753-final-us.mjs
       - name: Commit repaired live candidate
         shell: bash
