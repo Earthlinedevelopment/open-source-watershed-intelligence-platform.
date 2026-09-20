@@ -1,0 +1,144 @@
+name: Earthline 16771 Regional Subsector Spread Repair
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-run-16771.yml']
+permissions:
+  contents: write
+jobs:
+  repair-test-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Apply shared selector repair
+        shell: bash
+        run: |
+          git fetch origin main
+          git show origin/main:lab/apply-16771-subsector-spread.py > /tmp/apply-16771.py
+          python3 /tmp/apply-16771.py
+          grep -q "EARTHLINE 16771" index.html
+          git diff --check
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start candidate server
+        shell: bash
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-16771-server.log 2>&1 &
+          echo $! >/tmp/earthline-16771-server.pid
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8787/index.html >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/earthline-16771-server.log
+          exit 1
+      - name: Compare live Vermont to candidate spatial spread
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const browser=await chromium.launch({headless:true});
+          async function run(url,label){
+            const page=await browser.newPage({viewport:{width:1800,height:1000}});
+            await page.goto(url+'?spread16771='+label+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#searchInput',{timeout:30000});
+            await page.evaluate(()=>{
+              window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731=null;
+              const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+              i.value='vermont state';
+              i.dispatchEvent(new Event('input',{bubbles:true}));
+              i.dispatchEvent(new Event('change',{bubbles:true}));
+              b.click();
+            });
+            await page.waitForFunction(()=>{
+              const a=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731;
+              const p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167;
+              const d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;
+              return a?.passed===true&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);
+            },null,{timeout:60000,polling:100});
+            await page.waitForTimeout(500);
+            const snap=await page.evaluate(()=>{
+              const spatial=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||null;
+              const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null;
+              const disp=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null;
+              const perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null;
+              const flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null;
+              const vis=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020||null;
+              const pkg=window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556||window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||null;
+              const bbox=pkg?.regionalExtent?.bbox||null;
+              const fine=new Set();
+              if(Array.isArray(bbox)&&bbox.length===4){
+                const [w,s,e,n]=bbox;
+                for(const f of vis?.swales?.features||[]){
+                  const c=f?.geometry?.coordinates;if(!Array.isArray(c)||!c.length)continue;
+                  const m=c[Math.floor((c.length-1)/2)];if(!Array.isArray(m))continue;
+                  const bx=Math.max(0,Math.min(11,Math.floor((Number(m[0])-w)/Math.max(1e-12,e-w)*12)));
+                  const by=Math.max(0,Math.min(11,Math.floor((n-Number(m[1]))/Math.max(1e-12,n-s)*12)));
+                  fine.add(bx+','+by);
+                }
+              }
+              const plan=Array.isArray(spatial?.subsectorPlan)?spatial.subsectorPlan:[];
+              return {
+                spatialBuild:spatial?.build||null,
+                generated:Number(pub?.generated||0),
+                visible:Number(disp?.swaleLines||0),
+                coreMs:Number(perf?.totalMs||NaN),
+                unsafe:Number(flow?.unsafeSegments||0),
+                fine12Occupied:fine.size,
+                candidateBins:Number(spatial?.candidateBins||0),
+                reserved:Number(spatial?.reserved||0),
+                subsectorExtraSelected:Number(spatial?.subsectorExtraSelected||0),
+                plan,
+                weakPlans:plan.filter(r=>Number(r.candidateSubcells||0)>=3&&Number(r.reservedSubcells||0)<3),
+                waterPaths:Number(vis?.flows?.features?.length||0),
+                vtAfter:Number(window.EARTHLINE_VERMONT_PRODUCT_BOUNDARY_AUDIT_16178?.after?.swales||0)
+              };
+            });
+            await page.close();
+            return snap;
+          }
+          const live=await run('https://earthlinedevelopment.org/','live');
+          const candidate=await run('http://127.0.0.1:8787/index.html','candidate');
+          await browser.close();
+          const failures=[];
+          if(candidate.spatialBuild!=='EARTHLINE 16771')failures.push('candidate marker '+candidate.spatialBuild);
+          if(candidate.generated!==candidate.visible||candidate.generated<80)failures.push('publication '+candidate.generated+'/'+candidate.visible);
+          if(!(candidate.coreMs<=15000))failures.push('performance '+candidate.coreMs);
+          if(candidate.unsafe!==0)failures.push('unsafe '+candidate.unsafe);
+          if(!(candidate.waterPaths>0))failures.push('water paths');
+          if(candidate.vtAfter!==candidate.generated)failures.push('VCGI boundary '+candidate.vtAfter+'/'+candidate.generated);
+          if(candidate.weakPlans.length)failures.push('subsector reserve '+JSON.stringify(candidate.weakPlans));
+          if(candidate.fine12Occupied<live.fine12Occupied+8)failures.push('fine coverage '+live.fine12Occupied+' -> '+candidate.fine12Occupied);
+          const out={at:new Date().toISOString(),live,candidate,deltaFine12:candidate.fine12Occupied-live.fine12Occupied,failures,pass:!failures.length};
+          fs.mkdirSync('lab',{recursive:true});
+          fs.writeFileSync('lab/earthline-16771-vt-candidate.json',JSON.stringify(out,null,2));
+          console.log('EARTHLINE16771 '+JSON.stringify(out));
+          if(failures.length)process.exit(1);
+          JS
+      - name: Run cross-state regression gate
+        shell: bash
+        run: |
+          git show origin/main:lab/validate-16753-final-us.mjs > /tmp/validate-16753-final-us.mjs
+          cp /tmp/validate-16753-final-us.mjs ./validate-16753-final-us.mjs
+          EARTHLINE_URL='http://127.0.0.1:8787/index.html' \
+          STATES='Vermont|Texas|Florida|Louisiana|Colorado|Oklahoma|Maryland|New York|California' \
+          OUT='lab/earthline-16771-controls.json' \
+          node ./validate-16753-final-us.mjs
+      - name: Publish pages-live only after gates pass
+        shell: bash
+        run: |
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'repair: spread Regional corridors across terrain subsectors'
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live
