@@ -1,0 +1,45 @@
+name: Earthline 16762 Probe Free Overpass Fallbacks
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-overpass-probe-16762.yml']
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Probe browser CORS and response
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage();
+          await page.goto('https://earthlinedevelopment.org/',{waitUntil:'domcontentloaded',timeout:60000});
+          const endpoints=[
+            'https://overpass.private.coffee/api/interpreter',
+            'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
+          ];
+          const q='[out:json][timeout:8];way["highway"](40.205,-108.388,40.208,-108.384);out geom 1;';
+          for(const endpoint of endpoints){
+            const t=Date.now();
+            const result=await page.evaluate(async ({endpoint,q})=>{
+              const c=new AbortController();const timer=setTimeout(()=>c.abort(),8000);
+              try{
+                const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:'data='+encodeURIComponent(q),signal:c.signal});
+                const text=await r.text();
+                return {ok:r.ok,status:r.status,bytes:text.length,error:null};
+              }catch(e){return {ok:false,status:null,bytes:0,error:String(e&&e.message||e)}}finally{clearTimeout(timer)}
+            },{endpoint,q});
+            console.log(JSON.stringify({endpoint,elapsedMs:Date.now()-t,...result}));
+          }
+          await browser.close();
+          JS
