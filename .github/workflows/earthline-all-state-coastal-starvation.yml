@@ -1,29 +1,19 @@
-name: Earthline 50-State Coastal Starvation Audit
+name: Earthline Texas-California Coastal Starvation Audit
 
 on:
   push:
     branches: [diag-aquifer-east-texas]
     paths:
-      - 'tests/all-state-coastal-starvation-audit.mjs'
       - '.github/workflows/earthline-all-state-coastal-starvation.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  audit:
+  audit-pair:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        shard:
-          - "Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia"
-          - "Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland"
-          - "Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey"
-          - "New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina"
-          - "South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming"
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Governance preflight
@@ -34,7 +24,23 @@ jobs:
       - run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Run coastal starvation audit
+      - name: Run Texas-California coastal starvation audit
         env:
-          STATES: ${{ matrix.shard }}
-        run: node tests/all-state-coastal-starvation-audit.mjs
+          STATES: "Texas|California"
+        run: |
+          node tests/all-state-coastal-starvation-audit.mjs | tee coastal-starvation-pair.log
+      - name: Record diagnostic result
+        run: |
+          {
+            echo "EARTHLINE COASTAL STARVATION PAIR — diagnostic only"
+            echo "Commit: $GITHUB_SHA"
+            echo
+            grep 'EARTHLINE_COASTAL_STARVATION ' coastal-starvation-pair.log || true
+            echo
+            grep 'EARTHLINE_COASTAL_STARVATION_SUMMARY ' coastal-starvation-pair.log || true
+          } > EARTHLINE_COASTAL_STARVATION_PAIR_LATEST.txt
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add EARTHLINE_COASTAL_STARVATION_PAIR_LATEST.txt
+          git commit -m "diag: record Texas California coastal starvation ratios" || exit 0
+          git push origin HEAD:diag-aquifer-east-texas
