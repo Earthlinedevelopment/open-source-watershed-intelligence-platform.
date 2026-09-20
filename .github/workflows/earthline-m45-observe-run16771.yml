@@ -1,0 +1,40 @@
+name: Earthline Mantra45 Observe 16771 Repair Run
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-observe-run16771.yml']
+permissions:
+  actions: read
+  contents: write
+jobs:
+  observe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Read exact 16771 repair run
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p lab
+          target='Earthline 16771 Regional Subsector Spread Repair'
+          run_id="$(gh run list --workflow "$target" --limit 1 --json databaseId --jq '.[0].databaseId // empty' || true)"
+          if [ -z "$run_id" ]; then
+            echo '{"error":"16771 repair workflow run not found"}' > lab/mantra45-16771-original-run-status.json
+          else
+            gh run view "$run_id" --json databaseId,name,status,conclusion,headSha,createdAt,updatedAt,url,jobs > lab/mantra45-16771-original-run-status.json
+            gh run view "$run_id" --log-failed > lab/mantra45-16771-original-run-failed.log 2>&1 || true
+          fi
+      - name: Persist evidence
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-16771-original-run-status.json
+          test -f lab/mantra45-16771-original-run-failed.log && git add lab/mantra45-16771-original-run-failed.log || true
+          git commit -m "diag: persist original 16771 repair run status [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
