@@ -1,0 +1,80 @@
+name: Earthline 16770 Vermont Geographic Representation Gate
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-vt-geographic-gate-16770.yml']
+permissions:
+  contents: read
+jobs:
+  certify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Four live Vermont geographic representation passes
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const rows=[];
+          for(let run=1;run<=4;run++){
+            const page=await browser.newPage({viewport:{width:1800,height:1000}});
+            await page.goto('https://earthlinedevelopment.org/?vt16770='+run+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#searchInput',{timeout:30000});
+            await page.evaluate(()=>{
+              window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731=null;
+              const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+              i.value='vermont state';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();
+            });
+            await page.waitForFunction(()=>{
+              const a=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731;
+              const p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167;
+              const d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;
+              return a?.passed===true&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);
+            },null,{timeout:60000,polling:100});
+            await page.waitForTimeout(500);
+            const snap=await page.evaluate(()=>{
+              const a=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731;
+              const v=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020;
+              const p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167;
+              const perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191;
+              const bins=a?.bins||[];
+              const macro=(axis)=>{
+                const groups=[{pref:0,sw:0},{pref:0,sw:0},{pref:0,sw:0}];
+                for(const r of bins){
+                  const n=axis==='x'?Number(r.bx):Number(r.by),g=Math.max(0,Math.min(2,Math.floor(n/2)));
+                  groups[g].pref+=Number(r.preferred||0);groups[g].sw+=Number(r.swales||0);
+                }
+                const tp=groups.reduce((s,r)=>s+r.pref,0),ts=groups.reduce((s,r)=>s+r.sw,0);
+                return groups.map(r=>({preferred:r.pref,swales:r.sw,preferredShare:tp?r.pref/tp:0,swaleShare:ts?r.sw/ts:0,delta:tp&&ts?Math.abs(r.pref/tp-r.sw/ts):0}));
+              };
+              const coords=[];
+              for(const f of v?.swales?.features||[]){
+                const c=f?.geometry?.coordinates;if(!Array.isArray(c)||!c.length)continue;
+                const m=c[Math.floor((c.length-1)/2)];if(Array.isArray(m)&&Number.isFinite(m[0])&&Number.isFinite(m[1]))coords.push(m);
+              }
+              const bbox=coords.length?[Math.min(...coords.map(p=>p[0])),Math.min(...coords.map(p=>p[1])),Math.max(...coords.map(p=>p[0])),Math.max(...coords.map(p=>p[1]))]:null;
+              const state=[-73.4379,42.72693,-71.46505,45.01666];
+              const lonSpan=bbox?(bbox[2]-bbox[0])/(state[2]-state[0]):0,latSpan=bbox?(bbox[3]-bbox[1])/(state[3]-state[1]):0;
+              return {build:a?.build,generated:Number(p?.generated||0),visible:Number((window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020)?.swaleLines||0),totalMs:Number(perf?.totalMs||NaN),x:macro('x'),y:macro('y'),bbox,lonSpan,latSpan,unsafe:Number(window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584?.unsafeSegments||0)};
+            });
+            const maxDelta=Math.max(...snap.x.map(r=>r.delta),...snap.y.map(r=>r.delta));
+            const failures=[];
+            if(snap.generated!==snap.visible||snap.generated<80)failures.push('publication');
+            if(!(snap.totalMs<=15000))failures.push('performance '+snap.totalMs);
+            if(snap.unsafe!==0)failures.push('unsafe '+snap.unsafe);
+            if(maxDelta>0.08)failures.push('macro distribution delta '+maxDelta);
+            if(snap.lonSpan<0.90||snap.latSpan<0.90)failures.push('statewide span '+snap.lonSpan+'/'+snap.latSpan);
+            rows.push({run,...snap,maxDelta,failures,pass:!failures.length});
+            await page.close();
+          }
+          await browser.close();
+          console.log('EARTHLINE16770 '+JSON.stringify(rows));
+          if(rows.some(r=>!r.pass))process.exit(1);
+          JS
