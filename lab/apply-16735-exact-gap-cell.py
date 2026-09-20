@@ -24,11 +24,11 @@ patch("exact-bin-candidate",
               return {segment:seg16731,x:Math.max(1,Math.min(hy.w-2,Math.round(mg16731.x))),y:Math.max(1,Math.min(hy.h-2,Math.round(mg16731.y))),slope:sp16731,acc:0,maxAcc:0,score:Math.max(0,Math.min(1,score16731/100)),confidence:'preferred',minLinePx16632:4,refined16702:true,coverageGap16731:true,tile16702:tile16731.id,tile16731:tile16731.id,gapBx16735:tile16731.row.bx,gapBy16735:tile16731.row.by};""")
 
 patch("high-res-counts",
-"""          const occupied16731=new Set((supplementalCandidates16702||[]).map(c16731=>String(c16731.x)+','+String(c16731.y))),added16731=[];
+"""          const occupied16731=new Set((supplementalCandidates16702||[]).map(c16731=>String(c16731.x)+','+String(c16731.y)));
           for(const c16731 of results16731.flat().sort((a16731,b16731)=>b16731.score-a16731.score)){""",
 """          highResCounts16735=tileDefs16731.map((tile16735,i16735)=>({id:tile16735.id,bx:tile16735.row.bx,by:tile16735.row.by,candidates:Array.isArray(results16731[i16735])?results16731[i16735].length:0}));
           confirmedNullKeys16735=new Set(highResCounts16735.filter(r16735=>r16735.candidates===0).map(r16735=>String(r16735.bx)+','+String(r16735.by)));
-          const occupied16731=new Set((supplementalCandidates16702||[]).map(c16731=>String(c16731.x)+','+String(c16731.y))),added16731=[];
+          const occupied16731=new Set((supplementalCandidates16702||[]).map(c16731=>String(c16731.x)+','+String(c16731.y)));
           for(const c16731 of results16731.flat().sort((a16731,b16731)=>b16731.score-a16731.score)){""")
 
 patch("refine-audit",
