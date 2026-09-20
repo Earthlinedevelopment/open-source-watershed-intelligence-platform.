@@ -59,8 +59,12 @@ await page.route('**/*',async route=>{
         const coastCells16702=[];
         const nearOcean16702=(x16702,y16702,r16702=2)=>{for(let dy16702=-r16702;dy16702<=r16702;dy16702++)for(let dx16702=-r16702;dx16702<=r16702;dx16702++){const xx16702=x16702+dx16702,yy16702=y16702+dy16702;if(xx16702<0||xx16702>=hy.w||yy16702<0||yy16702>=hy.h)continue;if(hy.outsideLandMask16632[yy16702*hy.w+xx16702])return true;}return false;};
         for(let y16702=1;y16702<hy.h-1;y16702++)for(let x16702=1;x16702<hy.w-1;x16702++){const i16702=y16702*hy.w+x16702;if(hy.validityMask16584[i16702]===1&&nearOcean16702(x16702,y16702,2))coastCells16702.push({x:x16702,y:y16702});}
+        const channelMain16705=percentile(hy.acc,.972);let coastalScreenPass16705=0;
+        for(const p16705 of coastCells16702){const i16705=p16705.y*hy.w+p16705.x,sp16705=Number(hy.slope[i16705]),ac16705=Number(hy.acc[i16705]);if(Number.isFinite(sp16705)&&sp16705>=.20&&sp16705<=13.5&&Number.isFinite(ac16705)&&ac16705<channelMain16705)coastalScreenPass16705++;}
+        const coastalScreenRatio16705=coastCells16702.length?coastalScreenPass16705/coastCells16702.length:1;
+        window.EARTHLINE_SCALE_REFINEMENT_TRIGGER_16705={maxCellM:Math.max(Number(hy.cellX)||0,Number(hy.cellY)||0),coastalValidCells2:coastCells16702.length,coastalScreenPass2:coastalScreenPass16705,screenPassRatio:coastalScreenRatio16705,triggered:coastCells16702.length>=18&&coastalScreenRatio16705<.05,at:new Date().toISOString()};
         coastCells16702.sort((a,b)=>a.y-b.y);const tiles16702=[];
-        if(coastCells16702.length>=18){
+        if(coastCells16702.length>=18&&coastalScreenRatio16705<.05){
           const parts16702=Math.min(3,Math.max(1,Math.ceil(coastCells16702.length/90)));
           for(let part16702=0;part16702<parts16702;part16702++){
             const a16702=Math.floor(coastCells16702.length*part16702/parts16702),z16702=Math.floor(coastCells16702.length*(part16702+1)/parts16702),group16702=coastCells16702.slice(a16702,z16702);if(!group16702.length)continue;
