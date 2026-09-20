@@ -1,0 +1,42 @@
+name: Earthline 16739 Border Six Parallel
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/earthline-border6-16739.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        state: [North Carolina, Tennessee, Louisiana, New York, Texas, South Carolina]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Validate one state
+        shell: bash
+        run: |
+          set +e
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='${{ matrix.state }}' OUT='border-state.json' node lab/validate-16731-coverage-gap.mjs
+          code=$?
+          echo "$code" > border-state.exit
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: "border-${{ matrix.state }}"
+          path: |
+            border-state.json
+            border-state.exit
+          if-no-files-found: error
