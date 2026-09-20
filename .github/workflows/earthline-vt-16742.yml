@@ -1,0 +1,24 @@
+name: Earthline 16742 Vermont Missing-Half Diagnostic
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-vt-16742.yml']
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: EARTHLINE_URL='https://earthlinedevelopment.org/' OUT='vt16742.json' node lab/diag-16742-vermont-half-swales.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vt16742
+          path: vt16742.json
