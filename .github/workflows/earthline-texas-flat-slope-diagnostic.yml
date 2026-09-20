@@ -1,0 +1,29 @@
+name: Earthline Texas Flat-Slope Diagnostic
+
+on:
+  push:
+    branches: [diag-aquifer-east-texas]
+    paths:
+      - 'tests/texas-flat-slope-diagnostic.mjs'
+      - '.github/workflows/earthline-texas-flat-slope-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  texas-flat-slope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Governance preflight
+        run: python tests/earthline-governance-preflight.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Compare current slope rule vs <=4 percent rule
+        run: node tests/texas-flat-slope-diagnostic.mjs
