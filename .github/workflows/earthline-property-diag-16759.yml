@@ -1,0 +1,25 @@
+name: Earthline 16759 Diagnose Property Fail States
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-property-diag-16759.yml']
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    strategy:
+      fail-fast: false
+      matrix:
+        state: [California, Colorado, Connecticut, Louisiana, Montana]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Diagnose top Property targets
+        run: EARTHLINE_URL='https://earthlinedevelopment.org/' STATE='${{ matrix.state }}' MAX_TARGETS=4 node lab/diagnose-16759-property-fails.mjs
