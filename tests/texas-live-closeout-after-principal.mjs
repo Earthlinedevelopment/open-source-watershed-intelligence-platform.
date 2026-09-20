@@ -11,7 +11,7 @@ await page.goto(URL+'?tx_live_closeout='+Date.now(),{waitUntil:'domcontentloaded
 await page.waitForSelector('#searchInput',{timeout:30000});
 
 const rows=[];
-for(let repeat=1;repeat<=3;repeat++){
+for(let repeat=1;repeat<=5;repeat++){
   const prior=await page.evaluate(()=>String(window.EARTHLINE_SWALE_GENERATION_AUDIT_16167?.at||''));
   const started=Date.now();
   await page.evaluate(()=>{
