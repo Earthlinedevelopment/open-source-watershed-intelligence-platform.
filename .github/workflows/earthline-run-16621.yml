@@ -1,4 +1,4 @@
-name: Earthline 16738 Resilient Gap Refinement
+name: Earthline 16739 Dual Border-Bin Repair
 on:
   push:
     branches: [main]
@@ -18,18 +18,18 @@ jobs:
       - name: Fetch repair and validator
         run: |
           git fetch origin main
-          git show origin/main:lab/apply-16738-resilient-gap-refinement.py > /tmp/apply-16738.py
-          git show origin/main:lab/validate-16731-coverage-gap.mjs > ./validate-16738-run.mjs
-      - name: Apply resilient gap refinement
+          git show origin/main:lab/apply-16739-dual-border-bin-reserve.py > /tmp/apply-16739.py
+          git show origin/main:lab/validate-16731-coverage-gap.mjs > ./validate-16739-run.mjs
+      - name: Apply dual border-bin repair
         run: |
-          python3 /tmp/apply-16738.py
+          python3 /tmp/apply-16739.py
           git diff --check
       - name: Publish pages-live
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
           git add index.html
-          git commit -m 'repair: keep gap refinement fail-soft and cover up to 18 sectors'
+          git commit -m 'repair: preserve border corridors in source and clipped bins'
           git pull --rebase origin pages-live
           git push origin HEAD:pages-live
       - uses: actions/setup-node@v4
@@ -39,20 +39,20 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Validate final failing states plus controls
+      - name: Validate final border states and controls
         id: validate
         shell: bash
         run: |
           set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='North Carolina|Tennessee|Louisiana|New York|Texas' OUT='lab/16738-validation.json' node ./validate-16738-run.mjs
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='North Carolina|Tennessee|Louisiana|New York|Texas|South Carolina' OUT='lab/16739-validation.json' node ./validate-16739-run.mjs
           code=$?
           echo "pass=$([ "$code" -eq 0 ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
           exit 0
       - name: Record evidence
         run: |
           git pull --rebase origin pages-live
-          git add lab/16738-validation.json
-          git commit -m 'test: record 16738 final failing-state validation' || true
+          git add lab/16739-validation.json
+          git commit -m 'test: record 16739 border-state validation' || true
           git pull --rebase origin pages-live
           git push origin HEAD:pages-live
       - name: Enforce validation
