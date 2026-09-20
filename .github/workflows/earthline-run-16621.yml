@@ -1,4 +1,4 @@
-name: Earthline 16715B Renderer Publication Repair
+name: Earthline 16716 Alaska Hawaii Diagnostic
 on:
   push:
     branches: [main]
@@ -7,30 +7,18 @@ on:
 permissions:
   contents: write
 jobs:
-  repair-and-validate:
+  diagnose:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Fetch 16715 repair and validator
+      - name: Fetch diagnostic
         run: |
           git fetch origin main
-          git show origin/main:lab/apply-16715-render-published-corridors.py > /tmp/apply-16715.py
-          git show origin/main:lab/validate-16715.mjs > ./validate-16715-run.mjs
-      - name: Apply renderer publication repair
-        run: |
-          python3 /tmp/apply-16715.py
-          git diff --check
-      - name: Publish pages-live
-        run: |
-          git config user.name 'earthline-ci'
-          git config user.email 'actions@users.noreply.github.com'
-          git add index.html
-          git commit -m 'repair: render every valid published regional corridor'
-          git push origin HEAD:pages-live
+          git show origin/main:lab/diag-16716-alaska-hawaii.mjs > ./diag-16716-run.mjs
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -38,20 +26,13 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Validate renderer against publication owner
-        id: validate
-        shell: bash
+      - name: Diagnose Alaska and Hawaii
         run: |
-          set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Vermont|New York|Massachusetts|Texas' OUT='lab/16715-validation.json' node ./validate-16715-run.mjs
-          code=$?
-          echo "pass=$([ "$code" -eq 0 ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
-          exit 0
-      - name: Record evidence
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Alaska|Hawaii' OUT='lab/16716-alaska-hawaii.json' node ./diag-16716-run.mjs
+      - name: Record diagnostic
         run: |
-          git add lab/16715-validation.json
-          git commit -m 'test: record 16715 renderer publication validation' || true
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add lab/16716-alaska-hawaii.json
+          git commit -m 'test: record Alaska Hawaii regional-owner diagnostic' || true
           git push origin HEAD:pages-live
-      - name: Enforce validation
-        run: |
-          test "${{ steps.validate.outputs.pass }}" = "1"
