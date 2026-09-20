@@ -1,4 +1,4 @@
-name: Earthline 16718 Alaska Hawaii Fresh Diagnostic
+name: Earthline 16719 Multipart Area Repair
 on:
   push:
     branches: [main]
@@ -7,18 +7,31 @@ on:
 permissions:
   contents: write
 jobs:
-  diagnose:
+  repair-and-validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 18
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Fetch diagnostic
+      - name: Fetch 16719 repair and validator
         run: |
           git fetch origin main
-          git show origin/main:lab/diag-16718-ak-hi-fresh.mjs > ./diag-16718-run.mjs
+          git show origin/main:lab/apply-16719-multipart-true-area.py > /tmp/apply-16719.py
+          git show origin/main:lab/validate-16719.mjs > ./validate-16719-run.mjs
+      - name: Apply multipart true-area repair
+        run: |
+          python3 /tmp/apply-16719.py
+          git diff --check
+      - name: Publish pages-live
+        run: |
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'repair: reject remote multipart extent inflation using true polygon area'
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -26,15 +39,22 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Diagnose Alaska and Hawaii fresh
+      - name: Validate Hawaii and profile Alaska
+        id: validate
+        shell: bash
         run: |
-          EARTHLINE_URL='https://earthlinedevelopment.org/' OUT='lab/16718-ak-hi-fresh.json' node ./diag-16718-run.mjs
-      - name: Record diagnostic
+          set +e
+          EARTHLINE_URL='https://earthlinedevelopment.org/' OUT='lab/16719-validation.json' node ./validate-16719-run.mjs
+          code=$?
+          echo "pass=$([ "$code" -eq 0 ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Record evidence
         run: |
-          git config user.name 'earthline-ci'
-          git config user.email 'actions@users.noreply.github.com'
           git pull --rebase origin pages-live
-          git add lab/16718-ak-hi-fresh.json
-          git commit -m 'test: record fresh Alaska Hawaii diagnostic' || true
+          git add lab/16719-validation.json
+          git commit -m 'test: record 16719 Hawaii Alaska validation' || true
           git pull --rebase origin pages-live
           git push origin HEAD:pages-live
+      - name: Report gate
+        run: |
+          echo "validation pass=${{ steps.validate.outputs.pass }}"
