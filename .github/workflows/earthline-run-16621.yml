@@ -1,4 +1,4 @@
-name: Earthline 16713 Texas Coastal Coverage Repair
+name: Earthline 16714 Texas Full Coastal Reservation
 on:
   push:
     branches: [main]
@@ -9,27 +9,27 @@ permissions:
 jobs:
   repair-and-validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Fetch 16713 repair from main
+      - name: Fetch 16714 repair from main
         run: |
           git fetch origin main
-          git show origin/main:lab/apply-16713-coastal-coverage-selection.py > /tmp/apply-16713.py
-          git show origin/main:lab/validate-16713.mjs > ./validate-16713-run.mjs
-      - name: Apply distributed coastal selection
+          git show origin/main:lab/apply-16714-use-all-refined-coastal.py > /tmp/apply-16714.py
+          git show origin/main:lab/validate-16714.mjs > ./validate-16714-run.mjs
+      - name: Apply full refined coastal reservation
         run: |
-          python3 /tmp/apply-16713.py
+          python3 /tmp/apply-16714.py
           git diff --check
       - name: Publish repaired pages-live
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
           git add index.html
-          git commit -m 'repair: reserve distributed valid coastal candidates before statewide fill'
+          git commit -m 'repair: keep all deduplicated valid refined coastal candidates'
           git push origin HEAD:pages-live
       - uses: actions/setup-node@v4
         with:
@@ -38,24 +38,19 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Validate Texas coverage and controls
+      - name: Validate Texas full coastal reservation and controls
         id: validate
         shell: bash
         run: |
           set +e
-          pass=0
-          for attempt in 1 2 3; do
-            EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Texas|California|New York|Massachusetts' OUT='lab/16713-validation.json' node ./validate-16713-run.mjs
-            code=$?
-            if [ "$code" -eq 0 ]; then pass=1; break; fi
-            sleep 10
-          done
-          echo "pass=$pass" >> "$GITHUB_OUTPUT"
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Texas|California|New York|Massachusetts' OUT='lab/16714-validation.json' node ./validate-16714-run.mjs
+          code=$?
+          echo "pass=$([ "$code" -eq 0 ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
           exit 0
       - name: Record validation evidence
         run: |
-          git add lab/16713-validation.json
-          git commit -m 'test: record 16713 Texas coastal coverage validation' || true
+          git add lab/16714-validation.json
+          git commit -m 'test: record 16714 Texas full coastal validation' || true
           git push origin HEAD:pages-live
       - name: Enforce validation
         run: |
