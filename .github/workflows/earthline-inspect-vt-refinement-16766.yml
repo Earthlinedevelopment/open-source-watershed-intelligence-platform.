@@ -1,0 +1,30 @@
+name: Earthline 16766 Inspect Coverage Refinement
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-inspect-vt-refinement-16766.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Inspect exact refinement selection
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for needle in ['defs16741','unresolved16731','confirmedNullKeys16735','highResCounts16735','after16731=','EARTHLINE_COVERAGE_GAP_REFINEMENT_16731']:
+              print('\n===== '+needle+' =====')
+              start=0;n=0
+              while True:
+                  i=s.find(needle,start)
+                  if i<0 or n>=8: break
+                  print('\n--- @',i,'---')
+                  print(s[max(0,i-9000):min(len(s),i+14000)])
+                  start=i+len(needle);n+=1
+          PY
