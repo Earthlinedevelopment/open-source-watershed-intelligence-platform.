@@ -1,4 +1,4 @@
-name: Earthline 16711 Owner Capture
+name: Earthline 16712 Last-Three Repair
 on:
   push:
     branches: [main]
@@ -7,46 +7,66 @@ on:
 permissions:
   contents: write
 jobs:
-  capture:
+  repair:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Capture jurisdiction and renderer owners
+      - name: Fetch repair and validator
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          s=Path('index.html').read_text(encoding='utf-8')
-          needles=[
-            'earthlinePointInJurisdiction16539',
-            'earthlineClipLine16539',
-            'earthlineClipRegionalProducts16539',
-            'jurisdictionBoundaryPromise16539',
-            'earthlineRenderRegionalOverlay16020',
-            'const pts=points(f.geometry.coordinates),len=polyLength(pts)',
-            'len<22',
-            'screen-length'
-          ]
-          out=[]
-          for n in needles:
-              hits=[];pos=0
-              while True:
-                  i=s.find(n,pos)
-                  if i<0: break
-                  hits.append(i);pos=i+len(n)
-                  if len(hits)>=10: break
-              out.append('\n===== '+n+' '+str(hits)+' =====\n')
-              for i in hits[:6]:
-                  out.append(s[max(0,i-8000):min(len(s),i+18000)])
-          Path('lab/16711-owners.txt').write_text(''.join(out),encoding='utf-8')
-          PY
-      - name: Save capture
-        run: |
+          git fetch origin main
+          git show origin/main:lab/apply-16712-last-three.py > /tmp/apply-16712.py
+          git show origin/main:lab/validate-16710.mjs > ./validate-16712-run.mjs
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
-          git add lab/16711-owners.txt
-          git commit -m 'test: capture jurisdiction and renderer owners' || true
+      - name: Apply repair
+        id: apply
+        shell: bash
+        run: |
+          set +e
+          mkdir -p lab
+          python3 /tmp/apply-16712.py > lab/16712-apply.txt 2>&1
+          code=$?
+          cat lab/16712-apply.txt
+          if [ "$code" -eq 0 ]; then
+            git diff --check
+            echo "ok=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=0" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+      - name: Publish repair
+        run: |
+          git add lab/16712-apply.txt
+          if [ "${{ steps.apply.outputs.ok }}" = "1" ]; then git add index.html; fi
+          git commit -m 'repair: fix multipart regional extent and statewide renderer omissions' || true
+          git push origin HEAD:pages-live
+      - uses: actions/setup-node@v4
+        if: steps.apply.outputs.ok == '1'
+        with:
+          node-version: '20'
+      - name: Install browser
+        if: steps.apply.outputs.ok == '1'
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Validate last three plus controls
+        if: steps.apply.outputs.ok == '1'
+        shell: bash
+        run: |
+          set +e
+          rm -f lab/16712-validation.json
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Alaska|Hawaii|Vermont|Texas|California|New York' OUT='lab/16712-validation.json' node ./validate-16712-run.mjs > lab/16712-validator-console.txt 2>&1
+          code=$?
+          echo "$code" > lab/16712-validator-exit.txt
+          cat lab/16712-validator-console.txt
+          exit 0
+      - name: Save validation
+        if: steps.apply.outputs.ok == '1'
+        run: |
+          git add lab/16712-validation.json lab/16712-validator-console.txt lab/16712-validator-exit.txt
+          git commit -m 'test: record 16712 last-three validation' || true
           git push origin HEAD:pages-live
