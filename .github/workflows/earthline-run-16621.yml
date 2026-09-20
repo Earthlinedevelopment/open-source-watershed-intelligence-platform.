@@ -1,4 +1,4 @@
-name: Earthline 16719 Multipart Area Repair
+name: Earthline 16722 Global Multipart Boundary Repair
 on:
   push:
     branches: [main]
@@ -9,27 +9,28 @@ permissions:
 jobs:
   repair-and-validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 24
     steps:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Fetch 16719 repair and validator
+      - name: Fetch repair and validators
         run: |
           git fetch origin main
-          git show origin/main:lab/apply-16719-multipart-true-area.py > /tmp/apply-16719.py
-          git show origin/main:lab/validate-16719.mjs > ./validate-16719-run.mjs
-      - name: Apply multipart true-area repair
+          git show origin/main:lab/apply-16722-global-multipart-boundary-index.py > /tmp/apply-16722.py
+          git show origin/main:lab/validate-16719.mjs > ./validate-16722-run.mjs
+          git show origin/main:lab/validate-16715.mjs > ./validate-regression-run.mjs
+      - name: Apply global multipart and boundary-index repair
         run: |
-          python3 /tmp/apply-16719.py
+          python3 /tmp/apply-16722.py
           git diff --check
       - name: Publish pages-live
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
           git add index.html
-          git commit -m 'repair: reject remote multipart extent inflation using true polygon area'
+          git commit -m 'repair: resolve dominant multipart extent and index jurisdiction boundaries'
           git pull --rebase origin pages-live
           git push origin HEAD:pages-live
       - uses: actions/setup-node@v4
@@ -39,22 +40,32 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Validate Hawaii and profile Alaska
-        id: validate
+      - name: Validate Hawaii and Alaska
+        id: primary
         shell: bash
         run: |
           set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' OUT='lab/16719-validation.json' node ./validate-16719-run.mjs
+          EARTHLINE_URL='https://earthlinedevelopment.org/' OUT='lab/16722-primary.json' node ./validate-16722-run.mjs
+          code=$?
+          echo "pass=$([ "$code" -eq 0 ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Validate regression controls
+        id: regression
+        shell: bash
+        run: |
+          set +e
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Vermont|New York|Massachusetts|Texas' OUT='lab/16722-regression.json' node ./validate-regression-run.mjs
           code=$?
           echo "pass=$([ "$code" -eq 0 ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
           exit 0
       - name: Record evidence
         run: |
           git pull --rebase origin pages-live
-          git add lab/16719-validation.json
-          git commit -m 'test: record 16719 Hawaii Alaska validation' || true
+          git add lab/16722-primary.json lab/16722-regression.json
+          git commit -m 'test: record 16722 national edge-case validation' || true
           git pull --rebase origin pages-live
           git push origin HEAD:pages-live
-      - name: Report gate
+      - name: Enforce validation
         run: |
-          echo "validation pass=${{ steps.validate.outputs.pass }}"
+          test "${{ steps.primary.outputs.pass }}" = "1"
+          test "${{ steps.regression.outputs.pass }}" = "1"
