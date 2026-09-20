@@ -1,0 +1,30 @@
+name: Earthline 16724 Property Sample
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/earthline-property-sample-16724.yml'
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run property sample
+        run: |
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Texas|Vermont|Hawaii|Alaska|New York' OUT='property-sample.json' node lab/diag-16724-property-sample.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: property-sample
+          path: property-sample.json
