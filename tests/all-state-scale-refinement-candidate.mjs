@@ -8,7 +8,8 @@ const page=await browser.newPage({viewport:{width:1800,height:1000}});
 const patches={};
 
 await page.route('**/*',async route=>{
-  if(route.request().resourceType()!=='document')return route.continue();
+  const req=route.request();
+  if(req.resourceType()!=='document'||!req.isNavigationRequest()||!req.url().startsWith(URL))return route.continue();
   const resp=await route.fetch();let body=await resp.text();
   const apply=(name,needle,replacement)=>{const n=body.split(needle).length-1;patches[name]=n;if(n!==1)throw new Error(name+' expected once, found '+n);body=body.replace(needle,replacement);};
 
