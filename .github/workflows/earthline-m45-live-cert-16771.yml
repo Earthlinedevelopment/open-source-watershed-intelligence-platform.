@@ -1,0 +1,130 @@
+name: Earthline Mantra45 Live Certification 16771
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-live-cert-16771.yml']
+permissions:
+  contents: write
+jobs:
+  certify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Wait until production serves 16771 marker
+        shell: bash
+        run: |
+          ok=0
+          for i in $(seq 1 60); do
+            if curl -fsS "https://earthlinedevelopment.org/?m45cert=$i-$(date +%s)" | grep -q "EARTHLINE 16771"; then
+              ok=1
+              break
+            fi
+            sleep 5
+          done
+          test "$ok" = "1"
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Vermont live fine-spread snapshot
+        shell: bash
+        run: |
+          mkdir -p lab
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1800,height:1000}});
+          await page.goto('https://earthlinedevelopment.org/?m45livevt='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.evaluate(()=>{
+            window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731=null;
+            const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+            i.value='vermont state';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();
+          });
+          await page.waitForFunction(()=>{
+            const a=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731,p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;
+            return a?.passed===true&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);
+          },null,{timeout:70000,polling:100});
+          await page.waitForTimeout(500);
+          const out=await page.evaluate(()=>{
+            const vis=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020||{},bounds=vis.bounds||null;
+            const occ=n=>{
+              const set=new Set(); if(!Array.isArray(bounds)||bounds.length!==4)return 0;
+              const [w,s,e,north]=bounds;
+              for(const f of vis?.swales?.features||[]){
+                const c=f?.geometry?.coordinates;if(!Array.isArray(c)||!c.length)continue;
+                const m=c[Math.floor((c.length-1)/2)];
+                const bx=Math.max(0,Math.min(n-1,Math.floor((Number(m[0])-w)/Math.max(1e-12,e-w)*n)));
+                const by=Math.max(0,Math.min(n-1,Math.floor((north-Number(m[1]))/Math.max(1e-12,north-s)*n)));
+                set.add(bx+','+by);
+              }
+              return set.size;
+            };
+            const spatial=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||{};
+            const perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{};
+            const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{};
+            const disp=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{};
+            const dr=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+            const flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null;
+            const land=window.EARTHLINE_LAND_VALIDITY_16584||null;
+            return {
+              spatialBuild:spatial.build||null,
+              fine12Occupied:occ(12),fine18Occupied:occ(18),
+              generated:Number(pub.generated||0),visible:Number(disp.swaleLines||0),
+              coreMs:Number(perf.totalMs||NaN),
+              slopeReady:!!dr?.terrain?.source&&Number.isFinite(Number(dr?.recharge?.components?.slope)),
+              waterPaths:Number(dr?.derived?.waterPaths??disp?.waterPaths??0),
+              aquiferReady:!!dr?.aquifers&&typeof dr.aquifers.status==='string',
+              exclusionsReady:!!flow&&Number(flow?.unsafeSegments??NaN)===0,
+              unsafe:flow?Number(flow.unsafeSegments??NaN):NaN,
+              waterSidecarReady:!!land&&Array.isArray(land?.waterParts),
+              coveragePassed:window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731?.passed===true
+            };
+          });
+          await browser.close();
+          fs.writeFileSync('lab/mantra45-live-16771-vermont.json',JSON.stringify(out,null,2));
+          console.log(JSON.stringify(out));
+          JS
+      - name: Live nine-state four-owner plus Water Sidecar gate
+        shell: bash
+        run: |
+          set +e
+          EARTHLINE_URL='https://earthlinedevelopment.org/'           STATES='Vermont|Maryland|California|Florida|Louisiana|Colorado|Oklahoma|New York|Texas'           OUT='lab/mantra45-live-16771-stress.json'           node lab/validate-16753-final-us.mjs
+          code=$?
+          set -e
+          echo "$code" > lab/mantra45-live-16771-exit.txt
+          test -f lab/mantra45-live-16771-stress.json || echo '{"pass":false,"failed":[{"state":"validator","failures":["no output"]}]}' > lab/mantra45-live-16771-stress.json
+      - name: Persist certification regardless of pass/fail
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, datetime
+          vt=json.loads(pathlib.Path('lab/mantra45-live-16771-vermont.json').read_text())
+          stress=json.loads(pathlib.Path('lab/mantra45-live-16771-stress.json').read_text())
+          code=int(pathlib.Path('lab/mantra45-live-16771-exit.txt').read_text().strip())
+          out={
+            'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            'liveCommit':'49cd064e81f4a878bee1d3a48e092ba46f32af73',
+            'baseline':{'build':'EARTHLINE 16767','fine12Occupied':53,'fine18Occupied':72},
+            'vermont':vt,
+            'stressExit':code,
+            'stress':stress,
+            'pass':bool(code==0 and stress.get('pass') is True and vt.get('spatialBuild')=='EARTHLINE 16771' and vt.get('generated')==vt.get('visible') and vt.get('unsafe')==0 and vt.get('coreMs',999999)<=15000 and vt.get('slopeReady') and vt.get('waterPaths',0)>0 and vt.get('aquiferReady') and vt.get('exclusionsReady') and vt.get('waterSidecarReady'))
+          }
+          pathlib.Path('lab/mantra45-live-16771-certification.json').write_text(json.dumps(out,indent=2))
+          print(json.dumps({'pass':out['pass'],'vermont':vt,'failed':stress.get('failed')}))
+          PY
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-live-16771-vermont.json lab/mantra45-live-16771-stress.json lab/mantra45-live-16771-exit.txt lab/mantra45-live-16771-certification.json
+          git commit -m "diag: persist Mantra45 live 16771 certification [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
