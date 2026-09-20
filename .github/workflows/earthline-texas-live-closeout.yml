@@ -4,7 +4,7 @@ on:
     branches: [diag-aquifer-east-texas]
     paths: ['tests/texas-live-closeout-after-principal.mjs','.github/workflows/earthline-texas-live-closeout.yml']
   workflow_dispatch:
-permissions: {contents: read}
+permissions: {contents: write}
 jobs:
   closeout:
     runs-on: ubuntu-latest
@@ -16,4 +16,24 @@ jobs:
       - run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - run: node tests/texas-live-closeout-after-principal.mjs
+      - name: Run Texas live closeout timing
+        run: |
+          set +e
+          node tests/texas-live-closeout-after-principal.mjs 2>&1 | tee texas-live-closeout.log
+          code=${PIPESTATUS[0]}
+          echo "EARTHLINE_TX_CLOSEOUT_EXIT=$code" >> "$GITHUB_ENV"
+          exit 0
+      - name: Record Texas live closeout timing
+        run: |
+          {
+            echo "EARTHLINE TEXAS LIVE CLOSEOUT — diagnostic only"
+            echo "Commit: $GITHUB_SHA"
+            echo "GateExit: $EARTHLINE_TX_CLOSEOUT_EXIT"
+            echo
+            cat texas-live-closeout.log
+          } > EARTHLINE_TEXAS_LIVE_CLOSEOUT_LATEST.txt
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add EARTHLINE_TEXAS_LIVE_CLOSEOUT_LATEST.txt
+          git commit -m "diag: record Texas live closeout timing" || exit 0
+          git push origin HEAD:diag-aquifer-east-texas
