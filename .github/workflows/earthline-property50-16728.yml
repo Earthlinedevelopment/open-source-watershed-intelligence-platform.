@@ -1,0 +1,52 @@
+name: Earthline 16728 Final Property 50-State Certification
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/earthline-property50-16728.yml'
+permissions:
+  contents: read
+jobs:
+  certify:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - batch: b1
+            states: "Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia"
+          - batch: b2
+            states: "Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland"
+          - batch: b3
+            states: "Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey"
+          - batch: b4
+            states: "New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina"
+          - batch: b5
+            states: "South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run Property certification
+        shell: bash
+        run: |
+          set +e
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='${{ matrix.states }}' OUT='property50-${{ matrix.batch }}.json' node lab/validate-16728-property-50states.mjs
+          code=$?
+          echo "$code" > "property50-${{ matrix.batch }}.exit"
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: property50-${{ matrix.batch }}
+          path: |
+            property50-${{ matrix.batch }}.json
+            property50-${{ matrix.batch }}.exit
+          if-no-files-found: error
