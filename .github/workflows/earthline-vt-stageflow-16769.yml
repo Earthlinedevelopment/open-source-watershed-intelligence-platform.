@@ -1,10 +1,10 @@
-name: Earthline 16769 Vermont Stage-Flow Diagnostic
+name: Earthline Mantra44 Vermont Stage-Flow Diagnostic
 on:
   push:
     branches: [main]
     paths: ['.github/workflows/earthline-vt-stageflow-16769.yml']
 permissions:
-  contents: read
+  contents: write
 jobs:
   diagnose:
     runs-on: ubuntu-24.04
@@ -19,16 +19,23 @@ jobs:
       - name: Trace Vermont terrain to publication
         shell: bash
         run: |
+          mkdir -p lab
           node --input-type=module <<'JS'
           import { chromium } from 'playwright';
+          import fs from 'fs';
           const browser=await chromium.launch({headless:true});
           const page=await browser.newPage({viewport:{width:1800,height:1000}});
-          await page.goto('https://earthlinedevelopment.org/?vt16769='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          const consoleRows=[];
+          page.on('console',msg=>consoleRows.push({type:msg.type(),text:msg.text().slice(0,1000)}));
+          await page.goto('https://earthlinedevelopment.org/?m44vt='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
           await page.waitForSelector('#searchInput',{timeout:30000});
           await page.evaluate(()=>{
             window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731=null;
             const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
-            i.value='vermont state';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();
+            i.value='vermont state';
+            i.dispatchEvent(new Event('input',{bubbles:true}));
+            i.dispatchEvent(new Event('change',{bubbles:true}));
+            b.click();
           });
           await page.waitForFunction(()=>{
             const a=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731;
@@ -39,56 +46,93 @@ jobs:
           await page.waitForTimeout(700);
           const out=await page.evaluate(()=>{
             const clone=v=>{try{return JSON.parse(JSON.stringify(v))}catch{return null}};
-            const fcSummary=(v)=>{
-              const found=[];
-              const seen=new WeakSet();
-              const walk=(x,path,depth)=>{
-                if(!x||typeof x!=='object'||depth>5)return;
-                if(seen.has(x))return;seen.add(x);
-                if(x.type==='FeatureCollection'&&Array.isArray(x.features)){
-                  const lines=x.features.filter(f=>String(f?.geometry?.type||'').includes('LineString'));
-                  const pts=[];
-                  const add=c=>{if(Array.isArray(c)&&typeof c[0]==='number'&&typeof c[1]==='number')pts.push(c);else if(Array.isArray(c))for(const z of c)add(z)};
-                  for(const f of lines)add(f.geometry?.coordinates);
-                  let bbox=null;
-                  if(pts.length){bbox=[Math.min(...pts.map(p=>p[0])),Math.min(...pts.map(p=>p[1])),Math.max(...pts.map(p=>p[0])),Math.max(...pts.map(p=>p[1]))]}
-                  found.push({path,features:x.features.length,lines:lines.length,bbox,propKeys:Object.keys(lines[0]?.properties||{}).slice(0,15)});
-                }
-                for(const [k,y] of Object.entries(x)){ if(y&&typeof y==='object') walk(y,path+'.'+k,depth+1); }
-              };
-              walk(v,'root',0);return found;
-            };
             const names=[
               'EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731',
               'EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736',
               'EARTHLINE_REFINED_COVERAGE_SELECTION_16713',
               'EARTHLINE_COVERAGE_CARRY_16749',
               'EARTHLINE_COVERAGE_GAP_REFINEMENT_16731',
+              'EARTHLINE_LATE_GAP_REFINEMENT_16741',
               'EARTHLINE_REGIONAL_ANALYSIS_EXTENT_16712',
               'EARTHLINE_VERMONT_PRESELECTION_BOUNDARY_16747',
               'EARTHLINE_SWALE_GENERATION_AUDIT_16167',
-              'EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970',
+              'EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167',
+              'EARTHLINE_REGIONAL_PERFORMANCE_16191',
+              'EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040',
+              'EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020',
               'EARTHLINE_REGIONAL_VISUAL_DATA_16020',
               'EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556'
             ];
-            const globals={}; const featureCollections={};
-            for(const n of names){globals[n]=clone(window[n]??null);featureCollections[n]=fcSummary(window[n]);}
-            const map=window.earthlineMap||window.map||null;
-            const mapLayers=[]; const sourceStats=[];
-            if(map?.getStyle){
-              for(const layer of map.getStyle()?.layers||[]){
-                if(/swal|corridor|bioswale/i.test(String(layer.id)+' '+String(layer['source-layer']||'')))mapLayers.push({id:layer.id,type:layer.type,source:layer.source,sourceLayer:layer['source-layer']||null});
+            const globals={};
+            for(const n of names)globals[n]=clone(window[n]??null);
+            const a=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731||{};
+            const bins=(a.bins||[]).map(r=>({
+              bx:Number(r.bx),by:Number(r.by),valid:Number(r.valid||0),opportunity:Number(r.opportunity||0),
+              preferred:Number(r.preferred||0),swales:Number(r.swales||0),densityTarget:Number(r.densityTarget||0),
+              densityDeficit:Number(r.densityDeficit||0)
+            }));
+            const byKey=new Map(bins.map(r=>[r.bx+','+r.by,r]));
+            const reserved=(window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736?.rows||[]).map(r=>clone(r));
+            const reservedByKey={};
+            for(const r of reserved){const k=String(r.key||'');reservedByKey[k]=(reservedByKey[k]||0)+1;}
+            const macro=(axis)=>{
+              const groups=[{preferred:0,swales:0,opportunity:0},{preferred:0,swales:0,opportunity:0},{preferred:0,swales:0,opportunity:0}];
+              for(const r of bins){
+                const n=axis==='x'?r.bx:r.by,g=Math.max(0,Math.min(2,Math.floor(n/2)));
+                groups[g].preferred+=r.preferred;groups[g].swales+=r.swales;groups[g].opportunity+=r.opportunity;
               }
-              for(const id of Object.keys(map.getStyle()?.sources||{})){
-                try{
-                  const q=map.querySourceFeatures(id)||[];
-                  const lines=q.filter(f=>String(f?.geometry?.type||'').includes('LineString'));
-                  if(lines.length)sourceStats.push({id,total:q.length,lines:lines.length,propKeys:Object.keys(lines[0]?.properties||{}).slice(0,12)});
-                }catch{}
-              }
+              const tp=groups.reduce((s,r)=>s+r.preferred,0),ts=groups.reduce((s,r)=>s+r.swales,0);
+              return groups.map((r,i)=>({...r,index:i,preferredShare:tp?r.preferred/tp:0,swaleShare:ts?r.swales/ts:0,delta:tp&&ts?r.swales/ts-r.preferred/tp:0}));
+            };
+            const significant=bins.filter(r=>r.valid>=45&&r.opportunity>=8&&(r.opportunity/Math.max(1,r.valid))>=.035)
+              .map(r=>({...r,reserved:Number(reservedByKey[r.bx+','+r.by]||0),survivalRatio:r.preferred?r.swales/r.preferred:null}))
+              .sort((x,y)=>(y.preferred-x.preferred)||(x.swales-y.swales));
+            const sparse=significant.filter(r=>r.preferred>=20&&r.swales<=Math.max(1,Math.floor(r.preferred/25)))
+              .sort((x,y)=>(y.preferred/Math.max(1,y.swales))-(x.preferred/Math.max(1,x.swales)));
+            const v=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020;
+            const coords=[];
+            for(const f of v?.swales?.features||[]){
+              const c=f?.geometry?.coordinates;if(!Array.isArray(c)||!c.length)continue;
+              const m=c[Math.floor((c.length-1)/2)];
+              if(Array.isArray(m)&&Number.isFinite(m[0])&&Number.isFinite(m[1]))coords.push(m);
             }
-            return {globals,featureCollections,mapLayers,sourceStats};
+            const bbox=coords.length?[Math.min(...coords.map(p=>p[0])),Math.min(...coords.map(p=>p[1])),Math.max(...coords.map(p=>p[0])),Math.max(...coords.map(p=>p[1]))]:null;
+            return {
+              build:a.build||null,
+              timestamp:new Date().toISOString(),
+              summary:{
+                bins:bins.length,
+                significant:significant.length,
+                unresolved:(a.unresolved||[]).length,
+                generated:Number(window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated||0),
+                visible:Number((window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020)?.swaleLines||0),
+                coreMs:Number(window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.totalMs||NaN),
+                reservedRows:reserved.length,
+                candidateBins:Number(window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736?.candidateBins||0),
+                capacity:Number(window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736?.capacity||0),
+                bbox
+              },
+              macroX:macro('x'),
+              macroY:macro('y'),
+              significant,
+              sparse,
+              reserved,
+              globals
+            };
           });
-          console.log('EARTHLINE16769 '+JSON.stringify(out));
+          out.consoleTail=consoleRows.slice(-80);
+          fs.writeFileSync('lab/mantra44-vt-stageflow.json',JSON.stringify(out,null,2));
+          console.log('M44 VT SUMMARY '+JSON.stringify(out.summary));
+          console.log('M44 VT MACROX '+JSON.stringify(out.macroX));
+          console.log('M44 VT MACROY '+JSON.stringify(out.macroY));
+          console.log('M44 VT SPARSE '+JSON.stringify(out.sparse.slice(0,20)));
           await browser.close();
           JS
+      - name: Persist diagnostic
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra44-vt-stageflow.json
+          git commit -m "diag: persist Mantra44 Vermont stage-flow evidence [skip ci]"
+          git push
