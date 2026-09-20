@@ -1,0 +1,113 @@
+name: Earthline Mantra45 Oklahoma 16771 Performance Isolation
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-ok-performance-16771.yml']
+permissions:
+  contents: write
+jobs:
+  isolate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build isolated 16771 candidate
+        shell: bash
+        run: |
+          git fetch origin pages-live
+          mkdir -p /tmp/e16771ok
+          git show origin/pages-live:index.html > /tmp/e16771ok/index.html
+          cp lab/apply-16771-subsector-spread.py /tmp/e16771ok/apply.py
+          cd /tmp/e16771ok
+          python3 apply.py
+          grep -q "EARTHLINE 16771" index.html
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Serve candidate
+        shell: bash
+        run: |
+          cd /tmp/e16771ok
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/e16771ok-server.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/index.html >/dev/null && exit 0; sleep 1; done
+          cat /tmp/e16771ok-server.log; exit 1
+      - name: Compare live 16767 and candidate 16771 over three Oklahoma runs
+        shell: bash
+        run: |
+          mkdir -p lab
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const browser=await chromium.launch({headless:true});
+          async function run(url,label,iteration){
+            const page=await browser.newPage({viewport:{width:1800,height:1000}});
+            let timedOut=false,error=null;
+            try{
+              await page.goto(url+'?m45ok='+label+'-'+iteration+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#searchInput',{timeout:30000});
+              await page.evaluate(()=>{
+                window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731=null;
+                const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+                i.value='oklahoma state';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();
+              });
+              await page.waitForFunction(()=>{
+                const p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020,a=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731;
+                return a?.passed===true&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);
+              },null,{timeout:70000,polling:100});
+              await page.waitForTimeout(400);
+            }catch(e){timedOut=true;error=String(e&&e.message||e);}
+            const snap=await page.evaluate(()=>{
+              const perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{};
+              const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{};
+              const disp=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{};
+              const dr=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+              const flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null;
+              const land=window.EARTHLINE_LAND_VALIDITY_16584||null;
+              const spatial=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||{};
+              return {
+                totalMs:Number(perf.totalMs||NaN),phaseTotalsMs:perf.phaseTotalsMs||null,slowestPhase:perf.slowestPhase||null,
+                generated:Number(pub.generated||0),visible:Number(disp.swaleLines||0),
+                spatialBuild:spatial.build||null,reserved:Number(spatial.reserved||0),capacity:Number(spatial.capacity||0),
+                slopeReady:!!dr?.terrain?.source&&Number.isFinite(Number(dr?.recharge?.components?.slope)),
+                waterPaths:Number(dr?.derived?.waterPaths??disp?.waterPaths??0),
+                aquiferReady:!!dr?.aquifers&&typeof dr.aquifers.status==='string',
+                exclusionsReady:!!flow&&Number(flow?.unsafeSegments??NaN)===0,
+                unsafe:flow?Number(flow.unsafeSegments??NaN):NaN,
+                waterSidecarReady:!!land&&Array.isArray(land?.waterParts),
+                coveragePassed:window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731?.passed===true
+              };
+            }).catch(()=>({}));
+            await page.close();
+            return {label,iteration,timedOut,error,...snap};
+          }
+          const rows=[];
+          for(let i=1;i<=3;i++){
+            rows.push(await run('https://earthlinedevelopment.org/','live16767',i));
+            rows.push(await run('http://127.0.0.1:8787/index.html','candidate16771',i));
+          }
+          await browser.close();
+          const by=label=>rows.filter(r=>r.label===label);
+          const stats=label=>{
+            const vals=by(label).map(r=>r.totalMs).filter(Number.isFinite);
+            return {n:vals.length,min:Math.min(...vals),max:Math.max(...vals),avg:vals.reduce((a,b)=>a+b,0)/Math.max(1,vals.length),over15:vals.filter(v=>v>15000).length};
+          };
+          const out={at:new Date().toISOString(),rows,live:stats('live16767'),candidate:stats('candidate16771')};
+          fs.writeFileSync('lab/mantra45-oklahoma-16771-performance.json',JSON.stringify(out,null,2));
+          console.log(JSON.stringify(out));
+          JS
+      - name: Persist evidence
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-oklahoma-16771-performance.json
+          git commit -m "diag: persist Mantra45 Oklahoma 16771 performance isolation [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
