@@ -1,0 +1,23 @@
+name: Earthline Inspect Selection 16749
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-inspect-selection-16749.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          n='EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736'
+          i=s.find(n)
+          print('INDEX',i)
+          print(s[max(0,i-12000):min(len(s),i+30000)])
+          PY
