@@ -22,7 +22,7 @@ jobs:
         run: |
           ok=0
           for i in $(seq 1 60); do
-            if curl -fsS "https://earthlinedevelopment.org/?m45cert=$i-$(date +%s)" | grep -q "EARTHLINE 16771"; then
+            if curl -fsS "https://earthlinedevelopment.org/?m45cert=$i-$(date +%s)" -o /tmp/m45cert.html && grep -q "EARTHLINE 16771" /tmp/m45cert.html; then
               ok=1
               break
             fi
