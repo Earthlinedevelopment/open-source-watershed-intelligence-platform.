@@ -30046,9 +30046,19 @@ body { overflow-x:hidden!important; }
     const chosen=[],primarySpacing=Math.max(3,Math.round(hy.w/31));
     const refinedPool16713=!focusMode?candidates.filter(c=>c&&(c.refined16710||c.refined16702)):[];
     const refinedReserved16713=[];
+    const coverageGroups16733=new Map();
+    for(const c16733 of refinedPool16713){
+      if(!c16733||!c16733.coverageGap16731||!c16733.tile16731)continue;
+      const key16733=String(c16733.tile16731);let list16733=coverageGroups16733.get(key16733);
+      if(!list16733)coverageGroups16733.set(key16733,list16733=[]);list16733.push(c16733);
+    }
+    for(const [key16733,list16733] of coverageGroups16733){
+      list16733.sort((a16733,b16733)=>(Number(b16733.score)||0)-(Number(a16733.score)||0));
+      for(const c16733 of list16733.slice(0,2)){if(!refinedReserved16713.includes(c16733)){refinedReserved16713.push(c16733);chosen.push(c16733);}}
+    }
     if(refinedPool16713.length){
-      const remaining16713=refinedPool16713.slice();
-      const target16713=Math.min(18,refinedPool16713.length);
+      const remaining16713=refinedPool16713.filter(c16713=>!refinedReserved16713.includes(c16713));
+      const target16713=Math.min(coverageGroups16733.size?24:18,refinedPool16713.length);
       while(remaining16713.length&&refinedReserved16713.length<target16713){
         let bestI16713=0,bestMetric16713=-Infinity;
         for(let i16713=0;i16713<remaining16713.length;i16713++){
@@ -30071,6 +30081,8 @@ body { overflow-x:hidden!important; }
     const range16713=(list16713,key16713)=>{const a16713=list16713.map(c16713=>Number(c16713[key16713])).filter(Number.isFinite);return a16713.length?Math.max(...a16713)-Math.min(...a16713):0;};
     window.EARTHLINE_REFINED_COVERAGE_SELECTION_16713={
       input:refinedPool16713.length,reserved:refinedReserved16713.length,
+      coverageGapGroups16733:coverageGroups16733.size,
+      coverageGapGuaranteed16733:refinedReserved16713.filter(c16733=>c16733&&c16733.coverageGap16731).length,
       inputXSpan:range16713(refinedPool16713,'x'),inputYSpan:range16713(refinedPool16713,'y'),
       reservedXSpan:range16713(refinedReserved16713,'x'),reservedYSpan:range16713(refinedReserved16713,'y'),
       rows:refinedReserved16713.map(c16713=>({x:c16713.x,y:c16713.y,score:c16713.score,slope:c16713.slope,coastKm:c16713.coastKm16710??c16713.coastKm16702??null,tile:c16713.tile16710??c16713.tile16702??null})),
@@ -31251,6 +31263,10 @@ body { overflow-x:hidden!important; }
         let valid16730=0,preferred16730=0,relaxed16730=0;const elev16730=[];
         for(let y16730=y016730;y16730<=y116730;y16730++)for(let x16730=x016730;x16730<=x116730;x16730++){
           const i16730=y16730*hy.w+x16730;if(hy.validityMask16584[i16730]!==1)continue;
+          if(swaleJurisdictionGeometry16539){
+            const ll16730=gridLL(hy,x16730,y16730);
+            if(!earthlinePointInJurisdiction16539(ll16730,swaleJurisdictionGeometry16539))continue;
+          }
           valid16730++;const sp16730=Number(hy.slope[i16730]),ac16730=Number(hy.acc[i16730]),el16730=Number(hy.elev[i16730]);
           if(Number.isFinite(el16730))elev16730.push(el16730);
           if(!Number.isFinite(sp16730)||!Number.isFinite(ac16730)||ac16730>=channel16730)continue;
@@ -31320,7 +31336,7 @@ body { overflow-x:hidden!important; }
        and zero selected corridors is unresolved, regardless of state or coast.
        Refine only those empty opportunity bins, then rerun the same swale owner. */
     if(!focusMode&&hy&&hy.validityMask16584&&swales&&Array.isArray(swales.features)){
-      const binsX16731=4,binsY16731=4,channel16731=percentile(hy.acc,.972);
+      const binsX16731=6,binsY16731=6,channel16731=percentile(hy.acc,.972);
       const bins16731=[];
       for(let by16731=0;by16731<binsY16731;by16731++)for(let bx16731=0;bx16731<binsX16731;bx16731++){
         const x016731=Math.floor(bx16731*hy.w/binsX16731),x116731=Math.min(hy.w-1,Math.ceil((bx16731+1)*hy.w/binsX16731)-1);
@@ -31328,6 +31344,10 @@ body { overflow-x:hidden!important; }
         let valid16731=0,opportunity16731=0,preferred16731=0;
         for(let y16731=y016731;y16731<=y116731;y16731++)for(let x16731=x016731;x16731<=x116731;x16731++){
           const i16731=y16731*hy.w+x16731;if(hy.validityMask16584[i16731]!==1)continue;
+          if(swaleJurisdictionGeometry16539){
+            const ll16731=gridLL(hy,x16731,y16731);
+            if(!earthlinePointInJurisdiction16539(ll16731,swaleJurisdictionGeometry16539))continue;
+          }
           valid16731++;const sp16731=Number(hy.slope[i16731]),ac16731=Number(hy.acc[i16731]);
           if(!Number.isFinite(sp16731)||!Number.isFinite(ac16731)||ac16731>=channel16731)continue;
           if(sp16731>=.05&&sp16731<=4)opportunity16731++;
@@ -31346,13 +31366,13 @@ body { overflow-x:hidden!important; }
       }
       const gaps16731=bins16731.filter(r16731=>{
         const ratio16731=r16731.valid?r16731.opportunity/r16731.valid:0;
-        return r16731.valid>=80&&r16731.opportunity>=7&&ratio16731>=.012&&r16731.swales===0;
+        return r16731.valid>=45&&r16731.opportunity>=8&&ratio16731>=.035&&r16731.swales===0;
       }).sort((a16731,b16731)=>{
         const pa16731=(a16731.opportunity/Math.max(1,a16731.valid))*100+a16731.opportunity/20;
         const pb16731=(b16731.opportunity/Math.max(1,b16731.valid))*100+b16731.opportunity/20;
         return pb16731-pa16731;
       });
-      const selected16731=[];for(const gap16731 of gaps16731){if(selected16731.length>=3)break;selected16731.push(gap16731);}
+      const selected16731=[];for(const gap16731 of gaps16731){if(selected16731.length>=6)break;selected16731.push(gap16731);}
       let added16731=[];
       if(selected16731.length){
         const savedLandAudit16731=window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584,savedGen16731=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167,start16731=performance.now();
@@ -31395,7 +31415,7 @@ body { overflow-x:hidden!important; }
             supplementalCandidates16702.push(...added16731);
             swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539,supplementalCandidates16702);
           }
-          window.EARTHLINE_COVERAGE_GAP_REFINEMENT_16731={build:'EARTHLINE 16731',before:bins16731.map(r16731=>({bx:r16731.bx,by:r16731.by,valid:r16731.valid,opportunity:r16731.opportunity,preferred:r16731.preferred,swales:r16731.swales})),selected:selected16731.map(r16731=>({bx:r16731.bx,by:r16731.by,valid:r16731.valid,opportunity:r16731.opportunity,preferred:r16731.preferred})),added:added16731.length,elapsedMs:Math.round(performance.now()-start16731),rule:'a valid 4x4 terrain bin with >=1.2% <=4% opportunity and zero selected corridors is refined regardless of geography',at:new Date().toISOString()};
+          window.EARTHLINE_COVERAGE_GAP_REFINEMENT_16731={build:'EARTHLINE 16731',before:bins16731.map(r16731=>({bx:r16731.bx,by:r16731.by,valid:r16731.valid,opportunity:r16731.opportunity,preferred:r16731.preferred,swales:r16731.swales})),selected:selected16731.map(r16731=>({bx:r16731.bx,by:r16731.by,valid:r16731.valid,opportunity:r16731.opportunity,preferred:r16731.preferred})),added:added16731.length,elapsedMs:Math.round(performance.now()-start16731),rule:'a jurisdiction-valid 6x6 terrain bin with >=3.5% <=4% opportunity and zero selected corridors is refined regardless of geography',at:new Date().toISOString()};
         }catch(e16731){window.EARTHLINE_COVERAGE_GAP_REFINEMENT_16731={build:'EARTHLINE 16731',error:String(e16731),at:new Date().toISOString()};}
         finally{window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16731;window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16731;}
       }else{
@@ -31409,8 +31429,9 @@ body { overflow-x:hidden!important; }
         const bx16731=Math.max(0,Math.min(binsX16731-1,Math.floor(Number(g16731.x)*binsX16731/Math.max(1,hy.w)))),by16731=Math.max(0,Math.min(binsY16731-1,Math.floor(Number(g16731.y)*binsY16731/Math.max(1,hy.h))));
         const row16731=after16731.find(r16731=>r16731.bx===bx16731&&r16731.by===by16731);if(row16731)row16731.swales++;
       }
-      const unresolved16731=after16731.filter(r16731=>r16731.valid>=80&&r16731.opportunity>=7&&(r16731.opportunity/Math.max(1,r16731.valid))>=.012&&r16731.swales===0);
-      window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731={build:'EARTHLINE 16731',bins:after16731.map(r16731=>({bx:r16731.bx,by:r16731.by,valid:r16731.valid,opportunity:r16731.opportunity,preferred:r16731.preferred,swales:r16731.swales})),unresolved:unresolved16731.map(r16731=>({bx:r16731.bx,by:r16731.by,valid:r16731.valid,opportunity:r16731.opportunity,preferred:r16731.preferred})),passed:unresolved16731.length===0,at:new Date().toISOString()};
+      const unresolved16731=after16731.filter(r16731=>r16731.valid>=45&&r16731.opportunity>=8&&(r16731.opportunity/Math.max(1,r16731.valid))>=.035&&r16731.swales===0);
+      window.EARTHLINE_COVERAGE_POLICY_16733={build:'EARTHLINE 16733',grid:'6x6',jurisdictionAware:!!swaleJurisdictionGeometry16539,maxRefinementBins:6,guaranteedCandidatesPerGapTile:2,rule:'major blank terrain is a failure only where the selected jurisdiction itself contains measurable <=4% opportunity',at:new Date().toISOString()};
+      window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731={build:'EARTHLINE 16733',bins:after16731.map(r16731=>({bx:r16731.bx,by:r16731.by,valid:r16731.valid,opportunity:r16731.opportunity,preferred:r16731.preferred,swales:r16731.swales})),unresolved:unresolved16731.map(r16731=>({bx:r16731.bx,by:r16731.by,valid:r16731.valid,opportunity:r16731.opportunity,preferred:r16731.preferred})),passed:unresolved16731.length===0,at:new Date().toISOString()};
     }
     const priorityPreviewEnabled16329=false;
     window.EARTHLINE_REGIONAL_PREVIEW_POLICY_16329={
