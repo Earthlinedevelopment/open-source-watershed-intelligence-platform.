@@ -1,4 +1,4 @@
-name: Earthline 16716 Alaska Hawaii Diagnostic
+name: Earthline 16717 Texas Score Rank Restore
 on:
   push:
     branches: [main]
@@ -7,18 +7,31 @@ on:
 permissions:
   contents: write
 jobs:
-  diagnose:
+  repair-and-validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Fetch diagnostic
+      - name: Fetch 16717 repair and validator
         run: |
           git fetch origin main
-          git show origin/main:lab/diag-16716-alaska-hawaii.mjs > ./diag-16716-run.mjs
+          git show origin/main:lab/apply-16717-restore-score-rank.py > /tmp/apply-16717.py
+          git show origin/main:lab/validate-16717.mjs > ./validate-16717-run.mjs
+      - name: Restore score-owned ranking
+        run: |
+          python3 /tmp/apply-16717.py
+          git diff --check
+      - name: Publish pages-live
+        run: |
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'repair: preserve coastal coverage while restoring statewide score ranking'
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -26,13 +39,22 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Diagnose Alaska and Hawaii
+      - name: Validate Texas ranking and coverage
+        id: validate
+        shell: bash
         run: |
-          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Alaska|Hawaii' OUT='lab/16716-alaska-hawaii.json' node ./diag-16716-run.mjs
-      - name: Record diagnostic
+          set +e
+          EARTHLINE_URL='https://earthlinedevelopment.org/' OUT='lab/16717-validation.json' node ./validate-16717-run.mjs
+          code=$?
+          echo "pass=$([ "$code" -eq 0 ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Record evidence
         run: |
-          git config user.name 'earthline-ci'
-          git config user.email 'actions@users.noreply.github.com'
-          git add lab/16716-alaska-hawaii.json
-          git commit -m 'test: record Alaska Hawaii regional-owner diagnostic' || true
+          git pull --rebase origin pages-live
+          git add lab/16717-validation.json
+          git commit -m 'test: record 16717 Texas rank and coverage validation' || true
+          git pull --rebase origin pages-live
           git push origin HEAD:pages-live
+      - name: Enforce validation
+        run: |
+          test "${{ steps.validate.outputs.pass }}" = "1"
