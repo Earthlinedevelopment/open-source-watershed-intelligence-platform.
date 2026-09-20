@@ -31229,7 +31229,16 @@ body { overflow-x:hidden!important; }
        then publish a VERIFIED Vermont-clipped swale-only preview before the heavier flow
        construction and full product clipping pass. Final science/products remain identical. */
     let selectionBoundary16539=null;
-    if(jurisdictionCapability16539){
+    /* EARTHLINE 16747 — Vermont's official VCGI boundary must constrain
+       candidate eligibility before statewide ranking/spacing/capacity, exactly
+       as the shared jurisdiction boundary does for every other state. The
+       existing final VCGI clip remains the fail-closed publication check. */
+    if(vermontRequest&&!focusMode&&typeof window.earthlineEnsureVermontBoundary16178==='function'){
+      const geometry16747=await window.earthlineEnsureVermontBoundary16178();
+      if(!geometry16747)throw new Error('official Vermont state boundary could not be resolved before corridor selection');
+      selectionBoundary16539={geometry:geometry16747,prepared:geometry16747,source:'official VCGI Vermont state boundary',vermontPreselection16747:true};
+      window.EARTHLINE_VERMONT_PRESELECTION_BOUNDARY_16747={build:'EARTHLINE 16747',runToken,applied:true,source:'official VCGI Vermont state boundary',rule:'Vermont corridor eligibility precedes ranking, spacing and capacity; final VCGI clip remains publication safety',at:new Date().toISOString()};
+    }else if(jurisdictionCapability16539){
       selectionBoundary16539=await jurisdictionBoundaryPromise16539;
       if(!selectionBoundary16539||!selectionBoundary16539.geometry)throw new Error('selected administrative boundary could not be resolved; no uncontained Regional result was published');
     }
