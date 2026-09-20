@@ -1,0 +1,16 @@
+name: Earthline Grep Vermont Owner 16744
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-grep-vt-owner-16744.yml']
+permissions:
+  contents: read
+jobs:
+  grep:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          grep -n -E 'ClipVermontProducts16178|VermontProducts16178|earthlineVermont.*Boundary|VCGI_BASEMAP_WM_v2/MapServer/21' index.html | head -80
