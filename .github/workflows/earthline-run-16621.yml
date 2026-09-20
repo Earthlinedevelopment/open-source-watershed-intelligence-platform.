@@ -1,4 +1,4 @@
-name: Earthline 16733 Jurisdiction-Aware Fine Coverage Repair
+name: Earthline 16735 Exact Gap-Cell Repair
 on:
   push:
     branches: [main]
@@ -18,18 +18,18 @@ jobs:
       - name: Fetch repair and validator
         run: |
           git fetch origin main
-          git show origin/main:lab/apply-16733-jurisdiction-aware-fine-gap.py > /tmp/apply-16733.py
-          git show origin/main:lab/validate-16731-coverage-gap.mjs > ./validate-16733-run.mjs
-      - name: Apply jurisdiction-aware fine coverage repair
+          git show origin/main:lab/apply-16735-exact-gap-cell.py > /tmp/apply-16735.py
+          git show origin/main:lab/validate-16731-coverage-gap.mjs > ./validate-16735-run.mjs
+      - name: Apply exact gap-cell repair
         run: |
-          python3 /tmp/apply-16733.py
+          python3 /tmp/apply-16735.py
           git diff --check
       - name: Publish pages-live
         run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
           git add index.html
-          git commit -m 'repair: refine jurisdiction-valid blank terrain at finer statewide scale'
+          git commit -m 'repair: require refined corridor inside exact missing terrain cell'
           git pull --rebase origin pages-live
           git push origin HEAD:pages-live
       - uses: actions/setup-node@v4
@@ -44,15 +44,15 @@ jobs:
         shell: bash
         run: |
           set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Texas|Louisiana|Florida|New York|Colorado|California' OUT='lab/16733-validation.json' node ./validate-16733-run.mjs
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Texas|Louisiana|Florida|New York|Colorado|California' OUT='lab/16735-validation.json' node ./validate-16735-run.mjs
           code=$?
           echo "pass=$([ "$code" -eq 0 ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
           exit 0
       - name: Record evidence
         run: |
           git pull --rebase origin pages-live
-          git add lab/16733-validation.json
-          git commit -m 'test: record 16733 jurisdiction-aware coverage validation' || true
+          git add lab/16735-validation.json
+          git commit -m 'test: record 16735 exact gap-cell validation' || true
           git pull --rebase origin pages-live
           git push origin HEAD:pages-live
       - name: Enforce validation
