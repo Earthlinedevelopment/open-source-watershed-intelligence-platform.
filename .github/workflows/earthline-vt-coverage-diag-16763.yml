@@ -1,0 +1,102 @@
+name: Earthline 16763 Vermont Spatial Coverage Diagnostic
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-vt-coverage-diag-16763.yml']
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Diagnose Vermont published spatial coverage
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1800,height:1000}});
+          await page.goto('https://earthlinedevelopment.org/?vt16763='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.evaluate(()=>{
+            window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731=null;
+            const i=document.getElementById('searchInput'), b=document.getElementById('runBtn');
+            i.value='vermont state';
+            i.dispatchEvent(new Event('input',{bubbles:true}));
+            i.dispatchEvent(new Event('change',{bubbles:true}));
+            b.click();
+          });
+          await page.waitForFunction(()=>{
+            const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null;
+            const disp=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null;
+            const audit=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731||null;
+            return !!audit && Number(pub?.generated||0)>0 && Number(pub?.generated||0)===Number(disp?.swaleLines||0);
+          },null,{timeout:60000,polling:100});
+          await page.waitForTimeout(800);
+          const out=await page.evaluate(()=>{
+            function bboxGeom(g,b=[Infinity,Infinity,-Infinity,-Infinity]){
+              if(!g)return b;
+              const walk=x=>{
+                if(Array.isArray(x)&&typeof x[0]==='number'&&typeof x[1]==='number'){
+                  b[0]=Math.min(b[0],x[0]);b[1]=Math.min(b[1],x[1]);b[2]=Math.max(b[2],x[0]);b[3]=Math.max(b[3],x[1]);
+                } else if(Array.isArray(x)) for(const y of x) walk(y);
+              }; walk(g.coordinates); return b;
+            }
+            function statsFeatures(fs){
+              const b=[Infinity,Infinity,-Infinity,-Infinity], mids=[];
+              for(const f of fs||[]){
+                bboxGeom(f.geometry,b);
+                const c=f?.geometry?.coordinates;
+                if(Array.isArray(c)&&Array.isArray(c[0])&&typeof c[0][0]==='number'){
+                  const pts=c; const m=pts[Math.floor(pts.length/2)]||pts[0]; if(m)mids.push(m);
+                }
+              }
+              mids.sort((a,b)=>a[0]-b[0]);
+              const q=p=>mids.length?mids[Math.min(mids.length-1,Math.floor((mids.length-1)*p))][0]:null;
+              const bins=Array(8).fill(0);
+              if(mids.length&&Number.isFinite(b[0])&&b[2]>b[0]) for(const m of mids){let k=Math.floor((m[0]-b[0])/(b[2]-b[0])*8);k=Math.max(0,Math.min(7,k));bins[k]++;}
+              return {count:(fs||[]).length,bbox:b.every(Number.isFinite)?b:null,lonQ:[q(0),q(.1),q(.25),q(.5),q(.75),q(.9),q(1)],eastWestBins:bins};
+            }
+            const map=window.earthlineMap||window.map||null;
+            const sources=[];
+            if(map&&map.getStyle){
+              for(const id of Object.keys(map.getStyle()?.sources||{})){
+                try{
+                  const s=map.getSource(id), d=s?._data;
+                  if(d&&d.type==='FeatureCollection'&&Array.isArray(d.features)&&d.features.length){
+                    const lineFs=d.features.filter(f=>/LineString/.test(String(f?.geometry?.type||'')));
+                    if(lineFs.length) sources.push({id,...statsFeatures(lineFs),sampleProps:Object.keys(lineFs[0]?.properties||{}).slice(0,20)});
+                  }
+                }catch{}
+              }
+            }
+            const keys=Object.keys(window).filter(k=>/EARTHLINE_.*(REGIONAL|COVERAGE|CORRIDOR|SWAL|VERMONT|DENSITY)/.test(k));
+            const globals={};
+            for(const k of keys){
+              try{
+                const v=window[k];
+                if(v==null||['string','number','boolean'].includes(typeof v)) globals[k]=v;
+                else globals[k]=JSON.parse(JSON.stringify(v));
+              }catch{}
+            }
+            return {
+              audit:window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731||null,
+              pub:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,
+              display:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null,
+              boundary:window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||null,
+              vtBoundary:window.EARTHLINE_VERMONT_PRODUCT_BOUNDARY_AUDIT_16178||null,
+              package:window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||null,
+              sources,
+              globals
+            };
+          });
+          console.log(JSON.stringify(out));
+          await browser.close();
+          JS
