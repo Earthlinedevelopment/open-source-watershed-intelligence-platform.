@@ -11,6 +11,7 @@ await page.route('**/*',async route=>{
   const req=route.request();
   if(req.resourceType()!=='document'||!req.isNavigationRequest()||!req.url().startsWith(URL))return route.continue();
   const resp=await route.fetch();let body=await resp.text();
+  if(!body.includes('async function makeContours(hy,candidateQuantile16609=false){'))return route.fulfill({response:resp,body});
   const apply=(name,needle,replacement)=>{const n=body.split(needle).length-1;patches[name]=n;if(n!==1)throw new Error(name+' expected once, found '+n);body=body.replace(needle,replacement);};
 
   apply('contourSignature',
