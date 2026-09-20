@@ -1,0 +1,30 @@
+name: Earthline 16729 Coastal Flat Diagnostic
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/earthline-coastal-flat-16729.yml'
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Diagnose TX LA FL coastal-flat coverage
+        run: |
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Texas|Louisiana|Florida' OUT='coastal-flat-diag.json' node lab/diag-16729-coastal-flat-states.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coastal-flat-diag
+          path: coastal-flat-diag.json
