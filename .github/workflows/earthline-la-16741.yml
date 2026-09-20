@@ -1,0 +1,37 @@
+name: Earthline 16741 Louisiana Recheck
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/earthline-la-16741.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Validate Louisiana
+        shell: bash
+        run: |
+          set +e
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Louisiana' OUT='la16741.json' node lab/validate-16731-coverage-gap.mjs
+          code=$?
+          echo "$code" > la16741.exit
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: la16741
+          path: |
+            la16741.json
+            la16741.exit
