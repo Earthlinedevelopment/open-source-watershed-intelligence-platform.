@@ -1,0 +1,65 @@
+name: Earthline 16749 Stable Coverage Repair
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-run-16749.yml']
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Fetch and apply repair
+        run: |
+          git fetch origin main
+          git show origin/main:lab/apply-16749-preserve-covered-bins.py > /tmp/apply-16749.py
+          python3 /tmp/apply-16749.py
+          git diff --check
+      - name: Publish pages-live
+        run: |
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'repair: preserve existing terrain coverage while filling gaps'
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live
+  validate:
+    needs: repair
+    strategy:
+      fail-fast: false
+      matrix:
+        state: [Iowa, Kansas, Louisiana, Tennessee, Vermont, North Carolina, South Carolina, Massachusetts, Nebraska, Oklahoma, Maryland, Texas, Colorado]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Validate state
+        shell: bash
+        run: |
+          sleep 5
+          set +e
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='${{ matrix.state }}' OUT='state.json' node lab/validate-16731-coverage-gap.mjs
+          code=$?
+          echo "$code" > state.exit
+          cat state.json
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: "state-${{ matrix.state }}"
+          path: |
+            state.json
+            state.exit
+          if-no-files-found: error
