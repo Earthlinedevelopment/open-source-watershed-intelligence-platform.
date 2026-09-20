@@ -1,0 +1,190 @@
+name: Earthline Mantra45 Intra-bin Dispersion Diagnostic
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-intrabin-diagnostic.yml']
+permissions:
+  contents: write
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Trace candidate dispersion through existing Regional owner
+        shell: bash
+        run: |
+          mkdir -p lab
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1800,height:1000}});
+          const consoleRows=[];
+          page.on('console',m=>consoleRows.push({type:m.type(),text:m.text().slice(0,1200)}));
+
+          let patched=false,patchError='';
+          await page.route('https://earthlinedevelopment.org/**', async route=>{
+            const req=route.request();
+            if(req.isNavigationRequest() && new URL(req.url()).pathname==='/'){
+              const resp=await route.fetch();
+              let html=await resp.text();
+              const marker1="candidates.sort((a,b)=>b.score-a.score);\n    const chosen=[],primarySpacing=Math.max(3,Math.round(hy.w/31));";
+              const inject1="candidates.sort((a,b)=>b.score-a.score);\n    window.EARTHLINE_M45_GRID={w:hy.w,h:hy.h};\n    window.EARTHLINE_M45_CANDIDATES=candidates.map(c=>({x:Number(c.x),y:Number(c.y),score:Number(c.score)||0,confidence:String(c.confidence||''),refined:!!(c.refined16710||c.refined16702),coverageGap:!!c.coverageGap16731,segmentMid:Array.isArray(c.segment)&&c.segment.length?c.segment[Math.floor((c.segment.length-1)/2)]:null}));\n    const chosen=[],primarySpacing=Math.max(3,Math.round(hy.w/31));";
+              const marker2="    /* EARTHLINE 16717 — coverage reservation decides inclusion only.";
+              const inject2="    window.EARTHLINE_M45_CHOSEN=chosen.map(c=>({x:Number(c.x),y:Number(c.y),score:Number(c.score)||0,confidence:String(c.confidence||''),refined:!!(c.refined16710||c.refined16702),coverageGap:!!c.coverageGap16731}));\n"+marker2;
+              if(!html.includes(marker1)) patchError='candidate marker not found';
+              else if(!html.includes(marker2)) patchError='chosen marker not found';
+              else{
+                html=html.replace(marker1,inject1).replace(marker2,inject2);
+                patched=true;
+              }
+              await route.fulfill({response:resp,body:html,headers:{...resp.headers(),'cache-control':'no-store'}});
+              return;
+            }
+            await route.continue();
+          });
+
+          await page.goto('https://earthlinedevelopment.org/?m45='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          if(!patched) throw new Error('M45 patch failed: '+patchError);
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.evaluate(()=>{
+            window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731=null;
+            const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+            i.value='vermont state';
+            i.dispatchEvent(new Event('input',{bubbles:true}));
+            i.dispatchEvent(new Event('change',{bubbles:true}));
+            b.click();
+          });
+          await page.waitForFunction(()=>{
+            const a=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731;
+            const p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167;
+            const d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;
+            return a?.passed===true && Number(p?.generated||0)>0 && Number(p?.generated||0)===Number(d?.swaleLines||0)
+              && Array.isArray(window.EARTHLINE_M45_CANDIDATES) && Array.isArray(window.EARTHLINE_M45_CHOSEN);
+          },null,{timeout:70000,polling:100});
+          await page.waitForTimeout(500);
+
+          const raw=await page.evaluate(()=>{
+            const clone=v=>JSON.parse(JSON.stringify(v??null));
+            return {
+              grid:clone(window.EARTHLINE_M45_GRID),
+              candidates:clone(window.EARTHLINE_M45_CANDIDATES),
+              reserved:clone(window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736?.rows||[]),
+              chosen:clone(window.EARTHLINE_M45_CHOSEN),
+              audit:clone(window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731),
+              publication:clone(window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167),
+              display:clone(window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020),
+              performance:clone(window.EARTHLINE_REGIONAL_PERFORMANCE_16191),
+              land:clone(window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584),
+              water:clone(window.EARTHLINE_MAPPED_WATER_EXCLUSION_AUDIT_16584||window.EARTHLINE_WATER_SIDECAR_AUDIT_16584||null),
+              atomic:clone(window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556)
+            };
+          });
+
+          const W=Number(raw.grid?.w||1),H=Number(raw.grid?.h||1);
+          const parentKey=p=>{
+            const bx=Math.max(0,Math.min(5,Math.floor(Number(p.x)*6/Math.max(1,W))));
+            const by=Math.max(0,Math.min(5,Math.floor(Number(p.y)*6/Math.max(1,H))));
+            return bx+','+by;
+          };
+          const subKey=p=>{
+            const sx=Math.max(0,Math.min(17,Math.floor(Number(p.x)*18/Math.max(1,W))));
+            const sy=Math.max(0,Math.min(17,Math.floor(Number(p.y)*18/Math.max(1,H))));
+            return (sx%3)+','+(sy%3);
+          };
+          const groupBy=(arr,keyFn)=>{
+            const m=new Map();
+            for(const p of arr||[]){const k=keyFn(p);if(!m.has(k))m.set(k,[]);m.get(k).push(p);}
+            return m;
+          };
+          const candBy=groupBy(raw.candidates,parentKey),resBy=groupBy(raw.reserved,parentKey),chosenBy=groupBy(raw.chosen,parentKey);
+          const span=arr=>{
+            if(!arr?.length)return {x:0,y:0};
+            const xs=arr.map(p=>Number(p.x)).filter(Number.isFinite),ys=arr.map(p=>Number(p.y)).filter(Number.isFinite);
+            return {x:xs.length?Math.max(...xs)-Math.min(...xs):0,y:ys.length?Math.max(...ys)-Math.min(...ys):0};
+          };
+          const centroid=arr=>{
+            if(!arr?.length)return null;
+            const xs=arr.map(p=>Number(p.x)).filter(Number.isFinite),ys=arr.map(p=>Number(p.y)).filter(Number.isFinite);
+            if(!xs.length||!ys.length)return null;
+            return {x:xs.reduce((a,b)=>a+b,0)/xs.length,y:ys.reduce((a,b)=>a+b,0)/ys.length};
+          };
+          const occupied=arr=>new Set((arr||[]).map(subKey));
+          const nnMean=arr=>{
+            if(!arr||arr.length<2)return null;
+            let total=0,n=0;
+            for(let i=0;i<arr.length;i++){
+              let best=Infinity;
+              for(let j=0;j<arr.length;j++)if(i!==j){
+                const d=Math.hypot(Number(arr[i].x)-Number(arr[j].x),Number(arr[i].y)-Number(arr[j].y));
+                if(Number.isFinite(d)&&d<best)best=d;
+              }
+              if(Number.isFinite(best)){total+=best;n++;}
+            }
+            return n?total/n:null;
+          };
+          const significant=(raw.audit?.bins||[]).filter(r=>Number(r.valid)>=45&&Number(r.opportunity)>=8&&(Number(r.opportunity)/Math.max(1,Number(r.valid)))>=.035);
+          const rows=[];
+          for(const b of significant){
+            const k=b.bx+','+b.by,c=candBy.get(k)||[],r=resBy.get(k)||[],f=chosenBy.get(k)||[];
+            const co=occupied(c),ro=occupied(r),fo=occupied(f),cs=span(c),rs=span(r),fs=span(f),cc=centroid(c),rc=centroid(r),fc=centroid(f);
+            const substantial=[];
+            const counts={};
+            for(const p of c){const sk=subKey(p);counts[sk]=(counts[sk]||0)+1;}
+            for(const [sk,n] of Object.entries(counts))if(n>=Math.max(2,Math.ceil(c.length*.08)))substantial.push({subcell:sk,candidates:n,reserved:ro.has(sk),final:fo.has(sk)});
+            rows.push({
+              key:k,bx:Number(b.bx),by:Number(b.by),auditPreferred:Number(b.preferred||0),auditSwales:Number(b.swales||0),
+              candidates:c.length,reserved:r.length,final:f.length,
+              occupiedCandidateSubcells:co.size,occupiedReservedSubcells:ro.size,occupiedFinalSubcells:fo.size,
+              missedSubstantialSubcells:substantial.filter(x=>!x.final),
+              substantialSubcells:substantial,
+              candidateSpan:cs,reservedSpan:rs,finalSpan:fs,
+              reservedSpanRatio:{x:cs.x?rs.x/cs.x:null,y:cs.y?rs.y/cs.y:null},
+              finalSpanRatio:{x:cs.x?fs.x/cs.x:null,y:cs.y?fs.y/cs.y:null},
+              candidateNN:nnMean(c),reservedNN:nnMean(r),finalNN:nnMean(f),
+              centroidShiftReserved:cc&&rc?Math.hypot(rc.x-cc.x,rc.y-cc.y):null,
+              centroidShiftFinal:cc&&fc?Math.hypot(fc.x-cc.x,fc.y-cc.y):null
+            });
+          }
+          rows.sort((a,b)=>(b.missedSubstantialSubcells.length-a.missedSubstantialSubcells.length)||(b.candidates-a.candidates));
+          const totals={
+            significantBins:rows.length,
+            binsWithCandidateDispersion:rows.filter(r=>r.occupiedCandidateSubcells>=4).length,
+            binsWhereReserveCollapsesOccupancy:rows.filter(r=>r.occupiedCandidateSubcells>=4&&r.occupiedReservedSubcells<=3).length,
+            binsWhereFinalMissesSubstantialSubcells:rows.filter(r=>r.missedSubstantialSubcells.length>0).length,
+            candidateSubcells:rows.reduce((s,r)=>s+r.occupiedCandidateSubcells,0),
+            reservedSubcells:rows.reduce((s,r)=>s+r.occupiedReservedSubcells,0),
+            finalSubcells:rows.reduce((s,r)=>s+r.occupiedFinalSubcells,0)
+          };
+          const stage=totals.binsWhereReserveCollapsesOccupancy>0
+            ?'B: candidates broad; reserve stage collapses spatial coverage'
+            : totals.binsWhereFinalMissesSubstantialSubcells>0
+              ?'C: reserve broad; final score/spacing stage collapses spatial coverage'
+              :'No collapse proven at candidate->reserve/final stage';
+
+          const out={build:raw.audit?.build||null,timestamp:new Date().toISOString(),stage,totals,rows,rawSummary:{
+            grid:raw.grid,candidates:raw.candidates.length,reserved:raw.reserved.length,chosen:raw.chosen.length,
+            generated:Number(raw.publication?.generated||0),visible:Number(raw.display?.swaleLines||0),coreMs:Number(raw.performance?.totalMs||NaN),
+            land:raw.land,water:raw.water,atomic:raw.atomic
+          },consoleTail:consoleRows.slice(-100)};
+          fs.writeFileSync('lab/mantra45-vt-intrabin.json',JSON.stringify(out,null,2));
+          console.log('M45 STAGE '+stage);
+          console.log('M45 TOTALS '+JSON.stringify(totals));
+          console.log('M45 WORST '+JSON.stringify(rows.slice(0,12)));
+          await browser.close();
+          JS
+      - name: Persist diagnostic
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-vt-intrabin.json
+          git commit -m "diag: persist Mantra45 intra-bin dispersion evidence [skip ci]"
+          git push
