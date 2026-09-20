@@ -1,4 +1,4 @@
-name: Earthline Last-Three Failure Probe
+name: Earthline 16711 Owner Capture
 on:
   push:
     branches: [main]
@@ -7,34 +7,46 @@ on:
 permissions:
   contents: write
 jobs:
-  probe:
+  capture:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Fetch validator
+      - name: Capture jurisdiction and renderer owners
         run: |
-          git fetch origin main
-          git show origin/main:lab/validate-16710.mjs > ./validate-16710-run.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          needles=[
+            'earthlinePointInJurisdiction16539',
+            'earthlineClipLine16539',
+            'earthlineClipRegionalProducts16539',
+            'jurisdictionBoundaryPromise16539',
+            'earthlineRenderRegionalOverlay16020',
+            'const pts=points(f.geometry.coordinates),len=polyLength(pts)',
+            'len<22',
+            'screen-length'
+          ]
+          out=[]
+          for n in needles:
+              hits=[];pos=0
+              while True:
+                  i=s.find(n,pos)
+                  if i<0: break
+                  hits.append(i);pos=i+len(n)
+                  if len(hits)>=10: break
+              out.append('\n===== '+n+' '+str(hits)+' =====\n')
+              for i in hits[:6]:
+                  out.append(s[max(0,i-8000):min(len(s),i+18000)])
+          Path('lab/16711-owners.txt').write_text(''.join(out),encoding='utf-8')
+          PY
+      - name: Save capture
+        run: |
           git config user.name 'earthline-ci'
           git config user.email 'actions@users.noreply.github.com'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install browser
-        run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Probe Alaska Hawaii Vermont
-        run: |
-          set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Alaska|Hawaii|Vermont' OUT='lab/16710-last-three.json' node ./validate-16710-run.mjs
-          exit 0
-      - name: Save probe
-        run: |
-          git add lab/16710-last-three.json
-          git commit -m 'test: capture last-three failure owners' || true
+          git add lab/16711-owners.txt
+          git commit -m 'test: capture jurisdiction and renderer owners' || true
           git push origin HEAD:pages-live
