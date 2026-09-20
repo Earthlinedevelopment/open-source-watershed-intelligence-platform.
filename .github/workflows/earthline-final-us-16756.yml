@@ -1,0 +1,59 @@
+name: Earthline 16756 All-50 Regional Certification
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-final-us-16756.yml']
+permissions:
+  contents: read
+jobs:
+  certify:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - batch: b1
+            states: "Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia"
+          - batch: b2
+            states: "Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland"
+          - batch: b3
+            states: "Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey"
+          - batch: b4
+            states: "New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina"
+          - batch: b5
+            states: "South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Certify four owners plus water sidecar
+        shell: bash
+        run: |
+          set +e
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='${{ matrix.states }}' OUT='final-${{ matrix.batch }}.json' node lab/validate-16753-final-us.mjs
+          code=$?
+          echo "$code" > "final-${{ matrix.batch }}.exit"
+          cat "final-${{ matrix.batch }}.json"
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: "final-${{ matrix.batch }}"
+          path: |
+            final-${{ matrix.batch }}.json
+            final-${{ matrix.batch }}.exit
+          if-no-files-found: error
+      - name: Enforce certification result
+        if: always()
+        shell: bash
+        run: |
+          test -f "final-${{ matrix.batch }}.exit"
+          test "$(cat "final-${{ matrix.batch }}.exit")" = "0"
