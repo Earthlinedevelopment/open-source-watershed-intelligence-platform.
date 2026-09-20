@@ -17664,6 +17664,14 @@ var prescribeSwales;
 
   function assertLocationIntegrity15801(identity,anchor,mode,phase){
     const zoom=Number(earthlineMap&&earthlineMap.getZoom?earthlineMap.getZoom():M.viewZoom);
+    const declaration16727=window.EARTHLINE_PROPERTY_DECLARATION_16169||null;
+    const declaredCenter16727=declaration16727&&declaration16727.center||null;
+    const declaredDelta16727=(mode==="property"&&anchor&&declaredCenter16727&&
+      Number.isFinite(Number(anchor.lat))&&Number.isFinite(Number(anchor.lng))&&
+      Number.isFinite(Number(declaredCenter16727.lat))&&Number.isFinite(Number(declaredCenter16727.lng)))
+      ?haversineM([Number(declaredCenter16727.lng),Number(declaredCenter16727.lat)],[Number(anchor.lng),Number(anchor.lat)]):Infinity;
+    const governedDeclaredProperty16727=mode==="property"&&declaredDelta16727<=25&&
+      String(document.documentElement.dataset.earthlinePropertyRunState||"")==="running";
     const result={
       ok:false,phase:String(phase||"unspecified"),mode:String(mode||""),
       zoom,anchor:anchor?{lat:Number(anchor.lat),lng:Number(anchor.lng)}:null,
@@ -17672,13 +17680,19 @@ var prescribeSwales;
         placeType:String(identity.placeType||""),
         lat:Number(identity.lat),lng:Number(identity.lng)
       }:null,
+      governedDeclaredProperty16727,
+      declaredDeltaM16727:Number.isFinite(declaredDelta16727)?Number(declaredDelta16727.toFixed(3)):null,
       reasons:[]
     };
     if(!anchor||!Number.isFinite(Number(anchor.lat))||!Number.isFinite(Number(anchor.lng))){
       result.reasons.push("analysis anchor is not finite");
     }
-    if(!Number.isFinite(zoom)||zoom<9){
+    if(!Number.isFinite(zoom)){
+      result.reasons.push("map zoom unavailable");
+    }else if(zoom<9&&!governedDeclaredProperty16727){
       result.reasons.push("zoom below terrain-analysis floor");
+    }else if(zoom<9){
+      result.cameraZoomDiagnostic16727="presentation zoom moved below terrain-analysis floor after the governed Property frame was declared";
     }
     if(degenerateCamera15801(anchor,zoom)){
       result.reasons.push("degenerate round-number camera signature");
@@ -17702,14 +17716,18 @@ var prescribeSwales;
         [Number(anchor.lng),Number(anchor.lat)]
       );
       const mapTolerance=mode==="property"?250:10000;
-      if(result.mapDeltaM>mapTolerance){
+      if(result.mapDeltaM>mapTolerance&&!governedDeclaredProperty16727){
         result.reasons.push("map moved away from the active analysis anchor");
+      }else if(result.mapDeltaM>mapTolerance){
+        result.cameraDeltaDiagnostic16727=Number(result.mapDeltaM.toFixed(3));
       }
     }catch(e){
-      result.reasons.push("map center unavailable");
+      if(!governedDeclaredProperty16727)result.reasons.push("map center unavailable");
+      else result.cameraDiagnostic16727="map center unavailable after governed Property declaration";
     }
     result.ok=result.reasons.length===0;
     state.lastLocationIntegrity15801=result;
+    window.EARTHLINE_LOCATION_INTEGRITY_15801=JSON.parse(JSON.stringify(result));
     if(!result.ok){
       clearAllAnalysisOutput15801("integrity-failure:"+result.reasons.join("|"));
       earthlineNotice(
@@ -32744,15 +32762,34 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
       ]);
       earthlinePropertyTrace16319("safe fallback + texture verify","exit",{safeFallbackOk:!!safeFallback&&safeFallback.ok===true,textureOk:!!texture&&texture.ok===true});
 
-      const displayedAfterScience16334=
+      let displayedAfterScience16334=
         window.EARTHLINE_DISPLAYED_RUN_16151||
         window.EARTHLINE_DISPLAYED_RUN_16147||null;
-      const displayedTierAfterScience16334=String(
+      let displayedTierAfterScience16334=String(
         displayedAfterScience16334&&(displayedAfterScience16334.tier||displayedAfterScience16334.mode)||''
       ).toLowerCase();
+      const targetParent16727=String(window.EARTHLINE_PROPERTY_TARGET_16201&&window.EARTHLINE_PROPERTY_TARGET_16201.parentRunToken||'');
+      const activeParent16727=String(window.EARTHLINE_ACTIVE_RUN_TOKEN_16151||'');
+      const samePropertyGeneration16727=serial===runSerial&&Number(m.searchGen||0)===propertyPublicationGen16334;
+      const staleParentRegional16727=samePropertyGeneration16727&&displayedTierAfterScience16334==='regional'&&
+        targetParent16727&&targetParent16727===activeParent16727;
+      if(staleParentRegional16727){
+        const republished16727=publishPropertyDisplay16220(site,selectedCode);
+        try{
+          const regionalState16727=window.earthlineRegional15778;
+          if(regionalState16727){regionalState16727.active=false;regionalState16727.mode='property'}
+          if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property');
+          document.documentElement.dataset.earthlineAnalysisTier='property';
+        }catch(_){}
+        window.EARTHLINE_PROPERTY_DISPLAY_RECLAIM_16727={
+          build:'EARTHLINE 16727',reclaimed:!!(republished16727&&republished16727.ok===true),
+          parentRunToken:targetParent16727,at:new Date().toISOString()
+        };
+        displayedAfterScience16334=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+        displayedTierAfterScience16334=String(displayedAfterScience16334&&(displayedAfterScience16334.tier||displayedAfterScience16334.mode)||'').toLowerCase();
+      }
       const presentationStillCurrent16334=!!(
-        serial===runSerial&&
-        Number(m.searchGen||0)===propertyPublicationGen16334&&
+        samePropertyGeneration16727&&
         displayedTierAfterScience16334!=='regional'
       );
       if(!presentationStillCurrent16334){
@@ -35100,7 +35137,17 @@ html[data-earthline-analysis-tier="focus"] #earthlineRegionalVectorOverlay16020 
     const z=Number(m.getZoom?.()||0),regional=isRegionalDisplayed(),p=prompt();
     let analysisFactor=1,contextFactor=1,stage='none';
     const propertyRunActive=document.documentElement.dataset.earthlinePropertyRunState==='running'||document.documentElement.classList.contains('earthline-property-running-16233');
-    const currentTier=propertyRunActive?'property':(tier()||'regional');
+    const propertyPublication16727=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null;
+    const propertyRun16727=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+    const propertyTarget16727=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+    const activeRegionalToken16727=String(window.EARTHLINE_ACTIVE_RUN_TOKEN_16151||'');
+    const propertyParentToken16727=String(propertyTarget16727&&propertyTarget16727.parentRunToken||'');
+    const publishedPropertyOwns16727=!!(
+      propertyPublication16727&&propertyPublication16727.published===true&&
+      propertyRun16727&&propertyRun16727.settled===true&&propertyRun16727.result===true&&
+      propertyParentToken16727&&propertyParentToken16727===activeRegionalToken16727
+    );
+    const currentTier=(propertyRunActive||publishedPropertyOwns16727)?'property':(tier()||'regional');
     const visibilityFloor16337=regionalVisibilityFloor16337();
     const crossedIntoRegionalZoom=currentTier==='regional'&&Number.isFinite(lastObservedZoom16165)&&lastObservedZoom16165>10&&z<=10;
     if(crossedIntoRegionalZoom)clearCorridorTransientState('regional-zoom-threshold-crossing',true);
