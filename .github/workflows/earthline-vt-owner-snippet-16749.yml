@@ -1,0 +1,23 @@
+name: Earthline Vermont Owner Snippet 16749
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-vt-owner-snippet-16749.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for needle in ["window.earthlineEnsureVermontBoundary16178=async","function earthlineEnsureVermontBoundary16178","async function earthlineEnsureVermontBoundary16178"]:
+              i=s.find(needle)
+              print("NEEDLE",needle,"INDEX",i)
+              if i>=0: print(s[max(0,i-3000):min(len(s),i+18000)])
+          PY
