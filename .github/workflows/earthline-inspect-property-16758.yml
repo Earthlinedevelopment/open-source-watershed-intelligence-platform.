@@ -1,0 +1,26 @@
+name: Earthline 16758 Inspect Property False Paths
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-inspect-property-16758.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Inspect authoritative Property owner
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for needle in ['earthlineDeclarePropertyAtCrosshair16173','EARTHLINE_PROPERTY_RUN_AUDIT_16173','EARTHLINE_PROPERTY_WATER_BODY_GATE_16529']:
+              i=s.find(needle)
+              print('\n===== '+needle+' @ '+str(i)+' =====')
+              if i>=0:
+                  print(s[max(0,i-5000):min(len(s),i+18000)])
+          PY
