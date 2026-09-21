@@ -18,7 +18,7 @@ for(const query of STATES){
   try{
     await page.goto(BASE+'?earthline_m46_50='+encodeURIComponent(query)+'_'+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
     await page.waitForSelector('#searchInput',{timeout:30000});
-    const marker=await page.evaluate(()=>{const h=document.documentElement.outerHTML;return h.includes('coarseContourCells16791')&&h.includes('refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)))')&&h.includes('loadDEM(tile16780.b,32,32,5500');});
+    const marker=await page.evaluate(()=>{const h=document.documentElement.outerHTML;return h.includes('candidateCoverageCellKeys16791')&&h.includes('attainableTargetCells16791')&&h.includes('coarseContourCells16788')&&h.includes('p16783.parent!==add16783.point.parent');});
     if(!marker)throw new Error('live product does not contain EARTHLINE 16791 marker');
     await page.evaluate(q=>{
       const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
