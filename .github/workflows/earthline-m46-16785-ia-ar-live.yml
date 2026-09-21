@@ -1,0 +1,44 @@
+name: Mantra 46 16785 IA AR Live Gate
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mantra46-16785-ia-ar-live.mjs'
+      - '.github/workflows/earthline-m46-16785-ia-ar-live.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ia-ar-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Wait for 16785 production deployment
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 20 https://earthlinedevelopment.org/ | grep -q 'EARTHLINE 16785'; then
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "16785 marker not live"
+          exit 1
+      - name: Run Iowa Arkansas live gate
+        run: node tests/mantra46-16785-ia-ar-live.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16785-ia-ar-live
+          path: artifacts/mantra46-16785/
+          if-no-files-found: warn
