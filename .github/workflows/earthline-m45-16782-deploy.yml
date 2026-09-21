@@ -1,0 +1,89 @@
+name: Earthline 16782 Deploy Adaptive Cluster Refinement
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-16782-deploy.yml']
+permissions:
+  contents: write
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Fetch repair
+        run: |
+          git fetch origin main
+          git show origin/main:lab/apply-16782-adaptive-cluster-refinement.py > /tmp/apply-16782.py
+      - name: Apply repair
+        run: |
+          python3 /tmp/apply-16782.py
+          git diff --check
+      - name: Publish pages-live
+        run: |
+          git config user.name 'Earthline CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'repair: adapt cluster refinement to measured unresolved cells'
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Validate difficult states and controls
+        shell: bash
+        run: |
+          mkdir -p lab
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          import fs from 'fs';
+          const states=['iowa','arkansas','oklahoma','nebraska','vermont','texas','california'];
+          const browser=await chromium.launch({headless:true});
+          const rows=[];
+          for(const state of states){
+            const page=await browser.newPage({viewport:{width:1800,height:832}});
+            let error=null;
+            try{
+              await page.goto('https://earthlinedevelopment.org/?gate16782='+state+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#searchInput',{timeout:30000});
+              await page.evaluate(q=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value=q+' state';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},state);
+              await page.waitForFunction(()=>{
+                const s=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736,p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;
+                return s?.build==='EARTHLINE 16782'&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);
+              },null,{timeout:70000,polling:100});
+              await page.waitForTimeout(350);
+            }catch(e){error=String(e&&e.message||e);}
+            const snap=await page.evaluate(()=>{
+              const vis=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020||{}, fs=(vis.swales&&Array.isArray(vis.swales.features))?vis.swales.features:[];
+              const b=vis.bounds||window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556?.regionalExtent?.bbox||null;
+              const pts=fs.map(f=>{const c=f?.geometry?.coordinates||[],m=c[Math.floor((c.length-1)/2)]||[NaN,NaN];return{lng:+m[0],lat:+m[1]};}).filter(p=>Number.isFinite(p.lng)&&Number.isFinite(p.lat));
+              const cells=[];
+              if(Array.isArray(b)&&b.length===4){const [w,s,e,n]=b;for(let y=0;y<12;y++)for(let x=0;x<12;x++){const x0=w+(e-w)*x/12,x1=w+(e-w)*(x+1)/12,y0=s+(n-s)*y/12,y1=s+(n-s)*(y+1)/12;cells.push({x,y,count:pts.filter(p=>p.lng>=x0&&p.lng<=x1&&p.lat>=y0&&p.lat<=y1).length});}}
+              const quadrants=[0,1,2,3].map(q=>{const xs=q%2?[6,12]:[0,6],ys=q>1?[6,12]:[0,6];const cs=cells.filter(c=>c.x>=xs[0]&&c.x<xs[1]&&c.y>=ys[0]&&c.y<ys[1]);return{q,occupied:cs.filter(c=>c.count>0).length,corridors:cs.reduce((a,c)=>a+c.count,0)};});
+              const sp=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||{},p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{},d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{},perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{},flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||{},land=window.EARTHLINE_LAND_VALIDITY_16584||{},fine=window.EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16781||null;
+              return {build:sp.build,generated:+p.generated||0,visible:+d.swaleLines||0,coreMs:+perf.totalMs||NaN,unsafe:+flow.unsafeSegments||0,waterReady:Array.isArray(land.waterParts),occupied12:cells.filter(c=>c.count>0).length,quadrants,fine};
+            }).catch(()=>({}));
+            rows.push({state,error,...snap});
+            await page.close();
+          }
+          await browser.close();
+          const pass=rows.every(r=>!r.error&&r.build==='EARTHLINE 16782'&&r.generated===r.visible&&r.generated>0&&r.unsafe===0&&r.waterReady&&Number.isFinite(r.coreMs)&&r.coreMs<=15000);
+          fs.writeFileSync('lab/mantra45-16782-difficult-gate.json',JSON.stringify({at:new Date().toISOString(),rows,pass},null,2));
+          console.log(JSON.stringify({rows:rows.map(r=>({state:r.state,error:r.error,generated:r.generated,visible:r.visible,coreMs:r.coreMs,occupied12:r.occupied12,quadrants:r.quadrants,tileBudget:r.fine?.tileBudget,selected:r.fine?.selected?.length,unresolved:r.fine?.unresolvedAfter?.length})),pass}));
+          if(!pass)process.exit(2);
+          JS
+      - name: Persist evidence
+        if: always()
+        shell: bash
+        run: |
+          git fetch origin main
+          git checkout main
+          git pull --rebase origin main
+          git add lab/mantra45-16782-difficult-gate.json || true
+          git commit -m 'test: persist 16782 difficult-state gate [skip ci]' || true
+          git push origin HEAD:main
