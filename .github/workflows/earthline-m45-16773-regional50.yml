@@ -1,0 +1,132 @@
+name: Earthline Mantra45 16773 Regional 50-State Certification
+on:
+  push:
+    branches: [main]
+    paths: ['lab/TRIGGER-16773-CERT.txt']
+permissions:
+  contents: write
+jobs:
+  certify:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - batch: b1
+            states: "Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia"
+          - batch: b2
+            states: "Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland"
+          - batch: b3
+            states: "Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey"
+          - batch: b4
+            states: "New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina"
+          - batch: b5
+            states: "South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify live 16773 marker
+        shell: bash
+        run: |
+          ok=0
+          for i in $(seq 1 15); do
+            body="$(curl -fsSL "https://earthlinedevelopment.org/?m45live16773=$RANDOM-$i" || true)"
+            if grep -q "EARTHLINE 16773" <<<"$body"; then ok=1; break; fi
+            sleep 2
+          done
+          test "$ok" = "1"
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Certify batch
+        shell: bash
+        run: |
+          set +e
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='${{ matrix.states }}' OUT='cert-${{ matrix.batch }}.json' node lab/validate-16731-coverage-gap.mjs
+          code=$?
+          echo "$code" > "cert-${{ matrix.batch }}.exit"
+          python3 - <<'PY'
+          import json,glob,os
+          p=glob.glob('cert-*.json')[0]
+          o=json.load(open(p))
+          print(json.dumps({'batch':os.path.basename(p),'count':len(o.get('rows',[])),'failed':o.get('failed',[]),'pass':o.get('pass')}))
+          PY
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: "m45-16773-${{ matrix.batch }}"
+          path: |
+            cert-${{ matrix.batch }}.json
+            cert-${{ matrix.batch }}.exit
+          if-no-files-found: error
+
+  aggregate:
+    needs: certify
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m45-16773-*
+          path: /tmp/m45-16773
+          merge-multiple: true
+      - name: Aggregate
+        shell: bash
+        run: |
+          mkdir -p lab
+          python3 - <<'PY'
+          import json,glob,datetime,os
+          rows=[]; exits={}
+          for p in sorted(glob.glob('/tmp/m45-16773/cert-*.json')):
+              with open(p) as f: o=json.load(f)
+              rows.extend(o.get('rows',[]))
+              batch=os.path.basename(p).replace('cert-','').replace('.json','')
+              ep=p.replace('.json','.exit')
+              exits[batch]=open(ep).read().strip() if os.path.exists(ep) else 'missing'
+          failed=[{'state':r.get('state'),'failures':r.get('failures',[])} for r in rows if not r.get('pass')]
+          out={
+            'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            'liveProduct':'EARTHLINE 16773',
+            'pagesLiveCommit':'runtime-pages-live',
+            'count':len(rows),
+            'passed':sum(1 for r in rows if r.get('pass')),
+            'failed':failed,
+            'batchExits':exits,
+            'pass':len(rows)==50 and not failed and all(v=='0' for v in exits.values()),
+            'rows':rows
+          }
+          with open('lab/mantra45-16773-regional50.json','w') as f: json.dump(out,f,indent=2)
+          print(json.dumps({'count':out['count'],'passed':out['passed'],'failed':out['failed'],'batchExits':exits,'pass':out['pass']}))
+          PY
+      - name: Persist combined certification
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-16773-regional50.json
+          git commit -m "test: persist Mantra45 16773 Regional 50-state certification [skip ci]" || true
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Enforce
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          o=json.load(open('lab/mantra45-16773-regional50.json'))
+          raise SystemExit(0 if o.get('pass') else 1)
+          PY
+
+# trigger regional50
+
+# trigger after live-origin 16773 synchronization
+
+# trigger after pipefail marker fix
