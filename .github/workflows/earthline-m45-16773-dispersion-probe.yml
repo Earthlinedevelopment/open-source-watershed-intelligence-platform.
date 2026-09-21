@@ -35,9 +35,9 @@ jobs:
               const u=new URL(req.url());
               if(u.pathname!=='/'&&u.pathname!=='/index.html'){await route.continue();return;}
               const resp=await route.fetch(); let body=await resp.text();
-              const coordAnchor="        c16736.coverageBinBasis16767=binBasis16767;\\n        c16736.coverageSubBin16771=subKey16771;";
-              const coordReplace=coordAnchor+"\\n        c16736.coverageGX16773=gx16767;c16736.coverageGY16773=gy16767;";
-              if(!body.includes(coordAnchor)){patchError='coordinate anchor missing';await route.fulfill({response:resp,body});return;}
+              const coordAnchor="        c16736.coverageSubBin16771=subKey16771;";
+              const coordReplace=coordAnchor+"c16736.coverageGX16773=gx16767;c16736.coverageGY16773=gy16767;";
+                            if(!body.includes(coordAnchor)){patchError='coordinate anchor missing';await route.fulfill({response:resp,body});return;}
               body=body.replace(coordAnchor,coordReplace);
               const start="    const regionalCapacity16755=focusMode?80:Math.min(120,Math.max(80,coverageGroups16736.size*4));";
               const end="    const refinedPool16713=!focusMode?candidates.filter(c=>c&&(c.refined16710||c.refined16702||c.coverageCarry16749)):[];";
