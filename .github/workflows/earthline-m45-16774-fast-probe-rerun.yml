@@ -1,0 +1,71 @@
+name: Earthline 16774 Fast Parallel Probe
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-16774-fast-probe-rerun.yml']
+permissions:
+  contents: read
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        state: [oklahoma, iowa, arkansas, nebraska, kansas, tennessee, ohio, vermont, texas, louisiana]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - name: Build exact 16774 candidate in memory
+        shell: bash
+        run: |
+          mkdir -p /tmp/m45
+          curl -fsSL "https://earthlinedevelopment.org/?fastprobe=$RANDOM" > /tmp/m45/index.html
+          cp lab/apply-16774-capacity-balanced-dispersion.py /tmp/m45/apply.py
+          cd /tmp/m45
+          python3 apply.py
+          grep -q "EARTHLINE 16774" index.html
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Probe state
+        shell: bash
+        env:
+          STATE: ${{ matrix.state }}
+        run: |
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const state=process.env.STATE,body=fs.readFileSync('/tmp/m45/index.html','utf8');
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1908,height:882}});
+          await page.route('https://earthlinedevelopment.org/**',async route=>{
+            const req=route.request(),u=new URL(req.url());
+            if(req.resourceType()==='document'&&(u.pathname==='/'||u.pathname==='/index.html')){
+              const resp=await route.fetch();
+              await route.fulfill({response:resp,body,headers:{...resp.headers(),'cache-control':'no-store'}});
+              return;
+            }
+            await route.continue();
+          });
+          await page.goto('https://earthlinedevelopment.org/?fast16774='+state+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.evaluate(q=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value=q+' state';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},state);
+          await page.waitForFunction(()=>{
+            const p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020,s=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736;
+            return s?.build==='EARTHLINE 16774'&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);
+          },null,{timeout:70000,polling:100});
+          await page.waitForTimeout(250);
+          const out=await page.evaluate(()=>{
+            const s=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||{},p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{},d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{},perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{},flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||{},land=window.EARTHLINE_LAND_VALIDITY_16584||{},audit=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731||{};
+            const plan=(s.subsectorPlan||[]).filter(r=>Number(r.candidateSubcells)>0),ratios=plan.map(r=>Number(r.reservedSubcells||0)/Number(r.candidateSubcells||1));
+            return {build:s.build,reserved:Number(s.reserved||0),capacity:Number(s.capacity||0),minReserveRatio:ratios.length?Math.min(...ratios):null,avgReserveRatio:ratios.length?ratios.reduce((a,b)=>a+b,0)/ratios.length:null,generated:Number(p.generated||0),visible:Number(d.swaleLines||0),coreMs:Number(perf.totalMs||NaN),unsafe:Number(flow.unsafeSegments??NaN),waterReady:Array.isArray(land.waterParts),unresolved:Array.isArray(audit.unresolved)?audit.unresolved.length:null};
+          });
+          out.state=state;
+          console.log(JSON.stringify(out));
+          await browser.close();
+          if(!(out.generated===out.visible&&out.generated>0&&out.unsafe===0&&out.waterReady&&Number.isFinite(out.coreMs)&&out.coreMs<=15000))process.exit(2);
+          JS
