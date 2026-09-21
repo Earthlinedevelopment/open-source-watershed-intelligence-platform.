@@ -1,0 +1,69 @@
+name: Earthline 16773 Four-State Final Dispersion
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-16773-final-dispersion-rerun.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        state: [oklahoma, iowa, arkansas, nebraska]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - name: Build exact 16773 candidate
+        shell: bash
+        run: |
+          mkdir -p /tmp/m45
+          curl -fsSL "https://earthlinedevelopment.org/?finaldisp=$RANDOM" > /tmp/m45/index.html
+          cp lab/apply-16773-proportional-dispersion.py /tmp/m45/apply.py
+          cd /tmp/m45
+          python3 apply.py
+          grep -q "EARTHLINE 16773" index.html
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Audit final fine-grid dispersion
+        shell: bash
+        env:
+          STATE: ${{ matrix.state }}
+        run: |
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const state=process.env.STATE;let body=fs.readFileSync('/tmp/m45/index.html','utf8');
+          const a1="    const jurisdictionEligibleCandidates16539=candidates.length;\n    candidates.sort((a,b)=>b.score-a.score);";
+          const i1=a1+"\n    if(!focusMode&&hy.w===96&&hy.h===96){window.EARTHLINE_16773_FINAL_CAND={w:hy.w,h:hy.h,rows:candidates.map(c=>({x:Number(c.x),y:Number(c.y)})).filter(r=>Number.isFinite(r.x)&&Number.isFinite(r.y))};}";
+          if(!body.includes(a1))throw new Error('candidate anchor missing');body=body.replace(a1,i1);
+          const a2="    const auditedCandidates=chosen.map(c=>Object.assign(c,{contourAudit16166:contourAudit16166(c)}));";
+          const i2="    if(!focusMode&&hy.w===96&&hy.h===96){window.EARTHLINE_16773_FINAL_CHOSEN={w:hy.w,h:hy.h,rows:chosen.map(c=>({x:Number(c.x),y:Number(c.y)})).filter(r=>Number.isFinite(r.x)&&Number.isFinite(r.y))};}\n"+a2;
+          if(!body.includes(a2))throw new Error('chosen anchor missing');body=body.replace(a2,i2);
+          const browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:1908,height:882}});
+          await page.route('https://earthlinedevelopment.org/**',async route=>{const req=route.request(),u=new URL(req.url());if(req.resourceType()==='document'&&(u.pathname==='/'||u.pathname==='/index.html')){const resp=await route.fetch();await route.fulfill({response:resp,body,headers:{...resp.headers(),'cache-control':'no-store'}});return;}await route.continue();});
+          await page.goto('https://earthlinedevelopment.org/?fd='+state+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.evaluate(q=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value=q+' state';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},state);
+          await page.waitForFunction(()=>window.EARTHLINE_16773_FINAL_CAND?.rows?.length>0&&window.EARTHLINE_16773_FINAL_CHOSEN?.rows?.length>0,null,{timeout:70000,polling:100});
+          await page.waitForTimeout(200);
+          const out=await page.evaluate(()=>{
+            const C=window.EARTHLINE_16773_FINAL_CAND,H=window.EARTHLINE_16773_FINAL_CHOSEN,w=C.w,h=C.h;
+            const fk=r=>Math.max(0,Math.min(17,Math.floor(r.x*18/w)))+','+Math.max(0,Math.min(17,Math.floor(r.y*18/h)));
+            const pk=r=>Math.max(0,Math.min(5,Math.floor(r.x*6/w)))+','+Math.max(0,Math.min(5,Math.floor(r.y*6/h)));
+            const cf=new Set(C.rows.map(fk)),hf=new Set(H.rows.map(fk));
+            const cg=new Map(),hg=new Map();
+            for(const r of C.rows){const k=pk(r);if(!cg.has(k))cg.set(k,new Set());cg.get(k).add(fk(r));}
+            for(const r of H.rows){const k=pk(r);if(!hg.has(k))hg.set(k,new Set());hg.get(k).add(fk(r));}
+            const parents=[...cg.entries()].map(([k,set])=>({key:k,candidateFine:set.size,chosenFine:(hg.get(k)||new Set()).size,ratio:set.size?(hg.get(k)||new Set()).size/set.size:null})).sort((a,b)=>(a.ratio??1)-(b.ratio??1));
+            const perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{},p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{},d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{};
+            return {candidateFine:cf.size,chosenFine:hf.size,fineCoverage:cf.size?hf.size/cf.size:null,chosen:H.rows.length,generated:Number(p.generated||0),visible:Number(d.swaleLines||0),coreMs:Number(perf.totalMs||NaN),worstParents:parents.slice(0,8)};
+          });
+          out.state=state;console.log('EARTHLINE_DISP '+JSON.stringify(out));await browser.close();
+          JS
