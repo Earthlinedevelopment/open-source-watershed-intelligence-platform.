@@ -1,0 +1,31 @@
+name: Earthline 16784 Deploy Standard Root-Cause Audit
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-16784-deploy.yml']
+permissions:
+  contents: write
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Apply standardized audit
+        run: |
+          git fetch origin main
+          git show origin/main:lab/apply-16784-standard-root-cause-audit.py > /tmp/apply.py
+          python3 /tmp/apply.py
+          git diff --check
+          grep -q "EARTHLINE_STANDARD_ROOT_CAUSE_AUDIT_16784" index.html
+      - name: Publish diagnostic-only engine
+        run: |
+          git config user.name "Earthline CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "audit: integrate standardized root-cause engine"
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live
