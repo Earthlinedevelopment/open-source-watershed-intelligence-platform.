@@ -1,3 +1,4 @@
+<!-- EARTHLINE 16782 — ADAPTIVE CLUSTER-AWARE FINE-CELL REFINEMENT. The existing 16781 cluster-aware local-terrain pass keeps the same science, 48x48 local DEM resolution, jurisdiction containment, water sidecar, ranking and final Regional corridor capacity. Only its bounded refinement tile budget scales with the measured number of unresolved opportunity-rich 12x12 cells: 8 minimum, up to 16 maximum. Real terrain-derived corridors only; no jurisdiction names, synthetic corridors, relaxed science or added publication capacity. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16781 — CLUSTER-AWARE FINE-CELL REFINEMENT. The bounded 16780 local-terrain pass is unchanged in science, tile count, resolution and capacity, but its eight refinement cells are chosen by contiguous empty-opportunity cluster size plus spatial spread instead of raw opportunity alone. This targets broad internal voids without jurisdiction names, synthetic corridors, relaxed science or added capacity. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16780 — NESTED FINE-CELL OPPORTUNITY REFINEMENT. After the first Regional swale pass, opportunity-rich 12x12 terrain cells with no corridor midpoint receive bounded 48x48 local DEM refinement before the existing coverage owner reruns. Same slope/water/aquifer/exclusion science, exact jurisdiction containment, water sidecar, ranking semantics and Regional capacity. Real terrain-derived corridors only; no jurisdiction names, synthetic corridors, relaxed science or added capacity. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16779 — THREE-SUBCELL MINIMUM BEFORE PROPORTIONAL FILL. Regional selection keeps the same screened candidate pool, total capacity, science gates, water sidecar, jurisdiction containment and ranking semantics. Within each occupied 6x6 terrain sector, reserve up to three distinct real 18x18 fine subcells first; then distribute the remaining unchanged capacity proportionally as before. No jurisdiction names, synthetic corridors, relaxed science or added capacity. CANDIDATE / NOT ACCEPTED. -->
@@ -30166,7 +30167,7 @@ body { overflow-x:hidden!important; }
         coverageSubsectorPlan16771.push({key:key16775,candidateSubcells:reps16775.length,reservedSubcells:sel16775.length});
       }
     }
-    window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736={build:'EARTHLINE 16781',candidateBins:coverageGroups16736.size,reserved:coverageReserved16736.length,capacity:regionalCapacity16755,rows:coverageReserved16736,subsectorPlan:coverageSubsectorPlan16771,midpointOwnedBins:true,reservePerBin:'up to 3 distinct fine subcells per occupied parent first, then remaining existing Regional capacity proportionally',subsectorGrid:'3x3 inside each 6x6 terrain sector',subsectorReserve:true,proportionalReserve:true,minimumSubcellsPerParent16779:3,rule:'reserve up to three distinct real 3x3 fine subcells inside every occupied 6x6 terrain sector first, then distribute the remaining unchanged Regional capacity proportionally; science gates, water safety, final score ordering and capacity remain unchanged',at:new Date().toISOString()};
+    window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736={build:'EARTHLINE 16782',candidateBins:coverageGroups16736.size,reserved:coverageReserved16736.length,capacity:regionalCapacity16755,rows:coverageReserved16736,subsectorPlan:coverageSubsectorPlan16771,midpointOwnedBins:true,reservePerBin:'up to 3 distinct fine subcells per occupied parent first, then remaining existing Regional capacity proportionally',subsectorGrid:'3x3 inside each 6x6 terrain sector',subsectorReserve:true,proportionalReserve:true,minimumSubcellsPerParent16779:3,rule:'reserve up to three distinct real 3x3 fine subcells inside every occupied 6x6 terrain sector first, then distribute the remaining unchanged Regional capacity proportionally; science gates, water safety, final score ordering and capacity remain unchanged',at:new Date().toISOString()};
     const refinedPool16713=!focusMode?candidates.filter(c=>c&&(c.refined16710||c.refined16702||c.coverageCarry16749)):[];
     const refinedReserved16713=[];
     const coverageGroups16733=new Map();
@@ -31623,7 +31624,8 @@ body { overflow-x:hidden!important; }
       for(const row16780 of gapsBefore16780){
         row16780.cluster16781=gapsBefore16780.filter(o16781=>Math.hypot(o16781.bx-row16780.bx,o16781.by-row16780.by)<=1.5).length;
       }
-      while(selected16780.length<8){
+      const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/4)));
+      while(selected16780.length<refinementTileBudget16782){
         let best16781=null,bestMetric16781=-Infinity;
         for(const row16780 of gapsBefore16780){
           if(selected16780.includes(row16780))continue;
@@ -31699,9 +31701,9 @@ body { overflow-x:hidden!important; }
           const ratio16780=r16780.valid?r16780.opportunity/r16780.valid:0;
           return r16780.valid>=20&&r16780.opportunity>=8&&ratio16780>=.18&&r16780.swales===0;
         });
-        window.EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16781={build:'EARTHLINE 16781',grid:'12x12',selected:selected16780.map(r16780=>({bx:r16780.bx,by:r16780.by,valid:r16780.valid,opportunity:r16780.opportunity,preferred:r16780.preferred,cluster:Number(r16780.cluster16781||0)})),added:added16780.length,failedTiles:failed16780,unresolvedAfter:unresolved16780.map(r16780=>({bx:r16780.bx,by:r16780.by,valid:r16780.valid,opportunity:r16780.opportunity,preferred:r16780.preferred})),elapsedMs:Math.round(performance.now()-start16780),rule:'refine up to eight cluster-centered, spatially distributed empty 12x12 cells with measurable valid <=4% opportunity; add only real screened local-terrain corridors; preserve global science, tile budget and capacity',at:new Date().toISOString()};
+        window.EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16781={build:'EARTHLINE 16782',grid:'12x12',tileBudget:refinementTileBudget16782,selected:selected16780.map(r16780=>({bx:r16780.bx,by:r16780.by,valid:r16780.valid,opportunity:r16780.opportunity,preferred:r16780.preferred,cluster:Number(r16780.cluster16781||0)})),added:added16780.length,failedTiles:failed16780,unresolvedAfter:unresolved16780.map(r16780=>({bx:r16780.bx,by:r16780.by,valid:r16780.valid,opportunity:r16780.opportunity,preferred:r16780.preferred})),elapsedMs:Math.round(performance.now()-start16780),rule:'refine up to eight cluster-centered, spatially distributed empty 12x12 cells with measurable valid <=4% opportunity; add only real screened local-terrain corridors; preserve global science, tile budget and capacity',at:new Date().toISOString()};
       }else{
-        window.EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16781={build:'EARTHLINE 16781',grid:'12x12',selected:[],added:0,failedTiles:[],unresolvedAfter:[],rule:'no empty fine opportunity cell required nested refinement',at:new Date().toISOString()};
+        window.EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16781={build:'EARTHLINE 16782',grid:'12x12',tileBudget:refinementTileBudget16782,selected:[],added:0,failedTiles:[],unresolvedAfter:[],rule:'no empty fine opportunity cell required nested refinement',at:new Date().toISOString()};
       }
     }
 
