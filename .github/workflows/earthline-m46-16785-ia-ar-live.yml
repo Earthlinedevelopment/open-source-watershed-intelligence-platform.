@@ -6,6 +6,7 @@ on:
     paths:
       - 'tests/mantra46-16785-ia-ar-live.mjs'
       - 'tests/mantra46-16786-gate-audit.mjs'
+      - 'tests/mantra46-16786-spatial-anchor-ab.mjs'
       - '.github/workflows/earthline-m46-16785-ia-ar-live.yml'
   workflow_dispatch:
 
@@ -15,7 +16,7 @@ permissions:
 jobs:
   ia-ar-live:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,6 +40,8 @@ jobs:
         run: node tests/mantra46-16785-ia-ar-live.mjs
       - name: Run per-cell makeSwales gate audit
         run: node tests/mantra46-16786-gate-audit.mjs
+      - name: A/B spatial contour anchors
+        run: node tests/mantra46-16786-spatial-anchor-ab.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -46,4 +49,5 @@ jobs:
           path: |
             artifacts/mantra46-16785/
             artifacts/mantra46-16786/
+            artifacts/mantra46-16786-anchor-ab/
           if-no-files-found: warn
