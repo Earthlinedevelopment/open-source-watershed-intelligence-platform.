@@ -1,0 +1,34 @@
+name: Mantra 46 Contour Gap A-B
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mantra46-16786-contour-gap-refinement-ab.mjs'
+      - '.github/workflows/earthline-m46-contour-gap-ab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contour-gap-ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run contour-gap-first refinement A-B
+        run: node tests/mantra46-16786-contour-gap-refinement-ab.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16786-contour-gap-ab
+          path: artifacts/mantra46-16786-contour-gap-ab/
+          if-no-files-found: warn
