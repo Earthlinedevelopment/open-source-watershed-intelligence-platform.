@@ -1,0 +1,83 @@
+name: Earthline 16783 Live Difficult-State Gate
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/earthline-m45-16783-live-gate.yml
+permissions:
+  contents: write
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Validate live 16783
+        shell: bash
+        run: |
+          mkdir -p lab
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const states=['iowa','arkansas','oklahoma','nebraska','vermont','texas','california'];
+          const browser=await chromium.launch({headless:true});
+          const rows=[];
+          for(const state of states){
+            const page=await browser.newPage({viewport:{width:1800,height:832}});
+            let error=null;
+            try{
+              await page.goto('https://earthlinedevelopment.org/?gate16783='+state+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#searchInput',{timeout:30000});
+              await page.evaluate(q=>{
+                const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+                i.value=q+' state';
+                i.dispatchEvent(new Event('input',{bubbles:true}));
+                i.dispatchEvent(new Event('change',{bubbles:true}));
+                b.click();
+              },state);
+              await page.waitForFunction(()=>{
+                const s=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736;
+                const p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167;
+                const d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;
+                return s?.build==='EARTHLINE 16783'&&window.EARTHLINE_FINAL_PUBLISHED_SPREAD_16783&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);
+              },null,{timeout:70000,polling:100});
+              await page.waitForTimeout(400);
+            }catch(e){error=String(e&&e.message||e);}
+            const snap=await page.evaluate(()=>{
+              const sp=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||{};
+              const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{};
+              const disp=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{};
+              const perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{};
+              const flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||{};
+              const land=window.EARTHLINE_LAND_VALIDITY_16584||{};
+              const final=window.EARTHLINE_FINAL_PUBLISHED_SPREAD_16783||{};
+              return {build:sp.build,generated:Number(pub.generated||0),visible:Number(disp.swaleLines||0),coreMs:Number(perf.totalMs||NaN),unsafe:Number(flow.unsafeSegments??NaN),waterReady:Array.isArray(land.waterParts),final};
+            }).catch(()=>({}));
+            rows.push({state,error,...snap});
+            await page.close();
+          }
+          await browser.close();
+          const pass=rows.every(r=>!r.error&&r.build==='EARTHLINE 16783'&&r.generated===r.visible&&r.generated>0&&r.unsafe===0&&r.waterReady&&Number.isFinite(r.coreMs)&&r.coreMs<=15000);
+          fs.writeFileSync('lab/mantra45-16783-live-difficult.json',JSON.stringify({at:new Date().toISOString(),rows,pass},null,2));
+          console.log(JSON.stringify({pass,rows:rows.map(r=>({state:r.state,error:r.error,generated:r.generated,visible:r.visible,coreMs:r.coreMs,unsafe:r.unsafe,candidateCells:r.final?.candidateCells,initialCells:r.final?.initialCells,finalCells:r.final?.finalCells,targetCells:r.final?.targetCells,swaps:r.final?.swaps}))}));
+          if(!pass)process.exit(2);
+          JS
+      - name: Persist gate
+        if: always()
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-16783-live-difficult.json || true
+          git commit -m "test: persist 16783 live difficult-state gate [skip ci]" || true
+          git pull --rebase origin main
+          git push origin HEAD:main
