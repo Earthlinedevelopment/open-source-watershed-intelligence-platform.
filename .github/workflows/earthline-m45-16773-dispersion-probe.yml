@@ -1,0 +1,147 @@
+name: Earthline Mantra45 16773 Dispersion Probe
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-16773-dispersion-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Probe global proportional 3x3 reserve
+        shell: bash
+        run: |
+          mkdir -p lab
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const states=['oklahoma','iowa','arkansas','nebraska','kansas','tennessee','ohio','vermont','texas','louisiana'];
+          const browser=await chromium.launch({headless:true});
+          async function run(state){
+            const page=await browser.newPage({viewport:{width:1908,height:882}});
+            let patchError=null;
+            await page.route('https://earthlinedevelopment.org/**',async route=>{
+              const req=route.request();
+              if(req.resourceType()!=='document'){await route.continue();return;}
+              const u=new URL(req.url());
+              if(u.pathname!=='/'&&u.pathname!=='/index.html'){await route.continue();return;}
+              const resp=await route.fetch(); let body=await resp.text();
+              const coordAnchor="        c16736.coverageBinBasis16767=binBasis16767;\n        c16736.coverageSubBin16771=subKey16771;";
+              const coordReplace=coordAnchor+"\n        c16736.coverageGX16773=gx16767;c16736.coverageGY16773=gy16767;";
+              if(!body.includes(coordAnchor)){patchError='coordinate anchor missing';await route.fulfill({response:resp,body});return;}
+              body=body.replace(coordAnchor,coordReplace);
+              const start="    const regionalCapacity16755=focusMode?80:Math.min(120,Math.max(80,coverageGroups16736.size*4));";
+              const end="    const refinedPool16713=!focusMode?candidates.filter(c=>c&&(c.refined16710||c.refined16702||c.coverageCarry16749)):[];";
+              const a=body.indexOf(start),b=body.indexOf(end,a);
+              if(a<0||b<0){patchError='selection block anchors missing';await route.fulfill({response:resp,body});return;}
+              const replacement=`    const regionalCapacity16755=focusMode?80:Math.min(120,Math.max(80,coverageGroups16736.size*4));
+    if(!focusMode){
+      const subgroups16773=new Map(),selectedSubs16773=new Map();let totalSubs16773=0;
+      for(const [key16773,list16773] of coverageGroups16736){
+        list16773.sort((a16773,b16773)=>(Number(b16773.score)||0)-(Number(a16773.score)||0));
+        const parts16773=String(key16773).split(',').map(Number),bx16773=parts16773[0],by16773=parts16773[1];
+        const cells16773=new Map();
+        for(const c16773 of list16773){
+          const gx16773=Number(c16773.coverageGX16773),gy16773=Number(c16773.coverageGY16773);
+          if(!Number.isFinite(gx16773)||!Number.isFinite(gy16773))continue;
+          const fx16773=Math.max(0,Math.min(17,Math.floor(gx16773*18/Math.max(1,hy.w))));
+          const fy16773=Math.max(0,Math.min(17,Math.floor(gy16773*18/Math.max(1,hy.h))));
+          const lx16773=Math.max(0,Math.min(2,fx16773-bx16773*3)),ly16773=Math.max(0,Math.min(2,fy16773-by16773*3));
+          const sk16773=lx16773+','+ly16773;let cell16773=cells16773.get(sk16773);
+          if(!cell16773)cells16773.set(sk16773,cell16773=[]);cell16773.push(c16773);
+        }
+        const reps16773=[];
+        for(const [sk16773,cell16773] of cells16773){
+          cell16773.sort((a16773,b16773)=>(Number(b16773.score)||0)-(Number(a16773.score)||0));
+          const p16773=sk16773.split(',').map(Number);
+          reps16773.push({subkey:sk16773,lx:p16773[0],ly:p16773[1],count:cell16773.length,candidate:cell16773[0]});
+        }
+        reps16773.sort((a16773,b16773)=>(Number(b16773.candidate.score)||0)-(Number(a16773.candidate.score)||0));
+        subgroups16773.set(key16773,reps16773);selectedSubs16773.set(key16773,[]);totalSubs16773+=reps16773.length;
+      }
+      const reserveBudget16773=Math.min(regionalCapacity16755,totalSubs16773,coverageGroups16736.size*3);
+      const chooseNext16773=(key16773)=>{
+        const reps16773=subgroups16773.get(key16773)||[],sel16773=selectedSubs16773.get(key16773)||[];
+        const remain16773=reps16773.filter(r16773=>!sel16773.includes(r16773));if(!remain16773.length)return null;
+        if(!sel16773.length)return remain16773[0];
+        let best16773=null,bestMetric16773=-Infinity;
+        for(const r16773 of remain16773){
+          const d16773=Math.min(...sel16773.map(s16773=>Math.hypot(r16773.lx-s16773.lx,r16773.ly-s16773.ly)));
+          const metric16773=d16773*1000+r16773.count*10+(Number(r16773.candidate.score)||0);
+          if(metric16773>bestMetric16773){bestMetric16773=metric16773;best16773=r16773;}
+        }
+        return best16773;
+      };
+      while(coverageReserved16736.length<reserveBudget16773){
+        let bestKey16773=null,bestRatio16773=Infinity,bestOcc16773=-1,bestScore16773=-Infinity;
+        for(const [key16773,reps16773] of subgroups16773){
+          const sel16773=selectedSubs16773.get(key16773)||[];if(sel16773.length>=reps16773.length)continue;
+          const ratio16773=sel16773.length/Math.max(1,reps16773.length),next16773=chooseNext16773(key16773),score16773=Number(next16773?.candidate?.score)||0;
+          if(ratio16773<bestRatio16773-1e-9||
+             (Math.abs(ratio16773-bestRatio16773)<1e-9&&reps16773.length>bestOcc16773)||
+             (Math.abs(ratio16773-bestRatio16773)<1e-9&&reps16773.length===bestOcc16773&&score16773>bestScore16773)){
+            bestKey16773=key16773;bestRatio16773=ratio16773;bestOcc16773=reps16773.length;bestScore16773=score16773;
+          }
+        }
+        if(bestKey16773===null)break;
+        const next16773=chooseNext16773(bestKey16773);if(!next16773)break;
+        selectedSubs16773.get(bestKey16773).push(next16773);
+        const c16773=next16773.candidate;if(!c16773||chosen.includes(c16773))continue;
+        chosen.push(c16773);
+        coverageReserved16736.push({key:bestKey16773,subBin:next16773.subkey,x:c16773.x,y:c16773.y,score:Number(c16773.score)||0,
+          refined:!!(c16773.refined16710||c16773.refined16702),coverageGap:!!c16773.coverageGap16731,
+          proportionalReserve16773:true,subcellCandidates:next16773.count,binBasis:c16773.coverageBinBasis16767||'clipped-midpoint'});
+      }
+      coverageSubsectorPlan16771.length=0;
+      for(const [key16773,reps16773] of subgroups16773){
+        const sel16773=selectedSubs16773.get(key16773)||[];
+        coverageSubsectorPlan16771.push({key:key16773,candidateSubcells:reps16773.length,reservedSubcells:sel16773.length});
+      }
+    }
+    window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736={build:'EARTHLINE 16773 PROBE',candidateBins:coverageGroups16736.size,reserved:coverageReserved16736.length,capacity:regionalCapacity16755,rows:coverageReserved16736,subsectorPlan:coverageSubsectorPlan16771,midpointOwnedBins:true,reservePerBin:'shared budget equivalent to 3 per occupied bin',subsectorGrid:'3x3 inside each 6x6 terrain sector',subsectorReserve:true,proportionalReserve:true,rule:'distribute the unchanged global terrain reserve budget proportionally across occupied 3x3 subregions inside each 6x6 terrain sector; select real screened candidates only; science gates, water safety, final score ordering and capacity remain unchanged',at:new Date().toISOString()};
+`;
+              body=body.slice(0,a)+replacement+body.slice(b);
+              await route.fulfill({response:resp,body,headers:{...resp.headers(),'cache-control':'no-store'}});
+            });
+            await page.goto('https://earthlinedevelopment.org/?m4516773='+state+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            if(patchError)throw new Error(patchError);
+            await page.waitForSelector('#searchInput',{timeout:30000});
+            await page.evaluate(q=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value=q+' state';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},state);
+            await page.waitForFunction(()=>{
+              const p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020,s=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736;
+              return s?.build==='EARTHLINE 16773 PROBE'&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);
+            },null,{timeout:70000,polling:100});
+            await page.waitForTimeout(300);
+            const snap=await page.evaluate(()=>{
+              const s=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||{},p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{},d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{},perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{},flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||{},land=window.EARTHLINE_LAND_VALIDITY_16584||{},audit=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731||{};
+              const plan=Array.isArray(s.subsectorPlan)?s.subsectorPlan:[];
+              return {spatialBuild:s.build,reserved:s.reserved,capacity:s.capacity,candidateSubcells:plan.reduce((a,r)=>a+Number(r.candidateSubcells||0),0),reservedSubcells:plan.reduce((a,r)=>a+Number(r.reservedSubcells||0),0),minRatio:plan.length?Math.min(...plan.filter(r=>Number(r.candidateSubcells)>0).map(r=>Number(r.reservedSubcells||0)/Number(r.candidateSubcells||1))):null,
+                generated:Number(p.generated||0),visible:Number(d.swaleLines||0),coreMs:Number(perf.totalMs||NaN),unsafe:Number(flow.unsafeSegments??NaN),waterReady:Array.isArray(land.waterParts),unresolved:Array.isArray(audit.unresolved)?audit.unresolved.length:null,coveragePassed:audit.passed===true};
+            });
+            await page.close();return {state,...snap};
+          }
+          const rows=[];for(const s of states)rows.push(await run(s));
+          await browser.close();
+          const pass=rows.every(r=>r.generated===r.visible&&r.generated>0&&r.unsafe===0&&r.waterReady&&Number.isFinite(r.coreMs)&&r.coreMs<=15000);
+          const out={at:new Date().toISOString(),pass,rows};
+          fs.writeFileSync('lab/mantra45-16773-dispersion-probe.json',JSON.stringify(out,null,2));
+          console.log(JSON.stringify(out));
+          JS
+      - name: Persist probe
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-16773-dispersion-probe.json
+          git commit -m "diag: persist Mantra45 16773 dispersion probe [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
