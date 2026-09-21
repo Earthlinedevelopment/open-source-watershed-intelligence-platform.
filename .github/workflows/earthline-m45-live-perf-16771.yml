@@ -1,0 +1,117 @@
+name: Earthline Mantra45 Live 16771 Performance Trace
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-live-perf-16771.yml']
+permissions:
+  contents: write
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Trace repeated live Vermont and Oklahoma
+        shell: bash
+        run: |
+          mkdir -p lab
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const browser=await chromium.launch({headless:true});
+          async function one(state,iteration){
+            const page=await browser.newPage({viewport:{width:1800,height:1000}});
+            const started=Date.now();
+            let error=null,timedOut=false;
+            try{
+              await page.goto('https://earthlinedevelopment.org/?m45liveperf='+state+'-'+iteration+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#searchInput',{timeout:30000});
+              await page.evaluate((q)=>{
+                window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731=null;
+                const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+                i.value=q+' state';
+                i.dispatchEvent(new Event('input',{bubbles:true}));
+                i.dispatchEvent(new Event('change',{bubbles:true}));
+                b.click();
+              },state);
+              await page.waitForFunction(()=>{
+                const p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167;
+                const d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;
+                const a=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731;
+                return a?.passed===true&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);
+              },null,{timeout:70000,polling:100});
+              await page.waitForTimeout(300);
+            }catch(e){timedOut=true;error=String(e&&e.message||e);}
+            const snap=await page.evaluate(()=>{
+              const perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{};
+              const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{};
+              const disp=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{};
+              const spatial=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||{};
+              const flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||{};
+              const land=window.EARTHLINE_LAND_VALIDITY_16584||{};
+              const resources=performance.getEntriesByType('resource').map(r=>({
+                name:String(r.name||'').slice(0,220),
+                initiatorType:r.initiatorType,
+                duration:Math.round(r.duration),
+                transferSize:Number(r.transferSize||0),
+                encodedBodySize:Number(r.encodedBodySize||0)
+              })).sort((a,b)=>b.duration-a.duration).slice(0,18);
+              return {
+                totalMs:Number(perf.totalMs||NaN),
+                phaseTotalsMs:perf.phaseTotalsMs||null,
+                slowestPhase:perf.slowestPhase||null,
+                generated:Number(pub.generated||0),
+                visible:Number(disp.swaleLines||0),
+                spatialBuild:spatial.build||null,
+                reserved:Number(spatial.reserved||0),
+                capacity:Number(spatial.capacity||0),
+                unsafe:Number(flow.unsafeSegments??NaN),
+                waterSidecarReady:Array.isArray(land.waterParts),
+                resources
+              };
+            }).catch(()=>({}));
+            const elapsedMs=Date.now()-started;
+            await page.close();
+            return {state,iteration,elapsedMs,timedOut,error,...snap};
+          }
+          const rows=[];
+          for(const state of ['vermont','oklahoma']){
+            for(let i=1;i<=5;i++)rows.push(await one(state,i));
+          }
+          await browser.close();
+          const stats={};
+          for(const state of ['vermont','oklahoma']){
+            const a=rows.filter(r=>r.state===state&&Number.isFinite(r.totalMs));
+            const vals=a.map(r=>r.totalMs);
+            stats[state]={
+              n:vals.length,
+              min:Math.min(...vals),
+              max:Math.max(...vals),
+              avg:vals.reduce((s,v)=>s+v,0)/Math.max(1,vals.length),
+              over15:vals.filter(v=>v>15000).length,
+              terrainAvg:a.reduce((s,r)=>s+Number(r.phaseTotalsMs?.terrainMs||0),0)/Math.max(1,a.length),
+              publishAvg:a.reduce((s,r)=>s+Number(r.phaseTotalsMs?.terrainProductsAndPublishMs||0),0)/Math.max(1,a.length)
+            };
+          }
+          const out={at:new Date().toISOString(),rows,stats};
+          fs.writeFileSync('lab/mantra45-live-16771-performance-trace.json',JSON.stringify(out,null,2));
+          console.log(JSON.stringify(out));
+          JS
+      - name: Persist trace
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-live-16771-performance-trace.json
+          git commit -m "diag: persist Mantra45 live 16771 performance trace [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
