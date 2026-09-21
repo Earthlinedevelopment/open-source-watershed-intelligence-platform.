@@ -1,0 +1,81 @@
+name: Earthline 16780 Arkansas Live Gate
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-16780-arkansas.yml']
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Test live Arkansas 16780
+        shell: bash
+        run: |
+          mkdir -p lab screens16780
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1800,height:832},deviceScaleFactor:1});
+          let error=null,timedOut=false;
+          const started=Date.now();
+          try{
+            await page.goto('https://earthlinedevelopment.org/?ar16780='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#searchInput',{timeout:30000});
+            await page.evaluate(()=>{window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='Arkansas';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
+            await page.waitForFunction(()=>{
+              const s=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736,p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020,e=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970;
+              return !!e||(s?.build==='EARTHLINE 16780'&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0));
+            },null,{timeout:75000,polling:100});
+            error=await page.evaluate(()=>window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null);
+          }catch(e){timedOut=true;error=String(e&&e.message||e);}
+          await page.waitForTimeout(600);
+          const snap=await page.evaluate(()=>{
+            const clone=v=>JSON.parse(JSON.stringify(v??null));
+            const s=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||{},p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{},d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{},perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{},flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||{},boundary=window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||{},land=window.EARTHLINE_LAND_VALIDITY_16584||{},pkg=window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||{},cov=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731||{},fine=window.EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16780||{};
+            return {build:s.build||null,reserved:Number(s.reserved||0),capacity:Number(s.capacity||0),generated:Number(p.generated||0),visible:Number(d.swaleLines||0),coreMs:Number(perf.totalMs??NaN),unsafe:Number(flow.unsafeSegments??0),outside:clone(boundary.outsideAfterClip),waterReady:Array.isArray(land.waterParts),identity:String(pkg?.identity?.name||''),coveragePassed:cov.passed===true,coverageUnresolved:clone(cov.unresolved||[]),fine:clone(fine)};
+          }).catch(()=>({}));
+          const failures=[];
+          if(timedOut)failures.push('timeout');
+          if(error)failures.push('error '+JSON.stringify(error));
+          if(snap.build!=='EARTHLINE 16780')failures.push('build '+snap.build);
+          if(!(snap.generated>0))failures.push('zero swales');
+          if(snap.generated!==snap.visible)failures.push('visible/generated '+snap.visible+'/'+snap.generated);
+          if(!(snap.coreMs<=15000))failures.push('core '+snap.coreMs);
+          if(snap.unsafe!==0)failures.push('unsafe '+snap.unsafe);
+          if(!snap.waterReady)failures.push('water sidecar not ready');
+          if(snap.outside&&Object.values(snap.outside).some(v=>Number(v||0)!==0))failures.push('outside '+JSON.stringify(snap.outside));
+          if(String(snap.identity).toLowerCase()!=='arkansas')failures.push('identity '+snap.identity);
+          if(!snap.coveragePassed||snap.coverageUnresolved.length)failures.push('coarse coverage unresolved '+JSON.stringify(snap.coverageUnresolved));
+          if(Array.isArray(snap.fine?.failedTiles)&&snap.fine.failedTiles.length)failures.push('fine refinement transport '+JSON.stringify(snap.fine.failedTiles));
+          const out={at:new Date().toISOString(),pagesLiveCommit:'cbcd8e50103603f2958646713f0b83da08712a48',elapsedMs:Date.now()-started,timedOut,error,snap,failures,pass:failures.length===0};
+          fs.writeFileSync('lab/mantra45-16780-arkansas.json',JSON.stringify(out,null,2));
+          await page.screenshot({path:'screens16780/arkansas.png',fullPage:false});
+          await browser.close();
+          console.log(JSON.stringify(out));
+          if(!out.pass)process.exitCode=2;
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-16780-arkansas-visual
+          path: screens16780/
+          if-no-files-found: error
+      - name: Persist Arkansas result
+        if: always()
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-16780-arkansas.json
+          git commit -m "test: persist 16780 Arkansas live gate [skip ci]" || true
+          git pull --rebase origin main
+          git push origin HEAD:main
