@@ -16,7 +16,7 @@ for(const query of CASES){
   try{
     await page.goto(BASE+'?earthline_m46_16786='+encodeURIComponent(query)+'_'+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
     await page.waitForSelector('#searchInput',{timeout:30000});
-    const marker=await page.evaluate(()=>document.documentElement.outerHTML.includes('EARTHLINE 16786 — SPATIALLY COMPLETE REGIONAL CONTOUR ANCHORS'));
+    const marker=await page.evaluate(()=>document.documentElement.outerHTML.includes('EARTHLINE_SPATIAL_ANCHOR_AUDIT_16786')&&document.documentElement.outerHTML.includes('supplementalAnchorAttempts16786'));
     if(!marker)throw new Error('live product does not contain EARTHLINE 16786 marker');
     await page.evaluate(q=>{
       const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
