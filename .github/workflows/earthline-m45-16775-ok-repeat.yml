@@ -1,0 +1,52 @@
+name: Earthline 16775 Oklahoma Repeat Gate
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-16775-ok-repeat.yml']
+permissions:
+  contents: read
+jobs:
+  repeat:
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        iteration: [1, 2, 3]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - name: Build exact 16775 candidate
+        shell: bash
+        run: |
+          mkdir -p /tmp/m45
+          curl -fsSL "https://earthlinedevelopment.org/?okrepeat=$RANDOM" > /tmp/m45/index.html
+          cp lab/apply-16775-dispersion-48gap.py /tmp/m45/apply.py
+          cd /tmp/m45
+          python3 apply.py
+          grep -q "EARTHLINE 16775" index.html
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Repeat Oklahoma
+        shell: bash
+        env:
+          ITERATION: ${{ matrix.iteration }}
+        run: |
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';import fs from 'fs';
+          const iteration=Number(process.env.ITERATION),body=fs.readFileSync('/tmp/m45/index.html','utf8');
+          const browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:1908,height:882}});
+          await page.route('https://earthlinedevelopment.org/**',async route=>{const req=route.request(),u=new URL(req.url());if(req.resourceType()==='document'&&(u.pathname==='/'||u.pathname==='/index.html')){const resp=await route.fetch();await route.fulfill({response:resp,body,headers:{...resp.headers(),'cache-control':'no-store'}});return;}await route.continue();});
+          await page.goto('https://earthlinedevelopment.org/?ok16775='+iteration+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.evaluate(()=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='oklahoma state';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
+          await page.waitForFunction(()=>{const p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;return Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);},null,{timeout:70000,polling:100});
+          await page.waitForTimeout(250);
+          const out=await page.evaluate(()=>{const perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{},ref=window.EARTHLINE_COVERAGE_GAP_REFINEMENT_16731||{},s=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||{},p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{},d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{},flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||{};return {build:s.build,coreMs:Number(perf.totalMs||NaN),refinementMs:Number(ref.elapsedMs||0),refinementSelected:Array.isArray(ref.selected)?ref.selected.length:null,reserved:Number(s.reserved||0),generated:Number(p.generated||0),visible:Number(d.swaleLines||0),unsafe:Number(flow.unsafeSegments??NaN)};});
+          out.iteration=iteration;console.log('OK_REPEAT '+JSON.stringify(out));await browser.close();
+          if(!(out.coreMs<=15000&&out.generated===out.visible&&out.generated>0&&out.unsafe===0))process.exit(2);
+          JS
