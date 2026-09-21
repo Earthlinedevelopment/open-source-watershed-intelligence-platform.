@@ -1,0 +1,28 @@
+name: Mantra 46 New Mexico Selection Block Audit
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mantra46-16791-nm-selection-block.mjs'
+      - '.github/workflows/earthline-m46-nm-selection-block.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  nm-block:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run New Mexico selection block audit
+        run: node tests/mantra46-16791-nm-selection-block.mjs
