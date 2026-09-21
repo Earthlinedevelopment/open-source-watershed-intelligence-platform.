@@ -1,4 +1,4 @@
-<!-- EARTHLINE 16776 — FULL-CAPACITY GLOBAL PROPORTIONAL DISPERSION. Existing Regional capacity, candidate pool, science gates, water sidecar, jurisdiction containment, ranking semantics and 48x48 local gap refinement are unchanged. The existing proportional 3x3-within-6x6 reserve now uses the full already-authoritative Regional capacity instead of stopping at an average three reserved subcells per occupied parent sector. Real screened candidates only; no jurisdiction names, synthetic corridors, relaxed science or extra capacity. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16777 — GLOBAL STATE-REGISTRY PRECEDENCE REPAIR. Registered U.S. state queries now resolve through the existing atomic 50-state identity/boundary package before legacy place presets. This removes the obsolete Vermont statewide preset bypass without adding jurisdiction-specific science, changing terrain selection, water safety, swale capacity, ranking, or exclusion rules. CANDIDATE / NOT ACCEPTED. -->\n<!-- EARTHLINE 16776 — FULL-CAPACITY GLOBAL PROPORTIONAL DISPERSION. Existing Regional capacity, candidate pool, science gates, water sidecar, jurisdiction containment, ranking semantics and 48x48 local gap refinement are unchanged. The existing proportional 3x3-within-6x6 reserve now uses the full already-authoritative Regional capacity instead of stopping at an average three reserved subcells per occupied parent sector. Real screened candidates only; no jurisdiction names, synthetic corridors, relaxed science or extra capacity. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16775 — GLOBAL PROPORTIONAL DISPERSION + 48x48 LOCAL GAP REFINEMENT. The Regional reserve budget, candidate pool, science gates, water sidecar, jurisdiction containment, ranking semantics and capacity remain unchanged; only the already-authoritative local coverage-gap DEM grid changes from 64x64 to 48x48, still approximately 3x finer per axis than the statewide grid within a 1/6-state sector. Selection distributes that same reserve budget across occupied 3x3 subregions inside each 6x6 terrain sector to prevent valid terrain opportunity from collapsing into a few internal locations. No jurisdiction names, synthetic corridors or relaxed science. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16772 — PERFORMANCE-ONLY COVERAGE-GAP REFINEMENT. Existing 16771 spatial selection, science gates, water sidecar, coverage target, jurisdiction containment, final ordering and capacity are unchanged. Only the already-authoritative local high-resolution coverage-gap DEM grid changes from 96x96 to 64x64; this remains approximately four times finer per axis than the statewide 96x96 terrain grid within a 1/6-state coverage sector. Difficult-state candidate stress passed 11/11 with unsafe=0, generated=visible, zero unresolved coverage gaps, and Regional core under 15 s. CANDIDATE / NOT ACCEPTED. -->
 <!-- MANTRA 38 — BASIN WATER DISPLAY REPAIR. Hydrologic water paths were proven clean; only the existing HydroBASINS context line is split at the already-authoritative 16584 inland-water evidence before the same basin source publishes. Basin polygon fill/science retained; no new source, layer, renderer, listener, science variable, or jurisdiction branch. -->
@@ -30147,7 +30147,7 @@ body { overflow-x:hidden!important; }
         coverageSubsectorPlan16771.push({key:key16775,candidateSubcells:reps16775.length,reservedSubcells:sel16775.length});
       }
     }
-    window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736={build:'EARTHLINE 16776',candidateBins:coverageGroups16736.size,reserved:coverageReserved16736.length,capacity:regionalCapacity16755,rows:coverageReserved16736,subsectorPlan:coverageSubsectorPlan16771,midpointOwnedBins:true,reservePerBin:'full existing Regional capacity distributed proportionally across occupied fine subcells',subsectorGrid:'3x3 inside each 6x6 terrain sector',subsectorReserve:true,proportionalReserve:true,rule:'use the full unchanged Regional capacity as the proportional reserve budget across occupied 3x3 subregions inside each 6x6 terrain sector; select real screened candidates only; science gates, water safety, final score ordering and capacity remain unchanged',at:new Date().toISOString()};
+    window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736={build:'EARTHLINE 16777',candidateBins:coverageGroups16736.size,reserved:coverageReserved16736.length,capacity:regionalCapacity16755,rows:coverageReserved16736,subsectorPlan:coverageSubsectorPlan16771,midpointOwnedBins:true,reservePerBin:'full existing Regional capacity distributed proportionally across occupied fine subcells',subsectorGrid:'3x3 inside each 6x6 terrain sector',subsectorReserve:true,proportionalReserve:true,rule:'use the full unchanged Regional capacity as the proportional reserve budget across occupied 3x3 subregions inside each 6x6 terrain sector; select real screened candidates only; science gates, water safety, final score ordering and capacity remain unchanged',at:new Date().toISOString()};
     const refinedPool16713=!focusMode?candidates.filter(c=>c&&(c.refined16710||c.refined16702||c.coverageCarry16749)):[];
     const refinedReserved16713=[];
     const coverageGroups16733=new Map();
@@ -30563,18 +30563,10 @@ body { overflow-x:hidden!important; }
     }catch(_){return null;}
   }
   async function resolveSearch(q){
-    const qk=key(q),profile16549=(typeof earthlineJurisdictionProfile16549==='function'?earthlineJurisdictionProfile16549(q):null),preset=PRESETS[qk];if(preset){const loc=Object.assign({},preset,{query:q});const s=state();if(s){s.loc=loc;s.appliedSearchText=q;}return loc;}
-    const known=knownPropertyPreset(q);
-    if(known){
-      const s=state();
-      if(typeof applyLocation==='function'){
-        const gen=s?++s.searchGen:undefined;
-        const ok=await withTimeout(applyLocation(known,null,gen,{analyzeNow:false}),45000,'known property setup');
-        if(!ok)throw new Error('known property could not be prepared');
-      }else if(s){s.loc=known;s.appliedSearchText=q;}
-      const st=state();return st&&st.loc?st.loc:known;
-    }
+    const qk=key(q),profile16549=(typeof earthlineJurisdictionProfile16549==='function'?earthlineJurisdictionProfile16549(q):null),preset=PRESETS[qk];
     const s=state();
+    /* EARTHLINE 16777 — registered U.S. states are authoritative before legacy
+       place presets. This is a routing/identity repair only; science is unchanged. */
     if(profile16549){
       /* EARTHLINE 16556 — U.S. state identity, authoritative boundary, internal
          point and Regional extent are resolved as one immutable package. Nothing
@@ -30593,7 +30585,18 @@ body { overflow-x:hidden!important; }
         precipIn:Number(loc16556.precipIn||0),atomic:true,at:new Date().toISOString()
       };
       return loc16556;
-    }else if(s&&s.loc&&key(s.appliedSearchText)===qk)return s.loc;
+    }
+    if(preset){const loc=Object.assign({},preset,{query:q});if(s){s.loc=loc;s.appliedSearchText=q;}return loc;}
+    const known=knownPropertyPreset(q);
+    if(known){
+      if(typeof applyLocation==='function'){
+        const gen=s?++s.searchGen:undefined;
+        const ok=await withTimeout(applyLocation(known,null,gen,{analyzeNow:false}),45000,'known property setup');
+        if(!ok)throw new Error('known property could not be prepared');
+      }else if(s){s.loc=known;s.appliedSearchText=q;}
+      const st=state();return st&&st.loc?st.loc:known;
+    }
+    if(s&&s.loc&&key(s.appliedSearchText)===qk)return s.loc;
     let fn=null;try{fn=typeof runSearch==='function'?runSearch:window.runSearch;}catch(_){fn=window.runSearch;}if(typeof fn!=='function')throw new Error('search controller unavailable');const ok=await withTimeout(fn({autoAnalyze:false}),30000,'location search');if(!ok)throw new Error('location search did not resolve');const st=state();if(!st||!st.loc)throw new Error('no location returned');return st.loc;
   }
   function setRasterOpacity(m,layerId,value){try{if(m&&m.getLayer&&m.getLayer(layerId))m.setPaintProperty(layerId,'raster-opacity',value);}catch(_){}}
