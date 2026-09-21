@@ -11,3 +11,5 @@ const start=Math.max(0,at-5000),end=Math.min(html.length,at+50000);
 const snippet=html.slice(start,end);
 writeFileSync('artifacts/mantra46-source/makeSwales-snippet.txt',snippet);
 console.log('EARTHLINE_M46_SOURCE '+JSON.stringify({needle,at,start,end,length:snippet.length,has16785:html.includes('EARTHLINE 16785')}));
+
+// trigger workflow
