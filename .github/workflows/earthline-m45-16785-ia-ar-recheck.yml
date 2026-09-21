@@ -1,0 +1,63 @@
+name: Earthline 16785 Iowa Arkansas Live Recheck
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-16785-ia-ar-recheck.yml']
+permissions:
+  contents: write
+jobs:
+  recheck:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Recheck live Iowa Arkansas
+        shell: bash
+        run: |
+          set +e
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Iowa|Arkansas' OUT='/tmp/ia-ar.json' node lab/validate-16785-machine.mjs
+          code=$?
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          import fs from 'fs';
+          const browser=await chromium.launch({headless:true});
+          const extra=[];
+          for(const state of ['Iowa','Arkansas']){
+            const page=await browser.newPage({viewport:{width:1800,height:832}});
+            let error=null;
+            try{
+              await page.goto('https://earthlinedevelopment.org/?recheck16785='+state+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#searchInput',{timeout:30000});
+              await page.evaluate(q=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},state);
+              await page.waitForFunction(()=>window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736?.build==='EARTHLINE 16785'&&window.EARTHLINE_STANDARD_ROOT_CAUSE_AUDIT_16784?.cellLineage?.opportunityCells>0,{timeout:70000,polling:100});
+              await page.waitForTimeout(250);
+            }catch(e){error=String(e&&e.message||e);}
+            const snap=await page.evaluate(()=>{
+              const a=window.EARTHLINE_STANDARD_ROOT_CAUSE_AUDIT_16784||{},p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{},d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{},perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{},flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||{},sp=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||{};
+              return {build:sp.build,lineage:a.cellLineage||null,generated:+p.generated||0,visible:+d.swaleLines||0,coreMs:+perf.totalMs||NaN,unsafe:+flow.unsafeSegments||0};
+            }).catch(()=>({}));
+            extra.push({state,error,...snap});
+            await page.close();
+          }
+          await browser.close();
+          const machine=JSON.parse(fs.readFileSync('/tmp/ia-ar.json','utf8'));
+          fs.writeFileSync('lab/mantra45-16785-ia-ar-recheck.json',JSON.stringify({at:new Date().toISOString(),machine,extra},null,2));
+          console.log(JSON.stringify(extra.map(r=>({state:r.state,error:r.error,build:r.build,missing:r.lineage?.opportunityNoCandidate?.length,candidate:r.lineage?.candidateCells,published:r.lineage?.publishedCells,generated:r.generated,visible:r.visible,coreMs:r.coreMs,unsafe:r.unsafe}))));
+          JS
+          exit $code
+      - name: Persist recheck
+        if: always()
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-16785-ia-ar-recheck.json || true
+          git commit -m "test: persist 16785 Iowa Arkansas live recheck [skip ci]" || true
+          git pull --rebase origin main
+          git push origin HEAD:main
