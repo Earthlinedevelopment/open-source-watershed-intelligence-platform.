@@ -1,0 +1,39 @@
+name: Earthline Apply 16791 Audit Semantics
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tools/mantra46-apply-16791-audit-semantics.py'
+      - '.github/workflows/earthline-m46-apply-16791.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-16791:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply 16791 corrected audit semantics
+        run: python tools/mantra46-apply-16791-audit-semantics.py
+      - name: Verify diagnostic-only product scope
+        run: |
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+          grep -q "EARTHLINE 16791 — CORRECTED REGIONAL AUDIT SEMANTICS" index.html
+          grep -q "candidateCoverageCellKeys16791" index.html
+          grep -q "attainableTargetCells16791" index.html
+          grep -q "parent-floor-protected" index.html
+          grep -q "EARTHLINE 16789 — SAME-PARENT COUNT-NEUTRAL FINAL SPREAD" index.html
+      - name: Commit product candidate
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "audit: deploy 16791 corrected Regional semantics"
+          git push origin HEAD:pages-live
