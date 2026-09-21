@@ -1,0 +1,120 @@
+name: Earthline Mantra45 Iowa Arkansas Dispersion Audit
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-ia-ar-dispersion.yml']
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Audit OK IA AR NE fine-grid dispersion
+        shell: bash
+        run: |
+          mkdir -p lab
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const states=['iowa','arkansas'];
+          const browser=await chromium.launch({headless:true});
+          async function run(state){
+            const page=await browser.newPage({viewport:{width:1908,height:882}});
+            await page.route('https://earthlinedevelopment.org/**',async route=>{
+              const req=route.request();
+              if(req.resourceType()!=='document'){await route.continue();return;}
+              const u=new URL(req.url());
+              if(u.pathname!=='/'&&u.pathname!=='/index.html'){await route.continue();return;}
+              const resp=await route.fetch();
+              let body=await resp.text();
+              const a1="    const jurisdictionEligibleCandidates16539=candidates.length;\n    candidates.sort((a,b)=>b.score-a.score);";
+              const i1=a1+"\n    if(!focusMode){window.EARTHLINE_M45_4_CANDIDATES={w:hy.w,h:hy.h,rows:candidates.map(c=>({x:Number(c&&c.x),y:Number(c&&c.y),score:Number(c&&c.score)||0})).filter(r=>Number.isFinite(r.x)&&Number.isFinite(r.y))};}";
+              if(!body.includes(a1))throw new Error('candidate anchor not found');
+              body=body.replace(a1,i1);
+              const a2="    const auditedCandidates=chosen.map(c=>Object.assign(c,{contourAudit16166:contourAudit16166(c)}));";
+              const i2="    if(!focusMode){window.EARTHLINE_M45_4_CHOSEN={w:hy.w,h:hy.h,rows:chosen.map(c=>({x:Number(c&&c.x),y:Number(c&&c.y),score:Number(c&&c.score)||0})).filter(r=>Number.isFinite(r.x)&&Number.isFinite(r.y))};}\n"+a2;
+              if(!body.includes(a2))throw new Error('chosen anchor not found');
+              body=body.replace(a2,i2);
+              await route.fulfill({response:resp,body});
+            });
+            await page.goto('https://earthlinedevelopment.org/?m454='+state+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#searchInput',{timeout:30000});
+            await page.evaluate(q=>{
+              const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+              i.value=q+' state';
+              i.dispatchEvent(new Event('input',{bubbles:true}));
+              i.dispatchEvent(new Event('change',{bubbles:true}));
+              b.click();
+            },state);
+            await page.waitForFunction(()=>{
+              const p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167;
+              const d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;
+              return window.EARTHLINE_M45_4_CANDIDATES?.rows?.length>0&&window.EARTHLINE_M45_4_CHOSEN?.rows?.length>0&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);
+            },null,{timeout:70000,polling:100});
+            await page.waitForTimeout(350);
+            const out=await page.evaluate(()=>{
+              const C=window.EARTHLINE_M45_4_CANDIDATES||{w:96,h:96,rows:[]};
+              const H=window.EARTHLINE_M45_4_CHOSEN||{w:C.w,h:C.h,rows:[]};
+              const R=(window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736?.rows||[]).map(r=>({x:Number(r.x),y:Number(r.y)})).filter(r=>Number.isFinite(r.x)&&Number.isFinite(r.y));
+              const w=Math.max(1,Number(C.w)||96),h=Math.max(1,Number(C.h)||96);
+              const fine=r=>({x:Math.max(0,Math.min(17,Math.floor(r.x*18/w))),y:Math.max(0,Math.min(17,Math.floor(r.y*18/h)))});
+              const pkey=r=>{const q=fine(r);return Math.floor(q.x/3)+','+Math.floor(q.y/3);};
+              const fkey=r=>{const q=fine(r);return q.x+','+q.y;};
+              const group=list=>{const m=new Map();for(const r of list){const k=pkey(r);if(!m.has(k))m.set(k,[]);m.get(k).push(r);}return m;};
+              const cg=group(C.rows),rg=group(R),hg=group(H.rows);
+              const parents=[];
+              for(const [key,cands] of cg){
+                const reserved=rg.get(key)||[],chosen=hg.get(key)||[];
+                const candCells=new Map();for(const r of cands){const k=fkey(r);candCells.set(k,(candCells.get(k)||0)+1);}
+                const resCells=new Set(reserved.map(fkey)),choCells=new Set(chosen.map(fkey));
+                parents.push({
+                  key,candidates:cands.length,preferredSubcells:candCells.size,
+                  reserved:reserved.length,reservedSubcells:resCells.size,
+                  chosen:chosen.length,chosenSubcells:choCells.size,
+                  chosenCoverage:candCells.size?choCells.size/candCells.size:null,
+                  missing:[...candCells.entries()].filter(([k])=>!choCells.has(k)).map(([subcell,candidates])=>({subcell,candidates})).sort((a,b)=>b.candidates-a.candidates)
+                });
+              }
+              parents.sort((a,b)=>(a.chosenCoverage??1)-(b.chosenCoverage??1)||b.candidates-a.candidates);
+              const candFine=new Set(C.rows.map(fkey)),chosenFine=new Set(H.rows.map(fkey));
+              return {
+                spatialBuild:window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736?.build||null,
+                candidates:C.rows.length,chosen:H.rows.length,
+                fineCandidateCells:candFine.size,fineChosenCells:chosenFine.size,
+                fineCoverage:candFine.size?chosenFine.size/candFine.size:null,
+                generated:Number(window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated||0),
+                visible:Number((window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020)?.swaleLines||0),
+                coreMs:Number(window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.totalMs||NaN),
+                refinement:window.EARTHLINE_COVERAGE_GAP_REFINEMENT_16731||null,
+                coverage:window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731||null,
+                worstParents:parents.slice(0,12),
+                parents
+              };
+            });
+            await page.close();
+            return {state,...out};
+          }
+          const rows=[];
+          for(const s of states)rows.push(await run(s));
+          await browser.close();
+          const out={at:new Date().toISOString(),rows};
+          fs.writeFileSync('lab/mantra45-ia-ar-dispersion-16777.json',JSON.stringify(out,null,2));
+          console.log(JSON.stringify(rows.map(r=>({state:r.state,candidates:r.candidates,chosen:r.chosen,fineCandidateCells:r.fineCandidateCells,fineChosenCells:r.fineChosenCells,fineCoverage:r.fineCoverage,generated:r.generated,coreMs:r.coreMs,worst:r.worstParents.slice(0,5)}))));
+          JS
+      - name: Persist audit
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-ia-ar-dispersion-16777.json
+          git commit -m "diag: persist Mantra45 Iowa Arkansas 16777 dispersion evidence [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
