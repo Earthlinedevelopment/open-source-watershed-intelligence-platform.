@@ -1,0 +1,92 @@
+name: Earthline 16776 Vermont Publication Mismatch Audit
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-vt-publication-mismatch.yml']
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Classify generated versus visible Vermont corridors
+        shell: bash
+        run: |
+          mkdir -p lab
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1800,height:832}});
+          await page.goto('https://earthlinedevelopment.org/?vtpub='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.evaluate(()=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='vermont state';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
+          await page.waitForFunction(()=>window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated>0,null,{timeout:70000,polling:100});
+          await page.waitForTimeout(500);
+          const out=await page.evaluate(()=>{
+            const m=window.map||window.earthlineMap||null;
+            const fs=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.swales?.features||[];
+            const rows=fs.map((f,i)=>{
+              const c=f?.geometry?.coordinates||[];
+              let finite=0,distinct=0,screenLength=0,geoLength=0;
+              let prev=null,prevP=null;
+              const keys=new Set();
+              for(const p of c){
+                const x=Number(p?.[0]),y=Number(p?.[1]);
+                if(Number.isFinite(x)&&Number.isFinite(y)){
+                  finite++; keys.add(x.toFixed(8)+','+y.toFixed(8));
+                  if(prev)geoLength+=Math.hypot(x-prev[0],y-prev[1]);
+                  prev=[x,y];
+                  try{
+                    const sp=m&&m.project?m.project([x,y]):null;
+                    if(sp&&Number.isFinite(sp.x)&&Number.isFinite(sp.y)){
+                      if(prevP)screenLength+=Math.hypot(sp.x-prevP.x,sp.y-prevP.y);
+                      prevP=sp;
+                    }
+                  }catch(_){}
+                }
+              }
+              distinct=keys.size;
+              return {i,type:f?.geometry?.type||null,coords:c.length,finite,distinct,screenLength,geoLength,grade:f?.properties?.grade||null,score:Number(f?.properties?.score||0)};
+            });
+            const categories={
+              total:rows.length,
+              nonLine:rows.filter(r=>r.type!=='LineString').length,
+              lt2coords:rows.filter(r=>r.coords<2).length,
+              lt2distinct:rows.filter(r=>r.distinct<2).length,
+              screenLt01:rows.filter(r=>r.screenLength<0.1).length,
+              screenLt1:rows.filter(r=>r.screenLength<1).length,
+              screenLt2:rows.filter(r=>r.screenLength<2).length,
+              screenLt5:rows.filter(r=>r.screenLength<5).length
+            };
+            return {
+              at:new Date().toISOString(),
+              publication:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,
+              display:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null,
+              performance:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,
+              categories,
+              shortRows:rows.filter(r=>r.type!=='LineString'||r.coords<2||r.distinct<2||r.screenLength<5),
+              rows
+            };
+          });
+          fs.writeFileSync('lab/mantra45-vt-publication-mismatch.json',JSON.stringify(out,null,2));
+          console.log(JSON.stringify({publication:out.publication,display:out.display,categories:out.categories,shortRows:out.shortRows}));
+          await browser.close();
+          JS
+      - name: Persist evidence
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-vt-publication-mismatch.json
+          git commit -m "diag: persist Vermont publication mismatch evidence [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
