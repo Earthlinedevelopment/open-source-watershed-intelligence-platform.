@@ -18,7 +18,7 @@ for(const query of STATES){
   try{
     await page.goto(BASE+'?earthline_m46_50='+encodeURIComponent(query)+'_'+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
     await page.waitForSelector('#searchInput',{timeout:30000});
-    const marker=await page.evaluate(()=>document.documentElement.outerHTML.includes('EARTHLINE 16787 — EFFICIENT TERRAIN-GAP RECOVERY'));
+    const marker=await page.evaluate(()=>{const h=document.documentElement.outerHTML;return h.includes('loadDEM(tile16780.b,32,32,5500')&&h.includes('refinementTileBudget16782=Math.min(24,Math.max(12,Math.ceil(gapsBefore16780.length/2)))');});
     if(!marker)throw new Error('live product does not contain EARTHLINE 16787 marker');
     await page.evaluate(q=>{
       const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
