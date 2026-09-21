@@ -11,16 +11,12 @@ repls=[
 ("const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/4)));",
  "const refinementTileBudget16782=Math.min(24,Math.max(12,Math.ceil(gapsBefore16780.length/2)));"),
 ("const d16780=await loadDEM(tile16780.b,48,48,5500,'fine opportunity refinement '+tile16780.id);",
- "const d16780=await loadDEM(tile16780.b,32,32,5500,'fine opportunity refinement '+tile16780.id);"),
-("window.EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16781={build:'EARTHLINE 16782',grid:'12x12',tileBudget:refinementTileBudget16782,selected:",
- "window.EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16781={build:'EARTHLINE 16787',grid:'12x12',localDEM:'32x32',tileBudget:refinementTileBudget16782,selected:"),
-("window.EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16781={build:'EARTHLINE 16782',grid:'12x12',tileBudget:refinementTileBudget16782,selected:[],",
- "window.EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16781={build:'EARTHLINE 16787',grid:'12x12',localDEM:'32x32',tileBudget:refinementTileBudget16782,selected:[],")
+ "const d16780=await loadDEM(tile16780.b,32,32,5500,'fine opportunity refinement '+tile16780.id);")
 ]
 for old,new in repls:
     n=s.count(old)
     if n!=1:
-        raise SystemExit(f"expected exactly one occurrence for {old[:80]!r}; found {n}")
+        raise SystemExit(f"expected exactly one occurrence for {old[:90]!r}; found {n}")
     s=s.replace(old,new,1)
 
 p.write_text(s,encoding="utf-8")
