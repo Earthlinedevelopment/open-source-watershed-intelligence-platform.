@@ -1,4 +1,5 @@
 <!-- EARTHLINE 16787 — EFFICIENT TERRAIN-GAP RECOVERY. Remaining broad Regional voids were traced to opportunity-rich 12x12 cells whose coarse contour field did not produce enough local geometry. Preserve all existing science/safety/capacity owners; expand the bounded local terrain refinement only where measured gaps exist, using a lighter 32x32 local DEM so more real failed cells can be resolved inside the 15 s ceiling. No jurisdiction names, synthetic corridors, relaxed mapped-water safety, slope-rule change, selection-capacity change, or Property change. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16792 — IOWA/ARKANSAS REGIONAL RECOVERY. Two evidence-backed global repairs only: (1) cached Regional state packages rebind the authoritative LAST_ATOMIC package on every cache hit, preventing stale prior-state identity during repeated state switching; (2) Regional candidate generation always runs the existing relaxed contour pass, constrained to the existing <=4% low-relief opportunity band, so statewide high-relief candidate abundance cannot suppress real low-relief candidates elsewhere. Property behavior, mapped-water safety, jurisdiction containment, ranking, capacity and renderers are unchanged. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16791 — CORRECTED REGIONAL AUDIT SEMANTICS. Diagnostic lineage now distinguishes candidate corridor footprint coverage from candidate ownership, and selection compares against the maximum attainable 12x12 spread under the existing 6x6 parent-floor guard. No science, thresholds, swale geometry, water safety, capacity, ranking, containment, renderer, lifecycle or Property behavior changed. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16789 — SAME-PARENT COUNT-NEUTRAL FINAL SPREAD. Regional final spread may replace a duplicate 12x12-cell corridor from a 6x6 parent holding exactly three corridors only when the missing replacement cell is in that same parent, so the parent's corridor count remains exactly three. Cross-parent donor protection remains unchanged. No science, water safety, capacity, ranking, containment, renderer or Property behavior changed. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16788 — PRIORITIZED EFFICIENT TERRAIN-GAP RECOVERY. Regional only: preserve 16787's real 32x32 local terrain refinement, but restore a bounded 8–16 tile budget and prioritize opportunity-rich cells lacking coarse contour geometry before already-contoured gaps. This retains the shared slope/water/aquifer/exclusion science, jurisdiction containment, mapped-water safety, ranking and final capacity while recovering performance margin. Property unchanged. CANDIDATE / NOT ACCEPTED. -->
@@ -29996,7 +29997,7 @@ body { overflow-x:hidden!important; }
       const stride=Math.max(1,Math.floor(segment.length/22));let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null;
       for(let k=1;k<segment.length-1;k+=stride){
         const g=llGrid(hy,segment[k]),x=Math.max(1,Math.min(hy.w-2,Math.round(g.x))),y=Math.max(1,Math.min(hy.h-2,Math.round(g.y))),i=y*hy.w+x;
-        const slope=hy.slope[i],acc=hy.acc[i],minSlope=relaxed?.05:.20,maxSlope=relaxed?18:13.5;
+        const slope=hy.slope[i],acc=hy.acc[i],minSlope=relaxed?.05:.20,maxSlope=relaxed?(focusMode?18:4):13.5;
         if(!Number.isFinite(slope)||slope<minSlope||slope>maxSlope||acc>=channel)continue;
         valid++;sumSlope+=slope;sumAcc+=acc;maxAcc=Math.max(maxAcc,acc);if(!anchor)anchor={x,y};
       }
@@ -30084,7 +30085,7 @@ body { overflow-x:hidden!important; }
     }
     if(!focusMode&&Array.isArray(supplementalCandidates16702)&&supplementalCandidates16702.length)candidates.push(...supplementalCandidates16702);
     const preferredEligibleCount16539=await jurisdictionEligibleCount16539(candidates);
-    if(preferredEligibleCount16539<36){
+    if(!focusMode||preferredEligibleCount16539<36){
       for(const f of lines){const coords=f.geometry.coordinates;if(coords.length<12)continue;for(const frac of [.28,.56,.82]){const c=sampleSegment(coords,Math.max(3,Math.min(coords.length-4,Math.round((coords.length-1)*frac))),true);if(c)candidates.push(c);}}
     }
     const candidatesBeforeJurisdiction16539=candidates.length;
@@ -31068,7 +31069,7 @@ body { overflow-x:hidden!important; }
   const earthlineAtomicStatePackageCache16556=new Map();
   async function earthlineResolveAtomicUSStatePackage16556(profile16556){
     if(!profile16556||!profile16556.id)throw new Error('U.S. state profile is unavailable');
-    if(earthlineAtomicStatePackageCache16556.has(profile16556.id))return earthlineAtomicStatePackageCache16556.get(profile16556.id);
+    if(earthlineAtomicStatePackageCache16556.has(profile16556.id)){const cached16556=earthlineAtomicStatePackageCache16556.get(profile16556.id);window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556=cached16556;return cached16556;}
     const provisional16556={name:profile16556.query,countryCode:'us',placeType:'region',lat:NaN,lng:NaN};
     const boundary16556=await earthlineResolveJurisdictionBoundary16539(profile16556.query,provisional16556,null,earthlineBoundaryCapabilities16539.usState);
     if(!boundary16556||!boundary16556.geometry)throw new Error('atomic state package did not resolve authoritative geometry');
