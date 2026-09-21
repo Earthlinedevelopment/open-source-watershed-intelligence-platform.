@@ -1,0 +1,55 @@
+name: Earthline 16776 Live Four-State Visual
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-16776-live-four.yml']
+permissions:
+  contents: read
+jobs:
+  visual:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Capture live 16776
+        shell: bash
+        run: |
+          mkdir -p screens16776
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const states=['oklahoma','iowa','arkansas','nebraska'];
+          const browser=await chromium.launch({headless:true});
+          const rows=[];
+          for(const state of states){
+            const page=await browser.newPage({viewport:{width:1800,height:832},deviceScaleFactor:1});
+            let error=null;
+            try{
+              await page.goto('https://earthlinedevelopment.org/?live16776='+state+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#searchInput',{timeout:30000});
+              await page.evaluate(q=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value=q+' state';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},state);
+              await page.waitForFunction(()=>{const s=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736,p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;return s?.build==='EARTHLINE 16776'&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);},null,{timeout:70000,polling:100});
+              await page.waitForTimeout(750);
+            }catch(e){error=String(e&&e.message||e);}
+            const snap=await page.evaluate(()=>{const s=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||{},p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{},d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{},perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{},flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||{},land=window.EARTHLINE_LAND_VALIDITY_16584||{};return {build:s.build,reserved:Number(s.reserved||0),capacity:Number(s.capacity||0),generated:Number(p.generated||0),visible:Number(d.swaleLines||0),coreMs:Number(perf.totalMs||NaN),unsafe:Number(flow.unsafeSegments??NaN),waterReady:Array.isArray(land.waterParts)};}).catch(()=>({}));
+            rows.push({state,error,...snap});
+            await page.screenshot({path:'screens16776/'+state+'.png',fullPage:false});
+            await page.close();
+          }
+          await browser.close();
+          fs.writeFileSync('screens16776/metrics.json',JSON.stringify(rows,null,2));
+          console.log('LIVE16776 '+JSON.stringify(rows));
+          if(rows.some(r=>r.error||r.build!=='EARTHLINE 16776'||r.generated!==r.visible||r.generated<=0||r.unsafe!==0||!r.waterReady||!Number.isFinite(r.coreMs)||r.coreMs>15000))process.exit(2);
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-16776-four-state-visual
+          path: screens16776/
+          if-no-files-found: error
