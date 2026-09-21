@@ -36,7 +36,7 @@ jobs:
           ok=0
           for i in $(seq 1 15); do
             body="$(curl -fsSL "https://earthlinedevelopment.org/?m45live16772=$RANDOM-$i" || true)"
-            if printf '%s' "$body" | grep -q "EARTHLINE 16772"; then ok=1; break; fi
+            if grep -q "EARTHLINE 16772" <<<"$body"; then ok=1; break; fi
             sleep 2
           done
           test "$ok" = "1"
@@ -128,3 +128,5 @@ jobs:
 # trigger regional50
 
 # trigger after live-origin 16772 synchronization
+
+# trigger after pipefail marker fix
