@@ -18,6 +18,7 @@ if a<0 or b<0:
     raise SystemExit("16774 selection anchors missing")
 
 replacement=r'''    const regionalCapacity16755=focusMode?80:Math.min(120,Math.max(80,coverageGroups16736.size*4));
+    let gapGroups16774=0,heldForGapGroups16774=0;
     if(!focusMode){
       const subgroups16774=new Map(),selectedSubs16774=new Map();let totalSubs16774=0;
       for(const [key16774,list16774] of coverageGroups16736){
@@ -42,8 +43,8 @@ replacement=r'''    const regionalCapacity16755=focusMode?80:Math.min(120,Math.m
         reps16774.sort((a16774,b16774)=>(Number(b16774.candidate.score)||0)-(Number(a16774.candidate.score)||0));
         subgroups16774.set(key16774,reps16774);selectedSubs16774.set(key16774,[]);totalSubs16774+=reps16774.length;
       }
-      const gapGroups16774=new Set(candidates.filter(c16774=>c16774&&c16774.coverageGap16731&&c16774.tile16731).map(c16774=>String(c16774.tile16731))).size;
-      const heldForGapGroups16774=Math.min(regionalCapacity16755,gapGroups16774*2);
+      gapGroups16774=new Set(candidates.filter(c16774=>c16774&&c16774.coverageGap16731&&c16774.tile16731).map(c16774=>String(c16774.tile16731))).size;
+      heldForGapGroups16774=Math.min(regionalCapacity16755,gapGroups16774*2);
       const reserveBudget16774=Math.min(Math.max(0,regionalCapacity16755-heldForGapGroups16774),totalSubs16774,coverageGroups16736.size*3);
       const chooseNext16774=(key16774)=>{
         const reps16774=subgroups16774.get(key16774)||[],sel16774=selectedSubs16774.get(key16774)||[];
