@@ -1,3 +1,4 @@
+<!-- EARTHLINE 16787 — EFFICIENT TERRAIN-GAP RECOVERY. Remaining broad Regional voids were traced to opportunity-rich 12x12 cells whose coarse contour field did not produce enough local geometry. Preserve all existing science/safety/capacity owners; expand the bounded local terrain refinement only where measured gaps exist, using a lighter 32x32 local DEM so more real failed cells can be resolved inside the 15 s ceiling. No jurisdiction names, synthetic corridors, relaxed mapped-water safety, slope-rule change, selection-capacity change, or Property change. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16784 — STANDARDIZED ROOT-CAUSE AUDIT. Diagnostic-only fixed causal audit ladder with O→C→S→P cell lineage, normalized operational probability ranking, first-failed-stage repair lock, and identical tests across jurisdictions. No science, thresholds, capacity, source, water safety, renderer or lifecycle behavior changed. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16783 — FINAL PUBLISHED 12x12 SPREAD. After ordinary Regional fill, duplicate-cell selections are reallocated count-neutrally into empty 12x12 cells that already contain real screened candidates; existing science, water safety, jurisdiction containment and capacity remain unchanged. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16782 — ADAPTIVE CLUSTER-AWARE FINE-CELL REFINEMENT. The existing 16781 cluster-aware local-terrain pass keeps the same science, 48x48 local DEM resolution, jurisdiction containment, water sidecar, ranking and final Regional corridor capacity. Only its bounded refinement tile budget scales with the measured number of unresolved opportunity-rich 12x12 cells: 8 minimum, up to 16 maximum. Real terrain-derived corridors only; no jurisdiction names, synthetic corridors, relaxed science or added publication capacity. CANDIDATE / NOT ACCEPTED. -->
@@ -31904,7 +31905,7 @@ body { overflow-x:hidden!important; }
       for(const row16780 of gapsBefore16780){
         row16780.cluster16781=gapsBefore16780.filter(o16781=>Math.hypot(o16781.bx-row16780.bx,o16781.by-row16780.by)<=1.5).length;
       }
-      const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/4)));
+      const refinementTileBudget16782=Math.min(24,Math.max(12,Math.ceil(gapsBefore16780.length/2)));
       while(selected16780.length<refinementTileBudget16782){
         let best16781=null,bestMetric16781=-Infinity;
         for(const row16780 of gapsBefore16780){
@@ -31932,7 +31933,7 @@ body { overflow-x:hidden!important; }
             return {id:'fine-opportunity-'+(i16780+1),row:row16780,b:[lon16780(x016780),lat16780(y116780),lon16780(x116780),lat16780(y016780)]};
           });
           const settled16780=await Promise.allSettled(defs16780.map(async tile16780=>{
-            const d16780=await loadDEM(tile16780.b,48,48,5500,'fine opportunity refinement '+tile16780.id);
+            const d16780=await loadDEM(tile16780.b,32,32,5500,'fine opportunity refinement '+tile16780.id);
             const g16780=earthlineLandValidityMask16584(d16780,landValidity16584);window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16780;
             const h16780=await hydrology(d16780,g16780.mask);h16780.outsideLandMask16632=g16780.outsideLandMask16632||null;h16780.inlandWaterMask16632=g16780.inlandWaterMask16632||null;
             const ch16780=percentile(h16780.acc,.972),e16780=[];
