@@ -30049,53 +30049,104 @@ body { overflow-x:hidden!important; }
     const jurisdictionEligibleCandidates16539=candidates.length;
     candidates.sort((a,b)=>b.score-a.score);
     const chosen=[],primarySpacing=Math.max(3,Math.round(hy.w/31));
-    /* EARTHLINE 16736 — selection may not erase whole terrain sectors that have
-       jurisdiction-screened valid candidates. Reserve the best candidate in each
-       occupied 6x6 candidate bin, then let the existing score/spacing owner fill
-       remaining capacity. Final A/B/C rank still sorts strictly by score. */
-    const coverageGroups16736=new Map(),coverageReserved16736=[];
+    /* EARTHLINE 16770 — terrain-rich Regional sectors must preserve spatial
+       opportunity inside the existing authoritative selection owner. Candidates
+       remain science-gated and score-ranked; coverage reservation now operates
+       across occupied 3x3 subcells inside each 6x6 sector instead of accepting
+       three candidates that may cluster in one corner. */
+    const coverageGroups16736=new Map(),coverageReserved16736=[],coveragePlans16770=[];
+    let occupiedSubcells16770=0;
     if(!focusMode){
       for(const c16736 of candidates){
         if(!c16736)continue;
         const seg16736=Array.isArray(c16736.segment)?c16736.segment:[],mid16736=seg16736[Math.floor((seg16736.length-1)/2)]||null;
         const mg16736=mid16736?llGrid(hy,mid16736):null;
-        let gx16767=null,gy16767=null,binBasis16767='clipped-midpoint';
+        let gx16770=null,gy16770=null,binBasis16770='clipped-midpoint';
         if(mg16736&&Number.isFinite(Number(mg16736.x))&&Number.isFinite(Number(mg16736.y))){
-          gx16767=Number(mg16736.x);gy16767=Number(mg16736.y);
+          gx16770=Number(mg16736.x);gy16770=Number(mg16736.y);
         }else if(Number.isFinite(Number(c16736.x))&&Number.isFinite(Number(c16736.y))){
-          gx16767=Number(c16736.x);gy16767=Number(c16736.y);binBasis16767='source-fallback';
+          gx16770=Number(c16736.x);gy16770=Number(c16736.y);binBasis16770='source-fallback';
         }
-        if(!Number.isFinite(gx16767)||!Number.isFinite(gy16767))continue;
-        const bx16736=Math.max(0,Math.min(5,Math.floor(gx16767*6/Math.max(1,hy.w))));
-        const by16736=Math.max(0,Math.min(5,Math.floor(gy16767*6/Math.max(1,hy.h))));
-        const key16736=bx16736+','+by16736;
+        if(!Number.isFinite(gx16770)||!Number.isFinite(gy16770))continue;
+        const bx16736=Math.max(0,Math.min(5,Math.floor(gx16770*6/Math.max(1,hy.w))));
+        const by16736=Math.max(0,Math.min(5,Math.floor(gy16770*6/Math.max(1,hy.h))));
+        const sx16770=Math.max(0,Math.min(17,Math.floor(gx16770*18/Math.max(1,hy.w))));
+        const sy16770=Math.max(0,Math.min(17,Math.floor(gy16770*18/Math.max(1,hy.h))));
+        const key16736=bx16736+','+by16736,subKey16770=sx16770+','+sy16770;
         let list16736=coverageGroups16736.get(key16736);
         if(!list16736)coverageGroups16736.set(key16736,list16736=[]);
-        list16736.push(c16736);c16736.coverageBinBasis16767=binBasis16767;
+        list16736.push(c16736);
+        c16736.coverageBinBasis16767=binBasis16770;
+        c16736.coverageSubcell16770=subKey16770;
       }
       for(const [key16736,list16736] of coverageGroups16736){
         list16736.sort((a16736,b16736)=>(Number(b16736.score)||0)-(Number(a16736.score)||0));
-        const reserveTarget16767=Math.min(3,list16736.length),reserve16767=[];
-        for(const c16767 of list16736){
-          if(reserve16767.length>=reserveTarget16767)break;
-          if(!reserve16767.length||reserve16767.every(p16767=>Math.hypot(Number(c16767.x)-Number(p16767.x),Number(c16767.y)-Number(p16767.y))>=2))reserve16767.push(c16767);
+        const subMap16770=new Map();
+        for(const c16770 of list16736){
+          const sk16770=String(c16770.coverageSubcell16770||'');
+          if(!sk16770)continue;
+          const prev16770=subMap16770.get(sk16770);
+          if(!prev16770||(Number(c16770.score)||0)>(Number(prev16770.score)||0))subMap16770.set(sk16770,c16770);
         }
-        if(reserve16767.length<reserveTarget16767){
-          for(const c16767 of list16736){
-            if(reserve16767.length>=reserveTarget16767)break;
-            if(!reserve16767.includes(c16767))reserve16767.push(c16767);
+        const remaining16770=Array.from(subMap16770.values()).sort((a16770,b16770)=>(Number(b16770.score)||0)-(Number(a16770.score)||0));
+        const ordered16770=[];
+        while(remaining16770.length){
+          if(!ordered16770.length){ordered16770.push(remaining16770.shift());continue;}
+          let bestI16770=0,bestMetric16770=-Infinity;
+          for(let i16770=0;i16770<remaining16770.length;i16770++){
+            const c16770=remaining16770[i16770];
+            const minD16770=Math.min(...ordered16770.map(p16770=>Math.hypot(Number(c16770.x)-Number(p16770.x),Number(c16770.y)-Number(p16770.y))));
+            const metric16770=minD16770*100+(Number(c16770.score)||0);
+            if(metric16770>bestMetric16770){bestMetric16770=metric16770;bestI16770=i16770;}
           }
+          ordered16770.push(remaining16770.splice(bestI16770,1)[0]);
         }
-        for(const c16736 of reserve16767){
-          if(c16736&&!chosen.includes(c16736)){
-            chosen.push(c16736);
-            coverageReserved16736.push({key:key16736,x:c16736.x,y:c16736.y,score:Number(c16736.score)||0,refined:!!(c16736.refined16710||c16736.refined16702),coverageGap:!!c16736.coverageGap16731,densityReserve16767:true,binBasis:c16736.coverageBinBasis16767||'clipped-midpoint'});
-          }
+        const occupied16770=ordered16770.length;
+        occupiedSubcells16770+=occupied16770;
+        const target16770=Math.min(5,occupied16770,Math.max(1,Math.ceil(occupied16770*.67)));
+        coveragePlans16770.push({key:key16736,list:list16736,ordered:ordered16770,occupied:occupied16770,target:target16770,allocated:0});
+      }
+    }
+    const regionalCapacity16755=focusMode?80:Math.min(120,Math.max(80,coverageGroups16736.size*4,Math.ceil(occupiedSubcells16770*.80)));
+    const refinedPreview16770=!focusMode?candidates.filter(c16770=>c16770&&(c16770.refined16710||c16770.refined16702||c16770.coverageCarry16749)):[];
+    const refineGapPreview16770=new Map();
+    for(const c16770 of refinedPreview16770){
+      if(!c16770||!c16770.coverageGap16731||!c16770.tile16731)continue;
+      const k16770=String(c16770.tile16731);let a16770=refineGapPreview16770.get(k16770);
+      if(!a16770)refineGapPreview16770.set(k16770,a16770=[]);a16770.push(c16770);
+    }
+    let guaranteedRefined16770=0;
+    for(const a16770 of refineGapPreview16770.values())guaranteedRefined16770+=Math.min(2,a16770.length);
+    const intendedRefined16770=Math.min(refineGapPreview16770.size?24:18,refinedPreview16770.length);
+    const protectedRefinedBudget16770=Math.min(refinedPreview16770.length,Math.max(guaranteedRefined16770,intendedRefined16770));
+    const reserveBudget16770=focusMode?0:Math.max(coverageGroups16736.size,regionalCapacity16755-protectedRefinedBudget16770);
+    if(!focusMode){
+      for(let round16770=0;round16770<5&&coverageReserved16736.length<reserveBudget16770;round16770++){
+        const roundPlans16770=coveragePlans16770.filter(p16770=>p16770.target>round16770&&p16770.ordered[round16770]).sort((a16770,b16770)=>
+          (b16770.occupied-a16770.occupied)||(b16770.list.length-a16770.list.length)||((Number(b16770.ordered[round16770].score)||0)-(Number(a16770.ordered[round16770].score)||0))
+        );
+        for(const p16770 of roundPlans16770){
+          if(coverageReserved16736.length>=reserveBudget16770)break;
+          const c16770=p16770.ordered[round16770];
+          if(!c16770||chosen.includes(c16770))continue;
+          chosen.push(c16770);p16770.allocated++;
+          coverageReserved16736.push({
+            key:p16770.key,x:c16770.x,y:c16770.y,score:Number(c16770.score)||0,
+            refined:!!(c16770.refined16710||c16770.refined16702),coverageGap:!!c16770.coverageGap16731,
+            densityReserve16767:true,subcellReserve16770:true,subcell:String(c16770.coverageSubcell16770||''),
+            reserveRound:round16770+1,binBasis:c16770.coverageBinBasis16767||'clipped-midpoint'
+          });
         }
       }
     }
-    const regionalCapacity16755=focusMode?80:Math.min(120,Math.max(80,coverageGroups16736.size*4));
-    window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736={build:'EARTHLINE 16767',candidateBins:coverageGroups16736.size,reserved:coverageReserved16736.length,capacity:regionalCapacity16755,rows:coverageReserved16736,midpointOwnedBins:true,reservePerBin:3,densityReserve:true,rule:'group candidates by the actual clipped corridor midpoint used by the coverage audit, reserve up to three spatially distinct valid terrain-derived candidates per occupied 6x6 sector, then let the existing score/spacing owner fill remaining capacity; science gates and final score ordering are unchanged',at:new Date().toISOString()};
+    window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736={
+      build:'EARTHLINE 16770',candidateBins:coverageGroups16736.size,occupiedSubcells16770,
+      reserved:coverageReserved16736.length,reservedSubcells16770:new Set(coverageReserved16736.map(r16770=>r16770.key+'|'+r16770.subcell)).size,
+      capacity:regionalCapacity16755,reserveBudget16770,protectedRefinedBudget16770,rows:coverageReserved16736,
+      midpointOwnedBins:true,subcellGrid:'3x3 inside each 6x6 sector',reservePerBinMax:5,terrainProportional:true,densityReserve:true,
+      rule:'within the existing Regional selection owner, group valid terrain-derived candidates by clipped corridor midpoint, preserve geographically separated occupied 3x3 subcells inside each 6x6 sector in terrain-proportional rounds, protect refined gap capacity, then let the existing score/spacing owner fill remaining capacity; exclusions, science gates and final score ordering are unchanged',
+      at:new Date().toISOString()
+    };
     const refinedPool16713=!focusMode?candidates.filter(c=>c&&(c.refined16710||c.refined16702||c.coverageCarry16749)):[];
     const refinedReserved16713=[];
     const coverageGroups16733=new Map();
