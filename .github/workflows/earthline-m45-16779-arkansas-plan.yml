@@ -1,0 +1,58 @@
+name: Earthline 16779 Arkansas Production Plan Diagnostic
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-16779-arkansas-plan.yml']
+permissions:
+  contents: write
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Arkansas production plan
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1800,height:832}});
+          await page.goto('https://earthlinedevelopment.org/?ar16779='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.evaluate(()=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='Arkansas';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
+          await page.waitForFunction(()=>{const s=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736,p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;return s?.build==='EARTHLINE 16779'&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);},null,{timeout:70000,polling:100});
+          await page.waitForTimeout(400);
+          const out=await page.evaluate(()=>{
+            const clone=v=>JSON.parse(JSON.stringify(v??null));
+            return {
+              spatial:clone(window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736),
+              fine:clone(window.EARTHLINE_FINE_DISPERSION_REBALANCE_16778),
+              coverage:clone(window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731),
+              gap:clone(window.EARTHLINE_COVERAGE_GAP_REFINEMENT_16731),
+              late:clone(window.EARTHLINE_LATE_GAP_REFINEMENT_16741),
+              terrain:clone(window.EARTHLINE_TERRAIN_GAP_REFINEMENT_16730),
+              publication:clone(window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167),
+              display:clone(window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020),
+              performance:clone(window.EARTHLINE_REGIONAL_PERFORMANCE_16191)
+            };
+          });
+          await browser.close();
+          fs.writeFileSync('lab/mantra45-16779-arkansas-plan.json',JSON.stringify(out,null,2));
+          console.log(JSON.stringify({plan:out.spatial?.subsectorPlan,fine:out.fine,coverage:out.coverage?.unresolved,gap:{selected:out.gap?.selected,added:out.gap?.added,highRes:out.gap?.highResCounts16735},late:out.late,terrain:out.terrain,generated:out.publication?.generated,visible:out.display?.swaleLines,ms:out.performance?.totalMs}));
+          JS
+      - name: Persist
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-16779-arkansas-plan.json
+          git commit -m "diag: persist 16779 Arkansas production plan [skip ci]" || true
+          git pull --rebase origin main
+          git push origin HEAD:main
