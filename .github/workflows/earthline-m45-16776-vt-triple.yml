@@ -1,0 +1,90 @@
+name: Earthline 16776 Vermont Isolated Triple Gate
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-16776-vt-triple.yml']
+permissions:
+  contents: write
+jobs:
+  vt:
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        iteration: [1,2,3]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Isolated Vermont live 16776
+        shell: bash
+        env:
+          ITERATION: ${{ matrix.iteration }}
+        run: |
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright'; import fs from 'fs';
+          const iteration=Number(process.env.ITERATION);
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1800,height:1000}});
+          const started=Date.now();let error=null;
+          try{
+            await page.goto('https://earthlinedevelopment.org/?vt16776='+iteration+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#searchInput',{timeout:30000});
+            await page.evaluate(()=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='Vermont';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
+            await page.waitForFunction(()=>{
+              const s=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736,p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020,pkg=window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556;
+              return s?.build==='EARTHLINE 16776'&&String(pkg?.identity?.name||'').toLowerCase()==='vermont'&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);
+            },null,{timeout:70000,polling:100});
+            await page.waitForTimeout(300);
+          }catch(e){error=String(e&&e.message||e);}
+          const out=await page.evaluate(()=>{const s=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||{},p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{},d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{},perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{},flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||{},land=window.EARTHLINE_LAND_VALIDITY_16584||{},pkg=window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||{};return {build:s.build,identity:String(pkg?.identity?.name||''),generated:Number(p.generated||0),visible:Number(d.swaleLines||0),coreMs:Number(perf.totalMs??NaN),unsafe:Number(flow.unsafeSegments??NaN),waterReady:Array.isArray(land.waterParts)};});
+          out.iteration=iteration;out.error=error;out.elapsedMs=Date.now()-started;
+          fs.writeFileSync('vt-'+iteration+'.json',JSON.stringify(out,null,2));
+          console.log('VT16776 '+JSON.stringify(out));await page.close();await browser.close();
+          if(error||out.build!=='EARTHLINE 16776'||out.identity.toLowerCase()!=='vermont'||out.generated!==out.visible||out.generated<=0||out.coreMs>15000||out.unsafe!==0||!out.waterReady)process.exit(2);
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: "vt16776-${{ matrix.iteration }}"
+          path: "vt-${{ matrix.iteration }}.json"
+
+  aggregate:
+    needs: vt
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main, fetch-depth: 0}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: vt16776-*
+          path: /tmp/vt16776
+          merge-multiple: true
+      - name: Aggregate Vermont
+        shell: bash
+        run: |
+          mkdir -p lab
+          python3 - <<'PY'
+          import json,glob,datetime
+          rows=[json.load(open(p)) for p in sorted(glob.glob('/tmp/vt16776/vt-*.json'))]
+          ok=len(rows)==3 and all(not r.get('error') and r.get('build')=='EARTHLINE 16776' and str(r.get('identity','')).lower()=='vermont' and r.get('generated')==r.get('visible') and r.get('generated',0)>0 and r.get('coreMs',999999)<=15000 and r.get('unsafe')==0 and r.get('waterReady') for r in rows)
+          out={'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'rows':rows,'pass':ok}
+          json.dump(out,open('lab/mantra45-16776-vermont-triple.json','w'),indent=2)
+          print(json.dumps(out))
+          PY
+      - name: Persist Vermont triple
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-16776-vermont-triple.json
+          git commit -m "test: persist 16776 Vermont isolated triple [skip ci]" || true
+          git pull --rebase origin main
+          git push origin HEAD:main
