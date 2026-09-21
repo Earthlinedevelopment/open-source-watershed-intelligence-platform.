@@ -1,4 +1,5 @@
 <!-- EARTHLINE 16787 — EFFICIENT TERRAIN-GAP RECOVERY. Remaining broad Regional voids were traced to opportunity-rich 12x12 cells whose coarse contour field did not produce enough local geometry. Preserve all existing science/safety/capacity owners; expand the bounded local terrain refinement only where measured gaps exist, using a lighter 32x32 local DEM so more real failed cells can be resolved inside the 15 s ceiling. No jurisdiction names, synthetic corridors, relaxed mapped-water safety, slope-rule change, selection-capacity change, or Property change. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16791 — CORRECTED REGIONAL AUDIT SEMANTICS. Diagnostic lineage now distinguishes candidate corridor footprint coverage from candidate ownership, and selection compares against the maximum attainable 12x12 spread under the existing 6x6 parent-floor guard. No science, thresholds, swale geometry, water safety, capacity, ranking, containment, renderer, lifecycle or Property behavior changed. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16789 — SAME-PARENT COUNT-NEUTRAL FINAL SPREAD. Regional final spread may replace a duplicate 12x12-cell corridor from a 6x6 parent holding exactly three corridors only when the missing replacement cell is in that same parent, so the parent's corridor count remains exactly three. Cross-parent donor protection remains unchanged. No science, water safety, capacity, ranking, containment, renderer or Property behavior changed. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16788 — PRIORITIZED EFFICIENT TERRAIN-GAP RECOVERY. Regional only: preserve 16787's real 32x32 local terrain refinement, but restore a bounded 8–16 tile budget and prioritize opportunity-rich cells lacking coarse contour geometry before already-contoured gaps. This retains the shared slope/water/aquifer/exclusion science, jurisdiction containment, mapped-water safety, ranking and final capacity while recovering performance margin. Property unchanged. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16784 — STANDARDIZED ROOT-CAUSE AUDIT. Diagnostic-only fixed causal audit ladder with O→C→S→P cell lineage, normalized operational probability ranking, first-failed-stage repair lock, and identical tests across jurisdictions. No science, thresholds, capacity, source, water safety, renderer or lifecycle behavior changed. CANDIDATE / NOT ACCEPTED. -->
@@ -30365,8 +30366,17 @@ body { overflow-x:hidden!important; }
         const py16783=Math.max(0,Math.min(5,Math.floor(Number(c16783.y)*6/Math.max(1,hy.h))));
         return {cell:fx16783+','+fy16783,parent:px16783+','+py16783,fx:fx16783,fy:fy16783};
       };
-      const bestByCell16783=new Map(),candidateCountByCell16783=new Map();
+      const bestByCell16783=new Map(),candidateCountByCell16783=new Map(),candidateCoverageCellKeys16791=new Set();
       for(const c16783 of candidates){
+        const seg16791=Array.isArray(c16783&&c16783.segment)?c16783.segment:null;
+        if(seg16791&&seg16791.length){
+          for(const pt16791 of seg16791){
+            const g16791=llGrid(hy,pt16791);if(!g16791||!Number.isFinite(Number(g16791.x))||!Number.isFinite(Number(g16791.y)))continue;
+            const cx16791=Math.max(0,Math.min(11,Math.floor(Number(g16791.x)*12/Math.max(1,hy.w))));
+            const cy16791=Math.max(0,Math.min(11,Math.floor(Number(g16791.y)*12/Math.max(1,hy.h))));
+            candidateCoverageCellKeys16791.add(cx16791+','+cy16791);
+          }
+        }
         const p16783=point16783(c16783);if(!p16783)continue;
         candidateCountByCell16783.set(p16783.cell,(candidateCountByCell16783.get(p16783.cell)||0)+1);
         const prior16783=bestByCell16783.get(p16783.cell);
@@ -30383,7 +30393,7 @@ body { overflow-x:hidden!important; }
       };
       rebuild16783();
       const initialCells16783=cellCount16783.size,targetCells16783=Math.min(chosen.length,bestByCell16783.size);
-      let swaps16783=0;
+      let swaps16783=0,attainableTargetCells16791=targetCells16783,selectionStopReason16791='target-reached';
       while(cellCount16783.size<targetCells16783&&swaps16783<72){
         const represented16783=new Set(cellCount16783.keys()),missing16783=[];
         for(const [cell16783,row16783] of bestByCell16783){
@@ -30407,13 +30417,24 @@ body { overflow-x:hidden!important; }
           const m16783=(Number(c16783.score)||0)-duplicates16783*.025;
           if(m16783<metric16783){metric16783=m16783;donor16783=i16783;}
         }
-        if(donor16783<0)break;
+        if(donor16783<0){
+          const blockerRows16791=[];
+          for(const dc16791 of chosen){
+            const dp16791=point16783(dc16791);if(!dp16791)continue;
+            const dd16791=cellCount16783.get(dp16791.cell)||0,pn16791=parentCount16783.get(dp16791.parent)||0;
+            if(dd16791>1)blockerRows16791.push({parentCount:pn16791,sameParent:dp16791.parent===add16783.point.parent});
+          }
+          const parentFloorBlocked16791=blockerRows16791.length>0&&blockerRows16791.every(r16791=>r16791.parentCount<=3&&!r16791.sameParent);
+          if(parentFloorBlocked16791){attainableTargetCells16791=cellCount16783.size;selectionStopReason16791='parent-floor-protected';}
+          else selectionStopReason16791='no-eligible-donor';
+          break;
+        }
         chosen[donor16783]=add16783.candidate;
         swaps16783++;rebuild16783();
       }
       window.EARTHLINE_FINAL_PUBLISHED_SPREAD_16783={
         build:'EARTHLINE 16785',candidateCells:bestByCell16783.size,chosenCount:chosen.length,
-        initialCells:initialCells16783,finalCells:cellCount16783.size,targetCells:targetCells16783,candidateCellKeys:Array.from(bestByCell16783.keys()).sort(),finalCellKeys:Array.from(cellCount16783.keys()).sort(),swaps:swaps16783,
+        initialCells:initialCells16783,finalCells:cellCount16783.size,targetCells:targetCells16783,attainableTargetCells:attainableTargetCells16791,selectionStopReason:selectionStopReason16791,candidateCellKeys:Array.from(bestByCell16783.keys()).sort(),candidateCoverageCellKeys:Array.from(candidateCoverageCellKeys16791).sort(),finalCellKeys:Array.from(cellCount16783.keys()).sort(),swaps:swaps16783,
         rule:'after ordinary Regional fill, count-neutral swaps move duplicate-cell selections into empty 12x12 cells containing real screened candidates; 6x6 donor parents retain at least three corridors',
         at:new Date().toISOString()
       };
@@ -31474,6 +31495,7 @@ body { overflow-x:hidden!important; }
     /* Build exact 12x12 O -> C -> S -> P lineage when Regional terrain context exists. */
     const opportunityKeys=new Set((fine&&Array.isArray(fine.opportunityCells)?fine.opportunityCells:[]).map(r=>String(r.bx)+','+String(r.by)));
     const candidateKeys=new Set(spread&&Array.isArray(spread.candidateCellKeys)?spread.candidateCellKeys:[]);
+    const candidateCoverageKeys=new Set(spread&&Array.isArray(spread.candidateCoverageCellKeys)?spread.candidateCoverageCellKeys:Array.from(candidateKeys));
     const selectedKeys=new Set(spread&&Array.isArray(spread.finalCellKeys)?spread.finalCellKeys:[]);
     const publishedKeys=new Set();
     const hy=ctx.hy||null,visual=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020||null;
@@ -31489,7 +31511,7 @@ body { overflow-x:hidden!important; }
       }
     }
     const diff=(a,b)=>Array.from(a).filter(k=>!b.has(k));
-    const opportunityNoCandidate=diff(opportunityKeys,candidateKeys);
+    const opportunityNoCandidate=diff(opportunityKeys,candidateCoverageKeys);
     const candidateNoSelected=diff(candidateKeys,selectedKeys);
     const selectedNoPublished=publishedKeys.size?diff(selectedKeys,publishedKeys):[];
 
@@ -31502,12 +31524,12 @@ body { overflow-x:hidden!important; }
 
     /* 4 — candidate generation */
     if(opportunityKeys.size&&opportunityNoCandidate.length){
-      set('candidate-generation',opportunityNoCandidate.length>=Math.max(3,Math.ceil(opportunityKeys.size*.12))?'fail':'warning','Opportunity-backed fine cells still contain no screened candidate',{opportunityCells:opportunityKeys.size,candidateCells:candidateKeys.size,missingCandidateCells:opportunityNoCandidate.length,missingKeys:opportunityNoCandidate.slice(0,24)});
-    }else if(opportunityKeys.size)set('candidate-generation','clear','Every tracked opportunity-backed fine cell has at least one screened candidate',{opportunityCells:opportunityKeys.size,candidateCells:candidateKeys.size});
+      set('candidate-generation',opportunityNoCandidate.length>=Math.max(3,Math.ceil(opportunityKeys.size*.12))?'fail':'warning','Opportunity-backed fine cells still contain no screened candidate',{opportunityCells:opportunityKeys.size,candidateCells:candidateKeys.size,candidateCoverageCells:candidateCoverageKeys.size,missingCandidateCells:opportunityNoCandidate.length,missingKeys:opportunityNoCandidate.slice(0,24)});
+    }else if(opportunityKeys.size)set('candidate-generation','clear','Every tracked opportunity-backed fine cell has at least one screened candidate',{opportunityCells:opportunityKeys.size,candidateCells:candidateKeys.size,candidateCoverageCells:candidateCoverageKeys.size});
 
     /* 5 — selection / dispersion */
     if(spread){
-      const target=Number(spread.targetCells||Math.min(Number(spread.chosenCount||0),Number(spread.candidateCells||0)));
+      const target=Number(spread.attainableTargetCells??spread.targetCells??Math.min(Number(spread.chosenCount||0),Number(spread.candidateCells||0)));
       const final=Number(spread.finalCells||0);
       if(final<target||candidateNoSelected.length>Math.max(0,Number(spread.candidateCells||0)-target))set('selection-dispersion','fail','Real candidate cells were lost during final selection beyond the authoritative capacity requirement',{candidateCells:Number(spread.candidateCells||0),selectedCells:final,targetCells:target,candidateNoSelected:candidateNoSelected.length,missingKeys:candidateNoSelected.slice(0,24)});
       else set('selection-dispersion','clear','Final selection reaches the maximum cell coverage allowed by candidate count and Regional capacity',{candidateCells:Number(spread.candidateCells||0),selectedCells:final,targetCells:target,swaps:Number(spread.swaps||0)});
@@ -31554,7 +31576,7 @@ body { overflow-x:hidden!important; }
       priorRanking:catalog.slice().sort((a,b)=>b.priorPct-a.priorPct).map(c=>({id:c.id,priorPct:c.priorPct})),
       causalTestOrder:catalog.slice().sort((a,b)=>a.testOrder-b.testOrder).map(c=>({order:c.testOrder,id:c.id,test:c.test,solution:c.solution,owner:c.owner})),
       cellLineage:{
-        opportunityCells:opportunityKeys.size,candidateCells:candidateKeys.size,selectedCells:selectedKeys.size,publishedCells:publishedKeys.size||null,
+        opportunityCells:opportunityKeys.size,candidateCells:candidateKeys.size,candidateCoverageCells:candidateCoverageKeys.size,selectedCells:selectedKeys.size,publishedCells:publishedKeys.size||null,
         opportunityNoCandidate:opportunityNoCandidate.slice(0,36),candidateNoSelected:candidateNoSelected.slice(0,36),selectedNoPublished:selectedNoPublished.slice(0,36)
       },
       rankedCauses:ranked.map((r,i)=>({rank:i+1,id:r.id,probabilityPct:r.probabilityPct,status:r.status,owner:r.owner,reasons:r.reasons,metrics:r.metrics,test:r.test,solution:r.solution,testOrder:r.testOrder})),
