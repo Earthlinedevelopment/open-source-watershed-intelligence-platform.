@@ -38,17 +38,17 @@ jobs:
         shell: bash
         run: |
           set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='\x24{{ matrix.states }}' OUT='runtime-\x24{{ matrix.batch }}.json' node lab/validate-16785-machine.mjs
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='${{ matrix.states }}' OUT='runtime-${{ matrix.batch }}.json' node lab/validate-16785-machine.mjs
           code=$?
-          echo "$code" > "runtime-\x24{{ matrix.batch }}.exit"
-          cat "runtime-\x24{{ matrix.batch }}.json"
+          echo "$code" > "runtime-${{ matrix.batch }}.exit"
+          cat "runtime-${{ matrix.batch }}.json"
           exit 0
       - uses: actions/upload-artifact@v4
         with:
-          name: "m45-16785-runtime-\x24{{ matrix.batch }}"
+          name: "m45-16785-runtime-${{ matrix.batch }}"
           path: |
-            runtime-\x24{{ matrix.batch }}.json
-            runtime-\x24{{ matrix.batch }}.exit
+            runtime-${{ matrix.batch }}.json
+            runtime-${{ matrix.batch }}.exit
           if-no-files-found: error
   aggregate:
     needs: certify
