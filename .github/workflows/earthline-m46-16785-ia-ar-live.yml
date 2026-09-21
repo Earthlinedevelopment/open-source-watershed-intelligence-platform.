@@ -20,6 +20,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Inspect live makeSwales source
+        run: |
+          python - <<'PY'
+          import urllib.request
+          src=urllib.request.urlopen('https://earthlinedevelopment.org/',timeout=30).read().decode('utf-8','replace')
+          lines=src.splitlines()
+          hits=[i for i,l in enumerate(lines) if 'function makeSwales' in l]
+          if not hits:
+              raise SystemExit('makeSwales not found')
+          i=hits[0]
+          lo=max(0,i-8); hi=min(len(lines),i+260)
+          print('EARTHLINE_M46_MAKESWALES_SOURCE_BEGIN')
+          for n in range(lo,hi):
+              print(f'{n+1}: {lines[n]}')
+          print('EARTHLINE_M46_MAKESWALES_SOURCE_END')
+          PY
       - name: Install Playwright
         run: |
           npm install --no-save playwright@1.55.0
