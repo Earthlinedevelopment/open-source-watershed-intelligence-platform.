@@ -1,0 +1,25 @@
+name: Mantra 46 Iowa Arkansas Source Extract
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mantra46-ia-ar-source-extract.mjs'
+      - '.github/workflows/earthline-m46-ia-ar-source.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Extract source
+        run: node tests/mantra46-ia-ar-source-extract.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mantra46-ia-ar-source
+          path: artifacts/mantra46-ia-ar-source/
