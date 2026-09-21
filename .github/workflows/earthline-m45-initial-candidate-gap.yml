@@ -1,0 +1,97 @@
+name: Earthline Mantra45 Initial Candidate Gap Diagnostic
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-initial-candidate-gap.yml']
+permissions:
+  contents: write
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Compare initial candidates to coverage gaps
+        shell: bash
+        run: |
+          mkdir -p lab
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const browser=await chromium.launch({headless:true});
+          async function run(state){
+            const page=await browser.newPage({viewport:{width:1800,height:1000}});
+            await page.route('https://earthlinedevelopment.org/**',async route=>{
+              const req=route.request();
+              if(req.resourceType()!=='document'){await route.continue();return;}
+              const u=new URL(req.url());
+              if(u.pathname!=='/'&&u.pathname!=='/index.html'){await route.continue();return;}
+              const resp=await route.fetch(); let body=await resp.text();
+              const a1="    const jurisdictionEligibleCandidates16539=candidates.length;\n    candidates.sort((a,b)=>b.score-a.score);";
+              const i1=a1+"\n    if(!focusMode){window.EARTHLINE_M45_CANDIDATES_TMP={w:hy.w,h:hy.h,rows:candidates.map(c=>({x:Number(c&&c.x),y:Number(c&&c.y),score:Number(c&&c.score)||0})).filter(r=>Number.isFinite(r.x)&&Number.isFinite(r.y))};}";
+              if(!body.includes(a1))throw new Error('candidate anchor not found');
+              body=body.replace(a1,i1);
+              const a2="    let swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539,supplementalCandidates16702);noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · SWALES COMPLETE',runToken);await wait(0);";
+              const i2=a2+"\n    if(!focusMode){window.EARTHLINE_M45_INITIAL_CANDIDATES=JSON.parse(JSON.stringify(window.EARTHLINE_M45_CANDIDATES_TMP||{}));window.EARTHLINE_M45_INITIAL_SPATIAL=JSON.parse(JSON.stringify(window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||{}));}";
+              if(!body.includes(a2))throw new Error('initial swale anchor not found');
+              body=body.replace(a2,i2);
+              await route.fulfill({response:resp,body});
+            });
+            await page.goto('https://earthlinedevelopment.org/?m45cand='+state+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#searchInput',{timeout:30000});
+            await page.evaluate((q)=>{
+              window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731=null;
+              const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+              i.value=q+' state';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();
+            },state);
+            await page.waitForFunction(()=>window.EARTHLINE_M45_INITIAL_CANDIDATES?.rows?.length>0&&window.EARTHLINE_COVERAGE_GAP_REFINEMENT_16731!=null,null,{timeout:70000,polling:100});
+            await page.waitForTimeout(300);
+            const out=await page.evaluate(()=>{
+              const C=window.EARTHLINE_M45_INITIAL_CANDIDATES||{w:96,h:96,rows:[]};
+              const S=window.EARTHLINE_M45_INITIAL_SPATIAL||{};
+              const G=window.EARTHLINE_COVERAGE_GAP_REFINEMENT_16731||{};
+              const w=Math.max(1,Number(C.w)||96),h=Math.max(1,Number(C.h)||96);
+              const key=r=>Math.max(0,Math.min(5,Math.floor(Number(r.x)*6/w)))+','+Math.max(0,Math.min(5,Math.floor(Number(r.y)*6/h)));
+              const counts={};for(const r of C.rows){const k=key(r);counts[k]=(counts[k]||0)+1;}
+              const reserved={};for(const r of (S.rows||[])){const k=String(r.key||'');reserved[k]=(reserved[k]||0)+1;}
+              const selected=(G.selected||[]).map(r=>({
+                bx:Number(r.bx),by:Number(r.by),valid:Number(r.valid||0),opportunity:Number(r.opportunity||0),preferred:Number(r.preferred||0),
+                key:Number(r.bx)+','+Number(r.by),
+                candidateCount:Number(counts[Number(r.bx)+','+Number(r.by)]||0),
+                reservedCount:Number(reserved[Number(r.bx)+','+Number(r.by)]||0)
+              }));
+              return {
+                totalCandidates:C.rows.length,
+                initialCandidateBins:Object.keys(counts).length,
+                initialReserved:Number(S.reserved||0),
+                capacity:Number(S.capacity||0),
+                selected,
+                generated:Number(window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated||0),
+                totalMs:Number(window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.totalMs||NaN)
+              };
+            });
+            await page.close();return {state,...out};
+          }
+          const rows=[await run('vermont'),await run('oklahoma')];
+          await browser.close();
+          fs.writeFileSync('lab/mantra45-initial-candidate-gap.json',JSON.stringify({at:new Date().toISOString(),rows},null,2));
+          console.log(JSON.stringify(rows));
+          JS
+      - name: Persist evidence
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-initial-candidate-gap.json
+          git commit -m "diag: persist Mantra45 initial candidate-gap evidence [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
