@@ -1,0 +1,33 @@
+name: Earthline 16773 Deploy Proportional Dispersion
+on:
+  push:
+    branches: [main]
+    paths: ['lab/TRIGGER-16773-DEPLOY.txt']
+permissions:
+  contents: write
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Fetch authoritative patch
+        run: |
+          git fetch origin main
+          git show origin/main:lab/apply-16773-proportional-dispersion.py > /tmp/apply-16773.py
+      - name: Apply 16773
+        run: |
+          python3 /tmp/apply-16773.py
+          grep -q "EARTHLINE 16773" index.html
+          git diff --check
+      - name: Publish pages-live candidate
+        run: |
+          git config user.name "Earthline CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "repair: distribute Regional corridors across fine terrain subregions"
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live
