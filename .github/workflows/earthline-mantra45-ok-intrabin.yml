@@ -1,0 +1,115 @@
+name: Earthline Mantra45 Oklahoma Intra-Bin Diagnostic
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-mantra45-ok-intrabin.yml']
+permissions:
+  contents: write
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Audit Oklahoma 18x18 intra-bin dispersion against live 16772
+        shell: bash
+        run: |
+          mkdir -p lab
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1908,height:882}});
+          await page.route('https://earthlinedevelopment.org/**',async route=>{
+            const req=route.request();
+            if(req.resourceType()!=='document'){await route.continue();return;}
+            const u=new URL(req.url());
+            if(u.pathname!=='/'&&u.pathname!=='/index.html'){await route.continue();return;}
+            const resp=await route.fetch();
+            let body=await resp.text();
+            const a1="    const jurisdictionEligibleCandidates16539=candidates.length;\n    candidates.sort((a,b)=>b.score-a.score);";
+            const i1=a1+"\n    if(!focusMode){window.EARTHLINE_M45_OK_CANDIDATES={w:hy.w,h:hy.h,rows:candidates.map(c=>({x:Number(c&&c.x),y:Number(c&&c.y),score:Number(c&&c.score)||0,refined:!!(c&&(c.refined16710||c.refined16702)),coverageGap:!!(c&&c.coverageGap16731)})).filter(r=>Number.isFinite(r.x)&&Number.isFinite(r.y))};}";
+            if(!body.includes(a1))throw new Error('candidate anchor not found');
+            body=body.replace(a1,i1);
+            const a2="    const auditedCandidates=chosen.map(c=>Object.assign(c,{contourAudit16166:contourAudit16166(c)}));";
+            const i2="    if(!focusMode){window.EARTHLINE_M45_OK_CHOSEN={w:hy.w,h:hy.h,rows:chosen.map(c=>({x:Number(c&&c.x),y:Number(c&&c.y),score:Number(c&&c.score)||0,refined:!!(c&&(c.refined16710||c.refined16702)),coverageGap:!!(c&&c.coverageGap16731)})).filter(r=>Number.isFinite(r.x)&&Number.isFinite(r.y))};}\n"+a2;
+            if(!body.includes(a2))throw new Error('chosen anchor not found');
+            body=body.replace(a2,i2);
+            await route.fulfill({response:resp,body});
+          });
+          await page.goto('https://earthlinedevelopment.org/?m45ok='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.evaluate(()=>{
+            window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731=null;
+            const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+            i.value='oklahoma state';
+            i.dispatchEvent(new Event('input',{bubbles:true}));
+            i.dispatchEvent(new Event('change',{bubbles:true}));
+            b.click();
+          });
+          await page.waitForFunction(()=>{
+            const p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167;
+            const d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;
+            return window.EARTHLINE_M45_OK_CANDIDATES?.rows?.length>0&&window.EARTHLINE_M45_OK_CHOSEN?.rows?.length>0&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);
+          },null,{timeout:70000,polling:100});
+          await page.waitForTimeout(500);
+          const out=await page.evaluate(()=>{
+            const C=window.EARTHLINE_M45_OK_CANDIDATES||{w:96,h:96,rows:[]};
+            const H=window.EARTHLINE_M45_OK_CHOSEN||{w:C.w,h:C.h,rows:[]};
+            const R=(window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736?.rows||[]).map(r=>({x:Number(r.x),y:Number(r.y),score:Number(r.score)||0,key:String(r.key||'')})).filter(r=>Number.isFinite(r.x)&&Number.isFinite(r.y));
+            const w=Math.max(1,Number(C.w)||96),h=Math.max(1,Number(C.h)||96);
+            const cell=r=>({sx:Math.max(0,Math.min(17,Math.floor(r.x*18/w))),sy:Math.max(0,Math.min(17,Math.floor(r.y*18/h)))});
+            const pkey=r=>{const q=cell(r);return Math.floor(q.sx/3)+','+Math.floor(q.sy/3);};
+            const skey=r=>{const q=cell(r);return q.sx+','+q.sy;};
+            const group=list=>{const m=new Map();for(const r of list){const k=pkey(r);if(!m.has(k))m.set(k,[]);m.get(k).push(r);}return m;};
+            const cg=group(C.rows),rg=group(R),hg=group(H.rows);
+            const parents=[];
+            for(const [key,cands] of cg){
+              const reserved=rg.get(key)||[],chosen=hg.get(key)||[];
+              const cc=new Map();for(const r of cands){const k=skey(r);cc.set(k,(cc.get(k)||0)+1);}
+              const rc=new Set(reserved.map(skey)),hc=new Set(chosen.map(skey));
+              const occupied=[...cc.keys()];
+              parents.push({
+                key,candidates:cands.length,reserved:reserved.length,chosen:chosen.length,
+                preferredSubcells:occupied.length,reservedSubcells:rc.size,chosenSubcells:hc.size,
+                reserveCoverage:occupied.length?rc.size/occupied.length:null,
+                chosenCoverage:occupied.length?hc.size/occupied.length:null,
+                zeroChosenSubcells:occupied.filter(k=>!hc.has(k)).map(k=>({subcell:k,candidates:cc.get(k)})).sort((a,b)=>b.candidates-a.candidates)
+              });
+            }
+            parents.sort((a,b)=>{
+              const ay=Number(a.key.split(',')[1]),by=Number(b.key.split(',')[1]);
+              if(ay!==by)return ay-by;
+              return Number(a.key.split(',')[0])-Number(b.key.split(',')[0]);
+            });
+            const north=parents.filter(r=>Number(r.key.split(',')[1])<=1);
+            const totals={
+              candidates:C.rows.length,reserved:R.length,chosen:H.rows.length,
+              generated:Number(window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated||0),
+              visible:Number((window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020)?.swaleLines||0),
+              coreMs:Number(window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.totalMs||NaN),
+              spatialBuild:window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736?.build||null
+            };
+            return {at:new Date().toISOString(),totals,north,parents,
+              refinement:window.EARTHLINE_COVERAGE_GAP_REFINEMENT_16731||null,
+              coverage:window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731||null};
+          });
+          fs.writeFileSync('lab/mantra45-ok-16772-intrabin.json',JSON.stringify(out,null,2));
+          console.log(JSON.stringify({totals:out.totals,north:out.north}));
+          await browser.close();
+          JS
+      - name: Persist Oklahoma diagnostic
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-ok-16772-intrabin.json
+          git commit -m "diag: persist Mantra45 Oklahoma 16772 intra-bin evidence [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
