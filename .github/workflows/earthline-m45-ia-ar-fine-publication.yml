@@ -1,0 +1,105 @@
+name: Earthline Mantra45 Iowa Arkansas Fine Publication Audit
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-ia-ar-fine-publication.yml']
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Audit final published swales against 12x12 and 18x18 terrain opportunity
+        shell: bash
+        run: |
+          mkdir -p lab
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const browser=await chromium.launch({headless:true});
+          async function run(state){
+            const page=await browser.newPage({viewport:{width:1800,height:832}});
+            await page.route('https://earthlinedevelopment.org/**',async route=>{
+              const req=route.request();
+              if(req.resourceType()!=='document'){await route.continue();return;}
+              const u=new URL(req.url());
+              if(u.pathname!=='/'&&u.pathname!=='/index.html'){await route.continue();return;}
+              const resp=await route.fetch(); let body=await resp.text();
+              const anchor="      window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731={build:'EARTHLINE 16767'";
+              const at=body.indexOf(anchor);
+              if(at<0)throw new Error('coverage audit anchor missing');
+              const end=body.indexOf("\n    }\n    const priorityPreviewEnabled16329=false;",at);
+              if(end<0)throw new Error('coverage block end missing');
+              const inject=String.raw`
+      /* M45 diagnostics only: fine terrain-opportunity vs final swale midpoint coverage. */
+      (()=>{try{
+        const mkFine=(nx,ny)=>{
+          const channel=percentile(hy.acc,.972),rows=[];
+          for(let by=0;by<ny;by++)for(let bx=0;bx<nx;bx++){
+            const x0=Math.floor(bx*hy.w/nx),x1=Math.min(hy.w-1,Math.ceil((bx+1)*hy.w/nx)-1);
+            const y0=Math.floor(by*hy.h/ny),y1=Math.min(hy.h-1,Math.ceil((by+1)*hy.h/ny)-1);
+            let valid=0,opp=0,pref=0,swalesN=0;
+            for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+              const ii=y*hy.w+x;if(hy.validityMask16584[ii]!==1)continue;
+              if(swaleJurisdictionGeometry16539){const ll=gridLL(hy,x,y);if(!earthlinePointInJurisdiction16539(ll,swaleJurisdictionGeometry16539))continue;}
+              valid++; const sp=Number(hy.slope[ii]),ac=Number(hy.acc[ii]);
+              if(!Number.isFinite(sp)||!Number.isFinite(ac)||ac>=channel)continue;
+              if(sp>=.05&&sp<=4)opp++;
+              if(sp>=.20&&sp<=4)pref++;
+            }
+            rows.push({bx,by,valid,opportunity:opp,preferred:pref,swales:swalesN});
+          }
+          for(const f of (swales.features||[])){
+            const c=f?.geometry?.type==='LineString'?f.geometry.coordinates:null;if(!Array.isArray(c)||!c.length)continue;
+            const m=c[Math.floor((c.length-1)/2)],g=llGrid(hy,m);if(!g||!Number.isFinite(g.x)||!Number.isFinite(g.y))continue;
+            const bx=Math.max(0,Math.min(nx-1,Math.floor(Number(g.x)*nx/Math.max(1,hy.w))));
+            const by=Math.max(0,Math.min(ny-1,Math.floor(Number(g.y)*ny/Math.max(1,hy.h))));
+            const row=rows.find(r=>r.bx===bx&&r.by===by);if(row)row.swales++;
+          }
+          const significant=rows.filter(r=>r.valid>=Math.max(12,Math.round((hy.w*hy.h)/(nx*ny)*.18))&&r.opportunity>=4&&(r.opportunity/Math.max(1,r.valid))>=.05);
+          const blank=significant.filter(r=>r.swales===0);
+          const thin=significant.filter(r=>r.swales<2);
+          return {nx,ny,rows,significantCount:significant.length,blank,thin};
+        };
+        window.EARTHLINE_M45_FINE_PUBLICATION={build:window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736?.build||null,g12:mkFine(12,12),g18:mkFine(18,18),at:new Date().toISOString()};
+      }catch(e){window.EARTHLINE_M45_FINE_PUBLICATION={error:String(e),at:new Date().toISOString()};}})();
+`;
+              body=body.slice(0,end)+inject+body.slice(end);
+              await route.fulfill({response:resp,body});
+            });
+            await page.goto('https://earthlinedevelopment.org/?m45fine='+state+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#searchInput',{timeout:30000});
+            await page.evaluate(q=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},state);
+            await page.waitForFunction(()=>window.EARTHLINE_M45_FINE_PUBLICATION?.g12&&window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated>0,null,{timeout:70000,polling:100});
+            await page.waitForTimeout(400);
+            const out=await page.evaluate(()=>{
+              const f=window.EARTHLINE_M45_FINE_PUBLICATION||{},p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{},d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{},perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{};
+              return {fine:f,generated:Number(p.generated||0),visible:Number(d.swaleLines||0),coreMs:Number(perf.totalMs||NaN),coverage6:window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731||null};
+            });
+            await page.close();return {state,...out};
+          }
+          const rows=[await run('Iowa'),await run('Arkansas')];
+          await browser.close();
+          const compact=rows.map(r=>({state:r.state,build:r.fine?.build,generated:r.generated,visible:r.visible,coreMs:r.coreMs,
+            g12:{significant:r.fine?.g12?.significantCount,blank:r.fine?.g12?.blank,thin:r.fine?.g12?.thin?.slice(0,30)},
+            g18:{significant:r.fine?.g18?.significantCount,blank:r.fine?.g18?.blank?.slice(0,40),thinCount:r.fine?.g18?.thin?.length},
+            unresolved6:r.coverage6?.unresolved||[]}));
+          fs.writeFileSync('lab/mantra45-ia-ar-fine-publication.json',JSON.stringify({at:new Date().toISOString(),rows:compact},null,2));
+          console.log(JSON.stringify(compact));
+          JS
+      - name: Persist fine publication evidence
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-ia-ar-fine-publication.json
+          git commit -m "diag: persist Iowa Arkansas fine publication evidence [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
