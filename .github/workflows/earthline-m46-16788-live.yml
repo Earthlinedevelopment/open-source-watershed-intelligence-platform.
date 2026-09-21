@@ -1,0 +1,45 @@
+name: Mantra 46 16788 Production Gate
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mantra46-16788-ia-ar-live.mjs'
+      - '.github/workflows/earthline-m46-16788-live.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ia-ar-16788:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Wait for 16788 public deployment
+        run: |
+          for i in $(seq 1 60); do
+            html="$(curl -fsS --max-time 20 https://earthlinedevelopment.org/ || true)"
+            if printf '%s' "$html" | grep -q 'EARTHLINE 16788 — PRIORITIZED EFFICIENT TERRAIN-GAP RECOVERY'; then
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "16788 marker not live"
+          exit 1
+      - name: Run 16788 Iowa Arkansas production gate
+        run: node tests/mantra46-16788-ia-ar-live.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16788-production-gate
+          path: artifacts/mantra46-16788-live/
+          if-no-files-found: warn
