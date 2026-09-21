@@ -1,0 +1,135 @@
+name: Earthline Mantra45 Vermont Intra-Bin Diagnostic
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-mantra45-intrabin.yml']
+permissions:
+  contents: write
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Audit 18x18 intra-bin dispersion against live 16767
+        shell: bash
+        run: |
+          mkdir -p lab
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1800,height:1000}});
+          const consoleRows=[];
+          page.on('console',m=>consoleRows.push({type:m.type(),text:m.text().slice(0,1000)}));
+          await page.route('https://earthlinedevelopment.org/**',async route=>{
+            const req=route.request();
+            if(req.resourceType()!=='document'){await route.continue();return;}
+            const u=new URL(req.url());
+            if(u.pathname!=='/'&&u.pathname!=='/index.html'){await route.continue();return;}
+            const resp=await route.fetch();
+            let body=await resp.text();
+            const a1="    const jurisdictionEligibleCandidates16539=candidates.length;\n    candidates.sort((a,b)=>b.score-a.score);";
+            const i1=a1+"\n    if(!focusMode){window.EARTHLINE_MANTRA45_CANDIDATES={w:hy.w,h:hy.h,rows:candidates.map(c=>({x:Number(c&&c.x),y:Number(c&&c.y),score:Number(c&&c.score)||0,refined:!!(c&&(c.refined16710||c.refined16702)),coverageGap:!!(c&&c.coverageGap16731)})).filter(r=>Number.isFinite(r.x)&&Number.isFinite(r.y))};}";
+            if(!body.includes(a1))throw new Error('candidate anchor not found');
+            body=body.replace(a1,i1);
+            const a2="    const auditedCandidates=chosen.map(c=>Object.assign(c,{contourAudit16166:contourAudit16166(c)}));";
+            const i2="    if(!focusMode){window.EARTHLINE_MANTRA45_CHOSEN={w:hy.w,h:hy.h,rows:chosen.map(c=>({x:Number(c&&c.x),y:Number(c&&c.y),score:Number(c&&c.score)||0,refined:!!(c&&(c.refined16710||c.refined16702)),coverageGap:!!(c&&c.coverageGap16731)})).filter(r=>Number.isFinite(r.x)&&Number.isFinite(r.y))};}\n"+a2;
+            if(!body.includes(a2))throw new Error('chosen anchor not found');
+            body=body.replace(a2,i2);
+            await route.fulfill({response:resp,body});
+          });
+          await page.goto('https://earthlinedevelopment.org/?m45vt='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.evaluate(()=>{
+            window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731=null;
+            const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+            i.value='vermont state';
+            i.dispatchEvent(new Event('input',{bubbles:true}));
+            i.dispatchEvent(new Event('change',{bubbles:true}));
+            b.click();
+          });
+          await page.waitForFunction(()=>{
+            const a=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731;
+            const p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167;
+            const d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;
+            return a?.passed===true&&window.EARTHLINE_MANTRA45_CANDIDATES?.rows?.length>0&&window.EARTHLINE_MANTRA45_CHOSEN?.rows?.length>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);
+          },null,{timeout:60000,polling:100});
+          await page.waitForTimeout(700);
+          const out=await page.evaluate(()=>{
+            const C=window.EARTHLINE_MANTRA45_CANDIDATES||{w:96,h:96,rows:[]};
+            const H=window.EARTHLINE_MANTRA45_CHOSEN||{w:C.w,h:C.h,rows:[]};
+            const R=(window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736?.rows||[]).map(r=>({x:Number(r.x),y:Number(r.y),score:Number(r.score)||0,key:String(r.key||'')})).filter(r=>Number.isFinite(r.x)&&Number.isFinite(r.y));
+            const w=Math.max(1,Number(C.w)||96),h=Math.max(1,Number(C.h)||96);
+            const cell=r=>({sx:Math.max(0,Math.min(17,Math.floor(r.x*18/w))),sy:Math.max(0,Math.min(17,Math.floor(r.y*18/h)))});
+            const pkey=r=>{const q=cell(r);return Math.floor(q.sx/3)+','+Math.floor(q.sy/3);};
+            const skey=r=>{const q=cell(r);return q.sx+','+q.sy;};
+            const group=list=>{const m=new Map();for(const r of list){const k=pkey(r);if(!m.has(k))m.set(k,[]);m.get(k).push(r);}return m;};
+            const cg=group(C.rows),rg=group(R),hg=group(H.rows);
+            const span=list=>{
+              if(!list.length)return {x:0,y:0};
+              const xs=list.map(r=>r.x),ys=list.map(r=>r.y);
+              return {x:Math.max(...xs)-Math.min(...xs),y:Math.max(...ys)-Math.min(...ys)};
+            };
+            const centroid=list=>{
+              if(!list.length)return null;
+              return {x:list.reduce((s,r)=>s+r.x,0)/list.length,y:list.reduce((s,r)=>s+r.y,0)/list.length};
+            };
+            const parents=[];
+            for(const [key,cands] of cg){
+              const reserved=rg.get(key)||[],chosen=hg.get(key)||[];
+              const cc=new Map();for(const r of cands){const k=skey(r);cc.set(k,(cc.get(k)||0)+1);}
+              const rc=new Set(reserved.map(skey)),hc=new Set(chosen.map(skey));
+              const occupied=[...cc.keys()];
+              const zeroReserve=occupied.filter(k=>!rc.has(k)).map(k=>({subcell:k,candidates:cc.get(k)})).sort((a,b)=>b.candidates-a.candidates);
+              const zeroChosen=occupied.filter(k=>!hc.has(k)).map(k=>({subcell:k,candidates:cc.get(k)})).sort((a,b)=>b.candidates-a.candidates);
+              const cs=span(cands),rs=span(reserved),hs=span(chosen),c0=centroid(cands),r0=centroid(reserved),h0=centroid(chosen);
+              parents.push({
+                key,candidates:cands.length,reserved:reserved.length,chosen:chosen.length,
+                preferredSubcells:occupied.length,reservedSubcells:rc.size,chosenSubcells:hc.size,
+                reserveSubcellCoverage:occupied.length?rc.size/occupied.length:null,
+                chosenSubcellCoverage:occupied.length?hc.size/occupied.length:null,
+                candidateSpan:cs,reservedSpan:rs,chosenSpan:hs,
+                reserveSpanRatio:{x:cs.x?rs.x/cs.x:null,y:cs.y?rs.y/cs.y:null},
+                chosenSpanRatio:{x:cs.x?hs.x/cs.x:null,y:cs.y?hs.y/cs.y:null},
+                reserveCentroidShift:c0&&r0?Math.hypot(r0.x-c0.x,r0.y-c0.y):null,
+                chosenCentroidShift:c0&&h0?Math.hypot(h0.x-c0.x,h0.y-c0.y):null,
+                zeroReserveSubcells:zeroReserve,zeroChosenSubcells:zeroChosen
+              });
+            }
+            parents.sort((a,b)=>b.candidates-a.candidates);
+            const totals={
+              candidates:C.rows.length,reserved:R.length,chosen:H.rows.length,
+              parentBins:parents.length,
+              preferredSubcells:parents.reduce((s,r)=>s+r.preferredSubcells,0),
+              reservedSubcells:parents.reduce((s,r)=>s+r.reservedSubcells,0),
+              chosenSubcells:parents.reduce((s,r)=>s+r.chosenSubcells,0),
+              generated:Number(window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated||0),
+              visible:Number((window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020)?.swaleLines||0),
+              coreMs:Number(window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.totalMs||NaN)
+            };
+            totals.reserveSubcellCoverage=totals.preferredSubcells?totals.reservedSubcells/totals.preferredSubcells:null;
+            totals.chosenSubcellCoverage=totals.preferredSubcells?totals.chosenSubcells/totals.preferredSubcells:null;
+            return {build:window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731?.build||null,timestamp:new Date().toISOString(),grid:{parent:'6x6',subcell:'18x18 (3x3 inside each parent)'},totals,parents,
+              publication:{generated:totals.generated,visible:totals.visible,displayCollapse:totals.generated!==totals.visible},
+              rules:{candidateSnapshot:'after jurisdiction screening and score sort; x/y are clipped-corridor midpoint grid positions',reserveSnapshot:'existing 16767 reserve rows',chosenSnapshot:'after reserve + refined reservation + normal score/spacing fill, before contour publication'}};
+          });
+          out.consoleTail=consoleRows.slice(-40);
+          fs.writeFileSync('lab/mantra45-vt-intrabin.json',JSON.stringify(out,null,2));
+          console.log('M45 TOTALS '+JSON.stringify(out.totals));
+          console.log('M45 TOP '+JSON.stringify(out.parents.slice(0,12).map(r=>({key:r.key,candidates:r.candidates,preferredSubcells:r.preferredSubcells,reservedSubcells:r.reservedSubcells,chosenSubcells:r.chosenSubcells,reserveCoverage:r.reserveSubcellCoverage,chosenCoverage:r.chosenSubcellCoverage,zeroChosen:r.zeroChosenSubcells.slice(0,4)}))));
+          await browser.close();
+          JS
+      - name: Persist Mantra45 diagnostic
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-vt-intrabin.json
+          git commit -m "diag: persist Mantra45 Vermont intra-bin evidence [skip ci]"
+          git push
