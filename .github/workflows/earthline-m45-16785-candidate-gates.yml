@@ -1,0 +1,36 @@
+name: Earthline 16785 Candidate Gate Diagnostic
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-16785-candidate-gates.yml']
+permissions:
+  contents: write
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Fetch and patch live product
+        run: |
+          curl -fsSL https://earthlinedevelopment.org/ -o /tmp/index-16785.html
+          python3 lab/m45_16785_patch_candidate_diag.py /tmp/index-16785.html
+      - name: Run IA AR candidate gate diagnostic
+        run: node lab/m45_16785_run_candidate_diag.mjs
+      - name: Persist diagnostic
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-16785-ia-ar-candidate-gates.json
+          git commit -m "diag: persist 16785 IA AR candidate gate evidence [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
