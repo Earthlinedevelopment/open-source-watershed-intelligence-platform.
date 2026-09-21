@@ -1,0 +1,102 @@
+name: Earthline Mantra45 Refinement Performance Trace
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-refinement-perf.yml']
+permissions:
+  contents: write
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Trace refinement stages
+        shell: bash
+        run: |
+          mkdir -p lab
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const browser=await chromium.launch({headless:true});
+          async function run(state,iteration){
+            const page=await browser.newPage({viewport:{width:1800,height:1000}});
+            let error=null;
+            try{
+              await page.goto('https://earthlinedevelopment.org/?m45ref='+state+'-'+iteration+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#searchInput',{timeout:30000});
+              await page.evaluate((q)=>{
+                window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731=null;
+                const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+                i.value=q+' state';
+                i.dispatchEvent(new Event('input',{bubbles:true}));
+                i.dispatchEvent(new Event('change',{bubbles:true}));
+                b.click();
+              },state);
+              await page.waitForFunction(()=>{
+                const p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167;
+                const d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;
+                const s=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736;
+                return s?.build==='EARTHLINE 16771'&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);
+              },null,{timeout:70000,polling:100});
+              await page.waitForTimeout(250);
+            }catch(e){error=String(e&&e.message||e);}
+            const snap=await page.evaluate(()=>{
+              const clone=v=>{try{return JSON.parse(JSON.stringify(v))}catch{return null}};
+              const p=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{};
+              const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{};
+              const d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{};
+              const s=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||{};
+              return {
+                totalMs:Number(p.totalMs||NaN),
+                phaseTotalsMs:clone(p.phaseTotalsMs||null),
+                generated:Number(pub.generated||0),
+                visible:Number(d.swaleLines||0),
+                spatialBuild:s.build||null,
+                scaleTrigger:clone(window.EARTHLINE_SCALE_REFINEMENT_TRIGGER_16705||null),
+                scaleRefined:clone(window.EARTHLINE_SCALE_REFINED_INPUT_16702||null),
+                terrainGap:clone(window.EARTHLINE_TERRAIN_GAP_REFINEMENT_16730||null),
+                coverageGap:clone(window.EARTHLINE_COVERAGE_GAP_REFINEMENT_16731||null),
+                lateGap:clone(window.EARTHLINE_LATE_GAP_REFINEMENT_16741||null),
+                coverageAudit:clone(window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731||null),
+                finalCamera:clone(window.EARTHLINE_FINAL_FRAME_CAMERA_AUDIT_16691||null)
+              };
+            }).catch(()=>({}));
+            await page.close();
+            return {state,iteration,error,...snap};
+          }
+          const rows=[];
+          for(const state of ['vermont','oklahoma']){
+            for(let i=1;i<=3;i++)rows.push(await run(state,i));
+          }
+          await browser.close();
+          fs.writeFileSync('lab/mantra45-refinement-performance.json',JSON.stringify({at:new Date().toISOString(),rows},null,2));
+          console.log(JSON.stringify(rows.map(r=>({
+            state:r.state,iteration:r.iteration,totalMs:r.totalMs,
+            phase:r.phaseTotalsMs,
+            scaleTiles:r.scaleRefined?.tiles??0,scaleMs:r.scaleRefined?.elapsedMs??0,
+            terrainTiles:r.terrainGap?.selectedTiles?.length??0,terrainMs:r.terrainGap?.elapsedMs??0,
+            coverageTiles:r.coverageGap?.selected?.length??0,coverageMs:r.coverageGap?.elapsedMs??0,
+            lateTiles:r.lateGap?.selected?.length??0,lateMs:r.lateGap?.elapsedMs??0,
+            unresolved:r.coverageAudit?.unresolved?.length??null,
+            cameraReassert:r.finalCamera?.reasserted??null
+          }))));
+          JS
+      - name: Persist trace
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-refinement-performance.json
+          git commit -m "diag: persist Mantra45 refinement performance trace [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
