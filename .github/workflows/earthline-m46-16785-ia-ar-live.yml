@@ -5,6 +5,7 @@ on:
     branches: [pages-live]
     paths:
       - 'tests/mantra46-16785-ia-ar-live.mjs'
+      - 'tests/mantra46-16786-gate-audit.mjs'
       - '.github/workflows/earthline-m46-16785-ia-ar-live.yml'
   workflow_dispatch:
 
@@ -14,28 +15,12 @@ permissions:
 jobs:
   ia-ar-live:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Inspect live makeSwales source
-        run: |
-          python - <<'PY'
-          import urllib.request
-          src=urllib.request.urlopen('https://earthlinedevelopment.org/',timeout=30).read().decode('utf-8','replace')
-          lines=src.splitlines()
-          hits=[i for i,l in enumerate(lines) if 'function makeSwales' in l]
-          if not hits:
-              raise SystemExit('makeSwales not found')
-          i=hits[0]
-          lo=max(0,i-8); hi=min(len(lines),i+260)
-          print('EARTHLINE_M46_MAKESWALES_SOURCE_BEGIN')
-          for n in range(lo,hi):
-              print(f'{n+1}: {lines[n]}')
-          print('EARTHLINE_M46_MAKESWALES_SOURCE_END')
-          PY
       - name: Install Playwright
         run: |
           npm install --no-save playwright@1.55.0
@@ -52,9 +37,13 @@ jobs:
           exit 1
       - name: Run Iowa Arkansas live gate
         run: node tests/mantra46-16785-ia-ar-live.mjs
+      - name: Run per-cell makeSwales gate audit
+        run: node tests/mantra46-16786-gate-audit.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: mantra46-16785-ia-ar-live
-          path: artifacts/mantra46-16785/
+          name: mantra46-makeswales-audit
+          path: |
+            artifacts/mantra46-16785/
+            artifacts/mantra46-16786/
           if-no-files-found: warn
