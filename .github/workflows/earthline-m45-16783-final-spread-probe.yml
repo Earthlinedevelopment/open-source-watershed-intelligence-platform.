@@ -1,0 +1,145 @@
+name: Earthline 16783 Final Published Spread Probe
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-16783-final-spread-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Probe final selector against live product
+        shell: bash
+        run: |
+          mkdir -p lab
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          import fs from 'fs';
+          const states=['iowa','arkansas','oklahoma','nebraska','vermont','texas','california'];
+          const block=String.raw`
+    /* EARTHLINE 16783 — final published 12x12 candidate-cell spread.
+       Run after the ordinary score/spacing fill. Reallocate only duplicate
+       selections to empty cells that already contain real screened candidates.
+       Count, science gates, capacity, water safety and jurisdiction containment
+       are unchanged. */
+    if(!focusMode&&chosen.length&&candidates.length){
+      const nx16783=12,ny16783=12;
+      const point16783=c16783=>{
+        if(!c16783||!Number.isFinite(Number(c16783.x))||!Number.isFinite(Number(c16783.y)))return null;
+        const fx16783=Math.max(0,Math.min(nx16783-1,Math.floor(Number(c16783.x)*nx16783/Math.max(1,hy.w))));
+        const fy16783=Math.max(0,Math.min(ny16783-1,Math.floor(Number(c16783.y)*ny16783/Math.max(1,hy.h))));
+        const px16783=Math.max(0,Math.min(5,Math.floor(Number(c16783.x)*6/Math.max(1,hy.w))));
+        const py16783=Math.max(0,Math.min(5,Math.floor(Number(c16783.y)*6/Math.max(1,hy.h))));
+        return {cell:fx16783+','+fy16783,parent:px16783+','+py16783,fx:fx16783,fy:fy16783};
+      };
+      const bestByCell16783=new Map(),candidateCountByCell16783=new Map();
+      for(const c16783 of candidates){
+        const p16783=point16783(c16783);if(!p16783)continue;
+        candidateCountByCell16783.set(p16783.cell,(candidateCountByCell16783.get(p16783.cell)||0)+1);
+        const prior16783=bestByCell16783.get(p16783.cell);
+        if(!prior16783||(Number(c16783.score)||0)>(Number(prior16783.candidate.score)||0))bestByCell16783.set(p16783.cell,{candidate:c16783,point:p16783});
+      }
+      const cellCount16783=new Map(),parentCount16783=new Map();
+      const rebuild16783=()=>{
+        cellCount16783.clear();parentCount16783.clear();
+        for(const c16783 of chosen){
+          const p16783=point16783(c16783);if(!p16783)continue;
+          cellCount16783.set(p16783.cell,(cellCount16783.get(p16783.cell)||0)+1);
+          parentCount16783.set(p16783.parent,(parentCount16783.get(p16783.parent)||0)+1);
+        }
+      };
+      rebuild16783();
+      const initialCells16783=cellCount16783.size,targetCells16783=Math.min(chosen.length,bestByCell16783.size);
+      let swaps16783=0;
+      while(cellCount16783.size<targetCells16783&&swaps16783<72){
+        const represented16783=new Set(cellCount16783.keys()),missing16783=[];
+        for(const [cell16783,row16783] of bestByCell16783){
+          if(represented16783.has(cell16783))continue;
+          let nearest16783=99;
+          for(const k16783 of represented16783){
+            const [x16783,y16783]=k16783.split(',').map(Number);
+            nearest16783=Math.min(nearest16783,Math.hypot(row16783.point.fx-x16783,row16783.point.fy-y16783));
+          }
+          missing16783.push({row:row16783,nearest:nearest16783,count:candidateCountByCell16783.get(cell16783)||1});
+        }
+        if(!missing16783.length)break;
+        missing16783.sort((a16783,b16783)=>b16783.nearest-a16783.nearest||b16783.count-a16783.count||(Number(b16783.row.candidate.score)||0)-(Number(a16783.row.candidate.score)||0));
+        const add16783=missing16783[0].row;
+        let donor16783=-1,metric16783=Infinity;
+        for(let i16783=0;i16783<chosen.length;i16783++){
+          const c16783=chosen[i16783],p16783=point16783(c16783);if(!p16783)continue;
+          const duplicates16783=cellCount16783.get(p16783.cell)||0;
+          const parentN16783=parentCount16783.get(p16783.parent)||0;
+          if(duplicates16783<=1||parentN16783<=3)continue;
+          const m16783=(Number(c16783.score)||0)-duplicates16783*.025;
+          if(m16783<metric16783){metric16783=m16783;donor16783=i16783;}
+        }
+        if(donor16783<0)break;
+        chosen[donor16783]=add16783.candidate;
+        swaps16783++;rebuild16783();
+      }
+      window.EARTHLINE_FINAL_PUBLISHED_SPREAD_16783={
+        build:'EARTHLINE 16783',candidateCells:bestByCell16783.size,chosenCount:chosen.length,
+        initialCells:initialCells16783,finalCells:cellCount16783.size,targetCells:targetCells16783,swaps:swaps16783,
+        rule:'after ordinary Regional fill, count-neutral swaps move duplicate-cell selections into empty 12x12 cells containing real screened candidates; 6x6 donor parents retain at least three corridors',
+        at:new Date().toISOString()
+      };
+    }
+`;
+          const browser=await chromium.launch({headless:true});
+          const rows=[];
+          for(const state of states){
+            const page=await browser.newPage({viewport:{width:1800,height:832}});
+            await page.route('https://earthlinedevelopment.org/**',async route=>{
+              const req=route.request(); if(req.resourceType()!=='document'){await route.continue();return;}
+              const u=new URL(req.url()); if(u.pathname!=='/'&&u.pathname!=='/index.html'){await route.continue();return;}
+              const resp=await route.fetch(); let body=await resp.text();
+              const anchor="    const range16713=(list16713,key16713)=>{const a16713=list16713.map(c16713=>Number(c16713[key16713])).filter(Number.isFinite);return a16713.length?Math.max(...a16713)-Math.min(...a16713):0;};";
+              if(!body.includes(anchor))throw new Error('16783 insertion anchor not found');
+              body=body.replace(anchor,block+"\n"+anchor);
+              body=body.replace("window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736={build:'EARTHLINE 16782'","window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736={build:'EARTHLINE 16783'");
+              await route.fulfill({response:resp,body,headers:{...resp.headers(),'cache-control':'no-store'}});
+            });
+            let error=null;
+            try{
+              await page.goto('https://earthlinedevelopment.org/?probe16783='+state+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#searchInput',{timeout:30000});
+              await page.evaluate(q=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value=q+' state';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},state);
+              await page.waitForFunction(()=>{
+                const s=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736,p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;
+                return s?.build==='EARTHLINE 16783'&&window.EARTHLINE_FINAL_PUBLISHED_SPREAD_16783&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);
+              },null,{timeout:70000,polling:100});
+              await page.waitForTimeout(300);
+            }catch(e){error=String(e&&e.message||e);}
+            const snap=await page.evaluate(()=>{
+              const sp=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||{},pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{},disp=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{},perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{},flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||{},land=window.EARTHLINE_LAND_VALIDITY_16584||{},final=window.EARTHLINE_FINAL_PUBLISHED_SPREAD_16783||{};
+              return {build:sp.build,generated:+pub.generated||0,visible:+disp.swaleLines||0,coreMs:+perf.totalMs||NaN,unsafe:+flow.unsafeSegments||0,waterReady:Array.isArray(land.waterParts),final};
+            }).catch(()=>({}));
+            rows.push({state,error,...snap});
+            await page.close();
+          }
+          await browser.close();
+          const out={at:new Date().toISOString(),rows,pass:rows.every(r=>!r.error&&r.build==='EARTHLINE 16783'&&r.generated===r.visible&&r.generated>0&&r.unsafe===0&&r.waterReady&&Number.isFinite(r.coreMs)&&r.coreMs<=15000)};
+          fs.writeFileSync('lab/mantra45-16783-final-spread-probe.json',JSON.stringify(out,null,2));
+          console.log(JSON.stringify({pass:out.pass,rows:rows.map(r=>({state:r.state,error:r.error,generated:r.generated,visible:r.visible,coreMs:r.coreMs,unsafe:r.unsafe,candidateCells:r.final?.candidateCells,initialCells:r.final?.initialCells,finalCells:r.final?.finalCells,targetCells:r.final?.targetCells,swaps:r.final?.swaps}))}));
+          if(!out.pass)process.exit(2);
+          JS
+      - name: Persist probe
+        if: always()
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-16783-final-spread-probe.json || true
+          git commit -m "diag: persist 16783 final spread probe [skip ci]" || true
+          git pull --rebase origin main
+          git push origin HEAD:main
