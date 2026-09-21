@@ -1,0 +1,34 @@
+name: Mantra 46 16790 Candidate Footprint Audit A-B
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mantra46-16790-audit-coverage-ab.mjs'
+      - '.github/workflows/earthline-m46-16790-audit-coverage.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run candidate-footprint audit A-B
+        run: node tests/mantra46-16790-audit-coverage-ab.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16790-audit-coverage
+          path: artifacts/mantra46-16790-audit-coverage/
+          if-no-files-found: warn
