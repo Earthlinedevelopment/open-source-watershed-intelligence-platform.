@@ -1,0 +1,81 @@
+name: Earthline 16785 Property Final-10 Parallel
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-property-final10-16785.yml']
+permissions:
+  contents: write
+jobs:
+  certify:
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        state: ["South Dakota","Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming"]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Certify Property state
+        shell: bash
+        run: |
+          set +e
+          slug="$(echo '${{ matrix.state }}' | tr '[:upper:] ' '[:lower:]-')"
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='${{ matrix.state }}' OUT="property-$slug.json" node lab/validate-16728-property-50states.mjs
+          code=$?
+          echo "$code" > "property-$slug.exit"
+          cat "property-$slug.json"
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: "property-final10-${{ matrix.state }}"
+          path: |
+            property-*.json
+            property-*.exit
+          if-no-files-found: error
+  aggregate:
+    needs: certify
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main, fetch-depth: 0}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: property-final10-*
+          path: /tmp/property-final10
+          merge-multiple: true
+      - name: Aggregate final 10
+        shell: bash
+        run: |
+          mkdir -p lab
+          python3 - <<'PY'
+          import json,glob,datetime,os
+          rows=[]; exits={}
+          for p in sorted(glob.glob('/tmp/property-final10/property-*.json')):
+              with open(p) as f:o=json.load(f)
+              rows.extend(o.get('rows',[]))
+              slug=os.path.basename(p).replace('property-','').replace('.json','')
+              ep=p.replace('.json','.exit')
+              exits[slug]=open(ep).read().strip() if os.path.exists(ep) else 'missing'
+          failed=[{'state':r.get('state'),'failures':r.get('failures',[])} for r in rows if not r.get('pass')]
+          out={'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'count':len(rows),'passed':sum(1 for r in rows if r.get('pass')),'failed':failed,'exits':exits,'pass':len(rows)==10 and not failed and all(v=='0' for v in exits.values()),'rows':rows}
+          with open('lab/mantra45-16785-property-final10.json','w') as f:json.dump(out,f,indent=2)
+          print(json.dumps({'count':out['count'],'passed':out['passed'],'failed':out['failed'],'pass':out['pass']}))
+          PY
+      - name: Persist final-10 certification
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-16785-property-final10.json
+          git commit -m "test: persist 16785 final-10 Property parallel gate [skip ci]" || true
+          git pull --rebase origin main
+          git push origin HEAD:main
