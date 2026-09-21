@@ -1,0 +1,33 @@
+name: Earthline 16779 IA AR Machine Probe
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-16779-ia-ar-machine.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Probe Iowa Arkansas
+        shell: bash
+        run: |
+          set +e
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Iowa|Arkansas' OUT='lab/mantra45-16779-ia-ar-machine.json' node lab/validate-16779-machine.mjs
+          exit 0
+      - name: Persist
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-16779-ia-ar-machine.json
+          git commit -m "diag: persist 16779 Iowa Arkansas machine probe [skip ci]" || true
+          git pull --rebase origin main
+          git push origin HEAD:main
