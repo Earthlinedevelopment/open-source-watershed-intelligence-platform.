@@ -34,7 +34,7 @@ function patchBody(body){
 
   body=replaceOnce(body,'contour-gap-metric',
 `          const metric16781=(Number(row16780.cluster16781)||0)*100+spread16781*24+ratio16781*20+pref16781*5+row16780.opportunity/16;`,
-`          const metric16781=(row16780.coarseContourHit16786?0:10000)+(Number(row16780.cluster16781)||0)*100+spread16781*24+ratio16781*20+pref16781*5+row16780.opportunity/16;`);
+`          const metric16781=(row16780.coarseContourHit16786?0:10000)+pref16781*1200+ratio16781*180+row16780.preferred*6+spread16781*24+(Number(row16780.cluster16781)||0)*12+row16780.opportunity/16;`);
 
   body=replaceOnce(body,'selected-audit',
 `selected:selected16780.map(r16780=>({bx:r16780.bx,by:r16780.by,valid:r16780.valid,opportunity:r16780.opportunity,preferred:r16780.preferred,cluster:Number(r16780.cluster16781||0)}))`,
