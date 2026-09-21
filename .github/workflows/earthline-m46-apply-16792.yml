@@ -1,0 +1,35 @@
+name: Earthline Apply 16792 Iowa Arkansas Recovery
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tools/mantra46-apply-16792-ia-ar-recovery.py'
+      - '.github/workflows/earthline-m46-apply-16792.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply 16792
+        run: python tools/mantra46-apply-16792-ia-ar-recovery.py
+      - name: Verify exact scope
+        run: |
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+          grep -q "EARTHLINE 16792 — IOWA/ARKANSAS REGIONAL RECOVERY" index.html
+          grep -q "window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556=cached16556" index.html
+          grep -q "maxSlope=relaxed?(focusMode?18:4):13.5" index.html
+          grep -q "if(!focusMode||preferredEligibleCount16539<36)" index.html
+      - name: Commit candidate
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "repair: deploy 16792 Iowa Arkansas Regional recovery"
+          git push origin HEAD:pages-live
