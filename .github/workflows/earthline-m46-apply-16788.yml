@@ -1,0 +1,38 @@
+name: Earthline Apply 16788 Priority Terrain
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tools/mantra46-apply-16788-priority-terrain.py'
+      - '.github/workflows/earthline-m46-apply-16788.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-16788:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply 16788 prioritized terrain recovery
+        run: python tools/mantra46-apply-16788-priority-terrain.py
+      - name: Verify exact product scope
+        run: |
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+          grep -q "EARTHLINE 16788 — PRIORITIZED EFFICIENT TERRAIN-GAP RECOVERY" index.html
+          grep -q "Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)))" index.html
+          grep -q "coarseContourCells16788" index.html
+          grep -q "loadDEM(tile16780.b,32,32,5500" index.html
+      - name: Commit product candidate
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "repair: deploy 16788 prioritized terrain recovery"
+          git push origin HEAD:pages-live
