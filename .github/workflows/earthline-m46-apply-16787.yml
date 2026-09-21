@@ -1,0 +1,39 @@
+name: Earthline Apply 16787 Efficient Terrain
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tools/mantra46-apply-16787-efficient-terrain.py'
+      - '.github/workflows/earthline-m46-apply-16787.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-16787:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply 16787 terrain repair
+        run: python tools/mantra46-apply-16787-efficient-terrain.py
+      - name: Verify scoped product diff
+        run: |
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+          grep -q "EARTHLINE 16787 — EFFICIENT TERRAIN-GAP RECOVERY" index.html
+          grep -q "Math.min(24,Math.max(12,Math.ceil(gapsBefore16780.length/2)))" index.html
+          grep -q "loadDEM(tile16780.b,32,32,5500" index.html
+          grep -q "regionalCapacity16755" index.html
+          grep -q "EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584" index.html
+      - name: Commit 16787 candidate
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "repair: efficiently recover Regional terrain gaps"
+          git push origin HEAD:pages-live
