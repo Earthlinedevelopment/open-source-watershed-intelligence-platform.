@@ -1,0 +1,74 @@
+name: Earthline 16781 Iowa Arkansas Live Gate
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m45-16781-ia-ar-live.yml']
+permissions:
+  contents: write
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Validate Iowa and Arkansas live 16781
+        shell: bash
+        run: |
+          mkdir -p lab screens16781
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          import fs from 'fs';
+          const browser=await chromium.launch({headless:true});
+          const states=['iowa','arkansas']; const rows=[];
+          for(const state of states){
+            const page=await browser.newPage({viewport:{width:1800,height:832}});
+            let error=null;
+            try{
+              await page.goto('https://earthlinedevelopment.org/?gate16781='+state+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#searchInput',{timeout:30000});
+              await page.evaluate(q=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value=q+' state';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},state);
+              await page.waitForFunction(()=>{
+                const s=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736,p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;
+                return s?.build==='EARTHLINE 16781'&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0);
+              },null,{timeout:70000,polling:100});
+              await page.waitForTimeout(500);
+            }catch(e){error=String(e&&e.message||e);}
+            const snap=await page.evaluate(()=>{
+              const vis=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020||{}, fs=(vis.swales&&Array.isArray(vis.swales.features))?vis.swales.features:[];
+              const b=vis.bounds||window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556?.regionalExtent?.bbox||null;
+              const pts=fs.map(f=>{const c=f?.geometry?.coordinates||[],m=c[Math.floor((c.length-1)/2)]||[NaN,NaN];return{lng:+m[0],lat:+m[1]};}).filter(p=>Number.isFinite(p.lng)&&Number.isFinite(p.lat));
+              const cells=[];
+              if(Array.isArray(b)&&b.length===4){const [w,s,e,n]=b;for(let y=0;y<12;y++)for(let x=0;x<12;x++){const x0=w+(e-w)*x/12,x1=w+(e-w)*(x+1)/12,y0=s+(n-s)*y/12,y1=s+(n-s)*(y+1)/12;cells.push({x,y,count:pts.filter(p=>p.lng>=x0&&p.lng<=x1&&p.lat>=y0&&p.lat<=y1).length});}}
+              const occupied=cells.filter(c=>c.count>0).length, empty=cells.filter(c=>c.count===0).length;
+              const quadrants=[0,1,2,3].map(q=>{const xs=q%2? [6,12]:[0,6], ys=q>1?[6,12]:[0,6];const cs=cells.filter(c=>c.x>=xs[0]&&c.x<xs[1]&&c.y>=ys[0]&&c.y<ys[1]);return{q,occupied:cs.filter(c=>c.count>0).length,total:cs.length,corridors:cs.reduce((a,c)=>a+c.count,0)};});
+              const fine=window.EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16781||null,p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{},d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{},perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{},flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||{},land=window.EARTHLINE_LAND_VALIDITY_16584||{},sp=window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||{};
+              return {build:sp.build,reserved:+sp.reserved||0,capacity:+sp.capacity||0,generated:+p.generated||0,visible:+d.swaleLines||0,coreMs:+perf.totalMs||NaN,unsafe:+flow.unsafeSegments||0,waterReady:Array.isArray(land.waterParts),bounds:b,occupied12:occupied,empty12:empty,quadrants,fine};
+            }).catch(()=>({}));
+            await page.screenshot({path:'screens16781/'+state+'.png',fullPage:false});
+            rows.push({state,error,...snap});
+            await page.close();
+          }
+          await browser.close();
+          const out={at:new Date().toISOString(),rows,pass:rows.every(r=>!r.error&&r.build==='EARTHLINE 16781'&&r.generated===r.visible&&r.generated>0&&r.unsafe===0&&r.waterReady&&Number.isFinite(r.coreMs)&&r.coreMs<=15000)};
+          fs.writeFileSync('lab/mantra45-16781-ia-ar-live.json',JSON.stringify(out,null,2));
+          console.log(JSON.stringify(out));
+          JS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: earthline-16781-ia-ar-live
+          path: screens16781/
+      - name: Persist evidence
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/mantra45-16781-ia-ar-live.json
+          git commit -m "test: persist 16781 Iowa Arkansas live gate [skip ci]" || true
+          git pull --rebase origin main
+          git push origin HEAD:main
