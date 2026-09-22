@@ -1,0 +1,35 @@
+name: Mantra 46 16799 Sampler Rejection Audit
+
+on:
+  push:
+    branches:
+      - diagnostic-m46-16799-sampler-rejection
+    paths:
+      - 'tests/mantra46-16799-sampler-rejection.mjs'
+      - '.github/workflows/mantra46-16799-sampler-rejection.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run sampler rejection audit
+        run: node tests/mantra46-16799-sampler-rejection.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16799-sampler-rejection
+          path: artifacts/mantra46-16799-sampler-rejection/
+          if-no-files-found: error
