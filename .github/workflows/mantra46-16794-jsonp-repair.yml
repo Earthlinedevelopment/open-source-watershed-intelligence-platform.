@@ -30,22 +30,15 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-
           p = Path("index.html")
           s = p.read_text(encoding="utf-8")
-
           old = "      function cleanup(){clearTimeout(timer);script.remove();try{delete window[cb]}catch(_){window[cb]=undefined}}"
-          new = """      // EARTHLINE 16794 — LATE JSONP CALLBACK RETIREMENT
-      function cleanup(){clearTimeout(timer);script.remove();window[cb]=()=>{}}"""
-
+          new = "      // EARTHLINE 16794 — LATE JSONP CALLBACK RETIREMENT\n      function cleanup(){clearTimeout(timer);script.remove();window[cb]=()=>{}}"
           count = s.count(old)
           if count != 1:
               raise SystemExit(f"Expected exactly one JSONP cleanup owner; found {count}")
-
-          s = s.replace(old, new, 1)
-          p.write_text(s, encoding="utf-8")
+          p.write_text(s.replace(old, new, 1), encoding="utf-8")
           PY
-
           git diff --check
           grep -n "EARTHLINE 16794 — LATE JSONP CALLBACK RETIREMENT" index.html
 
