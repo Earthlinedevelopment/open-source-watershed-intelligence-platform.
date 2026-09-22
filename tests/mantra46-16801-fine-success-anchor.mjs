@@ -42,7 +42,7 @@ for(const query of STATES){
     body=body.replace(oldSupp,newSupp);
 
     const oldRule="rule:'preserve existing fixed anchors, then give each 12x12 contour cell up to two total real makeSwales sample attempts; capacity and science gates unchanged',";
-    const newRule="rule:'preserve existing fixed anchors, then give each 12x12 contour cell up to one successful real makeSwales candidate in each 24x24 contour cell; failed samples do not consume the cell quota; capacity and science gates unchanged',";
+    const newRule="rule:'preserve existing fixed anchors, then give each 24x24 contour cell up to one successful real makeSwales candidate; failed samples do not consume the cell quota; capacity and science gates unchanged',";
     if(body.split(oldRule).length-1!==1)throw new Error('anchor audit rule owner not found');
     body=body.replace(oldRule,newRule);
 
