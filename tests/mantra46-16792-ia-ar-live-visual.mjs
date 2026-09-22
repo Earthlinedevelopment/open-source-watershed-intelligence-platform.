@@ -12,7 +12,7 @@ for(const query of CASES){
   try{
     await page.goto(BASE+'?m46_ia_ar_visual='+encodeURIComponent(query)+'_'+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
     await page.waitForSelector('#searchInput',{timeout:30000});
-    const marker=await page.evaluate(()=>document.documentElement.outerHTML.includes('EARTHLINE 16792 — ATOMIC STATE DISPLAY OWNERSHIP'));
+    const marker=await page.evaluate(()=>{const h=document.documentElement.outerHTML;return h.includes('s.centerLng=Number(loc16556.lng)')&&h.includes('regional final display camera reconciliation failed');});
     if(!marker)throw new Error('16792 not live');
     await page.evaluate(q=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},query);
     try{
