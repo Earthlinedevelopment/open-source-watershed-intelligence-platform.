@@ -1,0 +1,35 @@
+name: Mantra 46 16795 Fine Coverage 12-State Audit
+
+on:
+  push:
+    branches:
+      - diagnostic-m46-16795-fine-coverage
+    paths:
+      - 'tests/mantra46-16795-fine-coverage-12.mjs'
+      - '.github/workflows/mantra46-16795-fine-coverage-12.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run 12-state fine coverage audit
+        run: node tests/mantra46-16795-fine-coverage-12.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16795-fine-coverage-12
+          path: artifacts/mantra46-16795-fine-coverage-12/
+          if-no-files-found: error
