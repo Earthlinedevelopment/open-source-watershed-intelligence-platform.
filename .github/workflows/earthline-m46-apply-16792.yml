@@ -1,10 +1,10 @@
-name: Earthline Apply 16792 Location Ownership
+name: Earthline Apply 16792 State Camera
 
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'tools/mantra46-apply-16792-location-ownership.py'
+      - 'tools/mantra46-apply-16792-state-camera.py'
       - '.github/workflows/earthline-m46-apply-16792.yml'
   workflow_dispatch:
 
@@ -19,19 +19,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Apply 16792 location ownership repair
-        run: python tools/mantra46-apply-16792-location-ownership.py
+      - name: Apply authoritative U.S. state camera handoff
+        run: python tools/mantra46-apply-16792-state-camera.py
       - name: Verify exact product scope
         run: |
           git diff --check
           test "$(git diff --name-only | tr -d '\r')" = "index.html"
-          grep -q "EARTHLINE 16792 — ATOMIC STATE DISPLAY OWNERSHIP" index.html
-          grep -q "s.centerLng=Number(loc16556.lng)" index.html
-          grep -q "regional final display camera reconciliation failed" index.html
-      - name: Commit product candidate
+          grep -q "EARTHLINE 16792 — AUTHORITATIVE U.S. STATE CAMERA HANDOFF" index.html
+          grep -q "profile16792" index.html
+          grep -q "earthlineResolveAtomicUSStatePackage16556(profile16792)" index.html
+      - name: Commit candidate
         run: |
           git config user.name "Earthlinedevelopment"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m "repair: deploy 16792 atomic state display ownership"
+          git commit -m "repair: deploy 16792 authoritative state camera handoff"
           git push origin HEAD:pages-live
