@@ -36,10 +36,20 @@ for(const query of STATES){
     if(body.split(oldFixed).length-1!==1)throw new Error('fixed-anchor owner not found');
     body=body.replace(oldFixed,newFixed);
 
-    const oldSupp="          if((regionalAnchorAttempts16786.get(key)||0)>=2)continue;\\n          noteAnchor16786(key);supplementalAnchorAttempts16786++;\\n          const c=sampleSegment(coords,idx,false);\\n          if(c){c.spatialAnchor16786=true;c.spatialAnchorCell16786=key;candidates.push(c);supplementalAnchorCandidates16786++;}";
-    const newSupp="          if((regionalAnchorAttempts16786.get(key)||0)>=1)continue;\\n          supplementalAnchorAttempts16786++;\\n          const c=sampleSegment(coords,idx,false);\\n          if(c){noteAnchor16786(key);c.spatialAnchor16786=true;c.spatialAnchorCell16786=key;candidates.push(c);supplementalAnchorCandidates16786++;}";
-    if(body.split(oldSupp).length-1!==1)throw new Error('supplemental-anchor owner not found');
-    body=body.replace(oldSupp,newSupp);
+    const oldQuota="if((regionalAnchorAttempts16786.get(key)||0)>=2)continue;";
+    const newQuota="if((regionalAnchorAttempts16786.get(key)||0)>=1)continue;";
+    if(body.split(oldQuota).length-1!==1)throw new Error('supplemental quota owner not found');
+    body=body.replace(oldQuota,newQuota);
+
+    const oldPremature="noteAnchor16786(key);supplementalAnchorAttempts16786++;";
+    const newPremature="supplementalAnchorAttempts16786++;";
+    if(body.split(oldPremature).length-1!==1)throw new Error('premature supplemental count owner not found');
+    body=body.replace(oldPremature,newPremature);
+
+    const oldSuccess="if(c){c.spatialAnchor16786=true;c.spatialAnchorCell16786=key;candidates.push(c);supplementalAnchorCandidates16786++;}";
+    const newSuccess="if(c){noteAnchor16786(key);c.spatialAnchor16786=true;c.spatialAnchorCell16786=key;candidates.push(c);supplementalAnchorCandidates16786++;}";
+    if(body.split(oldSuccess).length-1!==1)throw new Error('supplemental success owner not found');
+    body=body.replace(oldSuccess,newSuccess);
 
     const oldRule="rule:'preserve existing fixed anchors, then give each 12x12 contour cell up to two total real makeSwales sample attempts; capacity and science gates unchanged',";
     const newRule="rule:'preserve existing fixed anchors, then give each 24x24 contour cell up to one successful real makeSwales candidate; failed samples do not consume the cell quota; capacity and science gates unchanged',";
