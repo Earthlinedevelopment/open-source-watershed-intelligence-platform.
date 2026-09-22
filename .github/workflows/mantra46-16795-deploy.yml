@@ -1,0 +1,59 @@
+name: Mantra 46 16795 Clustered Refinement Repair
+
+on:
+  push:
+    branches:
+      - repair-m46-16795-clustered-refinement
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact live branch
+        uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+
+      - name: Verify 16794 parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "3ddbcb61b3c52fe47a4d3f8117e3b427af8b2eb0"
+
+      - name: Apply 16795 clustered refinement repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          old="if(used16780>=2)continue;"
+          new="if(used16780>=3)continue;"
+          count=s.count(old)
+          if count != 1:
+              raise SystemExit(f"Expected one clustered refinement cap owner; found {count}")
+          s=s.replace(old,new,1)
+          marker="// EARTHLINE 16795 — CLUSTERED FINE-TERRAIN REFINEMENT"
+          # Insert a nearby marker without altering execution.
+          idx=s.find(new)
+          line_start=s.rfind("\n",0,idx)+1
+          s=s[:line_start]+marker+"\n"+s[line_start:]
+          p.write_text(s,encoding="utf-8")
+          PY
+          git diff --check
+          grep -n "EARTHLINE 16795 — CLUSTERED FINE-TERRAIN REFINEMENT" index.html
+
+      - name: Commit and push 16795
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "repair: deploy 16795 clustered fine-terrain refinement"
+          git push origin HEAD:pages-live
