@@ -30,6 +30,11 @@ for(const query of STATES){
     if(route.request().resourceType()!=='document')return route.continue();
     const resp=await route.fetch();
     let body=await resp.text();
+    const vtOld="function cleanup(){try{script.remove()}catch(_){}try{delete window[cb]}catch(_){window[cb]=undefined}}";
+    const vtNew="function cleanup(){try{script.remove()}catch(_){}window[cb]=()=>{}}";
+    const vtCount=body.split(vtOld).length-1;
+    if(vtCount!==1)throw new Error('expected one Vermont infrastructure JSONP cleanup owner; found '+vtCount);
+    body=body.replace(vtOld,vtNew);
 
     const marker="const range16713=(list16713,key16713)=>{const a16713=list16713.map(c16713=>Number(c16713[key16713])).filter(Number.isFinite);return a16713.length?Math.max(...a16713)-Math.min(...a16713):0;};";
     if(body.split(marker).length-1!==1)throw new Error('prime rebalance insertion owner not found');
