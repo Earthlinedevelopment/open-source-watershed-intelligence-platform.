@@ -1,0 +1,35 @@
+name: Mantra 46 16800 Anchor Success Quota
+
+on:
+  push:
+    branches:
+      - diagnostic-m46-16800-anchor-success-quota
+    paths:
+      - 'tests/mantra46-16800-anchor-success-quota.mjs'
+      - '.github/workflows/mantra46-16800-anchor-success-quota.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Evaluate 16800 successful-anchor quota
+        run: node tests/mantra46-16800-anchor-success-quota.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16800-anchor-success-quota
+          path: artifacts/mantra46-16800-anchor-success-quota/
+          if-no-files-found: error
