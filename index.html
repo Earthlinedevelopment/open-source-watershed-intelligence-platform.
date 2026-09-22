@@ -1,5 +1,6 @@
 <!-- EARTHLINE 16787 — EFFICIENT TERRAIN-GAP RECOVERY. Remaining broad Regional voids were traced to opportunity-rich 12x12 cells whose coarse contour field did not produce enough local geometry. Preserve all existing science/safety/capacity owners; expand the bounded local terrain refinement only where measured gaps exist, using a lighter 32x32 local DEM so more real failed cells can be resolved inside the 15 s ceiling. No jurisdiction names, synthetic corridors, relaxed mapped-water safety, slope-rule change, selection-capacity change, or Property change. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16792 — IOWA/ARKANSAS REGIONAL RECOVERY. Two evidence-backed global repairs only: (1) cached Regional state packages rebind the authoritative LAST_ATOMIC package on every cache hit, preventing stale prior-state identity during repeated state switching; (2) Regional candidate generation always runs the existing relaxed contour pass, constrained to the existing <=4% low-relief opportunity band, so statewide high-relief candidate abundance cannot suppress real low-relief candidates elsewhere. Property behavior, mapped-water safety, jurisdiction containment, ranking, capacity and renderers are unchanged. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16792 — ATOMIC STATE DISPLAY OWNERSHIP. Registered U.S. state resolution now commits loc + centerLng + centerLat + viewZoom as one state package, and the existing Regional context-completion path reasserts the governed state bounds if any later presentation owner moved the map. No hydrology, slope, aquifer, exclusion, ranking, capacity, boundary, or Property science changes. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16791 — CORRECTED REGIONAL AUDIT SEMANTICS. Diagnostic lineage now distinguishes candidate corridor footprint coverage from candidate ownership, and selection compares against the maximum attainable 12x12 spread under the existing 6x6 parent-floor guard. No science, thresholds, swale geometry, water safety, capacity, ranking, containment, renderer, lifecycle or Property behavior changed. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16789 — SAME-PARENT COUNT-NEUTRAL FINAL SPREAD. Regional final spread may replace a duplicate 12x12-cell corridor from a 6x6 parent holding exactly three corridors only when the missing replacement cell is in that same parent, so the parent's corridor count remains exactly three. Cross-parent donor protection remains unchanged. No science, water safety, capacity, ranking, containment, renderer or Property behavior changed. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16788 — PRIORITIZED EFFICIENT TERRAIN-GAP RECOVERY. Regional only: preserve 16787's real 32x32 local terrain refinement, but restore a bounded 8–16 tile budget and prioritize opportunity-rich cells lacking coarse contour geometry before already-contoured gaps. This retains the shared slope/water/aquifer/exclusion science, jurisdiction containment, mapped-water safety, ranking and final capacity while recovering performance margin. Property unchanged. CANDIDATE / NOT ACCEPTED. -->
@@ -30817,6 +30818,9 @@ body { overflow-x:hidden!important; }
       const loc16556=JSON.parse(JSON.stringify(package16556.location));
       if(s){
         s.loc=loc16556;
+        s.centerLng=Number(loc16556.lng);
+        s.centerLat=Number(loc16556.lat);
+        s.viewZoom=Number(loc16556.zoomHint||s.viewZoom||5.7);
         s.appliedSearchText=profile16549.query;
         s.jurisdictionPackage16556=package16556;
       }
@@ -32576,6 +32580,7 @@ body { overflow-x:hidden!important; }
         window.EARTHLINE_REGIONAL_CONTEXT_16198={build:'EARTHLINE 16726',runToken,elapsedMs:Math.round(performance.now()-contextStarted16198),basinCount:basinCount16198,aquiferCount:aquiferCount16198,groundwaterReady:groundwaterReady16198,graceReady:graceReady16198,failures:failures16198,displaySuppressedForProperty:propertyOwnsDisplay16726,at:new Date().toISOString()};
         try{earthlineStandardAudit16784({tier:focusMode?'focus':'regional',runToken,query:q,hy,stage:'context-complete'});}catch(_){ }
         recordRun(propertyOwnsDisplay16726?'context_enriched_cached_property_preserved':'context_enriched',runToken,window.EARTHLINE_REGIONAL_CONTEXT_16198);
+        if(!propertyOwnsDisplay16726&&!focusMode){const cov16792=cameraCoverage(m,b);if(!Number.isFinite(cov16792)||cov16792<.98){const ok16792=await settleRegionalCamera(m,b,runToken);if(ok16792!==true)throw new Error('regional final display camera reconciliation failed');}}
         if(!propertyOwnsDisplay16726)setRunStatus((focusMode?'Focus screening published. ':(isVermont?'Vermont screening published. ':'Regional screening published. '))+(failures16198.length?'Unavailable context: '+failures16198.join(', ')+'. ':'Watershed and groundwater context updated. ')+swaleNote+(!focusMode?earthlineLandValidityStatus16584():''),'published');
       }catch(error16198){
         if(isCurrentRun(runToken)){
