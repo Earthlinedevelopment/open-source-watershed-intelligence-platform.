@@ -1,0 +1,34 @@
+name: Mantra 46 16792 Atomic State Center A-B
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mantra46-16792-state-center-ab.mjs'
+      - '.github/workflows/earthline-m46-16792-state-center-ab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  state-center-ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run atomic state center A-B
+        run: node tests/mantra46-16792-state-center-ab.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16792-state-center-ab
+          path: artifacts/mantra46-16792-state-center-ab/
+          if-no-files-found: warn
