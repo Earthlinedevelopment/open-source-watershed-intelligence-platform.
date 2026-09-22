@@ -1,0 +1,35 @@
+name: Mantra 46 16794 Arkansas Gap Trace
+
+on:
+  push:
+    branches:
+      - diagnostic-m46-16794-ar-gap
+    paths:
+      - 'tests/mantra46-16794-ar-gap.mjs'
+      - '.github/workflows/mantra46-16794-ar-gap.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run Arkansas gap trace
+        run: node tests/mantra46-16794-ar-gap.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16794-ar-gap
+          path: artifacts/mantra46-16794-ar-gap/
+          if-no-files-found: error
