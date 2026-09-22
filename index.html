@@ -36771,7 +36771,8 @@ html[data-earthline-analysis-tier="property"] #earthlineDiagramLegend16080{displ
       const cb='__earthlineVtBoundary16178_'+Date.now()+'_'+Math.random().toString(36).slice(2),script=document.createElement('script');
       const params=new URLSearchParams({where:'1=1',outFields:'OBJECTID',returnGeometry:'true',outSR:'4326',f:'json',callback:cb});
       const timer=setTimeout(()=>{cleanup();reject(new Error('VCGI boundary JSONP timed out'));},8000);
-      function cleanup(){clearTimeout(timer);script.remove();try{delete window[cb]}catch(_){window[cb]=undefined}}
+      // EARTHLINE 16794 — LATE JSONP CALLBACK RETIREMENT
+      function cleanup(){clearTimeout(timer);script.remove();window[cb]=()=>{}}
       window[cb]=data=>{try{const g=esriToGeoJSON(data);cleanup();resolve(g)}catch(err){cleanup();reject(err)}};
       script.onerror=()=>{cleanup();reject(new Error('VCGI boundary JSONP failed'))};script.async=true;script.src=SERVICE+'?'+params.toString();document.head.appendChild(script);
     });
