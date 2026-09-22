@@ -1,0 +1,44 @@
+name: Mantra 46 16794 Targeted US Closeout
+
+on:
+  push:
+    branches:
+      - diagnostic-m46-16794-us-closeout
+    paths:
+      - 'tests/mantra46-16794-targeted-us.mjs'
+      - '.github/workflows/mantra46-16794-targeted-us.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  targeted-us:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Wait for live 16794
+        run: |
+          for i in $(seq 1 60); do
+            html="$(curl -fsS --max-time 20 'https://earthlinedevelopment.org/?m46_16794_wait=1' || true)"
+            if printf '%s' "$html" | grep -q 'EARTHLINE 16794 — LATE JSONP CALLBACK RETIREMENT'; then exit 0; fi
+            sleep 3
+          done
+          echo "16794 marker not live"
+          exit 1
+      - name: Run targeted U.S. closeout
+        run: node tests/mantra46-16794-targeted-us.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16794-targeted-us
+          path: artifacts/mantra46-16794-targeted-us/
+          if-no-files-found: error
