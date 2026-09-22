@@ -29,8 +29,8 @@ for(const query of ['Arkansas','Iowa']){
  await page.evaluate(q=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},query);
  await page.waitForFunction(()=>/groundwater context updated|unavailable context/i.test(String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'')),null,{timeout:50000,polling:100});
  await page.waitForTimeout(1000);
- const x=await page.evaluate(()=>{const c=earthlineMap.getCenter(),a=window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556;return {Mloc:M.loc,Mcenter:{lng:M.centerLng,lat:M.centerLat,zoom:M.viewZoom},mapCenter:{lng:c.lng,lat:c.lat,zoom:earthlineMap.getZoom()},atomicCenter:a?.center||null,atomicExtent:a?.regionalExtent||null,target:window.EARTHLINE_PROPERTY_TARGET_16201||null,rootPass:window.EARTHLINE_STANDARD_ROOT_CAUSE_AUDIT_16784?.pass??null,generated:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated??null,errors};});
- console.log('EARTHLINE_M46_16792_STATE_CENTER '+JSON.stringify({query,...x}));
+ const x=await page.evaluate(()=>{const c=earthlineMap.getCenter(),a=window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556;return {Mloc:M.loc,Mcenter:{lng:M.centerLng,lat:M.centerLat,zoom:M.viewZoom},mapCenter:{lng:c.lng,lat:c.lat,zoom:earthlineMap.getZoom()},atomicCenter:a?.center||null,atomicExtent:a?.regionalExtent||null,target:window.EARTHLINE_PROPERTY_TARGET_16201||null,rootPass:window.EARTHLINE_STANDARD_ROOT_CAUSE_AUDIT_16784?.pass??null,generated:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated??null};});
+ console.log('EARTHLINE_M46_16792_STATE_CENTER '+JSON.stringify({query,...x,errors}));
  await page.screenshot({path:'artifacts/mantra46-16792-state-center-ab/'+query.toLowerCase()+'.png'});
  await page.close();
 }
