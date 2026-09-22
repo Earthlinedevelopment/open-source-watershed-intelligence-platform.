@@ -36,8 +36,8 @@ for(const query of STATES){
     if(body.split(oldFixed).length-1!==1)throw new Error('fixed-anchor owner not found');
     body=body.replace(oldFixed,newFixed);
 
-    const oldSupp="          if((regionalAnchorAttempts16786.get(key)||0)>=1)continue;\n          noteAnchor16786(key);supplementalAnchorAttempts16786++;\n          const c=sampleSegment(coords,idx,false);\n          if(c){c.spatialAnchor16786=true;c.spatialAnchorCell16786=key;candidates.push(c);supplementalAnchorCandidates16786++;}";
-    const newSupp="          if((regionalAnchorAttempts16786.get(key)||0)>=2)continue;\n          supplementalAnchorAttempts16786++;\n          const c=sampleSegment(coords,idx,false);\n          if(c){noteAnchor16786(key);c.spatialAnchor16786=true;c.spatialAnchorCell16786=key;candidates.push(c);supplementalAnchorCandidates16786++;}";
+    const oldSupp="          if((regionalAnchorAttempts16786.get(key)||0)>=2)continue;\\n          noteAnchor16786(key);supplementalAnchorAttempts16786++;\\n          const c=sampleSegment(coords,idx,false);\\n          if(c){c.spatialAnchor16786=true;c.spatialAnchorCell16786=key;candidates.push(c);supplementalAnchorCandidates16786++;}";
+    const newSupp="          if((regionalAnchorAttempts16786.get(key)||0)>=1)continue;\\n          supplementalAnchorAttempts16786++;\\n          const c=sampleSegment(coords,idx,false);\\n          if(c){noteAnchor16786(key);c.spatialAnchor16786=true;c.spatialAnchorCell16786=key;candidates.push(c);supplementalAnchorCandidates16786++;}";
     if(body.split(oldSupp).length-1!==1)throw new Error('supplemental-anchor owner not found');
     body=body.replace(oldSupp,newSupp);
 
