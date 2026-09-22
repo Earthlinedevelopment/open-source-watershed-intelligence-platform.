@@ -1,3 +1,4 @@
+<!-- EARTHLINE 16793 — STARTUP CAMERA RACE REPAIR. The asynchronous Mapbox load handler no longer overwrites an already-started search with the startup globe camera. Startup behavior remains unchanged while genuinely idle. No science, terrain, hydrology, swale geometry/ranking, mapped-water safety, capacity, renderer, Property behavior, logo, Orb, or controls changed. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16787 — EFFICIENT TERRAIN-GAP RECOVERY. Remaining broad Regional voids were traced to opportunity-rich 12x12 cells whose coarse contour field did not produce enough local geometry. Preserve all existing science/safety/capacity owners; expand the bounded local terrain refinement only where measured gaps exist, using a lighter 32x32 local DEM so more real failed cells can be resolved inside the 15 s ceiling. No jurisdiction names, synthetic corridors, relaxed mapped-water safety, slope-rule change, selection-capacity change, or Property change. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16792 — IOWA/ARKANSAS REGIONAL RECOVERY. Two evidence-backed global repairs only: (1) cached Regional state packages rebind the authoritative LAST_ATOMIC package on every cache hit, preventing stale prior-state identity during repeated state switching; (2) Regional candidate generation always runs the existing relaxed contour pass, constrained to the existing <=4% low-relief opportunity band, so statewide high-relief candidate abundance cannot suppress real low-relief candidates elsewhere. Property behavior, mapped-water safety, jurisdiction containment, ranking, capacity and renderers are unchanged. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16792 — ATOMIC STATE DISPLAY OWNERSHIP. Registered U.S. state resolution now commits loc + centerLng + centerLat + viewZoom as one state package, and the existing Regional context-completion path reasserts the governed state bounds if any later presentation owner moved the map. No hydrology, slope, aquifer, exclusion, ranking, capacity, boundary, or Property science changes. CANDIDATE / NOT ACCEPTED. -->
@@ -3338,9 +3339,20 @@ function earthlineInitMap(){
       earthlineMapReady=true;
       earthlineMapLoadError=false;
       earthlineSettleGlobeSplash16171("core-map-load",false);
+      /* EARTHLINE 16793 — STARTUP CAMERA RACE REPAIR.
+         The startup globe reset is presentation-only and may run only while the page is
+         genuinely idle. If a search has already begun or the search field already carries
+         a location, preserve the camera committed by that search instead of replacing it
+         when the asynchronous Mapbox load event arrives. */
       try{
-        earthlineMap.jumpTo({center:[-102,20],zoom:0,bearing:0,pitch:0});
-        earthlineUpdateGlobePresentation();
+        const activeSearch16793=!!(
+          (M&&Number(M.searchGen||0)>0)||
+          String((document.getElementById("searchInput")||{}).value||"").trim()
+        );
+        if(!activeSearch16793){
+          earthlineMap.jumpTo({center:[-102,20],zoom:0,bearing:0,pitch:0});
+          earthlineUpdateGlobePresentation();
+        }
       }catch(e){}
       earthlineMap.resize();
       earthlineSyncOverlayScale();
