@@ -1,6 +1,7 @@
 <!-- EARTHLINE 16787 — EFFICIENT TERRAIN-GAP RECOVERY. Remaining broad Regional voids were traced to opportunity-rich 12x12 cells whose coarse contour field did not produce enough local geometry. Preserve all existing science/safety/capacity owners; expand the bounded local terrain refinement only where measured gaps exist, using a lighter 32x32 local DEM so more real failed cells can be resolved inside the 15 s ceiling. No jurisdiction names, synthetic corridors, relaxed mapped-water safety, slope-rule change, selection-capacity change, or Property change. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16792 — IOWA/ARKANSAS REGIONAL RECOVERY. Two evidence-backed global repairs only: (1) cached Regional state packages rebind the authoritative LAST_ATOMIC package on every cache hit, preventing stale prior-state identity during repeated state switching; (2) Regional candidate generation always runs the existing relaxed contour pass, constrained to the existing <=4% low-relief opportunity band, so statewide high-relief candidate abundance cannot suppress real low-relief candidates elsewhere. Property behavior, mapped-water safety, jurisdiction containment, ranking, capacity and renderers are unchanged. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16792 — ATOMIC STATE DISPLAY OWNERSHIP. Registered U.S. state resolution now commits loc + centerLng + centerLat + viewZoom as one state package, and the existing Regional context-completion path reasserts the governed state bounds if any later presentation owner moved the map. No hydrology, slope, aquifer, exclusion, ranking, capacity, boundary, or Property science changes. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16792 — AUTHORITATIVE U.S. STATE CAMERA HANDOFF. Registered U.S. state searches now resolve the existing immutable 16556 state package before the generic 3-second geocoder/current-map fallback, so the map camera, crosshair and analysis frame use the same authoritative state location as Regional science. No science, thresholds, terrain, hydrology, swale geometry/ranking, water safety, capacity, renderer or Property behavior changed. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16791 — CORRECTED REGIONAL AUDIT SEMANTICS. Diagnostic lineage now distinguishes candidate corridor footprint coverage from candidate ownership, and selection compares against the maximum attainable 12x12 spread under the existing 6x6 parent-floor guard. No science, thresholds, swale geometry, water safety, capacity, ranking, containment, renderer, lifecycle or Property behavior changed. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16789 — SAME-PARENT COUNT-NEUTRAL FINAL SPREAD. Regional final spread may replace a duplicate 12x12-cell corridor from a 6x6 parent holding exactly three corridors only when the missing replacement cell is in that same parent, so the parent's corridor count remains exactly three. Cross-parent donor protection remains unchanged. No science, water safety, capacity, ranking, containment, renderer or Property behavior changed. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16788 — PRIORITIZED EFFICIENT TERRAIN-GAP RECOVERY. Regional only: preserve 16787's real 32x32 local terrain refinement, but restore a bounded 8–16 tile budget and prioritize opportunity-rich cells lacking coarse contour geometry before already-contoured gaps. This retains the shared slope/water/aquifer/exclusion science, jurisdiction containment, mapped-water safety, ranking and final capacity while recovering performance margin. Property unchanged. CANDIDATE / NOT ACCEPTED. -->
@@ -17814,7 +17815,14 @@ var prescribeSwales;
           earthlineNotice("Using the resolved map location — starting terrain and hydrology now.");
         }else{
           let local15873=null;
-          try{if(typeof earthlineRegionOverride==="function")local15873=earthlineRegionOverride(raw);}catch(_){ }
+          try{
+            const profile16792=typeof earthlineJurisdictionProfile16549==="function"?earthlineJurisdictionProfile16549(raw):null;
+            if(profile16792&&typeof earthlineResolveAtomicUSStatePackage16556==="function"){
+              const pkg16792=await earthlineResolveAtomicUSStatePackage16556(profile16792);
+              if(pkg16792&&pkg16792.location)local15873=Object.assign({},pkg16792.location);
+            }
+          }catch(_){ }
+          try{if(!local15873&&typeof earthlineRegionOverride==="function")local15873=earthlineRegionOverride(raw);}catch(_){ }
           try{if(!local15873&&typeof findLoc==="function")local15873=findLoc(raw);}catch(_){ }
           if(local15873&&Number.isFinite(Number(local15873.lng))&&Number.isFinite(Number(local15873.lat))){
             clearAllAnalysisOutput15801("bundled-location-on-reload");
