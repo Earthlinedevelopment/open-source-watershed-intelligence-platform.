@@ -1,0 +1,60 @@
+name: Mantra 46 16794 Late JSONP Callback Repair
+
+on:
+  push:
+    branches:
+      - repair-m46-16794-jsonp
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact live branch
+        uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+
+      - name: Verify 16793 parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "da49a62b2fa9a7fc781bdc37a5f6192848a04f46"
+
+      - name: Apply 16794 late JSONP callback retirement
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path("index.html")
+          s = p.read_text(encoding="utf-8")
+
+          old = "      function cleanup(){clearTimeout(timer);script.remove();try{delete window[cb]}catch(_){window[cb]=undefined}}"
+          new = """      // EARTHLINE 16794 — LATE JSONP CALLBACK RETIREMENT
+      function cleanup(){clearTimeout(timer);script.remove();window[cb]=()=>{}}"""
+
+          count = s.count(old)
+          if count != 1:
+              raise SystemExit(f"Expected exactly one JSONP cleanup owner; found {count}")
+
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding="utf-8")
+          PY
+
+          git diff --check
+          grep -n "EARTHLINE 16794 — LATE JSONP CALLBACK RETIREMENT" index.html
+
+      - name: Commit and push 16794
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "repair: deploy 16794 late JSONP callback race"
+          git push origin HEAD:pages-live
