@@ -1,0 +1,28 @@
+name: Mantra 46 Arkansas Camera Caller Trace
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mantra46-arkansas-camera-call-trace.mjs'
+      - '.github/workflows/earthline-m46-arkansas-camera-trace.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Trace Arkansas camera callers
+        run: node tests/mantra46-arkansas-camera-call-trace.mjs
