@@ -14,9 +14,9 @@ for(const query of ['Arkansas','Iowa']){
   for(const delay of [0,500,1500,3000]){
     if(delay)await page.waitForTimeout(delay);
     const x=await page.evaluate(()=>({
-      Mloc:window.M?.loc||null,centerLng:window.M?.centerLng??null,centerLat:window.M?.centerLat??null,viewZoom:window.M?.viewZoom??null,
-      mapCenter:(()=>{try{const c=window.earthlineMap?.getCenter?.();return c?{lng:c.lng,lat:c.lat}:null}catch(_){return null}})(),
-      mapZoom:(()=>{try{return window.earthlineMap?.getZoom?.()??null}catch(_){return null}})(),
+      Mloc:(typeof M!=='undefined'?M.loc:null),centerLng:(typeof M!=='undefined'?M.centerLng:null),centerLat:(typeof M!=='undefined'?M.centerLat:null),viewZoom:(typeof M!=='undefined'?M.viewZoom:null),
+      mapCenter:(()=>{try{const c=(typeof earthlineMap!=='undefined'&&earthlineMap?.getCenter)?earthlineMap.getCenter():null;return c?{lng:c.lng,lat:c.lat}:null}catch(_){return null}})(),
+      mapZoom:(()=>{try{return (typeof earthlineMap!=='undefined'&&earthlineMap?.getZoom)?earthlineMap.getZoom():null}catch(_){return null}})(),
       atomic:window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||null,
       target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
       displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,
