@@ -35,10 +35,8 @@ async function runOne(query,variant){
     if(variant){
       const replacements=[
         ['const nx16783=12,ny16783=12;','const nx16783=24,ny16783=24;',1],
-        ['Math.max(0,Math.min(11,Math.floor(Number(c16783.x)*12/Math.max(1,hy.w))))','Math.max(0,Math.min(nx16783-1,Math.floor(Number(c16783.x)*nx16783/Math.max(1,hy.w))))',1],
-        ['Math.max(0,Math.min(11,Math.floor(Number(c16783.y)*12/Math.max(1,hy.h))))','Math.max(0,Math.min(ny16783-1,Math.floor(Number(c16783.y)*ny16783/Math.max(1,hy.h))))',1],
-        ['Math.max(0,Math.min(11,Math.floor(Number(g16791.x)*12/Math.max(1,hy.w))))','Math.max(0,Math.min(nx16783-1,Math.floor(Number(g16791.x)*nx16783/Math.max(1,hy.w))))',1],
-        ['Math.max(0,Math.min(11,Math.floor(Number(g16791.y)*12/Math.max(1,hy.h))))','Math.max(0,Math.min(ny16783-1,Math.floor(Number(g16791.y)*ny16783/Math.max(1,hy.h))))',1]
+        ['const cx16791=Math.max(0,Math.min(11,Math.floor(Number(g16791.x)*12/Math.max(1,hy.w))));','const cx16791=Math.max(0,Math.min(nx16783-1,Math.floor(Number(g16791.x)*nx16783/Math.max(1,hy.w))));',1],
+        ['const cy16791=Math.max(0,Math.min(11,Math.floor(Number(g16791.y)*12/Math.max(1,hy.h))));','const cy16791=Math.max(0,Math.min(ny16783-1,Math.floor(Number(g16791.y)*ny16783/Math.max(1,hy.h))));',1]
       ];
       for(const [oldv,newv,expected] of replacements){const count=body.split(oldv).length-1;if(count!==expected)throw new Error('spread owner mismatch '+oldv+' count='+count);body=body.replace(oldv,newv);}
     }
