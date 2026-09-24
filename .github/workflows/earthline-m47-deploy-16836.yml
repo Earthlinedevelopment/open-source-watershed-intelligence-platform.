@@ -1,0 +1,43 @@
+name: Earthline Deploy 16836 Opportunity Balance
+
+on:
+  push:
+    branches: [diagnostic-m47-16822-ar-pipeline]
+    paths:
+      - '.github/workflows/earthline-m47-deploy-16836.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Preserve validated patcher and lock exact production parent
+        run: |
+          cp tools/mantra47-apply-16836-opportunity-balance.py /tmp/apply-16836.py
+          git fetch origin pages-live
+          test "$(git rev-parse origin/pages-live)" = "8641735a28fd242169987c504bfa627c7bb29201"
+          git checkout -B pages-live origin/pages-live
+          test "$(git rev-parse HEAD)" = "8641735a28fd242169987c504bfa627c7bb29201"
+      - name: Apply validated global count-neutral selection repair
+        run: python /tmp/apply-16836.py index.html
+      - name: Verify production diff
+        run: |
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+          test "$(grep -c 'EARTHLINE 16836 - OPPORTUNITY-BALANCED FINAL SELECTION' index.html)" = "1"
+          test "$(grep -c 'EARTHLINE 16795 — CLUSTERED FINE-TERRAIN REFINEMENT' index.html)" = "1"
+          git diff --stat -- index.html
+      - name: Commit and push production 16836
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "repair: deploy 16836 opportunity-balanced final selection"
+          git push origin HEAD:pages-live
