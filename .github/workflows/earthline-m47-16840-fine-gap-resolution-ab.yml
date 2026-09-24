@@ -1,0 +1,33 @@
+name: Mantra 47 16840 Fine Gap Resolution AB
+
+on:
+  push:
+    branches: [diagnostic-m47-16822-ar-pipeline]
+    paths:
+      - '.github/workflows/earthline-m47-16840-fine-gap-resolution-ab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run 16840 fine gap resolution A/B
+        run: node tests/mantra47-16840-fine-gap-resolution-ab.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra47-16840-fine-gap-resolution-ab
+          path: artifacts/mantra47-16840-fine-gap-resolution-ab/
+          if-no-files-found: error
