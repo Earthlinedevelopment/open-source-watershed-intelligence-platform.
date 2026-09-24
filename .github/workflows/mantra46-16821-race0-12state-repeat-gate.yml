@@ -24,12 +24,13 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import json
           base=Path('tests/mantra46-16809-opportunity-gap-swap-ab.mjs').read_text()
           def make(states,out,loop):
               s=base
               old="const STATES=['Arkansas','Maryland','Texas','Florida','Colorado'];"
               assert s.count(old)==1
-              s=s.replace(old,"const STATES="+repr(states).replace(' ', '')+";",1)
+              s=s.replace(old,"const STATES="+json.dumps(states,separators=(',',':'))+";",1)
               s=s.replace("const OUT='artifacts/mantra46-16809-opportunity-gap-swap-ab';",f"const OUT='artifacts/{out}';",1)
               oldloop="for(const q of STATES){await runOne(q,false);await runOne(q,true)}"
               assert s.count(oldloop)==1
