@@ -1,0 +1,25 @@
+name: Mantra 46 16817 Fine Min6 16809 Gate
+on:
+  push:
+    branches: [diagnostic-m46-16795-fine-coverage]
+  workflow_dispatch:
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run fine minimum six spatial and performance gate
+        run: node tests/mantra46-16817-fine-min6-16809-gate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16817-fine-min6-16809-gate
+          path: artifacts/mantra46-16817-fine-min6-16809-gate/
