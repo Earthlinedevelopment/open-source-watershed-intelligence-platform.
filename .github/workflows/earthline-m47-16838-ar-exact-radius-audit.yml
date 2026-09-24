@@ -1,0 +1,33 @@
+name: Mantra 47 16838 Arkansas Exact Radius Audit
+
+on:
+  push:
+    branches: [diagnostic-m47-16822-ar-pipeline]
+    paths:
+      - '.github/workflows/earthline-m47-16838-ar-exact-radius-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run exact Arkansas radius audit
+        run: node tests/mantra47-16838-ar-exact-radius-audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra47-16838-ar-exact-radius-audit
+          path: artifacts/mantra47-16838-ar-exact-radius-audit/
+          if-no-files-found: error
