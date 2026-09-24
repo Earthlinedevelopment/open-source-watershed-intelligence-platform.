@@ -1,0 +1,33 @@
+name: Mantra 47 16841 Isolated Gap Priority AB
+
+on:
+  push:
+    branches: [diagnostic-m47-16822-ar-pipeline]
+    paths:
+      - '.github/workflows/earthline-m47-16841-isolated-gap-priority-ab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run 16841 isolated gap priority A/B
+        run: node tests/mantra47-16841-isolated-gap-priority-ab.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra47-16841-isolated-gap-priority-ab
+          path: artifacts/mantra47-16841-isolated-gap-priority-ab/
+          if-no-files-found: error
