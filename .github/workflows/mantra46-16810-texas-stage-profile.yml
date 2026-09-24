@@ -1,0 +1,47 @@
+name: Mantra 46 16810 Texas Stage Profile
+on:
+  push:
+    branches: [diagnostic-m46-16795-fine-coverage]
+    paths:
+      - '.github/workflows/mantra46-16810-texas-stage-profile.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Build profile test
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('tests/mantra46-16809-opportunity-gap-swap-ab.mjs').read_text()
+          reps=[
+            ('round16809<12','round16809<6'),
+            ('.slice(0,18);','.slice(0,6);'),
+            ('.slice(0,36);','.slice(0,10);'),
+            ("const OUT='artifacts/mantra46-16809-opportunity-gap-swap-ab';","const OUT='artifacts/mantra46-16810-texas-stage-profile';"),
+            ("for(const q of STATES){await runOne(q,false);await runOne(q,true)}","await runOne('Texas',true)")
+          ]
+          for old,new in reps:
+            assert s.count(old)==1,(old,s.count(old))
+            s=s.replace(old,new,1)
+          s=s.replace('16809','16810P')
+          # Add full performance-object print after each Texas row.
+          needle="const row={query,variant:variant?'opportunity-gap-swap':'control',loadError,timedOut,pageErrors,elapsedMs:Date.now()-started,audit};rows.push(row);console.log('EARTHLINE_M46_16810P '+JSON.stringify(row));"
+          repl=needle+"console.log('EARTHLINE_M46_16810P_PERF '+JSON.stringify(await page.evaluate(()=>window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null)));"
+          assert s.count(needle)==1
+          s=s.replace(needle,repl,1)
+          Path('tests/mantra46-16810-texas-profile-generated.mjs').write_text(s)
+          PY
+      - name: Run Texas stage profile
+        run: node tests/mantra46-16810-texas-profile-generated.mjs
