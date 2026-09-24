@@ -24,30 +24,18 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          src=Path('tests/mantra46-16809-opportunity-gap-swap-ab.mjs')
-          s=src.read_text()
+          s=Path('tests/mantra46-16809-opportunity-gap-swap-ab.mjs').read_text()
           old="const STATES=['Arkansas','Maryland','Texas','Florida','Colorado'];"
           new="const STATES=['Iowa','Arkansas','Oklahoma','Nebraska','Vermont','Texas','Florida','Louisiana','California','New York','Maryland','Colorado'];"
           assert s.count(old)==1
           s=s.replace(old,new,1)
           s=s.replace("const OUT='artifacts/mantra46-16809-opportunity-gap-swap-ab';","const OUT='artifacts/mantra46-16819-combined-12state';",1)
           oldloop="for(const q of STATES){await runOne(q,false);await runOne(q,true)}"
-          newloop="for(const q of STATES){await runOne(q,true)}"
           assert s.count(oldloop)==1
-          s=s.replace(oldloop,newloop,1)
+          s=s.replace(oldloop,"for(const q of STATES){await runOne(q,true)}",1)
           anchor="if(variant){\n   const capOld="
           assert s.count(anchor)==1
-          inject="""if(variant){
-   const raceOld=\"stagger=setTimeout(startAlternate,1200);\";
-   if(body.split(raceOld).length-1!==1)throw new Error('terrain race owner mismatch');
-   body=body.replace(raceOld,\"stagger=setTimeout(startAlternate,250);\");
-   const fineBudgetOld=\"const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)));\";
-   if(body.split(fineBudgetOld).length-1!==1)throw new Error('fine budget owner mismatch');
-   body=body.replace(fineBudgetOld,\"const refinementTileBudget16782=Math.min(16,Math.max(7,Math.ceil(gapsBefore16780.length/3)));\");
-   const infraCleanupOld=\"function cleanup(){try{script.remove()}catch(_){}try{delete window[cb]}catch(_){window[cb]=undefined}}\";
-   if(body.split(infraCleanupOld).length-1!==1)throw new Error('Vermont infra callback cleanup owner mismatch');
-   body=body.replace(infraCleanupOld,\"function cleanup(){try{script.remove()}catch(_){}window[cb]=()=>{}}\");
-   const capOld="""
+          inject="if(variant){\n   const raceOld=\"stagger=setTimeout(startAlternate,1200);\";\n   if(body.split(raceOld).length-1!==1)throw new Error('terrain race owner mismatch');\n   body=body.replace(raceOld,\"stagger=setTimeout(startAlternate,250);\");\n   const fineBudgetOld=\"const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)));\";\n   if(body.split(fineBudgetOld).length-1!==1)throw new Error('fine budget owner mismatch');\n   body=body.replace(fineBudgetOld,\"const refinementTileBudget16782=Math.min(16,Math.max(7,Math.ceil(gapsBefore16780.length/3)));\");\n   const infraCleanupOld=\"function cleanup(){try{script.remove()}catch(_){}try{delete window[cb]}catch(_){window[cb]=undefined}}\";\n   if(body.split(infraCleanupOld).length-1!==1)throw new Error('Vermont infra callback cleanup owner mismatch');\n   body=body.replace(infraCleanupOld,\"function cleanup(){try{script.remove()}catch(_){}window[cb]=()=>{}}\");\n   const capOld="
           s=s.replace(anchor,inject,1)
           Path('tests/mantra46-16819-combined-generated.mjs').write_text(s)
           PY
@@ -60,13 +48,7 @@ jobs:
           p=pathlib.Path('artifacts/mantra46-16819-combined-12state/results.json')
           if not p.exists(): print('MISSING RESULTS'); sys.exit(1)
           data=json.loads(p.read_text()); rows=data if isinstance(data,list) else data.get('rows',data.get('results',[]))
-          targets={
-            'Iowa':{'largest':55,'coverage':.7101},'Arkansas':{'largest':90,'coverage':.6268,'target':5000},
-            'Oklahoma':{'largest':212,'coverage':.4957},'Nebraska':{'largest':62,'coverage':.6643},
-            'Vermont':{'largest':165,'coverage':.5416},'Texas':{'largest':107,'coverage':.5077},
-            'Florida':{'largest':8,'coverage':.8415},'Louisiana':{'largest':157,'coverage':.4855},
-            'California':{'largest':163,'coverage':.5320},'New York':{'largest':218,'coverage':.4045},
-            'Maryland':{'largest':360,'coverage':.2888},'Colorado':{'largest':7,'coverage':.8312}}
+          targets={'Iowa':{'largest':55,'coverage':.7101},'Arkansas':{'largest':90,'coverage':.6268,'target':5000},'Oklahoma':{'largest':212,'coverage':.4957},'Nebraska':{'largest':62,'coverage':.6643},'Vermont':{'largest':165,'coverage':.5416},'Texas':{'largest':107,'coverage':.5077},'Florida':{'largest':8,'coverage':.8415},'Louisiana':{'largest':157,'coverage':.4855},'California':{'largest':163,'coverage':.5320},'New York':{'largest':218,'coverage':.4045},'Maryland':{'largest':360,'coverage':.2888},'Colorado':{'largest':7,'coverage':.8312}}
           report=[]; failed=[]
           for r in rows:
             q=r.get('query'); a=r.get('audit') or {}; t=targets.get(q)
