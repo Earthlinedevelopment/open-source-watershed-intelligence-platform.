@@ -1,0 +1,45 @@
+name: Mantra 47 16831B Opportunity Balance A B
+
+on:
+  push:
+    branches: [diagnostic-m47-16822-ar-pipeline]
+    paths:
+      - '.github/workflows/earthline-m47-16831b-opportunity-balance-ab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Correct diagnostic harness brace
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('tests/mantra47-16831-opportunity-balance-ab.mjs')
+          s=p.read_text()
+          old="swaps++;}\\n  }\\n  window.EARTHLINE_OPPORTUNITY_BALANCE_16831="
+          new="swaps++;}\\n  window.EARTHLINE_OPPORTUNITY_BALANCE_16831="
+          assert s.count(old)==1, s.count(old)
+          p.write_text(s.replace(old,new))
+          PY
+          node --check tests/mantra47-16831-opportunity-balance-ab.mjs
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run corrected 16831 opportunity balance A/B
+        run: node tests/mantra47-16831-opportunity-balance-ab.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra47-16831b-opportunity-balance-ab
+          path: artifacts/mantra47-16831-opportunity-balance-ab/
+          if-no-files-found: error
