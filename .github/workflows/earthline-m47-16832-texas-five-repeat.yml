@@ -1,0 +1,47 @@
+name: Mantra 47 16832 Texas Five Repeat Gate
+
+on:
+  push:
+    branches: [diagnostic-m47-16822-ar-pipeline]
+    paths:
+      - '.github/workflows/earthline-m47-16832-texas-five-repeat.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  texas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Build Texas five-repeat validator
+        run: |
+          cp tests/mantra47-16831-difficult-state-gate.mjs tests/mantra47-16832-texas-five-repeat-temp.mjs
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('tests/mantra47-16832-texas-five-repeat-temp.mjs')
+          s=p.read_text()
+          old="const STATES=['Iowa','Arkansas','Oklahoma','Nebraska','Vermont','Texas','Florida','Louisiana','California','New York','Maryland','Colorado'];"
+          new="const STATES=['Texas','Texas','Texas','Texas','Texas'];"
+          if old not in s: raise SystemExit('state list owner not found')
+          s=s.replace(old,new)
+          s=s.replace("artifacts/mantra47-16831-difficult-state-gate","artifacts/mantra47-16832-texas-five-repeat")
+          p.write_text(s)
+          PY
+      - name: Run Texas five repeats
+        run: node tests/mantra47-16832-texas-five-repeat-temp.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra47-16832-texas-five-repeat
+          path: artifacts/mantra47-16832-texas-five-repeat/
+          if-no-files-found: error
