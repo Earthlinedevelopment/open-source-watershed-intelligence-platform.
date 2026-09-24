@@ -44,7 +44,7 @@ const audit=loadError||timedOut?null:await page.evaluate(T=>{
   const t=[T.lng,T.lat];
   const minDist=c=>{
     const seg=Array.isArray(c?.segment)?c.segment:[];let d=Infinity;
-    for(const p of seg){if(Array.isArray(p)&&p.length>=2)d=Math.min(d,hav(t,[Number(p[0]),Number(p[1])])));}
+    for(const p of seg){if(Array.isArray(p)&&p.length>=2)d=Math.min(d,hav(t,[Number(p[0]),Number(p[1])]));}
     return d;
   };
   const summarise=(arr)=>{
