@@ -25,11 +25,11 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Build corrected validator semantics
         run: |
-          cp tests/mantra47-16831-difficult-state-gate.mjs /tmp/mantra47-16831b.mjs
-          sed -i "s/audit.outside===0&&Number(audit.coreMs)<=15000/(audit.outside===0||audit.outside==null)\&\&Number(audit.coreMs)<=15000/" /tmp/mantra47-16831b.mjs
-          sed -i "s#artifacts/mantra47-16831-difficult-state-gate#artifacts/mantra47-16831b-corrected-difficult-state-gate#g" /tmp/mantra47-16831b.mjs
+          cp tests/mantra47-16831-difficult-state-gate.mjs tests/mantra47-16831b-temp.mjs
+          sed -i "s/audit.outside===0&&Number(audit.coreMs)<=15000/(audit.outside===0||audit.outside==null)\&\&Number(audit.coreMs)<=15000/" tests/mantra47-16831b-temp.mjs
+          sed -i "s#artifacts/mantra47-16831-difficult-state-gate#artifacts/mantra47-16831b-corrected-difficult-state-gate#g" tests/mantra47-16831b-temp.mjs
       - name: Run corrected 16831B difficult-state gate
-        run: node /tmp/mantra47-16831b.mjs
+        run: node tests/mantra47-16831b-temp.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
