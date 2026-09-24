@@ -32,7 +32,7 @@ try{
     await page.waitForFunction(()=>{
       const s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'');
       return /screening published\./i.test(s)&&!!window.__EARTHLINE_M47_16822_CHAIN;
-    },{timeout:60000,polling:100});
+    },null,{timeout:60000,polling:100});
   }catch(_){timedOut=true;}
   await page.waitForTimeout(1000);
 }catch(e){loadError=String(e);}
@@ -79,6 +79,7 @@ const audit=loadError||timedOut?null:await page.evaluate(T=>{
   const gapRefine=window.EARTHLINE_COVERAGE_GAP_REFINEMENT_16731||null;
   const lateGap=window.EARTHLINE_LATE_GAP_REFINEMENT_16741||null;
   const fineGap=window.EARTHLINE_FINE_TERRAIN_GAP_RECOVERY_16780||window.EARTHLINE_FINE_TERRAIN_REFINEMENT_16780||null;
+  const slim=o=>o?{passed:o.passed??null,unresolved:Array.isArray(o.unresolved)?o.unresolved.length:null,selected:Array.isArray(o.selected)?o.selected.length:null,added:o.added??null,elapsedMs:o.elapsedMs??null}:null;
   let style=null;
   try{style=map?.getStyle?.()||null;}catch(_){style=null;}
   return {
@@ -88,7 +89,7 @@ const audit=loadError||timedOut?null:await page.evaluate(T=>{
     generated:pub?.generated??null,visible:display?.swaleLines??pub?.overlaySwaleLines??null,
     unsafe:flow?.unsafeSegments??null,outside:boundary?.outsideAfterClip?.swales??null,
     coreMs:perf?.totalMs??null,
-    gapAudit,gapRefine,lateGap,fineGap,
+    gapAudit:slim(gapAudit),gapRefine:slim(gapRefine),lateGap:slim(lateGap),fineGap:slim(fineGap),
     styleLayers:style?.layers?.map(l=>l.id).filter(id=>/swale|corridor/i.test(id))||[]
   };
 },TARGET);
