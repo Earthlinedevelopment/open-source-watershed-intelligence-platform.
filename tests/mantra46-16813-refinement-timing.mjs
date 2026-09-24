@@ -31,6 +31,6 @@ replaceOne(
 
 s += `\nconst timingRows16813=rows.map((r,i)=>({repeat:i+1,query:r.query,variant:r.variant,coreMs:r.audit?.coreMs??null,phaseTotalsMs:r.audit?.phaseTotalsMs||null,fine:r.audit?.fine16813||null,gap:r.audit?.gap16813||null,late:r.audit?.late16813||null,largest:r.audit?.gapClusters?.[0]??null,coverage:r.audit?.coverageRatio??null,generated:r.audit?.generated??null,visible:r.audit?.visible??null,unsafe:r.audit?.unsafe??null,outside:r.audit?.outside??null}));\nconsole.log('EARTHLINE_M46_16813_TIMING '+JSON.stringify(timingRows16813));\nwriteFileSync('${out}/timing-summary.json',JSON.stringify(timingRows16813,null,2));\n`;
 
-const tmp='/tmp/mantra46-16813-generated.mjs';
+const tmp='tests/.mantra46-16813-generated.mjs';
 writeFileSync(tmp,s);
-await import('file://'+tmp+'?v='+Date.now());
+await import(new URL('./.mantra46-16813-generated.mjs?'+Date.now(), import.meta.url));
