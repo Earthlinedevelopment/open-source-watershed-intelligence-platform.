@@ -1,0 +1,34 @@
+name: Mantra 47 16822 Arkansas Pipeline Probe
+
+on:
+  push:
+    branches: [diagnostic-m47-16822-ar-pipeline]
+    paths:
+      - 'tests/mantra47-16822-ar-pipeline.mjs'
+      - '.github/workflows/earthline-m47-16822-ar-pipeline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run Arkansas pipeline probe
+        run: node tests/mantra47-16822-ar-pipeline.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra47-16822-ar-pipeline
+          path: artifacts/mantra47-16822-ar-pipeline/
+          if-no-files-found: error
