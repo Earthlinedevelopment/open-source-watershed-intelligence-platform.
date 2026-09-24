@@ -1,0 +1,20 @@
+name: Mantra 46 16812 Refinement Extract
+on:
+  push:
+    branches: [diagnostic-m46-16795-fine-coverage]
+    paths:
+      - 'tests/mantra46-16812-refinement-extract.mjs'
+      - '.github/workflows/mantra46-16812-refinement-extract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node tests/mantra46-16812-refinement-extract.mjs
