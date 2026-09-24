@@ -1,0 +1,31 @@
+name: Mantra 46 16816 Refinement Overlap LoadDEM
+on:
+  push:
+    branches: [diagnostic-m46-16795-fine-coverage]
+    paths:
+      - 'tests/mantra46-16816-refinement-overlap-loadDEM.mjs'
+      - '.github/workflows/mantra46-16816-refinement-overlap-loadDEM.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Audit overlap and loadDEM
+        run: node tests/mantra46-16816-refinement-overlap-loadDEM.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16816-refinement-overlap-loadDEM
+          path: artifacts/mantra46-16816-refinement-overlap-loadDEM/
+          if-no-files-found: error
