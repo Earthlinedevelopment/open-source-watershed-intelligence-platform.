@@ -1,0 +1,42 @@
+name: Mantra 46 16809 Texas Repeat Gate
+on:
+  push:
+    branches: [diagnostic-m46-16795-fine-coverage]
+    paths:
+      - '.github/workflows/mantra46-16809-texas-repeat.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  texas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Build Texas repeat test
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('tests/mantra46-16809-opportunity-gap-swap-ab.mjs').read_text()
+          s=s.replace("const OUT='artifacts/mantra46-16809-opportunity-gap-swap-ab';","const OUT='artifacts/mantra46-16809-texas-repeat';",1)
+          old="for(const q of STATES){await runOne(q,false);await runOne(q,true)}"
+          new="for(let i=0;i<5;i++){await runOne('Texas',true)}"
+          assert s.count(old)==1
+          s=s.replace(old,new,1)
+          Path('tests/mantra46-16809-texas-repeat-generated.mjs').write_text(s)
+          PY
+      - name: Run Texas five times
+        run: node tests/mantra46-16809-texas-repeat-generated.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16809-texas-repeat
+          path: artifacts/mantra46-16809-texas-repeat/
+          if-no-files-found: error
