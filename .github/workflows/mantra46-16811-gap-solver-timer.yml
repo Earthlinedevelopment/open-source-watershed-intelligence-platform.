@@ -1,0 +1,47 @@
+name: Mantra 46 16811 Gap Solver Timer
+on:
+  push:
+    branches: [diagnostic-m46-16795-fine-coverage]
+    paths:
+      - '.github/workflows/mantra46-16811-gap-solver-timer.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  timer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Build timed test
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('tests/mantra46-16809-opportunity-gap-swap-ab.mjs').read_text()
+          reps=[
+            ('round16809<12','round16809<6'),
+            ('.slice(0,18);','.slice(0,6);'),
+            ('.slice(0,36);','.slice(0,10);'),
+            ("const OUT='artifacts/mantra46-16809-opportunity-gap-swap-ab';","const OUT='artifacts/mantra46-16811-gap-solver-timer';"),
+            ("for(const q of STATES){await runOne(q,false);await runOne(q,true)}","await runOne('Texas',true)")
+          ]
+          for old,new in reps:
+            assert s.count(old)==1,(old,s.count(old));s=s.replace(old,new,1)
+          # Time only the opportunity-gap pass.
+          old="const opportunitySwaps16809=[];\n      try{"
+          new="const opportunitySwaps16809=[];const solverStart16811=performance.now();\n      try{"
+          assert s.count(old)==1;s=s.replace(old,new,1)
+          old="window.EARTHLINE_OPPORTUNITY_GAP_SWAP_16809={build:'EARTHLINE 16809 diagnostic',qualifiedCells:qualified16809.size,swaps:opportunitySwaps16809.length,rows:opportunitySwaps16809,finalLargest:components16809(coverCounts16809)[0]?.length||0,rule:"
+          new="window.EARTHLINE_OPPORTUNITY_GAP_SWAP_16809={build:'EARTHLINE 16811 timed diagnostic',durationMs:Math.round(performance.now()-solverStart16811),qualifiedCells:qualified16809.size,swaps:opportunitySwaps16809.length,rows:opportunitySwaps16809,finalLargest:components16809(coverCounts16809)[0]?.length||0,rule:"
+          assert s.count(old)==1;s=s.replace(old,new,1)
+          Path('tests/mantra46-16811-timed-generated.mjs').write_text(s)
+          PY
+      - name: Run Texas timed solver
+        run: node tests/mantra46-16811-timed-generated.mjs
