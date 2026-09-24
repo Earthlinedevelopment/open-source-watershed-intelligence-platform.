@@ -52,23 +52,24 @@ jobs:
           PY
       - name: Run focused A-B
         run: |
-          set -e
           for t in tx8r250 tx8r0 tx7r250 la8r250 la7r250; do
-            node tests/.mantra46-16820-$t.mjs
+            node tests/.mantra46-16820-$t.mjs || true
           done
       - name: Summarize eighth-tile value
         run: |
           python - <<'PY'
-          import json, pathlib
+          import json, pathlib, sys
           tags=['tx8r250','tx8r0','tx7r250','la8r250','la7r250']
-          out=[]
+          out=[]; missing=[]
           for tag in tags:
               p=pathlib.Path(f'artifacts/mantra46-16820-{tag}/results.json')
+              if not p.exists(): missing.append(tag); continue
               d=json.loads(p.read_text()); r=(d if isinstance(d,list) else d.get('rows',d.get('results',[])))[0]; a=r.get('audit') or {}; f=a.get('fine16820') or {}
               out.append({'tag':tag,'query':r.get('query'),'coreMs':a.get('coreMs'),'generated':a.get('generated'),'visible':a.get('visible'),'unsafe':a.get('unsafe'),'coverage':a.get('coverageRatio'),'largest':(a.get('gapClusters') or [0])[0],'fineMs':f.get('elapsedMs'),'fineBudget':f.get('tileBudget'),'fineSelectedCount':len(f.get('selected') or []),'fineSelected':f.get('selected'),'fineAdded':f.get('added'),'fineUnresolvedCount':len(f.get('unresolved') or []),'pageErrors':r.get('pageErrors') or []})
           pathlib.Path('artifacts/mantra46-16820-summary').mkdir(parents=True,exist_ok=True)
-          pathlib.Path('artifacts/mantra46-16820-summary/summary.json').write_text(json.dumps(out,indent=2))
-          print('EARTHLINE_M46_16820 '+json.dumps(out))
+          pathlib.Path('artifacts/mantra46-16820-summary/summary.json').write_text(json.dumps({'rows':out,'missing':missing},indent=2))
+          print('EARTHLINE_M46_16820 '+json.dumps(out)); print('MISSING',missing)
+          if missing: sys.exit(1)
           PY
       - uses: actions/upload-artifact@v4
         if: always()
