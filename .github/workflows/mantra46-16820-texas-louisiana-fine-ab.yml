@@ -1,0 +1,79 @@
+name: Mantra 46 16820 Texas Louisiana Fine A-B
+on:
+  push:
+    branches: [diagnostic-m46-16795-fine-coverage]
+    paths:
+      - '.github/workflows/mantra46-16820-texas-louisiana-fine-ab.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Generate focused A-B tests
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          base=Path('tests/mantra46-16809-opportunity-gap-swap-ab.mjs').read_text()
+          configs=[('Texas',8,250,'tx8r250'),('Texas',8,0,'tx8r0'),('Texas',7,250,'tx7r250'),('Louisiana',8,250,'la8r250'),('Louisiana',7,250,'la7r250')]
+          for state,floor,race,tag in configs:
+              s=base
+              old="const STATES=['Arkansas','Maryland','Texas','Florida','Colorado'];"
+              assert s.count(old)==1
+              s=s.replace(old,f"const STATES=['{state}'];",1)
+              s=s.replace("const OUT='artifacts/mantra46-16809-opportunity-gap-swap-ab';",f"const OUT='artifacts/mantra46-16820-{tag}';",1)
+              oldloop="for(const q of STATES){await runOne(q,false);await runOne(q,true)}"
+              assert s.count(oldloop)==1
+              s=s.replace(oldloop,"for(const q of STATES){await runOne(q,true)}",1)
+              anchor="if(variant){\n   const capOld="
+              assert s.count(anchor)==1
+              inject="if(variant){\n   const raceOld=\"stagger=setTimeout(startAlternate,1200);\";\n   if(body.split(raceOld).length-1!==1)throw new Error('terrain race owner mismatch');\n   body=body.replace(raceOld,\"stagger=setTimeout(startAlternate,%d);\");\n" % race
+              if floor!=8:
+                  inject += "   const fineBudgetOld=\"const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)));\";\n   if(body.split(fineBudgetOld).length-1!==1)throw new Error('fine budget owner mismatch');\n   body=body.replace(fineBudgetOld,\"const refinementTileBudget16782=Math.min(16,Math.max(%d,Math.ceil(gapsBefore16780.length/3)));\");\n" % floor
+              inject += "   const capOld="
+              s=s.replace(anchor,inject,1)
+              oldrefs="oppSwap=window.EARTHLINE_OPPORTUNITY_GAP_SWAP_16809||null;"
+              assert s.count(oldrefs)==1
+              s=s.replace(oldrefs,"oppSwap=window.EARTHLINE_OPPORTUNITY_GAP_SWAP_16809||null,fine16820=window.EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16781||null;",1)
+              oldcore="coreMs:perf?.totalMs??null,"
+              assert s.count(oldcore)==1
+              s=s.replace(oldcore,"coreMs:perf?.totalMs??null,fine16820:{elapsedMs:fine16820?.elapsedMs??0,tileBudget:fine16820?.tileBudget??null,selected:fine16820?.selected||[],added:fine16820?.added??0,unresolved:fine16820?.unresolvedAfter||[],failed:fine16820?.failedTiles||[]},",1)
+              Path(f'tests/.mantra46-16820-{tag}.mjs').write_text(s)
+          PY
+      - name: Run focused A-B
+        run: |
+          set -e
+          for t in tx8r250 tx8r0 tx7r250 la8r250 la7r250; do
+            node tests/.mantra46-16820-$t.mjs
+          done
+      - name: Summarize eighth-tile value
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          tags=['tx8r250','tx8r0','tx7r250','la8r250','la7r250']
+          out=[]
+          for tag in tags:
+              p=pathlib.Path(f'artifacts/mantra46-16820-{tag}/results.json')
+              d=json.loads(p.read_text()); r=(d if isinstance(d,list) else d.get('rows',d.get('results',[])))[0]; a=r.get('audit') or {}; f=a.get('fine16820') or {}
+              out.append({'tag':tag,'query':r.get('query'),'coreMs':a.get('coreMs'),'generated':a.get('generated'),'visible':a.get('visible'),'unsafe':a.get('unsafe'),'coverage':a.get('coverageRatio'),'largest':(a.get('gapClusters') or [0])[0],'fineMs':f.get('elapsedMs'),'fineBudget':f.get('tileBudget'),'fineSelectedCount':len(f.get('selected') or []),'fineSelected':f.get('selected'),'fineAdded':f.get('added'),'fineUnresolvedCount':len(f.get('unresolved') or []),'pageErrors':r.get('pageErrors') or []})
+          pathlib.Path('artifacts/mantra46-16820-summary').mkdir(parents=True,exist_ok=True)
+          pathlib.Path('artifacts/mantra46-16820-summary/summary.json').write_text(json.dumps(out,indent=2))
+          print('EARTHLINE_M46_16820 '+json.dumps(out))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16820-texas-louisiana-fine-ab
+          path: |
+            artifacts/mantra46-16820-*
+          if-no-files-found: error
