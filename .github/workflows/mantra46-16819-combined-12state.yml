@@ -1,0 +1,89 @@
+name: Mantra 46 16819 Combined 12-State Gate
+on:
+  push:
+    branches: [diagnostic-m46-16795-fine-coverage]
+    paths:
+      - '.github/workflows/mantra46-16819-combined-12state.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Build 12-state combined candidate
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          src=Path('tests/mantra46-16809-opportunity-gap-swap-ab.mjs')
+          s=src.read_text()
+          old="const STATES=['Arkansas','Maryland','Texas','Florida','Colorado'];"
+          new="const STATES=['Iowa','Arkansas','Oklahoma','Nebraska','Vermont','Texas','Florida','Louisiana','California','New York','Maryland','Colorado'];"
+          assert s.count(old)==1
+          s=s.replace(old,new,1)
+          s=s.replace("const OUT='artifacts/mantra46-16809-opportunity-gap-swap-ab';","const OUT='artifacts/mantra46-16819-combined-12state';",1)
+          oldloop="for(const q of STATES){await runOne(q,false);await runOne(q,true)}"
+          newloop="for(const q of STATES){await runOne(q,true)}"
+          assert s.count(oldloop)==1
+          s=s.replace(oldloop,newloop,1)
+          anchor="if(variant){\n   const capOld="
+          assert s.count(anchor)==1
+          inject="""if(variant){
+   const raceOld=\"stagger=setTimeout(startAlternate,1200);\";
+   if(body.split(raceOld).length-1!==1)throw new Error('terrain race owner mismatch');
+   body=body.replace(raceOld,\"stagger=setTimeout(startAlternate,250);\");
+   const fineBudgetOld=\"const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)));\";
+   if(body.split(fineBudgetOld).length-1!==1)throw new Error('fine budget owner mismatch');
+   body=body.replace(fineBudgetOld,\"const refinementTileBudget16782=Math.min(16,Math.max(7,Math.ceil(gapsBefore16780.length/3)));\");
+   const infraCleanupOld=\"function cleanup(){try{script.remove()}catch(_){}try{delete window[cb]}catch(_){window[cb]=undefined}}\";
+   if(body.split(infraCleanupOld).length-1!==1)throw new Error('Vermont infra callback cleanup owner mismatch');
+   body=body.replace(infraCleanupOld,\"function cleanup(){try{script.remove()}catch(_){}window[cb]=()=>{}}\");
+   const capOld="""
+          s=s.replace(anchor,inject,1)
+          Path('tests/mantra46-16819-combined-generated.mjs').write_text(s)
+          PY
+      - name: Run combined candidate
+        run: node tests/mantra46-16819-combined-generated.mjs
+      - name: Gate 12-state spatial, safety, runtime and callback stability
+        run: |
+          python - <<'PY'
+          import json, pathlib, sys
+          p=pathlib.Path('artifacts/mantra46-16819-combined-12state/results.json')
+          if not p.exists(): print('MISSING RESULTS'); sys.exit(1)
+          data=json.loads(p.read_text()); rows=data if isinstance(data,list) else data.get('rows',data.get('results',[]))
+          targets={
+            'Iowa':{'largest':55,'coverage':.7101},'Arkansas':{'largest':90,'coverage':.6268,'target':5000},
+            'Oklahoma':{'largest':212,'coverage':.4957},'Nebraska':{'largest':62,'coverage':.6643},
+            'Vermont':{'largest':165,'coverage':.5416},'Texas':{'largest':107,'coverage':.5077},
+            'Florida':{'largest':8,'coverage':.8415},'Louisiana':{'largest':157,'coverage':.4855},
+            'California':{'largest':163,'coverage':.5320},'New York':{'largest':218,'coverage':.4045},
+            'Maryland':{'largest':360,'coverage':.2888},'Colorado':{'largest':7,'coverage':.8312}}
+          report=[]; failed=[]
+          for r in rows:
+            q=r.get('query'); a=r.get('audit') or {}; t=targets.get(q)
+            if not t: continue
+            clusters=a.get('gapClusters') or []; largest=clusters[0] if clusters else 0; outside=a.get('outside') or {}; page=r.get('pageErrors') or []
+            ok=(not r.get('loadError') and not r.get('timedOut') and not page and float(a.get('coreMs') or 1e9)<=15000 and int(a.get('generated') or -1)==int(a.get('visible') or -2) and int(a.get('unsafe') or 0)==0 and int(outside.get('swales') or 0)==0 and largest<=t['largest'] and float(a.get('coverageRatio') or 0)>=t['coverage'] and ('target' not in t or float(a.get('targetNearest') or 1e99)<=t['target']))
+            rec={'query':q,'pass':ok,'coreMs':a.get('coreMs'),'generated':a.get('generated'),'visible':a.get('visible'),'unsafe':a.get('unsafe'),'largest':largest,'coverage':a.get('coverageRatio'),'targetNearest':a.get('targetNearest'),'pageErrors':page}
+            report.append(rec)
+            if not ok: failed.append(q)
+          missing=[q for q in targets if q not in [r['query'] for r in report]]
+          print('EARTHLINE_M46_16819_12STATE '+json.dumps(report)); print('FAILED',failed,'MISSING',missing)
+          pathlib.Path('artifacts/mantra46-16819-combined-12state/gate-summary.json').write_text(json.dumps({'rows':report,'failed':failed,'missing':missing},indent=2))
+          if failed or missing: sys.exit(1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16819-combined-12state
+          path: artifacts/mantra46-16819-combined-12state/
+          if-no-files-found: error
