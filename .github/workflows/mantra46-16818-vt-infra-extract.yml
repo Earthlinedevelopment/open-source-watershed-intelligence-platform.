@@ -1,0 +1,16 @@
+name: Mantra 46 16818 VT Infra Extract
+on:
+  push:
+    branches: [diagnostic-m46-16795-fine-coverage]
+  workflow_dispatch:
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Extract live Vermont infrastructure callback owner
+        run: node tests/mantra46-16818-vt-infra-extract.mjs
