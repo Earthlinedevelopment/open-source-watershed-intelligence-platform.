@@ -1,3 +1,4 @@
+// Trigger extraction after workflow registration.
 const html=await (await fetch('https://earthlinedevelopment.org/?m46_vt_infra_extract='+Date.now(),{cache:'no-store'})).text();
 for(const needle of ['__earthlineVtInfra16458','earthlineVtInfra16458','16458','vt-infra']){
  const i=html.indexOf(needle);
