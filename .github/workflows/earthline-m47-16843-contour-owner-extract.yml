@@ -1,0 +1,43 @@
+name: Mantra 47 16843 Contour Owner Extract
+
+on:
+  push:
+    branches: [diagnostic-m47-16822-ar-pipeline]
+    paths:
+      - '.github/workflows/earthline-m47-16843-contour-owner-extract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract live contour owner
+        shell: bash
+        run: |
+          git fetch origin pages-live
+          git show origin/pages-live:index.html > /tmp/live-index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/live-index.html').read_text(encoding='utf-8')
+          needles=['function makeContours','async function makeContours','makeContours(','const makeContours','function makeSwales','async function makeSwales','let levels','const levels','contourLevels']
+          seen=[]
+          for needle in needles:
+              pos=0
+              while True:
+                  i=s.find(needle,pos)
+                  if i<0: break
+                  if not any(abs(i-j)<1000 for j in seen):
+                      seen.append(i)
+                      line=s.count('\n',0,i)+1
+                      print(f'\n===== {needle} @ char {i} line {line} =====')
+                      print(s[max(0,i-3500):min(len(s),i+18000)])
+                  pos=i+len(needle)
+          print('\nHITS',len(seen))
+          PY
