@@ -15,7 +15,7 @@ replaceOne("const OUT='artifacts/mantra46-16809-opportunity-gap-swap-ab';","cons
 
 const variantAnchor="if(variant){\n   const capOld=";
 if(s.split(variantAnchor).length-1!==1)throw new Error('variant anchor mismatch');
-s=s.replace(variantAnchor,`if(variant){\n   const fineDemOld="loadDEM(tile16781.b,32,32,5500,'fine opportunity refinement '+tile16781.id)";\n   if(body.split(fineDemOld).length-1!==1)throw new Error('fine DEM owner mismatch');\n   body=body.replace(fineDemOld,"loadDEM(tile16781.b,24,24,4500,'fine opportunity refinement '+tile16781.id)");\n   const capOld=`);
+s=s.replace(variantAnchor,`if(variant){\n   const fineDemOld="loadDEM(tile16780.b,32,32,5500,'fine opportunity refinement '+tile16780.id)";\n   if(body.split(fineDemOld).length-1!==1)throw new Error('fine DEM owner mismatch');\n   body=body.replace(fineDemOld,"loadDEM(tile16780.b,24,24,4500,'fine opportunity refinement '+tile16780.id)");\n   const capOld=`);
 
 replaceOne(
   "oppSwap=window.EARTHLINE_OPPORTUNITY_GAP_SWAP_16809||null;",
