@@ -1,0 +1,64 @@
+name: Mantra 46 16810 Optimized Gap Solver
+on:
+  push:
+    branches: [diagnostic-m46-16795-fine-coverage]
+    paths:
+      - '.github/workflows/mantra46-16810-optimized-gap-solver.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Build optimized 16810 test
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          src=Path('tests/mantra46-16809-opportunity-gap-swap-ab.mjs')
+          s=src.read_text()
+          # Keep identical science and selection objective; reduce only solver search cost.
+          reps=[
+            ('round16809<12','round16809<8'),
+            ('.slice(0,18);','.slice(0,10);'),
+            ('.slice(0,36);','.slice(0,16);'),
+            ("const OUT='artifacts/mantra46-16809-opportunity-gap-swap-ab';","const OUT='artifacts/mantra46-16810-optimized-gap-solver';"),
+            ("for(const q of STATES){await runOne(q,false);await runOne(q,true)}","for(const q of STATES){await runOne(q,true)} for(let i=0;i<4;i++){await runOne('Texas',true)}")
+          ]
+          for old,new in reps:
+            if s.count(old)!=1:
+              raise SystemExit(f'expected one occurrence of {old!r}, found {s.count(old)}')
+            s=s.replace(old,new,1)
+          # Rename diagnostic identifiers so results cannot be confused with 16809.
+          s=s.replace('16809','16810')
+          # Replace generic gate with exact outcome-preservation + safety/performance gate.
+          old="const bad=rows.filter(r=>!r.audit||r.loadError||r.timedOut||r.pageErrors.length||Number(r.audit.coreMs)>15000||Number(r.audit.generated)!==Number(r.audit.visible)||Number(r.audit.unsafe)!==0||Number(r.audit.outside?.swales||0)!==0||r.audit.oppSwap?.error);if(bad.length)process.exitCode=1;"
+          new="""const bad=rows.filter(r=>!r.audit||r.loadError||r.timedOut||r.pageErrors.length||Number(r.audit.coreMs)>15000||Number(r.audit.generated)!==Number(r.audit.visible)||Number(r.audit.unsafe)!==0||Number(r.audit.outside?.swales||0)!==0||r.audit.oppSwap?.error);
+          const limits={Arkansas:90,Maryland:360,Texas:107,Florida:8,Colorado:7};
+          for(const r of rows){const lim=limits[r.query];if(lim!=null&&Number(r.audit?.gapClusters?.[0]??Infinity)>lim)bad.push({...r,reason:'largest-gap-regression'});if(r.query==='Arkansas'&&Number(r.audit?.targetNearest??Infinity)>5000)bad.push({...r,reason:'arkansas-target-regression'});}
+          const tx=rows.filter(r=>r.query==='Texas');
+          if(tx.length!==5||tx.some(r=>Number(r.audit?.coreMs)>15000))bad.push({reason:'texas-five-repeat-performance',times:tx.map(r=>r.audit?.coreMs)});
+          console.log('EARTHLINE_M46_16810_GATE '+JSON.stringify({pass:bad.length===0,texasTimes:tx.map(r=>r.audit?.coreMs),rows:rows.map(r=>({query:r.query,coreMs:r.audit?.coreMs,generated:r.audit?.generated,largest:r.audit?.gapClusters?.[0],targetNearest:r.audit?.targetNearest,swaps:r.audit?.oppSwap?.swaps}))}));
+          if(bad.length)process.exitCode=1;"""
+          if s.count(old)!=1:
+            raise SystemExit('final gate owner mismatch')
+          s=s.replace(old,new,1)
+          Path('tests/mantra46-16810-optimized-generated.mjs').write_text(s)
+          PY
+      - name: Run optimized solver and Texas repeat gate
+        run: node tests/mantra46-16810-optimized-generated.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16810-optimized-gap-solver
+          path: artifacts/mantra46-16810-optimized-gap-solver/
+          if-no-files-found: error
