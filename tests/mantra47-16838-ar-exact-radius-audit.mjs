@@ -1,0 +1,41 @@
+import { chromium } from 'playwright';
+import { mkdirSync, writeFileSync } from 'node:fs';
+const BASE='https://earthlinedevelopment.org/';
+const OUT='artifacts/mantra47-16838-ar-exact-radius-audit';
+const target={lat:34.77042,lng:-92.12943};
+const capture='window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;';
+mkdirSync(OUT,{recursive:true});
+const browser=await chromium.launch({headless:true});
+const context=await browser.newContext({viewport:{width:1800,height:950}});
+await context.route('https://earthlinedevelopment.org/**',async route=>{
+ if(route.request().resourceType()!=='document') return route.continue();
+ const resp=await route.fetch(); let body=await resp.text();
+ if(body.split(capture).length-1!==1) throw new Error('capture mismatch');
+ body=body.replace(capture,'window.__EARTHLINE_M47_16838={hy,candidates,chosen};'+capture);
+ await route.fulfill({response:resp,body,headers:{...resp.headers(),'content-type':'text/html; charset=utf-8'}});
+});
+const page=await context.newPage(); const pageErrors=[]; page.on('pageerror',e=>pageErrors.push(String(e)));
+await page.goto(BASE+'?m47_16838='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+await page.waitForSelector('#searchInput',{timeout:30000});
+await page.evaluate(()=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='Arkansas';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
+await page.waitForFunction(()=>{const s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'');return /screening published\./i.test(s)&&!!window.__EARTHLINE_M47_16838;},null,{timeout:65000,polling:100});
+await page.waitForTimeout(500);
+const audit=await page.evaluate(target=>{
+ const {hy,candidates,chosen}=window.__EARTHLINE_M47_16838; const [west,south,east,north]=hy.bounds;
+ const ll=(gx,gy)=>({lng:west+(gx/hy.w)*(east-west),lat:north-(gy/hy.h)*(north-south)});
+ const hav=(a,b)=>{const R=6371,rad=x=>x*Math.PI/180,dlat=rad(b.lat-a.lat),dlng=rad(b.lng-a.lng),q=Math.sin(dlat/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dlng/2)**2;return 2*R*Math.asin(Math.sqrt(q));};
+ const cp=c=>ll(Number.isFinite(Number(c.coverageGX16775))?Number(c.coverageGX16775):Number(c.x),Number.isFinite(Number(c.coverageGY16775))?Number(c.coverageGY16775):Number(c.y));
+ const slim=c=>({gx:Number(c.coverageGX16775??c.x),gy:Number(c.coverageGY16775??c.y),...cp(c),distKm:hav(target,cp(c)),slope:Number(c.slope),score:Number(c.score),confidence:c.confidence,acc:Number(c.acc),gap:!!c.coverageGap16731,carry:!!c.coverageCarry16749});
+ const cand=(candidates||[]).map(slim).sort((a,b)=>a.distKm-b.distKm), sel=(chosen||[]).map(slim).sort((a,b)=>a.distKm-b.distKm);
+ const rings=[5,10,15,20,30,40,60];
+ const counts=rings.map(r=>({rKm:r,candidates:cand.filter(x=>x.distKm<=r).length,selected:sel.filter(x=>x.distKm<=r).length}));
+ const sector=(x)=>{let d=((Math.atan2(x.lng-target.lng,x.lat-target.lat)*180/Math.PI)+360)%360;return d;};
+ const northCounts=rings.map(r=>({rKm:r,candidates:cand.filter(x=>x.distKm<=r&&(sector(x)<=67.5||sector(x)>=292.5)).length,selected:sel.filter(x=>x.distKm<=r&&(sector(x)<=67.5||sector(x)>=292.5)).length}));
+ const terrain=[]; for(const r of rings){let valid=0,opp=0,pref=0,low=0,water=0; for(let y=0;y<hy.h;y++)for(let x=0;x<hy.w;x++){const p=ll(x+.5,y+.5);if(hav(target,p)>r)continue;const idx=y*hy.w+x;if(hy.validityMask16584?.[idx]!==1)continue;valid++;const sp=Number(hy.slope[idx]);if(Number.isFinite(sp)&&sp>=0&&sp<=4){opp++;if(sp>=.25&&sp<=3.5)pref++;if(sp<.25)low++;} if(hy.inlandWaterMask16632?.[idx]===1)water++;} terrain.push({rKm:r,valid,opportunityLE4:opp,preferred025to35:pref,ultraFlatLT025:low,water});}
+ const tGX=(target.lng-west)/(east-west)*hy.w,tGY=(north-target.lat)/(north-south)*hy.h;
+ const gx=Math.max(0,Math.min(hy.w-1,Math.floor(tGX))),gy=Math.max(0,Math.min(hy.h-1,Math.floor(tGY))),idx=gy*hy.w+gx;
+ return {target,targetGrid:{gx:tGX,gy:tGY,cellX:gx,cellY:gy,slope:Number(hy.slope[idx]),valid:hy.validityMask16584?.[idx],inlandWater:hy.inlandWaterMask16632?.[idx]??null,outsideLand:hy.outsideLandMask16632?.[idx]??null},bounds:hy.bounds,counts,northCounts,terrain,nearestCandidates:cand.slice(0,20),nearestSelected:sel.slice(0,20),balance:window.EARTHLINE_OPPORTUNITY_BALANCE_16836||null};
+},target);
+console.log('EARTHLINE_M47_16838 '+JSON.stringify(audit));
+writeFileSync(`${OUT}/audit.json`,JSON.stringify({pageErrors,audit},null,2));
+await browser.close();
