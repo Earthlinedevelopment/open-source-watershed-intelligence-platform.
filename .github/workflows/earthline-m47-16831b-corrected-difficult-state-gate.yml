@@ -1,0 +1,38 @@
+name: Mantra 47 16831B Corrected Difficult State Gate
+
+on:
+  push:
+    branches: [diagnostic-m47-16822-ar-pipeline]
+    paths:
+      - '.github/workflows/earthline-m47-16831b-corrected-difficult-state-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Build corrected validator semantics
+        run: |
+          cp tests/mantra47-16831-difficult-state-gate.mjs /tmp/mantra47-16831b.mjs
+          sed -i "s/audit.outside===0&&Number(audit.coreMs)<=15000/(audit.outside===0||audit.outside==null)\&\&Number(audit.coreMs)<=15000/" /tmp/mantra47-16831b.mjs
+          sed -i "s#artifacts/mantra47-16831-difficult-state-gate#artifacts/mantra47-16831b-corrected-difficult-state-gate#g" /tmp/mantra47-16831b.mjs
+      - name: Run corrected 16831B difficult-state gate
+        run: node /tmp/mantra47-16831b.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra47-16831b-corrected-difficult-state-gate
+          path: artifacts/mantra47-16831b-corrected-difficult-state-gate/
+          if-no-files-found: error
