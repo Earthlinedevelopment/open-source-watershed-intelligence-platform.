@@ -1,0 +1,24 @@
+name: Mantra 47 16825 Fine Dispersion Source Extractor
+
+on:
+  push:
+    branches: [diagnostic-m47-16822-ar-pipeline]
+    paths:
+      - 'tests/mantra47-16825-fine-source.mjs'
+      - '.github/workflows/earthline-m47-16825-fine-source.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Extract fine dispersion source
+        run: node tests/mantra47-16825-fine-source.mjs
