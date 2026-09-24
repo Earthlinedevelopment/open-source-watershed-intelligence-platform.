@@ -39,15 +39,15 @@ for(const variant of variants){
   await page.waitForTimeout(600);
  }catch(e){loadError=String(e);}
  const audit=loadError||timedOut?null:await page.evaluate(target=>{
-  const {hy,candidates,chosen}=window.__EARTHLINE_M47_16839;const [west,south,east,north]=hy.bounds;
-  const ll=(gx,gy)=>({lng:west+(gx/hy.w)*(east-west),lat:north-(gy/hy.h)*(north-south)});
+  const {hy,candidates,chosen}=window.__EARTHLINE_M47_16839;const [west,south,east,northBound]=hy.bounds;
+  const ll=(gx,gy)=>({lng:west+(gx/hy.w)*(east-west),lat:northBound-(gy/hy.h)*(northBound-south)});
   const hav=(a,b)=>{const R=6371,rad=x=>x*Math.PI/180,dlat=rad(b.lat-a.lat),dlng=rad(b.lng-a.lng),q=Math.sin(dlat/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dlng/2)**2;return 2*R*Math.asin(Math.sqrt(q));};
   const cp=c=>ll(Number(c.coverageGX16775??c.x),Number(c.coverageGY16775??c.y));
   const rings=[5,10,15,20,30,40];
   const ringCounts=list=>rings.map(r=>({r,c:list.filter(c=>hav(target,cp(c))<=r).length}));
-  const north=(c)=>{const p=cp(c),d=((Math.atan2(p.lng-target.lng,p.lat-target.lat)*180/Math.PI)+360)%360;return d<=67.5||d>=292.5;};
+  const isNorth=(c)=>{const p=cp(c),d=((Math.atan2(p.lng-target.lng,p.lat-target.lat)*180/Math.PI)+360)%360;return d<=67.5||d>=292.5;};
   const fine=window.EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16781||null;
-  return {candidates:candidates.length,chosen:chosen.length,candidateRings:ringCounts(candidates),selectedRings:ringCounts(chosen),northCandidateRings:rings.map(r=>({r,count:candidates.filter(c=>north(c)&&hav(target,cp(c))<=r).length})),northSelectedRings:rings.map(r=>({r,count:chosen.filter(c=>north(c)&&hav(target,cp(c))<=r).length})),fine,fineTargetSelected:!!fine?.selected?.some(x=>Number(x.bx)===6&&Number(x.by)===5),fineTargetUnresolved:!!fine?.unresolvedAfter?.some(x=>Number(x.bx)===6&&Number(x.by)===5),pub:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,disp:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null,flow:window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null,boundary:window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||null,perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null};
+  return {candidates:candidates.length,chosen:chosen.length,candidateRings:ringCounts(candidates),selectedRings:ringCounts(chosen),northCandidateRings:rings.map(r=>({r,count:candidates.filter(c=>isNorth(c)&&hav(target,cp(c))<=r).length})),northSelectedRings:rings.map(r=>({r,count:chosen.filter(c=>isNorth(c)&&hav(target,cp(c))<=r).length})),fine,fineTargetSelected:!!fine?.selected?.some(x=>Number(x.bx)===6&&Number(x.by)===5),fineTargetUnresolved:!!fine?.unresolvedAfter?.some(x=>Number(x.bx)===6&&Number(x.by)===5),pub:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,disp:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null,flow:window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null,boundary:window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||null,perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null};
  },target);
  const result={variant,loadError,timedOut,pageErrors,elapsedMs:Date.now()-started,audit};results.push(result);console.log('EARTHLINE_M47_16839 '+JSON.stringify(result));
  try{await page.screenshot({path:`${OUT}/${variant}.png`,fullPage:false});}catch(_){}
