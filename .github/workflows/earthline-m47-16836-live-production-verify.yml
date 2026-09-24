@@ -1,0 +1,33 @@
+name: Mantra 47 16836 Live Production Verify
+
+on:
+  push:
+    branches: [diagnostic-m47-16822-ar-pipeline]
+    paths:
+      - '.github/workflows/earthline-m47-16836-live-production-verify.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify live 16836 Arkansas and Texas
+        run: node tests/mantra47-16836-live-production-verify.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra47-16836-live-production-verify
+          path: artifacts/mantra47-16836-live-production-verify/
+          if-no-files-found: error
