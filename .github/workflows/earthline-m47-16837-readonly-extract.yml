@@ -1,17 +1,17 @@
-name: Earthline 16837 Readonly Arkansas Generator A B
+name: Earthline 16838 Readonly Arkansas Void Audit
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/earthline-m47-16837-readonly-extract.yml'
       - 'lab/TRIGGER-16837-READONLY.txt'
-      - 'lab/earthline-16837-local-phase-ab.mjs'
+      - 'lab/earthline-16838-void-audit.mjs'
 permissions:
   contents: read
 jobs:
   probe:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
         with:
@@ -21,10 +21,10 @@ jobs:
           node-version: '20'
       - run: npm install --no-save playwright
       - run: npx playwright install --with-deps chromium
-      - name: Run exact-location statewide DEM local-phase A B
-        run: node lab/earthline-16837-local-phase-ab.mjs
+      - name: Measure exact Arkansas void geometry
+        run: node lab/earthline-16838-void-audit.mjs
       - uses: actions/upload-artifact@v4
         with:
-          name: earthline-16837-local-phase-ab
+          name: earthline-16838-void-audit
           path: out/
           retention-days: 2
