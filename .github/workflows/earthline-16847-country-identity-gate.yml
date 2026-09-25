@@ -1,0 +1,117 @@
+name: Earthline 16847 Country Identity Gate
+on:
+  push:
+    branches: [global-search-development-16845]
+    paths:
+      - 'lab/apply-16847-country-identity-normalization.py'
+      - 'lab/earthline-16847-africa-identity.mjs'
+      - '.github/workflows/earthline-16847-country-identity-gate.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  africa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - batch: a1
+            targets: 'Algeria=dz|Angola=ao|Benin=bj|Botswana=bw|Burkina Faso=bf|Burundi=bi|Cabo Verde=cv|Cameroon=cm|Central African Republic=cf|Chad=td|Comoros=km|Democratic Republic of the Congo=cd|Republic of the Congo=cg|Cote d Ivoire=ci|Côte d Ivoire=ci|Ivory Coast=ci|Djibouti=dj|Egypt=eg|Equatorial Guinea=gq|Eritrea=er'
+          - batch: a2
+            targets: 'Eswatini=sz|Ethiopia=et|Gabon=ga|Gambia=gm|The Gambia=gm|Ghana=gh|Guinea=gn|Guinea-Bissau=gw|Kenya=ke|Lesotho=ls|Liberia=lr|Libya=ly|Madagascar=mg|Malawi=mw|Mali=ml|Mauritania=mr|Mauritius=mu|Morocco=ma|Mozambique=mz'
+          - batch: a3
+            targets: 'Namibia=na|Niger=ne|Nigeria=ng|Rwanda=rw|Sao Tome and Principe=st|Senegal=sn|Seychelles=sc|Sierra Leone=sl|Somalia=so|South Africa=za|South Sudan=ss|Sudan=sd|Tanzania=tz|Togo=tg|Tunisia=tn|Uganda=ug|Zambia=zm|Zimbabwe=zw'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: global-search-development-16845
+      - name: Verify U.S. launch lock remains exact
+        run: |
+          git fetch origin us-launch-lock-16844
+          test "$(git rev-parse origin/us-launch-lock-16844)" = "a795ff5f80ed3500cfe3d77c7f5d153462bef340"
+      - name: Apply identity candidate and runner-only location hook
+        run: |
+          python3 lab/apply-16847-country-identity-normalization.py
+          git diff --check
+          grep -q 'countryIdentityKey16847' index.html
+          python3 lab/apply-16845-test-location-hook.py
+          grep -q 'EARTHLINE_TEST_LOCATION_16845' index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start isolated candidate
+        run: |
+          python3 -m http.server 8787 >/tmp/earthline-16847-${{ matrix.batch }}.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run exact ISO identity and engine gate
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: http://127.0.0.1:8787/
+          TARGETS: ${{ matrix.targets }}
+        run: node lab/earthline-16847-africa-identity.mjs
+
+  controls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: global-search-development-16845
+      - name: Verify U.S. launch lock remains exact
+        run: |
+          git fetch origin us-launch-lock-16844
+          test "$(git rev-parse origin/us-launch-lock-16844)" = "a795ff5f80ed3500cfe3d77c7f5d153462bef340"
+      - name: Apply identity candidate only
+        run: |
+          python3 lab/apply-16847-country-identity-normalization.py
+          git diff --check
+          grep -q 'countryIdentityKey16847' index.html
+          ! grep -q 'EARTHLINE_TEST_LOCATION_16845' index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start isolated candidate
+        run: |
+          python3 -m http.server 8787 >/tmp/earthline-16847-controls.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run city, country and U.S. regression controls
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: http://127.0.0.1:8787/
+        run: node lab/earthline-16846-country-fallback-connected.mjs
+
+  retain:
+    needs: [africa, controls]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: global-search-development-16845
+          fetch-depth: 1
+      - name: Verify lock and retain only tested index change
+        run: |
+          git fetch origin us-launch-lock-16844
+          test "$(git rev-parse origin/us-launch-lock-16844)" = "a795ff5f80ed3500cfe3d77c7f5d153462bef340"
+          python3 lab/apply-16847-country-identity-normalization.py
+          git diff --check
+          grep -q 'countryIdentityKey16847' index.html
+          ! grep -q 'EARTHLINE_TEST_LOCATION_16845' index.html
+          git config user.name 'Earthline CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'global: normalize bare country identity before analysis'
+          git push origin HEAD:global-search-development-16845
