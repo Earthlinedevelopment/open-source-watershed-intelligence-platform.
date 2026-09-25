@@ -1,159 +1,48 @@
-name: Earthline Mantra45 Dispersion Repair Probe
+name: Earthline 16844 Exact-Parent Production Deploy Fallback
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/earthline-m45-dispersion-repair-probe.yml']
+    paths:
+      - '.github/workflows/earthline-m45-dispersion-repair-probe.yml'
 permissions:
   contents: write
 jobs:
-  probe:
+  deploy:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      - run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Probe global terrain-subregion reserve repair against live product
+          ref: pages-live
+          fetch-depth: 0
+      - name: Assert exact live 16843 parent
         shell: bash
         run: |
-          mkdir -p lab
-          node --input-type=module <<'JS'
-          import { chromium } from 'playwright';
-          import fs from 'fs';
-          const browser=await chromium.launch({headless:true});
-          const page=await browser.newPage({viewport:{width:1800,height:1000}});
-          const consoleRows=[]; page.on('console',m=>consoleRows.push({type:m.type(),text:m.text().slice(0,1200)}));
-          let patched=false,patchError='';
-          await page.route('https://earthlinedevelopment.org/**',async route=>{
-            const req=route.request();
-            if(req.isNavigationRequest()&&new URL(req.url()).pathname==='/'){
-              const resp=await route.fetch(); let html=await resp.text();
-              const start="      for(const [key16736,list16736] of coverageGroups16736){";
-              const end="    const regionalCapacity16755=focusMode?80:Math.min(120,Math.max(80,coverageGroups16736.size*4));";
-              const a=html.indexOf(start),b=html.indexOf(end,a);
-              if(a<0||b<0){patchError='reserve block markers not found';}
-              else{
-                const replacement=`      /* EARTHLINE M45 PROBE — global terrain-subregion reserve.
-         Same reserve budget as 16767; distribute it across actual occupied 3x3
-         subregions inside each 6x6 candidate sector. No jurisdiction names,
-         no science-gate changes, no synthetic candidates. */
-      const subgroupsM45=new Map(),selectedSubsM45=new Map();
-      let totalSubsM45=0;
-      for(const [keyM45,listM45] of coverageGroups16736){
-        listM45.sort((aM45,bM45)=>(Number(bM45.score)||0)-(Number(aM45.score)||0));
-        const cellsM45=new Map();
-        for(const cM45 of listM45){
-          const sxM45=Math.max(0,Math.min(17,Math.floor(Number(cM45.x)*18/Math.max(1,hy.w))));
-          const syM45=Math.max(0,Math.min(17,Math.floor(Number(cM45.y)*18/Math.max(1,hy.h))));
-          const skM45=(sxM45%3)+','+(syM45%3);
-          let cellM45=cellsM45.get(skM45);
-          if(!cellM45)cellsM45.set(skM45,cellM45=[]);
-          cellM45.push(cM45);
-        }
-        const repsM45=[];
-        for(const [skM45,cellM45] of cellsM45){
-          cellM45.sort((aM45,bM45)=>(Number(bM45.score)||0)-(Number(aM45.score)||0));
-          const [lxM45,lyM45]=skM45.split(',').map(Number);
-          repsM45.push({subkey:skM45,lx:lxM45,ly:lyM45,count:cellM45.length,candidate:cellM45[0]});
-        }
-        repsM45.sort((aM45,bM45)=>(Number(bM45.candidate.score)||0)-(Number(aM45.candidate.score)||0));
-        subgroupsM45.set(keyM45,repsM45); selectedSubsM45.set(keyM45,[]);
-        totalSubsM45+=repsM45.length;
-      }
-      const reserveBudgetM45=Math.min(totalSubsM45,coverageGroups16736.size*3);
-      const chooseNextM45=(keyM45)=>{
-        const repsM45=subgroupsM45.get(keyM45)||[],selM45=selectedSubsM45.get(keyM45)||[];
-        const remainingM45=repsM45.filter(rM45=>!selM45.includes(rM45));
-        if(!remainingM45.length)return null;
-        if(!selM45.length)return remainingM45[0];
-        let bestM45=null,bestMetricM45=-Infinity;
-        for(const rM45 of remainingM45){
-          const dM45=Math.min(...selM45.map(sM45=>Math.hypot(rM45.lx-sM45.lx,rM45.ly-sM45.ly)));
-          const metricM45=dM45*1000+rM45.count*10+(Number(rM45.candidate.score)||0);
-          if(metricM45>bestMetricM45){bestMetricM45=metricM45;bestM45=rM45;}
-        }
-        return bestM45;
-      };
-      while(coverageReserved16736.length<reserveBudgetM45){
-        let bestKeyM45=null,bestRatioM45=Infinity,bestOccM45=-1,bestScoreM45=-Infinity;
-        for(const [keyM45,repsM45] of subgroupsM45){
-          const selM45=selectedSubsM45.get(keyM45)||[];
-          if(selM45.length>=repsM45.length)continue;
-          const ratioM45=selM45.length/Math.max(1,repsM45.length);
-          const nextM45=chooseNextM45(keyM45),scoreM45=Number(nextM45?.candidate?.score)||0;
-          if(ratioM45<bestRatioM45-1e-9||
-             (Math.abs(ratioM45-bestRatioM45)<1e-9&&repsM45.length>bestOccM45)||
-             (Math.abs(ratioM45-bestRatioM45)<1e-9&&repsM45.length===bestOccM45&&scoreM45>bestScoreM45)){
-            bestKeyM45=keyM45;bestRatioM45=ratioM45;bestOccM45=repsM45.length;bestScoreM45=scoreM45;
-          }
-        }
-        if(bestKeyM45===null)break;
-        const nextM45=chooseNextM45(bestKeyM45); if(!nextM45)break;
-        selectedSubsM45.get(bestKeyM45).push(nextM45);
-        const cM45=nextM45.candidate;
-        if(cM45&&!chosen.includes(cM45)){
-          chosen.push(cM45);
-          coverageReserved16736.push({key:bestKeyM45,x:cM45.x,y:cM45.y,score:Number(cM45.score)||0,
-            refined:!!(cM45.refined16710||cM45.refined16702),coverageGap:!!cM45.coverageGap16731,
-            densityReserve16767:true,dispersionReserveM45:true,subcell:nextM45.subkey,
-            subcellCandidates:nextM45.count,binBasis:cM45.coverageBinBasis16767||'clipped-midpoint'});
-        }
-      }
-    }
-`;
-                html=html.slice(0,a)+replacement+html.slice(b);
-                const m1="candidates.sort((a,b)=>b.score-a.score);\n    const chosen=[],primarySpacing=Math.max(3,Math.round(hy.w/31));";
-                const i1="candidates.sort((a,b)=>b.score-a.score);\n    window.EARTHLINE_M45_PROBE_GRID={w:hy.w,h:hy.h};\n    window.EARTHLINE_M45_PROBE_CANDIDATES=candidates.map(c=>({x:Number(c.x),y:Number(c.y),score:Number(c.score)||0,confidence:String(c.confidence||'')}));\n    const chosen=[],primarySpacing=Math.max(3,Math.round(hy.w/31));";
-                const m2="    /* EARTHLINE 16717 — coverage reservation decides inclusion only.";
-                const i2="    window.EARTHLINE_M45_PROBE_CHOSEN=chosen.map(c=>({x:Number(c.x),y:Number(c.y),score:Number(c.score)||0}));\n"+m2;
-                if(!html.includes(m1)||!html.includes(m2)){patchError='instrumentation markers not found';}
-                else{html=html.replace(m1,i1).replace(m2,i2);patched=true;}
-              }
-              await route.fulfill({response:resp,body:html,headers:{...resp.headers(),'cache-control':'no-store'}});return;
-            }
-            await route.continue();
-          });
-          await page.goto('https://earthlinedevelopment.org/?m45repair='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-          if(!patched)throw new Error('M45 repair probe patch failed: '+patchError);
-          await page.waitForSelector('#searchInput',{timeout:30000});
-          await page.evaluate(()=>{window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731=null;const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='vermont state';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
-          await page.waitForFunction(()=>{
-            const a=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731,p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;
-            return a?.passed===true&&Number(p?.generated||0)>0&&Number(p?.generated||0)===Number(d?.swaleLines||0)&&Array.isArray(window.EARTHLINE_M45_PROBE_CHOSEN);
-          },null,{timeout:70000,polling:100});
-          await page.waitForTimeout(500);
-          const raw=await page.evaluate(()=>{
-            const clone=v=>JSON.parse(JSON.stringify(v??null));
-            return {grid:clone(window.EARTHLINE_M45_PROBE_GRID),candidates:clone(window.EARTHLINE_M45_PROBE_CANDIDATES),chosen:clone(window.EARTHLINE_M45_PROBE_CHOSEN),
-              reserve:clone(window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736),coverage:clone(window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731),
-              publication:clone(window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167),display:clone(window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020),
-              performance:clone(window.EARTHLINE_REGIONAL_PERFORMANCE_16191),land:clone(window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584),
-              water:clone(window.EARTHLINE_MAPPED_WATER_EXCLUSION_AUDIT_16584||window.EARTHLINE_WATER_SIDECAR_AUDIT_16584||null),
-              waterValidation:clone(window.EARTHLINE_WATER_VALIDATION_AUDIT_16584||window.EARTHLINE_MAPPED_WATER_VALIDATION_AUDIT_16584||null),
-              generation:clone(window.EARTHLINE_SWALE_GENERATION_AUDIT_16167),atomic:clone(window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556)};
-          });
-          const W=Number(raw.grid?.w||1),H=Number(raw.grid?.h||1);
-          const pk=p=>Math.max(0,Math.min(5,Math.floor(Number(p.x)*6/W)))+','+Math.max(0,Math.min(5,Math.floor(Number(p.y)*6/H)));
-          const sk=p=>(Math.max(0,Math.min(17,Math.floor(Number(p.x)*18/W)))%3)+','+(Math.max(0,Math.min(17,Math.floor(Number(p.y)*18/H)))%3);
-          const groups=(arr)=>{const m=new Map();for(const p of arr||[]){const k=pk(p);if(!m.has(k))m.set(k,[]);m.get(k).push(p);}return m;};
-          const cg=groups(raw.candidates),fg=groups(raw.chosen);
-          const significant=(raw.coverage?.bins||[]).filter(r=>Number(r.valid)>=45&&Number(r.opportunity)>=8&&(Number(r.opportunity)/Math.max(1,Number(r.valid)))>=.035);
-          const rows=significant.map(b=>{const k=b.bx+','+b.by,c=cg.get(k)||[],f=fg.get(k)||[],co=new Set(c.map(sk)),fo=new Set(f.map(sk));return {key:k,candidates:c.length,final:f.length,candidateSubcells:co.size,finalSubcells:fo.size,coverageRatio:co.size?fo.size/co.size:null};});
-          const totals={significantBins:rows.length,candidateSubcells:rows.reduce((s,r)=>s+r.candidateSubcells,0),finalSubcells:rows.reduce((s,r)=>s+r.finalSubcells,0),binsBelowHalfSubcellCoverage:rows.filter(r=>r.coverageRatio!==null&&r.coverageRatio<.5).length,binsBelowThirdSubcellCoverage:rows.filter(r=>r.coverageRatio!==null&&r.coverageRatio<.34).length};
-          const safety={coveragePassed:raw.coverage?.passed===true,generated:Number(raw.publication?.generated||0),visible:Number(raw.display?.swaleLines||0),coreMs:Number(raw.performance?.totalMs||NaN),reserve:Number(raw.reserve?.reserved||0),capacity:Number(raw.reserve?.capacity||0),land:raw.land,water:raw.water,waterValidation:raw.waterValidation,generation:raw.generation,atomic:raw.atomic};
-          const out={timestamp:new Date().toISOString(),repair:'global terrain-subregion proportional reserve using unchanged 16767 reserve budget',totals,rows,safety,consoleTail:consoleRows.slice(-100)};
-          fs.writeFileSync('lab/mantra45-vt-dispersion-repair-probe.json',JSON.stringify(out,null,2));
-          console.log('M45 REPAIR TOTALS '+JSON.stringify(totals));console.log('M45 REPAIR SAFETY '+JSON.stringify({generated:safety.generated,visible:safety.visible,coreMs:safety.coreMs,reserve:safety.reserve,capacity:safety.capacity,coveragePassed:safety.coveragePassed}));
-          await browser.close();
-          JS
-      - name: Persist repair probe
+          set -euo pipefail
+          ACTUAL=$(git rev-parse HEAD)
+          EXPECTED=ed52b565bef53cd76bb359e731fc812da3b1f1fc
+          echo "actual=$ACTUAL expected=$EXPECTED"
+          test "$ACTUAL" = "$EXPECTED"
+      - name: Apply exact tested 16844 patch
         shell: bash
         run: |
-          git config user.name "Earthline Diagnostic"
-          git config user.email "actions@users.noreply.github.com"
-          git add lab/mantra45-vt-dispersion-repair-probe.json
-          git commit -m "diag: persist Mantra45 dispersion repair probe [skip ci]"
-          git push
+          set -euo pipefail
+          git fetch origin main
+          git show origin/main:lab/apply-16844-final-supported-capacity.py > /tmp/apply-16844.py
+          python3 /tmp/apply-16844.py index.html
+          git diff --check
+          test "$(grep -F -c 'EARTHLINE 16844 — FINAL FINE-SUPPORT REGIONAL CAPACITY' index.html)" = "1"
+          test "$(grep -F -c 'Math.min(54,Math.max(0,Math.floor((fineSupportCells16755.size-baseRegionalCapacity16755)*.75)))' index.html)" = "1"
+      - name: Publish exact-parent 16844
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Earthline CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'repair: deploy 16844 final fine-supported Regional capacity'
+          NEW=$(git rev-parse HEAD)
+          PARENT=$(git rev-parse HEAD^)
+          test "$PARENT" = 'ed52b565bef53cd76bb359e731fc812da3b1f1fc'
+          git push origin HEAD:pages-live
+          echo "new=$NEW parent=$PARENT"
