@@ -27,7 +27,7 @@ for(const target of TARGETS){
       country:cp?{label:cp.boundary?.label,code:cp.countryCode,capability:cp.boundary?.capability,extent:cp.regionalExtent?.bbox}:null,
       state:sp?{profileId:sp.profileId,build:sp.build,capability:sp.boundary?.capability}:null,
       boundary:b?{passed:b.passed,capability:b.capability||b.boundaryCapability||null,outside:b.outsideJurisdiction??b.outsideCount??null}:null,
-      publication:pub?{generated:Number(pub.generated||0),visible:Number(pub.visible??pub.displayed??pub.generated||0),outside:Number(pub.outsideJurisdiction??pub.outside??0),unsafe:Number(pub.unsafe??pub.unsafeDisplayedSegments??0)}:null,
+      publication:pub?{generated:Number(pub.generated??0),visible:Number(pub.visible??pub.displayed??pub.generated??0),outside:Number(pub.outsideJurisdiction??pub.outside??0),unsafe:Number(pub.unsafe??pub.unsafeDisplayedSegments??0)}:null,
       performance:perf?Number(perf.totalMs||0):null,displayed:d?{query:d.query,bounds:d.bounds||d.bbox||null}:null};
   }).catch(e=>({probeError:String(e?.message||e)}));
   try{await page.screenshot({path:'gate-16845-'+target.toLowerCase().replace(/[^a-z0-9]+/g,'-')+'.jpg',type:'jpeg',quality:45});}catch{}
