@@ -1,3 +1,4 @@
+<!-- EARTHLINE 16845 — GLOBAL COUNTRY ATOMIC JURISDICTION OWNER. DEV BRANCH ONLY. -->
 <!-- EARTHLINE 16793 — STARTUP CAMERA RACE REPAIR. The asynchronous Mapbox load handler no longer overwrites an already-started search with the startup globe camera. Startup behavior remains unchanged while genuinely idle. No science, terrain, hydrology, swale geometry/ranking, mapped-water safety, capacity, renderer, Property behavior, logo, Orb, or controls changed. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16787 — EFFICIENT TERRAIN-GAP RECOVERY. Remaining broad Regional voids were traced to opportunity-rich 12x12 cells whose coarse contour field did not produce enough local geometry. Preserve all existing science/safety/capacity owners; expand the bounded local terrain refinement only where measured gaps exist, using a lighter 32x32 local DEM so more real failed cells can be resolved inside the 15 s ceiling. No jurisdiction names, synthetic corridors, relaxed mapped-water safety, slope-rule change, selection-capacity change, or Property change. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16792 — IOWA/ARKANSAS REGIONAL RECOVERY. Two evidence-backed global repairs only: (1) cached Regional state packages rebind the authoritative LAST_ATOMIC package on every cache hit, preventing stale prior-state identity during repeated state switching; (2) Regional candidate generation always runs the existing relaxed contour pass, constrained to the existing <=4% low-relief opportunity band, so statewide high-relief candidate abundance cannot suppress real low-relief candidates elsewhere. Property behavior, mapped-water safety, jurisdiction containment, ranking, capacity and renderers are unchanged. CANDIDATE / NOT ACCEPTED. -->
@@ -30958,9 +30959,52 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
       endpoint:'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/0/query'
     })
   });
+  const EARTHLINE_NE50_COUNTRIES_16845='https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ace5fed0eaf3c6c03c951e75b439ba8fffbc218e/geojson/ne_50m_admin_0_countries.geojson';
+  const earthlineGlobalCountryCapability16845=Object.freeze({
+    id:'natural-earth-country-16845',placeType:'country',countryCode:'*',
+    source:'Natural Earth — Admin 0 Countries 1:50m',sourceTier:'open-data',
+    sourceVintage:'Natural Earth final v5.0.0 GeoJSON · repository commit 2021-12-08',
+    endpoint:EARTHLINE_NE50_COUNTRIES_16845
+  });
+  let earthlineNE50CountriesPromise16845=null;
+  function earthlineCountryCodeKey16845(v){return String(v||'').trim().toLowerCase().replace(/[^a-z]/g,'').slice(0,2);}
+  function earthlineCountryNameKey16845(v){return earthlinePlaceKey16537(String(v||'')).replace(/^(?:country|nation)\s+of\s+/, '').replace(/\s+(?:country|nation)$/, '').trim();}
+  async function earthlineNE50Countries16845(){
+    if(!earthlineNE50CountriesPromise16845)earthlineNE50CountriesPromise16845=(async()=>{
+      const signal=(typeof AbortSignal!=='undefined'&&typeof AbortSignal.timeout==='function')?AbortSignal.timeout(6500):undefined;
+      const r=await fetch(EARTHLINE_NE50_COUNTRIES_16845,{mode:'cors',cache:'force-cache',signal,headers:{Accept:'application/geo+json,application/json'}});
+      if(!r.ok)throw new Error('Natural Earth country boundary HTTP '+r.status);
+      const j=await r.json();
+      return Array.isArray(j&&j.features)?j.features.filter(f=>f&&f.geometry&&(f.geometry.type==='Polygon'||f.geometry.type==='MultiPolygon')):[];
+    })().catch(e=>{earthlineNE50CountriesPromise16845=null;throw e;});
+    return earthlineNE50CountriesPromise16845;
+  }
+  async function earthlineResolveNaturalEarthCountryBoundary16845(q,loc,runToken){
+    const rows=await earthlineNE50Countries16845();if(runToken&&!isCurrentRun(runToken))return null;
+    const cc=earthlineCountryCodeKey16845(loc&&loc.countryCode),qk=earthlineCountryNameKey16845(loc&&loc.name||q),center=[Number(loc&&loc.lng),Number(loc&&loc.lat)];
+    let best=null,bestScore=-Infinity;
+    for(const f of rows){
+      const p=f.properties||{};
+      const codes=[p.ISO_A2,p.ISO_A2_EH,p.WB_A2,p.POSTAL].map(earthlineCountryCodeKey16845).filter(Boolean);
+      const names=[p.ADMIN,p.NAME,p.NAME_LONG,p.SOVEREIGNT,p.FORMAL_EN,p.BRK_NAME,p.ABBREV].map(earthlineCountryNameKey16845).filter(Boolean);
+      let score=0;
+      if(cc&&codes.includes(cc))score+=120;
+      if(qk&&names.includes(qk))score+=80;
+      if(qk&&names.some(n=>n===qk||n.includes(qk)||qk.includes(n)))score+=20;
+      if(Number.isFinite(center[0])&&Number.isFinite(center[1])&&earthlinePointInJurisdiction16539(center,f.geometry))score+=15;
+      if(score>bestScore){bestScore=score;best=f;}
+    }
+    if(!best||bestScore<=0)throw new Error('authoritative country boundary could not be matched');
+    const p=best.properties||{},bbox=earthlineGeometryBounds16556(best.geometry),centerPoint=earthlineInteriorPoint16556(best.geometry,bbox);
+    return {geometry:best.geometry,prepared:earthlinePrepareJurisdiction16539(best.geometry),bbox,center:centerPoint,
+      source:earthlineGlobalCountryCapability16845.source,sourceTier:earthlineGlobalCountryCapability16845.sourceTier,
+      sourceVintage:earthlineGlobalCountryCapability16845.sourceVintage,capability:earthlineGlobalCountryCapability16845.id,
+      placeType:'country',label:String(p.ADMIN||p.NAME||loc&&loc.name||q||'Country'),code:String(p.ISO_A2||p.ISO_A2_EH||cc||'').toLowerCase(),resolvedAt:new Date().toISOString()};
+  }
   function earthlineAdministrativeCapability16539(loc){
     const pt=String(loc&&loc.placeType||'').toLowerCase(),cc=String(loc&&loc.countryCode||'').toLowerCase();
     if(pt==='region'&&cc==='us')return earthlineBoundaryCapabilities16539.usState;
+    if(pt==='country')return earthlineGlobalCountryCapability16845;
     return null;
   }
   function earthlineFinitePoint16539(p){return Array.isArray(p)&&Number.isFinite(Number(p[0]))&&Number.isFinite(Number(p[1]));}
@@ -31158,6 +31202,26 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     return package16556;
   }
   window.earthlineResolveAtomicUSStatePackage16556=earthlineResolveAtomicUSStatePackage16556;
+  const earthlineAtomicCountryPackageCache16845=new Map();
+  async function earthlineResolveAtomicCountryPackage16845(q,loc){
+    if(!loc||String(loc.placeType||'').toLowerCase()!=='country')return null;
+    const cc=earthlineCountryCodeKey16845(loc.countryCode),name=String(loc.name||q||'').trim(),cacheKey=[cc||'--',earthlineCountryNameKey16845(name)].join('|');
+    if(earthlineAtomicCountryPackageCache16845.has(cacheKey)){const cached=earthlineAtomicCountryPackageCache16845.get(cacheKey);window.EARTHLINE_LAST_ATOMIC_COUNTRY_PACKAGE_16845=cached;return cached;}
+    const boundary=await earthlineResolveJurisdictionBoundary16539(q,loc,null,earthlineGlobalCountryCapability16845);
+    if(!boundary||!boundary.geometry)throw new Error('atomic country package did not resolve authoritative geometry');
+    const rawBBox=Array.isArray(boundary.bbox)?boundary.bbox:earthlineGeometryBounds16556(boundary.geometry);
+    const rawCenter=Array.isArray(boundary.center)?boundary.center:earthlineInteriorPoint16556(boundary.geometry,rawBBox);
+    const extentAudit=earthlineRegionalAnalysisBounds16712(boundary.geometry,rawBBox),bbox=Array.isArray(extentAudit&&extentAudit.bbox)?extentAudit.bbox.slice():rawBBox.slice();
+    const identity=Object.freeze({id:'country-'+(cc||earthlineCountryNameKey16845(name)),name:boundary.label||name,countryCode:cc||String(boundary.code||'').toLowerCase(),placeType:'country',supportTier:'global-open-data'});
+    const centerValue=Object.freeze({lng:Number(rawCenter[0]),lat:Number(rawCenter[1])});
+    const extent=Object.freeze({bbox:Object.freeze(bbox.slice()),zoomHint:earthlineStateZoomHint16556(bbox),analysisBBox:true,extentClass:String(boundary.label||name)+' countrywide Regional screening extent',audit:extentAudit});
+    const boundaryValue=Object.freeze({geometry:boundary.geometry,prepared:boundary.prepared,source:boundary.source,sourceTier:boundary.sourceTier,sourceVintage:boundary.sourceVintage,capability:boundary.capability,label:boundary.label,code:boundary.code});
+    const location=Object.freeze(Object.assign({},loc,{name:boundary.label||name,fullName:boundary.label||name,countryCode:identity.countryCode,placeType:'country',lat:centerValue.lat,lng:centerValue.lng,bbox:extent.bbox,zoomHint:extent.zoomHint,analysisBBox:true,extentClass:extent.extentClass,query:q}));
+    const pkg=Object.freeze({build:'EARTHLINE 16845',packageKind:'country',profileId:identity.id,supportTier:'global-open-data',countryCode:identity.countryCode,placeType:'country',identity,boundary:boundaryValue,center:centerValue,regionalExtent:extent,location,appliedAtomically:true,resolvedAt:new Date().toISOString()});
+    earthlineAtomicCountryPackageCache16845.set(cacheKey,pkg);window.EARTHLINE_LAST_ATOMIC_COUNTRY_PACKAGE_16845=pkg;
+    return pkg;
+  }
+  window.earthlineResolveAtomicCountryPackage16845=earthlineResolveAtomicCountryPackage16845;
   function earthlineSqlLiteral16539(v){return String(v||'').replace(/'/g,"''");}
   async function earthlineResolveJurisdictionBoundary16539(q,loc,runToken,capability){
     const cap=capability||earthlineAdministrativeCapability16539(loc);if(!cap)return null;
@@ -31165,6 +31229,12 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     const stateName=String(loc&&loc.name||q||'').trim();if(!stateName)throw new Error('selected state name is unavailable');
     const key=[cap.id,stateName.toLowerCase()].join('|');
     if(jurisdictionBoundaryCache16539.has(key))return jurisdictionBoundaryCache16539.get(key);
+    if(cap.id==='natural-earth-country-16845'){
+      const out16845=await earthlineResolveNaturalEarthCountryBoundary16845(q,loc,runToken);
+      if(!out16845||!out16845.geometry)throw new Error('authoritative country boundary could not be resolved');
+      jurisdictionBoundaryCache16539.set(key,out16845);if(jurisdictionBoundaryCache16539.size>12)jurisdictionBoundaryCache16539.delete(jurisdictionBoundaryCache16539.keys().next().value);
+      return out16845;
+    }
     const params=new URLSearchParams({where:"NAME='"+earthlineSqlLiteral16539(stateName)+"'",outFields:'NAME,STUSAB,GEOID,INTPTLAT,INTPTLON',returnGeometry:'true',outSR:'4326',maxAllowableOffset:'0.0025',geometryPrecision:'5',f:'geojson'});
     const signal=(typeof AbortSignal!=='undefined'&&typeof AbortSignal.timeout==='function')?AbortSignal.timeout(6500):undefined;
     const response=await fetch(cap.endpoint+'?'+params.toString(),{mode:'cors',cache:'force-cache',signal,headers:{Accept:'application/geo+json,application/json'}});
@@ -31681,13 +31751,25 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
       recordRun('regional_tier_commit_warning_16327',runToken,{error:String(error&&error.message||error)});
     }
     const regionalStarted16198=performance.now(),phase16198={};
+    let countryPackage16845=null;
+    if(!profile16549&&loc&&String(loc.placeType||'').toLowerCase()==='country'){
+      countryPackage16845=await earthlineResolveAtomicCountryPackage16845(q,loc);
+      if(countryPackage16845&&countryPackage16845.location){
+        loc=JSON.parse(JSON.stringify(countryPackage16845.location));
+        if(s){s.loc=loc;s.centerLng=Number(loc.lng);s.centerLat=Number(loc.lat);s.viewZoom=Number(loc.zoomHint||s.viewZoom||5.7);s.appliedSearchText=q;s.jurisdictionPackage16556=countryPackage16845;}
+        window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556=countryPackage16845;
+        window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845=countryPackage16845;
+      }
+    }else if(!profile16549&&window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556&&window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556.packageKind==='country'){
+      window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556=null;window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845=null;
+    }
     const phaseMark16198=(name,started)=>{phase16198[name]=Math.round(performance.now()-started);};
     const focusMode=!!(loc&&loc.focusMode===true);
     const b=analysisBounds(loc),bHash=boundsHash(b);
     const vermontRequest=typeof window.earthlineIsVermontRequest16178==='function'&&window.earthlineIsVermontRequest16178(q,loc);
     const jurisdictionCapability16539=!focusMode&&!vermontRequest?earthlineAdministrativeCapability16539(loc):null;
     const activePackage16556=window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556||null;
-    const matchingAtomicBoundary16556=!!(profile16549&&activePackage16556&&activePackage16556.profileId===profile16549.id&&activePackage16556.boundary&&activePackage16556.appliedAtomically===true);
+    const matchingAtomicBoundary16556=!!(activePackage16556&&activePackage16556.boundary&&activePackage16556.appliedAtomically===true&&((profile16549&&activePackage16556.profileId===profile16549.id)||(!profile16549&&activePackage16556.packageKind==='country'&&String(activePackage16556.countryCode||'')===String(loc&&loc.countryCode||''))));
     const jurisdictionBoundaryPromise16539=jurisdictionCapability16539
       ?(matchingAtomicBoundary16556?Promise.resolve(activePackage16556.boundary):earthlineResolveJurisdictionBoundary16539(q,loc,runToken,jurisdictionCapability16539))
       :Promise.resolve(null);
