@@ -1,0 +1,18 @@
+import {chromium} from 'playwright';
+import fs from 'fs';
+fs.mkdirSync('out',{recursive:true});
+const anchor="Math.min(36,Math.max(0,Math.floor((fineSupportCells16755.size-baseRegionalCapacity16755)*.50)))";
+const replacement="Math.min(54,Math.max(0,Math.floor((fineSupportCells16755.size-baseRegionalCapacity16755)*.75)))";
+const states=['Iowa','Arkansas','Oklahoma','Nebraska','Vermont','Texas','Florida','Louisiana','California','New York','Maryland','Colorado','Texas','Texas'];
+const browser=await chromium.launch({headless:true});const rows=[];
+for(let idx=0;idx<states.length;idx++){
+ const state=states[idx],page=await browser.newPage({viewport:{width:1800,height:900}});let error=null,injectError=null;
+ await page.route('https://earthlinedevelopment.org/**',async route=>{const req=route.request();if(req.resourceType()!=='document'){await route.continue();return;}const u=new URL(req.url());if(u.pathname!=='/'&&u.pathname!=='/index.html'){await route.continue();return;}const resp=await route.fetch();let body=await resp.text();const n=body.split(anchor).length-1;if(n!==1){injectError='16843 capacity anchor count '+n;await route.fulfill({response:resp,body});return;}body=body.replace(anchor,replacement);await route.fulfill({response:resp,body});});
+ const t0=Date.now();
+ try{await page.goto('https://earthlinedevelopment.org/?gate16844='+idx+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});await page.waitForSelector('#searchInput',{timeout:30000});await page.evaluate(q=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},state);await page.waitForFunction(()=>{const d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020;return window.EARTHLINE_SUPPORTED_CAPACITY_16843?.build==='EARTHLINE 16843'&&window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated>0&&Number(d?.swaleLines||0)>0;},null,{timeout:110000,polling:100});await page.waitForTimeout(300);}catch(e){error=String(e?.message||e);}
+ const snap=await page.evaluate(()=>{const p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{},d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{},perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{},flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||{},land=window.EARTHLINE_LAND_VALIDITY_16584||{},cap=window.EARTHLINE_SUPPORTED_CAPACITY_16843||{},loc=window.EARTHLINE_STATEWIDE_SUPERTILE_16839||{};return {generated:+p.generated||0,visible:+d.swaleLines||0,unsafe:+flow.unsafeSegments||0,outside:+(p.outsideJurisdiction||p.outside||p.outsideCount||0),waterReady:Array.isArray(land.waterParts),coreMs:+perf.totalMs||NaN,base:+cap.base||0,fineSupportCells:+cap.fineSupportCells||0,extra:+cap.extra||0,capacity:+cap.capacity||0,localAdded:+loc.added||0,localFailed:+loc.failed||0};});
+ rows.push({index:idx,state,error,injectError,wallMs:Date.now()-t0,...snap});console.log(JSON.stringify(rows.at(-1)));await page.close();
+}
+await browser.close();
+const clean=r=>!r.error&&!r.injectError&&r.generated>0&&r.generated===r.visible&&r.unsafe===0&&r.outside===0&&r.waterReady&&Number.isFinite(r.coreMs)&&r.coreMs<=15000&&r.localFailed===0;
+const pass=rows.every(clean);const tx=rows.filter(r=>r.state==='Texas');fs.writeFileSync('out/16844-difficult-gate.json',JSON.stringify({at:new Date().toISOString(),pass,rows,texas:tx},null,2));console.log(JSON.stringify({pass,rows:rows.map(r=>({state:r.state,generated:r.generated,visible:r.visible,unsafe:r.unsafe,outside:r.outside,coreMs:r.coreMs,capacity:r.capacity,extra:r.extra})),texas:tx.map(r=>r.coreMs)}));if(!pass)process.exit(2);
