@@ -1,0 +1,62 @@
+name: Earthline 16849 Priority Point Property Gate
+on:
+  workflow_dispatch:
+  push:
+    branches: [global-search-development-16845]
+    paths:
+      - 'lab/earthline-16849-priority-point-property.mjs'
+      - '.github/workflows/earthline-16849-priority-point-property.yml'
+permissions:
+  contents: read
+
+jobs:
+  point_property:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - batch: andes-americas
+            points: 'Peru-Ica=-14.075172=-75.729091=pe|Bolivia-Oruro=-17.984175=-67.114834=bo|Ecuador-Santa-Elena=-2.228729=-80.857694=ec|Chile-Atacama=-27.389352=-70.332275=cl|Mexico-Sonora=29.769986=-110.485388=mx|Panama-Azuero=7.943991=-80.415005=pa|New-Zealand-Hawkes-Bay=-39.616423=176.793641=nz'
+          - batch: africa
+            points: 'Ghana-Upper-East=10.793817=-0.848732=gh|Mali-Mopti=14.499151=-4.189247=ml|Zimbabwe-Matabeleland-South=-20.958348=29.003686=zw|Namibia-Hardap=-24.644908=17.962670=na|South-Africa-Northern-Cape=-28.762545=24.764225=za'
+          - batch: australia
+            points: 'Australia-Northern-Territory=-19.431024=133.366551=au'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: global-search-development-16845
+      - name: Verify U.S. launch lock remains exact
+        run: |
+          git fetch origin us-launch-lock-16844
+          test "$(git rev-parse origin/us-launch-lock-16844)" = "a795ff5f80ed3500cfe3d77c7f5d153462bef340"
+      - name: Add runner-only resolved-location hook
+        run: |
+          python3 lab/apply-16845-test-location-hook.py
+          grep -q 'EARTHLINE_TEST_LOCATION_16845' index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start isolated global candidate
+        run: |
+          python3 -m http.server 8787 >/tmp/earthline-16849-${{ matrix.batch }}.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run explicit-point 20-acre Property checks
+        env:
+          EARTHLINE_CANDIDATE: http://127.0.0.1:8787/
+          BATCH: ${{ matrix.batch }}
+          POINTS: ${{ matrix.points }}
+          OUTDIR: out-16849-${{ matrix.batch }}
+        run: node lab/earthline-16849-priority-point-property.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-16849-${{ matrix.batch }}
+          path: out-16849-${{ matrix.batch }}
+          if-no-files-found: ignore
