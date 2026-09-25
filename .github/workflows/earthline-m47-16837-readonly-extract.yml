@@ -1,17 +1,18 @@
-name: Earthline 16839 Readonly Arkansas Supertile A B
+name: Earthline 16839 Readonly Difficult-State Gate
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/earthline-m47-16837-readonly-extract.yml'
       - 'lab/TRIGGER-16837-READONLY.txt'
+      - 'lab/earthline-16839-difficult-gate.mjs'
       - 'lab/earthline-16839-supertile-local-phase-ab.mjs'
 permissions:
   contents: read
 jobs:
-  probe:
+  gate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -21,10 +22,11 @@ jobs:
           node-version: '20'
       - run: npm install --no-save playwright
       - run: npx playwright install --with-deps chromium
-      - name: Run grouped statewide DEM local-phase A B
-        run: node lab/earthline-16839-supertile-local-phase-ab.mjs
+      - name: Run 12-state 16839 regression gate
+        run: node lab/earthline-16839-difficult-gate.mjs
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: earthline-16839-supertile-ab
+          name: earthline-16839-difficult-gate
           path: out/
           retention-days: 2
