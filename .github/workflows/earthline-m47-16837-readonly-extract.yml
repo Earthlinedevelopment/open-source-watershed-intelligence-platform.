@@ -1,31 +1,49 @@
-name: Earthline 16843 Difficult-State Gate
+name: Earthline 16843 Exact-Parent Production Deploy
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/earthline-m47-16837-readonly-extract.yml'
       - 'lab/TRIGGER-16837-READONLY.txt'
-      - 'lab/earthline-16843-difficult-gate.mjs'
+      - 'lab/apply-16843-supported-capacity.py'
 permissions:
-  contents: read
+  contents: write
 jobs:
-  gate:
+  deploy:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: npm install --no-save playwright
-      - run: npx playwright install --with-deps chromium
-      - name: Run exact 16843 difficult-state gate
-        run: node lab/earthline-16843-difficult-gate.mjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: earthline-16843-difficult-gate
-          path: out/16843-difficult-gate.json
-          retention-days: 2
+          ref: pages-live
+          fetch-depth: 0
+      - name: Assert exact live 16841 parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTUAL=$(git rev-parse HEAD)
+          EXPECTED=f7fcd6dea7ba8f253de7edbf812292f391579445
+          echo "actual=$ACTUAL expected=$EXPECTED"
+          test "$ACTUAL" = "$EXPECTED"
+      - name: Fetch and apply exact tested 16843 patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git show origin/main:lab/apply-16843-supported-capacity.py > /tmp/apply-16843.py
+          python3 /tmp/apply-16843.py index.html
+          git diff --check
+          test "$(grep -c 'EARTHLINE 16843 — FINE-SUPPORT REGIONAL CAPACITY' index.html)" = "1"
+      - name: Publish exact-parent 16843
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Earthline CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'repair: deploy 16843 fine-supported Regional capacity'
+          NEW=$(git rev-parse HEAD)
+          PARENT=$(git rev-parse HEAD^)
+          test "$PARENT" = "f7fcd6dea7ba8f253de7edbf812292f391579445"
+          git push origin HEAD:pages-live
+          echo "new=$NEW parent=$PARENT"
