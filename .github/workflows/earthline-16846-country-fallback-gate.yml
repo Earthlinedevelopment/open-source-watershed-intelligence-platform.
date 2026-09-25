@@ -1,0 +1,51 @@
+name: Earthline 16846 Country Fallback Gate
+on:
+  push:
+    branches: [global-search-development-16845]
+    paths:
+      - 'lab/apply-16846-country-geocoder-fallback.py'
+      - 'lab/earthline-16846-country-fallback-connected.mjs'
+      - '.github/workflows/earthline-16846-country-fallback-gate.yml'
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: global-search-development-16845
+          fetch-depth: 1
+      - name: Apply country-only ambiguity fallback
+        run: |
+          python3 lab/apply-16846-country-geocoder-fallback.py
+          git diff --check
+          grep -q 'bareCountryCheck16846' index.html
+          git diff --stat
+          git diff -- index.html | head -n 160
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start isolated candidate
+        run: |
+          python3 -m http.server 8787 >/tmp/earthline-16846-fallback-http.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run connected fallback, city, and U.S. regression gate
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: http://127.0.0.1:8787/
+        run: node lab/earthline-16846-country-fallback-connected.mjs
+      - name: Commit fallback only after gate
+        run: |
+          git config user.name 'Earthline CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'global: resolve ambiguous bare country names with country-only fallback'
+          git push origin HEAD:global-search-development-16845
