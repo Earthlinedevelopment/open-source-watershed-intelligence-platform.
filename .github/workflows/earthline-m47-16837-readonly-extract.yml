@@ -1,11 +1,11 @@
-name: Earthline 16840 Readonly Tri-State Optimization
+name: Earthline 16841 Readonly Tri-State Level Thinning
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/earthline-m47-16837-readonly-extract.yml'
       - 'lab/TRIGGER-16837-READONLY.txt'
-      - 'lab/earthline-16840-group6-tristate.mjs'
+      - 'lab/earthline-16841-level-thin-tristate.mjs'
       - 'lab/earthline-16839-supertile-local-phase-ab.mjs'
 permissions:
   contents: read
@@ -22,11 +22,11 @@ jobs:
           node-version: '20'
       - run: npm install --no-save playwright
       - run: npx playwright install --with-deps chromium
-      - name: Run Arkansas Iowa Texas optimization probe
-        run: node lab/earthline-16840-group6-tristate.mjs
+      - name: Run Arkansas Iowa Texas level-thinning probe
+        run: node lab/earthline-16841-level-thin-tristate.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: earthline-16840-tristate
+          name: earthline-16841-tristate
           path: out/
           retention-days: 2
