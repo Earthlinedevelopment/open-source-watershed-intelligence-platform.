@@ -1,49 +1,31 @@
-name: Earthline 16843 Exact-Parent Production Deploy
+name: Earthline 16843 Public-Domain Arkansas Verify
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/earthline-m47-16837-readonly-extract.yml'
       - 'lab/TRIGGER-16837-READONLY.txt'
-      - 'lab/apply-16843-supported-capacity.py'
+      - 'lab/earthline-16843-live-verify.mjs'
 permissions:
-  contents: write
+  contents: read
 jobs:
-  deploy:
+  verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: pages-live
-          fetch-depth: 0
-      - name: Assert exact live 16841 parent
-        shell: bash
-        run: |
-          set -euo pipefail
-          ACTUAL=$(git rev-parse HEAD)
-          EXPECTED=f7fcd6dea7ba8f253de7edbf812292f391579445
-          echo "actual=$ACTUAL expected=$EXPECTED"
-          test "$ACTUAL" = "$EXPECTED"
-      - name: Fetch and apply exact tested 16843 patch
-        shell: bash
-        run: |
-          set -euo pipefail
-          git fetch origin main
-          git show origin/main:lab/apply-16843-supported-capacity.py > /tmp/apply-16843.py
-          python3 /tmp/apply-16843.py index.html
-          git diff --check
-          test "$(grep -c 'EARTHLINE 16843 — FINE-SUPPORT REGIONAL CAPACITY' index.html)" = "1"
-      - name: Publish exact-parent 16843
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'Earthline CI'
-          git config user.email 'actions@users.noreply.github.com'
-          git add index.html
-          git commit -m 'repair: deploy 16843 fine-supported Regional capacity'
-          NEW=$(git rev-parse HEAD)
-          PARENT=$(git rev-parse HEAD^)
-          test "$PARENT" = "f7fcd6dea7ba8f253de7edbf812292f391579445"
-          git push origin HEAD:pages-live
-          echo "new=$NEW parent=$PARENT"
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Verify public production Arkansas on 16843
+        run: node lab/earthline-16843-live-verify.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-16843-live-verify
+          path: out/
+          retention-days: 2
