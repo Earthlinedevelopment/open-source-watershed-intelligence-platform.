@@ -1,0 +1,43 @@
+name: Earthline 16845 Connected Country Search
+on:
+  push:
+    branches: [global-search-development-16845]
+    paths:
+      - 'lab/earthline-16845-connected-country-search.mjs'
+      - '.github/workflows/earthline-16845-connected-country-search.yml'
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: global-search-development-16845
+      - name: Add runner-only resolved-location hook
+        run: |
+          cp index.html /tmp/earthline-16845-clean.html
+          python3 lab/apply-16845-test-location-hook.py
+          grep -q 'EARTHLINE_TEST_LOCATION_16845' index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start isolated candidate
+        run: |
+          python3 -m http.server 8787 >/tmp/earthline-16845-http.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run connected production-resolver to candidate gate
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: http://127.0.0.1:8787/
+        run: node lab/earthline-16845-connected-country-search.mjs
+      - name: Prove test hook was not retained
+        if: always()
+        run: |
+          cp /tmp/earthline-16845-clean.html index.html
+          ! grep -q 'EARTHLINE_TEST_LOCATION_16845' index.html
+          git diff --exit-code -- index.html
