@@ -1,0 +1,110 @@
+name: Earthline 16848 Priority 13 Gate
+on:
+  workflow_dispatch:
+  push:
+    branches: [global-search-development-16845]
+    paths:
+      - '.github/workflows/earthline-16848-priority-13-gate.yml'
+permissions:
+  contents: read
+
+jobs:
+  priority_regional:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - batch: p1
+            targets: 'Peru=pe|Bolivia=bo|Ecuador=ec|Chile=cl|Mexico=mx|Panama=pa|New Zealand=nz'
+          - batch: p2
+            targets: 'Australia=au|Ghana=gh|Mali=ml|Zimbabwe=zw|Namibia=na|South Africa=za'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: global-search-development-16845
+      - name: Verify U.S. launch lock remains exact
+        run: |
+          git fetch origin us-launch-lock-16844
+          test "$(git rev-parse origin/us-launch-lock-16844)" = "a795ff5f80ed3500cfe3d77c7f5d153462bef340"
+      - name: Add runner-only resolved-location hook
+        run: |
+          python3 lab/apply-16845-test-location-hook.py
+          grep -q 'EARTHLINE_TEST_LOCATION_16845' index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start isolated global candidate
+        run: |
+          python3 -m http.server 8787 >/tmp/earthline-priority-${{ matrix.batch }}.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run priority Regional country gate
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: http://127.0.0.1:8787/
+          TARGETS: ${{ matrix.targets }}
+        run: node lab/earthline-16847-africa-identity.mjs | tee priority-regional-${{ matrix.batch }}.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-16848-priority-regional-${{ matrix.batch }}
+          path: priority-regional-${{ matrix.batch }}.jsonl
+          if-no-files-found: ignore
+
+  priority_property:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - batch: andes-americas
+            targets: 'Peru-Ica=Ica Region, Peru|Bolivia-Oruro=Oruro Department, Bolivia|Ecuador-Santa-Elena=Santa Elena Province, Ecuador|Chile-Atacama=Atacama Region, Chile|Mexico-Sonora=Sonora, Mexico|Panama-Azuero=Los Santos Province, Panama|New-Zealand-Hawkes-Bay=Hawke\x27s Bay, New Zealand'
+          - batch: africa
+            targets: 'Ghana-Upper-East=Upper East Region, Ghana|Mali-Mopti=Mopti Region, Mali|Zimbabwe-Matabeleland-South=Matabeleland South Province, Zimbabwe|Namibia-Hardap=Hardap Region, Namibia|South-Africa-Northern-Cape=Northern Cape, South Africa'
+          - batch: australia
+            targets: 'Australia-Northern-Territory=Northern Territory, Australia'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: global-search-development-16845
+      - name: Verify U.S. launch lock remains exact
+        run: |
+          git fetch origin us-launch-lock-16844
+          test "$(git rev-parse origin/us-launch-lock-16844)" = "a795ff5f80ed3500cfe3d77c7f5d153462bef340"
+      - name: Add runner-only resolved-location hook
+        run: |
+          python3 lab/apply-16845-test-location-hook.py
+          grep -q 'EARTHLINE_TEST_LOCATION_16845' index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start isolated global candidate
+        run: |
+          python3 -m http.server 8787 >/tmp/earthline-priority-property-${{ matrix.batch }}.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run priority 20-acre Property stress checks
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: http://127.0.0.1:8787/
+          BATCH: priority-${{ matrix.batch }}
+          TARGETS: ${{ matrix.targets }}
+          OUTDIR: out-priority-${{ matrix.batch }}
+        run: node lab/earthline-16848-drought-property-audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-16848-priority-property-${{ matrix.batch }}
+          path: out-priority-${{ matrix.batch }}
+          if-no-files-found: ignore
