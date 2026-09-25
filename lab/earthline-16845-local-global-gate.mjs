@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 const URL=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
-const TARGETS=(process.env.TARGETS||'Singapore|India|Comoros|Arkansas|Hawaii').split('|');
+const TARGETS=(process.env.TARGETS||'Thailand|Vietnam|Cambodia|Laos|Arkansas|Hawaii').split('|');
 const browser=await chromium.launch({headless:true});
 const rows=[];
 for(const target of TARGETS){
