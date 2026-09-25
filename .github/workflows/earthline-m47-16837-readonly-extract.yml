@@ -1,17 +1,17 @@
-name: Earthline 16844 Final Supported Capacity A B
+name: Earthline 16844 Difficult-State Gate
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/earthline-m47-16837-readonly-extract.yml'
       - 'lab/TRIGGER-16837-READONLY.txt'
-      - 'lab/earthline-16844-capacity-finish-ab.mjs'
+      - 'lab/earthline-16844-difficult-gate.mjs'
 permissions:
   contents: read
 jobs:
-  ab:
+  gate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -21,11 +21,11 @@ jobs:
           node-version: '20'
       - run: npm install --no-save playwright
       - run: npx playwright install --with-deps chromium
-      - name: Run 16844 final supported-capacity A/B
-        run: node lab/earthline-16844-capacity-finish-ab.mjs
+      - name: Run exact 16844 difficult-state gate
+        run: node lab/earthline-16844-difficult-gate.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: earthline-16844-capacity-finish-ab
-          path: out/
+          name: earthline-16844-difficult-gate
+          path: out/16844-difficult-gate.json
           retention-days: 2
