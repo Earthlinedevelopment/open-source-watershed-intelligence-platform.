@@ -1,0 +1,33 @@
+name: Earthline 16844 Alaska Repeat Gate
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-16844-alaska-repeat.yml']
+permissions:
+  contents: read
+jobs:
+  repeat:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Repeat Alaska five times on public 16844
+        env:
+          EARTHLINE_URL: 'https://earthlinedevelopment.org/'
+          STATES: 'Alaska|Alaska|Alaska|Alaska|Alaska'
+          BATCH: alaska5
+          OUTDIR: out-16844-alaska5
+        run: node lab/earthline-16844-all50-regional-audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-16844-alaska5
+          path: out-16844-alaska5/
+          retention-days: 2
