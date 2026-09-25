@@ -1,0 +1,123 @@
+name: Earthline 16848 Remaining World Sweep
+on:
+  workflow_dispatch:
+  push:
+    branches: [global-search-development-16845]
+    paths:
+      - 'lab/earthline-16848-drought-property-audit.mjs'
+      - '.github/workflows/earthline-16848-remaining-world-sweep.yml'
+permissions:
+  contents: read
+
+jobs:
+  regional:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - batch: europe-1
+            targets: 'Albania=al|Andorra=ad|Austria=at|Belarus=by|Belgium=be|Bosnia and Herzegovina=ba|Bulgaria=bg|Croatia=hr|Cyprus=cy|Czechia=cz|Denmark=dk|Estonia=ee|Finland=fi|France=fr|Germany=de|Greece=gr|Hungary=hu|Iceland=is|Ireland=ie'
+          - batch: europe-2
+            targets: 'Italy=it|Latvia=lv|Liechtenstein=li|Lithuania=lt|Luxembourg=lu|Malta=mt|Moldova=md|Monaco=mc|Montenegro=me|Netherlands=nl|North Macedonia=mk|Norway=no|Poland=pl|Portugal=pt|Romania=ro|San Marino=sm|Serbia=rs|Slovakia=sk|Slovenia=si|Spain=es|Sweden=se|Switzerland=ch|Ukraine=ua|United Kingdom=gb|Vatican City=va'
+          - batch: south-america
+            targets: 'Argentina=ar|Bolivia=bo|Brazil=br|Chile=cl|Colombia=co|Ecuador=ec|Guyana=gy|Paraguay=py|Peru=pe|Suriname=sr|Uruguay=uy|Venezuela=ve'
+          - batch: north-central-america
+            targets: 'Canada=ca|Mexico=mx|Belize=bz|Costa Rica=cr|El Salvador=sv|Guatemala=gt|Honduras=hn|Nicaragua=ni|Panama=pa'
+          - batch: caribbean
+            targets: 'Antigua and Barbuda=ag|Bahamas=bs|Barbados=bb|Cuba=cu|Dominica=dm|Dominican Republic=do|Grenada=gd|Haiti=ht|Jamaica=jm|Saint Kitts and Nevis=kn|Saint Lucia=lc|Saint Vincent and the Grenadines=vc|Trinidad and Tobago=tt'
+          - batch: middle-east
+            targets: 'Bahrain=bh|Iran=ir|Iraq=iq|Israel=il|Jordan=jo|Kuwait=kw|Lebanon=lb|Oman=om|Palestine=ps|Qatar=qa|Saudi Arabia=sa|Syria=sy|Turkey=tr|United Arab Emirates=ae|Yemen=ye'
+          - batch: central-south-asia
+            targets: 'Afghanistan=af|Bangladesh=bd|Bhutan=bt|Kazakhstan=kz|Kyrgyzstan=kg|Maldives=mv|Nepal=np|Pakistan=pk|Sri Lanka=lk|Tajikistan=tj|Turkmenistan=tm|Uzbekistan=uz'
+          - batch: east-asia-eurasia
+            targets: 'China=cn|Japan=jp|Mongolia=mn|North Korea=kp|Russia=ru|South Korea=kr|Taiwan=tw'
+          - batch: oceania-pacific
+            targets: 'Australia=au|Fiji=fj|Kiribati=ki|Marshall Islands=mh|Micronesia=fm|Nauru=nr|New Zealand=nz|Palau=pw|Papua New Guinea=pg|Samoa=ws|Solomon Islands=sb|Tonga=to|Tuvalu=tv|Vanuatu=vu'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: global-search-development-16845
+      - name: Verify U.S. launch lock remains exact
+        run: |
+          git fetch origin us-launch-lock-16844
+          test "$(git rev-parse origin/us-launch-lock-16844)" = "a795ff5f80ed3500cfe3d77c7f5d153462bef340"
+      - name: Add runner-only resolved-location hook
+        run: |
+          python3 lab/apply-16845-test-location-hook.py
+          grep -q 'EARTHLINE_TEST_LOCATION_16845' index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start isolated global candidate
+        run: |
+          python3 -m http.server 8787 >/tmp/earthline-16848-${{ matrix.batch }}.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run remaining-world Regional country gate
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: http://127.0.0.1:8787/
+          TARGETS: ${{ matrix.targets }}
+        run: node lab/earthline-16847-africa-identity.mjs | tee regional-${{ matrix.batch }}.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-16848-regional-${{ matrix.batch }}
+          path: regional-${{ matrix.batch }}.jsonl
+          if-no-files-found: ignore
+
+  drought_property:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - batch: dry-west
+            targets: 'Europe-Aragon=Aragon, Spain|South-America-Mendoza=Mendoza Province, Argentina|North-America-Sonora=Sonora, Mexico|Central-America-Dry-Corridor=Choluteca Department, Honduras|Middle-East-Mafraq=Mafraq Governorate, Jordan'
+          - batch: dry-east-pacific
+            targets: 'Central-Asia-Kyzylorda=Kyzylorda Region, Kazakhstan|East-Asia-Gansu=Gansu, China|South-Asia-Balochistan=Balochistan, Pakistan|Oceania-Northern-Territory=Northern Territory, Australia|Pacific-Low-Relief=Kiritimati, Kiribati'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: global-search-development-16845
+      - name: Verify U.S. launch lock remains exact
+        run: |
+          git fetch origin us-launch-lock-16844
+          test "$(git rev-parse origin/us-launch-lock-16844)" = "a795ff5f80ed3500cfe3d77c7f5d153462bef340"
+      - name: Add runner-only resolved-location hook
+        run: |
+          python3 lab/apply-16845-test-location-hook.py
+          grep -q 'EARTHLINE_TEST_LOCATION_16845' index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start isolated global candidate
+        run: |
+          python3 -m http.server 8787 >/tmp/earthline-16848-${{ matrix.batch }}.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run 20-acre drought/arid Property spot checks
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: http://127.0.0.1:8787/
+          BATCH: ${{ matrix.batch }}
+          TARGETS: ${{ matrix.targets }}
+          OUTDIR: out-16848-drought-${{ matrix.batch }}
+        run: node lab/earthline-16848-drought-property-audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-16848-drought-${{ matrix.batch }}
+          path: out-16848-drought-${{ matrix.batch }}
+          if-no-files-found: ignore
