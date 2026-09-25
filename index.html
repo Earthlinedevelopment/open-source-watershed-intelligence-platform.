@@ -8555,8 +8555,38 @@ async function geocodeMapbox(q,myGen=M.searchGen){
   const j=await r.json();
   if(earthlineIsStale(myGen))return null;
   if(!j.features||!j.features.length)return null;
-  const f=earthlineSelectPlaceCandidate16537(q,j.features);
+  let f=earthlineSelectPlaceCandidate16537(q,j.features);
   if(!f)return null;
+  /* EARTHLINE 16846 — global country-name ambiguity fallback. If a short bare
+     query resolves to an identically named non-country result, ask the same
+     geocoder once for countries only. The country fallback is accepted only when
+     the country name is exact or has high relevance plus the same word count and
+     a shared substantive token. This admits close exonyms such as Cabo/Cape Verde
+     while rejecting unrelated low-relevance countries such as Chiang Mai/Mali.
+     Addresses, comma-qualified searches and ordinary qualified place searches
+     keep the existing single-query path. */
+  const bareCountryCheck16846=!/[0-9,@]/.test(String(q||''))&&earthlinePlaceKey16537(q).split(/\s+/).filter(Boolean).length<=4;
+  const queryKey16846=earthlinePlaceKey16537(q),selectedType16846=earthlinePlaceType16537(f),selectedName16846=earthlinePlaceKey16537(f.text||String(f.place_name||'').split(',')[0]);
+  if(bareCountryCheck16846&&selectedType16846!=='country'&&selectedName16846===queryKey16846){
+    try{
+      const countryUrl16846="https://api.mapbox.com/geocoding/v5/mapbox.places/"+encodeURIComponent(earthlinePlaceLookupQuery16541(q))+".json?limit=5&types=country&language=en&access_token="+MAPBOX_TOKEN;
+      const countryResponse16846=await fetch(countryUrl16846);
+      if(earthlineIsStale(myGen))return null;
+      if(countryResponse16846.ok){
+        const countryJson16846=await countryResponse16846.json();
+        if(earthlineIsStale(myGen))return null;
+        const countryCandidate16846=earthlineSelectPlaceCandidate16537(q,countryJson16846&&countryJson16846.features||[]);
+        if(countryCandidate16846&&earthlinePlaceType16537(countryCandidate16846)==='country'){
+          const countryName16846=earthlinePlaceKey16537(countryCandidate16846.text||String(countryCandidate16846.place_name||'').split(',')[0]);
+          const queryTokens16846=queryKey16846.split(/\s+/).filter(Boolean),countryTokens16846=countryName16846.split(/\s+/).filter(Boolean);
+          const sharedSubstantive16846=queryTokens16846.some(t16846=>t16846.length>=4&&countryTokens16846.includes(t16846));
+          const relevance16846=Math.max(0,Math.min(1,Number(countryCandidate16846.relevance)||0));
+          const acceptableCountry16846=countryName16846===queryKey16846||(relevance16846>=0.85&&queryTokens16846.length===countryTokens16846.length&&sharedSubstantive16846);
+          if(acceptableCountry16846)f=countryCandidate16846;
+        }
+      }
+    }catch(_){ }
+  }
   const zh=PLACE_ZOOM[(f.place_type&&f.place_type[0])||"place"]||15;
   // For large areas (states, countries, regions) Mapbox returns a bbox [W,S,E,N].
   // Derive a zoom that fits the whole area to the map window so e.g. "Colorado" frames
