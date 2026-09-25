@@ -1,0 +1,51 @@
+name: Earthline 16845 Country Extent A-B
+on:
+  push:
+    branches: [global-search-development-16845]
+    paths:
+      - 'lab/apply-16845-country-extent.py'
+      - 'lab/earthline-16845-country-extent-ab.mjs'
+      - '.github/workflows/earthline-16845-country-extent-ab.yml'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: global-search-development-16845
+          fetch-depth: 1
+      - name: Apply country-only extent patch
+        run: python3 lab/apply-16845-country-extent.py
+      - name: Verify patch scope
+        run: |
+          git diff --check
+          git diff --stat
+          git diff -- index.html | head -n 120
+          grep -q 'governedCountryExtent16845' index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start isolated local candidate
+        run: |
+          python3 -m http.server 8787 >/tmp/earthline-16845-http.log 2>&1 &
+          echo $! >/tmp/earthline-16845-http.pid
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run country extent and U.S. lock A-B
+        env:
+          EARTHLINE_URL: http://127.0.0.1:8787/
+        run: node lab/earthline-16845-country-extent-ab.mjs
+      - name: Commit isolated candidate after gate
+        run: |
+          git config user.name 'Earthline CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'global: preserve exact atomic country extents'
+          git push origin HEAD:global-search-development-16845
