@@ -1,18 +1,18 @@
-name: Earthline 16839 Readonly Difficult-State Gate
+name: Earthline 16840 Readonly Tri-State Optimization
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/earthline-m47-16837-readonly-extract.yml'
       - 'lab/TRIGGER-16837-READONLY.txt'
-      - 'lab/earthline-16839-difficult-gate.mjs'
+      - 'lab/earthline-16840-group6-tristate.mjs'
       - 'lab/earthline-16839-supertile-local-phase-ab.mjs'
 permissions:
   contents: read
 jobs:
-  gate:
+  probe:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,11 +22,11 @@ jobs:
           node-version: '20'
       - run: npm install --no-save playwright
       - run: npx playwright install --with-deps chromium
-      - name: Run 12-state 16839 regression gate
-        run: node lab/earthline-16839-difficult-gate.mjs
+      - name: Run Arkansas Iowa Texas optimization probe
+        run: node lab/earthline-16840-group6-tristate.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: earthline-16839-difficult-gate
+          name: earthline-16840-tristate
           path: out/
           retention-days: 2
