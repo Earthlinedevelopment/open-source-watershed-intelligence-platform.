@@ -47,3 +47,4 @@ const pass=!!(control&&best&&(best.counts.r20>control.counts.r20||best.counts.no
 fs.writeFileSync('out/16842-fine-selection-ab.json',JSON.stringify({at:new Date().toISOString(),pass,control,best,rows},null,2));
 console.log(JSON.stringify({pass,control:control&&{counts:control.counts,coreMs:control.coreMs,swaps:control.balance.swaps},best:best&&{variant:best.variant,counts:best.counts,coreMs:best.coreMs,swaps:best.balance.swaps}}));
 if(!pass)process.exit(2);
+// trigger 16842 registered workflow
