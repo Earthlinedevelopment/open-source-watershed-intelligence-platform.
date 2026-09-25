@@ -1,0 +1,18 @@
+name: Earthline 16845 Small Country Extract
+on:
+  push:
+    branches: [global-search-development-16845]
+    paths:
+      - 'lab/extract-16845-small-country-code.py'
+      - '.github/workflows/earthline-16845-small-country-extract.yml'
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: global-search-development-16845
+      - name: Extract sampling owners
+        run: python3 lab/extract-16845-small-country-code.py
