@@ -1,5 +1,17 @@
 import { chromium } from 'playwright';
 const URL=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
+const fixtures={
+  Singapore:{countryCode:'sg',lat:1.3521,lng:103.8198},
+  Brunei:{countryCode:'bn',lat:4.5353,lng:114.7277},
+  Indonesia:{countryCode:'id',lat:-2.5489,lng:118.0149},
+  Philippines:{countryCode:'ph',lat:12.8797,lng:121.7740},
+  India:{countryCode:'in',lat:20.5937,lng:78.9629},
+  Australia:{countryCode:'au',lat:-25.2744,lng:133.7751},
+  'Cabo Verde':{countryCode:'cv',lat:16.5388,lng:-23.0418},
+  Comoros:{countryCode:'km',lat:-11.6455,lng:43.3333},
+  Mauritius:{countryCode:'mu',lat:-20.3484,lng:57.5522},
+  Seychelles:{countryCode:'sc',lat:-4.6796,lng:55.4920}
+};
 const targets=[
   ['Singapore','country'],['Brunei','country'],['Indonesia','country'],['Philippines','country'],['India','country'],['Australia','country'],['Cabo Verde','country'],
   ['Comoros','island'],['Mauritius','island'],['Seychelles','island'],
@@ -12,7 +24,8 @@ for(const [target,kind] of targets){
  try{
   await page.goto(URL+'?ab16845='+encodeURIComponent(target)+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForSelector('#searchInput',{timeout:30000});
-  await page.evaluate(q=>{window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;const i=document.getElementById('searchInput');i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));document.getElementById('runBtn').click();},target);
+  const fixture=fixtures[target]?{name:target,fullName:target,placeType:'country',query:target,...fixtures[target]}:null;
+  await page.evaluate(({q,fixture})=>{window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;window.EARTHLINE_TEST_LOCATION_16845=fixture;const i=document.getElementById('searchInput');i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));document.getElementById('runBtn').click();},{q:target,fixture});
   await page.waitForFunction(q=>{const e=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970;const d=window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970;return !!e||String(d?.query||'').toLowerCase()===String(q).toLowerCase();},target,{timeout:90000,polling:100});
   await page.waitForTimeout(250);
  }catch(e){harnessError=String(e?.message||e);}
@@ -35,6 +48,6 @@ for(const [target,kind] of targets){
 }
 await browser.close();
 const usBad=rows.filter(r=>r.kind==='us'&&(r.harnessError||r.error||r.outside!==0||r.unsafe!==0||r.countryPackage));
-const countryBad=rows.filter(r=>r.kind==='country'&&(r.harnessError||r.error||!r.countryPackage||r.outside!==0||!r.boundaryCapability));
+const countryBad=rows.filter(r=>r.kind==='country'&&(r.harnessError||r.error||!r.countryPackage||r.outside!==0||!r.boundaryCapability||!r.runSpan||!r.countrySpan||Math.abs(r.runSpan[0]-r.countrySpan[0])>.02||Math.abs(r.runSpan[1]-r.countrySpan[1])>.02));
 console.log(JSON.stringify({summary:{rows:rows.length,usBad:usBad.map(r=>r.target),countryBad:countryBad.map(r=>r.target),islandStatus:rows.filter(r=>r.kind==='island').map(r=>({target:r.target,error:r.error,generated:r.generated,span:r.runSpan,countrySpan:r.countrySpan}))}}));
 if(usBad.length||countryBad.length)process.exit(1);
