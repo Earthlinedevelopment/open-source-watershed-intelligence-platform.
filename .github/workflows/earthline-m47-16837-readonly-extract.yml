@@ -1,54 +1,31 @@
-name: Earthline 16841 Exact-Parent Production Deploy
+name: Earthline 16841 Public-Domain Arkansas Verify
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/earthline-m47-16837-readonly-extract.yml'
       - 'lab/TRIGGER-16837-READONLY.txt'
+      - 'lab/earthline-16841-live-verify.mjs'
 permissions:
-  contents: write
+  contents: read
 jobs:
-  deploy:
+  verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: pages-live
-          fetch-depth: 0
-      - name: Assert exact live parent
-        shell: bash
-        run: |
-          set -euo pipefail
-          ACTUAL=$(git rev-parse HEAD)
-          EXPECTED=a58ff1f9d2750411e4a526497e227bb75ed2d78b
-          echo "actual=$ACTUAL expected=$EXPECTED"
-          test "$ACTUAL" = "$EXPECTED"
-      - name: Fetch exact tested 16841 patch inputs
-        shell: bash
-        run: |
-          set -euo pipefail
-          git fetch origin main
-          git show origin/main:lab/apply-16841-statewide-local-phase.py > /tmp/apply-16841.py
-          git show origin/main:lab/earthline-16839-supertile-local-phase-ab.mjs > /tmp/source-16841.mjs
-      - name: Apply 16841 generator repair
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 /tmp/apply-16841.py index.html /tmp/source-16841.mjs
-          git diff --check
-          test "$(grep -c 'EARTHLINE 16841 — GROUPED STATEWIDE-DEM LOCAL PHASE' index.html)" = "1"
-          git diff --stat
-      - name: Publish exact-parent 16841
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'Earthline CI'
-          git config user.email 'actions@users.noreply.github.com'
-          git add index.html
-          git commit -m 'repair: deploy 16841 grouped statewide DEM local contours'
-          NEW=$(git rev-parse HEAD)
-          PARENT=$(git rev-parse HEAD^)
-          test "$PARENT" = "a58ff1f9d2750411e4a526497e227bb75ed2d78b"
-          git push origin HEAD:pages-live
-          echo "new=$NEW parent=$PARENT"
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Verify public production Arkansas on 16841
+        run: node lab/earthline-16841-live-verify.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-16841-live-verify
+          path: out/
+          retention-days: 2
