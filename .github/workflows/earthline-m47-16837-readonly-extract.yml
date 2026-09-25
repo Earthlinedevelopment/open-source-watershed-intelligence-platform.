@@ -1,17 +1,17 @@
-name: Earthline 16838 Readonly Arkansas Void Audit
+name: Earthline 16839 Readonly Arkansas Supertile A B
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/earthline-m47-16837-readonly-extract.yml'
       - 'lab/TRIGGER-16837-READONLY.txt'
-      - 'lab/earthline-16838-void-audit.mjs'
+      - 'lab/earthline-16839-supertile-local-phase-ab.mjs'
 permissions:
   contents: read
 jobs:
   probe:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -21,10 +21,10 @@ jobs:
           node-version: '20'
       - run: npm install --no-save playwright
       - run: npx playwright install --with-deps chromium
-      - name: Measure exact Arkansas void geometry
-        run: node lab/earthline-16838-void-audit.mjs
+      - name: Run grouped statewide DEM local-phase A B
+        run: node lab/earthline-16839-supertile-local-phase-ab.mjs
       - uses: actions/upload-artifact@v4
         with:
-          name: earthline-16838-void-audit
+          name: earthline-16839-supertile-ab
           path: out/
           retention-days: 2
