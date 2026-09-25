@@ -1,0 +1,35 @@
+name: Earthline 16845 Gauge Owner Extract
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/earthline-16845-gauge-owner-extract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Extract live gauge owner
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(encoding='utf-8')
+          pats=['regionalRechargeModel16492','climateMultiplier','rainfall','aquiferComponent','soilComponent','rechargeScore']
+          seen=[]
+          for p in pats:
+            for m in re.finditer(re.escape(p),s,re.I):
+              a=max(0,m.start()-1800); b=min(len(s),m.end()+3200)
+              block=s[a:b]
+              if any(abs(a-x)<500 for x in seen): continue
+              seen.append(a)
+              print('\n===== '+p+' @ '+str(m.start())+' =====\n')
+              print(block)
+              print('\n===== END =====\n')
+              break
+          PY
