@@ -1,0 +1,61 @@
+name: Earthline 16846 Global Retained Gate
+on:
+  push:
+    branches: [global-search-development-16845]
+    paths:
+      - '.github/workflows/earthline-16846-global-retained-gate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: global-search-development-16845
+      - name: Verify U.S. launch lock remains exact
+        run: |
+          git fetch origin us-launch-lock-16844
+          test "$(git rev-parse origin/us-launch-lock-16844)" = "a795ff5f80ed3500cfe3d77c7f5d153462bef340"
+      - name: Preserve clean retained candidate
+        run: cp index.html /tmp/earthline-16846-clean.html
+      - name: Add runner-only resolved-location hook
+        run: |
+          python3 lab/apply-16845-test-location-hook.py
+          grep -q 'EARTHLINE_TEST_LOCATION_16845' index.html
+      - name: Broaden runner-only target matrix
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('lab/earthline-16846-seasia-triad.mjs')
+          s=p.read_text()
+          old="const targets=['Laos','Vietnam','Thailand'];"
+          new="const targets=['Singapore','Seychelles','Mauritius','Comoros','Indonesia','Philippines','India','Australia','Laos','Vietnam','Thailand'];"
+          if old not in s: raise SystemExit('target anchor missing')
+          p.write_text(s.replace(old,new,1))
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start isolated retained candidate
+        run: |
+          python3 -m http.server 8787 >/tmp/earthline-16846-global-http.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run retained global country matrix
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: http://127.0.0.1:8787/
+        run: node lab/earthline-16846-seasia-triad.mjs
+      - name: Prove runner-only changes were not retained
+        if: always()
+        run: |
+          cp /tmp/earthline-16846-clean.html index.html
+          ! grep -q 'EARTHLINE_TEST_LOCATION_16845' index.html
+          git diff --exit-code -- index.html
