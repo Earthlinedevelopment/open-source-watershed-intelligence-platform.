@@ -5,11 +5,12 @@ on:
     paths:
       - 'lab/apply-16845-global-country-owner.py'
       - 'lab/repair-16845-country-state-owner.py'
+      - 'lab/add-16845-dev-preset-hook.py'
       - 'lab/earthline-16845-local-global-gate.mjs'
       - '.github/workflows/earthline-16845-global-country-dev.yml'
       - 'index.html'
 permissions:
-  contents: write
+  contents: read
 jobs:
   patch-and-gate:
     runs-on: ubuntu-latest
@@ -19,11 +20,12 @@ jobs:
         with:
           ref: global-search-development-16845
           fetch-depth: 0
-      - name: Apply isolated country owner patch
+      - name: Prepare isolated candidate and dev-only injector
         run: |
           python3 lab/apply-16845-global-country-owner.py
           python3 lab/repair-16845-country-state-owner.py
-      - name: Verify marker and U.S. launch lock untouched
+          python3 lab/add-16845-dev-preset-hook.py
+      - name: Verify U.S. launch lock untouched
         run: |
           grep -q 'EARTHLINE 16845 — GLOBAL COUNTRY ATOMIC JURISDICTION OWNER' index.html
           git fetch origin us-launch-lock-16844
@@ -39,29 +41,23 @@ jobs:
         run: |
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-16845-http.log 2>&1 &
           sleep 2
-      - name: Mixed global and U.S. gate
+      - name: Original global problem set plus U.S. controls
         env:
           EARTHLINE_URL: http://127.0.0.1:8787/
-          TARGETS: Thailand|Vietnam|Cambodia|Laos|Arkansas|Hawaii
+          TARGETS: Singapore|India|Australia|Indonesia|Philippines|Brunei|Cabo Verde|Comoros|Mauritius|Seychelles|Arkansas|Hawaii
         run: node lab/earthline-16845-local-global-gate.mjs
         continue-on-error: true
       - name: Preserve gate evidence
         uses: actions/upload-artifact@v4
         with:
-          name: earthline-16845-isolated-global-gate
+          name: earthline-16845-original-problem-gate
           path: |
             gate-16845.json
             gate-16845-*.jpg
           if-no-files-found: warn
           retention-days: 3
-      - name: Commit isolated candidate only
+      - name: Prove dev-only injector was not persisted
         run: |
-          if git diff --quiet -- index.html; then
-            echo 'index already patched'
-            exit 0
-          fi
-          git config user.name 'Earthline CI'
-          git config user.email 'actions@users.noreply.github.com'
-          git add index.html
-          git commit -m 'candidate: 16845 global country atomic jurisdiction owner'
-          git push origin HEAD:global-search-development-16845
+          git checkout -- index.html
+          ! grep -q 'setDevPreset16845' index.html
+          git diff --exit-code -- index.html
