@@ -4,6 +4,7 @@ on:
     branches: [global-search-development-16845]
     paths:
       - 'lab/apply-16845-global-country-owner.py'
+      - 'lab/repair-16845-country-state-owner.py'
       - 'lab/earthline-16845-local-global-gate.mjs'
       - '.github/workflows/earthline-16845-global-country-dev.yml'
       - 'index.html'
@@ -19,7 +20,9 @@ jobs:
           ref: global-search-development-16845
           fetch-depth: 0
       - name: Apply isolated country owner patch
-        run: python3 lab/apply-16845-global-country-owner.py
+        run: |
+          python3 lab/apply-16845-global-country-owner.py
+          python3 lab/repair-16845-country-state-owner.py
       - name: Verify marker and U.S. launch lock untouched
         run: |
           grep -q 'EARTHLINE 16845 — GLOBAL COUNTRY ATOMIC JURISDICTION OWNER' index.html
