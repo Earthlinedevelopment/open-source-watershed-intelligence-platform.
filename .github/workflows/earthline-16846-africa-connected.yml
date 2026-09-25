@@ -1,0 +1,61 @@
+name: Earthline 16846 Africa Connected Matrix
+on:
+  push:
+    branches: [global-search-development-16845]
+    paths:
+      - 'lab/earthline-16846-africa-connected.mjs'
+      - '.github/workflows/earthline-16846-africa-connected.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  africa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - batch: a1
+            targets: 'Algeria|Angola|Benin|Botswana|Burkina Faso|Burundi|Cabo Verde|Cameroon|Central African Republic|Chad|Comoros|Democratic Republic of the Congo|Republic of the Congo|Cote d Ivoire|Djibouti|Egypt|Equatorial Guinea|Eritrea'
+          - batch: a2
+            targets: 'Eswatini|Ethiopia|Gabon|Gambia|Ghana|Guinea|Guinea-Bissau|Kenya|Lesotho|Liberia|Libya|Madagascar|Malawi|Mali|Mauritania|Mauritius|Morocco|Mozambique'
+          - batch: a3
+            targets: 'Namibia|Niger|Nigeria|Rwanda|Sao Tome and Principe|Senegal|Seychelles|Sierra Leone|Somalia|South Africa|South Sudan|Sudan|Tanzania|Togo|Tunisia|Uganda|Zambia|Zimbabwe'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: global-search-development-16845
+      - name: Verify U.S. launch lock remains exact
+        run: |
+          git fetch origin us-launch-lock-16844
+          test "$(git rev-parse origin/us-launch-lock-16844)" = "a795ff5f80ed3500cfe3d77c7f5d153462bef340"
+      - name: Preserve clean candidate and add runner-only location hook
+        run: |
+          cp index.html /tmp/earthline-clean.html
+          python3 lab/apply-16845-test-location-hook.py
+          grep -q 'EARTHLINE_TEST_LOCATION_16845' index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start isolated candidate
+        run: |
+          python3 -m http.server 8787 >/tmp/earthline-africa-${{ matrix.batch }}.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run connected Africa batch
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: http://127.0.0.1:8787/
+          TARGETS: ${{ matrix.targets }}
+        run: node lab/earthline-16846-africa-connected.mjs
+      - name: Prove runner-only hook was not retained
+        if: always()
+        run: |
+          cp /tmp/earthline-clean.html index.html
+          ! grep -q 'EARTHLINE_TEST_LOCATION_16845' index.html
+          git diff --exit-code -- index.html
