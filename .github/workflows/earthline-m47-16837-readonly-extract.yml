@@ -1,0 +1,40 @@
+name: Earthline 16837 Readonly Live Generator Extract
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/earthline-m47-16837-readonly-extract.yml']
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 1
+      - name: Extract current generator context
+        shell: bash
+        run: |
+          mkdir -p out
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          keys=['async function makeContours','function makeContours','async function makeSwales','function makeSwales','EARTHLINE 16780','EARTHLINE 16781','EARTHLINE 16782','EARTHLINE 16795','swaleCandidateContours16609']
+          out=[]
+          for k in keys:
+              poss=[]; p=0
+              while True:
+                  i=s.find(k,p)
+                  if i<0: break
+                  poss.append(i); p=i+len(k)
+              out.append(f'===== {k} positions={poss} =====')
+              for i in poss[:4]:
+                  out.append(s[max(0,i-6000):min(len(s),i+26000)])
+          Path('out/16837-live-generator-context.txt').write_text('\n\n'.join(out),encoding='utf-8')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: earthline-16837-live-generator-context
+          path: out/16837-live-generator-context.txt
+          retention-days: 2
