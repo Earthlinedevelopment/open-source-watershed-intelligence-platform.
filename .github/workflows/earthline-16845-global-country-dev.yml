@@ -1,10 +1,11 @@
-name: Earthline 16845 Global Country Dev
+name: Earthline 16846 Small Country Dev Gate
 on:
   push:
     branches: [global-search-development-16845]
     paths:
       - 'lab/apply-16845-global-country-owner.py'
       - 'lab/repair-16845-country-state-owner.py'
+      - 'lab/apply-16846-authoritative-small-country-extent.py'
       - 'lab/add-16845-dev-preset-hook.py'
       - 'lab/earthline-16845-local-global-gate.mjs'
       - '.github/workflows/earthline-16845-global-country-dev.yml'
@@ -20,14 +21,15 @@ jobs:
         with:
           ref: global-search-development-16845
           fetch-depth: 0
-      - name: Prepare isolated candidate and dev-only injector
+      - name: Prepare isolated 16846 candidate and dev-only injector
         run: |
           python3 lab/apply-16845-global-country-owner.py
           python3 lab/repair-16845-country-state-owner.py
+          python3 lab/apply-16846-authoritative-small-country-extent.py
           python3 lab/add-16845-dev-preset-hook.py
       - name: Verify U.S. launch lock untouched
         run: |
-          grep -q 'EARTHLINE 16845 — GLOBAL COUNTRY ATOMIC JURISDICTION OWNER' index.html
+          grep -q 'EARTHLINE 16846 — AUTHORITATIVE SMALL-COUNTRY EXTENT' index.html
           git fetch origin us-launch-lock-16844
           test "$(git rev-parse origin/us-launch-lock-16844)" = "a795ff5f80ed3500cfe3d77c7f5d153462bef340"
       - uses: actions/setup-node@v4
@@ -39,25 +41,26 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Start isolated candidate server
         run: |
-          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-16845-http.log 2>&1 &
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-16846-http.log 2>&1 &
           sleep 2
-      - name: Original global problem set plus U.S. controls
+      - name: Tiny-country repair plus U.S. controls
         env:
           EARTHLINE_URL: http://127.0.0.1:8787/
-          TARGETS: Singapore|India|Australia|Indonesia|Philippines|Brunei|Cabo Verde|Comoros|Mauritius|Seychelles|Arkansas|Hawaii
+          TARGETS: Singapore|Seychelles|Mauritius|Comoros|Arkansas|Hawaii
         run: node lab/earthline-16845-local-global-gate.mjs
         continue-on-error: true
       - name: Preserve gate evidence
         uses: actions/upload-artifact@v4
         with:
-          name: earthline-16845-original-problem-gate
+          name: earthline-16846-small-country-gate
           path: |
             gate-16845.json
             gate-16845-*.jpg
           if-no-files-found: warn
           retention-days: 3
-      - name: Prove dev-only injector was not persisted
+      - name: Prove temporary 16846 + injector were not persisted by the test runner
         run: |
           git checkout -- index.html
           ! grep -q 'setDevPreset16845' index.html
+          ! grep -q 'EARTHLINE 16846 — AUTHORITATIVE SMALL-COUNTRY EXTENT' index.html
           git diff --exit-code -- index.html
