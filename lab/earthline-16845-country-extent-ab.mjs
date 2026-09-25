@@ -26,9 +26,10 @@ for(const [target,kind] of targets){
   const perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null;
   const b=run?.bounds||null, cb=country?.regionalExtent?.bbox||null;
   const span=x=>Array.isArray(x)?[+(x[2]-x[0]).toFixed(4),+(x[3]-x[1]).toFixed(4)]:null;
+  const fallbackVisible=pub?.rendered ?? pub?.generated ?? 0;
   return {target,kind,harnessError,error:err&&String(err.error||err.message||err),runBounds:b,countryBounds:cb,runSpan:span(b),countrySpan:span(cb),
     countryPackage:!!country,activeKind:active?.packageKind||'us-state-or-none',boundaryCapability:boundary?.capability||boundary?.source||null,
-    generated:Number(pub?.generated||0),visible:Number(pub?.visible??pub?.rendered??pub?.generated||0),outside:Number(pub?.outsideJurisdiction??pub?.outside??0),unsafe:Number(pub?.unsafeDisplayedSegments??pub?.unsafe??0),totalMs:Number(perf?.totalMs||0)};
+    generated:Number(pub?.generated||0),visible:Number(pub?.visible ?? fallbackVisible),outside:Number(pub?.outsideJurisdiction??pub?.outside??0),unsafe:Number(pub?.unsafeDisplayedSegments??pub?.unsafe??0),totalMs:Number(perf?.totalMs||0)};
  },{target,kind,harnessError});
  rows.push(row);console.log(JSON.stringify(row)); await page.close();
 }
