@@ -1,0 +1,41 @@
+name: Earthline California Property Recheck
+
+on:
+  push:
+    branches: [us-launch-candidate-16844]
+    paths:
+      - '.github/workflows/earthline-california-property-recheck.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  california-property:
+    strategy:
+      fail-fast: false
+      matrix:
+        rep: [1, 2, 3]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Recheck live California Property fail-closed gate
+        env:
+          EARTHLINE_URL: 'https://earthlinedevelopment.org/'
+          STATES: 'California'
+          OUT: california-property-recheck-${{ matrix.rep }}.json
+        run: node lab/validate-16728-property-50states.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: california-property-recheck-${{ matrix.rep }}
+          path: california-property-recheck-${{ matrix.rep }}.json
+          retention-days: 3
