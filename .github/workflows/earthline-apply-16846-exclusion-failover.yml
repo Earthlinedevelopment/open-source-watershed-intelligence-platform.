@@ -1,0 +1,66 @@
+name: Earthline Apply 16846 Exclusion Failover
+
+on:
+  push:
+    branches: [us-launch-candidate-16844]
+    paths:
+      - 'lab/patch-16846-property-exclusion-failover.mjs'
+      - '.github/workflows/earthline-apply-16846-exclusion-failover.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: us-launch-candidate-16844
+          fetch-depth: 0
+      - name: Assert exact production parent product before patch
+        run: |
+          git show a795ff5f80ed3500cfe3d77c7f5d153462bef340:index.html > /tmp/production-index.html
+          cmp -s index.html /tmp/production-index.html || { echo 'index.html drifted before 16846 patch'; exit 1; }
+      - name: Apply bounded 16846 patch
+        run: node lab/patch-16846-property-exclusion-failover.mjs
+      - name: Validate patched HTML JavaScript syntax
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile, os
+          s=Path('index.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script([^>]*)>(.*?)</script>',s,re.I|re.S)
+          checked=0
+          for attrs,body in scripts:
+              if re.search(r'\bsrc\s*=',attrs,re.I): continue
+              m=re.search(r'\btype\s*=\s*["\']([^"\']+)',attrs,re.I)
+              if m and m.group(1).lower() not in ('text/javascript','application/javascript','module'): continue
+              suffix='.mjs' if m and m.group(1).lower()=='module' else '.js'
+              fd,path=tempfile.mkstemp(suffix=suffix); os.close(fd)
+              Path(path).write_text(body,encoding='utf-8')
+              p=subprocess.run(['node','--check',path],capture_output=True,text=True)
+              os.unlink(path)
+              if p.returncode:
+                  print(p.stdout); print(p.stderr); raise SystemExit(f'Inline script syntax failure #{checked+1}')
+              checked+=1
+          print(f'Validated {checked} inline JavaScript blocks')
+          PY
+      - name: Enforce narrow product diff
+        shell: bash
+        run: |
+          grep -q 'EARTHLINE 16846 — PROPERTY EXCLUSION SOURCE FAILOVER' index.html
+          grep -q 'https://lz4.overpass-api.de/api/interpreter' index.html
+          grep -q 'all-attempted-open-data-exclusion-sources-failed' index.html
+          test "$(git diff --name-only a795ff5f80ed3500cfe3d77c7f5d153462bef340 -- index.html | wc -l)" -eq 1
+          git diff --stat a795ff5f80ed3500cfe3d77c7f5d153462bef340 -- index.html
+      - name: Commit candidate product only
+        shell: bash
+        run: |
+          git config user.name 'Earthline Launch Bot'
+          git config user.email 'info@earthlinedevelopment.org'
+          git add index.html
+          git commit -m 'repair: 16846 add bounded Property exclusion source failover'
+          git push origin HEAD:us-launch-candidate-16844
