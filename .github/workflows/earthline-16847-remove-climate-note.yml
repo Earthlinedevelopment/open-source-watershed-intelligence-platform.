@@ -28,16 +28,22 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
-          node = '<div class="terraNote">*Results have been modelled for climate change impacts.</div>'
-          if s.count(node) != 1:
-              raise SystemExit(f'Expected exactly one exact climate-note node; found {s.count(node)}')
-          out = s.replace(node, '', 1)
-          if node in out or '*Results have been modelled for climate change impacts.' in out:
+          phrase = '*Results have been modelled for climate change impacts.'
+          if s.count(phrase) != 1:
+              raise SystemExit(f'Expected exactly one climate note phrase; found {s.count(phrase)}')
+          pattern = re.compile(r'<div\b[^>]*>\s*\*Results have been modelled for climate change impacts\.\s*</div>')
+          matches = list(pattern.finditer(s))
+          if len(matches) != 1:
+              raise SystemExit(f'Expected exactly one enclosing div match; found {len(matches)}')
+          m = matches[0]
+          out = s[:m.start()] + s[m.end():]
+          if phrase in out:
               raise SystemExit('Climate note still present after patch')
-          if len(s) - len(out) != len(node):
-              raise SystemExit('Unexpected byte-scope change')
+          if len(s) - len(out) != (m.end() - m.start()):
+              raise SystemExit('Unexpected patch scope')
           p.write_text(out, encoding='utf-8')
           PY
       - name: Prove product-only exact deletion
