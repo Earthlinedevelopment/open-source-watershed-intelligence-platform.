@@ -1,0 +1,33 @@
+name: Earthline Inspect 16844 Exclusion Source
+
+on:
+  push:
+    branches: [us-launch-candidate-16844]
+    paths:
+      - '.github/workflows/earthline-inspect-exclusion-source-16844.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect exact 16844 exclusion acquisition owner
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          needles=['overpass-api.de','api/interpreter','external-infrastructure-unavailable','all-attempted-open-data-exclusion-sources-failed','openDataSources16539','tilequery']
+          for needle in needles:
+              print('\n===== '+needle+' =====')
+              start=0;n=0
+              while True:
+                  i=s.find(needle,start)
+                  if i<0 or n>=8: break
+                  print('\n--- @',i,'---')
+                  print(s[max(0,i-6000):min(len(s),i+14000)])
+                  start=i+len(needle);n+=1
+          PY
