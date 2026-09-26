@@ -1,0 +1,19 @@
+name: Earthline 16844 Exclusion Line Map
+
+on:
+  push:
+    branches: [us-launch-candidate-16844]
+    paths:
+      - 'lab/find-16844-exclusion-lines.mjs'
+      - '.github/workflows/earthline-line-map-16844.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  map-lines:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: node lab/find-16844-exclusion-lines.mjs
