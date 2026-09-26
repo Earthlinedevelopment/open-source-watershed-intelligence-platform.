@@ -29,18 +29,27 @@ jobs:
           text = open('/tmp/earthline-live.html', 'r', encoding='utf-8', errors='replace').read()
           urls = re.findall(r'https?://[^\s\"\'<>`]+', text)
           hosts = []
+          safe_endpoints = set()
           for u in urls:
               u = u.rstrip(');,]}')
               try:
-                  h = (urlparse(u).hostname or '').lower()
+                  p = urlparse(u)
+                  h = (p.hostname or '').lower()
               except Exception:
                   h = ''
+                  p = None
               if h:
                   hosts.append(h)
+                  path = p.path or '/'
+                  safe_endpoints.add(f'https://{h}{path}')
 
           print('=== EXTERNAL HOST COUNTS ===')
           for host, count in Counter(hosts).most_common():
               print(f'{count:5d} {host}')
+
+          print('=== SANITIZED ENDPOINT PATHS ===')
+          for endpoint in sorted(safe_endpoints):
+              print(endpoint)
 
           print('=== SERVICE MARKERS ===')
           markers = [
@@ -60,6 +69,21 @@ jobs:
           print('=== TOKEN PRESENCE (VALUES REDACTED) ===')
           print(f'MAPBOX_PUBLIC_TOKEN_PATTERNS={public_tokens}')
           print(f'MAPBOX_SECRET_TOKEN_PATTERNS={secret_tokens}')
+
+          credential_patterns = {
+              'GOOGLE_API_KEY': r'AIza[0-9A-Za-z_-]{30,}',
+              'AWS_ACCESS_KEY': r'AKIA[0-9A-Z]{16}',
+              'BEARER_LITERAL': r'Bearer\s+[A-Za-z0-9._~-]{20,}',
+              'SUPABASE_JWT_LIKE': r'eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}',
+              'API_KEY_ASSIGNMENT': r'(?i)(?:api[_-]?key|apikey)\s*[:=]\s*[\"\'][^\"\']{12,}[\"\']',
+          }
+          for name, pattern in credential_patterns.items():
+              print(f'{name}={len(re.findall(pattern, text))}')
+
+          print('=== GENERIC CREDENTIAL PARAMETER MARKERS ===')
+          for marker in ['access_token=', 'api_key=', 'apikey=', 'token=', 'client_id=', 'app_id=']:
+              print(f'{marker}{low.count(marker)}')
+
           if secret_tokens:
               raise SystemExit('FAIL: secret-style Mapbox token pattern present in public page')
 
