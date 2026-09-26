@@ -1,0 +1,74 @@
+name: Earthline Viral Load Audit 16847
+
+on:
+  push:
+    branches:
+      - audit-viral-load-16847
+  workflow_dispatch:
+
+jobs:
+  inventory-live-dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch live Earthline page
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --max-time 30 \
+            https://earthlinedevelopment.org/ -o /tmp/earthline-live.html
+          echo "LIVE_BYTES=$(wc -c < /tmp/earthline-live.html)"
+          grep -ao 'EARTHLINE 16847' /tmp/earthline-live.html | head -1 || true
+
+      - name: Inventory external hosts and service markers
+        shell: python
+        run: |
+          import re
+          from collections import Counter
+          from urllib.parse import urlparse
+
+          text = open('/tmp/earthline-live.html', 'r', encoding='utf-8', errors='replace').read()
+          urls = re.findall(r'https?://[^\s\"\'<>`\\)\]]+', text)
+          hosts = []
+          for u in urls:
+              try:
+                  h = (urlparse(u).hostname or '').lower()
+              except Exception:
+                  h = ''
+              if h:
+                  hosts.append(h)
+
+          print('=== EXTERNAL HOST COUNTS ===')
+          for host, count in Counter(hosts).most_common():
+              print(f'{count:5d} {host}')
+
+          print('=== SERVICE MARKERS ===')
+          markers = [
+              'mapbox','api.mapbox.com','tiles.mapbox.com','overpass','openstreetmap',
+              'nominatim','arcgis','esri','usgs','waterservices.usgs.gov','apps.nationalmap.gov',
+              'fema','noaa','nrcs','soil','supabase','vercel','unpkg','jsdelivr','cdnjs',
+              'googleapis','gstatic','fonts.googleapis.com','amazonaws','cloudfront'
+          ]
+          low = text.lower()
+          for marker in markers:
+              n = low.count(marker.lower())
+              if n:
+                  print(f'{n:5d} {marker}')
+
+          public_tokens = len(re.findall(r'pk\.[A-Za-z0-9._-]{20,}', text))
+          secret_tokens = len(re.findall(r'sk\.[A-Za-z0-9._-]{20,}', text))
+          print('=== TOKEN PRESENCE (VALUES REDACTED) ===')
+          print(f'MAPBOX_PUBLIC_TOKEN_PATTERNS={public_tokens}')
+          print(f'MAPBOX_SECRET_TOKEN_PATTERNS={secret_tokens}')
+          if secret_tokens:
+              raise SystemExit('FAIL: secret-style Mapbox token pattern present in public page')
+
+          print('=== MAPBOX BILLABLE ENDPOINT MARKERS ===')
+          for marker in ['geocoding/v5','search/searchbox','search/v1','directions/v5','styles/v1','tiles/v4','mapbox://styles']:
+              n = low.count(marker)
+              if n:
+                  print(f'{n:5d} {marker}')
+
+          print('=== FETCH/XHR DOMAIN-LIKE LITERALS ===')
+          candidates = sorted(set(re.findall(r'[A-Za-z0-9.-]+\.(?:com|org|gov|net|io)(?=[/\"\'`])', text, flags=re.I)))
+          for c in candidates:
+              print(c.lower())
