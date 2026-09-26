@@ -11696,20 +11696,24 @@ async function directGeocode(q){
   window.earthlineDirectAuthorityGeometryAudit15874=()=>M&&M.directAuthorityGeometryAudit15874||earthlineEvaluateAuthorityCorridors15874(M&&M.swales||[],'manual');
 
   async function earthlineFetchOverpass15862P(result,boundary,myGen){
-    /* EARTHLINE 16516 — this existing OSM/Overpass adapter is enabled only after
-       earthlineCollectParcelInfrastructure15862P has determined that the official
-       Vermont authority is not applicable. OSM is open-data screening evidence,
-       never authoritative-local evidence and never a verified-clear zero. */
+    /* EARTHLINE 16846 — portable Property exclusion-source resilience.
+       Preserve the existing OSM screening semantics and fail-closed publication gate.
+       The canonical FOSSGIS endpoint remains primary; its directly addressed lz4 backend
+       is attempted only when the primary network request fails or times out. A valid
+       HTTP 200 response, including a zero-feature response, is authoritative for the
+       open-data acquisition result and stops failover. No state-specific logic. */
     result.overpass.attempted=true;
     result.overpass.ok=false;
     result.overpass.error=null;
+    result.overpass.endpointAttempts16846=[];
+    result.overpass.endpoint16846=null;
     const lngs=boundary.map(p=>Number(p[0])),lats=boundary.map(p=>Number(p[1]));
     const lat0=lats.reduce((a,b)=>a+b,0)/lats.length;
     const padLat=30/111320,padLng=30/(111320*Math.max(.05,Math.cos(lat0*Math.PI/180)));
     const south=Math.min(...lats)-padLat,west=Math.min(...lngs)-padLng;
     const north=Math.max(...lats)+padLat,east=Math.max(...lngs)+padLng;
     const bbox=[south,west,north,east].map(v=>v.toFixed(7)).join(",");
-    const query='[out:json][timeout:18];('+
+    const query='[out:json][timeout:6];('+
       'way["building"]('+bbox+');relation["building"]('+bbox+');'+
       'way["highway"~"^(motorway|motorway_link|trunk|trunk_link|primary|primary_link|secondary|secondary_link|tertiary|tertiary_link|unclassified|residential|living_street|service|track|road|pedestrian|construction)$"]('+bbox+');'+
       'way["amenity"="parking"]('+bbox+');relation["amenity"="parking"]('+bbox+');'+
@@ -11721,30 +11725,48 @@ async function directGeocode(q){
       'way["natural"="coastline"]('+bbox+');'+
       'way["water"]('+bbox+');relation["water"]('+bbox+');'+
       ');out geom;';
-    const controller=typeof AbortController!=="undefined"?new AbortController():null;
-    const timer=controller?setTimeout(()=>controller.abort(),14000):null;
-    try{
-      const response=await fetch("https://overpass-api.de/api/interpreter",{
-        method:"POST",
-        headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
-        body:"data="+encodeURIComponent(query),
-        signal:controller?controller.signal:undefined
-      });
-      result.overpass.httpStatus=response.status;
-      if(!response.ok)throw new Error("HTTP "+response.status);
-      const data=await response.json();
+    const endpoints=[
+      {url:"https://overpass-api.de/api/interpreter",timeoutMs:5200,label:"canonical"},
+      {url:"https://lz4.overpass-api.de/api/interpreter",timeoutMs:6200,label:"lz4-direct-fallback"}
+    ];
+    for(const ep of endpoints){
       if(earthlineIsStale(myGen))return false;
-      const elements=Array.isArray(data&&data.elements)?data.elements:[];
-      result.overpass.rawElementCount=elements.length;
-      for(const el of elements)result.processedGeometryCount+=earthlineRasterOverpassElement15862P(result,el);
-      result.overpass.ok=true;
-      return result.processedGeometryCount>0;
-    }catch(err){
-      result.overpass.error=String(err&&err.message||err);
-      return false;
-    }finally{
-      if(timer)clearTimeout(timer);
+      const controller=typeof AbortController!=="undefined"?new AbortController():null;
+      const timer=controller?setTimeout(()=>controller.abort(),ep.timeoutMs):null;
+      const attempt={endpoint:ep.label,url:ep.url,timeoutMs:ep.timeoutMs,httpStatus:null,error:null,ok:false};
+      const t0=typeof performance!=="undefined"&&performance.now?performance.now():Date.now();
+      try{
+        const response=await fetch(ep.url,{
+          method:"POST",
+          headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
+          body:"data="+encodeURIComponent(query),
+          signal:controller?controller.signal:undefined
+        });
+        attempt.httpStatus=response.status;
+        result.overpass.httpStatus=response.status;
+        if(!response.ok)throw new Error("HTTP "+response.status);
+        const data=await response.json();
+        if(earthlineIsStale(myGen))return false;
+        const elements=Array.isArray(data&&data.elements)?data.elements:[];
+        result.overpass.rawElementCount=elements.length;
+        for(const el of elements)result.processedGeometryCount+=earthlineRasterOverpassElement15862P(result,el);
+        attempt.ok=true;
+        result.overpass.ok=true;
+        result.overpass.error=null;
+        result.overpass.endpoint16846=ep.label;
+        return result.processedGeometryCount>0;
+      }catch(err){
+        attempt.error=String(err&&err.message||err);
+        result.overpass.error=attempt.error;
+      }finally{
+        if(timer)clearTimeout(timer);
+        const t1=typeof performance!=="undefined"&&performance.now?performance.now():Date.now();
+        attempt.elapsedMs=Math.max(0,Math.round(t1-t0));
+        result.overpass.endpointAttempts16846.push(attempt);
+      }
     }
+    result.overpass.error="all-overpass-endpoints-failed: "+result.overpass.endpointAttempts16846.map(x=>x.endpoint+"="+(x.error||("HTTP "+x.httpStatus))).join("; ");
+    return false;
   }
   function earthlineTilequerySamples15862P(boundary){
     const lat0=boundary.reduce((a,p)=>a+Number(p[1]),0)/boundary.length;
@@ -30154,7 +30176,7 @@ body { overflow-x:hidden!important; }
         c16736.coverageGX16775=gx16767;c16736.coverageGY16775=gy16767;
       }
     }
-    /* EARTHLINE 16844 — FINAL FINE-SUPPORT REGIONAL CAPACITY.
+    /* EARTHLINE 16846 — PROPERTY EXCLUSION SOURCE FAILOVER.
        The legacy capacity used only occupied 6x6 coarse sectors. 16841 can now
        recover real screened candidates in finer low-relief terrain cells, so
        permit a bounded extension only when distinct 24x24 candidate cells
