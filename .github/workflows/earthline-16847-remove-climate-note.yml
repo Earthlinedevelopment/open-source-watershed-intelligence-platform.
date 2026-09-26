@@ -28,26 +28,25 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
-          phrase = '*Results have been modelled for climate change impacts.'
-          if s.count(phrase) != 1:
-              raise SystemExit(f'Expected exactly one climate note; found {s.count(phrase)}')
-          pattern = re.compile(r'(?m)^[ \t]*<div class="terraNote">\*Results have been modelled for climate change impacts\.</div>\r?\n')
-          out, n = pattern.subn('', s, count=1)
-          if n != 1:
-              raise SystemExit('Exact terraNote line not found once')
-          if phrase in out:
+          node = '<div class="terraNote">*Results have been modelled for climate change impacts.</div>'
+          if s.count(node) != 1:
+              raise SystemExit(f'Expected exactly one exact climate-note node; found {s.count(node)}')
+          out = s.replace(node, '', 1)
+          if node in out or '*Results have been modelled for climate change impacts.' in out:
               raise SystemExit('Climate note still present after patch')
+          if len(s) - len(out) != len(node):
+              raise SystemExit('Unexpected byte-scope change')
           p.write_text(out, encoding='utf-8')
           PY
-      - name: Prove one-line product-only diff
+      - name: Prove product-only exact deletion
         shell: bash
         run: |
           test "$(git diff --name-only)" = "index.html"
-          test "$(git diff --numstat)" = $'0\t1\tindex.html'
           git diff --check
+          grep -Fq 'EARTHLINE 16846 — PROPERTY EXCLUSION SOURCE FAILOVER' index.html
+          ! grep -Fq '*Results have been modelled for climate change impacts.' index.html
           git diff -- index.html
       - name: Commit clean candidate
         shell: bash
