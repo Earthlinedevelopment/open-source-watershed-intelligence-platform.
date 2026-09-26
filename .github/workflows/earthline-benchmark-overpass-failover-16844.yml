@@ -1,0 +1,26 @@
+name: Earthline Benchmark Overpass Failover 16844
+
+on:
+  push:
+    branches: [us-launch-candidate-16844]
+    paths:
+      - 'lab/benchmark-overpass-failover-16844.mjs'
+      - '.github/workflows/earthline-benchmark-overpass-failover-16844.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - run: node $GITHUB_WORKSPACE/lab/benchmark-overpass-failover-16844.mjs
