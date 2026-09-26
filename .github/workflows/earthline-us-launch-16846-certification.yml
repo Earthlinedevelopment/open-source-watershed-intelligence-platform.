@@ -55,19 +55,25 @@ jobs:
           node-version: '20'
       - run: npm install --no-save playwright
       - run: npx playwright install --with-deps chromium
-      - name: Serve exact 16846 candidate
-        run: |
-          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
-          for i in {1..20}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 0.5; done
-          exit 1
-      - name: Load proven Regional harness from main and adapt marker only
+      - name: Build production-origin candidate Regional harness
+        shell: bash
         run: |
           git fetch --depth=1 origin main
           git show FETCH_HEAD:lab/earthline-16844-all50-regional-audit.mjs > lab/earthline-16846-regional-audit.mjs
-          sed -i 's/EARTHLINE 16844 — FINAL FINE-SUPPORT REGIONAL CAPACITY/EARTHLINE 16846 — PROPERTY EXCLUSION SOURCE FAILOVER/g' lab/earthline-16846-regional-audit.mjs
-      - name: Run 50-state Regional gate
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('lab/earthline-16846-regional-audit.mjs'); s=p.read_text()
+          s=s.replace("const rows=[];","const rows=[];\nconst CANDIDATE_HTML=fs.readFileSync('index.html','utf8');",1)
+          a="  const page=await browser.newPage({viewport:{width:1800,height:900}});"
+          b=a+"\n  await page.route('https://earthlinedevelopment.org/**',async route=>{const r=route.request();if(r.isNavigationRequest()&&r.resourceType()==='document')await route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:CANDIDATE_HTML});else await route.continue();});"
+          if s.count(a)!=1: raise SystemExit('Regional page anchor changed')
+          s=s.replace(a,b,1)
+          s=s.replace('EARTHLINE 16844 — FINAL FINE-SUPPORT REGIONAL CAPACITY','EARTHLINE 16846 — PROPERTY EXCLUSION SOURCE FAILOVER')
+          p.write_text(s)
+          PY
+      - name: Run 50-state Regional gate against candidate at production origin
         env:
-          EARTHLINE_URL: 'http://127.0.0.1:8787/'
+          EARTHLINE_URL: 'https://earthlinedevelopment.org/'
           STATES: ${{ matrix.states }}
           BATCH: 16846-${{ matrix.batch }}
           OUTDIR: out-16846-${{ matrix.batch }}
@@ -107,17 +113,26 @@ jobs:
           node-version: '20'
       - run: npm install --no-save playwright
       - run: npx playwright install --with-deps chromium
-      - name: Serve exact 16846 candidate
+      - name: Build production-origin candidate Property harness
+        shell: bash
         run: |
-          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
-          for i in {1..20}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 0.5; done
-          exit 1
-      - name: Run 50-state Property lifecycle gate
+          cp lab/validate-16728-property-50states.mjs lab/property-16846-audit.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('lab/property-16846-audit.mjs'); s=p.read_text()
+          s=s.replace("const rows=[];","const rows=[];\nconst CANDIDATE_HTML=fs.readFileSync('index.html','utf8');",1)
+          a="  const page=await browser.newPage({viewport:{width:1600,height:900}});"
+          b=a+"\n  await page.route('https://earthlinedevelopment.org/**',async route=>{const r=route.request();if(r.isNavigationRequest()&&r.resourceType()==='document')await route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:CANDIDATE_HTML});else await route.continue();});"
+          if s.count(a)!=1: raise SystemExit('Property page anchor changed')
+          s=s.replace(a,b,1)
+          p.write_text(s)
+          PY
+      - name: Run 50-state Property lifecycle gate against candidate at production origin
         env:
-          EARTHLINE_URL: 'http://127.0.0.1:8787/'
+          EARTHLINE_URL: 'https://earthlinedevelopment.org/'
           STATES: ${{ matrix.states }}
           OUT: property-16846-${{ matrix.batch }}.json
-        run: node lab/validate-16728-property-50states.mjs
+        run: node lab/property-16846-audit.mjs
       - name: Enforce 15-second Property ceiling
         env:
           OUT: property-16846-${{ matrix.batch }}.json
@@ -153,19 +168,25 @@ jobs:
           node-version: '20'
       - run: npm install --no-save playwright
       - run: npx playwright install --with-deps chromium
-      - name: Serve exact 16846 candidate
-        run: |
-          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
-          for i in {1..20}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 0.5; done
-          exit 1
-      - name: Load proven Regional harness from main and adapt marker only
+      - name: Build production-origin candidate Alaska harness
+        shell: bash
         run: |
           git fetch --depth=1 origin main
           git show FETCH_HEAD:lab/earthline-16844-all50-regional-audit.mjs > lab/earthline-16846-regional-audit.mjs
-          sed -i 's/EARTHLINE 16844 — FINAL FINE-SUPPORT REGIONAL CAPACITY/EARTHLINE 16846 — PROPERTY EXCLUSION SOURCE FAILOVER/g' lab/earthline-16846-regional-audit.mjs
-      - name: Repeat Alaska hard gate
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('lab/earthline-16846-regional-audit.mjs'); s=p.read_text()
+          s=s.replace("const rows=[];","const rows=[];\nconst CANDIDATE_HTML=fs.readFileSync('index.html','utf8');",1)
+          a="  const page=await browser.newPage({viewport:{width:1800,height:900}});"
+          b=a+"\n  await page.route('https://earthlinedevelopment.org/**',async route=>{const r=route.request();if(r.isNavigationRequest()&&r.resourceType()==='document')await route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:CANDIDATE_HTML});else await route.continue();});"
+          if s.count(a)!=1: raise SystemExit('Alaska page anchor changed')
+          s=s.replace(a,b,1)
+          s=s.replace('EARTHLINE 16844 — FINAL FINE-SUPPORT REGIONAL CAPACITY','EARTHLINE 16846 — PROPERTY EXCLUSION SOURCE FAILOVER')
+          p.write_text(s)
+          PY
+      - name: Repeat Alaska hard gate against candidate at production origin
         env:
-          EARTHLINE_URL: 'http://127.0.0.1:8787/'
+          EARTHLINE_URL: 'https://earthlinedevelopment.org/'
           STATES: 'Alaska'
           BATCH: alaska-16846-r${{ matrix.rep }}
           OUTDIR: out-alaska-16846-r${{ matrix.rep }}
