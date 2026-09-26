@@ -1,0 +1,44 @@
+name: Earthline 16847 Remove Climate Note
+
+on:
+  push:
+    branches: [release-16847-work]
+    paths:
+      - '.github/workflows/earthline-16847-remove-climate-note.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: release-16847-work
+      - name: Remove only climate-change sentence
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          old='<div class="earthline-climate-note-16488">*Results have been modelled for climate change impacts.</div>'
+          if s.count(old) != 1:
+              raise SystemExit(f'expected exactly one climate note, found {s.count(old)}')
+          out=s.replace(old,'',1)
+          if old in out:
+              raise SystemExit('climate note still present')
+          p.write_text(out)
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+          git diff -- index.html | grep -F -- '-<div class="earthline-climate-note-16488">*Results have been modelled for climate change impacts.</div>'
+      - name: Commit product-only change
+        run: |
+          git config user.name 'Earthline CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'release: 16847 remove climate-change sentence'
+          git push origin HEAD:release-16847-work
