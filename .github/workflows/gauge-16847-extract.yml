@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Verify exact production parent ancestry
         shell: bash
         run: |
@@ -37,7 +39,6 @@ jobs:
           for i,line in enumerate(s):
             low=line.lower()
             if any(re.search(p.lower(), low) for p in pats): hit.append(i)
-          # Merge +/- 10-line windows; cap to contexts that mention score/gauge/recharge or formulas.
           windows=[]
           for i in hit:
             a=max(0,i-10); b=min(len(s),i+11)
@@ -47,8 +48,7 @@ jobs:
           printed=0
           for n,(a,b) in enumerate(windows,1):
             block='\n'.join(s[a:b])
-            important=re.search(r'(recharge|gauge|score|weight|composite|soil|aquifer|slope|flow)',block,re.I)
-            if not important: continue
+            if not re.search(r'(recharge|gauge|score|weight|composite|soil|aquifer|slope|flow)',block,re.I): continue
             print(f'\n===== CONTEXT {n} L{a+1}-L{b} =====')
             for j in range(a,b): print(f'{j+1}: {s[j]}')
             printed += (b-a)
