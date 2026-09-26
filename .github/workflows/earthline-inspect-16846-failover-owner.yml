@@ -1,0 +1,22 @@
+name: Earthline Inspect 16846 Failover Owner
+
+on:
+  push:
+    branches: [us-launch-candidate-16844]
+    paths:
+      - '.github/workflows/earthline-inspect-16846-failover-owner.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: release-16846-clean
+      - name: Print failover owner context
+        run: |
+          grep -n -B 140 -A 140 'lz4.overpass-api.de' index.html
