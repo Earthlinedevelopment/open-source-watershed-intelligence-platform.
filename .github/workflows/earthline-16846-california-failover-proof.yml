@@ -49,9 +49,9 @@ jobs:
         env:
           REP: ${{ matrix.rep }}
         run: |
-          node --input-type=commonjs - <<'NODE'
-          const {chromium}=require('playwright');
-          const fs=require('fs');
+          node --input-type=module - <<'NODE'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
           const html=fs.readFileSync('/tmp/index-16846-direct-proof.html','utf8');
           const browser=await chromium.launch({headless:true});
           const page=await browser.newPage({viewport:{width:1200,height:800}});
