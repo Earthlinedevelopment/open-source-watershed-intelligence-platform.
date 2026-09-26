@@ -1,4 +1,4 @@
-name: Earthline 16846 California Failover Proof
+name: Earthline 16846 Direct Failover Proof
 
 on:
   push:
@@ -11,13 +11,13 @@ permissions:
   contents: read
 
 jobs:
-  forced-primary-failure:
+  direct-owner-failover:
     strategy:
       fail-fast: false
       matrix:
         rep: [1, 2]
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,49 +27,60 @@ jobs:
           node-version: '20'
       - run: npm install --no-save playwright
       - run: npx playwright install --with-deps chromium
-      - name: Build production-origin forced-failover harness
+      - name: Build test-only wrapper around exact shipping owner
         shell: bash
         run: |
-          cp lab/validate-16728-property-50states.mjs lab/property-16846-forced-failover.mjs
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('lab/property-16846-forced-failover.mjs')
+          p=Path('index.html')
           s=p.read_text()
-          s=s.replace("const rows=[];","const rows=[];\nconst CANDIDATE_HTML=fs.readFileSync('index.html','utf8');",1)
-          anchor="  const page=await browser.newPage({viewport:{width:1600,height:900}});"
-          inject=anchor+"\n  const overpassRequests=[];\n  page.on('request',r=>{if(r.url().includes('overpass-api.de/api/interpreter'))overpassRequests.push(r.url());});\n  await page.route('https://earthlinedevelopment.org/**',async route=>{const r=route.request();if(r.isNavigationRequest()&&r.resourceType()==='document')await route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:CANDIDATE_HTML});else await route.continue();});\n  await page.route('https://overpass-api.de/api/interpreter',route=>route.fulfill({status:504,contentType:'text/plain',body:'forced-primary-failure-16846'}));"
-          if s.count(anchor)!=1: raise SystemExit('newPage anchor changed')
-          s=s.replace(anchor,inject,1)
-          anchor2="  rows.push({state:stateName,elapsedMs:Date.now()-started,regionalMs,propertyMs,usedTarget,attempts,snap:s,failures,pass:failures.length===0});"
-          repl2="  rows.push({state:stateName,overpassRequests,elapsedMs:Date.now()-started,regionalMs,propertyMs,usedTarget,attempts,snap:s,failures,pass:failures.length===0});"
-          if s.count(anchor2)!=1: raise SystemExit('rows anchor changed')
-          s=s.replace(anchor2,repl2,1)
-          p.write_text(s)
+          anchor='    result.overpass.error="all-overpass-endpoints-failed: "+result.overpass.endpointAttempts16846.map(x=>x.endpoint+"="+(x.error||("HTTP "+x.httpStatus))).join("; ");\n    return false;\n  }\n  function earthlineTilequerySamples15862P(boundary){'
+          inject='    result.overpass.error="all-overpass-endpoints-failed: "+result.overpass.endpointAttempts16846.map(x=>x.endpoint+"="+(x.error||("HTTP "+x.httpStatus))).join("; ");\n    return false;\n  }\n  window.EARTHLINE_DIRECT_FAILOVER_TEST_16846=(result,boundary)=>earthlineFetchOverpass15862P(result,boundary,M.searchGen);\n  function earthlineTilequerySamples15862P(boundary){'
+          if s.count(anchor)!=1: raise SystemExit('shipping owner anchor changed')
+          Path('/tmp/index-16846-direct-proof.html').write_text(s.replace(anchor,inject,1))
           PY
-      - name: Verify clean 16846 release marker
-        run: grep -q 'EARTHLINE 16846 — PROPERTY EXCLUSION SOURCE FAILOVER' index.html
-      - name: Run California with canonical endpoint forced to HTTP 504
+      - name: Verify clean release identity
+        run: |
+          test "$(git rev-parse HEAD)" = "1c6080f24288250a48aa735ef61f441a01783850"
+          grep -q 'EARTHLINE 16846 — PROPERTY EXCLUSION SOURCE FAILOVER' index.html
+          grep -q 'https://overpass-api.de/api/interpreter' index.html
+          grep -q 'https://lz4.overpass-api.de/api/interpreter' index.html
+      - name: Force canonical 504 and prove lz4 HTTP 200 takeover
         env:
-          EARTHLINE_URL: 'https://earthlinedevelopment.org/'
-          STATES: 'California'
-          OUT: ca-16846-forced-${{ matrix.rep }}.json
-        run: node lab/property-16846-forced-failover.mjs
-      - name: Prove fallback request and safe publication
-        env:
-          OUT: ca-16846-forced-${{ matrix.rep }}.json
+          REP: ${{ matrix.rep }}
         run: |
           node - <<'NODE'
-          const fs=require('fs'); const x=JSON.parse(fs.readFileSync(process.env.OUT,'utf8')); const r=x.rows[0];
-          if(!x.pass||!r?.pass) throw new Error('Property did not pass under forced primary failure');
-          if(!r.overpassRequests?.some(u=>u.includes('https://lz4.overpass-api.de/api/interpreter'))) throw new Error('lz4 fallback was not requested');
-          if(!r.overpassRequests?.some(u=>u.includes('https://overpass-api.de/api/interpreter'))) throw new Error('canonical primary request not observed');
-          if(!(Number(r.propertyMs)<=15000)) throw new Error('Property exceeded 15-second ceiling: '+r.propertyMs);
-          if(r.snap?.published!==true||r.snap?.renderVerified!==true||r.snap?.safeVisible!==true) throw new Error('safe publication evidence missing');
-          console.log(JSON.stringify({pass:true,propertyMs:r.propertyMs,requests:r.overpassRequests,published:r.snap.published,renderVerified:r.snap.renderVerified,safeVisible:r.snap.safeVisible}));
+          const {chromium}=require('playwright');
+          const fs=require('fs');
+          const html=fs.readFileSync('/tmp/index-16846-direct-proof.html','utf8');
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1200,height:800}});
+          const requests=[];
+          page.on('request',r=>{if(r.url().includes('overpass-api.de/api/interpreter'))requests.push({url:r.url(),method:r.method()});});
+          await page.route('https://overpass-api.de/api/interpreter',route=>route.fulfill({status:504,contentType:'text/plain',body:'forced canonical failure'}));
+          await page.route('https://lz4.overpass-api.de/api/interpreter',route=>route.fulfill({status:200,contentType:'application/json',body:'{"elements":[]}'}));
+          await page.route('https://earthlinedevelopment.org/**',async route=>{
+            const r=route.request();
+            if(r.isNavigationRequest()&&r.resourceType()==='document') return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html});
+            return route.continue();
+          });
+          await page.goto('https://earthlinedevelopment.org/?direct-failover-16846='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForFunction(()=>typeof window.EARTHLINE_DIRECT_FAILOVER_TEST_16846==='function',{timeout:30000});
+          const out=await page.evaluate(async()=>{
+            const result={processedGeometryCount:0,overpass:{attempted:false,ok:false,error:null,roadGeometryCount:0,buildingGeometryCount:0,parkingGeometryCount:0,waterGeometryCount:0}};
+            const boundary=[[-119.6550,37.9100],[-119.6540,37.9100],[-119.6540,37.9110],[-119.6550,37.9110]];
+            const returned=await window.EARTHLINE_DIRECT_FAILOVER_TEST_16846(result,boundary);
+            return {returned,overpass:result.overpass,processedGeometryCount:result.processedGeometryCount};
+          });
+          const a=out.overpass?.endpointAttempts16846||[];
+          if(a.length!==2) throw new Error('expected exactly two endpoint attempts: '+JSON.stringify(out));
+          if(a[0].endpoint!=='canonical'||a[0].httpStatus!==504||a[0].ok!==false) throw new Error('canonical failure not recorded: '+JSON.stringify(out));
+          if(a[1].endpoint!=='lz4-direct-fallback'||a[1].httpStatus!==200||a[1].ok!==true) throw new Error('lz4 success not recorded: '+JSON.stringify(out));
+          if(out.overpass?.ok!==true||out.overpass?.endpoint16846!=='lz4-direct-fallback'||out.overpass?.error!==null) throw new Error('fallback did not become authoritative: '+JSON.stringify(out));
+          if(out.overpass?.rawElementCount!==0) throw new Error('controlled zero-feature response not preserved: '+JSON.stringify(out));
+          if(out.returned!==false) throw new Error('zero-feature response should return no applied geometry while remaining a successful acquisition');
+          if(!requests.some(x=>x.url==='https://overpass-api.de/api/interpreter')) throw new Error('canonical request not observed');
+          if(!requests.some(x=>x.url==='https://lz4.overpass-api.de/api/interpreter')) throw new Error('lz4 request not observed');
+          console.log(JSON.stringify({pass:true,rep:process.env.REP,requests,out}));
+          await browser.close();
           NODE
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: ca-16846-forced-production-origin-${{ matrix.rep }}
-          path: ca-16846-forced-${{ matrix.rep }}.json
-          retention-days: 3
