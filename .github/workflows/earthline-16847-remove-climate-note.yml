@@ -1,0 +1,59 @@
+name: Earthline 16847 Remove Climate Note
+
+on:
+  push:
+    branches: [tooling-16847-remove-climate-note]
+    paths:
+      - '.github/workflows/earthline-16847-remove-climate-note.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-16847-remove-climate-note
+          fetch-depth: 2
+      - name: Verify exact accepted parent
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "1c6080f24288250a48aa735ef61f441a01783850"
+      - name: Remove only climate-change gauge note
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          phrase = '*Results have been modelled for climate change impacts.'
+          if s.count(phrase) != 1:
+              raise SystemExit(f'Expected exactly one climate note; found {s.count(phrase)}')
+          pattern = re.compile(r'(?m)^[ \t]*<div class="terraNote">\*Results have been modelled for climate change impacts\.</div>\r?\n')
+          out, n = pattern.subn('', s, count=1)
+          if n != 1:
+              raise SystemExit('Exact terraNote line not found once')
+          if phrase in out:
+              raise SystemExit('Climate note still present after patch')
+          p.write_text(out, encoding='utf-8')
+          PY
+      - name: Prove one-line product-only diff
+        shell: bash
+        run: |
+          test "$(git diff --name-only)" = "index.html"
+          test "$(git diff --numstat)" = $'0\t1\tindex.html'
+          git diff --check
+          git diff -- index.html
+      - name: Commit clean candidate
+        shell: bash
+        run: |
+          git config user.name "Earthline CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "copy: remove climate change gauge note"
+          git push origin HEAD:candidate-16847-remove-climate-note
