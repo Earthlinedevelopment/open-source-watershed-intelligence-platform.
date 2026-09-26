@@ -1,0 +1,111 @@
+name: Earthline 16846 California Failover Proof
+
+on:
+  push:
+    branches: [us-launch-candidate-16844]
+    paths:
+      - 'index.html'
+      - '.github/workflows/earthline-16846-california-failover-proof.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  normal-california:
+    strategy:
+      fail-fast: false
+      matrix:
+        rep: [1, 2, 3]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: us-launch-candidate-16844
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Serve exact candidate
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in {1..20}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 0.5; done
+          exit 1
+      - name: Verify 16846 marker
+        run: curl -fsS http://127.0.0.1:8787/ | grep -q 'EARTHLINE 16846 — PROPERTY EXCLUSION SOURCE FAILOVER'
+      - name: California Property normal candidate run
+        env:
+          EARTHLINE_URL: 'http://127.0.0.1:8787/'
+          STATES: 'California'
+          OUT: ca-16846-normal-${{ matrix.rep }}.json
+        run: node lab/validate-16728-property-50states.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ca-16846-normal-${{ matrix.rep }}
+          path: ca-16846-normal-${{ matrix.rep }}.json
+          retention-days: 3
+
+  forced-primary-failure:
+    strategy:
+      fail-fast: false
+      matrix:
+        rep: [1, 2]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: us-launch-candidate-16844
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Build instrumented certification harness
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('lab/validate-16728-property-50states.mjs')
+          s=p.read_text()
+          anchor="  const page=await browser.newPage({viewport:{width:1600,height:900}});"
+          inject=anchor+"\n  const overpassRequests=[];\n  page.on('request',r=>{if(r.url().includes('overpass-api.de/api/interpreter'))overpassRequests.push(r.url());});\n  await page.route('https://overpass-api.de/api/interpreter',route=>route.fulfill({status:504,contentType:'text/plain',body:'forced-primary-failure-16846'}));"
+          if s.count(anchor)!=1: raise SystemExit('newPage anchor changed')
+          s=s.replace(anchor,inject)
+          anchor2="  rows.push({state,elapsedMs:Date.now()-started,regionalMs,propertyMs,usedTarget,attempts,snap:s,failures,pass:failures.length===0});"
+          repl2="  rows.push({state,overpassRequests,elapsedMs:Date.now()-started,regionalMs,propertyMs,usedTarget,attempts,snap:s,failures,pass:failures.length===0});"
+          if s.count(anchor2)!=1: raise SystemExit('rows anchor changed')
+          s=s.replace(anchor2,repl2)
+          p.write_text(s)
+          PY
+      - name: Serve exact candidate
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in {1..20}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 0.5; done
+          exit 1
+      - name: Run with canonical endpoint forced to HTTP 504
+        env:
+          EARTHLINE_URL: 'http://127.0.0.1:8787/'
+          STATES: 'California'
+          OUT: ca-16846-forced-${{ matrix.rep }}.json
+        run: node lab/validate-16728-property-50states.mjs
+      - name: Prove fallback was actually requested and Property passed
+        env:
+          OUT: ca-16846-forced-${{ matrix.rep }}.json
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'); const x=JSON.parse(fs.readFileSync(process.env.OUT,'utf8')); const r=x.rows[0];
+          if(!x.pass||!r?.pass) throw new Error('Property did not pass under forced primary failure');
+          if(!r.overpassRequests?.some(u=>u.includes('lz4.overpass-api.de/api/interpreter'))) throw new Error('lz4 fallback was not requested');
+          if(!r.overpassRequests?.some(u=>u.includes('overpass-api.de/api/interpreter'))) throw new Error('canonical primary request not observed');
+          console.log(JSON.stringify({pass:true,propertyMs:r.propertyMs,requests:r.overpassRequests}));
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ca-16846-forced-${{ matrix.rep }}
+          path: ca-16846-forced-${{ matrix.rep }}.json
+          retention-days: 3
