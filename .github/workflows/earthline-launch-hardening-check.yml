@@ -1,0 +1,43 @@
+name: Earthline Launch Hardening Check
+
+on:
+  push:
+    branches: [us-launch-candidate-16844]
+    paths:
+      - '.github/workflows/earthline-launch-hardening-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hardening:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify custom-domain file
+        run: |
+          test -f CNAME
+          test "$(tr -d '\r\n ' < CNAME)" = "earthlinedevelopment.org"
+      - name: Screen production artifact for obvious private credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -E -n -- '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|github_pat_[A-Za-z0-9_]+|ghp_[A-Za-z0-9]+|AKIA[0-9A-Z]{16}|(^|[^A-Za-z0-9])sk\.[A-Za-z0-9._-]{20,}' index.html; then
+            echo 'Potential private credential pattern found in index.html'
+            exit 1
+          fi
+          echo 'No screened private credential patterns found in index.html'
+      - name: Verify HTTPS live endpoint and HTTP redirect
+        shell: bash
+        run: |
+          set -euo pipefail
+          https_code=$(curl -L -sS -o /tmp/earthline.html -w '%{http_code}' --max-time 30 https://earthlinedevelopment.org/)
+          test "$https_code" = "200"
+          grep -q "EARTHLINE 16844 — FINAL FINE-SUPPORT REGIONAL CAPACITY" /tmp/earthline.html
+          http_code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 http://earthlinedevelopment.org/)
+          case "$http_code" in
+            301|302|307|308) ;;
+            *) echo "HTTP endpoint did not redirect; code=$http_code"; exit 1;;
+          esac
+          echo "HTTPS=200, HTTP redirect=$http_code"
