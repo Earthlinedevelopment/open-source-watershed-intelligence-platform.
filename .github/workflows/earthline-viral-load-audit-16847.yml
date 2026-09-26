@@ -14,71 +14,25 @@ jobs:
       - name: Fetch live Earthline page
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --location --max-time 30 \
-            https://earthlinedevelopment.org/ -o /tmp/earthline-live.html
+          curl --fail --silent --show-error --location --max-time 30 https://earthlinedevelopment.org/ -o /tmp/earthline-live.html
           echo "LIVE_BYTES=$(wc -c < /tmp/earthline-live.html)"
-
-      - name: Inventory external dependencies and Mapbox call sites
+      - name: Inspect Mapbox request fanout
         shell: python
         run: |
           import re
-          from collections import Counter
-          from urllib.parse import urlparse
-
-          text = open('/tmp/earthline-live.html', 'r', encoding='utf-8', errors='replace').read()
-          low = text.lower()
-          urls = re.findall(r'https?://[^\s\"\'<>`]+', text)
-          hosts=[]
-          for u in urls:
-              u=u.rstrip(');,]}')
-              try:
-                  h=(urlparse(u).hostname or '').lower()
-              except Exception:
-                  h=''
-              if h: hosts.append(h)
-          print('=== EXTERNAL HOST COUNTS ===')
-          for host,count in Counter(hosts).most_common(): print(f'{count:5d} {host}')
-
-          print('=== TOKEN/CREDENTIAL PRESENCE ===')
-          checks={
-              'MAPBOX_PUBLIC_TOKEN':r'pk\.[A-Za-z0-9._-]{20,}',
-              'MAPBOX_SECRET_TOKEN':r'sk\.[A-Za-z0-9._-]{20,}',
-              'GOOGLE_API_KEY':r'AIza[0-9A-Za-z_-]{30,}',
-              'AWS_ACCESS_KEY':r'AKIA[0-9A-Z]{16}',
-              'BEARER_LITERAL':r'Bearer\s+[A-Za-z0-9._~-]{20,}',
-              'SUPABASE_JWT_LIKE':r'eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}',
-          }
-          for name,pat in checks.items(): print(f'{name}={len(re.findall(pat,text))}')
-
-          print('=== MAPBOX MAP INITIALIZATION ===')
-          print('new mapboxgl.Map count =', len(re.findall(r'new\s+mapboxgl\.Map\s*\(', text)))
-          print('mapboxgl.Map( count =', len(re.findall(r'mapboxgl\.Map\s*\(', text)))
-
-          targets=[
-              'geocoding/v5/mapbox.places/',
-              'mapbox.mapbox-streets-v8/tilequery/',
-              'mapbox.satellite/{z}/{x}/{y}@2x.jpg90',
-              'mapbox.terrain-rgb/{z}/{x}/{y}@2x.pngraw',
-              'mapbox://styles',
-          ]
+          text=open('/tmp/earthline-live.html','r',encoding='utf-8',errors='replace').read()
           def redact(s):
               s=re.sub(r'pk\.[A-Za-z0-9._-]{20,}','<MAPBOX_PUBLIC_TOKEN>',s)
               s=re.sub(r'([?&]access_token=)[^&\"\'\s`]+',r'\1<REDACTED>',s,flags=re.I)
-              s=re.sub(r'\s+',' ',s)
-              return s
-          print('=== MAPBOX CALL-SITE CONTEXT (SANITIZED) ===')
-          for target in targets:
-              print('\nTARGET:', target)
-              start=0; n=0
+              return re.sub(r'\s+',' ',s)
+          for needle in ['earthlineTilequerySamples15862P','earthlinePropertyTilePlan16453','fetchRegionalSatellite','earthlineFetchPropertySatellitePreview']:
+              print('\n===',needle,'===')
+              start=0;n=0
               while True:
-                  i=low.find(target.lower(),start)
+                  i=text.find(needle,start)
                   if i<0: break
                   n+=1
-                  a=max(0,i-550); b=min(len(text),i+len(target)+650)
-                  print(f'-- occurrence {n} --')
-                  print(redact(text[a:b]))
-                  start=i+len(target)
-              print('COUNT=',n)
-
-          if re.search(r'sk\.[A-Za-z0-9._-]{20,}',text):
-              raise SystemExit('FAIL secret Mapbox token exposed')
+                  print('-- occurrence',n,'--')
+                  print(redact(text[max(0,i-1000):min(len(text),i+3000)]))
+                  start=i+len(needle)
+                  if n>=3: break
