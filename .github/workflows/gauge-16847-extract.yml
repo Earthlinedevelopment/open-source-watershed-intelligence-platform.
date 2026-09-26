@@ -1,0 +1,58 @@
+name: Earthline 16847 Gauge Science Extract
+
+on:
+  push:
+    branches: [gauge-science-candidate-16847]
+    paths:
+      - '.github/workflows/gauge-16847-extract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact production parent ancestry
+        shell: bash
+        run: |
+          git merge-base --is-ancestor 1c6080f24288250a48aa735ef61f441a01783850 HEAD
+          test "$(git diff --name-only 1c6080f24288250a48aa735ef61f441a01783850..HEAD -- index.html | wc -l)" = "0"
+      - name: Extract gauge scoring contexts
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(errors='replace').splitlines()
+          pats=[
+            r'Recharge Potential', r'recharge', r'gauge', r'SCORE 0', r'weighted composite',
+            r'slopeScore', r'flowScore', r'soilScore', r'aquiferScore', r'groundwater',
+            r'scoreComponents', r'composite', r'weights', r'weight', r'hydrologic', r'HSG',
+            r'infiltration', r'aquifer', r'flow', r'slope', r'soil'
+          ]
+          hit=[]
+          for i,line in enumerate(s):
+            low=line.lower()
+            if any(re.search(p.lower(), low) for p in pats): hit.append(i)
+          # Merge +/- 10-line windows; cap to contexts that mention score/gauge/recharge or formulas.
+          windows=[]
+          for i in hit:
+            a=max(0,i-10); b=min(len(s),i+11)
+            if windows and a<=windows[-1][1]+1: windows[-1][1]=max(windows[-1][1],b)
+            else: windows.append([a,b])
+          print('TOTAL_LINES',len(s),'RAW_HITS',len(hit),'WINDOWS',len(windows))
+          printed=0
+          for n,(a,b) in enumerate(windows,1):
+            block='\n'.join(s[a:b])
+            important=re.search(r'(recharge|gauge|score|weight|composite|soil|aquifer|slope|flow)',block,re.I)
+            if not important: continue
+            print(f'\n===== CONTEXT {n} L{a+1}-L{b} =====')
+            for j in range(a,b): print(f'{j+1}: {s[j]}')
+            printed += (b-a)
+            if printed>2200:
+              print('\n[TRUNCATED BY EXTRACTOR AFTER 2200 SOURCE LINES]')
+              break
+          PY
