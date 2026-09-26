@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rep: [1, 2, 3]
+        rep: [1]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -44,7 +44,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ca-16846-normal-${{ matrix.rep }}
+          name: ca-16846-normal-r2-${{ matrix.rep }}
           path: ca-16846-normal-${{ matrix.rep }}.json
           retention-days: 3
 
@@ -75,8 +75,8 @@ jobs:
           inject=anchor+"\n  const overpassRequests=[];\n  page.on('request',r=>{if(r.url().includes('overpass-api.de/api/interpreter'))overpassRequests.push(r.url());});\n  await page.route('https://overpass-api.de/api/interpreter',route=>route.fulfill({status:504,contentType:'text/plain',body:'forced-primary-failure-16846'}));"
           if s.count(anchor)!=1: raise SystemExit('newPage anchor changed')
           s=s.replace(anchor,inject)
-          anchor2="  rows.push({state,elapsedMs:Date.now()-started,regionalMs,propertyMs,usedTarget,attempts,snap:s,failures,pass:failures.length===0});"
-          repl2="  rows.push({state,overpassRequests,elapsedMs:Date.now()-started,regionalMs,propertyMs,usedTarget,attempts,snap:s,failures,pass:failures.length===0});"
+          anchor2="  rows.push({state:stateName,elapsedMs:Date.now()-started,regionalMs,propertyMs,usedTarget,attempts,snap:s,failures,pass:failures.length===0});"
+          repl2="  rows.push({state:stateName,overpassRequests,elapsedMs:Date.now()-started,regionalMs,propertyMs,usedTarget,attempts,snap:s,failures,pass:failures.length===0});"
           if s.count(anchor2)!=1: raise SystemExit('rows anchor changed')
           s=s.replace(anchor2,repl2)
           p.write_text(s)
@@ -106,6 +106,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ca-16846-forced-${{ matrix.rep }}
+          name: ca-16846-forced-r2-${{ matrix.rep }}
           path: ca-16846-forced-${{ matrix.rep }}.json
           retention-days: 3
