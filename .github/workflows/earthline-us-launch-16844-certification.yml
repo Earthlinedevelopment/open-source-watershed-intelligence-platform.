@@ -1,0 +1,155 @@
+name: Earthline U.S. Launch 16844 Certification
+
+on:
+  push:
+    branches: [us-launch-candidate-16844]
+    paths:
+      - '.github/workflows/earthline-us-launch-16844-certification.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integrity:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify launch product is exact 16844 product
+        run: |
+          git diff --exit-code a795ff5f80ed3500cfe3d77c7f5d153462bef340 -- index.html
+          grep -q "EARTHLINE 16844 — FINAL FINE-SUPPORT REGIONAL CAPACITY" index.html
+          echo "index.html is unchanged from production 16844"
+
+  regional:
+    needs: integrity
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        include:
+          - batch: b1
+            states: 'Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia'
+          - batch: b2
+            states: 'Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland'
+          - batch: b3
+            states: 'Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey'
+          - batch: b4
+            states: 'New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina'
+          - batch: b5
+            states: 'South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Run live 16844 Regional launch gate
+        env:
+          EARTHLINE_URL: 'https://earthlinedevelopment.org/'
+          STATES: ${{ matrix.states }}
+          BATCH: launch-${{ matrix.batch }}
+          OUTDIR: out-launch-16844-${{ matrix.batch }}
+        run: node lab/earthline-16844-all50-regional-audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: launch-16844-regional-${{ matrix.batch }}
+          path: out-launch-16844-${{ matrix.batch }}/
+          retention-days: 3
+
+  property:
+    needs: integrity
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        include:
+          - batch: b1
+            states: 'Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia'
+          - batch: b2
+            states: 'Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland'
+          - batch: b3
+            states: 'Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey'
+          - batch: b4
+            states: 'New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina'
+          - batch: b5
+            states: 'South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Run live 16844 Property lifecycle gate
+        env:
+          EARTHLINE_URL: 'https://earthlinedevelopment.org/'
+          STATES: ${{ matrix.states }}
+          OUT: property-launch-16844-${{ matrix.batch }}.json
+        run: node lab/validate-16728-property-50states.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: launch-16844-property-${{ matrix.batch }}
+          path: property-launch-16844-${{ matrix.batch }}.json
+          retention-days: 3
+
+  alaska:
+    needs: integrity
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        rep: [1, 2, 3, 4, 5]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Repeat Alaska 15-second safety/performance gate
+        env:
+          EARTHLINE_URL: 'https://earthlinedevelopment.org/'
+          STATES: 'Alaska'
+          BATCH: alaska-r${{ matrix.rep }}
+          OUTDIR: out-launch-16844-alaska-r${{ matrix.rep }}
+        run: node lab/earthline-16844-all50-regional-audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: launch-16844-alaska-r${{ matrix.rep }}
+          path: out-launch-16844-alaska-r${{ matrix.rep }}/
+          retention-days: 3
+
+  launch-gate:
+    needs: [integrity, regional, property, alaska]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Enforce complete U.S. technical gate
+        run: |
+          echo "integrity=${{ needs.integrity.result }}"
+          echo "regional=${{ needs.regional.result }}"
+          echo "property=${{ needs.property.result }}"
+          echo "alaska=${{ needs.alaska.result }}"
+          test "${{ needs.integrity.result }}" = "success"
+          test "${{ needs.regional.result }}" = "success"
+          test "${{ needs.property.result }}" = "success"
+          test "${{ needs.alaska.result }}" = "success"
