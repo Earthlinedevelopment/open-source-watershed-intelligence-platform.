@@ -1,0 +1,161 @@
+name: Earthline 16852 U.S. Launch Certification
+on:
+  push:
+    branches: [us-launch-candidate-16852]
+    paths:
+      - 'lab/earthline-16852-us-regional-cert.mjs'
+      - '.github/workflows/earthline-16852-us-launch-cert.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  regional50:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: us-launch-candidate-16852
+      - name: Verify exact frozen 16844 product marker
+        run: grep -q 'EARTHLINE 16844 — FINAL FINE-SUPPORT REGIONAL CAPACITY' index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start candidate
+        run: |
+          python3 -m http.server 8787 >/tmp/earthline-16852-regional.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run all-50 Regional gate
+        env:
+          EARTHLINE_URL: http://127.0.0.1:8787/
+          OUTDIR: artifacts/earthline-16852-regional50
+        run: node lab/earthline-16852-us-regional-cert.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-16852-regional50
+          path: artifacts/earthline-16852-regional50/
+          if-no-files-found: error
+
+  alaska_repeat:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: us-launch-candidate-16852
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 >/tmp/earthline-16852-ak.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run Alaska five-repeat latency gate
+        env:
+          EARTHLINE_URL: http://127.0.0.1:8787/
+          STATES: Alaska
+          REPEATS: '5'
+          OUTDIR: artifacts/earthline-16852-alaska-repeat
+        run: node lab/earthline-16852-us-regional-cert.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-16852-alaska-repeat
+          path: artifacts/earthline-16852-alaska-repeat/
+          if-no-files-found: error
+
+  hard_state_repeat:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: us-launch-candidate-16852
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 >/tmp/earthline-16852-hard.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Repeat historically difficult states
+        env:
+          EARTHLINE_URL: http://127.0.0.1:8787/
+          STATES: Arkansas|Iowa|Oklahoma|New York|Vermont
+          REPEATS: '2'
+          OUTDIR: artifacts/earthline-16852-hard-repeat
+        run: node lab/earthline-16852-us-regional-cert.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-16852-hard-repeat
+          path: artifacts/earthline-16852-hard-repeat/
+          if-no-files-found: error
+
+  property50:
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        include:
+          - batch: b1
+            states: "Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia"
+          - batch: b2
+            states: "Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland"
+          - batch: b3
+            states: "Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey"
+          - batch: b4
+            states: "New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina"
+          - batch: b5
+            states: "South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: us-launch-candidate-16852
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 >/tmp/earthline-16852-property-${{ matrix.batch }}.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run all-50 Property lifecycle gate
+        shell: bash
+        env:
+          EARTHLINE_URL: http://127.0.0.1:8787/
+          STATES: ${{ matrix.states }}
+          OUT: property50-16852-${{ matrix.batch }}.json
+        run: |
+          set +e
+          node lab/validate-16728-property-50states.mjs
+          code=$?
+          echo "$code" > property50-16852-${{ matrix.batch }}.exit
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: property50-16852-${{ matrix.batch }}
+          path: |
+            property50-16852-${{ matrix.batch }}.json
+            property50-16852-${{ matrix.batch }}.exit
+          if-no-files-found: error
+      - name: Enforce Property result
+        run: test "$(cat property50-16852-${{ matrix.batch }}.exit)" = "0"
