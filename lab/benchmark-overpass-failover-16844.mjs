@@ -17,7 +17,8 @@ const query='[out:json][timeout:18];('+
   ');out geom;';
 const endpoints=[
   'https://overpass-api.de/api/interpreter',
-  'https://overpass.private.coffee/api/interpreter'
+  'https://lz4.overpass-api.de/api/interpreter',
+  'https://z.overpass-api.de/api/interpreter'
 ];
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage();
