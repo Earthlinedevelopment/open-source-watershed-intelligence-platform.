@@ -60,17 +60,18 @@ jobs:
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
           for i in {1..20}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 0.5; done
           exit 1
-      - name: Adapt proven 16844 Regional harness to 16846 top marker only
+      - name: Load proven Regional harness from main and adapt marker only
         run: |
-          cp lab/earthline-16844-all50-regional-audit.mjs /tmp/regional-16846.mjs
-          sed -i 's/EARTHLINE 16844 — FINAL FINE-SUPPORT REGIONAL CAPACITY/EARTHLINE 16846 — PROPERTY EXCLUSION SOURCE FAILOVER/g' /tmp/regional-16846.mjs
+          git fetch --depth=1 origin main
+          git show FETCH_HEAD:lab/earthline-16844-all50-regional-audit.mjs > lab/earthline-16846-regional-audit.mjs
+          sed -i 's/EARTHLINE 16844 — FINAL FINE-SUPPORT REGIONAL CAPACITY/EARTHLINE 16846 — PROPERTY EXCLUSION SOURCE FAILOVER/g' lab/earthline-16846-regional-audit.mjs
       - name: Run 50-state Regional gate
         env:
           EARTHLINE_URL: 'http://127.0.0.1:8787/'
           STATES: ${{ matrix.states }}
           BATCH: 16846-${{ matrix.batch }}
           OUTDIR: out-16846-${{ matrix.batch }}
-        run: node /tmp/regional-16846.mjs
+        run: node lab/earthline-16846-regional-audit.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -157,17 +158,18 @@ jobs:
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
           for i in {1..20}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 0.5; done
           exit 1
-      - name: Adapt Regional harness to candidate marker
+      - name: Load proven Regional harness from main and adapt marker only
         run: |
-          cp lab/earthline-16844-all50-regional-audit.mjs /tmp/regional-16846.mjs
-          sed -i 's/EARTHLINE 16844 — FINAL FINE-SUPPORT REGIONAL CAPACITY/EARTHLINE 16846 — PROPERTY EXCLUSION SOURCE FAILOVER/g' /tmp/regional-16846.mjs
+          git fetch --depth=1 origin main
+          git show FETCH_HEAD:lab/earthline-16844-all50-regional-audit.mjs > lab/earthline-16846-regional-audit.mjs
+          sed -i 's/EARTHLINE 16844 — FINAL FINE-SUPPORT REGIONAL CAPACITY/EARTHLINE 16846 — PROPERTY EXCLUSION SOURCE FAILOVER/g' lab/earthline-16846-regional-audit.mjs
       - name: Repeat Alaska hard gate
         env:
           EARTHLINE_URL: 'http://127.0.0.1:8787/'
           STATES: 'Alaska'
           BATCH: alaska-16846-r${{ matrix.rep }}
           OUTDIR: out-alaska-16846-r${{ matrix.rep }}
-        run: node /tmp/regional-16846.mjs
+        run: node lab/earthline-16846-regional-audit.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
