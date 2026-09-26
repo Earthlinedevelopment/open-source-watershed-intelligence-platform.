@@ -1,0 +1,46 @@
+name: Earthline 16847 Climate Note Removal v2
+
+on:
+  push:
+    branches: [release-16847-work]
+    paths:
+      - '.github/workflows/earthline-16847-remove-climate-note-v2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-clean-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: release-16847-clean
+          fetch-depth: 0
+      - name: Patch and verify exact sentence removal
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          old='<div class="earthline-climate-note-16488">*Results have been modelled for climate change impacts.</div>'
+          assert s.count(old)==1, f'expected 1 target, found {s.count(old)}'
+          out=s.replace(old,'',1)
+          assert old not in out
+          assert '*Results have been modelled for climate change impacts.' not in out
+          assert len(s)-len(out)==len(old)
+          p.write_text(out)
+          print('EXACT TARGET REMOVED')
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+          test "$(git diff --numstat | wc -l)" -eq 1
+      - name: Commit only index.html
+        run: |
+          git config user.name 'Earthline CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'release: 16847 remove climate-change sentence'
+          git push origin HEAD:release-16847-clean
