@@ -1,0 +1,54 @@
+name: Earthline 16852 Maryland Rhode Island Repeat
+on:
+  push:
+    branches: [us-launch-candidate-16852]
+    paths:
+      - '.github/workflows/earthline-16852-md-ri-repeat.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  repeat:
+    strategy:
+      fail-fast: false
+      matrix:
+        state: [Maryland, Rhode Island]
+        repeat: [1, 2, 3]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: us-launch-candidate-16852
+      - name: Verify production remains exact 16844
+        run: |
+          git fetch origin pages-live
+          test "$(git rev-parse origin/pages-live)" = "a795ff5f80ed3500cfe3d77c7f5d153462bef340"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Repeat live HTTPS Property test
+        shell: bash
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          STATES: ${{ matrix.state }}
+          OUT: md-ri-${{ matrix.state }}-${{ matrix.repeat }}.json
+        run: |
+          set +e
+          node lab/validate-16728-property-50states.mjs
+          code=$?
+          echo "$code" > md-ri-${{ matrix.state }}-${{ matrix.repeat }}.exit
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: md-ri-${{ matrix.state }}-${{ matrix.repeat }}
+          path: |
+            md-ri-${{ matrix.state }}-${{ matrix.repeat }}.json
+            md-ri-${{ matrix.state }}-${{ matrix.repeat }}.exit
+          if-no-files-found: error
+      - name: Enforce repeat result
+        run: test "$(cat md-ri-${{ matrix.state }}-${{ matrix.repeat }}.exit)" = "0"
