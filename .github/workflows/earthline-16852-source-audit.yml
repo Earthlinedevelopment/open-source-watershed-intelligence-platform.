@@ -19,23 +19,21 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re, json
+          import re
           p=Path('index.html')
           s=p.read_text(encoding='utf-8', errors='replace')
-          terms=['language','Spanish','Español','Vietnamese','Tiếng Việt','Thai','ไทย','Recharge Potential','Aquifer Recharge Potential','Bioswale Report','How Bioswales Work','Earthline Process','localStorage','sessionStorage','mailto:','<form','MAPBOX_TOKEN','api.mapbox.com','contact','info@earthlinedevelopment.org','SCORE 0–100','SCORE 0-100']
+          terms=['language','Spanish','Español','Vietnamese','Tiếng Việt','Thai','ไทย','earthlineLanguage16488','Recharge Potential','Aquifer Recharge Potential','computeRecharge','rechargeScore','slopeScore','flowScore','soilScore','aquiferScore','weights','weighted','renderData','Bioswale Report','How Bioswales Work','Earthline Process','localStorage','sessionStorage','mailto:','<form','MAPBOX_TOKEN','api.mapbox.com','contact','info@earthlinedevelopment.org','SCORE 0–100','SCORE 0-100','Groundwater evidence','Modelled','Modeled']
           out=[]
           out.append(f'bytes={len(s.encode("utf-8"))}')
           out.append(f'chars={len(s)}')
           for term in terms:
               hits=[m.start() for m in re.finditer(re.escape(term),s,re.I)]
               out.append(f'\n## {term} count={len(hits)}')
-              for pos in hits[:8]:
-                  a=max(0,pos-220); b=min(len(s),pos+len(term)+420)
+              for pos in hits[:12]:
+                  a=max(0,pos-400); b=min(len(s),pos+len(term)+850)
                   snippet=re.sub(r'\s+',' ',s[a:b])
-                  # Do not emit token values; redact likely Mapbox public-token bodies.
                   snippet=re.sub(r'pk\.[A-Za-z0-9._-]{20,}', 'pk.[REDACTED]', snippet)
                   out.append(snippet)
-          # Generic token-like literal census, values always redacted.
           mapbox_tokens=set(re.findall(r'pk\.[A-Za-z0-9._-]{20,}',s))
           out.append(f'\n## mapbox_public_token_literals count={len(mapbox_tokens)} values=REDACTED')
           Path('source-audit-16852.txt').write_text('\n'.join(out),encoding='utf-8')
