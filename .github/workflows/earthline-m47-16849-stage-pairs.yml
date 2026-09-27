@@ -1,0 +1,28 @@
+name: Mantra 47 16849 Stage Pair Extract
+
+on:
+  push:
+    branches: [diagnostic-m47-16849-refinement-overlap]
+    paths:
+      - '.github/workflows/earthline-m47-16849-stage-pairs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract 16702/16780 stage pairs
+        run: python3 diagnostics/extract-16849-stage-pairs.py
+      - name: Persist stage-pair evidence
+        shell: bash
+        run: |
+          git config user.name 'Earthline CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add diagnostics/16849-stage-pairs.txt
+          git commit -m 'diag: persist 16849 stage-pair evidence'
+          git push origin HEAD:diagnostic-m47-16849-refinement-overlap
