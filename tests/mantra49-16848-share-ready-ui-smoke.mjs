@@ -1,3 +1,4 @@
+// rerun after 16848 language syntax repair
 import fs from 'node:fs/promises';
 import { chromium } from 'playwright';
 
