@@ -1,0 +1,33 @@
+name: Earthline Fix 16848 Language Syntax
+
+on:
+  push:
+    branches: [test-16848-share-ready-ui]
+    paths:
+      - 'tools/fix-16848-language-value-shadow.py'
+      - '.github/workflows/earthline-mantra49-fix-16848-language-syntax.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply syntax repair
+        run: python tools/fix-16848-language-value-shadow.py
+      - name: Verify repair scope
+        run: |
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+          grep -q "scoreValue=document.getElementById('earthlineRechargePotentialValue16488')" index.html
+      - name: Commit repaired test product
+        run: |
+          git config user.name "Earthline CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "test: repair 16848 language syntax"
+          git push origin HEAD:test-16848-share-ready-ui
