@@ -1,0 +1,31 @@
+name: Earthline 16848 Language Stability Smoke
+
+on:
+  push:
+    branches: [test-16848-share-ready-ui]
+    paths:
+      - 'tests/mantra49-16848-language-stability.mjs'
+      - '.github/workflows/earthline-mantra49-16848-language-stability.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Serve repaired candidate
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+      - name: Run delayed language stability smoke
+        run: node tests/mantra49-16848-language-stability.mjs
