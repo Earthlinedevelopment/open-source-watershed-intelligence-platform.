@@ -1,0 +1,34 @@
+name: Mantra 47 16849 Refinement Overlap Diagnostic
+
+on:
+  push:
+    branches: [diagnostic-m47-16849-refinement-overlap]
+    paths:
+      - '.github/workflows/earthline-m47-16849-refinement-overlap.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract refinement overlap evidence
+        run: python3 diagnostics/extract-16849-refinement-overlap.py
+      - name: Persist diagnostic evidence on branch
+        shell: bash
+        run: |
+          if git diff --quiet -- diagnostics/16849-refinement-overlap.txt && git ls-files --error-unmatch diagnostics/16849-refinement-overlap.txt >/dev/null 2>&1; then
+            echo 'No diagnostic change to commit.'
+            exit 0
+          fi
+          git config user.name 'Earthline CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add diagnostics/16849-refinement-overlap.txt
+          git commit -m 'diag: persist 16849 refinement-overlap evidence'
+          git push origin HEAD:diagnostic-m47-16849-refinement-overlap
