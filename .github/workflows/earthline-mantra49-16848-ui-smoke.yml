@@ -1,0 +1,32 @@
+name: Earthline 16848 Share-Ready UI Smoke
+
+on:
+  push:
+    branches: [test-16848-share-ready-ui]
+    paths:
+      - 'tests/mantra49-16848-share-ready-ui-smoke.mjs'
+      - '.github/workflows/earthline-mantra49-16848-ui-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Serve candidate
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          echo $! > /tmp/earthline-http.pid
+      - name: Run EN-TH-VI smoke
+        run: node tests/mantra49-16848-share-ready-ui-smoke.mjs
