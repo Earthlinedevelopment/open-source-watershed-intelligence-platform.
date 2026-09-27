@@ -1,0 +1,28 @@
+name: Mantra 47 16849 Compact Refinement Summary
+
+on:
+  push:
+    branches: [diagnostic-m47-16849-refinement-overlap]
+    paths:
+      - '.github/workflows/earthline-m47-16849-refinement-summary.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build compact refinement summary
+        run: python3 diagnostics/extract-16849-refinement-summary.py
+      - name: Persist summary
+        shell: bash
+        run: |
+          git config user.name 'Earthline CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add diagnostics/16849-refinement-summary.txt
+          git commit -m 'diag: persist compact 16849 refinement summary'
+          git push origin HEAD:diagnostic-m47-16849-refinement-overlap
