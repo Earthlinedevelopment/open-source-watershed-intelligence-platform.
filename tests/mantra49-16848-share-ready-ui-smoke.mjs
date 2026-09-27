@@ -8,12 +8,26 @@ if(!source.includes('EARTHLINE_TEXT_16848')) throw new Error('16848 translation 
 
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1440,height:1000}});
-const pageErrors=[];
+const pageErrors=[]; const consoleErrors=[];
 page.on('pageerror',e=>pageErrors.push(String(e)));
+page.on('console',m=>{if(m.type()==='error')consoleErrors.push(m.text())});
 await page.goto('http://127.0.0.1:8787/',{waitUntil:'domcontentloaded',timeout:30000});
-await page.waitForSelector('#earthlineLanguage16488',{timeout:20000});
-await page.waitForSelector('#earthlineRailContact16512',{timeout:20000});
-await page.waitForSelector('.earthline-recharge-gauge-label-16488',{timeout:20000});
+await page.waitForTimeout(5000);
+const boot=await page.evaluate(()=>({
+  ready:document.readyState,
+  rail:!!document.querySelector('#earthlineRail16188'),
+  panel:!!document.querySelector('#earthlinePanel16188'),
+  language:!!document.querySelector('#earthlineLanguage16488'),
+  contact:!!document.querySelector('#earthlineRailContact16512'),
+  gauge:!!document.querySelector('.earthline-recharge-gauge-label-16488'),
+  build:window.EARTHLINE_BUILD||null,
+  restore:typeof window.earthlineRestoreUi16488,
+  langFn:typeof window.earthlinePropertyTargetLabel16848,
+  htmlLang:document.documentElement.lang
+}));
+console.log('BOOT '+JSON.stringify({boot,pageErrors,consoleErrors},null,2));
+if(pageErrors.length) throw new Error('Browser page errors during boot: '+pageErrors.join(' | '));
+if(!boot.rail||!boot.panel||!boot.language||!boot.contact||!boot.gauge) throw new Error('Launch UI did not initialize '+JSON.stringify(boot));
 
 async function snapshot(){
   return page.evaluate(()=>({
@@ -32,9 +46,9 @@ async function snapshot(){
   }));
 }
 function need(cond,msg,obj){if(!cond)throw new Error(msg+' '+JSON.stringify(obj||{}));}
+async function choose(value){await page.evaluate(v=>{const s=document.querySelector('#earthlineLanguage16488');s.value=v;s.dispatchEvent(new Event('change',{bubbles:true}))},value);await page.waitForTimeout(200)}
 
-await page.selectOption('#earthlineLanguage16488','th');
-await page.waitForTimeout(150);
+await choose('th');
 let th=await snapshot();
 need(th.lang==='th'&&th.stored==='th','Thai language state failed',th);
 need(th.language==='ภาษา','Thai language label failed',th);
@@ -46,8 +60,7 @@ need(th.swales==='ทำความเข้าใจไบโอสเวล',
 need(th.process==='กระบวนการ Earthline','Thai process link failed',th);
 need(th.propFn==='function'&&th.propSample?.startsWith('เป้าเล็ง'),'Thai Property label owner failed',th);
 
-await page.selectOption('#earthlineLanguage16488','vi');
-await page.waitForTimeout(150);
+await choose('vi');
 let vi=await snapshot();
 need(vi.lang==='vi'&&vi.stored==='vi','Vietnamese language state failed',vi);
 need(vi.language==='Ngôn ngữ','Vietnamese language label failed',vi);
@@ -59,8 +72,7 @@ need(vi.swales==='Giải thích Bioswale','Vietnamese menu failed',vi);
 need(vi.process==='Quy trình Earthline','Vietnamese process link failed',vi);
 need(vi.propFn==='function'&&vi.propSample?.startsWith('TÂM NGẮM'),'Vietnamese Property label owner failed',vi);
 
-await page.selectOption('#earthlineLanguage16488','en');
-await page.waitForTimeout(150);
+await choose('en');
 let en=await snapshot();
 need(en.lang==='en'&&en.stored==='en','English language state failed',en);
 need(en.contact==='CONTACT','English Contact failed',en);
@@ -69,5 +81,5 @@ need(en.swales==='Swales Explained','English menu restore failed',en);
 need(en.process==='The Earthline Process','English process restore failed',en);
 
 if(pageErrors.length) throw new Error('Browser page errors: '+pageErrors.join(' | '));
-console.log(JSON.stringify({PASS:true,th,vi,en},null,2));
+console.log(JSON.stringify({PASS:true,th,vi,en,consoleErrors},null,2));
 await browser.close();
