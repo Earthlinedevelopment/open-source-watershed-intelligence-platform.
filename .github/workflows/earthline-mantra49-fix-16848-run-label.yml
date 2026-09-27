@@ -1,0 +1,35 @@
+name: Earthline Fix 16848 Stable Run Label
+
+on:
+  push:
+    branches: [test-16848-share-ready-ui]
+    paths:
+      - 'tools/fix-16848-stable-run-label.py'
+      - '.github/workflows/earthline-mantra49-fix-16848-run-label.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply stable translated Run Analysis owner
+        run: python tools/fix-16848-stable-run-label.py
+      - name: Verify presentation-only scope
+        run: |
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+          grep -q "window.earthlineText16848=earthlineText16848" index.html
+          grep -q "run16848=t16848&&t16848.run" index.html
+          grep -q "labelText16848" index.html
+      - name: Commit repaired test product
+        run: |
+          git config user.name "Earthline CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "test: stabilize 16848 translated Run Analysis label"
+          git push origin HEAD:test-16848-share-ready-ui
