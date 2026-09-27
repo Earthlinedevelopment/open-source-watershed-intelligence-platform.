@@ -1,0 +1,1470 @@
+EARTHLINE 16849 COMPACT REFINEMENT SUMMARY
+index_sha256=a989b83a2360e365e22f0eea0fe034987901395b5bbc1c5719fee44fcf12db38
+chars=3923487
+
+================================================================================
+MARKER used16780 count=2
+--- occurrence 1 char=2347286 line=32059 context=2344686:2352486 ---
+      if(!g16780||!Number.isFinite(g16780.x)||!Number.isFinite(g16780.y))continue;
+          const bx16780=Math.max(0,Math.min(fineNX16780-1,Math.floor(Number(g16780.x)*fineNX16780/Math.max(1,hy.w))));
+          const by16780=Math.max(0,Math.min(fineNY16780-1,Math.floor(Number(g16780.y)*fineNY16780/Math.max(1,hy.h))));
+          const row16780=fineRows16780.find(r16780=>r16780.bx===bx16780&&r16780.by===by16780);if(row16780)row16780.swales++;
+        }
+      };
+      countFineSwales16780();
+      const gapsBefore16780=fineRows16780.filter(r16780=>{
+        const ratio16780=r16780.valid?r16780.opportunity/r16780.valid:0;
+        return r16780.valid>=20&&r16780.opportunity>=8&&ratio16780>=.18&&r16780.swales===0;
+      }).sort((a16780,b16780)=>{
+        const ar16780=a16780.opportunity/Math.max(1,a16780.valid),br16780=b16780.opportunity/Math.max(1,b16780.valid);
+        const ap16780=a16780.preferred/Math.max(1,a16780.valid),bp16780=b16780.preferred/Math.max(1,b16780.valid);
+        return (br16780*100+bp16780*20+b16780.opportunity/8)-(ar16780*100+ap16780*20+a16780.opportunity/8);
+      });
+      const selected16780=[],parentUse16780=new Map(),coarseContourCells16788=new Set();
+      for(const f16788 of (swaleCandidateContours16609&&swaleCandidateContours16609.features||[])){
+        const coords16788=f16788&&f16788.geometry&&f16788.geometry.type==='LineString'?f16788.geometry.coordinates:null;
+        if(!Array.isArray(coords16788))continue;
+        for(const p16788 of coords16788){
+          const g16788=llGrid(hy,p16788);if(!g16788||!Number.isFinite(Number(g16788.x))||!Number.isFinite(Number(g16788.y)))continue;
+          const bx16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.x)*12/Math.max(1,hy.w))));
+          const by16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.y)*12/Math.max(1,hy.h))));
+          coarseContourCells16788.add(bx16788+','+by16788);
+        }
+      }
+      for(const row16780 of gapsBefore16780){
+        row16780.cluster16781=gapsBefore16780.filter(o16781=>Math.hypot(o16781.bx-row16780.bx,o16781.by-row16780.by)<=1.5).length;
+        row16780.coarseContourHit16788=coarseContourCells16788.has(row16780.bx+','+row16780.by)?1:0;
+      }
+      const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)));
+      while(selected16780.length<refinementTileBudget16782){
+        let best16781=null,bestMetric16781=-Infinity;
+        for(const row16780 of gapsBefore16780){
+          if(selected16780.includes(row16780))continue;
+          const pk16780=Math.floor(row16780.bx/2)+','+Math.floor(row16780.by/2),used16780=parentUse16780.get(pk16780)||0;
+// EARTHLINE 16795 — CLUSTERED FINE-TERRAIN REFINEMENT
+          if(used16780>=3)continue;
+          const ratio16781=row16780.opportunity/Math.max(1,row16780.valid),pref16781=row16780.preferred/Math.max(1,row16780.valid);
+          const spread16781=selected16780.length?Math.min(...selected16780.map(p16781=>Math.hypot(p16781.bx-row16780.bx,p16781.by-row16780.by))):3;
+          const metric16781=(row16780.coarseContourHit16788?0:10000)+pref16781*1200+ratio16781*180+row16780.preferred*6+spread16781*24+(Number(row16780.cluster16781)||0)*12+row16780.opportunity/16;
+          if(metric16781>bestMetric16781){bestMetric16781=metric16781;best16781=row16780;}
+        }
+        if(!best16781)break;
+        selected16780.push(best16781);
+        const pk16781=Math.floor(best16781.bx/2)+','+Math.floor(best16781.by/2);
+        parentUse16780.set(pk16781,(parentUse16780.get(pk16781)||0)+1);
+      }
+      let added16780=[],failed16780=[];
+      if(selected16780.length){
+        const savedLandAudit16780=window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584,savedGen16780=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167,start16780=performance.now();
+        try{
+          const b016780=hy.bounds[0],b116780=hy.bounds[1],b216780=hy.bounds[2],b316780=hy.bounds[3];
+          const lon16780=x16780=>b016780+(x16780/(hy.w-1))*(b216780-b016780),lat16780=y16780=>b316780-(y16780/(hy.h-1))*(b316780-b116780);
+          const defs16780=selected16780.map((row16780,i16780)=>{
+            const pad16780=2,x016780=Math.max(0,row16780.x0-pad16780),x116780=Math.min(hy.w-1,row16780.x1+pad16780),y016780=Math.max(0,row16780.y0-pad16780),y116780=Math.min(hy.h-1,row16780.y1+pad16780);
+            return {id:'fine-opportunity-'+(i16780+1),row:row16780,b:[lon16780(x016780),lat16780(y116780),lon16780(x116780),lat16780(y016780)]};
+          });
+          const settled16780=await Promise.allSettled(defs16780.map(async tile16780=>{
+            const d16780=await loadDEM(tile16780.b,32,32,5500,'fine opportunity refinement '+tile16780.id);
+            const g16780=earthlineLandValidityMask16584(d16780,landValidity16584);window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16780;
+            const h16780=await hydrology(d16780,g16780.mask);h16780.outsideLandMask16632=g16780.outsideLandMask16632||null;h16780.inlandWaterMask16632=g16780.inlandWaterMask16632||null;
+            const ch16780=percentile(h16780.acc,.972),e16780=[];
+            for(let y16780=1;y16780<h16780.h-1;y16780++)for(let x16780=1;x16780<h16780.w-1;x16780++){
+              const i16780=y16780*h16780.w+x16780;if(g16780.mask[i16780]!==1)continue;
+              const sp16780=Number(h16780.slope[i16780]),ac16780=Number(h16780.acc[i16780]),el16780=Number(h16780.elev[i16780]);
+              if(Number.isFinite(sp16780)&&sp16780>=.05&&sp16780<=4&&Number.isFinite(ac16780)&&ac16780<ch16780&&Number.isFinite(el16780))e16780.push(el16780);
+            }
+            e16780.sort((a16780,b16780)=>a16780-b16780);const levels16780=[],seen16780=new Set();
+            for(const frac16780 of [.05,.14,.25,.38,.52,.66,.79,.9]){
+              if(!e16780.length)break;
+              const el16780=e16780[Math.min(e16780.length-1,Math.floor((e16780.length-1)*frac16780))],k16780=Math.round(el16780*2)/2;
+              if(!seen16780.has(k16780)){seen16780.add(k16780);levels16780.push(k16780);}
+            }
+            if(!levels16780.length)return [];
+            const c16780=await makeContours(h16780,true,levels16780),s16780=await makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16780;
+            return (s16780.features||[]).map(f16780=>{
+              const seg16780=f16780&&f16780.geometry&&f16780.geometry.coordinates||[],mid16780=seg16780[Math.floor((seg16780.length-1)/2)]||null;
+              const sp16780=Number(f16780&&f16780.properties&&f16780.properties.slope_pct),score16780=Number(f16780&&f16780.properties&&f16780.properties.score||0);
+              if(!mid16780||!Number.isFinite(sp16780)||sp16780<.05||sp16780>4)return null;
+              const mg16780=llGrid(hy,mid16780);if(!mg16780||!Number.isFinite(mg16780.x)||!Number.isFinite(mg16780.y))return null;
+              const cbx16780=Math.max(0,Math.min(fineNX16780-1,Math.floor(Number(mg16780.x)*fineNX16780/Math.max(1,hy.w))));
+              const cby16780=Math.max(0,Math.min(fineNY16780-1,Math.floor(Number(mg16780.y)*fineNY16780/Math.max(1,hy.h))));
+              if(cbx16780!==tile16780.row.bx||cby16780!==tile16780.row.by)return null;
+              return {segment:seg16780,x:Math.max(1,Math.min(hy.w-2,Math.round(mg16780.x))),y:Math.max(1,Math.min(hy.h-2,Math.round(mg16780.y))),slope:sp16780,acc:0,maxAcc:0,score:Math.max(0,Math.min(1,score16780/100)),confidence:'preferred',minLinePx16632:.75,refined16702:true,fineOpportunity16780:true,tile16702:tile16780.id,tile16780:tile16780.id};
+            }).filter(Boolean).sort((a16780,b16780)=>b16780.score-a16780.score).slice(0,6);
+          }));
+          const results16780=settled16780.map(r16780=>r16780.status==='fulfilled'?r16780.value:[]);
+          failed16780=settled16780.map((r16780,i16780)=>r16
+
+--- occurrence 2 char=2347396 line=32061 context=2344796:2352596 ---
+h.max(0,Math.min(fineNX16780-1,Math.floor(Number(g16780.x)*fineNX16780/Math.max(1,hy.w))));
+          const by16780=Math.max(0,Math.min(fineNY16780-1,Math.floor(Number(g16780.y)*fineNY16780/Math.max(1,hy.h))));
+          const row16780=fineRows16780.find(r16780=>r16780.bx===bx16780&&r16780.by===by16780);if(row16780)row16780.swales++;
+        }
+      };
+      countFineSwales16780();
+      const gapsBefore16780=fineRows16780.filter(r16780=>{
+        const ratio16780=r16780.valid?r16780.opportunity/r16780.valid:0;
+        return r16780.valid>=20&&r16780.opportunity>=8&&ratio16780>=.18&&r16780.swales===0;
+      }).sort((a16780,b16780)=>{
+        const ar16780=a16780.opportunity/Math.max(1,a16780.valid),br16780=b16780.opportunity/Math.max(1,b16780.valid);
+        const ap16780=a16780.preferred/Math.max(1,a16780.valid),bp16780=b16780.preferred/Math.max(1,b16780.valid);
+        return (br16780*100+bp16780*20+b16780.opportunity/8)-(ar16780*100+ap16780*20+a16780.opportunity/8);
+      });
+      const selected16780=[],parentUse16780=new Map(),coarseContourCells16788=new Set();
+      for(const f16788 of (swaleCandidateContours16609&&swaleCandidateContours16609.features||[])){
+        const coords16788=f16788&&f16788.geometry&&f16788.geometry.type==='LineString'?f16788.geometry.coordinates:null;
+        if(!Array.isArray(coords16788))continue;
+        for(const p16788 of coords16788){
+          const g16788=llGrid(hy,p16788);if(!g16788||!Number.isFinite(Number(g16788.x))||!Number.isFinite(Number(g16788.y)))continue;
+          const bx16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.x)*12/Math.max(1,hy.w))));
+          const by16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.y)*12/Math.max(1,hy.h))));
+          coarseContourCells16788.add(bx16788+','+by16788);
+        }
+      }
+      for(const row16780 of gapsBefore16780){
+        row16780.cluster16781=gapsBefore16780.filter(o16781=>Math.hypot(o16781.bx-row16780.bx,o16781.by-row16780.by)<=1.5).length;
+        row16780.coarseContourHit16788=coarseContourCells16788.has(row16780.bx+','+row16780.by)?1:0;
+      }
+      const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)));
+      while(selected16780.length<refinementTileBudget16782){
+        let best16781=null,bestMetric16781=-Infinity;
+        for(const row16780 of gapsBefore16780){
+          if(selected16780.includes(row16780))continue;
+          const pk16780=Math.floor(row16780.bx/2)+','+Math.floor(row16780.by/2),used16780=parentUse16780.get(pk16780)||0;
+// EARTHLINE 16795 — CLUSTERED FINE-TERRAIN REFINEMENT
+          if(used16780>=3)continue;
+          const ratio16781=row16780.opportunity/Math.max(1,row16780.valid),pref16781=row16780.preferred/Math.max(1,row16780.valid);
+          const spread16781=selected16780.length?Math.min(...selected16780.map(p16781=>Math.hypot(p16781.bx-row16780.bx,p16781.by-row16780.by))):3;
+          const metric16781=(row16780.coarseContourHit16788?0:10000)+pref16781*1200+ratio16781*180+row16780.preferred*6+spread16781*24+(Number(row16780.cluster16781)||0)*12+row16780.opportunity/16;
+          if(metric16781>bestMetric16781){bestMetric16781=metric16781;best16781=row16780;}
+        }
+        if(!best16781)break;
+        selected16780.push(best16781);
+        const pk16781=Math.floor(best16781.bx/2)+','+Math.floor(best16781.by/2);
+        parentUse16780.set(pk16781,(parentUse16780.get(pk16781)||0)+1);
+      }
+      let added16780=[],failed16780=[];
+      if(selected16780.length){
+        const savedLandAudit16780=window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584,savedGen16780=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167,start16780=performance.now();
+        try{
+          const b016780=hy.bounds[0],b116780=hy.bounds[1],b216780=hy.bounds[2],b316780=hy.bounds[3];
+          const lon16780=x16780=>b016780+(x16780/(hy.w-1))*(b216780-b016780),lat16780=y16780=>b316780-(y16780/(hy.h-1))*(b316780-b116780);
+          const defs16780=selected16780.map((row16780,i16780)=>{
+            const pad16780=2,x016780=Math.max(0,row16780.x0-pad16780),x116780=Math.min(hy.w-1,row16780.x1+pad16780),y016780=Math.max(0,row16780.y0-pad16780),y116780=Math.min(hy.h-1,row16780.y1+pad16780);
+            return {id:'fine-opportunity-'+(i16780+1),row:row16780,b:[lon16780(x016780),lat16780(y116780),lon16780(x116780),lat16780(y016780)]};
+          });
+          const settled16780=await Promise.allSettled(defs16780.map(async tile16780=>{
+            const d16780=await loadDEM(tile16780.b,32,32,5500,'fine opportunity refinement '+tile16780.id);
+            const g16780=earthlineLandValidityMask16584(d16780,landValidity16584);window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16780;
+            const h16780=await hydrology(d16780,g16780.mask);h16780.outsideLandMask16632=g16780.outsideLandMask16632||null;h16780.inlandWaterMask16632=g16780.inlandWaterMask16632||null;
+            const ch16780=percentile(h16780.acc,.972),e16780=[];
+            for(let y16780=1;y16780<h16780.h-1;y16780++)for(let x16780=1;x16780<h16780.w-1;x16780++){
+              const i16780=y16780*h16780.w+x16780;if(g16780.mask[i16780]!==1)continue;
+              const sp16780=Number(h16780.slope[i16780]),ac16780=Number(h16780.acc[i16780]),el16780=Number(h16780.elev[i16780]);
+              if(Number.isFinite(sp16780)&&sp16780>=.05&&sp16780<=4&&Number.isFinite(ac16780)&&ac16780<ch16780&&Number.isFinite(el16780))e16780.push(el16780);
+            }
+            e16780.sort((a16780,b16780)=>a16780-b16780);const levels16780=[],seen16780=new Set();
+            for(const frac16780 of [.05,.14,.25,.38,.52,.66,.79,.9]){
+              if(!e16780.length)break;
+              const el16780=e16780[Math.min(e16780.length-1,Math.floor((e16780.length-1)*frac16780))],k16780=Math.round(el16780*2)/2;
+              if(!seen16780.has(k16780)){seen16780.add(k16780);levels16780.push(k16780);}
+            }
+            if(!levels16780.length)return [];
+            const c16780=await makeContours(h16780,true,levels16780),s16780=await makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16780;
+            return (s16780.features||[]).map(f16780=>{
+              const seg16780=f16780&&f16780.geometry&&f16780.geometry.coordinates||[],mid16780=seg16780[Math.floor((seg16780.length-1)/2)]||null;
+              const sp16780=Number(f16780&&f16780.properties&&f16780.properties.slope_pct),score16780=Number(f16780&&f16780.properties&&f16780.properties.score||0);
+              if(!mid16780||!Number.isFinite(sp16780)||sp16780<.05||sp16780>4)return null;
+              const mg16780=llGrid(hy,mid16780);if(!mg16780||!Number.isFinite(mg16780.x)||!Number.isFinite(mg16780.y))return null;
+              const cbx16780=Math.max(0,Math.min(fineNX16780-1,Math.floor(Number(mg16780.x)*fineNX16780/Math.max(1,hy.w))));
+              const cby16780=Math.max(0,Math.min(fineNY16780-1,Math.floor(Number(mg16780.y)*fineNY16780/Math.max(1,hy.h))));
+              if(cbx16780!==tile16780.row.bx||cby16780!==tile16780.row.by)return null;
+              return {segment:seg16780,x:Math.max(1,Math.min(hy.w-2,Math.round(mg16780.x))),y:Math.max(1,Math.min(hy.h-2,Math.round(mg16780.y))),slope:sp16780,acc:0,maxAcc:0,score:Math.max(0,Math.min(1,score16780/100)),confidence:'preferred',minLinePx16632:.75,refined16702:true,fineOpportunity16780:true,tile16702:tile16780.id,tile16780:tile16780.id};
+            }).filter(Boolean).sort((a16780,b16780)=>b16780.score-a16780.score).slice(0,6);
+          }));
+          const results16780=settled16780.map(r16780=>r16780.status==='fulfilled'?r16780.value:[]);
+          failed16780=settled16780.map((r16780,i16780)=>r16780.status==='rejected'?{id:defs16780[i16780].id,bx:defs16780[i16780].row.bx,by:defs16780[i16780].row.by,error
+
+================================================================================
+MARKER 16787 count=2
+--- occurrence 1 char=416 line=2 context=0:5616 ---
+<!-- EARTHLINE 16793 — STARTUP CAMERA RACE REPAIR. The asynchronous Mapbox load handler no longer overwrites an already-started search with the startup globe camera. Startup behavior remains unchanged while genuinely idle. No science, terrain, hydrology, swale geometry/ranking, mapped-water safety, capacity, renderer, Property behavior, logo, Orb, or controls changed. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16787 — EFFICIENT TERRAIN-GAP RECOVERY. Remaining broad Regional voids were traced to opportunity-rich 12x12 cells whose coarse contour field did not produce enough local geometry. Preserve all existing science/safety/capacity owners; expand the bounded local terrain refinement only where measured gaps exist, using a lighter 32x32 local DEM so more real failed cells can be resolved inside the 15 s ceiling. No jurisdiction names, synthetic corridors, relaxed mapped-water safety, slope-rule change, selection-capacity change, or Property change. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16792 — IOWA/ARKANSAS REGIONAL RECOVERY. Two evidence-backed global repairs only: (1) cached Regional state packages rebind the authoritative LAST_ATOMIC package on every cache hit, preventing stale prior-state identity during repeated state switching; (2) Regional candidate generation always runs the existing relaxed contour pass, constrained to the existing <=4% low-relief opportunity band, so statewide high-relief candidate abundance cannot suppress real low-relief candidates elsewhere. Property behavior, mapped-water safety, jurisdiction containment, ranking, capacity and renderers are unchanged. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16792 — ATOMIC STATE DISPLAY OWNERSHIP. Registered U.S. state resolution now commits loc + centerLng + centerLat + viewZoom as one state package, and the existing Regional context-completion path reasserts the governed state bounds if any later presentation owner moved the map. No hydrology, slope, aquifer, exclusion, ranking, capacity, boundary, or Property science changes. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16792 — AUTHORITATIVE U.S. STATE CAMERA HANDOFF. Registered U.S. state searches now resolve the existing immutable 16556 state package before the generic 3-second geocoder/current-map fallback, so the map camera, crosshair and analysis frame use the same authoritative state location as Regional science. No science, thresholds, terrain, hydrology, swale geometry/ranking, water safety, capacity, renderer or Property behavior changed. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16791 — CORRECTED REGIONAL AUDIT SEMANTICS. Diagnostic lineage now distinguishes candidate corridor footprint coverage from candidate ownership, and selection compares against the maximum attainable 12x12 spread under the existing 6x6 parent-floor guard. No science, thresholds, swale geometry, water safety, capacity, ranking, containment, renderer, lifecycle or Property behavior changed. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16789 — SAME-PARENT COUNT-NEUTRAL FINAL SPREAD. Regional final spread may replace a duplicate 12x12-cell corridor from a 6x6 parent holding exactly three corridors only when the missing replacement cell is in that same parent, so the parent's corridor count remains exactly three. Cross-parent donor protection remains unchanged. No science, water safety, capacity, ranking, containment, renderer or Property behavior changed. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16788 — PRIORITIZED EFFICIENT TERRAIN-GAP RECOVERY. Regional only: preserve 16787's real 32x32 local terrain refinement, but restore a bounded 8–16 tile budget and prioritize opportunity-rich cells lacking coarse contour geometry before already-contoured gaps. This retains the shared slope/water/aquifer/exclusion science, jurisdiction containment, mapped-water safety, ranking and final capacity while recovering performance margin. Property unchanged. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16784 — STANDARDIZED ROOT-CAUSE AUDIT. Diagnostic-only fixed causal audit ladder with O→C→S→P cell lineage, normalized operational probability ranking, first-failed-stage repair lock, and identical tests across jurisdictions. No science, thresholds, capacity, source, water safety, renderer or lifecycle behavior changed. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16783 — FINAL PUBLISHED 12x12 SPREAD. After ordinary Regional fill, duplicate-cell selections are reallocated count-neutrally into empty 12x12 cells that already contain real screened candidates; existing science, water safety, jurisdiction containment and capacity remain unchanged. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16782 — ADAPTIVE CLUSTER-AWARE FINE-CELL REFINEMENT. The existing 16781 cluster-aware local-terrain pass keeps the same science, 48x48 local DEM resolution, jurisdiction containment, water sidecar, ranking and final Regional corridor capacity. Only its bounded refinement tile budget scales with the measured number of unresolved opportunity-rich 12x12 cells: 8 minimum, up to 16 maximum. Real terrain-derived corridors only; no jurisdiction names, synthetic corridors, relaxed science or added publication capacity. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16786 — SPATIALLY COMPLETE REGIONAL CONTOUR ANCHORS. Evidence from the 16785 IA/AR per-cell gate audit showed remaining opportunity cells were often never sampled by fixed-fraction contour anchors. Preserve every existing anchor, then give each distinct 12x12 contour cell up to two total real makeSwales sample attempts. Existing contour geometry, slope/flow gates, jurisdiction cli
+
+--- occurrence 2 char=3551 line=8 context=951:8751 ---
+perty change. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16792 — IOWA/ARKANSAS REGIONAL RECOVERY. Two evidence-backed global repairs only: (1) cached Regional state packages rebind the authoritative LAST_ATOMIC package on every cache hit, preventing stale prior-state identity during repeated state switching; (2) Regional candidate generation always runs the existing relaxed contour pass, constrained to the existing <=4% low-relief opportunity band, so statewide high-relief candidate abundance cannot suppress real low-relief candidates elsewhere. Property behavior, mapped-water safety, jurisdiction containment, ranking, capacity and renderers are unchanged. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16792 — ATOMIC STATE DISPLAY OWNERSHIP. Registered U.S. state resolution now commits loc + centerLng + centerLat + viewZoom as one state package, and the existing Regional context-completion path reasserts the governed state bounds if any later presentation owner moved the map. No hydrology, slope, aquifer, exclusion, ranking, capacity, boundary, or Property science changes. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16792 — AUTHORITATIVE U.S. STATE CAMERA HANDOFF. Registered U.S. state searches now resolve the existing immutable 16556 state package before the generic 3-second geocoder/current-map fallback, so the map camera, crosshair and analysis frame use the same authoritative state location as Regional science. No science, thresholds, terrain, hydrology, swale geometry/ranking, water safety, capacity, renderer or Property behavior changed. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16791 — CORRECTED REGIONAL AUDIT SEMANTICS. Diagnostic lineage now distinguishes candidate corridor footprint coverage from candidate ownership, and selection compares against the maximum attainable 12x12 spread under the existing 6x6 parent-floor guard. No science, thresholds, swale geometry, water safety, capacity, ranking, containment, renderer, lifecycle or Property behavior changed. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16789 — SAME-PARENT COUNT-NEUTRAL FINAL SPREAD. Regional final spread may replace a duplicate 12x12-cell corridor from a 6x6 parent holding exactly three corridors only when the missing replacement cell is in that same parent, so the parent's corridor count remains exactly three. Cross-parent donor protection remains unchanged. No science, water safety, capacity, ranking, containment, renderer or Property behavior changed. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16788 — PRIORITIZED EFFICIENT TERRAIN-GAP RECOVERY. Regional only: preserve 16787's real 32x32 local terrain refinement, but restore a bounded 8–16 tile budget and prioritize opportunity-rich cells lacking coarse contour geometry before already-contoured gaps. This retains the shared slope/water/aquifer/exclusion science, jurisdiction containment, mapped-water safety, ranking and final capacity while recovering performance margin. Property unchanged. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16784 — STANDARDIZED ROOT-CAUSE AUDIT. Diagnostic-only fixed causal audit ladder with O→C→S→P cell lineage, normalized operational probability ranking, first-failed-stage repair lock, and identical tests across jurisdictions. No science, thresholds, capacity, source, water safety, renderer or lifecycle behavior changed. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16783 — FINAL PUBLISHED 12x12 SPREAD. After ordinary Regional fill, duplicate-cell selections are reallocated count-neutrally into empty 12x12 cells that already contain real screened candidates; existing science, water safety, jurisdiction containment and capacity remain unchanged. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16782 — ADAPTIVE CLUSTER-AWARE FINE-CELL REFINEMENT. The existing 16781 cluster-aware local-terrain pass keeps the same science, 48x48 local DEM resolution, jurisdiction containment, water sidecar, ranking and final Regional corridor capacity. Only its bounded refinement tile budget scales with the measured number of unresolved opportunity-rich 12x12 cells: 8 minimum, up to 16 maximum. Real terrain-derived corridors only; no jurisdiction names, synthetic corridors, relaxed science or added publication capacity. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16786 — SPATIALLY COMPLETE REGIONAL CONTOUR ANCHORS. Evidence from the 16785 IA/AR per-cell gate audit showed remaining opportunity cells were often never sampled by fixed-fraction contour anchors. Preserve every existing anchor, then give each distinct 12x12 contour cell up to two total real makeSwales sample attempts. Existing contour geometry, slope/flow gates, jurisdiction clipping, mapped-water/exclusions, ranking and final Regional capacity are unchanged. Property is unchanged. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16785 — REGIONAL CANDIDATE-GENERATION REPAIR. Evidence from the IA/AR makeSwales gate audit showed dominant false loss at the 10-pixel Regional contour-segment floor plus spatial misses from sparse contour anchors. Regional only: accept real screened contour segments down to 4 pixels and sample long contours at denser deterministic anchors. Property remains unchanged. Slope, flow/channel, jurisdiction, mapped-water, exclusions, final capacity and ranking remain governed by the existing owners. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16781 — CLUSTER-AWARE FINE-CELL REFINEMENT. The bounded 16780 local-terrain pass is unchanged in science, tile count, resolution and capacity, but its eight refinement cells are chosen by contiguous empty-opportunity cluster size plus spatial spread instead of raw opportunity alone. This targets broad internal voids without jurisdiction names, synthetic corridors, relaxed science or added capacity. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16780 — NESTED FINE-CELL OPPORTUNITY REFINEMENT. After the first Regional swale pass, opportunity-rich 12x12 terrain cells with no corridor midpoint receive bounded 48x48 local DEM refinement before the existing coverage owner reruns. Same slope/water/aquifer/exclusion science, exact jurisdiction containment, water sidecar, ranking semantics and Regional capacity. Real terrain-derived corridors only; no jurisdiction names, synthetic corridors, relaxed science or added capacity. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16779 — THREE-SUBCELL MINIMUM BEFORE PROPORTIONAL FILL. Regional selection keeps the same screened candidate pool, total capacity, science gates, water sidecar, jurisdiction containment and ranking semantics. Within each occupied 6x6 terrain sector, reserve up to three distinct real 18x18 fine subcells first; then distribute the remaining unchanged capacity proportionally as before. No jurisdiction names, synthetic corridors, relaxed science or added capacity. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16778 — COUNT-NEUTRAL FINE-CELL DISPERSION REBALANCE. Regional selection keeps the same screened candidate pool, total chosen count, science gates, water sidecar, jurisdiction containment and ranking semantics. When a large candidate field leaves >=18 valid 18x18 cells unrepresented and fine-cell coverage is below 86%, low-score duplicate selections are swapped for the best real candidate in missing fine cells. Donor parent sectors retain at least three chosen corridors. No jurisdiction names, synthetic corridors, relaxed science or added capacity. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16777 — GLOBAL STATE-REGISTRY PRECEDENCE REPAIR. Registered U.S. state queries now resolve through the existing atomic 50-state identity/boundary package before legacy place presets. This removes the obsolete Vermont statewide preset bypass without adding jurisdiction-specific science, changing terrain selection, water safety, swale capacity, ranking, o
+
+================================================================================
+MARKER 16788 count=28
+--- occurrence 1 char=3475 line=8 context=875:8675 ---
+ed mapped-water safety, slope-rule change, selection-capacity change, or Property change. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16792 — IOWA/ARKANSAS REGIONAL RECOVERY. Two evidence-backed global repairs only: (1) cached Regional state packages rebind the authoritative LAST_ATOMIC package on every cache hit, preventing stale prior-state identity during repeated state switching; (2) Regional candidate generation always runs the existing relaxed contour pass, constrained to the existing <=4% low-relief opportunity band, so statewide high-relief candidate abundance cannot suppress real low-relief candidates elsewhere. Property behavior, mapped-water safety, jurisdiction containment, ranking, capacity and renderers are unchanged. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16792 — ATOMIC STATE DISPLAY OWNERSHIP. Registered U.S. state resolution now commits loc + centerLng + centerLat + viewZoom as one state package, and the existing Regional context-completion path reasserts the governed state bounds if any later presentation owner moved the map. No hydrology, slope, aquifer, exclusion, ranking, capacity, boundary, or Property science changes. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16792 — AUTHORITATIVE U.S. STATE CAMERA HANDOFF. Registered U.S. state searches now resolve the existing immutable 16556 state package before the generic 3-second geocoder/current-map fallback, so the map camera, crosshair and analysis frame use the same authoritative state location as Regional science. No science, thresholds, terrain, hydrology, swale geometry/ranking, water safety, capacity, renderer or Property behavior changed. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16791 — CORRECTED REGIONAL AUDIT SEMANTICS. Diagnostic lineage now distinguishes candidate corridor footprint coverage from candidate ownership, and selection compares against the maximum attainable 12x12 spread under the existing 6x6 parent-floor guard. No science, thresholds, swale geometry, water safety, capacity, ranking, containment, renderer, lifecycle or Property behavior changed. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16789 — SAME-PARENT COUNT-NEUTRAL FINAL SPREAD. Regional final spread may replace a duplicate 12x12-cell corridor from a 6x6 parent holding exactly three corridors only when the missing replacement cell is in that same parent, so the parent's corridor count remains exactly three. Cross-parent donor protection remains unchanged. No science, water safety, capacity, ranking, containment, renderer or Property behavior changed. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16788 — PRIORITIZED EFFICIENT TERRAIN-GAP RECOVERY. Regional only: preserve 16787's real 32x32 local terrain refinement, but restore a bounded 8–16 tile budget and prioritize opportunity-rich cells lacking coarse contour geometry before already-contoured gaps. This retains the shared slope/water/aquifer/exclusion science, jurisdiction containment, mapped-water safety, ranking and final capacity while recovering performance margin. Property unchanged. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16784 — STANDARDIZED ROOT-CAUSE AUDIT. Diagnostic-only fixed causal audit ladder with O→C→S→P cell lineage, normalized operational probability ranking, first-failed-stage repair lock, and identical tests across jurisdictions. No science, thresholds, capacity, source, water safety, renderer or lifecycle behavior changed. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16783 — FINAL PUBLISHED 12x12 SPREAD. After ordinary Regional fill, duplicate-cell selections are reallocated count-neutrally into empty 12x12 cells that already contain real screened candidates; existing science, water safety, jurisdiction containment and capacity remain unchanged. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16782 — ADAPTIVE CLUSTER-AWARE FINE-CELL REFINEMENT. The existing 16781 cluster-aware local-terrain pass keeps the same science, 48x48 local DEM resolution, jurisdiction containment, water sidecar, ranking and final Regional corridor capacity. Only its bounded refinement tile budget scales with the measured number of unresolved opportunity-rich 12x12 cells: 8 minimum, up to 16 maximum. Real terrain-derived corridors only; no jurisdiction names, synthetic corridors, relaxed science or added publication capacity. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16786 — SPATIALLY COMPLETE REGIONAL CONTOUR ANCHORS. Evidence from the 16785 IA/AR per-cell gate audit showed remaining opportunity cells were often never sampled by fixed-fraction contour anchors. Preserve every existing anchor, then give each distinct 12x12 contour cell up to two total real makeSwales sample attempts. Existing contour geometry, slope/flow gates, jurisdiction clipping, mapped-water/exclusions, ranking and final Regional capacity are unchanged. Property is unchanged. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16785 — REGIONAL CANDIDATE-GENERATION REPAIR. Evidence from the IA/AR makeSwales gate audit showed dominant false loss at the 10-pixel Regional contour-segment floor plus spatial misses from sparse contour anchors. Regional only: accept real screened contour segments down to 4 pixels and sample long contours at denser deterministic anchors. Property remains unchanged. Slope, flow/channel, jurisdiction, mapped-water, exclusions, final capacity and ranking remain governed by the existing owners. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16781 — CLUSTER-AWARE FINE-CELL REFINEMENT. The bounded 16780 local-terrain pass is unchanged in science, tile count, resolution and capacity, but its eight refinement cells are chosen by contiguous empty-opportunity cluster size plus spatial spread instead of raw opportunity alone. This targets broad internal voids without jurisdiction names, synthetic corridors, relaxed science or added capacity. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16780 — NESTED FINE-CELL OPPORTUNITY REFINEMENT. After the first Regional swale pass, opportunity-rich 12x12 terrain cells with no corridor midpoint receive bounded 48x48 local DEM refinement before the existing coverage owner reruns. Same slope/water/aquifer/exclusion science, exact jurisdiction containment, water sidecar, ranking semantics and Regional capacity. Real terrain-derived corridors only; no jurisdiction names, synthetic corridors, relaxed science or added capacity. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16779 — THREE-SUBCELL MINIMUM BEFORE PROPORTIONAL FILL. Regional selection keeps the same screened candidate pool, total capacity, science gates, water sidecar, jurisdiction containment and ranking semantics. Within each occupied 6x6 terrain sector, reserve up to three distinct real 18x18 fine subcells first; then distribute the remaining unchanged capacity proportionally as before. No jurisdiction names, synthetic corridors, relaxed science or added capacity. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16778 — COUNT-NEUTRAL FINE-CELL DISPERSION REBALANCE. Regional selection keeps the same screened candidate pool, total chosen count, science gates, water sidecar, jurisdiction containment and ranking semantics. When a large candidate field leaves >=18 valid 18x18 cells unrepresented and fine-cell coverage is below 86%, low-score duplicate selections are swapped for the best real candidate in missing fine cells. Donor parent sectors retain at least three chosen corridors. No jurisdiction names, synthetic corridors, relaxed science or added capacity. CANDIDATE / NOT ACCEPTED. -->
+<!-- EARTHLINE 16777 — GLOBAL STATE-REGISTRY PRECEDENCE REPAIR. Registered U.S. state queries now resolve through the existing atomic 50-state identity/boundary package before legacy place presets. This removes the obsolete Vermont statewide preset bypass without adding jurisdiction-specific s
+
+--- occurrence 2 char=2345862 line=32039 context=2343262:2351062 ---
+16780+1)*hy.h/fineNY16780)-1);
+        let valid16780=0,opportunity16780=0,preferred16780=0;
+        for(let y16780=y016780;y16780<=y116780;y16780++)for(let x16780=x016780;x16780<=x116780;x16780++){
+          const i16780=y16780*hy.w+x16780;if(hy.validityMask16584[i16780]!==1)continue;
+          if(swaleJurisdictionGeometry16539){
+            const ll16780=gridLL(hy,x16780,y16780);
+            if(!earthlinePointInJurisdiction16539(ll16780,swaleJurisdictionGeometry16539))continue;
+          }
+          valid16780++;const sp16780=Number(hy.slope[i16780]),ac16780=Number(hy.acc[i16780]);
+          if(!Number.isFinite(sp16780)||!Number.isFinite(ac16780)||ac16780>=channel16780)continue;
+          if(sp16780>=.05&&sp16780<=4)opportunity16780++;
+          if(sp16780>=.20&&sp16780<=4)preferred16780++;
+        }
+        fineRows16780.push({bx:bx16780,by:by16780,x0:x016780,x1:x116780,y0:y016780,y1:y116780,valid:valid16780,opportunity:opportunity16780,preferred:preferred16780,swales:0});
+      }
+      const countFineSwales16780=()=>{
+        for(const r16780 of fineRows16780)r16780.swales=0;
+        for(const f16780 of swales.features||[]){
+          const c16780=f16780&&f16780.geometry&&f16780.geometry.type==='LineString'?f16780.geometry.coordinates:null;
+          if(!Array.isArray(c16780)||!c16780.length)continue;
+          const mid16780=c16780[Math.floor((c16780.length-1)/2)],g16780=llGrid(hy,mid16780);
+          if(!g16780||!Number.isFinite(g16780.x)||!Number.isFinite(g16780.y))continue;
+          const bx16780=Math.max(0,Math.min(fineNX16780-1,Math.floor(Number(g16780.x)*fineNX16780/Math.max(1,hy.w))));
+          const by16780=Math.max(0,Math.min(fineNY16780-1,Math.floor(Number(g16780.y)*fineNY16780/Math.max(1,hy.h))));
+          const row16780=fineRows16780.find(r16780=>r16780.bx===bx16780&&r16780.by===by16780);if(row16780)row16780.swales++;
+        }
+      };
+      countFineSwales16780();
+      const gapsBefore16780=fineRows16780.filter(r16780=>{
+        const ratio16780=r16780.valid?r16780.opportunity/r16780.valid:0;
+        return r16780.valid>=20&&r16780.opportunity>=8&&ratio16780>=.18&&r16780.swales===0;
+      }).sort((a16780,b16780)=>{
+        const ar16780=a16780.opportunity/Math.max(1,a16780.valid),br16780=b16780.opportunity/Math.max(1,b16780.valid);
+        const ap16780=a16780.preferred/Math.max(1,a16780.valid),bp16780=b16780.preferred/Math.max(1,b16780.valid);
+        return (br16780*100+bp16780*20+b16780.opportunity/8)-(ar16780*100+ap16780*20+a16780.opportunity/8);
+      });
+      const selected16780=[],parentUse16780=new Map(),coarseContourCells16788=new Set();
+      for(const f16788 of (swaleCandidateContours16609&&swaleCandidateContours16609.features||[])){
+        const coords16788=f16788&&f16788.geometry&&f16788.geometry.type==='LineString'?f16788.geometry.coordinates:null;
+        if(!Array.isArray(coords16788))continue;
+        for(const p16788 of coords16788){
+          const g16788=llGrid(hy,p16788);if(!g16788||!Number.isFinite(Number(g16788.x))||!Number.isFinite(Number(g16788.y)))continue;
+          const bx16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.x)*12/Math.max(1,hy.w))));
+          const by16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.y)*12/Math.max(1,hy.h))));
+          coarseContourCells16788.add(bx16788+','+by16788);
+        }
+      }
+      for(const row16780 of gapsBefore16780){
+        row16780.cluster16781=gapsBefore16780.filter(o16781=>Math.hypot(o16781.bx-row16780.bx,o16781.by-row16780.by)<=1.5).length;
+        row16780.coarseContourHit16788=coarseContourCells16788.has(row16780.bx+','+row16780.by)?1:0;
+      }
+      const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)));
+      while(selected16780.length<refinementTileBudget16782){
+        let best16781=null,bestMetric16781=-Infinity;
+        for(const row16780 of gapsBefore16780){
+          if(selected16780.includes(row16780))continue;
+          const pk16780=Math.floor(row16780.bx/2)+','+Math.floor(row16780.by/2),used16780=parentUse16780.get(pk16780)||0;
+// EARTHLINE 16795 — CLUSTERED FINE-TERRAIN REFINEMENT
+          if(used16780>=3)continue;
+          const ratio16781=row16780.opportunity/Math.max(1,row16780.valid),pref16781=row16780.preferred/Math.max(1,row16780.valid);
+          const spread16781=selected16780.length?Math.min(...selected16780.map(p16781=>Math.hypot(p16781.bx-row16780.bx,p16781.by-row16780.by))):3;
+          const metric16781=(row16780.coarseContourHit16788?0:10000)+pref16781*1200+ratio16781*180+row16780.preferred*6+spread16781*24+(Number(row16780.cluster16781)||0)*12+row16780.opportunity/16;
+          if(metric16781>bestMetric16781){bestMetric16781=metric16781;best16781=row16780;}
+        }
+        if(!best16781)break;
+        selected16780.push(best16781);
+        const pk16781=Math.floor(best16781.bx/2)+','+Math.floor(best16781.by/2);
+        parentUse16780.set(pk16781,(parentUse16780.get(pk16781)||0)+1);
+      }
+      let added16780=[],failed16780=[];
+      if(selected16780.length){
+        const savedLandAudit16780=window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584,savedGen16780=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167,start16780=performance.now();
+        try{
+          const b016780=hy.bounds[0],b116780=hy.bounds[1],b216780=hy.bounds[2],b316780=hy.bounds[3];
+          const lon16780=x16780=>b016780+(x16780/(hy.w-1))*(b216780-b016780),lat16780=y16780=>b316780-(y16780/(hy.h-1))*(b316780-b116780);
+          const defs16780=selected16780.map((row16780,i16780)=>{
+            const pad16780=2,x016780=Math.max(0,row16780.x0-pad16780),x116780=Math.min(hy.w-1,row16780.x1+pad16780),y016780=Math.max(0,row16780.y0-pad16780),y116780=Math.min(hy.h-1,row16780.y1+pad16780);
+            return {id:'fine-opportunity-'+(i16780+1),row:row16780,b:[lon16780(x016780),lat16780(y116780),lon16780(x116780),lat16780(y016780)]};
+          });
+          const settled16780=await Promise.allSettled(defs16780.map(async tile16780=>{
+            const d16780=await loadDEM(tile16780.b,32,32,5500,'fine opportunity refinement '+tile16780.id);
+            const g16780=earthlineLandValidityMask16584(d16780,landValidity16584);window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16780;
+            const h16780=await hydrology(d16780,g16780.mask);h16780.outsideLandMask16632=g16780.outsideLandMask16632||null;h16780.inlandWaterMask16632=g16780.inlandWaterMask16632||null;
+            const ch16780=percentile(h16780.acc,.972),e16780=[];
+            for(let y16780=1;y16780<h16780.h-1;y16780++)for(let x16780=1;x16780<h16780.w-1;x16780++){
+              const i16780=y16780*h16780.w+x16780;if(g16780.mask[i16780]!==1)continue;
+              const sp16780=Number(h16780.slope[i16780]),ac16780=Number(h16780.acc[i16780]),el16780=Number(h16780.elev[i16780]);
+              if(Number.isFinite(sp16780)&&sp16780>=.05&&sp16780<=4&&Number.isFinite(ac16780)&&ac16780<ch16780&&Number.isFinite(el16780))e16780.push(el16780);
+            }
+            e16780.sort((a16780,b16780)=>a16780-b16780);const levels16780=[],seen16780=new Set();
+            for(const frac16780 of [.05,.14,.25,.38,.52,.66,.79,.9]){
+              if(!e16780.length)break;
+              const el16780=e16780[Math.min(e16780.length-1,Math.floor((e16780.length-1)*frac16780))],k16780=Math.round(el16780*2)/2;
+              if(!seen16780.has(k16780)){seen16780.add(k16780);levels16780.push(k16780);}
+            }
+            if(!levels16780.length)return [];
+            const c16780=await makeContours(h16780,true,levels16780),s16780=await makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16780;
+            return (s16780.features||[]).map(f16780=>{
+              const seg16780=f16780&&f16780.geometry&&f16780.geom
+
+--- occurrence 3 char=2345896 line=32040 context=2343296:2351096 ---
+     let valid16780=0,opportunity16780=0,preferred16780=0;
+        for(let y16780=y016780;y16780<=y116780;y16780++)for(let x16780=x016780;x16780<=x116780;x16780++){
+          const i16780=y16780*hy.w+x16780;if(hy.validityMask16584[i16780]!==1)continue;
+          if(swaleJurisdictionGeometry16539){
+            const ll16780=gridLL(hy,x16780,y16780);
+            if(!earthlinePointInJurisdiction16539(ll16780,swaleJurisdictionGeometry16539))continue;
+          }
+          valid16780++;const sp16780=Number(hy.slope[i16780]),ac16780=Number(hy.acc[i16780]);
+          if(!Number.isFinite(sp16780)||!Number.isFinite(ac16780)||ac16780>=channel16780)continue;
+          if(sp16780>=.05&&sp16780<=4)opportunity16780++;
+          if(sp16780>=.20&&sp16780<=4)preferred16780++;
+        }
+        fineRows16780.push({bx:bx16780,by:by16780,x0:x016780,x1:x116780,y0:y016780,y1:y116780,valid:valid16780,opportunity:opportunity16780,preferred:preferred16780,swales:0});
+      }
+      const countFineSwales16780=()=>{
+        for(const r16780 of fineRows16780)r16780.swales=0;
+        for(const f16780 of swales.features||[]){
+          const c16780=f16780&&f16780.geometry&&f16780.geometry.type==='LineString'?f16780.geometry.coordinates:null;
+          if(!Array.isArray(c16780)||!c16780.length)continue;
+          const mid16780=c16780[Math.floor((c16780.length-1)/2)],g16780=llGrid(hy,mid16780);
+          if(!g16780||!Number.isFinite(g16780.x)||!Number.isFinite(g16780.y))continue;
+          const bx16780=Math.max(0,Math.min(fineNX16780-1,Math.floor(Number(g16780.x)*fineNX16780/Math.max(1,hy.w))));
+          const by16780=Math.max(0,Math.min(fineNY16780-1,Math.floor(Number(g16780.y)*fineNY16780/Math.max(1,hy.h))));
+          const row16780=fineRows16780.find(r16780=>r16780.bx===bx16780&&r16780.by===by16780);if(row16780)row16780.swales++;
+        }
+      };
+      countFineSwales16780();
+      const gapsBefore16780=fineRows16780.filter(r16780=>{
+        const ratio16780=r16780.valid?r16780.opportunity/r16780.valid:0;
+        return r16780.valid>=20&&r16780.opportunity>=8&&ratio16780>=.18&&r16780.swales===0;
+      }).sort((a16780,b16780)=>{
+        const ar16780=a16780.opportunity/Math.max(1,a16780.valid),br16780=b16780.opportunity/Math.max(1,b16780.valid);
+        const ap16780=a16780.preferred/Math.max(1,a16780.valid),bp16780=b16780.preferred/Math.max(1,b16780.valid);
+        return (br16780*100+bp16780*20+b16780.opportunity/8)-(ar16780*100+ap16780*20+a16780.opportunity/8);
+      });
+      const selected16780=[],parentUse16780=new Map(),coarseContourCells16788=new Set();
+      for(const f16788 of (swaleCandidateContours16609&&swaleCandidateContours16609.features||[])){
+        const coords16788=f16788&&f16788.geometry&&f16788.geometry.type==='LineString'?f16788.geometry.coordinates:null;
+        if(!Array.isArray(coords16788))continue;
+        for(const p16788 of coords16788){
+          const g16788=llGrid(hy,p16788);if(!g16788||!Number.isFinite(Number(g16788.x))||!Number.isFinite(Number(g16788.y)))continue;
+          const bx16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.x)*12/Math.max(1,hy.w))));
+          const by16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.y)*12/Math.max(1,hy.h))));
+          coarseContourCells16788.add(bx16788+','+by16788);
+        }
+      }
+      for(const row16780 of gapsBefore16780){
+        row16780.cluster16781=gapsBefore16780.filter(o16781=>Math.hypot(o16781.bx-row16780.bx,o16781.by-row16780.by)<=1.5).length;
+        row16780.coarseContourHit16788=coarseContourCells16788.has(row16780.bx+','+row16780.by)?1:0;
+      }
+      const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)));
+      while(selected16780.length<refinementTileBudget16782){
+        let best16781=null,bestMetric16781=-Infinity;
+        for(const row16780 of gapsBefore16780){
+          if(selected16780.includes(row16780))continue;
+          const pk16780=Math.floor(row16780.bx/2)+','+Math.floor(row16780.by/2),used16780=parentUse16780.get(pk16780)||0;
+// EARTHLINE 16795 — CLUSTERED FINE-TERRAIN REFINEMENT
+          if(used16780>=3)continue;
+          const ratio16781=row16780.opportunity/Math.max(1,row16780.valid),pref16781=row16780.preferred/Math.max(1,row16780.valid);
+          const spread16781=selected16780.length?Math.min(...selected16780.map(p16781=>Math.hypot(p16781.bx-row16780.bx,p16781.by-row16780.by))):3;
+          const metric16781=(row16780.coarseContourHit16788?0:10000)+pref16781*1200+ratio16781*180+row16780.preferred*6+spread16781*24+(Number(row16780.cluster16781)||0)*12+row16780.opportunity/16;
+          if(metric16781>bestMetric16781){bestMetric16781=metric16781;best16781=row16780;}
+        }
+        if(!best16781)break;
+        selected16780.push(best16781);
+        const pk16781=Math.floor(best16781.bx/2)+','+Math.floor(best16781.by/2);
+        parentUse16780.set(pk16781,(parentUse16780.get(pk16781)||0)+1);
+      }
+      let added16780=[],failed16780=[];
+      if(selected16780.length){
+        const savedLandAudit16780=window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584,savedGen16780=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167,start16780=performance.now();
+        try{
+          const b016780=hy.bounds[0],b116780=hy.bounds[1],b216780=hy.bounds[2],b316780=hy.bounds[3];
+          const lon16780=x16780=>b016780+(x16780/(hy.w-1))*(b216780-b016780),lat16780=y16780=>b316780-(y16780/(hy.h-1))*(b316780-b116780);
+          const defs16780=selected16780.map((row16780,i16780)=>{
+            const pad16780=2,x016780=Math.max(0,row16780.x0-pad16780),x116780=Math.min(hy.w-1,row16780.x1+pad16780),y016780=Math.max(0,row16780.y0-pad16780),y116780=Math.min(hy.h-1,row16780.y1+pad16780);
+            return {id:'fine-opportunity-'+(i16780+1),row:row16780,b:[lon16780(x016780),lat16780(y116780),lon16780(x116780),lat16780(y016780)]};
+          });
+          const settled16780=await Promise.allSettled(defs16780.map(async tile16780=>{
+            const d16780=await loadDEM(tile16780.b,32,32,5500,'fine opportunity refinement '+tile16780.id);
+            const g16780=earthlineLandValidityMask16584(d16780,landValidity16584);window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16780;
+            const h16780=await hydrology(d16780,g16780.mask);h16780.outsideLandMask16632=g16780.outsideLandMask16632||null;h16780.inlandWaterMask16632=g16780.inlandWaterMask16632||null;
+            const ch16780=percentile(h16780.acc,.972),e16780=[];
+            for(let y16780=1;y16780<h16780.h-1;y16780++)for(let x16780=1;x16780<h16780.w-1;x16780++){
+              const i16780=y16780*h16780.w+x16780;if(g16780.mask[i16780]!==1)continue;
+              const sp16780=Number(h16780.slope[i16780]),ac16780=Number(h16780.acc[i16780]),el16780=Number(h16780.elev[i16780]);
+              if(Number.isFinite(sp16780)&&sp16780>=.05&&sp16780<=4&&Number.isFinite(ac16780)&&ac16780<ch16780&&Number.isFinite(el16780))e16780.push(el16780);
+            }
+            e16780.sort((a16780,b16780)=>a16780-b16780);const levels16780=[],seen16780=new Set();
+            for(const frac16780 of [.05,.14,.25,.38,.52,.66,.79,.9]){
+              if(!e16780.length)break;
+              const el16780=e16780[Math.min(e16780.length-1,Math.floor((e16780.length-1)*frac16780))],k16780=Math.round(el16780*2)/2;
+              if(!seen16780.has(k16780)){seen16780.add(k16780);levels16780.push(k16780);}
+            }
+            if(!levels16780.length)return [];
+            const c16780=await makeContours(h16780,true,levels16780),s16780=await makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16780;
+            return (s16780.features||[]).map(f16780=>{
+              const seg16780=f16780&&f16780.geometry&&f16780.geometry.coordinates||[],mid16780=seg1
+
+--- occurrence 4 char=2345999 line=32041 context=2343399:2351199 ---
+80;y16780++)for(let x16780=x016780;x16780<=x116780;x16780++){
+          const i16780=y16780*hy.w+x16780;if(hy.validityMask16584[i16780]!==1)continue;
+          if(swaleJurisdictionGeometry16539){
+            const ll16780=gridLL(hy,x16780,y16780);
+            if(!earthlinePointInJurisdiction16539(ll16780,swaleJurisdictionGeometry16539))continue;
+          }
+          valid16780++;const sp16780=Number(hy.slope[i16780]),ac16780=Number(hy.acc[i16780]);
+          if(!Number.isFinite(sp16780)||!Number.isFinite(ac16780)||ac16780>=channel16780)continue;
+          if(sp16780>=.05&&sp16780<=4)opportunity16780++;
+          if(sp16780>=.20&&sp16780<=4)preferred16780++;
+        }
+        fineRows16780.push({bx:bx16780,by:by16780,x0:x016780,x1:x116780,y0:y016780,y1:y116780,valid:valid16780,opportunity:opportunity16780,preferred:preferred16780,swales:0});
+      }
+      const countFineSwales16780=()=>{
+        for(const r16780 of fineRows16780)r16780.swales=0;
+        for(const f16780 of swales.features||[]){
+          const c16780=f16780&&f16780.geometry&&f16780.geometry.type==='LineString'?f16780.geometry.coordinates:null;
+          if(!Array.isArray(c16780)||!c16780.length)continue;
+          const mid16780=c16780[Math.floor((c16780.length-1)/2)],g16780=llGrid(hy,mid16780);
+          if(!g16780||!Number.isFinite(g16780.x)||!Number.isFinite(g16780.y))continue;
+          const bx16780=Math.max(0,Math.min(fineNX16780-1,Math.floor(Number(g16780.x)*fineNX16780/Math.max(1,hy.w))));
+          const by16780=Math.max(0,Math.min(fineNY16780-1,Math.floor(Number(g16780.y)*fineNY16780/Math.max(1,hy.h))));
+          const row16780=fineRows16780.find(r16780=>r16780.bx===bx16780&&r16780.by===by16780);if(row16780)row16780.swales++;
+        }
+      };
+      countFineSwales16780();
+      const gapsBefore16780=fineRows16780.filter(r16780=>{
+        const ratio16780=r16780.valid?r16780.opportunity/r16780.valid:0;
+        return r16780.valid>=20&&r16780.opportunity>=8&&ratio16780>=.18&&r16780.swales===0;
+      }).sort((a16780,b16780)=>{
+        const ar16780=a16780.opportunity/Math.max(1,a16780.valid),br16780=b16780.opportunity/Math.max(1,b16780.valid);
+        const ap16780=a16780.preferred/Math.max(1,a16780.valid),bp16780=b16780.preferred/Math.max(1,b16780.valid);
+        return (br16780*100+bp16780*20+b16780.opportunity/8)-(ar16780*100+ap16780*20+a16780.opportunity/8);
+      });
+      const selected16780=[],parentUse16780=new Map(),coarseContourCells16788=new Set();
+      for(const f16788 of (swaleCandidateContours16609&&swaleCandidateContours16609.features||[])){
+        const coords16788=f16788&&f16788.geometry&&f16788.geometry.type==='LineString'?f16788.geometry.coordinates:null;
+        if(!Array.isArray(coords16788))continue;
+        for(const p16788 of coords16788){
+          const g16788=llGrid(hy,p16788);if(!g16788||!Number.isFinite(Number(g16788.x))||!Number.isFinite(Number(g16788.y)))continue;
+          const bx16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.x)*12/Math.max(1,hy.w))));
+          const by16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.y)*12/Math.max(1,hy.h))));
+          coarseContourCells16788.add(bx16788+','+by16788);
+        }
+      }
+      for(const row16780 of gapsBefore16780){
+        row16780.cluster16781=gapsBefore16780.filter(o16781=>Math.hypot(o16781.bx-row16780.bx,o16781.by-row16780.by)<=1.5).length;
+        row16780.coarseContourHit16788=coarseContourCells16788.has(row16780.bx+','+row16780.by)?1:0;
+      }
+      const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)));
+      while(selected16780.length<refinementTileBudget16782){
+        let best16781=null,bestMetric16781=-Infinity;
+        for(const row16780 of gapsBefore16780){
+          if(selected16780.includes(row16780))continue;
+          const pk16780=Math.floor(row16780.bx/2)+','+Math.floor(row16780.by/2),used16780=parentUse16780.get(pk16780)||0;
+// EARTHLINE 16795 — CLUSTERED FINE-TERRAIN REFINEMENT
+          if(used16780>=3)continue;
+          const ratio16781=row16780.opportunity/Math.max(1,row16780.valid),pref16781=row16780.preferred/Math.max(1,row16780.valid);
+          const spread16781=selected16780.length?Math.min(...selected16780.map(p16781=>Math.hypot(p16781.bx-row16780.bx,p16781.by-row16780.by))):3;
+          const metric16781=(row16780.coarseContourHit16788?0:10000)+pref16781*1200+ratio16781*180+row16780.preferred*6+spread16781*24+(Number(row16780.cluster16781)||0)*12+row16780.opportunity/16;
+          if(metric16781>bestMetric16781){bestMetric16781=metric16781;best16781=row16780;}
+        }
+        if(!best16781)break;
+        selected16780.push(best16781);
+        const pk16781=Math.floor(best16781.bx/2)+','+Math.floor(best16781.by/2);
+        parentUse16780.set(pk16781,(parentUse16780.get(pk16781)||0)+1);
+      }
+      let added16780=[],failed16780=[];
+      if(selected16780.length){
+        const savedLandAudit16780=window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584,savedGen16780=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167,start16780=performance.now();
+        try{
+          const b016780=hy.bounds[0],b116780=hy.bounds[1],b216780=hy.bounds[2],b316780=hy.bounds[3];
+          const lon16780=x16780=>b016780+(x16780/(hy.w-1))*(b216780-b016780),lat16780=y16780=>b316780-(y16780/(hy.h-1))*(b316780-b116780);
+          const defs16780=selected16780.map((row16780,i16780)=>{
+            const pad16780=2,x016780=Math.max(0,row16780.x0-pad16780),x116780=Math.min(hy.w-1,row16780.x1+pad16780),y016780=Math.max(0,row16780.y0-pad16780),y116780=Math.min(hy.h-1,row16780.y1+pad16780);
+            return {id:'fine-opportunity-'+(i16780+1),row:row16780,b:[lon16780(x016780),lat16780(y116780),lon16780(x116780),lat16780(y016780)]};
+          });
+          const settled16780=await Promise.allSettled(defs16780.map(async tile16780=>{
+            const d16780=await loadDEM(tile16780.b,32,32,5500,'fine opportunity refinement '+tile16780.id);
+            const g16780=earthlineLandValidityMask16584(d16780,landValidity16584);window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16780;
+            const h16780=await hydrology(d16780,g16780.mask);h16780.outsideLandMask16632=g16780.outsideLandMask16632||null;h16780.inlandWaterMask16632=g16780.inlandWaterMask16632||null;
+            const ch16780=percentile(h16780.acc,.972),e16780=[];
+            for(let y16780=1;y16780<h16780.h-1;y16780++)for(let x16780=1;x16780<h16780.w-1;x16780++){
+              const i16780=y16780*h16780.w+x16780;if(g16780.mask[i16780]!==1)continue;
+              const sp16780=Number(h16780.slope[i16780]),ac16780=Number(h16780.acc[i16780]),el16780=Number(h16780.elev[i16780]);
+              if(Number.isFinite(sp16780)&&sp16780>=.05&&sp16780<=4&&Number.isFinite(ac16780)&&ac16780<ch16780&&Number.isFinite(el16780))e16780.push(el16780);
+            }
+            e16780.sort((a16780,b16780)=>a16780-b16780);const levels16780=[],seen16780=new Set();
+            for(const frac16780 of [.05,.14,.25,.38,.52,.66,.79,.9]){
+              if(!e16780.length)break;
+              const el16780=e16780[Math.min(e16780.length-1,Math.floor((e16780.length-1)*frac16780))],k16780=Math.round(el16780*2)/2;
+              if(!seen16780.has(k16780)){seen16780.add(k16780);levels16780.push(k16780);}
+            }
+            if(!levels16780.length)return [];
+            const c16780=await makeContours(h16780,true,levels16780),s16780=await makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16780;
+            return (s16780.features||[]).map(f16780=>{
+              const seg16780=f16780&&f16780.geometry&&f16780.geometry.coordinates||[],mid16780=seg16780[Math.floor((seg16780.length-1)/2)]||null;
+              const sp16780=Number(f16780&&f16780.proper
+
+--- occurrence 5 char=2346006 line=32041 context=2343406:2351206 ---
+80++)for(let x16780=x016780;x16780<=x116780;x16780++){
+          const i16780=y16780*hy.w+x16780;if(hy.validityMask16584[i16780]!==1)continue;
+          if(swaleJurisdictionGeometry16539){
+            const ll16780=gridLL(hy,x16780,y16780);
+            if(!earthlinePointInJurisdiction16539(ll16780,swaleJurisdictionGeometry16539))continue;
+          }
+          valid16780++;const sp16780=Number(hy.slope[i16780]),ac16780=Number(hy.acc[i16780]);
+          if(!Number.isFinite(sp16780)||!Number.isFinite(ac16780)||ac16780>=channel16780)continue;
+          if(sp16780>=.05&&sp16780<=4)opportunity16780++;
+          if(sp16780>=.20&&sp16780<=4)preferred16780++;
+        }
+        fineRows16780.push({bx:bx16780,by:by16780,x0:x016780,x1:x116780,y0:y016780,y1:y116780,valid:valid16780,opportunity:opportunity16780,preferred:preferred16780,swales:0});
+      }
+      const countFineSwales16780=()=>{
+        for(const r16780 of fineRows16780)r16780.swales=0;
+        for(const f16780 of swales.features||[]){
+          const c16780=f16780&&f16780.geometry&&f16780.geometry.type==='LineString'?f16780.geometry.coordinates:null;
+          if(!Array.isArray(c16780)||!c16780.length)continue;
+          const mid16780=c16780[Math.floor((c16780.length-1)/2)],g16780=llGrid(hy,mid16780);
+          if(!g16780||!Number.isFinite(g16780.x)||!Number.isFinite(g16780.y))continue;
+          const bx16780=Math.max(0,Math.min(fineNX16780-1,Math.floor(Number(g16780.x)*fineNX16780/Math.max(1,hy.w))));
+          const by16780=Math.max(0,Math.min(fineNY16780-1,Math.floor(Number(g16780.y)*fineNY16780/Math.max(1,hy.h))));
+          const row16780=fineRows16780.find(r16780=>r16780.bx===bx16780&&r16780.by===by16780);if(row16780)row16780.swales++;
+        }
+      };
+      countFineSwales16780();
+      const gapsBefore16780=fineRows16780.filter(r16780=>{
+        const ratio16780=r16780.valid?r16780.opportunity/r16780.valid:0;
+        return r16780.valid>=20&&r16780.opportunity>=8&&ratio16780>=.18&&r16780.swales===0;
+      }).sort((a16780,b16780)=>{
+        const ar16780=a16780.opportunity/Math.max(1,a16780.valid),br16780=b16780.opportunity/Math.max(1,b16780.valid);
+        const ap16780=a16780.preferred/Math.max(1,a16780.valid),bp16780=b16780.preferred/Math.max(1,b16780.valid);
+        return (br16780*100+bp16780*20+b16780.opportunity/8)-(ar16780*100+ap16780*20+a16780.opportunity/8);
+      });
+      const selected16780=[],parentUse16780=new Map(),coarseContourCells16788=new Set();
+      for(const f16788 of (swaleCandidateContours16609&&swaleCandidateContours16609.features||[])){
+        const coords16788=f16788&&f16788.geometry&&f16788.geometry.type==='LineString'?f16788.geometry.coordinates:null;
+        if(!Array.isArray(coords16788))continue;
+        for(const p16788 of coords16788){
+          const g16788=llGrid(hy,p16788);if(!g16788||!Number.isFinite(Number(g16788.x))||!Number.isFinite(Number(g16788.y)))continue;
+          const bx16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.x)*12/Math.max(1,hy.w))));
+          const by16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.y)*12/Math.max(1,hy.h))));
+          coarseContourCells16788.add(bx16788+','+by16788);
+        }
+      }
+      for(const row16780 of gapsBefore16780){
+        row16780.cluster16781=gapsBefore16780.filter(o16781=>Math.hypot(o16781.bx-row16780.bx,o16781.by-row16780.by)<=1.5).length;
+        row16780.coarseContourHit16788=coarseContourCells16788.has(row16780.bx+','+row16780.by)?1:0;
+      }
+      const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)));
+      while(selected16780.length<refinementTileBudget16782){
+        let best16781=null,bestMetric16781=-Infinity;
+        for(const row16780 of gapsBefore16780){
+          if(selected16780.includes(row16780))continue;
+          const pk16780=Math.floor(row16780.bx/2)+','+Math.floor(row16780.by/2),used16780=parentUse16780.get(pk16780)||0;
+// EARTHLINE 16795 — CLUSTERED FINE-TERRAIN REFINEMENT
+          if(used16780>=3)continue;
+          const ratio16781=row16780.opportunity/Math.max(1,row16780.valid),pref16781=row16780.preferred/Math.max(1,row16780.valid);
+          const spread16781=selected16780.length?Math.min(...selected16780.map(p16781=>Math.hypot(p16781.bx-row16780.bx,p16781.by-row16780.by))):3;
+          const metric16781=(row16780.coarseContourHit16788?0:10000)+pref16781*1200+ratio16781*180+row16780.preferred*6+spread16781*24+(Number(row16780.cluster16781)||0)*12+row16780.opportunity/16;
+          if(metric16781>bestMetric16781){bestMetric16781=metric16781;best16781=row16780;}
+        }
+        if(!best16781)break;
+        selected16780.push(best16781);
+        const pk16781=Math.floor(best16781.bx/2)+','+Math.floor(best16781.by/2);
+        parentUse16780.set(pk16781,(parentUse16780.get(pk16781)||0)+1);
+      }
+      let added16780=[],failed16780=[];
+      if(selected16780.length){
+        const savedLandAudit16780=window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584,savedGen16780=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167,start16780=performance.now();
+        try{
+          const b016780=hy.bounds[0],b116780=hy.bounds[1],b216780=hy.bounds[2],b316780=hy.bounds[3];
+          const lon16780=x16780=>b016780+(x16780/(hy.w-1))*(b216780-b016780),lat16780=y16780=>b316780-(y16780/(hy.h-1))*(b316780-b116780);
+          const defs16780=selected16780.map((row16780,i16780)=>{
+            const pad16780=2,x016780=Math.max(0,row16780.x0-pad16780),x116780=Math.min(hy.w-1,row16780.x1+pad16780),y016780=Math.max(0,row16780.y0-pad16780),y116780=Math.min(hy.h-1,row16780.y1+pad16780);
+            return {id:'fine-opportunity-'+(i16780+1),row:row16780,b:[lon16780(x016780),lat16780(y116780),lon16780(x116780),lat16780(y016780)]};
+          });
+          const settled16780=await Promise.allSettled(defs16780.map(async tile16780=>{
+            const d16780=await loadDEM(tile16780.b,32,32,5500,'fine opportunity refinement '+tile16780.id);
+            const g16780=earthlineLandValidityMask16584(d16780,landValidity16584);window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16780;
+            const h16780=await hydrology(d16780,g16780.mask);h16780.outsideLandMask16632=g16780.outsideLandMask16632||null;h16780.inlandWaterMask16632=g16780.inlandWaterMask16632||null;
+            const ch16780=percentile(h16780.acc,.972),e16780=[];
+            for(let y16780=1;y16780<h16780.h-1;y16780++)for(let x16780=1;x16780<h16780.w-1;x16780++){
+              const i16780=y16780*h16780.w+x16780;if(g16780.mask[i16780]!==1)continue;
+              const sp16780=Number(h16780.slope[i16780]),ac16780=Number(h16780.acc[i16780]),el16780=Number(h16780.elev[i16780]);
+              if(Number.isFinite(sp16780)&&sp16780>=.05&&sp16780<=4&&Number.isFinite(ac16780)&&ac16780<ch16780&&Number.isFinite(el16780))e16780.push(el16780);
+            }
+            e16780.sort((a16780,b16780)=>a16780-b16780);const levels16780=[],seen16780=new Set();
+            for(const frac16780 of [.05,.14,.25,.38,.52,.66,.79,.9]){
+              if(!e16780.length)break;
+              const el16780=e16780[Math.min(e16780.length-1,Math.floor((e16780.length-1)*frac16780))],k16780=Math.round(el16780*2)/2;
+              if(!seen16780.has(k16780)){seen16780.add(k16780);levels16780.push(k16780);}
+            }
+            if(!levels16780.length)return [];
+            const c16780=await makeContours(h16780,true,levels16780),s16780=await makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16780;
+            return (s16780.features||[]).map(f16780=>{
+              const seg16780=f16780&&f16780.geometry&&f16780.geometry.coordinates||[],mid16780=seg16780[Math.floor((seg16780.length-1)/2)]||null;
+              const sp16780=Number(f16780&&f16780.properties&&f
+
+--- occurrence 6 char=2346014 line=32041 context=2343414:2351214 ---
+(let x16780=x016780;x16780<=x116780;x16780++){
+          const i16780=y16780*hy.w+x16780;if(hy.validityMask16584[i16780]!==1)continue;
+          if(swaleJurisdictionGeometry16539){
+            const ll16780=gridLL(hy,x16780,y16780);
+            if(!earthlinePointInJurisdiction16539(ll16780,swaleJurisdictionGeometry16539))continue;
+          }
+          valid16780++;const sp16780=Number(hy.slope[i16780]),ac16780=Number(hy.acc[i16780]);
+          if(!Number.isFinite(sp16780)||!Number.isFinite(ac16780)||ac16780>=channel16780)continue;
+          if(sp16780>=.05&&sp16780<=4)opportunity16780++;
+          if(sp16780>=.20&&sp16780<=4)preferred16780++;
+        }
+        fineRows16780.push({bx:bx16780,by:by16780,x0:x016780,x1:x116780,y0:y016780,y1:y116780,valid:valid16780,opportunity:opportunity16780,preferred:preferred16780,swales:0});
+      }
+      const countFineSwales16780=()=>{
+        for(const r16780 of fineRows16780)r16780.swales=0;
+        for(const f16780 of swales.features||[]){
+          const c16780=f16780&&f16780.geometry&&f16780.geometry.type==='LineString'?f16780.geometry.coordinates:null;
+          if(!Array.isArray(c16780)||!c16780.length)continue;
+          const mid16780=c16780[Math.floor((c16780.length-1)/2)],g16780=llGrid(hy,mid16780);
+          if(!g16780||!Number.isFinite(g16780.x)||!Number.isFinite(g16780.y))continue;
+          const bx16780=Math.max(0,Math.min(fineNX16780-1,Math.floor(Number(g16780.x)*fineNX16780/Math.max(1,hy.w))));
+          const by16780=Math.max(0,Math.min(fineNY16780-1,Math.floor(Number(g16780.y)*fineNY16780/Math.max(1,hy.h))));
+          const row16780=fineRows16780.find(r16780=>r16780.bx===bx16780&&r16780.by===by16780);if(row16780)row16780.swales++;
+        }
+      };
+      countFineSwales16780();
+      const gapsBefore16780=fineRows16780.filter(r16780=>{
+        const ratio16780=r16780.valid?r16780.opportunity/r16780.valid:0;
+        return r16780.valid>=20&&r16780.opportunity>=8&&ratio16780>=.18&&r16780.swales===0;
+      }).sort((a16780,b16780)=>{
+        const ar16780=a16780.opportunity/Math.max(1,a16780.valid),br16780=b16780.opportunity/Math.max(1,b16780.valid);
+        const ap16780=a16780.preferred/Math.max(1,a16780.valid),bp16780=b16780.preferred/Math.max(1,b16780.valid);
+        return (br16780*100+bp16780*20+b16780.opportunity/8)-(ar16780*100+ap16780*20+a16780.opportunity/8);
+      });
+      const selected16780=[],parentUse16780=new Map(),coarseContourCells16788=new Set();
+      for(const f16788 of (swaleCandidateContours16609&&swaleCandidateContours16609.features||[])){
+        const coords16788=f16788&&f16788.geometry&&f16788.geometry.type==='LineString'?f16788.geometry.coordinates:null;
+        if(!Array.isArray(coords16788))continue;
+        for(const p16788 of coords16788){
+          const g16788=llGrid(hy,p16788);if(!g16788||!Number.isFinite(Number(g16788.x))||!Number.isFinite(Number(g16788.y)))continue;
+          const bx16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.x)*12/Math.max(1,hy.w))));
+          const by16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.y)*12/Math.max(1,hy.h))));
+          coarseContourCells16788.add(bx16788+','+by16788);
+        }
+      }
+      for(const row16780 of gapsBefore16780){
+        row16780.cluster16781=gapsBefore16780.filter(o16781=>Math.hypot(o16781.bx-row16780.bx,o16781.by-row16780.by)<=1.5).length;
+        row16780.coarseContourHit16788=coarseContourCells16788.has(row16780.bx+','+row16780.by)?1:0;
+      }
+      const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)));
+      while(selected16780.length<refinementTileBudget16782){
+        let best16781=null,bestMetric16781=-Infinity;
+        for(const row16780 of gapsBefore16780){
+          if(selected16780.includes(row16780))continue;
+          const pk16780=Math.floor(row16780.bx/2)+','+Math.floor(row16780.by/2),used16780=parentUse16780.get(pk16780)||0;
+// EARTHLINE 16795 — CLUSTERED FINE-TERRAIN REFINEMENT
+          if(used16780>=3)continue;
+          const ratio16781=row16780.opportunity/Math.max(1,row16780.valid),pref16781=row16780.preferred/Math.max(1,row16780.valid);
+          const spread16781=selected16780.length?Math.min(...selected16780.map(p16781=>Math.hypot(p16781.bx-row16780.bx,p16781.by-row16780.by))):3;
+          const metric16781=(row16780.coarseContourHit16788?0:10000)+pref16781*1200+ratio16781*180+row16780.preferred*6+spread16781*24+(Number(row16780.cluster16781)||0)*12+row16780.opportunity/16;
+          if(metric16781>bestMetric16781){bestMetric16781=metric16781;best16781=row16780;}
+        }
+        if(!best16781)break;
+        selected16780.push(best16781);
+        const pk16781=Math.floor(best16781.bx/2)+','+Math.floor(best16781.by/2);
+        parentUse16780.set(pk16781,(parentUse16780.get(pk16781)||0)+1);
+      }
+      let added16780=[],failed16780=[];
+      if(selected16780.length){
+        const savedLandAudit16780=window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584,savedGen16780=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167,start16780=performance.now();
+        try{
+          const b016780=hy.bounds[0],b116780=hy.bounds[1],b216780=hy.bounds[2],b316780=hy.bounds[3];
+          const lon16780=x16780=>b016780+(x16780/(hy.w-1))*(b216780-b016780),lat16780=y16780=>b316780-(y16780/(hy.h-1))*(b316780-b116780);
+          const defs16780=selected16780.map((row16780,i16780)=>{
+            const pad16780=2,x016780=Math.max(0,row16780.x0-pad16780),x116780=Math.min(hy.w-1,row16780.x1+pad16780),y016780=Math.max(0,row16780.y0-pad16780),y116780=Math.min(hy.h-1,row16780.y1+pad16780);
+            return {id:'fine-opportunity-'+(i16780+1),row:row16780,b:[lon16780(x016780),lat16780(y116780),lon16780(x116780),lat16780(y016780)]};
+          });
+          const settled16780=await Promise.allSettled(defs16780.map(async tile16780=>{
+            const d16780=await loadDEM(tile16780.b,32,32,5500,'fine opportunity refinement '+tile16780.id);
+            const g16780=earthlineLandValidityMask16584(d16780,landValidity16584);window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16780;
+            const h16780=await hydrology(d16780,g16780.mask);h16780.outsideLandMask16632=g16780.outsideLandMask16632||null;h16780.inlandWaterMask16632=g16780.inlandWaterMask16632||null;
+            const ch16780=percentile(h16780.acc,.972),e16780=[];
+            for(let y16780=1;y16780<h16780.h-1;y16780++)for(let x16780=1;x16780<h16780.w-1;x16780++){
+              const i16780=y16780*h16780.w+x16780;if(g16780.mask[i16780]!==1)continue;
+              const sp16780=Number(h16780.slope[i16780]),ac16780=Number(h16780.acc[i16780]),el16780=Number(h16780.elev[i16780]);
+              if(Number.isFinite(sp16780)&&sp16780>=.05&&sp16780<=4&&Number.isFinite(ac16780)&&ac16780<ch16780&&Number.isFinite(el16780))e16780.push(el16780);
+            }
+            e16780.sort((a16780,b16780)=>a16780-b16780);const levels16780=[],seen16780=new Set();
+            for(const frac16780 of [.05,.14,.25,.38,.52,.66,.79,.9]){
+              if(!e16780.length)break;
+              const el16780=e16780[Math.min(e16780.length-1,Math.floor((e16780.length-1)*frac16780))],k16780=Math.round(el16780*2)/2;
+              if(!seen16780.has(k16780)){seen16780.add(k16780);levels16780.push(k16780);}
+            }
+            if(!levels16780.length)return [];
+            const c16780=await makeContours(h16780,true,levels16780),s16780=await makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16780;
+            return (s16780.features||[]).map(f16780=>{
+              const seg16780=f16780&&f16780.geometry&&f16780.geometry.coordinates||[],mid16780=seg16780[Math.floor((seg16780.length-1)/2)]||null;
+              const sp16780=Number(f16780&&f16780.properties&&f16780.pr
+
+--- occurrence 7 char=2346031 line=32041 context=2343431:2351231 ---
+80;x16780<=x116780;x16780++){
+          const i16780=y16780*hy.w+x16780;if(hy.validityMask16584[i16780]!==1)continue;
+          if(swaleJurisdictionGeometry16539){
+            const ll16780=gridLL(hy,x16780,y16780);
+            if(!earthlinePointInJurisdiction16539(ll16780,swaleJurisdictionGeometry16539))continue;
+          }
+          valid16780++;const sp16780=Number(hy.slope[i16780]),ac16780=Number(hy.acc[i16780]);
+          if(!Number.isFinite(sp16780)||!Number.isFinite(ac16780)||ac16780>=channel16780)continue;
+          if(sp16780>=.05&&sp16780<=4)opportunity16780++;
+          if(sp16780>=.20&&sp16780<=4)preferred16780++;
+        }
+        fineRows16780.push({bx:bx16780,by:by16780,x0:x016780,x1:x116780,y0:y016780,y1:y116780,valid:valid16780,opportunity:opportunity16780,preferred:preferred16780,swales:0});
+      }
+      const countFineSwales16780=()=>{
+        for(const r16780 of fineRows16780)r16780.swales=0;
+        for(const f16780 of swales.features||[]){
+          const c16780=f16780&&f16780.geometry&&f16780.geometry.type==='LineString'?f16780.geometry.coordinates:null;
+          if(!Array.isArray(c16780)||!c16780.length)continue;
+          const mid16780=c16780[Math.floor((c16780.length-1)/2)],g16780=llGrid(hy,mid16780);
+          if(!g16780||!Number.isFinite(g16780.x)||!Number.isFinite(g16780.y))continue;
+          const bx16780=Math.max(0,Math.min(fineNX16780-1,Math.floor(Number(g16780.x)*fineNX16780/Math.max(1,hy.w))));
+          const by16780=Math.max(0,Math.min(fineNY16780-1,Math.floor(Number(g16780.y)*fineNY16780/Math.max(1,hy.h))));
+          const row16780=fineRows16780.find(r16780=>r16780.bx===bx16780&&r16780.by===by16780);if(row16780)row16780.swales++;
+        }
+      };
+      countFineSwales16780();
+      const gapsBefore16780=fineRows16780.filter(r16780=>{
+        const ratio16780=r16780.valid?r16780.opportunity/r16780.valid:0;
+        return r16780.valid>=20&&r16780.opportunity>=8&&ratio16780>=.18&&r16780.swales===0;
+      }).sort((a16780,b16780)=>{
+        const ar16780=a16780.opportunity/Math.max(1,a16780.valid),br16780=b16780.opportunity/Math.max(1,b16780.valid);
+        const ap16780=a16780.preferred/Math.max(1,a16780.valid),bp16780=b16780.preferred/Math.max(1,b16780.valid);
+        return (br16780*100+bp16780*20+b16780.opportunity/8)-(ar16780*100+ap16780*20+a16780.opportunity/8);
+      });
+      const selected16780=[],parentUse16780=new Map(),coarseContourCells16788=new Set();
+      for(const f16788 of (swaleCandidateContours16609&&swaleCandidateContours16609.features||[])){
+        const coords16788=f16788&&f16788.geometry&&f16788.geometry.type==='LineString'?f16788.geometry.coordinates:null;
+        if(!Array.isArray(coords16788))continue;
+        for(const p16788 of coords16788){
+          const g16788=llGrid(hy,p16788);if(!g16788||!Number.isFinite(Number(g16788.x))||!Number.isFinite(Number(g16788.y)))continue;
+          const bx16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.x)*12/Math.max(1,hy.w))));
+          const by16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.y)*12/Math.max(1,hy.h))));
+          coarseContourCells16788.add(bx16788+','+by16788);
+        }
+      }
+      for(const row16780 of gapsBefore16780){
+        row16780.cluster16781=gapsBefore16780.filter(o16781=>Math.hypot(o16781.bx-row16780.bx,o16781.by-row16780.by)<=1.5).length;
+        row16780.coarseContourHit16788=coarseContourCells16788.has(row16780.bx+','+row16780.by)?1:0;
+      }
+      const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)));
+      while(selected16780.length<refinementTileBudget16782){
+        let best16781=null,bestMetric16781=-Infinity;
+        for(const row16780 of gapsBefore16780){
+          if(selected16780.includes(row16780))continue;
+          const pk16780=Math.floor(row16780.bx/2)+','+Math.floor(row16780.by/2),used16780=parentUse16780.get(pk16780)||0;
+// EARTHLINE 16795 — CLUSTERED FINE-TERRAIN REFINEMENT
+          if(used16780>=3)continue;
+          const ratio16781=row16780.opportunity/Math.max(1,row16780.valid),pref16781=row16780.preferred/Math.max(1,row16780.valid);
+          const spread16781=selected16780.length?Math.min(...selected16780.map(p16781=>Math.hypot(p16781.bx-row16780.bx,p16781.by-row16780.by))):3;
+          const metric16781=(row16780.coarseContourHit16788?0:10000)+pref16781*1200+ratio16781*180+row16780.preferred*6+spread16781*24+(Number(row16780.cluster16781)||0)*12+row16780.opportunity/16;
+          if(metric16781>bestMetric16781){bestMetric16781=metric16781;best16781=row16780;}
+        }
+        if(!best16781)break;
+        selected16780.push(best16781);
+        const pk16781=Math.floor(best16781.bx/2)+','+Math.floor(best16781.by/2);
+        parentUse16780.set(pk16781,(parentUse16780.get(pk16781)||0)+1);
+      }
+      let added16780=[],failed16780=[];
+      if(selected16780.length){
+        const savedLandAudit16780=window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584,savedGen16780=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167,start16780=performance.now();
+        try{
+          const b016780=hy.bounds[0],b116780=hy.bounds[1],b216780=hy.bounds[2],b316780=hy.bounds[3];
+          const lon16780=x16780=>b016780+(x16780/(hy.w-1))*(b216780-b016780),lat16780=y16780=>b316780-(y16780/(hy.h-1))*(b316780-b116780);
+          const defs16780=selected16780.map((row16780,i16780)=>{
+            const pad16780=2,x016780=Math.max(0,row16780.x0-pad16780),x116780=Math.min(hy.w-1,row16780.x1+pad16780),y016780=Math.max(0,row16780.y0-pad16780),y116780=Math.min(hy.h-1,row16780.y1+pad16780);
+            return {id:'fine-opportunity-'+(i16780+1),row:row16780,b:[lon16780(x016780),lat16780(y116780),lon16780(x116780),lat16780(y016780)]};
+          });
+          const settled16780=await Promise.allSettled(defs16780.map(async tile16780=>{
+            const d16780=await loadDEM(tile16780.b,32,32,5500,'fine opportunity refinement '+tile16780.id);
+            const g16780=earthlineLandValidityMask16584(d16780,landValidity16584);window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16780;
+            const h16780=await hydrology(d16780,g16780.mask);h16780.outsideLandMask16632=g16780.outsideLandMask16632||null;h16780.inlandWaterMask16632=g16780.inlandWaterMask16632||null;
+            const ch16780=percentile(h16780.acc,.972),e16780=[];
+            for(let y16780=1;y16780<h16780.h-1;y16780++)for(let x16780=1;x16780<h16780.w-1;x16780++){
+              const i16780=y16780*h16780.w+x16780;if(g16780.mask[i16780]!==1)continue;
+              const sp16780=Number(h16780.slope[i16780]),ac16780=Number(h16780.acc[i16780]),el16780=Number(h16780.elev[i16780]);
+              if(Number.isFinite(sp16780)&&sp16780>=.05&&sp16780<=4&&Number.isFinite(ac16780)&&ac16780<ch16780&&Number.isFinite(el16780))e16780.push(el16780);
+            }
+            e16780.sort((a16780,b16780)=>a16780-b16780);const levels16780=[],seen16780=new Set();
+            for(const frac16780 of [.05,.14,.25,.38,.52,.66,.79,.9]){
+              if(!e16780.length)break;
+              const el16780=e16780[Math.min(e16780.length-1,Math.floor((e16780.length-1)*frac16780))],k16780=Math.round(el16780*2)/2;
+              if(!seen16780.has(k16780)){seen16780.add(k16780);levels16780.push(k16780);}
+            }
+            if(!levels16780.length)return [];
+            const c16780=await makeContours(h16780,true,levels16780),s16780=await makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16780;
+            return (s16780.features||[]).map(f16780=>{
+              const seg16780=f16780&&f16780.geometry&&f16780.geometry.coordinates||[],mid16780=seg16780[Math.floor((seg16780.length-1)/2)]||null;
+              const sp16780=Number(f16780&&f16780.properties&&f16780.properties.slope_pc
+
+--- occurrence 8 char=2346067 line=32041 context=2343467:2351267 ---
+    const i16780=y16780*hy.w+x16780;if(hy.validityMask16584[i16780]!==1)continue;
+          if(swaleJurisdictionGeometry16539){
+            const ll16780=gridLL(hy,x16780,y16780);
+            if(!earthlinePointInJurisdiction16539(ll16780,swaleJurisdictionGeometry16539))continue;
+          }
+          valid16780++;const sp16780=Number(hy.slope[i16780]),ac16780=Number(hy.acc[i16780]);
+          if(!Number.isFinite(sp16780)||!Number.isFinite(ac16780)||ac16780>=channel16780)continue;
+          if(sp16780>=.05&&sp16780<=4)opportunity16780++;
+          if(sp16780>=.20&&sp16780<=4)preferred16780++;
+        }
+        fineRows16780.push({bx:bx16780,by:by16780,x0:x016780,x1:x116780,y0:y016780,y1:y116780,valid:valid16780,opportunity:opportunity16780,preferred:preferred16780,swales:0});
+      }
+      const countFineSwales16780=()=>{
+        for(const r16780 of fineRows16780)r16780.swales=0;
+        for(const f16780 of swales.features||[]){
+          const c16780=f16780&&f16780.geometry&&f16780.geometry.type==='LineString'?f16780.geometry.coordinates:null;
+          if(!Array.isArray(c16780)||!c16780.length)continue;
+          const mid16780=c16780[Math.floor((c16780.length-1)/2)],g16780=llGrid(hy,mid16780);
+          if(!g16780||!Number.isFinite(g16780.x)||!Number.isFinite(g16780.y))continue;
+          const bx16780=Math.max(0,Math.min(fineNX16780-1,Math.floor(Number(g16780.x)*fineNX16780/Math.max(1,hy.w))));
+          const by16780=Math.max(0,Math.min(fineNY16780-1,Math.floor(Number(g16780.y)*fineNY16780/Math.max(1,hy.h))));
+          const row16780=fineRows16780.find(r16780=>r16780.bx===bx16780&&r16780.by===by16780);if(row16780)row16780.swales++;
+        }
+      };
+      countFineSwales16780();
+      const gapsBefore16780=fineRows16780.filter(r16780=>{
+        const ratio16780=r16780.valid?r16780.opportunity/r16780.valid:0;
+        return r16780.valid>=20&&r16780.opportunity>=8&&ratio16780>=.18&&r16780.swales===0;
+      }).sort((a16780,b16780)=>{
+        const ar16780=a16780.opportunity/Math.max(1,a16780.valid),br16780=b16780.opportunity/Math.max(1,b16780.valid);
+        const ap16780=a16780.preferred/Math.max(1,a16780.valid),bp16780=b16780.preferred/Math.max(1,b16780.valid);
+        return (br16780*100+bp16780*20+b16780.opportunity/8)-(ar16780*100+ap16780*20+a16780.opportunity/8);
+      });
+      const selected16780=[],parentUse16780=new Map(),coarseContourCells16788=new Set();
+      for(const f16788 of (swaleCandidateContours16609&&swaleCandidateContours16609.features||[])){
+        const coords16788=f16788&&f16788.geometry&&f16788.geometry.type==='LineString'?f16788.geometry.coordinates:null;
+        if(!Array.isArray(coords16788))continue;
+        for(const p16788 of coords16788){
+          const g16788=llGrid(hy,p16788);if(!g16788||!Number.isFinite(Number(g16788.x))||!Number.isFinite(Number(g16788.y)))continue;
+          const bx16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.x)*12/Math.max(1,hy.w))));
+          const by16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.y)*12/Math.max(1,hy.h))));
+          coarseContourCells16788.add(bx16788+','+by16788);
+        }
+      }
+      for(const row16780 of gapsBefore16780){
+        row16780.cluster16781=gapsBefore16780.filter(o16781=>Math.hypot(o16781.bx-row16780.bx,o16781.by-row16780.by)<=1.5).length;
+        row16780.coarseContourHit16788=coarseContourCells16788.has(row16780.bx+','+row16780.by)?1:0;
+      }
+      const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)));
+      while(selected16780.length<refinementTileBudget16782){
+        let best16781=null,bestMetric16781=-Infinity;
+        for(const row16780 of gapsBefore16780){
+          if(selected16780.includes(row16780))continue;
+          const pk16780=Math.floor(row16780.bx/2)+','+Math.floor(row16780.by/2),used16780=parentUse16780.get(pk16780)||0;
+// EARTHLINE 16795 — CLUSTERED FINE-TERRAIN REFINEMENT
+          if(used16780>=3)continue;
+          const ratio16781=row16780.opportunity/Math.max(1,row16780.valid),pref16781=row16780.preferred/Math.max(1,row16780.valid);
+          const spread16781=selected16780.length?Math.min(...selected16780.map(p16781=>Math.hypot(p16781.bx-row16780.bx,p16781.by-row16780.by))):3;
+          const metric16781=(row16780.coarseContourHit16788?0:10000)+pref16781*1200+ratio16781*180+row16780.preferred*6+spread16781*24+(Number(row16780.cluster16781)||0)*12+row16780.opportunity/16;
+          if(metric16781>bestMetric16781){bestMetric16781=metric16781;best16781=row16780;}
+        }
+        if(!best16781)break;
+        selected16780.push(best16781);
+        const pk16781=Math.floor(best16781.bx/2)+','+Math.floor(best16781.by/2);
+        parentUse16780.set(pk16781,(parentUse16780.get(pk16781)||0)+1);
+      }
+      let added16780=[],failed16780=[];
+      if(selected16780.length){
+        const savedLandAudit16780=window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584,savedGen16780=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167,start16780=performance.now();
+        try{
+          const b016780=hy.bounds[0],b116780=hy.bounds[1],b216780=hy.bounds[2],b316780=hy.bounds[3];
+          const lon16780=x16780=>b016780+(x16780/(hy.w-1))*(b216780-b016780),lat16780=y16780=>b316780-(y16780/(hy.h-1))*(b316780-b116780);
+          const defs16780=selected16780.map((row16780,i16780)=>{
+            const pad16780=2,x016780=Math.max(0,row16780.x0-pad16780),x116780=Math.min(hy.w-1,row16780.x1+pad16780),y016780=Math.max(0,row16780.y0-pad16780),y116780=Math.min(hy.h-1,row16780.y1+pad16780);
+            return {id:'fine-opportunity-'+(i16780+1),row:row16780,b:[lon16780(x016780),lat16780(y116780),lon16780(x116780),lat16780(y016780)]};
+          });
+          const settled16780=await Promise.allSettled(defs16780.map(async tile16780=>{
+            const d16780=await loadDEM(tile16780.b,32,32,5500,'fine opportunity refinement '+tile16780.id);
+            const g16780=earthlineLandValidityMask16584(d16780,landValidity16584);window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16780;
+            const h16780=await hydrology(d16780,g16780.mask);h16780.outsideLandMask16632=g16780.outsideLandMask16632||null;h16780.inlandWaterMask16632=g16780.inlandWaterMask16632||null;
+            const ch16780=percentile(h16780.acc,.972),e16780=[];
+            for(let y16780=1;y16780<h16780.h-1;y16780++)for(let x16780=1;x16780<h16780.w-1;x16780++){
+              const i16780=y16780*h16780.w+x16780;if(g16780.mask[i16780]!==1)continue;
+              const sp16780=Number(h16780.slope[i16780]),ac16780=Number(h16780.acc[i16780]),el16780=Number(h16780.elev[i16780]);
+              if(Number.isFinite(sp16780)&&sp16780>=.05&&sp16780<=4&&Number.isFinite(ac16780)&&ac16780<ch16780&&Number.isFinite(el16780))e16780.push(el16780);
+            }
+            e16780.sort((a16780,b16780)=>a16780-b16780);const levels16780=[],seen16780=new Set();
+            for(const frac16780 of [.05,.14,.25,.38,.52,.66,.79,.9]){
+              if(!e16780.length)break;
+              const el16780=e16780[Math.min(e16780.length-1,Math.floor((e16780.length-1)*frac16780))],k16780=Math.round(el16780*2)/2;
+              if(!seen16780.has(k16780)){seen16780.add(k16780);levels16780.push(k16780);}
+            }
+            if(!levels16780.length)return [];
+            const c16780=await makeContours(h16780,true,levels16780),s16780=await makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16780;
+            return (s16780.features||[]).map(f16780=>{
+              const seg16780=f16780&&f16780.geometry&&f16780.geometry.coordinates||[],mid16780=seg16780[Math.floor((seg16780.length-1)/2)]||null;
+              const sp16780=Number(f16780&&f16780.properties&&f16780.properties.slope_pct),score16780=Number(f16780&&f16780.
+
+--- occurrence 9 char=2346132 line=32042 context=2343532:2351332 ---
+0]!==1)continue;
+          if(swaleJurisdictionGeometry16539){
+            const ll16780=gridLL(hy,x16780,y16780);
+            if(!earthlinePointInJurisdiction16539(ll16780,swaleJurisdictionGeometry16539))continue;
+          }
+          valid16780++;const sp16780=Number(hy.slope[i16780]),ac16780=Number(hy.acc[i16780]);
+          if(!Number.isFinite(sp16780)||!Number.isFinite(ac16780)||ac16780>=channel16780)continue;
+          if(sp16780>=.05&&sp16780<=4)opportunity16780++;
+          if(sp16780>=.20&&sp16780<=4)preferred16780++;
+        }
+        fineRows16780.push({bx:bx16780,by:by16780,x0:x016780,x1:x116780,y0:y016780,y1:y116780,valid:valid16780,opportunity:opportunity16780,preferred:preferred16780,swales:0});
+      }
+      const countFineSwales16780=()=>{
+        for(const r16780 of fineRows16780)r16780.swales=0;
+        for(const f16780 of swales.features||[]){
+          const c16780=f16780&&f16780.geometry&&f16780.geometry.type==='LineString'?f16780.geometry.coordinates:null;
+          if(!Array.isArray(c16780)||!c16780.length)continue;
+          const mid16780=c16780[Math.floor((c16780.length-1)/2)],g16780=llGrid(hy,mid16780);
+          if(!g16780||!Number.isFinite(g16780.x)||!Number.isFinite(g16780.y))continue;
+          const bx16780=Math.max(0,Math.min(fineNX16780-1,Math.floor(Number(g16780.x)*fineNX16780/Math.max(1,hy.w))));
+          const by16780=Math.max(0,Math.min(fineNY16780-1,Math.floor(Number(g16780.y)*fineNY16780/Math.max(1,hy.h))));
+          const row16780=fineRows16780.find(r16780=>r16780.bx===bx16780&&r16780.by===by16780);if(row16780)row16780.swales++;
+        }
+      };
+      countFineSwales16780();
+      const gapsBefore16780=fineRows16780.filter(r16780=>{
+        const ratio16780=r16780.valid?r16780.opportunity/r16780.valid:0;
+        return r16780.valid>=20&&r16780.opportunity>=8&&ratio16780>=.18&&r16780.swales===0;
+      }).sort((a16780,b16780)=>{
+        const ar16780=a16780.opportunity/Math.max(1,a16780.valid),br16780=b16780.opportunity/Math.max(1,b16780.valid);
+        const ap16780=a16780.preferred/Math.max(1,a16780.valid),bp16780=b16780.preferred/Math.max(1,b16780.valid);
+        return (br16780*100+bp16780*20+b16780.opportunity/8)-(ar16780*100+ap16780*20+a16780.opportunity/8);
+      });
+      const selected16780=[],parentUse16780=new Map(),coarseContourCells16788=new Set();
+      for(const f16788 of (swaleCandidateContours16609&&swaleCandidateContours16609.features||[])){
+        const coords16788=f16788&&f16788.geometry&&f16788.geometry.type==='LineString'?f16788.geometry.coordinates:null;
+        if(!Array.isArray(coords16788))continue;
+        for(const p16788 of coords16788){
+          const g16788=llGrid(hy,p16788);if(!g16788||!Number.isFinite(Number(g16788.x))||!Number.isFinite(Number(g16788.y)))continue;
+          const bx16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.x)*12/Math.max(1,hy.w))));
+          const by16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.y)*12/Math.max(1,hy.h))));
+          coarseContourCells16788.add(bx16788+','+by16788);
+        }
+      }
+      for(const row16780 of gapsBefore16780){
+        row16780.cluster16781=gapsBefore16780.filter(o16781=>Math.hypot(o16781.bx-row16780.bx,o16781.by-row16780.by)<=1.5).length;
+        row16780.coarseContourHit16788=coarseContourCells16788.has(row16780.bx+','+row16780.by)?1:0;
+      }
+      const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)));
+      while(selected16780.length<refinementTileBudget16782){
+        let best16781=null,bestMetric16781=-Infinity;
+        for(const row16780 of gapsBefore16780){
+          if(selected16780.includes(row16780))continue;
+          const pk16780=Math.floor(row16780.bx/2)+','+Math.floor(row16780.by/2),used16780=parentUse16780.get(pk16780)||0;
+// EARTHLINE 16795 — CLUSTERED FINE-TERRAIN REFINEMENT
+          if(used16780>=3)continue;
+          const ratio16781=row16780.opportunity/Math.max(1,row16780.valid),pref16781=row16780.preferred/Math.max(1,row16780.valid);
+          const spread16781=selected16780.length?Math.min(...selected16780.map(p16781=>Math.hypot(p16781.bx-row16780.bx,p16781.by-row16780.by))):3;
+          const metric16781=(row16780.coarseContourHit16788?0:10000)+pref16781*1200+ratio16781*180+row16780.preferred*6+spread16781*24+(Number(row16780.cluster16781)||0)*12+row16780.opportunity/16;
+          if(metric16781>bestMetric16781){bestMetric16781=metric16781;best16781=row16780;}
+        }
+        if(!best16781)break;
+        selected16780.push(best16781);
+        const pk16781=Math.floor(best16781.bx/2)+','+Math.floor(best16781.by/2);
+        parentUse16780.set(pk16781,(parentUse16780.get(pk16781)||0)+1);
+      }
+      let added16780=[],failed16780=[];
+      if(selected16780.length){
+        const savedLandAudit16780=window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584,savedGen16780=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167,start16780=performance.now();
+        try{
+          const b016780=hy.bounds[0],b116780=hy.bounds[1],b216780=hy.bounds[2],b316780=hy.bounds[3];
+          const lon16780=x16780=>b016780+(x16780/(hy.w-1))*(b216780-b016780),lat16780=y16780=>b316780-(y16780/(hy.h-1))*(b316780-b116780);
+          const defs16780=selected16780.map((row16780,i16780)=>{
+            const pad16780=2,x016780=Math.max(0,row16780.x0-pad16780),x116780=Math.min(hy.w-1,row16780.x1+pad16780),y016780=Math.max(0,row16780.y0-pad16780),y116780=Math.min(hy.h-1,row16780.y1+pad16780);
+            return {id:'fine-opportunity-'+(i16780+1),row:row16780,b:[lon16780(x016780),lat16780(y116780),lon16780(x116780),lat16780(y016780)]};
+          });
+          const settled16780=await Promise.allSettled(defs16780.map(async tile16780=>{
+            const d16780=await loadDEM(tile16780.b,32,32,5500,'fine opportunity refinement '+tile16780.id);
+            const g16780=earthlineLandValidityMask16584(d16780,landValidity16584);window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16780;
+            const h16780=await hydrology(d16780,g16780.mask);h16780.outsideLandMask16632=g16780.outsideLandMask16632||null;h16780.inlandWaterMask16632=g16780.inlandWaterMask16632||null;
+            const ch16780=percentile(h16780.acc,.972),e16780=[];
+            for(let y16780=1;y16780<h16780.h-1;y16780++)for(let x16780=1;x16780<h16780.w-1;x16780++){
+              const i16780=y16780*h16780.w+x16780;if(g16780.mask[i16780]!==1)continue;
+              const sp16780=Number(h16780.slope[i16780]),ac16780=Number(h16780.acc[i16780]),el16780=Number(h16780.elev[i16780]);
+              if(Number.isFinite(sp16780)&&sp16780>=.05&&sp16780<=4&&Number.isFinite(ac16780)&&ac16780<ch16780&&Number.isFinite(el16780))e16780.push(el16780);
+            }
+            e16780.sort((a16780,b16780)=>a16780-b16780);const levels16780=[],seen16780=new Set();
+            for(const frac16780 of [.05,.14,.25,.38,.52,.66,.79,.9]){
+              if(!e16780.length)break;
+              const el16780=e16780[Math.min(e16780.length-1,Math.floor((e16780.length-1)*frac16780))],k16780=Math.round(el16780*2)/2;
+              if(!seen16780.has(k16780)){seen16780.add(k16780);levels16780.push(k16780);}
+            }
+            if(!levels16780.length)return [];
+            const c16780=await makeContours(h16780,true,levels16780),s16780=await makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16780;
+            return (s16780.features||[]).map(f16780=>{
+              const seg16780=f16780&&f16780.geometry&&f16780.geometry.coordinates||[],mid16780=seg16780[Math.floor((seg16780.length-1)/2)]||null;
+              const sp16780=Number(f16780&&f16780.properties&&f16780.properties.slope_pct),score16780=Number(f16780&&f16780.properties&&f16780.properties.score||0);
+              if(!mid167
+
+--- occurrence 10 char=2346168 line=32043 context=2343568:2351368 ---
+urisdictionGeometry16539){
+            const ll16780=gridLL(hy,x16780,y16780);
+            if(!earthlinePointInJurisdiction16539(ll16780,swaleJurisdictionGeometry16539))continue;
+          }
+          valid16780++;const sp16780=Number(hy.slope[i16780]),ac16780=Number(hy.acc[i16780]);
+          if(!Number.isFinite(sp16780)||!Number.isFinite(ac16780)||ac16780>=channel16780)continue;
+          if(sp16780>=.05&&sp16780<=4)opportunity16780++;
+          if(sp16780>=.20&&sp16780<=4)preferred16780++;
+        }
+        fineRows16780.push({bx:bx16780,by:by16780,x0:x016780,x1:x116780,y0:y016780,y1:y116780,valid:valid16780,opportunity:opportunity16780,preferred:preferred16780,swales:0});
+      }
+      const countFineSwales16780=()=>{
+        for(const r16780 of fineRows16780)r16780.swales=0;
+        for(const f16780 of swales.features||[]){
+          const c16780=f16780&&f16780.geometry&&f16780.geometry.type==='LineString'?f16780.geometry.coordinates:null;
+          if(!Array.isArray(c16780)||!c16780.length)continue;
+          const mid16780=c16780[Math.floor((c16780.length-1)/2)],g16780=llGrid(hy,mid16780);
+          if(!g16780||!Number.isFinite(g16780.x)||!Number.isFinite(g16780.y))continue;
+          const bx16780=Math.max(0,Math.min(fineNX16780-1,Math.floor(Number(g16780.x)*fineNX16780/Math.max(1,hy.w))));
+          const by16780=Math.max(0,Math.min(fineNY16780-1,Math.floor(Number(g16780.y)*fineNY16780/Math.max(1,hy.h))));
+          const row16780=fineRows16780.find(r16780=>r16780.bx===bx16780&&r16780.by===by16780);if(row16780)row16780.swales++;
+        }
+      };
+      countFineSwales16780();
+      const gapsBefore16780=fineRows16780.filter(r16780=>{
+        const ratio16780=r16780.valid?r16780.opportunity/r16780.valid:0;
+        return r16780.valid>=20&&r16780.opportunity>=8&&ratio16780>=.18&&r16780.swales===0;
+      }).sort((a16780,b16780)=>{
+        const ar16780=a16780.opportunity/Math.max(1,a16780.valid),br16780=b16780.opportunity/Math.max(1,b16780.valid);
+        const ap16780=a16780.preferred/Math.max(1,a16780.valid),bp16780=b16780.preferred/Math.max(1,b16780.valid);
+        return (br16780*100+bp16780*20+b16780.opportunity/8)-(ar16780*100+ap16780*20+a16780.opportunity/8);
+      });
+      const selected16780=[],parentUse16780=new Map(),coarseContourCells16788=new Set();
+      for(const f16788 of (swaleCandidateContours16609&&swaleCandidateContours16609.features||[])){
+        const coords16788=f16788&&f16788.geometry&&f16788.geometry.type==='LineString'?f16788.geometry.coordinates:null;
+        if(!Array.isArray(coords16788))continue;
+        for(const p16788 of coords16788){
+          const g16788=llGrid(hy,p16788);if(!g16788||!Number.isFinite(Number(g16788.x))||!Number.isFinite(Number(g16788.y)))continue;
+          const bx16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.x)*12/Math.max(1,hy.w))));
+          const by16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.y)*12/Math.max(1,hy.h))));
+          coarseContourCells16788.add(bx16788+','+by16788);
+        }
+      }
+      for(const row16780 of gapsBefore16780){
+        row16780.cluster16781=gapsBefore16780.filter(o16781=>Math.hypot(o16781.bx-row16780.bx,o16781.by-row16780.by)<=1.5).length;
+        row16780.coarseContourHit16788=coarseContourCells16788.has(row16780.bx+','+row16780.by)?1:0;
+      }
+      const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)));
+      while(selected16780.length<refinementTileBudget16782){
+        let best16781=null,bestMetric16781=-Infinity;
+        for(const row16780 of gapsBefore16780){
+          if(selected16780.includes(row16780))continue;
+          const pk16780=Math.floor(row16780.bx/2)+','+Math.floor(row16780.by/2),used16780=parentUse16780.get(pk16780)||0;
+// EARTHLINE 16795 — CLUSTERED FINE-TERRAIN REFINEMENT
+          if(used16780>=3)continue;
+          const ratio16781=row16780.opportunity/Math.max(1,row16780.valid),pref16781=row16780.preferred/Math.max(1,row16780.valid);
+          const spread16781=selected16780.length?Math.min(...selected16780.map(p16781=>Math.hypot(p16781.bx-row16780.bx,p16781.by-row16780.by))):3;
+          const metric16781=(row16780.coarseContourHit16788?0:10000)+pref16781*1200+ratio16781*180+row16780.preferred*6+spread16781*24+(Number(row16780.cluster16781)||0)*12+row16780.opportunity/16;
+          if(metric16781>bestMetric16781){bestMetric16781=metric16781;best16781=row16780;}
+        }
+        if(!best16781)break;
+        selected16780.push(best16781);
+        const pk16781=Math.floor(best16781.bx/2)+','+Math.floor(best16781.by/2);
+        parentUse16780.set(pk16781,(parentUse16780.get(pk16781)||0)+1);
+      }
+      let added16780=[],failed16780=[];
+      if(selected16780.length){
+        const savedLandAudit16780=window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584,savedGen16780=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167,start16780=performance.now();
+        try{
+          const b016780=hy.bounds[0],b116780=hy.bounds[1],b216780=hy.bounds[2],b316780=hy.bounds[3];
+          const lon16780=x16780=>b016780+(x16780/(hy.w-1))*(b216780-b016780),lat16780=y16780=>b316780-(y16780/(hy.h-1))*(b316780-b116780);
+          const defs16780=selected16780.map((row16780,i16780)=>{
+            const pad16780=2,x016780=Math.max(0,row16780.x0-pad16780),x116780=Math.min(hy.w-1,row16780.x1+pad16780),y016780=Math.max(0,row16780.y0-pad16780),y116780=Math.min(hy.h-1,row16780.y1+pad16780);
+            return {id:'fine-opportunity-'+(i16780+1),row:row16780,b:[lon16780(x016780),lat16780(y116780),lon16780(x116780),lat16780(y016780)]};
+          });
+          const settled16780=await Promise.allSettled(defs16780.map(async tile16780=>{
+            const d16780=await loadDEM(tile16780.b,32,32,5500,'fine opportunity refinement '+tile16780.id);
+            const g16780=earthlineLandValidityMask16584(d16780,landValidity16584);window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16780;
+            const h16780=await hydrology(d16780,g16780.mask);h16780.outsideLandMask16632=g16780.outsideLandMask16632||null;h16780.inlandWaterMask16632=g16780.inlandWaterMask16632||null;
+            const ch16780=percentile(h16780.acc,.972),e16780=[];
+            for(let y16780=1;y16780<h16780.h-1;y16780++)for(let x16780=1;x16780<h16780.w-1;x16780++){
+              const i16780=y16780*h16780.w+x16780;if(g16780.mask[i16780]!==1)continue;
+              const sp16780=Number(h16780.slope[i16780]),ac16780=Number(h16780.acc[i16780]),el16780=Number(h16780.elev[i16780]);
+              if(Number.isFinite(sp16780)&&sp16780>=.05&&sp16780<=4&&Number.isFinite(ac16780)&&ac16780<ch16780&&Number.isFinite(el16780))e16780.push(el16780);
+            }
+            e16780.sort((a16780,b16780)=>a16780-b16780);const levels16780=[],seen16780=new Set();
+            for(const frac16780 of [.05,.14,.25,.38,.52,.66,.79,.9]){
+              if(!e16780.length)break;
+              const el16780=e16780[Math.min(e16780.length-1,Math.floor((e16780.length-1)*frac16780))],k16780=Math.round(el16780*2)/2;
+              if(!seen16780.has(k16780)){seen16780.add(k16780);levels16780.push(k16780);}
+            }
+            if(!levels16780.length)return [];
+            const c16780=await makeContours(h16780,true,levels16780),s16780=await makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16780;
+            return (s16780.features||[]).map(f16780=>{
+              const seg16780=f16780&&f16780.geometry&&f16780.geometry.coordinates||[],mid16780=seg16780[Math.floor((seg16780.length-1)/2)]||null;
+              const sp16780=Number(f16780&&f16780.properties&&f16780.properties.slope_pct),score16780=Number(f16780&&f16780.properties&&f16780.properties.score||0);
+              if(!mid16780||!Number.isFinite(sp16780)||sp167
+
+--- occurrence 11 char=2346183 line=32043 context=2343583:2351383 ---
+etry16539){
+            const ll16780=gridLL(hy,x16780,y16780);
+            if(!earthlinePointInJurisdiction16539(ll16780,swaleJurisdictionGeometry16539))continue;
+          }
+          valid16780++;const sp16780=Number(hy.slope[i16780]),ac16780=Number(hy.acc[i16780]);
+          if(!Number.isFinite(sp16780)||!Number.isFinite(ac16780)||ac16780>=channel16780)continue;
+          if(sp16780>=.05&&sp16780<=4)opportunity16780++;
+          if(sp16780>=.20&&sp16780<=4)preferred16780++;
+        }
+        fineRows16780.push({bx:bx16780,by:by16780,x0:x016780,x1:x116780,y0:y016780,y1:y116780,valid:valid16780,opportunity:opportunity16780,preferred:preferred16780,swales:0});
+      }
+      const countFineSwales16780=()=>{
+        for(const r16780 of fineRows16780)r16780.swales=0;
+        for(const f16780 of swales.features||[]){
+          const c16780=f16780&&f16780.geometry&&f16780.geometry.type==='LineString'?f16780.geometry.coordinates:null;
+          if(!Array.isArray(c16780)||!c16780.length)continue;
+          const mid16780=c16780[Math.floor((c16780.length-1)/2)],g16780=llGrid(hy,mid16780);
+          if(!g16780||!Number.isFinite(g16780.x)||!Number.isFinite(g16780.y))continue;
+          const bx16780=Math.max(0,Math.min(fineNX16780-1,Math.floor(Number(g16780.x)*fineNX16780/Math.max(1,hy.w))));
+          const by16780=Math.max(0,Math.min(fineNY16780-1,Math.floor(Number(g16780.y)*fineNY16780/Math.max(1,hy.h))));
+          const row16780=fineRows16780.find(r16780=>r16780.bx===bx16780&&r16780.by===by16780);if(row16780)row16780.swales++;
+        }
+      };
+      countFineSwales16780();
+      const gapsBefore16780=fineRows16780.filter(r16780=>{
+        const ratio16780=r16780.valid?r16780.opportunity/r16780.valid:0;
+        return r16780.valid>=20&&r16780.opportunity>=8&&ratio16780>=.18&&r16780.swales===0;
+      }).sort((a16780,b16780)=>{
+        const ar16780=a16780.opportunity/Math.max(1,a16780.valid),br16780=b16780.opportunity/Math.max(1,b16780.valid);
+        const ap16780=a16780.preferred/Math.max(1,a16780.valid),bp16780=b16780.preferred/Math.max(1,b16780.valid);
+        return (br16780*100+bp16780*20+b16780.opportunity/8)-(ar16780*100+ap16780*20+a16780.opportunity/8);
+      });
+      const selected16780=[],parentUse16780=new Map(),coarseContourCells16788=new Set();
+      for(const f16788 of (swaleCandidateContours16609&&swaleCandidateContours16609.features||[])){
+        const coords16788=f16788&&f16788.geometry&&f16788.geometry.type==='LineString'?f16788.geometry.coordinates:null;
+        if(!Array.isArray(coords16788))continue;
+        for(const p16788 of coords16788){
+          const g16788=llGrid(hy,p16788);if(!g16788||!Number.isFinite(Number(g16788.x))||!Number.isFinite(Number(g16788.y)))continue;
+          const bx16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.x)*12/Math.max(1,hy.w))));
+          const by16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.y)*12/Math.max(1,hy.h))));
+          coarseContourCells16788.add(bx16788+','+by16788);
+        }
+      }
+      for(const row16780 of gapsBefore16780){
+        row16780.cluster16781=gapsBefore16780.filter(o16781=>Math.hypot(o16781.bx-row16780.bx,o16781.by-row16780.by)<=1.5).length;
+        row16780.coarseContourHit16788=coarseContourCells16788.has(row16780.bx+','+row16780.by)?1:0;
+      }
+      const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)));
+      while(selected16780.length<refinementTileBudget16782){
+        let best16781=null,bestMetric16781=-Infinity;
+        for(const row16780 of gapsBefore16780){
+          if(selected16780.includes(row16780))continue;
+          const pk16780=Math.floor(row16780.bx/2)+','+Math.floor(row16780.by/2),used16780=parentUse16780.get(pk16780)||0;
+// EARTHLINE 16795 — CLUSTERED FINE-TERRAIN REFINEMENT
+          if(used16780>=3)continue;
+          const ratio16781=row16780.opportunity/Math.max(1,row16780.valid),pref16781=row16780.preferred/Math.max(1,row16780.valid);
+          const spread16781=selected16780.length?Math.min(...selected16780.map(p16781=>Math.hypot(p16781.bx-row16780.bx,p16781.by-row16780.by))):3;
+          const metric16781=(row16780.coarseContourHit16788?0:10000)+pref16781*1200+ratio16781*180+row16780.preferred*6+spread16781*24+(Number(row16780.cluster16781)||0)*12+row16780.opportunity/16;
+          if(metric16781>bestMetric16781){bestMetric16781=metric16781;best16781=row16780;}
+        }
+        if(!best16781)break;
+        selected16780.push(best16781);
+        const pk16781=Math.floor(best16781.bx/2)+','+Math.floor(best16781.by/2);
+        parentUse16780.set(pk16781,(parentUse16780.get(pk16781)||0)+1);
+      }
+      let added16780=[],failed16780=[];
+      if(selected16780.length){
+        const savedLandAudit16780=window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584,savedGen16780=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167,start16780=performance.now();
+        try{
+          const b016780=hy.bounds[0],b116780=hy.bounds[1],b216780=hy.bounds[2],b316780=hy.bounds[3];
+          const lon16780=x16780=>b016780+(x16780/(hy.w-1))*(b216780-b016780),lat16780=y16780=>b316780-(y16780/(hy.h-1))*(b316780-b116780);
+          const defs16780=selected16780.map((row16780,i16780)=>{
+            const pad16780=2,x016780=Math.max(0,row16780.x0-pad16780),x116780=Math.min(hy.w-1,row16780.x1+pad16780),y016780=Math.max(0,row16780.y0-pad16780),y116780=Math.min(hy.h-1,row16780.y1+pad16780);
+            return {id:'fine-opportunity-'+(i16780+1),row:row16780,b:[lon16780(x016780),lat16780(y116780),lon16780(x116780),lat16780(y016780)]};
+          });
+          const settled16780=await Promise.allSettled(defs16780.map(async tile16780=>{
+            const d16780=await loadDEM(tile16780.b,32,32,5500,'fine opportunity refinement '+tile16780.id);
+            const g16780=earthlineLandValidityMask16584(d16780,landValidity16584);window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16780;
+            const h16780=await hydrology(d16780,g16780.mask);h16780.outsideLandMask16632=g16780.outsideLandMask16632||null;h16780.inlandWaterMask16632=g16780.inlandWaterMask16632||null;
+            const ch16780=percentile(h16780.acc,.972),e16780=[];
+            for(let y16780=1;y16780<h16780.h-1;y16780++)for(let x16780=1;x16780<h16780.w-1;x16780++){
+              const i16780=y16780*h16780.w+x16780;if(g16780.mask[i16780]!==1)continue;
+              const sp16780=Number(h16780.slope[i16780]),ac16780=Number(h16780.acc[i16780]),el16780=Number(h16780.elev[i16780]);
+              if(Number.isFinite(sp16780)&&sp16780>=.05&&sp16780<=4&&Number.isFinite(ac16780)&&ac16780<ch16780&&Number.isFinite(el16780))e16780.push(el16780);
+            }
+            e16780.sort((a16780,b16780)=>a16780-b16780);const levels16780=[],seen16780=new Set();
+            for(const frac16780 of [.05,.14,.25,.38,.52,.66,.79,.9]){
+              if(!e16780.length)break;
+              const el16780=e16780[Math.min(e16780.length-1,Math.floor((e16780.length-1)*frac16780))],k16780=Math.round(el16780*2)/2;
+              if(!seen16780.has(k16780)){seen16780.add(k16780);levels16780.push(k16780);}
+            }
+            if(!levels16780.length)return [];
+            const c16780=await makeContours(h16780,true,levels16780),s16780=await makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16780;
+            return (s16780.features||[]).map(f16780=>{
+              const seg16780=f16780&&f16780.geometry&&f16780.geometry.coordinates||[],mid16780=seg16780[Math.floor((seg16780.length-1)/2)]||null;
+              const sp16780=Number(f16780&&f16780.properties&&f16780.properties.slope_pct),score16780=Number(f16780&&f16780.properties&&f16780.properties.score||0);
+              if(!mid16780||!Number.isFinite(sp16780)||sp16780<.05||sp16780
+
+--- occurrence 12 char=2346208 line=32044 context=2343608:2351408 ---
+onst ll16780=gridLL(hy,x16780,y16780);
+            if(!earthlinePointInJurisdiction16539(ll16780,swaleJurisdictionGeometry16539))continue;
+          }
+          valid16780++;const sp16780=Number(hy.slope[i16780]),ac16780=Number(hy.acc[i16780]);
+          if(!Number.isFinite(sp16780)||!Number.isFinite(ac16780)||ac16780>=channel16780)continue;
+          if(sp16780>=.05&&sp16780<=4)opportunity16780++;
+          if(sp16780>=.20&&sp16780<=4)preferred16780++;
+        }
+        fineRows16780.push({bx:bx16780,by:by16780,x0:x016780,x1:x116780,y0:y016780,y1:y116780,valid:valid16780,opportunity:opportunity16780,preferred:preferred16780,swales:0});
+      }
+      const countFineSwales16780=()=>{
+        for(const r16780 of fineRows16780)r16780.swales=0;
+        for(const f16780 of swales.features||[]){
+          const c16780=f16780&&f16780.geometry&&f16780.geometry.type==='LineString'?f16780.geometry.coordinates:null;
+          if(!Array.isArray(c16780)||!c16780.length)continue;
+          const mid16780=c16780[Math.floor((c16780.length-1)/2)],g16780=llGrid(hy,mid16780);
+          if(!g16780||!Number.isFinite(g16780.x)||!Number.isFinite(g16780.y))continue;
+          const bx16780=Math.max(0,Math.min(fineNX16780-1,Math.floor(Number(g16780.x)*fineNX16780/Math.max(1,hy.w))));
+          const by16780=Math.max(0,Math.min(fineNY16780-1,Math.floor(Number(g16780.y)*fineNY16780/Math.max(1,hy.h))));
+          const row16780=fineRows16780.find(r16780=>r16780.bx===bx16780&&r16780.by===by16780);if(row16780)row16780.swales++;
+        }
+      };
+      countFineSwales16780();
+      const gapsBefore16780=fineRows16780.filter(r16780=>{
+        const ratio16780=r16780.valid?r16780.opportunity/r16780.valid:0;
+        return r16780.valid>=20&&r16780.opportunity>=8&&ratio16780>=.18&&r16780.swales===0;
+      }).sort((a16780,b16780)=>{
+        const ar16780=a16780.opportunity/Math.max(1,a16780.valid),br16780=b16780.opportunity/Math.max(1,b16780.valid);
+        const ap16780=a16780.preferred/Math.max(1,a16780.valid),bp16780=b16780.preferred/Math.max(1,b16780.valid);
+        return (br16780*100+bp16780*20+b16780.opportunity/8)-(ar16780*100+ap16780*20+a16780.opportunity/8);
+      });
+      const selected16780=[],parentUse16780=new Map(),coarseContourCells16788=new Set();
+      for(const f16788 of (swaleCandidateContours16609&&swaleCandidateContours16609.features||[])){
+        const coords16788=f16788&&f16788.geometry&&f16788.geometry.type==='LineString'?f16788.geometry.coordinates:null;
+        if(!Array.isArray(coords16788))continue;
+        for(const p16788 of coords16788){
+          const g16788=llGrid(hy,p16788);if(!g16788||!Number.isFinite(Number(g16788.x))||!Number.isFinite(Number(g16788.y)))continue;
+          const bx16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.x)*12/Math.max(1,hy.w))));
+          const by16788=Math.max(0,Math.min(11,Math.floor(Number(g16788.y)*12/Math.max(1,hy.h))));
+          coarseContourCells16788.add(bx16788+','+by16788);
+        }
+      }
+      for(const row16780 of gapsBefore16780){
+        row16780.cluster16781=gapsBefore16780.filter(o16781=>Math.hypot(o16781.bx-row16780.bx,o16781.by-row16780.by)<=1.5).length;
+        row16780.coarseContourHit16788=coarseContourCells16788.has(row16780.bx+','+row16780.by)?1:0;
+      }
+      const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)));
+      while(selected16780.length<refinementTileBudget16782){
+        let best16781=null,bestMetric16781=-Infinity;
+        for(const row16780 of gapsBefore16780){
+          if(selected16780.includes(row16780))continue;
+          const pk16780=Math.floor(row16780.bx/2)+','+Math.floor(row16780.by/2),used16780=parentUse16780.get(pk16780)||0;
+// EARTHLINE 16795 — CLUSTERED FINE-TERRAIN REFINEMENT
+          if(used16780>=3)continue;
+          const ratio16781=row16780.opportunity/Math.max(1,row16780.valid),pref16781=row16780.preferred/Math.max(1,row16780.valid);
+          const spread16781=selected16780.length?Math.min(...selected16780.map(p16781=>Math.hypot(p16781.bx-row16780.bx,p16781.by-row16780.by))):3;
+          const metric16781=(row16780.coarseContourHit16788?0:10000)+pref16781*1200+ratio16781*180+row16780.preferred*6+spread16781*24+(Number(row16780.cluster16781)||0)*12+row16780.opportunity/16;
+          if(metric16781>bestMetric16781){bestMetric16781=metric16781;best16781=row16780;}
+        }
+        if(!best16781)break;
+        selected16780.push(best16781);
+        const pk16781=Math.floor(best16781.bx/2)+','+Math.floor(best16781.by/2);
+        parentUse16780.set(pk16781,(parentUse16780.get(pk16781)||0)+1);
+      }
+      let added16780=[],failed16780=[];
+      if(selected16780.length){
+        const savedLandAudit16780=window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584,savedGen16780=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167,start16780=performance.now();
+        try{
+          const b016780=hy.bounds[0],b116780=hy.bounds[1],b216780=hy.bounds[2],b316780=hy.bounds[3];
+          const lon16780=x16780=>b016780+(x16780/(hy.w-1))*(b216780-b016780),lat16780=y16780=>b316780-(y16780/(hy.h-1))*(b316780-b116780);
+          const defs16780=selected16780.map((row16780,i16780)=>{
+            const pad16780=2,x016780=Math.max(0,row16780.x0-pad16780),x116780=Math.min(hy.w-1,row16780.x1+pad16780),y016780=Math.max(0,row16780.y0-pad16780),y116780=Math.min(hy.h-1,row16780.y1+pad16780);
+            return {id:'fine-opportunity-'+(i16780+1),row:row16780,b:[lon16780(x016780),lat16780(y116780),lon16780(x116780),lat16780(y016780)]};
+          });
+          const settled16780=await Promise.allSettled(defs16780.map(async tile16780=>{
+            const d16780=await loadDEM(tile16780.b,32,32,5500,'fine opportunity refinement '+tile16780.id);
+            const g16780=earthlineLandValidityMask16584(d16780,landValidity16584);window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584=savedLandAudit16780;
+            const h16780=await hydrology(d16780,g16780.mask);h16780.outsideLandMask16632=g16780.outsideLandMask16632||null;h16780.inlandWaterMask16632=g16780.inlandWaterMask16632||null;
+            const ch16780=percentile(h16780.acc,.972),e16780=[];
+            for(let y16780=1;y16780<h16780.h-1;y16780++)for(let x16780=1;x16780<h16780.w-1;x16780++){
+              const i16780=y16780*h16780.w+x16780;if(g16780.mask[i16780]!==1)continue;
+              const sp16780=Number(h16780.slope[i16780]),ac16780=Number(h16780.acc[i16780]),el16780=Number(h16780.elev[i16780]);
+              if(Number.isFinite(sp16780)&&sp16780>=.05&&sp16780<=4&&Number.isFinite(ac16780)&&ac16780<ch16780&&Number.isFinite(el16780))e16780.push(el16780);
+            }
+            e16780.sort((a16780,b16780)=>a16780-b16780);const levels16780=[],seen16780=new Set();
+            for(const frac16780 of [.05,.14,.25,.38,.52,.66,.79,.9]){
+              if(!e16780.length)break;
+              const el16780=e16780[Math.min(e16780.length-1,Math.floor((e16780.length-1)*frac16780))],k16780=Math.round(el16780*2)/2;
+              if(!seen16780.has(k16780)){seen16780.add(k16780);levels16780.push(k16780);}
+            }
+            if(!levels16780.length)return [];
+            const c16780=await makeContours(h16780,true,levels16780),s16780=await makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16780;
+            return (s16780.features||[]).map(f16780=>{
+              const seg16780=f16780&&f16780.geometry&&f16780.geometry.coordinates||[],mid16780=seg16780[Math.floor((seg16780.length-1)/2)]||null;
+              const sp16780=Number(f16780&&f16780.properties&&f16780.properties.slope_pct),score16780=Number(f16780&&f16780.properties&&f16780.properties.score||0);
+              if(!mid16780||!Number.isFinite(sp16780)||sp16780<.05||sp16780>4)return null;
+         
+
+================================================================================
+MARKER 16816 count=0
+================================================================================
+MARKER 16821 count=0
+================================================================================
+LIKELY OWNER DECLARATIONS
+earthlineHasRegionalBBox char=846328 line=2967
+swaleDetailScale char=849487 line=3033
+earthlineEnsureMapDem char=887585 line=3866
+earthlineSampleMapboxDem char=888797 line=3892
+earthlineEnsureSwaleLayers char=908246 line=4338
+earthlineProjectToContourPoint char=910881 line=4380
+earthlineNaturalContourDisplay char=911260 line=4392
+earthlineSwaleGeoJSON char=913105 line=4447
+earthlineSyncSwaleLayer char=914533 line=4474
+earthlineInheritRegionalAquiferContext16334 char=932577 line=4792
+earthlineTerrainStamp char=940979 line=4974
+buildTerrainProcedural char=944979 line=5049
+earthlinePrewarmPropertyDem16297 char=947536 line=5108
+fetchRealTerrain char=949211 line=5134
+buildRegionalTerrain char=953037 line=5207
+fetchRegionalSatellite char=954328 line=5233
+buildTerrain char=958718 line=5321
+buildTerrainProceduralWrap char=962782 line=5389
+earthlineNearestContourCell char=988463 line=5991
+earthlineMinimumSwaleLengthM15768 char=991111 line=6074
+earthlineMergeCompatibleSwales char=994651 line=6160
+earthlineSwaleGeometryAcceptable char=995809 line=6191
+earthlineSwaleFromPts char=996871 line=6211
+traceLevelContour char=999998 line=6293
+traceContour char=1002019 line=6365
+bakeTerrain char=1069768 line=7488
+earthlineContourLabelClear char=1072099 line=7550
+drawContours char=1072283 line=7557
+drawContourTopOverlay char=1075791 line=7640
+regionalPriorityAt char=1082152 line=7804
+drawRegionalPoliticalFrame char=1082613 line=7814
+drawSwaleLine char=1093862 line=8070
+drawSwales char=1094917 line=8093
+geocodeMapbox char=1114889 line=8547
+drawRegionalPriority char=1171439 line=9573
+earthlineGenerateScreeningFallbackSwales char=1173219 line=9605
+earthlineRecordTerrainHandoff15791 char=1174196 line=9632
+earthlineCollectSwaleDiagnostics char=1227773 line=10336
+earthlineSwaleFailureMessage char=1228756 line=10361
+earthlineSwaleYield15683 char=1231810 line=10421
+traceLevelContour char=1234437 line=10485
+levelOfSwale char=1340318 line=12266
+earthlineBBoxGapM15770 char=1341293 line=12294
+earthlineOnContourGuard15833 char=1362222 line=12732
+prescribeSwales15778 char=1375169 line=12977
+earthlineSwaleGridBBox16204 char=1412649 line=13645
+earthlineSwaleBBoxesWithin16204 char=1413124 line=13650
+earthlineMeasureContourCells15803 char=1440957 line=14153
+earthlineClosestPointOnSwale15843 char=1456251 line=14442
+earthlineNearestSwaleDistance15803 char=1458576 line=14482
+regionalOpportunitySwales15773 char=1510091 line=15369
+swaleDataForTile char=1512710 line=15434
+opportunityContourPath15777 char=1518933 line=15571
+rebuildRegionalGrades15772 char=1523390 line=15709
+contourNiceStep15775 char=1526134 line=15786
+contourDataForTile15772 char=1526340 line=15793
+aggregateRegional15778 char=1537408 line=15996
+runRegional15780 char=1616822 line=17589
+contourVisibility15776 char=1666847 line=18654
+ensureOfficialElevationContours15776 char=1667426 line=18674
+syncOfficialElevationContours15776 char=1671376 line=18812
+hideLegacySwales char=1748393 line=20352
+authoritativeSwaleData15792 char=1753172 line=20430
+syncLivingSwales15792 char=1754165 line=20461
+currentSwales15793 char=1777421 line=21096
+setSwalesOnly char=1810800 line=21766
+ensureContoursButton15806 char=1826856 line=22087
+updateContoursButton15806 char=1827581 line=22106
+rasterizeSwales15825 char=1889315 line=24025
+swaleLandCover15825 char=1909555 line=24798
+nearestContourLevel15826 char=1959695 line=25930
+traceDiagnosticContour15826 char=1960101 line=25945
+nearestSwaleDistanceM15826 char=1963240 line=26050
+clearRegionalStallWatchdog16347 char=2115134 line=29147
+failRegionalStall16347 char=2115356 line=29150
+noteRegionalProgress16347 char=2116673 line=29166
+setRegionalTerminal16539 char=2119450 line=29199
+isRegional char=2130984 line=29332
+rememberRegionalTerrain16297 char=2135081 line=29386
+fetchTerrainTile char=2135509 line=29395
+loadDEM char=2137364 line=29433
+waitForTerrainIdle char=2140554 line=29480
+loadDEMFromMap char=2142032 line=29506
+regionalRechargeModel16492 char=2148273 line=29614
+earthlineRegionalPointValid16584 char=2155201 line=29691
+earthlineRegionalSegmentValid16584 char=2169303 line=29891
+earthlineRegionalSmoothFlow16584 char=2169891 line=29902
+stitchContourSegments char=2172857 line=29956
+makeContours char=2173904 line=29975
+makeSwales char=2177545 line=30016
+contourAudit16166 char=2215838 line=30525
+settleRegionalCamera char=2247355 line=30937
+earthlineRegionalAnalysisBounds16712 char=2256147 line=31080
+earthlineRerankRegionalSwales16539 char=2270779 line=31245
+earthlineClipRegionalProducts16539 char=2271350 line=31250
+runRegional char=2304303 line=31669
+countFineSwales16780 char=2344267 line=32018
+contourDeviation char=2608430 line=34107
+decorateSwales char=3581554 line=35340
+ensureSwalesPage char=3591429 line=35451
+syncSwalesPage char=3621857 line=35494
+closeSwales char=3622463 line=35501
+swales char=3642275 line=35607
+contours char=3642334 line=35608
+gapRows char=3656267 line=35663
+howBioswalesReportPages16388 char=3710482 line=35814
+regionalState char=3763765 line=36202
+isRegionalDisplayed char=3764106 line=36205
+regionalVisibilityFloor16337 char=3771353 line=36252
+captureRegional char=3777181 line=36319
+restoreRegional char=3778500 line=36322
+rerankSwales char=3846456 line=36915
+currentRegionalToken16244 char=3854186 line=36980
+regionalEngineActive16240 char=3856411 line=37001
+regionalRunning16233 char=3856926 line=37005
+bindRegionalToken16244 char=3857518 line=37009
+stopRegionalOrb16244 char=3857935 line=37016
+syncRegionalOrb16233 char=3860788 line=37046
+markRegionalRequested16233 char=3860869 line=37047
+ensureRegionalCorridorTabs16323 char=3873852 line=37103
+
+================================================================================
+OWNERS NEAR used16780
+countFineSwales16780 char=2344267 line=32018
