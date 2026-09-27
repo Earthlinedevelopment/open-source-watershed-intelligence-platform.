@@ -1,0 +1,16 @@
+name: Earthline Audit Run Label Owners
+on:
+  push:
+    branches: [test-16848-share-ready-ui]
+    paths:
+      - 'tools/audit-16848-run-label-owners.py'
+      - '.github/workflows/earthline-mantra49-audit-run-label-owners.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - run: python tools/audit-16848-run-label-owners.py
