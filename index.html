@@ -8651,7 +8651,7 @@ async function applyLocation(loc,zone,myGen=M.searchGen,options={}){
   else setTimeout(updateDeferredPanels,120);
   const runBtn=document.getElementById("runBtn");
   if(runBtn&&runBtn.dataset.busy!=="1"&&runBtn.getAttribute("aria-busy")!=="true"){
-    let label=runBtn.querySelector("span");if(!label){label=document.createElement("span");runBtn.appendChild(label)}label.textContent="RUN ANALYSIS";
+    let label=runBtn.querySelector("span");if(!label){label=document.createElement("span");runBtn.appendChild(label)}const t16848=typeof window.earthlineText16848==='function'?window.earthlineText16848(window.EARTHLINE_LANGUAGE_16488||'en'):null;label.textContent=t16848&&t16848.run?t16848.run:"RUN ANALYSIS";
   }
   if(analyzeNow){
     const mapLayerVisible=earthlineSyncSwaleLayer();
@@ -29185,7 +29185,7 @@ body { overflow-x:hidden!important; }
       if(on)b.dataset.busy='1';else delete b.dataset.busy;
       b.classList.toggle('earthline-run-active-16203',!!on);
       b.classList.remove('earthline-run-spinning-16200');
-      if(b.id==='runBtn'){let labelSpan=b.querySelector('span');if(!labelSpan){labelSpan=document.createElement('span');b.appendChild(labelSpan)}labelSpan.textContent=String(label||'RUN ANALYSIS');}
+      if(b.id==='runBtn'){let labelSpan=b.querySelector('span');if(!labelSpan){labelSpan=document.createElement('span');b.appendChild(labelSpan)}let labelText16848=String(label||'RUN ANALYSIS');if(!on&&labelText16848==='RUN ANALYSIS'&&typeof window.earthlineText16848==='function'){const t16848=window.earthlineText16848(window.EARTHLINE_LANGUAGE_16488||'en');if(t16848&&t16848.run)labelText16848=t16848.run}labelSpan.textContent=labelText16848;}
       const svg=b.querySelector('svg');
       if(svg){
         svg.classList.remove('earthline-orb-spinning-16202','earthline-orb-spinning-16203');
@@ -35957,7 +35957,7 @@ ${EARTHLINE_CORRECTIONS_REGISTRY_16513}
   function updateScale(){const m=map(),lbl=document.getElementById('scaleLbl'),mid=document.getElementById('scaleMid'),end=document.getElementById('scaleEnd');if(!m||!lbl||!mid||!end||!m.unproject)return false;try{const canvas=m.getCanvas?.(),w=canvas?.clientWidth||800,h=canvas?.clientHeight||500,y=h-40,a=m.unproject([20,y]),b=m.unproject([170,y]),meters=metersBetween(a,b),nice=niceDistance(meters),px=150*nice/meters,bar=document.querySelector('.scalebar .bar'),ticks=document.querySelector('.scalebar .ticks'),text=nice>=1000?(nice/1000)+(nice>=10000?'':'')+' km':nice+' m';if(bar)bar.style.width=Math.max(70,Math.min(190,px))+'px';if(ticks)ticks.style.width=Math.max(70,Math.min(190,px))+'px';lbl.textContent='z'+Number(m.getZoom?.()||0).toFixed(2)+' · 0 — '+text;mid.textContent=nice>=1000?(nice/2000)+' km':nice/2;end.textContent=text;return true}catch(_){return false}}
   window.earthlineUpdateScale16149=updateScale;
   function installPolicies(){if(aquiferInstalled)return;const m=map();if(!m?.on)return;aquiferInstalled=true;let raf=0;const schedule=()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{persistVisualPolicy();updateScale();ensureReportButton()})};for(const ev of ['zoomend','moveend','style.load','resize'])m.on(ev,schedule);for(const ev of ['zoom','move','styledata','idle'])m.on(ev,()=>{});setInterval(()=>{updateScale();ensureReportButton()},1500);schedule()}
-  function ensureTopRun(){const b=document.getElementById('runBtn');if(!b)return false;let span=b.querySelector('span');if(!span){span=document.createElement('span');b.appendChild(span)}if(b.dataset.busy!=='1'&&b.getAttribute('aria-busy')!=='true')span.textContent='RUN ANALYSIS';b.title='Run Analysis';b.setAttribute('aria-label','Run Analysis');return true}
+  function ensureTopRun(){const b=document.getElementById('runBtn');if(!b)return false;let span=b.querySelector('span');if(!span){span=document.createElement('span');b.appendChild(span)}const t16848=typeof window.earthlineText16848==='function'?window.earthlineText16848(window.EARTHLINE_LANGUAGE_16488||'en'):null,run16848=t16848&&t16848.run?t16848.run:'RUN ANALYSIS';if(b.dataset.busy!=='1'&&b.getAttribute('aria-busy')!=='true')span.textContent=run16848;b.title=run16848;b.setAttribute('aria-label',run16848);return true}
   function stamp(){window.EARTHLINE_BUILD=BUILD;document.documentElement.dataset.earthlineVermontBuild='16221';document.title=document.title.replace(/BUILD-CHECK-[A-Z0-9-]+/g,BUILD);removeMapButtons();ensureTopRun();ensureReportButton();installPolicies();installCorridorInteraction16152();persistVisualPolicy();updateScale();const f=document.getElementById('earthlineFooterBuild15784');if(f)f.textContent=BUILD}
   document.addEventListener('earthline:analysis-complete',()=>setTimeout(stamp,30),{passive:true});
   const reportReadinessObserver16151=new MutationObserver(()=>ensureReportButton());
@@ -37244,6 +37244,7 @@ const EARTHLINE_TEXT_16848=Object.freeze({
   vi:Object.freeze({language:'Ngôn ngữ',contact:'LIÊN HỆ',contactTitle:'Liên hệ Earthline',search:'Tìm kiếm',searchPlaceholder:'Tìm kiếm địa chỉ, thị trấn, khu vực hoặc quốc gia — thu phóng từ cấp quốc gia đến thửa đất',run:'CHẠY PHÂN TÍCH',propertySection:'Khảo sát khu đất',propertySearch:'TÌM KIẾM KHU ĐẤT',crosshair:'TÂM NGẮM',zoomAnalyze:'THU PHÓNG + PHÂN TÍCH',acres:'20 ACRE',reportSection:'Báo cáo tác động Bioswale',reportHtml:'BÁO CÁO TÁC ĐỘNG <span class="el54-bioswale">BIOSWALE</span>',status:'Trạng thái',results:'Kết quả',swales:'Giải thích Bioswale',process:'Quy trình Earthline',recharge:'Tiềm năng bổ cập tầng chứa nước',rainfall:'Lượng mưa trung bình hằng năm:',engine:'Earthline phân tích độ dốc và đường đi của nước để xác định các vị trí tối ưu cho bổ cập tầng chứa nước — ở mọi địa điểm.',professional:'Tất cả các địa điểm cần được chuyên gia cảnh quan kiểm tra thực địa.',notCalculated:'chưa được tính'})
 });
 function earthlineText16848(lang){return EARTHLINE_TEXT_16848[['en','th','vi'].includes(lang)?lang:'en']}
+window.earthlineText16848=earthlineText16848;window.EARTHLINE_TEXT_16848=EARTHLINE_TEXT_16848;
 window.earthlinePropertyTargetLabel16848=function(target,lang){const next=['en','th','vi'].includes(lang)?lang:(window.EARTHLINE_LANGUAGE_16488||'en'),t=earthlineText16848(next);if(target&&target.code)return String(target.code)+' · '+t.zoomAnalyze+' · '+t.acres;if(target&&Number.isFinite(Number(target.lat))&&Number.isFinite(Number(target.lng)))return t.crosshair+' · '+Number(target.lat).toFixed(5)+', '+Number(target.lng).toFixed(5)+' · '+t.acres;return t.propertySearch+' · '+t.acres};
 function applyLanguage(value){
   const next=['en','th','vi'].includes(value)?value:'en',t=earthlineText16848(next);
