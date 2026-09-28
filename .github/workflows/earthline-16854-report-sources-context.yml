@@ -1,0 +1,31 @@
+name: Earthline 16854 report sources context
+
+on:
+  push:
+    branches:
+      - candidate-m47-16853-blue-property-ui
+
+jobs:
+  inspect:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-m47-16853-blue-property-ui
+      - name: Inspect report/source contexts
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          t=Path('index.html').read_text(encoding='utf-8')
+          patterns=[r'Bioswale Impact Report',r'BIOSWALE IMPACT REPORT',r'\bSources?\b',r'\bSOURCE\b',r'USGS',r'NRCS',r'Well Driller',r'citation',r'report-page',r'page-break']
+          for pat in patterns:
+            ms=list(re.finditer(pat,t,re.I))
+            print(f'\n===== {pat} COUNT {len(ms)} =====')
+            for j,m in enumerate(ms[:30],1):
+              a=max(0,m.start()-700); b=min(len(t),m.end()+1500)
+              print(f'--- {j} index {m.start()} ---')
+              print(repr(t[a:b]))
+          PY
