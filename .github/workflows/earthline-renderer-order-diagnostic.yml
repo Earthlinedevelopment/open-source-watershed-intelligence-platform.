@@ -1,0 +1,56 @@
+name: Earthline renderer order diagnostic
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - diag-property-blue-owner-16858
+jobs:
+  trace:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: diag-property-blue-owner-16858
+      - name: Extract ownership and texture sync functions
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8')
+          def extract(name):
+            i=t.find(name)
+            if i<0:return name+' NOT FOUND\n'
+            start=t.rfind('function ',0,i+len(name))
+            if start<0:start=max(0,i-1000)
+            # brace-balanced from first { after start
+            b=t.find('{',start)
+            if b<0:return t[max(0,i-1000):i+3000]
+            depth=0; quote=None; esc=False
+            for j in range(b,len(t)):
+              c=t[j]
+              if quote:
+                if esc: esc=False
+                elif c=='\\': esc=True
+                elif c==quote: quote=None
+                continue
+              if c in "'\"`": quote=c; continue
+              if c=='{': depth+=1
+              elif c=='}':
+                depth-=1
+                if depth==0:return t[start:j+1]
+            return t[start:start+12000]
+          out=[]
+          for needle in ['function applyOwnership','function syncTexture','function syncPlanting15806','function applyTierStyling']:
+            out.append('\n'+'='*100+'\n'+needle+'\n'+'='*100+'\n'+extract(needle)+'\n')
+          Path('RENDERER-ORDER-DIAGNOSTIC.txt').write_text(''.join(out),encoding='utf-8')
+          PY
+      - name: Commit diagnostic only
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add RENDERER-ORDER-DIAGNOSTIC.txt
+          git commit -m 'diagnostic: extract Property renderer order owners'
+          git push origin HEAD:diag-property-blue-owner-16858
