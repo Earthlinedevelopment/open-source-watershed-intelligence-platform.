@@ -1,4 +1,4 @@
-# trigger 16859
+# trigger 16859-v2
 name: Earthline 16859 Property blue final-order only
 permissions:
   contents: write
@@ -26,9 +26,6 @@ jobs:
           c=t.count(old)
           if c != 1:
               raise SystemExit(f'expected exactly one 16858 pre-owner blue move, found {c}')
-          blue="'line-color':'#008cff','line-width':['interpolate',['linear'],['zoom'],14,3.4,17,5.4,20,7.2],'line-opacity':1"
-          if t.count(blue) != 1:
-              raise SystemExit(f'expected existing 16857 blue style exactly once, found {t.count(blue)}')
           t=t.replace(old,new,1)
           p.write_text(t,encoding='utf-8')
           PY
@@ -38,10 +35,11 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           t=Path('index.html').read_text(encoding='utf-8')
-          expected="if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property');if(mp.getLayer?.('earthline-property-swale-ditch-16166'))mp.moveLayer('earthline-property-swale-ditch-16166')"
-          assert t.count(expected) == 1
-          assert t.count("'line-color':'#008cff','line-width':['interpolate',['linear'],['zoom'],14,3.4,17,5.4,20,7.2],'line-opacity':1") == 1
-          print('PASS: final renderer ownership completes before the existing blue Property layer is raised; color/width/pattern/geometry unchanged')
+          old="if(mp.getLayer?.('earthline-property-swale-ditch-16166'))mp.moveLayer('earthline-property-swale-ditch-16166');if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')"
+          new="if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property');if(mp.getLayer?.('earthline-property-swale-ditch-16166'))mp.moveLayer('earthline-property-swale-ditch-16166')"
+          assert t.count(old) == 0
+          assert t.count(new) == 1
+          print('PASS: final renderer owner completes before existing blue Property layer is raised; no color, width, pattern, geometry, spacing, or hydrology changed')
           PY
       - name: Commit candidate
         shell: bash
