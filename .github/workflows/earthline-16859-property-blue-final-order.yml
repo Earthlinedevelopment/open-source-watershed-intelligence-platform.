@@ -1,5 +1,5 @@
-# trigger 16859-v2
-name: Earthline 16859 Property blue final-order only
+# trigger 16859-diag
+name: Earthline 16859 exact Property renderer handoff diagnostic
 permissions:
   contents: write
 on:
@@ -7,45 +7,39 @@ on:
     branches:
       - fix-16859-property-blue-final-order
 jobs:
-  patch:
+  inspect:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: fix-16859-property-blue-final-order
-      - name: Apply blue layer after final renderer ownership
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('index.html')
-          t=p.read_text(encoding='utf-8')
-          old="if(mp.getLayer?.('earthline-property-swale-ditch-16166'))mp.moveLayer('earthline-property-swale-ditch-16166');if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')"
-          new="if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property');if(mp.getLayer?.('earthline-property-swale-ditch-16166'))mp.moveLayer('earthline-property-swale-ditch-16166')"
-          c=t.count(old)
-          if c != 1:
-              raise SystemExit(f'expected exactly one 16858 pre-owner blue move, found {c}')
-          t=t.replace(old,new,1)
-          p.write_text(t,encoding='utf-8')
-          PY
-      - name: Verify final-order-only repair
+      - name: Extract exact live handoff
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           t=Path('index.html').read_text(encoding='utf-8')
-          old="if(mp.getLayer?.('earthline-property-swale-ditch-16166'))mp.moveLayer('earthline-property-swale-ditch-16166');if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')"
-          new="if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property');if(mp.getLayer?.('earthline-property-swale-ditch-16166'))mp.moveLayer('earthline-property-swale-ditch-16166')"
-          assert t.count(old) == 0
-          assert t.count(new) == 1
-          print('PASS: final renderer owner completes before existing blue Property layer is raised; no color, width, pattern, geometry, spacing, or hydrology changed')
+          needles=["earthline-property-swale-ditch-16166","earthlineApplyRendererOwnership15805('property')","earthline-swale-planting-layer-15806"]
+          out=[]
+          for needle in needles:
+              out.append(f'NEEDLE: {needle} COUNT={t.count(needle)}')
+              start=0
+              n=0
+              while True:
+                  i=t.find(needle,start)
+                  if i<0: break
+                  n+=1
+                  out.append(f'--- {needle} occurrence {n} at {i} ---')
+                  out.append(t[max(0,i-900):min(len(t),i+1300)])
+                  start=i+1
+          Path('EARTHLINE-16859-RENDERER-HANDOFF-DIAG.txt').write_text('\n\n'.join(out),encoding='utf-8')
           PY
-      - name: Commit candidate
+      - name: Commit diagnostic only
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add index.html
-          git commit -m 'candidate: 16859 keep Property blue after final renderer owner'
+          git add EARTHLINE-16859-RENDERER-HANDOFF-DIAG.txt
+          git commit -m 'diag: exact 16859 Property renderer handoff'
           git push origin HEAD:fix-16859-property-blue-final-order
