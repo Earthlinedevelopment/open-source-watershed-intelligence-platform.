@@ -1,0 +1,79 @@
+name: Earthline 16854 apply approved Property presentation edits
+on:
+  push:
+    branches: [candidate-m47-16854-live-blue-property-ui]
+    paths: ['.github/workflows/earthline-m47-16854-apply-blue-property-ui.yml']
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-m47-16854-live-blue-property-ui
+          fetch-depth: 0
+      - name: Apply only the four approved presentation edits
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          changes=[]
+          def one(old,new,label):
+              global s
+              n=s.count(old)
+              if n!=1:
+                  raise SystemExit(f'{label}: expected exactly 1 match, got {n}')
+              s=s.replace(old,new,1)
+              changes.append(label)
+
+          # 1) Triple the existing blue water-ribbon presentation only.
+          one('''      /* EARTHLINE 16521 — same water-ribbon owner, modestly more blue/visible. */\n      "line-gradient":["interpolate",["linear"],["line-progress"],0,"#1f79a6",.25,"#349dcc",.52,"#67bee4",.76,"#348fb9",1,"#226f94"],\n      "line-width":["interpolate",["linear"],["zoom"],12,1.25,15,1.75,16.5,2.20,18,2.65,20,3.10],\n      "line-opacity":.66,"line-blur":0''','''      /* EARTHLINE 16854 — presentation only: 3x current blue ribbon width; stronger blue/opacity. */\n      "line-gradient":["interpolate",["linear"],["line-progress"],0,"#147fbd",.25,"#28a9e0",.52,"#69d0f2",.76,"#259fda",1,"#1379b0"],\n      "line-width":["interpolate",["linear"],["zoom"],12,3.75,15,5.25,16.5,6.60,18,7.95,20,9.30],\n      "line-opacity":.88,"line-blur":0''','map blue ribbon')
+          one('''if(earthlineMap.getLayer(SWALE_WATER))earthlineMap.setPaintProperty(SWALE_WATER,"line-opacity",.40+.10*pulse2);''','''if(earthlineMap.getLayer(SWALE_WATER))earthlineMap.setPaintProperty(SWALE_WATER,"line-opacity",.80+.10*pulse2);''','map blue pulse opacity')
+          one('''blueWidth=width*1.953125''','''blueWidth=width*5.859375''','natural Property blue width')
+
+          # 2 + 3) Exact 20-ACRE SEARCH label and larger type; no ZOOM word.
+          one('''font:900 10.5px/1.15 system-ui!important;letter-spacing:.035em!important''','''font:900 15px/1.05 system-ui!important;letter-spacing:.045em!important''','Property CTA font')
+          one('''#earthlineDeclareProperty16169 span:last-child::before{content:"⌖";display:inline-block;font:900 18px/1 system-ui,sans-serif;line-height:1!important;margin-right:6px;vertical-align:-2px;letter-spacing:0!important}''','''#earthlineDeclareProperty16169 span:last-child::before{content:none!important;display:none!important}''','Property CTA crosshair prefix')
+          old_label="function propertyTargetLabel16233(target){const translated=window.earthlinePropertyTargetLabel16848;if(typeof translated==='function')return translated(target,window.EARTHLINE_LANGUAGE_16488||'en');if(target&&target.code)return String(target.code)+' · ZOOM + ANALYZE · 20 ACRES';if(target&&Number.isFinite(Number(target.lat))&&Number.isFinite(Number(target.lng)))return 'CROSSHAIR · '+Number(target.lat).toFixed(5)+', '+Number(target.lng).toFixed(5)+' · 20 ACRES';return 'PROPERTY SEARCH · 20 ACRES'}"
+          new_label="function propertyTargetLabel16233(target){const translated=window.earthlinePropertyTargetLabel16848;if(typeof translated==='function')return translated(target,window.EARTHLINE_LANGUAGE_16488||'en');return '20-ACRE SEARCH'}"
+          one(old_label,new_label,'Property CTA label owner')
+          old_trans="window.earthlinePropertyTargetLabel16848=function(target,lang){const next=['en','th','vi'].includes(lang)?lang:(window.EARTHLINE_LANGUAGE_16488||'en'),t=earthlineText16848(next);if(target&&target.code)return String(target.code)+' · '+t.zoomAnalyze+' · '+t.acres;if(target&&Number.isFinite(Number(target.lat))&&Number.isFinite(Number(target.lng)))return t.crosshair+' · '+Number(target.lat).toFixed(5)+', '+Number(target.lng).toFixed(5)+' · '+t.acres;return t.propertySearch+' · '+t.acres};"
+          new_trans="window.earthlinePropertyTargetLabel16848=function(target,lang){const next=['en','th','vi'].includes(lang)?lang:(window.EARTHLINE_LANGUAGE_16488||'en');if(next==='th')return 'ค้นหา 20 เอเคอร์';if(next==='vi')return 'TÌM KIẾM 20 ACRE';return '20-ACRE SEARCH'};"
+          one(old_trans,new_trans,'translated Property CTA label owner')
+
+          # 4) Property Investigation -> Property Modelling in active English presentation owners only.
+          one("const sections=[['brand',''],['search','Search'],['property','Property Investigation'],['report','Bioswale Impact Report'],['status','Status'],['results','Results']]","const sections=[['brand',''],['search','Search'],['property','Property Modelling'],['report','Bioswale Impact Report'],['status','Status'],['results','Results']]",'Property section heading')
+          one("propertySection:'Property Investigation'","propertySection:'Property Modelling'",'English language Property heading')
+
+          marker='<!-- EARTHLINE 16854 — FOUR APPROVED PRESENTATION EDITS ONLY: triple visible blue-water component of existing Property swales; exact 20-ACRE SEARCH label; larger Property CTA type; Property Modelling heading. No science, geometry, safety, report, tabs, logo, Orb, gauge or DATA changes. CANDIDATE / NOT ACCEPTED. -->\n'
+          s=marker+s
+          p.write_text(s,encoding='utf-8')
+          print('Applied:', ', '.join(changes))
+          PY
+      - name: Verify exact requested edits and no accidental scope
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          checks={
+            'marker':'EARTHLINE 16854 — FOUR APPROVED PRESENTATION EDITS ONLY' in s,
+            'triple_map_width':'12,3.75,15,5.25,16.5,6.60,18,7.95,20,9.30' in s,
+            'triple_natural_width':'blueWidth=width*5.859375' in s,
+            'cta_exact':"return '20-ACRE SEARCH'}" in s,
+            'zoom_old_removed':"ZOOM + ANALYZE · 20 ACRES" not in s,
+            'font_15':'font:900 15px/1.05 system-ui!important' in s,
+            'heading':'Property Modelling' in s,
+          }
+          print(checks)
+          if not all(checks.values()): raise SystemExit('verification failed')
+          PY
+      - name: Remove one-time workflow and commit clean candidate
+        run: |
+          rm .github/workflows/earthline-m47-16854-apply-blue-property-ui.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html .github/workflows/earthline-m47-16854-apply-blue-property-ui.yml
+          git commit -m 'candidate: 16854 four approved Property presentation edits'
+          git push origin HEAD:candidate-m47-16854-live-blue-property-ui
