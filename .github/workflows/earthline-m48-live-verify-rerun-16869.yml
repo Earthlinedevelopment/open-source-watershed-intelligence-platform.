@@ -15,9 +15,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install browser driver library only
         run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
-      - name: Extract and run the unchanged production test
+      - name: Extract, correct marker assertion, and run production test
         env:
-          EARTHLINE_URL: https://earthlinedevelopment.org/?verify=16869-rerun
+          EARTHLINE_URL: https://earthlinedevelopment.org/?verify=16869-rerun2
           NODE_PATH: ${{ github.workspace }}/node_modules
         run: |
           mkdir -p artifacts
@@ -28,6 +28,14 @@ jobs:
           b=text.index("\n          JS\n",a)
           body=text[a:b]
           body='\n'.join(line[10:] if line.startswith('          ') else line for line in body.splitlines())+'\n'
+          old="""  const html=await page.content();
+  if(!html.includes('EARTHLINE 16869 — FOUR LIVE REPAIRS ONLY')) throw new Error('Production is not serving 16869 marker');
+  results.productionMarker=true;"""
+          new="""  const live16869=await page.evaluate(()=>({style:!!document.getElementById('earthline-property-acres-16869-style'),buttonFn:typeof window.earthlineRenderPropertyTargetLabel16869==='function'}));
+  if(!live16869.style||!live16869.buttonFn) throw new Error('Production is not serving 16869 live DOM/functions: '+JSON.stringify(live16869));
+  results.productionMarker=live16869;"""
+          if old not in body: raise SystemExit('marker assertion block not found in extracted test')
+          body=body.replace(old,new,1)
           Path('/tmp/verify16869.js').write_text(body,encoding='utf-8')
           PY
           node /tmp/verify16869.js
@@ -35,6 +43,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: earthline-16869-live-verification-rerun
+          name: earthline-16869-live-verification-rerun2
           path: artifacts/
           if-no-files-found: ignore
