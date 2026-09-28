@@ -1,114 +1,37 @@
-name: Earthline M48 report diagnostic 16870
+name: Earthline M48 recover 16869 verification evidence
 on:
   push:
     branches:
       - mantra48-report-isolation-16870
     paths:
       - .github/workflows/earthline-m48-report-diagnostic-16870.yml
-  workflow_dispatch:
 permissions:
-  contents: read
+  actions: read
+  contents: write
 jobs:
-  diagnose:
+  recover:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - name: Install Playwright Chromium
+      - name: Download earlier final production verification artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          npm install playwright@1.55.0 --no-save
-          npx playwright install --with-deps chromium
-      - name: Serve isolated candidate
+          mkdir -p /tmp/old16869 lab
+          gh api -H 'Accept: application/vnd.github+json' "/repos/${GITHUB_REPOSITORY}/actions/artifacts/10963961890/zip" > /tmp/old16869.zip
+          unzip -o /tmp/old16869.zip -d /tmp/old16869
+          if [ -f /tmp/old16869/verification.json ]; then
+            cp /tmp/old16869/verification.json lab/mantra48-earlier-final-verification-16869.json
+          else
+            find /tmp/old16869 -maxdepth 3 -type f -print
+            exit 1
+          fi
+          cat lab/mantra48-earlier-final-verification-16869.json
+      - name: Commit recovered evidence to isolation branch
         run: |
-          python3 -m http.server 8000 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
-          echo $! >/tmp/earthline-http.pid
-          sleep 2
-      - name: Trace report reachability
-        run: |
-          mkdir -p artifacts
-          cat > /tmp/report-diag.js <<'JS'
-          const { chromium } = require('playwright');
-          const fs = require('fs');
-          (async()=>{
-            const browser=await chromium.launch({headless:true,args:['--disable-dev-shm-usage']});
-            const page=await browser.newPage({viewport:{width:1440,height:1000}});
-            const errors=[];
-            page.on('pageerror',e=>errors.push('pageerror: '+e.message));
-            page.on('console',m=>{if(m.type()==='error')errors.push('console: '+m.text())});
-            await page.goto('http://127.0.0.1:8000/?report_diag=16870',{waitUntil:'domcontentloaded',timeout:60000});
-            await page.waitForTimeout(5000);
-            const snap=async(label)=>page.evaluate((label)=>{
-              const b=document.querySelector('#earthlineVermontReport16149');
-              const d151=window.EARTHLINE_DISPLAYED_RUN_16151||null;
-              const d147=window.EARTHLINE_DISPLAYED_RUN_16147||null;
-              return {
-                label,
-                tier:document.documentElement.dataset.earthlineTier||'',
-                runState:document.documentElement.dataset.earthlineRunState||'',
-                dataActive:document.documentElement.dataset.earthlineActiveRun||'',
-                active151:window.EARTHLINE_ACTIVE_RUN_TOKEN_16151||null,
-                active149:window.EARTHLINE_ACTIVE_RUN_TOKEN_16149||null,
-                active147:window.EARTHLINE_ACTIVE_RUN_TOKEN_16147||null,
-                displayed151:d151&&d151.runToken||null,
-                displayed147:d147&&d147.runToken||null,
-                buttonExists:!!b,
-                buttonDisabled:b?!!b.disabled:null,
-                buttonReady:b?b.dataset.ready||'':null,
-                ariaDisabled:b?b.getAttribute('aria-disabled'):null,
-                onclickType:b?typeof b.onclick:null,
-                buttonText:b?b.textContent.replace(/\s+/g,' ').trim():null,
-                openerType:typeof window.earthlineOpenVermontReport16151
-              };
-            },label);
-            const out={before:await snap('before'),errors};
-            if(typeof out.before.buttonExists==='undefined') throw new Error('diagnostic failed to inspect button');
-            await page.evaluate(()=>{
-              if(typeof window.earthlineSetPropertyTarget16201!=='function') throw new Error('Property target function unavailable');
-              window.earthlineSetPropertyTarget16201({lng:-73.1107,lat:44.4906,source:'16870-report-diagnostic'},{openPanel:false});
-            });
-            await page.waitForTimeout(300);
-            const done=page.evaluate(()=>new Promise(resolve=>{
-              let finished=false;
-              const finish=(d)=>{if(finished)return;finished=true;resolve(d)};
-              document.addEventListener('earthline:analysis-complete',e=>{const d=e.detail||{};if(String(d.tier||d.mode||'').toLowerCase()==='property')finish({kind:'complete',detail:d})});
-              document.addEventListener('earthline:analysis-failed',e=>finish({kind:'failed',detail:e.detail||{}}));
-              setTimeout(()=>finish({kind:'timeout'}),60000);
-            }));
-            await page.click('#earthlineDeclareProperty16169');
-            out.terminal=await done;
-            await page.waitForTimeout(1800);
-            out.after=await snap('after');
-            out.validFunction=await page.evaluate(()=>{
-              try{return typeof window.earthlineOpenVermontReport16151==='function'}catch(_){return false}
-            });
-            if(out.after.buttonExists && !out.after.buttonDisabled){
-              await page.locator('#earthlineVermontReport16149').click({timeout:10000});
-              await page.waitForTimeout(500);
-            } else if(out.after.buttonExists) {
-              await page.evaluate(()=>document.querySelector('#earthlineVermontReport16149')?.click());
-              await page.waitForTimeout(300);
-            }
-            out.afterClick=await page.evaluate(()=>{
-              const p=document.querySelector('#earthlineVermontReportPanel16149');
-              return {panelExists:!!p,panelOpen:!!p&&p.classList.contains('open'),className:p?.className||''};
-            });
-            out.errors=errors;
-            fs.writeFileSync('artifacts/report-diagnostic.json',JSON.stringify(out,null,2));
-            await page.screenshot({path:'artifacts/report-diagnostic.png',fullPage:false});
-            console.log(JSON.stringify(out,null,2));
-            await browser.close();
-            if(out.terminal.kind!=='complete') throw new Error('Property analysis did not complete: '+JSON.stringify(out.terminal));
-            if(!out.after.buttonExists) throw new Error('Report button missing after Property completion');
-            if(out.after.buttonDisabled) throw new Error('Report button disabled after Property completion: '+JSON.stringify(out.after));
-            if(out.after.onclickType!=='function') throw new Error('Report button has no onclick handler: '+JSON.stringify(out.after));
-            if(!out.afterClick.panelOpen) throw new Error('Report panel did not open: '+JSON.stringify(out.afterClick));
-          })().catch(e=>{console.error(e.stack||e);process.exit(1)});
-          JS
-          node /tmp/report-diag.js
-      - name: Upload report diagnostic
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: earthline-report-diagnostic-16870
-          path: artifacts/
-          if-no-files-found: ignore
+          git config user.name "earthline-diagnostic-bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add lab/mantra48-earlier-final-verification-16869.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag: recover earlier 16869 final verification evidence"
+          git push origin HEAD:mantra48-report-isolation-16870
