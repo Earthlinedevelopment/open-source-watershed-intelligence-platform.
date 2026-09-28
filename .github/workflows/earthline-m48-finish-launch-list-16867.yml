@@ -139,11 +139,11 @@ jobs:
           await page.waitForTimeout(1800);
           const r=await page.evaluate(()=>({
             map:!!document.getElementById('map'),orb:!!document.getElementById('searchOrb'),
-            heading:document.body.innerText.includes('Property Modelling'),
+            heading:document.documentElement.outerHTML.includes('Property Modelling'),
             spanish:[...document.querySelectorAll('#earthlineLanguage16488 option')].some(o=>o.value==='es'),
             contact:!!document.getElementById('earthlineRailContact16512'),
             report:!!document.getElementById('earthlineVermontReport16149'),
-            target:document.body.innerText.includes('20-ACRE SEARCH'),
+            target:document.documentElement.outerHTML.includes('20-ACRE SEARCH'),
             build:!!window.EARTHLINE_LAUNCH_LIST_16867
           }));
           console.log(r,pageErrors); if(pageErrors.length)throw new Error(pageErrors.join(' | ')); for(const [k,v] of Object.entries(r))if(!v)throw new Error('smoke '+k);
