@@ -21813,6 +21813,18 @@ var prescribeSwales;
       (M&&Array.isArray(M.usgsAquifers)&&M.usgsAquifers.length)
     );
     setGroup(active.water,flowOn);setGroup(active.swales,swaleOn);
+    /* EARTHLINE 16859 — Property blue presentation only. The one authoritative
+       renderer owner reasserts the already-approved saturated blue paint after
+       every Property ownership handoff. Width, pattern, geometry and science stay unchanged. */
+    if(property){
+      try{
+        const blue16166="earthline-property-swale-ditch-16166";
+        if(earthlineMap.getLayer(blue16166)){
+          earthlineMap.setPaintProperty(blue16166,"line-color","#008cff");
+          earthlineMap.setPaintProperty(blue16166,"line-opacity",1);
+        }
+      }catch(_){ }
+    }
     setGroup(active.recharge,rechargeOn);setGroup(active.contours,contourOn);setGroup(active.aquifer,aquiferOn);
     updateAquiferTopText16501(property,aquiferTextOn);
     /* EARTHLINE 16414 — authoritative hydro evidence visibility order.
