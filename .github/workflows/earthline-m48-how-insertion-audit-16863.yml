@@ -1,0 +1,36 @@
+name: Earthline M48 How Bioswales insertion audit 16863
+on:
+  push:
+    branches:
+      - mantra48-blue-isolation-16860
+permissions:
+  contents: read
+jobs:
+  audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra48-launch-clean-16861
+      - name: Locate exact report insertions
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8')
+          needle='HOW_BIOSWALES_REPORT_16388'
+          start=0; n=0
+          while True:
+            i=t.find(needle,start)
+            if i<0: break
+            n+=1
+            print('\n===== OCCURRENCE',n,'AT',i,'=====')
+            print(t[max(0,i-500):i+1200])
+            start=i+len(needle)
+          print('\nTOTAL',n)
+          for needle2 in ['07 · Source / evidence register','Appendix B</div><h2>Source manifest','Appendix C</div><h2>Calculation ledger']:
+            i=t.find(needle2)
+            print('\n===== ',needle2,'AT',i,' =====')
+            if i>=0: print(t[max(0,i-300):i+1800])
+          PY
