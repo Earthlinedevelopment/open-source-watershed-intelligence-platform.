@@ -22,39 +22,32 @@ jobs:
           p=Path('index.html')
           t=p.read_text(encoding='utf-8')
           before=t
-
           anchor="  function gapRows(d){"
           if t.count(anchor)!=1: raise SystemExit('gapRows anchor not unique')
-          helpers=r'''  function howBioswalesBodyWithoutSources16388(){return HOW_BIOSWALES_REPORT_16388.map(page=>String(page||'').replace(/<div class=\"el49-source\">[\s\S]*?<\/div>/g,'')).join('')}
-  function howBioswalesSourceNotes16388(){const seen=[];for(const page of HOW_BIOSWALES_REPORT_16388){const s=String(page||'');const rx=/<div class=\"el49-source\">([\s\S]*?)<\/div>/g;let m;while((m=rx.exec(s))){const text=String(m[1]||'').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/\s+/g,' ').trim();if(text&&!seen.includes(text))seen.push(text)}}return seen}
-  function combinedReportSources16388(d){const notes=howBioswalesSourceNotes16388();return `<div class=\"el49-callout\"><b>Combined source register.</b> Run-specific data provenance and the literature/source notes used in How Bioswales Work are consolidated on this final page.</div>${sourceRows(d)}${notes.length?`<h3 style=\"margin-top:24px\">How Bioswales Work · source notes</h3><div class=\"el49-source-list\">${notes.map((s,i)=>`<p><b>${i+1}.</b> ${esc(s)}</p>`).join('')}</div>`:''}`}
-'''
+          helpers="\n".join([
+            "  function howBioswalesBodyWithoutSources16388(){return HOW_BIOSWALES_REPORT_16388.map(page=>String(page||'').replace(/<div class=\\\"el49-source\\\">[\\s\\S]*?<\\/div>/g,'')).join('')}",
+            "  function howBioswalesSourceNotes16388(){const seen=[];for(const page of HOW_BIOSWALES_REPORT_16388){const s=String(page||'');const rx=/<div class=\\\"el49-source\\\">([\\s\\S]*?)<\\/div>/g;let m;while((m=rx.exec(s))){const text=String(m[1]||'').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/\\s+/g,' ').trim();if(text&&!seen.includes(text))seen.push(text)}}return seen}",
+            "  function combinedReportSources16388(d){const notes=howBioswalesSourceNotes16388();return `<div class=\\\"el49-callout\\\"><b>Combined source register.</b> Run-specific data provenance and the literature/source notes used in How Bioswales Work are consolidated on this final page.</div>${sourceRows(d)}${notes.length?`<h3 style=\\\"margin-top:24px\\\">How Bioswales Work · source notes</h3><div class=\\\"el49-source-list\\\">${notes.map((s,i)=>`<p><b>${i+1}.</b> ${esc(s)}</p>`).join('')}</div>`:''}`}",
+            ""
+          ])
           t=t.replace(anchor,helpers+anchor,1)
-
-          # Move inline How Bioswales Work source-note blocks to final source page.
-          n=t.count("${HOW_BIOSWALES_REPORT_16388.join('')}")
-          if n!=1: raise SystemExit(f'expected one HOW_BIOSWALES report insertion, found {n}')
-          t=t.replace("${HOW_BIOSWALES_REPORT_16388.join('')}","${howBioswalesBodyWithoutSources16388()}",1)
-
-          # Keep Section 07 intact, but remove the duplicated table from it.
+          old_how="${HOW_BIOSWALES_REPORT_16388.join('')}"
+          new_how="${howBioswalesBodyWithoutSources16388()}"
+          if t.count(old_how)!=1: raise SystemExit(f'expected one HOW_BIOSWALES report insertion, found {t.count(old_how)}')
+          t=t.replace(old_how,new_how,1)
           pat07=re.compile(r'(<section class="el49-page"><div class="el49-kicker">07 · Source / evidence register</div>[\s\S]*?)(\$\{sourceRows\(d\)\})([\s\S]*?\$\{footer\(data,\'07\'\)\}</section>)')
           m=pat07.search(t)
           if not m: raise SystemExit('Section 07 exact sourceRows owner not found')
           t=t[:m.start()]+m.group(1)+'<div class="el49-callout">The combined source register is provided on the final Sources page so provenance appears once in the report.</div>'+m.group(3)+t[m.end():]
-
-          # Keep Appendix B intact, but remove its duplicated source table.
           patb=re.compile(r'(<section class="el49-page"><div class="el49-kicker">Appendix B</div><h2>Source manifest · user-verifiable trail</h2>[\s\S]*?)(\$\{sourceRows\(d\)\})([\s\S]*?\$\{footer\(data,\'Appendix B\'\)\}</section>)')
           m=patb.search(t)
           if not m: raise SystemExit('Appendix B exact sourceRows owner not found')
           t=t[:m.start()]+m.group(1)+'<div class="el49-callout">The source manifest is consolidated on the final Sources page; this appendix heading is retained to preserve the report structure.</div>'+m.group(3)+t[m.end():]
-
-          # Append the consolidated register after Appendix C so Sources is the final page.
           patc=re.compile(r'(<section class="el49-page"><div class="el49-kicker">Appendix C</div><h2>Calculation ledger[\s\S]*?\$\{footer\(data,\'Appendix C\'\)\}</section>)(\s*</div>`\s*})')
           m=patc.search(t)
           if not m: raise SystemExit('Appendix C terminal block not found')
-          final='''<section class="el49-page"><div class="el49-kicker">Sources · Final page</div><h2>Combined sources and evidence register</h2>${combinedReportSources16388(d)}${footer(data,'Sources')}</section>'''
+          final='<section class="el49-page"><div class="el49-kicker">Sources · Final page</div><h2>Combined sources and evidence register</h2>${combinedReportSources16388(d)}${footer(data,\'Sources\')}</section>'
           t=t[:m.start()]+m.group(1)+final+m.group(2)+t[m.end():]
-
           if t==before: raise SystemExit('no report source change')
           p.write_text(t,encoding='utf-8')
           PY
