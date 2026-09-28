@@ -1,0 +1,71 @@
+name: Earthline M48 blue owner diagnostic
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - mantra48-blue-diagnostic-16860
+jobs:
+  diagnose:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra48-blue-diagnostic-16860
+      - name: Extract blue renderer ownership evidence
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('index.html')
+          t=p.read_text(encoding='utf-8')
+          lines=t.splitlines()
+          keys=[
+            'earthline-property-swale-ditch-16166',
+            'earthlineApplyRendererOwnership15805',
+            'earthline-property-safe-water-16221',
+            'waterPockets16174',
+            'EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169',
+            "line-color':'#008cff",
+            'SWALE_WATER',
+            'IMG_UP','IMG_FLIP','LAYERS={','const LAYERS'
+          ]
+          out=[]
+          out.append('EARTHLINE MANTRA 48 BLUE OWNER DIAGNOSTIC 16860')
+          out.append('SOURCE BRANCH: mantra48-blue-diagnostic-16860')
+          out.append('INDEX SIZE: %d bytes' % len(t.encode('utf-8')))
+          out.append('')
+          for key in keys:
+            hits=[i for i,l in enumerate(lines) if key in l]
+            out.append(f'=== {key} :: {len(hits)} hit(s) ===')
+            for i in hits[:30]:
+              a=max(0,i-3); b=min(len(lines),i+4)
+              out.append(f'--- lines {a+1}-{b} ---')
+              for j in range(a,b): out.append(f'{j+1}: {lines[j]}')
+            out.append('')
+          # Targeted state-mutator search around the ditch layer.
+          token='earthline-property-swale-ditch-16166'
+          out.append('=== ALL DITCH MUTATOR EXPRESSIONS ===')
+          for m in re.finditer(r'.{0,180}'+re.escape(token)+r'.{0,260}', t, flags=re.S):
+            s=m.group(0).replace('\n',' ')
+            out.append(s[:700])
+          out.append('')
+          # Capture ownership function body vicinity.
+          for pat in ['earthlineApplyRendererOwnership15805=', 'function earthlineApplyRendererOwnership15805']:
+            pos=t.find(pat)
+            if pos>=0:
+              out.append('=== OWNERSHIP FUNCTION VICINITY ===')
+              out.append(t[max(0,pos-1500):pos+7000])
+              break
+          Path('lab/mantra48-blue-owner-diagnostic-16860.txt').write_text('\n'.join(out),encoding='utf-8')
+          PY
+      - name: Commit diagnostic only
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lab/mantra48-blue-owner-diagnostic-16860.txt
+          git commit -m 'diagnostic: trace Property blue renderer owner 16860'
+          git push origin HEAD:mantra48-blue-diagnostic-16860
