@@ -13,64 +13,62 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - name: Install Playwright Chromium
+      - name: Install browser
         run: |
-          npm install playwright@1.55.0 --no-save
-          npx playwright install --with-deps chromium
+          pip install playwright
+          python -m playwright install --with-deps chromium
       - name: Capture live report reachability
+        continue-on-error: true
         env:
           EARTHLINE_URL: https://earthlinedevelopment.org/?report_diag=16870
         run: |
           mkdir -p lab artifacts
-          cat > /tmp/report-diag.js <<'JS'
-          const { chromium } = require('playwright');
-          const fs = require('fs');
-          (async()=>{
-            const out={startedAt:new Date().toISOString(),url:process.env.EARTHLINE_URL,errors:[]};
-            let browser=null,page=null;
-            try{
-              browser=await chromium.launch({headless:true,args:['--disable-dev-shm-usage']});
-              page=await browser.newPage({viewport:{width:1440,height:1000}});
-              page.on('pageerror',e=>out.errors.push('pageerror: '+e.message));
-              page.on('console',m=>{if(m.type()==='error')out.errors.push('console: '+m.text())});
-              await page.goto(process.env.EARTHLINE_URL,{waitUntil:'domcontentloaded',timeout:60000});
-              await page.waitForFunction(()=>typeof window.earthlineSetPropertyTarget16201==='function'&&!!document.querySelector('#earthlineVermontReport16149'),null,{timeout:30000});
-              const snap=async label=>page.evaluate(label=>{
-                const b=document.querySelector('#earthlineVermontReport16149');
-                const d151=window.EARTHLINE_DISPLAYED_RUN_16151||null,d147=window.EARTHLINE_DISPLAYED_RUN_16147||null;
-                let audit=null;try{audit=typeof window.earthlineReportReachabilityAudit16151==='function'?window.earthlineReportReachabilityAudit16151():null}catch(e){audit={error:String(e)}}
-                return {label,tier:document.documentElement.dataset.earthlineTier||'',runState:document.documentElement.dataset.earthlineRunState||'',dataActive:document.documentElement.dataset.earthlineActiveRun||'',active151:window.EARTHLINE_ACTIVE_RUN_TOKEN_16151||null,active149:window.EARTHLINE_ACTIVE_RUN_TOKEN_16149||null,active147:window.EARTHLINE_ACTIVE_RUN_TOKEN_16147||null,displayed151:d151&&d151.runToken||null,displayed147:d147&&d147.runToken||null,buttonExists:!!b,buttonDisabled:b?!!b.disabled:null,buttonReady:b?b.dataset.ready||'':null,ariaDisabled:b?b.getAttribute('aria-disabled'):null,onclickType:b?typeof b.onclick:null,buttonVisible:b?getComputedStyle(b).display!=='none':null,pointerEvents:b?getComputedStyle(b).pointerEvents:null,buttonText:b?b.textContent.replace(/\s+/g,' ').trim():null,openerType:typeof window.earthlineOpenVermontReport16151,audit};
-              },label);
-              out.before=await snap('before');
-              await page.evaluate(()=>window.earthlineSetPropertyTarget16201({lng:-73.1107,lat:44.4906,source:'16870-live-report-diagnostic'},{openPanel:false}));
-              const done=page.evaluate(()=>new Promise(resolve=>{
-                let finished=false; const finish=d=>{if(!finished){finished=true;resolve(d)}};
-                document.addEventListener('earthline:analysis-complete',e=>{const d=e.detail||{};if(String(d.tier||d.mode||'').toLowerCase()==='property')finish({kind:'complete',detail:d})});
-                document.addEventListener('earthline:analysis-failed',e=>finish({kind:'failed',detail:e.detail||{}}));
-                setTimeout(()=>finish({kind:'timeout'}),60000);
-              }));
-              await page.locator('#earthlineDeclareProperty16169').click({timeout:15000});
-              out.terminal=await done;
-              await page.waitForTimeout(1600);
-              out.after=await snap('after');
-              try{
-                if(out.after.buttonExists&&!out.after.buttonDisabled){await page.locator('#earthlineVermontReport16149').click({timeout:10000});await page.waitForTimeout(500)}
-                else if(out.after.buttonExists){await page.evaluate(()=>document.querySelector('#earthlineVermontReport16149')?.click());await page.waitForTimeout(300)}
-              }catch(e){out.clickError=String(e?.stack||e)}
-              out.afterClick=await page.evaluate(()=>{const p=document.querySelector('#earthlineVermontReportPanel16149');return {panelExists:!!p,panelOpen:!!p&&p.classList.contains('open'),className:p?.className||''}});
-              try{await page.screenshot({path:'artifacts/report-live-diagnostic.png'})}catch(e){out.screenshotError=String(e)}
-            }catch(e){out.fatal=String(e?.stack||e)}
-            finally{
-              out.finishedAt=new Date().toISOString();
-              fs.writeFileSync('lab/mantra48-report-live-diagnostic-16870.json',JSON.stringify(out,null,2));
-              fs.writeFileSync('artifacts/report-live-diagnostic.json',JSON.stringify(out,null,2));
-              console.log(JSON.stringify(out,null,2));
-              if(browser)await browser.close().catch(()=>{});
-            }
-          })();
-          JS
-          node /tmp/report-diag.js
+          cat > /tmp/report_diag.py <<'PY'
+          import json, os, traceback
+          from datetime import datetime, timezone
+          from playwright.sync_api import sync_playwright
+          out={"startedAt":datetime.now(timezone.utc).isoformat(),"url":os.environ.get("EARTHLINE_URL"),"errors":[]}
+          def snap(page,label):
+              return page.evaluate("""label=>{const b=document.querySelector('#earthlineVermontReport16149'),d151=window.EARTHLINE_DISPLAYED_RUN_16151||null,d147=window.EARTHLINE_DISPLAYED_RUN_16147||null;let audit=null;try{audit=typeof window.earthlineReportReachabilityAudit16151==='function'?window.earthlineReportReachabilityAudit16151():null}catch(e){audit={error:String(e)}}return {label,tier:document.documentElement.dataset.earthlineTier||'',runState:document.documentElement.dataset.earthlineRunState||'',dataActive:document.documentElement.dataset.earthlineActiveRun||'',active151:window.EARTHLINE_ACTIVE_RUN_TOKEN_16151||null,active149:window.EARTHLINE_ACTIVE_RUN_TOKEN_16149||null,active147:window.EARTHLINE_ACTIVE_RUN_TOKEN_16147||null,displayed151:d151&&d151.runToken||null,displayed147:d147&&d147.runToken||null,buttonExists:!!b,buttonDisabled:b?!!b.disabled:null,buttonReady:b?b.dataset.ready||'':null,ariaDisabled:b?b.getAttribute('aria-disabled'):null,onclickType:b?typeof b.onclick:null,buttonVisible:b?getComputedStyle(b).display!=='none':null,pointerEvents:b?getComputedStyle(b).pointerEvents:null,buttonText:b?b.textContent.replace(/\\s+/g,' ').trim():null,openerType:typeof window.earthlineOpenVermontReport16151,audit};}""",label)
+          try:
+              with sync_playwright() as p:
+                  browser=p.chromium.launch(headless=True,args=['--disable-dev-shm-usage'])
+                  page=browser.new_page(viewport={"width":1440,"height":1000})
+                  page.on('pageerror',lambda e: out['errors'].append('pageerror: '+str(e)))
+                  page.on('console',lambda m: out['errors'].append('console: '+m.text) if m.type=='error' else None)
+                  page.goto(out['url'],wait_until='domcontentloaded',timeout=60000)
+                  page.wait_for_function("()=>typeof window.earthlineSetPropertyTarget16201==='function'&&!!document.querySelector('#earthlineVermontReport16149')",timeout=30000)
+                  out['before']=snap(page,'before')
+                  page.evaluate("()=>window.earthlineSetPropertyTarget16201({lng:-73.1107,lat:44.4906,source:'16870-live-report-diagnostic'},{openPanel:false})")
+                  page.evaluate("""()=>{window.__reportDiagTerminal16870=null;document.addEventListener('earthline:analysis-complete',e=>{const d=e.detail||{};if(String(d.tier||d.mode||'').toLowerCase()==='property')window.__reportDiagTerminal16870={kind:'complete',detail:d}});document.addEventListener('earthline:analysis-failed',e=>{window.__reportDiagTerminal16870={kind:'failed',detail:e.detail||{}}})}""")
+                  page.locator('#earthlineDeclareProperty16169').click(timeout=15000)
+                  try: page.wait_for_function("()=>!!window.__reportDiagTerminal16870",timeout=60000)
+                  except Exception as e: out['terminalWaitError']=str(e)
+                  out['terminal']=page.evaluate("()=>window.__reportDiagTerminal16870")
+                  page.wait_for_timeout(1600)
+                  out['after']=snap(page,'after')
+                  try:
+                      if out['after'].get('buttonExists') and not out['after'].get('buttonDisabled'):
+                          page.locator('#earthlineVermontReport16149').click(timeout=10000)
+                      elif out['after'].get('buttonExists'):
+                          page.evaluate("()=>document.querySelector('#earthlineVermontReport16149')?.click()")
+                      page.wait_for_timeout(400)
+                  except Exception as e: out['clickError']=str(e)
+                  out['afterClick']=page.evaluate("()=>{const p=document.querySelector('#earthlineVermontReportPanel16149');return {panelExists:!!p,panelOpen:!!p&&p.classList.contains('open'),className:p?.className||''}}")
+                  try: page.screenshot(path='artifacts/report-live-diagnostic.png')
+                  except Exception as e: out['screenshotError']=str(e)
+                  browser.close()
+          except Exception as e:
+              out['fatal']=str(e)
+              out['traceback']=traceback.format_exc()
+          out['finishedAt']=datetime.now(timezone.utc).isoformat()
+          for path in ['lab/mantra48-report-live-diagnostic-16870.json','artifacts/report-live-diagnostic.json']:
+              with open(path,'w',encoding='utf-8') as f: json.dump(out,f,indent=2)
+          print(json.dumps(out,indent=2))
+          PY
+          python /tmp/report_diag.py
       - name: Commit diagnostic evidence to isolation branch
+        if: always()
         run: |
           git config user.name "earthline-diagnostic-bot"
           git config user.email "info@earthlinedevelopment.org"
