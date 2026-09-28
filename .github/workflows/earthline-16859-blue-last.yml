@@ -1,0 +1,49 @@
+name: Earthline 16859 blue water last
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - pages-live
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Put existing Property blue water after renderer ownership
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          t=p.read_text(encoding='utf-8')
+          old="if(mp.getLayer?.('earthline-property-swale-ditch-16166'))mp.moveLayer('earthline-property-swale-ditch-16166');if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')"
+          new="if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property');if(mp.getLayer?.('earthline-property-swale-ditch-16166'))mp.moveLayer('earthline-property-swale-ditch-16166')"
+          c=t.count(old)
+          if c != 1:
+              raise SystemExit(f'expected exactly one 16858 ordering sequence, found {c}')
+          t=t.replace(old,new,1)
+          p.write_text(t,encoding='utf-8')
+          PY
+      - name: Verify order-only repair
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8')
+          expected="if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property');if(mp.getLayer?.('earthline-property-swale-ditch-16166'))mp.moveLayer('earthline-property-swale-ditch-16166')"
+          assert t.count(expected) == 1
+          assert t.count("'line-color':'#008cff','line-width':['interpolate',['linear'],['zoom'],14,3.4,17,5.4,20,7.2],'line-opacity':1") == 1
+          print('PASS: renderer ownership runs first; existing blue water is moved last; style/width/geometry unchanged')
+          PY
+      - name: Commit candidate
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'candidate: 16859 move existing Property blue after renderer ownership'
+          git push origin HEAD:pages-live
