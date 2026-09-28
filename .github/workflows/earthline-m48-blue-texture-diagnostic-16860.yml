@@ -1,0 +1,56 @@
+name: Earthline M48 blue texture diagnostic
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - mantra48-blue-isolation-16860
+jobs:
+  diagnose:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra48-blue-isolation-16860
+      - name: Install image decoder
+        run: python3 -m pip install pillow --quiet
+      - name: Inspect embedded natural swale tiles only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          import base64, io, re, hashlib, colorsys, json
+          t=Path('index.html').read_text(encoding='utf-8')
+          out={'build':'16860-texture-diagnostic','index_sha256':hashlib.sha256(t.encode()).hexdigest(),'tiles':{}}
+          for name in ('TILE_UP','TILE_FLIP'):
+            m=re.search(r"const\s+"+name+r"='data:image/webp;base64,([^']+)'",t)
+            if not m: raise SystemExit(name+' data URL not found')
+            raw=base64.b64decode(m.group(1))
+            im=Image.open(io.BytesIO(raw)).convert('RGBA')
+            blue=[]; allpx=list(im.getdata())
+            for r,g,b,a in allpx:
+              if a<16: continue
+              h,s,v=colorsys.rgb_to_hsv(r/255,g/255,b/255)
+              deg=h*360
+              if 175<=deg<=250 and s>=.22 and b>=g*.82:
+                blue.append((r,g,b,a))
+            from collections import Counter
+            common=Counter(blue).most_common(30)
+            out['tiles'][name]={
+              'size':list(im.size),'mode':im.mode,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),
+              'opaque_pixels':sum(1 for p in allpx if p[3]>=16),'blue_candidate_pixels':len(blue),
+              'blue_candidate_fraction':round(len(blue)/max(1,len(allpx)),6),
+              'common_blue_candidates':[[list(k),v] for k,v in common]
+            }
+          Path('lab/mantra48-blue-texture-diagnostic-16860.json').write_text(json.dumps(out,indent=2),encoding='utf-8')
+          PY
+      - name: Commit diagnostic only
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lab/mantra48-blue-texture-diagnostic-16860.json
+          git commit -m 'diagnostic: inspect natural swale texture blue pixels 16860'
+          git push origin HEAD:mantra48-blue-isolation-16860
