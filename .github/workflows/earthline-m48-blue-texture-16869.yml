@@ -1,0 +1,146 @@
+name: Earthline M48 blue texture repair 16869
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - mantra48-blue-texture-16869
+jobs:
+  blue-texture:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra48-blue-texture-16869
+          fetch-depth: 0
+      - name: Patch only natural swale water pixels
+        shell: bash
+        run: |
+          python -m pip install --quiet pillow
+          cat > /tmp/patch_blue_16869.py <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          import base64, io, re, colorsys, hashlib
+
+          p=Path('index.html')
+          html=p.read_text(encoding='utf-8')
+          original=html
+          total_changed=0
+          reports=[]
+
+          def patch(name, text):
+              global total_changed
+              pat=re.compile(r"("+re.escape(name)+r"\s*=\s*['\"]data:image/webp;base64,)([A-Za-z0-9+/=]+)(['\"])")
+              matches=list(pat.finditer(text))
+              if len(matches)!=1:
+                  raise SystemExit(f'{name}: expected exactly 1 embedded WebP, found {len(matches)}')
+              m=matches[0]
+              raw=base64.b64decode(m.group(2))
+              im=Image.open(io.BytesIO(raw)).convert('RGBA')
+              if im.size!=(512,128):
+                  raise SystemExit(f'{name}: unexpected dimensions {im.size}')
+              before=list(im.getdata())
+              after=[]
+              mask=[]
+              for i,(r,g,b,a) in enumerate(before):
+                  if a==0:
+                      after.append((r,g,b,a)); continue
+                  rr,gg,bb=r/255.0,g/255.0,b/255.0
+                  h,s,v=colorsys.rgb_to_hsv(rr,gg,bb)
+                  deg=h*360.0
+                  # Water in the natural texture is the cyan/blue family; vegetation/brown stay outside this hue window.
+                  is_water=(160.0 <= deg <= 240.0 and s >= 0.18 and v >= 0.10 and (b >= r*1.05 or g >= r*1.12))
+                  if not is_water:
+                      after.append((r,g,b,a)); continue
+                  # Preserve luminance/shading while making the same water pixels unmistakably blue.
+                  nh=205.0/360.0
+                  ns=max(0.88,s)
+                  nv=min(1.0,max(0.34,v*1.16+0.035))
+                  nr,ng,nb=colorsys.hsv_to_rgb(nh,ns,nv)
+                  px=(round(nr*255),round(ng*255),round(nb*255),a)
+                  after.append(px); mask.append(i)
+              pct=100.0*len(mask)/len(before)
+              if not (2.0 <= pct <= 22.0):
+                  raise SystemExit(f'{name}: water-mask safety stop: {len(mask)} pixels = {pct:.2f}%')
+              out=Image.new('RGBA',im.size); out.putdata(after)
+              bio=io.BytesIO(); out.save(bio,format='WEBP',lossless=True,quality=100,method=6,exact=True)
+              encoded=base64.b64encode(bio.getvalue()).decode('ascii')
+              # Lossless round-trip: every non-water decoded pixel must remain byte-for-byte identical.
+              check=Image.open(io.BytesIO(bio.getvalue())).convert('RGBA')
+              chk=list(check.getdata())
+              maskset=set(mask)
+              changed_nonwater=sum(1 for i,(a,b) in enumerate(zip(before,chk)) if i not in maskset and a!=b)
+              if changed_nonwater:
+                  raise SystemExit(f'{name}: safety stop: {changed_nonwater} non-water pixels changed')
+              total_changed += len(mask)
+              reports.append((name,len(mask),pct,len(raw),len(bio.getvalue()),hashlib.sha256(raw).hexdigest()[:12],hashlib.sha256(bio.getvalue()).hexdigest()[:12]))
+              return text[:m.start(2)]+encoded+text[m.end(2):]
+
+          html=patch('TILE_UP',html)
+          html=patch('TILE_FLIP',html)
+          if html==original or total_changed==0:
+              raise SystemExit('No blue texture change produced')
+          # Guard against unintended textual edits: only the two payload spans may differ.
+          def scrub(s):
+              for name in ('TILE_UP','TILE_FLIP'):
+                  pat=re.compile(r"("+name+r"\s*=\s*['\"]data:image/webp;base64,)([A-Za-z0-9+/=]+)(['\"])")
+                  s=pat.sub(lambda m:m.group(1)+'<TEXTURE_PAYLOAD>'+m.group(3),s)
+              return s
+          if scrub(original)!=scrub(html):
+              raise SystemExit('Safety stop: text outside TILE_UP/TILE_FLIP payloads changed')
+          p.write_text(html,encoding='utf-8')
+          print('BLUE_TEXTURE_REPAIR_16869')
+          for row in reports: print('%s changed=%d pct=%.2f old_bytes=%d new_bytes=%d old_sha=%s new_sha=%s'%row)
+          print('total_changed',total_changed)
+          PY
+          python /tmp/patch_blue_16869.py
+      - name: Verify HTML and working Property controls locally
+        shell: bash
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+          python3 -m http.server 8787 >/tmp/earthline16869-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          cat > /tmp/smoke16869.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1600,height:1000}});
+          const pageErrors=[];
+          page.on('pageerror',e=>pageErrors.push(String(e)));
+          await page.goto('http://127.0.0.1:8787/index.html?blue16869=1',{waitUntil:'domcontentloaded',timeout:45000});
+          await page.waitForTimeout(7000);
+          const state=await page.evaluate(()=>{
+            const vis=el=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};
+            const inputs=[...document.querySelectorAll('input')].filter(vis).map(x=>({id:x.id||'',ph:x.placeholder||'',value:x.value||''}));
+            const buttons=[...document.querySelectorAll('button')].filter(vis).map(x=>(x.innerText||x.textContent||'').trim().replace(/\s+/g,' ')).filter(Boolean);
+            return {title:document.title,inputs,buttons,body:(document.body?.innerText||'').slice(0,6000)};
+          });
+          const hasSearch=state.inputs.some(x=>/address|city|county|state|country|search|location/i.test((x.id||'')+' '+(x.ph||'')));
+          const hasProperty=state.buttons.some(x=>/property|20.?acre/i.test(x));
+          if(!hasSearch) throw new Error('Working search control missing after texture-only edit');
+          if(!hasProperty) throw new Error('Property control missing after texture-only edit');
+          if(pageErrors.length) throw new Error('Page errors after texture-only edit: '+JSON.stringify(pageErrors));
+          console.log('SMOKE_16869_OK',JSON.stringify({hasSearch,hasProperty,title:state.title,buttons:state.buttons.slice(0,30)}));
+          await page.screenshot({path:'blue-16869-startup.png',fullPage:true});
+          await browser.close();
+          JS
+          node /tmp/smoke16869.mjs
+      - name: Commit blue-only candidate
+        shell: bash
+        run: |
+          git diff --exit-code -- . ':!.github/workflows/earthline-m48-blue-texture-16869.yml' >/dev/null && { echo 'Expected index.html change missing'; exit 1; } || true
+          CHANGED="$(git diff --name-only)"
+          test "$CHANGED" = "index.html" || { echo "Unexpected changed files: $CHANGED"; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'candidate: 16869 blue water pixels only'
+          git push origin HEAD:mantra48-blue-texture-16869
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blue-texture-16869-smoke
+          path: blue-16869-startup.png
