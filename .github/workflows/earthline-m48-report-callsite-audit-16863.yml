@@ -1,0 +1,33 @@
+name: Earthline M48 report callsite audit 16863
+on:
+  push:
+    branches:
+      - mantra48-blue-isolation-16860
+permissions:
+  contents: read
+jobs:
+  audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra48-launch-clean-16861
+      - name: Print exact source and HBW callsites
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8')
+          for needle in ['${sourceRows(d)}','howBioswalesReportPages16388(data)','Appendix C','Source manifest','Source / evidence','Source / Evidence','source / evidence']:
+            print('\n===== ',needle,' =====')
+            start=0;n=0
+            while n<12:
+              i=t.find(needle,start)
+              if i<0: break
+              n+=1
+              print('\nAT',i)
+              print(t[max(0,i-1800):i+2600])
+              start=i+len(needle)
+            print('TOTAL',n)
+          PY
