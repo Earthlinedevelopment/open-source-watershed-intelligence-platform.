@@ -1,0 +1,77 @@
+name: Earthline M48 exact Contact + Spanish repairs 16862
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - mantra48-blue-isolation-16860
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra48-launch-clean-16861
+      - name: Apply approved repairs against exact current owners
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          t=p.read_text(encoding='utf-8')
+          reps=[
+            ("mailto:Earthlineinfo@earthlinedevelopment.org?subject=Earthline%20Inquiry",
+             "mailto:info@earthlinedevelopment.org?subject=Earthline%20Inquiry",
+             'contact-mailto'),
+            ("if(existing&&!existing.querySelector('option[value=\"vi\"]')){const opt=document.createElement('option');opt.value='vi';opt.textContent='Việt';existing.appendChild(opt)}return wrap}",
+             "if(existing&&!existing.querySelector('option[value=\"vi\"]')){const opt=document.createElement('option');opt.value='vi';opt.textContent='Việt';existing.appendChild(opt)}if(existing&&!existing.querySelector('option[value=\"es\"]')){const opt=document.createElement('option');opt.value='es';opt.textContent='Español';existing.appendChild(opt)}return wrap}",
+             'existing-selector-repair'),
+            ('<option value="en">English</option><option value="th">ไทย</option><option value="vi">Việt</option></select>',
+             '<option value="en">English</option><option value="th">ไทย</option><option value="vi">Việt</option><option value="es">Español</option></select>',
+             'selector-options'),
+            ("if(!['en','th','vi'].includes(saved))saved='en'",
+             "if(!['en','th','vi','es'].includes(saved))saved='en'",
+             'saved-allowlist'),
+            ("const value=['en','th','vi'].includes(sel.value)?sel.value:'en'",
+             "const value=['en','th','vi','es'].includes(sel.value)?sel.value:'en'",
+             'change-allowlist'),
+            ("function applyLanguage(value){const next=['en','th','vi'].includes(value)?value:'en';document.documentElement.lang=next;const label=document.getElementById('earthlineLanguageLabel16488');if(label)label.textContent=next==='th'?'ภาษา':next==='vi'?'Ngôn ngữ':'Language';window.EARTHLINE_LANGUAGE_16488=next}",
+             "function applyLanguage(value){const next=['en','th','vi','es'].includes(value)?value:'en';document.documentElement.lang=next;const label=document.getElementById('earthlineLanguageLabel16488');if(label)label.textContent=next==='th'?'ภาษา':next==='vi'?'Ngôn ngữ':next==='es'?'Idioma':'Language';window.EARTHLINE_LANGUAGE_16488=next}",
+             'apply-language')
+          ]
+          for old,new,name in reps:
+              n=t.count(old)
+              if n!=1: raise SystemExit(f'{name}: expected 1 exact owner match, found {n}')
+              t=t.replace(old,new,1)
+          p.write_text(t,encoding='utf-8')
+          PY
+      - name: Verify exact approved scope
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8')
+          assert 'mailto:info@earthlinedevelopment.org?subject=Earthline%20Inquiry' in t
+          assert 'mailto:Earthlineinfo@earthlinedevelopment.org' not in t
+          assert '<option value="es">Español</option>' in t
+          assert "if(!['en','th','vi','es'].includes(saved))saved='en'" in t
+          assert "const value=['en','th','vi','es'].includes(sel.value)?sel.value:'en'" in t
+          assert "const next=['en','th','vi','es'].includes(value)?value:'en'" in t
+          assert "next==='es'?'Idioma'" in t
+          assert 'Property Modelling' in t
+          assert 'CROSSHAIR · ' in t and ' · ANALYZE · 20 ACRES' in t
+          assert "const TILE_UP='data:image/" in t and "const TILE_FLIP='data:image/" in t
+          print('PASS Contact + Spanish; prior clean launch repairs retained')
+          PY
+          git diff --check
+          test "$(git diff --name-only | tr -d '\n')" = "index.html"
+          git diff --numstat
+      - name: Commit candidate
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'candidate: 16862 correct Contact and add Spanish selector'
+          git push origin HEAD:mantra48-launch-clean-16861
