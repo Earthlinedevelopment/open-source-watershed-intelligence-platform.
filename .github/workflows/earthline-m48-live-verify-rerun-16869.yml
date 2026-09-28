@@ -1,4 +1,4 @@
-name: Earthline M48 report builder diagnostic 16870
+name: Earthline M48 Bioswale Report scope repair 16870
 on:
   push:
     branches:
@@ -8,83 +8,110 @@ on:
 permissions:
   contents: write
 jobs:
-  diagnose:
+  repair-and-verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+      - name: Patch only the report helper scope
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          t=p.read_text(encoding='utf-8')
+          marker='  function gapRows(d){'
+          helper="""  function finalSourcesPage16864(data){const d=data&&data.d||data||{};let body='';try{body=typeof sourceRows==='function'?sourceRows(d):''}catch(_){body=''}return `<section class=\"el49-page el16864-final-sources\"><div class=\"el49-kicker\">Sources · Final Page</div><h2>Sources and evidence register</h2>${body}<div class=\"el49-callout\"><b>Groundwater interpretation:</b> well location is not an aquifer boundary; water level is not storage; an aquifer polygon does not mean groundwater is present at every point; absence of a well does not mean absence of groundwater.</div>${footer(data,'Sources')}</section>`}\n"""
+          if t.count(marker)!=1:
+              raise SystemExit(f'Expected exactly one report gapRows marker; found {t.count(marker)}')
+          if helper in t[t.find('function sourceRows'):t.find(marker)+len(marker)]:
+              raise SystemExit('Report-scope helper already present; refusing duplicate insertion')
+          before=t
+          t=t.replace(marker,helper+marker,1)
+          p.write_text(t,encoding='utf-8')
+          # Hard scope guard: helper must now exist between report sourceRows and gapRows.
+          a=t.find('function sourceRows')
+          b=t.find(marker,a)
+          segment=t[a:b]
+          if 'function finalSourcesPage16864' not in segment:
+              raise SystemExit('Helper did not land in report scope')
+          # No approved map/aquifer/blue/search text is changed by this patch.
+          stripped=t.replace(helper,'',1)
+          if stripped!=before:
+              raise SystemExit('Candidate changed more than the single helper insertion')
+          print('PATCH_OK single report-scope helper insertion only')
+          PY
+      - name: Commit isolated candidate
+        run: |
+          git config user.name "earthline-repair-bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git diff --cached --stat
+          git diff --cached --numstat
+          git commit -m "fix: 16870 restore Bioswale Report final-sources helper scope"
+          git push origin HEAD:mantra48-report-isolation-16870
       - name: Install browser
         run: |
           pip install playwright
           python -m playwright install --with-deps chromium
-      - name: Exercise report builder with governed synthetic published identities
-        continue-on-error: true
-        env:
-          EARTHLINE_URL: https://earthlinedevelopment.org/?report_builder_diag=16870
+      - name: Serve isolated candidate
+        run: |
+          python3 -m http.server 8000 --bind 127.0.0.1 >/tmp/earthline-16870-http.log 2>&1 &
+          sleep 2
+      - name: Verify Regional and Property report opening
         run: |
           mkdir -p lab artifacts
-          cat > /tmp/report_builder_diag.py <<'PY'
-          import json, os, traceback
-          from datetime import datetime, timezone
+          cat > /tmp/verify_report_16870.py <<'PY'
+          import json, traceback
           from playwright.sync_api import sync_playwright
-          out={"startedAt":datetime.now(timezone.utc).isoformat(),"url":os.environ.get("EARTHLINE_URL"),"errors":[]}
+          out={'errors':[]}
           try:
             with sync_playwright() as p:
               browser=p.chromium.launch(headless=True,args=['--disable-dev-shm-usage'])
-              page=browser.new_page(viewport={"width":1440,"height":1000})
+              page=browser.new_page(viewport={'width':1440,'height':1000})
               page.on('pageerror',lambda e: out['errors'].append('pageerror: '+str(e)))
               page.on('console',lambda m: out['errors'].append('console: '+m.text) if m.type=='error' else None)
-              page.goto(out['url'],wait_until='domcontentloaded',timeout=60000)
+              page.goto('http://127.0.0.1:8000/?report_verify=16870',wait_until='domcontentloaded',timeout=60000)
               page.wait_for_function("()=>typeof window.earthlineOpenVermontReport16151==='function'&&!!document.querySelector('#earthlineVermontReport16149')",timeout=30000)
               def exercise(kind):
-                token='REPORT-DIAG-'+kind.upper()+'-16870'
-                page.evaluate("""([kind,token])=>{
-                  const empty={type:'FeatureCollection',features:[]};
-                  const snap={runToken:token,query:'Earthline report diagnostic',normalizedQuery:'Earthline report diagnostic',tier:kind,extentClass:kind,mode:kind,completedAt:new Date().toISOString(),bounds:[-73.12,44.48,-73.10,44.50],boundsHash:'report-diag-16870',terrain:{limitation:'Diagnostic snapshot only'},aquifers:empty,contours:empty,flows:empty,swales:empty};
-                  window.EARTHLINE_DISPLAYED_RUN_16147=snap;
-                  window.EARTHLINE_DISPLAYED_RUN_16151=snap;
-                  window.EARTHLINE_ACTIVE_RUN_TOKEN_16147=token;
-                  window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=token;
-                  window.EARTHLINE_REGIONAL_VISUAL_DATA_16020={swales:empty,contours:empty,flows:empty,aquifers:empty};
-                  document.documentElement.dataset.earthlineActiveRun=token;
-                  document.documentElement.dataset.earthlineRunState='published';
-                }""",[kind,token])
-                page.wait_for_timeout(1200)
-                state=page.evaluate("""()=>{const b=document.querySelector('#earthlineVermontReport16149');let a=null;try{a=window.earthlineReportReachabilityAudit16151?.()||null}catch(e){a={error:String(e)}}return {disabled:!!b?.disabled,ready:b?.dataset?.ready||null,onclickType:b?typeof b.onclick:null,audit:a}}""")
-                result={"state":state}
-                try:
-                  result['openReturn']=page.evaluate("()=>window.earthlineOpenVermontReport16151()")
-                except Exception as e:
-                  result['openException']=str(e)
+                token='REPORT-VERIFY-'+kind.upper()+'-16870'
+                page.evaluate("""([kind,token])=>{const empty={type:'FeatureCollection',features:[]};const snap={runToken:token,query:'Earthline report verification',normalizedQuery:'Earthline report verification',tier:kind,extentClass:kind,mode:kind,completedAt:new Date().toISOString(),bounds:[-73.12,44.48,-73.10,44.50],boundsHash:'report-verify-16870',terrain:{source:'Diagnostic terrain',limitation:'Verification snapshot only'},aquifers:empty,watersheds:empty,contours:empty,flows:empty,swales:empty,derived:{contours:0,waterPaths:0}};window.EARTHLINE_DISPLAYED_RUN_16147=snap;window.EARTHLINE_DISPLAYED_RUN_16151=snap;window.EARTHLINE_ACTIVE_RUN_TOKEN_16147=token;window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=token;window.EARTHLINE_REGIONAL_VISUAL_DATA_16020={swales:empty,contours:empty,flows:empty,aquifers:empty};document.documentElement.dataset.earthlineActiveRun=token;document.documentElement.dataset.earthlineRunState='published';document.dispatchEvent(new CustomEvent('earthline:analysis-complete',{detail:{runToken:token,tier:kind}}));}""",[kind,token])
                 page.wait_for_timeout(300)
-                result['panel']=page.evaluate("""()=>{const p=document.querySelector('#earthlineVermontReportPanel16149'),pages=p?[...p.querySelectorAll('.el49-page')]:[];return {exists:!!p,open:!!p?.classList.contains('open'),pageCount:pages.length,hasFinalSources:!!p?.querySelector('.el16864-final-sources'),lastClass:pages.length?pages[pages.length-1].className:''}}""")
+                state=page.evaluate("""()=>{const b=document.querySelector('#earthlineVermontReport16149');return {disabled:!!b?.disabled,ready:b?.dataset?.ready||'',onclickType:b?typeof b.onclick:null}}""")
+                if state['disabled'] or state['ready']!='true' or state['onclickType']!='function':
+                  raise RuntimeError(kind+' report button not ready: '+json.dumps(state))
+                opened=page.evaluate("()=>window.earthlineOpenVermontReport16151()")
+                page.wait_for_timeout(250)
+                panel=page.evaluate("""()=>{const p=document.querySelector('#earthlineVermontReportPanel16149'),pages=p?[...p.querySelectorAll('.el49-page')]:[],final=p?.querySelector('.el16864-final-sources');return {exists:!!p,open:!!p?.classList.contains('open'),pageCount:pages.length,hasFinalSources:!!final,isLast:!!final&&pages.at(-1)===final,finalText:(final?.innerText||'').slice(0,240)}}""")
+                if opened is not True or not panel['exists'] or not panel['open'] or not panel['hasFinalSources'] or not panel['isLast']:
+                  raise RuntimeError(kind+' report did not open correctly: '+json.dumps({'opened':opened,'panel':panel}))
                 page.evaluate("()=>{const p=document.querySelector('#earthlineVermontReportPanel16149');if(p)p.remove()}")
-                return result
+                return {'state':state,'opened':opened,'panel':panel}
               out['regional']=exercise('regional')
               out['property']=exercise('property')
-              page.screenshot(path='artifacts/report-builder-diagnostic.png')
+              page.screenshot(path='artifacts/report-16870-pass.png')
               browser.close()
           except Exception as e:
-            out['fatal']=str(e); out['traceback']=traceback.format_exc()
-          out['finishedAt']=datetime.now(timezone.utc).isoformat()
-          for path in ['lab/mantra48-report-builder-diagnostic-16870.json','artifacts/report-builder-diagnostic.json']:
-            with open(path,'w',encoding='utf-8') as f: json.dump(out,f,indent=2)
+            out['failure']=str(e);out['traceback']=traceback.format_exc()
+          with open('lab/mantra48-report-repair-verification-16870.json','w',encoding='utf-8') as f:json.dump(out,f,indent=2)
+          with open('artifacts/report-repair-verification.json','w',encoding='utf-8') as f:json.dump(out,f,indent=2)
           print(json.dumps(out,indent=2))
+          if 'failure' in out: raise SystemExit(1)
           PY
-          python /tmp/report_builder_diag.py
-      - name: Commit diagnostic evidence
+          python /tmp/verify_report_16870.py
+      - name: Commit verification evidence
         if: always()
         run: |
-          git config user.name "earthline-diagnostic-bot"
+          git pull --ff-only origin mantra48-report-isolation-16870
+          git config user.name "earthline-repair-bot"
           git config user.email "info@earthlinedevelopment.org"
-          git add lab/mantra48-report-builder-diagnostic-16870.json
+          git add lab/mantra48-report-repair-verification-16870.json
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "diag: record report builder reachability 16870"
+          git commit -m "test: verify 16870 Regional and Property Bioswale Reports"
           git push origin HEAD:mantra48-report-isolation-16870
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: earthline-report-builder-diagnostic-16870
+          name: earthline-report-repair-16870
           path: artifacts/
           if-no-files-found: ignore
