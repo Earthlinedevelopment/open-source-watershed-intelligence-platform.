@@ -1,0 +1,26 @@
+name: Earthline M48 exact language owner 16862
+on:
+  push:
+    branches:
+      - mantra48-blue-isolation-16860
+permissions:
+  contents: read
+jobs:
+  audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra48-launch-clean-16861
+      - name: Print exact language/contact owner lines
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8')
+          for needle in ["function ensureLanguage", "localStorage.getItem('earthlineLanguage16488')", "function applyLanguage(value)", "Earthlineinfo@earthlinedevelopment.org"]:
+            i=t.find(needle)
+            print('\nNEEDLE',needle,'AT',i)
+            if i>=0: print(t[max(0,i-900):i+1800])
+          PY
