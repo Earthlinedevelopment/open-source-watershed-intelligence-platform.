@@ -1,0 +1,32 @@
+name: Earthline M48 exact report source/map owners 16863
+on:
+  push:
+    branches:
+      - mantra48-blue-isolation-16860
+permissions:
+  contents: read
+jobs:
+  audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra48-launch-clean-16861
+      - name: Extract exact report owner blocks
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8')
+          needles=['function sourceRows','function mapSvg','const HOW_BIOSWALES_REPORT_16388','function buildReport(data)','function buildSuccessfulSystems','earthlineSuccessfulSystems16149','Sources','References']
+          for needle in needles:
+            print('\n\n===== NEEDLE',needle,'=====')
+            start=0; n=0
+            while n<8:
+              i=t.find(needle,start)
+              if i<0: break
+              print('\n--- AT',i,'---')
+              print(t[max(0,i-900):i+9000])
+              start=i+len(needle); n+=1
+          PY
