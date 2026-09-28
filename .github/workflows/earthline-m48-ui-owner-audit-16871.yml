@@ -1,0 +1,66 @@
+name: Earthline M48 UI owner audit 16871
+on:
+  push:
+    branches:
+      - mantra48-final-launch-16871
+    paths:
+      - .github/workflows/earthline-m48-ui-owner-audit-16871.yml
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Inspect live DOM and map layer owners
+        run: |
+          mkdir -p lab artifacts
+          cat > /tmp/audit.py <<'PY'
+          import json
+          from playwright.sync_api import sync_playwright
+          out={}
+          with sync_playwright() as p:
+            b=p.chromium.launch(headless=True,args=['--disable-dev-shm-usage'])
+            page=b.new_page(viewport={'width':1440,'height':1000})
+            page.goto('https://earthlinedevelopment.org/?ui_owner_audit=16871',wait_until='domcontentloaded',timeout=60000)
+            page.wait_for_timeout(3500)
+            out['button']=page.evaluate("""()=>{const el=document.querySelector('#earthlineDeclareProperty16169');if(!el)return null;const cs=getComputedStyle(el);return {html:el.innerHTML,text:el.textContent,display:cs.display,font:cs.font,fontSize:cs.fontSize,lineHeight:cs.lineHeight,letterSpacing:cs.letterSpacing,height:cs.height,width:cs.width,padding:cs.padding,children:[...el.children].map(x=>({tag:x.tagName,cls:x.className,text:x.textContent,html:x.outerHTML,style:getComputedStyle(x).cssText,fontSize:getComputedStyle(x).fontSize}))}}""")
+            out['languages']=page.evaluate("""()=>{const s=document.querySelector('#earthlineLanguageSelect16488');return {exists:!!s,html:s?.outerHTML||'',value:s?.value||'',options:s?[...s.options].map(o=>({value:o.value,text:o.textContent})):[],globals:Object.keys(window).filter(k=>/lang|language/i.test(k)&&/earthline/i.test(k)).slice(0,80)}}""")
+            out['map']=page.evaluate("""()=>{const m=window.earthlineMap||window.map||null;const ids=['earthline-property-swale-ditch-16166','earthline-property-swale-natural-up-16174','earthline-property-swale-natural-flip-16174','earthline-living-swales-water-15792','earthline-regional-swales-16020'];const layers={};if(m&&m.getLayer){for(const id of ids){if(m.getLayer(id)){layers[id]={layer:m.getLayer(id),paint:{}};for(const p of ['line-color','line-width','line-opacity','line-pattern'])try{layers[id].paint[p]=m.getPaintProperty(id,p)}catch(e){}}}}return {zoom:m?.getZoom?.()??null,layers,styleLayers:m?.getStyle?.()?.layers?.filter(l=>/swale|water/i.test(l.id)).map(l=>l.id).slice(-80)||[]}}""")
+            page.screenshot(path='artifacts/live-ui-owner-16871.png',full_page=True)
+            b.close()
+          open('lab/mantra48-ui-owner-audit-16871.json','w').write(json.dumps(out,indent=2))
+          print(json.dumps(out,indent=2))
+          PY
+          python /tmp/audit.py
+      - name: Extract exact code owners
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re,json
+          t=Path('index.html').read_text(encoding='utf-8')
+          terms=['earthline-property-swale-ditch-16166','earthlineDeclareProperty16169','earthlineLanguageSelect16488','howBioswalesReportPages16388','Vancouver Island','mailto:','info@earthlinedevelopment.org']
+          out={}
+          for term in terms:
+            rows=[]
+            for m in list(re.finditer(re.escape(term),t,re.I))[:20]:
+              rows.append(t[max(0,m.start()-1800):min(len(t),m.end()+2800)])
+            out[term]=rows
+          Path('lab/mantra48-ui-code-owners-16871.json').write_text(json.dumps(out,indent=2),encoding='utf-8')
+          PY
+      - name: Commit evidence
+        run: |
+          git config user.name "earthline-audit-bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add lab/mantra48-ui-owner-audit-16871.json lab/mantra48-ui-code-owners-16871.json
+          git commit -m "diag: record UI owners 16871"
+          git push origin HEAD:mantra48-final-launch-16871
+      - name: Upload screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-ui-owner-audit-16871
+          path: artifacts/
