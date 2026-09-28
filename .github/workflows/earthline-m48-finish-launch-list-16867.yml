@@ -114,14 +114,14 @@ jobs:
               ia=Image.open(io.BytesIO(base64.b64decode(pat.search(live).group(1)))).convert('RGBA')
               ib=Image.open(io.BytesIO(base64.b64decode(pat.search(t).group(1)))).convert('RGBA')
               if ia.size!=ib.size: raise SystemExit(name+' dimension regression')
-              changed=[y for x,y in zip(ia.getdata(),ib.getdata()) if x!=y]
-              if len(changed)<1000: raise SystemExit(name+' insufficient blue pixels')
+              changed=[y for x,y in zip(ia.getdata(),ib.getdata()) if x!=y and y[3]>=32]
+              if len(changed)<1000: raise SystemExit(name+' insufficient visible blue pixels')
               sats=[]
               for r,g,b,a in changed:
                   h,s,v=colorsys.rgb_to_hsv(r/255,g/255,b/255); sats.append(s)
-              avg=sum(sats)/len(sats); print(name,'changed',len(changed),'avgSat',round(avg,3))
-              if avg<.82: raise SystemExit(name+' still too muted')
-          print('PASS launch-list static + blue texture gate')
+              avg=sum(sats)/len(sats); print(name,'visibleChanged',len(changed),'avgSat',round(avg,3))
+              if avg<.82: raise SystemExit(name+' visible water still too muted')
+          print('PASS launch-list static + visible-blue texture gate')
           PY
       - name: Browser smoke test launch-list candidate
         shell: bash
