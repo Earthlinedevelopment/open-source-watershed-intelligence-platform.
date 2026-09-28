@@ -1,0 +1,57 @@
+{
+  "globals": [
+    "earthlineBaseMapOperational16155",
+    "earthlineCurrentMapSite15778",
+    "earthlineEnsureMapDem",
+    "earthlineExitMapOnly16169",
+    "earthlineExpandMap16166",
+    "earthlineFinishMapMotion",
+    "earthlineInitMap",
+    "earthlineMapActive",
+    "earthlineMapOnlyAudit16168",
+    "earthlineMappedFeatureClass15862J",
+    "earthlineMoveMapToLoc15778",
+    "earthlineProcessMappedFeature",
+    "earthlineSampleMapboxDem",
+    "earthlineSetMapView",
+    "earthlineSetPropertyTarget16201",
+    "earthlineSettlePropertyBasemap16348",
+    "earthlineSyncPropertyTargetFromMap16201",
+    "earthlineWaitForMapEvent",
+    "earthlineWaitForMappedExclusionStyle15862B"
+  ],
+  "functions": {
+    "earthlineRenderPropertyTargetLabel16869": "undefined",
+    "earthlineSyncPropertyTarget16201": "undefined",
+    "earthlineSyncPropertyTargetLabel16201": "undefined",
+    "earthlineApplyRendererOwnership15805": "function applyOwnership(mode){\n    if(!mapReady())return false;\n    const property=mode===\"property\";\n    const validationView=property?String(state.validationView15806||\"all\"):\"all\";\n    swalesOnly=validationView===\"swales-only\";\n    const swalesContours=validationView===\"swales-contours\";\n    const active=registry[property?\"property\":\"regional\"];\n    const inactive=registry[property?\"regional\":\"property\"];\n    setGroup(inactive.water,false);setGroup(inactive.swales,false);\n    if(property)for(const id of obsoletePropertyLayers)visible(id,false);\n    const propertyCommitted=!!(\n      !property||\n      (\n        M&&M.propertyPublication15816&&\n        M.propertyPublication15816.committed===true&&\n        Number(M.propertyPublication15816.rawGeographicSegments||0)>0\n      )\n    );\n    const flowOn=propertyCommitted&&(\n      property\n        ?true\n        :!!(M.layers&&M.layers.flow&&M.layers.flow.on)\n    )&&validationView===\"all\";\n    const swaleOn=propertyCommitted&&!!(M.layers&&M.layers.swales&&M.layers.swales.on);\n    const rechargeOn=propertyCommitted&&!!(M.layers&&M.layers.recharge&&M.layers.recharge.on)&&validationView===\"all\";\n    const contourOn=propertyCommitted&&!!(M.layers&&M.layers.contours&&M.layers.contours.on)&&(validationView===\"all\"||swalesContours);\n    const aquiferOn=propertyCommitted&&!state.propertyAquiferHold16359&&!!(M.layers&&M.layers.usgsAquifer&&M.layers.usgsAquifer.on)&&validationView===\"all\";\n    const aquiferTextOn=propertyCommitted&&!state.propertyAquiferHold16359&&validationView===\"all\"&&!!(\n      (M&&M.vtGroundwaterSummaryPoint16398)||\n      (M&&Array.isArray(M.usgsAquifers)&&M.usgsAquifers.length)\n    );\n    setGroup(active.water,flowOn);setGroup(active.swales,swaleOn);\n    setGroup(active.recharge,rechargeOn);setGroup(active.contours,contourOn);setGroup(active.aquifer,aquiferOn);\n    updateAquiferTopText16501(property,aquiferTextOn);\n    /* EARTHLINE 16414 \u2014 authoritative hydro evidence visibility order.\n       Keep the translucent recharge fill contextual below interventions, but guarantee\n       that an actually selected/published recharge footprint cannot disappear beneath\n       the later living-swale/planting renderer. Annotation visibility remains owned here. */\n    try{\n      if(earthlineMap.getLayer(\"earthline-recharge-label\")){\n        earthlineMap.setLayoutProperty(\"earthline-recharge-label\",\"text-allow-overlap\",false);\n        earthlineMap.setLayoutProperty(\"earthline-recharge-label\",\"text-ignore-placement\",false);\n      }\n      for(const id16414 of [\n        \"earthline-recharge-line\",\n        \"earthline-recharge-highlight\",\n        \"earthline-recharge-label\",\n        \"earthline-aquifer-wells-16398\"\n      ]){\n        if(earthlineMap.getLayer(id16414))earthlineMap.moveLayer(id16414);\n      }\n      /* 16492: all aquifer language is the final annotation pass. Geometry stays\n         in its governed order; only text is moved above every analytical layer. */\n      for(const id16492 of [\n        \"el-live-aquifer-label-15970\",\n        \"earthline-aquifer-label-points-layer-15788\",\n        \"earthline-aquifer-evidence-label-16398\"\n      ]){\n        if(earthlineMap.getLayer(id16492))earthlineMap.moveLayer(id16492);\n      }\n    }catch(_){ }\n    try{\n      const rechargeCanvas=document.getElementById(\"earthlineRechargeCanvas\");\n      const rechargeSvg=document.getElementById(\"earthlineRechargeOverlay\");\n      if(rechargeCanvas)rechargeCanvas.style.display=\"none\";\n      if(rechargeSvg){rechargeSvg.style.display=\"none\";rechargeSvg.replaceChildren()}\n    }catch(e){}\n    const controls=ensureControl();\n    if(controls){\n      controls.button.classList.toggle(\"visible\",property&&!!M.analysisReady);\n      controls.badge.classList.toggle(\"visible\",property&&swalesOnly&&!!M.analysisReady)\n    }\n    state.rendererOwnership15805={\n      build:BUILD,mode:property?\"property\":\"regional\",swalesOnly,validationView,propertyCommitted,appliedAt:Date.now(),\n      activeOwners:{water:active.water.owner,swales:active.swales.owner,recharge:active.recharge.owner,\n        contours:active.contours.owner,aquifer:active.aquifer.owner}\n    };\n    return true\n  }",
+    "earthlineApplyLanguage16488": "undefined"
+  },
+  "button": {
+    "html": "<svg width=\"24\" height=\"24\" viewBox=\"0 0 100 100\" aria-hidden=\"true\"><g class=\"earthline-orb-spin-16240\"><use href=\"#orb\" xlink:href=\"#orb\"></use></g></svg><i class=\"earthline-orb-shell-16244\" aria-hidden=\"true\"></i><span data-crosshair16247=\"1\">CROSSHAIR \u00b7 18.00000, 0.00000 \u00b7 20 ACRES</span>",
+    "text": "CROSSHAIR \u00b7 18.00000, 0.00000 \u00b7 20 ACRES",
+    "rules": [
+      "#earthlineDeclareProperty16169 { display: none; position: fixed; right: 18px; bottom: 174px; z-index: 2147482500; min-width: 236px; height: 46px; padding: 0px 16px; border-radius: 14px; border: 1px solid rgba(96, 224, 147, 0.72); background: linear-gradient(165deg, rgb(23, 111, 67), rgb(13, 77, 49)); color: rgb(241, 255, 246); box-shadow: rgba(0, 0, 0, 0.42) 0px 12px 30px; touch-action: manipulation; font: 900 11px / 1 system-ui, -apple-system, \"Segoe UI\", sans-serif; letter-spacing: 0.055em; align-items: center; justify-content: center; gap: 9px; white-space: nowrap; cursor: pointer !important; pointer-events: auto !important; }",
+      "#earthlineDeclareProperty16169.visible { display: flex; }",
+      "#earthlineDeclareProperty16169[data-busy=\"1\"] { opacity: 0.72; cursor: pointer !important; }",
+      "#earthlineDeclareProperty16169 .el69-dot { width: 10px; height: 10px; border-radius: 50%; background: rgb(78, 201, 255); box-shadow: rgba(78, 201, 255, 0.18) 0px 0px 0px 4px; }",
+      "html.earthline-map-only-16169 #earthlineDeclareProperty16169 { top: 78px; right: 18px; bottom: auto; }",
+      "#earthlineMapOnlyExit16169, #earthlineDeclareProperty16169, .mapboxgl-ctrl button { cursor: pointer !important; }",
+      "@media (max-width: 720px) {\n  #earthlineDeclareProperty16169 { right: 12px; bottom: 146px; min-width: 206px; height: 44px; padding: 0px 13px; font-size: 10px; }\n  html.earthline-map-only-16169 #earthlineDeclareProperty16169 { right: 12px; top: 70px; bottom: auto; }\n  #earthlineMapOnlyExit16169 { right: 12px; top: 12px; min-width: 144px; height: 43px; }\n}",
+      "#earthlineDeclareProperty16169[data-terminal-running=\"1\"] { opacity: 0.92; cursor: pointer !important; }",
+      "#earthlineDeclareProperty16169[data-terminal-running=\"1\"] .el69-dot { animation: 1.6s ease-in-out 0s infinite normal none running earthlinePropertyPulse16172; box-shadow: rgba(78, 201, 255, 0.18) 0px 0px 0px 4px, rgba(78, 201, 255, 0.55) 0px 0px 18px; }",
+      "#earthlineSearchSlot16188 #runBtn, #earthlineDeclareProperty16169 { position: static !important; inset: auto !important; transform: none !important; width: 100% !important; max-width: none !important; margin: 0px !important; min-height: 26px !important; height: 26px !important; max-height: 26px !important; padding-top: 0px !important; padding-bottom: 0px !important; box-sizing: border-box !important; border-radius: 12px !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 8px !important; z-index: auto !important; border: 1px solid var(--el-sun-16233) !important; box-shadow: none !important; }",
+      "#earthlineDeclareProperty16169 { background: linear-gradient(rgb(28, 112, 64), rgb(20, 84, 47)) !important; color: rgb(255, 255, 255) !important; font: 900 15px / 1.05 system-ui !important; letter-spacing: 0.045em !important; padding: 0px 13px !important; user-select: none !important; -webkit-tap-highlight-color: transparent !important; outline: none !important; }",
+      "#earthlineDeclareProperty16169:focus, #earthlineDeclareProperty16169:focus-visible { outline: none !important; box-shadow: none !important; }",
+      "#earthlineDeclareProperty16169 span:last-child::before { content: none !important; display: none !important; }",
+      "html:not(.earthline-property-ready-16188) #earthlineDeclareProperty16169 { opacity: 0.48 !important; pointer-events: none !important; filter: saturate(0.45) !important; }",
+      "#runBtn > svg, #earthlineDeclareProperty16169 > svg { display: none !important; visibility: hidden !important; opacity: 0 !important; animation: auto ease 0s 1 normal none running none !important; transform: none !important; }",
+      "#runBtn::before, #earthlineDeclareProperty16169::before { content: none !important; display: none !important; }",
+      "html.earthline-regional-orb-latched-16244 #runBtn > i.earthline-orb-shell-16244, html.earthline-property-orb-latched-16244 #earthlineDeclareProperty16169 > i.earthline-orb-shell-16244 { animation: 1.05s linear 0s infinite normal none running earthlineOrbCounterClockwise16245 !important; }",
+      "#runBtn [class*=\"spinner\"], #runBtn [class*=\"orbit-track\"], #earthlineDeclareProperty16169 [class*=\"spinner\"], #earthlineDeclareProperty16169 [class*=\"orbit-track\"], #earthlineDeclareProperty16169 .el69-dot { display: none !important; visibility: hidden !important; opacity: 0 !important; }",
+      "#runBtn, #runBtn *, #earthlineDeclareProperty16169, #earthlineDeclareProperty16169 *, #earthlineMapRun15970, #earthlineMapRun15970 *, #earthlineMapRun16020, #earthlineMapRun16020 * { cursor: pointer !important; }",
+      "html.earthline-direct-property-handoff-16250 #earthlineDeclareProperty16169 { display: none !important; }"
+    ]
+  },
+  "maps": []
+}
