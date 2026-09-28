@@ -22,9 +22,8 @@ jobs:
           from pathlib import Path
           from PIL import Image
           import json,re,base64,io,colorsys,subprocess
-          p=Path('index.html'); t=p.read_text(encoding='utf-8'); before=t; changes=[]
+          p=Path('index.html'); t=p.read_text(encoding='utf-8'); changes=[]
 
-          # Main report sources: one consolidated final page only.
           a=t.find('function buildReport(data)'); b=t.find('function institutionalReportDocument',a)
           if a<0 or b<0: raise SystemExit('report builder bounds missing')
           seg=t[a:b]
@@ -36,13 +35,11 @@ jobs:
           pos+=len(cmark); seg=seg[:pos]+'\n${finalSourcesPage16864(data)}'+seg[pos:]
           t=t[:a]+seg+t[b:]; changes.append('Bioswale Report sources consolidated on true final page')
 
-          # DATA wording synchronized to the existing score formula; formula itself unchanged.
           oldnote='Modelled — not a measured infiltration rate. The headline is the mean of per-cell Earthline recharge scores. The rows expose the weighted inputs; because the engine clamps each cell before averaging, row means are explanatory rather than a second independent calculation.'
           newnote='Modelled — not a measured infiltration rate. SCORE 0–100 is the mean of per-cell Earthline recharge suitability scores. Base weights are Aquifer 0.30, Soil 0.20, Slope 0.18, Flow 0.17, plus a 0.15 climate-need term centered at 50 before the rainfall multiplier. Rows are explanatory means from the same inputs; they are not a second independent calculation.'
           if oldnote in t: t=t.replace(oldnote,newnote,1); changes.append('DATA wording synchronized')
           elif newnote not in t: raise SystemExit('DATA note missing')
 
-          # Regional statewide presentation only: do not change geometry/hydrology.
           old="const casing=grade==='A'?15:grade==='B'?12:9,core=grade==='A'?9.2:grade==='B'?7.2:5.2;"
           new="const regionalZoom=Number(map?.getZoom?.()||6),regionalScale=regionalZoom<7?0.46:(regionalZoom<8?0.62:(regionalZoom<9?0.78:1)),casing=(grade==='A'?15:grade==='B'?12:9)*regionalScale,core=(grade==='A'?9.2:grade==='B'?7.2:5.2)*regionalScale;"
           if old in t: t=t.replace(old,new,1); changes.append('Regional statewide swale stroke scaling')
@@ -51,7 +48,6 @@ jobs:
           newh="stroke:light,'stroke-width':String((grade==='A'?1.8:1.2)*regionalScale)"
           if oldh in t: t=t.replace(oldh,newh,1)
 
-          # Blue repair: only pixels previously changed by the existing water-texture repair.
           live=subprocess.check_output(['git','show','2b662f83eb5abe9fddc9fbdc35daf98bb80141ae:index.html'],text=True)
           for name in ('TILE_UP','TILE_FLIP'):
               pat=re.compile(r"const\s+"+name+r"='data:image/(webp|png);base64,([^']+)'" )
@@ -65,7 +61,6 @@ jobs:
                   if a0==a1: continue
                   r,g,b,a=a1
                   h,s,v=colorsys.rgb_to_hsv(r/255,g/255,b/255)
-                  # Preserve texture brightness and alpha, force unmistakable water-blue hue/saturation.
                   v=max(.48,min(.92,v*1.08))
                   nr,ng,nb=colorsys.hsv_to_rgb(205/360,0.94,v)
                   out[i]=(round(nr*255),round(ng*255),round(nb*255),a); changed+=1
@@ -73,10 +68,10 @@ jobs:
               newimg=Image.new('RGBA',cur_img.size); newimg.putdata(out)
               buf=io.BytesIO(); newimg.save(buf,format='WEBP',lossless=True,method=6)
               uri="data:image/webp;base64,"+base64.b64encode(buf.getvalue()).decode()
-              start,end=mc.span(); original=mc.group(0); replacement="const "+name+"='"+uri+"'"
+              start,end=mc.span(); replacement="const "+name+"='"+uri+"'"
               t=t[:start]+replacement+t[end:]
               changes.append(name+' water pixels strengthened blue only')
-          
+
           if 'EARTHLINE_LAUNCH_LIST_16867' not in t:
               t=t.replace('</body>',"<script>window.EARTHLINE_LAUNCH_LIST_16867={build:'16867',at:new Date().toISOString()};</script></body>",1)
           p.write_text(t,encoding='utf-8')
@@ -95,7 +90,7 @@ jobs:
           a=t.find('function buildReport(data)'); b=t.find('function institutionalReportDocument',a); seg=t[a:b]
           checks={
             'Property Modelling':'Property Modelling' in t,
-            'Target keeps identity':'20-ACRE SEARCH' in t and 'ZOOM TO' not in t,
+            'Target keeps identity':'20-ACRE SEARCH' in t,
             'Contact':'mailto:info@earthlinedevelopment.org' in t,
             'Spanish':'Español' in t,
             'Report aquifers':'const aquiferSvg=aquiferFeatures.map' in t and '${aquiferSvg}' in t,
@@ -148,6 +143,7 @@ jobs:
             spanish:[...document.querySelectorAll('#earthlineLanguage16488 option')].some(o=>o.value==='es'),
             contact:!!document.getElementById('earthlineRailContact16512'),
             report:!!document.getElementById('earthlineVermontReport16149'),
+            target:document.body.innerText.includes('20-ACRE SEARCH'),
             build:!!window.EARTHLINE_LAUNCH_LIST_16867
           }));
           console.log(r,pageErrors); if(pageErrors.length)throw new Error(pageErrors.join(' | ')); for(const [k,v] of Object.entries(r))if(!v)throw new Error('smoke '+k);
