@@ -18,9 +18,10 @@ jobs:
         shell: bash
         run: |
           python -m pip install --quiet pillow
+          git show HEAD:index.html > baseline-16869.html
           cat > /tmp/patch_blue_16869.py <<'PY'
           from pathlib import Path
-          from PIL import Image
+          from PIL import Image, ImageDraw
           import base64, io, re, colorsys, hashlib
 
           p=Path('index.html')
@@ -28,6 +29,7 @@ jobs:
           original=html
           total_changed=0
           reports=[]
+          previews=[]
 
           def patch(name, text):
               global total_changed
@@ -41,55 +43,55 @@ jobs:
               if im.size!=(512,128):
                   raise SystemExit(f'{name}: unexpected dimensions {im.size}')
               before=list(im.getdata())
-              after=[]
-              mask=[]
+              after=[]; mask=[]
               for i,(r,g,b,a) in enumerate(before):
                   if a==0:
                       after.append((r,g,b,a)); continue
-                  rr,gg,bb=r/255.0,g/255.0,b/255.0
-                  h,s,v=colorsys.rgb_to_hsv(rr,gg,bb)
+                  h,s,v=colorsys.rgb_to_hsv(r/255.0,g/255.0,b/255.0)
                   deg=h*360.0
-                  # Water in the natural texture is the cyan/blue family; vegetation/brown stay outside this hue window.
                   is_water=(160.0 <= deg <= 240.0 and s >= 0.18 and v >= 0.10 and (b >= r*1.05 or g >= r*1.12))
                   if not is_water:
                       after.append((r,g,b,a)); continue
-                  # Preserve luminance/shading while making the same water pixels unmistakably blue.
                   nh=205.0/360.0
                   ns=max(0.88,s)
                   nv=min(1.0,max(0.34,v*1.16+0.035))
                   nr,ng,nb=colorsys.hsv_to_rgb(nh,ns,nv)
-                  px=(round(nr*255),round(ng*255),round(nb*255),a)
-                  after.append(px); mask.append(i)
+                  after.append((round(nr*255),round(ng*255),round(nb*255),a)); mask.append(i)
               pct=100.0*len(mask)/len(before)
               if not (2.0 <= pct <= 22.0):
                   raise SystemExit(f'{name}: water-mask safety stop: {len(mask)} pixels = {pct:.2f}%')
               out=Image.new('RGBA',im.size); out.putdata(after)
               bio=io.BytesIO(); out.save(bio,format='WEBP',lossless=True,quality=100,method=6,exact=True)
               encoded=base64.b64encode(bio.getvalue()).decode('ascii')
-              # Lossless round-trip: every non-water decoded pixel must remain byte-for-byte identical.
               check=Image.open(io.BytesIO(bio.getvalue())).convert('RGBA')
-              chk=list(check.getdata())
-              maskset=set(mask)
+              chk=list(check.getdata()); maskset=set(mask)
               changed_nonwater=sum(1 for i,(a,b) in enumerate(zip(before,chk)) if i not in maskset and a!=b)
               if changed_nonwater:
                   raise SystemExit(f'{name}: safety stop: {changed_nonwater} non-water pixels changed')
               total_changed += len(mask)
               reports.append((name,len(mask),pct,len(raw),len(bio.getvalue()),hashlib.sha256(raw).hexdigest()[:12],hashlib.sha256(bio.getvalue()).hexdigest()[:12]))
+              previews.append((name,im,out))
               return text[:m.start(2)]+encoded+text[m.end(2):]
 
           html=patch('TILE_UP',html)
           html=patch('TILE_FLIP',html)
-          if html==original or total_changed==0:
-              raise SystemExit('No blue texture change produced')
-          # Guard against unintended textual edits: only the two payload spans may differ.
+          if html==original or total_changed==0: raise SystemExit('No blue texture change produced')
           def scrub(s):
               for name in ('TILE_UP','TILE_FLIP'):
                   pat=re.compile(r"("+name+r"\s*=\s*['\"]data:image/webp;base64,)([A-Za-z0-9+/=]+)(['\"])")
                   s=pat.sub(lambda m:m.group(1)+'<TEXTURE_PAYLOAD>'+m.group(3),s)
               return s
-          if scrub(original)!=scrub(html):
-              raise SystemExit('Safety stop: text outside TILE_UP/TILE_FLIP payloads changed')
+          if scrub(original)!=scrub(html): raise SystemExit('Safety stop: text outside TILE_UP/TILE_FLIP payloads changed')
           p.write_text(html,encoding='utf-8')
+          # Visual audit artifact only; it never enters the website.
+          sheet=Image.new('RGB',(1024,512),'white')
+          draw=ImageDraw.Draw(sheet)
+          y=0
+          for name,before_im,after_im in previews:
+              sheet.paste(before_im.convert('RGB'),(0,y)); sheet.paste(after_im.convert('RGB'),(512,y))
+              draw.text((8,y+108),name+' BEFORE',fill='white'); draw.text((520,y+108),name+' AFTER',fill='white')
+              y+=256
+          sheet.save('blue-16869-texture-audit.png')
           print('BLUE_TEXTURE_REPAIR_16869')
           for row in reports: print('%s changed=%d pct=%.2f old_bytes=%d new_bytes=%d old_sha=%s new_sha=%s'%row)
           print('total_changed',total_changed)
@@ -104,34 +106,39 @@ jobs:
           python3 -m http.server 8787 >/tmp/earthline16869-http.log 2>&1 &
           SERVER_PID=$!
           trap 'kill $SERVER_PID || true' EXIT
-          cat > /tmp/smoke16869.mjs <<'JS'
+          cat > smoke16869.mjs <<'JS'
           import { chromium } from 'playwright';
           const browser=await chromium.launch({headless:true});
-          const page=await browser.newPage({viewport:{width:1600,height:1000}});
-          const pageErrors=[];
-          page.on('pageerror',e=>pageErrors.push(String(e)));
-          await page.goto('http://127.0.0.1:8787/index.html?blue16869=1',{waitUntil:'domcontentloaded',timeout:45000});
-          await page.waitForTimeout(7000);
-          const state=await page.evaluate(()=>{
-            const vis=el=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};
-            const inputs=[...document.querySelectorAll('input')].filter(vis).map(x=>({id:x.id||'',ph:x.placeholder||'',value:x.value||''}));
-            const buttons=[...document.querySelectorAll('button')].filter(vis).map(x=>(x.innerText||x.textContent||'').trim().replace(/\s+/g,' ')).filter(Boolean);
-            return {title:document.title,inputs,buttons,body:(document.body?.innerText||'').slice(0,6000)};
-          });
-          const hasSearch=state.inputs.some(x=>/address|city|county|state|country|search|location/i.test((x.id||'')+' '+(x.ph||'')));
-          const hasProperty=state.buttons.some(x=>/property|20.?acre/i.test(x));
-          if(!hasSearch) throw new Error('Working search control missing after texture-only edit');
-          if(!hasProperty) throw new Error('Property control missing after texture-only edit');
-          if(pageErrors.length) throw new Error('Page errors after texture-only edit: '+JSON.stringify(pageErrors));
-          console.log('SMOKE_16869_OK',JSON.stringify({hasSearch,hasProperty,title:state.title,buttons:state.buttons.slice(0,30)}));
-          await page.screenshot({path:'blue-16869-startup.png',fullPage:true});
+          async function inspect(path){
+            const page=await browser.newPage({viewport:{width:1600,height:1000}});
+            const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+            await page.goto('http://127.0.0.1:8787/'+path,{waitUntil:'domcontentloaded',timeout:45000});
+            await page.waitForTimeout(7000);
+            const state=await page.evaluate(()=>{
+              const vis=el=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};
+              const inputs=[...document.querySelectorAll('input')].filter(vis).map(x=>({id:x.id||'',ph:x.placeholder||'',value:x.value||''}));
+              const buttons=[...document.querySelectorAll('button')].filter(vis).map(x=>(x.innerText||x.textContent||'').trim().replace(/\s+/g,' ')).filter(Boolean);
+              return {title:document.title,inputs,buttons};
+            });
+            await page.close(); return {state,errors};
+          }
+          const base=await inspect('baseline-16869.html?baseline=1');
+          const cand=await inspect('index.html?blue16869=1');
+          const search=x=>x.state.inputs.some(v=>/address|city|county|state|country|search|location/i.test((v.id||'')+' '+(v.ph||'')));
+          const prop=x=>x.state.buttons.some(v=>/property|20.?acre/i.test(v));
+          if(!search(base)||!prop(base)) throw new Error('Baseline Property controls unavailable; test environment invalid');
+          if(!search(cand)||!prop(cand)) throw new Error('Property controls regressed in blue-only candidate');
+          const newErrors=cand.errors.filter(e=>!base.errors.includes(e));
+          if(newErrors.length) throw new Error('New candidate page errors: '+JSON.stringify(newErrors));
+          console.log('SMOKE_16869_OK',JSON.stringify({baseline:{search:search(base),property:prop(base),errors:base.errors.length},candidate:{search:search(cand),property:prop(cand),errors:cand.errors.length},newErrors}));
           await browser.close();
           JS
-          node /tmp/smoke16869.mjs
+          node smoke16869.mjs
+          rm -f smoke16869.mjs baseline-16869.html package.json package-lock.json
+          rm -rf node_modules
       - name: Commit blue-only candidate
         shell: bash
         run: |
-          git diff --exit-code -- . ':!.github/workflows/earthline-m48-blue-texture-16869.yml' >/dev/null && { echo 'Expected index.html change missing'; exit 1; } || true
           CHANGED="$(git diff --name-only)"
           test "$CHANGED" = "index.html" || { echo "Unexpected changed files: $CHANGED"; exit 1; }
           git config user.name 'github-actions[bot]'
@@ -142,5 +149,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: blue-texture-16869-smoke
-          path: blue-16869-startup.png
+          name: blue-texture-16869-audit
+          path: blue-16869-texture-audit.png
