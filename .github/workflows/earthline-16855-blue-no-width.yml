@@ -1,0 +1,67 @@
+name: Earthline 16855 blue visibility only
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - fix-16855-blue-visible-no-width
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix-16855-blue-visible-no-width
+      - name: Restore original swale width and strengthen blue only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          t=p.read_text(encoding='utf-8')
+          reps=[
+            ('/* EARTHLINE 16854 — presentation only: 3x current blue ribbon width; stronger blue/opacity. */',
+             '/* EARTHLINE 16855 — presentation only: original swale width/pattern preserved; stronger blue color and opacity only. */'),
+            ('"line-gradient":["interpolate",["linear"],["line-progress"],0,"#147fbd",.25,"#28a9e0",.52,"#69d0f2",.76,"#259fda",1,"#1379b0"],',
+             '"line-gradient":["interpolate",["linear"],["line-progress"],0,"#006fd6",.25,"#00aef0",.52,"#69dcff",.76,"#008fe2",1,"#0066c7"],'),
+            ('"line-width":["interpolate",["linear"],["zoom"],12,3.75,15,5.25,16.5,6.60,18,7.95,20,9.30],',
+             '"line-width":["interpolate",["linear"],["zoom"],12,1.25,15,1.75,16.5,2.20,18,2.65,20,3.10],'),
+            ('"line-opacity":.88,"line-blur":0', '"line-opacity":.96,"line-blur":0'),
+            ('earthlineMap.setPaintProperty(SWALE_WATER,"line-opacity",.80+.10*pulse2)',
+             'earthlineMap.setPaintProperty(SWALE_WATER,"line-opacity",.90+.08*pulse2)'),
+            ('blueWidth=width*5.859375', 'blueWidth=width*1.953125'),
+            ("stroke:'rgba(63,176,221,.92)'", "stroke:'rgba(0,174,239,.99)'"),
+            ("stroke:'rgba(188,237,248,.52)'", "stroke:'rgba(214,247,255,.82)'")
+          ]
+          for old,new in reps:
+              c=t.count(old)
+              if c != 1:
+                  raise SystemExit(f'expected exactly 1 match, found {c}: {old[:90]}')
+              t=t.replace(old,new,1)
+          marker='<!-- EARTHLINE 16855 — BLUE VISIBILITY ONLY. Restores the exact pre-16854 swale water width/pattern and increases only blue saturation/brightness/opacity. No geometry, spacing, hydrology, science, exclusions, search behavior, tabs, report, gauge, DATA, logo or Orb change. CANDIDATE / NOT ACCEPTED. -->\n'
+          if marker not in t:
+              t=marker+t
+          p.write_text(t,encoding='utf-8')
+          PY
+      - name: Verify no width or pattern expansion remains
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8')
+          assert '12,1.25,15,1.75,16.5,2.20,18,2.65,20,3.10' in t
+          assert 'blueWidth=width*1.953125' in t
+          assert '12,3.75,15,5.25,16.5,6.60,18,7.95,20,9.30' not in t
+          assert 'blueWidth=width*5.859375' not in t
+          assert '#00aef0' in t and 'rgba(0,174,239,.99)' in t
+          print('PASS: original widths/pattern retained; blue-only visibility strengthened')
+          PY
+      - name: Commit candidate
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'candidate: 16855 stronger blue with original swale width'
+          git push origin HEAD:fix-16855-blue-visible-no-width
