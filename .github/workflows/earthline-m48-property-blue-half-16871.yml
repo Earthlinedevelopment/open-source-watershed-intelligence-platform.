@@ -1,0 +1,43 @@
+name: Earthline M48 Property blue 50 percent reduction 16871
+on:
+  push:
+    branches: [mantra48-final-launch-16871]
+    paths: [.github/workflows/earthline-m48-property-blue-half-16871.yml]
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reduce only Property blue opacity by 50 percent
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          t=p.read_text(encoding='utf-8')
+          old="'line-opacity':['interpolate',['linear'],['zoom'],14,1,16,.92,18,.70,20,.56]"
+          new="'line-opacity':['interpolate',['linear'],['zoom'],14,.50,16,.46,18,.35,20,.28]"
+          n=t.count(old)
+          if n!=1: raise SystemExit(f'Expected exactly one current Property blue opacity owner, found {n}')
+          t=t.replace(old,new,1)
+          p.write_text(t,encoding='utf-8')
+          PY
+      - name: Scope guards
+        run: |
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text()
+          assert "'line-opacity':['interpolate',['linear'],['zoom'],14,.50,16,.46,18,.35,20,.28]" in t
+          assert "setPaint('earthline-ranked-swale-water-15777','line-color','#008cff');setPaint('earthline-ranked-swale-water-15777','line-opacity',1)" in t
+          assert "'line-color':'#008cff','line-width':['interpolate',['linear'],['zoom'],14,3.4,17,5.4,20,7.2]" in t
+          print('PASS: Property opacity halved; Regional blue and Property geometry/width preserved')
+          PY
+      - name: Commit candidate
+        run: |
+          git config user.name earthline-repair-bot
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git commit -m 'candidate: 16871 reduce Property blue 50 percent'
+          git push origin HEAD:mantra48-final-launch-16871
