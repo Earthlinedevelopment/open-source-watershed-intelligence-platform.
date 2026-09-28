@@ -1,0 +1,45 @@
+name: Earthline M48 Property target label 16861
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - mantra48-blue-isolation-16860
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra48-launch-clean-16861
+          fetch-depth: 1
+      - name: Restore exact target identity and remove only ZOOM wording
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          t=p.read_text(encoding='utf-8')
+          old="function propertyTargetLabel16233(target){return '20-ACRE SEARCH'}"
+          new="function propertyTargetLabel16233(target){if(target&&target.code)return String(target.code)+' · ANALYZE · 20 ACRES';if(target&&Number.isFinite(Number(target.lat))&&Number.isFinite(Number(target.lng)))return 'CROSSHAIR · '+Number(target.lat).toFixed(5)+', '+Number(target.lng).toFixed(5)+' · 20 ACRES';return 'PROPERTY SEARCH · 20 ACRES'}"
+          if t.count(old)!=1: raise SystemExit('expected simplified target-label owner exactly once')
+          t=t.replace(old,new,1)
+          if 'ZOOM + ANALYZE · 20 ACRES' in t: raise SystemExit('ZOOM wording still present in target owner')
+          p.write_text(t,encoding='utf-8')
+          PY
+      - name: Verify scope
+        shell: bash
+        run: |
+          git diff --check
+          git diff --numstat
+          git diff -U1 -- index.html | grep -E "propertyTargetLabel16233|ZOOM|ANALYZE|CROSSHAIR|PROPERTY SEARCH" || true
+          test "$(git diff --name-only | tr -d '\n')" = "index.html"
+      - name: Commit candidate
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'candidate: 16861 restore Property target identity without ZOOM'
+          git push origin HEAD:mantra48-launch-clean-16861
