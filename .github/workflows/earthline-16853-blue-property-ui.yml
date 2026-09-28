@@ -1,0 +1,94 @@
+name: Earthline 16853 blue + Property UI
+
+on:
+  push:
+    branches:
+      - candidate-m47-16853-blue-property-ui
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-m47-16853-blue-property-ui
+          fetch-depth: 0
+
+      - name: Apply exact UI-only patch
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          text=p.read_text(encoding='utf-8')
+
+          def once(old,new,label):
+              global text
+              n=text.count(old)
+              if n < 1:
+                  raise SystemExit(f'MISSING PATCH TARGET: {label}')
+              text=text.replace(old,new,1)
+              print(f'patched {label}; prior occurrences={n}')
+
+          marker='<!-- EARTHLINE 16853 — PROPERTY PRESENTATION ONLY. User-requested changes: triple the visible blue-water component of existing Property bioswales without altering swale geometry/science; rename Property Investigation to Property Modelling; simplify the green Property action to 20-ACRE SEARCH and enlarge its text. No hydrology, DEM, D8, recharge, aquifer, exclusion, ranking, spacing, capacity, search behavior, Property extent, report science, logo, Orb, or Regional science changed. CANDIDATE / NOT ACCEPTED. -->\n'
+          if marker not in text:
+              text=marker+text
+
+          once("['property','Property Investigation']","['property','Property Modelling']",'panel section label')
+          once("propertySection:'Property Investigation'","propertySection:'Property Modelling'",'English language section label')
+
+          old_fn="window.earthlinePropertyTargetLabel16848=function(target,lang){const next=['en','th','vi'].includes(lang)?lang:(window.EARTHLINE_LANGUAGE_16488||'en'),t=earthlineText16848(next);if(target&&target.code)return String(target.code)+' · '+t.zoomAnalyze+' · '+t.acres;if(target&&Number.isFinite(Number(target.lat))&&Number.isFinite(Number(target.lng)))return t.crosshair+' · '+Number(target.lat).toFixed(5)+', '+Number(target.lng).toFixed(5)+' · '+t.acres;return t.propertySearch+' · '+t.acres};"
+          new_fn="window.earthlinePropertyTargetLabel16848=function(target,lang){const next=['en','th','vi'].includes(lang)?lang:(window.EARTHLINE_LANGUAGE_16488||'en');if(next==='th')return 'ค้นหา 20 เอเคอร์';if(next==='vi')return 'TÌM KIẾM 20 ACRE';return '20-ACRE SEARCH'};"
+          once(old_fn,new_fn,'localized Property action label')
+
+          old_fallback="function propertyTargetLabel16233(target){const translated=window.earthlinePropertyTargetLabel16848;if(typeof translated==='function')return translated(target,window.EARTHLINE_LANGUAGE_16488||'en');if(target&&target.code)return String(target.code)+' · ZOOM + ANALYZE · 20 ACRES';if(target&&Number.isFinite(Number(target.lat))&&Number.isFinite(Number(target.lng)))return 'CROSSHAIR · '+Number(target.lat).toFixed(5)+', '+Number(target.lng).toFixed(5)+' · 20 ACRES';return 'PROPERTY SEARCH · 20 ACRES'}"
+          new_fallback="function propertyTargetLabel16233(target){const translated=window.earthlinePropertyTargetLabel16848;if(typeof translated==='function')return translated(target,window.EARTHLINE_LANGUAGE_16488||'en');return '20-ACRE SEARCH'}"
+          once(old_fallback,new_fallback,'legacy Property action fallback')
+
+          once("font:900 10.5px/1.15 system-ui!important;letter-spacing:.035em!important;padding:0 13px!important;","font:900 15px/1.05 system-ui!important;letter-spacing:.045em!important;padding:0 13px!important;",'Property action font')
+          once('#earthlineDeclareProperty16169 span:last-child::before{content:"⌖";display:inline-block;font:900 18px/1 system-ui,sans-serif;line-height:1!important;margin-right:6px;vertical-align:-2px;letter-spacing:0!important}',
+               '#earthlineDeclareProperty16169 span:last-child::before{content:none!important;display:none!important}',
+               'remove crosshair prefix from Property action')
+
+          old_water='''      /* EARTHLINE 16521 — same water-ribbon owner, modestly more blue/visible. */\n      "line-gradient":["interpolate",["linear"],["line-progress"],0,"#1f79a6",.25,"#349dcc",.52,"#67bee4",.76,"#348fb9",1,"#226f94"],\n      "line-width":["interpolate",["linear"],["zoom"],12,1.25,15,1.75,16.5,2.20,18,2.65,20,3.10],\n      "line-opacity":.66,"line-blur":0'''
+          new_water='''      /* EARTHLINE 16853 — presentation only: 3x current blue ribbon width; stronger opacity so blue is the dominant swale signal. */\n      "line-gradient":["interpolate",["linear"],["line-progress"],0,"#147fbd",.25,"#28a9e0",.52,"#69d0f2",.76,"#259fda",1,"#1379b0"],\n      "line-width":["interpolate",["linear"],["zoom"],12,3.75,15,5.25,16.5,6.60,18,7.95,20,9.30],\n      "line-opacity":.88,"line-blur":0'''
+          once(old_water,new_water,'living-swale blue ribbon')
+          once('if(earthlineMap.getLayer(SWALE_WATER))earthlineMap.setPaintProperty(SWALE_WATER,"line-opacity",.40+.10*pulse2);',
+               'if(earthlineMap.getLayer(SWALE_WATER))earthlineMap.setPaintProperty(SWALE_WATER,"line-opacity",.80+.10*pulse2);',
+               'animated blue opacity floor')
+          once('blueWidth=width*1.953125','blueWidth=width*5.859375','natural SVG water-pocket blue width')
+
+          p.write_text(text,encoding='utf-8')
+          PY
+
+      - name: Verify exact requested presentation changes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8')
+          checks={
+            'Property Modelling section': "propertySection:'Property Modelling'" in t and "['property','Property Modelling']" in t,
+            '20-acre search only': "return '20-ACRE SEARCH'" in t and "String(target.code)+' · '+t.zoomAnalyze" not in t,
+            'larger button font': 'font:900 15px/1.05 system-ui!important' in t,
+            'crosshair prefix removed': '#earthlineDeclareProperty16169 span:last-child::before{content:none!important;display:none!important}' in t,
+            '3x blue map ribbon': '12,3.75,15,5.25,16.5,6.60,18,7.95,20,9.30' in t,
+            'strong blue opacity': '"line-opacity":.88' in t and '"line-opacity",.80+.10*pulse2' in t,
+            '3x natural blue pockets': 'blueWidth=width*5.859375' in t,
+          }
+          for k,v in checks.items(): print(('PASS' if v else 'FAIL'),k)
+          if not all(checks.values()): raise SystemExit(1)
+          PY
+
+      - name: Commit candidate patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "candidate: 16853 triple blue and simplify Property UI"
+          git push origin HEAD:candidate-m47-16853-blue-property-ui
