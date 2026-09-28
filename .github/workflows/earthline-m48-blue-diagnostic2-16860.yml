@@ -1,0 +1,38 @@
+name: Earthline M48 blue exact-owner diagnostic
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - mantra48-blue-diagnostic-16860
+jobs:
+  diagnose:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra48-blue-diagnostic-16860
+      - name: Extract exact owner blocks
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8').splitlines()
+          ranges=[(21580,21880,'renderer-ownership-15805'),(32980,33220,'natural-texture-16169'),(36320,36480,'property-ditch-owner-16166'),(20360,20460,'legacy-water-layer'),(35080,35180,'svg-natural-water')]
+          out=['EARTHLINE MANTRA 48 BLUE EXACT OWNER DIAGNOSTIC 16860','']
+          for a,b,name in ranges:
+            out.append('===== '+name+f' SOURCE LINES {a}-{b} =====')
+            for n in range(a,b+1):
+              if 1<=n<=len(t): out.append(f'{n}: {t[n-1]}')
+            out.append('')
+          Path('lab/mantra48-blue-exact-owner-16860.txt').write_text('\n'.join(out),encoding='utf-8')
+          PY
+      - name: Commit diagnostic only
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lab/mantra48-blue-exact-owner-16860.txt
+          git commit -m 'diagnostic: extract exact Property blue owner blocks 16860'
+          git push origin HEAD:mantra48-blue-diagnostic-16860
