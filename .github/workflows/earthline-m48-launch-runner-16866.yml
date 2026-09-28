@@ -1,0 +1,162 @@
+name: Earthline M48 launch runner 16866
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build-test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra48-launch-clean-16861
+          fetch-depth: 0
+      - name: Apply remaining approved launch repairs
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('index.html')
+          t=p.read_text(encoding='utf-8')
+          before=t
+          changes=[]
+
+          old07='<h3 style="margin-top:24px">Source and evidence register</h3>${sourceRows(d)}${footer(data,\'07\')}'
+          if old07 in t:
+              t=t.replace(old07,'${footer(data,\'07\')}',1); changes.append('sources removed page 07')
+          oldB='<h2>What this release is required to preserve</h2>${sourceRows(d)}<h3 style="margin-top:24px">Preserved product artifacts</h3>'
+          if oldB in t:
+              t=t.replace(oldB,'<h2>What this release is required to preserve</h2><h3 style="margin-top:24px">Preserved product artifacts</h3>',1); changes.append('sources removed Appendix B')
+
+          final_call='${finalSourcesPage16864(data)}'
+          if final_call in t: t=t.replace(final_call,'',1)
+          anchor='${footer(data,\'C\')}</section>\n</div>`}'
+          if anchor not in t: raise SystemExit('Appendix C anchor missing')
+          t=t.replace(anchor,'${footer(data,\'C\')}</section>\n${finalSourcesPage16864(data)}\n</div>`}',1); changes.append('sources final page')
+
+          oldnote='Modelled — not a measured infiltration rate. The headline is the mean of per-cell Earthline recharge scores. The rows expose the weighted inputs; because the engine clamps each cell before averaging, row means are explanatory rather than a second independent calculation.'
+          newnote='Modelled — not a measured infiltration rate. SCORE 0–100 is the mean of per-cell Earthline recharge suitability scores. Base weights are Aquifer 0.30, Soil 0.20, Slope 0.18, Flow 0.17, plus a 0.15 climate-need term centered at 50 before the rainfall multiplier. Rows are explanatory means from the same inputs; they are not a second independent calculation.'
+          if oldnote in t: t=t.replace(oldnote,newnote,1); changes.append('DATA wording synchronized')
+
+          old="const casing=grade==='A'?15:grade==='B'?12:9,core=grade==='A'?9.2:grade==='B'?7.2:5.2;"
+          new="const regionalZoom=Number(map?.getZoom?.()||6),regionalScale=regionalZoom<7?0.46:(regionalZoom<8?0.62:(regionalZoom<9?0.78:1)),casing=(grade==='A'?15:grade==='B'?12:9)*regionalScale,core=(grade==='A'?9.2:grade==='B'?7.2:5.2)*regionalScale;"
+          if old in t: t=t.replace(old,new,1); changes.append('Regional statewide swale presentation scaled')
+          elif 'regionalScale=regionalZoom<7?0.46' not in t: raise SystemExit('Regional swale owner missing')
+          oldh="stroke:light,'stroke-width':grade==='A'?'1.8':'1.2'"
+          newh="stroke:light,'stroke-width':String((grade==='A'?1.8:1.2)*regionalScale)"
+          if oldh in t: t=t.replace(oldh,newh,1); changes.append('Regional highlight scaled')
+
+          if 'EARTHLINE_LAUNCH_CANDIDATE_16866' not in t:
+              t=t.replace('</body>',"<script>window.EARTHLINE_LAUNCH_CANDIDATE_16866={build:'16866',scope:'approved launch repairs only',at:new Date().toISOString()};</script></body>",1)
+
+          if t==before: raise SystemExit('No launch changes applied')
+          p.write_text(t,encoding='utf-8')
+          Path('lab').mkdir(exist_ok=True)
+          Path('lab/mantra48-launch-candidate-16866.json').write_text(json.dumps({'build':'16866','changes':changes},indent=2),encoding='utf-8')
+          print(json.dumps({'build':'16866','changes':changes},indent=2))
+          PY
+      - name: Static and JavaScript regression gate
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile, os
+          t=Path('index.html').read_text(encoding='utf-8')
+          checks={
+            'Property Modelling':'Property Modelling' in t,
+            'Contact':'mailto:info@earthlinedevelopment.org' in t,
+            'Spanish':'Español' in t and "'es'" in t,
+            'Vancouver Island':'"vancouver island":{name:"Vancouver Island"' in t,
+            'Report aquifers':'const aquiferSvg=aquiferFeatures.map' in t and '${aquiferSvg}' in t,
+            'Sources final':'${finalSourcesPage16864(data)}' in t,
+            'DATA sync':'SCORE 0–100 is the mean of per-cell Earthline recharge suitability scores.' in t,
+            'Regional scale':'regionalScale=regionalZoom<7?0.46' in t,
+            'Natural texture':'const TILE_UP=' in t and 'const TILE_FLIP=' in t,
+            'Search Orb':'id="searchOrb"' in t,
+            'One map':len(re.findall(r'id=["\']map["\']',t))==1,
+          }
+          print(checks)
+          bad=[k for k,v in checks.items() if not v]
+          if bad: raise SystemExit('Static launch failures: '+', '.join(bad))
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',t,re.S|re.I)
+          failures=[]
+          for i,s in enumerate(scripts):
+              if not s.strip(): continue
+              fd,path=tempfile.mkstemp(suffix='.js'); os.close(fd); Path(path).write_text(s,encoding='utf-8')
+              r=subprocess.run(['node','--check',path],capture_output=True,text=True); os.unlink(path)
+              if r.returncode: failures.append((i,r.stderr[-1000:]))
+          if failures: print(failures[:3]); raise SystemExit('JS syntax failure')
+          print('PASS syntax + locks')
+          PY
+      - name: Verify blue texture changed only water pixels from live parent
+        shell: bash
+        run: |
+          python3 -m pip install pillow --quiet
+          python3 - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          import re,base64,io,colorsys,subprocess
+          now=Path('index.html').read_text(encoding='utf-8')
+          base=subprocess.check_output(['git','show','2b662f83eb5abe9fddc9fbdc35daf98bb80141ae:index.html'],text=True)
+          for name in ('TILE_UP','TILE_FLIP'):
+              pat=re.compile(r"const\s+"+name+r"='data:image/(?:webp|png);base64,([^']+)'" )
+              a=Image.open(io.BytesIO(base64.b64decode(pat.search(base).group(1)))).convert('RGBA')
+              b=Image.open(io.BytesIO(base64.b64decode(pat.search(now).group(1)))).convert('RGBA')
+              if a.size!=b.size: raise SystemExit(name+' dimensions changed')
+              ap=list(a.getdata()); bp=list(b.getdata()); changed=[i for i,(x,y) in enumerate(zip(ap,bp)) if x!=y]
+              if len(changed)<5000: raise SystemExit(name+' insufficient blue change')
+              hues=[]
+              for i in changed:
+                  r,g,bl,al=bp[i]; h,s,v=colorsys.rgb_to_hsv(r/255,g/255,bl/255); hues.append((h*360,s,v))
+              sat=sum(x[1] for x in hues)/len(hues)
+              if sat<.80: raise SystemExit(name+' blue saturation too low')
+              print(name,'changed',len(changed),'avg saturation',round(sat,3))
+          PY
+      - name: Install browser test dependencies
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Browser smoke test candidate
+        shell: bash
+        run: |
+          python3 -m http.server 8787 >/tmp/earthline-http.log 2>&1 &
+          cat > /tmp/smoke.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1000}});
+          const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+          await page.goto('http://127.0.0.1:8787/index.html',{waitUntil:'domcontentloaded',timeout:30000});
+          await page.waitForTimeout(2000);
+          const result=await page.evaluate(()=>({
+            map:!!document.getElementById('map'),
+            orb:!!document.getElementById('searchOrb'),
+            heading:document.body.innerText.includes('Property Modelling'),
+            spanish:[...document.querySelectorAll('#earthlineLanguage16488 option')].some(o=>o.value==='es'),
+            contact:(document.getElementById('earthlineRailContact16512')?.outerHTML||'').includes('CONTACT'),
+            launch:!!window.EARTHLINE_LAUNCH_CANDIDATE_16866,
+            reportButton:!!document.getElementById('earthlineVermontReport16149')
+          }));
+          console.log(result,errors);
+          if(errors.length) throw new Error('page errors: '+errors.join(' | '));
+          for(const [k,v] of Object.entries(result)) if(!v) throw new Error('smoke failed '+k);
+          const input=page.locator('#searchInput'); await input.fill('Vancouver Island'); await page.locator('#searchOrb').click();
+          await page.waitForTimeout(2500);
+          const vi=await page.evaluate(()=>({name:String(window.M?.loc?.name||''),country:String(window.M?.loc?.countryCode||''),type:String(window.M?.loc?.placeType||''),input:document.getElementById('searchInput')?.value||''}));
+          console.log('Vancouver',vi);
+          if(!/Vancouver Island/i.test(vi.name+' '+vi.input)||vi.country.toLowerCase()!=='ca') throw new Error('Vancouver Island search did not resolve to Canada');
+          await browser.close();
+          JS
+          node /tmp/smoke.mjs
+      - name: Commit verified candidate
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html lab/mantra48-launch-candidate-16866.json
+          git commit -m 'candidate: 16866 verified launch repairs'
+          git push origin HEAD:mantra48-launch-clean-16861
