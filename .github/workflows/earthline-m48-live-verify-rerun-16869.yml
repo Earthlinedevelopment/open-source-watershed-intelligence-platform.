@@ -1,48 +1,52 @@
-name: Earthline M48 live browser verification rerun 16869
+name: Earthline M48 final UI owner audit 16871
 on:
   push:
     branches:
-      - pages-live
+      - mantra48-final-launch-16871
     paths:
       - .github/workflows/earthline-m48-live-verify-rerun-16869.yml
 permissions:
-  contents: read
+  contents: write
 jobs:
-  verify:
+  audit:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Install browser driver library only
-        run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
-      - name: Extract, correct marker assertion, and run production test
-        env:
-          EARTHLINE_URL: https://earthlinedevelopment.org/?verify=16869-rerun2
-          NODE_PATH: ${{ github.workspace }}/node_modules
+      - name: Install browser
         run: |
-          mkdir -p artifacts
-          python3 - <<'PY'
-          from pathlib import Path
-          text=Path('.github/workflows/earthline-m48-live-verify-16869.yml').read_text(encoding='utf-8')
-          a=text.index("          cat > /tmp/verify16869.js <<'JS'\n")+len("          cat > /tmp/verify16869.js <<'JS'\n")
-          b=text.index("\n          JS\n",a)
-          body=text[a:b]
-          body='\n'.join(line[10:] if line.startswith('          ') else line for line in body.splitlines())+'\n'
-          old="""  const html=await page.content();
-  if(!html.includes('EARTHLINE 16869 — FOUR LIVE REPAIRS ONLY')) throw new Error('Production is not serving 16869 marker');
-  results.productionMarker=true;"""
-          new="""  const live16869=await page.evaluate(()=>({style:!!document.getElementById('earthline-property-acres-16869-style'),buttonFn:typeof window.earthlineRenderPropertyTargetLabel16869==='function'}));
-  if(!live16869.style||!live16869.buttonFn) throw new Error('Production is not serving 16869 live DOM/functions: '+JSON.stringify(live16869));
-  results.productionMarker=live16869;"""
-          if old not in body: raise SystemExit('marker assertion block not found in extracted test')
-          body=body.replace(old,new,1)
-          Path('/tmp/verify16869.js').write_text(body,encoding='utf-8')
+          pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Inspect live DOM and map owners
+        run: |
+          mkdir -p lab artifacts
+          cat > /tmp/audit.py <<'PY'
+          import json
+          from playwright.sync_api import sync_playwright
+          out={}
+          with sync_playwright() as p:
+            b=p.chromium.launch(headless=True,args=['--disable-dev-shm-usage'])
+            page=b.new_page(viewport={'width':1440,'height':1000})
+            page.goto('https://earthlinedevelopment.org/?ui_owner_audit=16871',wait_until='domcontentloaded',timeout=60000)
+            page.wait_for_timeout(3500)
+            out['button']=page.evaluate("""()=>{const el=document.querySelector('#earthlineDeclareProperty16169');if(!el)return null;const cs=getComputedStyle(el);return {html:el.innerHTML,text:el.textContent,display:cs.display,font:cs.font,fontSize:cs.fontSize,lineHeight:cs.lineHeight,letterSpacing:cs.letterSpacing,height:cs.height,width:cs.width,padding:cs.padding,children:[...el.children].map(x=>({tag:x.tagName,cls:String(x.className||''),text:x.textContent,html:x.outerHTML,fontSize:getComputedStyle(x).fontSize,lineHeight:getComputedStyle(x).lineHeight}))}}""")
+            out['languages']=page.evaluate("""()=>{const s=document.querySelector('#earthlineLanguageSelect16488');return {exists:!!s,html:s?.outerHTML||'',value:s?.value||'',options:s?[...s.options].map(o=>({value:o.value,text:o.textContent})):[],globals:Object.keys(window).filter(k=>/lang|language/i.test(k)&&/earthline/i.test(k)).slice(0,100)}}""")
+            out['map']=page.evaluate("""()=>{const m=window.earthlineMap||window.map||null;const layers={};const ids=m?.getStyle?.()?.layers?.map(l=>l.id).filter(id=>/swale|water/i.test(id))||[];for(const id of ids){if(!m.getLayer(id))continue;const rec={type:m.getLayer(id).type,visibility:m.getLayoutProperty(id,'visibility')||'visible'};for(const prop of ['line-color','line-width','line-opacity','line-pattern','fill-color','fill-opacity'])try{rec[prop]=m.getPaintProperty(id,prop)}catch(e){}layers[id]=rec}return {zoom:m?.getZoom?.()??null,ids,layers}}""")
+            page.screenshot(path='artifacts/live-ui-owner-16871.png',full_page=True)
+            b.close()
+          open('lab/mantra48-ui-owner-audit-16871.json','w').write(json.dumps(out,indent=2))
+          print(json.dumps(out,indent=2))
           PY
-          node /tmp/verify16869.js
-      - name: Upload verification evidence
-        if: always()
+          python /tmp/audit.py
+      - name: Commit evidence
+        run: |
+          git config user.name "earthline-audit-bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add lab/mantra48-ui-owner-audit-16871.json
+          git commit -m "diag: record final UI owners 16871"
+          git push origin HEAD:mantra48-final-launch-16871
+      - name: Upload screenshot
         uses: actions/upload-artifact@v4
         with:
-          name: earthline-16869-live-verification-rerun2
+          name: earthline-ui-owner-audit-16871
           path: artifacts/
-          if-no-files-found: ignore
