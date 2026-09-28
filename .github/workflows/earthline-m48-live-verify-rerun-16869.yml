@@ -1,4 +1,4 @@
-name: Earthline M48 final UI owner audit 16871
+name: Earthline M48 final code-owner audit 16871
 on:
   push:
     branches:
@@ -10,43 +10,51 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Install browser
+      - name: Extract exact owners
         run: |
-          pip install playwright
-          python -m playwright install --with-deps chromium
-      - name: Inspect live DOM and map owners
-        run: |
-          mkdir -p lab artifacts
-          cat > /tmp/audit.py <<'PY'
-          import json
-          from playwright.sync_api import sync_playwright
-          out={}
-          with sync_playwright() as p:
-            b=p.chromium.launch(headless=True,args=['--disable-dev-shm-usage'])
-            page=b.new_page(viewport={'width':1440,'height':1000})
-            page.goto('https://earthlinedevelopment.org/?ui_owner_audit=16871',wait_until='domcontentloaded',timeout=60000)
-            page.wait_for_timeout(3500)
-            out['button']=page.evaluate("""()=>{const el=document.querySelector('#earthlineDeclareProperty16169');if(!el)return null;const cs=getComputedStyle(el);return {html:el.innerHTML,text:el.textContent,display:cs.display,font:cs.font,fontSize:cs.fontSize,lineHeight:cs.lineHeight,letterSpacing:cs.letterSpacing,height:cs.height,width:cs.width,padding:cs.padding,children:[...el.children].map(x=>({tag:x.tagName,cls:String(x.className||''),text:x.textContent,html:x.outerHTML,fontSize:getComputedStyle(x).fontSize,lineHeight:getComputedStyle(x).lineHeight}))}}""")
-            out['languages']=page.evaluate("""()=>{const s=document.querySelector('#earthlineLanguageSelect16488');return {exists:!!s,html:s?.outerHTML||'',value:s?.value||'',options:s?[...s.options].map(o=>({value:o.value,text:o.textContent})):[],globals:Object.keys(window).filter(k=>/lang|language/i.test(k)&&/earthline/i.test(k)).slice(0,100)}}""")
-            out['map']=page.evaluate("""()=>{const m=window.earthlineMap||window.map||null;const layers={};const ids=m?.getStyle?.()?.layers?.map(l=>l.id).filter(id=>/swale|water/i.test(id))||[];for(const id of ids){if(!m.getLayer(id))continue;const rec={type:m.getLayer(id).type,visibility:m.getLayoutProperty(id,'visibility')||'visible'};for(const prop of ['line-color','line-width','line-opacity','line-pattern','fill-color','fill-opacity'])try{rec[prop]=m.getPaintProperty(id,prop)}catch(e){}layers[id]=rec}return {zoom:m?.getZoom?.()??null,ids,layers}}""")
-            page.screenshot(path='artifacts/live-ui-owner-16871.png',full_page=True)
-            b.close()
-          open('lab/mantra48-ui-owner-audit-16871.json','w').write(json.dumps(out,indent=2))
-          print(json.dumps(out,indent=2))
+          mkdir -p lab
+          python - <<'PY'
+          from pathlib import Path
+          import json,re
+          t=Path('index.html').read_text(encoding='utf-8')
+          def around(term,before=2500,after=5000,limit=20,regex=False):
+            pat=re.compile(term,re.I|re.S) if regex else re.compile(re.escape(term),re.I|re.S)
+            out=[]
+            for m in list(pat.finditer(t))[:limit]:
+              out.append(t[max(0,m.start()-before):min(len(t),m.end()+after)])
+            return out
+          keys={
+            'button_crosshair':around('data-crosshair16247',3500,6500,20),
+            'button_id':around('earthlineDeclareProperty16169',2500,4500,30),
+            'button_16869':around('16869',1800,4000,30),
+            'ditch':around('earthline-property-swale-ditch-16166',3200,6500,30),
+            'natural_up':around('earthline-property-swale-natural-up-16174',2800,6500,20),
+            'regional_swales':around('swale-opportunities',2800,6500,30),
+            'language_fn':around('function applyLanguage',3500,7500,8),
+            'language_select':around('earthlineLanguage16488',2500,6500,15),
+            'how_fn':around('function howBioswalesReportPages16388',6000,9000,4),
+            'how_array':around('HOW_BIOSWALES_REPORT_16388',5000,12000,8),
+            'vancouver':around('Vancouver Island',4000,9000,15),
+            'cowichan':around('Cowichan',4000,9000,15),
+            'email':around('info@earthlinedevelopment.org',3000,7000,20),
+            'mailto':around('mailto:',3000,7000,20),
+            'cost_mapbox':around('api.mapbox.com',2500,5500,20),
+            'cost_usage':around('usage',2500,5500,20),
+            'report_map':around('function mapSvg',5000,11000,4),
+            'gauge_data':around('SCORE 0',3500,7000,12),
+            'arizona':around('Arizona',3500,7000,12)
+          }
+          # Reduce embedded base64 blobs in all snippets.
+          for k,vals in keys.items():
+            keys[k]=[re.sub(r'data:image/(?:webp|png|svg\+xml);base64,[A-Za-z0-9+/=]+','<EMBEDDED_IMAGE>',s) for s in vals]
+          Path('lab/mantra48-final-code-owners-16871.json').write_text(json.dumps(keys,indent=2),encoding='utf-8')
           PY
-          python /tmp/audit.py
       - name: Commit evidence
         run: |
           git config user.name "earthline-audit-bot"
           git config user.email "info@earthlinedevelopment.org"
-          git add lab/mantra48-ui-owner-audit-16871.json
-          git commit -m "diag: record final UI owners 16871"
+          git add lab/mantra48-final-code-owners-16871.json
+          git commit -m "diag: record final code owners 16871"
           git push origin HEAD:mantra48-final-launch-16871
-      - name: Upload screenshot
-        uses: actions/upload-artifact@v4
-        with:
-          name: earthline-ui-owner-audit-16871
-          path: artifacts/
