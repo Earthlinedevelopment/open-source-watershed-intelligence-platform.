@@ -1,0 +1,55 @@
+name: Earthline M48 approved launch task audit
+on:
+  push:
+    branches:
+      - mantra48-blue-isolation-16860
+permissions:
+  contents: read
+jobs:
+  audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Audit approved launch items only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          t=Path('index.html').read_text(encoding='utf-8')
+          pats={
+            'property_modelling':r'Property Modelling',
+            'property_investigation':r'Property Investigation',
+            '20_acre':r'20-ACRE SEARCH',
+            'zoom_word':r'ZOOM',
+            'contact_email':r'info@earthlinedevelopment\.org',
+            'spanish':r'\bSpanish\b|\bes\b',
+            'vietnamese':r'Vietnamese|Tiếng Việt',
+            'thai':r'Thai|ไทย',
+            'bioswale_impact':r'Bioswale Impact',
+            'swales_explained':r'Swales Explained',
+            'how_bioswales_work':r'How Bioswales Work',
+            'source_manifest':r'Source manifest|SOURCE MANIFEST',
+            'source_evidence':r'Source/evidence|SOURCE / EVIDENCE|SOURCE EVIDENCE',
+            'data_tab':r'\bDATA\b',
+            'recharge_potential':r'Aquifer Recharge Potential'
+          }
+          lines=t.splitlines()
+          print('INDEX_LINES',len(lines),'INDEX_BYTES',len(t.encode()))
+          for name,pat in pats.items():
+            rx=re.compile(pat,re.I)
+            hits=[]
+            for i,line in enumerate(lines,1):
+              if rx.search(line): hits.append(i)
+            print('\n###',name,'COUNT',len(hits),'LINES',hits[:30])
+            for i in hits[:8]:
+              a=max(1,i-2); b=min(len(lines),i+3)
+              print(f'-- {a}-{b} --')
+              for j in range(a,b+1):
+                s=lines[j-1]
+                if len(s)>600: s=s[:600]+'…'
+                print(f'{j}: {s}')
+          PY
