@@ -1,5 +1,5 @@
-# trigger 16859-owner-diag
-name: Earthline 16859 authoritative renderer owner diagnostic
+# trigger 16859-owner-function
+name: Earthline 16859 applyOwnership diagnostic
 permissions:
   contents: write
 on:
@@ -14,29 +14,43 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: fix-16859-property-blue-final-order
-      - name: Extract authoritative renderer owner
+      - name: Extract applyOwnership function
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           t=Path('index.html').read_text(encoding='utf-8')
-          needle='earthlineApplyRendererOwnership15805'
-          out=[f'NEEDLE: {needle} COUNT={t.count(needle)}']
-          start=0;n=0
-          while True:
-              i=t.find(needle,start)
-              if i<0: break
-              n+=1
-              out.append(f'--- occurrence {n} at {i} ---')
-              out.append(t[max(0,i-1800):min(len(t),i+2600)])
-              start=i+1
-          Path('EARTHLINE-16859-OWNER-DIAG.txt').write_text('\n\n'.join(out),encoding='utf-8')
+          m=re.search(r'function\s+applyOwnership\s*\([^)]*\)\s*\{',t)
+          if not m:
+              a=t.find('window.earthlineApplyRendererOwnership15805=applyOwnership')
+              if a<0: raise SystemExit('applyOwnership assignment not found')
+              s=max(0,a-8000); e=min(len(t),a+1000)
+              out=t[s:e]
+          else:
+              s=m.start(); i=m.end()-1; depth=0; quote=None; esc=False
+              while i<len(t):
+                  c=t[i]
+                  if quote:
+                      if esc: esc=False
+                      elif c=='\\': esc=True
+                      elif c==quote: quote=None
+                  else:
+                      if c in "'\"`": quote=c
+                      elif c=='{': depth+=1
+                      elif c=='}':
+                          depth-=1
+                          if depth==0:
+                              i+=1; break
+                  i+=1
+              out=t[s:i]
+          Path('EARTHLINE-16859-APPLY-OWNERSHIP.txt').write_text(out,encoding='utf-8')
           PY
       - name: Commit diagnostic only
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add EARTHLINE-16859-OWNER-DIAG.txt
-          git commit -m 'diag: authoritative 15805 renderer owner'
+          git add EARTHLINE-16859-APPLY-OWNERSHIP.txt
+          git commit -m 'diag: extract 15805 applyOwnership function'
           git push origin HEAD:fix-16859-property-blue-final-order
