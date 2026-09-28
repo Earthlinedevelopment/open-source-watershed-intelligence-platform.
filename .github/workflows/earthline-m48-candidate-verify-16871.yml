@@ -1,0 +1,101 @@
+name: Earthline M48 candidate browser verification 16871
+on:
+  push:
+    branches: [mantra48-final-launch-16871]
+    paths: [.github/workflows/earthline-m48-candidate-verify-16871.yml]
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Serve candidate
+        run: |
+          python -m http.server 8787 --bind 127.0.0.1 > /tmp/earthline-server.log 2>&1 &
+          sleep 2
+      - name: Browser verification
+        run: |
+          mkdir -p artifacts lab
+          cat > /tmp/verify.py <<'PY'
+          import json,traceback,time
+          from playwright.sync_api import sync_playwright
+          out={'checks':{},'errors':[]}
+          try:
+            with sync_playwright() as p:
+              browser=p.chromium.launch(headless=True,args=['--disable-dev-shm-usage'])
+              page=browser.new_page(viewport={'width':1440,'height':1000})
+              page.goto('http://127.0.0.1:8787/?candidate_verify=16871',wait_until='domcontentloaded',timeout=60000)
+              page.wait_for_timeout(3500)
+
+              # Button: inject a current crosshair target through the existing owner.
+              page.wait_for_function("()=>typeof window.earthlineSetPropertyTarget16201==='function'",timeout=20000)
+              page.evaluate("()=>window.earthlineSetPropertyTarget16201({lng:-72.9726,lat:43.6106,source:'verify'},{openPanel:false})")
+              page.wait_for_timeout(300)
+              button=page.evaluate("""()=>{const b=document.querySelector('#earthlineDeclareProperty16169'),s=b?.querySelector('span:last-child'),a=s?.querySelector('.earthline-acres-16871');return {exists:!!b,text:s?.textContent||'',base:s?getComputedStyle(s).fontSize:null,acres:a?getComputedStyle(a).fontSize:null,acresText:a?.textContent||'',height:b?getComputedStyle(b).height:null}}""")
+              out['checks']['button']=button
+              if not button['exists'] or button['base']!='10.5px' or button['acres']!='15px' or button['acresText']!='20 ACRES': raise RuntimeError('Property button typography failed '+json.dumps(button))
+
+              # Spanish must visibly translate multiple live controls.
+              page.wait_for_function("()=>!!document.querySelector('#earthlineLanguage16488')",timeout=10000)
+              page.select_option('#earthlineLanguage16488','es')
+              page.dispatch_event('#earthlineLanguage16488','change')
+              page.wait_for_timeout(250)
+              spanish=page.evaluate("""()=>({lang:document.documentElement.lang,applied:document.documentElement.dataset.earthlineLanguageApplied16871||'',property:document.querySelector('#earthlinePropertySection16188 .el-panel-label-16188')?.textContent||'',report:document.querySelector('#earthlineReportSection16188 .el-panel-label-16188')?.textContent||'',contact:document.querySelector('#earthlineRailContact16512 .earthline-contact-label-16512')?.textContent||'',placeholder:document.querySelector('#searchInput')?.placeholder||'',button:document.querySelector('#earthlineDeclareProperty16169 span:last-child')?.textContent||''})""")
+              out['checks']['spanish']=spanish
+              if spanish['lang']!='es' or spanish['property']!='Modelado de propiedad' or spanish['report']!='Informe de impacto de bioswales' or spanish['contact']!='CONTACTO' or 'Buscar' not in spanish['placeholder']: raise RuntimeError('Spanish UI failed '+json.dumps(spanish,ensure_ascii=False))
+
+              # Restore English for report verification.
+              page.select_option('#earthlineLanguage16488','en');page.dispatch_event('#earthlineLanguage16488','change');page.wait_for_timeout(150)
+
+              # Report builder with a valid frozen run containing a mapped aquifer polygon.
+              page.wait_for_function("()=>typeof window.earthlineOpenVermontReport16151==='function'&&!!document.querySelector('#earthlineVermontReport16149')",timeout=20000)
+              token='FINAL-CANDIDATE-16871'
+              page.evaluate("""token=>{const empty={type:'FeatureCollection',features:[]},aq={type:'FeatureCollection',features:[{type:'Feature',properties:{name:'Verification aquifer'},geometry:{type:'Polygon',coordinates:[[[-73.00,43.60],[-72.96,43.60],[-72.96,43.64],[-73.00,43.64],[-73.00,43.60]]]}}]};const sw={type:'FeatureCollection',features:[{type:'Feature',properties:{grade:'A',score:80},geometry:{type:'LineString',coordinates:[[-72.99,43.61],[-72.97,43.62]]}}]};const snap={runToken:token,query:'Rutland Vermont verification',normalizedQuery:'Rutland Vermont verification',tier:'property',extentClass:'property',mode:'property',completedAt:new Date().toISOString(),bounds:[-73.02,43.58,-72.94,43.66],boundsHash:'final-16871',terrain:{source:'Verification terrain',limitation:'Verification only'},aquifers:aq,watersheds:empty,contours:empty,flows:empty,swales:sw,derived:{contours:0,waterPaths:0}};window.EARTHLINE_DISPLAYED_RUN_16147=snap;window.EARTHLINE_DISPLAYED_RUN_16151=snap;window.EARTHLINE_ACTIVE_RUN_TOKEN_16147=token;window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=token;window.EARTHLINE_REGIONAL_VISUAL_DATA_16020={swales:sw,contours:empty,flows:empty,aquifers:aq};document.documentElement.dataset.earthlineActiveRun=token;document.documentElement.dataset.earthlineRunState='published';document.dispatchEvent(new CustomEvent('earthline:analysis-complete',{detail:{runToken:token,tier:'property'}}));}""",token)
+              page.wait_for_timeout(300)
+              opened=page.evaluate("()=>window.earthlineOpenVermontReport16151()")
+              page.wait_for_timeout(350)
+              report=page.evaluate("""()=>{const p=document.querySelector('#earthlineVermontReportPanel16149'),pages=p?[...p.querySelectorAll('.el49-page')]:[],final=p?.querySelector('.el16864-final-sources'),how=p?[...p.querySelectorAll('.el88-how')]:[],aq=[...p?.querySelectorAll('svg path title')||[]].filter(x=>/aquifer/i.test(x.textContent||''));return {opened:!!p?.classList.contains('open'),pages:pages.length,finalSources:!!final,finalIsLast:!!final&&pages.at(-1)===final,howPages:how.length,howSourcePages:how.map((x,i)=>({i,sourceBlocks:x.querySelectorAll('.el49-source,.el16864-hbw-sources').length,finalSources:!!x.querySelector('.el16864-hbw-sources')})),aquiferTitles:aq.map(x=>x.textContent)}}""")
+              out['checks']['report']={'openReturn':opened,**report}
+              if opened is not True or not report['opened'] or not report['finalSources'] or not report['finalIsLast']: raise RuntimeError('Report open/final sources failed '+json.dumps(report))
+              if report['howPages']<1 or sum(1 for r in report['howSourcePages'] if r['finalSources'])!=1 or not report['howSourcePages'][-1]['finalSources']: raise RuntimeError('How Swales sources are not final-page only '+json.dumps(report['howSourcePages']))
+              if not report['aquiferTitles']: raise RuntimeError('Aquifer not represented in report map')
+
+              # Email control is present and targets the approved address in its live handler source.
+              email=page.evaluate("""()=>({exists:!!document.querySelector('#earthlineRailContact16512'),label:document.querySelector('#earthlineRailContact16512 .earthline-contact-label-16512')?.textContent||'',html:document.documentElement.outerHTML.includes('mailto:info@earthlinedevelopment.org?subject=Earthline%20Inquiry')})""")
+              out['checks']['email']=email
+              if not email['exists'] or not email['html']: raise RuntimeError('Contact email control failed '+json.dumps(email))
+
+              # Static live owners required for Vancouver Island and blue tier styling.
+              static=page.evaluate("""()=>({vancouver:document.documentElement.outerHTML.includes('vancouver island')||document.documentElement.outerHTML.includes('Vancouver Island'),blueRule:document.documentElement.outerHTML.includes("earthline-ranked-swale-water-15777")})""")
+              out['checks']['static']=static
+              if not static['vancouver'] or not static['blueRule']: raise RuntimeError('Vancouver/blue owners absent')
+
+              page.screenshot(path='artifacts/candidate-16871.png',full_page=True)
+              browser.close()
+          except Exception as e:
+            out['failure']=str(e);out['traceback']=traceback.format_exc()
+          open('lab/mantra48-candidate-verification-16871.json','w').write(json.dumps(out,indent=2,ensure_ascii=False))
+          print(json.dumps(out,indent=2,ensure_ascii=False))
+          if 'failure' in out: raise SystemExit(1)
+          PY
+          python /tmp/verify.py
+      - name: Commit evidence
+        if: always()
+        run: |
+          git config user.name earthline-test-bot
+          git config user.email info@earthlinedevelopment.org
+          git add lab/mantra48-candidate-verification-16871.json || true
+          if ! git diff --cached --quiet; then git commit -m 'test: record candidate verification 16871' && git push origin HEAD:mantra48-final-launch-16871; fi
+      - name: Upload screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-candidate-16871
+          path: artifacts/
+          if-no-files-found: ignore
