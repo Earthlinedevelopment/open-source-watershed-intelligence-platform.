@@ -1,0 +1,67 @@
+name: Earthline 16856 blue water color only
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - fix-16856-blue-water-color-only
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix-16856-blue-water-color-only
+      - name: Make existing water component visibly blue without width or pattern changes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          t=p.read_text(encoding='utf-8')
+          reps=[
+            ('/* EARTHLINE 16855 — presentation only: original swale width/pattern preserved; stronger blue color and opacity only. */',
+             '/* EARTHLINE 16856 — presentation only: exact swale width/pattern preserved; water-pocket under-stroke and water strokes made unmistakably blue. */'),
+            ('"line-gradient":["interpolate",["linear"],["line-progress"],0,"#006fd6",.25,"#00aef0",.52,"#69dcff",.76,"#008fe2",1,"#0066c7"],',
+             '"line-gradient":["interpolate",["linear"],["line-progress"],0,"#0057d9",.25,"#008cff",.52,"#00bfff",.76,"#008cff",1,"#004bc4"],'),
+            ('"line-opacity":.96,"line-blur":0', '"line-opacity":1,"line-blur":0'),
+            ('earthlineMap.setPaintProperty(SWALE_WATER,"line-opacity",.90+.08*pulse2)',
+             'earthlineMap.setPaintProperty(SWALE_WATER,"line-opacity",.96+.04*pulse2)'),
+            ("stroke:'rgba(29,57,49,.92)'", "stroke:'rgba(0,58,150,1)'"),
+            ("stroke:'rgba(0,174,239,.99)'", "stroke:'rgba(0,145,255,1)'"),
+            ("stroke:'rgba(214,247,255,.82)'", "stroke:'rgba(80,220,255,1)'")
+          ]
+          for old,new in reps:
+              c=t.count(old)
+              if c != 1:
+                  raise SystemExit(f'expected exactly 1 match, found {c}: {old[:100]}')
+              t=t.replace(old,new,1)
+          marker='<!-- EARTHLINE 16856 — BLUE WATER COLOR ONLY. Exact swale widths, geometry, spacing and pattern preserved. Existing water-pocket under-stroke changed from dark green to deep blue; existing water center/highlight made saturated blue/cyan. No hydrology, science, exclusions, search behavior, tabs, report, gauge, DATA, logo or Orb change. -->\n'
+          if marker not in t:
+              t=marker+t
+          p.write_text(t,encoding='utf-8')
+          PY
+      - name: Verify width and pattern are untouched
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8')
+          assert '12,1.25,15,1.75,16.5,2.20,18,2.65,20,3.10' in t
+          assert 'blueWidth=width*1.953125' in t
+          assert 'rgba(29,57,49,.92)' not in t
+          assert "rgba(0,58,150,1)" in t
+          assert "rgba(0,145,255,1)" in t
+          assert "rgba(80,220,255,1)" in t
+          assert '#008cff' in t and '#00bfff' in t
+          print('PASS: only water colors/opacity changed; widths and pattern preserved')
+          PY
+      - name: Commit candidate
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'candidate: 16856 make existing swale water unmistakably blue'
+          git push origin HEAD:fix-16856-blue-water-color-only
