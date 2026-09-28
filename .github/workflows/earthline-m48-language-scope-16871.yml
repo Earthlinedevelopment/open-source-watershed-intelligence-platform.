@@ -1,0 +1,41 @@
+name: Earthline M48 language formatter scope repair 16871
+on:
+  push:
+    branches: [mantra48-final-launch-16871]
+    paths: [.github/workflows/earthline-m48-language-scope-16871.yml]
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repair only cross-module language formatter access
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');t=p.read_text(encoding='utf-8');before=t
+          fn="function propertyTargetMarkup16871(target){"
+          if t.count(fn)!=1: raise SystemExit(f'Markup helper definition mismatch {t.count(fn)}')
+          # Export the already-created helper from its owning Property module.
+          end="return s.replace(/20 ACRES/g,'<strong class=\"earthline-acres-16871\">20 ACRES</strong>')}"
+          if t.count(end)!=1: raise SystemExit(f'Markup helper end mismatch {t.count(end)}')
+          t=t.replace(end,end+"window.earthlinePropertyTargetMarkup16871=propertyTargetMarkup16871;",1)
+          old="if(span&&b.dataset.busy!=='1')span.innerHTML=propertyTargetMarkup16871(window.EARTHLINE_PROPERTY_TARGET_16201);"
+          if t.count(old)!=1: raise SystemExit(f'Cross-module formatter call mismatch {t.count(old)}')
+          new="if(span&&b.dataset.busy!=='1'&&typeof window.earthlinePropertyTargetMarkup16871==='function')span.innerHTML=window.earthlinePropertyTargetMarkup16871(window.EARTHLINE_PROPERTY_TARGET_16201);"
+          t=t.replace(old,new,1)
+          if t==before: raise SystemExit('No change')
+          p.write_text(t,encoding='utf-8')
+          PY
+      - name: Guard
+        run: |
+          git diff --check
+          grep -q "window.earthlinePropertyTargetMarkup16871=propertyTargetMarkup16871" index.html
+      - name: Commit
+        run: |
+          git config user.name earthline-repair-bot
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git commit -m 'candidate: 16871 repair language formatter scope'
+          git push origin HEAD:mantra48-final-launch-16871
