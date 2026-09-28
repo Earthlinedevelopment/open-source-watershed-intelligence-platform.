@@ -1,0 +1,38 @@
+name: Earthline remove Process closing line (temporary)
+
+on:
+  push:
+    branches: [pages-live]
+
+permissions:
+  contents: write
+
+jobs:
+  remove-copy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 1
+      - name: Remove only requested Earthline Process closing line
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          target = '<div class="ep-closing">Keep more water in the landscape. Keep more soil on the land. Give nature the water it needs to thrive.</div>'
+          n = s.count(target)
+          if n != 1:
+              raise SystemExit(f'Expected exactly one target line, found {n}; refusing to modify index.html')
+          p.write_text(s.replace(target, '', 1), encoding='utf-8')
+          PY
+          git diff --check
+          test "$(grep -F -c 'Keep more water in the landscape. Keep more soil on the land. Give nature the water it needs to thrive.' index.html || true)" = "0"
+          git config user.name "Earthline Release Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "ui: remove Earthline Process closing line"
+          git push origin HEAD:pages-live
