@@ -130,7 +130,7 @@ jobs:
           npm install playwright@1.55.0 >/dev/null 2>&1
           npx playwright install chromium >/dev/null 2>&1
           python3 -m http.server 8787 >/tmp/earthline-http.log 2>&1 &
-          cat >/tmp/smoke.mjs <<'JS'
+          cat >smoke.mjs <<'JS'
           import { chromium } from 'playwright';
           const browser=await chromium.launch({headless:true});
           const page=await browser.newPage({viewport:{width:1440,height:1000}});
@@ -149,7 +149,7 @@ jobs:
           console.log(r,pageErrors); if(pageErrors.length)throw new Error(pageErrors.join(' | ')); for(const [k,v] of Object.entries(r))if(!v)throw new Error('smoke '+k);
           await browser.close();
           JS
-          node /tmp/smoke.mjs
+          node smoke.mjs
       - name: Commit finished launch-list candidate
         shell: bash
         run: |
