@@ -83,7 +83,6 @@ jobs:
               return s
           if scrub(original)!=scrub(html): raise SystemExit('Safety stop: text outside TILE_UP/TILE_FLIP payloads changed')
           p.write_text(html,encoding='utf-8')
-          # Visual audit artifact only; it never enters the website.
           sheet=Image.new('RGB',(1024,512),'white')
           draw=ImageDraw.Draw(sheet)
           y=0
@@ -100,8 +99,7 @@ jobs:
       - name: Verify HTML and working Property controls locally
         shell: bash
         run: |
-          npm init -y >/dev/null 2>&1
-          npm install playwright@1.55.0 >/dev/null 2>&1
+          npm install --no-save --package-lock=false playwright@1.55.0 >/dev/null 2>&1
           npx playwright install chromium >/dev/null 2>&1
           python3 -m http.server 8787 >/tmp/earthline16869-http.log 2>&1 &
           SERVER_PID=$!
@@ -134,8 +132,10 @@ jobs:
           await browser.close();
           JS
           node smoke16869.mjs
-          rm -f smoke16869.mjs baseline-16869.html package.json package-lock.json
+          rm -f smoke16869.mjs baseline-16869.html
           rm -rf node_modules
+          git restore --source=HEAD --worktree -- package.json 2>/dev/null || rm -f package.json
+          git restore --source=HEAD --worktree -- package-lock.json 2>/dev/null || rm -f package-lock.json
       - name: Commit blue-only candidate
         shell: bash
         run: |
