@@ -1,86 +1,36 @@
-name: Earthline M48 remaining launch audit 16871
+name: Earthline M48 targeted owner extract 16871
 on:
   push:
-    branches:
-      - mantra48-final-launch-16871
-    paths:
-      - .github/workflows/earthline-m48-final-audit-16871.yml
+    branches: [mantra48-final-launch-16871]
+    paths: [.github/workflows/earthline-m48-final-audit-16871.yml]
 permissions:
   contents: write
 jobs:
-  audit:
+  extract:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect current live-derived index
-        run: |
+      - run: |
           mkdir -p lab
           python - <<'PY'
           from pathlib import Path
-          import json,re,hashlib
-          t=Path('index.html').read_text(encoding='utf-8')
-          def snippets(term, radius=900, limit=8, flags=re.I):
-              out=[]
-              for m in list(re.finditer(term,t,flags))[:limit]:
-                  a=max(0,m.start()-radius); b=min(len(t),m.end()+radius)
-                  out.append(t[a:b])
-              return out
-          def count(term, flags=re.I):
-              return len(re.findall(term,t,flags))
-          data={
-            'bytes':len(t.encode()),
-            'sha256':hashlib.sha256(t.encode()).hexdigest(),
-            'button':{
-              '20_acres_count':count(r'20\s*-?\s*ACRES'),
-              'snippets':snippets(r'20\s*-?\s*ACRES',1200,12),
-              'property_id':snippets(r'earthlineDeclareProperty16169',1200,12)
-            },
-            'spanish':{
-              'espanol_count':count(r'Espa(?:ñ|&ntilde;|\u00f1)ol'),
-              'selector':snippets(r'earthlineLanguageSelect16488',1400,12),
-              'lang_es':snippets(r"['\"]es['\"]",900,16),
-              'spanish_words':snippets(r'Informe de impacto|Modelado de propiedad|Recarga|Buscar propiedad',900,12)
-            },
-            'sources':{
-              'how_fn':snippets(r'howBioswalesReportPages16388',2600,4),
-              'how_sources_class':snippets(r'el16864-hbw-sources',1800,8),
-              'source_rows':snippets(r'function sourceRows',1800,4),
-              'source_markers_count':count(r'el49-source|Sources|References')
-            },
-            'blue':{
-              'tile_up_decl':snippets(r"const TILE_UP=",500,2),
-              'tile_flip_decl':snippets(r"const TILE_FLIP=",500,2),
-              'ditch_layer':snippets(r'earthline-property-swale-ditch-16166',1000,8),
-              'natural_layers':snippets(r'earthline-property-swale-natural-up-16174',900,6)
-            },
-            'vancouver':{
-              'count':count(r'Vancouver Island|Cowichan|British Columbia|\bBC\b'),
-              'snippets':snippets(r'Vancouver Island|Cowichan|British Columbia',1400,12)
-            },
-            'cost':{
-              'billing':snippets(r'billing|budget|quota|usage|cap|breaker|limit|Mapbox',1200,20),
-              'mapbox_requests':count(r'api\.mapbox\.com|tiles\.mapbox\.com')
-            },
-            'email':{
-              'mailto':snippets(r'mailto:',1200,12),
-              'info':snippets(r'info@earthlinedevelopment\.org',1200,12),
-              'contact':snippets(r'Contact|contact',1200,16)
-            },
-            'report_aquifer':{
-              'map_fn':snippets(r'function mapSvg',2200,4),
-              'aquifer_fn':snippets(r'function reportAquifers',2200,4),
-              'final_sources':snippets(r'function finalSourcesPage16864',1400,6)
-            }
-          }
-          # Keep huge embedded textures out of snippets.
-          for k in ('tile_up_decl','tile_flip_decl'):
-              data['blue'][k]=[re.sub(r'data:image/webp;base64,[A-Za-z0-9+/=]+',lambda m:f'<WEBP_BASE64 len={len(m.group(0))}>',s) for s in data['blue'][k]]
-          Path('lab/mantra48-final-audit-16871.json').write_text(json.dumps(data,indent=2),encoding='utf-8')
+          import json
+          text=Path('index.html').read_text()
+          terms=['CROSSHAIR','crosshair16247','20 ACRES','earthline-property-acres-16869-style','earthlineRenderPropertyTargetLabel16869','function applyLanguage','earthlineLanguage16488','swale-opportunities','earthline-property-swale-ditch-16166']
+          out={}
+          for term in terms:
+            rows=[]; pos=0
+            while len(rows)<20:
+              i=text.find(term,pos)
+              if i<0: break
+              rows.append(text[max(0,i-2500):min(len(text),i+7000)])
+              pos=i+len(term)
+            out[term]=rows
+          Path('lab/targeted-owners-16871.json').write_text(json.dumps(out,indent=2))
           PY
-      - name: Commit audit evidence
-        run: |
-          git config user.name "earthline-audit-bot"
-          git config user.email "info@earthlinedevelopment.org"
-          git add lab/mantra48-final-audit-16871.json
-          git commit -m "diag: record remaining launch audit 16871"
+      - run: |
+          git config user.name earthline-audit-bot
+          git config user.email info@earthlinedevelopment.org
+          git add lab/targeted-owners-16871.json
+          git commit -m 'diag: targeted owner evidence 16871'
           git push origin HEAD:mantra48-final-launch-16871
