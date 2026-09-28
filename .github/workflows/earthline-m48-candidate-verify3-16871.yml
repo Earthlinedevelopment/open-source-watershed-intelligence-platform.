@@ -1,0 +1,71 @@
+name: Earthline M48 candidate browser verification 3 16871
+on:
+  push:
+    branches: [mantra48-final-launch-16871]
+    paths: [.github/workflows/earthline-m48-candidate-verify3-16871.yml]
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Serve and verify candidate
+        run: |
+          python -m http.server 8787 --bind 127.0.0.1 >/tmp/server.log 2>&1 &
+          sleep 2
+          mkdir -p lab artifacts
+          cat >/tmp/v.py <<'PY'
+          import json,traceback
+          from playwright.sync_api import sync_playwright
+          out={'checks':{}}
+          try:
+            with sync_playwright() as p:
+              b=p.chromium.launch(headless=True,args=['--disable-dev-shm-usage']);page=b.new_page(viewport={'width':1440,'height':1000})
+              errors=[];page.on('pageerror',lambda e: errors.append(str(e)))
+              page.goto('http://127.0.0.1:8787/?verify3=16871',wait_until='domcontentloaded',timeout=60000);page.wait_for_timeout(4000)
+              page.wait_for_function("()=>typeof window.earthlineSetPropertyTarget16201==='function'&&!!document.querySelector('#earthlineLanguage16488')",timeout=20000)
+              page.evaluate("()=>window.earthlineSetPropertyTarget16201({lng:-72.9726,lat:43.6106,source:'verify'},{openPanel:false})");page.wait_for_timeout(200)
+              out['checks']['button']=page.evaluate("""()=>{const s=document.querySelector('#earthlineDeclareProperty16169 span:last-child'),a=s?.querySelector('.earthline-acres-16871');return {base:s?getComputedStyle(s).fontSize:null,acres:a?getComputedStyle(a).fontSize:null,text:s?.textContent||''}}""")
+              assert out['checks']['button']['base']=='10.5px' and out['checks']['button']['acres']=='15px',out['checks']['button']
+              langs={}
+              for code in ['es','vi','th','en']:
+                page.select_option('#earthlineLanguage16488',code);page.wait_for_timeout(180)
+                langs[code]=page.evaluate("""()=>({lang:document.documentElement.lang,applied:document.documentElement.dataset.earthlineLanguageApplied16871||'',property:document.querySelector('#earthlinePropertySection16188 .el-panel-label-16188')?.textContent||'',report:document.querySelector('#earthlineReportSection16188 .el-panel-label-16188')?.textContent||'',contact:document.querySelector('#earthlineRailContact16512 .earthline-contact-label-16512')?.textContent||'',placeholder:document.querySelector('#searchInput')?.placeholder||'',button:document.querySelector('#earthlineDeclareProperty16169 span:last-child')?.textContent||''})""")
+              out['checks']['languages']=langs
+              assert langs['es']['lang']=='es' and langs['es']['applied']=='es' and langs['es']['property']=='Modelado de propiedad' and langs['es']['report']=='Informe de impacto de bioswales' and langs['es']['contact']=='CONTACTO' and 'Buscar' in langs['es']['placeholder'],langs['es']
+              assert langs['vi']['lang']=='vi' and langs['th']['lang']=='th' and langs['en']['lang']=='en',langs
+              page.wait_for_function("()=>typeof window.earthlineOpenVermontReport16151==='function'&&!!document.querySelector('#earthlineVermontReport16149')",timeout=20000)
+              token='FINAL-CANDIDATE-16871';page.evaluate("""token=>{const empty={type:'FeatureCollection',features:[]},aq={type:'FeatureCollection',features:[{type:'Feature',properties:{name:'Verification aquifer'},geometry:{type:'Polygon',coordinates:[[[-73.00,43.60],[-72.96,43.60],[-72.96,43.64],[-73.00,43.64],[-73.00,43.60]]]}}]},sw={type:'FeatureCollection',features:[{type:'Feature',properties:{grade:'A',score:80},geometry:{type:'LineString',coordinates:[[-72.99,43.61],[-72.97,43.62]]}}]},snap={runToken:token,query:'Rutland Vermont verification',normalizedQuery:'Rutland Vermont verification',tier:'property',extentClass:'property',mode:'property',completedAt:new Date().toISOString(),bounds:[-73.02,43.58,-72.94,43.66],boundsHash:'final-16871',terrain:{source:'Verification terrain',limitation:'Verification only'},aquifers:aq,watersheds:empty,contours:empty,flows:empty,swales:sw,derived:{contours:0,waterPaths:0}};window.EARTHLINE_DISPLAYED_RUN_16147=snap;window.EARTHLINE_DISPLAYED_RUN_16151=snap;window.EARTHLINE_ACTIVE_RUN_TOKEN_16147=token;window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=token;window.EARTHLINE_REGIONAL_VISUAL_DATA_16020={swales:sw,contours:empty,flows:empty,aquifers:aq};document.documentElement.dataset.earthlineActiveRun=token;document.documentElement.dataset.earthlineRunState='published';document.dispatchEvent(new CustomEvent('earthline:analysis-complete',{detail:{runToken:token,tier:'property'}}));}""",token);page.wait_for_timeout(300)
+              opened=page.evaluate("()=>window.earthlineOpenVermontReport16151()");page.wait_for_timeout(350)
+              out['checks']['report']=page.evaluate("""()=>{const p=document.querySelector('#earthlineVermontReportPanel16149'),pages=p?[...p.querySelectorAll('.el49-page')]:[],final=p?.querySelector('.el16864-final-sources'),how=p?[...p.querySelectorAll('.el88-how')]:[],aq=p?[...p.querySelectorAll('svg path title')].filter(x=>/aquifer/i.test(x.textContent||'')):[];return {open:!!p?.classList.contains('open'),pages:pages.length,final:!!final,last:!!final&&pages.at(-1)===final,how:how.map((x,i)=>({i,final:!!x.querySelector('.el16864-hbw-sources'),sources:x.querySelectorAll('.el49-source').length})),aq:aq.map(x=>x.textContent)}}""")
+              x=out['checks']['report'];assert opened is True and x['open'] and x['final'] and x['last'],x;assert x['how'] and sum(1 for r in x['how'] if r['final'])==1 and x['how'][-1]['final'],x['how'];assert x['aq'],x
+              out['checks']['email']=page.evaluate("""()=>({exists:!!document.querySelector('#earthlineRailContact16512'),source:document.documentElement.outerHTML.includes('mailto:info@earthlinedevelopment.org?subject=Earthline%20Inquiry')})""");assert all(out['checks']['email'].values()),out['checks']['email']
+              out['checks']['owners']=page.evaluate("""()=>({vancouver:document.documentElement.outerHTML.includes('Vancouver Island'),regionalBlue:document.documentElement.outerHTML.includes("setPaint('earthline-ranked-swale-water-15777','line-color','#008cff')"),propertyOpacity:document.documentElement.outerHTML.includes("14,1,16,.92,18,.70,20,.56")})""");assert all(out['checks']['owners'].values()),out['checks']['owners']
+              out['checks']['pageErrors']=errors
+              if errors: raise RuntimeError('page errors '+json.dumps(errors))
+              page.screenshot(path='artifacts/candidate3-16871.png',full_page=True);b.close()
+          except Exception as e:out['failure']=repr(e);out['traceback']=traceback.format_exc()
+          open('lab/mantra48-candidate-verification3-16871.json','w').write(json.dumps(out,indent=2,ensure_ascii=False));print(json.dumps(out,indent=2,ensure_ascii=False))
+          if 'failure' in out:raise SystemExit(1)
+          PY
+          python /tmp/v.py
+      - name: Commit evidence
+        if: always()
+        run: |
+          git config user.name earthline-test-bot
+          git config user.email info@earthlinedevelopment.org
+          git add lab/mantra48-candidate-verification3-16871.json || true
+          if ! git diff --cached --quiet; then git commit -m 'test: record candidate verification3 16871' && git push origin HEAD:mantra48-final-launch-16871; fi
+      - name: Upload screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-candidate3-16871
+          path: artifacts/
+          if-no-files-found: ignore
