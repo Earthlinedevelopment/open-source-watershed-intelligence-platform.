@@ -1,4 +1,4 @@
-name: Earthline M48 live report diagnostic 16870
+name: Earthline M48 report builder diagnostic 16870
 on:
   push:
     branches:
@@ -10,76 +10,81 @@ permissions:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - name: Install browser
         run: |
           pip install playwright
           python -m playwright install --with-deps chromium
-      - name: Capture live report reachability
+      - name: Exercise report builder with governed synthetic published identities
         continue-on-error: true
         env:
-          EARTHLINE_URL: https://earthlinedevelopment.org/?report_diag=16870
+          EARTHLINE_URL: https://earthlinedevelopment.org/?report_builder_diag=16870
         run: |
           mkdir -p lab artifacts
-          cat > /tmp/report_diag.py <<'PY'
+          cat > /tmp/report_builder_diag.py <<'PY'
           import json, os, traceback
           from datetime import datetime, timezone
           from playwright.sync_api import sync_playwright
           out={"startedAt":datetime.now(timezone.utc).isoformat(),"url":os.environ.get("EARTHLINE_URL"),"errors":[]}
-          def snap(page,label):
-              return page.evaluate("""label=>{const b=document.querySelector('#earthlineVermontReport16149'),d151=window.EARTHLINE_DISPLAYED_RUN_16151||null,d147=window.EARTHLINE_DISPLAYED_RUN_16147||null;let audit=null;try{audit=typeof window.earthlineReportReachabilityAudit16151==='function'?window.earthlineReportReachabilityAudit16151():null}catch(e){audit={error:String(e)}}return {label,tier:document.documentElement.dataset.earthlineTier||'',runState:document.documentElement.dataset.earthlineRunState||'',dataActive:document.documentElement.dataset.earthlineActiveRun||'',active151:window.EARTHLINE_ACTIVE_RUN_TOKEN_16151||null,active149:window.EARTHLINE_ACTIVE_RUN_TOKEN_16149||null,active147:window.EARTHLINE_ACTIVE_RUN_TOKEN_16147||null,displayed151:d151&&d151.runToken||null,displayed147:d147&&d147.runToken||null,buttonExists:!!b,buttonDisabled:b?!!b.disabled:null,buttonReady:b?b.dataset.ready||'':null,ariaDisabled:b?b.getAttribute('aria-disabled'):null,onclickType:b?typeof b.onclick:null,buttonVisible:b?getComputedStyle(b).display!=='none':null,pointerEvents:b?getComputedStyle(b).pointerEvents:null,buttonText:b?b.textContent.replace(/\\s+/g,' ').trim():null,openerType:typeof window.earthlineOpenVermontReport16151,audit};}""",label)
           try:
-              with sync_playwright() as p:
-                  browser=p.chromium.launch(headless=True,args=['--disable-dev-shm-usage'])
-                  page=browser.new_page(viewport={"width":1440,"height":1000})
-                  page.on('pageerror',lambda e: out['errors'].append('pageerror: '+str(e)))
-                  page.on('console',lambda m: out['errors'].append('console: '+m.text) if m.type=='error' else None)
-                  page.goto(out['url'],wait_until='domcontentloaded',timeout=60000)
-                  page.wait_for_function("()=>typeof window.earthlineSetPropertyTarget16201==='function'&&!!document.querySelector('#earthlineVermontReport16149')",timeout=30000)
-                  out['before']=snap(page,'before')
-                  page.evaluate("()=>window.earthlineSetPropertyTarget16201({lng:-73.1107,lat:44.4906,source:'16870-live-report-diagnostic'},{openPanel:false})")
-                  page.evaluate("""()=>{window.__reportDiagTerminal16870=null;document.addEventListener('earthline:analysis-complete',e=>{const d=e.detail||{};if(String(d.tier||d.mode||'').toLowerCase()==='property')window.__reportDiagTerminal16870={kind:'complete',detail:d}});document.addEventListener('earthline:analysis-failed',e=>{window.__reportDiagTerminal16870={kind:'failed',detail:e.detail||{}}})}""")
-                  page.locator('#earthlineDeclareProperty16169').click(timeout=15000)
-                  try: page.wait_for_function("()=>!!window.__reportDiagTerminal16870",timeout=60000)
-                  except Exception as e: out['terminalWaitError']=str(e)
-                  out['terminal']=page.evaluate("()=>window.__reportDiagTerminal16870")
-                  page.wait_for_timeout(1600)
-                  out['after']=snap(page,'after')
-                  try:
-                      if out['after'].get('buttonExists') and not out['after'].get('buttonDisabled'):
-                          page.locator('#earthlineVermontReport16149').click(timeout=10000)
-                      elif out['after'].get('buttonExists'):
-                          page.evaluate("()=>document.querySelector('#earthlineVermontReport16149')?.click()")
-                      page.wait_for_timeout(400)
-                  except Exception as e: out['clickError']=str(e)
-                  out['afterClick']=page.evaluate("()=>{const p=document.querySelector('#earthlineVermontReportPanel16149');return {panelExists:!!p,panelOpen:!!p&&p.classList.contains('open'),className:p?.className||''}}")
-                  try: page.screenshot(path='artifacts/report-live-diagnostic.png')
-                  except Exception as e: out['screenshotError']=str(e)
-                  browser.close()
+            with sync_playwright() as p:
+              browser=p.chromium.launch(headless=True,args=['--disable-dev-shm-usage'])
+              page=browser.new_page(viewport={"width":1440,"height":1000})
+              page.on('pageerror',lambda e: out['errors'].append('pageerror: '+str(e)))
+              page.on('console',lambda m: out['errors'].append('console: '+m.text) if m.type=='error' else None)
+              page.goto(out['url'],wait_until='domcontentloaded',timeout=60000)
+              page.wait_for_function("()=>typeof window.earthlineOpenVermontReport16151==='function'&&!!document.querySelector('#earthlineVermontReport16149')",timeout=30000)
+              def exercise(kind):
+                token='REPORT-DIAG-'+kind.upper()+'-16870'
+                page.evaluate("""([kind,token])=>{
+                  const empty={type:'FeatureCollection',features:[]};
+                  const snap={runToken:token,query:'Earthline report diagnostic',normalizedQuery:'Earthline report diagnostic',tier:kind,extentClass:kind,mode:kind,completedAt:new Date().toISOString(),bounds:[-73.12,44.48,-73.10,44.50],boundsHash:'report-diag-16870',terrain:{limitation:'Diagnostic snapshot only'},aquifers:empty,contours:empty,flows:empty,swales:empty};
+                  window.EARTHLINE_DISPLAYED_RUN_16147=snap;
+                  window.EARTHLINE_DISPLAYED_RUN_16151=snap;
+                  window.EARTHLINE_ACTIVE_RUN_TOKEN_16147=token;
+                  window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=token;
+                  window.EARTHLINE_REGIONAL_VISUAL_DATA_16020={swales:empty,contours:empty,flows:empty,aquifers:empty};
+                  document.documentElement.dataset.earthlineActiveRun=token;
+                  document.documentElement.dataset.earthlineRunState='published';
+                }""",[kind,token])
+                page.wait_for_timeout(1200)
+                state=page.evaluate("""()=>{const b=document.querySelector('#earthlineVermontReport16149');let a=null;try{a=window.earthlineReportReachabilityAudit16151?.()||null}catch(e){a={error:String(e)}}return {disabled:!!b?.disabled,ready:b?.dataset?.ready||null,onclickType:b?typeof b.onclick:null,audit:a}}""")
+                result={"state":state}
+                try:
+                  result['openReturn']=page.evaluate("()=>window.earthlineOpenVermontReport16151()")
+                except Exception as e:
+                  result['openException']=str(e)
+                page.wait_for_timeout(300)
+                result['panel']=page.evaluate("""()=>{const p=document.querySelector('#earthlineVermontReportPanel16149'),pages=p?[...p.querySelectorAll('.el49-page')]:[];return {exists:!!p,open:!!p?.classList.contains('open'),pageCount:pages.length,hasFinalSources:!!p?.querySelector('.el16864-final-sources'),lastClass:pages.length?pages[pages.length-1].className:''}}""")
+                page.evaluate("()=>{const p=document.querySelector('#earthlineVermontReportPanel16149');if(p)p.remove()}")
+                return result
+              out['regional']=exercise('regional')
+              out['property']=exercise('property')
+              page.screenshot(path='artifacts/report-builder-diagnostic.png')
+              browser.close()
           except Exception as e:
-              out['fatal']=str(e)
-              out['traceback']=traceback.format_exc()
+            out['fatal']=str(e); out['traceback']=traceback.format_exc()
           out['finishedAt']=datetime.now(timezone.utc).isoformat()
-          for path in ['lab/mantra48-report-live-diagnostic-16870.json','artifacts/report-live-diagnostic.json']:
-              with open(path,'w',encoding='utf-8') as f: json.dump(out,f,indent=2)
+          for path in ['lab/mantra48-report-builder-diagnostic-16870.json','artifacts/report-builder-diagnostic.json']:
+            with open(path,'w',encoding='utf-8') as f: json.dump(out,f,indent=2)
           print(json.dumps(out,indent=2))
           PY
-          python /tmp/report_diag.py
-      - name: Commit diagnostic evidence to isolation branch
+          python /tmp/report_builder_diag.py
+      - name: Commit diagnostic evidence
         if: always()
         run: |
           git config user.name "earthline-diagnostic-bot"
           git config user.email "info@earthlinedevelopment.org"
-          git add lab/mantra48-report-live-diagnostic-16870.json
+          git add lab/mantra48-report-builder-diagnostic-16870.json
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "diag: record live Bioswale Report reachability 16870"
+          git commit -m "diag: record report builder reachability 16870"
           git push origin HEAD:mantra48-report-isolation-16870
-      - name: Upload report evidence
+      - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: earthline-report-live-diagnostic-16870
+          name: earthline-report-builder-diagnostic-16870
           path: artifacts/
           if-no-files-found: ignore
