@@ -1,0 +1,136 @@
+
+====================================================================================================
+function applyOwnership
+====================================================================================================
+function applyOwnership(mode){
+    if(!mapReady())return false;
+    const property=mode==="property";
+    const validationView=property?String(state.validationView15806||"all"):"all";
+    swalesOnly=validationView==="swales-only";
+    const swalesContours=validationView==="swales-contours";
+    const active=registry[property?"property":"regional"];
+    const inactive=registry[property?"regional":"property"];
+    setGroup(inactive.water,false);setGroup(inactive.swales,false);
+    if(property)for(const id of obsoletePropertyLayers)visible(id,false);
+    const propertyCommitted=!!(
+      !property||
+      (
+        M&&M.propertyPublication15816&&
+        M.propertyPublication15816.committed===true&&
+        Number(M.propertyPublication15816.rawGeographicSegments||0)>0
+      )
+    );
+    const flowOn=propertyCommitted&&(
+      property
+        ?true
+        :!!(M.layers&&M.layers.flow&&M.layers.flow.on)
+    )&&validationView==="all";
+    const swaleOn=propertyCommitted&&!!(M.layers&&M.layers.swales&&M.layers.swales.on);
+    const rechargeOn=propertyCommitted&&!!(M.layers&&M.layers.recharge&&M.layers.recharge.on)&&validationView==="all";
+    const contourOn=propertyCommitted&&!!(M.layers&&M.layers.contours&&M.layers.contours.on)&&(validationView==="all"||swalesContours);
+    const aquiferOn=propertyCommitted&&!state.propertyAquiferHold16359&&!!(M.layers&&M.layers.usgsAquifer&&M.layers.usgsAquifer.on)&&validationView==="all";
+    const aquiferTextOn=propertyCommitted&&!state.propertyAquiferHold16359&&validationView==="all"&&!!(
+      (M&&M.vtGroundwaterSummaryPoint16398)||
+      (M&&Array.isArray(M.usgsAquifers)&&M.usgsAquifers.length)
+    );
+    setGroup(active.water,flowOn);setGroup(active.swales,swaleOn);
+    setGroup(active.recharge,rechargeOn);setGroup(active.contours,contourOn);setGroup(active.aquifer,aquiferOn);
+    updateAquiferTopText16501(property,aquiferTextOn);
+    /* EARTHLINE 16414 — authoritative hydro evidence visibility order.
+       Keep the translucent recharge fill contextual below interventions, but guarantee
+       that an actually selected/published recharge footprint cannot disappear beneath
+       the later living-swale/planting renderer. Annotation visibility remains owned here. */
+    try{
+      if(earthlineMap.getLayer("earthline-recharge-label")){
+        earthlineMap.setLayoutProperty("earthline-recharge-label","text-allow-overlap",false);
+        earthlineMap.setLayoutProperty("earthline-recharge-label","text-ignore-placement",false);
+      }
+      for(const id16414 of [
+        "earthline-recharge-line",
+        "earthline-recharge-highlight",
+        "earthline-recharge-label",
+        "earthline-aquifer-wells-16398"
+      ]){
+        if(earthlineMap.getLayer(id16414))earthlineMap.moveLayer(id16414);
+      }
+      /* 16492: all aquifer language is the final annotation pass. Geometry stays
+         in its governed order; only text is moved above every analytical layer. */
+      for(const id16492 of [
+        "el-live-aquifer-label-15970",
+        "earthline-aquifer-label-points-layer-15788",
+        "earthline-aquifer-evidence-label-16398"
+      ]){
+        if(earthlineMap.getLayer(id16492))earthlineMap.moveLayer(id16492);
+      }
+    }catch(_){ }
+    try{
+      const rechargeCanvas=document.getElementById("earthlineRechargeCanvas");
+      const rechargeSvg=document.getElementById("earthlineRechargeOverlay");
+      if(rechargeCanvas)rechargeCanvas.style.display="none";
+      if(rechargeSvg){rechargeSvg.style.display="none";rechargeSvg.replaceChildren()}
+    }catch(e){}
+    const controls=ensureControl();
+    if(controls){
+      controls.button.classList.toggle("visible",property&&!!M.analysisReady);
+      controls.badge.classList.toggle("visible",property&&swalesOnly&&!!M.analysisReady)
+    }
+    state.rendererOwnership15805={
+      build:BUILD,mode:property?"property":"regional",swalesOnly,validationView,propertyCommitted,appliedAt:Date.now(),
+      activeOwners:{water:active.water.owner,swales:active.swales.owner,recharge:active.recharge.owner,
+        contours:active.contours.owner,aquifer:active.aquifer.owner}
+    };
+    return true
+  }
+
+====================================================================================================
+function syncTexture
+====================================================================================================
+function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){
+  for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay16336.style.removeProperty('opacity');
+  }
+  return false
+}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline'),footprints=fc.features.filter(f=>f.properties?.geometry_role==='footprint'),directional=centers.filter(f=>f.properties?.orientation_status==='verified'),neutral=centers.filter(f=>f.properties?.orientation_status==='indeterminate'),sig=[model()?.searchGen,centers.length,centers.map(f=>String(f.properties?.rawIndex??f.id??'')).join(','),centers.map(f=>String(f.properties?.orientation_status)+'/'+String(f.properties?.texture_flip)).join('|')].join('|');const src=mp.getSource?.(SOURCE);if(src?.setData&&(sig!==lastSignature||reason.includes('force')||!src._data?.features?.length)){src.setData(fc);lastSignature=sig}try{if(typeof window.earthlineSyncNaturalSwalePlanting15806==='function')window.earthlineSyncNaturalSwalePlanting15806(authoritativeFC())}catch(_){}const show=centers.length>0&&footprints.length===centers.length&&directional.length+neutral.length===centers.length;for(const id of Object.values(LAYERS))visible(id,show);if(show){for(const id of OLD)visible(id,false);/* 16296: preserve the established Property recharge/groundwater context; the natural swale renderer no longer owns or suppresses those context layers. *//* 16294 natural presentation restore: the authoritative solid safe-line owner remains loaded and layout-visible for verification/fallback, but becomes visually transparent after the embedded natural texture is proven ready. This restores the protected brown/blue texture and tree/plant canopy without substituting or changing geometry. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',0)}catch(_){}}try{for(const id of [LAYERS.footprint,LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(true);for(const id of ['earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')}catch(_){}}else{/* If the natural renderer is unavailable, restore the verified authoritative safe-line fallback so Property output never disappears. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',.98)}catch(_){}}}const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');if(overlay)overlay.style.display=show?'none':'';const w=applyWidth(),registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169={build:BUILD,reason,propertyActive:active,features:fc.features.length,centerlines:centers.length,footprints:footprints.length,directional:directional.length,neutral:neutral.length,normal:directional.filter(f=>f.properties.texture_flip===0).length,flipped:directional.filter(f=>f.properties.texture_flip===1).length,widthPx:Number(w.toFixed(2)),groundWidthM:9,waterSide:directional.length?'terrain-verified-uphill':(neutral.length?'not-shown-orientation-indeterminate':'none'),orientationRule:'published-geometry-cross-slope-multisample-16177',orientationComplete:directional.length+neutral.length===centers.length,orientationEvidence:window.EARTHLINE_PROPERTY_ORIENTATION_EVIDENCE_16177||null,sourceReady:!!src,imagesReady:registered.up&&registered.flip,registeredImages:registered,layers:Object.fromEntries(Object.entries(LAYERS).map(([k,id])=>[k,!!mp.getLayer?.(id)])),at:new Date().toISOString()};return show&&registered.up&&registered.flip}
+
+====================================================================================================
+function syncPlanting15806
+====================================================================================================
+function syncPlanting15806(fc){
+    if(!ensurePlanting15806())return false;
+    const data=plantingPoints15806(fc&&fc.type==="FeatureCollection"?fc:emptyFC());
+    const src=earthlineMap.getSource(PLANT_SOURCE);
+    if(src&&src.setData)src.setData(data);
+    setPlantingVisible15806(plantingVisible&&data.features.length>0);
+    M.naturalSwalePlanting15806={features:data.features.length,visible:plantingVisible,source:PLANT_SOURCE};
+    return true
+  }
+
+====================================================================================================
+function applyTierStyling
+====================================================================================================
+function applyTierStyling(){
+    const t=tier();ensureFocusLayers();ensurePropertyLayers();
+    const focus=t==='focus',property=t==='property';
+    for(const id of ORIGINAL)visible(id,!focus&&!property);
+    for(const id of Object.values(FOCUS))visible(id,false);
+    for(const id of Object.values(PROPERTY))visible(id,property);
+    visible(LOCATION_HIT,!property);visible(LOCATION_LABEL,!property);
+    try{const m=map();if(!property&&m?.getLayer?.(LOCATION_HIT))m.moveLayer(LOCATION_HIT);if(!property&&m?.getLayer?.(LOCATION_LABEL))m.moveLayer(LOCATION_LABEL);}catch(_){}
+    if(property){
+      setPaint('earthline-living-swales-earth-15792','line-color','#7A5A3A');
+      setPaint('earthline-living-swales-life-15792','line-offset',['interpolate',['linear'],['zoom'],14,-1.6,17,-2.8,20,-4.0]);
+    }
+    if((t==="property"||t==="regional")&&typeof window.earthlineApplyRendererOwnership15805==="function"){
+      try{window.earthlineApplyRendererOwnership15805(t);}catch(_){}
+    }
+    lastTier=t;
+    window.EARTHLINE_SWALE_RENDERING_AUDIT_16167=window.EARTHLINE_SWALE_RENDERING_AUDIT_16166={build:BUILD,tier:t,locationPillLayerVisible:!property&&!!map()?.getLayer?.(LOCATION_LABEL),locationHitLayerVisible:!property&&!!map()?.getLayer?.(LOCATION_HIT),focusLayers:Object.values(FOCUS).filter(id=>!!map()?.getLayer?.(id)),propertyLayers:Object.values(PROPERTY).filter(id=>!!map()?.getLayer?.(id)),regionalOriginalVisible:!focus&&!property,focusCrossSectionVisible:focus,propertyTextureVisible:property,at:new Date().toISOString()};
+  }
