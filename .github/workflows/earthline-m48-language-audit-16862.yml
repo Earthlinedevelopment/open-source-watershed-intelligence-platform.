@@ -1,0 +1,36 @@
+name: Earthline M48 language owner audit 16862
+on:
+  push:
+    branches:
+      - mantra48-blue-isolation-16860
+permissions:
+  contents: read
+jobs:
+  audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra48-launch-clean-16861
+      - name: Print existing language owner context
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          t=Path('index.html').read_text(encoding='utf-8')
+          lines=t.splitlines()
+          needles=['lang.th','lang.vi','ภาษาไทย','Tiếng Việt','earthlineLanguage','LANG','translations','translate']
+          hits=[]
+          for i,line in enumerate(lines,1):
+            if any(n.lower() in line.lower() for n in needles): hits.append(i)
+          print('HITS',hits[:200])
+          for i in hits[:80]:
+            a=max(1,i-4); b=min(len(lines),i+10)
+            print(f'\n===== {a}-{b} =====')
+            for j in range(a,b+1):
+              s=lines[j-1]
+              if len(s)>1200: s=s[:1200]+'…'
+              print(f'{j}: {s}')
+          PY
