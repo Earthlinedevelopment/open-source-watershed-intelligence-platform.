@@ -1,0 +1,124 @@
+name: Earthline M48 Vancouver Island diagnostic 16868
+permissions:
+  contents: read
+on:
+  push:
+    branches:
+      - main
+jobs:
+  vancouver:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Run Vancouver Island live browser diagnostic
+        shell: bash
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+          cat > vancouver-16868.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1600,height:1100}});
+          const errors=[]; const consoleLines=[];
+          page.on('pageerror',e=>errors.push(String(e)));
+          page.on('console',m=>consoleLines.push(m.type()+': '+m.text()));
+          await page.goto('https://earthlinedevelopment.org/?earthline_diag=16868',{waitUntil:'domcontentloaded',timeout:45000});
+          await page.waitForTimeout(5000);
+          const snapshot=async(label)=>{
+            const info=await page.evaluate((label)=>{
+              const vis=(el)=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};
+              const controls=[...document.querySelectorAll('input,button,select,a')].filter(vis).slice(0,120).map(el=>({tag:el.tagName,id:el.id||'',text:(el.innerText||el.value||el.placeholder||el.getAttribute('aria-label')||'').trim().replace(/\s+/g,' ').slice(0,140),type:el.type||''}));
+              let mapInfo={available:false};
+              try{
+                if(typeof map!=='undefined' && map && map.getStyle){
+                  const style=map.getStyle();
+                  const srcIds=Object.keys(style?.sources||{});
+                  const layerIds=(style?.layers||[]).map(x=>x.id);
+                  const pick=arr=>arr.filter(x=>/swale|water|aqui|recharge|flow|contour/i.test(x));
+                  const counts={};
+                  for(const id of pick(srcIds)){
+                    try{counts[id]=map.querySourceFeatures(id).length}catch(e){counts[id]='ERR'}
+                  }
+                  mapInfo={available:true,center:map.getCenter(),zoom:map.getZoom(),sources:pick(srcIds),layers:pick(layerIds),counts};
+                }
+              }catch(e){mapInfo={available:true,error:String(e)}}
+              return {label,url:location.href,title:document.title,controls,body:(document.body?.innerText||'').slice(0,8000),mapInfo,build:window.EARTHLINE_LAUNCH_LIST_16867||null};
+            },label);
+            console.log('===SNAPSHOT '+label+'==='); console.log(JSON.stringify(info,null,2));
+            return info;
+          };
+          const initial=await snapshot('initial');
+          const inputs=page.locator('input:visible');
+          let chosen=null;
+          for(let i=0;i<await inputs.count();i++){
+            const el=inputs.nth(i); const ph=(await el.getAttribute('placeholder')||'').toLowerCase(); const id=(await el.getAttribute('id')||'').toLowerCase();
+            if(/address|city|county|state|country|search|location/.test(ph+' '+id)){chosen=el;break;}
+          }
+          if(!chosen && await inputs.count()) chosen=inputs.first();
+          if(!chosen) throw new Error('No visible search input found');
+          await chosen.fill('Vancouver Island, British Columbia, Canada');
+          await page.waitForTimeout(2500);
+          console.log('===AFTER TYPE===');
+          console.log((await page.locator('body').innerText()).slice(0,5000));
+          const suggestions=page.locator('[role="option"]:visible, .suggestion:visible, [class*="suggest"]:visible, [class*="result"]:visible');
+          if(await suggestions.count()){
+            console.log('suggestions',await suggestions.allInnerTexts());
+            await suggestions.first().click().catch(()=>{});
+          } else {
+            await chosen.press('Enter').catch(()=>{});
+          }
+          await page.waitForTimeout(5000);
+          const afterSearch=await snapshot('after-search');
+          const buttons=page.locator('button:visible');
+          let regionalClicked=false;
+          for(let i=0;i<await buttons.count();i++){
+            const t=((await buttons.nth(i).innerText().catch(()=>''))||'').trim();
+            if(/show area watershed|regional|run analysis/i.test(t) && !/property/i.test(t)){
+              await buttons.nth(i).click().catch(()=>{}); regionalClicked=true; console.log('clicked regional-like button:',t); break;
+            }
+          }
+          if(!regionalClicked) console.log('No explicit regional-like button clicked; search may auto-run regional.');
+          await page.waitForTimeout(15000);
+          const regional=await snapshot('regional');
+          await page.screenshot({path:'vancouver-regional-16868.png',fullPage:true});
+
+          let propertyClicked=false;
+          const buttons2=page.locator('button:visible');
+          for(let i=0;i<await buttons2.count();i++){
+            const t=((await buttons2.nth(i).innerText().catch(()=>''))||'').trim();
+            if(/property|20-acre/i.test(t)){
+              await buttons2.nth(i).click().catch(()=>{}); propertyClicked=true; console.log('clicked property-like button:',t); break;
+            }
+          }
+          if(propertyClicked){
+            await page.waitForTimeout(4000);
+            const b3=page.locator('button:visible');
+            for(let i=0;i<await b3.count();i++){
+              const t=((await b3.nth(i).innerText().catch(()=>''))||'').trim();
+              if(/20-acre search|run analysis/i.test(t)){
+                await b3.nth(i).click().catch(()=>{}); console.log('clicked property run button:',t); break;
+              }
+            }
+            await page.waitForTimeout(15000);
+          }
+          const property=await snapshot('property');
+          await page.screenshot({path:'vancouver-property-16868.png',fullPage:true});
+          fs.writeFileSync('vancouver-16868.json',JSON.stringify({errors,consoleLines:consoleLines.slice(-500),initial,afterSearch,regional,property,regionalClicked,propertyClicked},null,2));
+          console.log('PAGE_ERRORS',JSON.stringify(errors));
+          console.log('REGIONAL_CLICKED',regionalClicked,'PROPERTY_CLICKED',propertyClicked);
+          await browser.close();
+          JS
+          node vancouver-16868.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vancouver-island-16868
+          path: |
+            vancouver-16868.json
+            vancouver-regional-16868.png
+            vancouver-property-16868.png
