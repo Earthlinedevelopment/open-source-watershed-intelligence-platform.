@@ -1,0 +1,49 @@
+name: Earthline M48 index-only launch promotion 16871
+on:
+  push:
+    branches: [pages-live]
+    paths: [.github/workflows/earthline-m48-promote-16871.yml]
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Import exact tested candidate index only
+        run: |
+          git fetch origin mantra48-final-launch-16871
+          git show ca888d415e9cd3e793ff5ac0771337a5cda778c5:index.html > /tmp/candidate-index.html
+          test -s /tmp/candidate-index.html
+          cp /tmp/candidate-index.html index.html
+      - name: Launch guards
+        run: |
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8')
+          required={
+            'property_blue_half':"'line-opacity':['interpolate',['linear'],['zoom'],14,.50,16,.46,18,.35,20,.28]" in t,
+            'regional_blue_full':"setPaint('earthline-ranked-swale-water-15777','line-color','#008cff');setPaint('earthline-ranked-swale-water-15777','line-opacity',1)" in t,
+            'button_small':'font:900 10.5px/1.05 system-ui!important;' in t,
+            'acres_large':'earthline-acres-16871' in t,
+            'spanish':'Modelado de propiedad' in t and 'earthlineLanguageBound16871' in t,
+            'vietnamese':'Mô hình hóa khu đất' in t,
+            'thai':'การจำลองพื้นที่' in t,
+            'aquifer_report':'const aquiferFeatures=reportAquifers();' in t,
+            'vancouver':'"vancouver island":{name:"Vancouver Island"' in t,
+            'contact':"mailto:info@earthlinedevelopment.org?subject=Earthline%20Inquiry" in t,
+            'final_sources':'function finalSourcesPage16864' in t
+          }
+          print(required)
+          if not all(required.values()): raise SystemExit('launch guard failed')
+          PY
+      - name: Commit index only
+        run: |
+          git config user.name earthline-release-bot
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git commit -m 'release: 16871 launch candidate index only'
+          git push origin HEAD:pages-live
