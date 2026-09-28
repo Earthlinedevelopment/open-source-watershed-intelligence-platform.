@@ -1,0 +1,42 @@
+name: Earthline Property texture owner diagnostic
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - diag-property-blue-owner-16858
+jobs:
+  trace:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: diag-property-blue-owner-16858
+      - name: Extract natural texture layer ownership
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          t=Path('index.html').read_text(encoding='utf-8')
+          start=t.find("const BUILD='EARTHLINE 16236'")
+          if start<0: raise SystemExit('16236 owner not found')
+          end=t.find('</script>',start)
+          s=t[start:end]
+          lines=[]
+          for m in re.finditer(r'(?:function\s+[A-Za-z0-9_$]+|LAYERS\.[A-Za-z]+|m\.addLayer|addLayer|moveLayer|setLayoutProperty|setPaintProperty|OLD|visibility|line-pattern|line-color|line-width)',s):
+            a=max(0,m.start()-450); b=min(len(s),m.start()+1100)
+            chunk=s[a:b].replace('TILE_UP=', 'TILE_UP=[OMITTED]')
+            if len(chunk)>2200: chunk=chunk[:2200]
+            lines.append('\n--- '+m.group(0)+' @ '+str(start+m.start())+' ---\n'+chunk+'\n')
+          Path('PROPERTY-TEXTURE-OWNER-DIAGNOSTIC.txt').write_text(''.join(lines),encoding='utf-8')
+          PY
+      - name: Commit diagnostic only
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add PROPERTY-TEXTURE-OWNER-DIAGNOSTIC.txt
+          git commit -m 'diagnostic: trace Property natural-texture layer order'
+          git push origin HEAD:diag-property-blue-owner-16858
