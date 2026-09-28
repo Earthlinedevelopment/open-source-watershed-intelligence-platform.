@@ -23,6 +23,7 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p=Path('index.html')
           text=p.read_text(encoding='utf-8')
 
@@ -34,12 +35,20 @@ jobs:
               text=text.replace(old,new,1)
               print(f'patched {label}; prior occurrences={n}')
 
+          def regex_once(pattern,repl,label):
+              global text
+              text2,n=re.subn(pattern,repl,text,count=1)
+              if n != 1:
+                  raise SystemExit(f'MISSING PATCH TARGET: {label}')
+              text=text2
+              print(f'patched {label}; matches={n}')
+
           marker='<!-- EARTHLINE 16853 — PROPERTY PRESENTATION ONLY. User-requested changes: triple the visible blue-water component of existing Property bioswales without altering swale geometry/science; rename Property Investigation to Property Modelling; simplify the green Property action to 20-ACRE SEARCH and enlarge its text. No hydrology, DEM, D8, recharge, aquifer, exclusion, ranking, spacing, capacity, search behavior, Property extent, report science, logo, Orb, or Regional science changed. CANDIDATE / NOT ACCEPTED. -->\n'
           if marker not in text:
               text=marker+text
 
-          once("['property','Property Investigation']","['property','Property Modelling']",'panel section label')
-          once("propertySection:'Property Investigation'","propertySection:'Property Modelling'",'English language section label')
+          regex_once(r"(\[\s*['\"]property['\"]\s*,\s*)['\"]Property Investigation['\"]",r"\1'Property Modelling'",'panel section label')
+          regex_once(r"propertySection\s*:\s*['\"]Property Investigation['\"]","propertySection:'Property Modelling'",'English language section label')
 
           old_fn="window.earthlinePropertyTargetLabel16848=function(target,lang){const next=['en','th','vi'].includes(lang)?lang:(window.EARTHLINE_LANGUAGE_16488||'en'),t=earthlineText16848(next);if(target&&target.code)return String(target.code)+' · '+t.zoomAnalyze+' · '+t.acres;if(target&&Number.isFinite(Number(target.lat))&&Number.isFinite(Number(target.lng)))return t.crosshair+' · '+Number(target.lat).toFixed(5)+', '+Number(target.lng).toFixed(5)+' · '+t.acres;return t.propertySearch+' · '+t.acres};"
           new_fn="window.earthlinePropertyTargetLabel16848=function(target,lang){const next=['en','th','vi'].includes(lang)?lang:(window.EARTHLINE_LANGUAGE_16488||'en');if(next==='th')return 'ค้นหา 20 เอเคอร์';if(next==='vi')return 'TÌM KIẾM 20 ACRE';return '20-ACRE SEARCH'};"
@@ -72,7 +81,7 @@ jobs:
           from pathlib import Path
           t=Path('index.html').read_text(encoding='utf-8')
           checks={
-            'Property Modelling section': "propertySection:'Property Modelling'" in t and "['property','Property Modelling']" in t,
+            'Property Modelling section': "Property Modelling" in t and "propertySection:'Property Modelling'" in t,
             '20-acre search only': "return '20-ACRE SEARCH'" in t and "String(target.code)+' · '+t.zoomAnalyze" not in t,
             'larger button font': 'font:900 15px/1.05 system-ui!important' in t,
             'crosshair prefix removed': '#earthlineDeclareProperty16169 span:last-child::before{content:none!important;display:none!important}' in t,
