@@ -1,0 +1,44 @@
+name: Earthline Property blue owner diagnostic
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - diag-property-blue-owner-16858
+jobs:
+  trace:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: diag-property-blue-owner-16858
+      - name: Extract Property swale ownership contexts
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8')
+          needles=['earthline-property-swale-ditch-16166','earthline-property-swale-canopy-16166','earthline-property-swale-survey-16166','earthline-living-swales-15792','PROPERTY.ditch','Object.values(PROPERTY)','applyTierStyling','hideUnapproved','natural-texture','planting','earthline-property-swale-texture-16174']
+          out=[]
+          for needle in needles:
+            out.append('\n'+'='*100+'\nNEEDLE: '+needle+'\n'+'='*100+'\n')
+            start=0;n=0
+            while True:
+              i=t.find(needle,start)
+              if i<0: break
+              n+=1
+              a=max(0,i-1800);b=min(len(t),i+2600)
+              out.append(f'\n--- occurrence {n} at char {i} ---\n'+t[a:b]+'\n')
+              start=i+len(needle)
+            out.append(f'\nTOTAL {needle}: {n}\n')
+          Path('PROPERTY-BLUE-OWNER-DIAGNOSTIC.txt').write_text(''.join(out),encoding='utf-8')
+          PY
+      - name: Commit diagnostic only
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add PROPERTY-BLUE-OWNER-DIAGNOSTIC.txt
+          git commit -m 'diagnostic: trace Property swale presentation owners'
+          git push origin HEAD:diag-property-blue-owner-16858
