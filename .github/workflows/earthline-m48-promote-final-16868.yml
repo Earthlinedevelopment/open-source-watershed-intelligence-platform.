@@ -1,0 +1,57 @@
+name: Earthline M48 promote final approved repairs 16868
+permissions:
+  contents: write
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-m48-promote-final-16868.yml'
+jobs:
+  promote:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Promote exact final candidate and verify locks
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin mantra48-launch-clean-16861
+          test "$(git rev-parse origin/mantra48-launch-clean-16861)" = "256bf684f30c62f516c07d89692dd54e1252099a"
+          git show origin/mantra48-launch-clean-16861:index.html > index.html
+          grep -Fq '"vancouver island":{name:"Vancouver Island"' index.html
+          grep -Fq 'const aquiferSvg=aquiferFeatures.map' index.html
+          grep -Fq '${finalSourcesPage16864(data)}' index.html
+          grep -Fq 'SCORE 0–100 is the mean of per-cell Earthline recharge suitability scores.' index.html
+          grep -Fq 'regionalScale=regionalZoom<7?0.46' index.html
+          grep -Fq 'Property Modelling' index.html
+          grep -Fq 'mailto:info@earthlinedevelopment.org' index.html
+          grep -Fq 'Español' index.html
+          grep -Fq 'const TILE_UP=' index.html
+          grep -Fq 'const TILE_FLIP=' index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile, os
+          t=Path('index.html').read_text(encoding='utf-8')
+          assert len(re.findall(r'id=["\']map["\']',t))==1
+          assert 'id="searchOrb"' in t
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',t,re.S|re.I)
+          for i,s in enumerate(scripts):
+              if not s.strip(): continue
+              fd,path=tempfile.mkstemp(suffix='.js'); os.close(fd)
+              Path(path).write_text(s,encoding='utf-8')
+              r=subprocess.run(['node','--check',path],capture_output=True,text=True)
+              os.unlink(path)
+              if r.returncode:
+                  raise SystemExit(f'inline script {i} failed: {r.stderr[-1200:]}')
+          print('PASS: final candidate syntax and launch locks')
+          PY
+          git diff --check
+          git add index.html
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'launch: promote final approved repairs 16868'
+          git push origin HEAD:pages-live
