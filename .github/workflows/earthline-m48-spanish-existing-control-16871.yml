@@ -1,0 +1,36 @@
+name: Earthline M48 Spanish existing-control repair 16871
+on:
+  push:
+    branches: [mantra48-final-launch-16871]
+    paths: [.github/workflows/earthline-m48-spanish-existing-control-16871.yml]
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch only existing language control binding
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); t=p.read_text(encoding='utf-8'); before=t
+          old="if(existing&&!existing.querySelector('option[value=\"es\"]')){const opt=document.createElement('option');opt.value='es';opt.textContent='Español';existing.appendChild(opt)}return wrap}wrap=document.createElement('label');"
+          if t.count(old)!=1: raise SystemExit(f'Expected one existing-language early return, found {t.count(old)}')
+          new="""if(existing&&!existing.querySelector('option[value=\"es\"]')){const opt=document.createElement('option');opt.value='es';opt.textContent='Español';existing.appendChild(opt)}if(existing&&existing.dataset.earthlineLanguageBound16871!=='1'){existing.dataset.earthlineLanguageBound16871='1';const sync16871=()=>{const value=['en','th','vi','es'].includes(existing.value)?existing.value:'en';try{localStorage.setItem('earthlineLanguage16488',value)}catch(_){}applyLanguage(value)};existing.addEventListener('change',sync16871);let saved16871='en';try{saved16871=localStorage.getItem('earthlineLanguage16488')||existing.value||'en'}catch(_){saved16871=existing.value||'en'}if(!['en','th','vi','es'].includes(saved16871))saved16871='en';existing.value=saved16871;applyLanguage(saved16871)}return wrap}wrap=document.createElement('label');"""
+          t=t.replace(old,new,1)
+          if t==before: raise SystemExit('No change made')
+          p.write_text(t,encoding='utf-8')
+          PY
+      - name: Guard scope
+        run: |
+          git diff --check
+          git diff --numstat -- index.html
+          grep -q "earthlineLanguageBound16871" index.html
+      - name: Commit candidate
+        run: |
+          git config user.name earthline-repair-bot
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git commit -m 'candidate: 16871 bind existing language selector'
+          git push origin HEAD:mantra48-final-launch-16871
