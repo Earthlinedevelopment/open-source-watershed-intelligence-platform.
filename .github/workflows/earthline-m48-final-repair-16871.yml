@@ -1,0 +1,105 @@
+name: Earthline M48 final approved launch repairs 16871
+on:
+  push:
+    branches: [mantra48-final-launch-16871]
+    paths: [.github/workflows/earthline-m48-final-repair-16871.yml]
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply only approved launch repairs
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('index.html')
+          t=p.read_text(encoding='utf-8')
+          before=t
+
+          # 1. Second green Property button: restore base text to accepted small size.
+          old="font:900 15px/1.05 system-ui!important;"
+          if t.count(old)!=1: raise SystemExit(f'Expected one late 15px Property button owner, found {t.count(old)}')
+          t=t.replace(old,"font:900 10.5px/1.05 system-ui!important;",1)
+
+          # Add markup helper beside the existing Property target label owner.
+          label_fn="function propertyTargetLabel16233(target){if(target&&target.code)return String(target.code)+' · ANALYZE · 20 ACRES';if(target&&Number.isFinite(Number(target.lat))&&Number.isFinite(Number(target.lng)))return 'CROSSHAIR · '+Number(target.lat).toFixed(5)+', '+Number(target.lng).toFixed(5)+' · 20 ACRES';return 'PROPERTY SEARCH · 20 ACRES'}"
+          if t.count(label_fn)!=1: raise SystemExit(f'Property target label owner mismatch: {t.count(label_fn)}')
+          markup_fn="""function propertyTargetMarkup16871(target){const lang=String(window.EARTHLINE_LANGUAGE_16488||'en'),raw=propertyTargetLabel16233(target);let s=raw;if(lang==='es')s=s.replace('CROSSHAIR','PUNTO DE MIRA').replace('ANALYZE','ANALIZAR').replace('PROPERTY SEARCH','BÚSQUEDA DE PROPIEDAD');else if(lang==='vi')s=s.replace('CROSSHAIR','TÂM NGẮM').replace('ANALYZE','PHÂN TÍCH').replace('PROPERTY SEARCH','TÌM KHU ĐẤT');else if(lang==='th')s=s.replace('CROSSHAIR','เป้าเล็ง').replace('ANALYZE','วิเคราะห์').replace('PROPERTY SEARCH','ค้นหาพื้นที่');return s.replace(/20 ACRES/g,'<strong class=\"earthline-acres-16871\">20 ACRES</strong>')}"""
+          t=t.replace(label_fn,label_fn+markup_fn,1)
+          target_assign="span.textContent=propertyTargetLabel16233("
+          n=t.count(target_assign)
+          if n<2: raise SystemExit(f'Expected at least two Property target assignments, found {n}')
+          t=t.replace(target_assign,"span.innerHTML=propertyTargetMarkup16871(")
+
+          # Style only 20 ACRES larger; everything else stays 10.5px.
+          css_anchor="#earthlineDeclareProperty16169 span:last-child::before{content:none!important;display:none!important}"
+          if t.count(css_anchor)!=1: raise SystemExit(f'Property button CSS anchor mismatch: {t.count(css_anchor)}')
+          t=t.replace(css_anchor,css_anchor+"#earthlineDeclareProperty16169 .earthline-acres-16871{font-size:15px!important;line-height:1!important;font-weight:950!important;letter-spacing:.04em!important}",1)
+
+          # 2. Blue: close Property view quieter; lower zoom stronger. Geometry/width/color unchanged.
+          ditch="safeLayer({id:PROPERTY.ditch,type:'line',source:PROPERTY_SOURCE,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#008cff','line-width':['interpolate',['linear'],['zoom'],14,3.4,17,5.4,20,7.2],'line-opacity':1}},before);"
+          if t.count(ditch)!=1: raise SystemExit(f'Property ditch owner mismatch: {t.count(ditch)}')
+          ditch2="safeLayer({id:PROPERTY.ditch,type:'line',source:PROPERTY_SOURCE,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#008cff','line-width':['interpolate',['linear'],['zoom'],14,3.4,17,5.4,20,7.2],'line-opacity':['interpolate',['linear'],['zoom'],14,1,16,.92,18,.70,20,.56]}},before);"
+          t=t.replace(ditch,ditch2,1)
+          tier_anchor="for(const id of Object.values(PROPERTY))visible(id,property);"
+          if t.count(tier_anchor)!=1: raise SystemExit(f'Tier styling anchor mismatch: {t.count(tier_anchor)}')
+          regional_blue="if(t==='regional'){setPaint('earthline-ranked-swale-water-15777','line-color','#008cff');setPaint('earthline-ranked-swale-water-15777','line-opacity',1)}"
+          t=t.replace(tier_anchor,tier_anchor+regional_blue,1)
+
+          # 3/11. Make language choice visibly translate the working UI.
+          apply_anchor="function applyLanguage(value){const next=['en','th','vi','es'].includes(value)?value:'en';document.documentElement.lang=next;const label=document.getElementById('earthlineLanguageLabel16488');if(label)label.textContent=next==='th'?'ภาษา':next==='vi'?'Ngôn ngữ':next==='es'?'Idioma':'Language';window.EARTHLINE_LANGUAGE_16488=next}"
+          if t.count(apply_anchor)!=1: raise SystemExit(f'Language owner mismatch: {t.count(apply_anchor)}')
+          lang_helper="""function earthlineApplyUiLanguage16871(next){const D={en:{search:'Search',property:'Property Modelling',report:'Bioswale Impact Report',status:'Status',results:'Results',swales:'Swales Explained',process:'The Earthline Process',contact:'CONTACT',placeholder:'Search a location'},es:{search:'Buscar',property:'Modelado de propiedad',report:'Informe de impacto de bioswales',status:'Estado',results:'Resultados',swales:'Bioswales explicados',process:'El proceso Earthline',contact:'CONTACTO',placeholder:'Buscar una ubicación'},vi:{search:'Tìm kiếm',property:'Mô hình hóa khu đất',report:'Báo cáo tác động rãnh sinh học',status:'Trạng thái',results:'Kết quả',swales:'Giải thích rãnh sinh học',process:'Quy trình Earthline',contact:'LIÊN HỆ',placeholder:'Tìm kiếm địa điểm'},th:{search:'ค้นหา',property:'การจำลองพื้นที่',report:'รายงานผลกระทบร่องชีวภาพ',status:'สถานะ',results:'ผลลัพธ์',swales:'อธิบายร่องชีวภาพ',process:'กระบวนการ Earthline',contact:'ติดต่อ',placeholder:'ค้นหาสถานที่'}};const d=D[next]||D.en;const set=(q,v)=>{const e=document.querySelector(q);if(e)e.textContent=v};set('#earthlineSearchSection16188 .el-panel-label-16188',d.search);set('#earthlinePropertySection16188 .el-panel-label-16188',d.property);set('#earthlineReportSection16188 .el-panel-label-16188',d.report);set('#earthlineStatusSection16188 .el-panel-label-16188',d.status);set('#earthlineResultsSection16188 .el-panel-label-16188',d.results);const links=document.querySelectorAll('#earthlineHamburgerMenu16233 a');if(links[0]){const s=links[0].querySelector('span:last-child');if(s)s.textContent=d.swales}if(links[1]){const s=links[1].querySelector('span:last-child');if(s)s.textContent=d.process}set('#earthlineRailContact16512 .earthline-contact-label-16512',d.contact);const input=document.getElementById('searchInput');if(input)input.placeholder=d.placeholder;const b=document.getElementById('earthlineDeclareProperty16169'),span=b&&b.querySelector('span:last-child');if(span&&b.dataset.busy!=='1')span.innerHTML=propertyTargetMarkup16871(window.EARTHLINE_PROPERTY_TARGET_16201);document.documentElement.dataset.earthlineLanguageApplied16871=next}"""
+          apply_new=apply_anchor[:-1]+";earthlineApplyUiLanguage16871(next)}"
+          t=t.replace(apply_anchor,lang_helper+apply_new,1)
+
+          # 4. How Swales Work: move source blocks from every page to the last page only.
+          old_how="function howBioswalesReportPages16388(data){return HOW_BIOSWALES_REPORT_16388.map((body,i)=>`<section class=\"el49-page el88-how\"><div class=\"el49-kicker\">How Bioswales Work · ${i+1} of ${HOW_BIOSWALES_REPORT_16388.length}</div>${body}${i===HOW_BIOSWALES_REPORT_16388.length-1?`<div class=\"el16864-hbw-sources\"><h3>Sources</h3>${typeof sourceRows==='function'?sourceRows(data&&data.d||{}):''}</div>`:''}${footer(data,'HBW-'+(i+1))}</section>`).join('')}"
+          if t.count(old_how)!=1: raise SystemExit(f'How Swales owner mismatch: {t.count(old_how)}')
+          new_how="""function howBioswalesReportPages16388(data){const found=[];const cleaned=HOW_BIOSWALES_REPORT_16388.map(body=>{let s=String(body||'');s=s.replace(/<p[^>]*class=[\"'](?:[^\"']*\\s)?el49-source(?:\\s[^\"']*)?[\"'][^>]*>[\\s\\S]*?<\\/p>/gi,m=>{found.push(m);return ''});s=s.replace(/<div[^>]*class=[\"'](?:[^\"']*\\s)?el49-source(?:\\s[^\"']*)?[\"'][^>]*>[\\s\\S]*?<\\/div>/gi,m=>{found.push(m);return ''});return s});const sources=[...new Set(found)];return cleaned.map((body,i)=>`<section class=\"el49-page el88-how\"><div class=\"el49-kicker\">How Bioswales Work · ${i+1} of ${cleaned.length}</div>${body}${i===cleaned.length-1?`<div class=\"el16864-hbw-sources\"><h3>Sources</h3>${sources.join('')}${typeof sourceRows==='function'?sourceRows(data&&data.d||{}):''}</div>`:''}${footer(data,'HBW-'+(i+1))}</section>`).join('')}"""
+          t=t.replace(old_how,new_how,1)
+
+          # Guard report aquifer map and Vancouver Island work already present; do not rewrite them blindly.
+          required=[
+            'const aquiferFeatures=reportAquifers();',
+            '"vancouver island":{name:"Vancouver Island"',
+            "window.location.href='mailto:info@earthlinedevelopment.org?subject=Earthline%20Inquiry'",
+            'function finalSourcesPage16864'
+          ]
+          for marker in required:
+            if marker not in t: raise SystemExit('Required approved launch feature missing: '+marker)
+
+          # Parse-level sanity for the exact edited script content is exercised in browser verification.
+          if t==before: raise SystemExit('No changes made')
+          p.write_text(t,encoding='utf-8')
+          PY
+      - name: Candidate static guards
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text()
+          checks={
+            'small_button_base':'font:900 10.5px/1.05 system-ui!important;' in t,
+            'only_acres_class':'earthline-acres-16871' in t,
+            'property_zoom_blue':"'line-opacity':['interpolate',['linear'],['zoom'],14,1,16,.92,18,.70,20,.56]" in t,
+            'regional_blue':"setPaint('earthline-ranked-swale-water-15777','line-color','#008cff')" in t,
+            'spanish_ui':'earthlineApplyUiLanguage16871' in t and 'Modelado de propiedad' in t,
+            'how_sources_last':'const sources=[...new Set(found)]' in t,
+            'report_aquifer':'const aquiferFeatures=reportAquifers();' in t,
+            'vancouver':'"vancouver island":{name:"Vancouver Island"' in t,
+            'email':"mailto:info@earthlinedevelopment.org" in t
+          }
+          print(checks)
+          if not all(checks.values()): raise SystemExit('Static guard failure')
+          PY
+      - name: Commit candidate
+        run: |
+          git config user.name earthline-repair-bot
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git commit -m 'candidate: 16871 final approved launch repairs'
+          git push origin HEAD:mantra48-final-launch-16871
