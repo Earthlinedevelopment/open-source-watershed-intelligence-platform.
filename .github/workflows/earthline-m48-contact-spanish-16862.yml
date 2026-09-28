@@ -1,0 +1,89 @@
+name: Earthline M48 contact + Spanish launch repairs 16862
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - mantra48-blue-isolation-16860
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra48-launch-clean-16861
+      - name: Apply only approved Contact and Spanish repairs
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          t=p.read_text(encoding='utf-8')
+          before=t
+
+          # APPROVED CONTACT: exact mailto correction only.
+          old_mail="mailto:Earthlineinfo@earthlinedevelopment.org?subject=Earthline%20Inquiry"
+          new_mail="mailto:info@earthlinedevelopment.org?subject=Earthline%20Inquiry"
+          if t.count(old_mail)!=1:
+              raise SystemExit(f'expected wrong Contact mailto exactly once, found {t.count(old_mail)}')
+          t=t.replace(old_mail,new_mail,1)
+
+          # APPROVED SPANISH: extend the existing 16488 language selector/persistence owner only.
+          old_existing="if(existing&&!existing.querySelector('option[value=\"vi\"]')){const opt=document.createElement('option');opt.value='vi';opt.textContent='Việt';existing.appendChild(opt)}return wrap}"
+          new_existing="if(existing&&!existing.querySelector('option[value=\"vi\"]')){const opt=document.createElement('option');opt.value='vi';opt.textContent='Việt';existing.appendChild(opt)}if(existing&&!existing.querySelector('option[value=\"es\"]')){const opt=document.createElement('option');opt.value='es';opt.textContent='Español';existing.appendChild(opt)}return wrap}"
+          if t.count(old_existing)!=1:
+              raise SystemExit('existing-language repair owner signature not found exactly once')
+          t=t.replace(old_existing,new_existing,1)
+
+          old_options='<option value="en">English</option><option value="th">ไทย</option><option value="vi">Việt</option></select>'
+          new_options='<option value="en">English</option><option value="th">ไทย</option><option value="vi">Việt</option><option value="es">Español</option></select>'
+          if t.count(old_options)!=1:
+              raise SystemExit('language option list not found exactly once')
+          t=t.replace(old_options,new_options,1)
+
+          # Saved-language allowlist appears in ensureLanguage.
+          old_saved="sel.value=['en','th','vi'].includes(saved)?saved:'en'"
+          new_saved="sel.value=['en','th','vi','es'].includes(saved)?saved:'en'"
+          if t.count(old_saved)!=1:
+              raise SystemExit('saved-language allowlist not found exactly once')
+          t=t.replace(old_saved,new_saved,1)
+
+          old_apply="function applyLanguage(value){const next=['en','th','vi'].includes(value)?value:'en';document.documentElement.lang=next;const label=document.getElementById('earthlineLanguageLabel16488');if(label)label.textContent=next==='th'?'ภาษา':next==='vi'?'Ngôn ngữ':'Language';window.EARTHLINE_LANGUAGE_16488=next}"
+          new_apply="function applyLanguage(value){const next=['en','th','vi','es'].includes(value)?value:'en';document.documentElement.lang=next;const label=document.getElementById('earthlineLanguageLabel16488');if(label)label.textContent=next==='th'?'ภาษา':next==='vi'?'Ngôn ngữ':next==='es'?'Idioma':'Language';window.EARTHLINE_LANGUAGE_16488=next}"
+          if t.count(old_apply)!=1:
+              raise SystemExit('applyLanguage owner not found exactly once')
+          t=t.replace(old_apply,new_apply,1)
+
+          if t==before: raise SystemExit('no change')
+          p.write_text(t,encoding='utf-8')
+          PY
+      - name: Verify exact scope and invariants
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8')
+          assert 'mailto:info@earthlinedevelopment.org?subject=Earthline%20Inquiry' in t
+          assert 'mailto:Earthlineinfo@earthlinedevelopment.org' not in t
+          assert '<option value="es">Español</option>' in t
+          assert "['en','th','vi','es']" in t
+          assert "next==='es'?'Idioma'" in t
+          assert 'Property Modelling' in t
+          assert 'function propertyTargetLabel16233(target)' in t
+          assert 'CROSSHAIR · ' in t
+          assert ' · ANALYZE · 20 ACRES' in t
+          assert "const TILE_UP='data:image/" in t and "const TILE_FLIP='data:image/" in t
+          print('PASS: Contact corrected; Spanish extends existing language owner; blue textures and Property target identity remain present')
+          PY
+          git diff --check
+          test "$(git diff --name-only | tr -d '\n')" = "index.html"
+          git diff --numstat
+      - name: Commit clean launch candidate
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'candidate: 16862 correct Contact and add Spanish selector'
+          git push origin HEAD:mantra48-launch-clean-16861
