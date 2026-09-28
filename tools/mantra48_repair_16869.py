@@ -1,0 +1,133 @@
+from pathlib import Path
+import re, subprocess, tempfile, os
+
+p=Path('index.html')
+t=p.read_text(encoding='utf-8')
+before=t
+
+banner='<!-- EARTHLINE 16869 — FOUR LIVE REPAIRS ONLY: existing Property water visibly blue at unchanged width/geometry; only the full 20 ACRES suffix enlarged; Español translates the live core UI; sources consolidated at the end of both standalone Swales Explained/How Swales Work and the Bioswale Impact Report. No hydrology, science, swale geometry/spacing/pattern, brown-green structure, exclusions, logo or Search Orb changes. CANDIDATE / NOT ACCEPTED. -->\n'
+if 'EARTHLINE 16869 — FOUR LIVE REPAIRS ONLY' not in t:
+    t=banner+t
+
+# 1) BLUE — existing Property ditch/water layer only. Width and geometry are untouched.
+old_sync="if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property');if(mp.getLayer?.('earthline-property-swale-ditch-16166'))mp.moveLayer('earthline-property-swale-ditch-16166')"
+new_sync="if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property');if(mp.getLayer?.('earthline-property-swale-ditch-16166')){mp.setLayoutProperty('earthline-property-swale-ditch-16166','visibility','visible');mp.setPaintProperty('earthline-property-swale-ditch-16166','line-color','#00a7ff');mp.setPaintProperty('earthline-property-swale-ditch-16166','line-opacity',1);mp.moveLayer('earthline-property-swale-ditch-16166')}"
+if old_sync not in t:
+    raise SystemExit('16869 blue final-order owner not found')
+t=t.replace(old_sync,new_sync,1)
+old_blue="paint:{'line-color':'#008cff','line-width':['interpolate',['linear'],['zoom'],14,3.4,17,5.4,20,7.2],'line-opacity':1}"
+new_blue="paint:{'line-color':'#00a7ff','line-width':['interpolate',['linear'],['zoom'],14,3.4,17,5.4,20,7.2],'line-opacity':1}"
+if old_blue in t:
+    t=t.replace(old_blue,new_blue,1)
+
+# 2) PROPERTY BUTTON — only full 20 ACRES suffix gets larger type.
+old_label="function propertyTargetLabel16233(target){if(target&&target.code)return String(target.code)+' · ANALYZE · 20 ACRES';if(target&&Number.isFinite(Number(target.lat))&&Number.isFinite(Number(target.lng)))return 'CROSSHAIR · '+Number(target.lat).toFixed(5)+', '+Number(target.lng).toFixed(5)+' · 20 ACRES';return 'PROPERTY SEARCH · 20 ACRES'}"
+new_label="""function propertyTargetLabel16233(target){const es=window.EARTHLINE_LANGUAGE_16488==='es';if(target&&target.code)return String(target.code)+(es?' · ANALIZAR · 20 ACRES':' · ANALYZE · 20 ACRES');if(target&&Number.isFinite(Number(target.lat))&&Number.isFinite(Number(target.lng)))return (es?'RETÍCULA · ':'CROSSHAIR · ')+Number(target.lat).toFixed(5)+', '+Number(target.lng).toFixed(5)+' · 20 ACRES';return es?'BÚSQUEDA DE PROPIEDAD · 20 ACRES':'PROPERTY SEARCH · 20 ACRES'}
+  function renderPropertyTargetLabel16869(span,target){if(!span)return;const text=propertyTargetLabel16233(target),m=text.match(/^(.*?)(?:\\s*·\\s*)?(20 ACRES)$/);span.replaceChildren();if(!m){span.textContent=text;return}const prefix=document.createElement('span');prefix.className='earthline-property-prefix-16869';prefix.textContent=m[1].replace(/\\s*·\\s*$/,'');const sep=document.createTextNode(' · ');const acres=document.createElement('span');acres.className='earthline-property-acres-16869';acres.textContent=m[2];span.append(prefix,sep,acres)}
+  window.earthlineRenderPropertyTargetLabel16869=renderPropertyTargetLabel16869;"""
+if old_label not in t:
+    raise SystemExit('16869 Property label owner not found')
+t=t.replace(old_label,new_label,1)
+count=t.count('span.textContent=propertyTargetLabel16233(window.EARTHLINE_PROPERTY_TARGET_16201)')
+if count < 2:
+    raise SystemExit(f'16869 expected >=2 Property label writes, found {count}')
+t=t.replace('span.textContent=propertyTargetLabel16233(window.EARTHLINE_PROPERTY_TARGET_16201)','renderPropertyTargetLabel16869(span,window.EARTHLINE_PROPERTY_TARGET_16201)')
+style="""<style id=\"earthline-property-acres-16869-style\">#earthlineDeclareProperty16169 .earthline-property-prefix-16869{font-size:inherit!important;line-height:inherit!important}#earthlineDeclareProperty16169 .earthline-property-acres-16869{font-size:20px!important;line-height:1!important;font-weight:900!important;letter-spacing:.045em!important;white-space:nowrap!important}</style>"""
+if 'earthline-property-acres-16869-style' not in t:
+    t=t.replace('</head>',style+'\n</head>',1)
+
+# 3) SPANISH — extend existing language owner only; no new observer/poller.
+old_lang="function applyLanguage(value){const next=['en','th','vi','es'].includes(value)?value:'en';document.documentElement.lang=next;const label=document.getElementById('earthlineLanguageLabel16488');if(label)label.textContent=next==='th'?'ภาษา':next==='vi'?'Ngôn ngữ':next==='es'?'Idioma':'Language';window.EARTHLINE_LANGUAGE_16488=next}"
+new_lang="""function applyLanguage(value){
+  const next=['en','th','vi','es'].includes(value)?value:'en';document.documentElement.lang=next;
+  const label=document.getElementById('earthlineLanguageLabel16488');if(label)label.textContent=next==='th'?'ภาษา':next==='vi'?'Ngôn ngữ':next==='es'?'Idioma':'Language';
+  const es=next==='es',set=(sel,en,sp)=>{const el=document.querySelector(sel);if(el)el.textContent=es?sp:en};
+  set('#earthlineSearchSection16188 .el-panel-label-16188','Search','Buscar');
+  set('#earthlinePropertySection16188 .el-panel-label-16188','Property Modelling','Modelado de la propiedad');
+  set('#earthlineReportSection16188 .el-panel-label-16188','Bioswale Impact Report','Informe de impacto de bioswales');
+  set('#earthlineStatusSection16188 .el-panel-label-16188','Status','Estado');
+  set('#earthlineResultsSection16188 .el-panel-label-16188','Results','Resultados');
+  set('.earthline-engine-sentence-16488','Earthline analyzes slope and water paths to identify optimum aquifer recharge locations — in any location.','Earthline analiza la pendiente y las rutas del agua para identificar ubicaciones óptimas de recarga de acuíferos — en cualquier lugar.');
+  set('.earthline-professional-note-16488','All sites need to be verified by a professional landscape expert.','Todos los sitios deben ser verificados por un profesional del paisaje.');
+  set('.earthline-recharge-gauge-label-16488','Recharge Potential','Potencial de recarga');
+  set('.earthline-rainfall-label-16488','Average yearly rainfall:','Precipitación media anual:');
+  const menu=document.getElementById('earthlineHamburgerMenu16233');if(menu){for(const a of menu.querySelectorAll('a')){const s=a.querySelector('span:last-child');if(!s)continue;if(a.getAttribute('href')==='#swales-explained')s.textContent=es?'Cómo funcionan los bioswales':'Swales Explained';else if(a.getAttribute('href')==='#earthline-process')s.textContent=es?'El proceso Earthline':'The Earthline Process'}}
+  const input=document.getElementById('searchInput');if(input)input.setAttribute('placeholder',es?'Buscar una ubicación':'Search a location');
+  window.EARTHLINE_LANGUAGE_16488=next;
+  const prop=document.getElementById('earthlineDeclareProperty16169'),ps=prop&&prop.querySelector('span:last-child');if(ps&&typeof window.earthlineRenderPropertyTargetLabel16869==='function')window.earthlineRenderPropertyTargetLabel16869(ps,window.EARTHLINE_PROPERTY_TARGET_16201);
+}"""
+if old_lang not in t:
+    raise SystemExit('16869 existing applyLanguage owner not found')
+t=t.replace(old_lang,new_lang,1)
+
+# 4A) STANDALONE HOW SWALES WORK / SWALES EXPLAINED — its own sources to its actual end.
+swale_anchor="""    if(src){
+      src=src.replace(/href=\"EARTHLINE-[^\"]+\\.html\"/,'href=\"#\" id=\"earthlineReturnToMap\" onclick=\"parent.earthlineCloseSwalesExplained16125();return false;\"');"""
+swale_insert="""    if(src){
+      try{
+        const parsed16869=new DOMParser().parseFromString(src,'text/html'),main16869=parsed16869.querySelector('main')||parsed16869.body;
+        const all16869=[...parsed16869.querySelectorAll('section,article,div')];
+        const candidates16869=all16869.filter(el=>{const h=el.querySelector(':scope > h1,:scope > h2,:scope > h3,:scope > h4');return !!h&&/(source|reference|bibliograph|literature|standards)/i.test((h.textContent||'').trim())});
+        const top16869=candidates16869.filter(el=>!candidates16869.some(other=>other!==el&&other.contains(el)));
+        const chunks16869=[];for(const el of top16869){chunks16869.push(el.innerHTML);el.remove()}
+        if(chunks16869.length){const final16869=parsed16869.createElement('section');final16869.id='earthline-swales-final-sources-16869';final16869.className='earthline-swale-restored';final16869.innerHTML='<div class=\"ehead\"><h2>Sources</h2><p>Consolidated source and reference material.</p></div>'+chunks16869.join('');main16869.appendChild(final16869);src='<!doctype html>'+parsed16869.documentElement.outerHTML}
+      }catch(err16869){console.error('[Earthline 16869] Swales source consolidation failed',err16869)}
+      src=src.replace(/href=\"EARTHLINE-[^\"]+\\.html\"/,'href=\"#\" id=\"earthlineReturnToMap\" onclick=\"parent.earthlineCloseSwalesExplained16125();return false;\"');"""
+if swale_anchor not in t:
+    raise SystemExit('16869 standalone Swales iframe owner not found')
+t=t.replace(swale_anchor,swale_insert,1)
+
+# 4B) BIOSWALE IMPACT REPORT — all source/reference blocks finish on true final Sources page.
+old_hbw="function howBioswalesReportPages16388(data){return HOW_BIOSWALES_REPORT_16388.map((body,i)=>`<section class=\"el49-page el88-how\"><div class=\"el49-kicker\">How Bioswales Work · ${i+1} of ${HOW_BIOSWALES_REPORT_16388.length}</div>${body}${i===HOW_BIOSWALES_REPORT_16388.length-1?`<div class=\"el16864-hbw-sources\"><h3>Sources</h3>${typeof sourceRows==='function'?sourceRows(data&&data.d||{}):''}</div>`:''}${footer(data,'HBW-'+(i+1))}</section>`).join('')}"
+new_hbw="function howBioswalesReportPages16388(data){return HOW_BIOSWALES_REPORT_16388.map((body,i)=>`<section class=\"el49-page el88-how\"><div class=\"el49-kicker\">How Bioswales Work · ${i+1} of ${HOW_BIOSWALES_REPORT_16388.length}</div>${body}${footer(data,'HBW-'+(i+1))}</section>`).join('')}"
+if old_hbw not in t:
+    raise SystemExit('16869 report How Bioswales source owner not found')
+t=t.replace(old_hbw,new_hbw,1)
+
+helper_anchor='  function openReport(){'
+helper="""  function consolidateReportSources16869(html){try{const doc=new DOMParser().parseFromString('<div id=\"earthline-report-root-16869\">'+html+'</div>','text/html'),root=doc.getElementById('earthline-report-root-16869'),final=root&&root.querySelector('.el16864-final-sources');if(!root||!final)return html;const candidates=[...root.querySelectorAll('section,article,div')].filter(el=>{if(el===final||final.contains(el))return false;const h=el.querySelector(':scope > h1,:scope > h2,:scope > h3,:scope > h4');return !!h&&/(source|reference|bibliograph|literature|standards)/i.test((h.textContent||'').trim())});const top=candidates.filter(el=>!candidates.some(other=>other!==el&&other.contains(el)));const seen=new Set();for(const el of top){const key=(el.textContent||'').replace(/\\s+/g,' ').trim();if(key&&!seen.has(key)){seen.add(key);const holder=doc.createElement('div');holder.className='el16869-consolidated-source-block';holder.innerHTML=el.innerHTML;const callout=final.querySelector('.el49-callout');if(callout)final.insertBefore(holder,callout);else final.appendChild(holder)}el.remove()}root.appendChild(final);return root.innerHTML}catch(err){console.error('[Earthline 16869] report source consolidation failed',err);return html}}
+"""
+if helper_anchor not in t:
+    raise SystemExit('16869 report open owner not found')
+t=t.replace(helper_anchor,helper+helper_anchor,1)
+old_open="html=buildReport(data),panel=ensureModal('earthlineVermontReportPanel16149','Bioswale Impact Report')"
+new_open="html=consolidateReportSources16869(buildReport(data)),panel=ensureModal('earthlineVermontReportPanel16149','Bioswale Impact Report')"
+if old_open not in t:
+    raise SystemExit('16869 report build call not found')
+t=t.replace(old_open,new_open,1)
+
+if t==before:
+    raise SystemExit('16869 no changes made')
+p.write_text(t,encoding='utf-8')
+
+# Hard static + JavaScript syntax guards before any live commit.
+checks={
+ 'blue_existing_owner':"setPaintProperty('earthline-property-swale-ditch-16166','line-color','#00a7ff')" in t,
+ 'blue_width_unchanged':"14,3.4,17,5.4,20,7.2" in t,
+ '20_acres_only':'earthline-property-acres-16869' in t and 'font-size:20px' in t,
+ 'spanish_real':"'Modelado de la propiedad'" in t and "'Buscar'" in t and "'Potencial de recarga'" in t,
+ 'standalone_sources':'earthline-swales-final-sources-16869' in t,
+ 'report_sources':'consolidateReportSources16869(buildReport(data))' in t and 'finalSourcesPage16864' in t,
+ 'property_modelling':'Property Modelling' in t,
+ 'one_map':len(re.findall(r'id=[\"\\\']map[\"\\\']',t))==1,
+ 'search_orb':'id=\"searchOrb\"' in t,
+ 'contact':'info@earthlinedevelopment.org' in t,
+}
+bad=[k for k,v in checks.items() if not v]
+print(checks)
+if bad:
+    raise SystemExit('16869 static guard failed: '+', '.join(bad))
+
+scripts=re.findall(r'<script(?:\\s[^>]*)?>(.*?)</script>',t,re.S|re.I)
+failures=[]
+for i,s in enumerate(scripts):
+    if not s.strip(): continue
+    fd,path=tempfile.mkstemp(suffix='.js'); os.close(fd)
+    Path(path).write_text(s,encoding='utf-8')
+    r=subprocess.run(['node','--check',path],capture_output=True,text=True)
+    os.unlink(path)
+    if r.returncode: failures.append((i,r.stderr[-1400:]))
+if failures:
+    print(failures[:5])
+    raise SystemExit('16869 JavaScript syntax failure')
+print('PASS 16869 exact four repair guards and JavaScript syntax')
