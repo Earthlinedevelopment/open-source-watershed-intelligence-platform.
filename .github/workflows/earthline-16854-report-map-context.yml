@@ -1,0 +1,32 @@
+name: Earthline 16854 report map context
+permissions:
+  contents: read
+on:
+  push:
+    branches:
+      - candidate-m47-16853-blue-property-ui
+jobs:
+  inspect:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-m47-16853-blue-property-ui
+      - name: Extract report builder contexts
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          t=Path('index.html').read_text(encoding='utf-8')
+          keys=['function buildReport','function reportData','reportMap','mapImage','mapSvg','snapshot','aquifer','Sources</h2>','el88-source','el12-source-list']
+          for k in keys:
+            print('\n###',k)
+            starts=[m.start() for m in re.finditer(re.escape(k),t,re.I)]
+            print('count',len(starts))
+            for n,s in enumerate(starts[-12:],1):
+              a=max(0,s-1800); b=min(len(t),s+9000)
+              print(f'--- {n} @ {s} ---')
+              print(t[a:b])
+          PY
