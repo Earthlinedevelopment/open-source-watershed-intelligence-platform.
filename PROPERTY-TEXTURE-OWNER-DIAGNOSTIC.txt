@@ -1,0 +1,859 @@
+
+--- OLD @ 2446836 ---
+SOURCE='earthline-property-swale-texture-16174';
+  const IMG_UP='earthline-swale-natural-uphill-16174';
+  const IMG_FLIP='earthline-swale-natural-uphill-flipped-16174';
+  const LAYERS={footprint:'earthline-property-swale-footprint-16174',casing:'earthline-property-swale-natural-casing-16174',up:'earthline-property-swale-natural-up-16174',flip:'earthline-property-swale-natural-flip-16174',neutral:'earthline-property-swale-neutral-16177'};
+  const OLD=['earthline-living-swales-glow-15792','earthline-living-swales-earth-15792','earthline-living-swales-life-15792','earthline-living-swales-water-15792'];
+  const EMPTY={type:'FeatureCollection',features:[]};
+  const TILE_UP=[OMITTED]'data:image/webp;base64,UklGRkBSAABXRUJQVlA4WAoAAAAQAAAA/wEAfwAAQUxQSMcWAAABJ8K4bRvJyZWceM/XRkQc7dOh9fTv18neVM/ISliahCCAIEQm1Azcu48xHLeN5EhU/mH3mN0z/4iYgP66kC9RGr5lib4eBQcEO6xQKobDbs0qRkFrLaxatMe4pxJN0RahMk5hGHvLtkaNywHRniwrm8rLQS5L5Zf3Eb3yqX1Dq4oquktUqxZp0bSs5ACjBdqy27Z5nmc4QF5M1yU8QjUsr6rwhAwKw4jk//9TcPfe57xHSZ3bvSP67wuy7bqtbdsqqFWi6CFPoOFBAJTV57ccAYwcKSLiF0M0EefwNr3/v2q3u0pSFx5UEf2HRdtK3eggnaZPAyjRmk6/T9788uM//83B77hUZaXXYqwhpRDPc1vG2bG8vPGlL5VYCTg9lm6JziaiYyFUf1kYd3HBx+Ai94GscVqkbqkObrCt0PuxLbood0hBel7+PlrLgBPXx0JtP4nI0cjustzpyxiB+xQscHEs3Tb7y0T8mGmyxyibLvrUXkvIfUtryUWRuqWCE4zsirX32KKE7P6i0toCJ1YeS/HWEfA6OPpfHLpq2eaC9brQkX6p1Bc/dLX1bL0SERvWhAyLaPchSQVH+mFD5W1ouPEh8F1tP64M6bt0QxnVibaxQE8PIG4mIBFvZ6rEsIAOnsm57TJjHT217dwG0EBSvf6aNEztBcjVaaFT5buRJMJV61yXDeTaMOQNhlVkNwjGAaEd+bwijTMBO+uj6kRDbHwl+BAdOv83rbwCItlfqtfvKlj3aZvk4ALox3tVKKNiPYDzrKXMO6w8Z6W2sdTT8rNa/E97l
+
+--- function map @ 2503733 ---
+a8Bp+lWRql3gDmWGXlmBpnz3/XDiVKk6kYDC0Dzbcc51Ypv+cYYVNfOxBujGKxXx771mqeu6NUa8JsSLmwOLRRVkQRhuQZCmo0bM0coIYmd2UQnnYIJ1QTq2TZE6NrOcKuQRUomFMFL9l//7wP/9sm//3bV2lMwD9J3Mp7su3oIOAUBRFd/LxjVZr/CbWcnp+MIUBCVSgX6w5DqUPi7JHFy8KVN0gfRU5F9j5aZNp+msKbHxb1B2NYKCFO7SsFP2EcWdp3Uck6bomjzlvKkMWhefL8BPcNb83gQiOs3ZAtwR8tX9wzUACErPjWPE2+16/ZBioAbFzEuFTAblky7QbT2AdpMBm1Uhw64AAAA==';
+  let installed=false,imagesReady=false,syncQueued=0,lastSignature='',lastWidth=0;
+
+  function map(){try{return window.earthlineMap||earthlineMap||null}catch(_){return null}}
+  function model(){try{return typeof M!=='undefined'?M:null}catch(_){return null}}
+  function state(){return window.earthlineRegional15778||{}}
+  function displayedTier(){const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null;return String(d&&(d.tier||d.mode)||'regional').toLowerCase()}
+  function propertyActive(){const s=state(),m=model();return !!(m&&m.analysisReady&&s.mode==='property'&&!s.active)}
+  function focusActive(){return displayedTier()==='focus'&&!propertyActive()}
+  function visible(id,on){const mp=map();try{if(mp?.getLayer?.(id))mp.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){}}
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function widthPx(){const z=Number(map()?.getZoom?.()||17);/* 16325 presentation only: scientific/footprint geometry remains 9 m. */return z<=14?4.6:z<=16?6.1:z<=18?8.2:z<=20?10.5:12.1}
+  function restoreGrab(){const mp=map(),container=mp?.getCanvasContainer?.
+
+--- function model @ 2503824 ---
+uQZCmo0bM0coIYmd2UQnnYIJ1QTq2TZE6NrOcKuQRUomFMFL9l//7wP/9sm//3bV2lMwD9J3Mp7su3oIOAUBRFd/LxjVZr/CbWcnp+MIUBCVSgX6w5DqUPi7JHFy8KVN0gfRU5F9j5aZNp+msKbHxb1B2NYKCFO7SsFP2EcWdp3Uck6bomjzlvKkMWhefL8BPcNb83gQiOs3ZAtwR8tX9wzUACErPjWPE2+16/ZBioAbFzEuFTAblky7QbT2AdpMBm1Uhw64AAAA==';
+  let installed=false,imagesReady=false,syncQueued=0,lastSignature='',lastWidth=0;
+
+  function map(){try{return window.earthlineMap||earthlineMap||null}catch(_){return null}}
+  function model(){try{return typeof M!=='undefined'?M:null}catch(_){return null}}
+  function state(){return window.earthlineRegional15778||{}}
+  function displayedTier(){const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null;return String(d&&(d.tier||d.mode)||'regional').toLowerCase()}
+  function propertyActive(){const s=state(),m=model();return !!(m&&m.analysisReady&&s.mode==='property'&&!s.active)}
+  function focusActive(){return displayedTier()==='focus'&&!propertyActive()}
+  function visible(id,on){const mp=map();try{if(mp?.getLayer?.(id))mp.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){}}
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function widthPx(){const z=Number(map()?.getZoom?.()||17);/* 16325 presentation only: scientific/footprint geometry remains 9 m. */return z<=14?4.6:z<=16?6.1:z<=18?8.2:z<=20?10.5:12.1}
+  function restoreGrab(){const mp=map(),container=mp?.getCanvasContainer?.(),canvas=mp?.getCanvas?.();for(const el of [container,canvas])if(el)el.style.removePropert
+
+--- function state @ 2503907 ---
+BRFd/LxjVZr/CbWcnp+MIUBCVSgX6w5DqUPi7JHFy8KVN0gfRU5F9j5aZNp+msKbHxb1B2NYKCFO7SsFP2EcWdp3Uck6bomjzlvKkMWhefL8BPcNb83gQiOs3ZAtwR8tX9wzUACErPjWPE2+16/ZBioAbFzEuFTAblky7QbT2AdpMBm1Uhw64AAAA==';
+  let installed=false,imagesReady=false,syncQueued=0,lastSignature='',lastWidth=0;
+
+  function map(){try{return window.earthlineMap||earthlineMap||null}catch(_){return null}}
+  function model(){try{return typeof M!=='undefined'?M:null}catch(_){return null}}
+  function state(){return window.earthlineRegional15778||{}}
+  function displayedTier(){const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null;return String(d&&(d.tier||d.mode)||'regional').toLowerCase()}
+  function propertyActive(){const s=state(),m=model();return !!(m&&m.analysisReady&&s.mode==='property'&&!s.active)}
+  function focusActive(){return displayedTier()==='focus'&&!propertyActive()}
+  function visible(id,on){const mp=map();try{if(mp?.getLayer?.(id))mp.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){}}
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function widthPx(){const z=Number(map()?.getZoom?.()||17);/* 16325 presentation only: scientific/footprint geometry remains 9 m. */return z<=14?4.6:z<=16?6.1:z<=18?8.2:z<=20?10.5:12.1}
+  function restoreGrab(){const mp=map(),container=mp?.getCanvasContainer?.(),canvas=mp?.getCanvas?.();for(const el of [container,canvas])if(el)el.style.removeProperty('cursor');if(container&&!container.classList.contains('mapboxgl-interactive'))con
+
+--- function displayedTier @ 2503968 ---
+sKbHxb1B2NYKCFO7SsFP2EcWdp3Uck6bomjzlvKkMWhefL8BPcNb83gQiOs3ZAtwR8tX9wzUACErPjWPE2+16/ZBioAbFzEuFTAblky7QbT2AdpMBm1Uhw64AAAA==';
+  let installed=false,imagesReady=false,syncQueued=0,lastSignature='',lastWidth=0;
+
+  function map(){try{return window.earthlineMap||earthlineMap||null}catch(_){return null}}
+  function model(){try{return typeof M!=='undefined'?M:null}catch(_){return null}}
+  function state(){return window.earthlineRegional15778||{}}
+  function displayedTier(){const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null;return String(d&&(d.tier||d.mode)||'regional').toLowerCase()}
+  function propertyActive(){const s=state(),m=model();return !!(m&&m.analysisReady&&s.mode==='property'&&!s.active)}
+  function focusActive(){return displayedTier()==='focus'&&!propertyActive()}
+  function visible(id,on){const mp=map();try{if(mp?.getLayer?.(id))mp.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){}}
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function widthPx(){const z=Number(map()?.getZoom?.()||17);/* 16325 presentation only: scientific/footprint geometry remains 9 m. */return z<=14?4.6:z<=16?6.1:z<=18?8.2:z<=20?10.5:12.1}
+  function restoreGrab(){const mp=map(),container=mp?.getCanvasContainer?.(),canvas=mp?.getCanvas?.();for(const el of [container,canvas])if(el)el.style.removeProperty('cursor');if(container&&!container.classList.contains('mapboxgl-interactive'))container.classList.add('mapboxgl-interactive');document.documen
+
+--- function propertyActive @ 2504184 ---
+unction map(){try{return window.earthlineMap||earthlineMap||null}catch(_){return null}}
+  function model(){try{return typeof M!=='undefined'?M:null}catch(_){return null}}
+  function state(){return window.earthlineRegional15778||{}}
+  function displayedTier(){const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null;return String(d&&(d.tier||d.mode)||'regional').toLowerCase()}
+  function propertyActive(){const s=state(),m=model();return !!(m&&m.analysisReady&&s.mode==='property'&&!s.active)}
+  function focusActive(){return displayedTier()==='focus'&&!propertyActive()}
+  function visible(id,on){const mp=map();try{if(mp?.getLayer?.(id))mp.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){}}
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function widthPx(){const z=Number(map()?.getZoom?.()||17);/* 16325 presentation only: scientific/footprint geometry remains 9 m. */return z<=14?4.6:z<=16?6.1:z<=18?8.2:z<=20?10.5:12.1}
+  function restoreGrab(){const mp=map(),container=mp?.getCanvasContainer?.(),canvas=mp?.getCanvas?.();for(const el of [container,canvas])if(el)el.style.removeProperty('cursor');if(container&&!container.classList.contains('mapboxgl-interactive'))container.classList.add('mapboxgl-interactive');document.documentElement.dataset.earthlineRestingCursor16169='grab'}
+  function mapOnlyOn(){return !!document.querySelector('.center')?.classList?.contains('fs')}
+  function syncPortal(){document.documentElement.classList.toggle('ea
+
+--- function focusActive @ 2504301 ---
+ typeof M!=='undefined'?M:null}catch(_){return null}}
+  function state(){return window.earthlineRegional15778||{}}
+  function displayedTier(){const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null;return String(d&&(d.tier||d.mode)||'regional').toLowerCase()}
+  function propertyActive(){const s=state(),m=model();return !!(m&&m.analysisReady&&s.mode==='property'&&!s.active)}
+  function focusActive(){return displayedTier()==='focus'&&!propertyActive()}
+  function visible(id,on){const mp=map();try{if(mp?.getLayer?.(id))mp.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){}}
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function widthPx(){const z=Number(map()?.getZoom?.()||17);/* 16325 presentation only: scientific/footprint geometry remains 9 m. */return z<=14?4.6:z<=16?6.1:z<=18?8.2:z<=20?10.5:12.1}
+  function restoreGrab(){const mp=map(),container=mp?.getCanvasContainer?.(),canvas=mp?.getCanvas?.();for(const el of [container,canvas])if(el)el.style.removeProperty('cursor');if(container&&!container.classList.contains('mapboxgl-interactive'))container.classList.add('mapboxgl-interactive');document.documentElement.dataset.earthlineRestingCursor16169='grab'}
+  function mapOnlyOn(){return !!document.querySelector('.center')?.classList?.contains('fs')}
+  function syncPortal(){document.documentElement.classList.toggle('earthline-map-only-16169',mapOnlyOn())}
+  function exitMapOnly(){try{if(typeof setFullscreen==='function')setFullscreen
+
+--- function visible @ 2504379 ---
+n window.earthlineRegional15778||{}}
+  function displayedTier(){const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null;return String(d&&(d.tier||d.mode)||'regional').toLowerCase()}
+  function propertyActive(){const s=state(),m=model();return !!(m&&m.analysisReady&&s.mode==='property'&&!s.active)}
+  function focusActive(){return displayedTier()==='focus'&&!propertyActive()}
+  function visible(id,on){const mp=map();try{if(mp?.getLayer?.(id))mp.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){}}
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function widthPx(){const z=Number(map()?.getZoom?.()||17);/* 16325 presentation only: scientific/footprint geometry remains 9 m. */return z<=14?4.6:z<=16?6.1:z<=18?8.2:z<=20?10.5:12.1}
+  function restoreGrab(){const mp=map(),container=mp?.getCanvasContainer?.(),canvas=mp?.getCanvas?.();for(const el of [container,canvas])if(el)el.style.removeProperty('cursor');if(container&&!container.classList.contains('mapboxgl-interactive'))container.classList.add('mapboxgl-interactive');document.documentElement.dataset.earthlineRestingCursor16169='grab'}
+  function mapOnlyOn(){return !!document.querySelector('.center')?.classList?.contains('fs')}
+  function syncPortal(){document.documentElement.classList.toggle('earthline-map-only-16169',mapOnlyOn())}
+  function exitMapOnly(){try{if(typeof setFullscreen==='function')setFullscreen(false)}catch(_){}const c=document.querySelector('.center');c?.classList?.remo
+
+--- setLayoutProperty @ 2504447 ---
+t d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null;return String(d&&(d.tier||d.mode)||'regional').toLowerCase()}
+  function propertyActive(){const s=state(),m=model();return !!(m&&m.analysisReady&&s.mode==='property'&&!s.active)}
+  function focusActive(){return displayedTier()==='focus'&&!propertyActive()}
+  function visible(id,on){const mp=map();try{if(mp?.getLayer?.(id))mp.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){}}
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function widthPx(){const z=Number(map()?.getZoom?.()||17);/* 16325 presentation only: scientific/footprint geometry remains 9 m. */return z<=14?4.6:z<=16?6.1:z<=18?8.2:z<=20?10.5:12.1}
+  function restoreGrab(){const mp=map(),container=mp?.getCanvasContainer?.(),canvas=mp?.getCanvas?.();for(const el of [container,canvas])if(el)el.style.removeProperty('cursor');if(container&&!container.classList.contains('mapboxgl-interactive'))container.classList.add('mapboxgl-interactive');document.documentElement.dataset.earthlineRestingCursor16169='grab'}
+  function mapOnlyOn(){return !!document.querySelector('.center')?.classList?.contains('fs')}
+  function syncPortal(){document.documentElement.classList.toggle('earthline-map-only-16169',mapOnlyOn())}
+  function exitMapOnly(){try{if(typeof setFullscreen==='function')setFullscreen(false)}catch(_){}const c=document.querySelector('.center');c?.classList?.remove('fs');document.documentElement.classList.remove('earthline-map-ex
+
+--- visibility @ 2504469 ---
+ISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null;return String(d&&(d.tier||d.mode)||'regional').toLowerCase()}
+  function propertyActive(){const s=state(),m=model();return !!(m&&m.analysisReady&&s.mode==='property'&&!s.active)}
+  function focusActive(){return displayedTier()==='focus'&&!propertyActive()}
+  function visible(id,on){const mp=map();try{if(mp?.getLayer?.(id))mp.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){}}
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function widthPx(){const z=Number(map()?.getZoom?.()||17);/* 16325 presentation only: scientific/footprint geometry remains 9 m. */return z<=14?4.6:z<=16?6.1:z<=18?8.2:z<=20?10.5:12.1}
+  function restoreGrab(){const mp=map(),container=mp?.getCanvasContainer?.(),canvas=mp?.getCanvas?.();for(const el of [container,canvas])if(el)el.style.removeProperty('cursor');if(container&&!container.classList.contains('mapboxgl-interactive'))container.classList.add('mapboxgl-interactive');document.documentElement.dataset.earthlineRestingCursor16169='grab'}
+  function mapOnlyOn(){return !!document.querySelector('.center')?.classList?.contains('fs')}
+  function syncPortal(){document.documentElement.classList.toggle('earthline-map-only-16169',mapOnlyOn())}
+  function exitMapOnly(){try{if(typeof setFullscreen==='function')setFullscreen(false)}catch(_){}const c=document.querySelector('.center');c?.classList?.remove('fs');document.documentElement.classList.remove('earthline-map-expanded-16166','earthli
+
+--- function clamp @ 2504516 ---
+RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null;return String(d&&(d.tier||d.mode)||'regional').toLowerCase()}
+  function propertyActive(){const s=state(),m=model();return !!(m&&m.analysisReady&&s.mode==='property'&&!s.active)}
+  function focusActive(){return displayedTier()==='focus'&&!propertyActive()}
+  function visible(id,on){const mp=map();try{if(mp?.getLayer?.(id))mp.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){}}
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function widthPx(){const z=Number(map()?.getZoom?.()||17);/* 16325 presentation only: scientific/footprint geometry remains 9 m. */return z<=14?4.6:z<=16?6.1:z<=18?8.2:z<=20?10.5:12.1}
+  function restoreGrab(){const mp=map(),container=mp?.getCanvasContainer?.(),canvas=mp?.getCanvas?.();for(const el of [container,canvas])if(el)el.style.removeProperty('cursor');if(container&&!container.classList.contains('mapboxgl-interactive'))container.classList.add('mapboxgl-interactive');document.documentElement.dataset.earthlineRestingCursor16169='grab'}
+  function mapOnlyOn(){return !!document.querySelector('.center')?.classList?.contains('fs')}
+  function syncPortal(){document.documentElement.classList.toggle('earthline-map-only-16169',mapOnlyOn())}
+  function exitMapOnly(){try{if(typeof setFullscreen==='function')setFullscreen(false)}catch(_){}const c=document.querySelector('.center');c?.classList?.remove('fs');document.documentElement.classList.remove('earthline-map-expanded-16166','earthline-map-only-16169');try{map()?.resize?.()}catch
+
+--- function widthPx @ 2504574 ---
+rn String(d&&(d.tier||d.mode)||'regional').toLowerCase()}
+  function propertyActive(){const s=state(),m=model();return !!(m&&m.analysisReady&&s.mode==='property'&&!s.active)}
+  function focusActive(){return displayedTier()==='focus'&&!propertyActive()}
+  function visible(id,on){const mp=map();try{if(mp?.getLayer?.(id))mp.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){}}
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function widthPx(){const z=Number(map()?.getZoom?.()||17);/* 16325 presentation only: scientific/footprint geometry remains 9 m. */return z<=14?4.6:z<=16?6.1:z<=18?8.2:z<=20?10.5:12.1}
+  function restoreGrab(){const mp=map(),container=mp?.getCanvasContainer?.(),canvas=mp?.getCanvas?.();for(const el of [container,canvas])if(el)el.style.removeProperty('cursor');if(container&&!container.classList.contains('mapboxgl-interactive'))container.classList.add('mapboxgl-interactive');document.documentElement.dataset.earthlineRestingCursor16169='grab'}
+  function mapOnlyOn(){return !!document.querySelector('.center')?.classList?.contains('fs')}
+  function syncPortal(){document.documentElement.classList.toggle('earthline-map-only-16169',mapOnlyOn())}
+  function exitMapOnly(){try{if(typeof setFullscreen==='function')setFullscreen(false)}catch(_){}const c=document.querySelector('.center');c?.classList?.remove('fs');document.documentElement.classList.remove('earthline-map-expanded-16166','earthline-map-only-16169');try{map()?.resize?.()}catch(_){}restoreGrab();return true}
+  function ensureExitPorta
+
+--- function restoreGrab @ 2504761 ---
+ocusActive(){return displayedTier()==='focus'&&!propertyActive()}
+  function visible(id,on){const mp=map();try{if(mp?.getLayer?.(id))mp.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){}}
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function widthPx(){const z=Number(map()?.getZoom?.()||17);/* 16325 presentation only: scientific/footprint geometry remains 9 m. */return z<=14?4.6:z<=16?6.1:z<=18?8.2:z<=20?10.5:12.1}
+  function restoreGrab(){const mp=map(),container=mp?.getCanvasContainer?.(),canvas=mp?.getCanvas?.();for(const el of [container,canvas])if(el)el.style.removeProperty('cursor');if(container&&!container.classList.contains('mapboxgl-interactive'))container.classList.add('mapboxgl-interactive');document.documentElement.dataset.earthlineRestingCursor16169='grab'}
+  function mapOnlyOn(){return !!document.querySelector('.center')?.classList?.contains('fs')}
+  function syncPortal(){document.documentElement.classList.toggle('earthline-map-only-16169',mapOnlyOn())}
+  function exitMapOnly(){try{if(typeof setFullscreen==='function')setFullscreen(false)}catch(_){}const c=document.querySelector('.center');c?.classList?.remove('fs');document.documentElement.classList.remove('earthline-map-expanded-16166','earthline-map-only-16169');try{map()?.resize?.()}catch(_){}restoreGrab();return true}
+  function ensureExitPortal(){let b=document.getElementById('earthlineMapOnlyExit16169');if(b)return b;b=document.createElement('button');b.id='earthlineMapOnlyExit16169';b.type='button';b.textContent='✕ EXIT MAP 
+
+--- function mapOnlyOn @ 2505123 ---
+otprint geometry remains 9 m. */return z<=14?4.6:z<=16?6.1:z<=18?8.2:z<=20?10.5:12.1}
+  function restoreGrab(){const mp=map(),container=mp?.getCanvasContainer?.(),canvas=mp?.getCanvas?.();for(const el of [container,canvas])if(el)el.style.removeProperty('cursor');if(container&&!container.classList.contains('mapboxgl-interactive'))container.classList.add('mapboxgl-interactive');document.documentElement.dataset.earthlineRestingCursor16169='grab'}
+  function mapOnlyOn(){return !!document.querySelector('.center')?.classList?.contains('fs')}
+  function syncPortal(){document.documentElement.classList.toggle('earthline-map-only-16169',mapOnlyOn())}
+  function exitMapOnly(){try{if(typeof setFullscreen==='function')setFullscreen(false)}catch(_){}const c=document.querySelector('.center');c?.classList?.remove('fs');document.documentElement.classList.remove('earthline-map-expanded-16166','earthline-map-only-16169');try{map()?.resize?.()}catch(_){}restoreGrab();return true}
+  function ensureExitPortal(){let b=document.getElementById('earthlineMapOnlyExit16169');if(b)return b;b=document.createElement('button');b.id='earthlineMapOnlyExit16169';b.type='button';b.textContent='✕ EXIT MAP ONLY';b.setAttribute('aria-label','Exit map-only view');const stop=e=>{e.preventDefault();e.stopPropagation();e.stopImmediatePropagation?.();exitMapOnly()};b.addEventListener('pointerdown',stop,true);b.addEventListener('click',stop,true);document.body.appendChild(b);return b}
+  function ensureDeclareButton(){let b=document.getElementById('earthlineDeclarePrope
+
+--- function syncPortal @ 2505217 ---
+on restoreGrab(){const mp=map(),container=mp?.getCanvasContainer?.(),canvas=mp?.getCanvas?.();for(const el of [container,canvas])if(el)el.style.removeProperty('cursor');if(container&&!container.classList.contains('mapboxgl-interactive'))container.classList.add('mapboxgl-interactive');document.documentElement.dataset.earthlineRestingCursor16169='grab'}
+  function mapOnlyOn(){return !!document.querySelector('.center')?.classList?.contains('fs')}
+  function syncPortal(){document.documentElement.classList.toggle('earthline-map-only-16169',mapOnlyOn())}
+  function exitMapOnly(){try{if(typeof setFullscreen==='function')setFullscreen(false)}catch(_){}const c=document.querySelector('.center');c?.classList?.remove('fs');document.documentElement.classList.remove('earthline-map-expanded-16166','earthline-map-only-16169');try{map()?.resize?.()}catch(_){}restoreGrab();return true}
+  function ensureExitPortal(){let b=document.getElementById('earthlineMapOnlyExit16169');if(b)return b;b=document.createElement('button');b.id='earthlineMapOnlyExit16169';b.type='button';b.textContent='✕ EXIT MAP ONLY';b.setAttribute('aria-label','Exit map-only view');const stop=e=>{e.preventDefault();e.stopPropagation();e.stopImmediatePropagation?.();exitMapOnly()};b.addEventListener('pointerdown',stop,true);b.addEventListener('click',stop,true);document.body.appendChild(b);return b}
+  function ensureDeclareButton(){let b=document.getElementById('earthlineDeclareProperty16169');const created16546=!b;if(!b){b=document.createElement('button');b.id='earthlineDecl
+
+--- function exitMapOnly @ 2505324 ---
+of [container,canvas])if(el)el.style.removeProperty('cursor');if(container&&!container.classList.contains('mapboxgl-interactive'))container.classList.add('mapboxgl-interactive');document.documentElement.dataset.earthlineRestingCursor16169='grab'}
+  function mapOnlyOn(){return !!document.querySelector('.center')?.classList?.contains('fs')}
+  function syncPortal(){document.documentElement.classList.toggle('earthline-map-only-16169',mapOnlyOn())}
+  function exitMapOnly(){try{if(typeof setFullscreen==='function')setFullscreen(false)}catch(_){}const c=document.querySelector('.center');c?.classList?.remove('fs');document.documentElement.classList.remove('earthline-map-expanded-16166','earthline-map-only-16169');try{map()?.resize?.()}catch(_){}restoreGrab();return true}
+  function ensureExitPortal(){let b=document.getElementById('earthlineMapOnlyExit16169');if(b)return b;b=document.createElement('button');b.id='earthlineMapOnlyExit16169';b.type='button';b.textContent='✕ EXIT MAP ONLY';b.setAttribute('aria-label','Exit map-only view');const stop=e=>{e.preventDefault();e.stopPropagation();e.stopImmediatePropagation?.();exitMapOnly()};b.addEventListener('pointerdown',stop,true);b.addEventListener('click',stop,true);document.body.appendChild(b);return b}
+  function ensureDeclareButton(){let b=document.getElementById('earthlineDeclareProperty16169');const created16546=!b;if(!b){b=document.createElement('button');b.id='earthlineDeclareProperty16169';b.type='button';b.innerHTML='<svg width="24" height="24" viewBox="0 0 100 100" aria-hidde
+
+--- function ensureExitPortal @ 2505650 ---
+ontains('fs')}
+  function syncPortal(){document.documentElement.classList.toggle('earthline-map-only-16169',mapOnlyOn())}
+  function exitMapOnly(){try{if(typeof setFullscreen==='function')setFullscreen(false)}catch(_){}const c=document.querySelector('.center');c?.classList?.remove('fs');document.documentElement.classList.remove('earthline-map-expanded-16166','earthline-map-only-16169');try{map()?.resize?.()}catch(_){}restoreGrab();return true}
+  function ensureExitPortal(){let b=document.getElementById('earthlineMapOnlyExit16169');if(b)return b;b=document.createElement('button');b.id='earthlineMapOnlyExit16169';b.type='button';b.textContent='✕ EXIT MAP ONLY';b.setAttribute('aria-label','Exit map-only view');const stop=e=>{e.preventDefault();e.stopPropagation();e.stopImmediatePropagation?.();exitMapOnly()};b.addEventListener('pointerdown',stop,true);b.addEventListener('click',stop,true);document.body.appendChild(b);return b}
+  function ensureDeclareButton(){let b=document.getElementById('earthlineDeclareProperty16169');const created16546=!b;if(!b){b=document.createElement('button');b.id='earthlineDeclareProperty16169';b.type='button';b.innerHTML='<svg width="24" height="24" viewBox="0 0 100 100" aria-hidden="true"><g class="earthline-orb-spin-16240"><use href="#orb"></use></g></svg><span>PROPERTY ANALYSIS · 20 ACRES</span>';b.setAttribute('aria-label','Declare a twenty-acre project area centered on the map crosshair and run property analysis');b.addEventListener('pointerdown',e=>e.stopPropagation(),true);const prewarm16457=()
+
+--- function ensureDeclareButton @ 2506140 ---
+nt.getElementById('earthlineMapOnlyExit16169');if(b)return b;b=document.createElement('button');b.id='earthlineMapOnlyExit16169';b.type='button';b.textContent='✕ EXIT MAP ONLY';b.setAttribute('aria-label','Exit map-only view');const stop=e=>{e.preventDefault();e.stopPropagation();e.stopImmediatePropagation?.();exitMapOnly()};b.addEventListener('pointerdown',stop,true);b.addEventListener('click',stop,true);document.body.appendChild(b);return b}
+  function ensureDeclareButton(){let b=document.getElementById('earthlineDeclareProperty16169');const created16546=!b;if(!b){b=document.createElement('button');b.id='earthlineDeclareProperty16169';b.type='button';b.innerHTML='<svg width="24" height="24" viewBox="0 0 100 100" aria-hidden="true"><g class="earthline-orb-spin-16240"><use href="#orb"></use></g></svg><span>PROPERTY ANALYSIS · 20 ACRES</span>';b.setAttribute('aria-label','Declare a twenty-acre project area centered on the map crosshair and run property analysis');b.addEventListener('pointerdown',e=>e.stopPropagation(),true);const prewarm16457=()=>{try{const t=window.EARTHLINE_PROPERTY_TARGET_16201;if(t&&Number.isFinite(Number(t.lat))&&Number.isFinite(Number(t.lng))){if(typeof earthlinePrewarmPropertyDem16297==='function')void earthlinePrewarmPropertyDem16297(Number(t.lat),Number(t.lng));if(typeof window.earthlinePrefetchVermontAuthority16263==='function'&&typeof earthlineRectangleAround==='function'){const boundary16466=earthlineRectangleAround(Number(t.lng),Number(t.lat),20);void window.earthlinePrefetchVermontAuthority16263
+
+--- function updateDeclareButton @ 2507790 ---
+rue});b.addEventListener('focus',prewarm16457,{passive:true});document.body.appendChild(b)}/* EARTHLINE 16546 — the existing single Property control always owns exactly one current click handler, even if another panel owner created or moved the button before this installer runs. Assignment replaces any stale onclick owner rather than stacking a listener. */b.onclick=declareProperty;b.dataset.earthlinePropertyClickOwner16546='current';return b}
+  function updateDeclareButton(){const b=ensureDeclareButton(),z=Number(map()?.getZoom?.()||0),show=focusActive()&&z>=15.5;b.classList.toggle('visible',show);b.disabled=b.dataset.busy==='1';return show}
+  function norm(v){return String(v||'').trim().toLowerCase().replace(/\s+/g,' ')}
+  async function declareProperty(e){
+    e?.preventDefault?.();e?.stopPropagation?.();e?.stopImmediatePropagation?.();
+    const governed=window.earthlineDeclarePropertyAtCrosshair16173;
+    if(typeof governed!=='function'){
+      try{if(typeof earthlineReady==='function')earthlineReady('PROPERTY ANALYSIS BLOCKED — governed property controller is unavailable.')}catch(_){}
+      return false;
+    }
+    const target=window.EARTHLINE_PROPERTY_TARGET_16201;
+    const hasTarget=!!(target&&Number.isFinite(Number(target.lng))&&Number.isFinite(Number(target.lat)));
+    if(hasTarget){
+      /* EARTHLINE 16254 — direct Property handoff. Do not launch a 3 km Focus
+         analysis first and do not move the camera here. The preserved terminal
+         Property owner below declares the 20-acre Property state before it
+
+--- function norm @ 2507993 ---
+ another panel owner created or moved the button before this installer runs. Assignment replaces any stale onclick owner rather than stacking a listener. */b.onclick=declareProperty;b.dataset.earthlinePropertyClickOwner16546='current';return b}
+  function updateDeclareButton(){const b=ensureDeclareButton(),z=Number(map()?.getZoom?.()||0),show=focusActive()&&z>=15.5;b.classList.toggle('visible',show);b.disabled=b.dataset.busy==='1';return show}
+  function norm(v){return String(v||'').trim().toLowerCase().replace(/\s+/g,' ')}
+  async function declareProperty(e){
+    e?.preventDefault?.();e?.stopPropagation?.();e?.stopImmediatePropagation?.();
+    const governed=window.earthlineDeclarePropertyAtCrosshair16173;
+    if(typeof governed!=='function'){
+      try{if(typeof earthlineReady==='function')earthlineReady('PROPERTY ANALYSIS BLOCKED — governed property controller is unavailable.')}catch(_){}
+      return false;
+    }
+    const target=window.EARTHLINE_PROPERTY_TARGET_16201;
+    const hasTarget=!!(target&&Number.isFinite(Number(target.lng))&&Number.isFinite(Number(target.lat)));
+    if(hasTarget){
+      /* EARTHLINE 16254 — direct Property handoff. Do not launch a 3 km Focus
+         analysis first and do not move the camera here. The preserved terminal
+         Property owner below declares the 20-acre Property state before it moves
+         the camera, then runs the authoritative terrain/exclusion/swale pipeline. */
+      window.EARTHLINE_PROPERTY_TARGET_16201=Object.assign({},target,{at:new Date().toISOString(),source:targe
+
+--- function declareProperty @ 2508081 ---
+replaces any stale onclick owner rather than stacking a listener. */b.onclick=declareProperty;b.dataset.earthlinePropertyClickOwner16546='current';return b}
+  function updateDeclareButton(){const b=ensureDeclareButton(),z=Number(map()?.getZoom?.()||0),show=focusActive()&&z>=15.5;b.classList.toggle('visible',show);b.disabled=b.dataset.busy==='1';return show}
+  function norm(v){return String(v||'').trim().toLowerCase().replace(/\s+/g,' ')}
+  async function declareProperty(e){
+    e?.preventDefault?.();e?.stopPropagation?.();e?.stopImmediatePropagation?.();
+    const governed=window.earthlineDeclarePropertyAtCrosshair16173;
+    if(typeof governed!=='function'){
+      try{if(typeof earthlineReady==='function')earthlineReady('PROPERTY ANALYSIS BLOCKED — governed property controller is unavailable.')}catch(_){}
+      return false;
+    }
+    const target=window.EARTHLINE_PROPERTY_TARGET_16201;
+    const hasTarget=!!(target&&Number.isFinite(Number(target.lng))&&Number.isFinite(Number(target.lat)));
+    if(hasTarget){
+      /* EARTHLINE 16254 — direct Property handoff. Do not launch a 3 km Focus
+         analysis first and do not move the camera here. The preserved terminal
+         Property owner below declares the 20-acre Property state before it moves
+         the camera, then runs the authoritative terrain/exclusion/swale pipeline. */
+      window.EARTHLINE_PROPERTY_TARGET_16201=Object.assign({},target,{at:new Date().toISOString(),source:target.code?'corridor-direct-property-16254':String(target.source||'crosshair')});
+    }
+    
+
+--- function loadImage @ 2509231 ---
+mera here. The preserved terminal
+         Property owner below declares the 20-acre Property state before it moves
+         the camera, then runs the authoritative terrain/exclusion/swale pipeline. */
+      window.EARTHLINE_PROPERTY_TARGET_16201=Object.assign({},target,{at:new Date().toISOString(),source:target.code?'corridor-direct-property-16254':String(target.source||'crosshair')});
+    }
+    return await Promise.resolve(governed(e));
+  }
+
+  function loadImage(name,uri){const mp=map();return new Promise(resolve=>{if(!mp)return resolve(false);try{if(mp.hasImage?.(name))return resolve(true)}catch(_){}const img=new Image();img.onload=()=>{try{if(!mp.hasImage?.(name))mp.addImage(name,img,{pixelRatio:2});resolve(true)}catch(_){resolve(false)}};img.onerror=()=>resolve(false);img.src=uri})}
+  async function ensureImages(){const mp=map();if(imagesReady&&mp?.hasImage?.(IMG_UP)&&mp?.hasImage?.(IMG_FLIP))return true;imagesReady=false;const ok=await Promise.all([loadImage(IMG_UP,TILE_UP),loadImage(IMG_FLIP,TILE_FLIP)]);imagesReady=ok.every(Boolean);return imagesReady}
+  function addLayer(spec,before){const mp=map();try{if(!mp.getLayer(spec.id))mp.addLayer(spec,before);return !!mp.getLayer(spec.id)}catch(_){return false}}
+  async function ensureTextureLayers(){const mp=map();if(!mp?.getStyle?.())return false;try{const style=mp.getStyle();if(!style||!style.sources)return false;if(!mp.getSource(SOURCE))mp.addSource(SOURCE,{type:'geojson',lineMetrics:true,data:EMPTY})}catch(_){return false}if(!await ensureImages())return false;const bef
+
+--- function ensureImages @ 2509588 ---
+g(target.source||'crosshair')});
+    }
+    return await Promise.resolve(governed(e));
+  }
+
+  function loadImage(name,uri){const mp=map();return new Promise(resolve=>{if(!mp)return resolve(false);try{if(mp.hasImage?.(name))return resolve(true)}catch(_){}const img=new Image();img.onload=()=>{try{if(!mp.hasImage?.(name))mp.addImage(name,img,{pixelRatio:2});resolve(true)}catch(_){resolve(false)}};img.onerror=()=>resolve(false);img.src=uri})}
+  async function ensureImages(){const mp=map();if(imagesReady&&mp?.hasImage?.(IMG_UP)&&mp?.hasImage?.(IMG_FLIP))return true;imagesReady=false;const ok=await Promise.all([loadImage(IMG_UP,TILE_UP),loadImage(IMG_FLIP,TILE_FLIP)]);imagesReady=ok.every(Boolean);return imagesReady}
+  function addLayer(spec,before){const mp=map();try{if(!mp.getLayer(spec.id))mp.addLayer(spec,before);return !!mp.getLayer(spec.id)}catch(_){return false}}
+  async function ensureTextureLayers(){const mp=map();if(!mp?.getStyle?.())return false;try{const style=mp.getStyle();if(!style||!style.sources)return false;if(!mp.getSource(SOURCE))mp.addSource(SOURCE,{type:'geojson',lineMetrics:true,data:EMPTY})}catch(_){return false}if(!await ensureImages())return false;const before=mp.getLayer?.('earthline-swales-casing')?'earthline-swales-casing':undefined;addLayer({id:LAYERS.footprint,type:'fill',source:SOURCE,filter:['==',['get','geometry_role'],'footprint'],paint:{'fill-color':'#5d4a31','fill-opacity':.065,'fill-outline-color':'#163020'}},before);addLayer({id:LAYERS.casing,type:'line',source:SOURCE,filter:['==',['get','geome
+
+--- function addLayer @ 2509860 ---
+();img.onload=()=>{try{if(!mp.hasImage?.(name))mp.addImage(name,img,{pixelRatio:2});resolve(true)}catch(_){resolve(false)}};img.onerror=()=>resolve(false);img.src=uri})}
+  async function ensureImages(){const mp=map();if(imagesReady&&mp?.hasImage?.(IMG_UP)&&mp?.hasImage?.(IMG_FLIP))return true;imagesReady=false;const ok=await Promise.all([loadImage(IMG_UP,TILE_UP),loadImage(IMG_FLIP,TILE_FLIP)]);imagesReady=ok.every(Boolean);return imagesReady}
+  function addLayer(spec,before){const mp=map();try{if(!mp.getLayer(spec.id))mp.addLayer(spec,before);return !!mp.getLayer(spec.id)}catch(_){return false}}
+  async function ensureTextureLayers(){const mp=map();if(!mp?.getStyle?.())return false;try{const style=mp.getStyle();if(!style||!style.sources)return false;if(!mp.getSource(SOURCE))mp.addSource(SOURCE,{type:'geojson',lineMetrics:true,data:EMPTY})}catch(_){return false}if(!await ensureImages())return false;const before=mp.getLayer?.('earthline-swales-casing')?'earthline-swales-casing':undefined;addLayer({id:LAYERS.footprint,type:'fill',source:SOURCE,filter:['==',['get','geometry_role'],'footprint'],paint:{'fill-color':'#5d4a31','fill-opacity':.065,'fill-outline-color':'#163020'}},before);addLayer({id:LAYERS.casing,type:'line',source:SOURCE,filter:['==',['get','geometry_role'],'centerline'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#102117','line-opacity':.64,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get'
+
+--- addLayer @ 2509938 ---
+o:2});resolve(true)}catch(_){resolve(false)}};img.onerror=()=>resolve(false);img.src=uri})}
+  async function ensureImages(){const mp=map();if(imagesReady&&mp?.hasImage?.(IMG_UP)&&mp?.hasImage?.(IMG_FLIP))return true;imagesReady=false;const ok=await Promise.all([loadImage(IMG_UP,TILE_UP),loadImage(IMG_FLIP,TILE_FLIP)]);imagesReady=ok.every(Boolean);return imagesReady}
+  function addLayer(spec,before){const mp=map();try{if(!mp.getLayer(spec.id))mp.addLayer(spec,before);return !!mp.getLayer(spec.id)}catch(_){return false}}
+  async function ensureTextureLayers(){const mp=map();if(!mp?.getStyle?.())return false;try{const style=mp.getStyle();if(!style||!style.sources)return false;if(!mp.getSource(SOURCE))mp.addSource(SOURCE,{type:'geojson',lineMetrics:true,data:EMPTY})}catch(_){return false}if(!await ensureImages())return false;const before=mp.getLayer?.('earthline-swales-casing')?'earthline-swales-casing':undefined;addLayer({id:LAYERS.footprint,type:'fill',source:SOURCE,filter:['==',['get','geometry_role'],'footprint'],paint:{'fill-color':'#5d4a31','fill-opacity':.065,'fill-outline-color':'#163020'}},before);addLayer({id:LAYERS.casing,type:'line',source:SOURCE,filter:['==',['get','geometry_role'],'centerline'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#102117','line-opacity':.64,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join
+
+--- function ensureTextureLayers @ 2510022 ---
+=uri})}
+  async function ensureImages(){const mp=map();if(imagesReady&&mp?.hasImage?.(IMG_UP)&&mp?.hasImage?.(IMG_FLIP))return true;imagesReady=false;const ok=await Promise.all([loadImage(IMG_UP,TILE_UP),loadImage(IMG_FLIP,TILE_FLIP)]);imagesReady=ok.every(Boolean);return imagesReady}
+  function addLayer(spec,before){const mp=map();try{if(!mp.getLayer(spec.id))mp.addLayer(spec,before);return !!mp.getLayer(spec.id)}catch(_){return false}}
+  async function ensureTextureLayers(){const mp=map();if(!mp?.getStyle?.())return false;try{const style=mp.getStyle();if(!style||!style.sources)return false;if(!mp.getSource(SOURCE))mp.addSource(SOURCE,{type:'geojson',lineMetrics:true,data:EMPTY})}catch(_){return false}if(!await ensureImages())return false;const before=mp.getLayer?.('earthline-swales-casing')?'earthline-swales-casing':undefined;addLayer({id:LAYERS.footprint,type:'fill',source:SOURCE,filter:['==',['get','geometry_role'],'footprint'],paint:{'fill-color':'#5d4a31','fill-opacity':.065,'fill-outline-color':'#163020'}},before);addLayer({id:LAYERS.casing,type:'line',source:SOURCE,filter:['==',['get','geometry_role'],'centerline'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#102117','line-opacity':.64,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-da
+
+--- addLayer @ 2510412 ---
+turn !!mp.getLayer(spec.id)}catch(_){return false}}
+  async function ensureTextureLayers(){const mp=map();if(!mp?.getStyle?.())return false;try{const style=mp.getStyle();if(!style||!style.sources)return false;if(!mp.getSource(SOURCE))mp.addSource(SOURCE,{type:'geojson',lineMetrics:true,data:EMPTY})}catch(_){return false}if(!await ensureImages())return false;const before=mp.getLayer?.('earthline-swales-casing')?'earthline-swales-casing':undefined;addLayer({id:LAYERS.footprint,type:'fill',source:SOURCE,filter:['==',['get','geometry_role'],'footprint'],paint:{'fill-color':'#5d4a31','fill-opacity':.065,'fill-outline-color':'#163020'}},before);addLayer({id:LAYERS.casing,type:'line',source:SOURCE,filter:['==',['get','geometry_role'],'centerline'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#102117','line-opacity':.64,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,f
+
+--- LAYERS.footprint @ 2510425 ---
+Layer(spec.id)}catch(_){return false}}
+  async function ensureTextureLayers(){const mp=map();if(!mp?.getStyle?.())return false;try{const style=mp.getStyle();if(!style||!style.sources)return false;if(!mp.getSource(SOURCE))mp.addSource(SOURCE,{type:'geojson',lineMetrics:true,data:EMPTY})}catch(_){return false}if(!await ensureImages())return false;const before=mp.getLayer?.('earthline-swales-casing')?'earthline-swales-casing':undefined;addLayer({id:LAYERS.footprint,type:'fill',source:SOURCE,filter:['==',['get','geometry_role'],'footprint'],paint:{'fill-color':'#5d4a31','fill-opacity':.065,'fill-outline-color':'#163020'}},before);addLayer({id:LAYERS.casing,type:'line',source:SOURCE,filter:['==',['get','geometry_role'],'centerline'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#102117','line-opacity':.64,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',
+
+--- line-color @ 2510577 ---
+le();if(!style||!style.sources)return false;if(!mp.getSource(SOURCE))mp.addSource(SOURCE,{type:'geojson',lineMetrics:true,data:EMPTY})}catch(_){return false}if(!await ensureImages())return false;const before=mp.getLayer?.('earthline-swales-casing')?'earthline-swales-casing':undefined;addLayer({id:LAYERS.footprint,type:'fill',source:SOURCE,filter:['==',['get','geometry_role'],'footprint'],paint:{'fill-color':'#5d4a31','fill-opacity':.065,'fill-outline-color':'#163020'}},before);addLayer({id:LAYERS.casing,type:'line',source:SOURCE,filter:['==',['get','geometry_role'],'centerline'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#102117','line-opacity':.64,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','l
+
+--- addLayer @ 2510609 ---
+eturn false;if(!mp.getSource(SOURCE))mp.addSource(SOURCE,{type:'geojson',lineMetrics:true,data:EMPTY})}catch(_){return false}if(!await ensureImages())return false;const before=mp.getLayer?.('earthline-swales-casing')?'earthline-swales-casing':undefined;addLayer({id:LAYERS.footprint,type:'fill',source:SOURCE,filter:['==',['get','geometry_role'],'footprint'],paint:{'fill-color':'#5d4a31','fill-opacity':.065,'fill-outline-color':'#163020'}},before);addLayer({id:LAYERS.casing,type:'line',source:SOURCE,filter:['==',['get','geometry_role'],'centerline'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#102117','line-opacity':.64,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-
+
+--- LAYERS.casing @ 2510622 ---
+f(!mp.getSource(SOURCE))mp.addSource(SOURCE,{type:'geojson',lineMetrics:true,data:EMPTY})}catch(_){return false}if(!await ensureImages())return false;const before=mp.getLayer?.('earthline-swales-casing')?'earthline-swales-casing':undefined;addLayer({id:LAYERS.footprint,type:'fill',source:SOURCE,filter:['==',['get','geometry_role'],'footprint'],paint:{'fill-color':'#5d4a31','fill-opacity':.065,'fill-outline-color':'#163020'}},before);addLayer({id:LAYERS.casing,type:'line',source:SOURCE,filter:['==',['get','geometry_role'],'centerline'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#102117','line-opacity':.64,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_
+
+--- line-color @ 2510769 ---
+se;const before=mp.getLayer?.('earthline-swales-casing')?'earthline-swales-casing':undefined;addLayer({id:LAYERS.footprint,type:'fill',source:SOURCE,filter:['==',['get','geometry_role'],'footprint'],paint:{'fill-color':'#5d4a31','fill-opacity':.065,'fill-outline-color':'#163020'}},before);addLayer({id:LAYERS.casing,type:'line',source:SOURCE,filter:['==',['get','geometry_role'],'centerline'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#102117','line-opacity':.64,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);try{mp.setFilter?.(LAYERS.neutral,['all',['==',['get','geometry_role'],'centerline'],['==',['get'
+
+--- line-width @ 2510811 ---
+wales-casing')?'earthline-swales-casing':undefined;addLayer({id:LAYERS.footprint,type:'fill',source:SOURCE,filter:['==',['get','geometry_role'],'footprint'],paint:{'fill-color':'#5d4a31','fill-opacity':.065,'fill-outline-color':'#163020'}},before);addLayer({id:LAYERS.casing,type:'line',source:SOURCE,filter:['==',['get','geometry_role'],'centerline'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#102117','line-opacity':.64,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);try{mp.setFilter?.(LAYERS.neutral,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']]);
+
+--- addLayer @ 2510836 ---
+-swales-casing':undefined;addLayer({id:LAYERS.footprint,type:'fill',source:SOURCE,filter:['==',['get','geometry_role'],'footprint'],paint:{'fill-color':'#5d4a31','fill-opacity':.065,'fill-outline-color':'#163020'}},before);addLayer({id:LAYERS.casing,type:'line',source:SOURCE,filter:['==',['get','geometry_role'],'centerline'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#102117','line-opacity':.64,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);try{mp.setFilter?.(LAYERS.neutral,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']]);mp.setFilter?.(LAYERS.up,
+
+--- LAYERS.neutral @ 2510849 ---
+g':undefined;addLayer({id:LAYERS.footprint,type:'fill',source:SOURCE,filter:['==',['get','geometry_role'],'footprint'],paint:{'fill-color':'#5d4a31','fill-opacity':.065,'fill-outline-color':'#163020'}},before);addLayer({id:LAYERS.casing,type:'line',source:SOURCE,filter:['==',['get','geometry_role'],'centerline'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#102117','line-opacity':.64,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);try{mp.setFilter?.(LAYERS.neutral,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']]);mp.setFilter?.(LAYERS.up,['all',['==',
+
+--- line-color @ 2511057 ---
+);addLayer({id:LAYERS.casing,type:'line',source:SOURCE,filter:['==',['get','geometry_role'],'centerline'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#102117','line-opacity':.64,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);try{mp.setFilter?.(LAYERS.neutral,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']]);mp.setFilter?.(LAYERS.up,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]]);mp.setFilter?.(LAYERS.flip,['all',['==',['get','geometry_role'],'centerline'],['==',['get
+
+--- line-width @ 2511099 ---
+ource:SOURCE,filter:['==',['get','geometry_role'],'centerline'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#102117','line-opacity':.64,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);try{mp.setFilter?.(LAYERS.neutral,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']]);mp.setFilter?.(LAYERS.up,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]]);mp.setFilter?.(LAYERS.flip,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',
+
+--- addLayer @ 2511152 ---
+nterline'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#102117','line-opacity':.64,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);try{mp.setFilter?.(LAYERS.neutral,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']]);mp.setFilter?.(LAYERS.up,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]]);mp.setFilter?.(LAYERS.flip,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]])}catch(_){}return Object.v
+
+--- LAYERS.up @ 2511165 ---
+yout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#102117','line-opacity':.64,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);try{mp.setFilter?.(LAYERS.neutral,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']]);mp.setFilter?.(LAYERS.up,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]]);mp.setFilter?.(LAYERS.flip,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]])}catch(_){}return Object.values(LAYERS)
+
+--- line-pattern @ 2511394 ---
+e'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);try{mp.setFilter?.(LAYERS.neutral,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']]);mp.setFilter?.(LAYERS.up,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]]);mp.setFilter?.(LAYERS.flip,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]])}catch(_){}return Object.values(LAYERS).every(id=>!!mp.getLayer?.(id))}
+  function bilinear(m,x,y){const gw=Number(typeof GW!=='undefined'?GW:0),gh=Number(typeof GH!=='undefined'?GH:0),arr=m&&m.h;if(!arr||!gw||!gh)return NaN;const xx=clamp(x,0,gw-1),yy=clamp(y,0,gh-1)
+
+--- line-width @ 2511435 ---
+ndeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);try{mp.setFilter?.(LAYERS.neutral,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']]);mp.setFilter?.(LAYERS.up,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]]);mp.setFilter?.(LAYERS.flip,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]])}catch(_){}return Object.values(LAYERS).every(id=>!!mp.getLayer?.(id))}
+  function bilinear(m,x,y){const gw=Number(typeof GW!=='undefined'?GW:0),gh=Number(typeof GH!=='undefined'?GH:0),arr=m&&m.h;if(!arr||!gw||!gh)return NaN;const xx=clamp(x,0,gw-1),yy=clamp(y,0,gh-1),x0=Math.floor(xx),y0=Math.floor(yy),x1=M
+
+--- addLayer @ 2511460 ---
+line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);try{mp.setFilter?.(LAYERS.neutral,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']]);mp.setFilter?.(LAYERS.up,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]]);mp.setFilter?.(LAYERS.flip,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]])}catch(_){}return Object.values(LAYERS).every(id=>!!mp.getLayer?.(id))}
+  function bilinear(m,x,y){const gw=Number(typeof GW!=='undefined'?GW:0),gh=Number(typeof GH!=='undefined'?GH:0),arr=m&&m.h;if(!arr||!gw||!gh)return NaN;const xx=clamp(x,0,gw-1),yy=clamp(y,0,gh-1),x0=Math.floor(xx),y0=Math.floor(yy),x1=Math.min(gw-1,x0+1),y1=Mat
+
+--- LAYERS.flip @ 2511473 ---
+und','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);try{mp.setFilter?.(LAYERS.neutral,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']]);mp.setFilter?.(LAYERS.up,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]]);mp.setFilter?.(LAYERS.flip,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]])}catch(_){}return Object.values(LAYERS).every(id=>!!mp.getLayer?.(id))}
+  function bilinear(m,x,y){const gw=Number(typeof GW!=='undefined'?GW:0),gh=Number(typeof GH!=='undefined'?GH:0),arr=m&&m.h;if(!arr||!gw||!gh)return NaN;const xx=clamp(x,0,gw-1),yy=clamp(y,0,gh-1),x0=Math.floor(xx),y0=Math.floor(yy),x1=Math.min(gw-1,x0+1),y1=Math.min(gh-1,y0
+
+--- line-pattern @ 2511704 ---
+ne'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);try{mp.setFilter?.(LAYERS.neutral,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']]);mp.setFilter?.(LAYERS.up,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]]);mp.setFilter?.(LAYERS.flip,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]])}catch(_){}return Object.values(LAYERS).every(id=>!!mp.getLayer?.(id))}
+  function bilinear(m,x,y){const gw=Number(typeof GW!=='undefined'?GW:0),gh=Number(typeof GH!=='undefined'?GH:0),arr=m&&m.h;if(!arr||!gw||!gh)return NaN;const xx=clamp(x,0,gw-1),yy=clamp(y,0,gh-1),x0=Math.floor(xx),y0=Math.floor(yy),x1=Math.min(gw-1,x0+1),y1=Math.min(gh-1,y0+1),tx=xx-x0,ty=yy-y0;const at=(ix,iy)=>Number(arr[iy*gw+ix]);const a=at(x0,y0),b=at(x1,y0),c=at(x0,y1),d=at(x1,y1);if(![a,b,c,d].every(Number.isFinite))return NaN;return a*(1-tx)*(1-ty)+b*tx*(1-ty)+c*(1-tx)*ty+d*tx*ty}
+  function 
+
+--- line-width @ 2511747 ---
+rified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);try{mp.setFilter?.(LAYERS.neutral,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']]);mp.setFilter?.(LAYERS.up,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]]);mp.setFilter?.(LAYERS.flip,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]])}catch(_){}return Object.values(LAYERS).every(id=>!!mp.getLayer?.(id))}
+  function bilinear(m,x,y){const gw=Number(typeof GW!=='undefined'?GW:0),gh=Number(typeof GH!=='undefined'?GH:0),arr=m&&m.h;if(!arr||!gw||!gh)return NaN;const xx=clamp(x,0,gw-1),yy=clamp(y,0,gh-1),x0=Math.floor(xx),y0=Math.floor(yy),x1=Math.min(gw-1,x0+1),y1=Math.min(gh-1,y0+1),tx=xx-x0,ty=yy-y0;const at=(ix,iy)=>Number(arr[iy*gw+ix]);const a=at(x0,y0),b=at(x1,y0),c=at(x0,y1),d=at(x1,y1);if(![a,b,c,d].every(Number.isFinite))return NaN;return a*(1-tx)*(1-ty)+b*tx*(1-ty)+c*(1-tx)*ty+d*tx*ty}
+  function median16177(values){const a=(values||[]).fi
+
+--- LAYERS.neutral @ 2511791 ---
+yout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);try{mp.setFilter?.(LAYERS.neutral,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']]);mp.setFilter?.(LAYERS.up,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]]);mp.setFilter?.(LAYERS.flip,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]])}catch(_){}return Object.values(LAYERS).every(id=>!!mp.getLayer?.(id))}
+  function bilinear(m,x,y){const gw=Number(typeof GW!=='undefined'?GW:0),gh=Number(typeof GH!=='undefined'?GH:0),arr=m&&m.h;if(!arr||!gw||!gh)return NaN;const xx=clamp(x,0,gw-1),yy=clamp(y,0,gh-1),x0=Math.floor(xx),y0=Math.floor(yy),x1=Math.min(gw-1,x0+1),y1=Math.min(gh-1,y0+1),tx=xx-x0,ty=yy-y0;const at=(ix,iy)=>Number(arr[iy*gw+ix]);const a=at(x0,y0),b=at(x1,y0),c=at(x0,y1),d=at(x1,y1);if(![a,b,c,d].every(Number.isFinite))return NaN;return a*(1-tx)*(1-ty)+b*tx*(1-ty)+c*(1-tx)*ty+d*tx*ty}
+  function median16177(values){const a=(values||[]).filter(Number.isFinite).sort((x,y)=>x-y);if(!a
+
+--- LAYERS.up @ 2511926 ---
+ERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);try{mp.setFilter?.(LAYERS.neutral,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']]);mp.setFilter?.(LAYERS.up,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]]);mp.setFilter?.(LAYERS.flip,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]])}catch(_){}return Object.values(LAYERS).every(id=>!!mp.getLayer?.(id))}
+  function bilinear(m,x,y){const gw=Number(typeof GW!=='undefined'?GW:0),gh=Number(typeof GH!=='undefined'?GH:0),arr=m&&m.h;if(!arr||!gw||!gh)return NaN;const xx=clamp(x,0,gw-1),yy=clamp(y,0,gh-1),x0=Math.floor(xx),y0=Math.floor(yy),x1=Math.min(gw-1,x0+1),y1=Math.min(gh-1,y0+1),tx=xx-x0,ty=yy-y0;const at=(ix,iy)=>Number(arr[iy*gw+ix]);const a=at(x0,y0),b=at(x1,y0),c=at(x0,y1),d=at(x1,y1);if(![a,b,c,d].every(Number.isFinite))return NaN;return a*(1-tx)*(1-ty)+b*tx*(1-ty)+c*(1-tx)*ty+d*tx*ty}
+  function median16177(values){const a=(values||[]).filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return NaN;const k=Math.floor(a.length/2);return a.length%2?a[k]:(a[k-1]+a[k])/2}
+  function gridFromLngLat16177(ll){try{const 
+
+--- LAYERS.flip @ 2512083 ---
+ture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);try{mp.setFilter?.(LAYERS.neutral,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']]);mp.setFilter?.(LAYERS.up,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]]);mp.setFilter?.(LAYERS.flip,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]])}catch(_){}return Object.values(LAYERS).every(id=>!!mp.getLayer?.(id))}
+  function bilinear(m,x,y){const gw=Number(typeof GW!=='undefined'?GW:0),gh=Number(typeof GH!=='undefined'?GH:0),arr=m&&m.h;if(!arr||!gw||!gh)return NaN;const xx=clamp(x,0,gw-1),yy=clamp(y,0,gh-1),x0=Math.floor(xx),y0=Math.floor(yy),x1=Math.min(gw-1,x0+1),y1=Math.min(gh-1,y0+1),tx=xx-x0,ty=yy-y0;const at=(ix,iy)=>Number(arr[iy*gw+ix]);const a=at(x0,y0),b=at(x1,y0),c=at(x0,y1),d=at(x1,y1);if(![a,b,c,d].every(Number.isFinite))return NaN;return a*(1-tx)*(1-ty)+b*tx*(1-ty)+c*(1-tx)*ty+d*tx*ty}
+  function median16177(values){const a=(values||[]).filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return NaN;const k=Math.floor(a.length/2);return a.length%2?a[k]:(a[k-1]+a[k])/2}
+  function gridFromLngLat16177(ll){try{const p=earthlineLngLatToGrid(Number(ll?.[0]),Number(ll?.[1]));return Array.isArray(p)&&p.length>=2&&Number.isFinite(Number(p[0]))&&Number.isFinite(Number(p[1]))?[
+
+--- function bilinear @ 2512300 ---
+line'],['==',['get','orientation_status'],'indeterminate']]);mp.setFilter?.(LAYERS.up,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]]);mp.setFilter?.(LAYERS.flip,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]])}catch(_){}return Object.values(LAYERS).every(id=>!!mp.getLayer?.(id))}
+  function bilinear(m,x,y){const gw=Number(typeof GW!=='undefined'?GW:0),gh=Number(typeof GH!=='undefined'?GH:0),arr=m&&m.h;if(!arr||!gw||!gh)return NaN;const xx=clamp(x,0,gw-1),yy=clamp(y,0,gh-1),x0=Math.floor(xx),y0=Math.floor(yy),x1=Math.min(gw-1,x0+1),y1=Math.min(gh-1,y0+1),tx=xx-x0,ty=yy-y0;const at=(ix,iy)=>Number(arr[iy*gw+ix]);const a=at(x0,y0),b=at(x1,y0),c=at(x0,y1),d=at(x1,y1);if(![a,b,c,d].every(Number.isFinite))return NaN;return a*(1-tx)*(1-ty)+b*tx*(1-ty)+c*(1-tx)*ty+d*tx*ty}
+  function median16177(values){const a=(values||[]).filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return NaN;const k=Math.floor(a.length/2);return a.length%2?a[k]:(a[k-1]+a[k])/2}
+  function gridFromLngLat16177(ll){try{const p=earthlineLngLatToGrid(Number(ll?.[0]),Number(ll?.[1]));return Array.isArray(p)&&p.length>=2&&Number.isFinite(Number(p[0]))&&Number.isFinite(Number(p[1]))?[Number(p[0]),Number(p[1])]:null}catch(_){return null}}
+  function polylineStations16177(points,fractions){if(!Array.isArray(points)||points.length<2)return [];const seg=[],cum=[0];let total=0;for(let i=1;i<points.leng
+
+--- function median16177 @ 2512795 ---
+of GW!=='undefined'?GW:0),gh=Number(typeof GH!=='undefined'?GH:0),arr=m&&m.h;if(!arr||!gw||!gh)return NaN;const xx=clamp(x,0,gw-1),yy=clamp(y,0,gh-1),x0=Math.floor(xx),y0=Math.floor(yy),x1=Math.min(gw-1,x0+1),y1=Math.min(gh-1,y0+1),tx=xx-x0,ty=yy-y0;const at=(ix,iy)=>Number(arr[iy*gw+ix]);const a=at(x0,y0),b=at(x1,y0),c=at(x0,y1),d=at(x1,y1);if(![a,b,c,d].every(Number.isFinite))return NaN;return a*(1-tx)*(1-ty)+b*tx*(1-ty)+c*(1-tx)*ty+d*tx*ty}
+  function median16177(values){const a=(values||[]).filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return NaN;const k=Math.floor(a.length/2);return a.length%2?a[k]:(a[k-1]+a[k])/2}
+  function gridFromLngLat16177(ll){try{const p=earthlineLngLatToGrid(Number(ll?.[0]),Number(ll?.[1]));return Array.isArray(p)&&p.length>=2&&Number.isFinite(Number(p[0]))&&Number.isFinite(Number(p[1]))?[Number(p[0]),Number(p[1])]:null}catch(_){return null}}
+  function polylineStations16177(points,fractions){if(!Array.isArray(points)||points.length<2)return [];const seg=[],cum=[0];let total=0;for(let i=1;i<points.length;i++){const d=Math.hypot(points[i][0]-points[i-1][0],points[i][1]-points[i-1][1]);seg.push(d);total+=d;cum.push(total)}if(!(total>0))return [];return (fractions||[]).map(fr=>{const target=clamp(Number(fr)||0,0,1)*total;let i=0;while(i<seg.length-1&&cum[i+1]<target)i++;const d=seg[i]||1,t=clamp((target-cum[i])/d,0,1),a=points[i],b=points[i+1],x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t,dx=b[0]-a[0],dy=b[1]-a[1],mag=Math.hypot(dx,dy)||1;return {fraction:Number(fr),x,y,nx:-dy/mag,ny:dx/mag}})}
+
+--- function gridFromLngLat16177 @ 2512983 ---
+=Math.min(gw-1,x0+1),y1=Math.min(gh-1,y0+1),tx=xx-x0,ty=yy-y0;const at=(ix,iy)=>Number(arr[iy*gw+ix]);const a=at(x0,y0),b=at(x1,y0),c=at(x0,y1),d=at(x1,y1);if(![a,b,c,d].every(Number.isFinite))return NaN;return a*(1-tx)*(1-ty)+b*tx*(1-ty)+c*(1-tx)*ty+d*tx*ty}
+  function median16177(values){const a=(values||[]).filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return NaN;const k=Math.floor(a.length/2);return a.length%2?a[k]:(a[k-1]+a[k])/2}
+  function gridFromLngLat16177(ll){try{const p=earthlineLngLatToGrid(Number(ll?.[0]),Number(ll?.[1]));return Array.isArray(p)&&p.length>=2&&Number.isFinite(Number(p[0]))&&Number.isFinite(Number(p[1]))?[Number(p[0]),Number(p[1])]:null}catch(_){return null}}
+  function polylineStations16177(points,fractions){if(!Array.isArray(points)||points.length<2)return [];const seg=[],cum=[0];let total=0;for(let i=1;i<points.length;i++){const d=Math.hypot(points[i][0]-points[i-1][0],points[i][1]-points[i-1][1]);seg.push(d);total+=d;cum.push(total)}if(!(total>0))return [];return (fractions||[]).map(fr=>{const target=clamp(Number(fr)||0,0,1)*total;let i=0;while(i<seg.length-1&&cum[i+1]<target)i++;const d=seg[i]||1,t=clamp((target-cum[i])/d,0,1),a=points[i],b=points[i+1],x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t,dx=b[0]-a[0],dy=b[1]-a[1],mag=Math.hypot(dx,dy)||1;return {fraction:Number(fr),x,y,nx:-dy/mag,ny:dx/mag}})}
+  function orientationForCoords16177(coords){const m=model(),grid=(coords||[]).map(gridFromLngLat16177).filter(Boolean),cellM=Math.max(.01,Number(m&&m.cellM||1)),offsetM=6,offsetCells=cla
+
+--- function polylineStations16177 @ 2513240 ---
+y}
+  function median16177(values){const a=(values||[]).filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return NaN;const k=Math.floor(a.length/2);return a.length%2?a[k]:(a[k-1]+a[k])/2}
+  function gridFromLngLat16177(ll){try{const p=earthlineLngLatToGrid(Number(ll?.[0]),Number(ll?.[1]));return Array.isArray(p)&&p.length>=2&&Number.isFinite(Number(p[0]))&&Number.isFinite(Number(p[1]))?[Number(p[0]),Number(p[1])]:null}catch(_){return null}}
+  function polylineStations16177(points,fractions){if(!Array.isArray(points)||points.length<2)return [];const seg=[],cum=[0];let total=0;for(let i=1;i<points.length;i++){const d=Math.hypot(points[i][0]-points[i-1][0],points[i][1]-points[i-1][1]);seg.push(d);total+=d;cum.push(total)}if(!(total>0))return [];return (fractions||[]).map(fr=>{const target=clamp(Number(fr)||0,0,1)*total;let i=0;while(i<seg.length-1&&cum[i+1]<target)i++;const d=seg[i]||1,t=clamp((target-cum[i])/d,0,1),a=points[i],b=points[i+1],x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t,dx=b[0]-a[0],dy=b[1]-a[1],mag=Math.hypot(dx,dy)||1;return {fraction:Number(fr),x,y,nx:-dy/mag,ny:dx/mag}})}
+  function orientationForCoords16177(coords){const m=model(),grid=(coords||[]).map(gridFromLngLat16177).filter(Boolean),cellM=Math.max(.01,Number(m&&m.cellM||1)),offsetM=6,offsetCells=clamp(offsetM/cellM,1.5,8),minDeltaM=Math.max(.18,Number(m&&m.orientationMinCrossDropM16177||0)),stations=polylineStations16177(grid,[.12,.25,.38,.5,.62,.75,.88]),samples=[];for(const st of stations){const plus=bilinear(m,st.x+st.nx*offsetCells,st.y+st.ny*offs
+
+--- function orientationForCoords16177 @ 2513898 ---
+-1][0],points[i][1]-points[i-1][1]);seg.push(d);total+=d;cum.push(total)}if(!(total>0))return [];return (fractions||[]).map(fr=>{const target=clamp(Number(fr)||0,0,1)*total;let i=0;while(i<seg.length-1&&cum[i+1]<target)i++;const d=seg[i]||1,t=clamp((target-cum[i])/d,0,1),a=points[i],b=points[i+1],x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t,dx=b[0]-a[0],dy=b[1]-a[1],mag=Math.hypot(dx,dy)||1;return {fraction:Number(fr),x,y,nx:-dy/mag,ny:dx/mag}})}
+  function orientationForCoords16177(coords){const m=model(),grid=(coords||[]).map(gridFromLngLat16177).filter(Boolean),cellM=Math.max(.01,Number(m&&m.cellM||1)),offsetM=6,offsetCells=clamp(offsetM/cellM,1.5,8),minDeltaM=Math.max(.18,Number(m&&m.orientationMinCrossDropM16177||0)),stations=polylineStations16177(grid,[.12,.25,.38,.5,.62,.75,.88]),samples=[];for(const st of stations){const plus=bilinear(m,st.x+st.nx*offsetCells,st.y+st.ny*offsetCells),minus=bilinear(m,st.x-st.nx*offsetCells,st.y-st.ny*offsetCells),delta=plus-minus;if(Number.isFinite(plus)&&Number.isFinite(minus)&&Number.isFinite(delta))samples.push({fraction:st.fraction,plusM:Number(plus.toFixed(3)),minusM:Number(minus.toFixed(3)),deltaM:Number(delta.toFixed(3)),vote:delta>=minDeltaM?1:(delta<=-minDeltaM?-1:0)})}const strong=samples.filter(x=>x.vote!==0),plusVotes=strong.filter(x=>x.vote===1).length,minusVotes=strong.filter(x=>x.vote===-1).length,dominant=plusVotes===minusVotes?0:(plusVotes>minusVotes?1:-1),dominantVotes=Math.max(plusVotes,minusVotes),consistency=strong.length?dominantVotes/strong.length:0,coverage=statio
+
+--- function authoritativeFC @ 2515819 ---
+de=reliable?(dominant===1?'plus-normal':'minus-normal'):'unresolved',textureFlip=reliable?(dominant===1?1:0):-1;return {status,textureFlip,highSide,validSamples:samples.length,strongSamples:strong.length,plusVotes,minusVotes,consistency:Number(consistency.toFixed(3)),coverage:Number(coverage.toFixed(3)),medianCrossDropM:Number.isFinite(medianDelta)?Number(medianDelta.toFixed(3)):null,minCrossDropM:Number(minDeltaM.toFixed(3)),offsetM,samples}}
+  function authoritativeFC(){const m=model();if(!m)return EMPTY;const verified=!!(m.propertyResultLock15815&&m.propertyResultLock15815.safetyVerified===true&&m.safetyAudit15806&&m.safetyAudit15806.verified===true);const fc=m.authoritativeSafeSwales15815;return verified&&fc&&fc.type==='FeatureCollection'&&Array.isArray(fc.features)?fc:EMPTY}
+  function mercatorXY(p){const R=6378137,lon=Number(p?.[0])||0,lat=Math.max(-85,Math.min(85,Number(p?.[1])||0))*Math.PI/180;return [R*lon*Math.PI/180,R*Math.log(Math.tan(Math.PI/4+lat/2))]}
+  function mercatorLL(p){const R=6378137;return [Number(p?.[0]||0)/R*180/Math.PI,(2*Math.atan(Math.exp(Number(p?.[1]||0)/R))-Math.PI/2)*180/Math.PI]}
+  function unit(x,y){const m=Math.hypot(x,y)||1;return [x/m,y/m]}
+  function bufferedRing(coords,halfWidth=4.5){if(!Array.isArray(coords)||coords.length<2)return null;const xy=coords.map(mercatorXY),left=[],right=[];for(let i=0;i<xy.length;i++){const prev=xy[Math.max(0,i-1)],cur=xy[i],next=xy[Math.min(xy.length-1,i+1)],d1=unit(cur[0]-prev[0],cur[1]-prev[1]),d2=unit(next[0]-cur[0],next[1]-cur[1]);let tx=d1[0]+d2[0],t
+
+--- function mercatorXY @ 2516162 ---
+nDelta)?Number(medianDelta.toFixed(3)):null,minCrossDropM:Number(minDeltaM.toFixed(3)),offsetM,samples}}
+  function authoritativeFC(){const m=model();if(!m)return EMPTY;const verified=!!(m.propertyResultLock15815&&m.propertyResultLock15815.safetyVerified===true&&m.safetyAudit15806&&m.safetyAudit15806.verified===true);const fc=m.authoritativeSafeSwales15815;return verified&&fc&&fc.type==='FeatureCollection'&&Array.isArray(fc.features)?fc:EMPTY}
+  function mercatorXY(p){const R=6378137,lon=Number(p?.[0])||0,lat=Math.max(-85,Math.min(85,Number(p?.[1])||0))*Math.PI/180;return [R*lon*Math.PI/180,R*Math.log(Math.tan(Math.PI/4+lat/2))]}
+  function mercatorLL(p){const R=6378137;return [Number(p?.[0]||0)/R*180/Math.PI,(2*Math.atan(Math.exp(Number(p?.[1]||0)/R))-Math.PI/2)*180/Math.PI]}
+  function unit(x,y){const m=Math.hypot(x,y)||1;return [x/m,y/m]}
+  function bufferedRing(coords,halfWidth=4.5){if(!Array.isArray(coords)||coords.length<2)return null;const xy=coords.map(mercatorXY),left=[],right=[];for(let i=0;i<xy.length;i++){const prev=xy[Math.max(0,i-1)],cur=xy[i],next=xy[Math.min(xy.length-1,i+1)],d1=unit(cur[0]-prev[0],cur[1]-prev[1]),d2=unit(next[0]-cur[0],next[1]-cur[1]);let tx=d1[0]+d2[0],ty=d1[1]+d2[1];if(Math.hypot(tx,ty)<.001){tx=d2[0]||d1[0];ty=d2[1]||d1[1]}const t=unit(tx,ty),n=[-t[1],t[0]],n1=[-d1[1],d1[0]],den=Math.max(.28,Math.abs(n[0]*n1[0]+n[1]*n1[1])),m=Math.min(halfWidth*2.4,halfWidth/den);left.push(mercatorLL([cur[0]+n[0]*m,cur[1]+n[1]*m]));right.push(mercatorLL([cur[0]-n[0]*m,cur[1]-n[1]*m]))}const ring=[...left,
+
+--- function mercatorLL @ 2516352 ---
+ropertyResultLock15815&&m.propertyResultLock15815.safetyVerified===true&&m.safetyAudit15806&&m.safetyAudit15806.verified===true);const fc=m.authoritativeSafeSwales15815;return verified&&fc&&fc.type==='FeatureCollection'&&Array.isArray(fc.features)?fc:EMPTY}
+  function mercatorXY(p){const R=6378137,lon=Number(p?.[0])||0,lat=Math.max(-85,Math.min(85,Number(p?.[1])||0))*Math.PI/180;return [R*lon*Math.PI/180,R*Math.log(Math.tan(Math.PI/4+lat/2))]}
+  function mercatorLL(p){const R=6378137;return [Number(p?.[0]||0)/R*180/Math.PI,(2*Math.atan(Math.exp(Number(p?.[1]||0)/R))-Math.PI/2)*180/Math.PI]}
+  function unit(x,y){const m=Math.hypot(x,y)||1;return [x/m,y/m]}
+  function bufferedRing(coords,halfWidth=4.5){if(!Array.isArray(coords)||coords.length<2)return null;const xy=coords.map(mercatorXY),left=[],right=[];for(let i=0;i<xy.length;i++){const prev=xy[Math.max(0,i-1)],cur=xy[i],next=xy[Math.min(xy.length-1,i+1)],d1=unit(cur[0]-prev[0],cur[1]-prev[1]),d2=unit(next[0]-cur[0],next[1]-cur[1]);let tx=d1[0]+d2[0],ty=d1[1]+d2[1];if(Math.hypot(tx,ty)<.001){tx=d2[0]||d1[0];ty=d2[1]||d1[1]}const t=unit(tx,ty),n=[-t[1],t[0]],n1=[-d1[1],d1[0]],den=Math.max(.28,Math.abs(n[0]*n1[0]+n[1]*n1[1])),m=Math.min(halfWidth*2.4,halfWidth/den);left.push(mercatorLL([cur[0]+n[0]*m,cur[1]+n[1]*m]));right.push(mercatorLL([cur[0]-n[0]*m,cur[1]-n[1]*m]))}const ring=[...left,...right.reverse()];if(ring.length<4)return null;ring.push(ring[0]);return ring}
+  function orientedFC(){const fc=authoritativeFC(),features=[],records=[];for(const [i,f] of (fc.features||[]
+
+--- function unit @ 2516502 ---
+iveSafeSwales15815;return verified&&fc&&fc.type==='FeatureCollection'&&Array.isArray(fc.features)?fc:EMPTY}
+  function mercatorXY(p){const R=6378137,lon=Number(p?.[0])||0,lat=Math.max(-85,Math.min(85,Number(p?.[1])||0))*Math.PI/180;return [R*lon*Math.PI/180,R*Math.log(Math.tan(Math.PI/4+lat/2))]}
+  function mercatorLL(p){const R=6378137;return [Number(p?.[0]||0)/R*180/Math.PI,(2*Math.atan(Math.exp(Number(p?.[1]||0)/R))-Math.PI/2)*180/Math.PI]}
+  function unit(x,y){const m=Math.hypot(x,y)||1;return [x/m,y/m]}
+  function bufferedRing(coords,halfWidth=4.5){if(!Array.isArray(coords)||coords.length<2)return null;const xy=coords.map(mercatorXY),left=[],right=[];for(let i=0;i<xy.length;i++){const prev=xy[Math.max(0,i-1)],cur=xy[i],next=xy[Math.min(xy.length-1,i+1)],d1=unit(cur[0]-prev[0],cur[1]-prev[1]),d2=unit(next[0]-cur[0],next[1]-cur[1]);let tx=d1[0]+d2[0],ty=d1[1]+d2[1];if(Math.hypot(tx,ty)<.001){tx=d2[0]||d1[0];ty=d2[1]||d1[1]}const t=unit(tx,ty),n=[-t[1],t[0]],n1=[-d1[1],d1[0]],den=Math.max(.28,Math.abs(n[0]*n1[0]+n[1]*n1[1])),m=Math.min(halfWidth*2.4,halfWidth/den);left.push(mercatorLL([cur[0]+n[0]*m,cur[1]+n[1]*m]));right.push(mercatorLL([cur[0]-n[0]*m,cur[1]-n[1]*m]))}const ring=[...left,...right.reverse()];if(ring.length<4)return null;ring.push(ring[0]);return ring}
+  function orientedFC(){const fc=authoritativeFC(),features=[],records=[];for(const [i,f] of (fc.features||[]).entries()){const geom=f?.geometry||{},parts=geom.type==='LineString'?[geom.coordinates]:(geom.type==='MultiLineString'?geom.coordinates:[]);for(cons
+
+--- function bufferedRing @ 2516568 ---
+on'&&Array.isArray(fc.features)?fc:EMPTY}
+  function mercatorXY(p){const R=6378137,lon=Number(p?.[0])||0,lat=Math.max(-85,Math.min(85,Number(p?.[1])||0))*Math.PI/180;return [R*lon*Math.PI/180,R*Math.log(Math.tan(Math.PI/4+lat/2))]}
+  function mercatorLL(p){const R=6378137;return [Number(p?.[0]||0)/R*180/Math.PI,(2*Math.atan(Math.exp(Number(p?.[1]||0)/R))-Math.PI/2)*180/Math.PI]}
+  function unit(x,y){const m=Math.hypot(x,y)||1;return [x/m,y/m]}
+  function bufferedRing(coords,halfWidth=4.5){if(!Array.isArray(coords)||coords.length<2)return null;const xy=coords.map(mercatorXY),left=[],right=[];for(let i=0;i<xy.length;i++){const prev=xy[Math.max(0,i-1)],cur=xy[i],next=xy[Math.min(xy.length-1,i+1)],d1=unit(cur[0]-prev[0],cur[1]-prev[1]),d2=unit(next[0]-cur[0],next[1]-cur[1]);let tx=d1[0]+d2[0],ty=d1[1]+d2[1];if(Math.hypot(tx,ty)<.001){tx=d2[0]||d1[0];ty=d2[1]||d1[1]}const t=unit(tx,ty),n=[-t[1],t[0]],n1=[-d1[1],d1[0]],den=Math.max(.28,Math.abs(n[0]*n1[0]+n[1]*n1[1])),m=Math.min(halfWidth*2.4,halfWidth/den);left.push(mercatorLL([cur[0]+n[0]*m,cur[1]+n[1]*m]));right.push(mercatorLL([cur[0]-n[0]*m,cur[1]-n[1]*m]))}const ring=[...left,...right.reverse()];if(ring.length<4)return null;ring.push(ring[0]);return ring}
+  function orientedFC(){const fc=authoritativeFC(),features=[],records=[];for(const [i,f] of (fc.features||[]).entries()){const geom=f?.geometry||{},parts=geom.type==='LineString'?[geom.coordinates]:(geom.type==='MultiLineString'?geom.coordinates:[]);for(const [j,coords] of parts.entries()){if(!Array.isArray(coords)||coords
+
+--- function orientedFC @ 2517345 ---
+1]);let tx=d1[0]+d2[0],ty=d1[1]+d2[1];if(Math.hypot(tx,ty)<.001){tx=d2[0]||d1[0];ty=d2[1]||d1[1]}const t=unit(tx,ty),n=[-t[1],t[0]],n1=[-d1[1],d1[0]],den=Math.max(.28,Math.abs(n[0]*n1[0]+n[1]*n1[1])),m=Math.min(halfWidth*2.4,halfWidth/den);left.push(mercatorLL([cur[0]+n[0]*m,cur[1]+n[1]*m]));right.push(mercatorLL([cur[0]-n[0]*m,cur[1]-n[1]*m]))}const ring=[...left,...right.reverse()];if(ring.length<4)return null;ring.push(ring[0]);return ring}
+  function orientedFC(){const fc=authoritativeFC(),features=[],records=[];for(const [i,f] of (fc.features||[]).entries()){const geom=f?.geometry||{},parts=geom.type==='LineString'?[geom.coordinates]:(geom.type==='MultiLineString'?geom.coordinates:[]);for(const [j,coords] of parts.entries()){if(!Array.isArray(coords)||coords.length<2)continue;const raw=Number(f?.properties?.rawIndex),orientation=orientationForCoords16177(coords),base=Object.assign({},f.properties||{},{texture_flip:orientation.textureFlip,swale_width_m:9,water_side:orientation.status==='verified'?'terrain-verified-uphill':'not-directionally-rendered',orientation_status:orientation.status,orientation_high_side:orientation.highSide,orientation_rule:'published-geometry-cross-slope-multisample-16177',orientation_valid_samples:orientation.validSamples,orientation_strong_samples:orientation.strongSamples,orientation_consistency_pct:Number((orientation.consistency*100).toFixed(1)),orientation_median_cross_drop_m:orientation.medianCrossDropM,canopy_density:'bushy',render_owner:BUILD,geometry_role:'centerline',part_index:j});cons
+
+--- function applyWidth @ 2519736 ---
+:undefined,properties:Object.assign({},base,{geometry_role:'footprint'}),geometry:{type:'Polygon',coordinates:[ring]}})}}window.EARTHLINE_PROPERTY_ORIENTATION_EVIDENCE_16177={build:BUILD,rule:'published-geometry-cross-slope-multisample-16177',records,verified:records.filter(r=>r.status==='verified').length,indeterminate:records.filter(r=>r.status==='indeterminate').length,at:new Date().toISOString()};return {type:'FeatureCollection',features}}
+  function applyWidth(){const mp=map(),w=widthPx();lastWidth=w;try{if(mp?.getLayer?.(LAYERS.casing))mp.setPaintProperty(LAYERS.casing,'line-width',w+2);if(mp?.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(5,w*.82));if(mp?.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',w);if(mp?.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',w)}catch(_){}return w}
+  async function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){
+  for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay
+
+--- LAYERS.casing @ 2519819 ---
+type:'Polygon',coordinates:[ring]}})}}window.EARTHLINE_PROPERTY_ORIENTATION_EVIDENCE_16177={build:BUILD,rule:'published-geometry-cross-slope-multisample-16177',records,verified:records.filter(r=>r.status==='verified').length,indeterminate:records.filter(r=>r.status==='indeterminate').length,at:new Date().toISOString()};return {type:'FeatureCollection',features}}
+  function applyWidth(){const mp=map(),w=widthPx();lastWidth=w;try{if(mp?.getLayer?.(LAYERS.casing))mp.setPaintProperty(LAYERS.casing,'line-width',w+2);if(mp?.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(5,w*.82));if(mp?.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',w);if(mp?.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',w)}catch(_){}return w}
+  async function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){
+  for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay16336.style.removeProperty('opacity');
+  }
+  return false
+}if(!await ensureTextureL
+
+--- setPaintProperty @ 2519837 ---
+rdinates:[ring]}})}}window.EARTHLINE_PROPERTY_ORIENTATION_EVIDENCE_16177={build:BUILD,rule:'published-geometry-cross-slope-multisample-16177',records,verified:records.filter(r=>r.status==='verified').length,indeterminate:records.filter(r=>r.status==='indeterminate').length,at:new Date().toISOString()};return {type:'FeatureCollection',features}}
+  function applyWidth(){const mp=map(),w=widthPx();lastWidth=w;try{if(mp?.getLayer?.(LAYERS.casing))mp.setPaintProperty(LAYERS.casing,'line-width',w+2);if(mp?.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(5,w*.82));if(mp?.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',w);if(mp?.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',w)}catch(_){}return w}
+  async function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){
+  for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay16336.style.removeProperty('opacity');
+  }
+  return false
+}if(!await ensureTextureLayers())return fal
+
+--- LAYERS.casing @ 2519854 ---
+)}}window.EARTHLINE_PROPERTY_ORIENTATION_EVIDENCE_16177={build:BUILD,rule:'published-geometry-cross-slope-multisample-16177',records,verified:records.filter(r=>r.status==='verified').length,indeterminate:records.filter(r=>r.status==='indeterminate').length,at:new Date().toISOString()};return {type:'FeatureCollection',features}}
+  function applyWidth(){const mp=map(),w=widthPx();lastWidth=w;try{if(mp?.getLayer?.(LAYERS.casing))mp.setPaintProperty(LAYERS.casing,'line-width',w+2);if(mp?.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(5,w*.82));if(mp?.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',w);if(mp?.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',w)}catch(_){}return w}
+  async function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){
+  for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay16336.style.removeProperty('opacity');
+  }
+  return false
+}if(!await ensureTextureLayers())return false;const fc=orien
+
+--- line-width @ 2519869 ---
+LINE_PROPERTY_ORIENTATION_EVIDENCE_16177={build:BUILD,rule:'published-geometry-cross-slope-multisample-16177',records,verified:records.filter(r=>r.status==='verified').length,indeterminate:records.filter(r=>r.status==='indeterminate').length,at:new Date().toISOString()};return {type:'FeatureCollection',features}}
+  function applyWidth(){const mp=map(),w=widthPx();lastWidth=w;try{if(mp?.getLayer?.(LAYERS.casing))mp.setPaintProperty(LAYERS.casing,'line-width',w+2);if(mp?.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(5,w*.82));if(mp?.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',w);if(mp?.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',w)}catch(_){}return w}
+  async function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){
+  for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay16336.style.removeProperty('opacity');
+  }
+  return false
+}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers
+
+--- LAYERS.neutral @ 2519904 ---
+16177={build:BUILD,rule:'published-geometry-cross-slope-multisample-16177',records,verified:records.filter(r=>r.status==='verified').length,indeterminate:records.filter(r=>r.status==='indeterminate').length,at:new Date().toISOString()};return {type:'FeatureCollection',features}}
+  function applyWidth(){const mp=map(),w=widthPx();lastWidth=w;try{if(mp?.getLayer?.(LAYERS.casing))mp.setPaintProperty(LAYERS.casing,'line-width',w+2);if(mp?.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(5,w*.82));if(mp?.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',w);if(mp?.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',w)}catch(_){}return w}
+  async function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){
+  for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay16336.style.removeProperty('opacity');
+  }
+  return false
+}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties
+
+--- setPaintProperty @ 2519923 ---
+rule:'published-geometry-cross-slope-multisample-16177',records,verified:records.filter(r=>r.status==='verified').length,indeterminate:records.filter(r=>r.status==='indeterminate').length,at:new Date().toISOString()};return {type:'FeatureCollection',features}}
+  function applyWidth(){const mp=map(),w=widthPx();lastWidth=w;try{if(mp?.getLayer?.(LAYERS.casing))mp.setPaintProperty(LAYERS.casing,'line-width',w+2);if(mp?.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(5,w*.82));if(mp?.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',w);if(mp?.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',w)}catch(_){}return w}
+  async function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){
+  for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay16336.style.removeProperty('opacity');
+  }
+  return false
+}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='
+
+--- LAYERS.neutral @ 2519940 ---
+eometry-cross-slope-multisample-16177',records,verified:records.filter(r=>r.status==='verified').length,indeterminate:records.filter(r=>r.status==='indeterminate').length,at:new Date().toISOString()};return {type:'FeatureCollection',features}}
+  function applyWidth(){const mp=map(),w=widthPx();lastWidth=w;try{if(mp?.getLayer?.(LAYERS.casing))mp.setPaintProperty(LAYERS.casing,'line-width',w+2);if(mp?.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(5,w*.82));if(mp?.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',w);if(mp?.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',w)}catch(_){}return w}
+  async function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){
+  for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay16336.style.removeProperty('opacity');
+  }
+  return false
+}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline'),foot
+
+--- line-width @ 2519956 ---
+ope-multisample-16177',records,verified:records.filter(r=>r.status==='verified').length,indeterminate:records.filter(r=>r.status==='indeterminate').length,at:new Date().toISOString()};return {type:'FeatureCollection',features}}
+  function applyWidth(){const mp=map(),w=widthPx();lastWidth=w;try{if(mp?.getLayer?.(LAYERS.casing))mp.setPaintProperty(LAYERS.casing,'line-width',w+2);if(mp?.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(5,w*.82));if(mp?.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',w);if(mp?.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',w)}catch(_){}return w}
+  async function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){
+  for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay16336.style.removeProperty('opacity');
+  }
+  return false
+}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline'),footprints=fc.featur
+
+--- LAYERS.up @ 2520005 ---
+ilter(r=>r.status==='verified').length,indeterminate:records.filter(r=>r.status==='indeterminate').length,at:new Date().toISOString()};return {type:'FeatureCollection',features}}
+  function applyWidth(){const mp=map(),w=widthPx();lastWidth=w;try{if(mp?.getLayer?.(LAYERS.casing))mp.setPaintProperty(LAYERS.casing,'line-width',w+2);if(mp?.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(5,w*.82));if(mp?.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',w);if(mp?.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',w)}catch(_){}return w}
+  async function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){
+  for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay16336.style.removeProperty('opacity');
+  }
+  return false
+}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline'),footprints=fc.features.filter(f=>f.properties?.geometry_role==='footp
+
+--- setPaintProperty @ 2520019 ---
+tus==='verified').length,indeterminate:records.filter(r=>r.status==='indeterminate').length,at:new Date().toISOString()};return {type:'FeatureCollection',features}}
+  function applyWidth(){const mp=map(),w=widthPx();lastWidth=w;try{if(mp?.getLayer?.(LAYERS.casing))mp.setPaintProperty(LAYERS.casing,'line-width',w+2);if(mp?.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(5,w*.82));if(mp?.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',w);if(mp?.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',w)}catch(_){}return w}
+  async function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){
+  for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay16336.style.removeProperty('opacity');
+  }
+  return false
+}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline'),footprints=fc.features.filter(f=>f.properties?.geometry_role==='footprint'),directi
+
+--- LAYERS.up @ 2520036 ---
+.length,indeterminate:records.filter(r=>r.status==='indeterminate').length,at:new Date().toISOString()};return {type:'FeatureCollection',features}}
+  function applyWidth(){const mp=map(),w=widthPx();lastWidth=w;try{if(mp?.getLayer?.(LAYERS.casing))mp.setPaintProperty(LAYERS.casing,'line-width',w+2);if(mp?.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(5,w*.82));if(mp?.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',w);if(mp?.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',w)}catch(_){}return w}
+  async function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){
+  for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay16336.style.removeProperty('opacity');
+  }
+  return false
+}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline'),footprints=fc.features.filter(f=>f.properties?.geometry_role==='footprint'),directional=centers.filt
+
+--- line-width @ 2520047 ---
+eterminate:records.filter(r=>r.status==='indeterminate').length,at:new Date().toISOString()};return {type:'FeatureCollection',features}}
+  function applyWidth(){const mp=map(),w=widthPx();lastWidth=w;try{if(mp?.getLayer?.(LAYERS.casing))mp.setPaintProperty(LAYERS.casing,'line-width',w+2);if(mp?.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(5,w*.82));if(mp?.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',w);if(mp?.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',w)}catch(_){}return w}
+  async function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){
+  for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay16336.style.removeProperty('opacity');
+  }
+  return false
+}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline'),footprints=fc.features.filter(f=>f.properties?.geometry_role==='footprint'),directional=centers.filter(f=>f.pro
+
+--- LAYERS.flip @ 2520080 ---
+atus==='indeterminate').length,at:new Date().toISOString()};return {type:'FeatureCollection',features}}
+  function applyWidth(){const mp=map(),w=widthPx();lastWidth=w;try{if(mp?.getLayer?.(LAYERS.casing))mp.setPaintProperty(LAYERS.casing,'line-width',w+2);if(mp?.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(5,w*.82));if(mp?.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',w);if(mp?.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',w)}catch(_){}return w}
+  async function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){
+  for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay16336.style.removeProperty('opacity');
+  }
+  return false
+}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline'),footprints=fc.features.filter(f=>f.properties?.geometry_role==='footprint'),directional=centers.filter(f=>f.properties?.orientation_status==='ve
+
+--- setPaintProperty @ 2520096 ---
+inate').length,at:new Date().toISOString()};return {type:'FeatureCollection',features}}
+  function applyWidth(){const mp=map(),w=widthPx();lastWidth=w;try{if(mp?.getLayer?.(LAYERS.casing))mp.setPaintProperty(LAYERS.casing,'line-width',w+2);if(mp?.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(5,w*.82));if(mp?.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',w);if(mp?.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',w)}catch(_){}return w}
+  async function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){
+  for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay16336.style.removeProperty('opacity');
+  }
+  return false
+}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline'),footprints=fc.features.filter(f=>f.properties?.geometry_role==='footprint'),directional=centers.filter(f=>f.properties?.orientation_status==='verified'),neutral
+
+--- LAYERS.flip @ 2520113 ---
+:new Date().toISOString()};return {type:'FeatureCollection',features}}
+  function applyWidth(){const mp=map(),w=widthPx();lastWidth=w;try{if(mp?.getLayer?.(LAYERS.casing))mp.setPaintProperty(LAYERS.casing,'line-width',w+2);if(mp?.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(5,w*.82));if(mp?.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',w);if(mp?.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',w)}catch(_){}return w}
+  async function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){
+  for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay16336.style.removeProperty('opacity');
+  }
+  return false
+}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline'),footprints=fc.features.filter(f=>f.properties?.geometry_role==='footprint'),directional=centers.filter(f=>f.properties?.orientation_status==='verified'),neutral=centers.filter(f
+
+--- line-width @ 2520126 ---
+oISOString()};return {type:'FeatureCollection',features}}
+  function applyWidth(){const mp=map(),w=widthPx();lastWidth=w;try{if(mp?.getLayer?.(LAYERS.casing))mp.setPaintProperty(LAYERS.casing,'line-width',w+2);if(mp?.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(5,w*.82));if(mp?.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',w);if(mp?.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',w)}catch(_){}return w}
+  async function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){
+  for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay16336.style.removeProperty('opacity');
+  }
+  return false
+}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline'),footprints=fc.features.filter(f=>f.properties?.geometry_role==='footprint'),directional=centers.filter(f=>f.properties?.orientation_status==='verified'),neutral=centers.filter(f=>f.propertie
+
+--- function syncTexture @ 2520169 ---
+on',features}}
+  function applyWidth(){const mp=map(),w=widthPx();lastWidth=w;try{if(mp?.getLayer?.(LAYERS.casing))mp.setPaintProperty(LAYERS.casing,'line-width',w+2);if(mp?.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(5,w*.82));if(mp?.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',w);if(mp?.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',w)}catch(_){}return w}
+  async function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){
+  for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay16336.style.removeProperty('opacity');
+  }
+  return false
+}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline'),footprints=fc.features.filter(f=>f.properties?.geometry_role==='footprint'),directional=centers.filter(f=>f.properties?.orientation_status==='verified'),neutral=centers.filter(f=>f.properties?.orientation_status==='indeterminate'),si
+
+--- visibility @ 2520803 ---
+for(const id of Object.values(LAYERS))visible(id,false);
+  try{
+    if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')
+      window.earthlineSetNaturalSwalePlantingVisible15806(false);
+  }catch(_){}
+  const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+  if(regionalOverlay16336){
+    regionalOverlay16336.style.removeProperty('display');
+    regionalOverlay16336.style.removeProperty('visibility');
+    regionalOverlay16336.style.removeProperty('opacity');
+  }
+  return false
+}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline'),footprints=fc.features.filter(f=>f.properties?.geometry_role==='footprint'),directional=centers.filter(f=>f.properties?.orientation_status==='verified'),neutral=centers.filter(f=>f.properties?.orientation_status==='indeterminate'),sig=[model()?.searchGen,centers.length,centers.map(f=>String(f.properties?.rawIndex??f.id??'')).join(','),centers.map(f=>String(f.properties?.orientation_status)+'/'+String(f.properties?.texture_flip)).join('|')].join('|');const src=mp.getSource?.(SOURCE);if(src?.setData&&(sig!==lastSignature||reason.includes('force')||!src._data?.features?.length)){src.setData(fc);lastSignature=sig}try{if(typeof window.earthlineSyncNaturalSwalePlanting15806==='function')window.earthlineSyncNaturalSwalePlanting15806(authoritativeFC())}catch(_){}const show=centers.length>0&&footprints.length===centers.length&&directional.length+neutral.length===c
+
+--- OLD @ 2521997 ---
+lastSignature||reason.includes('force')||!src._data?.features?.length)){src.setData(fc);lastSignature=sig}try{if(typeof window.earthlineSyncNaturalSwalePlanting15806==='function')window.earthlineSyncNaturalSwalePlanting15806(authoritativeFC())}catch(_){}const show=centers.length>0&&footprints.length===centers.length&&directional.length+neutral.length===centers.length;for(const id of Object.values(LAYERS))visible(id,show);if(show){for(const id of OLD)visible(id,false);/* 16296: preserve the established Property recharge/groundwater context; the natural swale renderer no longer owns or suppresses those context layers. *//* 16294 natural presentation restore: the authoritative solid safe-line owner remains loaded and layout-visible for verification/fallback, but becomes visually transparent after the embedded natural texture is proven ready. This restores the protected brown/blue texture and tree/plant canopy without substituting or changing geometry. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',0)}catch(_){}}try{for(const id of [LAYERS.footprint,LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(true);for(const id of ['earthline-swale-planting-shadow-15806','earthline-swale-pl
+
+--- setPaintProperty @ 2522711 ---
+oaded and layout-visible for verification/fallback, but becomes visually transparent after the embedded natural texture is proven ready. This restores the protected brown/blue texture and tree/plant canopy without substituting or changing geometry. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',0)}catch(_){}}try{for(const id of [LAYERS.footprint,LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(true);for(const id of ['earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')}catch(_){}}else{/* If the natural renderer is unavailable, restore the verified authoritative safe-line fallback so Property output never disappears. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',.98)}catch(_){}}}const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');if(overlay)overlay.style.display=show?'none':'';cons
+
+--- LAYERS.footprint @ 2522781 ---
+ly transparent after the embedded natural texture is proven ready. This restores the protected brown/blue texture and tree/plant canopy without substituting or changing geometry. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',0)}catch(_){}}try{for(const id of [LAYERS.footprint,LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(true);for(const id of ['earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')}catch(_){}}else{/* If the natural renderer is unavailable, restore the verified authoritative safe-line fallback so Property output never disappears. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',.98)}catch(_){}}}const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');if(overlay)overlay.style.display=show?'none':'';const w=applyWidth(),registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasI
+
+--- LAYERS.casing @ 2522798 ---
+ter the embedded natural texture is proven ready. This restores the protected brown/blue texture and tree/plant canopy without substituting or changing geometry. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',0)}catch(_){}}try{for(const id of [LAYERS.footprint,LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(true);for(const id of ['earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')}catch(_){}}else{/* If the natural renderer is unavailable, restore the verified authoritative safe-line fallback so Property output never disappears. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',.98)}catch(_){}}}const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');if(overlay)overlay.style.display=show?'none':'';const w=applyWidth(),registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)}
+
+--- LAYERS.neutral @ 2522812 ---
+ed natural texture is proven ready. This restores the protected brown/blue texture and tree/plant canopy without substituting or changing geometry. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',0)}catch(_){}}try{for(const id of [LAYERS.footprint,LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(true);for(const id of ['earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')}catch(_){}}else{/* If the natural renderer is unavailable, restore the verified authoritative safe-line fallback so Property output never disappears. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',.98)}catch(_){}}}const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');if(overlay)overlay.style.display=show?'none':'';const w=applyWidth(),registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};window.EARTHL
+
+--- LAYERS.up @ 2522827 ---
+ure is proven ready. This restores the protected brown/blue texture and tree/plant canopy without substituting or changing geometry. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',0)}catch(_){}}try{for(const id of [LAYERS.footprint,LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(true);for(const id of ['earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')}catch(_){}}else{/* If the natural renderer is unavailable, restore the verified authoritative safe-line fallback so Property output never disappears. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',.98)}catch(_){}}}const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');if(overlay)overlay.style.display=show?'none':'';const w=applyWidth(),registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};window.EARTHLINE_PROPERTY_TE
+
+--- LAYERS.flip @ 2522837 ---
+ven ready. This restores the protected brown/blue texture and tree/plant canopy without substituting or changing geometry. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',0)}catch(_){}}try{for(const id of [LAYERS.footprint,LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(true);for(const id of ['earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')}catch(_){}}else{/* If the natural renderer is unavailable, restore the verified authoritative safe-line fallback so Property output never disappears. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',.98)}catch(_){}}}const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');if(overlay)overlay.style.display=show?'none':'';const w=applyWidth(),registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};window.EARTHLINE_PROPERTY_TEXTURE_AUDI
+
+--- moveLayer @ 2522874 ---
+d brown/blue texture and tree/plant canopy without substituting or changing geometry. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',0)}catch(_){}}try{for(const id of [LAYERS.footprint,LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(true);for(const id of ['earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')}catch(_){}}else{/* If the natural renderer is unavailable, restore the verified authoritative safe-line fallback so Property output never disappears. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',.98)}catch(_){}}}const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');if(overlay)overlay.style.display=show?'none':'';const w=applyWidth(),registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169={build:BUILD,reason,propertyA
+
+--- moveLayer @ 2523142 ---
+.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',0)}catch(_){}}try{for(const id of [LAYERS.footprint,LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(true);for(const id of ['earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')}catch(_){}}else{/* If the natural renderer is unavailable, restore the verified authoritative safe-line fallback so Property output never disappears. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',.98)}catch(_){}}}const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');if(overlay)overlay.style.display=show?'none':'';const w=applyWidth(),registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169={build:BUILD,reason,propertyActive:active,features:fc.features.length,centerlines:centers.length,footprints:footprints.length,directional:directional.length,neutral:neutral.length,normal:directional.filter(f=>f.properties.texture_flip===0).length,flipped:directional.filter(f=>f.properties.texture
+
+--- setPaintProperty @ 2523630 ---
+neApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')}catch(_){}}else{/* If the natural renderer is unavailable, restore the verified authoritative safe-line fallback so Property output never disappears. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',.98)}catch(_){}}}const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');if(overlay)overlay.style.display=show?'none':'';const w=applyWidth(),registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169={build:BUILD,reason,propertyActive:active,features:fc.features.length,centerlines:centers.length,footprints:footprints.length,directional:directional.length,neutral:neutral.length,normal:directional.filter(f=>f.properties.texture_flip===0).length,flipped:directional.filter(f=>f.properties.texture_flip===1).length,widthPx:Number(w.toFixed(2)),groundWidthM:9,waterSide:directional.length?'terrain-verified-uphill':(neutral.length?'not-shown-orientation-indeterminate':'none'),orientationRule:'published-geometry-cross-slope-multisample-16177',orientationComplete:directional.length+neutral.length===centers.length,orientationEvidence:window.EARTHLINE_PROPERTY_ORIENTATION_EVIDENCE_16177||null,sourceReady:!!src,imagesReady:registered.up&&registered.flip,registeredImages:registered,lay
+
+--- function scheduleSync @ 2524892 ---
+ished-geometry-cross-slope-multisample-16177',orientationComplete:directional.length+neutral.length===centers.length,orientationEvidence:window.EARTHLINE_PROPERTY_ORIENTATION_EVIDENCE_16177||null,sourceReady:!!src,imagesReady:registered.up&&registered.flip,registeredImages:registered,layers:Object.fromEntries(Object.entries(LAYERS).map(([k,id])=>[k,!!mp.getLayer?.(id)])),at:new Date().toISOString()};return show&&registered.up&&registered.flip}
+  function scheduleSync(reason,delay=80){clearTimeout(syncQueued);syncQueued=setTimeout(()=>syncTexture(reason),delay)}
+  function updateBuild(){/* Final visible build ownership belongs to the terminal 16171 startup controller. */}
+  function audit(){const b=document.getElementById('earthlineDeclareProperty16169'),x=document.getElementById('earthlineMapOnlyExit16169'),mp=map(),src=mp?.getSource?.(SOURCE);return {build:BUILD,displayedTier:displayedTier(),propertyActive:propertyActive(),declareVisible:!!b&&getComputedStyle(b).display!=='none',mapOnly:mapOnlyOn(),exitPortalVisible:!!x&&getComputedStyle(x).display!=='none',restingCursor:getComputedStyle(mp?.getCanvasContainer?.()||document.body).cursor,inlineCursor:mp?.getCanvasContainer?.()?.style?.cursor||'',sourceFeatures:src&&src._data&&Array.isArray(src._data.features)?src._data.features.length:0,texture:window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null,declaration:window.EARTHLINE_PROPERTY_DECLARATION_16169||null}}
+  function install(){if(installed)return;installed=true;ensureExitPortal();ensureDeclareButton();updateBuild();syncPor
+
+--- function updateBuild @ 2525012 ---
+entationEvidence:window.EARTHLINE_PROPERTY_ORIENTATION_EVIDENCE_16177||null,sourceReady:!!src,imagesReady:registered.up&&registered.flip,registeredImages:registered,layers:Object.fromEntries(Object.entries(LAYERS).map(([k,id])=>[k,!!mp.getLayer?.(id)])),at:new Date().toISOString()};return show&&registered.up&&registered.flip}
+  function scheduleSync(reason,delay=80){clearTimeout(syncQueued);syncQueued=setTimeout(()=>syncTexture(reason),delay)}
+  function updateBuild(){/* Final visible build ownership belongs to the terminal 16171 startup controller. */}
+  function audit(){const b=document.getElementById('earthlineDeclareProperty16169'),x=document.getElementById('earthlineMapOnlyExit16169'),mp=map(),src=mp?.getSource?.(SOURCE);return {build:BUILD,displayedTier:displayedTier(),propertyActive:propertyActive(),declareVisible:!!b&&getComputedStyle(b).display!=='none',mapOnly:mapOnlyOn(),exitPortalVisible:!!x&&getComputedStyle(x).display!=='none',restingCursor:getComputedStyle(mp?.getCanvasContainer?.()||document.body).cursor,inlineCursor:mp?.getCanvasContainer?.()?.style?.cursor||'',sourceFeatures:src&&src._data&&Array.isArray(src._data.features)?src._data.features.length:0,texture:window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null,declaration:window.EARTHLINE_PROPERTY_DECLARATION_16169||null}}
+  function install(){if(installed)return;installed=true;ensureExitPortal();ensureDeclareButton();updateBuild();syncPortal();restoreGrab();updateDeclareButton();const mp=map();if(mp?.isStyleLoaded?.())ensureImages();if(mp?.on){for(const ev
+
+--- function audit @ 2525124 ---
+ered.up&&registered.flip,registeredImages:registered,layers:Object.fromEntries(Object.entries(LAYERS).map(([k,id])=>[k,!!mp.getLayer?.(id)])),at:new Date().toISOString()};return show&&registered.up&&registered.flip}
+  function scheduleSync(reason,delay=80){clearTimeout(syncQueued);syncQueued=setTimeout(()=>syncTexture(reason),delay)}
+  function updateBuild(){/* Final visible build ownership belongs to the terminal 16171 startup controller. */}
+  function audit(){const b=document.getElementById('earthlineDeclareProperty16169'),x=document.getElementById('earthlineMapOnlyExit16169'),mp=map(),src=mp?.getSource?.(SOURCE);return {build:BUILD,displayedTier:displayedTier(),propertyActive:propertyActive(),declareVisible:!!b&&getComputedStyle(b).display!=='none',mapOnly:mapOnlyOn(),exitPortalVisible:!!x&&getComputedStyle(x).display!=='none',restingCursor:getComputedStyle(mp?.getCanvasContainer?.()||document.body).cursor,inlineCursor:mp?.getCanvasContainer?.()?.style?.cursor||'',sourceFeatures:src&&src._data&&Array.isArray(src._data.features)?src._data.features.length:0,texture:window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null,declaration:window.EARTHLINE_PROPERTY_DECLARATION_16169||null}}
+  function install(){if(installed)return;installed=true;ensureExitPortal();ensureDeclareButton();updateBuild();syncPortal();restoreGrab();updateDeclareButton();const mp=map();if(mp?.isStyleLoaded?.())ensureImages();if(mp?.on){for(const ev of ['load','style.load','zoomend','moveend','rotateend','pitchend','idle'])mp.on(ev,()=>{updateBuild();restoreG
+
+--- function install @ 2525876 ---
+y!=='none',mapOnly:mapOnlyOn(),exitPortalVisible:!!x&&getComputedStyle(x).display!=='none',restingCursor:getComputedStyle(mp?.getCanvasContainer?.()||document.body).cursor,inlineCursor:mp?.getCanvasContainer?.()?.style?.cursor||'',sourceFeatures:src&&src._data&&Array.isArray(src._data.features)?src._data.features.length:0,texture:window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null,declaration:window.EARTHLINE_PROPERTY_DECLARATION_16169||null}}
+  function install(){if(installed)return;installed=true;ensureExitPortal();ensureDeclareButton();updateBuild();syncPortal();restoreGrab();updateDeclareButton();const mp=map();if(mp?.isStyleLoaded?.())ensureImages();if(mp?.on){for(const ev of ['load','style.load','zoomend','moveend','rotateend','pitchend','idle'])mp.on(ev,()=>{updateBuild();restoreGrab();syncPortal();updateDeclareButton();if(ev==='load'||ev==='style.load')ensureImages();scheduleSync(ev,ev==='style.load'?120:35)})}for(const ev of ['pointerup','mouseup','touchend'])document.addEventListener(ev,()=>setTimeout(restoreGrab,0),true);document.addEventListener('keydown',e=>{if(e.key==='Escape')exitMapOnly()},true);document.addEventListener('click',e=>{if(e.target?.closest?.('.mapboxgl-ctrl-zoom-in,.mapboxgl-ctrl-zoom-out')){setTimeout(restoreGrab,0);setTimeout(restoreGrab,120);setTimeout(restoreGrab,420)}},true);document.addEventListener('earthline:analysis-complete',()=>scheduleSync('analysis-complete',100),{passive:true});let mutationRaf16169=0;const obs=new MutationObserver(()=>{if(mutationRaf16169)return;mutationRaf16169=re
