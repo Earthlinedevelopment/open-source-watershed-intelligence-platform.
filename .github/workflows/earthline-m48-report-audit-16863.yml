@@ -1,0 +1,42 @@
+name: Earthline M48 report/source/map audit 16863
+on:
+  push:
+    branches:
+      - mantra48-blue-isolation-16860
+permissions:
+  contents: read
+jobs:
+  audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra48-launch-clean-16861
+      - name: Inspect approved report/source/map owners only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8')
+          needles=[
+            'Source / evidence register','Source/evidence register','SOURCE / EVIDENCE REGISTER',
+            'Source manifest','SOURCE MANIFEST','Appendix B','How Bioswales Work','Swales Explained',
+            'Bioswale Impact','aquifer','AQUIFER','reportMap','report map','Report Map','reportPages'
+          ]
+          seen=[]
+          for needle in needles:
+            start=0; hits=[]
+            while True:
+              i=t.lower().find(needle.lower(),start)
+              if i<0: break
+              hits.append(i); start=i+1
+              if len(hits)>=12: break
+            print('\n###',needle,'hits',hits)
+            for i in hits[:6]:
+              key=(needle.lower(),i)
+              if key in seen: continue
+              seen.append(key)
+              print('\n--- index',i,'---')
+              print(t[max(0,i-1600):i+3200])
+          PY
