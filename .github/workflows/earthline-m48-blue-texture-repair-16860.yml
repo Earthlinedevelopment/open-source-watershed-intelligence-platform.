@@ -26,7 +26,7 @@ jobs:
           p=Path('index.html')
           t=p.read_text(encoding='utf-8')
           original=t
-          report={'build':'16860','scope':'TILE_UP/TILE_FLIP water-pixel recolor only','tiles':{}}
+          report={'build':'16860','scope':'existing TILE_UP/TILE_FLIP water-pixel recolor only','tiles':{}}
 
           def is_water(px):
               r,g,b,a=px
@@ -38,68 +38,79 @@ jobs:
           def recolor(px):
               r,g,b,a=px
               h,s,v=colorsys.rgb_to_hsv(r/255,g/255,b/255)
-              # Preserve the existing light/dark texture while shifting only water
-              # toward a clearly saturated blue. Alpha is untouched.
-              new_h=210/360
-              new_s=max(.92,s)
-              new_v=min(1.0,max(.66,v*1.16))
-              rr,gg,bb=colorsys.hsv_to_rgb(new_h,new_s,new_v)
+              # Preserve existing texture brightness variation; change only water hue/saturation.
+              nh=212/360
+              ns=max(.94,s)
+              nv=min(1.0,max(.70,v*1.18))
+              rr,gg,bb=colorsys.hsv_to_rgb(nh,ns,nv)
               return (round(rr*255),round(gg*255),round(bb*255),a)
 
           for name in ('TILE_UP','TILE_FLIP'):
-              pat=re.compile(r"(const\s+"+name+r"='data:image/webp;base64,)([^']+)(')")
+              pat=re.compile(r"const\s+"+name+r"='data:image/(webp|png);base64,([^']+)'" )
               m=pat.search(t)
               if not m: raise SystemExit(name+' data URL not found')
               before_raw=base64.b64decode(m.group(2))
               before=Image.open(io.BytesIO(before_raw)).convert('RGBA')
               before_px=list(before.getdata())
               mask=[is_water(px) for px in before_px]
-              after_px=[recolor(px) if mask[i] else px for i,px in enumerate(before_px)]
-              changed=sum(1 for a,b in zip(before_px,after_px) if a!=b)
+              changed=sum(mask)
               if changed < 5000: raise SystemExit(f'{name}: expected substantial existing water pixels, got {changed}')
-              after=Image.new('RGBA',before.size)
-              after.putdata(after_px)
-              buf=io.BytesIO()
-              after.save(buf,format='WEBP',lossless=True,quality=100,method=6)
-              after_raw=buf.getvalue()
-              # Verify exact decoded preservation outside the water mask.
-              verify=Image.open(io.BytesIO(after_raw)).convert('RGBA')
-              verify_px=list(verify.getdata())
+              after_px=[recolor(px) if mask[i] else px for i,px in enumerate(before_px)]
+              after=Image.new('RGBA',before.size); after.putdata(after_px)
+
+              # Prefer compact lossless WebP. If its decoder changes any visible non-water
+              # pixel, fall back to PNG so the brown/green texture is bit-exact after decode.
+              def encode(fmt):
+                  b=io.BytesIO()
+                  if fmt=='WEBP': after.save(b,format='WEBP',lossless=True,quality=100,method=6)
+                  else: after.save(b,format='PNG',optimize=True,compress_level=9)
+                  return b.getvalue()
+
+              chosen='webp'; after_raw=encode('WEBP')
+              verify=Image.open(io.BytesIO(after_raw)).convert('RGBA'); verify_px=list(verify.getdata())
+              visible_nonwater_diff=sum(1 for i,v in enumerate(mask) if not v and before_px[i][3]>=16 and before_px[i]!=verify_px[i])
+              alpha_diff=sum(1 for i in range(len(mask)) if before_px[i][3]!=verify_px[i][3])
+              if visible_nonwater_diff or alpha_diff:
+                  chosen='png'; after_raw=encode('PNG')
+                  verify=Image.open(io.BytesIO(after_raw)).convert('RGBA'); verify_px=list(verify.getdata())
+                  visible_nonwater_diff=sum(1 for i,v in enumerate(mask) if not v and before_px[i][3]>=16 and before_px[i]!=verify_px[i])
+                  alpha_diff=sum(1 for i in range(len(mask)) if before_px[i][3]!=verify_px[i][3])
               if verify.size != before.size: raise SystemExit(name+': dimensions changed')
-              if any(before_px[i] != verify_px[i] for i,v in enumerate(mask) if not v):
-                  raise SystemExit(name+': non-water decoded pixel changed')
-              if any(before_px[i][3] != verify_px[i][3] for i in range(len(mask))):
-                  raise SystemExit(name+': alpha changed')
-              new64=base64.b64encode(after_raw).decode('ascii')
-              t=t[:m.start(2)] + new64 + t[m.end(2):]
-              # Re-find patterns on the updated document in next iteration.
-              blue_after=[]
-              for i,v in enumerate(mask):
-                  if v:
+              if visible_nonwater_diff: raise SystemExit(name+': visible non-water pixel changed')
+              if alpha_diff: raise SystemExit(name+': alpha changed')
+
+              water_after=[]
+              for i,vv in enumerate(mask):
+                  if vv:
                       r,g,b,a=verify_px[i]
                       h,s,val=colorsys.rgb_to_hsv(r/255,g/255,b/255)
-                      blue_after.append((h*360,s,val))
+                      water_after.append((h*360,s,val))
+              if not water_after: raise SystemExit(name+': water mask vanished')
+              avg_sat=sum(x[1] for x in water_after)/len(water_after)
+              if avg_sat < .88: raise SystemExit(name+': repaired blue is not saturated enough')
+
+              new64=base64.b64encode(after_raw).decode('ascii')
+              replacement=f"const {name}='data:image/{chosen};base64,{new64}'"
+              t=t[:m.start()] + replacement + t[m.end():]
               report['tiles'][name]={
-                  'size':list(before.size),
+                  'size':list(before.size),'format':chosen,
                   'water_pixels_changed':changed,
-                  'non_water_pixels_preserved_exactly':True,
+                  'visible_non_water_pixels_preserved_exactly':True,
                   'alpha_preserved_exactly':True,
-                  'before_bytes':len(before_raw),
-                  'after_bytes':len(after_raw),
+                  'before_bytes':len(before_raw),'after_bytes':len(after_raw),
                   'before_sha256':hashlib.sha256(before_raw).hexdigest(),
                   'after_sha256':hashlib.sha256(after_raw).hexdigest(),
-                  'avg_hue_after':round(sum(x[0] for x in blue_after)/len(blue_after),2),
-                  'avg_saturation_after':round(sum(x[1] for x in blue_after)/len(blue_after),4),
-                  'avg_value_after':round(sum(x[2] for x in blue_after)/len(blue_after),4)
+                  'avg_hue_after':round(sum(x[0] for x in water_after)/len(water_after),2),
+                  'avg_saturation_after':round(avg_sat,4),
+                  'avg_value_after':round(sum(x[2] for x in water_after)/len(water_after),4)
               }
 
           if t == original: raise SystemExit('index.html unchanged')
-          # No other code/style/string ownership changes are allowed in this candidate.
           p.write_text(t,encoding='utf-8')
           Path('lab/mantra48-blue-texture-repair-16860.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
           print(json.dumps(report,indent=2))
           PY
-      - name: Verify only embedded tile payloads changed in index
+      - name: Verify index changed only at the two existing texture constants
         shell: bash
         run: |
           python3 - <<'PY'
@@ -107,12 +118,12 @@ jobs:
           import re, subprocess
           now=Path('index.html').read_text(encoding='utf-8')
           base=subprocess.check_output(['git','show','HEAD:index.html'],text=True)
-          pat=re.compile(r"const\s+(TILE_UP|TILE_FLIP)='data:image/webp;base64,[^']+'")
+          pat=re.compile(r"const\s+(TILE_UP|TILE_FLIP)='data:image/(?:webp|png);base64,[^']+'")
           scrub=lambda s: pat.sub(lambda m: "const "+m.group(1)+"='__TILE_PAYLOAD__'",s)
+          assert len(pat.findall(now))==2, 'repaired tile declarations missing/duplicated'
+          assert len(pat.findall(base))==2, 'base tile declarations missing/duplicated'
           assert scrub(now)==scrub(base), 'non-texture index content changed'
-          assert now.count("const TILE_UP='data:image/webp;base64,")==1
-          assert now.count("const TILE_FLIP='data:image/webp;base64,")==1
-          print('PASS: index change is limited to the two existing natural texture payloads')
+          print('PASS: every byte of index outside the two existing texture constants is unchanged')
           PY
       - name: Commit isolated candidate only
         shell: bash
