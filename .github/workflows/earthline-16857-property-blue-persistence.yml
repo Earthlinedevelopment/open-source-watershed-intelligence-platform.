@@ -1,0 +1,51 @@
+name: Earthline 16857 Property blue persistence only
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - fix-16857-property-blue-persistence
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix-16857-property-blue-persistence
+      - name: Keep Property water visibly blue after tier publication
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          t=p.read_text(encoding='utf-8')
+          old="safeLayer({id:PROPERTY.ditch,type:'line',source:PROPERTY_SOURCE,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#2b493d','line-width':['interpolate',['linear'],['zoom'],14,3.4,17,5.4,20,7.2],'line-opacity':.96}},before);"
+          new="safeLayer({id:PROPERTY.ditch,type:'line',source:PROPERTY_SOURCE,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#008cff','line-width':['interpolate',['linear'],['zoom'],14,3.4,17,5.4,20,7.2],'line-opacity':1}},before);"
+          c=t.count(old)
+          if c != 1:
+              raise SystemExit(f'expected exactly 1 Property ditch style match, found {c}')
+          t=t.replace(old,new,1)
+          marker='<!-- EARTHLINE 16857 — PROPERTY BLUE PERSISTENCE ONLY. Existing Property ditch/water presentation changes from dark green to saturated blue at identical width, geometry and pattern so the blue does not disappear when Focus hands off to Property. No hydrology, science, geometry, spacing, Regional styling, Arizona logic, report, tabs, gauge, DATA, logo or Orb change. -->\n'
+          if marker not in t:
+              t=marker+t
+          p.write_text(t,encoding='utf-8')
+          PY
+      - name: Verify color-only Property repair
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8')
+          assert "'line-color':'#008cff','line-width':['interpolate',['linear'],['zoom'],14,3.4,17,5.4,20,7.2],'line-opacity':1" in t
+          assert "'line-color':'#2b493d','line-width':['interpolate',['linear'],['zoom'],14,3.4,17,5.4,20,7.2],'line-opacity':.96" not in t
+          print('PASS: Property water remains saturated blue after Property publication; width/geometry/pattern unchanged')
+          PY
+      - name: Commit candidate
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'candidate: 16857 keep Property swale water blue after publication'
+          git push origin HEAD:fix-16857-property-blue-persistence
