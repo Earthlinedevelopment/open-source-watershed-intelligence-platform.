@@ -1,0 +1,164 @@
+name: Earthline M48 finish launch list 16867
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - main
+jobs:
+  finish:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra48-launch-clean-16861
+          fetch-depth: 0
+      - name: Apply final approved launch-list repairs
+        shell: bash
+        run: |
+          python3 -m pip install pillow --quiet
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          import json,re,base64,io,colorsys,subprocess
+          p=Path('index.html'); t=p.read_text(encoding='utf-8'); before=t; changes=[]
+
+          # Main report sources: one consolidated final page only.
+          a=t.find('function buildReport(data)'); b=t.find('function institutionalReportDocument',a)
+          if a<0 or b<0: raise SystemExit('report builder bounds missing')
+          seg=t[a:b]
+          seg=seg.replace('<h3 style="margin-top:24px">Source and evidence register</h3>${sourceRows(d)}','',1)
+          seg=seg.replace('<h2>What this release is required to preserve</h2>${sourceRows(d)}<h3 style="margin-top:24px">Preserved product artifacts</h3>','<h2>What this release is required to preserve</h2><h3 style="margin-top:24px">Preserved product artifacts</h3>',1)
+          seg=seg.replace('${finalSourcesPage16864(data)}','')
+          cmark="${footer(data,'C')}</section>"; pos=seg.rfind(cmark)
+          if pos<0: raise SystemExit('Appendix C footer missing')
+          pos+=len(cmark); seg=seg[:pos]+'\n${finalSourcesPage16864(data)}'+seg[pos:]
+          t=t[:a]+seg+t[b:]; changes.append('Bioswale Report sources consolidated on true final page')
+
+          # DATA wording synchronized to the existing score formula; formula itself unchanged.
+          oldnote='Modelled — not a measured infiltration rate. The headline is the mean of per-cell Earthline recharge scores. The rows expose the weighted inputs; because the engine clamps each cell before averaging, row means are explanatory rather than a second independent calculation.'
+          newnote='Modelled — not a measured infiltration rate. SCORE 0–100 is the mean of per-cell Earthline recharge suitability scores. Base weights are Aquifer 0.30, Soil 0.20, Slope 0.18, Flow 0.17, plus a 0.15 climate-need term centered at 50 before the rainfall multiplier. Rows are explanatory means from the same inputs; they are not a second independent calculation.'
+          if oldnote in t: t=t.replace(oldnote,newnote,1); changes.append('DATA wording synchronized')
+          elif newnote not in t: raise SystemExit('DATA note missing')
+
+          # Regional statewide presentation only: do not change geometry/hydrology.
+          old="const casing=grade==='A'?15:grade==='B'?12:9,core=grade==='A'?9.2:grade==='B'?7.2:5.2;"
+          new="const regionalZoom=Number(map?.getZoom?.()||6),regionalScale=regionalZoom<7?0.46:(regionalZoom<8?0.62:(regionalZoom<9?0.78:1)),casing=(grade==='A'?15:grade==='B'?12:9)*regionalScale,core=(grade==='A'?9.2:grade==='B'?7.2:5.2)*regionalScale;"
+          if old in t: t=t.replace(old,new,1); changes.append('Regional statewide swale stroke scaling')
+          elif 'regionalScale=regionalZoom<7?0.46' not in t: raise SystemExit('Regional stroke owner missing')
+          oldh="stroke:light,'stroke-width':grade==='A'?'1.8':'1.2'"
+          newh="stroke:light,'stroke-width':String((grade==='A'?1.8:1.2)*regionalScale)"
+          if oldh in t: t=t.replace(oldh,newh,1)
+
+          # Blue repair: only pixels previously changed by the existing water-texture repair.
+          live=subprocess.check_output(['git','show','2b662f83eb5abe9fddc9fbdc35daf98bb80141ae:index.html'],text=True)
+          for name in ('TILE_UP','TILE_FLIP'):
+              pat=re.compile(r"const\s+"+name+r"='data:image/(webp|png);base64,([^']+)'" )
+              ml,mc=pat.search(live),pat.search(t)
+              if not ml or not mc: raise SystemExit(name+' tile missing')
+              base_img=Image.open(io.BytesIO(base64.b64decode(ml.group(2)))).convert('RGBA')
+              cur_img=Image.open(io.BytesIO(base64.b64decode(mc.group(2)))).convert('RGBA')
+              if base_img.size!=cur_img.size: raise SystemExit(name+' dimensions changed')
+              bp=list(base_img.getdata()); cp=list(cur_img.getdata()); out=list(cp); changed=0
+              for i,(a0,a1) in enumerate(zip(bp,cp)):
+                  if a0==a1: continue
+                  r,g,b,a=a1
+                  h,s,v=colorsys.rgb_to_hsv(r/255,g/255,b/255)
+                  # Preserve texture brightness and alpha, force unmistakable water-blue hue/saturation.
+                  v=max(.48,min(.92,v*1.08))
+                  nr,ng,nb=colorsys.hsv_to_rgb(205/360,0.94,v)
+                  out[i]=(round(nr*255),round(ng*255),round(nb*255),a); changed+=1
+              if changed<1000: raise SystemExit(name+' water-pixel set unexpectedly small: '+str(changed))
+              newimg=Image.new('RGBA',cur_img.size); newimg.putdata(out)
+              buf=io.BytesIO(); newimg.save(buf,format='WEBP',lossless=True,method=6)
+              uri="data:image/webp;base64,"+base64.b64encode(buf.getvalue()).decode()
+              start,end=mc.span(); original=mc.group(0); replacement="const "+name+"='"+uri+"'"
+              t=t[:start]+replacement+t[end:]
+              changes.append(name+' water pixels strengthened blue only')
+          
+          if 'EARTHLINE_LAUNCH_LIST_16867' not in t:
+              t=t.replace('</body>',"<script>window.EARTHLINE_LAUNCH_LIST_16867={build:'16867',at:new Date().toISOString()};</script></body>",1)
+          p.write_text(t,encoding='utf-8')
+          Path('lab').mkdir(exist_ok=True)
+          Path('lab/mantra48-launch-list-16867.json').write_text(json.dumps({'build':'16867','changes':changes},indent=2),encoding='utf-8')
+          print(json.dumps({'build':'16867','changes':changes},indent=2))
+          PY
+      - name: Verify launch-list code and blue texture
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          import re,base64,io,colorsys,subprocess,tempfile,os
+          t=Path('index.html').read_text(encoding='utf-8')
+          a=t.find('function buildReport(data)'); b=t.find('function institutionalReportDocument',a); seg=t[a:b]
+          checks={
+            'Property Modelling':'Property Modelling' in t,
+            'Target keeps identity':'20-ACRE SEARCH' in t and 'ZOOM TO' not in t,
+            'Contact':'mailto:info@earthlinedevelopment.org' in t,
+            'Spanish':'Español' in t,
+            'Report aquifers':'const aquiferSvg=aquiferFeatures.map' in t and '${aquiferSvg}' in t,
+            'Report sources final':seg.count('${finalSourcesPage16864(data)}')==1 and seg.rfind('${finalSourcesPage16864(data)}')>seg.rfind("${footer(data,'C')}</section>"),
+            'DATA sync':'SCORE 0–100 is the mean of per-cell Earthline recharge suitability scores.' in t,
+            'Regional scale':'regionalScale=regionalZoom<7?0.46' in t,
+            'Search Orb':'id="searchOrb"' in t,
+            'One map':len(re.findall(r'id=["\']map["\']',t))==1,
+          }
+          print(checks); bad=[k for k,v in checks.items() if not v]
+          if bad: raise SystemExit('launch-list checks failed: '+', '.join(bad))
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',t,re.S|re.I)
+          for i,s in enumerate(scripts):
+              if not s.strip(): continue
+              fd,path=tempfile.mkstemp(suffix='.js'); os.close(fd); Path(path).write_text(s,encoding='utf-8')
+              r=subprocess.run(['node','--check',path],capture_output=True,text=True); os.unlink(path)
+              if r.returncode: raise SystemExit('JS syntax failure script '+str(i)+': '+r.stderr[-800:])
+          live=subprocess.check_output(['git','show','2b662f83eb5abe9fddc9fbdc35daf98bb80141ae:index.html'],text=True)
+          for name in ('TILE_UP','TILE_FLIP'):
+              pat=re.compile(r"const\s+"+name+r"='data:image/(?:webp|png);base64,([^']+)'" )
+              ia=Image.open(io.BytesIO(base64.b64decode(pat.search(live).group(1)))).convert('RGBA')
+              ib=Image.open(io.BytesIO(base64.b64decode(pat.search(t).group(1)))).convert('RGBA')
+              if ia.size!=ib.size: raise SystemExit(name+' dimension regression')
+              changed=[y for x,y in zip(ia.getdata(),ib.getdata()) if x!=y]
+              if len(changed)<1000: raise SystemExit(name+' insufficient blue pixels')
+              sats=[]
+              for r,g,b,a in changed:
+                  h,s,v=colorsys.rgb_to_hsv(r/255,g/255,b/255); sats.append(s)
+              avg=sum(sats)/len(sats); print(name,'changed',len(changed),'avgSat',round(avg,3))
+              if avg<.82: raise SystemExit(name+' still too muted')
+          print('PASS launch-list static + blue texture gate')
+          PY
+      - name: Browser smoke test launch-list candidate
+        shell: bash
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+          python3 -m http.server 8787 >/tmp/earthline-http.log 2>&1 &
+          cat >/tmp/smoke.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1000}});
+          const pageErrors=[]; page.on('pageerror',e=>pageErrors.push(String(e)));
+          await page.goto('http://127.0.0.1:8787/index.html',{waitUntil:'domcontentloaded',timeout:30000});
+          await page.waitForTimeout(1800);
+          const r=await page.evaluate(()=>({
+            map:!!document.getElementById('map'),orb:!!document.getElementById('searchOrb'),
+            heading:document.body.innerText.includes('Property Modelling'),
+            spanish:[...document.querySelectorAll('#earthlineLanguage16488 option')].some(o=>o.value==='es'),
+            contact:!!document.getElementById('earthlineRailContact16512'),
+            report:!!document.getElementById('earthlineVermontReport16149'),
+            build:!!window.EARTHLINE_LAUNCH_LIST_16867
+          }));
+          console.log(r,pageErrors); if(pageErrors.length)throw new Error(pageErrors.join(' | ')); for(const [k,v] of Object.entries(r))if(!v)throw new Error('smoke '+k);
+          await browser.close();
+          JS
+          node /tmp/smoke.mjs
+      - name: Commit finished launch-list candidate
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html lab/mantra48-launch-list-16867.json
+          git commit -m 'candidate: 16867 finish approved launch list'
+          git push origin HEAD:mantra48-launch-clean-16861
