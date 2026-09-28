@@ -1,0 +1,44 @@
+name: Earthline 16853 source context
+
+on:
+  push:
+    branches:
+      - candidate-m47-16853-blue-property-ui
+
+jobs:
+  inspect:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-m47-16853-blue-property-ui
+      - name: Print exact bounded contexts
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8')
+          terms=[
+            'Property Investigation',
+            'propertySection',
+            'earthlinePropertyTargetLabel16848',
+            'propertyTargetLabel16233',
+            'font:900 10.5px/1.15',
+            'span:last-child::before',
+            '#349dcc',
+            '.40+.10*pulse2',
+            'blueWidth=width*1.953125',
+          ]
+          for term in terms:
+            print('\n===== TERM',repr(term),'COUNT',t.count(term),'=====')
+            pos=0
+            shown=0
+            while shown<4:
+              i=t.find(term,pos)
+              if i<0: break
+              a=max(0,i-260); b=min(len(t),i+700)
+              print('--- occurrence',shown+1,'index',i,'---')
+              print(repr(t[a:b]))
+              pos=i+len(term); shown+=1
+          PY
