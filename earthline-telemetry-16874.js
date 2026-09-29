@@ -6,7 +6,7 @@
 const cfg=window.EARTHLINE_RUNTIME_CONFIG_16873||{};
 const endpoint=String(cfg.telemetryFunctionUrl||'');
 const enabled=/^https:\/\/[^/]+\.supabase\.co\/functions\/v1\/earthline-telemetry$/i.test(endpoint);
-const queue=[]; let flushTimer=null,flushing=false,ended=false;
+const queue=[]; let flushTimer=null,flushing=false,ended=false,analysisStartedAt=0;
 const started=performance.now();
 const marks=new Map();
 const SKEY='earthline-telemetry-session-16874';
@@ -28,28 +28,43 @@ function coarseGeo(lat,lng){const a=Number(lat),b=Number(lng);if(!Number.isFinit
 function start(kind,props={}){const id=uuid();marks.set(id,{t:performance.now(),kind,props:clean(props)});track(`${kind}_start`,props);return id}
 function finish(id,success=true,props={}){const m=marks.get(id);if(!m)return;marks.delete(id);track(`${m.kind}_${success?'success':'failure'}`,{...m.props,...props,success,duration_ms:Math.max(0,performance.now()-m.t)})}
 function vital(name,value,props={}){if(Number.isFinite(value))track('web_vital',{metric_name:name,metric_value:value,...props})}
+function modeNow(){try{const snap=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;const raw=String(document.documentElement.dataset.earthlineMode||snap?.tier||snap?.mode||'').toLowerCase();return raw.includes('property')?'property':'regional'}catch{return'regional'}}
 window.EarthlineTelemetry={enabled,track,flush:()=>flush(false),coarseGeo,start,finish,vital,sessionKey};
 
 if(!enabled)return;
-track('session_start',{properties:{entry_path:location.pathname}});
+track('session_start',{entry_path:location.pathname});
 track('page_view');
 
-window.addEventListener('error',e=>track('js_error',{error_class:clip(e?.error?.name||'Error',80),properties:{message:clip(e?.message,180),file:(()=>{try{return e?.filename?new URL(e.filename,location.href).pathname:null}catch{return null}})(),line:Number(e?.lineno)||null,column:Number(e?.colno)||null}}));
-window.addEventListener('unhandledrejection',e=>{const r=e?.reason;track('unhandled_rejection',{error_class:clip(r?.name||'PromiseRejection',80),properties:{message:clip(r?.message||r,180)}})});
+window.addEventListener('error',e=>track('js_error',{error_class:clip(e?.error?.name||'Error',80),message:clip(e?.message,180),file:(()=>{try{return e?.filename?new URL(e.filename,location.href).pathname:null}catch{return null}})(),line:Number(e?.lineno)||null,column:Number(e?.colno)||null}));
+window.addEventListener('unhandledrejection',e=>{const r=e?.reason;track('unhandled_rejection',{error_class:clip(r?.name||'PromiseRejection',80),message:clip(r?.message||r,180)})});
 
-document.addEventListener('click',e=>{const el=e.target?.closest?.('a,button,[role="button"]');if(!el)return;const explicit=el.getAttribute?.('data-earthline-track');if(explicit&&/^[a-z0-9_]{2,64}$/.test(explicit))return track(explicit);if(el.id==='earthlineLaunchDonate16872')return track('donate_click');if(el.id==='earthlineLaunchMerch16872')return track('merch_click');const href=el.getAttribute?.('href')||'';if(/^mailto:/i.test(href))return track('contact_click')},{capture:true,passive:true});
+document.addEventListener('click',e=>{
+ const el=e.target?.closest?.('a,button,[role="button"]');if(!el)return;
+ const explicit=el.getAttribute?.('data-earthline-track');if(explicit&&/^[a-z0-9_]{2,64}$/.test(explicit))return track(explicit);
+ if(['runBtn','runBtnSide','earthlineMapRun15970','earthlineMapRun16020','earthlineDeclareProperty16169'].includes(el.id)){
+   analysisStartedAt=performance.now();const mode=el.id==='earthlineDeclareProperty16169'?'property':modeNow();track(`${mode}_analysis_start`,{mode});return;
+ }
+ if(el.id==='earthlineLaunchDonate16872')return track('donate_click');
+ if(el.id==='earthlineLaunchMerch16872')return track('merch_click');
+ const href=el.getAttribute?.('href')||'';if(/^mailto:/i.test(href))return track('contact_click');
+ const label=String(el.getAttribute?.('aria-label')||el.textContent||'').trim().toLowerCase();
+ if(label==='data'||label.includes('data panel'))return track('data_open');
+ if(label.includes('bioswale impact report')||label==='report')return track('report_open');
+ if(label.includes('swales explained')||label.includes('how bioswales work'))return track('swales_explained_open');
+},{capture:true,passive:true});
 
+document.addEventListener('earthline:analysis-complete',e=>{const raw=String(e?.detail?.tier||e?.detail?.mode||'regional').toLowerCase();const mode=raw.includes('property')?'property':'regional';const duration=analysisStartedAt?Math.max(0,performance.now()-analysisStartedAt):null;analysisStartedAt=0;track(`${mode}_analysis_success`,{mode,success:true,duration_ms:duration})},{passive:true});
 document.addEventListener('earthline:telemetry',e=>{const d=e.detail||{};track(d.name,d.properties||{})});
 document.addEventListener('earthline:account',e=>track(e.detail?.signedIn?'auth_signed_in':'auth_signed_out'));
 
-try{const nav=performance.getEntriesByType('navigation')[0];if(nav){vital('TTFB',Math.max(0,nav.responseStart-nav.requestStart));track('navigation_timing',{duration_ms:nav.duration,properties:{dom_interactive_ms:nav.domInteractive,load_ms:nav.loadEventEnd||null,transfer_size:nav.transferSize||null}})}}catch(_){ }
+try{const nav=performance.getEntriesByType('navigation')[0];if(nav){vital('TTFB',Math.max(0,nav.responseStart-nav.requestStart));track('navigation_timing',{duration_ms:nav.duration,dom_interactive_ms:nav.domInteractive,load_ms:nav.loadEventEnd||null,transfer_size:nav.transferSize||null})}}catch(_){ }
 try{new PerformanceObserver(list=>{for(const e of list.getEntries())if(e.name==='first-contentful-paint')vital('FCP',e.startTime)}).observe({type:'paint',buffered:true})}catch(_){ }
 try{new PerformanceObserver(list=>{const es=list.getEntries();const e=es[es.length-1];if(e)vital('LCP',e.startTime)}).observe({type:'largest-contentful-paint',buffered:true})}catch(_){ }
 let cls=0;try{new PerformanceObserver(list=>{for(const e of list.getEntries())if(!e.hadRecentInput)cls+=e.value}).observe({type:'layout-shift',buffered:true})}catch(_){ }
 let inp=0;try{new PerformanceObserver(list=>{for(const e of list.getEntries())if(e.duration>inp)inp=e.duration}).observe({type:'event',buffered:true,durationThreshold:40})}catch(_){ }
 let longCount=0,longTotal=0,longMax=0;try{new PerformanceObserver(list=>{for(const e of list.getEntries()){longCount++;longTotal+=e.duration;longMax=Math.max(longMax,e.duration)}}).observe({type:'longtask',buffered:true})}catch(_){ }
 
-function end(){if(ended)return;ended=true;vital('CLS',cls);if(inp)vital('INP',inp);const resources=performance.getEntriesByType('resource');track('resource_summary',{properties:{count:resources.length,total_transfer_bytes:resources.reduce((s,e)=>s+(e.transferSize||0),0),slow_over_1s:resources.filter(e=>e.duration>=1000).length,long_tasks:longCount,long_task_total_ms:Math.round(longTotal),long_task_max_ms:Math.round(longMax)}});track('session_end',{duration_ms:Math.max(0,performance.now()-started)});flush(true)}
+function end(){if(ended)return;ended=true;vital('CLS',cls);if(inp)vital('INP',inp);const resources=performance.getEntriesByType('resource');track('resource_summary',{count:resources.length,total_transfer_bytes:resources.reduce((s,e)=>s+(e.transferSize||0),0),slow_over_1s:resources.filter(e=>e.duration>=1000).length,long_tasks:longCount,long_task_total_ms:Math.round(longTotal),long_task_max_ms:Math.round(longMax)});track('session_end',{duration_ms:Math.max(0,performance.now()-started)});flush(true)}
 window.addEventListener('pagehide',end,{once:true});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush(true)});
 })();
