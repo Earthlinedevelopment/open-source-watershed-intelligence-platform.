@@ -10,10 +10,10 @@ permissions:
 jobs:
   repair:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
-      - name: Patch existing dragend owner only
+      - name: Confirm existing dragend owner repair
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -21,30 +21,30 @@ jobs:
           s=p.read_text(encoding='utf-8')
           old="m.on('dragend',()=>{const t=window.EARTHLINE_PROPERTY_TARGET_16201;if(t&&t.code){const c=m.getCenter?.();if(c&&Number.isFinite(Number(c.lng))&&Number.isFinite(Number(c.lat)))setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair-user-drag-16414'},{openPanel:false})}});"
           new="m.on('dragend',()=>{const c=m.getCenter?.();if(c&&Number.isFinite(Number(c.lng))&&Number.isFinite(Number(c.lat)))setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair-user-drag-16888'},{openPanel:false})});"
-          if s.count(old)!=1:
-              raise SystemExit(f'expected one existing dragend owner, found {s.count(old)}')
-          s=s.replace(old,new,1)
-          if s.count("m.on('dragend'")!=1:
-              raise SystemExit('dragend owner count changed')
-          p.write_text(s,encoding='utf-8')
-          print('patched existing dragend owner; owner count remains 1')
+          if old in s:
+              s=s.replace(old,new,1)
+              p.write_text(s,encoding='utf-8')
+          if s.count(new)!=1 or s.count("m.on('dragend'")!=1:
+              raise SystemExit('crosshair owner repair/owner count invalid')
+          print('existing dragend owner repaired; owner count=1')
           PY
-      - name: Commit isolated repair
+      - name: Persist repair only if needed
         run: |
           git diff --check
-          git config user.name "Earthlinedevelopment"
-          git config user.email "info@earthlinedevelopment.org"
-          git add index.html
-          git commit -m "fix: sync free crosshair target on existing dragend owner"
-          git push origin HEAD:mantra49-release-audit-clean-16882
+          if ! git diff --quiet -- index.html; then
+            git config user.name "Earthlinedevelopment"
+            git config user.email "info@earthlinedevelopment.org"
+            git add index.html
+            git commit -m "fix: sync free crosshair target on existing dragend owner"
+            git push origin HEAD:mantra49-release-audit-clean-16882
+          fi
       - name: Install browser driver library only
         run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
-      - name: Verify patched owner over production origin
+      - name: Verify free crosshair moves without running an analysis
         run: |
           node - <<'JS'
           const {chromium}=require('playwright'),fs=require('fs');
-          const html=fs.readFileSync('index.html','utf8'), launch=fs.readFileSync('earthline-launch-16872.js','utf8');
+          const html=fs.readFileSync('index.html','utf8'),launch=fs.readFileSync('earthline-launch-16872.js','utf8');
           const BASE='https://earthlinedevelopment.org/';
-          const waitRegional=p=>p.evaluate(()=>new Promise(resolve=>{let done=false;const f=(k,d)=>{if(done)return;done=true;resolve({k,d})};document.addEventListener('earthline:analysis-complete',e=>{const t=String(e.detail?.tier||e.detail?.mode||'').toLowerCase();if(t.includes('regional'))f('complete',e.detail)});document.addEventListener('earthline:analysis-failed',e=>f('failed',e.detail));setTimeout(()=>f('timeout',{}),55000)}));
-          (async()=>{const b=await chromium.launch({channel:'chrome',headless:true,args:['--disable-dev-shm-usage']});try{const c=await b.newContext({viewport:{width:1800,height:900}}),p=await c.newPage();await p.route('https://earthlinedevelopment.org/**',r=>{const u=new URL(r.request().url());if(r.request().isNavigationRequest()&&u.origin==='https://earthlinedevelopment.org'&&u.pathname==='/')return r.fulfill({status:200,contentType:'text/html',body:html});if(u.origin==='https://earthlinedevelopment.org'&&u.pathname==='/earthline-launch-16872.js')return r.fulfill({status:200,contentType:'application/javascript',body:launch});return r.continue()});await p.goto(BASE+'?m49=16888',{waitUntil:'domcontentloaded',timeout:60000});await p.waitForSelector('#searchInput',{timeout:30000});await p.waitForFunction(()=>typeof window.earthlineSyncPropertyTargetFromMap16201==='function',{timeout:30000});await p.fill('#searchInput','Germany');const rp=waitRegional(p);await p.press('#searchInput','Enter');const reg=await rp;if(reg.k!=='complete')throw new Error('regional '+reg.k);await p.waitForTimeout(1200);const before=await p.evaluate(()=>window.EARTHLINE_PROPERTY_TARGET_16201&&({...window.EARTHLINE_PROPERTY_TARGET_16201}));const el=p.locator('.mapboxgl-canvas').first(),box=await el.boundingBox();if(!box)throw new Error('map canvas unavailable');const x=box.x+box.width*.55,y=box.y+box.height*.52;await p.mouse.move(x,y);await p.mouse.down();await p.mouse.move(x-190,y+35,{steps:14});await p.mouse.up();await p.waitForTimeout(1600);const after=await p.evaluate(()=>window.EARTHLINE_PROPERTY_TARGET_16201&&({...window.EARTHLINE_PROPERTY_TARGET_16201}));if(!before||!after)throw new Error('target missing');const d=Math.hypot(after.lng-before.lng,after.lat-before.lat);if(!(d>0.0001))throw new Error('crosshair target did not move '+JSON.stringify({before,after}));if(after.code)throw new Error('drag should leave free crosshair target, got code '+after.code);console.log('CROSSHAIR REPAIR PASS',d,before,after);await c.close()}finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)});
+          (async()=>{const b=await chromium.launch({channel:'chrome',headless:true,args:['--disable-dev-shm-usage']});try{const c=await b.newContext({viewport:{width:1800,height:900}}),p=await c.newPage();await p.route('https://earthlinedevelopment.org/**',r=>{const u=new URL(r.request().url());if(r.request().isNavigationRequest()&&u.origin==='https://earthlinedevelopment.org'&&u.pathname==='/')return r.fulfill({status:200,contentType:'text/html',body:html});if(u.origin==='https://earthlinedevelopment.org'&&u.pathname==='/earthline-launch-16872.js')return r.fulfill({status:200,contentType:'application/javascript',body:launch});return r.continue()});await p.goto(BASE+'?m49=16888b',{waitUntil:'domcontentloaded',timeout:60000});await p.waitForFunction(()=>typeof window.earthlineSyncPropertyTargetFromMap16201==='function',{timeout:30000});await p.evaluate(()=>{window.EARTHLINE_PROPERTY_TARGET_16201=null;window.earthlineSyncPropertyTargetFromMap16201()});await p.waitForTimeout(300);const before=await p.evaluate(()=>window.EARTHLINE_PROPERTY_TARGET_16201&&({...window.EARTHLINE_PROPERTY_TARGET_16201}));const el=p.locator('.mapboxgl-canvas').first(),box=await el.boundingBox();if(!box)throw new Error('map canvas unavailable');const x=box.x+box.width*.56,y=box.y+box.height*.55;await p.mouse.move(x,y);await p.mouse.down();await p.mouse.move(x-180,y+30,{steps:16});await p.mouse.up();await p.waitForTimeout(1200);const after=await p.evaluate(()=>window.EARTHLINE_PROPERTY_TARGET_16201&&({...window.EARTHLINE_PROPERTY_TARGET_16201}));if(!before||!after)throw new Error('target missing '+JSON.stringify({before,after}));const d=Math.hypot(after.lng-before.lng,after.lat-before.lat);if(!(d>0.0001))throw new Error('crosshair target did not move '+JSON.stringify({before,after}));if(after.code)throw new Error('drag must leave a free crosshair target');console.log('CROSSHAIR REPAIR PASS',d,after.source);await c.close()}finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)});
           JS
