@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      EARTHLINE_AUDIT_REVISION: "4"
+      EARTHLINE_AUDIT_REVISION: "5"
     steps:
       - uses: actions/checkout@v4
-      - name: Normalize native Contact icon in audit assertion only
+      - name: Normalize audit assertions and prioritize New Zealand
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -24,7 +24,9 @@ jobs:
           old="if(norm(a.text)!==norm(e[k]))throw new Error(`${label}: ${k} expected ${e[k]} got ${a.text}`);"
           new="if(norm(k==='contact'?a.text.replace(/^✉\\s*/,''):a.text)!==norm(e[k]))throw new Error(`${label}: ${k} expected ${e[k]} got ${a.text}`);"
           if s.count(old)!=1: raise SystemExit(f'contact assertion anchor count {s.count(old)}')
-          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          s=s.replace(old,new,1)
+          s=s.replace("await languageAudit(b);await accountAudit(b);const places=[['Germany','Germany'],['India','India'],['Vietnam','Vietnam'],['New Zealand','New Zealand country'],['Australia','Australia'],['Alaska','Alaska'],['Hawaii','Hawaii']];for(let i=0;i<places.length;i++)await placeAudit(b,...places[i],i);", "await languageAudit(b);const places=[['New Zealand','New Zealand'],['Australia','Australia'],['Hawaii','Hawaii'],['Alaska','Alaska'],['Germany','Germany'],['India','India'],['Vietnam','Vietnam']];for(let i=0;i<places.length;i++)await placeAudit(b,...places[i],i);await accountAudit(b);")
+          p.write_text(s,encoding='utf-8')
           PY
       - name: Verify candidate syntax and exact locked logo assets
         run: |
