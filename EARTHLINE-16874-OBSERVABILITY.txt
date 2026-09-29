@@ -1,0 +1,103 @@
+EARTHLINE 16874 — FIRST-PARTY SITE OBSERVABILITY
+
+STATUS
+- Prepared on isolated branch launch-observability-16874.
+- Production pages-live is unchanged.
+- Activation waits for the Earthline Supabase project because the telemetry store and Edge Functions do not exist until that project is created and configured.
+- This work does not alter hydrology, swale science, geometry, exclusions, logo, Search Orb, renderer ownership, reports, Gauge/DATA science, or map behavior.
+
+WHAT EARTHLINE WILL MONITOR
+1. TRAFFIC / AUDIENCE
+   - Sessions and page views.
+   - Entry path and referrer HOST only.
+   - UTM source / medium / campaign.
+   - Language and timezone.
+   - Coarse device capability, viewport/screen buckets, connection class and dark/light preference.
+
+2. SEARCH / COST CONTROL
+   - Search requests, success/failure, response time and result count.
+   - Guest/account class without recording a raw address or search string.
+   - Global/guest/account/rate-limit blocks.
+   - Current global search-cap consumption versus the hard daily cap.
+
+3. EARTHLINE ANALYSIS FUNNEL
+   - Regional analysis start/success/failure and duration.
+   - Property analysis start/success/failure and duration.
+   - Jurisdiction and optional coarse 0.25-degree geographic bucket only.
+   - Report opens, DATA opens, Swales Explained opens and other explicitly tagged controls.
+
+4. RELIABILITY
+   - JavaScript errors and unhandled promise rejections.
+   - Error class plus short sanitized message; no private form/search content.
+   - Search/backend failures.
+   - Analysis failure rate.
+
+5. PERFORMANCE
+   - TTFB, FCP, LCP, CLS and INP when supported.
+   - Navigation time.
+   - Resource count, total transfer bytes and count of resources slower than 1 second; resource URLs are NOT recorded.
+   - Long-task count, total duration and maximum duration.
+   - Analysis p50 and p95 runtime.
+
+6. CONVERSION / OUTREACH
+   - Contact clicks.
+   - Donate clicks.
+   - Merchandise clicks.
+   - Account sign-in/sign-up event counts.
+   - No payment-card or payment-detail collection occurs in telemetry.
+
+7. ADMIN OPERATIONS
+   - Authenticated Earthline Operations dashboard.
+   - 24-hour, 7-day and 30-day views.
+   - Event counts, top jurisdictions, top errors and Web Vitals.
+   - Search daily use/cap and telemetry daily use/cap.
+   - Metrics endpoint is fail-closed to an EARTHLINE_ADMIN_USER_IDS allowlist.
+
+PRIVACY / DATA-INTEGRITY LOCK
+Earthline telemetry intentionally DOES NOT store:
+- raw street addresses or search text;
+- exact GPS coordinates;
+- raw IP addresses (guest actor identity is salted one-way hash only);
+- account passwords or private credentials;
+- email/message bodies;
+- report text or user-entered private text;
+- full resource URLs that could contain search parameters.
+
+The goal is complete operational visibility, not collection of unnecessary personal data.
+
+COST / ABUSE LOCKS
+- Telemetry global cap defaults to 10,000 accepted events/day.
+- Per-actor cap defaults to 120 accepted events/minute.
+- Browser batches contain at most 30 events.
+- Payload limit is 64 KB.
+- Raw telemetry retention defaults to 30 days.
+- Old raw telemetry is pruned opportunistically.
+- All telemetry tables have RLS enabled and no anon/authenticated table access.
+- Browser ingestion is through the Edge Function only.
+
+FILES
+- supabase/migrations/20260929_earthline_telemetry.sql
+- supabase/functions/earthline-telemetry/index.ts
+- supabase/functions/earthline-admin-metrics/index.ts
+- earthline-telemetry-16874.js
+- earthline-admin-metrics-16874.html
+- earthline-backend-16873.js (extended to load telemetry when configured)
+- earthline-backend-16873.example.json (telemetry + metrics endpoints added)
+
+ACTIVATION
+A. Create/connect the Earthline Supabase project after cost confirmation.
+B. Apply accounts, search-limit and telemetry migrations.
+C. Deploy earthline-search with JWT verification as already planned.
+D. Deploy earthline-telemetry as the public guest-capable ingest function with its custom origin/rate controls.
+E. Deploy earthline-admin-metrics with JWT verification enabled.
+F. Configure server secrets: MAPBOX_SEARCH_TOKEN, EARTHLINE_GUEST_HASH_SALT, EARTHLINE_TELEMETRY_HASH_SALT, EARTHLINE_ALLOWED_ORIGINS, EARTHLINE_ADMIN_USER_IDS.
+G. Fill earthline-backend-16873.json with public Supabase URL/key and the three Edge Function URLs.
+H. Load earthline-backend-16873.js once from the main site. It then loads earthline-telemetry-16874.js only when the backend config is valid and enabled.
+I. Add explicit EarthlineTelemetry start/finish calls at the existing Regional and Property analysis owners so success/failure timing is authoritative rather than inferred.
+J. Test telemetry failure with the ingest endpoint unavailable: Earthline analysis/search/map must continue normally; telemetry never owns user-facing behavior.
+K. Test admin endpoint with a non-admin account: must return 403.
+L. Test raw address / exact coordinate / private-text attempts: they must be dropped before database insertion.
+M. Five live regression passes before promotion.
+
+NO THIRD-PARTY TRACKER REQUIRED
+The core observability stack is first-party Earthline + Supabase. Google Analytics, Meta Pixel or other advertising trackers are not required for operational monitoring and are not added by this build. This avoids sending Earthline visitor behavior to an advertising network and avoids a new external billing dependency.
