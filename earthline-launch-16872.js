@@ -1,7 +1,6 @@
 (function(){
 'use strict';
 const BUILD='EARTHLINE 16872';
-const EMAIL='info@earthlinedevelopment.org';
 const CONFIG_URL='earthline-cost-control-16872.json';
 const FALLBACK={enabled:true,paidSearchEnabled:true,guestDaily:5,accountDaily:25,hardDailyPerBrowser:25,perMinute:6,failClosed:true};
 let config={...FALLBACK},configReady=false;
@@ -35,7 +34,7 @@ function renderAccount(){const m=modal(),d=t(),q=quota();m.querySelector('h2').t
 function updateQuotaText(){if(document.getElementById('earthlineAccountModal16872'))renderAccount()}
 function openAccount(mode='login'){const m=modal();m.dataset.mode=mode;m.classList.add('open');renderAccount();setTimeout(()=>m.querySelector('input')?.focus(),40)}
 function donateTarget(){return String(window.EARTHLINE_DONATE_URL_16872||localStorage.getItem('earthlineDonateUrl16872')||'')}
-function donate(){const u=donateTarget();if(u){window.open(u,'_blank','noopener');return}window.location.href='mailto:'+EMAIL+'?subject=Earthline%20Donation'}
+function donate(){const u=donateTarget();if(u){window.open(u,'_blank','noopener');return}window.open('donate.html','_blank','noopener')}
 function installRail(){if(document.getElementById('earthlineLaunchLogin16872'))return;const contact=document.getElementById('earthlineRailContact16512');const host=contact?.parentElement||document.body;const mk=(id,txt)=>{const b=document.createElement('button');b.id=id;b.type='button';b.className='earthline-launch-rail-btn-16872';b.textContent=txt;return b};const L=mk('earthlineLaunchLogin16872',t().login),D=mk('earthlineLaunchDonate16872',t().donate),M=mk('earthlineLaunchMerch16872',t().merch);L.onclick=()=>openAccount('login');D.onclick=donate;M.onclick=()=>window.open('merchandise.html','_blank','noopener');if(contact){host.insertBefore(L,contact);host.insertBefore(D,contact);host.insertBefore(M,contact)}else{const wrap=document.createElement('div');wrap.id='earthlineLaunchFallbackRail16872';wrap.append(L,D,M);document.body.appendChild(wrap)}renderAccount()}
 async function loadConfig(){try{const r=await rawFetch(CONFIG_URL+'?v=16872',{cache:'no-store'});if(!r.ok)throw new Error('config');const j=await r.json();config={...FALLBACK,...j};configReady=true}catch(_){config={...FALLBACK,paidSearchEnabled:false};configReady=true}updateQuotaText()}
 function install(){installRail();modal();renderAccount();new MutationObserver(()=>{const current=lang();if(document.documentElement.dataset.earthlineLaunchLang16872!==current){document.documentElement.dataset.earthlineLaunchLang16872=current;renderAccount()}}).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});loadConfig();document.documentElement.dataset.earthlineLaunch16872='ready'}
