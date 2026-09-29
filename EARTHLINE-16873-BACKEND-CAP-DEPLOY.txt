@@ -1,0 +1,55 @@
+EARTHLINE 16873 — REAL ACCOUNTS + GLOBAL SEARCH COST BREAKER
+
+STATUS
+- Prepared on branch launch-backend-cap-16873 from exact live production SHA 540ce23dd77965f47bb30d05bc2d0e02f38d4f39.
+- NOT promoted to pages-live until the Supabase connection and Mapbox server token are configured and tested.
+- No production hydrology, map, swale, report, Search Orb, logo, or renderer code changed by this preparation.
+
+FILES
+1. supabase/migrations/20260929_earthline_accounts.sql
+   - Cross-device Earthline usernames linked to Supabase Auth users.
+   - RLS protects profile rows.
+2. supabase/migrations/20260929_earthline_search_limits.sql
+   - Authoritative global daily cap.
+   - Separate guest/account daily caps.
+   - Per-minute cap.
+   - Atomic SECURITY DEFINER claim function.
+   - No browser can directly alter the counter tables.
+3. supabase/functions/earthline-search/index.ts
+   - Validates Earthline origin.
+   - Resolves signed-in account when a valid Supabase bearer token exists.
+   - Otherwise hashes the client IP with a private salt; raw IP is not stored.
+   - Claims quota BEFORE every Mapbox geocoding request.
+   - Calls Mapbox with a server-only search token.
+   - Fails closed if Supabase, the quota RPC, the private salt, or the Mapbox token is unavailable.
+4. earthline-backend-16873.example.json
+   - Public runtime config template. Never place service-role or Mapbox secret tokens in this file.
+
+DEFAULT CAPS
+- Global search requests: 500/day.
+- Guest: 5/day.
+- Signed-in account: 25/day.
+- Rate limit: 6/minute.
+All values can be reduced before launch.
+
+SECRETS REQUIRED IN SUPABASE EDGE FUNCTION
+- MAPBOX_SEARCH_TOKEN = a server-side Mapbox token used only for search/geocoding.
+- EARTHLINE_GUEST_HASH_SALT = high-entropy private random value.
+Supabase provides SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to deployed functions.
+
+ACTIVATION SEQUENCE
+A. Connect Earthline Supabase project.
+B. Apply both migrations.
+C. Deploy earthline-search Edge Function.
+D. Set MAPBOX_SEARCH_TOKEN, EARTHLINE_GUEST_HASH_SALT, EARTHLINE_ALLOWED_ORIGINS.
+E. Create public earthline-backend-16873.json using only Supabase project URL + public anon key + function URL.
+F. Replace the current browser-local account/search limiter with Supabase Auth + the Edge Function proxy.
+G. Remove direct browser Mapbox geocoding/search calls so the server proxy is the only paid-search owner.
+H. Test guest cap, account cap, global cap, rate cap, fail-closed behavior, valid login/logout, Regional and Property search.
+I. Five consecutive live passes before acceptance.
+
+CRITICAL COST RULE
+The global cap is not a browser counter. The Edge Function must be the only route for billable Mapbox search/geocoding. If the quota system is unavailable, searches return an error and no upstream Mapbox search is sent.
+
+DONATE / MERCH
+The current live Donate and Merchandise controls remain safe placeholders until a real Stripe/PayPal receiving link and, if desired, store checkout are connected. Do not invent or hard-code a destination account.
