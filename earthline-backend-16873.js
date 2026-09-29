@@ -26,7 +26,7 @@ async function signUp({email,password,username}){
 async function signIn({email,password}){
  if(!state.enabled)throw new Error('Earthline accounts are not configured yet.');
  const data=await jsonFetch(config.supabaseUrl+'/auth/v1/token?grant_type=password',{method:'POST',headers:headers(),body:JSON.stringify({email:String(email||'').trim().toLowerCase(),password:String(password||'')})});
- session=data;saveSession();track('auth_signed_in');return data;
+ session=data;saveSession();return data;
 }
 function signOut(){session=null;try{sessionStorage.removeItem('earthline-supabase-session-16873')}catch(_){};document.dispatchEvent(new CustomEvent('earthline:account',{detail:{signedIn:false}}))}
 function saveSession(){try{if(session)sessionStorage.setItem('earthline-supabase-session-16873',JSON.stringify(session));else sessionStorage.removeItem('earthline-supabase-session-16873')}catch(_){};document.dispatchEvent(new CustomEvent('earthline:account',{detail:{signedIn:!!session?.access_token,user:session?.user||null}}))}
@@ -40,9 +40,7 @@ async function proxyMapbox(input,init){
  out.searchParams.set('q',decodeURIComponent(m[1]));
  for(const k of ['limit','country','language','proximity','types']){const v=src.searchParams.get(k);if(v)out.searchParams.set(k,v)}
  const h=new Headers(init?.headers||{}); if(accessToken())h.set('Authorization','Bearer '+accessToken());
- const t=performance.now();
- try{const r=await originalFetch(out.toString(),{...init,method:'GET',headers:h,cache:'no-store'});track(r.ok?'search_result':'search_failure',{success:r.ok,duration_ms:Math.max(0,performance.now()-t),properties:{status:r.status}});return r}
- catch(e){track('search_failure',{success:false,duration_ms:Math.max(0,performance.now()-t),error_class:'network'});throw e}
+ return originalFetch(out.toString(),{...init,method:'GET',headers:h,cache:'no-store'});
 }
 
 function commerce(){
