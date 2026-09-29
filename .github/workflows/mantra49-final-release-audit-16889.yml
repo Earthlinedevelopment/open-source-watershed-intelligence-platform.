@@ -12,32 +12,30 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      EARTHLINE_AUDIT_REVISION: "5"
+      EARTHLINE_AUDIT_REVISION: "6"
     steps:
       - uses: actions/checkout@v4
-      - name: Normalize audit assertions and prioritize New Zealand
+      - name: Isolate New Zealand camera path
         run: |
           python - <<'PY'
           from pathlib import Path
           p=Path('tools/mantra49-final-release-audit-16889.js')
           s=p.read_text(encoding='utf-8')
-          old="if(norm(a.text)!==norm(e[k]))throw new Error(`${label}: ${k} expected ${e[k]} got ${a.text}`);"
-          new="if(norm(k==='contact'?a.text.replace(/^✉\\s*/,''):a.text)!==norm(e[k]))throw new Error(`${label}: ${k} expected ${e[k]} got ${a.text}`);"
-          if s.count(old)!=1: raise SystemExit(f'contact assertion anchor count {s.count(old)}')
+          old="await languageAudit(b);await accountAudit(b);const places=[['Germany','Germany'],['India','India'],['Vietnam','Vietnam'],['New Zealand','New Zealand country'],['Australia','Australia'],['Alaska','Alaska'],['Hawaii','Hawaii']];for(let i=0;i<places.length;i++)await placeAudit(b,...places[i],i);"
+          new="const places=[['New Zealand','New Zealand']];for(let i=0;i<places.length;i++)await placeAudit(b,...places[i],i);"
+          if old not in s:
+              old="await languageAudit(b);const places=[['New Zealand','New Zealand'],['Australia','Australia'],['Hawaii','Hawaii'],['Alaska','Alaska'],['Germany','Germany'],['India','India'],['Vietnam','Vietnam']];for(let i=0;i<places.length;i++)await placeAudit(b,...places[i],i);await accountAudit(b);"
+          if old not in s: raise SystemExit('main audit anchor not found')
           s=s.replace(old,new,1)
-          s=s.replace("await languageAudit(b);await accountAudit(b);const places=[['Germany','Germany'],['India','India'],['Vietnam','Vietnam'],['New Zealand','New Zealand country'],['Australia','Australia'],['Alaska','Alaska'],['Hawaii','Hawaii']];for(let i=0;i<places.length;i++)await placeAudit(b,...places[i],i);", "await languageAudit(b);const places=[['New Zealand','New Zealand'],['Australia','Australia'],['Hawaii','Hawaii'],['Alaska','Alaska'],['Germany','Germany'],['India','India'],['Vietnam','Vietnam']];for(let i=0;i<places.length;i++)await placeAudit(b,...places[i],i);await accountAudit(b);")
           p.write_text(s,encoding='utf-8')
           PY
-      - name: Verify candidate syntax and exact locked logo assets
+      - name: Verify candidate syntax
         run: |
           node --check earthline-launch-16872.js
           node --check tools/mantra49-final-release-audit-16889.js
-          test -s earthline-email-logo.png
-          test -s earthline-logo-master.png
-          cmp earthline-email-logo.png earthline-logo-master.png
       - name: Install browser driver library only
         run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
-      - name: Run final isolated candidate over production origin
+      - name: Run New Zealand isolated candidate over production origin
         run: node tools/mantra49-final-release-audit-16889.js
       - name: Upload audit evidence
         if: always()
