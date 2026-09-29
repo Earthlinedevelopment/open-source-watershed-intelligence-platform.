@@ -8,23 +8,35 @@ on:
       - tools/mantra49-patch-launch-16883.py
       - tools/mantra49-patch-audit-16884.py
       - earthline-launch-16872.js
+      - earthline-launch-16872.css
       - .github/workflows/mantra49-release-audit-16882.yml
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   audit:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Apply isolated candidate launch patch
+      - name: Apply exact launch candidate patch
         run: python tools/mantra49-patch-launch-16883.py
-      - name: Apply geographic audit interaction patch
+      - name: Verify and persist exact launch candidate
+        run: |
+          node --check earthline-launch-16872.js
+          git diff --check
+          if ! git diff --quiet -- earthline-launch-16872.js; then
+            git config user.name "Earthlinedevelopment"
+            git config user.email "info@earthlinedevelopment.org"
+            git add earthline-launch-16872.js
+            git commit -m "fix: finalize bounded language settle and withhold unconfigured commerce [skip ci]"
+            git push origin HEAD:mantra49-release-audit-clean-16882
+          fi
+      - name: Apply audit-only interaction patch
         run: python tools/mantra49-patch-audit-16884.py
       - name: Install browser driver library only
         run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
-      - name: Run candidate-over-production browser audit
+      - name: Run exact-candidate-over-production browser audit
         run: node tools/mantra49-release-audit-16883.js
       - name: Upload audit evidence
         if: always()
