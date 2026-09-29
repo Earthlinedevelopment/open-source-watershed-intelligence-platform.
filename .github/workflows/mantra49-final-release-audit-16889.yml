@@ -1,0 +1,33 @@
+name: Earthline Mantra 49 final release audit 16889
+on:
+  push:
+    branches:
+      - mantra49-release-audit-clean-16882
+    paths:
+      - .github/workflows/mantra49-final-release-audit-16889.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify candidate syntax and exact locked logo assets
+        run: |
+          node --check earthline-launch-16872.js
+          node --check tools/mantra49-final-release-audit-16889.js
+          test -s earthline-email-logo.png
+          test -s earthline-logo-master.png
+          cmp earthline-email-logo.png earthline-logo-master.png
+      - name: Install browser driver library only
+        run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
+      - name: Run final isolated candidate over production origin
+        run: node tools/mantra49-final-release-audit-16889.js
+      - name: Upload audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-mantra49-final-16889
+          path: artifacts/mantra49-final-16889/
+          if-no-files-found: ignore
