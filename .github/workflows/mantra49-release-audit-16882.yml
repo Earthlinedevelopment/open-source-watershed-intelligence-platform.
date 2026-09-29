@@ -6,6 +6,7 @@ on:
     paths:
       - tools/mantra49-release-audit-16883.js
       - tools/mantra49-patch-launch-16883.py
+      - tools/mantra49-patch-audit-16884.py
       - earthline-launch-16872.js
       - .github/workflows/mantra49-release-audit-16882.yml
   workflow_dispatch:
@@ -19,6 +20,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Apply isolated candidate launch patch
         run: python tools/mantra49-patch-launch-16883.py
+      - name: Apply geographic audit interaction patch
+        run: python tools/mantra49-patch-audit-16884.py
       - name: Install browser driver library only
         run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
       - name: Run candidate-over-production browser audit
