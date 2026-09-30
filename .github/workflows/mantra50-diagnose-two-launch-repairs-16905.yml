@@ -14,13 +14,16 @@ jobs:
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
           terms=[
-            'regionalCapacity16755=',
-            'let lastData',
-            'lastData=',
-            'function render',
-            'window.EARTHLINE_REGIONAL_VISUAL_DATA_16020=',
-            'function schedule(){',
-            'setBusy(true'
+            'analysisBBox',
+            'loc.bbox',
+            'hy.bounds',
+            'loadTerrain',
+            'loadRegionalTerrain',
+            'terrainBounds',
+            'regionalExtent',
+            'earthlineRegionalExtent',
+            'earthlineRenderRegionalOverlay16020',
+            'function schedule(){'
           ]
           out=[]
           for term in terms:
@@ -30,9 +33,9 @@ jobs:
                   i=s.find(term,start)
                   if i<0: break
                   hits.append(i); start=i+1
-              out.append('HITS '+repr(hits[:20])+' COUNT '+str(len(hits)))
-              for i in hits[:10]:
-                  a=max(0,i-5000); b=min(len(s),i+10000)
+              out.append('HITS '+repr(hits[:50])+' COUNT '+str(len(hits)))
+              for i in hits[:15]:
+                  a=max(0,i-7000); b=min(len(s),i+12000)
                   out.append(s[a:b]); out.append('\n---END HIT---\n')
           Path('mantra50-source-neighborhoods.txt').write_text('\n'.join(out),encoding='utf-8')
           print('wrote mantra50-source-neighborhoods.txt')
