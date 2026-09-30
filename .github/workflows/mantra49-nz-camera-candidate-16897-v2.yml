@@ -1,0 +1,28 @@
+name: Earthline NZ camera candidate 16897 v2
+on:
+  push:
+    branches: [mantra49-final-wrap-16896]
+    paths:
+      - tools/apply-nz-camera-16897.py
+      - tools/test-nz-camera-16897.js
+      - .github/workflows/mantra49-nz-camera-candidate-16897-v2.yml
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra49-final-wrap-16896
+      - run: python tools/apply-nz-camera-16897.py
+      - run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
+      - run: node tools/test-nz-camera-16897.js
+      - name: Commit passed product repair
+        run: |
+          git config user.name Earthlinedevelopment
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git commit -m "fix: use bbox camera for large-area search framing"
+          git push origin HEAD:mantra49-final-wrap-16896
