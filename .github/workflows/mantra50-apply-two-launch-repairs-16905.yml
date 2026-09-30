@@ -1,0 +1,30 @@
+name: Mantra 50 apply two launch repairs 16905
+on:
+  push:
+    branches: [mantra50-two-launch-repairs-16905]
+    paths:
+      - 'tools/mantra50-apply-two-launch-repairs-16905.py'
+      - '.github/workflows/mantra50-apply-two-launch-repairs-16905.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra50-two-launch-repairs-16905
+      - name: Apply exactly two launch repairs
+        run: python tools/mantra50-apply-two-launch-repairs-16905.py
+      - name: Commit candidate index
+        run: |
+          if git diff --quiet -- index.html; then
+            echo 'No index change to commit.'
+            exit 0
+          fi
+          git config user.name Earthlinedevelopment
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git commit -m 'fix: retire stale Regional state and restore Alaska extent'
+          git push origin HEAD:mantra50-two-launch-repairs-16905
