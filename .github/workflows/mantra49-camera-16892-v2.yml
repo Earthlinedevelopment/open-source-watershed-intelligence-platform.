@@ -1,0 +1,26 @@
+name: Earthline camera 16892 v2
+on:
+  push:
+    branches: [mantra49-release-audit-clean-16882]
+    paths: [.github/workflows/mantra49-camera-16892-v2.yml]
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra49-release-audit-clean-16882
+          fetch-depth: 1
+      - run: python tools/apply-camera-16892.py
+      - run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
+      - run: node tools/camera-16892-test.js
+      - name: Commit passed product repair
+        run: |
+          git config user.name Earthlinedevelopment
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git commit -m "fix: frame large-area searches from existing bbox"
+          git push origin HEAD:mantra49-release-audit-clean-16882
