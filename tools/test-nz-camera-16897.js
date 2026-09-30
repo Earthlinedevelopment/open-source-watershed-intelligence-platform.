@@ -1,0 +1,32 @@
+const {chromium}=require('playwright'),fs=require('fs');
+const html=fs.readFileSync('index.html','utf8');
+const launch=fs.readFileSync('earthline-launch-16872.js','utf8');
+const lang=fs.readFileSync('earthline-language-hotfix-16890.js','utf8');
+const css=fs.readFileSync('earthline-launch-16872.css','utf8');
+(async()=>{
+  const b=await chromium.launch({headless:true,executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
+  const p=await b.newPage({viewport:{width:1800,height:950}});
+  await p.route('https://earthlinedevelopment.org/**',r=>{
+    const u=new URL(r.request().url());
+    if(r.request().isNavigationRequest()&&u.pathname==='/')return r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html});
+    if(u.pathname==='/earthline-launch-16872.js')return r.fulfill({status:200,contentType:'application/javascript',body:launch});
+    if(u.pathname==='/earthline-language-hotfix-16890.js')return r.fulfill({status:200,contentType:'application/javascript',body:lang});
+    if(u.pathname==='/earthline-launch-16872.css')return r.fulfill({status:200,contentType:'text/css',body:css});
+    return r.continue();
+  });
+  await p.goto('https://earthlinedevelopment.org/?nzcam16897='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+  await p.waitForTimeout(7000);
+  const funcs=await p.evaluate(()=>({apply:typeof applyLocation,map:!!window.earthlineMap}));
+  console.log('FUNCS',funcs);
+  if(funcs.apply!=='function')throw Error('applyLocation unavailable');
+  const nz={q:'New Zealand',name:'New Zealand',fullName:'New Zealand',sub:'Country',placeType:'country',lat:-41.2,lng:174.0,bbox:[166.4,-47.4,178.6,-34.0],zoomHint:5,planning:true,zones:['New Zealand']};
+  await p.evaluate(async nz=>{await applyLocation(nz,null,++M.searchGen,{immediateForAnalysis:true})},nz);
+  await p.waitForTimeout(1500);
+  const out=await p.evaluate(()=>{const m=window.earthlineMap,c=m?.getCenter?.();return{okMap:!!m,center:c&&{lng:Number(c.lng),lat:Number(c.lat)},zoom:m?.getZoom?.(),loc:{name:M.loc?.name,lng:M.loc?.lng,lat:M.loc?.lat,bbox:M.loc?.bbox,zoomHint:M.loc?.zoomHint}}});
+  console.log('NZ_CAMERA',JSON.stringify(out));
+  if(!out.okMap)throw Error('map unavailable');
+  if(!(Number(out.zoom)<8.5))throw Error('NZ bbox still over-zoomed '+out.zoom);
+  if(!(out.center&&out.center.lng>165&&out.center.lng<180&&out.center.lat>-49&&out.center.lat<-33))throw Error('NZ center outside country bbox '+JSON.stringify(out.center));
+  await b.close();
+  console.log('NZ CAMERA 16897 CANDIDATE PASS');
+})().catch(e=>{console.error(e);process.exit(1)});
