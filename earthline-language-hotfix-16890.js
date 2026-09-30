@@ -1,6 +1,30 @@
 (function(){
 'use strict';
 const KEY='earthlineLanguage16488';
+const LAUNCH_LANGUAGE_OPTIONS=[
+  ['en','Eng'],
+  ['th','Thai'],
+  ['vi','Vietnamese'],
+  ['lo','Laotian']
+];
+function ensureLaunchLanguageOptions(sel){
+  if(!sel)return;
+  const byValue=new Map(Array.from(sel.options||[]).map(o=>[String(o.value||''),o]));
+  for(const [value,label] of LAUNCH_LANGUAGE_OPTIONS){
+    let opt=byValue.get(value);
+    if(!opt){
+      opt=document.createElement('option');
+      opt.value=value;
+    }
+    opt.textContent=label;
+    sel.appendChild(opt);
+  }
+  const anchor=sel.firstChild;
+  for(let i=LAUNCH_LANGUAGE_OPTIONS.length-1;i>=0;i--){
+    const opt=Array.from(sel.options||[]).find(o=>String(o.value||'')===LAUNCH_LANGUAGE_OPTIONS[i][0]);
+    if(opt)sel.insertBefore(opt,anchor);
+  }
+}
 function disableLanguage(){
   try{localStorage.setItem(KEY,'en')}catch(_){}
   window.EARTHLINE_LANGUAGE_16488='en';
@@ -8,6 +32,7 @@ function disableLanguage(){
   document.documentElement.dataset.earthlineLanguageDisabled='1';
   const sel=document.getElementById('earthlineLanguage16488');
   if(sel){
+    ensureLaunchLanguageOptions(sel);
     try{sel.value='en'}catch(_){}
     sel.disabled=true;
     sel.setAttribute('disabled','');
@@ -27,7 +52,7 @@ function blockLanguage(ev){
 }
 window.earthlineApplyUiLanguage16871=function(){disableLanguage();return'en'};
 window.earthlineApplyLanguage16890=function(){disableLanguage();return'en'};
-window.earthlineLanguageOwner16890=Object.freeze({build:'EARTHLINE 16904',rule:'language control visible but inactive for launch; English only'});
+window.earthlineLanguageOwner16890=Object.freeze({build:'EARTHLINE 16906',rule:'language control visible but inactive for launch; menu order Eng, Thai, Vietnamese, Laotian'});
 for(const ev of ['click','pointerdown','mousedown','keydown','input','change'])document.addEventListener(ev,blockLanguage,true);
 function boot(){
   disableLanguage();
