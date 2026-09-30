@@ -1,0 +1,38 @@
+name: Mantra 50 diagnose two launch repairs 16905
+on:
+  push:
+    branches: [mantra50-two-launch-repairs-16905]
+  workflow_dispatch:
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract authoritative source neighborhoods
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          terms=[
+            'earthlineRenderRegionalOverlay16020',
+            'guardedSetGeo(runToken,m,IDS.contours',
+            'const bestByCell16783=new Map()',
+            'if(chosen.length>=',
+            'candidateCoverageCellKeys16790',
+            'LAST_ATOMIC_STATE_PACKAGE_16556',
+            'runBtn'
+          ]
+          for term in terms:
+              print('\n===== '+term+' =====')
+              start=0
+              hits=[]
+              while True:
+                  i=s.find(term,start)
+                  if i<0: break
+                  hits.append(i); start=i+1
+              print('HITS',hits[:20], 'COUNT',len(hits))
+              for i in hits[:5]:
+                  a=max(0,i-3500); b=min(len(s),i+7000)
+                  print(s[a:b])
+                  print('\n---END HIT---\n')
+          PY
