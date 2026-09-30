@@ -1,0 +1,45 @@
+name: Earthline language hotfix 16890 v2
+on:
+  push:
+    branches:
+      - mantra49-language-hotfix-16890
+    paths:
+      - .github/workflows/mantra49-language-hotfix-16890-v2.yml
+permissions:
+  contents: write
+jobs:
+  language:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra49-language-hotfix-16890
+          fetch-depth: 1
+      - name: Wire single language owner into candidate only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); s=p.read_text(encoding='utf-8')
+          tag='<script src="earthline-language-hotfix-16890.js"></script>'
+          if tag not in s:
+              if '</body>' not in s: raise SystemExit('body close not found')
+              p.write_text(s.replace('</body>',tag+'\n</body>',1),encoding='utf-8')
+          PY
+      - name: Install browser driver library only
+        run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
+      - name: Verify exact language state and visible tabs
+        run: |
+          cat > language-16890-test.js <<'JS'
+          const {chromium}=require('playwright'),fs=require('fs');
+          const html=fs.readFileSync('index.html','utf8'),launch=fs.readFileSync('earthline-launch-16872.js','utf8'),css=fs.readFileSync('earthline-launch-16872.css','utf8'),hot=fs.readFileSync('earthline-language-hotfix-16890.js','utf8');
+          const E={en:['Search','Property Modelling','Bioswale Impact Report','Status','Results'],es:['Buscar','Modelado de propiedad','Informe de impacto de bioswales','Estado','Resultados'],vi:['Tìm kiếm','Mô hình hóa khu đất','Báo cáo tác động rãnh sinh học','Trạng thái','Kết quả'],th:['ค้นหา','การจำลองพื้นที่','รายงานผลกระทบร่องชีวภาพ','สถานะ','ผลลัพธ์']};
+          (async()=>{const b=await chromium.launch({headless:true,executablePath:'/usr/bin/chromium',args:['--no-sandbox']});const c=await b.newContext({viewport:{width:1600,height:900}});const p=await c.newPage();await p.route('https://earthlinedevelopment.org/**',r=>{const u=new URL(r.request().url());if(r.request().isNavigationRequest()&&u.pathname==='/')return r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html});if(u.pathname==='/earthline-launch-16872.js')return r.fulfill({status:200,contentType:'application/javascript',body:launch});if(u.pathname==='/earthline-launch-16872.css')return r.fulfill({status:200,contentType:'text/css',body:css});if(u.pathname==='/earthline-language-hotfix-16890.js')return r.fulfill({status:200,contentType:'application/javascript',body:hot});return r.continue()});await p.goto('https://earthlinedevelopment.org/?lang16890v2='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});await p.waitForSelector('#earthlineLanguage16488',{timeout:30000});await p.waitForTimeout(1200);for(const code of ['en','th','en','es','en','vi','en']){await p.selectOption('#earthlineLanguage16488',code);await p.waitForTimeout(300);const s=await p.evaluate(()=>{const t=q=>document.querySelector(q)?.textContent?.replace(/\s+/g,' ').trim()||'';return{code:document.getElementById('earthlineLanguage16488')?.value,native:window.EARTHLINE_LANGUAGE_16488,html:document.documentElement.lang,v:[t('#earthlineSearchSection16188 .el-panel-label-16188'),t('#earthlinePropertySection16188 .el-panel-label-16188'),t('#earthlineReportSection16188 .el-panel-label-16188'),t('#earthlineStatusSection16188 .el-panel-label-16188'),t('#earthlineResultsSection16188 .el-panel-label-16188')]}});console.log(code,JSON.stringify(s));if(s.code!==code||s.native!==code||s.html!==code)throw new Error('state mismatch '+code);for(let i=0;i<5;i++)if(s.v[i]!==E[code][i])throw new Error(code+' label '+i+' got '+s.v[i]);}await p.selectOption('#earthlineLanguage16488','th');await p.reload({waitUntil:'domcontentloaded',timeout:60000});await p.waitForSelector('#earthlineLanguage16488',{timeout:30000});await p.waitForTimeout(900);const q=await p.evaluate(()=>({v:document.getElementById('earthlineLanguage16488')?.value,n:window.EARTHLINE_LANGUAGE_16488,l:document.documentElement.lang,s:document.querySelector('#earthlineSearchSection16188 .el-panel-label-16188')?.textContent?.trim()}));if(q.v!=='th'||q.n!=='th'||q.l!=='th'||q.s!==E.th[0])throw new Error('Thai persistence '+JSON.stringify(q));await b.close();console.log('LANGUAGE 16890 PASS')})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node language-16890-test.js
+      - name: Commit tested wiring to hotfix branch
+        run: |
+          git config user.name Earthlinedevelopment
+          git config user.email info@earthlinedevelopment.org
+          git add index.html earthline-language-hotfix-16890.js
+          if git diff --cached --quiet; then echo 'No product change to commit'; else git commit -m 'fix: make exact selected language the sole UI authority'; git push origin HEAD:mantra49-language-hotfix-16890; fi
