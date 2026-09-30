@@ -1,0 +1,92 @@
+name: Earthline large-area camera repair 16892
+on:
+  push:
+    branches:
+      - mantra49-release-audit-clean-16882
+    paths:
+      - .github/workflows/mantra49-large-area-camera-repair-16892.yml
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra49-release-audit-clean-16882
+          fetch-depth: 1
+      - name: Patch existing resolved-location camera owner only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); s=p.read_text(encoding='utf-8')
+          old="""    const targetZoom=propertyTarget
+      ?Math.max(17,Number(loc.zoomHint||17))
+      :Math.max(9,Number(loc.zoomHint||12));
+
+    /* BUILD-CHECK-15801 — write location identity and coordinates together. */"""
+          new="""    let targetZoom=propertyTarget
+      ?Math.max(17,Number(loc.zoomHint||17))
+      :Math.max(9,Number(loc.zoomHint||12));
+    let searchCameraCenter15801={lng:Number(loc.lng),lat:Number(loc.lat)};
+    /* EARTHLINE 16892 — camera-only large-area framing repair. The science bbox,
+       terrain, hydrology, ranking, land validity, exclusions and publication
+       rules are unchanged. For non-Property searches with a real bbox, use the
+       existing Mapbox cameraForBounds result instead of forcing a >=9 zoom on
+       the geocoder point. This prevents countries/states/archipelagos from being
+       presented as a tiny local window and gives the fixed crosshair a movable,
+       jurisdiction-scale map beneath it. */
+    if(!propertyTarget&&earthlineMap&&typeof earthlineMap.cameraForBounds==='function'&&Array.isArray(loc.bbox)&&loc.bbox.length===4){
+      try{
+        const b=loc.bbox.map(Number);
+        if(b.every(Number.isFinite)){
+          const cam=earthlineMap.cameraForBounds([[b[0],b[1]],[b[2],b[3]]],{padding:72,maxZoom:11});
+          if(cam&&Number.isFinite(Number(cam.zoom)))targetZoom=Math.max(0,Math.min(11,Number(cam.zoom)));
+          if(cam&&cam.center&&Number.isFinite(Number(cam.center.lng))&&Number.isFinite(Number(cam.center.lat)))searchCameraCenter15801={lng:Number(cam.center.lng),lat:Number(cam.center.lat)};
+        }
+      }catch(_){}
+    }
+
+    /* BUILD-CHECK-15801 — write location identity and coordinates together. */"""
+          n=s.count(old)
+          if n<1: raise SystemExit('targetZoom owner anchor not found')
+          s=s.replace(old,new)
+          old2="""          center:[Number(loc.lng),Number(loc.lat)],
+          zoom:targetZoom,bearing:0,pitch:0,"""
+          new2="""          center:[Number(searchCameraCenter15801.lng),Number(searchCameraCenter15801.lat)],
+          zoom:targetZoom,bearing:0,pitch:0,"""
+          n2=s.count(old2)
+          if n2<1: raise SystemExit('immediate camera anchor not found')
+          s=s.replace(old2,new2)
+          p.write_text(s,encoding='utf-8')
+          print('patched target owners',n,'camera centers',n2)
+          PY
+      - name: Candidate syntax sanity
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          assert 'searchCameraCenter15801' in s
+          assert 'Math.max(9,Number(loc.zoomHint||12))' in s
+          print('camera-only patch present; original model zoom expression retained as initial value')
+          PY
+      - name: Install browser driver library only
+        run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
+      - name: Verify NZ framing and seven focus-state Regional controls
+        run: |
+          cat > camera-16892-test.js <<'JS'
+          const {chromium}=require('playwright'),fs=require('fs');
+          const html=fs.readFileSync('index.html','utf8'),launch=fs.readFileSync('earthline-launch-16872.js','utf8'),css=fs.readFileSync('earthline-launch-16872.css','utf8');
+          function waitRun(p,mode,timeout=45000){return p.evaluate(({mode,timeout})=>new Promise(resolve=>{let done=false,st=Date.now();const f=(kind,d)=>{if(done)return;done=true;resolve({kind,ms:Date.now()-st,d})};document.addEventListener('earthline:analysis-complete',e=>{const t=String(e.detail?.tier||e.detail?.mode||'').toLowerCase();if(t.includes(mode))f('complete',e.detail)},{once:false});document.addEventListener('earthline:analysis-failed',e=>f('failed',e.detail),{once:false});setTimeout(()=>f('timeout',{}),timeout)}),{mode,timeout})}
+          async function page(b,tag){const c=await b.newContext({viewport:{width:1800,height:950}}),p=await c.newPage();await p.route('https://earthlinedevelopment.org/**',r=>{const u=new URL(r.request().url());if(r.request().isNavigationRequest()&&u.pathname==='/')return r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html});if(u.pathname==='/earthline-launch-16872.js')return r.fulfill({status:200,contentType:'application/javascript',body:launch});if(u.pathname==='/earthline-launch-16872.css')return r.fulfill({status:200,contentType:'text/css',body:css});return r.continue()});await p.goto('https://earthlinedevelopment.org/?cam16892='+tag+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});await p.waitForSelector('#searchInput',{timeout:30000});await p.waitForTimeout(800);return{c,p}}
+          async function search(p,q){await p.fill('#searchInput',q);const rp=waitRun(p,'regional');await p.press('#searchInput','Enter');const r=await rp;if(!['complete'].includes(r.kind))throw new Error(q+' regional '+r.kind);await p.waitForTimeout(500);return p.evaluate(()=>{const m=window.earthlineMap||null,c=m?.getCenter?.(),d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;return{center:c?{lng:Number(c.lng),lat:Number(c.lat)}:null,zoom:m?.getZoom?.(),tier:d?.tier||d?.mode||'',derived:d?.derived||null,bounds:d?.bounds||null,status:document.getElementById('earthlineVermontStatus16147')?.textContent||''}})}
+          (async()=>{const b=await chromium.launch({headless:true,executablePath:'/usr/bin/chromium',args:['--no-sandbox']});let x=await page(b,'nz');const nz=await search(x.p,'New Zealand');console.log('NZ',JSON.stringify(nz));if(!(Number(nz.zoom)<8.5))throw new Error('NZ still over-zoomed '+nz.zoom);const box=await x.p.locator('.mapboxgl-canvas').first().boundingBox();if(!box)throw new Error('NZ canvas missing');const before=await x.p.evaluate(()=>window.EARTHLINE_PROPERTY_TARGET_16201&&({...window.EARTHLINE_PROPERTY_TARGET_16201}));await x.p.mouse.move(box.x+box.width*.52,box.y+box.height*.52);await x.p.mouse.down();await x.p.mouse.move(box.x+box.width*.30,box.y+box.height*.56,{steps:12});await x.p.mouse.up();await x.p.waitForTimeout(600);const after=await x.p.evaluate(()=>window.EARTHLINE_PROPERTY_TARGET_16201&&({...window.EARTHLINE_PROPERTY_TARGET_16201}));console.log('NZ DRAG',JSON.stringify({before,after}));if(!after||after.code)throw new Error('NZ free crosshair target not established');await x.c.close();for(const q of ['Arizona','New Mexico','Colorado','Texas','California','Vermont','New York']){x=await page(b,q.replace(/\s/g,''));const s=await search(x.p,q);console.log('FOCUS',q,JSON.stringify(s));if(!/regional/i.test(String(s.tier)))throw new Error(q+' tier '+s.tier);if(!s.derived||Number(s.derived.swaleOpportunityLines||0)<1)throw new Error(q+' no regional corridors');if(/failed|blocked/i.test(s.status))throw new Error(q+' status '+s.status);await x.c.close();}await b.close();console.log('CAMERA 16892 + 7 FOCUS STATES PASS')})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node camera-16892-test.js
+      - name: Commit only after browser regression passes
+        run: |
+          git config user.name Earthlinedevelopment
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          if git diff --cached --quiet; then echo 'No product change'; else git commit -m 'fix: frame large-area searches from their existing bbox'; git push origin HEAD:mantra49-release-audit-clean-16882; fi
