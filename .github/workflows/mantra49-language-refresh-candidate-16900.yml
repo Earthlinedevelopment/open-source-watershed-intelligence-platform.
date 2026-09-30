@@ -1,0 +1,37 @@
+name: Earthline language refresh candidate 16900
+on:
+  push:
+    branches: [mantra49-language-refresh-repair-16900]
+permissions:
+  contents: read
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser
+        run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
+      - name: Exact live-site language gate with candidate owner
+        run: |
+          cat > lang16900.js <<'JS'
+          const {chromium}=require('playwright');
+          const fs=require('fs');
+          const candidate=fs.readFileSync('earthline-language-hotfix-16890.js','utf8');
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          (async()=>{
+            const b=await chromium.launch({headless:true,executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
+            const c=await b.newContext({viewport:{width:1600,height:900}}); const p=await c.newPage();
+            await p.route('**/earthline-language-hotfix-16890.js*',route=>route.fulfill({status:200,contentType:'application/javascript; charset=utf-8',body:candidate}));
+            await p.goto('https://earthlinedevelopment.org/?lang16900='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await p.waitForSelector('#earthlineLanguage16488',{timeout:30000}); await sleep(1800);
+            async function snap(tag){const x=await p.evaluate(()=>({lang:document.documentElement.lang,sel:document.getElementById('earthlineLanguage16488')?.value,run:document.getElementById('runBtn')?.innerText||'',tabs:[...document.querySelectorAll('.el-panel-label-16188')].map(x=>x.textContent.trim()).slice(0,5)})); console.log(tag,JSON.stringify(x)); return x;}
+            await p.selectOption('#earthlineLanguage16488','th'); await sleep(500); let s=await snap('TH'); if(s.lang!=='th'||!/เรียกใช้/.test(s.run))throw Error('Thai initial fail '+JSON.stringify(s));
+            await p.reload({waitUntil:'domcontentloaded'}); await p.waitForSelector('#runBtn'); await sleep(2200); s=await snap('TH_RELOAD'); if(s.lang!=='th'||s.sel!=='th'||!/เรียกใช้/.test(s.run))throw Error('Thai refresh fail '+JSON.stringify(s));
+            await p.evaluate(()=>{document.getElementById('runBtn').textContent='RUN REGION'}); await sleep(250); s=await snap('TH_LATE_REGION'); if(s.run!=='เรียกใช้ภูมิภาค')throw Error('Thai late region fail '+s.run);
+            await p.evaluate(()=>{document.getElementById('runBtn').textContent='RUN PROPERTY'}); await sleep(250); s=await snap('TH_LATE_PROPERTY'); if(s.run!=='เรียกใช้พื้นที่')throw Error('Thai late property fail '+s.run);
+            for(const [code,re] of [['es',/EJECUTAR/],['vi',/CHẠY/],['en',/^RUN/]]){await p.selectOption('#earthlineLanguage16488',code);await sleep(300);s=await snap(code.toUpperCase());if(s.lang!==code||!re.test(s.run))throw Error(code+' switch fail '+JSON.stringify(s));}
+            await b.close(); console.log('LANGUAGE 16900 CANDIDATE PASS');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node lang16900.js
