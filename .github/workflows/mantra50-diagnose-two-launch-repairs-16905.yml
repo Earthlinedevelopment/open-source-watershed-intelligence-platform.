@@ -8,39 +8,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Extract authoritative source neighborhoods
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          s=Path('index.html').read_text(encoding='utf-8')
-          terms=[
-            'analysisBBox',
-            'loc.bbox',
-            'hy.bounds',
-            'loadTerrain',
-            'loadRegionalTerrain',
-            'terrainBounds',
-            'regionalExtent',
-            'earthlineRegionalExtent',
-            'earthlineRenderRegionalOverlay16020',
-            'function schedule(){'
-          ]
-          out=[]
-          for term in terms:
-              out.append('\n===== '+term+' =====')
-              start=0; hits=[]
-              while True:
-                  i=s.find(term,start)
-                  if i<0: break
-                  hits.append(i); start=i+1
-              out.append('HITS '+repr(hits[:50])+' COUNT '+str(len(hits)))
-              for i in hits[:15]:
-                  a=max(0,i-7000); b=min(len(s),i+12000)
-                  out.append(s[a:b]); out.append('\n---END HIT---\n')
-          Path('mantra50-source-neighborhoods.txt').write_text('\n'.join(out),encoding='utf-8')
-          print('wrote mantra50-source-neighborhoods.txt')
-          PY
+      - name: Extract Alaska terrain-window formula
+        run: python tests/extract-mantra50-bounds.py
       - uses: actions/upload-artifact@v4
         with:
-          name: mantra50-source-neighborhoods
-          path: mantra50-source-neighborhoods.txt
+          name: mantra50-bounds-extract
+          path: mantra50-bounds-extract.txt
