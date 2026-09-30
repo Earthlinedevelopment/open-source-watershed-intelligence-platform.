@@ -3,13 +3,29 @@
 const KEY='earthlineLanguage16488';
 const VALID=['en','es','vi','th'];
 const D={
-  en:{language:'Language',search:'Search',property:'Property Modelling',report:'Bioswale Impact Report',status:'Status',results:'Results',swales:'Swales Explained',process:'The Earthline Process',data:'DATA',contact:'CONTACT',login:'LOGIN',run:'RUN ANALYSIS',runFirst:'RUN ANALYSIS FIRST',placeholder:'Search a location',gauge:'Recharge Potential',rain:'Average yearly rainfall:',sentence:'Earthline analyzes slope and water paths to identify optimum aquifer recharge locations — in any location.',note:'All sites need to be verified by a professional landscape expert.'},
-  es:{language:'Idioma',search:'Buscar',property:'Modelado de propiedad',report:'Informe de impacto de bioswales',status:'Estado',results:'Resultados',swales:'Bioswales explicados',process:'El proceso Earthline',data:'DATOS',contact:'CONTACTO',login:'INICIAR SESIÓN',run:'EJECUTAR ANÁLISIS',runFirst:'EJECUTE EL ANÁLISIS PRIMERO',placeholder:'Buscar una ubicación',gauge:'Potencial de recarga',rain:'Precipitación media anual:',sentence:'Earthline analiza la pendiente y las rutas del agua para identificar ubicaciones óptimas de recarga de acuíferos — en cualquier lugar.',note:'Todos los sitios deben ser verificados por un profesional del paisaje.'},
-  vi:{language:'Ngôn ngữ',search:'Tìm kiếm',property:'Mô hình hóa khu đất',report:'Báo cáo tác động rãnh sinh học',status:'Trạng thái',results:'Kết quả',swales:'Giải thích rãnh sinh học',process:'Quy trình Earthline',data:'DỮ LIỆU',contact:'LIÊN HỆ',login:'ĐĂNG NHẬP',run:'CHẠY PHÂN TÍCH',runFirst:'CHẠY PHÂN TÍCH TRƯỚC',placeholder:'Tìm kiếm địa điểm',gauge:'Tiềm năng bổ cập',rain:'Lượng mưa trung bình năm:',sentence:'Earthline phân tích độ dốc và đường đi của nước để xác định vị trí tối ưu cho bổ cập tầng chứa nước — ở bất kỳ nơi nào.',note:'Mọi địa điểm cần được chuyên gia cảnh quan xác minh.'},
-  th:{language:'ภาษา',search:'ค้นหา',property:'การจำลองพื้นที่',report:'รายงานผลกระทบร่องชีวภาพ',status:'สถานะ',results:'ผลลัพธ์',swales:'อธิบายร่องชีวภาพ',process:'กระบวนการ Earthline',data:'ข้อมูล',contact:'ติดต่อ',login:'เข้าสู่ระบบ',run:'เรียกใช้การวิเคราะห์',runFirst:'เรียกใช้การวิเคราะห์ก่อน',placeholder:'ค้นหาสถานที่',gauge:'ศักยภาพการเติมน้ำ',rain:'ปริมาณฝนเฉลี่ยต่อปี:',sentence:'Earthline วิเคราะห์ความลาดชันและเส้นทางน้ำเพื่อระบุตำแหน่งที่เหมาะสมที่สุดสำหรับการเติมน้ำลงสู่ชั้นหินอุ้มน้ำ — ในทุกพื้นที่',note:'ทุกพื้นที่ควรได้รับการตรวจสอบโดยผู้เชี่ยวชาญด้านภูมิทัศน์'}
+  en:{language:'Language',search:'Search',property:'Property Modelling',report:'Bioswale Impact Report',status:'Status',results:'Results',swales:'Swales Explained',process:'The Earthline Process',data:'DATA',contact:'CONTACT',login:'LOGIN',run:'RUN ANALYSIS',runFirst:'RUN ANALYSIS FIRST',runRegion:'RUN REGION',runProperty:'RUN PROPERTY',placeholder:'Search a location',gauge:'Recharge Potential',rain:'Average yearly rainfall:',sentence:'Earthline analyzes slope and water paths to identify optimum aquifer recharge locations — in any location.',note:'All sites need to be verified by a professional landscape expert.'},
+  es:{language:'Idioma',search:'Buscar',property:'Modelado de propiedad',report:'Informe de impacto de bioswales',status:'Estado',results:'Resultados',swales:'Bioswales explicados',process:'El proceso Earthline',data:'DATOS',contact:'CONTACTO',login:'INICIAR SESIÓN',run:'EJECUTAR ANÁLISIS',runFirst:'EJECUTE EL ANÁLISIS PRIMERO',runRegion:'EJECUTAR REGIÓN',runProperty:'EJECUTAR PROPIEDAD',placeholder:'Buscar una ubicación',gauge:'Potencial de recarga',rain:'Precipitación media anual:',sentence:'Earthline analiza la pendiente y las rutas del agua para identificar ubicaciones óptimas de recarga de acuíferos — en cualquier lugar.',note:'Todos los sitios deben ser verificados por un profesional del paisaje.'},
+  vi:{language:'Ngôn ngữ',search:'Tìm kiếm',property:'Mô hình hóa khu đất',report:'Báo cáo tác động rãnh sinh học',status:'Trạng thái',results:'Kết quả',swales:'Giải thích rãnh sinh học',process:'Quy trình Earthline',data:'DỮ LIỆU',contact:'LIÊN HỆ',login:'ĐĂNG NHẬP',run:'CHẠY PHÂN TÍCH',runFirst:'CHẠY PHÂN TÍCH TRƯỚC',runRegion:'CHẠY KHU VỰC',runProperty:'CHẠY KHU ĐẤT',placeholder:'Tìm kiếm địa điểm',gauge:'Tiềm năng bổ cập',rain:'Lượng mưa trung bình năm:',sentence:'Earthline phân tích độ dốc và đường đi của nước để xác định vị trí tối ưu cho bổ cập tầng chứa nước — ở bất kỳ nơi nào.',note:'Mọi địa điểm cần được chuyên gia cảnh quan xác minh.'},
+  th:{language:'ภาษา',search:'ค้นหา',property:'การจำลองพื้นที่',report:'รายงานผลกระทบร่องชีวภาพ',status:'สถานะ',results:'ผลลัพธ์',swales:'อธิบายร่องชีวภาพ',process:'กระบวนการ Earthline',data:'ข้อมูล',contact:'ติดต่อ',login:'เข้าสู่ระบบ',run:'เรียกใช้การวิเคราะห์',runFirst:'เรียกใช้การวิเคราะห์ก่อน',runRegion:'เรียกใช้ภูมิภาค',runProperty:'เรียกใช้พื้นที่',placeholder:'ค้นหาสถานที่',gauge:'ศักยภาพการเติมน้ำ',rain:'ปริมาณฝนเฉลี่ยต่อปี:',sentence:'Earthline วิเคราะห์ความลาดชันและเส้นทางน้ำเพื่อระบุตำแหน่งที่เหมาะสมที่สุดสำหรับการเติมน้ำลงสู่ชั้นหินอุ้มน้ำ — ในทุกพื้นที่',note:'ทุกพื้นที่ควรได้รับการตรวจสอบโดยผู้เชี่ยวชาญด้านภูมิทัศน์'}
 };
 const exact=v=>VALID.includes(String(v||'').toLowerCase())?String(v).toLowerCase():'en';
 const setText=(q,v)=>{const e=document.querySelector(q);if(e)e.textContent=v;};
+const runPairs=()=>Object.values(D).flatMap(x=>[x.run,x.runFirst,x.runRegion,x.runProperty]);
+function translatedRun(code,current){
+  const d=D[exact(code)],t=String(current||'').replace(/\s+/g,' ').trim();
+  for(const x of Object.values(D)){
+    if(t===x.runRegion)return d.runRegion;
+    if(t===x.runProperty)return d.runProperty;
+    if(t===x.runFirst)return d.runFirst;
+    if(t===x.run)return d.run;
+  }
+  return null;
+}
+function syncRun(code){
+  const run=document.getElementById('runBtn'); if(!run)return;
+  const next=translatedRun(code,run.textContent);
+  if(next&&run.textContent!==next)run.textContent=next;
+}
 function apply(code,persist=true){
   code=exact(code); const d=D[code];
   window.EARTHLINE_LANGUAGE_16488=code;
@@ -34,34 +50,40 @@ function apply(code,persist=true){
   const links=document.querySelectorAll('#earthlineHamburgerMenu16233 a');
   if(links[0]){const s=links[0].querySelector('span:last-child');if(s)s.textContent=d.swales;}
   if(links[1]){const s=links[1].querySelector('span:last-child');if(s)s.textContent=d.process;}
-  const run=document.getElementById('runBtn');
-  if(run&&run.dataset.busy!=='1'){
-    const t=(run.textContent||'').replace(/\s+/g,' ').trim();
-    const known=Object.values(D).some(x=>t===x.run||t===x.runFirst);
-    if(known||!t)run.textContent=d.run;
-  }
+  syncRun(code);
   try{if(typeof window.renderAccount==='function')window.renderAccount()}catch(_){}
   return code;
+}
+function bindRunGuard(){
+  const run=document.getElementById('runBtn'); if(!run||run.dataset.earthlineLanguageGuard16900==='1')return;
+  run.dataset.earthlineLanguageGuard16900='1';
+  const obs=new MutationObserver(()=>{
+    const code=exact(window.EARTHLINE_LANGUAGE_16488||document.documentElement.lang||'en');
+    const next=translatedRun(code,run.textContent);
+    if(next&&run.textContent!==next){obs.disconnect();run.textContent=next;obs.observe(run,{subtree:true,childList:true,characterData:true});}
+  });
+  obs.observe(run,{subtree:true,childList:true,characterData:true});
 }
 function bind(){
   const sel=document.getElementById('earthlineLanguage16488');
   if(!sel)return false;
-  if(sel.dataset.earthlineExactOwner16890==='1')return true;
+  if(sel.dataset.earthlineExactOwner16890==='1'){bindRunGuard();return true;}
   sel.dataset.earthlineExactOwner16890='1';
   sel.addEventListener('change',function(ev){
     ev.stopImmediatePropagation();
     apply(sel.value,true);
-    try{document.dispatchEvent(new CustomEvent('earthline:language-changed',{detail:{language:exact(sel.value),owner:'16890'}}))}catch(_){}
+    try{document.dispatchEvent(new CustomEvent('earthline:language-changed',{detail:{language:exact(sel.value),owner:'16900'}}))}catch(_){}
   },true);
   let saved='en';try{saved=localStorage.getItem(KEY)||sel.value||'en'}catch(_){saved=sel.value||'en'}
-  apply(saved,false);
+  apply(saved,false);bindRunGuard();
   return true;
 }
 window.earthlineApplyUiLanguage16871=function(next){return apply(next,false)};
 window.earthlineApplyLanguage16890=apply;
-window.earthlineLanguageOwner16890=Object.freeze({build:'EARTHLINE 16890',rule:'exact selector value is sole language authority; no text inference'});
-function boot(){bind();apply(window.EARTHLINE_LANGUAGE_16488||document.getElementById('earthlineLanguage16488')?.value||'en',false)}
+window.earthlineLanguageOwner16890=Object.freeze({build:'EARTHLINE 16900',rule:'exact selector value is sole language authority; run-state repaint stays localized'});
+function boot(){bind();apply(window.EARTHLINE_LANGUAGE_16488||document.getElementById('earthlineLanguage16488')?.value||'en',false);bindRunGuard()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+[0,120,400,900,1800].forEach(ms=>setTimeout(()=>{bindRunGuard();apply(window.EARTHLINE_LANGUAGE_16488||document.documentElement.lang||'en',false)},ms));
 document.addEventListener('earthline:analysis-complete',()=>apply(window.EARTHLINE_LANGUAGE_16488||'en',false),{passive:true});
 document.addEventListener('earthline:analysis-failed',()=>apply(window.EARTHLINE_LANGUAGE_16488||'en',false),{passive:true});
 })();
