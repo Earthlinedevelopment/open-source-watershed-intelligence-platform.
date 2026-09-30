@@ -1,0 +1,24 @@
+name: Mantra 50 transition and language 16906
+on:
+  push:
+    branches: [mantra50-transition-language-16906]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: npm install --no-save playwright@1.55.0 && npx playwright install --with-deps chromium
+      - name: Serve candidate
+        run: |
+          python3 -m http.server 8787 >/tmp/earthline16906.log 2>&1 &
+          sleep 2
+      - name: Run exact regressions
+        run: node tests/mantra50-transition-language-16906.mjs
