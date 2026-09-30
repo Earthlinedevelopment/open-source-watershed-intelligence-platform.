@@ -24,6 +24,12 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
+      - name: Start local candidate server
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-m50-http.log 2>&1 &
+          for i in {1..20}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 0.5; done
+          cat /tmp/earthline-m50-http.log
+          exit 1
       - name: Run exact NM to TX and Alaska regressions
         run: node tests/mantra50-two-repair-regression.mjs
       - uses: actions/upload-artifact@v4
