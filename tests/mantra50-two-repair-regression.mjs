@@ -28,11 +28,15 @@ const ak=await page.evaluate(()=>{
   const v=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020||null,p=window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556||window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||null;
   const flow=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null;
   const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,disp=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||null;
-  return {visualBounds:v?.bounds||null,packageBounds:p?.regionalExtent?.bbox||p?.location?.bbox||null,profileId:p?.profileId||null,grid:flow?.gridAudit?.grid||null,unsafe:flow?.unsafeSegments??null,published:pub?.generated??null,visible:disp?.swaleLines??null,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null};
+  const pts=[];
+  for(const f of v?.swales?.features||[]){for(const c of f?.geometry?.coordinates||[]){if(Array.isArray(c)&&Number.isFinite(+c[0])&&Number.isFinite(+c[1]))pts.push([+c[0],+c[1]]);}}
+  let swaleBounds=null,lonCoverage=0,latCoverage=0;
+  if(pts.length&&Array.isArray(v?.bounds)&&v.bounds.length===4){const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);swaleBounds=[Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)];const w=Math.max(1e-9,v.bounds[2]-v.bounds[0]),h=Math.max(1e-9,v.bounds[3]-v.bounds[1]);lonCoverage=(swaleBounds[2]-swaleBounds[0])/w;latCoverage=(swaleBounds[3]-swaleBounds[1])/h;}
+  return {visualBounds:v?.bounds||null,packageBounds:p?.regionalExtent?.bbox||p?.location?.bbox||null,profileId:p?.profileId||null,grid:flow?.gridAudit?.grid||null,unsafe:flow?.unsafeSegments??null,published:pub?.generated??null,visible:disp?.swaleLines??null,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,swaleBounds,lonCoverage,latCoverage};
 });
 await page.screenshot({path:OUT+'/alaska-candidate.png',fullPage:true});
 const close=(a,b,t=.03)=>Array.isArray(a)&&Array.isArray(b)&&a.length===4&&b.length===4&&a.every((x,i)=>Math.abs(Number(x)-Number(b[i]))<=t);
-const alaskaPass=ak.profileId==='us-ak'&&close(ak.visualBounds,ak.packageBounds)&&Number(ak.grid?.w)===96&&Number(ak.grid?.h)===96&&Number(ak.unsafe)===0&&!ak.lastError&&Number(ak.published)>0&&Number(ak.visible)>0;
+const alaskaPass=ak.profileId==='us-ak'&&close(ak.visualBounds,ak.packageBounds)&&Number(ak.grid?.w)===96&&Number(ak.grid?.h)===96&&Number(ak.unsafe)===0&&!ak.lastError&&Number(ak.published)>0&&Number(ak.visible)>0&&Number(ak.lonCoverage)>=0.75&&Number(ak.latCoverage)>=0.75;
 const report={nm,transition,tx,staleFailures,ak,alaskaPass,errors};
 writeFileSync(OUT+'/report.json',JSON.stringify(report,null,2));
 console.log('MANTRA50_TWO_REPAIR '+JSON.stringify(report));
