@@ -1,0 +1,74 @@
+name: Earthline native language owner 16895
+on:
+  push:
+    branches: [mantra49-language-owner-repair-16891]
+    paths:
+      - .github/workflows/mantra49-language-native-owner-16895.yml
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra49-language-owner-repair-16891
+          fetch-depth: 1
+      - name: Patch native run preview and launch language inference only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); s=p.read_text(encoding='utf-8')
+          old='''  function updateRunModePreview15780(){\n    if(state.running||runLock15780)return;\n    const mode=predictedMode15780();\n    for(const id of ["runBtn","runBtnSide"]){\n      const b=q(id);if(!b||b.dataset.busy)continue;\n      const span=b.querySelector("span");\n      if(span)span.textContent="RUN "+mode;\n      else b.textContent="RUN "+mode;\n      b.dataset.earthlineMode=mode.toLowerCase();\n      b.title="Run "+mode.toLowerCase()+" analysis at the current map center and zoom";\n    }\n  }'''
+          new='''  function updateRunModePreview15780(){\n    if(state.running||runLock15780)return;\n    const mode=predictedMode15780();\n    for(const id of ["runBtn","runBtnSide"]){\n      const b=q(id);if(!b||b.dataset.busy)continue;\n      const label=(typeof window.earthlineRunModeLabel16895==="function")?window.earthlineRunModeLabel16895(mode):("RUN "+mode);\n      const span=b.querySelector("span");\n      if(span)span.textContent=label;\n      else b.textContent=label;\n      b.dataset.earthlineMode=mode.toLowerCase();\n      b.title=(typeof window.earthlineRunModeTitle16895==="function")?window.earthlineRunModeTitle16895(mode):("Run "+mode.toLowerCase()+" analysis at the current map center and zoom");\n    }\n  }'''
+          if s.count(old)!=1: raise SystemExit('native run preview anchor count='+str(s.count(old)))
+          s=s.replace(old,new)
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('earthline-launch-16872.js'); s=p.read_text(encoding='utf-8')
+          old="function lang(){return launchLangOverride||detectLang(document.documentElement.lang)||'en'}"
+          new="function lang(){const v=String(window.EARTHLINE_LANGUAGE_16488||document.getElementById('earthlineLanguage16488')?.value||document.documentElement.lang||'en').toLowerCase();return ['en','es','vi','th'].includes(v)?v:'en'}"
+          if s.count(old)!=1: raise SystemExit('launch lang anchor count='+str(s.count(old)))
+          s=s.replace(old,new)
+          old="function syncLanguageFromTarget(target){const el=target?.closest?.('select,option,button,a,[role=\"button\"],[data-lang],[data-language]')||target;if(!el)return;let raw='';try{raw=[el.value,el.getAttribute?.('data-lang'),el.getAttribute?.('data-language'),el.getAttribute?.('lang'),el.selectedOptions?.[0]?.textContent,el.textContent].filter(Boolean).join(' ')}catch(_){}const code=detectLang(raw);if(code){launchLangOverride=code;if(document.documentElement.lang!==code)document.documentElement.lang=code;track('language_change',{language:code});renderAccount();scheduleTranslation()}}"
+          new="function syncLanguageFromTarget(target){const el=target&&target.id==='earthlineLanguage16488'?target:null;if(!el)return;const code=['en','es','vi','th'].includes(String(el.value||'').toLowerCase())?String(el.value).toLowerCase():'en';launchLangOverride=code;if(document.documentElement.lang!==code)document.documentElement.lang=code;track('language_change',{language:code});renderAccount();scheduleTranslation()}"
+          if s.count(old)!=1: raise SystemExit('launch sync anchor count='+str(s.count(old)))
+          s=s.replace(old,new)
+          old="document.addEventListener('change',e=>syncLanguageFromTarget(e.target),true);document.addEventListener('click',e=>syncLanguageFromTarget(e.target),true);"
+          new="document.addEventListener('change',e=>{if(e.target&&e.target.id==='earthlineLanguage16488')syncLanguageFromTarget(e.target)},true);"
+          if s.count(old)!=1: raise SystemExit('launch listeners anchor count='+str(s.count(old)))
+          s=s.replace(old,new)
+          p.write_text(s,encoding='utf-8')
+          print('native run-mode and launch exact-value patches applied')
+          PY
+      - name: Add canonical run helpers to language owner
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('earthline-language-hotfix-16890.js'); s=p.read_text(encoding='utf-8')
+          anchor="window.earthlineApplyLanguage16890=apply;"
+          insert="""window.earthlineRunModeLabel16895=function(mode){const c=exact(window.EARTHLINE_LANGUAGE_16488||document.getElementById('earthlineLanguage16488')?.value||'en'),d=D[c],m=String(mode||'').toUpperCase();return m==='PROPERTY'?d.runProperty:m==='REGION'?d.runRegion:d.run};\nwindow.earthlineRunModeTitle16895=function(mode){const c=exact(window.EARTHLINE_LANGUAGE_16488||document.getElementById('earthlineLanguage16488')?.value||'en'),m=String(mode||'').toUpperCase();const T={en:{REGION:'Run regional analysis at the current map center and zoom',PROPERTY:'Run property analysis at the current map center and zoom'},es:{REGION:'Ejecutar el análisis regional en el centro y zoom actuales del mapa',PROPERTY:'Ejecutar el análisis de propiedad en el centro y zoom actuales del mapa'},vi:{REGION:'Chạy phân tích khu vực tại tâm bản đồ và mức thu phóng hiện tại',PROPERTY:'Chạy phân tích khu đất tại tâm bản đồ và mức thu phóng hiện tại'},th:{REGION:'เรียกใช้การวิเคราะห์ภูมิภาคที่ศูนย์กลางแผนที่และระดับการซูมปัจจุบัน',PROPERTY:'เรียกใช้การวิเคราะห์พื้นที่ที่ศูนย์กลางแผนที่และระดับการซูมปัจจุบัน'}};return (T[c]||T.en)[m]||(D[c]||D.en).run};\n"""
+          if anchor not in s: raise SystemExit('hotfix helper anchor missing')
+          s=s.replace(anchor,insert+anchor,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
+      - name: Verify exact language, native run preview, refresh, and inventory visible English
+        run: |
+          cat > language-native-16895-test.js <<'JS'
+          const {chromium}=require('playwright'),fs=require('fs');
+          const html=fs.readFileSync('index.html','utf8'),launch=fs.readFileSync('earthline-launch-16872.js','utf8'),hotfix=fs.readFileSync('earthline-language-hotfix-16890.js','utf8'),css=fs.readFileSync('earthline-launch-16872.css','utf8');
+          const E={en:['Search','Property Modelling','Bioswale Impact Report','Status','Results'],th:['ค้นหา','การจำลองพื้นที่','รายงานผลกระทบร่องชีวภาพ','สถานะ','ผลลัพธ์'],es:['Buscar','Modelado de propiedad','Informe de impacto de bioswales','Estado','Resultados'],vi:['Tìm kiếm','Mô hình hóa khu đất','Báo cáo tác động rãnh sinh học','Trạng thái','Kết quả']};
+          async function snap(p){return p.evaluate(()=>({tabs:[document.querySelector('#earthlineSearchSection16188 .el-panel-label-16188')?.textContent?.trim(),document.querySelector('#earthlinePropertySection16188 .el-panel-label-16188')?.textContent?.trim(),document.querySelector('#earthlineReportSection16188 .el-panel-label-16188')?.textContent?.trim(),document.querySelector('#earthlineStatusSection16188 .el-panel-label-16188')?.textContent?.trim(),document.querySelector('#earthlineResultsSection16188 .el-panel-label-16188')?.textContent?.trim()],run:document.querySelector('#runBtn')?.textContent?.replace(/\s+/g,' ').trim(),lang:document.documentElement.lang,value:document.querySelector('#earthlineLanguage16488')?.value}));}
+          function ck(code,s){if(JSON.stringify(s.tabs)!==JSON.stringify(E[code]))throw Error(code+' tabs '+JSON.stringify(s));if(s.lang!==code||s.value!==code)throw Error(code+' authority '+JSON.stringify(s));}
+          async function leftovers(p){return p.evaluate(()=>{const out=new Set(),skip=new Set(['SCRIPT','STYLE','NOSCRIPT','TEMPLATE','OPTION']);const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const e=n.parentElement;if(!e||skip.has(e.tagName))continue;const r=e.getBoundingClientRect(),st=getComputedStyle(e);if(st.display==='none'||st.visibility==='hidden'||r.width===0||r.height===0)continue;const t=(n.nodeValue||'').replace(/\s+/g,' ').trim();if(t&&/[A-Za-z]{3}/.test(t))out.add(t)}for(const e of document.querySelectorAll('[title],[aria-label],input[placeholder],textarea[placeholder]')){for(const a of ['title','aria-label','placeholder']){const t=(e.getAttribute(a)||'').trim();if(t&&/[A-Za-z]{3}/.test(t))out.add('@'+a+': '+t)}}return [...out].sort()})}
+          (async()=>{const b=await chromium.launch({headless:true,executablePath:'/usr/bin/chromium',args:['--no-sandbox']});const c=await b.newContext({viewport:{width:1800,height:950}});const p=await c.newPage();await p.route('https://earthlinedevelopment.org/**',r=>{const u=new URL(r.request().url());if(r.request().isNavigationRequest()&&u.pathname==='/')return r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html});if(u.pathname==='/earthline-launch-16872.js')return r.fulfill({status:200,contentType:'application/javascript',body:launch});if(u.pathname==='/earthline-language-hotfix-16890.js')return r.fulfill({status:200,contentType:'application/javascript',body:hotfix});if(u.pathname==='/earthline-launch-16872.css')return r.fulfill({status:200,contentType:'text/css',body:css});return r.continue()});await p.goto('https://earthlinedevelopment.org/?lang16895='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});await p.waitForSelector('#earthlineLanguage16488',{timeout:30000});await p.waitForTimeout(1800);for(const code of ['en','th','en','es','en','vi','en']){await p.selectOption('#earthlineLanguage16488',code);await p.waitForTimeout(500);const s=await snap(p);console.log(code,JSON.stringify(s));ck(code,s)}await p.selectOption('#earthlineLanguage16488','th');await p.waitForTimeout(600);let s=await snap(p);console.log('thai-native',JSON.stringify(s));ck('th',s);if(/^RUN\b/i.test(s.run))throw Error('native run preview still English '+s.run);await p.reload({waitUntil:'domcontentloaded',timeout:60000});await p.waitForSelector('#earthlineLanguage16488');await p.waitForTimeout(1800);s=await snap(p);console.log('reload-th',JSON.stringify(s));ck('th',s);if(/^RUN\b/i.test(s.run))throw Error('refresh native run preview still English '+s.run);const left=await leftovers(p);console.log('UNTRANSLATED_VISIBLE_ENGLISH_COUNT',left.length);console.log('UNTRANSLATED_VISIBLE_ENGLISH',JSON.stringify(left));await b.close();console.log('LANGUAGE NATIVE 16895 CORE PASS')})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node language-native-16895-test.js
+      - name: Commit product repair after core browser gate
+        run: |
+          git config user.name Earthlinedevelopment
+          git config user.email info@earthlinedevelopment.org
+          git add index.html earthline-launch-16872.js earthline-language-hotfix-16890.js
+          if git diff --cached --quiet; then echo 'No product changes'; else git commit -m 'fix: make exact language owner control native run preview'; git push origin HEAD:mantra49-language-owner-repair-16891; fi
