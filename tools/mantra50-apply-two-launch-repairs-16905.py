@@ -3,58 +3,57 @@ from pathlib import Path
 p=Path('index.html')
 s=p.read_text(encoding='utf-8')
 
-# Repair 1: a new Regional submission must synchronously retire the previous SVG payload
-# before the new camera can emit moveend/zoomend events.
-old1="""  function clearForSubmission(token,q){
-    const m=map();
-    earthlineSupersedePropertyForNewSearch16327(token,q);
-"""
-new1="""  function clearForSubmission(token,q){
-    const m=map();
-    earthlineSupersedePropertyForNewSearch16327(token,q);
-    window.EARTHLINE_REGIONAL_VISUAL_DATA_16020=null;
+# Mantra 50 Task 1 — state-to-state Regional transition cleanup.
+# The first repair retired the final SVG payload, but the ranked Regional Mapbox
+# sources are separate owners. Empty every existing Regional presentation source
+# synchronously before camera movement so a prior state cannot flash in the next.
+needle="""    window.EARTHLINE_REGIONAL_VISUAL_DATA_16020=null;
     try{
       document.getElementById('earthlineRegionalVectorOverlay16020')?.replaceChildren();
       document.getElementById('earthlineRegionalCorridorTabs16323')?.remove();
     }catch(_){}
-"""
 
-# Repair 1 continued: camera/style events may render only the current global payload,
-# never a retired closure payload from the preceding state.
-old2="""  function schedule(){
-    if(activeTier16168()==="property")return;
-    cancelAnimationFrame(scheduled);scheduled=requestAnimationFrame(()=>render(lastData));
-  }
+    /* EARTHLINE 16334 — remove Property-only presentation before Regional camera
 """
-new2="""  function schedule(){
-    if(activeTier16168()==="property")return;
-    const current16905=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020||null;
-    if(!current16905){
-      lastData=null;
-      cancelAnimationFrame(scheduled);
+replacement="""    window.EARTHLINE_REGIONAL_VISUAL_DATA_16020=null;
+    try{
       document.getElementById('earthlineRegionalVectorOverlay16020')?.replaceChildren();
-      return;
+      document.getElementById('earthlineRegionalCorridorTabs16323')?.remove();
+    }catch(_){}
+    /* EARTHLINE 16905 — retire every existing Regional map presentation owner before
+       state-to-state camera movement. This changes presentation lifecycle only; no
+       hydrology, ranking, geometry, exclusions, or publication science is changed. */
+    try{
+      const empty16905={type:'FeatureCollection',features:[]};
+      for(const sourceId16905 of [
+        'earthline-ranked-swale-opportunities-15775',
+        'earthline-regional-flow-15761',
+        'earthline-regional-grades-15772',
+        'earthline-regional-contours-15772',
+        'earthline-regional-coverage-15761',
+        'earthline-swales',
+        'earthline-recharge-zones'
+      ]){
+        const src16905=m&&m.getSource&&m.getSource(sourceId16905);
+        if(src16905&&typeof src16905.setData==='function')src16905.setData(empty16905);
+      }
+      window.EARTHLINE_REGIONAL_TRANSITION_CLEAR_AUDIT_16905={
+        build:'EARTHLINE 16905',runToken:token||null,query:String(q||''),
+        regionalPresentationCleared:true,at:new Date().toISOString()
+      };
+    }catch(error){
+      recordRun('regional_transition_clear_warning_16905',token,{error:String(error&&error.message||error)});
     }
-    cancelAnimationFrame(scheduled);scheduled=requestAnimationFrame(()=>render(current16905));
-  }
-"""
-old3="map.on('style.load',()=>{if(lastData)setTimeout(schedule,80);});"
-new3="map.on('style.load',()=>{if(window.EARTHLINE_REGIONAL_VISUAL_DATA_16020)setTimeout(schedule,80);});"
 
-# Repair 2: Alaska's registered authoritative statewide extent is wider than the generic
-# 18x14-degree Regional transport cap. Preserve its robust state extent while keeping the
-# same DEM grid/tile-budget/safety pipeline.
-old4="""    if(w>18){const c=(b[0]+b[2])/2;b[0]=c-9;b[2]=c+9;}if(h>14){const c=(b[1]+b[3])/2;b[1]=c-7;b[3]=c+7;}
-"""
-new4="""    const fullAlaskaExtent16905=locked&&!focusMode&&String(loc&&loc.jurisdictionProfileId16556||'')==='us-ak';
-    if(!fullAlaskaExtent16905){if(w>18){const c=(b[0]+b[2])/2;b[0]=c-9;b[2]=c+9;}if(h>14){const c=(b[1]+b[3])/2;b[1]=c-7;b[3]=c+7;}}
+    /* EARTHLINE 16334 — remove Property-only presentation before Regional camera
 """
 
-for name,old,new in [('submission-clear',old1,new1),('renderer-schedule',old2,new2),('style-load',old3,new3),('alaska-extent',old4,new4)]:
-    n=s.count(old)
+if 'EARTHLINE_REGIONAL_TRANSITION_CLEAR_AUDIT_16905' in s:
+    print('Mantra 50 Regional transition source cleanup already present')
+else:
+    n=s.count(needle)
     if n!=1:
-        raise SystemExit(f'{name}: expected exactly 1 occurrence, found {n}')
-    s=s.replace(old,new,1)
-
-p.write_text(s,encoding='utf-8')
-print('Mantra 50 repairs applied: stale Regional payload retirement + Alaska full registered extent')
+        raise SystemExit(f'regional-source-clear: expected exactly 1 occurrence, found {n}')
+    s=s.replace(needle,replacement,1)
+    p.write_text(s,encoding='utf-8')
+    print('Mantra 50 repair applied: all existing Regional presentation sources retired before camera movement')
