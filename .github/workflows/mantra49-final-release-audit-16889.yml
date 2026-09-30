@@ -10,12 +10,12 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     env:
-      EARTHLINE_AUDIT_REVISION: "7"
+      EARTHLINE_AUDIT_REVISION: "8"
     steps:
       - uses: actions/checkout@v4
-      - name: Isolate and instrument New Zealand Property terminal path
+      - name: Diagnose New Zealand Property stage without changing product code
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -31,8 +31,9 @@ jobs:
                   s=s.replace(old,"const places=[['New Zealand','New Zealand']];for(let i=0;i<places.length;i++)await placeAudit(b,...places[i],i);",1)
                   break
           else: raise SystemExit('main audit anchor not found')
+          s=s.replace("const pp=analysisPromise(p,'property');","const pp=analysisPromise(p,'property',30000);",1)
           old="if(!['complete','displayed'].includes(property.kind))throw new Error(`${name}: property ${property.kind}`);"
-          new="if(!['complete','displayed'].includes(property.kind)){const diag=await p.evaluate(()=>{const m=window.M||null,mp=window.earthlineMap||null;let center=null,zoom=null;try{const c=mp&&mp.getCenter&&mp.getCenter();center=c?{lng:Number(c.lng),lat:Number(c.lat)}:null;zoom=mp&&mp.getZoom?Number(mp.getZoom()):null}catch(_){}const names=Object.keys(window).filter(k=>/^EARTHLINE_/.test(k)&&/(PROPERTY|RUN|TARGET|DISPLAY)/.test(k)).slice(0,80);return{center,zoom,target:window.EARTHLINE_PROPERTY_TARGET_16201||null,displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,loc:m&&m.loc?{name:m.loc.name,placeType:m.loc.placeType,lat:m.loc.lat,lng:m.loc.lng,bbox:m.loc.bbox,zoomHint:m.loc.zoomHint}:null,searchGen:m&&m.searchGen,demSource:m&&m.demSource,swales:m&&Array.isArray(m.swales)?m.swales.length:null,status:document.getElementById('earthlineVermontStatus16147')?.textContent||'',globalNames:names}});console.log('NEW_ZEALAND_PROPERTY_TERMINAL_DIAG',JSON.stringify(diag));out.places[name]={regional,regionalState,drag,property,diag};save();throw new Error(`${name}: property ${property.kind}`);}"
+          new="if(!['complete','displayed'].includes(property.kind)){const diag=await p.evaluate(()=>({target:window.EARTHLINE_PROPERTY_TARGET_16201||null,activeStage:window.EARTHLINE_PROPERTY_ACTIVE_STAGE_16178||null,phaseTrace:window.EARTHLINE_PROPERTY_PHASE_TRACE_16319||null,runAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,launchAudit:window.EARTHLINE_PROPERTY_LAUNCH_AUDIT_16322||null,timeoutAudit:window.EARTHLINE_PROPERTY_TIMEOUT_AUDIT_16178||null,publicationAudit:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,runState:document.documentElement.dataset.earthlinePropertyRunState||'',displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,status:document.getElementById('earthlineVermontStatus16147')?.textContent||'',toast:document.getElementById('toast')?.textContent||''}));console.log('NEW_ZEALAND_PROPERTY_STAGE_DIAG',JSON.stringify(diag));out.places[name]={regional,regionalState,drag,property,diag};save();throw new Error(`${name}: property ${property.kind}`);}"
           if old not in s: raise SystemExit('property terminal anchor not found')
           s=s.replace(old,new,1)
           p.write_text(s,encoding='utf-8')
