@@ -1,0 +1,47 @@
+name: Earthline final wrap core gate 16898
+on:
+  push:
+    branches: [mantra49-final-wrap-16896]
+    paths:
+      - .github/workflows/mantra49-final-wrap-core-gate-16898.yml
+permissions:
+  contents: read
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra49-final-wrap-16896
+      - name: Verify NZ bbox camera source repair shape
+        run: |
+          python tools/apply-nz-camera-16897.py
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          bad=':Math.max(9,Number(loc.zoomHint||12));'
+          if bad in s: raise SystemExit('FAIL legacy non-property forced zoom remains')
+          if 'cameraForBounds' not in s or 'Array.isArray(loc.bbox)' not in s: raise SystemExit('FAIL bbox camera owner missing')
+          if 'propertyTarget' not in s: raise SystemExit('FAIL property distinction missing')
+          print('NZ CAMERA SOURCE CANDIDATE PASS')
+          PY
+      - name: Install browser
+        run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
+      - name: Core-state live regression
+        run: |
+          cat > /tmp/core16898.js <<'JS'
+          const {chromium}=require(process.cwd()+'/node_modules/playwright');
+          const states=['Arizona','New Mexico','Colorado','Texas','California','Vermont','New York','Maryland'];
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          async function one(b,q){
+            const c=await b.newContext({viewport:{width:1600,height:900}}),p=await c.newPage();
+            await p.goto('https://earthlinedevelopment.org/?core16898='+encodeURIComponent(q)+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await p.waitForSelector('#searchInput',{timeout:30000});await sleep(1500);
+            await p.fill('#searchInput',q);
+            const result=await p.evaluate(async()=>{const q=document.querySelector('#searchInput').value;return await new Promise(async resolve=>{let done=false;const f=(kind,d)=>{if(done)return;done=true;resolve({kind,d,runState:document.documentElement.dataset.earthlineRunState||'',status:document.getElementById('earthlineVermontStatus16147')?.textContent||''})};document.addEventListener('earthline:analysis-complete',e=>f('complete',e.detail),{once:true});document.addEventListener('earthline:analysis-failed',e=>f('failed',e.detail),{once:true});document.querySelector('#searchInput').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',bubbles:true}));setTimeout(()=>f('timeout',{}),55000)})});
+            console.log('CORE',q,JSON.stringify(result));await c.close();return result;
+          }
+          (async()=>{const b=await chromium.launch({headless:true,executablePath:'/usr/bin/chromium',args:['--no-sandbox']});for(const q of states){const r=await one(b,q);if(r.kind!=='complete')throw Error(q+' '+r.kind+' '+r.status)}await b.close();console.log('CORE STATES LIVE PASS')})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node /tmp/core16898.js
