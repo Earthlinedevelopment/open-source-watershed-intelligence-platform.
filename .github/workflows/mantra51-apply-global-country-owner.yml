@@ -1,0 +1,31 @@
+name: Mantra 51 Apply Global Country Owner
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-apply-global-country-owner.yml']
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+          fetch-depth: 0
+      - name: Fetch retained 16845 country-owner repair
+        run: |
+          git fetch origin global-search-development-16845
+          git show origin/global-search-development-16845:lab/apply-16845-global-country-owner.py > /tmp/apply-16845.py
+      - name: Apply repair to current candidate
+        run: |
+          python3 /tmp/apply-16845.py
+          git diff --check
+      - name: Commit candidate only
+        run: |
+          git config user.name 'Earthline CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'repair: restore global country atomic jurisdiction owner' || exit 0
+          git push origin HEAD:mantra51-global-repair-campaign
