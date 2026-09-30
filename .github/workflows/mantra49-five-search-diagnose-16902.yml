@@ -1,0 +1,49 @@
+name: Earthline five problem search diagnostic 16902
+on:
+  push:
+    branches: [mantra49-launch-five-searches-16902]
+    paths:
+      - .github/workflows/mantra49-five-search-diagnose-16902.yml
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser
+        run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
+      - name: Diagnose five launch searches
+        run: |
+          cat > five16902.js <<'JS'
+          const {chromium}=require('playwright');
+          const qs=['Tuvalu','New Zealand country','Gambia','Marshall Islands','Laos'];
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          async function runOne(browser,q){
+            const c=await browser.newContext({viewport:{width:1600,height:900}});const p=await c.newPage();
+            const errs=[];p.on('pageerror',e=>errs.push(e.message));
+            await p.goto('https://earthlinedevelopment.org/?five16902='+encodeURIComponent(q)+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await p.waitForSelector('#searchInput',{timeout:30000});await sleep(1500);
+            await p.fill('#searchInput',q);
+            const waiter=p.evaluate(()=>new Promise(resolve=>{let done=false;const f=(k,d)=>{if(done)return;done=true;resolve({k,d})};document.addEventListener('earthline:analysis-complete',e=>f('complete',e.detail));document.addEventListener('earthline:analysis-failed',e=>f('failed',e.detail));setTimeout(()=>f('timeout',{}),60000)}));
+            await p.press('#searchInput','Enter');const r=await waiter;await sleep(900);
+            const before=await p.evaluate(()=>{
+              const m=window.earthlineMap||window.map||null;const center=m&&m.getCenter?m.getCenter():null;
+              const btn=[...document.querySelectorAll('button')].find(b=>/CROSSHAIR/i.test(b.textContent||''));
+              return {state:document.documentElement.dataset.earthlineRunState||'',center:center?{lng:center.lng,lat:center.lat}:null,target:window.EARTHLINE_PROPERTY_TARGET_16201||null,button:btn?{id:btn.id,text:(btn.textContent||'').trim()}:null,map:!!m};
+            });
+            const canvas=p.locator('.mapboxgl-canvas').first();let after=before;
+            if(await canvas.count()){
+              const box=await canvas.boundingBox();if(box){
+                const x=box.x+box.width*0.58,y=box.y+box.height*0.50;
+                await p.mouse.move(x,y);await p.mouse.down();await p.mouse.move(x-220,y,{steps:12});await p.mouse.up();await sleep(1200);
+                after=await p.evaluate(()=>{const m=window.earthlineMap||window.map||null;const center=m&&m.getCenter?m.getCenter():null;const btn=[...document.querySelectorAll('button')].find(b=>/CROSSHAIR/i.test(b.textContent||''));return {center:center?{lng:center.lng,lat:center.lat}:null,target:window.EARTHLINE_PROPERTY_TARGET_16201||null,button:btn?{id:btn.id,text:(btn.textContent||'').trim()}:null};});
+              }
+            }
+            console.log('FIVE',q,JSON.stringify({regional:r,before,after,errs:errs.slice(0,5)}));
+            await c.close();
+          }
+          (async()=>{const b=await chromium.launch({headless:true,executablePath:'/usr/bin/chromium',args:['--no-sandbox']});for(const q of qs)await runOne(b,q);await b.close();console.log('FIVE DIAGNOSTIC COMPLETE')})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node five16902.js
