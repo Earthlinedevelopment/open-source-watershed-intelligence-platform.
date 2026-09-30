@@ -1,0 +1,62 @@
+name: Earthline two task protected regression 16904
+on:
+  push:
+    branches: [mantra49-two-task-launch-fix-16904]
+    paths:
+      - .github/workflows/mantra49-two-task-protected-regression-16904.yml
+permissions:
+  contents: read
+jobs:
+  protected:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser
+        run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
+      - name: Candidate two-task plus protected states
+        run: |
+          cat > protected16904.js <<'JS'
+          const {chromium}=require('playwright');
+          const fs=require('fs');
+          const candidate=fs.readFileSync('earthline-language-hotfix-16890.js','utf8');
+          const states=['Arizona','New Mexico','Colorado','Texas','California','Vermont','New York','Maryland'];
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          async function one(browser,q){
+            const c=await browser.newContext({viewport:{width:1600,height:900}});const p=await c.newPage();
+            const errs=[];p.on('pageerror',e=>errs.push(String(e.message||e)));
+            await p.route('**/earthline-language-hotfix-16890.js*',route=>route.fulfill({status:200,contentType:'application/javascript',body:candidate}));
+            await p.goto('https://earthlinedevelopment.org/?protected16904='+encodeURIComponent(q)+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await p.waitForSelector('#runBtn',{timeout:30000});await sleep(2200);
+            const pre=await p.evaluate(()=>{const s=document.getElementById('earthlineLanguage16488'),r=document.getElementById('runBtn');return {disabled:!!s?.disabled,aria:s?.getAttribute('aria-disabled'),lang:document.documentElement.lang,run:(r?.textContent||'').replace(/\s+/g,' ').trim()}});
+            if(!pre.disabled||pre.aria!=='true'||pre.lang!=='en')throw new Error(q+' language not disabled '+JSON.stringify(pre));
+            if((pre.run.match(/RUN ANALYSIS/gi)||[]).length!==1)throw new Error(q+' run label bad '+pre.run);
+            await p.fill('#searchInput',q);
+            const result=await p.evaluate(()=>new Promise(resolve=>{let settled=false;const f=(kind,d)=>{if(settled)return;settled=true;resolve({kind,d,state:document.documentElement.dataset.earthlineRunState||''})};document.addEventListener('earthline:analysis-complete',e=>f('complete',e.detail),{once:true});document.addEventListener('earthline:analysis-failed',e=>f('failed',e.detail),{once:true});setTimeout(()=>f('timeout',{}),60000)}));
+            await p.press('#searchInput','Enter');
+            // wait above listener promise was created before press only if promise is not blocking; evaluate returns promise and blocks, so use Promise.race in page via exposed timer after press instead
+          }
+          (async()=>{
+            const b=await chromium.launch({headless:true,executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
+            for(const q of states){
+              const c=await b.newContext({viewport:{width:1600,height:900}});const p=await c.newPage();const errs=[];p.on('pageerror',e=>errs.push(String(e.message||e)));
+              await p.route('**/earthline-language-hotfix-16890.js*',route=>route.fulfill({status:200,contentType:'application/javascript',body:candidate}));
+              await p.goto('https://earthlinedevelopment.org/?protected16904='+encodeURIComponent(q)+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});await p.waitForSelector('#runBtn',{timeout:30000});await sleep(2200);
+              let pre=await p.evaluate(()=>{const s=document.getElementById('earthlineLanguage16488'),r=document.getElementById('runBtn');return {disabled:!!s?.disabled,aria:s?.getAttribute('aria-disabled'),lang:document.documentElement.lang,run:(r?.textContent||'').replace(/\s+/g,' ').trim()}});
+              if(!pre.disabled||pre.aria!=='true'||pre.lang!=='en')throw new Error(q+' language not disabled '+JSON.stringify(pre));
+              if((pre.run.match(/RUN ANALYSIS/gi)||[]).length!==1)throw new Error(q+' run label bad '+pre.run);
+              await p.fill('#searchInput',q);
+              await p.evaluate(()=>{window.__el16904=null;document.addEventListener('earthline:analysis-complete',e=>window.__el16904={kind:'complete',d:e.detail,state:document.documentElement.dataset.earthlineRunState||''},{once:true});document.addEventListener('earthline:analysis-failed',e=>window.__el16904={kind:'failed',d:e.detail,state:document.documentElement.dataset.earthlineRunState||''},{once:true})});
+              await p.press('#searchInput','Enter');
+              let out=null;for(let i=0;i<120;i++){out=await p.evaluate(()=>window.__el16904);if(out)break;await sleep(500)}
+              if(!out)throw new Error(q+' timeout');if(out.kind!=='complete'||out.state!=='published')throw new Error(q+' not published '+JSON.stringify(out));
+              const post=await p.evaluate(()=>{const s=document.getElementById('earthlineLanguage16488'),r=document.getElementById('runBtn');return {disabled:!!s?.disabled,aria:s?.getAttribute('aria-disabled'),lang:document.documentElement.lang,run:(r?.textContent||'').replace(/\s+/g,' ').trim()}});
+              if(!post.disabled||post.aria!=='true'||post.lang!=='en')throw new Error(q+' language reactivated '+JSON.stringify(post));
+              if((post.run.match(/RUN ANALYSIS/gi)||[]).length!==1)throw new Error(q+' duplicate post '+post.run);
+              if(errs.some(e=>/ReferenceError|TypeError|Uncaught/i.test(e)))throw new Error(q+' runtime '+errs.join(' | '));
+              console.log('PROTECTED PASS',q,JSON.stringify(out));await c.close();
+            }
+            await b.close();console.log('TWO TASK PROTECTED REGRESSION PASS');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node protected16904.js
