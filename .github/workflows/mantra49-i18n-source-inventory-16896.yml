@@ -1,0 +1,37 @@
+name: Earthline i18n source inventory 16896
+on:
+  push:
+    branches: [mantra49-final-wrap-16896]
+    paths:
+      - .github/workflows/mantra49-i18n-source-inventory-16896.yml
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inventory hard-coded user-visible English
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          files=[Path('index.html'),Path('earthline-launch-16872.js'),Path('earthline-language-hotfix-16890.js')]
+          pats=[
+            r'\.textContent\s*=\s*["\']([^"\']*[A-Za-z][^"\']*)["\']',
+            r'\.innerHTML\s*=\s*["\']([^"\']*[A-Za-z][^"\']*)["\']',
+            r'earthline(?:Ready|Notice)\(\s*["\']([^"\']*[A-Za-z][^"\']*)["\']',
+            r'(?:title|aria-label|placeholder)=["\']([^"\']*[A-Za-z][^"\']*)["\']'
+          ]
+          for f in files:
+            if not f.exists(): continue
+            s=f.read_text(encoding='utf-8')
+            print('\n###',f)
+            seen=[]
+            for pat in pats:
+              for m in re.finditer(pat,s,re.S):
+                t=re.sub(r'\s+',' ',m.group(1)).strip()
+                if len(t)>1 and t not in seen: seen.append(t)
+            print('COUNT',len(seen))
+            for t in seen[:1000]: print(t)
+          PY
