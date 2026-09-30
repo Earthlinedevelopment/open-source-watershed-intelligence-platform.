@@ -4,6 +4,7 @@ on:
     branches: [mantra49-two-task-launch-fix-16904]
     paths:
       - .github/workflows/mantra49-two-task-audit-16904.yml
+      - earthline-language-hotfix-16890.js
 permissions:
   contents: read
 jobs:
@@ -18,10 +19,13 @@ jobs:
         run: |
           cat > audit16904.js <<'JS'
           const {chromium}=require('playwright');
+          const fs=require('fs');
           const sleep=ms=>new Promise(r=>setTimeout(r,ms));
           (async()=>{
+            const candidate=fs.readFileSync('earthline-language-hotfix-16890.js','utf8');
             const b=await chromium.launch({headless:true,executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
             const p=await b.newPage({viewport:{width:1600,height:900}});
+            await p.route('**/earthline-language-hotfix-16890.js*',route=>route.fulfill({status:200,contentType:'application/javascript',body:candidate}));
             await p.goto('https://earthlinedevelopment.org/?audit16904='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
             await p.waitForSelector('#runBtn',{timeout:30000}); await sleep(2500);
             async function snap(label){
@@ -40,9 +44,9 @@ jobs:
             const inp=p.locator('#searchInput'); if(await inp.count()){await inp.fill('Vermont'); await inp.press('Enter'); await sleep(12000);}
             const c=await snap('AFTER_SEARCH');
             const bad=x=>/RUN\s+ANALYSIS\s+RUN\s+ANALYSIS/i.test(x.run.text)||x.run.childTexts.filter(t=>/RUN ANALYSIS/i.test(t)).length>1||x.run.spans.filter(t=>/RUN ANALYSIS/i.test(t)).length>1;
-            if(!a.lang.disabled||a.lang.aria!=='true') throw new Error('LANGUAGE CONTROL ACTIVE');
+            if(!a.lang.disabled||a.lang.aria!=='true'||!c.lang.disabled||c.lang.aria!=='true') throw new Error('LANGUAGE CONTROL ACTIVE');
             if(bad(a)||bad(c)) throw new Error('RUN BUTTON DUPLICATED');
-            console.log('TWO TASK AUDIT PASS');
+            console.log('TWO TASK CANDIDATE PASS');
             await b.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
