@@ -22,17 +22,22 @@ jobs:
             'LAST_ATOMIC_STATE_PACKAGE_16556',
             'runBtn'
           ]
+          out=[]
           for term in terms:
-              print('\n===== '+term+' =====')
-              start=0
-              hits=[]
+              out.append('\n===== '+term+' =====')
+              start=0; hits=[]
               while True:
                   i=s.find(term,start)
                   if i<0: break
                   hits.append(i); start=i+1
-              print('HITS',hits[:20], 'COUNT',len(hits))
+              out.append('HITS '+repr(hits[:20])+' COUNT '+str(len(hits)))
               for i in hits[:5]:
                   a=max(0,i-3500); b=min(len(s),i+7000)
-                  print(s[a:b])
-                  print('\n---END HIT---\n')
+                  out.append(s[a:b]); out.append('\n---END HIT---\n')
+          Path('mantra50-source-neighborhoods.txt').write_text('\n'.join(out),encoding='utf-8')
+          print('wrote mantra50-source-neighborhoods.txt')
           PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mantra50-source-neighborhoods
+          path: mantra50-source-neighborhoods.txt
