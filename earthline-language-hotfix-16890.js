@@ -21,7 +21,7 @@ function desiredRunText(code,current){
 }
 function syncRun(code){
   const run=document.getElementById('runBtn');
-  if(!run||run.dataset.busy==='1'||run.getAttribute('aria-busy')==='true')return;
+  if(!run)return;
   const next=desiredRunText(code,run.textContent);
   if(next&&normalizeRunText(run.textContent)!==next)run.textContent=next;
 }
