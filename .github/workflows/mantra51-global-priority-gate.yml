@@ -1,0 +1,59 @@
+name: Mantra 51 Global Priority Gate
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-global-priority-gate.yml'
+      - 'index.html'
+      - 'earthline-language-hotfix-16890.js'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  country_gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - batch: asia-pacific
+            targets: 'Australia=au|New Zealand=nz|India=in|Vietnam=vn|Laos=la|Thailand=th'
+          - batch: americas-europe
+            targets: 'Mexico=mx|Colombia=co|Germany=de|France=fr|Spain=es|Ireland=ie'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+          fetch-depth: 0
+      - name: Fetch retained global test harness
+        run: |
+          git fetch origin global-search-development-16845
+          git show origin/global-search-development-16845:lab/apply-16845-test-location-hook.py > /tmp/apply-hook.py
+          git show origin/global-search-development-16845:lab/earthline-16847-africa-identity.mjs > ./mantra51-country-gate.mjs
+          python3 /tmp/apply-hook.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start candidate server
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/mantra51-${{ matrix.batch }}.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/mantra51-${{ matrix.batch }}.log
+          exit 1
+      - name: Run priority country gate
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: http://127.0.0.1:8787/
+          TARGETS: ${{ matrix.targets }}
+        run: node ./mantra51-country-gate.mjs | tee mantra51-${{ matrix.batch }}.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra51-global-${{ matrix.batch }}
+          path: mantra51-${{ matrix.batch }}.jsonl
+          if-no-files-found: ignore
