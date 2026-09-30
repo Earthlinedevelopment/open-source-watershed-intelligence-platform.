@@ -1,21 +1,11 @@
 import { chromium } from 'playwright';
-import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 
-const BASE='https://earthlinedevelopment.org/';
-const candidate=readFileSync('index.html','utf8');
+const BASE='http://127.0.0.1:8787/';
 const OUT='artifacts/mantra50-two-repair'; mkdirSync(OUT,{recursive:true});
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1800,height:1000}});
 const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
-await page.route('**/*',async route=>{
-  const req=route.request();
-  if(req.isNavigationRequest()&&req.resourceType()==='document'&&req.url().startsWith(BASE)){
-    const response=await route.fetch();
-    await route.fulfill({response,body:candidate});
-    return;
-  }
-  await route.continue();
-});
 
 async function load(){await page.goto(BASE+'?m50candidate='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});await page.waitForSelector('#searchInput',{timeout:30000});}
 async function start(q){await page.evaluate(query=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.focus();i.value=query;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},q);}
