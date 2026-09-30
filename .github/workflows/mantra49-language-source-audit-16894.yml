@@ -1,0 +1,34 @@
+name: Earthline language source audit 16894
+on:
+  push:
+    branches: [mantra49-language-owner-repair-16891]
+    paths:
+      - .github/workflows/mantra49-language-source-audit-16894.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra49-language-owner-repair-16891
+      - name: Trace run-label writers and language owners
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for needle in ['RUN REGION','RUN PROPERTY','RUN ANALYSIS','earthlineApplyUiLanguage16871','earthlineLanguage16488']:
+            print('\n===== ',needle,' =====')
+            start=0; n=0
+            while True:
+              i=s.find(needle,start)
+              if i<0: break
+              n+=1
+              a=max(0,i-260); b=min(len(s),i+360)
+              print(f'--- occurrence {n} at {i} ---')
+              print(s[a:b].replace('\n','\\n'))
+              start=i+len(needle)
+            print('COUNT',needle,n)
+          PY
