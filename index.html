@@ -29107,6 +29107,30 @@ body { overflow-x:hidden!important; }
       document.getElementById('earthlineRegionalVectorOverlay16020')?.replaceChildren();
       document.getElementById('earthlineRegionalCorridorTabs16323')?.remove();
     }catch(_){}
+    /* EARTHLINE 16905 — retire every existing Regional map presentation owner before
+       state-to-state camera movement. This changes presentation lifecycle only; no
+       hydrology, ranking, geometry, exclusions, or publication science is changed. */
+    try{
+      const empty16905={type:'FeatureCollection',features:[]};
+      for(const sourceId16905 of [
+        'earthline-ranked-swale-opportunities-15775',
+        'earthline-regional-flow-15761',
+        'earthline-regional-grades-15772',
+        'earthline-regional-contours-15772',
+        'earthline-regional-coverage-15761',
+        'earthline-swales',
+        'earthline-recharge-zones'
+      ]){
+        const src16905=m&&m.getSource&&m.getSource(sourceId16905);
+        if(src16905&&typeof src16905.setData==='function')src16905.setData(empty16905);
+      }
+      window.EARTHLINE_REGIONAL_TRANSITION_CLEAR_AUDIT_16905={
+        build:'EARTHLINE 16905',runToken:token||null,query:String(q||''),
+        regionalPresentationCleared:true,at:new Date().toISOString()
+      };
+    }catch(error){
+      recordRun('regional_transition_clear_warning_16905',token,{error:String(error&&error.message||error)});
+    }
 
     /* EARTHLINE 16334 — remove Property-only presentation before Regional camera
        movement. Scientific model values remain available only until the new run owns them. */
