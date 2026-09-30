@@ -1,0 +1,61 @@
+name: Earthline NZ camera candidate 16897
+on:
+  push:
+    branches: [mantra49-final-wrap-16896]
+    paths:
+      - .github/workflows/mantra49-nz-camera-candidate-16897.yml
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra49-final-wrap-16896
+      - name: Patch existing moveMapToLoc bbox camera owner only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); s=p.read_text(encoding='utf-8')
+          old='''    const targetZoom=propertyTarget
+      ?Math.max(17,Number(loc.zoomHint||17))
+      :Math.max(9,Number(loc.zoomHint||12));'''
+          new='''    let targetCenter=[Number(loc.lng),Number(loc.lat)];
+    let targetZoom=propertyTarget?Math.max(17,Number(loc.zoomHint||17)):Math.max(9,Number(loc.zoomHint||12));
+    if(!propertyTarget&&Array.isArray(loc.bbox)&&loc.bbox.length===4&&earthlineMap&&typeof earthlineMap.cameraForBounds==="function"){
+      try{
+        const cam=earthlineMap.cameraForBounds([[Number(loc.bbox[0]),Number(loc.bbox[1])],[Number(loc.bbox[2]),Number(loc.bbox[3])]],{padding:72,maxZoom:11});
+        if(cam&&Number.isFinite(Number(cam.zoom)))targetZoom=Math.max(0,Math.min(11,Number(cam.zoom)));
+        if(cam&&cam.center&&Number.isFinite(Number(cam.center.lng))&&Number.isFinite(Number(cam.center.lat)))targetCenter=[Number(cam.center.lng),Number(cam.center.lat)];
+        else targetCenter=[(Number(loc.bbox[0])+Number(loc.bbox[2]))/2,(Number(loc.bbox[1])+Number(loc.bbox[3]))/2];
+      }catch(_){targetCenter=[(Number(loc.bbox[0])+Number(loc.bbox[2]))/2,(Number(loc.bbox[1])+Number(loc.bbox[3]))/2];}
+    }'''
+          if s.count(old)!=1: raise SystemExit('targetZoom anchor count='+str(s.count(old)))
+          s=s.replace(old,new,1)
+          old2='''          center:[Number(loc.lng),Number(loc.lat)],
+          zoom:targetZoom,bearing:0,pitch:0,'''
+          new2='''          center:targetCenter,
+          zoom:targetZoom,bearing:0,pitch:0,'''
+          if s.count(old2)!=1: raise SystemExit('jump center anchor count='+str(s.count(old2)))
+          s=s.replace(old2,new2,1)
+          p.write_text(s,encoding='utf-8')
+          print('NZ bbox camera patch applied')
+          PY
+      - run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
+      - name: Verify NZ bbox framing without starting Regional analysis
+        run: |
+          cat > /tmp/nzcam16897.js <<'JS'
+          const {chromium}=require(process.cwd()+'/node_modules/playwright'),fs=require('fs');
+          const html=fs.readFileSync('index.html','utf8'),launch=fs.readFileSync('earthline-launch-16872.js','utf8'),lang=fs.readFileSync('earthline-language-hotfix-16890.js','utf8'),css=fs.readFileSync('earthline-launch-16872.css','utf8');
+          (async()=>{const b=await chromium.launch({headless:true,executablePath:'/usr/bin/chromium',args:['--no-sandbox']});const p=await b.newPage({viewport:{width:1800,height:950}});await p.route('https://earthlinedevelopment.org/**',r=>{const u=new URL(r.request().url());if(r.request().isNavigationRequest()&&u.pathname==='/')return r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html});if(u.pathname==='/earthline-launch-16872.js')return r.fulfill({status:200,contentType:'application/javascript',body:launch});if(u.pathname==='/earthline-language-hotfix-16890.js')return r.fulfill({status:200,contentType:'application/javascript',body:lang});if(u.pathname==='/earthline-launch-16872.css')return r.fulfill({status:200,contentType:'text/css',body:css});return r.continue()});await p.goto('https://earthlinedevelopment.org/?nzcam16897='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});await p.waitForTimeout(7000);const funcs=await p.evaluate(()=>({apply:typeof applyLocation,map:!!window.earthlineMap}));console.log('FUNCS',funcs);if(funcs.apply!=='function')throw Error('applyLocation unavailable');const nz={q:'New Zealand',name:'New Zealand',fullName:'New Zealand',sub:'Country',placeType:'country',lat:-41.2,lng:174.0,bbox:[166.4,-47.4,178.6,-34.0],zoomHint:5,planning:true,zones:['New Zealand']};const ok=await p.evaluate(async nz=>await applyLocation(nz,null,++M.searchGen,{immediateForAnalysis:true}),nz).catch(()=>false);await p.waitForTimeout(1200);const out=await p.evaluate(()=>{const m=window.earthlineMap,c=m?.getCenter?.();return{okMap:!!m,center:c&&{lng:Number(c.lng),lat:Number(c.lat)},zoom:m?.getZoom?.(),loc:{name:M.loc?.name,lng:M.loc?.lng,lat:M.loc?.lat,bbox:M.loc?.bbox,zoomHint:M.loc?.zoomHint},target:window.EARTHLINE_PROPERTY_TARGET_16201||null}});console.log('NZ_CAMERA',JSON.stringify(out));if(!out.okMap)throw Error('map unavailable');if(!(Number(out.zoom)<8.5))throw Error('NZ bbox still over-zoomed '+out.zoom);if(!(out.center&&out.center.lng>165&&out.center.lng<180&&out.center.lat>-49&&out.center.lat<-33))throw Error('NZ center outside country bbox '+JSON.stringify(out.center));await b.close();console.log('NZ CAMERA 16897 CANDIDATE PASS')})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node /tmp/nzcam16897.js
+      - name: Commit only after candidate gate passes
+        run: |
+          git config user.name Earthlinedevelopment
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git commit -m "fix: use bbox camera for large-area search framing"
+          git push origin HEAD:mantra49-final-wrap-16896
