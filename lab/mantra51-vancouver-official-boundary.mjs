@@ -19,11 +19,22 @@ const boundary=await page.evaluate(()=>{
   const g=b.geometry;
   const count=v=>Array.isArray(v)?(v.length>=2&&Number.isFinite(Number(v[0]))&&Number.isFinite(Number(v[1]))?1:v.reduce((a,x)=>a+count(x),0)):0;
   const center=b.center;
-  const cap=earthlineAdministrativeCapability16539({placeType:'region',countryCode:'ca',name:'Vancouver Island'});
-  const insideCenter=earthlinePointInJurisdiction16539(center,g);
-  const outsideEast=earthlinePointInJurisdiction16539([-123.35,49.65],g);
-  const outsideWest=earthlinePointInJurisdiction16539([-128.48,49.0],g);
-  return {capability:cap?.id||null,source:b.source,sourceTier:b.sourceTier,bbox:b.bbox,center,points:count(g.coordinates),insideCenter,outsideEast,outsideWest};
+  const ringContains=(p,ring)=>{
+    const x=+p[0],y=+p[1];let inside=false;
+    for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+      const xi=+ring[i][0],yi=+ring[i][1],xj=+ring[j][0],yj=+ring[j][1];
+      if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/((yj-yi)||1e-15)+xi))inside=!inside;
+    }
+    return inside;
+  };
+  const contains=(p,geom)=>{
+    const polys=geom.type==='Polygon'?[geom.coordinates]:geom.coordinates;
+    return polys.some(rings=>rings&&rings[0]&&ringContains(p,rings[0])&&!(rings.slice(1).some(r=>ringContains(p,r))));
+  };
+  const insideCenter=contains(center,g);
+  const outsideEast=contains([-123.35,49.65],g);
+  const outsideWest=contains([-128.48,49.0],g);
+  return {capability:b.capability||null,source:b.source,sourceTier:b.sourceTier,bbox:b.bbox,center,points:count(g.coordinates),insideCenter,outsideEast,outsideWest};
 });
 console.log(JSON.stringify({boundary}));
 if(boundary.capability!=='ca-cgndb-vancouver-island')throw new Error('Vancouver Island did not select official boundary capability');
