@@ -1,0 +1,34 @@
+name: Mantra 51 Apply Country Crosshair Persistence
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - 'lab/mantra51-fix-country-crosshair-persistence.py'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+          fetch-depth: 0
+      - name: Apply narrow country crosshair persistence fix
+        run: python3 lab/mantra51-fix-country-crosshair-persistence.py
+      - name: Verify only expected runtime anchors
+        run: |
+          grep -n "source:'country-center'" index.html
+          grep -n "existing.source==='country-center'" index.html
+      - name: Commit candidate index
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "No index change required"
+            exit 0
+          fi
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: persist authoritative country crosshair center"
+          git push origin HEAD:mantra51-global-repair-campaign
