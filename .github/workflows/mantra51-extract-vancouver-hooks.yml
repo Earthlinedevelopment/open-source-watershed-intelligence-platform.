@@ -1,0 +1,37 @@
+name: Mantra 51 Extract Vancouver Containment Hooks
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-extract-vancouver-hooks.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - name: Extract exact hooks
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          needles=[
+            "function earthlineAdministrativeCapability16539",
+            "function earthlineClipRegionalProducts16539",
+            "jurisdictionCapability16539",
+            "selectionBoundary16539",
+            "EARTHLINE_REGION_OVERRIDES={",
+            "vancouver island"
+          ]
+          for needle in needles:
+            print("\n===== "+needle+" =====")
+            pos=0; count=0
+            while count<12:
+              i=s.find(needle,pos)
+              if i<0: break
+              print(s[max(0,i-4500):min(len(s),i+14000)])
+              print("\n---")
+              pos=i+len(needle); count+=1
+          PY
