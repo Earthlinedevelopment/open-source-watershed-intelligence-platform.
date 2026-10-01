@@ -1,0 +1,36 @@
+name: Mantra 51 Live Vancouver Final Retry
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-live-vancouver-final-retry.yml']
+permissions:
+  contents: read
+jobs:
+  vancouver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - name: Wait for public DNS/site
+        run: |
+          for i in $(seq 1 20); do
+            if curl -fsSL --connect-timeout 10 --max-time 30 "https://earthlinedevelopment.org/?dns-check=$RANDOM" >/dev/null; then exit 0; fi
+            sleep 10
+          done
+          exit 1
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Live Vancouver Island final gate with retry
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+        run: |
+          for i in 1 2 3; do
+            echo "Vancouver live attempt $i"
+            if node lab/mantra51-vancouver-water-aquifer-gate.mjs; then exit 0; fi
+            sleep 15
+          done
+          exit 1
