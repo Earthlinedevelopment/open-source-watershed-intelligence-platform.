@@ -1,0 +1,40 @@
+name: Mantra 51 Inspect Terrain RGB Fetch
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-inspect-terrain-rgb-fetch.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Inspect direct terrain fetch
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          for needle in [
+            "async function fetchRealTerrain",
+            "function fetchRealTerrain",
+            "fetchRealTerrain(",
+            "terrain-rgb",
+            "mapbox.terrain-rgb",
+            "lonLatToTile",
+            "loadImg(",
+            "decode",
+            "terrain tile"
+          ]:
+            print("\n===== "+needle+" =====")
+            pos=0; n=0
+            while n<12:
+              i=s.lower().find(needle.lower(),pos)
+              if i<0: break
+              print(s[max(0,i-5000):min(len(s),i+12000)].replace("\n"," "))
+              print("\n---")
+              pos=i+len(needle); n+=1
+          PY
