@@ -20,9 +20,9 @@ old4="for(const seed of extra){if(lineCount>=180)break;"
 new4="for(const seed of extra){if(lineCount>=(vancouverFlowDensity16917?320:180))break;"
 if old4 not in s: raise SystemExit("flow fallback cap anchor missing")
 s=s.replace(old4,new4,1)
-audit_anchor="return {type:'FeatureCollection',features};
+audit_anchor="""return {type:'FeatureCollection',features};
   }
-  function niceInterval"
+  function niceInterval"""
 audit_new="""if(vancouverFlowDensity16917)window.EARTHLINE_VANCOUVER_FLOW_DENSITY_16917={
       build:'EARTHLINE 16917',thresholdQuantile:0.72,generatedLines:lineCount,
       rule:'modeled drainage pathways; Vancouver Island only',at:new Date().toISOString()
