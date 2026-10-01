@@ -85,18 +85,32 @@ function earthlineNzOverlayHitPass16914(){
     const pkg=window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845||null;
     const code=String(pkg?.countryCode||pkg?.location?.countryCode||'').toLowerCase();
     const name=String(pkg?.location?.name||pkg?.name||'').trim().toLowerCase();
-    const nz=(code==='nz'||code==='nzl'||name==='new zealand');
+    const query=String(window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970?.query||'').trim().toLowerCase();
+    const nz=(code==='nz'||code==='nzl'||name==='new zealand'||query==='new zealand');
     let style=document.getElementById('earthlineNzOverlayHitPass16914');
+    const hits=document.querySelectorAll('#earthlineRegionalVectorOverlay16020 .earthline-swale-hit-16070');
     if(nz){
       if(!style){
         style=document.createElement('style');
         style.id='earthlineNzOverlayHitPass16914';
-        style.textContent='#earthlineRegionalVectorOverlay16020,#earthlineRegionalVectorOverlay16020 *{pointer-events:none!important;}';
+        style.textContent='#earthlineRegionalVectorOverlay16020{pointer-events:none!important;}';
         (document.head||document.documentElement).appendChild(style);
       }
+      hits.forEach(el=>{
+        if(!el.dataset.earthlinePrevPointer16914)el.dataset.earthlinePrevPointer16914=el.style.pointerEvents||'__empty__';
+        el.style.setProperty('pointer-events','none','important');
+      });
       window.EARTHLINE_NZ_OVERLAY_HIT_PASS_16914=true;
     }else{
       if(style)style.remove();
+      hits.forEach(el=>{
+        const prev=el.dataset.earthlinePrevPointer16914;
+        if(prev){
+          if(prev==='__empty__')el.style.removeProperty('pointer-events');
+          else el.style.pointerEvents=prev;
+          delete el.dataset.earthlinePrevPointer16914;
+        }
+      });
       window.EARTHLINE_NZ_OVERLAY_HIT_PASS_16914=false;
     }
   }catch(_){}
