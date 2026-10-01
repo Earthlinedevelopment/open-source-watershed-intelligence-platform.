@@ -1,0 +1,77 @@
+name: Mantra 51 Promote NZ Crosshair Fix Only
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-promote-nz-crosshair-only.yml'
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Patch production NZ crosshair owner only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          original=s
+          if "earthline-language-hotfix-16890.js" not in s:
+              raise SystemExit("language hotfix reference missing before patch")
+          old_guard="if(existing&&existing.source==='country-center'&&window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845)return true;"
+          new_guard="if(existing&&existing.source==='country-center'&&window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845&&window.EARTHLINE_COUNTRY_TARGET_LOCK_16845!==false)return true;"
+          if old_guard in s:
+              s=s.replace(old_guard,new_guard,1)
+          elif new_guard not in s:
+              raise SystemExit("country-center guard anchor missing")
+          sync_anchor="function syncPropertyTargetFromMap16201(){"
+          unlock="""if(!window.EARTHLINE_COUNTRY_CROSSHAIR_UNLOCK_BOUND_16845){
+            window.EARTHLINE_COUNTRY_CROSSHAIR_UNLOCK_BOUND_16845=true;
+            document.addEventListener('pointerdown',function(ev){
+              try{
+                const mapEl=document.getElementById('map');
+                const mapSurface=ev.target&&ev.target.closest?ev.target.closest('.mapboxgl-map, #map, [data-earthline-map]'):null;
+                if(mapSurface||mapEl&&(ev.target===mapEl||mapEl.contains(ev.target))){
+                  window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;
+                }
+              }catch(_){}
+            },true);
+          }
+          """
+          if "EARTHLINE_COUNTRY_CROSSHAIR_UNLOCK_BOUND_16845" not in s:
+              pos=s.find(sync_anchor)
+              if pos<0: raise SystemExit("sync target anchor missing")
+              s=s[:pos]+unlock+s[pos:]
+          patterns=[
+          ("if(setTarget16845&&Number.isFinite(targetLng)&&Number.isFinite(targetLat)){\n              setTarget16845({lng:targetLng,lat:targetLat,source:'country-center'},{openPanel:false});\n            }",
+           "if(setTarget16845&&Number.isFinite(targetLng)&&Number.isFinite(targetLat)){\n              window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=true;\n              setTarget16845({lng:targetLng,lat:targetLat,source:'country-center'},{openPanel:false});\n            }"),
+          ("if(setTarget16845)setTarget16845({lng:Number(cc.lng),lat:Number(cc.lat),source:'country-center'},{openPanel:false});",
+           "if(setTarget16845){\n            window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=true;\n            setTarget16845({lng:Number(cc.lng),lat:Number(cc.lat),source:'country-center'},{openPanel:false});\n          }")
+          ]
+          for old,new in patterns:
+              if old in s:
+                  s=s.replace(old,new,1)
+          if "earthline-language-hotfix-16890.js" not in s:
+              raise SystemExit("language hotfix reference lost")
+          if new_guard not in s or "EARTHLINE_COUNTRY_CROSSHAIR_UNLOCK_BOUND_16845" not in s:
+              raise SystemExit("NZ crosshair patch verification failed")
+          if s==original:
+              raise SystemExit("production already patched or no change")
+          p.write_text(s,encoding="utf-8")
+          PY
+          test "$(git diff --name-only)" = "index.html"
+          grep -n "earthline-language-hotfix-16890.js" index.html
+          grep -n "EARTHLINE_COUNTRY_CROSSHAIR_UNLOCK_BOUND_16845" index.html
+          grep -n "EARTHLINE_COUNTRY_TARGET_LOCK_16845" index.html
+      - name: Commit production patch
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: make New Zealand crosshair authoritative after map movement"
+          git push origin HEAD:pages-live
