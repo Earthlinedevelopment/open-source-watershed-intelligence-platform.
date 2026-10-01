@@ -2,31 +2,33 @@ name: Mantra 51 Apply Vancouver Display Repair
 on:
   push:
     branches: [mantra51-global-repair-campaign]
-    paths: ['lab/mantra51-fix-vancouver-display.py']
+    paths: ['.github/workflows/mantra51-apply-vancouver-display.yml']
 permissions:
   contents: write
 jobs:
-  patch:
+  production:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        branch: [mantra51-global-repair-campaign, pages-live]
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ matrix.branch }}
+          ref: pages-live
           fetch-depth: 0
+      - name: Fetch Vancouver display patch from candidate
+        run: |
+          git fetch origin mantra51-global-repair-campaign
+          git show origin/mantra51-global-repair-campaign:lab/mantra51-fix-vancouver-display.py > /tmp/mantra51-fix-vancouver-display.py
       - name: Apply Vancouver display hierarchy
-        run: python3 lab/mantra51-fix-vancouver-display.py
+        run: python3 /tmp/mantra51-fix-vancouver-display.py
       - name: Verify
         run: |
           grep -n "EARTHLINE_VANCOUVER_DISPLAY_AUDIT_16915" index.html
           grep -n "stacking:'aquifer < flow < swale'" index.html
-      - name: Commit
+          grep -n "earthline-language-hotfix-16890.js" index.html
+      - name: Commit production repair
         run: |
           if git diff --quiet -- index.html; then exit 0; fi
           git config user.name "Earthlinedevelopment"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
           git commit -m "fix: make Vancouver Island water paths and aquifers visible"
-          git push origin HEAD:${{ matrix.branch }}
+          git push origin HEAD:pages-live
