@@ -29965,7 +29965,8 @@ body { overflow-x:hidden!important; }
   }
 
   function makeFlows(hy){
-    const N=hy.acc.length,th=percentile(hy.acc,0.84),channel=new Uint8Array(N),upstream=new Uint16Array(N);
+    const vancouverFlowDensity16917=/vancouver\s+island/i.test(String((document.getElementById('searchInput')&&document.getElementById('searchInput').value)||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970?.query||''));
+    const N=hy.acc.length,th=percentile(hy.acc,vancouverFlowDensity16917?0.72:0.84),channel=new Uint8Array(N),upstream=new Uint16Array(N);
     for(let i=0;i<N;i++)if(hy.acc[i]>=th&&hy.to[i]>=0)channel[i]=1;
     for(let i=0;i<N;i++){const j=hy.to[i];if(channel[i]&&j>=0&&channel[j])upstream[j]++;}
     const seeds=[];for(let i=0;i<N;i++)if(channel[i]&&upstream[i]===0)seeds.push(i);
@@ -29990,11 +29991,15 @@ body { overflow-x:hidden!important; }
       }
       return true;
     }
-    for(const seed of seeds){if(lineCount>=230)break;trace(seed);}
-    if(lineCount<55){
+    for(const seed of seeds){if(lineCount>=(vancouverFlowDensity16917?340:230))break;trace(seed);}
+    if(lineCount<(vancouverFlowDensity16917?120:55)){
       const extra=[];for(let i=0;i<N;i++)if(channel[i])extra.push(i);extra.sort((a,b)=>hy.acc[b]-hy.acc[a]);
-      for(const seed of extra){if(lineCount>=180)break;const j=hy.to[seed];if(j<0||usedEdges.has(seed+'>'+j))continue;trace(seed);}
+      for(const seed of extra){if(lineCount>=(vancouverFlowDensity16917?320:180))break;const j=hy.to[seed];if(j<0||usedEdges.has(seed+'>'+j))continue;trace(seed);}
     }
+    if(vancouverFlowDensity16917)window.EARTHLINE_VANCOUVER_FLOW_DENSITY_16917={
+      build:'EARTHLINE 16917',thresholdQuantile:0.72,generatedLines:lineCount,
+      rule:'modeled drainage pathways; Vancouver Island only',at:new Date().toISOString()
+    };
     return {type:'FeatureCollection',features};
   }
   function niceInterval(range,target=15){
