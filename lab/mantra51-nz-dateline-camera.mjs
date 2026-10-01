@@ -24,3 +24,5 @@ const wrapped=Math.min(raw,Math.abs(raw-360));
 if(before.world!==true||after.world!==true)throw new Error('NZ world copies not enabled');
 if(wrapped<0.05)throw new Error('NZ camera still blocked in leftward/dateline direction');
 await browser.close();
+
+// trigger camera gate
