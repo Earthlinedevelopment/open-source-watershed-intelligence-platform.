@@ -1,0 +1,30 @@
+name: Mantra 51 Apply Vancouver Official Boundary
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - 'lab/mantra51-fix-vancouver-official-boundary.py'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+          fetch-depth: 0
+      - name: Apply official Vancouver Island boundary
+        run: python3 lab/mantra51-fix-vancouver-official-boundary.py
+      - name: Verify boundary owner
+        run: |
+          grep -n "ca-cgndb-vancouver-island" index.html
+          grep -n "EARTHLINE_VANCOUVER_ISLAND_BOUNDARY_16920" index.html
+          grep -n "analysisBBox:true,zoomHint:6.15" index.html
+      - name: Commit candidate
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: contain Vancouver Island to official CGNDB polygon"
+          git push origin HEAD:mantra51-global-repair-campaign
