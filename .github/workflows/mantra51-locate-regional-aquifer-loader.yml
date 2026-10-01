@@ -1,0 +1,28 @@
+name: Mantra 51 Locate Regional Aquifer Loader
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-locate-regional-aquifer-loader.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          needles=["fetchUSGSAquifers(","earthlineParseAquiferFeatures(","guardedSetGeo(runToken,m,IDS.aquifer","setGeo(m,IDS.aquifer","M.usgsAquiferStatus","AQUIFER_WMS"]
+          for needle in needles:
+            print("\n====",needle,"====")
+            pos=0
+            for n in range(20):
+              i=s.find(needle,pos)
+              if i<0: break
+              print(s[max(0,i-3500):min(len(s),i+9000)].replace("\n"," "))
+              print("\n---")
+              pos=i+len(needle)
+          PY
