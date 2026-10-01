@@ -15,7 +15,7 @@ await page.evaluate(()=>{
 await page.waitForFunction(()=>{
   const t=window.EARTHLINE_REGIONAL_TERMINAL_16539;
   return t&&['published','failed','unavailable'].includes(String(t.status||''));
-},{timeout:120000,polling:200});
+},null,{timeout:150000,polling:200});
 const result=await page.evaluate(()=>({
   terminal:window.EARTHLINE_REGIONAL_TERMINAL_16539||null,
   waterAudit:window.EARTHLINE_VANCOUVER_WATER_AUDIT_16912||null,
@@ -31,6 +31,7 @@ const result=await page.evaluate(()=>({
 console.log(JSON.stringify(result));
 if(result.terminal?.status!=='published')throw new Error('Vancouver Island did not publish');
 if(!(Number(result.waterAudit?.waterPaths)>0)||!(Number(result.visual.flows)>0))throw new Error('Vancouver Island water paths missing');
+if(Number(result.waterAudit?.waterPaths)<20)throw new Error('Vancouver Island water-path density insufficient: '+String(result.waterAudit?.waterPaths));
 if(!(Number(result.aquiferAudit?.published)>0))throw new Error('Vancouver Island official aquifers missing');
 if(!result.boundaryAudit)throw new Error('Vancouver Island authoritative containment audit missing');
 await browser.close();
