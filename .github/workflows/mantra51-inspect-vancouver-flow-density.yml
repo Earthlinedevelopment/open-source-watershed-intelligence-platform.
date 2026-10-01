@@ -1,0 +1,28 @@
+name: Mantra 51 Inspect Vancouver Flow Density
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-inspect-vancouver-flow-density.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          needles=["function makeFlows","makeFlows=","makeFlows(hy)","feature_type:'flow'","feature_type:\"flow\"","flow-arrow","slice(0,","flows.features"]
+          for needle in needles:
+            print("\n===== "+needle+" =====")
+            pos=0; count=0
+            while count<20:
+              i=s.find(needle,pos)
+              if i<0: break
+              print(s[max(0,i-5000):min(len(s),i+12000)].replace("\n"," "))
+              print("\n---")
+              pos=i+len(needle); count+=1
+          PY
