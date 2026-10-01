@@ -39,7 +39,6 @@ const domDiag=await page.evaluate(()=>{
   return {target:t,map:map?{tag:map.tagName,id:map.id,cls:map.className,pe:getComputedStyle(map).pointerEvents}:null,canvases};
 });
 console.log(JSON.stringify({domDiag}));
-if(window?.EARTHLINE_PROPERTY_TARGET_16201){}
 if(domDiag.target?.source!=='crosshair'){await browser.close();process.exit(3)}
 await page.evaluate(()=>document.getElementById('earthlineDeclareProperty16169')?.click());
 await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,{timeout:30000,polling:100});
