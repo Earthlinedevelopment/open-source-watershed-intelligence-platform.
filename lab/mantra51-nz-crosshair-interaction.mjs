@@ -70,8 +70,9 @@ await page.evaluate(()=>{
   const m=window.map||window.mapboxMap;
   try{m&&m.on&&m.on('moveend',()=>{window.__M51_MOVEENDS++})}catch{}
 });
-const mapBox=await page.locator('#map').boundingBox();
-if(!mapBox)throw new Error('map box unavailable');
+const canvas=page.locator('#mapboxBase canvas.mapboxgl-canvas').first();
+const mapBox=await canvas.boundingBox();
+if(!mapBox)throw new Error('real Mapbox canvas unavailable');
 const x=mapBox.x+mapBox.width*0.55, y=mapBox.y+mapBox.height*0.55;
 await page.mouse.move(x,y);
 await page.mouse.down();
