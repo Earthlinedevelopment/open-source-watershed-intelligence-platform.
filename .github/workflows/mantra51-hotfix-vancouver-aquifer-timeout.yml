@@ -1,0 +1,41 @@
+name: Mantra 51 Hotfix Vancouver Aquifer Timeout
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-hotfix-vancouver-aquifer-timeout.yml']
+permissions:
+  contents: write
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Extend Vancouver BC aquifer timeout only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          old='const signal16912=(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function")?AbortSignal.timeout(9000):undefined;'
+          new='const signal16912=(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function")?AbortSignal.timeout(30000):undefined;'
+          if old not in s:
+              raise SystemExit("Vancouver aquifer timeout anchor missing")
+          s=s.replace(old,new,1)
+          if "EARTHLINE_VANCOUVER_AQUIFER_AUDIT_16912" not in s:
+              raise SystemExit("Vancouver aquifer owner missing")
+          if "earthline-language-hotfix-16890.js" not in s:
+              raise SystemExit("language hotfix reference missing")
+          p.write_text(s,encoding="utf-8")
+          PY
+          test "$(git diff --name-only)" = "index.html"
+          grep -n "signal16912" index.html
+      - name: Commit live hotfix
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: allow BC aquifer service enough time on Vancouver Island"
+          git push origin HEAD:pages-live
