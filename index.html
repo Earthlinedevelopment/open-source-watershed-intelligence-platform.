@@ -31829,6 +31829,13 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
         window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556=countryPackage16845;
         window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845=countryPackage16845;
         try{
+          const code16845=String(countryPackage16845.countryCode||countryPackage16845.location&&countryPackage16845.location.countryCode||'').toLowerCase();
+          const name16845=String(q||countryPackage16845.location&&countryPackage16845.location.name||'').trim().toLowerCase();
+          const nzDateline16845=(code16845==='nz'||code16845==='nzl'||name16845==='new zealand');
+          if(earthlineMap&&typeof earthlineMap.setRenderWorldCopies==='function')earthlineMap.setRenderWorldCopies(nzDateline16845);
+          window.EARTHLINE_NZ_DATELINE_NAV_16845={enabled:nzDateline16845,code:code16845,name:name16845,at:new Date().toISOString()};
+        }catch(_){}
+        try{
           {
           const cc=countryPackage16845&&countryPackage16845.center;
           const targetLng=cc&&Number.isFinite(Number(cc.lng))?Number(cc.lng):Number(loc.lng);
@@ -31845,6 +31852,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
       }
     }else if(window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556&&window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556.packageKind==='country'){
       window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556=null;window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845=null;
+      try{if(earthlineMap&&typeof earthlineMap.setRenderWorldCopies==='function')earthlineMap.setRenderWorldCopies(false);}catch(_){}
     }
     const phaseMark16198=(name,started)=>{phase16198[name]=Math.round(performance.now()-started);};
     const focusMode=!!(loc&&loc.focusMode===true);
