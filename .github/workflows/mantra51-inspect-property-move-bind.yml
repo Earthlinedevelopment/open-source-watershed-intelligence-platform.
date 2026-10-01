@@ -1,0 +1,27 @@
+name: Mantra 51 Inspect Property Move Bind Guard
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-inspect-property-move-bind.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          for needle in ["propertyTargetMoveBound16201","m.on('dragend'","m.on('moveend'"]:
+            print("\n###",needle)
+            p=0;n=0
+            while n<20:
+              i=s.find(needle,p)
+              if i<0:break
+              print(s[max(0,i-2500):min(len(s),i+5000)].replace("\n"," "))
+              print("---");p=i+len(needle);n+=1
+          PY
