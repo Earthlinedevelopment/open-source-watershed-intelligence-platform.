@@ -1,0 +1,23 @@
+name: Mantra 51 Apply Wrapped World Water Fix
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['lab/mantra51-fix-wrapped-water.py']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - run: python3 lab/mantra51-fix-wrapped-water.py
+      - run: |
+          grep -n "WRAPPED-WORLD WATER CLIP SAFETY" index.html
+          grep -n "worldCopiesSkippedStyleWater" index.html
+      - run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: preserve NZ water paths with dateline wrapping"
+          git push origin HEAD:mantra51-global-repair-campaign
