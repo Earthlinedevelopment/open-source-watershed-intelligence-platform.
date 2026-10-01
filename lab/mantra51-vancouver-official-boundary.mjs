@@ -4,8 +4,13 @@ const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1600,height:900}});
 await page.goto(URL+'?m51-vancouver='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
 await page.waitForSelector('#searchInput',{timeout:30000});
-await page.locator('#searchInput').fill('Vancouver Island');
-await page.locator('#runBtn').click();
+await page.evaluate(()=>{
+  const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+  i.value='Vancouver Island';
+  i.dispatchEvent(new Event('input',{bubbles:true}));
+  i.dispatchEvent(new Event('change',{bubbles:true}));
+  b.click();
+});
 
 await page.waitForFunction(()=>window.EARTHLINE_VANCOUVER_ISLAND_BOUNDARY_16920?.capability==='ca-cgndb-vancouver-island',{timeout:30000,polling:100});
 
