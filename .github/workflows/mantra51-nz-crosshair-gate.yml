@@ -1,0 +1,54 @@
+name: Mantra 51 New Zealand Crosshair Gate
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-nz-crosshair-gate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  nz_crosshair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 5110410025b3fb1c4eae2870dcff49609f2e3e13
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start candidate server
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/m51-nz-crosshair.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/m51-nz-crosshair.log
+          exit 1
+      - name: Run crosshair diagnostic
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: http://127.0.0.1:8787/
+        run: node lab/mantra51-border-crosshair-diagnostic.mjs | tee /tmp/m51-crosshair.jsonl
+      - name: Require NZ authoritative interior target
+        run: |
+          python3 - <<'PY'
+          import json,math
+          rows=[]
+          for line in open('/tmp/m51-crosshair.jsonl',encoding='utf-8'):
+              line=line.strip()
+              if not line.startswith('{'): continue
+              try: rows.append(json.loads(line))
+              except: pass
+          nz=next((r for r in rows if r.get('target')=='New Zealand'),None)
+          if not nz: raise SystemExit('New Zealand result missing')
+          p=nz.get('propertyTarget') or {}
+          c=nz.get('packageCenter') or []
+          if len(c)!=2: raise SystemExit('authoritative package center missing')
+          d=math.hypot(float(p.get('lng',999))-float(c[0]),float(p.get('lat',999))-float(c[1]))
+          print(json.dumps({'target':'New Zealand','propertyTarget':p,'packageCenter':c,'distanceDeg':d}))
+          if d>0.01: raise SystemExit('crosshair is not synchronized to authoritative interior center')
+          PY
