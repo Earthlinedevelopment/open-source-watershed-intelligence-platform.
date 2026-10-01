@@ -1,0 +1,18 @@
+name: Mantra 51 Inspect Regional Analysis Bounds
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-inspect-regionalanalysisbounds.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+      - name: Print owner
+        run: |
+          python3 -c "from pathlib import Path; s=Path('index.html').read_text(encoding='utf-8'); i=s.find('function earthlineRegionalAnalysisBounds16712'); print(s[max(0,i-2200):min(len(s),i+9000)] if i>=0 else 'NOT FOUND')"
