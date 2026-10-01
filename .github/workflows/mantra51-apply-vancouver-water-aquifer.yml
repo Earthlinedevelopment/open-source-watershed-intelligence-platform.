@@ -1,0 +1,23 @@
+name: Mantra 51 Apply Vancouver Water Aquifer Repair
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['lab/mantra51-fix-vancouver-water-aquifer.py']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - run: python3 lab/mantra51-fix-vancouver-water-aquifer.py
+      - run: |
+          grep -n "VANCOUVER ISLAND OFFICIAL AQUIFER CONTEXT" index.html
+          grep -n "EARTHLINE_VANCOUVER_WATER_AUDIT_16912" index.html
+      - run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: add Vancouver Island water and official aquifer publication"
+          git push origin HEAD:mantra51-global-repair-campaign
