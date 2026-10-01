@@ -1,0 +1,55 @@
+name: Mantra 51 Hotfix NZ Real Canvas Live
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-hotfix-nz-real-canvas-live.yml']
+permissions:
+  contents: write
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Bind NZ unlock to real Mapbox canvas
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          old="""  document.addEventListener('pointerdown',function(ev){
+    try{
+      const mapEl=document.getElementById('map');
+      if(mapEl&&(ev.target===mapEl||mapEl.contains(ev.target))){
+        window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;
+      }
+    }catch(_){}
+  },true);"""
+          new="""  document.addEventListener('pointerdown',function(ev){
+    try{
+      const mapEl=document.getElementById('map');
+      const realMapEl=document.getElementById('mapboxBase');
+      const mapSurface=ev.target&&ev.target.closest?ev.target.closest('.mapboxgl-map, #mapboxBase, #map, [data-earthline-map]'):null;
+      if(mapSurface||(mapEl&&(ev.target===mapEl||mapEl.contains(ev.target)))||(realMapEl&&(ev.target===realMapEl||realMapEl.contains(ev.target)))){
+        window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;
+      }
+    }catch(_){}
+  },true);"""
+          if old in s:
+              s=s.replace(old,new,1)
+          elif "const realMapEl=document.getElementById('mapboxBase');" not in s:
+              raise SystemExit("NZ crosshair unlock anchor missing")
+          p.write_text(s,encoding="utf-8")
+          PY
+          grep -n "realMapEl=document.getElementById('mapboxBase')" index.html
+          grep -n "earthline-language-hotfix-16890.js" index.html
+      - name: Commit production hotfix
+        run: |
+          if git diff --quiet -- index.html; then exit 0; fi
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: bind New Zealand crosshair to real Mapbox canvas"
+          git push origin HEAD:pages-live
