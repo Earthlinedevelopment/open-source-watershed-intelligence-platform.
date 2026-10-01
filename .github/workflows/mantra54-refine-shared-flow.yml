@@ -1,0 +1,23 @@
+name: Mantra 54 Refine Shared Regional Flow
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['lab/mantra54-refine-shared-flow.py']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - run: python3 lab/mantra54-refine-shared-flow.py
+      - run: |
+          grep -n "continuous relief-adaptive Regional drainage density" index.html
+          ! grep -q "vancouverFlowDensity" index.html
+      - run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: refine shared rugged-terrain drainage density"
+          git push origin HEAD:mantra51-global-repair-campaign
