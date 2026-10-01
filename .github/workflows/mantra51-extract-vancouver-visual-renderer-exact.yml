@@ -1,0 +1,27 @@
+name: Mantra 51 Extract Vancouver Visual Renderer Exact
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-extract-vancouver-visual-renderer-exact.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          for needle in ['data-layer="directional-water-paths"','data-layer="swale-opportunities"','data-layer="numbered-elevation-contours"']:
+            print("\n###",needle)
+            pos=0; n=0
+            while n<20:
+              i=s.find(needle,pos)
+              if i<0: break
+              print("\n--- HIT",n+1,"---\n")
+              print(s[max(0,i-6000):min(len(s),i+14000)])
+              pos=i+len(needle); n+=1
+          PY
