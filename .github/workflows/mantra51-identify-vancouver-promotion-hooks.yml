@@ -1,0 +1,24 @@
+name: Mantra 51 Identify Vancouver Promotion Hooks
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-identify-vancouver-promotion-hooks.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          print("functions16539",sorted(set(re.findall(r"function\s+(earthline[A-Za-z0-9_$]*16539)\s*\(",s))))
+          i=s.find("ca-cgndb-vancouver-island")
+          pre=s[max(0,i-400000):i]
+          ms=list(re.finditer(r"(?:const|let|var)\s+([A-Za-z0-9_$]+)\s*=\s*Object\.freeze\(\{type:[\"']MultiPolygon",pre))
+          print("geometry candidates",[m.group(1) for m in ms[-5:]])
+          PY
