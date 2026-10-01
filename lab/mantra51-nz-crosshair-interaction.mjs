@@ -84,7 +84,7 @@ const realDiag=await page.evaluate(({x,y})=>{
     dragPan:m?.dragPan?.isEnabled?.()??null,
     center:m?.getCenter?.()?.toArray?.()||null,
     nzRelease:!!window.EARTHLINE_NZ_REAL_CANVAS_RELEASE_16913,
-    hit:document.elementsFromPoint(x,y).slice(0,12).map(el=>({tag:el.tagName,id:el.id||'',cls:String(el.className||''),pe:getComputedStyle(el).pointerEvents,z:getComputedStyle(el).zIndex}))
+    hit:document.elementsFromPoint(x,y).slice(0,12).map(el=>{let a=el,p=[];for(let i=0;i<5&&a;i++,a=a.parentElement)p.push({tag:a.tagName,id:a.id||'',cls:String(a.className?.baseVal||a.className||''),pe:getComputedStyle(a).pointerEvents,z:getComputedStyle(a).zIndex});return {tag:el.tagName,id:el.id||'',cls:String(el.className?.baseVal||el.className||''),pe:getComputedStyle(el).pointerEvents,z:getComputedStyle(el).zIndex,ancestors:p}})
   };
 },{x,y});
 console.log(JSON.stringify({realDiag,mapBox}));
