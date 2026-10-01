@@ -54,3 +54,5 @@ if(!moved||moved<0.01)throw new Error('Alaska published map did not move crossha
 await browser.close();
 
 // trigger Alaska interaction diagnostic
+
+// rerun after Alaska hit-path repair
