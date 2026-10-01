@@ -1,0 +1,37 @@
+name: Mantra 51 Sync Vancouver Aquifer Timeout Candidate
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-sync-vancouver-aquifer-timeout.yml']
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+          fetch-depth: 0
+      - name: Sync timeout
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          old='const signal16912=(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function")?AbortSignal.timeout(9000):undefined;'
+          new='const signal16912=(typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function")?AbortSignal.timeout(30000):undefined;'
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit("Vancouver aquifer timeout owner missing")
+          p.write_text(s,encoding="utf-8")
+          PY
+      - name: Commit if needed
+        run: |
+          if git diff --quiet -- index.html; then exit 0; fi
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: sync Vancouver aquifer timeout with production"
+          git push origin HEAD:mantra51-global-repair-campaign
