@@ -1,0 +1,55 @@
+name: Mantra 51 Promote NZ Water Paths Only
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-promote-nz-water-only.yml']
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Apply wrapped-world water publication fix only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          if "earthline-language-hotfix-16890.js" not in s:
+              raise SystemExit("language hotfix reference missing")
+          old="""    if(style16584&&Array.isArray(style16584.layers)){
+                const surfaceLayers16584=style16584.layers.filter(surfaceLayer16584),layerIds16584=surfaceLayers16584.map(l16584=>l16584.id).filter(Boolean);"""
+          new="""    const worldCopies16584=(()=>{try{return !!(mp16584.getRenderWorldCopies&&mp16584.getRenderWorldCopies())}catch(_){return false}})();
+              /* EARTHLINE 16911 — WRAPPED-WORLD WATER CLIP SAFETY.
+                 When world copies are enabled (needed for New Zealand dateline navigation),
+                 rendered/source vector water geometry may be duplicated/wrapped across the seam.
+                 Do not let that presentation geometry override the deterministic Regional land-validity
+                 grid and Natural Earth water parts. The same final flow-safety checks remain active. */
+              if(style16584&&Array.isArray(style16584.layers)&&!worldCopies16584){
+                const surfaceLayers16584=style16584.layers.filter(surfaceLayer16584),layerIds16584=surfaceLayers16584.map(l16584=>l16584.id).filter(Boolean);"""
+          if "WRAPPED-WORLD WATER CLIP SAFETY" not in s:
+              if old not in s: raise SystemExit("final water clip style anchor missing")
+              s=s.replace(old,new,1)
+          old2="failClosedNoEvidence:!evidenceReady16584,at:new Date().toISOString()"
+          new2="failClosedNoEvidence:!evidenceReady16584,worldCopiesSkippedStyleWater:worldCopies16584,at:new Date().toISOString()"
+          if "worldCopiesSkippedStyleWater" not in s:
+              if old2 not in s: raise SystemExit("water audit anchor missing")
+              s=s.replace(old2,new2,1)
+          if "WRAPPED-WORLD WATER CLIP SAFETY" not in s: raise SystemExit("water fix missing")
+          if "earthline-language-hotfix-16890.js" not in s: raise SystemExit("language hotfix lost")
+          p.write_text(s,encoding="utf-8")
+          PY
+          test "$(git diff --name-only)" = "index.html"
+          grep -n "WRAPPED-WORLD WATER CLIP SAFETY" index.html
+          grep -n "worldCopiesSkippedStyleWater" index.html
+      - name: Commit production water repair
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: restore New Zealand regional water pathways"
+          git push origin HEAD:pages-live
