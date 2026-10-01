@@ -126,4 +126,34 @@ const consumeDelta=Math.hypot(Number(consumed.lng)-after.target.lng,Number(consu
 console.log(JSON.stringify({crosshairTarget:after.target,propertyConsumedCenter:consumed,consumeDelta}));
 if(consumeDelta>0.02)throw new Error('Property engine replaced the moved NZ crosshair target');
 
+// Require the final published Property result to retain the moved crosshair center.
+await page.waitForFunction(()=>{
+  const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+  const p=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null;
+  const tier=String(d&&(d.tier||d.mode)||'').toLowerCase();
+  return tier==='property' && p && p.published===true;
+},{timeout:70000,polling:250});
+
+const propertyFinal=await page.evaluate(()=>({
+  displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,
+  publication:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,
+  declaration:window.EARTHLINE_PROPERTY_DECLARATION_16169||null,
+  target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+  waterGate:window.EARTHLINE_PROPERTY_WATER_BODY_GATE_16529||null,
+  modelLoc:(window.earthlineModel&&window.earthlineModel.loc)||null,
+  dataset:{
+    tier:document.documentElement.dataset.earthlineAnalysisTier||'',
+    runState:document.documentElement.dataset.earthlineRunState||'',
+    propertyState:document.documentElement.dataset.earthlinePropertyRunState||''
+  }
+}));
+console.log(JSON.stringify({propertyFinal}));
+const finalCenter=(propertyFinal.declaration&&propertyFinal.declaration.center)||
+                  (propertyFinal.waterGate&&propertyFinal.waterGate.center)||
+                  (propertyFinal.publication&&propertyFinal.publication.center)||null;
+if(!finalCenter)throw new Error('final Property publication exposed no center');
+const finalDelta=Math.hypot(Number(finalCenter.lng)-after.target.lng,Number(finalCenter.lat)-after.target.lat);
+console.log(JSON.stringify({finalCrosshairTarget:after.target,finalPublishedCenter:finalCenter,finalDelta}));
+if(finalDelta>0.02)throw new Error('Final NZ Property publication is not centered on moved crosshair');
+
 await browser.close();
