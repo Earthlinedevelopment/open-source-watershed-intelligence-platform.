@@ -41,3 +41,5 @@ const moved=before.center&&after.center?Math.hypot(after.center[0]-before.center
 if(diag.canvas.pe==='none')throw new Error('actual Mapbox canvas has pointer-events none');
 if(!moved||moved<0.01)throw new Error('Alaska map did not respond to real drag');
 await browser.close();
+
+// trigger Alaska interaction diagnostic
