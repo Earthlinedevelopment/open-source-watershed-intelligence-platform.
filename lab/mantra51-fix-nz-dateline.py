@@ -31,3 +31,5 @@ if old2 not in s:
 s=s.replace(old2,new2,1)
 p.write_text(s,encoding="utf-8")
 print("patched NZ dateline navigation only")
+
+# trigger apply workflow
