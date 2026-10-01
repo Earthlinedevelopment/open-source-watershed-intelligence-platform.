@@ -56,3 +56,5 @@ await browser.close();
 // trigger Alaska interaction diagnostic
 
 // rerun after Alaska hit-path repair
+
+// rerun after drag target handoff repair
