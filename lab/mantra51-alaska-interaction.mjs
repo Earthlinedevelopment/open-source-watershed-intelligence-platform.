@@ -108,3 +108,5 @@ await browser.close();
 // rerun after Alaska hit-path repair
 
 // rerun after drag target handoff repair
+
+// rerun after Alaska label pointer repair
