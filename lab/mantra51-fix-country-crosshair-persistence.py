@@ -98,6 +98,46 @@ if pkg_guard_old in s:
 elif pkg_guard_new not in s:
     raise SystemExit("country package validity guard anchor not found")
 
+
+# Preserve country intent even when profile resolution mutates loc/placeType.
+country_decl_old="let countryPackage16845=null;\n    if(loc&&String(loc.placeType||'').toLowerCase()==='country'){"
+country_decl_new="""const countryProfileText16845=String(profile16549&&(
+      profile16549.profileId||profile16549.id||profile16549.code||profile16549.name||profile16549
+    )||'').toLowerCase();
+    const countryRequest16845=!!(loc&&String(loc.placeType||'').toLowerCase()==='country')||countryProfileText16845.startsWith('country-');
+    let countryPackage16845=null;
+    if(countryRequest16845){"""
+if country_decl_old in s:
+    s=s.replace(country_decl_old,country_decl_new,1)
+elif "const countryRequest16845=" not in s:
+    raise SystemExit("country request intent anchor not found")
+
+# At publication, use the current atomic country package even if the local handoff
+# path did not retain the package object.
+pub_old="""if(countryPackage16845&&countryPackage16845.center){
+      try{
+        const cc=countryPackage16845.center;
+        if(typeof setPropertyTarget16201==='function'&&Number.isFinite(Number(cc.lng))&&Number.isFinite(Number(cc.lat))){
+          setPropertyTarget16201({lng:Number(cc.lng),lat:Number(cc.lat),source:'country-center'},{openPanel:false});
+        }
+      }catch(_){}
+    }"""
+pub_new="""if(countryRequest16845){
+      try{
+        const cp=countryPackage16845||window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845||window.EARTHLINE_LAST_ATOMIC_COUNTRY_PACKAGE_16845||null;
+        const cc=cp&&cp.center;
+        if(cc&&typeof setPropertyTarget16201==='function'&&Number.isFinite(Number(cc.lng))&&Number.isFinite(Number(cc.lat))){
+          window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556=cp;
+          window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845=cp;
+          setPropertyTarget16201({lng:Number(cc.lng),lat:Number(cc.lat),source:'country-center'},{openPanel:false});
+        }
+      }catch(_){}
+    }"""
+if pub_old in s:
+    s=s.replace(pub_old,pub_new,1)
+elif "const cp=countryPackage16845||window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845" not in s:
+    raise SystemExit("country publication fallback anchor not found")
+
 required=[
     "source:'country-center'",
     "const targetLng=cc&&Number.isFinite(Number(cc.lng))",
