@@ -59,6 +59,16 @@ for(const target of TARGETS){
     await page.waitForSelector('#searchInput',{timeout:30000});
     if(!fixture.raw?.features?.length)throw new Error('production geocoder fixture unavailable: '+String(fixture.error||'no features'));
     await page.evaluate(({target,raw})=>{
+      if(target==='New Zealand'){
+        try{
+          let __m51pt=window.EARTHLINE_PROPERTY_TARGET_16201;
+          window.__M51_TARGET_WRITES=[];
+          Object.defineProperty(window,'EARTHLINE_PROPERTY_TARGET_16201',{configurable:true,get(){return __m51pt},set(v){
+            window.__M51_TARGET_WRITES.push({at:Date.now(),value:v?{lng:Number(v.lng),lat:Number(v.lat),source:String(v.source||''),code:String(v.code||'')}:v,stack:(new Error()).stack?.split('\n').slice(1,5)});
+            __m51pt=v;
+          }});
+        }catch(e){window.__M51_TARGET_TRACE_ERROR=String(e?.message||e)}
+      }
       const original=window.fetch.bind(window);
       window.fetch=async(url,opts)=>{
         const u=String(url||'');
@@ -104,6 +114,8 @@ for(const target of TARGETS){
       packageBounds:pkg?.regionalExtent?.bbox||pkg?.location?.bbox||null,
       packageCenter:pkg?.center?[Number(pkg.center.lng),Number(pkg.center.lat)]:null,
       mapCenter,propertyTarget:targetState?{lng:+targetState.lng,lat:+targetState.lat,code:targetState.code||'',source:targetState.source||''}:null,
+      targetWrites:target==='New Zealand'?(window.__M51_TARGET_WRITES||[]):undefined,
+      targetTraceError:target==='New Zealand'?(window.__M51_TARGET_TRACE_ERROR||null):undefined,
       mapPointerEvents:mapStyle?.pointerEvents||null
     };
   },{target,fixture,harnessError});
