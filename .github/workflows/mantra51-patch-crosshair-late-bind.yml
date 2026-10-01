@@ -1,0 +1,35 @@
+name: Mantra 51 Patch Crosshair Late Bind
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+      - name: Patch existing crosshair owner
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          old="""const m=panelMap16188();if(m&&typeof m.on==='function'){for(const ev of ['load','style.load'])m.on(ev,()=>setTimeout(initRealGlobe16233,0));m.on('dragend',()=>{const t=window.EARTHLINE_PROPERTY_TARGET_16201;if(t&&(t.code||t.source==='country-center')){const c=m.getCenter?.();if(c&&Number.isFinite(Number(c.lng))&&Number.isFinite(Number(c.lat)))setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair-user-drag-16414'},{openPanel:false})}});m.on('moveend',()=>{syncPropertyTargetFromMap16201();positionSuggestions16233()});m.on('resize',positionSuggestions16233)}setPanel16188(true);reconcilePanel16188();for(const delay of [100,500,1400])setTimeout(()=>{reconcilePanel16188();initRealGlobe16233()},delay);"""
+          new="""function bindPropertyTargetMove16201(){if(propertyTargetMoveBound16201)return true;const m=panelMap16188();if(!m||typeof m.on!=='function')return false;propertyTargetMoveBound16201=true;for(const ev of ['load','style.load'])m.on(ev,()=>setTimeout(initRealGlobe16233,0));m.on('dragend',()=>{const t=window.EARTHLINE_PROPERTY_TARGET_16201;if(t&&(t.code||t.source==='country-center')){const c=m.getCenter?.();if(c&&Number.isFinite(Number(c.lng))&&Number.isFinite(Number(c.lat)))setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair-user-drag-16414'},{openPanel:false})}});m.on('moveend',()=>{syncPropertyTargetFromMap16201();positionSuggestions16233()});m.on('resize',positionSuggestions16233);return true}bindPropertyTargetMove16201();setPanel16188(true);reconcilePanel16188();for(const delay of [100,500,1400])setTimeout(()=>{reconcilePanel16188();bindPropertyTargetMove16201();initRealGlobe16233()},delay);"""
+          if old not in s:
+              raise SystemExit("target block not found exactly once")
+          if s.count(old)!=1:
+              raise SystemExit(f"target block count={s.count(old)}")
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding="utf-8")
+          print("patched",len(s))
+          PY
+      - name: Commit candidate
+        run: |
+          git config user.name "Earthline Repair Bot"
+          git config user.email "earthline-repair@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: late-bind existing crosshair map handlers"
+          git push origin HEAD:mantra51-global-repair-campaign
