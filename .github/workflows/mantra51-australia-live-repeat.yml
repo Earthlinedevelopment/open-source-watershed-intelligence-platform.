@@ -1,0 +1,34 @@
+name: Mantra 51 Australia Live Repeat
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-australia-live-repeat.yml']
+permissions:
+  contents: read
+jobs:
+  australia:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+      - name: Fetch retained global harness
+        run: |
+          git fetch origin global-search-development-16845
+          git show origin/global-search-development-16845:lab/earthline-16847-africa-identity.mjs > ./australia-live.mjs
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run Australia 3 times live
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: https://earthlinedevelopment.org/
+          TARGETS: 'Australia=au'
+        run: |
+          for i in 1 2 3; do
+            echo "=== AUSTRALIA RUN $i ==="
+            node ./australia-live.mjs
+          done
