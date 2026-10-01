@@ -34,3 +34,5 @@ if(!(Number(result.waterAudit?.waterPaths)>0)||!(Number(result.visual.flows)>0))
 if(!(Number(result.aquiferAudit?.published)>0))throw new Error('Vancouver Island official aquifers missing');
 if(!result.boundaryAudit)throw new Error('Vancouver Island authoritative containment audit missing');
 await browser.close();
+
+// trigger gate
