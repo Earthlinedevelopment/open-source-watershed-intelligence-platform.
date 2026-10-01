@@ -70,3 +70,5 @@ if context_insert not in s:
     s=s.replace(context_anchor,context_insert,1)
 p.write_text(s,encoding="utf-8")
 print("patched Vancouver display hierarchy")
+
+# trigger apply
