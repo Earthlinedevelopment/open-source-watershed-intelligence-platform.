@@ -54,7 +54,7 @@ await page.waitForFunction(()=>{
 },{timeout:100000,polling:100});
 
 const before=await page.evaluate(()=>{
-  const m=window.map||window.mapboxMap;
+  const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.map||window.mapboxMap;
   const c=m?.getCenter?.();
   const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
   return {center:c?[+c.lng,+c.lat]:null,target:t?{lng:+t.lng,lat:+t.lat,source:String(t.source||'')}:null,lock:window.EARTHLINE_COUNTRY_TARGET_LOCK_16845};
@@ -74,6 +74,20 @@ const canvas=page.locator('#mapboxBase canvas.mapboxgl-canvas').first();
 const mapBox=await canvas.boundingBox();
 if(!mapBox)throw new Error('real Mapbox canvas unavailable');
 const x=mapBox.x+mapBox.width*0.55, y=mapBox.y+mapBox.height*0.55;
+const realDiag=await page.evaluate(({x,y})=>{
+  const c=document.querySelector('#mapboxBase canvas.mapboxgl-canvas');
+  const b=document.getElementById('mapboxBase');
+  const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||null;
+  return {
+    canvasPointerEvents:c?getComputedStyle(c).pointerEvents:null,
+    basePointerEvents:b?getComputedStyle(b).pointerEvents:null,
+    dragPan:m?.dragPan?.isEnabled?.()??null,
+    center:m?.getCenter?.()?.toArray?.()||null,
+    nzRelease:!!window.EARTHLINE_NZ_REAL_CANVAS_RELEASE_16913,
+    hit:document.elementsFromPoint(x,y).slice(0,12).map(el=>({tag:el.tagName,id:el.id||'',cls:String(el.className||''),pe:getComputedStyle(el).pointerEvents,z:getComputedStyle(el).zIndex}))
+  };
+},{x,y});
+console.log(JSON.stringify({realDiag,mapBox}));
 await page.mouse.move(x,y);
 await page.mouse.down();
 await page.mouse.move(x+180,y+90,{steps:12});
@@ -82,7 +96,7 @@ await page.mouse.up();
 await page.waitForTimeout(2500);
 
 const after=await page.evaluate(()=>{
-  const m=window.map||window.mapboxMap;
+  const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.map||window.mapboxMap;
   const c=m?.getCenter?.();
   const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
   const mapEl=document.getElementById('map');
