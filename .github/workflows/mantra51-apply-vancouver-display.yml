@@ -1,0 +1,32 @@
+name: Mantra 51 Apply Vancouver Display Repair
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['lab/mantra51-fix-vancouver-display.py']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        branch: [mantra51-global-repair-campaign, pages-live]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+          fetch-depth: 0
+      - name: Apply Vancouver display hierarchy
+        run: python3 lab/mantra51-fix-vancouver-display.py
+      - name: Verify
+        run: |
+          grep -n "EARTHLINE_VANCOUVER_DISPLAY_AUDIT_16915" index.html
+          grep -n "stacking:'aquifer < flow < swale'" index.html
+      - name: Commit
+        run: |
+          if git diff --quiet -- index.html; then exit 0; fi
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: make Vancouver Island water paths and aquifers visible"
+          git push origin HEAD:${{ matrix.branch }}
