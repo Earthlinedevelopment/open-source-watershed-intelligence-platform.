@@ -1,0 +1,26 @@
+name: Mantra 51 Alaska Interaction Diagnostic
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - 'index.html'
+      - 'lab/mantra51-alaska-interaction.mjs'
+      - '.github/workflows/mantra51-alaska-interaction.yml'
+permissions:
+  contents: read
+jobs:
+  alaska_interaction:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/ak-int.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          node lab/mantra51-alaska-interaction.mjs
