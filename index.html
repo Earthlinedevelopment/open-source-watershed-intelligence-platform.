@@ -31813,8 +31813,12 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
       recordRun('regional_tier_commit_warning_16327',runToken,{error:String(error&&error.message||error)});
     }
     const regionalStarted16198=performance.now(),phase16198={};
+    const countryProfileText16845=String(profile16549&&(
+      profile16549.profileId||profile16549.id||profile16549.code||profile16549.name||profile16549
+    )||'').toLowerCase();
+    const countryRequest16845=!!(loc&&String(loc.placeType||'').toLowerCase()==='country')||countryProfileText16845.startsWith('country-');
     let countryPackage16845=null;
-    if(loc&&String(loc.placeType||'').toLowerCase()==='country'){
+    if(countryRequest16845){
       countryPackage16845=await earthlineResolveAtomicCountryPackage16845(q,loc);
       if(countryPackage16845){
         if(countryPackage16845.location)loc=JSON.parse(JSON.stringify(countryPackage16845.location));
@@ -32742,10 +32746,13 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     const coreSnapshot16198=Object.freeze(JSON.parse(JSON.stringify(coreReport16198)));
     window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970=coreSnapshot16198;
     publishDisplayedRun16151(coreSnapshot16198);
-    if(countryPackage16845&&countryPackage16845.center){
+    if(countryRequest16845){
       try{
-        const cc=countryPackage16845.center;
-        if(typeof setPropertyTarget16201==='function'&&Number.isFinite(Number(cc.lng))&&Number.isFinite(Number(cc.lat))){
+        const cp=countryPackage16845||window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845||window.EARTHLINE_LAST_ATOMIC_COUNTRY_PACKAGE_16845||null;
+        const cc=cp&&cp.center;
+        if(cc&&typeof setPropertyTarget16201==='function'&&Number.isFinite(Number(cc.lng))&&Number.isFinite(Number(cc.lat))){
+          window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556=cp;
+          window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845=cp;
           setPropertyTarget16201({lng:Number(cc.lng),lat:Number(cc.lat),source:'country-center'},{openPanel:false});
         }
       }catch(_){}
