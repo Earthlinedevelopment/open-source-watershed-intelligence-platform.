@@ -115,7 +115,66 @@ function earthlineNzOverlayHitPass16914(){
     }
   }catch(_){}
 }
-function install(){installRail();modal();renderAccount();refreshSessionIfNeeded();earthlineNzOverlayHitPass16914();document.addEventListener('change',e=>{syncLanguageFromTarget(e.target);earthlineNzOverlayHitPass16914()},true);document.addEventListener('click',e=>{syncLanguageFromTarget(e.target);earthlineNzOverlayHitPass16914()},true);document.addEventListener('pointerover',e=>{try{if(e.target?.closest?.('#earthlineRegionalVectorOverlay16020'))earthlineNzOverlayHitPass16914()}catch(_){}},true);document.addEventListener('earthline:analysis-complete',()=>{earthlineNzOverlayHitPass16914();setTimeout(earthlineNzOverlayHitPass16914,250)},{passive:true});new MutationObserver(()=>{const current=detectLang(document.documentElement.lang);if(current&&current!==launchLangOverride){launchLangOverride=current;renderAccount();scheduleTranslation()}}).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});loadConfig();scheduleTranslation();installTelemetry();document.documentElement.dataset.earthlineLaunch16872='ready'}
+function earthlineVancouverVisibleContext16916(){
+  try{
+    const q=String(window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970?.query||'').trim().toLowerCase();
+    const active=/vancouver\s+island/.test(q);
+    let style=document.getElementById('earthlineVancouverVisibleContext16916');
+    if(active){
+      if(!style){
+        style=document.createElement('style');
+        style.id='earthlineVancouverVisibleContext16916';
+        style.textContent=`
+#earthlineRegionalVectorOverlay16020 [data-layer="directional-water-paths"] > path[stroke^="rgba(0,18,29"]{
+  stroke-width:5px!important;opacity:.92!important
+}
+#earthlineRegionalVectorOverlay16020 [data-layer="directional-water-paths"] > path[stroke^="rgba(37,200,255"]{
+  stroke-width:3px!important;opacity:1!important
+}
+#earthlineRegionalVectorOverlay16020 [data-layer="directional-water-paths"] > g{
+  opacity:1!important
+}
+`;
+        (document.head||document.documentElement).appendChild(style);
+      }
+      const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||null;
+      if(m){
+        const apply=()=>{
+          try{
+            if(m.getLayer('el-live-aquifer-fill-15970')){
+              m.setLayoutProperty('el-live-aquifer-fill-15970','visibility','visible');
+              m.setPaintProperty('el-live-aquifer-fill-15970','fill-color','#ff8c20');
+              m.setPaintProperty('el-live-aquifer-fill-15970','fill-opacity',0.42);
+              m.moveLayer('el-live-aquifer-fill-15970');
+            }
+            if(m.getLayer('el-live-aquifer-line-15970')){
+              m.setLayoutProperty('el-live-aquifer-line-15970','visibility','visible');
+              m.setPaintProperty('el-live-aquifer-line-15970','line-color','#ff9c21');
+              m.setPaintProperty('el-live-aquifer-line-15970','line-width',4.2);
+              m.setPaintProperty('el-live-aquifer-line-15970','line-opacity',1);
+              m.moveLayer('el-live-aquifer-line-15970');
+            }
+            if(m.getLayer('el-live-flow-casing-15970')){m.setLayoutProperty('el-live-flow-casing-15970','visibility','visible');m.moveLayer('el-live-flow-casing-15970');}
+            if(m.getLayer('el-live-flow-line-15970')){
+              m.setLayoutProperty('el-live-flow-line-15970','visibility','visible');
+              m.setPaintProperty('el-live-flow-line-15970','line-color','#25c8ff');
+              m.setPaintProperty('el-live-flow-line-15970','line-width',['interpolate',['linear'],['zoom'],4,4.5,7,6,10,8]);
+              m.setPaintProperty('el-live-flow-line-15970','line-opacity',1);
+              m.moveLayer('el-live-flow-line-15970');
+            }
+            if(m.getLayer('el-live-flow-arrow-15970')){m.setLayoutProperty('el-live-flow-arrow-15970','visibility','visible');m.moveLayer('el-live-flow-arrow-15970');}
+          }catch(_){}
+        };
+        apply();setTimeout(apply,300);setTimeout(apply,1200);setTimeout(apply,3000);
+      }
+      window.EARTHLINE_VANCOUVER_VISIBLE_CONTEXT_16916=true;
+    }else{
+      if(style)style.remove();
+      window.EARTHLINE_VANCOUVER_VISIBLE_CONTEXT_16916=false;
+    }
+  }catch(_){}
+}
+function install(){installRail();modal();renderAccount();refreshSessionIfNeeded();earthlineVancouverVisibleContext16916();earthlineNzOverlayHitPass16914();document.addEventListener('change',e=>{syncLanguageFromTarget(e.target);earthlineNzOverlayHitPass16914()},true);document.addEventListener('click',e=>{syncLanguageFromTarget(e.target);earthlineNzOverlayHitPass16914()},true);document.addEventListener('pointerover',e=>{try{if(e.target?.closest?.('#earthlineRegionalVectorOverlay16020'))earthlineNzOverlayHitPass16914()}catch(_){}},true);document.addEventListener('earthline:analysis-complete',()=>{earthlineNzOverlayHitPass16914();setTimeout(earthlineNzOverlayHitPass16914,250)},{passive:true});document.addEventListener('earthline:analysis-complete',()=>{earthlineVancouverVisibleContext16916();setTimeout(earthlineVancouverVisibleContext16916,300);setTimeout(earthlineVancouverVisibleContext16916,1500)},{passive:true});new MutationObserver(()=>{const current=detectLang(document.documentElement.lang);if(current&&current!==launchLangOverride){launchLangOverride=current;renderAccount();scheduleTranslation()}}).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});loadConfig();scheduleTranslation();installTelemetry();document.documentElement.dataset.earthlineLaunch16872='ready'}
 window.EARTHLINE_LAUNCH_16872={build:BUILD,quota,consumePaidSearch,createAccount,signIn,signOut,openAccount,donateTarget,limits:()=>({...config}),isConfiguredDonation:()=>!!donateTarget(),translateVisibleText,centralClaim,track,refreshSessionIfNeeded};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
