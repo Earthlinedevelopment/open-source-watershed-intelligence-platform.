@@ -1,0 +1,49 @@
+name: Mantra 51 Live 12-Country Verification
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-live-12-country-verification.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live_country_gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - batch: asia-pacific
+            targets: 'Australia=au|New Zealand=nz|India=in|Vietnam=vn|Laos=la|Thailand=th'
+          - batch: americas-europe
+            targets: 'Mexico=mx|Colombia=co|Germany=de|France=fr|Spain=es|Ireland=ie'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+          fetch-depth: 0
+      - name: Fetch retained global test harness
+        run: |
+          git fetch origin global-search-development-16845
+          git show origin/global-search-development-16845:lab/earthline-16847-africa-identity.mjs > ./mantra51-live-country-gate.mjs
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run live production country gate
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: https://earthlinedevelopment.org/
+          TARGETS: ${{ matrix.targets }}
+        run: node ./mantra51-live-country-gate.mjs | tee mantra51-live-${{ matrix.batch }}.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra51-live-${{ matrix.batch }}
+          path: mantra51-live-${{ matrix.batch }}.jsonl
+          if-no-files-found: ignore
