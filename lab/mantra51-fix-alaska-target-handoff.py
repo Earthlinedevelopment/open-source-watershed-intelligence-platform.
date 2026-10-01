@@ -9,3 +9,5 @@ if new not in s:
 if new not in s: raise SystemExit("Alaska drag target handoff patch missing")
 p.write_text(s,encoding="utf-8")
 print("patched existing dragend owner to refresh ordinary crosshair target")
+
+# trigger Alaska target handoff repair
