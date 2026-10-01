@@ -1,0 +1,33 @@
+name: Mantra 51 Live Protected US Verification
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-live-protected-us.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live_us:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Live frozen US controls
+        env:
+          EARTHLINE_CANDIDATE: https://earthlinedevelopment.org/
+        run: node lab/mantra51-us-regression.mjs | tee mantra51-live-us-regression.jsonl
+      - name: Live NM transition and Alaska lock
+        run: |
+          sed "s#const BASE='http://127.0.0.1:8787/';#const BASE='https://earthlinedevelopment.org/';#" tests/mantra51-nm-alaska-regression.mjs > /tmp/mantra51-nm-alaska-live.mjs
+          sed -i "s#const OUT='artifacts/mantra51-nm-alaska'#const OUT='/tmp/mantra51-nm-alaska-live'#" /tmp/mantra51-nm-alaska-live.mjs
+          node /tmp/mantra51-nm-alaska-live.mjs
