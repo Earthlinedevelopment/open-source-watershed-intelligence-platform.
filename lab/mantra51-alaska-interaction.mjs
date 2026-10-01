@@ -4,8 +4,13 @@ const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1800,height:1000}});
 await page.goto(BASE+'?m51-ak-interaction='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
 await page.waitForSelector('#searchInput',{timeout:30000});
-await page.locator('#searchInput').fill('Alaska');
-await page.locator('#runBtn').click();
+await page.evaluate(()=>{
+  const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+  i.value='Alaska';
+  i.dispatchEvent(new Event('input',{bubbles:true}));
+  i.dispatchEvent(new Event('change',{bubbles:true}));
+  b.click();
+});
 await page.waitForFunction(()=>String((window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556||{}).profileId||'')==='us-ak',{timeout:60000,polling:100});
 await page.waitForTimeout(2500);
 
