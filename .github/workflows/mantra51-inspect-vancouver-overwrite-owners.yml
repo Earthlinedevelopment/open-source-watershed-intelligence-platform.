@@ -1,0 +1,39 @@
+name: Mantra 51 Inspect Vancouver Overwrite Owners
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-inspect-vancouver-overwrite-owners.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - name: Extract overwrite owners
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          needles=[
+            "async function loadAquifers",
+            "function loadAquifers",
+            "earthlineRegionalVectorOverlay16020",
+            "function renderRegional",
+            "feature_type==='flow'",
+            'feature_type==="flow"',
+            "IDS.flows",
+            "IDS.aquiferFill",
+            "IDS.aquiferLine"
+          ]
+          for needle in needles:
+            print("\n===== "+needle+" =====")
+            pos=0; count=0
+            while count<10:
+              i=s.find(needle,pos)
+              if i<0: break
+              print(s[max(0,i-3000):min(len(s),i+9000)].replace("\n"," "))
+              print("\n---")
+              pos=i+len(needle);count+=1
+          PY
