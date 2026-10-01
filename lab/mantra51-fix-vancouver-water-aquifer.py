@@ -90,3 +90,5 @@ if "EARTHLINE_VANCOUVER_AQUIFER_AUDIT_16912" not in s:
     s=s.replace(anchor,insert,1)
 p.write_text(s,encoding="utf-8")
 print("patched Vancouver Island official aquifers + water audit")
+
+# trigger apply
