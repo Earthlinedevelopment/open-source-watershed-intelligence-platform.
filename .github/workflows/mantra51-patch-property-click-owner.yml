@@ -1,0 +1,33 @@
+name: Mantra 51 Patch Property Click Owner
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-patch-property-click-owner.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          old="""if(property){property.querySelector('.el69-dot')?.remove();ensureOrb16233('earthlineDeclareProperty16169');"""
+          new="""if(property){property.onclick=function(ev){const fn=window.earthlineDeclarePropertyAtCrosshair16173;return typeof fn==='function'?fn(ev):false};property.querySelector('.el69-dot')?.remove();ensureOrb16233('earthlineDeclareProperty16169');"""
+          if s.count(old)!=1:
+              raise SystemExit(f"target count={s.count(old)}")
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding="utf-8")
+          print("patched Property onclick owner")
+          PY
+          git config user.name "Earthline Repair Bot"
+          git config user.email "earthline-repair@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: restore authoritative Property button onclick"
+          git push origin HEAD:mantra51-global-repair-campaign
