@@ -29743,15 +29743,6 @@ body { overflow-x:hidden!important; }
         if(lng16584<part16584.bbox[0]||lng16584>part16584.bbox[2]||lat16584<part16584.bbox[1]||lat16584>part16584.bbox[3])continue;
         if(earthlinePointInPolygon16584(lng16584,lat16584,part16584.rings))return false;
       }
-      const styleIndex16584=hy16584.styleWaterIndex16584,scale16584=Number(styleIndex16584&&styleIndex16584.scale)||4;
-      if(styleIndex16584&&styleIndex16584.bins){
-        const candidates16584=styleIndex16584.bins[Math.floor(lng16584*scale16584)+':'+Math.floor(lat16584*scale16584)]||[];
-        for(const part16584 of candidates16584){
-          if(!part16584||!part16584.bbox||!part16584.rings)continue;
-          if(lng16584<part16584.bbox[0]||lng16584>part16584.bbox[2]||lat16584<part16584.bbox[1]||lat16584>part16584.bbox[3])continue;
-          if(earthlinePointInPolygon16584(lng16584,lat16584,part16584.rings))return false;
-        }
-      }
     }
     return true;
   }
@@ -29802,7 +29793,11 @@ body { overflow-x:hidden!important; }
        rendered/source vector water geometry may be duplicated/wrapped across the seam.
        Do not let that presentation geometry override the deterministic Regional land-validity
        grid and Natural Earth water parts. The same final flow-safety checks remain active. */
-    if(style16584&&Array.isArray(style16584.layers)&&!worldCopies16584){
+    const deterministicGridReady16584=!!hy16584.validityMask16584;
+    /* EARTHLINE 16919 — deterministic land-validity precedence.
+       Live style water is supplemental evidence only when the deterministic Regional
+       grid is unavailable. This is jurisdiction-agnostic and applies to every region. */
+    if(style16584&&Array.isArray(style16584.layers)&&!worldCopies16584&&!deterministicGridReady16584){
       const surfaceLayers16584=style16584.layers.filter(surfaceLayer16584),layerIds16584=surfaceLayers16584.map(l16584=>l16584.id).filter(Boolean);
       if(layerIds16584.length&&typeof mp16584.queryRenderedFeatures==='function'){
         try{
@@ -29837,7 +29832,7 @@ body { overflow-x:hidden!important; }
     const styleIndex16584={available:styleCoverageReady16584,scale:scale16584,bins:bins16584,featureCount:styleFeatureCount16584,partCount:stylePartCount16584,sourceCount:styleSourceCount16584};
     hy16584.styleWaterIndex16584=styleIndex16584;
 
-    const hasGrid16584=!!hy16584.validityMask16584;
+    const hasGrid16584=deterministicGridReady16584;
     const evidenceReady16584=hasGrid16584||styleCoverageReady16584;
     /* Shared global shoreline uncertainty: one full local DEM-cell diagonal.
        No jurisdiction-specific distance is used. Natural Earth 1:10m lakes and any
@@ -29930,7 +29925,7 @@ body { overflow-x:hidden!important; }
       featureCount:styleFeatureCount16584,partCount:stylePartCount16584,sourceCount:styleSourceCount16584,
       inputLines:inputLines16584,outputLines:outputLines16584,clippedLines:clippedLines16584,droppedLines:droppedLines16584,
       shorelineEvidence:'Natural Earth 1:10m lakes + live surface-water polygons',shoreBufferRule:'one-local-DEM-cell-diagonal',shoreBufferKm:Number(shoreBufferKm16584.toFixed(3)),
-      failClosedNoEvidence:!evidenceReady16584,worldCopiesSkippedStyleWater:worldCopies16584,at:new Date().toISOString()
+      failClosedNoEvidence:!evidenceReady16584,worldCopiesSkippedStyleWater:worldCopies16584,deterministicGridPrecedence:hasGrid16584,at:new Date().toISOString()
     };
     return {...flows16584,features:kept16584.concat(arrows16584)};
   }
@@ -29968,10 +29963,11 @@ body { overflow-x:hidden!important; }
        One owner for every Regional run: rugged terrain exposes more modeled drainage
        branches; lower-relief terrain retains the original conservative threshold. */
     const relief16918=Math.max(0,percentile(hy.elev,0.98)-percentile(hy.elev,0.02));
-    const flowQuantile16918=relief16918>=900?0.72:relief16918>=450?0.76:relief16918>=180?0.80:0.84;
-    const primaryCap16918=relief16918>=900?340:relief16918>=450?300:relief16918>=180?260:230;
-    const fallbackFloor16918=relief16918>=900?120:relief16918>=450?90:relief16918>=180?70:55;
-    const fallbackCap16918=relief16918>=900?320:relief16918>=450?270:relief16918>=180?220:180;
+    const reliefFactor16918=Math.max(0,Math.min(1,relief16918/1000));
+    const flowQuantile16918=Math.max(0.66,Math.min(0.84,0.84-0.18*reliefFactor16918));
+    const primaryCap16918=Math.round(230+150*reliefFactor16918);
+    const fallbackFloor16918=Math.round(55+95*reliefFactor16918);
+    const fallbackCap16918=Math.round(180+180*reliefFactor16918);
     const N=hy.acc.length,th=percentile(hy.acc,flowQuantile16918),channel=new Uint8Array(N),upstream=new Uint16Array(N);
     for(let i=0;i<N;i++)if(hy.acc[i]>=th&&hy.to[i]>=0)channel[i]=1;
     for(let i=0;i<N;i++){const j=hy.to[i];if(channel[i]&&j>=0&&channel[j])upstream[j]++;}
@@ -30005,7 +30001,7 @@ body { overflow-x:hidden!important; }
     window.EARTHLINE_REGIONAL_FLOW_PROFILE_16918={
     build:'EARTHLINE 16918',reliefM:Math.round(relief16918),thresholdQuantile:flowQuantile16918,
     primaryCap:primaryCap16918,fallbackFloor:fallbackFloor16918,fallbackCap:fallbackCap16918,
-    generatedLines:lineCount,rule:'shared relief-adaptive Regional drainage density',at:new Date().toISOString()
+    generatedLines:lineCount,rule:'shared continuous relief-adaptive Regional drainage density',at:new Date().toISOString()
   };
   return {type:'FeatureCollection',features};
 }
