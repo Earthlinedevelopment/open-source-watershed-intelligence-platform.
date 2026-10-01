@@ -1,0 +1,41 @@
+name: Mantra 51 Inspect Crosshair and Spread
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-inspect-crosshair-spread.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+      - name: Print slices
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for needle in [
+            'candidateCoverageCellKeys16791',
+            'attainableTargetCells16791',
+            'earthlineAnalysisCenterTarget15830',
+            'earthlineCenterTarget15782',
+            'EARTHLINE_ANALYSIS_CENTER',
+            'syncPropertyTargetFromMap16201'
+          ]:
+              print('\n### '+needle+' ###')
+              start=0
+              n=0
+              while True:
+                  i=s.find(needle,start)
+                  if i<0: break
+                  print(s[max(0,i-3500):min(len(s),i+7000)])
+                  print('\n---\n')
+                  n+=1
+                  if n>=3: break
+                  start=i+len(needle)
+              if n==0: print('NOT FOUND')
+          PY
