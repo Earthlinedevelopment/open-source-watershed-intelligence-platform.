@@ -1,0 +1,28 @@
+name: Mantra 51 NZ Live DEM Diagnostic
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-nz-live-dem-diagnostic.yml'
+permissions:
+  contents: read
+jobs:
+  live_dem:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Diagnose live NZ DEM
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: https://earthlinedevelopment.org/
+        run: |
+          node lab/mantra51-nz-crosshair-interaction.mjs || true
