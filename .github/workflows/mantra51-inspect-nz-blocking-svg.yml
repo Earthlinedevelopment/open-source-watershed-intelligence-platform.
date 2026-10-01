@@ -1,0 +1,42 @@
+name: Mantra 51 Inspect NZ Blocking SVG
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-inspect-nz-blocking-svg.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Inspect live NZ blocking stack
+        run: |
+          cat > /tmp/inspect.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const b=await chromium.launch({headless:true});
+          const p=await b.newPage({viewport:{width:1600,height:900}});
+          await p.goto('https://earthlinedevelopment.org/?nz-block='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await p.waitForSelector('#searchInput',{timeout:30000});
+          await p.evaluate(()=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='New Zealand';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
+          await p.waitForFunction(()=>String(window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970?.query||'').toLowerCase()==='new zealand',{timeout:100000});
+          const out=await p.evaluate(()=>{
+            const c=document.querySelector('#mapboxBase canvas.mapboxgl-canvas'); const r=c.getBoundingClientRect();
+            const x=r.left+r.width*.55,y=r.top+r.height*.55;
+            return document.elementsFromPoint(x,y).slice(0,10).map(el=>({
+              tag:el.tagName,id:el.id||'',cls:String(el.className?.baseVal||el.className||''),
+              pe:getComputedStyle(el).pointerEvents,
+              parent:{tag:el.parentElement?.tagName||'',id:el.parentElement?.id||'',cls:String(el.parentElement?.className?.baseVal||el.parentElement?.className||''),pe:el.parentElement?getComputedStyle(el.parentElement).pointerEvents:null},
+              grand:{tag:el.parentElement?.parentElement?.tagName||'',id:el.parentElement?.parentElement?.id||'',cls:String(el.parentElement?.parentElement?.className?.baseVal||el.parentElement?.parentElement?.className||''),pe:el.parentElement?.parentElement?getComputedStyle(el.parentElement.parentElement).pointerEvents:null}
+            }));
+          });
+          console.log(JSON.stringify(out,null,2)); await b.close();
+          JS
+          node /tmp/inspect.mjs
