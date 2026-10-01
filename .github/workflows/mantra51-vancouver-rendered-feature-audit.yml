@@ -1,0 +1,82 @@
+name: Mantra 51 Vancouver Rendered Feature Audit
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-vancouver-rendered-feature-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Audit live rendered Vancouver layers
+        run: |
+          cat > lab/mantra51-vancouver-rendered-audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const b=await chromium.launch({headless:true});
+          const p=await b.newPage({viewport:{width:1600,height:900}});
+          await p.goto('https://earthlinedevelopment.org/?van-render='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await p.waitForSelector('#searchInput',{timeout:30000});
+          await p.evaluate(()=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='vancouver island';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
+          await p.waitForFunction(()=>window.EARTHLINE_REGIONAL_TERMINAL_16539?.status==='published',null,{timeout:120000,polling:200});
+          await p.waitForTimeout(5000);
+          const out=await p.evaluate(()=>{
+            const m=earthlineMap;
+            const style=m.getStyle();
+            const layers=style.layers||[];
+            const ids={
+              aqFill:'el-live-aquifer-fill-15970',
+              aqLine:'el-live-aquifer-line-15970',
+              flowCasing:'el-live-flow-casing-15970',
+              flowLine:'el-live-flow-line-15970',
+              swale:'el-live-swale-line-15970'
+            };
+            const idx=id=>layers.findIndex(l=>l.id===id);
+            const rendered=id=>{try{return m.queryRenderedFeatures(undefined,{layers:[id]}).length}catch(e){return -1}};
+            const src=id=>{try{const s=m.getSource(id);return s?._data||null}catch{return null}};
+            const extents=(fc)=>{
+              const pts=[];const walk=x=>{if(!Array.isArray(x))return;if(typeof x[0]==='number'&&typeof x[1]==='number'){pts.push(x);return}for(const y of x)walk(y)};
+              for(const f of fc?.features||[])walk(f?.geometry?.coordinates);
+              if(!pts.length)return null;
+              return [Math.min(...pts.map(p=>p[0])),Math.min(...pts.map(p=>p[1])),Math.max(...pts.map(p=>p[0])),Math.max(...pts.map(p=>p[1]))];
+            };
+            const cam=m.getBounds();
+            const canvas=m.getCanvas();
+            return {
+              marker:window.EARTHLINE_VANCOUVER_DISPLAY_AUDIT_16915||null,
+              camera:[cam.getWest(),cam.getSouth(),cam.getEast(),cam.getNorth()],
+              zoom:m.getZoom(),
+              canvas:{w:canvas.width,h:canvas.height},
+              layers:Object.fromEntries(Object.entries(ids).map(([k,id])=>[k,{
+                id,index:idx(id),rendered:rendered(id),
+                visibility:m.getLayoutProperty(id,'visibility')||'visible',
+                paint:{
+                  opacity:(()=>{try{return m.getPaintProperty(id,id.includes('fill')?'fill-opacity':'line-opacity')}catch{return null}})(),
+                  width:(()=>{try{return m.getPaintProperty(id,'line-width')}catch{return null}})()
+                }
+              }])),
+              sources:{
+                aquifer:{count:src('el-live-aquifer-15970')?.features?.length||0,extent:extents(src('el-live-aquifer-15970'))},
+                flows:{count:src('el-live-flows-15970')?.features?.length||0,extent:extents(src('el-live-flows-15970'))},
+                swales:{count:src('el-live-swales-15970')?.features?.length||0,extent:extents(src('el-live-swales-15970'))}
+              }
+            };
+          });
+          console.log(JSON.stringify(out,null,2));
+          await p.screenshot({path:'vancouver-live-render.png',fullPage:false});
+          await b.close();
+          JS
+          node lab/mantra51-vancouver-rendered-audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vancouver-live-render
+          path: vancouver-live-render.png
