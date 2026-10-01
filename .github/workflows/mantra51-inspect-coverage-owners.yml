@@ -1,0 +1,33 @@
+name: Mantra 51 Inspect Coverage Owners
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-inspect-coverage-owners.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+      - name: Print relevant owners
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for needle in [
+            'async function earthlineResolveAtomicCountryPackage16845',
+            'EARTHLINE_FINAL_PUBLISHED_SPREAD_16783',
+            'candidateCoverageCellKeys16791',
+            'attainableTargetCells16791',
+            'function analysisBounds(loc)',
+            'function earthlineInteriorPoint16556'
+          ]:
+              print('\n### '+needle+' ###')
+              i=s.find(needle)
+              if i<0: print('NOT FOUND'); continue
+              print(s[max(0,i-5000):min(len(s),i+16000)])
+          PY
