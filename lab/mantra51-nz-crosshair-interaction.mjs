@@ -90,6 +90,10 @@ const after=await page.evaluate(()=>{
 });
 console.log(JSON.stringify({diagnostic:true,before,after}));
 
+
+const ui=await page.evaluate(()=>Array.from(document.querySelectorAll('button')).map(b=>({id:b.id||'',text:(b.innerText||b.textContent||'').trim(),disabled:!!b.disabled,display:getComputedStyle(b).display,visibility:getComputedStyle(b).visibility})).filter(x=>x.text||x.id));
+console.log(JSON.stringify({uiButtons:ui}));
+
 const moved=Math.hypot(after.target.lng-before.target.lng,after.target.lat-before.target.lat);
 console.log(JSON.stringify({before,after,movedDegrees:moved}));
 if(before.target?.source!=='country-center')throw new Error('NZ did not start at authoritative country center');
