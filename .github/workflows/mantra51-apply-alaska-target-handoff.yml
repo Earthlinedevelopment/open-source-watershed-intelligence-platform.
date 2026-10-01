@@ -1,0 +1,24 @@
+name: Mantra 51 Apply Alaska Target Handoff
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - 'lab/mantra51-fix-alaska-target-handoff.py'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign, fetch-depth: 0}
+      - run: python3 lab/mantra51-fix-alaska-target-handoff.py
+      - run: |
+          grep -n "source:'crosshair'},{openPanel:false})});m.on('moveend'" index.html
+          git diff --check
+      - run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: refresh Alaska crosshair target on real drag"
+          git push origin HEAD:mantra51-global-repair-campaign
