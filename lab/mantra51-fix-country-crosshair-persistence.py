@@ -138,6 +138,24 @@ if pub_old in s:
 elif "const cp=countryPackage16845||window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845" not in s:
     raise SystemExit("country publication fallback anchor not found")
 
+
+# Temporary candidate audit for the country handoff owner.
+audit_anchor="""const countryRequest16845=!!(loc&&String(loc.placeType||'').toLowerCase()==='country')||countryProfileText16845.startsWith('country-');
+    let countryPackage16845=null;"""
+audit_repl="""const countryRequest16845=!!(loc&&String(loc.placeType||'').toLowerCase()==='country')||countryProfileText16845.startsWith('country-');
+    window.EARTHLINE_COUNTRY_HANDOFF_AUDIT_16845={stage:'intent',locPlaceType:String(loc&&loc.placeType||''),profileText:countryProfileText16845,countryRequest:countryRequest16845,at:new Date().toISOString()};
+    let countryPackage16845=null;"""
+if audit_anchor in s:
+    s=s.replace(audit_anchor,audit_repl,1)
+elif "EARTHLINE_COUNTRY_HANDOFF_AUDIT_16845" not in s:
+    raise SystemExit("country audit anchor not found")
+
+resolver_anchor="countryPackage16845=await earthlineResolveAtomicCountryPackage16845(q,loc);"
+resolver_repl="""countryPackage16845=await earthlineResolveAtomicCountryPackage16845(q,loc);
+      try{window.EARTHLINE_COUNTRY_HANDOFF_AUDIT_16845=Object.assign({},window.EARTHLINE_COUNTRY_HANDOFF_AUDIT_16845||{},{stage:'resolved',packageResolved:!!countryPackage16845,hasCenter:!!(countryPackage16845&&countryPackage16845.center),hasLocation:!!(countryPackage16845&&countryPackage16845.location),packageProfileId:String(countryPackage16845&&countryPackage16845.profileId||''),at:new Date().toISOString()})}catch(_){}"""
+if resolver_anchor in s:
+    s=s.replace(resolver_anchor,resolver_repl,1)
+
 required=[
     "source:'country-center'",
     "const targetLng=cc&&Number.isFinite(Number(cc.lng))",
