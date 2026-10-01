@@ -17,3 +17,5 @@ if "classList.toggle('earthline-alaska-map-interaction-16921'" not in s:
 if "earthline-alaska-map-interaction-16921" not in s: raise SystemExit("Alaska interaction patch missing")
 p.write_text(s,encoding="utf-8")
 print("patched Alaska-only swale hit-path pointer pass-through")
+
+# trigger Alaska interaction repair
