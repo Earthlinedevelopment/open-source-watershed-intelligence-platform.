@@ -100,6 +100,25 @@ if(before.target?.source!=='country-center')throw new Error('NZ did not start at
 if(after.target?.source!=='crosshair')throw new Error('target did not transfer to user crosshair');
 if(moved<0.02)throw new Error('crosshair target did not materially move');
 
+// NZ dateline direction gate: drag the map LEFT (toward +180 / the dateline).
+const beforeLeft=await page.evaluate(()=>({
+  target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+  dateline:window.EARTHLINE_NZ_DATELINE_NAV_16845||null
+}));
+await page.mouse.move(x,y);
+await page.mouse.down();
+await page.mouse.move(x-420,y,{steps:14});
+await page.mouse.up();
+await page.waitForTimeout(1800);
+const afterLeft=await page.evaluate(()=>({
+  target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+  dateline:window.EARTHLINE_NZ_DATELINE_NAV_16845||null
+}));
+console.log(JSON.stringify({beforeLeft,afterLeft}));
+if(afterLeft.dateline?.enabled!==true)throw new Error('NZ dateline navigation was not enabled');
+const leftMoved=Math.hypot(Number(afterLeft.target?.lng)-Number(beforeLeft.target?.lng),Number(afterLeft.target?.lat)-Number(beforeLeft.target?.lat));
+if(!(leftMoved>0.02))throw new Error('NZ map still cannot move left toward/across dateline');
+
 // Exact user path: launch the actual Property Analysis control after moving the crosshair.
 await page.evaluate(()=>{
   window.EARTHLINE_PROPERTY_WATER_BODY_GATE_16529=null;
