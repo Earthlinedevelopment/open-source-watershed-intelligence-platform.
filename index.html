@@ -32735,6 +32735,46 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
           returned:Number(raw16912&&raw16912.features&&raw16912.features.length||0),published:filtered16912.length,
           boundary:"Canadian Geographical Names Database — Vancouver Island (JBRIN)",at:new Date().toISOString()
         };
+        try{
+          /* EARTHLINE 16915 — Vancouver Island display hierarchy.
+             Data already exists; this only guarantees visible stacking/legibility:
+             aquifers below runoff paths, runoff paths below proposed swales. */
+          if(m.getLayer(IDS.aquiferFill)){
+            m.setLayoutProperty(IDS.aquiferFill,'visibility','visible');
+            m.setPaintProperty(IDS.aquiferFill,'fill-opacity',0.34);
+            m.moveLayer(IDS.aquiferFill);
+          }
+          if(m.getLayer(IDS.aquiferLine)){
+            m.setLayoutProperty(IDS.aquiferLine,'visibility','visible');
+            m.setPaintProperty(IDS.aquiferLine,'line-width',3.4);
+            m.setPaintProperty(IDS.aquiferLine,'line-opacity',1);
+            m.moveLayer(IDS.aquiferLine);
+          }
+          if(m.getLayer(IDS.flowCasing)){
+            m.setLayoutProperty(IDS.flowCasing,'visibility','visible');
+            m.setPaintProperty(IDS.flowCasing,'line-opacity',0.98);
+            m.moveLayer(IDS.flowCasing);
+          }
+          if(m.getLayer(IDS.flowLine)){
+            m.setLayoutProperty(IDS.flowLine,'visibility','visible');
+            m.setPaintProperty(IDS.flowLine,'line-width',['interpolate',['linear'],['zoom'],4,3.8,7,5.2,10,7.0]);
+            m.setPaintProperty(IDS.flowLine,'line-opacity',1);
+            m.moveLayer(IDS.flowLine);
+          }
+          if(m.getLayer(IDS.flowArrow)){
+            m.setLayoutProperty(IDS.flowArrow,'visibility','visible');
+            m.moveLayer(IDS.flowArrow);
+          }
+          if(m.getLayer(IDS.swaleHalo))m.moveLayer(IDS.swaleHalo);
+          if(m.getLayer(IDS.swaleLine))m.moveLayer(IDS.swaleLine);
+          window.EARTHLINE_VANCOUVER_DISPLAY_AUDIT_16915={
+            build:'EARTHLINE 16915',runToken,
+            aquifers:filtered16912.length,
+            waterPaths:(flows.features||[]).filter(f=>f&&f.properties&&f.properties.feature_type==='flow').length,
+            stacking:'aquifer < flow < swale',
+            at:new Date().toISOString()
+          };
+        }catch(_){}
       }catch(error16912){
         window.EARTHLINE_VANCOUVER_AQUIFER_AUDIT_16912={build:"EARTHLINE 16912",runToken,query:String(q||""),published:0,error:String(error16912&&error16912.message||error16912),at:new Date().toISOString()};
       }
@@ -32993,6 +33033,17 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
         try{earthlineStandardAudit16784({tier:focusMode?'focus':'regional',runToken,query:q,hy,stage:'context-complete'});}catch(_){ }
         recordRun(propertyOwnsDisplay16726?'context_enriched_cached_property_preserved':'context_enriched',runToken,window.EARTHLINE_REGIONAL_CONTEXT_16198);
         if(!propertyOwnsDisplay16726&&!focusMode){const cov16792=cameraCoverage(m,b);if(!Number.isFinite(cov16792)||cov16792<.98){const ok16792=await settleRegionalCamera(m,b,runToken);if(ok16792!==true)throw new Error('regional final display camera reconciliation failed');}}
+        if(!propertyOwnsDisplay16726&&!focusMode&&/vancouver\s+island/i.test(String(q||''))){
+          try{
+            if(m.getLayer(IDS.aquiferFill)){m.setLayoutProperty(IDS.aquiferFill,'visibility','visible');m.moveLayer(IDS.aquiferFill);}
+            if(m.getLayer(IDS.aquiferLine)){m.setLayoutProperty(IDS.aquiferLine,'visibility','visible');m.moveLayer(IDS.aquiferLine);}
+            if(m.getLayer(IDS.flowCasing)){m.setLayoutProperty(IDS.flowCasing,'visibility','visible');m.moveLayer(IDS.flowCasing);}
+            if(m.getLayer(IDS.flowLine)){m.setLayoutProperty(IDS.flowLine,'visibility','visible');m.moveLayer(IDS.flowLine);}
+            if(m.getLayer(IDS.flowArrow)){m.setLayoutProperty(IDS.flowArrow,'visibility','visible');m.moveLayer(IDS.flowArrow);}
+            if(m.getLayer(IDS.swaleHalo))m.moveLayer(IDS.swaleHalo);
+            if(m.getLayer(IDS.swaleLine))m.moveLayer(IDS.swaleLine);
+          }catch(_){}
+        }
         if(!propertyOwnsDisplay16726)setRunStatus((focusMode?'Focus screening published. ':(isVermont?'Vermont screening published. ':'Regional screening published. '))+(failures16198.length?'Unavailable context: '+failures16198.join(', ')+'. ':'Watershed and groundwater context updated. ')+swaleNote+(!focusMode?earthlineLandValidityStatus16584():''),'published');
       }catch(error16198){
         if(isCurrentRun(runToken)){
