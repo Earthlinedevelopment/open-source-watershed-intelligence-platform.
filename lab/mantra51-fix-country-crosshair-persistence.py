@@ -71,6 +71,22 @@ if publish_patch not in s:
         raise SystemExit("Regional core publication anchor not found")
     s=s.replace(publish_anchor,publish_patch,1)
 
+
+# Country-package handoff must run for country profiles too.
+# The prior !profile16549 guard excluded resolved country-* profiles, so the
+# authoritative country center code never ran for NZ/India/Mexico.
+country_if_old="if(!profile16549&&loc&&String(loc.placeType||'').toLowerCase()==='country'){"
+country_if_new="if(loc&&String(loc.placeType||'').toLowerCase()==='country'){"
+if country_if_old in s:
+    s=s.replace(country_if_old,country_if_new,1)
+elif country_if_new not in s:
+    raise SystemExit("country handoff condition anchor not found")
+
+country_else_old="}else if(!profile16549&&window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556&&window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556.packageKind==='country'){"
+country_else_new="}else if(window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556&&window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556.packageKind==='country'){"
+if country_else_old in s:
+    s=s.replace(country_else_old,country_else_new,1)
+
 required=[
     "source:'country-center'",
     "const targetLng=cc&&Number.isFinite(Number(cc.lng))",
