@@ -19,3 +19,5 @@ if audit not in s: raise SystemExit("water audit anchor missing")
 s=s.replace(audit,audit_new,1)
 p.write_text(s,encoding="utf-8")
 print("patched wrapped-world final water clip")
+
+# trigger apply
