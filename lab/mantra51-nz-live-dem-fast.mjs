@@ -41,16 +41,31 @@ const domDiag=await page.evaluate(()=>{
 });
 console.log(JSON.stringify({domDiag}));
 if(domDiag.target?.source!=='crosshair'){await browser.close();process.exit(3)}
-await page.evaluate(()=>document.getElementById('earthlineDeclareProperty16169')?.click());
-await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,{timeout:30000,polling:100});
+const launch=await page.evaluate(()=>{
+  const b=document.getElementById('earthlineDeclareProperty16169');
+  const before={text:b?.innerText||'',disabled:!!b?.disabled,busy:b?.dataset?.busy||'',propertyState:document.documentElement.dataset.earthlinePropertyRunState||''};
+  b?.click();
+  return {before,after:{text:b?.innerText||'',disabled:!!b?.disabled,busy:b?.dataset?.busy||'',propertyState:document.documentElement.dataset.earthlinePropertyRunState||''}};
+});
+console.log(JSON.stringify({launch}));
+let settleError=null;
+try{await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,null,{timeout:45000,polling:100})}catch(e){settleError=String(e?.message||e)}
 const out=await page.evaluate(()=>({
   target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
   audit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
   coreFailure:(window.earthlineModel&&window.earthlineModel.propertyCoreFailure16548)||null,
   prewarm:window.EARTHLINE_PROPERTY_DEM_PREWARM_16297||null,
   declaration:window.EARTHLINE_PROPERTY_DECLARATION_16169||null,
-  displayed:window.EARTHLINE_DISPLAYED_RUN_16151||null
+  displayed:window.EARTHLINE_DISPLAYED_RUN_16151||null,
+  phaseTrace:window.EARTHLINE_PROPERTY_PHASE_TRACE_16319||null,
+  activeStage:window.EARTHLINE_PROPERTY_ACTIVE_STAGE_16178||null,
+  dataset:{
+    tier:document.documentElement.dataset.earthlineAnalysisTier||'',
+    runState:document.documentElement.dataset.earthlineRunState||'',
+    propertyState:document.documentElement.dataset.earthlinePropertyRunState||''
+  },
+  button:(()=>{const b=document.getElementById('earthlineDeclareProperty16169');return b?{text:b.innerText||'',disabled:!!b.disabled,busy:b.dataset.busy||'',terminalRunning:b.dataset.terminalRunning||'',ariaBusy:b.getAttribute('aria-busy')||''}:null})()
 }));
-console.log(JSON.stringify(out));
+console.log(JSON.stringify({settleError,out}));
 await browser.close();
-if(out.audit?.result!==true) process.exit(2);
+if(settleError||out.audit?.result!==true) process.exit(2);
