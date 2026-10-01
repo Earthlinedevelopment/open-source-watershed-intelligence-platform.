@@ -1,0 +1,27 @@
+name: Mantra 51 Find Directional Water Renderer
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-find-directional-water-renderer.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          needle='directional-water-paths'
+          for n,m in enumerate(re.finditer(needle,s),1):
+            a=max(0,m.start()-1200); b=min(len(s),m.start()+2500)
+            chunk=s[a:b]
+            if '<style' in chunk and '</style>' not in chunk.split(needle)[-1]:
+              continue
+            print("\nHIT",n,"INDEX",m.start())
+            print(chunk.replace("\n"," "))
+          PY
