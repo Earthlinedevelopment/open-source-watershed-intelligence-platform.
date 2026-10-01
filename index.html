@@ -29743,15 +29743,6 @@ body { overflow-x:hidden!important; }
         if(lng16584<part16584.bbox[0]||lng16584>part16584.bbox[2]||lat16584<part16584.bbox[1]||lat16584>part16584.bbox[3])continue;
         if(earthlinePointInPolygon16584(lng16584,lat16584,part16584.rings))return false;
       }
-      const styleIndex16584=hy16584.styleWaterIndex16584,scale16584=Number(styleIndex16584&&styleIndex16584.scale)||4;
-      if(styleIndex16584&&styleIndex16584.bins){
-        const candidates16584=styleIndex16584.bins[Math.floor(lng16584*scale16584)+':'+Math.floor(lat16584*scale16584)]||[];
-        for(const part16584 of candidates16584){
-          if(!part16584||!part16584.bbox||!part16584.rings)continue;
-          if(lng16584<part16584.bbox[0]||lng16584>part16584.bbox[2]||lat16584<part16584.bbox[1]||lat16584>part16584.bbox[3])continue;
-          if(earthlinePointInPolygon16584(lng16584,lat16584,part16584.rings))return false;
-        }
-      }
     }
     return true;
   }
@@ -29797,13 +29788,16 @@ body { overflow-x:hidden!important; }
       else if(g16584.type==='MultiPolygon')for(const p16584 of (g16584.coordinates||[]))addPart16584(p16584);
     };
     const worldCopies16584=(()=>{try{return !!(mp16584.getRenderWorldCopies&&mp16584.getRenderWorldCopies())}catch(_){return false}})();
-    const vancouverIsland16584=(()=>{try{return String(window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539&&window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539.capability||'')==='ca-cgndb-vancouver-island'}catch(_){return false}})();
     /* EARTHLINE 16911 — WRAPPED-WORLD WATER CLIP SAFETY.
        When world copies are enabled (needed for New Zealand dateline navigation),
        rendered/source vector water geometry may be duplicated/wrapped across the seam.
        Do not let that presentation geometry override the deterministic Regional land-validity
        grid and Natural Earth water parts. The same final flow-safety checks remain active. */
-    if(style16584&&Array.isArray(style16584.layers)&&!worldCopies16584&&!vancouverIsland16584){
+    const deterministicGridReady16584=!!hy16584.validityMask16584;
+    /* EARTHLINE 16919 — deterministic land-validity precedence.
+       Live style water is supplemental evidence only when the deterministic Regional
+       grid is unavailable. This is jurisdiction-agnostic and applies to every region. */
+    if(style16584&&Array.isArray(style16584.layers)&&!worldCopies16584&&!deterministicGridReady16584){
       const surfaceLayers16584=style16584.layers.filter(surfaceLayer16584),layerIds16584=surfaceLayers16584.map(l16584=>l16584.id).filter(Boolean);
       if(layerIds16584.length&&typeof mp16584.queryRenderedFeatures==='function'){
         try{
@@ -29838,7 +29832,7 @@ body { overflow-x:hidden!important; }
     const styleIndex16584={available:styleCoverageReady16584,scale:scale16584,bins:bins16584,featureCount:styleFeatureCount16584,partCount:stylePartCount16584,sourceCount:styleSourceCount16584};
     hy16584.styleWaterIndex16584=styleIndex16584;
 
-    const hasGrid16584=!!hy16584.validityMask16584;
+    const hasGrid16584=deterministicGridReady16584;
     const evidenceReady16584=hasGrid16584||styleCoverageReady16584;
     /* Shared global shoreline uncertainty: one full local DEM-cell diagonal.
        No jurisdiction-specific distance is used. Natural Earth 1:10m lakes and any
@@ -29931,7 +29925,7 @@ body { overflow-x:hidden!important; }
       featureCount:styleFeatureCount16584,partCount:stylePartCount16584,sourceCount:styleSourceCount16584,
       inputLines:inputLines16584,outputLines:outputLines16584,clippedLines:clippedLines16584,droppedLines:droppedLines16584,
       shorelineEvidence:'Natural Earth 1:10m lakes + live surface-water polygons',shoreBufferRule:'one-local-DEM-cell-diagonal',shoreBufferKm:Number(shoreBufferKm16584.toFixed(3)),
-      failClosedNoEvidence:!evidenceReady16584,worldCopiesSkippedStyleWater:worldCopies16584,vancouverIslandSkippedStyleWater:vancouverIsland16584,at:new Date().toISOString()
+      failClosedNoEvidence:!evidenceReady16584,worldCopiesSkippedStyleWater:worldCopies16584,deterministicGridPrecedence:hasGrid16584,at:new Date().toISOString()
     };
     return {...flows16584,features:kept16584.concat(arrows16584)};
   }
