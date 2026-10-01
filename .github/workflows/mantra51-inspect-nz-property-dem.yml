@@ -1,0 +1,40 @@
+name: Mantra 51 Inspect NZ Property DEM
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-inspect-nz-property-dem.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Inspect DEM fallback owner
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          needles=[
+            "Mapbox GL Terrain-DEM fallback did not reach usable coverage",
+            "Terrain-RGB direct DEM",
+            "retrying real elevation through the map terrain source",
+            "analysis terrain",
+            "terrain-dem",
+            "mapbox-terrain-dem-v1",
+            "earthlineLoadTerrain",
+            "rebuildModel(true)"
+          ]
+          for needle in needles:
+            print("\n===== "+needle+" =====")
+            pos=0; count=0
+            while count<12:
+              i=s.lower().find(needle.lower(),pos)
+              if i<0: break
+              print(s[max(0,i-3500):min(len(s),i+7000)].replace("\n"," "))
+              print("\n---")
+              pos=i+len(needle); count+=1
+          PY
