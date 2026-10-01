@@ -1,0 +1,23 @@
+name: Mantra 51 Test BC Aquifer Simplified Payload
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-test-bc-aquifer-simplified.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query simplified BC aquifers
+        run: |
+          URL='https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_whse_water_management/MapServer/48/query?where=1%3D1&geometry=-128.4320374%2C48.3078651%2C-123.2653903%2C50.8787003&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=AQUIFER_ID%2CNAME%2CMATERIAL%2CSUBTYPE%2CVULNERABILITY%2CMAPPING_YEAR%2CAQUIFER_DETAILS_URL&returnGeometry=true&outSR=4326&geometryPrecision=5&maxAllowableOffset=0.0005&f=geojson'
+          curl -L --fail --retry 2 "$URL" -o /tmp/a.json
+          wc -c /tmp/a.json
+          python3 - <<'PY'
+          import json
+          j=json.load(open('/tmp/a.json'))
+          fs=j.get('features') or []
+          print('features',len(fs))
+          if not fs: raise SystemExit(1)
+          PY
