@@ -1,0 +1,30 @@
+name: Mantra 51 Inspect Analysis Bounds
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-inspect-analysisbounds.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+      - name: Print analysisBounds
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for needle in ['function analysisBounds','analysisBounds(loc)','if(w>18)','18){const c=']:
+              print('\n### '+needle+' ###')
+              p=0
+              while True:
+                  i=s.find(needle,p)
+                  if i<0: break
+                  print(s[max(0,i-2200):min(len(s),i+4500)])
+                  print('\n---\n')
+                  p=i+len(needle)
+          PY
