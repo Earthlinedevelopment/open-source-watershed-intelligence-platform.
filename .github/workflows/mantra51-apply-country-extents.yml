@@ -1,0 +1,31 @@
+name: Mantra 51 Apply Exact Country Extents
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-apply-country-extents.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+          fetch-depth: 0
+      - name: Fetch retained exact-country extent repair
+        run: |
+          git fetch origin global-search-development-16845
+          git show c6b0ebebbdee:lab/apply-16845-country-exact-extent.py > /tmp/apply-country-extent.py ||           git show origin/global-search-development-16845:lab/apply-16845-country-exact-extent.py > /tmp/apply-country-extent.py
+      - name: Apply country-only exact extent preservation
+        run: |
+          python3 /tmp/apply-country-extent.py
+          git diff --check
+      - name: Commit candidate only
+        run: |
+          git config user.name 'Earthline CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix: preserve exact governed country extents' || exit 0
+          git push origin HEAD:mantra51-global-repair-campaign
