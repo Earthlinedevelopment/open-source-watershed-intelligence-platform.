@@ -5,6 +5,29 @@ s=p.read_text(encoding="utf-8")
 original=s
 
 # Ensure the country package creates an authoritative target.
+# Root cause: the old outer guard checked loc.lng/loc.lat, but atomic country
+# package locations may carry the authoritative center separately. That meant
+# the country-center assignment never executed and moveend kept writing crosshair.
+outer_old="""if(typeof setPropertyTarget16201==='function'&&Number.isFinite(Number(loc.lng))&&Number.isFinite(Number(loc.lat))){
+            {
+            const cc=countryPackage16845&&countryPackage16845.center;
+            const targetLng=cc&&Number.isFinite(Number(cc.lng))?Number(cc.lng):Number(loc.lng);
+            const targetLat=cc&&Number.isFinite(Number(cc.lat))?Number(cc.lat):Number(loc.lat);
+            setPropertyTarget16201({lng:targetLng,lat:targetLat,source:'country-center'},{openPanel:false});
+          }
+          }"""
+outer_new="""{
+          const cc=countryPackage16845&&countryPackage16845.center;
+          const targetLng=cc&&Number.isFinite(Number(cc.lng))?Number(cc.lng):Number(loc.lng);
+          const targetLat=cc&&Number.isFinite(Number(cc.lat))?Number(cc.lat):Number(loc.lat);
+          if(typeof setPropertyTarget16201==='function'&&Number.isFinite(targetLng)&&Number.isFinite(targetLat)){
+            setPropertyTarget16201({lng:targetLng,lat:targetLat,source:'country-center'},{openPanel:false});
+          }
+        }"""
+if outer_old in s:
+    s=s.replace(outer_old,outer_new,1)
+
+
 old_crosshair="setPropertyTarget16201({lng:Number(loc.lng),lat:Number(loc.lat),source:'crosshair'},{openPanel:false});"
 old_country="setPropertyTarget16201({lng:Number(loc.lng),lat:Number(loc.lat),source:'country-center'},{openPanel:false});"
 new_country="""{
