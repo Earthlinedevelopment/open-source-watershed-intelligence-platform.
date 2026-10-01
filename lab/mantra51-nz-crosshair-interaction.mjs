@@ -127,12 +127,18 @@ console.log(JSON.stringify({crosshairTarget:after.target,propertyConsumedCenter:
 if(consumeDelta>0.02)throw new Error('Property engine replaced the moved NZ crosshair target');
 
 // Require the final published Property result to retain the moved crosshair center.
-await page.waitForFunction(()=>{
-  const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
-  const p=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null;
-  const tier=String(d&&(d.tier||d.mode)||'').toLowerCase();
-  return tier==='property' && p && p.published===true;
-},{timeout:70000,polling:250});
+let finalWaitError=null;
+try{
+  await page.waitForFunction(()=>{
+    const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+    const p=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null;
+    const tier=String(d&&(d.tier||d.mode)||'').toLowerCase();
+    const root=document.documentElement;
+    const failed=String(root.dataset.earthlinePropertyRunState||'').toLowerCase()==='failed'||
+                 String(root.dataset.earthlineRunState||'').toLowerCase()==='failed';
+    return (tier==='property' && p && p.published===true)||failed;
+  },null,{timeout:70000,polling:250});
+}catch(e){finalWaitError=String(e&&e.message||e)}
 
 const propertyFinal=await page.evaluate(()=>({
   displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,
@@ -141,17 +147,24 @@ const propertyFinal=await page.evaluate(()=>({
   target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
   waterGate:window.EARTHLINE_PROPERTY_WATER_BODY_GATE_16529||null,
   modelLoc:(window.earthlineModel&&window.earthlineModel.loc)||null,
+  timeoutAudit:window.EARTHLINE_PROPERTY_TIMEOUT_AUDIT_16178||null,
+  runAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+  phaseTrace:window.EARTHLINE_PROPERTY_PHASE_TRACE_16319||null,
+  activeStage:window.EARTHLINE_PROPERTY_ACTIVE_STAGE_16178||null,
+  lastFailure:window.EARTHLINE_PROPERTY_LAST_FAILURE_16539||window.EARTHLINE_PROPERTY_FAILURE_16539||null,
   dataset:{
     tier:document.documentElement.dataset.earthlineAnalysisTier||'',
     runState:document.documentElement.dataset.earthlineRunState||'',
     propertyState:document.documentElement.dataset.earthlinePropertyRunState||''
   }
 }));
-console.log(JSON.stringify({propertyFinal}));
+console.log(JSON.stringify({finalWaitError,propertyFinal}));
 const finalCenter=(propertyFinal.declaration&&propertyFinal.declaration.center)||
                   (propertyFinal.waterGate&&propertyFinal.waterGate.center)||
                   (propertyFinal.publication&&propertyFinal.publication.center)||null;
-if(!finalCenter)throw new Error('final Property publication exposed no center');
+if(finalWaitError)throw new Error('NZ Property did not reach terminal publication: '+finalWaitError+' state='+JSON.stringify(propertyFinal));
+if(String(propertyFinal.dataset?.runState||'').toLowerCase()==='failed'||String(propertyFinal.dataset?.propertyState||'').toLowerCase()==='failed')throw new Error('NZ Property pipeline failed after moved crosshair: '+JSON.stringify(propertyFinal));
+if(!finalCenter)throw new Error('final Property publication exposed no center: '+JSON.stringify(propertyFinal));
 const finalDelta=Math.hypot(Number(finalCenter.lng)-after.target.lng,Number(finalCenter.lat)-after.target.lat);
 console.log(JSON.stringify({finalCrosshairTarget:after.target,finalPublishedCenter:finalCenter,finalDelta}));
 if(finalDelta>0.02)throw new Error('Final NZ Property publication is not centered on moved crosshair');
