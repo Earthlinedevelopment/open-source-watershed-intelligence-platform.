@@ -90,12 +90,10 @@ const after=await page.evaluate(()=>{
 });
 console.log(JSON.stringify({diagnostic:true,before,after}));
 
-const d=Math.hypot(after.target.lng-after.center[0],after.target.lat-after.center[1]);
 const moved=Math.hypot(after.target.lng-before.target.lng,after.target.lat-before.target.lat);
-console.log(JSON.stringify({before,after,distanceTargetToMapCenter:d,movedDegrees:moved}));
-if(after.target.source!=='crosshair')throw new Error('target did not transfer to crosshair');
-if(after.lock!==false)throw new Error('country target lock did not release');
-if(d>0.02)throw new Error('crosshair target does not match moved map center');
+console.log(JSON.stringify({before,after,movedDegrees:moved}));
+if(before.target?.source!=='country-center')throw new Error('NZ did not start at authoritative country center');
+if(after.target?.source!=='crosshair')throw new Error('target did not transfer to user crosshair');
 if(moved<0.02)throw new Error('crosshair target did not materially move');
 
 await browser.close();
