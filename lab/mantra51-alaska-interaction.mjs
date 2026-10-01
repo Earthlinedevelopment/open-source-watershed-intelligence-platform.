@@ -12,7 +12,13 @@ await page.evaluate(()=>{
   b.click();
 });
 await page.waitForFunction(()=>String((window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556||{}).profileId||'')==='us-ak',{timeout:60000,polling:100});
-await page.waitForTimeout(2500);
+await page.waitForFunction(()=>{
+  const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+  const running=document.documentElement.classList.contains('earthline-regional-running-16233')||document.documentElement.dataset.earthlineRunState==='running';
+  const q=String(d?.query||d?.name||'').toLowerCase();
+  return !running&&q.includes('alaska');
+},{timeout:100000,polling:150});
+await page.waitForTimeout(1000);
 
 const diag=await page.evaluate(()=>{
   const base=document.getElementById('mapboxBase');
@@ -34,17 +40,17 @@ console.log('AK_INTERACTION_DIAG '+JSON.stringify(diag));
 const canvas=page.locator('#mapboxBase canvas.mapboxgl-canvas').first();
 const box=await canvas.boundingBox();
 if(!box)throw new Error('Alaska Mapbox canvas unavailable');
-const before=await page.evaluate(()=>{const m=window.earthlineMap||null;const c=m?.getCenter?.();return {center:c?[c.lng,c.lat]:null,target:window.EARTHLINE_PROPERTY_TARGET_16201||null};});
+const before=await page.evaluate(()=>({target:window.EARTHLINE_PROPERTY_TARGET_16201||null}));
 await page.mouse.move(box.x+box.width*0.55,box.y+box.height*0.55);
 await page.mouse.down();
 await page.mouse.move(box.x+box.width*0.35,box.y+box.height*0.48,{steps:12});
 await page.mouse.up();
 await page.waitForTimeout(1800);
-const after=await page.evaluate(()=>{const m=window.earthlineMap||null;const c=m?.getCenter?.();return {center:c?[c.lng,c.lat]:null,target:window.EARTHLINE_PROPERTY_TARGET_16201||null};});
+const after=await page.evaluate(()=>({target:window.EARTHLINE_PROPERTY_TARGET_16201||null}));
 console.log('AK_DRAG '+JSON.stringify({before,after}));
-const moved=before.center&&after.center?Math.hypot(after.center[0]-before.center[0],after.center[1]-before.center[1]):0;
+const moved=(before.target&&after.target)?Math.hypot(Number(after.target.lng)-Number(before.target.lng),Number(after.target.lat)-Number(before.target.lat)):0;
 if(diag.canvas.pe==='none')throw new Error('actual Mapbox canvas has pointer-events none');
-if(!moved||moved<0.01)throw new Error('Alaska map did not respond to real drag');
+if(!moved||moved<0.01)throw new Error('Alaska published map did not move crosshair after real drag');
 await browser.close();
 
 // trigger Alaska interaction diagnostic
