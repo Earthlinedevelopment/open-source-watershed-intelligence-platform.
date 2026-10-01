@@ -23,7 +23,21 @@ if guard not in s:
 if s==original:
     print("country crosshair persistence already present")
 else:
-    p.write_text(s,encoding="utf-8")
+    
+# Country target must use the authoritative package center, not the geocoder/location center.
+old_center="setPropertyTarget16201({lng:Number(loc.lng),lat:Number(loc.lat),source:'country-center'},{openPanel:false});"
+new_center="""{
+            const cc=countryPackage16845&&countryPackage16845.center;
+            const targetLng=cc&&Number.isFinite(Number(cc.lng))?Number(cc.lng):Number(loc.lng);
+            const targetLat=cc&&Number.isFinite(Number(cc.lat))?Number(cc.lat):Number(loc.lat);
+            setPropertyTarget16201({lng:targetLng,lat:targetLat,source:'country-center'},{openPanel:false});
+          }"""
+if old_center in s:
+    s=s.replace(old_center,new_center,1)
+elif "const targetLng=cc&&Number.isFinite(Number(cc.lng))" not in s:
+    raise SystemExit("authoritative country center replacement anchor not found")
+
+p.write_text(s,encoding="utf-8")
     print("patched country crosshair persistence")
 
 for required in (new_country,guard):
