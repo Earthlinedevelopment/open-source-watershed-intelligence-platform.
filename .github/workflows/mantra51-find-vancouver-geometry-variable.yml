@@ -1,0 +1,25 @@
+name: Mantra 51 Find Vancouver Geometry Variable
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-find-vancouver-geometry-variable.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          i=s.find("ca-cgndb-vancouver-island")
+          chunk=s[max(0,i-250000):i]
+          matches=list(re.finditer(r"(?:const|let|var)\s+([A-Za-z0-9_$]*VANCOUVER[A-Za-z0-9_$]*|[A-Za-z0-9_$]*vancouver[A-Za-z0-9_$]*)\s*=\s*Object\.freeze\(",chunk))
+          print([m.group(1) for m in matches[-10:]])
+          for m in matches[-3:]:
+            print(chunk[m.start():m.start()+220])
+          PY
