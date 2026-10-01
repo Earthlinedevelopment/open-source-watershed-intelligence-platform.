@@ -1,0 +1,35 @@
+name: Mantra 51 Trace NZ Water Pipeline
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-trace-nz-water-pipeline.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Extract Regional flow generation and publish code
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          needles=[
+            "function makeFlows","makeFlows(","flowFeatures","flowFC","regionalFlow","flowGeoJSON",
+            "arrowFeatures","flow arrows","atomic publication","publishRegional","setData({type:'FeatureCollection'",
+            "setData({type:\"FeatureCollection\"","IDS.flow","flowLayer","water paths"
+          ]
+          for needle in needles:
+            print("\n===== "+needle+" =====")
+            pos=0; count=0
+            while count<20:
+              i=s.lower().find(needle.lower(),pos)
+              if i<0: break
+              print(s[max(0,i-2600):min(len(s),i+7000)].replace("\n"," "))
+              print("\n---")
+              pos=i+len(needle);count+=1
+          PY
