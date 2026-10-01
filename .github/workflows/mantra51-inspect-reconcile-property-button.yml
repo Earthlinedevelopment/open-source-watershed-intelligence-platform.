@@ -1,0 +1,23 @@
+name: Mantra 51 Inspect Reconcile Property Button
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-inspect-reconcile-property-button.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          for needle in ["function reconcilePanel16188","function ensureProperty","earthlinePropertySlot16188","setPropertyTarget16201(target"]:
+            i=s.find(needle)
+            print("\n###",needle,i)
+            if i>=0: print(s[max(0,i-2500):min(len(s),i+12000)].replace("\n"," "))
+          PY
