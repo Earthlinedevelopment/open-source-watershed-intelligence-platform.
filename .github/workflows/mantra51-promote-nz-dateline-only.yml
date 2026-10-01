@@ -1,0 +1,56 @@
+name: Mantra 51 Promote NZ Dateline Fix Only
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-promote-nz-dateline-only.yml'
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Apply NZ-only dateline navigation fix
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          if "earthline-language-hotfix-16890.js" not in s:
+              raise SystemExit("language hotfix reference missing")
+          anchor="window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845=countryPackage16845;"
+          insert="""window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845=countryPackage16845;
+                  try{
+                    const code16845=String(countryPackage16845.countryCode||countryPackage16845.location&&countryPackage16845.location.countryCode||'').toLowerCase();
+                    const name16845=String(q||countryPackage16845.location&&countryPackage16845.location.name||'').trim().toLowerCase();
+                    const nzDateline16845=(code16845==='nz'||code16845==='nzl'||name16845==='new zealand');
+                    if(earthlineMap&&typeof earthlineMap.setRenderWorldCopies==='function')earthlineMap.setRenderWorldCopies(nzDateline16845);
+                    window.EARTHLINE_NZ_DATELINE_NAV_16845={enabled:nzDateline16845,code:code16845,name:name16845,at:new Date().toISOString()};
+                  }catch(_){}"""
+          if "EARTHLINE_NZ_DATELINE_NAV_16845" not in s:
+              if anchor not in s: raise SystemExit("country package assignment missing")
+              s=s.replace(anchor,insert,1)
+          clear="window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556=null;window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845=null;"
+          clear_new="""window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556=null;window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845=null;
+                try{if(earthlineMap&&typeof earthlineMap.setRenderWorldCopies==='function')earthlineMap.setRenderWorldCopies(false);}catch(_){}"""
+          if clear_new not in s:
+              if clear not in s: raise SystemExit("country clear assignment missing")
+              s=s.replace(clear,clear_new,1)
+          if "setRenderWorldCopies(nzDateline16845)" not in s: raise SystemExit("NZ dateline fix not inserted")
+          if "earthline-language-hotfix-16890.js" not in s: raise SystemExit("language hotfix lost")
+          p.write_text(s,encoding="utf-8")
+          PY
+          test "$(git diff --name-only)" = "index.html"
+          grep -n "EARTHLINE_NZ_DATELINE_NAV_16845" index.html
+          grep -n "earthline-language-hotfix-16890.js" index.html
+      - name: Commit production NZ-only fix
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: allow New Zealand navigation across dateline"
+          git push origin HEAD:pages-live
