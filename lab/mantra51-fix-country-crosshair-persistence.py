@@ -189,6 +189,15 @@ if pub_setter_old in s:
 elif "if(setTarget16845)setTarget16845({lng:Number(cc.lng)" not in s:
     raise SystemExit("country publication global setter anchor not found")
 
+
+# Use the exported property-target owner from this script scope.
+# The Regional engine runs in a different script scope, so the bare
+# setPropertyTarget16201 identifier can be undefined even though the owner exists on window.
+s=s.replace("if(typeof setPropertyTarget16201==='function'&&Number.isFinite(targetLng)&&Number.isFinite(targetLat)){\\n            setPropertyTarget16201({lng:targetLng,lat:targetLat,source:'country-center'},{openPanel:false});\\n          }",
+            "if(typeof window.earthlineSetPropertyTarget16201==='function'&&Number.isFinite(targetLng)&&Number.isFinite(targetLat)){\\n            window.earthlineSetPropertyTarget16201({lng:targetLng,lat:targetLat,source:'country-center'},{openPanel:false});\\n          }",1)
+s=s.replace("if(cc&&typeof setPropertyTarget16201==='function'&&Number.isFinite(Number(cc.lng))&&Number.isFinite(Number(cc.lat))){\\n          window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556=cp;\\n          window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845=cp;\\n          setPropertyTarget16201({lng:Number(cc.lng),lat:Number(cc.lat),source:'country-center'},{openPanel:false});\\n        }",
+            "if(cc&&typeof window.earthlineSetPropertyTarget16201==='function'&&Number.isFinite(Number(cc.lng))&&Number.isFinite(Number(cc.lat))){\\n          window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556=cp;\\n          window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845=cp;\\n          window.earthlineSetPropertyTarget16201({lng:Number(cc.lng),lat:Number(cc.lat),source:'country-center'},{openPanel:false});\\n        }",1)
+
 required=[
     "source:'country-center'",
     "const targetLng=cc&&Number.isFinite(Number(cc.lng))",
