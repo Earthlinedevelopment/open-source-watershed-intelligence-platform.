@@ -1,0 +1,43 @@
+name: Mantra 51 Border and Crosshair Diagnostic
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-border-crosshair-diagnostic.yml'
+      - 'lab/mantra51-border-crosshair-diagnostic.mjs'
+      - 'index.html'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start candidate server
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/m51-border.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/m51-border.log
+          exit 1
+      - name: Run border and crosshair diagnostic
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: http://127.0.0.1:8787/
+        run: node lab/mantra51-border-crosshair-diagnostic.mjs | tee mantra51-border-crosshair.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra51-border-crosshair
+          path: mantra51-border-crosshair.jsonl
+          if-no-files-found: ignore
