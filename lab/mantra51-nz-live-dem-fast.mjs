@@ -1,5 +1,5 @@
 import { chromium } from 'playwright';
-const PROD='https://earthlinedevelopment.org/';
+const PROD='https://earthlinedevelopment.org/'; // live rerun after Property click-owner repair
 const browser=await chromium.launch({headless:true});
 async function fixture(){
   const p=await browser.newPage({viewport:{width:1500,height:860}});
