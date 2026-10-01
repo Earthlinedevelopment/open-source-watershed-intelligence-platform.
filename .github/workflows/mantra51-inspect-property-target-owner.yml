@@ -1,0 +1,43 @@
+name: Mantra 51 Inspect Property Target Owner
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-inspect-property-target-owner.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Inspect property target consumers
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          needles=[
+            "EARTHLINE_PROPERTY_TARGET_16201",
+            "Property detail published",
+            "property detail",
+            "runProperty",
+            "propertySearch",
+            "Property Search",
+            "propertyBtn",
+            "source:'crosshair'",
+            "country-center",
+            "analysis center",
+            "property target"
+          ]
+          for needle in needles:
+            print("\n===== "+needle+" =====")
+            pos=0; count=0
+            while count<20:
+              i=s.lower().find(needle.lower(),pos)
+              if i<0: break
+              print(s[max(0,i-1000):min(len(s),i+1800)].replace("\n"," "))
+              print("\n---")
+              pos=i+len(needle); count+=1
+          PY
