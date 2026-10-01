@@ -1,0 +1,30 @@
+name: Mantra 51 Inspect Vancouver Containment Owner
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-inspect-vancouver-owner.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+      - name: Inspect Vancouver and regional containment
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          for needle in ["vancouver island","analysisBoundaryLngLat","analysisBBox","jurisdictionBoundary16539","earthlineAdministrativeCapability16539","containment"]:
+            print("\n===== "+needle+" =====")
+            pos=0; count=0
+            while count<30:
+              i=s.lower().find(needle.lower(),pos)
+              if i<0: break
+              print(s[max(0,i-1800):min(len(s),i+4200)].replace("\n"," "))
+              print("\n---")
+              pos=i+len(needle); count+=1
+          PY
