@@ -40,17 +40,28 @@ console.log('AK_INTERACTION_DIAG '+JSON.stringify(diag));
 const canvas=page.locator('#mapboxBase canvas.mapboxgl-canvas').first();
 const box=await canvas.boundingBox();
 if(!box)throw new Error('Alaska Mapbox canvas unavailable');
-const before=await page.evaluate(()=>({target:window.EARTHLINE_PROPERTY_TARGET_16201||null}));
+const before=await page.evaluate(()=>({
+  target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+  site:typeof window.earthlineCurrentMapSite15778==='function'?window.earthlineCurrentMapSite15778():null,
+  context:window.EARTHLINE_REGIONAL_CONTEXT_16198||null
+}));
 await page.mouse.move(box.x+box.width*0.55,box.y+box.height*0.55);
 await page.mouse.down();
 await page.mouse.move(box.x+box.width*0.35,box.y+box.height*0.48,{steps:12});
 await page.mouse.up();
 await page.waitForTimeout(1800);
-const after=await page.evaluate(()=>({target:window.EARTHLINE_PROPERTY_TARGET_16201||null}));
+const after=await page.evaluate(()=>({
+  target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+  site:typeof window.earthlineCurrentMapSite15778==='function'?window.earthlineCurrentMapSite15778():null,
+  context:window.EARTHLINE_REGIONAL_CONTEXT_16198||null
+}));
 console.log('AK_DRAG '+JSON.stringify({before,after}));
-const moved=(before.target&&after.target)?Math.hypot(Number(after.target.lng)-Number(before.target.lng),Number(after.target.lat)-Number(before.target.lat)):0;
+const cameraMoved=(before.site&&after.site)?Math.hypot(Number(after.site.lng)-Number(before.site.lng),Number(after.site.lat)-Number(before.site.lat)):0;
+const targetMoved=(before.target&&after.target)?Math.hypot(Number(after.target.lng)-Number(before.target.lng),Number(after.target.lat)-Number(before.target.lat)):0;
+console.log('AK_MOVEMENT '+JSON.stringify({cameraMoved,targetMoved}));
 if(diag.canvas.pe==='none')throw new Error('actual Mapbox canvas has pointer-events none');
-if(!moved||moved<0.01)throw new Error('Alaska published map did not move crosshair after real drag');
+if(!cameraMoved||cameraMoved<0.01)throw new Error('Alaska camera itself did not move after real drag');
+if(!targetMoved||targetMoved<0.01)throw new Error('Alaska camera moved but crosshair target did not follow');
 await browser.close();
 
 // trigger Alaska interaction diagnostic
