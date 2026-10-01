@@ -1,4 +1,4 @@
-name: Earthline M48 index-only launch promotion 16871
+name: Earthline Shared Regional Flow Owner 16918
 on:
   push:
     branches: [pages-live]
@@ -12,38 +12,63 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Import exact tested candidate index only
+      - name: Apply shared Regional hydrology owner
         run: |
-          git fetch origin mantra48-final-launch-16871
-          git show ca888d415e9cd3e793ff5ac0771337a5cda778c5:index.html > /tmp/candidate-index.html
-          test -s /tmp/candidate-index.html
-          cp /tmp/candidate-index.html index.html
-      - name: Launch guards
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          if "EARTHLINE_REGIONAL_FLOW_PROFILE_16918" not in s:
+              old="""  function makeFlows(hy){
+                const N=hy.acc.length,th=percentile(hy.acc,0.84),channel=new Uint8Array(N),upstream=new Uint16Array(N);"""
+              new="""  function makeFlows(hy){
+                /* EARTHLINE 16918 — shared adaptive Regional drainage density.
+                   One owner for every Regional run: rugged terrain exposes more modeled drainage
+                   branches; lower-relief terrain retains the original conservative threshold. */
+                const relief16918=Math.max(0,percentile(hy.elev,0.98)-percentile(hy.elev,0.02));
+                const flowQuantile16918=relief16918>=900?0.72:relief16918>=450?0.76:relief16918>=180?0.80:0.84;
+                const primaryCap16918=relief16918>=900?340:relief16918>=450?300:relief16918>=180?260:230;
+                const fallbackFloor16918=relief16918>=900?120:relief16918>=450?90:relief16918>=180?70:55;
+                const fallbackCap16918=relief16918>=900?320:relief16918>=450?270:relief16918>=180?220:180;
+                const N=hy.acc.length,th=percentile(hy.acc,flowQuantile16918),channel=new Uint8Array(N),upstream=new Uint16Array(N);"""
+              if old not in s: raise SystemExit("makeFlows anchor missing")
+              s=s.replace(old,new,1)
+              replacements=[
+                  ("for(const seed of seeds){if(lineCount>=230)break;trace(seed);}","for(const seed of seeds){if(lineCount>=primaryCap16918)break;trace(seed);}"),
+                  ("if(lineCount<55){","if(lineCount<fallbackFloor16918){"),
+                  ("for(const seed of extra){if(lineCount>=180)break;","for(const seed of extra){if(lineCount>=fallbackCap16918)break;")
+              ]
+              for a,b in replacements:
+                  if a not in s: raise SystemExit("secondary flow anchor missing")
+                  s=s.replace(a,b,1)
+              anchor="""    return {type:'FeatureCollection',features};
+              }
+              function niceInterval"""
+              repl="""    window.EARTHLINE_REGIONAL_FLOW_PROFILE_16918={
+                  build:'EARTHLINE 16918',reliefM:Math.round(relief16918),thresholdQuantile:flowQuantile16918,
+                  primaryCap:primaryCap16918,fallbackFloor:fallbackFloor16918,fallbackCap:fallbackCap16918,
+                  generatedLines:lineCount,rule:'shared relief-adaptive Regional drainage density',at:new Date().toISOString()
+                };
+                return {type:'FeatureCollection',features};
+              }
+              function niceInterval"""
+              if anchor not in s: raise SystemExit("flow return anchor missing")
+              s=s.replace(anchor,repl,1)
+          if "vancouverFlowDensity16917" in s: raise SystemExit("local Vancouver flow exception detected")
+          if "earthline-language-hotfix-16890.js" not in s: raise SystemExit("language hotfix reference missing")
+          p.write_text(s,encoding="utf-8")
+          PY
+      - name: Verify exact scope
         run: |
           git diff --check
-          python - <<'PY'
-          from pathlib import Path
-          t=Path('index.html').read_text(encoding='utf-8')
-          required={
-            'property_blue_half':"'line-opacity':['interpolate',['linear'],['zoom'],14,.50,16,.46,18,.35,20,.28]" in t,
-            'regional_blue_full':"setPaint('earthline-ranked-swale-water-15777','line-color','#008cff');setPaint('earthline-ranked-swale-water-15777','line-opacity',1)" in t,
-            'button_small':'font:900 10.5px/1.05 system-ui!important;' in t,
-            'acres_large':'earthline-acres-16871' in t,
-            'spanish':'Modelado de propiedad' in t and 'earthlineLanguageBound16871' in t,
-            'vietnamese':'Mô hình hóa khu đất' in t,
-            'thai':'การจำลองพื้นที่' in t,
-            'aquifer_report':'const aquiferFeatures=reportAquifers();' in t,
-            'vancouver':'"vancouver island":{name:"Vancouver Island"' in t,
-            'contact':"mailto:info@earthlinedevelopment.org?subject=Earthline%20Inquiry" in t,
-            'final_sources':'function finalSourcesPage16864' in t
-          }
-          print(required)
-          if not all(required.values()): raise SystemExit('launch guard failed')
-          PY
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+          grep -q "EARTHLINE_REGIONAL_FLOW_PROFILE_16918" index.html
+          ! grep -q "vancouverFlowDensity16917" index.html
+          grep -q "earthline-language-hotfix-16890.js" index.html
       - name: Commit index only
         run: |
-          git config user.name earthline-release-bot
-          git config user.email info@earthlinedevelopment.org
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m 'release: 16871 launch candidate index only'
+          git commit -m "fix: promote shared relief-adaptive Regional drainage owner"
           git push origin HEAD:pages-live
