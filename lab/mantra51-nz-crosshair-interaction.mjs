@@ -60,6 +60,16 @@ const before=await page.evaluate(()=>{
   return {center:c?[+c.lng,+c.lat]:null,target:t?{lng:+t.lng,lat:+t.lat,source:String(t.source||'')}:null,lock:window.EARTHLINE_COUNTRY_TARGET_LOCK_16845};
 });
 
+await page.evaluate(()=>{
+  window.__M51_POINTERS=[];
+  window.__M51_MOVEENDS=0;
+  document.addEventListener('pointerdown',e=>{
+    const mapEl=document.getElementById('map');
+    window.__M51_POINTERS.push({tag:e.target&&e.target.tagName||'',id:e.target&&e.target.id||'',insideMap:!!(mapEl&&(e.target===mapEl||mapEl.contains(e.target))),lock:window.EARTHLINE_COUNTRY_TARGET_LOCK_16845});
+  },true);
+  const m=window.map||window.mapboxMap;
+  try{m&&m.on&&m.on('moveend',()=>{window.__M51_MOVEENDS++})}catch{}
+});
 const mapBox=await page.locator('#map').boundingBox();
 if(!mapBox)throw new Error('map box unavailable');
 const x=mapBox.x+mapBox.width*0.55, y=mapBox.y+mapBox.height*0.55;
@@ -68,17 +78,17 @@ await page.mouse.down();
 await page.mouse.move(x+180,y+90,{steps:12});
 await page.mouse.up();
 
-await page.waitForFunction(()=>{
-  const t=window.EARTHLINE_PROPERTY_TARGET_16201;
-  return t && t.source==='crosshair' && window.EARTHLINE_COUNTRY_TARGET_LOCK_16845===false;
-},{timeout:15000,polling:100});
+await page.waitForTimeout(2500);
 
 const after=await page.evaluate(()=>{
   const m=window.map||window.mapboxMap;
   const c=m?.getCenter?.();
   const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
-  return {center:c?[+c.lng,+c.lat]:null,target:t?{lng:+t.lng,lat:+t.lat,source:String(t.source||'')}:null,lock:window.EARTHLINE_COUNTRY_TARGET_LOCK_16845};
+  const mapEl=document.getElementById('map');
+  const style=mapEl?getComputedStyle(mapEl):null;
+  return {center:c?[+c.lng,+c.lat]:null,target:t?{lng:+t.lng,lat:+t.lat,source:String(t.source||'')}:null,lock:window.EARTHLINE_COUNTRY_TARGET_LOCK_16845,pointers:window.__M51_POINTERS||[],moveends:window.__M51_MOVEENDS||0,mapPointerEvents:style?.pointerEvents||null};
 });
+console.log(JSON.stringify({diagnostic:true,before,after}));
 
 const d=Math.hypot(after.target.lng-after.center[0],after.target.lat-after.center[1]);
 const moved=Math.hypot(after.target.lng-before.target.lng,after.target.lat-before.target.lat);
