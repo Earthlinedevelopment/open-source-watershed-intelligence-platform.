@@ -156,6 +156,39 @@ resolver_repl="""countryPackage16845=await earthlineResolveAtomicCountryPackage1
 if resolver_anchor in s:
     s=s.replace(resolver_anchor,resolver_repl,1)
 
+
+# Country Regional owner lives in a different script scope from setPropertyTarget16201.
+# Use the exported global setter; the unqualified local name is unavailable there.
+setter_old="""if(typeof setPropertyTarget16201==='function'&&Number.isFinite(targetLng)&&Number.isFinite(targetLat)){
+            setPropertyTarget16201({lng:targetLng,lat:targetLat,source:'country-center'},{openPanel:false});
+          }"""
+setter_new="""{
+            const setTarget16845=typeof window.earthlineSetPropertyTarget16201==='function'?window.earthlineSetPropertyTarget16201:null;
+            if(setTarget16845&&Number.isFinite(targetLng)&&Number.isFinite(targetLat)){
+              setTarget16845({lng:targetLng,lat:targetLat,source:'country-center'},{openPanel:false});
+            }
+          }"""
+if setter_old in s:
+    s=s.replace(setter_old,setter_new,1)
+elif "const setTarget16845=typeof window.earthlineSetPropertyTarget16201" not in s:
+    raise SystemExit("country global setter anchor not found")
+
+pub_setter_old="""if(cc&&typeof setPropertyTarget16201==='function'&&Number.isFinite(Number(cc.lng))&&Number.isFinite(Number(cc.lat))){
+          window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556=cp;
+          window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845=cp;
+          setPropertyTarget16201({lng:Number(cc.lng),lat:Number(cc.lat),source:'country-center'},{openPanel:false});
+        }"""
+pub_setter_new="""if(cc&&Number.isFinite(Number(cc.lng))&&Number.isFinite(Number(cc.lat))){
+          window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556=cp;
+          window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845=cp;
+          const setTarget16845=typeof window.earthlineSetPropertyTarget16201==='function'?window.earthlineSetPropertyTarget16201:null;
+          if(setTarget16845)setTarget16845({lng:Number(cc.lng),lat:Number(cc.lat),source:'country-center'},{openPanel:false});
+        }"""
+if pub_setter_old in s:
+    s=s.replace(pub_setter_old,pub_setter_new,1)
+elif "if(setTarget16845)setTarget16845({lng:Number(cc.lng)" not in s:
+    raise SystemExit("country publication global setter anchor not found")
+
 required=[
     "source:'country-center'",
     "const targetLng=cc&&Number.isFinite(Number(cc.lng))",
