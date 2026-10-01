@@ -1,0 +1,78 @@
+name: Mantra 51 Vancouver Density Visual Repair
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-vancouver-density-visual-repair.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        branch: [mantra51-global-repair-campaign, pages-live]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+          fetch-depth: 0
+      - name: Preserve Vancouver valid flows and strengthen official aquifers
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          old="""    const worldCopies16584=(()=>{try{return !!(mp16584.getRenderWorldCopies&&mp16584.getRenderWorldCopies())}catch(_){return false}})();
+    /* EARTHLINE 16911 — WRAPPED-WORLD WATER CLIP SAFETY."""
+          new="""    const worldCopies16584=(()=>{try{return !!(mp16584.getRenderWorldCopies&&mp16584.getRenderWorldCopies())}catch(_){return false}})();
+    const vancouverIsland16584=(()=>{try{return String(window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539&&window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539.capability||'')==='ca-cgndb-vancouver-island'}catch(_){return false}})();
+    /* EARTHLINE 16911 — WRAPPED-WORLD WATER CLIP SAFETY."""
+          if "const vancouverIsland16584=" not in s:
+              if old not in s: raise SystemExit("final water clip Vancouver anchor missing")
+              s=s.replace(old,new,1)
+          old2="if(style16584&&Array.isArray(style16584.layers)&&!worldCopies16584){"
+          new2="if(style16584&&Array.isArray(style16584.layers)&&!worldCopies16584&&!vancouverIsland16584){"
+          if old2 in s:
+              s=s.replace(old2,new2,1)
+          elif new2 not in s:
+              raise SystemExit("style-water clip condition missing")
+          old3="failClosedNoEvidence:!evidenceReady16584,worldCopiesSkippedStyleWater:worldCopies16584,at:new Date().toISOString()"
+          new3="failClosedNoEvidence:!evidenceReady16584,worldCopiesSkippedStyleWater:worldCopies16584,vancouverIslandSkippedStyleWater:vancouverIsland16584,at:new Date().toISOString()"
+          if old3 in s:
+              s=s.replace(old3,new3,1)
+          elif "vancouverIslandSkippedStyleWater" not in s:
+              raise SystemExit("water audit insertion anchor missing")
+          old4="""          try{if(m.getLayer(IDS.aquiferFill))m.setLayoutProperty(IDS.aquiferFill,"visibility","visible");}catch(_){}
+          try{if(m.getLayer(IDS.aquiferLine))m.setLayoutProperty(IDS.aquiferLine,"visibility","visible");}catch(_){}"""
+          new4="""          try{
+            if(m.getLayer(IDS.aquiferFill)){
+              m.setLayoutProperty(IDS.aquiferFill,"visibility","visible");
+              m.setPaintProperty(IDS.aquiferFill,"fill-opacity",0.54);
+              m.moveLayer(IDS.aquiferFill);
+            }
+          }catch(_){}
+          try{
+            if(m.getLayer(IDS.aquiferLine)){
+              m.setLayoutProperty(IDS.aquiferLine,"visibility","visible");
+              m.setPaintProperty(IDS.aquiferLine,"line-width",4.0);
+              m.setPaintProperty(IDS.aquiferLine,"line-opacity",1);
+              m.moveLayer(IDS.aquiferLine);
+            }
+          }catch(_){}"""
+          if "m.setPaintProperty(IDS.aquiferFill,"fill-opacity",0.54)" not in s:
+              if old4 not in s: raise SystemExit("Vancouver aquifer visibility anchor missing")
+              s=s.replace(old4,new4,1)
+          if "earthline-language-hotfix-16890.js" not in s:
+              raise SystemExit("language hotfix reference missing")
+          p.write_text(s,encoding="utf-8")
+          PY
+          grep -n "vancouverIslandSkippedStyleWater" index.html
+          grep -n 'fill-opacity",0.54' index.html
+      - name: Commit branch patch
+        run: |
+          if git diff --quiet -- index.html; then exit 0; fi
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: restore dense Vancouver water paths and aquifer visibility"
+          git push origin HEAD:${{ matrix.branch }}
