@@ -1,0 +1,31 @@
+name: Mantra 51 Promote Final International Index
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-promote-final-international-index.yml']
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Copy candidate index only
+        run: |
+          git fetch origin mantra51-global-repair-campaign
+          git show origin/mantra51-global-repair-campaign:index.html > index.html
+          test "$(git diff --name-only)" = "index.html"
+          grep -q "earthline-language-hotfix-16890.js" index.html
+          grep -q "ca-cgndb-vancouver-island" index.html
+          grep -q "EARTHLINE_VANCOUVER_AQUIFER_AUDIT_16912" index.html
+          grep -q "EARTHLINE_NZ_DATELINE_NAV_16845" index.html
+      - name: Commit production index
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "release: promote completed international repair index"
+          git push origin HEAD:pages-live
