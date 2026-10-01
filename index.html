@@ -29964,7 +29964,15 @@ body { overflow-x:hidden!important; }
   }
 
   function makeFlows(hy){
-    const N=hy.acc.length,th=percentile(hy.acc,0.84),channel=new Uint8Array(N),upstream=new Uint16Array(N);
+    /* EARTHLINE 16918 — shared adaptive Regional drainage density.
+       One owner for every Regional run: rugged terrain exposes more modeled drainage
+       branches; lower-relief terrain retains the original conservative threshold. */
+    const relief16918=Math.max(0,percentile(hy.elev,0.98)-percentile(hy.elev,0.02));
+    const flowQuantile16918=relief16918>=900?0.72:relief16918>=450?0.76:relief16918>=180?0.80:0.84;
+    const primaryCap16918=relief16918>=900?340:relief16918>=450?300:relief16918>=180?260:230;
+    const fallbackFloor16918=relief16918>=900?120:relief16918>=450?90:relief16918>=180?70:55;
+    const fallbackCap16918=relief16918>=900?320:relief16918>=450?270:relief16918>=180?220:180;
+    const N=hy.acc.length,th=percentile(hy.acc,flowQuantile16918),channel=new Uint8Array(N),upstream=new Uint16Array(N);
     for(let i=0;i<N;i++)if(hy.acc[i]>=th&&hy.to[i]>=0)channel[i]=1;
     for(let i=0;i<N;i++){const j=hy.to[i];if(channel[i]&&j>=0&&channel[j])upstream[j]++;}
     const seeds=[];for(let i=0;i<N;i++)if(channel[i]&&upstream[i]===0)seeds.push(i);
@@ -29989,14 +29997,19 @@ body { overflow-x:hidden!important; }
       }
       return true;
     }
-    for(const seed of seeds){if(lineCount>=230)break;trace(seed);}
-    if(lineCount<55){
+    for(const seed of seeds){if(lineCount>=primaryCap16918)break;trace(seed);}
+    if(lineCount<fallbackFloor16918){
       const extra=[];for(let i=0;i<N;i++)if(channel[i])extra.push(i);extra.sort((a,b)=>hy.acc[b]-hy.acc[a]);
-      for(const seed of extra){if(lineCount>=180)break;const j=hy.to[seed];if(j<0||usedEdges.has(seed+'>'+j))continue;trace(seed);}
+      for(const seed of extra){if(lineCount>=fallbackCap16918)break;const j=hy.to[seed];if(j<0||usedEdges.has(seed+'>'+j))continue;trace(seed);}
     }
-    return {type:'FeatureCollection',features};
-  }
-  function niceInterval(range,target=15){
+    window.EARTHLINE_REGIONAL_FLOW_PROFILE_16918={
+    build:'EARTHLINE 16918',reliefM:Math.round(relief16918),thresholdQuantile:flowQuantile16918,
+    primaryCap:primaryCap16918,fallbackFloor:fallbackFloor16918,fallbackCap:fallbackCap16918,
+    generatedLines:lineCount,rule:'shared relief-adaptive Regional drainage density',at:new Date().toISOString()
+  };
+  return {type:'FeatureCollection',features};
+}
+function niceInterval(range,target=15){
     const raw=Math.max(1,range/Math.max(4,target)),p=Math.pow(10,Math.floor(Math.log10(raw))),m=raw/p;
     return (m<=1?1:m<=2?2:m<=5?5:10)*p;
   }
