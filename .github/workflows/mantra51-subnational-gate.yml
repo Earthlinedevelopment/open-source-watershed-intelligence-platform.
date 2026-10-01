@@ -33,7 +33,10 @@ jobs:
       - name: Run England and Vancouver Island gate
         env:
           EARTHLINE_CANDIDATE: http://127.0.0.1:8787/
-        run: node lab/mantra51-subnational-gate.mjs | tee mantra51-subnational.jsonl
+        shell: bash
+        run: |
+          set -o pipefail
+          node lab/mantra51-subnational-gate.mjs | tee mantra51-subnational.jsonl
       - uses: actions/upload-artifact@v4
         if: always()
         with:
