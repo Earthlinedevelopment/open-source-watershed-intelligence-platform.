@@ -27,7 +27,20 @@ await page.evaluate(raw=>{
 await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_TARGET_16201?.source==='country-center',{timeout:100000,polling:100});
 const b=await page.locator('#map').boundingBox(); if(!b) throw new Error('map missing');
 const x=b.x+b.width*.55,y=b.y+b.height*.55; await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+180,y+90,{steps:12});await page.mouse.up();
-await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_TARGET_16201?.source==='crosshair',{timeout:15000,polling:100});
+await page.waitForTimeout(1500);
+const domDiag=await page.evaluate(()=>{
+  const canvases=Array.from(document.querySelectorAll('canvas')).map((c,i)=>({
+    i,cls:c.className||'',id:c.id||'',pe:getComputedStyle(c).pointerEvents,
+    parent:c.parentElement?{tag:c.parentElement.tagName,id:c.parentElement.id||'',cls:c.parentElement.className||'',pe:getComputedStyle(c.parentElement).pointerEvents}:null,
+    chain:(()=>{const a=[];let n=c;for(let k=0;n&&k<6;k++,n=n.parentElement)a.push({tag:n.tagName,id:n.id||'',cls:n.className||'',pe:getComputedStyle(n).pointerEvents});return a})()
+  }));
+  const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+  const map=document.getElementById('map');
+  return {target:t,map:map?{tag:map.tagName,id:map.id,cls:map.className,pe:getComputedStyle(map).pointerEvents}:null,canvases};
+});
+console.log(JSON.stringify({domDiag}));
+if(window?.EARTHLINE_PROPERTY_TARGET_16201){}
+if(domDiag.target?.source!=='crosshair'){await browser.close();process.exit(3)}
 await page.evaluate(()=>document.getElementById('earthlineDeclareProperty16169')?.click());
 await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,{timeout:30000,polling:100});
 const out=await page.evaluate(()=>({
