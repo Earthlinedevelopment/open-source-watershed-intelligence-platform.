@@ -2,7 +2,7 @@ import { chromium } from 'playwright';
 
 const PROD=process.env.EARTHLINE_PROD||'https://earthlinedevelopment.org/';
 const CAND=process.env.EARTHLINE_CANDIDATE||'http://127.0.0.1:8787/';
-const TARGETS=['New Zealand','India','Mexico','Alaska','Vancouver Island'];
+const TARGETS=(process.env.M51_TARGETS||'New Zealand|India|Mexico|Alaska|Vancouver Island').split('|').map(s=>s.trim()).filter(Boolean);
 
 const browser=await chromium.launch({headless:true});
 
@@ -116,6 +116,7 @@ for(const target of TARGETS){
       mapCenter,propertyTarget:targetState?{lng:+targetState.lng,lat:+targetState.lat,code:targetState.code||'',source:targetState.source||''}:null,
       targetWrites:target==='New Zealand'?(window.__M51_TARGET_WRITES||[]):undefined,
       targetTraceError:target==='New Zealand'?(window.__M51_TARGET_TRACE_ERROR||null):undefined,
+      countryHandoffAudit:target==='New Zealand'?(window.EARTHLINE_COUNTRY_HANDOFF_AUDIT_16845||null):undefined,
       mapPointerEvents:mapStyle?.pointerEvents||null
     };
   },{target,fixture,harnessError});
