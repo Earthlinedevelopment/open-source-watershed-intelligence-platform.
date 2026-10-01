@@ -4,13 +4,24 @@ p=Path("index.html")
 s=p.read_text(encoding="utf-8")
 original=s
 
-old_country="setPropertyTarget16201({lng:Number(loc.lng),lat:Number(loc.lat),source:'crosshair'},{openPanel:false});"
-new_country="setPropertyTarget16201({lng:Number(loc.lng),lat:Number(loc.lat),source:'country-center'},{openPanel:false});"
-if old_country in s:
+# Ensure the country package creates an authoritative target.
+old_crosshair="setPropertyTarget16201({lng:Number(loc.lng),lat:Number(loc.lat),source:'crosshair'},{openPanel:false});"
+old_country="setPropertyTarget16201({lng:Number(loc.lng),lat:Number(loc.lat),source:'country-center'},{openPanel:false});"
+new_country="""{
+            const cc=countryPackage16845&&countryPackage16845.center;
+            const targetLng=cc&&Number.isFinite(Number(cc.lng))?Number(cc.lng):Number(loc.lng);
+            const targetLat=cc&&Number.isFinite(Number(cc.lat))?Number(cc.lat):Number(loc.lat);
+            setPropertyTarget16201({lng:targetLng,lat:targetLat,source:'country-center'},{openPanel:false});
+          }"""
+
+if old_crosshair in s:
+    s=s.replace(old_crosshair,new_country,1)
+elif old_country in s:
     s=s.replace(old_country,new_country,1)
-elif new_country not in s:
+elif "const targetLng=cc&&Number.isFinite(Number(cc.lng))" not in s:
     raise SystemExit("country target anchor not found")
 
+# Preserve that target through generic map-center reconciliation.
 guard="if(existing&&existing.source==='country-center'&&window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845)return true;"
 if guard not in s:
     anchor="const existing=window.EARTHLINE_PROPERTY_TARGET_16201;"
@@ -20,32 +31,17 @@ if guard not in s:
     insert_at=pos+len(anchor)
     s=s[:insert_at]+"\n  "+guard+s[insert_at:]
 
+required=[
+    "source:'country-center'",
+    "const targetLng=cc&&Number.isFinite(Number(cc.lng))",
+    guard,
+]
+for item in required:
+    if item not in s:
+        raise SystemExit("post-patch verification failed: "+item)
+
 if s==original:
     print("country crosshair persistence already present")
 else:
-    
-# Country target must use the authoritative package center, not the geocoder/location center.
-old_center="setPropertyTarget16201({lng:Number(loc.lng),lat:Number(loc.lat),source:'country-center'},{openPanel:false});"
-new_center="""{
-            const cc=countryPackage16845&&countryPackage16845.center;
-            const targetLng=cc&&Number.isFinite(Number(cc.lng))?Number(cc.lng):Number(loc.lng);
-            const targetLat=cc&&Number.isFinite(Number(cc.lat))?Number(cc.lat):Number(loc.lat);
-            setPropertyTarget16201({lng:targetLng,lat:targetLat,source:'country-center'},{openPanel:false});
-          }"""
-if old_center in s:
-    s=s.replace(old_center,new_center,1)
-elif "const targetLng=cc&&Number.isFinite(Number(cc.lng))" not in s:
-    raise SystemExit("authoritative country center replacement anchor not found")
-
-p.write_text(s,encoding="utf-8")
-    print("patched country crosshair persistence")
-
-for required in (new_country,guard):
-    if required not in s:
-        raise SystemExit("post-patch verification failed: "+required)
-
-# trigger 2026-10-01 authoritative country-center persistence
-
-# inspect trigger 2026-10-01T04:50
-
-# enumerate-writers trigger
+    p.write_text(s,encoding="utf-8")
+    print("patched authoritative country package center + persistence")
