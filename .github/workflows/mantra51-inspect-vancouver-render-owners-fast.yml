@@ -1,0 +1,42 @@
+name: Mantra 51 Inspect Vancouver Render Owners Fast
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-inspect-vancouver-render-owners-fast.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - name: Inspect Vancouver render owners
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          needles=[
+            "const IDS=",
+            "aquiferFill",
+            "aquiferLine",
+            "setGeo(m,IDS.flows",
+            "setGeo(m,IDS.aquifer",
+            "guardedSetGeo(runToken,m,IDS.aquifer",
+            "EARTHLINE_VANCOUVER_AQUIFER_AUDIT_16912",
+            "EARTHLINE_VANCOUVER_WATER_AUDIT_16912",
+            "earthlineRegionalVectorOverlay16020",
+            "feature_type===\"flow\"",
+            "feature_type==='flow'",
+            "water path"
+          ]
+          for needle in needles:
+            print("\n===== "+needle+" =====")
+            pos=0; count=0
+            while count<20:
+              i=s.find(needle,pos)
+              if i<0: break
+              print(s[max(0,i-2200):min(len(s),i+6500)].replace("\n"," "))
+              print("\n---")
+              pos=i+len(needle); count+=1
+          PY
