@@ -31836,6 +31836,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
           {
             const setTarget16845=typeof window.earthlineSetPropertyTarget16201==='function'?window.earthlineSetPropertyTarget16201:null;
             if(setTarget16845&&Number.isFinite(targetLng)&&Number.isFinite(targetLat)){
+              window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=true;
               setTarget16845({lng:targetLng,lat:targetLat,source:'country-center'},{openPanel:false});
             }
           }
@@ -32761,7 +32762,10 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
           window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556=cp;
           window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845=cp;
           const setTarget16845=typeof window.earthlineSetPropertyTarget16201==='function'?window.earthlineSetPropertyTarget16201:null;
-          if(setTarget16845)setTarget16845({lng:Number(cc.lng),lat:Number(cc.lat),source:'country-center'},{openPanel:false});
+          if(setTarget16845){
+            window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=true;
+            setTarget16845({lng:Number(cc.lng),lat:Number(cc.lat),source:'country-center'},{openPanel:false});
+          }
         }
       }catch(_){}
     }
@@ -37303,8 +37307,19 @@ html[data-earthline-analysis-tier="property"] #earthlineDiagramLegend16080{displ
   function bindSearchSuggestions16233(){const input=document.getElementById('searchInput'),menu=document.getElementById('earthlineSearchSuggestions15970');if(!input||!menu||input.dataset.earthline16233Bound==='1')return;input.dataset.earthline16233Bound='1';for(const ev of ['focus','pointerdown'])input.addEventListener(ev,()=>{searchEngaged16233=true;setTimeout(openSuggestions16233,0)});input.addEventListener('input',()=>{if(document.documentElement.dataset.earthlineSuggestionCommit16246==='1'){searchEngaged16233=false;closeSuggestions16233();return;}searchEngaged16233=true;setTimeout(openSuggestions16233,0)});input.addEventListener('keydown',e=>{if(e.key==='Enter')closeSuggestions16233();if(e.key==='Escape'){searchEngaged16233=false;closeSuggestions16233()}});menu.addEventListener('click',()=>{searchEngaged16233=false;closeSuggestions16233()});document.addEventListener('pointerdown',e=>{if(e.target===input||e.target.closest('#earthlineSearchSuggestions15970'))return;searchEngaged16233=false;closeSuggestions16233()},true);const mo=new MutationObserver(()=>{if(!searchEngaged16233)closeSuggestions16233();else positionSuggestions16233()});mo.observe(menu,{attributes:true,attributeFilter:['class'],childList:true,subtree:true});for(const delay of [0,80,300,900])setTimeout(()=>{if(!searchEngaged16233)closeSuggestions16233()},delay)}
   function propertyTargetLabel16233(target){if(target&&target.code)return String(target.code)+' · ANALYZE · 20 ACRES';if(target&&Number.isFinite(Number(target.lat))&&Number.isFinite(Number(target.lng)))return 'CROSSHAIR · '+Number(target.lat).toFixed(5)+', '+Number(target.lng).toFixed(5)+' · 20 ACRES';return 'PROPERTY SEARCH · 20 ACRES'}function propertyTargetMarkup16871(target){const lang=String(window.EARTHLINE_LANGUAGE_16488||'en'),raw=propertyTargetLabel16233(target);let s=raw;if(lang==='es')s=s.replace('CROSSHAIR','PUNTO DE MIRA').replace('ANALYZE','ANALIZAR').replace('PROPERTY SEARCH','BÚSQUEDA DE PROPIEDAD');else if(lang==='vi')s=s.replace('CROSSHAIR','TÂM NGẮM').replace('ANALYZE','PHÂN TÍCH').replace('PROPERTY SEARCH','TÌM KHU ĐẤT');else if(lang==='th')s=s.replace('CROSSHAIR','เป้าเล็ง').replace('ANALYZE','วิเคราะห์').replace('PROPERTY SEARCH','ค้นหาพื้นที่');return s.replace(/20 ACRES/g,'<strong class="earthline-acres-16871">20 ACRES</strong>')}window.earthlinePropertyTargetMarkup16871=propertyTargetMarkup16871;
   function setPropertyTarget16201(target,options={}){if(!target||!Number.isFinite(Number(target.lng))||!Number.isFinite(Number(target.lat)))return false;const displayed16347=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,displayedTier16347=String(displayed16347&&(displayed16347.tier||displayed16347.mode)||'').toLowerCase(),parentRunToken16347=target.parentRunToken?String(target.parentRunToken):(target.code&&displayedTier16347==='regional'?String(displayed16347&&displayed16347.runToken||''):'');window.EARTHLINE_PROPERTY_TARGET_16201={lng:Number(target.lng),lat:Number(target.lat),source:String(target.source||'crosshair'),code:target.code?String(target.code):'',score:Number(target.score||0),parentRunToken:parentRunToken16347||'',at:new Date().toISOString()};if(window.EARTHLINE_PROPERTY_TARGET_16201.code){try{if(typeof earthlinePrewarmPropertyDem16297==='function')void earthlinePrewarmPropertyDem16297(Number(target.lat),Number(target.lng));}catch(_){}}try{if(typeof window.earthlinePrefetchVermontAuthority16263==='function'&&typeof earthlineRectangleAround==='function'){const boundary16466=earthlineRectangleAround(Number(target.lng),Number(target.lat),20);void window.earthlinePrefetchVermontAuthority16263(boundary16466,M.searchGen);}}catch(_){}const b=document.getElementById('earthlineDeclareProperty16169');if(b){ensureOrb16233('earthlineDeclareProperty16169');let span=b.querySelector('span:last-child');if(!span){span=document.createElement('span');b.appendChild(span)}span.dataset.crosshair16247=window.EARTHLINE_PROPERTY_TARGET_16201.code?'0':'1';if(b.dataset.busy!=='1')span.innerHTML=propertyTargetMarkup16871(window.EARTHLINE_PROPERTY_TARGET_16201);b.disabled=false;b.setAttribute('aria-disabled','false')}const ctx=document.getElementById('earthlinePropertyContext16233');if(ctx){ctx.textContent=window.EARTHLINE_PROPERTY_TARGET_16201.code?'Selected regional corridor '+window.EARTHLINE_PROPERTY_TARGET_16201.code:'Current fixed crosshair target';ctx.classList.add('visible')}document.documentElement.classList.add('earthline-property-ready-16188');if(options.openPanel!==false)setPanel16188(true);if(options.scroll)document.getElementById('earthlinePropertySection16188')?.scrollIntoView({block:'start',behavior:'smooth'});return true}
-  function syncPropertyTargetFromMap16201(){const m=panelMap16188();if(!m||typeof m.getCenter!=='function')return false;const c=m.getCenter();if(!c||!Number.isFinite(Number(c.lng))||!Number.isFinite(Number(c.lat)))return false;const existing=window.EARTHLINE_PROPERTY_TARGET_16201;
-  if(existing&&existing.source==='country-center'&&window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845)return true;if(existing&&existing.code)return true;return setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair'},{openPanel:false})}
+  if(!window.EARTHLINE_COUNTRY_CROSSHAIR_UNLOCK_BOUND_16845){
+  window.EARTHLINE_COUNTRY_CROSSHAIR_UNLOCK_BOUND_16845=true;
+  document.addEventListener('pointerdown',function(ev){
+    try{
+      const mapEl=document.getElementById('map');
+      if(mapEl&&(ev.target===mapEl||mapEl.contains(ev.target))){
+        window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;
+      }
+    }catch(_){}
+  },true);
+}
+function syncPropertyTargetFromMap16201(){const m=panelMap16188();if(!m||typeof m.getCenter!=='function')return false;const c=m.getCenter();if(!c||!Number.isFinite(Number(c.lng))||!Number.isFinite(Number(c.lat)))return false;const existing=window.EARTHLINE_PROPERTY_TARGET_16201;
+  if(existing&&existing.source==='country-center'&&window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845&&window.EARTHLINE_COUNTRY_TARGET_LOCK_16845!==false)return true;if(existing&&existing.code)return true;return setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair'},{openPanel:false})}
   const CORRIDOR_TIP_KEY_16248='earthline.corridor-tip.seen.v3';
   let corridorTipRegionalReady16252=false;
   let corridorTipSeenThisPage16253=false;
