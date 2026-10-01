@@ -1,0 +1,32 @@
+name: Mantra 51 Inspect Property Onclick Exact
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-inspect-property-onclick-exact.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path("index.html").read_text(encoding="utf-8")
+          pats=[
+            r'.{0,1200}earthlineDeclareProperty16169.{0,2200}',
+            r'.{0,1200}terminalPropertyRun.{0,2200}',
+            r'.{0,1200}onclick\s*=.{0,1800}',
+          ]
+          for pat in pats:
+            print("\n### PATTERN",pat)
+            for n,m in enumerate(re.finditer(pat,s,re.S)):
+              t=m.group(0).replace("\n"," ")
+              if 'earthlineDeclareProperty16169' in t or 'terminalPropertyRun' in t:
+                print(f"--- {n+1} ---")
+                print(t)
+          PY
