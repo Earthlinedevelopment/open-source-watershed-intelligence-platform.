@@ -1,0 +1,55 @@
+name: Mantra 51 Live Interaction Final
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-live-interaction-final.yml']
+permissions:
+  contents: read
+jobs:
+  nz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Live NZ crosshair and Property launch
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: https://earthlinedevelopment.org/
+        run: node lab/mantra51-nz-crosshair-interaction.mjs
+  england:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Live England fixture
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: https://earthlinedevelopment.org/
+        run: node lab/mantra51-england-production-fixture.mjs
+  alaska:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Live Alaska interaction
+        run: |
+          sed "s#const BASE='http://127.0.0.1:8787/';#const BASE='https://earthlinedevelopment.org/';#" lab/mantra51-alaska-interaction.mjs > ./lab/mantra51-alaska-live.mjs
+          node ./lab/mantra51-alaska-live.mjs
