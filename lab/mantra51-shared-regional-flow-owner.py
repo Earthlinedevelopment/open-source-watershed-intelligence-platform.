@@ -1,36 +1,61 @@
 from pathlib import Path
 p=Path("index.html")
 s=p.read_text(encoding="utf-8")
-old="""  function makeFlows(hy){
-    const vancouverFlowDensity16917=/vancouver\\s+island/i.test(String((document.getElementById('searchInput')&&document.getElementById('searchInput').value)||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970?.query||''));
-    const N=hy.acc.length,th=percentile(hy.acc,vancouverFlowDensity16917?0.72:0.84),channel=new Uint8Array(N),upstream=new Uint16Array(N);"""
-new="""  function makeFlows(hy){
-    /* EARTHLINE 16918 — shared adaptive Regional drainage density.
-       One owner for every Regional run: rugged terrain exposes more modeled drainage
-       branches; lower-relief terrain retains the original conservative threshold. */
-    const relief16918=Math.max(0,percentile(hy.elev,0.98)-percentile(hy.elev,0.02));
-    const flowQuantile16918=relief16918>=900?0.72:relief16918>=450?0.76:relief16918>=180?0.80:0.84;
-    const primaryCap16918=relief16918>=900?340:relief16918>=450?300:relief16918>=180?260:230;
-    const fallbackFloor16918=relief16918>=900?120:relief16918>=450?90:relief16918>=180?70:55;
-    const fallbackCap16918=relief16918>=900?320:relief16918>=450?270:relief16918>=180?220:180;
-    const N=hy.acc.length,th=percentile(hy.acc,flowQuantile16918),channel=new Uint8Array(N),upstream=new Uint16Array(N);"""
-if old not in s: raise SystemExit("current makeFlows owner not found")
-s=s.replace(old,new,1)
-s=s.replace("for(const seed of seeds){if(lineCount>=(vancouverFlowDensity16917?340:230))break;trace(seed);}","for(const seed of seeds){if(lineCount>=primaryCap16918)break;trace(seed);}",1)
-s=s.replace("if(lineCount<(vancouverFlowDensity16917?120:55)){","if(lineCount<fallbackFloor16918){",1)
-s=s.replace("for(const seed of extra){if(lineCount>=(vancouverFlowDensity16917?320:180))break;","for(const seed of extra){if(lineCount>=fallbackCap16918)break;",1)
-old_audit="""if(vancouverFlowDensity16917)window.EARTHLINE_VANCOUVER_FLOW_DENSITY_16917={
-      build:'EARTHLINE 16917',thresholdQuantile:0.72,generatedLines:lineCount,
-      rule:'modeled drainage pathways; Vancouver Island only',at:new Date().toISOString()
-    };"""
-new_audit="""window.EARTHLINE_REGIONAL_FLOW_PROFILE_16918={
-      build:'EARTHLINE 16918',reliefM:Math.round(relief16918),thresholdQuantile:flowQuantile16918,
-      primaryCap:primaryCap16918,fallbackFloor:fallbackFloor16918,fallbackCap:fallbackCap16918,
-      generatedLines:lineCount,rule:'shared relief-adaptive Regional drainage density',at:new Date().toISOString()
-    };"""
-if old_audit not in s: raise SystemExit("local Vancouver audit not found")
-s=s.replace(old_audit,new_audit,1)
-p.write_text(s,encoding="utf-8")
-print("replaced local Vancouver exception with shared adaptive Regional hydrology owner")
 
-# trigger apply
+# EARTHLINE 16918 must already own Regional flow density.
+if "shared continuous relief-adaptive Regional drainage density" not in s:
+    raise SystemExit("shared continuous Regional flow owner missing")
+
+# EARTHLINE 16919 — one shared final water-validation owner.
+# If the deterministic Regional land-validity grid exists, presentation/style water
+# cannot veto a modeled land flow. Style water remains a fallback only when the grid
+# is unavailable.
+local_guard="""    const vancouverIsland16584=(()=>{try{return String(window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539&&window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539.capability||'')==='ca-cgndb-vancouver-island'}catch(_){return false}})();
+"""
+if local_guard in s:
+    s=s.replace(local_guard,"",1)
+
+old_cond="if(style16584&&Array.isArray(style16584.layers)&&!worldCopies16584&&!vancouverIsland16584){"
+new_cond="""const deterministicGridReady16584=!!hy16584.validityMask16584;
+    /* EARTHLINE 16919 — deterministic land-validity precedence.
+       Live style water is supplemental evidence only when the deterministic Regional
+       grid is unavailable. This is jurisdiction-agnostic and applies to every region. */
+    if(style16584&&Array.isArray(style16584.layers)&&!worldCopies16584&&!deterministicGridReady16584){"""
+if old_cond in s:
+    s=s.replace(old_cond,new_cond,1)
+elif "EARTHLINE 16919 — deterministic land-validity precedence" not in s:
+    old_shared="if(style16584&&Array.isArray(style16584.layers)&&!worldCopies16584){"
+    if old_shared not in s:
+        raise SystemExit("shared final-water style condition anchor missing")
+    s=s.replace(old_shared,new_cond,1)
+
+old_grid="const hasGrid16584=!!hy16584.validityMask16584;"
+if old_grid in s:
+    s=s.replace(old_grid,"const hasGrid16584=deterministicGridReady16584;",1)
+
+# Earlier smoothing validator must follow the same owner: deterministic grid + mapped
+# water parts are authoritative when the grid exists; style-water cannot independently veto.
+old_style_block="""      const styleIndex16584=hy16584.styleWaterIndex16584,scale16584=Number(styleIndex16584&&styleIndex16584.scale)||4;
+      if(styleIndex16584&&styleIndex16584.bins){
+        const candidates16584=styleIndex16584.bins[Math.floor(lng16584*scale16584)+':'+Math.floor(lat16584*scale16584)]||[];
+        for(const part16584 of candidates16584){
+          if(!part16584||!part16584.bbox||!part16584.rings)continue;
+          if(lng16584<part16584.bbox[0]||lng16584>part16584.bbox[2]||lat16584<part16584.bbox[1]||lat16584>part16584.bbox[3])continue;
+          if(earthlinePointInPolygon16584(lng16584,lat16584,part16584.rings))return false;
+        }
+      }
+"""
+if old_style_block in s:
+    s=s.replace(old_style_block,"",1)
+
+if "vancouverIsland16584" in s:
+    raise SystemExit("local Vancouver final-water exception still present")
+if "vancouverFlowDensity16917" in s:
+    raise SystemExit("local Vancouver flow-density exception still present")
+if "EARTHLINE 16919 — deterministic land-validity precedence" not in s:
+    raise SystemExit("shared deterministic water-validity owner missing")
+if "earthline-language-hotfix-16890.js" not in s:
+    raise SystemExit("language hotfix reference missing")
+
+p.write_text(s,encoding="utf-8")
+print("applied shared Regional flow density + deterministic water-validity precedence")
