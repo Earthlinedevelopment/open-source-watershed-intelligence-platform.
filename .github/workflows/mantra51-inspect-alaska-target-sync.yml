@@ -1,0 +1,37 @@
+name: Mantra 51 Inspect Alaska Target Sync
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-inspect-alaska-target-sync.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - name: Inspect target sync owners
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          for needle in [
+            "function syncPropertyTargetFromMap16201",
+            "syncPropertyTargetFromMap16201()",
+            "earthlineSetPropertyTarget16201",
+            "EARTHLINE_PROPERTY_TARGET_16201",
+            "addEventListener('moveend",
+            'on("moveend"',
+            "on('moveend'"
+          ]:
+            print("\n===== "+needle+" =====")
+            pos=0; count=0
+            while count<40:
+              i=s.find(needle,pos)
+              if i<0: break
+              print(s[max(0,i-2500):min(len(s),i+9000)].replace("\n"," "))
+              print("\n---")
+              pos=i+len(needle);count+=1
+          PY
