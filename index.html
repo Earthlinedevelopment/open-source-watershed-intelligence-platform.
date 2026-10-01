@@ -31817,9 +31817,11 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
       profile16549.profileId||profile16549.id||profile16549.code||profile16549.name||profile16549
     )||'').toLowerCase();
     const countryRequest16845=!!(loc&&String(loc.placeType||'').toLowerCase()==='country')||countryProfileText16845.startsWith('country-');
+    window.EARTHLINE_COUNTRY_HANDOFF_AUDIT_16845={stage:'intent',locPlaceType:String(loc&&loc.placeType||''),profileText:countryProfileText16845,countryRequest:countryRequest16845,at:new Date().toISOString()};
     let countryPackage16845=null;
     if(countryRequest16845){
       countryPackage16845=await earthlineResolveAtomicCountryPackage16845(q,loc);
+      try{window.EARTHLINE_COUNTRY_HANDOFF_AUDIT_16845=Object.assign({},window.EARTHLINE_COUNTRY_HANDOFF_AUDIT_16845||{},{stage:'resolved',packageResolved:!!countryPackage16845,hasCenter:!!(countryPackage16845&&countryPackage16845.center),hasLocation:!!(countryPackage16845&&countryPackage16845.location),packageProfileId:String(countryPackage16845&&countryPackage16845.profileId||''),at:new Date().toISOString()})}catch(_){}
       if(countryPackage16845){
         if(countryPackage16845.location)loc=JSON.parse(JSON.stringify(countryPackage16845.location));
         window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556=countryPackage16845;
@@ -32746,6 +32748,17 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     const coreSnapshot16198=Object.freeze(JSON.parse(JSON.stringify(coreReport16198)));
     window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970=coreSnapshot16198;
     publishDisplayedRun16151(coreSnapshot16198);
+    if(countryRequest16845){
+      try{
+        const cp=countryPackage16845||window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845||window.EARTHLINE_LAST_ATOMIC_COUNTRY_PACKAGE_16845||null;
+        const cc=cp&&cp.center;
+        if(cc&&typeof setPropertyTarget16201==='function'&&Number.isFinite(Number(cc.lng))&&Number.isFinite(Number(cc.lat))){
+          window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556=cp;
+          window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845=cp;
+          setPropertyTarget16201({lng:Number(cc.lng),lat:Number(cc.lat),source:'country-center'},{openPanel:false});
+        }
+      }catch(_){}
+    }
     if(countryRequest16845){
       try{
         const cp=countryPackage16845||window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845||window.EARTHLINE_LAST_ATOMIC_COUNTRY_PACKAGE_16845||null;
