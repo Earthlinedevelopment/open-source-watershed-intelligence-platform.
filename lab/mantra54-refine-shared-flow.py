@@ -19,3 +19,5 @@ newrule="rule:'shared continuous relief-adaptive Regional drainage density'"
 s=s.replace(oldrule,newrule,1)
 p.write_text(s,encoding="utf-8")
 print("refined shared Regional flow-density owner")
+
+# trigger
