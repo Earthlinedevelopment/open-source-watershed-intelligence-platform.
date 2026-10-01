@@ -85,6 +85,19 @@ for(const target of TARGETS){
       return !!e||String(d?.query||'').trim().toLowerCase()===String(target).trim().toLowerCase();
     },target,{timeout:100000,polling:100});
     await page.waitForTimeout(500);
+    if(target==='New Zealand'){
+      const before=await page.evaluate(()=>{const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;return t?{lng:+t.lng,lat:+t.lat,source:String(t.source||''),code:String(t.code||'')}:null});
+      const box=await page.locator('#map').boundingBox();
+      if(!box)throw new Error('New Zealand map box unavailable for user-drag gate');
+      const x=box.x+box.width*0.55,y=box.y+box.height*0.55;
+      await page.mouse.move(x,y);
+      await page.mouse.down();
+      await page.mouse.move(x+140,y+70,{steps:12});
+      await page.mouse.up();
+      await page.waitForTimeout(900);
+      const after=await page.evaluate(()=>{const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;return t?{lng:+t.lng,lat:+t.lat,source:String(t.source||''),code:String(t.code||'')}:null});
+      await page.evaluate(({before,after})=>{window.__M51_USER_DRAG_AUDIT={before,after,at:new Date().toISOString()}},{before,after});
+    }
   }catch(e){harnessError=String(e?.message||e);}
 
   const snap=await page.evaluate(({target,fixture,harnessError})=>{
@@ -117,6 +130,7 @@ for(const target of TARGETS){
       targetWrites:target==='New Zealand'?(window.__M51_TARGET_WRITES||[]):undefined,
       targetTraceError:target==='New Zealand'?(window.__M51_TARGET_TRACE_ERROR||null):undefined,
       countryHandoffAudit:target==='New Zealand'?(window.EARTHLINE_COUNTRY_HANDOFF_AUDIT_16845||null):undefined,
+      userDragAudit:target==='New Zealand'?(window.__M51_USER_DRAG_AUDIT||null):undefined,
       mapPointerEvents:mapStyle?.pointerEvents||null
     };
   },{target,fixture,harnessError});

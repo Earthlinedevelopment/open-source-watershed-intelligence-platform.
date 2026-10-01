@@ -50,10 +50,16 @@ jobs:
           if not nz: raise SystemExit('New Zealand result missing')
           p=nz.get('propertyTarget') or {}
           c=nz.get('packageCenter') or []
+          drag=nz.get('userDragAudit') or {}
+          before=drag.get('before') or {}
+          after=drag.get('after') or {}
           if len(c)!=2: raise SystemExit('authoritative package center missing')
-          d=math.hypot(float(p.get('lng',999))-float(c[0]),float(p.get('lat',999))-float(c[1]))
-          print(json.dumps({'target':'New Zealand','propertyTarget':p,'packageCenter':c,'distanceDeg':d}))
-          if d>0.01: raise SystemExit('crosshair is not synchronized to authoritative interior center')
+          d0=math.hypot(float(before.get('lng',999))-float(c[0]),float(before.get('lat',999))-float(c[1]))
+          moved=math.hypot(float(after.get('lng',999))-float(before.get('lng',999)),float(after.get('lat',999))-float(before.get('lat',999)))
+          print(json.dumps({'target':'New Zealand','before':before,'after':after,'packageCenter':c,'initialDistanceDeg':d0,'userDragDistanceDeg':moved}))
+          if d0>0.01: raise SystemExit('initial NZ target is not synchronized to authoritative interior center')
+          if after.get('source')!='crosshair-user-drag-16414': raise SystemExit('NZ user drag did not take crosshair ownership')
+          if moved<=0.01: raise SystemExit('NZ user drag did not move the Property target')
           PY
 
 # rerun after Regional publication reassert
@@ -73,3 +79,4 @@ jobs:
 # rerun after exported-setter repair
 
 # rerun after exported-target-owner fix
+# actual user-drag ownership gate
