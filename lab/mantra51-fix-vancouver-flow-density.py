@@ -34,3 +34,5 @@ if audit_anchor not in s: raise SystemExit("makeFlows return anchor missing")
 s=s.replace(audit_anchor,audit_new,1)
 p.write_text(s,encoding="utf-8")
 print("patched Vancouver modeled flow density")
+
+# trigger apply
