@@ -1,0 +1,23 @@
+name: Mantra 51 Promote Crosshair Late Bind Only
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-promote-crosshair-late-bind.yml'
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Cherry-pick one verified repair commit
+        run: |
+          git config user.name "Earthline Repair Bot"
+          git config user.email "earthline-repair@users.noreply.github.com"
+          git fetch origin mantra51-global-repair-campaign
+          git cherry-pick d75002afbd24ad3a84f377d4fbe8194e260fca8f
+          git push origin HEAD:pages-live
