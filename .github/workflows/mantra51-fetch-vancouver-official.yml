@@ -1,0 +1,25 @@
+name: Mantra 51 Fetch Vancouver Island Official Polygon
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-fetch-vancouver-official.yml'
+permissions:
+  contents: read
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch official CGNDB Vancouver Island GeoJSON
+        run: |
+          set -euxo pipefail
+          for u in \
+            "https://geogratis.gc.ca/services/geoname/en/geonames/JBRIN.geojson" \
+            "https://geogratis.gc.ca/services/geoname/en/geonames/JBRIN.geojson?expand=feature" \
+            "https://geogratis.gc.ca/services/geoname/en/geonames/JBRIN.json?expand=feature"; do
+            echo "=== $u ==="
+            curl -L --fail --retry 2 --connect-timeout 20 "$u" -o /tmp/out || continue
+            wc -c /tmp/out
+            head -c 12000 /tmp/out
+            echo
+          done
