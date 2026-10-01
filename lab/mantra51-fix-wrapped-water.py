@@ -1,23 +1,47 @@
 from pathlib import Path
 p=Path("index.html")
 s=p.read_text(encoding="utf-8")
-old="""    if(style16584&&Array.isArray(style16584.layers)){
-      const surfaceLayers16584=style16584.layers.filter(surfaceLayer16584),layerIds16584=surfaceLayers16584.map(l16584=>l16584.id).filter(Boolean);"""
-new="""    const worldCopies16584=(()=>{try{return !!(mp16584.getRenderWorldCopies&&mp16584.getRenderWorldCopies())}catch(_){return false}})();
-    /* EARTHLINE 16911 — WRAPPED-WORLD WATER CLIP SAFETY.
-       When world copies are enabled (needed for New Zealand dateline navigation),
-       rendered/source vector water geometry may be duplicated/wrapped across the seam.
-       Do not let that presentation geometry override the deterministic Regional land-validity
-       grid and Natural Earth water parts. The same final flow-safety checks remain active. */
-    if(style16584&&Array.isArray(style16584.layers)&&!worldCopies16584){
-      const surfaceLayers16584=style16584.layers.filter(surfaceLayer16584),layerIds16584=surfaceLayers16584.map(l16584=>l16584.id).filter(Boolean);"""
-if old not in s: raise SystemExit("final water clip style anchor missing")
-s=s.replace(old,new,1)
-audit="""      failClosedNoEvidence:!evidenceReady16584,at:new Date().toISOString()"""
-audit_new="""      failClosedNoEvidence:!evidenceReady16584,worldCopiesSkippedStyleWater:worldCopies16584,at:new Date().toISOString()"""
-if audit not in s: raise SystemExit("water audit anchor missing")
-s=s.replace(audit,audit_new,1)
-p.write_text(s,encoding="utf-8")
-print("patched wrapped-world final water clip")
 
-# trigger apply
+world_anchor="""    const worldCopies16584=(()=>{try{return !!(mp16584.getRenderWorldCopies&&mp16584.getRenderWorldCopies())}catch(_){return false}})();"""
+vancouver_line="""    const vancouverIsland16584=(()=>{try{return String(window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539&&window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539.capability||'')==='ca-cgndb-vancouver-island'}catch(_){return false}})();"""
+if "const vancouverIsland16584=" not in s:
+    if world_anchor not in s: raise SystemExit("worldCopies anchor missing")
+    s=s.replace(world_anchor,world_anchor+"\n"+vancouver_line,1)
+
+old_cond="if(style16584&&Array.isArray(style16584.layers)&&!worldCopies16584){"
+new_cond="if(style16584&&Array.isArray(style16584.layers)&&!worldCopies16584&&!vancouverIsland16584){"
+if old_cond in s:
+    s=s.replace(old_cond,new_cond,1)
+elif new_cond not in s:
+    raise SystemExit("final style-water condition missing")
+
+old_audit="failClosedNoEvidence:!evidenceReady16584,worldCopiesSkippedStyleWater:worldCopies16584,at:new Date().toISOString()"
+new_audit="failClosedNoEvidence:!evidenceReady16584,worldCopiesSkippedStyleWater:worldCopies16584,vancouverIslandSkippedStyleWater:vancouverIsland16584,at:new Date().toISOString()"
+if old_audit in s:
+    s=s.replace(old_audit,new_audit,1)
+elif "vancouverIslandSkippedStyleWater" not in s:
+    raise SystemExit("water audit anchor missing")
+
+old_style='''          try{if(m.getLayer(IDS.aquiferFill))m.setLayoutProperty(IDS.aquiferFill,"visibility","visible");}catch(_){}
+          try{if(m.getLayer(IDS.aquiferLine))m.setLayoutProperty(IDS.aquiferLine,"visibility","visible");}catch(_){}'''
+new_style='''          try{
+            if(m.getLayer(IDS.aquiferFill)){
+              m.setLayoutProperty(IDS.aquiferFill,"visibility","visible");
+              m.setPaintProperty(IDS.aquiferFill,"fill-opacity",0.54);
+              m.moveLayer(IDS.aquiferFill);
+            }
+          }catch(_){}
+          try{
+            if(m.getLayer(IDS.aquiferLine)){
+              m.setLayoutProperty(IDS.aquiferLine,"visibility","visible");
+              m.setPaintProperty(IDS.aquiferLine,"line-width",4.0);
+              m.setPaintProperty(IDS.aquiferLine,"line-opacity",1);
+              m.moveLayer(IDS.aquiferLine);
+            }
+          }catch(_){}'''
+if 'm.setPaintProperty(IDS.aquiferFill,"fill-opacity",0.54)' not in s:
+    if old_style not in s: raise SystemExit("Vancouver aquifer style anchor missing")
+    s=s.replace(old_style,new_style,1)
+
+p.write_text(s,encoding="utf-8")
+print("patched Vancouver valid-flow preservation and official aquifer visibility")
