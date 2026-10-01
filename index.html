@@ -29797,12 +29797,13 @@ body { overflow-x:hidden!important; }
       else if(g16584.type==='MultiPolygon')for(const p16584 of (g16584.coordinates||[]))addPart16584(p16584);
     };
     const worldCopies16584=(()=>{try{return !!(mp16584.getRenderWorldCopies&&mp16584.getRenderWorldCopies())}catch(_){return false}})();
+    const vancouverIsland16584=(()=>{try{return String(window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539&&window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539.capability||'')==='ca-cgndb-vancouver-island'}catch(_){return false}})();
     /* EARTHLINE 16911 — WRAPPED-WORLD WATER CLIP SAFETY.
        When world copies are enabled (needed for New Zealand dateline navigation),
        rendered/source vector water geometry may be duplicated/wrapped across the seam.
        Do not let that presentation geometry override the deterministic Regional land-validity
        grid and Natural Earth water parts. The same final flow-safety checks remain active. */
-    if(style16584&&Array.isArray(style16584.layers)&&!worldCopies16584){
+    if(style16584&&Array.isArray(style16584.layers)&&!worldCopies16584&&!vancouverIsland16584){
       const surfaceLayers16584=style16584.layers.filter(surfaceLayer16584),layerIds16584=surfaceLayers16584.map(l16584=>l16584.id).filter(Boolean);
       if(layerIds16584.length&&typeof mp16584.queryRenderedFeatures==='function'){
         try{
@@ -29930,7 +29931,7 @@ body { overflow-x:hidden!important; }
       featureCount:styleFeatureCount16584,partCount:stylePartCount16584,sourceCount:styleSourceCount16584,
       inputLines:inputLines16584,outputLines:outputLines16584,clippedLines:clippedLines16584,droppedLines:droppedLines16584,
       shorelineEvidence:'Natural Earth 1:10m lakes + live surface-water polygons',shoreBufferRule:'one-local-DEM-cell-diagonal',shoreBufferKm:Number(shoreBufferKm16584.toFixed(3)),
-      failClosedNoEvidence:!evidenceReady16584,worldCopiesSkippedStyleWater:worldCopies16584,at:new Date().toISOString()
+      failClosedNoEvidence:!evidenceReady16584,worldCopiesSkippedStyleWater:worldCopies16584,vancouverIslandSkippedStyleWater:vancouverIsland16584,at:new Date().toISOString()
     };
     return {...flows16584,features:kept16584.concat(arrows16584)};
   }
@@ -32727,8 +32728,21 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
             if(M.layers&&M.layers.usgsAquifer)M.layers.usgsAquifer.on=true;
           }catch(_){}
           if(!guardedSetGeo(runToken,m,IDS.aquifer,vancouverAquiferGeo16912,"bc-ground-water-aquifers"))return false;
-          try{if(m.getLayer(IDS.aquiferFill))m.setLayoutProperty(IDS.aquiferFill,"visibility","visible");}catch(_){}
-          try{if(m.getLayer(IDS.aquiferLine))m.setLayoutProperty(IDS.aquiferLine,"visibility","visible");}catch(_){}
+          try{
+            if(m.getLayer(IDS.aquiferFill)){
+              m.setLayoutProperty(IDS.aquiferFill,"visibility","visible");
+              m.setPaintProperty(IDS.aquiferFill,"fill-opacity",0.54);
+              m.moveLayer(IDS.aquiferFill);
+            }
+          }catch(_){}
+          try{
+            if(m.getLayer(IDS.aquiferLine)){
+              m.setLayoutProperty(IDS.aquiferLine,"visibility","visible");
+              m.setPaintProperty(IDS.aquiferLine,"line-width",4.0);
+              m.setPaintProperty(IDS.aquiferLine,"line-opacity",1);
+              m.moveLayer(IDS.aquiferLine);
+            }
+          }catch(_){}
         }
         window.EARTHLINE_VANCOUVER_AQUIFER_AUDIT_16912={
           build:"EARTHLINE 16912",runToken,query:String(q||""),source:"Government of British Columbia — Ground Water Aquifers",
