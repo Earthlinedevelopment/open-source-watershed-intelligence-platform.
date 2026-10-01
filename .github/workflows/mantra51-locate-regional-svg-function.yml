@@ -1,0 +1,27 @@
+name: Mantra 51 Locate Regional SVG Function
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-locate-regional-svg-function.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          for needle in ['directional-water-paths','swale-opportunities','earthlineRegionalVectorOverlay16020']:
+            print("\n###",needle)
+            for m in list(re.finditer(re.escape(needle),s))[:8]:
+              a=max(0,m.start()-12000); chunk=s[a:m.start()]
+              funcs=list(re.finditer(r'(?:async\s+)?function\s+([A-Za-z0-9_$]+)\s*\(',chunk))
+              print('nearest function',funcs[-1].group(1) if funcs else None)
+              print(s[max(0,m.start()-3500):min(len(s),m.start()+5000)].replace("\n"," "))
+              print('\n---')
+          PY
