@@ -79,7 +79,7 @@ country_if_old="if(!profile16549&&loc&&String(loc.placeType||'').toLowerCase()==
 country_if_new="if(loc&&String(loc.placeType||'').toLowerCase()==='country'){"
 if country_if_old in s:
     s=s.replace(country_if_old,country_if_new,1)
-elif country_if_new not in s:
+elif country_if_new not in s and "const countryRequest16845=" not in s:
     raise SystemExit("country handoff condition anchor not found")
 
 country_else_old="}else if(!profile16549&&window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556&&window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556.packageKind==='country'){"
