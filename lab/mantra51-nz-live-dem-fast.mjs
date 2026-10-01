@@ -25,7 +25,8 @@ await page.evaluate(raw=>{
   document.getElementById('runBtn').click();
 },raw);
 await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_TARGET_16201?.source==='country-center',{timeout:100000,polling:100});
-const b=await page.locator('#map').boundingBox(); if(!b) throw new Error('map missing');
+await page.waitForSelector('.mapboxgl-canvas',{timeout:30000});
+const b=await page.locator('.mapboxgl-canvas').boundingBox(); if(!b) throw new Error('mapbox canvas missing');
 const x=b.x+b.width*.55,y=b.y+b.height*.55; await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+180,y+90,{steps:12});await page.mouse.up();
 await page.waitForTimeout(1500);
 const domDiag=await page.evaluate(()=>{
