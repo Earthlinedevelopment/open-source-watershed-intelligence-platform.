@@ -1,0 +1,23 @@
+name: Mantra 51 NZ Fast Live DEM
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - 'lab/mantra51-nz-live-dem-fast.mjs'
+      - '.github/workflows/mantra51-nz-live-dem-fast.yml'
+permissions:
+  contents: read
+jobs:
+  live_dem_fast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node lab/mantra51-nz-live-dem-fast.mjs
