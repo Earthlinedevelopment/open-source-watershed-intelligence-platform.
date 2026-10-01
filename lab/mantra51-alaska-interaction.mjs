@@ -41,6 +41,16 @@ const canvas=page.locator('#mapboxBase canvas.mapboxgl-canvas').first();
 const box=await canvas.boundingBox();
 if(!box)throw new Error('Alaska Mapbox canvas unavailable');
 
+await page.evaluate(()=>{
+  window.__M51_AK_INPUT={pointerdown:0,mousedown:0,pointermove:0,mousemove:0,pointerup:0,mouseup:0,dragstart:0,drag:0,dragend:0};
+  const canvas=document.querySelector('#mapboxBase canvas.mapboxgl-canvas');
+  for(const ev of ['pointerdown','mousedown','pointermove','mousemove','pointerup','mouseup']){
+    canvas?.addEventListener(ev,()=>{window.__M51_AK_INPUT[ev]++},true);
+  }
+  if(typeof earthlineMap!=='undefined'&&earthlineMap?.on){
+    for(const ev of ['dragstart','drag','dragend'])earthlineMap.on(ev,()=>{window.__M51_AK_INPUT[ev]++});
+  }
+});
 const mapStateBefore=await page.evaluate(()=>({
   center:(typeof earthlineMap!=='undefined'&&earthlineMap?.getCenter)?earthlineMap.getCenter().toArray():null,
   zoom:(typeof earthlineMap!=='undefined'&&earthlineMap?.getZoom)?earthlineMap.getZoom():null,
@@ -68,7 +78,12 @@ const after=await page.evaluate(()=>({
 console.log('AK_DRAG '+JSON.stringify({before,after}));
 const cameraMoved=(before.site&&after.site)?Math.hypot(Number(after.site.lng)-Number(before.site.lng),Number(after.site.lat)-Number(before.site.lat)):0;
 const targetMoved=(before.target&&after.target)?Math.hypot(Number(after.target.lng)-Number(before.target.lng),Number(after.target.lat)-Number(before.target.lat)):0;
-const realCenterAfter=await page.evaluate(()=>(typeof earthlineMap!=='undefined'&&earthlineMap?.getCenter)?earthlineMap.getCenter().toArray():null);
+const realAfter=await page.evaluate(()=>({
+  center:(typeof earthlineMap!=='undefined'&&earthlineMap?.getCenter)?earthlineMap.getCenter().toArray():null,
+  input:window.__M51_AK_INPUT||null
+}));
+const realCenterAfter=realAfter.center;
+console.log('AK_INPUT_EVENTS '+JSON.stringify(realAfter.input));
 console.log('AK_MOVEMENT '+JSON.stringify({cameraMoved,targetMoved,realCenterAfter}));
 const prog=await page.evaluate(async()=>{
   if(typeof earthlineMap==='undefined'||!earthlineMap?.panBy)return null;
