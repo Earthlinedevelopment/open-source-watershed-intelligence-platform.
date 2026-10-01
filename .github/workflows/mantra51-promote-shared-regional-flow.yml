@@ -1,0 +1,66 @@
+name: Mantra 51 Promote Shared Regional Flow Owner
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-promote-shared-regional-flow.yml']
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Apply shared Regional hydrology owner only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          old="""  function makeFlows(hy){
+            const N=hy.acc.length,th=percentile(hy.acc,0.84),channel=new Uint8Array(N),upstream=new Uint16Array(N);"""
+          new="""  function makeFlows(hy){
+            /* EARTHLINE 16918 — shared adaptive Regional drainage density.
+               One owner for every Regional run: rugged terrain exposes more modeled drainage
+               branches; lower-relief terrain retains the original conservative threshold. */
+            const relief16918=Math.max(0,percentile(hy.elev,0.98)-percentile(hy.elev,0.02));
+            const flowQuantile16918=relief16918>=900?0.72:relief16918>=450?0.76:relief16918>=180?0.80:0.84;
+            const primaryCap16918=relief16918>=900?340:relief16918>=450?300:relief16918>=180?260:230;
+            const fallbackFloor16918=relief16918>=900?120:relief16918>=450?90:relief16918>=180?70:55;
+            const fallbackCap16918=relief16918>=900?320:relief16918>=450?270:relief16918>=180?220:180;
+            const N=hy.acc.length,th=percentile(hy.acc,flowQuantile16918),channel=new Uint8Array(N),upstream=new Uint16Array(N);"""
+          if "EARTHLINE_REGIONAL_FLOW_PROFILE_16918" not in s:
+              if old not in s: raise SystemExit("shared makeFlows production anchor missing")
+              s=s.replace(old,new,1)
+              s=s.replace("for(const seed of seeds){if(lineCount>=230)break;trace(seed);}","for(const seed of seeds){if(lineCount>=primaryCap16918)break;trace(seed);}",1)
+              s=s.replace("if(lineCount<55){","if(lineCount<fallbackFloor16918){",1)
+              s=s.replace("for(const seed of extra){if(lineCount>=180)break;","for(const seed of extra){if(lineCount>=fallbackCap16918)break;",1)
+              anchor="""return {type:'FeatureCollection',features};
+            }
+            function niceInterval"""
+              repl="""window.EARTHLINE_REGIONAL_FLOW_PROFILE_16918={
+                  build:'EARTHLINE 16918',reliefM:Math.round(relief16918),thresholdQuantile:flowQuantile16918,
+                  primaryCap:primaryCap16918,fallbackFloor:fallbackFloor16918,fallbackCap:fallbackCap16918,
+                  generatedLines:lineCount,rule:'shared relief-adaptive Regional drainage density',at:new Date().toISOString()
+                };
+                return {type:'FeatureCollection',features};
+            }
+            function niceInterval"""
+              if anchor not in s: raise SystemExit("shared flow audit anchor missing")
+              s=s.replace(anchor,repl,1)
+          if "vancouverFlowDensity16917" in s: raise SystemExit("local Vancouver exception detected")
+          if "earthline-language-hotfix-16890.js" not in s: raise SystemExit("language hotfix reference missing")
+          p.write_text(s,encoding="utf-8")
+          PY
+          test "$(git diff --name-only)" = "index.html"
+          grep -n "EARTHLINE_REGIONAL_FLOW_PROFILE_16918" index.html
+          ! grep -q "vancouverFlowDensity16917" index.html
+      - name: Commit production shared owner
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: promote shared relief-adaptive Regional drainage owner"
+          git push origin HEAD:pages-live
