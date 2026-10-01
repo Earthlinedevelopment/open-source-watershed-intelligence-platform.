@@ -40,6 +40,16 @@ console.log('AK_INTERACTION_DIAG '+JSON.stringify(diag));
 const canvas=page.locator('#mapboxBase canvas.mapboxgl-canvas').first();
 const box=await canvas.boundingBox();
 if(!box)throw new Error('Alaska Mapbox canvas unavailable');
+
+const mapStateBefore=await page.evaluate(()=>({
+  center:(typeof earthlineMap!=='undefined'&&earthlineMap?.getCenter)?earthlineMap.getCenter().toArray():null,
+  zoom:(typeof earthlineMap!=='undefined'&&earthlineMap?.getZoom)?earthlineMap.getZoom():null,
+  dragPan:(typeof earthlineMap!=='undefined'&&earthlineMap?.dragPan?.isEnabled)?earthlineMap.dragPan.isEnabled():null,
+  scrollZoom:(typeof earthlineMap!=='undefined'&&earthlineMap?.scrollZoom?.isEnabled)?earthlineMap.scrollZoom.isEnabled():null,
+  moving:(typeof earthlineMap!=='undefined'&&earthlineMap?.isMoving)?earthlineMap.isMoving():null
+}));
+console.log('AK_MAP_STATE_BEFORE '+JSON.stringify(mapStateBefore));
+
 const before=await page.evaluate(()=>({
   target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
   site:typeof window.earthlineCurrentMapSite15778==='function'?window.earthlineCurrentMapSite15778():null,
@@ -58,9 +68,23 @@ const after=await page.evaluate(()=>({
 console.log('AK_DRAG '+JSON.stringify({before,after}));
 const cameraMoved=(before.site&&after.site)?Math.hypot(Number(after.site.lng)-Number(before.site.lng),Number(after.site.lat)-Number(before.site.lat)):0;
 const targetMoved=(before.target&&after.target)?Math.hypot(Number(after.target.lng)-Number(before.target.lng),Number(after.target.lat)-Number(before.target.lat)):0;
-console.log('AK_MOVEMENT '+JSON.stringify({cameraMoved,targetMoved}));
+const realCenterAfter=await page.evaluate(()=>(typeof earthlineMap!=='undefined'&&earthlineMap?.getCenter)?earthlineMap.getCenter().toArray():null);
+console.log('AK_MOVEMENT '+JSON.stringify({cameraMoved,targetMoved,realCenterAfter}));
+const prog=await page.evaluate(async()=>{
+  if(typeof earthlineMap==='undefined'||!earthlineMap?.panBy)return null;
+  const before=earthlineMap.getCenter().toArray();
+  earthlineMap.stop?.();
+  earthlineMap.panBy([240,0],{duration:0});
+  await new Promise(r=>setTimeout(r,500));
+  return {before,after:earthlineMap.getCenter().toArray(),dragPan:earthlineMap.dragPan?.isEnabled?.(),moving:earthlineMap.isMoving?.()};
+});
+console.log('AK_PROGRAMMATIC_PAN '+JSON.stringify(prog));
+const progMoved=prog?Math.hypot(Number(prog.after[0])-Number(prog.before[0]),Number(prog.after[1])-Number(prog.before[1])):0;
 if(diag.canvas.pe==='none')throw new Error('actual Mapbox canvas has pointer-events none');
-if(!cameraMoved||cameraMoved<0.01)throw new Error('Alaska camera itself did not move after real drag');
+if(!cameraMoved||cameraMoved<0.01){
+  if(progMoved>0.01)throw new Error('Alaska native camera can pan, but real pointer drag is not reaching dragPan');
+  throw new Error('Alaska camera is constrained even for native panBy');
+}
 if(!targetMoved||targetMoved<0.01)throw new Error('Alaska camera moved but crosshair target did not follow');
 await browser.close();
 
