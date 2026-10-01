@@ -15,28 +15,14 @@ jobs:
         with:
           ref: mantra51-global-repair-campaign
           fetch-depth: 0
-      - name: Apply narrow country crosshair persistence fix
+      - name: Apply NZ interactive crosshair release fix
         run: python3 lab/mantra51-fix-country-crosshair-persistence.py
-      - name: Verify only expected runtime anchors
+      - name: Verify interactive country target owner
         run: |
+          grep -n "EARTHLINE_COUNTRY_TARGET_LOCK_16845" index.html
+          grep -n "EARTHLINE_COUNTRY_CROSSHAIR_UNLOCK_BOUND_16845" index.html
           grep -n "source:'country-center'" index.html
-          grep -n "existing.source==='country-center'" index.html
-      - name: Inspect target owners
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          s=Path("index.html").read_text(encoding="utf-8")
-          for needle in ["EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970","recordRun('regional","return run","countryPackage16845","function setPropertyTarget16201","setPropertyTarget16201(","EARTHLINE_PROPERTY_TARGET_16201=","syncPropertyTargetFromMap16201()","source:'country-center'","source:'crosshair'"]:
-              print("\n###",needle)
-              pos=0
-              shown=0
-              while True:
-                  i=s.find(needle,pos)
-                  if i<0 or shown>=12: break
-                  print(s[max(0,i-350):i+500].replace("\n"," "))
-                  print("---")
-                  pos=i+len(needle); shown+=1
-          PY
+          grep -n "source:'crosshair'" index.html
       - name: Commit candidate index
         run: |
           if git diff --quiet -- index.html; then
@@ -46,5 +32,5 @@ jobs:
           git config user.name "Earthlinedevelopment"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m "fix: persist authoritative country crosshair center"
+          git commit -m "fix: release NZ country target to user crosshair movement"
           git push origin HEAD:mantra51-global-repair-campaign
