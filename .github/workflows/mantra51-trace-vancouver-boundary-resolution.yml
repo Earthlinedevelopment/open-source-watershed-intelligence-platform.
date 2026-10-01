@@ -1,0 +1,39 @@
+name: Mantra 51 Trace Vancouver Boundary Resolution
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-trace-vancouver-boundary-resolution.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - name: Trace Vancouver boundary resolver
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          needles=[
+            "vancouverIsland",
+            "ca-cgndb-vancouver-island",
+            "EARTHLINE_VANCOUVER",
+            "jurisdictionBoundaryPromise16539",
+            "selectionBoundary16539",
+            "earthlineResolveAdministrativeBoundary16539",
+            "earthlineResolveVancouver",
+            "earthlineClipRegionalProducts16539"
+          ]
+          for needle in needles:
+            print("\n===== "+needle+" =====")
+            pos=0; count=0
+            while count<20:
+              i=s.find(needle,pos)
+              if i<0: break
+              print(s[max(0,i-3500):min(len(s),i+9000)])
+              print("\n---")
+              pos=i+len(needle);count+=1
+          PY
