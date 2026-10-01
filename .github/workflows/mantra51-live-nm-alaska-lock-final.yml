@@ -1,0 +1,24 @@
+name: Mantra 51 Live NM Alaska Lock Final
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-live-nm-alaska-lock-final.yml']
+permissions:
+  contents: read
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Live NM transition and Alaska lock
+        run: |
+          sed "s#const BASE='http://127.0.0.1:8787/';#const BASE='https://earthlinedevelopment.org/';#" tests/mantra51-nm-alaska-regression.mjs > tests/mantra51-nm-alaska-live.mjs
+          sed -i "s#const OUT='artifacts/mantra51-nm-alaska'#const OUT='artifacts/mantra51-nm-alaska-live'#" tests/mantra51-nm-alaska-live.mjs
+          node tests/mantra51-nm-alaska-live.mjs
