@@ -1,0 +1,50 @@
+name: Mantra 51 Live International Verification
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-live-international-verification.yml']
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - name: Wait for promoted production
+        run: |
+          for i in $(seq 1 40); do
+            if curl -fsSL "https://earthlinedevelopment.org/?release-check=$RANDOM" | grep -q "EARTHLINE_VANCOUVER_AQUIFER_AUDIT_16912"; then
+              echo "Promoted production is live"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Promoted production marker not live"
+          exit 1
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Live Vancouver Island
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+        run: node lab/mantra51-vancouver-water-aquifer-gate.mjs
+      - name: Live New Zealand
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: https://earthlinedevelopment.org/
+        run: node lab/mantra51-nz-crosshair-interaction.mjs
+      - name: Live England
+        env:
+          EARTHLINE_PROD: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE: https://earthlinedevelopment.org/
+        run: node lab/mantra51-england-production-fixture.mjs
+      - name: Live Alaska interaction
+        run: |
+          sed "s#const BASE='http://127.0.0.1:8787/';#const BASE='https://earthlinedevelopment.org/';#" lab/mantra51-alaska-interaction.mjs > /tmp/alaska-live.mjs
+          cp package*.json /tmp/ 2>/dev/null || true
+          node /tmp/alaska-live.mjs
