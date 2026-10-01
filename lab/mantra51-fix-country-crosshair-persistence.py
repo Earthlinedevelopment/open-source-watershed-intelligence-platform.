@@ -87,6 +87,17 @@ country_else_new="}else if(window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556&&w
 if country_else_old in s:
     s=s.replace(country_else_old,country_else_new,1)
 
+
+# Atomic country packages are valid even when .location is omitted.
+# Country profiles can carry center/regionalExtent without a location object.
+# The previous guard skipped the active package + target assignment entirely.
+pkg_guard_old="if(countryPackage16845&&countryPackage16845.location){\n        loc=JSON.parse(JSON.stringify(countryPackage16845.location));"
+pkg_guard_new="if(countryPackage16845){\n        if(countryPackage16845.location)loc=JSON.parse(JSON.stringify(countryPackage16845.location));"
+if pkg_guard_old in s:
+    s=s.replace(pkg_guard_old,pkg_guard_new,1)
+elif pkg_guard_new not in s:
+    raise SystemExit("country package validity guard anchor not found")
+
 required=[
     "source:'country-center'",
     "const targetLng=cc&&Number.isFinite(Number(cc.lng))",
