@@ -31,3 +31,5 @@ for required in (new_country,guard):
         raise SystemExit("post-patch verification failed: "+required)
 
 # trigger 2026-10-01 authoritative country-center persistence
+
+# inspect trigger 2026-10-01T04:50
