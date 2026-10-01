@@ -1,0 +1,42 @@
+name: Mantra 51 Subnational International Gate
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-subnational-gate.yml'
+      - 'lab/mantra51-subnational-gate.mjs'
+      - 'index.html'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  subnational:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start candidate server
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/mantra51-subnational.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/mantra51-subnational.log
+          exit 1
+      - name: Run England and Vancouver Island gate
+        env:
+          EARTHLINE_CANDIDATE: http://127.0.0.1:8787/
+        run: node lab/mantra51-subnational-gate.mjs | tee mantra51-subnational.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra51-subnational
+          path: mantra51-subnational.jsonl
+          if-no-files-found: ignore
