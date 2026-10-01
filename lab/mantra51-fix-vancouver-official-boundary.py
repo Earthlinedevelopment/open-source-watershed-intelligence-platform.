@@ -74,3 +74,5 @@ if "ca-cgndb-vancouver-island" not in s or "EARTHLINE_VANCOUVER_ISLAND_GEOMETRY_
     raise SystemExit("Vancouver authoritative boundary patch failed")
 p.write_text(s,encoding="utf-8")
 print(json.dumps({"points":len(pts),"bbox":[w,so,e,n],"source":"CGNDB JBRIN"}))
+
+# trigger official boundary apply
