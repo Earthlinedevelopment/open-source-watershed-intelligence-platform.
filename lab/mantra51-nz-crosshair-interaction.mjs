@@ -100,4 +100,30 @@ if(before.target?.source!=='country-center')throw new Error('NZ did not start at
 if(after.target?.source!=='crosshair')throw new Error('target did not transfer to user crosshair');
 if(moved<0.02)throw new Error('crosshair target did not materially move');
 
+// Exact user path: launch the actual Property Analysis control after moving the crosshair.
+await page.evaluate(()=>{
+  window.EARTHLINE_PROPERTY_WATER_BODY_GATE_16529=null;
+  window.EARTHLINE_PROPERTY_DECLARATION_16169=null;
+  const b=document.getElementById('earthlineDeclareProperty16169');
+  if(!b)throw new Error('PROPERTY ANALYSIS button missing');
+  b.click();
+});
+await page.waitForFunction(()=>{
+  const g=window.EARTHLINE_PROPERTY_WATER_BODY_GATE_16529;
+  const d=window.EARTHLINE_PROPERTY_DECLARATION_16169;
+  return !!g||!!d;
+},{timeout:15000,polling:100});
+const propertyStart=await page.evaluate(()=>({
+  target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+  waterGate:window.EARTHLINE_PROPERTY_WATER_BODY_GATE_16529||null,
+  declaration:window.EARTHLINE_PROPERTY_DECLARATION_16169||null,
+  launchAudit:(window.EARTHLINE_PROPERTY_LAUNCH_AUDIT_16322||[]).slice(-5)
+}));
+console.log(JSON.stringify({propertyStart}));
+const consumed=(propertyStart.waterGate&&propertyStart.waterGate.center)||(propertyStart.declaration&&propertyStart.declaration.center)||null;
+if(!consumed||!Number.isFinite(Number(consumed.lng))||!Number.isFinite(Number(consumed.lat)))throw new Error('Property engine did not expose consumed center');
+const consumeDelta=Math.hypot(Number(consumed.lng)-after.target.lng,Number(consumed.lat)-after.target.lat);
+console.log(JSON.stringify({crosshairTarget:after.target,propertyConsumedCenter:consumed,consumeDelta}));
+if(consumeDelta>0.02)throw new Error('Property engine replaced the moved NZ crosshair target');
+
 await browser.close();
