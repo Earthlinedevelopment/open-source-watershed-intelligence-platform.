@@ -45,3 +45,5 @@ if s==original:
 else:
     p.write_text(s,encoding="utf-8")
     print("patched authoritative country package center + persistence")
+
+# inspect-final-owner trigger
