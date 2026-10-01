@@ -39,19 +39,19 @@ jobs:
                   ("for(const seed of extra){if(lineCount>=180)break;","for(const seed of extra){if(lineCount>=fallbackCap16918)break;")
               ]
               for a,b in replacements:
-                  if a not in s: raise SystemExit("secondary flow anchor missing")
+                  if a not in s: raise SystemExit("secondary flow anchor missing: "+a)
                   s=s.replace(a,b,1)
               anchor="""    return {type:'FeatureCollection',features};
-              }
-              function niceInterval"""
+            }
+            function niceInterval"""
               repl="""    window.EARTHLINE_REGIONAL_FLOW_PROFILE_16918={
                   build:'EARTHLINE 16918',reliefM:Math.round(relief16918),thresholdQuantile:flowQuantile16918,
                   primaryCap:primaryCap16918,fallbackFloor:fallbackFloor16918,fallbackCap:fallbackCap16918,
                   generatedLines:lineCount,rule:'shared relief-adaptive Regional drainage density',at:new Date().toISOString()
                 };
                 return {type:'FeatureCollection',features};
-              }
-              function niceInterval"""
+            }
+            function niceInterval"""
               if anchor not in s: raise SystemExit("flow return anchor missing")
               s=s.replace(anchor,repl,1)
           if "vancouverFlowDensity16917" in s: raise SystemExit("local Vancouver flow exception detected")
