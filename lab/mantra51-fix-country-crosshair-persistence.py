@@ -29,3 +29,5 @@ else:
 for required in (new_country,guard):
     if required not in s:
         raise SystemExit("post-patch verification failed: "+required)
+
+# trigger
