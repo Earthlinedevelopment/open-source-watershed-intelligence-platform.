@@ -1,0 +1,28 @@
+name: Mantra 51 Apply NZ Dateline Navigation
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - 'lab/mantra51-fix-nz-dateline.py'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+      - name: Apply NZ-only dateline navigation fix
+        run: python3 lab/mantra51-fix-nz-dateline.py
+      - name: Verify scope
+        run: |
+          grep -n "EARTHLINE_NZ_DATELINE_NAV_16845" index.html
+          grep -n "setRenderWorldCopies(nzDateline16845)" index.html
+      - name: Commit candidate
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: allow New Zealand navigation across dateline"
+          git push origin HEAD:mantra51-global-repair-campaign
