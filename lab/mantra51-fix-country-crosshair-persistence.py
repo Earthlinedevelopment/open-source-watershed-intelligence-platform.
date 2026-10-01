@@ -31,6 +31,23 @@ if guard not in s:
     insert_at=pos+len(anchor)
     s=s[:insert_at]+"\n  "+guard+s[insert_at:]
 
+
+# Reassert the authoritative country target at Regional core publication, after camera/setup writers.
+publish_anchor="publishDisplayedRun16151(coreSnapshot16198);"
+publish_patch="""publishDisplayedRun16151(coreSnapshot16198);
+    if(countryPackage16845&&countryPackage16845.center){
+      try{
+        const cc=countryPackage16845.center;
+        if(typeof setPropertyTarget16201==='function'&&Number.isFinite(Number(cc.lng))&&Number.isFinite(Number(cc.lat))){
+          setPropertyTarget16201({lng:Number(cc.lng),lat:Number(cc.lat),source:'country-center'},{openPanel:false});
+        }
+      }catch(_){}
+    }"""
+if publish_patch not in s:
+    if publish_anchor not in s:
+        raise SystemExit("Regional core publication anchor not found")
+    s=s.replace(publish_anchor,publish_patch,1)
+
 required=[
     "source:'country-center'",
     "const targetLng=cc&&Number.isFinite(Number(cc.lng))",
