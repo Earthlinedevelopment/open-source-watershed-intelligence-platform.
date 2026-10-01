@@ -1,0 +1,27 @@
+name: Earthline live language gate 16890
+on:
+  push:
+    branches:
+      - mantra49-release-audit-clean-16882
+    paths:
+      - .github/workflows/mantra49-large-area-camera-repair-16892.yml
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
+      - name: Verify live production language owner and visible tabs
+        run: |
+          cat > lang-live-16890.js <<'JS'
+          const {chromium}=require('playwright');
+          const E={en:['Search','Property Modelling','Bioswale Impact Report','Status','Results','RUN ANALYSIS'],th:['ค้นหา','การจำลองพื้นที่','รายงานผลกระทบร่องชีวภาพ','สถานะ','ผลลัพธ์','เรียกใช้การวิเคราะห์'],es:['Buscar','Modelado de propiedad','Informe de impacto de bioswales','Estado','Resultados','EJECUTAR ANÁLISIS'],vi:['Tìm kiếm','Mô hình hóa khu đất','Báo cáo tác độngร่องชีวภาพ','Trạng thái','Kết quả','CHẠY PHÂN TÍCH']};
+          E.vi[2]='Báo cáo tác động rãnh sinh học';
+          async function snap(p){return p.evaluate(()=>[document.querySelector('#earthlineSearchSection16188 .el-panel-label-16188')?.textContent?.trim(),document.querySelector('#earthlinePropertySection16188 .el-panel-label-16188')?.textContent?.trim(),document.querySelector('#earthlineReportSection16188 .el-panel-label-16188')?.textContent?.trim(),document.querySelector('#earthlineStatusSection16188 .el-panel-label-16188')?.textContent?.trim(),document.querySelector('#earthlineResultsSection16188 .el-panel-label-16188')?.textContent?.trim(),document.querySelector('#runBtn')?.textContent?.replace(/\s+/g,' ').trim(),document.documentElement.lang,document.querySelector('#earthlineLanguage16488')?.value]);}
+          function ck(code,a){for(let i=0;i<6;i++)if(a[i]!==E[code][i])throw new Error(code+' field '+i+' expected '+E[code][i]+' got '+a[i]);if(a[6]!==code||a[7]!==code)throw new Error(code+' authority '+JSON.stringify(a));}
+          (async()=>{const b=await chromium.launch({headless:true,executablePath:'/usr/bin/chromium',args:['--no-sandbox']});const c=await b.newContext({viewport:{width:1600,height:900}});const p=await c.newPage();await p.goto('https://earthlinedevelopment.org/?liveLang16890='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});await p.waitForSelector('#earthlineLanguage16488',{timeout:30000});await p.waitForTimeout(1800);for(const code of ['en','th','en','es','en','vi','en']){await p.selectOption('#earthlineLanguage16488',code);await p.waitForTimeout(500);const a=await snap(p);console.log(code,JSON.stringify(a));ck(code,a);}await p.selectOption('#earthlineLanguage16488','th');await p.waitForTimeout(300);await p.reload({waitUntil:'domcontentloaded',timeout:60000});await p.waitForSelector('#earthlineLanguage16488');await p.waitForTimeout(1600);const a=await snap(p);console.log('reload-th',JSON.stringify(a));ck('th',a);await b.close();console.log('LIVE LANGUAGE GATE PASS')})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node lang-live-16890.js

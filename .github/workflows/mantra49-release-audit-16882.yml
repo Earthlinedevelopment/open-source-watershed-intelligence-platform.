@@ -1,0 +1,30 @@
+name: Earthline Mantra 49 release audit 16882
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply exact launch candidate patch
+        run: python tools/mantra49-patch-launch-16883.py
+      - name: Verify exact launch candidate
+        run: |
+          node --check earthline-launch-16872.js
+          git diff --check
+      - name: Apply audit-only interaction patch
+        run: python tools/mantra49-patch-audit-16884.py
+      - name: Install browser driver library only
+        run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
+      - name: Run exact-candidate-over-production browser audit
+        run: node tools/mantra49-release-audit-16883.js
+      - name: Upload audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-mantra49-16882-release-audit
+          path: artifacts/mantra49-16882/
+          if-no-files-found: ignore
