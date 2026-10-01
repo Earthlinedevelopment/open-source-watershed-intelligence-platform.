@@ -1,0 +1,32 @@
+name: Mantra 51 Inspect Natural Earth Country Center
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-inspect-country-center.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+      - name: Print country boundary resolver
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for needle in ['async function earthlineResolveNaturalEarthCountryBoundary16845','center:','geometryCenter']:
+              print('\n### '+needle+' ###')
+              p=0;n=0
+              while True:
+                  i=s.find(needle,p)
+                  if i<0: break
+                  print(s[max(0,i-4500):min(len(s),i+9000)])
+                  print('\n---\n')
+                  n+=1
+                  if n>=3: break
+                  p=i+len(needle)
+          PY
