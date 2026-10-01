@@ -7,7 +7,9 @@ s=p.read_text(encoding="utf-8")
 url="https://geogratis.gc.ca/services/geoname/en/geonames/JBRIN.geojson?expand=feature"
 with urllib.request.urlopen(url, timeout=30) as r:
     data=json.load(r)
-geom=((data.get("feature") or {}).get("geometry"))
+geom=(data.get("geometry") or ((data.get("feature") or {}).get("geometry")))
+if not geom and data.get("type")=="FeatureCollection" and data.get("features"):
+    geom=(data["features"][0] or {}).get("geometry")
 if not geom or geom.get("type") not in ("Polygon","MultiPolygon"):
     raise SystemExit("official CGNDB Vancouver Island polygon unavailable")
 
