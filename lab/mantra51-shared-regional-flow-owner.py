@@ -32,3 +32,5 @@ if old_audit not in s: raise SystemExit("local Vancouver audit not found")
 s=s.replace(old_audit,new_audit,1)
 p.write_text(s,encoding="utf-8")
 print("replaced local Vancouver exception with shared adaptive Regional hydrology owner")
+
+# trigger apply
