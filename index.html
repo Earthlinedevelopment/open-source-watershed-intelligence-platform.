@@ -31822,7 +31822,12 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
         window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845=countryPackage16845;
         try{
           if(typeof setPropertyTarget16201==='function'&&Number.isFinite(Number(loc.lng))&&Number.isFinite(Number(loc.lat))){
-            setPropertyTarget16201({lng:Number(loc.lng),lat:Number(loc.lat),source:'country-center'},{openPanel:false});
+            {
+            const cc=countryPackage16845&&countryPackage16845.center;
+            const targetLng=cc&&Number.isFinite(Number(cc.lng))?Number(cc.lng):Number(loc.lng);
+            const targetLat=cc&&Number.isFinite(Number(cc.lat))?Number(cc.lat):Number(loc.lat);
+            setPropertyTarget16201({lng:targetLng,lat:targetLat,source:'country-center'},{openPanel:false});
+          }
           }
         }catch(_){}
       }
