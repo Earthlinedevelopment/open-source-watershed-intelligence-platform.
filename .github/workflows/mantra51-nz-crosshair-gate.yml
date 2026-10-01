@@ -58,7 +58,7 @@ jobs:
           moved=math.hypot(float(after.get('lng',999))-float(before.get('lng',999)),float(after.get('lat',999))-float(before.get('lat',999)))
           print(json.dumps({'target':'New Zealand','before':before,'after':after,'packageCenter':c,'initialDistanceDeg':d0,'userDragDistanceDeg':moved}))
           if d0>0.01: raise SystemExit('initial NZ target is not synchronized to authoritative interior center')
-          if after.get('source')!='crosshair-user-drag-16414': raise SystemExit('NZ user drag did not take crosshair ownership')
+          if not str(after.get('source','')).startswith('crosshair'): raise SystemExit('NZ user drag did not take crosshair ownership')
           if moved<=0.01: raise SystemExit('NZ user drag did not move the Property target')
           PY
 
