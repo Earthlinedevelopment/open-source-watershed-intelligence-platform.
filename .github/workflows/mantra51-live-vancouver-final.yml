@@ -1,0 +1,23 @@
+name: Mantra 51 Live Vancouver Final
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-live-vancouver-final.yml']
+permissions:
+  contents: read
+jobs:
+  vancouver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Live Vancouver Island final gate
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+        run: node lab/mantra51-vancouver-water-aquifer-gate.mjs
