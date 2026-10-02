@@ -56,3 +56,4 @@ console.log('STEP final '+JSON.stringify(await page.evaluate(()=>({
   status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||'').trim()
 }))));
 await browser.close();
+// trigger exact Germany zoom property diagnostic
