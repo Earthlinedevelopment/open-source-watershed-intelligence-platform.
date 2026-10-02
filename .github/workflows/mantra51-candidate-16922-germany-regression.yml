@@ -21,7 +21,7 @@ jobs:
           python3 -m http.server 8787 >/tmp/earthline-http.log 2>&1 &
           echo $! >/tmp/earthline-http.pid
       - run: |
-          cat > /tmp/test.mjs <<'JS'
+          cat > candidate-16922-test.mjs <<'JS'
           import { chromium } from 'playwright';
           const browser=await chromium.launch({headless:true});
           const page=await browser.newPage({viewport:{width:1800,height:1000}});
@@ -49,4 +49,4 @@ jobs:
           if(!r.displayed||String(r.displayed.tier||r.displayed.mode)!=='regional'||r.error) process.exitCode=2;
           await browser.close();
           JS
-          node /tmp/test.mjs
+          node candidate-16922-test.mjs
