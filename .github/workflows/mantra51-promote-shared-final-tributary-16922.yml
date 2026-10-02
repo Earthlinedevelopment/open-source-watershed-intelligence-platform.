@@ -1,0 +1,36 @@
+name: Mantra 51 Promote Shared Final Tributary Publication 16922
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-promote-shared-final-tributary-16922.yml'
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Fetch exact 16922 shared owner script
+        run: |
+          git fetch origin mantra51-global-repair-campaign
+          git show origin/mantra51-global-repair-campaign:lab/mantra51-shared-final-tributary-publication-16922.py > /tmp/earthline-16922.py
+      - name: Apply exact shared final publication owner
+        run: python3 /tmp/earthline-16922.py
+      - name: Protect production locks
+        run: |
+          grep -q "EARTHLINE_REGIONAL_NATIVE_PUBLICATION_16920" index.html
+          grep -q "tributaryLines:tributaryCount16921" index.html
+          grep -q "EARTHLINE 16922" index.html
+          grep -q "earthline-language-hotfix-16890.js" index.html
+      - name: Commit production index only
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "fix: preserve validated tributaries through final publication"
+          git push origin HEAD:pages-live
