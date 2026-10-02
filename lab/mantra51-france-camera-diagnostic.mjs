@@ -31,3 +31,4 @@ const out=await page.evaluate(()=>{
 });
 console.log('FRANCE_CAMERA_DIAG '+JSON.stringify(out));
 await browser.close();
+// trigger France camera diagnostic
