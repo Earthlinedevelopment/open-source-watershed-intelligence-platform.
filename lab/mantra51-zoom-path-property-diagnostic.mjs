@@ -69,3 +69,4 @@ for(const target of TARGETS){
   await page.close();
 }
 await browser.close();
+// trigger shared zoom-path diagnostic
