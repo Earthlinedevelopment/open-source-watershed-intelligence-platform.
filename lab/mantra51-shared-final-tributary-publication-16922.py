@@ -14,3 +14,5 @@ if "EARTHLINE 16922" not in s:
     s=s.replace(old,new,1)
 p.write_text(s,encoding="utf-8")
 print("EARTHLINE 16922 shared final publication tributary preservation applied")
+
+# trigger apply 16922
