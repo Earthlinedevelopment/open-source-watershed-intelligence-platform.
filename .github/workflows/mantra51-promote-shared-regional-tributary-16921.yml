@@ -1,0 +1,38 @@
+name: Mantra 51 Promote Shared Regional Tributary Owner 16921
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-promote-shared-regional-tributary-16921.yml'
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Fetch exact 16921 shared owner script
+        run: |
+          git fetch origin mantra51-global-repair-campaign
+          git show origin/mantra51-global-repair-campaign:lab/mantra51-shared-regional-tributary-owner-16921.py > /tmp/earthline-16921.py
+      - name: Apply exact shared owner to production
+        run: python3 /tmp/earthline-16921.py
+      - name: Protect production locks
+        run: |
+          grep -q "EARTHLINE_REGIONAL_NATIVE_PUBLICATION_16920" index.html
+          grep -q "earthline-language-hotfix-16890.js" index.html
+          grep -q "tributaryLines:tributaryCount16921" index.html
+      - name: Commit only production index
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "Production already contains 16921"
+            exit 0
+          fi
+          git commit -m "fix: preserve shared Regional tributary branches"
+          git push origin HEAD:pages-live
