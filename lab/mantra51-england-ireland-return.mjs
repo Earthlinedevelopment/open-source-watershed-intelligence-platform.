@@ -48,3 +48,4 @@ const after=await page.evaluate(()=>({
 }));
 console.log('AFTER_RETURN '+JSON.stringify(after));
 await browser.close();
+// trigger live return diagnostic
