@@ -1,0 +1,33 @@
+name: Mantra 51 Inspect Shared Exclusion Status Owner
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-inspect-exclusion-status-owner.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          needles=[
+            "Property publication must remain blocked",
+            "OPEN-DATA SCREENING · NO MAPPED EXCLUSIONS RETURNED",
+            "EARTHLINE_EXCLUSION_EVIDENCE_16516",
+            "publicationAllowed"
+          ]
+          for needle in needles:
+            print("\n===== "+needle+" =====")
+            pos=0; count=0
+            while count<12:
+              i=s.find(needle,pos)
+              if i<0: break
+              print(s[max(0,i-1800):min(len(s),i+2800)])
+              print("\n---")
+              pos=i+len(needle); count+=1
+          PY
