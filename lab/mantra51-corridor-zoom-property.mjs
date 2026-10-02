@@ -46,3 +46,4 @@ for(const target of ['Germany','Laos']){
   await page.close();
 }
 await browser.close();
+// trigger exact corridor zoom path
