@@ -48,3 +48,5 @@ const out=await page.evaluate(()=>{
 console.log('GERMANY_PROPERTY_DIAG '+JSON.stringify(out));
 await browser.close();
 // trigger Germany property diagnostic after user-visible fail
+
+// trigger Germany property diagnostic
