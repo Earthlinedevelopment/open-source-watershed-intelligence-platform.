@@ -63,6 +63,7 @@ const result=await page.evaluate(()=>{
     terminal:window.EARTHLINE_REGIONAL_TERMINAL_16539||null,
     waterAudit,aqAudit,boundaryAudit,
     displayAudit:window.EARTHLINE_VANCOUVER_DISPLAY_AUDIT_16915||null,
+    nativeAudit:window.EARTHLINE_REGIONAL_NATIVE_PUBLICATION_16920||null,
     flowProfile:window.EARTHLINE_REGIONAL_FLOW_PROFILE_16918||null,
     visual:{
       flows:flows.length,arrows:arrows.length,swales:swales.length,
