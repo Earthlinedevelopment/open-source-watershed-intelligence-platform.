@@ -29953,7 +29953,12 @@ body { overflow-x:hidden!important; }
         if(!segmentValid16584(out16584[out16584.length-1],p16584))break;
         out16584.push(p16584);
       }
-      if(out16584.length<8){droppedLines16584++;continue;}
+      /* EARTHLINE 16922 — shared final-publication tributary preservation.
+         Valid confluence-ending tributaries have already passed the same point, segment,
+         land-validity and shoreline checks as trunk paths. Do not discard them solely
+         because they are shorter than eight vertices. */
+      const tributaryFinal16922=!!(f16584.properties&&Number(f16584.properties.tributary)===1);
+      if(out16584.length<(tributaryFinal16922?2:8)){droppedLines16584++;continue;}
       if(out16584.length<src16584.length)clippedLines16584++;
       outputLines16584++;
       kept16584.push({...f16584,geometry:{...f16584.geometry,coordinates:out16584}});
