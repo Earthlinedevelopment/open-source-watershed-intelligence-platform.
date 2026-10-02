@@ -1,0 +1,27 @@
+name: Mantra 51 Inspect Corridor Zoom Modal Owner
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-inspect-corridor-zoom-modal.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          for needle in ["ZOOM TO THIS LOCATION","earthlineCorridorDetail16149","corridor-navigation-16251","selectedCorridor"]:
+            print("\n===== "+needle+" =====")
+            pos=0;n=0
+            while n<10:
+              i=s.find(needle,pos)
+              if i<0: break
+              print(s[max(0,i-3500):min(len(s),i+7000)])
+              print("\n---")
+              pos=i+len(needle);n+=1
+          PY
