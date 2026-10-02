@@ -1,0 +1,32 @@
+name: Mantra 51 Shared Regional Native Owner 16920
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - 'lab/mantra51-shared-regional-native-owner-16920.py'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Apply shared Regional native publication owner
+        run: python lab/mantra51-shared-regional-native-owner-16920.py
+      - name: Commit candidate
+        run: |
+          git config user.name "Earthline"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "No index change"
+            exit 0
+          fi
+          git commit -m "fix: atomically publish shared Regional native layers"
+          git push origin HEAD:mantra51-global-repair-campaign
