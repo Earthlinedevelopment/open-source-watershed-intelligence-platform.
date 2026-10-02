@@ -1,0 +1,42 @@
+name: Mantra 51 Targeted Owner Trace
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-targeted-owner-trace.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          needles=[
+            "countrywide Regional screening extent",
+            "Natural Earth — Admin 0 Countries 1:50m",
+            "regionalExtent",
+            "fitBounds(",
+            "selectedCorridor",
+            "earthlineFocusPrompt16154",
+            "ANALYZE THIS LOCATION",
+            "zoomTo",
+            "restoreRegional(",
+            "earthlineTierBreadcrumb16156"
+          ]
+          for needle in needles:
+            print("\n===== "+needle+" =====")
+            pos=0;n=0
+            while n<20:
+              i=s.find(needle,pos)
+              if i<0: break
+              start=max(0,s.rfind("\n",0,max(0,i-1800)))
+              end=min(len(s),s.find("\n",min(len(s),i+3500)))
+              if end<0:end=min(len(s),i+3500)
+              print(s[start:end])
+              print("\n---")
+              pos=i+len(needle);n+=1
+          PY
