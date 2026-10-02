@@ -1,0 +1,28 @@
+name: Mantra 51 Inspect Property To Regional Handoff
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-inspect-property-to-regional.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          needles=["earthlineSupersedePropertyForNewSearch16327","PROPERTY_TO_REGIONAL_CLEAR_AUDIT_16334","propertyPresentationCleared","function runRegional","runBtn"]
+          for needle in needles:
+            print("\n===== "+needle+" =====")
+            pos=0; n=0
+            while n<8:
+              i=s.find(needle,pos)
+              if i<0: break
+              print(s[max(0,i-2500):min(len(s),i+5000)])
+              print("\n---")
+              pos=i+len(needle); n+=1
+          PY
