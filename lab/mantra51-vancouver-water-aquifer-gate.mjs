@@ -19,7 +19,7 @@ await page.waitForFunction(()=>{
 await page.waitForTimeout(4000);
 
 const result=await page.evaluate(()=>{
-  const map=window.earthlineMap;
+  const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap||null;
   const flows=(window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.flows?.features||[]).filter(f=>f?.properties?.feature_type==='flow');
   const arrows=(window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.flows?.features||[]).filter(f=>f?.properties?.feature_type==='flow-arrow');
   const swales=(window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.swales?.features||[]);
@@ -61,6 +61,11 @@ const result=await page.evaluate(()=>{
 
   return {
     terminal:window.EARTHLINE_REGIONAL_TERMINAL_16539||null,
+    mapAuthority:{
+      lexicalPresent:typeof earthlineMap!=='undefined',
+      windowPresent:!!window.earthlineMap,
+      sameObject:(typeof earthlineMap!=='undefined'&&window.earthlineMap)?earthlineMap===window.earthlineMap:null
+    },
     waterAudit,aqAudit,boundaryAudit,
     displayAudit:window.EARTHLINE_VANCOUVER_DISPLAY_AUDIT_16915||null,
     nativeAudit:window.EARTHLINE_REGIONAL_NATIVE_PUBLICATION_16920||null,
@@ -82,10 +87,14 @@ console.log('VANCOUVER_LIVE_DIAGNOSTIC '+JSON.stringify(result));
 if(result.terminal?.status!=='published')throw new Error('Vancouver Island did not publish');
 if(!(Number(result.waterAudit?.waterPaths)>0)||!(Number(result.visual.flows)>0))throw new Error('Vancouver Island water paths missing');
 if(Number(result.visual.flows)<60)throw new Error('Vancouver Island tributary/path density insufficient: '+String(result.visual.flows));
+if(Number(result.visual.endpointConfluences)<3)throw new Error('Vancouver Island tributary/confluence structure insufficient: '+String(result.visual.endpointConfluences));
 if(!(Number(result.aqAudit?.published)>0))throw new Error('Vancouver Island official aquifer data missing');
 if(!(Number(result.map?.aquiferSourceFeatures)>0))throw new Error('Vancouver Island aquifer Mapbox source is empty');
 if(result.map?.aquiferFill?.visibility==='none')throw new Error('Vancouver Island aquifer fill layer hidden');
 if(!(Number(result.map?.aquiferFill?.rendered)>0))throw new Error('Vancouver Island aquifer polygons exist but are not visibly rendered in viewport');
+if(result.map?.flowLine?.exists!==true)throw new Error('Vancouver Island flow line layer missing');
+if(result.map?.flowLine?.visibility==='none')throw new Error('Vancouver Island flow line layer hidden');
+if(!(Number(result.map?.flowLine?.rendered)>0))throw new Error('Vancouver Island flows exist but are not visibly rendered in viewport');
 if(!result.boundaryAudit)throw new Error('Vancouver Island authoritative containment audit missing');
 await browser.close();
 
