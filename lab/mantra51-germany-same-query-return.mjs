@@ -79,3 +79,5 @@ const after=await page.evaluate(()=>({
 console.log('GERMANY_SAME_QUERY_AFTER_RETURN '+JSON.stringify(after));
 await browser.close();
 // trigger Germany property return diagnostic
+
+// trigger same-query Germany return diagnostic
