@@ -31,6 +31,7 @@ const result=await page.evaluate(()=>{
   const aqSourceFeatures=Array.isArray(aqData?.features)?aqData.features.length:0;
   const aqFill='el-live-aquifer-fill-15970', aqLine='el-live-aquifer-line-15970';
   const flowLine='el-live-flow-line-15970';
+  const tributaryFlows=flows.filter(f=>Number(f?.properties?.tributary)===1).length;
   const layerState=id=>{
     if(!map?.getLayer?.(id))return {exists:false};
     let visibility=null,opacity=null,width=null;
@@ -42,6 +43,11 @@ const result=await page.evaluate(()=>{
     return {exists:true,visibility,opacity,width,rendered};
   };
   const aqFillState=layerState(aqFill), aqLineState=layerState(aqLine), flowState=layerState(flowLine);
+  let renderedTributaries=0;
+  try{
+    renderedTributaries=map?.queryRenderedFeatures?.(undefined,{layers:[flowLine]})
+      ?.filter(f=>Number(f?.properties?.tributary)===1).length||0;
+  }catch(_){}
 
   const endpointKey=(c)=>Array.isArray(c)&&c.length>=2
     ? (Math.round(Number(c[0])*1000)/1000)+','+(Math.round(Number(c[1])*1000)/1000)
@@ -72,7 +78,7 @@ const result=await page.evaluate(()=>{
     flowProfile:window.EARTHLINE_REGIONAL_FLOW_PROFILE_16918||null,
     visual:{
       flows:flows.length,arrows:arrows.length,swales:swales.length,
-      shortPaths,totalVertices,endpointConfluences
+      shortPaths,totalVertices,endpointConfluences,tributaryFlows,renderedTributaries
     },
     map:{
       aquiferSourceFeatures:aqSourceFeatures,
@@ -88,6 +94,8 @@ if(result.terminal?.status!=='published')throw new Error('Vancouver Island did n
 if(!(Number(result.waterAudit?.waterPaths)>0)||!(Number(result.visual.flows)>0))throw new Error('Vancouver Island water paths missing');
 if(Number(result.visual.flows)<60)throw new Error('Vancouver Island tributary/path density insufficient: '+String(result.visual.flows));
 if(Number(result.visual.endpointConfluences)<3)throw new Error('Vancouver Island tributary/confluence structure insufficient: '+String(result.visual.endpointConfluences));
+if(Number(result.visual.tributaryFlows)<20)throw new Error('Vancouver Island published tributaries insufficient: '+String(result.visual.tributaryFlows));
+if(Number(result.visual.renderedTributaries)<10)throw new Error('Vancouver Island tributaries exist but are not visibly rendered: '+String(result.visual.renderedTributaries));
 if(!(Number(result.aqAudit?.published)>0))throw new Error('Vancouver Island official aquifer data missing');
 if(!(Number(result.map?.aquiferSourceFeatures)>0))throw new Error('Vancouver Island aquifer Mapbox source is empty');
 if(result.map?.aquiferFill?.visibility==='none')throw new Error('Vancouver Island aquifer fill layer hidden');
