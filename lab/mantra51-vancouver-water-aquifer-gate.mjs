@@ -87,3 +87,5 @@ if(result.map?.aquiferFill?.visibility==='none')throw new Error('Vancouver Islan
 if(!(Number(result.map?.aquiferFill?.rendered)>0))throw new Error('Vancouver Island aquifer polygons exist but are not visibly rendered in viewport');
 if(!result.boundaryAudit)throw new Error('Vancouver Island authoritative containment audit missing');
 await browser.close();
+
+// EARTHLINE 16920 shared native publication candidate gate
