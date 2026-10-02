@@ -1,0 +1,38 @@
+name: Mantra 51 Inspect Resolve Search Same Query
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/mantra51-inspect-resolve-search-same-query.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          needles=[
+            "async function resolveSearch",
+            "function resolveSearch",
+            "function isRegional",
+            "const isRegional",
+            "earthlineSetChosenLocation16189",
+            "EARTHLINE_CHOSEN_LOCATION",
+            "chosenLocation",
+            "appliedSearchText",
+            "lastSearch"
+          ]
+          for needle in needles:
+            print("\n===== "+needle+" =====")
+            pos=0;n=0
+            while n<12:
+              i=s.find(needle,pos)
+              if i<0: break
+              print(s[max(0,i-4200):min(len(s),i+9000)])
+              print("\n---")
+              pos=i+len(needle);n+=1
+          PY
