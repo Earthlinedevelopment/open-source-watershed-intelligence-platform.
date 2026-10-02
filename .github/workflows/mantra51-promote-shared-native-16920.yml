@@ -68,15 +68,10 @@ jobs:
 
           '''
               s=s.replace(fn_anchor,fn+fn_anchor,1)
-          call_anchor="""    const regionalOverlayRenderOk16336=
-              typeof window.earthlineRenderRegionalOverlay16020==='function'
-                ?window.earthlineRenderRegionalOverlay16020(visualData)
-                :false;"""
+          call_anchor="    const regionalOverlayRenderOk16336="
           if "regional native presentation publication failed" not in s:
               if call_anchor not in s: raise SystemExit("atomic Regional render anchor missing")
-              call="""    if(!earthlinePublishRegionalNative16920(runToken,m,visualData))
-              throw new Error('regional native presentation publication failed');
-          """+call_anchor
+              call="    if(!earthlinePublishRegionalNative16920(runToken,m,visualData))\n      throw new Error('regional native presentation publication failed');\n"+call_anchor
               s=s.replace(call_anchor,call,1)
           if "earthline-language-hotfix-16890.js" not in s:
               raise SystemExit("language hotfix reference missing")
