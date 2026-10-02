@@ -47,3 +47,4 @@ const out=await page.evaluate(()=>{
 });
 console.log('INDIA_PROPERTY_DIAG '+JSON.stringify(out));
 await browser.close();
+// trigger India property diagnostic after user-visible fail
