@@ -1,0 +1,20 @@
+name: Mantra 51 England Ireland Return Diagnostic
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['lab/mantra51-england-ireland-return.mjs']
+permissions:
+  contents: read
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node lab/mantra51-england-ireland-return.mjs
