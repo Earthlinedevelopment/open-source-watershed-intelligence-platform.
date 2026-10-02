@@ -31023,7 +31023,16 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
       }else if(s){s.loc=known;s.appliedSearchText=q;}
       const st=state();return st&&st.loc?st.loc:known;
     }
-    if(s&&s.loc&&key(s.appliedSearchText)===qk)return s.loc;
+    /* EARTHLINE 16922 — same-query Regional re-resolution after Property.
+     A country/Regional query may legitimately equal the prior Regional appliedSearchText
+     while s.loc now points at the selected Property site. Never reuse that Property loc
+     as the resolver result for a non-Property search. Explicit same-Property reruns are
+     already owned by the guarded Property shortcut above. Science is unchanged. */
+  if(s&&s.loc&&key(s.appliedSearchText)===qk){
+    const place16922=String(s.loc.placeType||'').toLowerCase();
+    const propertyLoc16922=!!(place16922==='selected_site'||s.loc.propertyMode===true||s.loc.userSelectedSite===true);
+    if(!propertyLoc16922)return s.loc;
+  }
     let fn=null;try{fn=typeof runSearch==='function'?runSearch:window.runSearch;}catch(_){fn=window.runSearch;}if(typeof fn!=='function')throw new Error('search controller unavailable');const ok=await withTimeout(fn({autoAnalyze:false}),30000,'location search');if(!ok)throw new Error('location search did not resolve');const st=state();if(!st||!st.loc)throw new Error('no location returned');return st.loc;
   }
   function setRasterOpacity(m,layerId,value){try{if(m&&m.getLayer&&m.getLayer(layerId))m.setPaintProperty(layerId,'raster-opacity',value);}catch(_){}}
