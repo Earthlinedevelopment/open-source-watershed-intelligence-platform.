@@ -1,0 +1,32 @@
+name: Mantra 51 Shared Regional Tributary Owner 16921
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - 'lab/mantra51-shared-regional-tributary-owner-16921.py'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra51-global-repair-campaign
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Apply shared branch-preserving Regional tributary owner
+        run: python lab/mantra51-shared-regional-tributary-owner-16921.py
+      - name: Commit candidate
+        run: |
+          git config user.name "Earthline"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "No index change"
+            exit 0
+          fi
+          git commit -m "fix: preserve shared Regional tributary branches"
+          git push origin HEAD:mantra51-global-repair-campaign
