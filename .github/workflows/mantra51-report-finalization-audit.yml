@@ -1,0 +1,26 @@
+name: Mantra 51 Report Finalization Audit
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-report-finalization-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          for term in ["for(const t of towns)","Figure 1. Technical screening map","function mapSvg","el-report-contour-label","const isVermont="]:
+              print("\n###",term)
+              st=0
+              for _ in range(4):
+                  i=s.find(term,st)
+                  if i<0: break
+                  print("POS",i)
+                  print(s[max(0,i-1400):i+4200].replace("\n"," "))
+                  st=i+len(term)
+          PY
