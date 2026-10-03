@@ -28,12 +28,19 @@ if start not in s:
     raise SystemExit('preserved cleanup owner not found')
 s=s.replace(start,replacement,1)
 
-old_fs = """function finalSourcesPage16864(data){const d=data&&data.d||data||{};let rows=[];try{rows=typeof sourceEntries16864==='function'?sourceEntries16864(d):[]}catch(_){rows=[]}const list=rows.map(r=>\`<li><strong>\${esc(r[1])}</strong><span>\${esc(r[0])} · \${esc(r[2])}\${r[3]?' · '+esc(r[3]):''}</span></li>\`).join('');const body=typeof sourceRows==='function'?sourceRows(d):'';return \`<section class="el49-page el16864-final-sources"><div class="el49-kicker">Sources · Final Page</div><h2>Sources and evidence register</h2><ol class="el16926-source-list">\${list}</ol><h3>Evidence register</h3>\${body}<div class="el49-callout"><b>Groundwater interpretation:</b> well location is not an aquifer boundary; water level is not storage; an aquifer polygon does not mean groundwater is present at every point; absence of a well does not mean absence of groundwater.</div>\${footer(data,'Sources')}</section>\`}"""
-new_fs = """function finalSourcesPage16864(data){const d=data&&data.d||data||{};let rows=[];try{rows=typeof sourceEntries16864==='function'?sourceEntries16864(d):[]}catch(_){rows=[]}const list=rows.map(r=>\`<li><strong>\${esc(r[1])}</strong><span><b>\${esc(r[0])}</b> · \${esc(r[2])}\${r[3]?' · '+esc(r[3]):''}</span></li>\`).join('');return \`<section class="el49-page el16864-final-sources"><div class="el49-kicker">Sources · Final Page</div><h2>Sources and evidence register</h2><ol class="el16926-source-list">\${list}</ol><div class="el49-callout"><b>Groundwater interpretation:</b> well location is not an aquifer boundary; water level is not storage; an aquifer polygon does not mean groundwater is present at every point; absence of a well does not mean absence of groundwater.</div>\${footer(data,'Sources')}</section>\`}"""
-count=s.count(old_fs)
-if count<1:
+new_fs = r'''function finalSourcesPage16864(data){const d=data&&data.d||data||{};let rows=[];try{rows=typeof sourceEntries16864==='function'?sourceEntries16864(d):[]}catch(_){rows=[]}const list=rows.map(r=>`<li><strong>${esc(r[1])}</strong><span><b>${esc(r[0])}</b> · ${esc(r[2])}${r[3]?' · '+esc(r[3]):''}</span></li>`).join('');return `<section class="el49-page el16864-final-sources"><div class="el49-kicker">Sources · Final Page</div><h2>Sources and evidence register</h2><ol class="el16926-source-list">${list}</ol><div class="el49-callout"><b>Groundwater interpretation:</b> well location is not an aquifer boundary; water level is not storage; an aquifer polygon does not mean groundwater is present at every point; absence of a well does not mean absence of groundwater.</div>${footer(data,'Sources')}</section>`}'''
+marker='<h3>Evidence register</h3>${body}'
+repaired=0
+while marker in s:
+    m=s.find(marker)
+    a=s.rfind('function finalSourcesPage16864',0,m)
+    b=s.find('function gapRows',m)
+    if a<0 or b<0:
+        raise SystemExit('could not bound duplicate final sources owner')
+    s=s[:a]+new_fs+'   '+s[b:]
+    repaired+=1
+if repaired<1:
     raise SystemExit('remaining duplicate final sources owner not found')
-s=s.replace(old_fs,new_fs)
 
 p.write_text(s)
-print('finalSources owners repaired',count)
+print('finalSources owners repaired',repaired)
