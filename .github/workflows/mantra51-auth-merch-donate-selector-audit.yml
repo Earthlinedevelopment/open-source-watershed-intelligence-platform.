@@ -1,0 +1,26 @@
+name: Mantra 51 Auth Merch Donate Selector Audit
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-auth-merch-donate-selector-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(errors='ignore')
+          for pat in [r'id="[^"]+"[^>]*>[^<]*(?:LOGIN|Log in|Login|MERCH|Merch|DONATE|Donate)',
+                      r'(?:LOGIN|Log in|Login|MERCH|Merch|DONATE|Donate)[^\n]{0,500}',
+                      r'id="[^"]*(?:login|merch|donat|auth)[^"]*"']:
+            print('\nPATTERN',pat)
+            for m in list(re.finditer(pat,s,re.I))[:80]:
+              i=m.start()
+              print(s[max(0,i-350):min(len(s),i+900)].replace('\n',' ')[:1300])
+          PY
