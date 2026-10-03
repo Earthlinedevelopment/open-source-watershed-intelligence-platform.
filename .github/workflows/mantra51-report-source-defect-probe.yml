@@ -1,0 +1,51 @@
+name: Mantra 51 Report Source Defect Probe
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-report-source-defect-probe.yml'
+permissions: {contents: read}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: npm install --no-save playwright
+      - run: npx playwright install chromium
+      - run: |
+          cat > probe.mjs <<'JS'
+          import {chromium} from 'playwright';
+          const b=await chromium.launch({headless:true});
+          const p=await b.newPage();
+          await p.goto('https://earthlinedevelopment.org/?sourcesprobe='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await p.waitForSelector('#earthlineHamburgerMenu16233 a[href="#swales-explained"]',{state:'attached',timeout:30000});
+          await p.evaluate(()=>{location.hash='#swales-explained'});
+          await p.waitForSelector('#earthlineSwalesPage16125.open',{timeout:15000});
+          await p.waitForTimeout(500);
+          const x=await p.evaluate(()=>{
+            const d=document.getElementById('earthlineSwalesPage16125')?.querySelector('iframe')?.contentDocument;
+            const t=d?.body?.innerText||'';
+            const hs=[...(d?.querySelectorAll('h1,h2,h3')||[])].map(e=>e.textContent?.trim()).filter(Boolean);
+            const srcEls=[...(d?.querySelectorAll('[class*="source"],[id*="Source"],[id*="source"]')||[])].map(e=>({tag:e.tagName,cls:e.className||'',id:e.id||'',text:(e.textContent||'').trim().slice(0,300)}));
+            return {tail:t.slice(-6000),headings:hs.slice(-40),srcEls:srcEls.slice(-30)};
+          });
+          console.log(JSON.stringify(x,null,2));
+          await b.close();
+          JS
+          node probe.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          term='<h3>Evidence register</h3>${body}'
+          print('duplicate marker count',s.count(term))
+          st=0
+          for _ in range(8):
+              i=s.find(term,st)
+              if i<0: break
+              print('POS',i)
+              print(s[max(0,i-1200):i+1800].replace('\n',' '))
+              st=i+len(term)
+          PY
