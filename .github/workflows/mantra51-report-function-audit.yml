@@ -1,0 +1,32 @@
+name: Mantra 51 Report Function Audit
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-report-function-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          needles=['function mapSvg','function sourceRows','function institutionalReport','function reportHtml','function reportData','earthlineProcessPage16265','HOW_BIOSWALES_REPORT_16388','el49-source']
+          for needle in needles:
+            print('\n###',needle)
+            start=0
+            n=0
+            while n<8:
+              i=s.find(needle,start)
+              if i<0: break
+              print('POS',i)
+              chunk=s[max(0,i-600):min(len(s),i+7000)]
+              chunk=chunk.replace('\n',' ')
+              print(chunk[:7600])
+              start=i+len(needle)
+              n+=1
+          PY
