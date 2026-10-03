@@ -1,0 +1,21 @@
+name: Mantra 51 Final Sources Focus Audit
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-final-sources-focus-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          starts=[s.find('function finalSourcesPage16864'),s.find('const finalSourcesPage16864')]
+          i=max(starts)
+          if i<0: raise SystemExit('finalSourcesPage16864 not found')
+          print(s[i:i+5000].replace('\n',' '))
+          PY
