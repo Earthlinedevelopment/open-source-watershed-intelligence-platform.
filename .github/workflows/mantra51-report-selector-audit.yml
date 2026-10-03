@@ -1,0 +1,36 @@
+name: Mantra 51 Report Selector Audit
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-report-selector-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(errors='ignore')
+          patterns=[
+            r'BIOSWALE IMPACT REPORT',
+            r'How Bioswales Work',
+            r'Earthline Process',
+            r'Corrections Registry',
+            r'RUN ANALYSIS FIRST',
+            r'id="[^"]*Report[^"]*"',
+            r'class="[^"]*(?:report|Report)[^"]*"',
+            r'id="[^"]*(?:process|Process)[^"]*"',
+            r'id="[^"]*(?:swale|Swale)[^"]*"'
+          ]
+          for pat in patterns:
+            print('\nPATTERN',pat)
+            for m in list(re.finditer(pat,s,re.I))[:25]:
+              a=max(0,m.start()-450); b=min(len(s),m.end()+850)
+              chunk=s[a:b].replace('\n',' ')
+              print('POS',m.start(),chunk[:1300])
+          PY
