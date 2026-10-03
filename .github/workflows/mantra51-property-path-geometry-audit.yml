@@ -1,0 +1,27 @@
+name: Mantra 51 Property Path Geometry Audit
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-property-path-geometry-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(errors='ignore')
+          terms=['interceptedPathIds','report15845.paths','paths.push','pathCells','cellIndices','M.dir','D8X','earthlineGridToLngLat']
+          for term in terms:
+              hits=[m.start() for m in re.finditer(re.escape(term),s)]
+              print('\n###',term,'count',len(hits))
+              for i in hits[-10:]:
+                  x=s[max(0,i-1300):i+5200]
+                  if '158' in x or 'Property' in x or 'property' in x:
+                      print('POS',i)
+                      print(x.replace('\n',' '))
+          PY
