@@ -60,6 +60,7 @@ s=s.replace("const title='Earthline Screening Map'+(reportPlace?' · '+reportPla
             "const title='Earthline Water + Recharge Opportunity Map'+(reportPlace?' · '+reportPlace:'')+' · '+(reportTier==='focus'?'Focus':'Regional');",1)
 s=s.replace('stroke="#ffffff" stroke-width="1.65" opacity=".46"','stroke="#fffdfa" stroke-width="3.2" opacity=".86"',1)
 s=s.replace('stroke="#2188b2" stroke-width=".88" opacity=".72"','stroke="#087bb4" stroke-width="1.8" opacity=".98"',1)
-s=s.replace("mainW=r.grade==='A'?2.2:r.grade==='B'?1.7:1.25","mainW=r.grade==='A'?4.2:r.grade==='B'?3.4:2.8",1)\ns=s.replace("alpha=r.grade==='A'?'.9':r.grade==='B'?'.77':'.48'","alpha=r.grade==='A'?'.98':r.grade==='B'?'.9':'.75'",1)
+s=s.replace("mainW=r.grade==='A'?2.2:r.grade==='B'?1.7:1.25","mainW=r.grade==='A'?4.2:r.grade==='B'?3.4:2.8",1)
+s=s.replace("alpha=r.grade==='A'?'.9':r.grade==='B'?'.77':'.48'","alpha=r.grade==='A'?'.98':r.grade==='B'?'.9':'.75'",1)
 
 p.write_text(s)
