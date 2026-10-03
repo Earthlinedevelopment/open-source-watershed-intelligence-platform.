@@ -1,0 +1,22 @@
+name: Mantra 51 Production Origin Freshness
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-production-origin-freshness.yml'
+permissions: {contents: read}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -e
+          url="https://earthlinedevelopment.org/?fresh16933=$(date +%s)"
+          echo "URL $url"
+          curl -L --fail --silent --show-error -H 'Cache-Control: no-cache' -D /tmp/h "$url" -o /tmp/live.html
+          sed -n '1,40p' /tmp/h
+          echo "size $(wc -c </tmp/live.html)"
+          for term in             'earthline-report-contrast-16932'             'sparse elevation labels in metres'             'if(isVermont)for(const [name,x,y] of towns)'             '<h3>Evidence register</h3>${body}'             'Corrections Registry'; do
+            if grep -Fq "$term" /tmp/live.html; then echo "FOUND $term"; else echo "MISSING $term"; fi
+          done
