@@ -1,0 +1,35 @@
+name: Mantra 51 Structure Audit
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-structure-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(errors='ignore')
+          print('=== BIOSWALE REPORT STRUCTURE ===')
+          i=s.find('function buildReport')
+          if i<0: i=s.find('const buildReport')
+          frag=s[i:i+80000] if i>=0 else ''
+          for m in re.finditer(r'<div class="el49-kicker">([^<]+)</div>|<h2>([^<]+)</h2>|<h3>([^<]+)</h3>',frag):
+              txt=next(x for x in m.groups() if x)
+              print(m.start(),re.sub(r'\s+',' ',txt).strip())
+          print('\n=== HOW BIOSWALES CANONICAL HEADINGS ===')
+          j=s.find('const HOW_BIOSWALES_REPORT_16388')
+          if j<0: j=s.find('function earthlineCanonicalHowBioswales16923')
+          h=s[j:j+120000] if j>=0 else ''
+          for m in re.finditer(r'<h[123][^>]*>(.*?)</h[123]>',h,re.I|re.S):
+              txt=re.sub(r'<[^>]+>','',m.group(1))
+              print(m.start(),re.sub(r'\s+',' ',txt).strip())
+          print('\n=== MATURE VISUAL SECTION ===')
+          k=s.find('swaleExamplesTitle')
+          print(s[max(0,k-2500):k+12000] if k>=0 else 'not found')
+          PY
