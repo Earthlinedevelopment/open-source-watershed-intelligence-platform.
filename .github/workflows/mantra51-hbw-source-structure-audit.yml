@@ -1,0 +1,26 @@
+name: Mantra 51 HBW Source Structure Audit
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-hbw-source-structure-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          term='<h2>Sources</h2>'
+          print('count',s.count(term))
+          st=0
+          for n in range(10):
+              i=s.find(term,st)
+              if i<0: break
+              print('\n###',n,'POS',i)
+              print(s[max(0,i-700):i+5000].replace('\n',' '))
+              st=i+len(term)
+          PY
