@@ -1,0 +1,43 @@
+name: Mantra 51 Remove How Swales Subtitle
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-remove-how-swales-subtitle.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(errors='ignore')
+          target='From the basic earthwork to the hydrology, landscape effects, measured precedents, and evidence limits.'
+          n=s.count(target)
+          print('matches',n)
+          if n<1:
+              raise SystemExit('target sentence not found')
+          s=s.replace(target,'')
+          p.write_text(s)
+          PY
+          git diff --check
+          ! grep -F "From the basic earthwork to the hydrology, landscape effects, measured precedents, and evidence limits." index.html
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: remove redundant How Swales subtitle"
+          git push origin HEAD:mantra51-report-focus
+          cp index.html /tmp/index.html
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          cp /tmp/index.html index.html
+          git diff --check
+          git add index.html
+          git commit -m "fix: remove redundant How Swales subtitle"
+          git push origin pages-live
