@@ -1,0 +1,21 @@
+name: Promote 16922 Same Query Regional Repair
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths: ['.github/workflows/promote-16922-same-query-regional.yml']
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Apply exact 16922 routing repair only
+        run: |
+          git config user.name "Earthline Launch Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git cherry-pick fdda30e32c3c7f51e2575b52e3c8875f53503061
+          git push origin HEAD:pages-live
