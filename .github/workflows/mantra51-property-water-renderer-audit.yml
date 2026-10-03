@@ -1,0 +1,25 @@
+name: Mantra 51 Property Water Renderer Audit
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-property-water-renderer-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(errors='ignore')
+          for term in ['Water Paths','WATER PATHS','flow paths','FLOW PATHS','surface-water','surface water','water-path','waterPath','hydro-path','hydroPath']:
+              hits=[m.start() for m in re.finditer(re.escape(term),s,re.I)]
+              print('\n###',term,'count',len(hits))
+              for i in hits:
+                  x=s[max(0,i-1800):i+6200]
+                  if 'line-color' in x or 'LineString' in x or 'addLayer' in x or 'path' in x.lower():
+                      print('POS',i);print(x.replace('\n',' '))
+          PY
