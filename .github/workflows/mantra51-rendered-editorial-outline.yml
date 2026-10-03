@@ -1,0 +1,55 @@
+name: Mantra 51 Rendered Editorial Outline
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-rendered-editorial-outline.yml'
+permissions: {contents: read}
+jobs:
+  outline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: npm install --no-save playwright
+      - run: npx playwright install chromium
+      - run: python3 -m http.server 8787 >/tmp/el-http.log 2>&1 &
+      - run: |
+          cat > outline.mjs <<'JS'
+          import {chromium} from 'playwright';
+          const b=await chromium.launch({headless:true});
+          const p=await b.newPage({viewport:{width:1500,height:1000}});
+          await p.goto('http://127.0.0.1:8787/index.html?outline='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await p.waitForTimeout(4000);
+          await p.evaluate(()=>{location.hash='#swales-explained'});
+          await p.waitForSelector('#earthlineSwalesPage16125.open',{timeout:15000});
+          await p.waitForTimeout(500);
+          const sw=await p.evaluate(()=>{
+            const d=document.querySelector('#earthlineSwalesPage16125 iframe')?.contentDocument;
+            const els=[...(d?.querySelectorAll('h1,h2,h3,p,li')||[])];
+            return els.map((e,i)=>({i,tag:e.tagName,text:(e.innerText||'').replace(/\s+/g,' ').trim()})).filter(x=>x.text);
+          });
+          console.log('===== RENDERED HOW SWALES =====');
+          for(const x of sw) console.log(String(x.i).padStart(3,'0'),x.tag,x.text);
+
+          const rep=await p.evaluate(()=>{
+            const tok='outline-report',bounds=[-73.25,44,-72.75,44.4];
+            window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=tok;
+            window.EARTHLINE_DISPLAYED_RUN_16151={runToken:tok,bounds,query:'Editorial Outline',tier:'regional',mode:'regional',extentClass:'audit',completedAt:new Date().toISOString(),terrain:{source:'terrain',surfaceType:'DTM'},watersheds:{source:'watershed',features:1},aquifers:{source:'aquifer',features:1,boundaryClass:'context'},derived:{contours:1,waterPaths:1,swaleOpportunityLines:1}};
+            window.EARTHLINE_REGIONAL_VISUAL_DATA_16020={bounds,
+              contours:{features:[{type:'Feature',properties:{ele:250},geometry:{type:'LineString',coordinates:[[-73.2,44.08],[-72.8,44.32]]}}]},
+              flows:{features:[{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[[-73.18,44.3],[-72.82,44.1]]}}]},
+              swales:{features:[{type:'Feature',properties:{grade:'A',score:82},geometry:{type:'LineString',coordinates:[[-73.15,44.18],[-72.85,44.2]]}}]},
+              aquifers:{features:[]}
+            };
+            window.earthlineOpenVermontReport16151?.();
+            const d=document.getElementById('earthlineVermontReportPanel16149');
+            return [...(d?.querySelectorAll('h1,h2,h3,.el49-kicker')||[])].map((e,i)=>({i,tag:e.tagName,cls:e.className,text:(e.innerText||'').replace(/\s+/g,' ').trim()})).filter(x=>x.text);
+          });
+          console.log('===== RENDERED IMPACT REPORT OUTLINE =====');
+          for(const x of rep) console.log(String(x.i).padStart(3,'0'),x.tag,x.cls||'',x.text);
+          await b.close();
+          JS
+          node outline.mjs
