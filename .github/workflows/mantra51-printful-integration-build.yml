@@ -1,0 +1,21 @@
+name: Mantra 51 Printful Integration Build
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - 'app/api/printful/**'
+      - 'app/merch/**'
+      - '.github/workflows/mantra51-printful-integration-build.yml'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: mantra51-global-repair-campaign}
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: npm install
+      - run: npm run build
