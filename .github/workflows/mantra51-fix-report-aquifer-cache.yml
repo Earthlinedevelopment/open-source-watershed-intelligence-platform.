@@ -1,0 +1,31 @@
+name: Mantra 51 Fix Report Aquifer Cache
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - 'scripts/fix_report_aquifer_cache_16938.py'
+      - '.github/workflows/mantra51-fix-report-aquifer-cache.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          python3 scripts/fix_report_aquifer_cache_16938.py
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          assert 'EARTHLINE_ACCEPTED_REGIONAL_AQUIFER_GEOJSON_16373' in s
+          assert 'EARTHLINE_PROPERTY_INHERITED_AQUIFER_CONTEXT_16373' in s
+          assert 'Earthline Water + Recharge Opportunity Map' in s
+          assert 'mainW=r.grade===\'A\'?4.35' in s
+          PY
+          git add index.html
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git commit -m "fix: carry authoritative aquifer geometry into report map"
+          git push
