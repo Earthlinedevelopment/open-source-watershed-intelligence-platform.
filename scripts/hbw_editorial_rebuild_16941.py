@@ -9,7 +9,7 @@ hm=heading_re.search(s)
 if not hm:
     raise SystemExit('How Swales heading normalization owner not found')
 
-copy_cleanup="""+hm.group(0)+"""
+copy_cleanup=hm.group(0)+"""
           const replacements16941=[
             ['The three words on this report describe the sequence:','Earthline’s three-word principle describes the sequence:'],
             ['regional expatriation by the early 1700s','regional extirpation by the early 1700s'],
