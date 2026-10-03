@@ -1,0 +1,47 @@
+name: Mantra 51 Report Focused Audit
+on:
+  workflow_dispatch:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-report-focused-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore').splitlines()
+          needles=[
+            'earthlineVermontReport16149',
+            'BIOSWALE IMPACT REPORT',
+            'HOW BIOSWALES WORK',
+            'How Bioswales Work',
+            'EARTHLINE PROCESS',
+            'Earthline Process',
+            'Corrections Registry',
+            'RUN ANALYSIS FIRST',
+            'report-source',
+            'sources',
+            'aquifer',
+            'water path',
+            'data report',
+            'DATA'
+          ]
+          seen=set()
+          for needle in needles:
+            hits=[i for i,l in enumerate(s) if needle.lower() in l.lower() and len(l)<1500]
+            print(f'\n### {needle} hits={len(hits)}')
+            for i in hits[:18]:
+              key=(needle,i)
+              a=max(0,i-5);b=min(len(s),i+10)
+              print(f'-- line {i+1} --')
+              for j in range(a,b):
+                line=s[j]
+                if len(line)>1500: line=line[:400]+' ... [LONG LINE OMITTED]'
+                print(f'{j+1}: {line}')
+          PY
