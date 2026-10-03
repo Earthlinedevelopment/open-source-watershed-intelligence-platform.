@@ -4,11 +4,12 @@ import re
 p=Path('index.html')
 s=p.read_text(errors='ignore')
 
-heading_anchor="""bh.querySelectorAll('h2,h3').forEach(h=>{             let t=String(h.textContent||'').trim().replace(/^§\\d+\\s*·\\s*/,'').replace(/^\\d+\\.\\d+\\s*·\\s*/,'');             h.textContent=map16940[t]||t;           });"""
-if heading_anchor not in s:
+heading_re=re.compile(r"bh\.querySelectorAll\('h2,h3'\)\.forEach\(h=>\{[\s\S]*?h\.textContent=map16940\[t\]\|\|t;\s*\}\);")
+hm=heading_re.search(s)
+if not hm:
     raise SystemExit('How Swales heading normalization owner not found')
 
-copy_cleanup="""bh.querySelectorAll('h2,h3').forEach(h=>{             let t=String(h.textContent||'').trim().replace(/^§\\d+\\s*·\\s*/,'').replace(/^\\d+\\.\\d+\\s*·\\s*/,'');             h.textContent=map16940[t]||t;           });
+copy_cleanup="""+hm.group(0)+"""
           const replacements16941=[
             ['The three words on this report describe the sequence:','Earthline’s three-word principle describes the sequence:'],
             ['regional expatriation by the early 1700s','regional extirpation by the early 1700s'],
@@ -31,7 +32,7 @@ copy_cleanup="""bh.querySelectorAll('h2,h3').forEach(h=>{             let t=Stri
           ];
           const walker=document.createTreeWalker(bh,NodeFilter.SHOW_TEXT);let tn;
           while((tn=walker.nextNode())){let t=tn.nodeValue||'';for(const pair of replacements16941)t=t.split(pair[0]).join(pair[1]);tn.nodeValue=t;}"""
-s=s.replace(heading_anchor,copy_cleanup,1)
+s=s[:hm.start()]+copy_cleanup+s[hm.end():]
 
 prec_old="if(precedent){precedentBlock=precedent.outerHTML;precedent.remove()}"
 prec_new="""if(precedent){
