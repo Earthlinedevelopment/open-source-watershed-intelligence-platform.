@@ -1,0 +1,23 @@
+name: Mantra 51 Report Map Renderer Audit
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-report-map-renderer-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          for needle in ['function mapSvg(d,small=false)','function flows()','function contours()','function reportAquifers()']:
+            print('\n###',needle)
+            i=s.find(needle)
+            print('POS',i)
+            if i>=0: print(s[i:i+12000])
+          PY
