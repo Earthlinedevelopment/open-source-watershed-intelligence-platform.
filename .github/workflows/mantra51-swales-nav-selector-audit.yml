@@ -30,6 +30,7 @@ jobs:
               href:e.getAttribute('href')||'',pos:getComputedStyle(e).position,z:getComputedStyle(e).zIndex
             })).filter(x=>/login|donate|merch/i.test(x.text));
           });
-          console.log(JSON.stringify(out,null,2));await b.close();
+          const parent=await p.evaluate(()=>[...document.querySelectorAll('a,button')].map((e,i)=>({i,tag:e.tagName,id:e.id||'',cls:e.className||'',text:(e.innerText||e.textContent||'').replace(/\s+/g,' ').trim(),pos:getComputedStyle(e).position,z:getComputedStyle(e).zIndex,display:getComputedStyle(e).display,vis:getComputedStyle(e).visibility})).filter(x=>/login|donate|merch/i.test(x.text)));
+          console.log(JSON.stringify({iframe:out,parent},null,2));await b.close();
           JS
           node audit.mjs
