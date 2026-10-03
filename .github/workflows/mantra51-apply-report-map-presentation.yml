@@ -1,0 +1,44 @@
+name: Mantra 51 Apply Report Map Presentation
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - 'scripts/report_map_presentation_16945.py'
+      - '.github/workflows/mantra51-apply-report-map-presentation.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          python3 scripts/report_map_presentation_16945.py
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          s=Path('index.html').read_text(errors='ignore')
+          assert "Earthline Screening Map" in s
+          assert "mainW=r.grade==='A'?3.8" in s
+          assert 'stroke="#087bb4" stroke-width="1.65"' in s
+          assert 'Figure 1. Earthline screening map for this run.' in s
+          class P(HTMLParser):
+              def __init__(self): super().__init__();self.ins=False;self.buf=[];self.scripts=[]
+              def handle_starttag(self,t,a):
+                  if t.lower()=='script':self.ins=True;self.buf=[]
+              def handle_endtag(self,t):
+                  if t.lower()=='script' and self.ins:self.scripts.append(''.join(self.buf));self.ins=False
+              def handle_data(self,d):
+                  if self.ins:self.buf.append(d)
+          p=P();p.feed(s)
+          out=Path('/tmp/js');out.mkdir(exist_ok=True)
+          for i,j in enumerate(p.scripts):(out/f'{i:03}.js').write_text(j)
+          PY
+          for f in /tmp/js/*.js; do node --check "$f" >/dev/null; done
+          git add index.html
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git commit -m "fix: render report map as a professional planning figure"
+          git push
