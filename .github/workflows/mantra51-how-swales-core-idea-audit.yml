@@ -1,0 +1,22 @@
+name: Mantra 51 How Swales Core Idea Audit
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-how-swales-core-idea-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          for term in ['The core idea','If you have two minutes','What happens to rain on this land right now','What a bioswale is','What this report does not claim']:
+              print('\n###',term)
+              i=s.find(term)
+              print('POS',i)
+              if i>=0: print(s[max(0,i-1800):i+7000].replace('\n',' '))
+          PY
