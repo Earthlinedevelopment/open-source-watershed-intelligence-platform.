@@ -36126,6 +36126,8 @@ html.earthline-alaska-map-interaction-16921 #earthlineRegionalVectorOverlay16020
     const smooth=coords=>{let pts=(coords||[]).map(p=>[+p[0],+p[1]]);for(let k=0;k<2&&pts.length>2;k++){const out=[pts[0]];for(let i=0;i<pts.length-1;i++){const a=pts[i],c=pts[i+1];out.push([.75*a[0]+.25*c[0],.75*a[1]+.25*c[1]],[.25*a[0]+.75*c[0],.25*a[1]+.75*c[1]])}out.push(pts[pts.length-1]);pts=out}return pts};
     const pathCoords=coords=>(coords||[]).map((p,i)=>(i?'L':'M')+sx(+p[0]).toFixed(1)+' '+sy(+p[1]).toFixed(1)).join(' ');
     const path=f=>pathCoords(f?.geometry?.coordinates||[]),smoothPath=f=>pathCoords(smooth(f?.geometry?.coordinates||[]));
+    const contourElevationM=f=>{const p=f&&f.properties||{};for(const k of ['ele','elevation','elevation_m','elev_m','level','levelM','contour','contour_m','z']){const v=Number(p[k]);if(Number.isFinite(v))return v}return null};
+    const contourLabelPoint=f=>{const c=f&&f.geometry&&f.geometry.type==='LineString'?f.geometry.coordinates:null;if(!Array.isArray(c)||c.length<2)return null;const q=c[Math.floor((c.length-1)*.58)];return Array.isArray(q)&&Number.isFinite(+q[0])&&Number.isFinite(+q[1])?q:null};
     const aquiferFeatures=reportAquifers();
     const aquiferSvg=aquiferFeatures.map((f,i)=>{const ring=f&&f.geometry&&f.geometry.type==='Polygon'&&Array.isArray(f.geometry.coordinates)&&Array.isArray(f.geometry.coordinates[0])?f.geometry.coordinates[0]:[];if(ring.length<3)return '';const d=pathCoords(ring)+(ring.length?' Z':'');return `<path d="${d}" fill="rgba(35,126,196,.11)" stroke="#2c78ad" stroke-width="${small?1.25:1.6}" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"><title>${esc(f.properties?.name||'Mapped aquifer context')} — context only</title></path>`}).join('');
     const towns=[['Burlington',-73.2121,44.4759],['Montpelier',-72.5754,44.2601],['Rutland',-72.9726,43.6106],['St. Johnsbury',-72.0151,44.4192],['Middlebury',-73.1673,44.0153],['St. Albans',-73.0832,44.8109],['Bennington',-73.1968,42.8781],['Brattleboro',-72.5579,42.8509],['Newport',-72.2051,44.9364],['Charlotte',-73.2271,44.3098]];
@@ -36141,7 +36143,16 @@ html.earthline-alaska-map-interaction-16921 #earthlineRegionalVectorOverlay16020
     for(let i=1;i<6;i++)parts.push(`<path d="M ${i*W/6} ${pad} V ${H-pad} M ${pad} ${i*H/6} H ${W-pad}" stroke="#cbdad4" stroke-width=".65" opacity=".7"/>`);
     if(isVermont)parts.push(`<path d="${pathCoords(state)}" fill="none" stroke="#6f857c" stroke-width="1.15" opacity=".55"/>`);
     if(isVermont)for(const r of roads)parts.push(`<path d="${pathCoords(r)}" fill="none" stroke="#aa9675" stroke-width=".9" opacity=".36"/>`);
-    for(const f of contours().filter(x=>x?.geometry?.type==='LineString').slice(0,170))parts.push(`<path d="${path(f)}" fill="none" stroke="#738883" stroke-width=".52" opacity=".34"/>`);
+    const reportContours=contours().filter(x=>x?.geometry?.type==='LineString').slice(0,170);
+    for(const f of reportContours)parts.push(`<path d="${path(f)}" fill="none" stroke="#738883" stroke-width=".52" opacity=".34"/>`);
+    let contourLabelCount=0;
+    for(let ci=0;ci<reportContours.length&&contourLabelCount<(small?7:12);ci+=Math.max(1,Math.floor(reportContours.length/(small?7:12)))){
+      const f=reportContours[ci],elev=contourElevationM(f),pt=contourLabelPoint(f);
+      if(!Number.isFinite(elev)||!pt||!inside(pt))continue;
+      const x=sx(+pt[0]).toFixed(1),y=sy(+pt[1]).toFixed(1),label=Math.round(elev)+' m';
+      parts.push(`<g class="el-report-contour-label"><rect x="${(+x-13).toFixed(1)}" y="${(+y-7).toFixed(1)}" width="26" height="11" rx="2.4" fill="#eef2ef" fill-opacity=".88"/><text x="${x}" y="${(+y+1.5).toFixed(1)}" text-anchor="middle" fill="#536a66" font-size="${small?6.8:7.4}" font-weight="700">${label}</text></g>`);
+      contourLabelCount++;
+    }
     for(const f of flows().filter(x=>x?.geometry?.type==='LineString').slice(0,240)){const fp=path(f);parts.push(`<path d="${fp}" fill="none" stroke="#f4fbff" stroke-width="2.7" opacity=".62" stroke-linecap="round"/><path d="${fp}" fill="none" stroke="#178fc4" stroke-width="1.35" opacity=".9" stroke-linecap="round"/>`);}
     const rows=graded();for(const r of rows){const color=r.grade==='A'?'#17a867':r.grade==='B'?'#d29b1f':'#e5742b',dpath=smoothPath(r.f);parts.push(`<path d="${dpath}" fill="none" stroke="#f7f4ea" stroke-width="7.1" stroke-linecap="round" stroke-linejoin="round" opacity=".86"/><path d="${dpath}" fill="none" stroke="${color}" stroke-width="4.25" stroke-linecap="round" stroke-linejoin="round"/><path d="${dpath}" fill="none" stroke="#17323d" stroke-width=".72" stroke-dasharray="5 4" stroke-linecap="round" opacity=".72"/>`)}
     for(const [name,x,y] of towns){if(!inside([x,y]))continue;parts.push(`<circle cx="${sx(x).toFixed(1)}" cy="${sy(y).toFixed(1)}" r="2.3" fill="#173d49"/><text x="${(sx(x)+5).toFixed(1)}" y="${(sy(y)-4).toFixed(1)}" fill="#173d49" font-size="9.5" font-weight="750" filter="url(#labelhalo)">${name}</text>`)}
