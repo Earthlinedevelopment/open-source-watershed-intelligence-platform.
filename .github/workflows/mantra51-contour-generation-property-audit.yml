@@ -1,0 +1,27 @@
+name: Mantra 51 Contour Generation Property Audit
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-contour-generation-property-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          needles=["contours={type:", "M.contours", "contourFeatures", "FeatureCollection",features:cont", "level:L", "level: L", "elev:L", "ele:L"]
+          for n in needles:
+              print('\n##',n)
+              start=0
+              for _ in range(25):
+                  i=s.find(n,start)
+                  if i<0: break
+                  print('POS',i,s[max(0,i-900):i+1800].replace('\n',' '))
+                  start=i+len(n)
+          PY
