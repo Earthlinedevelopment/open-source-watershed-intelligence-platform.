@@ -78,7 +78,7 @@ jobs:
               mapCount:panel?.querySelectorAll('.el49-figure svg').length||0,
               coverMapCount:panel?.querySelectorAll('.el49-cover-map svg').length||0,
               viewBox:svg?.getAttribute('viewBox')||'',
-              aquiferPath:html.includes('rgba(43,132,199,.27)'),
+              aquiferPath:[...(svg?.querySelectorAll('path')||[])].some(x=>/43\s*,\s*132\s*,\s*199/.test(x.getAttribute('fill')||'')),
               aquiferLabel:html.includes('AQUIFER · Gate aquifer'),
               water:html.includes('#087bb4'),
               elevation:html.includes('250 m'),
@@ -92,3 +92,5 @@ jobs:
           await b.close();
           JS
           node final-gate.mjs
+
+# rerun after residual copy cleanup
