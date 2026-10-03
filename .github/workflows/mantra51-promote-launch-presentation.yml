@@ -1,0 +1,29 @@
+name: Mantra 51 Promote Launch Presentation
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-promote-launch-presentation.yml'
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: |
+          set -euo pipefail
+          cp index.html /tmp/earthline-launch-index.html
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          cp /tmp/earthline-launch-index.html index.html
+          git diff --check
+          changed="$(git diff --name-only)"
+          echo "$changed"
+          test "$changed" = "index.html"
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: launch-grade report and How Swales presentation"
+          git push origin pages-live
