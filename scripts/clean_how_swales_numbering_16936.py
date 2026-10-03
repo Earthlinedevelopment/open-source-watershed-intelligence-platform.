@@ -17,6 +17,6 @@ start=s.find('const HOW_BIOSWALES_REPORT_16388=')
 end=s.find('function earthlineCanonicalHowBioswales16923',start)
 if end<0: raise SystemExit('canonical narrative end not found')
 block=s[start:end]
-block=re.sub(r'(<h[23]>)§\d+(?:\.\d+)?\s*·\s*',r'\1',block)
+block=re.sub(r'§\d+(?:\.\d+)?(?:\s*·\s*)?', '', block)
 s=s[:start]+block+s[end:]
 p.write_text(s)
