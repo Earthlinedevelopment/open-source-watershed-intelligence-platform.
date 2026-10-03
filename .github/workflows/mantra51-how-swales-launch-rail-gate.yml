@@ -1,0 +1,46 @@
+name: Mantra 51 How Swales Launch Rail Gate
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - 'index.html'
+      - '.github/workflows/mantra51-how-swales-launch-rail-gate.yml'
+permissions: {contents: read}
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: npm install --no-save playwright
+      - run: npx playwright install chromium
+      - run: python3 -m http.server 8787 >/tmp/el-http.log 2>&1 &
+      - run: |
+          cat > gate.mjs <<'JS'
+          import {chromium} from 'playwright';
+          const b=await chromium.launch({headless:true});
+          const p=await b.newPage({viewport:{width:1600,height:1000}});
+          await p.goto('http://127.0.0.1:8787/index.html?railgate='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await p.waitForTimeout(4000);
+          await p.evaluate(()=>{location.hash='#swales-explained'});
+          await p.waitForSelector('#earthlineSwalesPage16125.open',{timeout:15000});
+          await p.waitForTimeout(3500);
+          const openState=await p.evaluate(()=>{
+            const ids=['earthlineLaunchLogin16872','earthlineLaunchDonate16872','earthlineLaunchMerch16872'];
+            return {root:document.documentElement.classList.contains('earthline-swales-open-16947'),
+              rows:ids.map(id=>{const e=document.getElementById(id),c=e?getComputedStyle(e):null;return{id,exists:!!e,display:c?.display||null,visibility:c?.visibility||null}})};
+          });
+          await p.evaluate(()=>{location.hash=''});
+          await p.waitForTimeout(700);
+          const closedState=await p.evaluate(()=>({
+            root:document.documentElement.classList.contains('earthline-swales-open-16947'),
+            displays:['earthlineLaunchLogin16872','earthlineLaunchDonate16872','earthlineLaunchMerch16872'].map(id=>getComputedStyle(document.getElementById(id)).display)
+          }));
+          console.log(JSON.stringify({openState,closedState},null,2));
+          if(!openState.root||openState.rows.some(x=>!x.exists||x.display!=='none'||x.visibility!=='hidden'))throw new Error('Launch rail still visible over How Bioswales Work');
+          if(closedState.root||closedState.displays.some(x=>x==='none'))throw new Error('Launch rail did not restore after How Bioswales Work closed');
+          await b.close();
+          JS
+          node gate.mjs
