@@ -1,0 +1,22 @@
+name: Mantra 51 Information Surface Layer Fix
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - 'scripts/raise_info_surfaces_16925.py'
+      - '.github/workflows/mantra51-info-surface-layer-fix.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 scripts/raise_info_surfaces_16925.py
+          git diff --check
+          git add index.html
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git commit -m "fix: keep account controls behind information surfaces"
+          git push
