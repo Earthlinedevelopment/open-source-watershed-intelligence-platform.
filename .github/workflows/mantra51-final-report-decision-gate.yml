@@ -1,0 +1,75 @@
+name: Mantra 51 Final Report Decision Gate
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-final-report-decision-gate.yml'
+permissions: {contents: read}
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: npm install --no-save playwright
+      - run: npx playwright install chromium
+      - run: python3 -m http.server 8787 >/tmp/el-http.log 2>&1 &
+      - run: |
+          cat > gate.mjs <<'JS'
+          import {chromium} from 'playwright';
+          const b=await chromium.launch({headless:true});
+          const p=await b.newPage({viewport:{width:1600,height:1100}});
+          const errs=[]; p.on('pageerror',e=>errs.push(String(e.message||e)));
+          await p.goto('http://127.0.0.1:8787/index.html?finalreports='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await p.waitForSelector('#earthlineHamburgerMenu16233 a[href="#swales-explained"]',{state:'attached',timeout:30000});
+          await p.evaluate(()=>{location.hash='#swales-explained'});
+          await p.waitForSelector('#earthlineSwalesPage16125.open',{timeout:15000});
+          await p.waitForTimeout(500);
+          const sw=await p.evaluate(()=>{
+            const root=document.getElementById('earthlineSwalesPage16125');
+            const d=root?.querySelector('iframe')?.contentDocument;
+            const sourcePs=[...(d?.querySelectorAll('.el12-source-list p')||[])];
+            const sourceTexts=sourcePs.map(x=>(x.textContent||'').replace(/\s+/g,' ').trim());
+            const sorted=[...sourceTexts].sort((a,b)=>a.localeCompare(b,'en',{sensitivity:'base'}));
+            const hbw=[...(d?.querySelectorAll('h1,h2')||[])].filter(x=>(x.textContent||'').trim()==='How Bioswales Work').length;
+            const sourceHeads=[...(d?.querySelectorAll('h2')||[])].filter(x=>(x.textContent||'').trim()==='Sources');
+            const corrections=d?.querySelectorAll('.el12-corrections').length||0;
+            const detailed=d?.querySelectorAll('.el-precedent-16148').length||0;
+            const canon=d?.querySelectorAll('#earthlineCanonicalHowBioswales16923').length||0;
+            const oldLong=d?.querySelectorAll('#earthlineHowBioswalesApproved16388').length||0;
+            const oldSummary=d?.querySelectorAll('#earthlineSuccessfulSystems16149').length||0;
+            const srcSection=d?.getElementById('earthlineCanonicalHowBioswalesSources16923');
+            const corr=d?.querySelector('.el12-corrections');
+            const detail=d?.querySelector('.el-precedent-16148');
+            const orderOk=!!srcSection&&(!corr||corr.compareDocumentPosition(srcSection)&Node.DOCUMENT_POSITION_FOLLOWING)&&(!detail||detail.compareDocumentPosition(srcSection)&Node.DOCUMENT_POSITION_FOLLOWING);
+            return {
+              z:root?getComputedStyle(root).zIndex:null,canon,hbw,sourceHeads:sourceHeads.length,sourceCount:sourceTexts.length,sourcesAlphabetical:JSON.stringify(sourceTexts)===JSON.stringify(sorted),corrections,detailed,oldLong,oldSummary,orderOk,textLen:d?.body?.innerText?.length||0
+            };
+          });
+          await p.evaluate(()=>window.earthlineCloseSwalesExplained16125?.());
+          await p.evaluate(()=>{location.hash='#earthline-process'});
+          await p.waitForSelector('#earthlineProcessPage16265.open',{timeout:15000});
+          const process=await p.evaluate(()=>{const x=document.getElementById('earthlineProcessPage16265');const t=x?.innerText||'';return {z:x?getComputedStyle(x).zIndex:null,sources:(t.match(/Sources/g)||[]).length,textLen:t.length};});
+          const report=await p.evaluate(()=>{
+            const src=[...document.scripts].map(s=>s.textContent||'').join('\n');
+            return {
+              noFullHBW:!src.includes('${howBioswalesReportPages16388(data)}'),
+              noCorrectionsDup:!src.includes('${EARTHLINE_CORRECTIONS_REGISTRY_16513}'),
+              noEvidenceDup:!src.includes('<h3>Evidence register</h3>${body}'),
+              contrast:src.includes('earthline-report-contrast-16932'),
+              water:src.includes('#178fc4'),aquifer:src.includes('rgba(35,126,196,.11)'),
+              elevation:src.includes('el-report-contour-label')&&src.includes("Math.round(elev)+' m'"),
+              elevCaption:src.includes('sparse elevation labels in metres'),
+              vtScoped:src.includes('if(isVermont)for(const [name,x,y] of towns)'),
+              dynamicTitle:src.includes("const title='Earthline '+(reportPlace?reportPlace+' ':'')")
+            };
+          });
+          console.log(JSON.stringify({sw,process,report,errs},null,2));
+          if(Number(sw.z)<50000||sw.canon!==1||sw.hbw!==1||sw.sourceHeads!==1||sw.sourceCount<20||!sw.sourcesAlphabetical||sw.corrections!==1||sw.oldLong!==0||sw.oldSummary!==0||!sw.orderOk) throw new Error('How Bioswales Work final decision gate failed');
+          if(Number(process.z)<50000||process.sources<1||process.textLen<800) throw new Error('Earthline Process final decision gate failed');
+          if(Object.values(report).some(v=>!v)) throw new Error('Bioswale Impact Report final decision gate failed');
+          await b.close();
+          JS
+          node gate.mjs
