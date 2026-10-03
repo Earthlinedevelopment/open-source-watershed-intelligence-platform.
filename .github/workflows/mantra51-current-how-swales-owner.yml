@@ -1,0 +1,21 @@
+name: Mantra 51 Current How Swales Owner
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-current-how-swales-owner.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          for term in ['function earthlineCanonicalHowBioswales16923','src=src.slice(0,mainOpenEnd+1)','How to read this']:
+              i=s.find(term)
+              print('\n###',term,'POS',i)
+              if i>=0: print(s[max(0,i-1800):i+7000].replace('\n',' '))
+          PY
