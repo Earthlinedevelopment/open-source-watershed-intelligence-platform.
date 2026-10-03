@@ -1,0 +1,36 @@
+name: Mantra 51 Swales Runtime Error Probe
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-swales-runtime-error-probe.yml'
+permissions: {contents: read}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: npm install --no-save playwright
+      - run: npx playwright install chromium
+      - run: python3 -m http.server 8787 >/tmp/el-http.log 2>&1 &
+      - run: |
+          cat > probe.mjs <<'JS'
+          import {chromium} from 'playwright';
+          const b=await chromium.launch({headless:true});
+          const p=await b.newPage();
+          const errs=[];
+          p.on('pageerror',e=>errs.push('PAGEERROR '+e.message));
+          p.on('console',m=>{if(m.type()==='error'||m.type()==='warning') errs.push(m.type().toUpperCase()+' '+m.text())});
+          await p.goto('http://127.0.0.1:8787/index.html?probe='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await p.waitForTimeout(3500);
+          console.log('BEFORE',await p.evaluate(()=>({hash:location.hash,menu:!!document.getElementById('earthlineHamburgerMenu16233'),audit:typeof window.earthlineRegressionAudit16125==='function'?window.earthlineRegressionAudit16125():null,canonical:typeof window.earthlineCanonicalHowBioswales16923})));
+          await p.evaluate(()=>{location.hash='#swales-explained'});
+          await p.waitForTimeout(1200);
+          console.log('AFTER',await p.evaluate(()=>({hash:location.hash,page:!!document.getElementById('earthlineSwalesPage16125'),cls:document.getElementById('earthlineSwalesPage16125')?.className||null,hidden:document.getElementById('earthlineSwalesPage16125')?.getAttribute('aria-hidden')||null})));
+          console.log(errs.slice(-40).join('\n'));
+          await b.close();
+          JS
+          node probe.mjs
