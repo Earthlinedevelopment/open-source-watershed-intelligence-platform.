@@ -1,0 +1,46 @@
+name: Mantra 51 Full Editorial Read Chunks
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-full-editorial-read-chunks.yml'
+permissions: {contents: read}
+jobs:
+  read:
+    strategy:
+      matrix:
+        part: [0,1,2,3,4,5]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          PART=${{ matrix.part }} python3 - <<'PY'
+          from pathlib import Path
+          import re, json, html, os
+          s=Path('index.html').read_text(errors='ignore')
+          m=re.search(r'const howBioswalesApproved16388=("(?:\\.|[^"\\])*")\s*;',s)
+          if not m: raise SystemExit('howBioswalesApproved16388 literal not found')
+          raw=json.loads(m.group(1))
+          # Keep headings and paragraph/list text in order.
+          raw=re.sub(r'<br\s*/?>','\n',raw,flags=re.I)
+          raw=re.sub(r'</(h1|h2|h3|p|li|blockquote|figcaption|td|th|div|section)>','\n',raw,flags=re.I)
+          text=re.sub(r'<[^>]+>',' ',raw)
+          text=html.unescape(text)
+          text=re.sub(r'[ \t]+',' ',text)
+          text=re.sub(r'\n\s*\n+','\n',text).strip()
+          chunks=[]
+          step=(len(text)+5)//6
+          for i in range(6):
+              a=i*step;b=min(len(text),(i+1)*step)
+              # expand to nearest newline boundaries for readability
+              if a>0:
+                  na=text.find('\n',a)
+                  if na>=0:a=na+1
+              if b<len(text):
+                  nb=text.rfind('\n',a,b)
+                  if nb>a:b=nb
+              chunks.append(text[a:b])
+          p=int(os.environ['PART'])
+          print(f'===== HOW BIOSWALES FULL TEXT PART {p+1}/6 =====')
+          print(chunks[p])
+          PY
