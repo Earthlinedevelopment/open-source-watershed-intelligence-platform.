@@ -1,0 +1,109 @@
+name: Mantra 51 Launch Presentation Gate
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - 'index.html'
+      - '.github/workflows/mantra51-launch-presentation-gate.yml'
+permissions: {contents: read}
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: npm install --no-save playwright
+      - run: npx playwright install chromium
+      - run: python3 -m http.server 8787 >/tmp/el-http.log 2>&1 &
+      - run: |
+          cat > gate.mjs <<'JS'
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1600,height:1200}});
+          const errors=[];
+          page.on('pageerror',e=>errors.push(String(e.message||e)));
+          await page.goto('http://127.0.0.1:8787/index.html?launchgate='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForTimeout(4500);
+          const title=await page.title();
+          await page.evaluate(()=>{location.hash='#swales-explained'});
+          await page.waitForSelector('#earthlineSwalesPage16125',{state:'attached',timeout:15000});
+          await page.waitForTimeout(1400);
+          const sw=await page.evaluate(()=>{
+            const host=document.getElementById('earthlineSwalesPage16125');
+            const d=host?.querySelector('iframe')?.contentDocument;
+            const c=d?.getElementById('earthlineCanonicalHowBioswales16923');
+            const v=d?.querySelector('section[aria-labelledby="swaleExamplesTitle"]');
+            const imgs=[...(d?.querySelectorAll('.eswale-card img')||[])];
+            const hs=[...(d?.querySelectorAll('main h1,main h2,main h3')||[])].map(x=>(x.textContent||'').trim());
+            const first=imgs[0];
+            return {
+              page:!!host,
+              images:imgs.length,
+              firstWidth:first?first.getBoundingClientRect().width:0,
+              visualInsideCanonical:!!v&&!!c&&c.contains(v),
+              h1:hs[0]||'',
+              randomNumbering:hs.some(t=>/^§\d+|^\d+\.\d+\s*·/.test(t)),
+              viewer:!!d?.getElementById('earthlineImageViewer16939'),
+              style:!!d?.getElementById('earthline-swales-structure-16939'),
+              sourceLast:!!d?.getElementById('earthlineCanonicalHowBioswalesSources16923')
+            };
+          });
+          await page.evaluate(()=>{
+            const d=document.querySelector('#earthlineSwalesPage16125 iframe')?.contentDocument;
+            d?.querySelector('.eswale-card img')?.click();
+          });
+          await page.waitForTimeout(250);
+          const viewerOpen=await page.evaluate(()=>{
+            const d=document.querySelector('#earthlineSwalesPage16125 iframe')?.contentDocument;
+            const v=d?.getElementById('earthlineImageViewer16939');
+            return !!v?.classList.contains('open') && !!v?.querySelector('img')?.getAttribute('src');
+          });
+          await page.evaluate(()=>window.earthlineCloseSwalesExplained16125?.());
+
+          const report=await page.evaluate(()=>{
+            const tok='report-aquifer-truth-16938',bounds=[-73.25,44.0,-72.75,44.4];
+            window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=tok;
+            window.EARTHLINE_DISPLAYED_RUN_16151={runToken:tok,bounds,query:'Professional Report Gate',tier:'regional',mode:'regional',extentClass:'gate',completedAt:new Date().toISOString(),terrain:{source:'gate terrain',surfaceType:'DTM'},watersheds:{source:'gate watersheds',features:1},aquifers:{source:'accepted aquifer gate',features:1,boundaryClass:'regional aquifer-system context'},derived:{contours:2,waterPaths:1,swaleOpportunityLines:2}};
+            window.EARTHLINE_REGIONAL_VISUAL_DATA_16020={bounds,
+              contours:{features:[
+                {type:'Feature',properties:{ele:250},geometry:{type:'LineString',coordinates:[[-73.22,44.08],[-72.79,44.31]]}},
+                {type:'Feature',properties:{ele:275},geometry:{type:'LineString',coordinates:[[-73.22,44.13],[-72.78,44.35]]}}
+              ]},
+              flows:{features:[{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[[-73.18,44.30],[-72.82,44.10]]}}]},
+              swales:{features:[
+                {type:'Feature',properties:{grade:'A',score:88},geometry:{type:'LineString',coordinates:[[-73.16,44.18],[-72.86,44.20]]}},
+                {type:'Feature',properties:{grade:'B',score:71},geometry:{type:'LineString',coordinates:[[-73.13,44.23],[-72.89,44.25]]}}
+              ]},
+              aquifers:{features:[]}
+            };
+            window.EARTHLINE_ACCEPTED_REGIONAL_AQUIFER_AUDIT_16373={runToken:tok};
+            window.EARTHLINE_ACCEPTED_REGIONAL_AQUIFER_GEOJSON_16373={type:'FeatureCollection',features:[{
+              type:'Feature',properties:{name:'Accepted aquifer geometry'},geometry:{type:'MultiPolygon',coordinates:[[[[-73.14,44.11],[-72.91,44.11],[-72.91,44.28],[-73.14,44.28],[-73.14,44.11]]]]}
+            }]};
+            const opened=window.earthlineOpenVermontReport16151?.();
+            const p=document.getElementById('earthlineVermontReportPanel16149');
+            const html=p?.innerHTML||'';
+            const maps=p?.querySelectorAll('.el49-figure svg')||[];
+            return {
+              opened:!!opened,
+              panel:!!p,
+              mapCount:maps.length,
+              coverMapCount:p?.querySelectorAll('.el49-cover-map svg').length||0,
+              aquiferLabel:html.includes('AQUIFER CONTEXT'),
+              acceptedAquifer:html.includes('Accepted aquifer geometry'),
+              aquiferFill:html.includes('rgba(69,151,207,.17)'),
+              water:html.includes('#2188b2'),
+              elevation:html.includes('250 m'),
+              swaleA:html.includes('#177c58')
+            };
+          });
+          console.log(JSON.stringify({title,sw,viewerOpen,report,errors},null,2));
+          if(title!=='Earthline — Aquifer Recharging Starts Here.') throw new Error('Browser title gate failed');
+          if(sw.images<1||sw.firstWidth<700||!sw.visualInsideCanonical||sw.h1!=='How Bioswales Work'||sw.randomNumbering||!sw.viewer||!viewerOpen||!sw.style||!sw.sourceLast) throw new Error('How Swales presentation gate failed');
+          if(!report.opened||!report.panel||report.mapCount!==1||report.coverMapCount!==0||!report.aquiferLabel||!report.acceptedAquifer||!report.aquiferFill||!report.water||!report.elevation||!report.swaleA) throw new Error('Report map presentation gate failed');
+          if(errors.some(e=>/Invalid or unexpected token|css is not defined|Missing catch or finally/i.test(e))) throw new Error('Runtime syntax gate failed');
+          await browser.close();
+          JS
+          node gate.mjs
