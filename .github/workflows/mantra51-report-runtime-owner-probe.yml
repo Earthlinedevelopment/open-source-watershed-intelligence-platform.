@@ -1,0 +1,27 @@
+name: Mantra 51 Report Runtime Owner Probe
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-report-runtime-owner-probe.yml'
+permissions: {contents: read}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          terms=['window.earthlineReport','window.EARTHLINE_REPORT','buildReport(','function buildReport','mapSvg(','function mapSvg','openReport','reportButton','BIOSWALE IMPACT REPORT']
+          for term in terms:
+              print('\n###',term)
+              st=0
+              for _ in range(8):
+                  i=s.find(term,st)
+                  if i<0: break
+                  print('POS',i)
+                  print(s[max(0,i-700):i+2200].replace('\n',' '))
+                  st=i+len(term)
+          PY
