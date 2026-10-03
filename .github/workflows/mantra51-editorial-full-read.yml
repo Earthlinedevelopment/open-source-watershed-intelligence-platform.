@@ -1,0 +1,42 @@
+name: Mantra 51 Editorial Full Read
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-editorial-full-read.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, html
+          s=Path('index.html').read_text(errors='ignore')
+          def clean(x):
+              x=re.sub(r'<script[\s\S]*?</script>',' ',x,flags=re.I)
+              x=re.sub(r'<style[\s\S]*?</style>',' ',x,flags=re.I)
+              x=re.sub(r'<br\s*/?>','\n',x,flags=re.I)
+              x=re.sub(r'</(p|h1|h2|h3|li|section|div|tr)>','\n',x,flags=re.I)
+              x=re.sub(r'<[^>]+>',' ',x)
+              x=html.unescape(x)
+              x=re.sub(r'[ \t]+',' ',x)
+              x=re.sub(r'\n\s*\n+','\n',x)
+              return x.strip()
+          # canonical approved source content
+          a=s.find('const howBioswalesApproved16388=')
+          b=s.find('window.earthlineCanonicalHowBioswales16923',a)
+          print('===== HOW BIOSWALES SOURCE TEXT =====')
+          print(clean(s[a:b] if a>=0 and b>a else s[a:a+80000]))
+          # final rendered restructuring owner
+          e=s.find('const map16940=')
+          print('\n===== HOW BIOSWALES RENDER ORDER OWNER =====')
+          print(s[e:e+12000].replace('\n',' ') if e>=0 else 'not found')
+          # report build section headings + text neighborhood
+          r=s.find('function buildReport')
+          print('\n===== BIOSWALE IMPACT REPORT BUILD =====')
+          frag=s[r:r+85000] if r>=0 else ''
+          print(clean(frag))
+          PY
