@@ -1,0 +1,41 @@
+name: Mantra 51 Promote Two Report Repairs
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-promote-two-report-repairs.yml'
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: |
+          set -euo pipefail
+          cp index.html /tmp/earthline-two-report-repairs.html
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+
+          git fetch origin mantra51-global-repair-campaign pages-live
+
+          git checkout -B mantra51-global-repair-campaign origin/mantra51-global-repair-campaign
+          cp /tmp/earthline-two-report-repairs.html index.html
+          git diff --check
+          changed="$(git diff --name-only)"
+          echo "Candidate changed: $changed"
+          test "$changed" = "index.html"
+          git add index.html
+          git commit -m "fix: apply final two report repairs"
+          git push origin mantra51-global-repair-campaign
+
+          git checkout -B pages-live origin/pages-live
+          cp /tmp/earthline-two-report-repairs.html index.html
+          git diff --check
+          changed="$(git diff --name-only)"
+          echo "Production changed: $changed"
+          test "$changed" = "index.html"
+          git add index.html
+          git commit -m "fix: apply final two report repairs"
+          git push origin pages-live
