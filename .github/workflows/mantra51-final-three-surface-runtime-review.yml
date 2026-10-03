@@ -1,0 +1,71 @@
+name: Mantra 51 Final Three Surface Runtime Review
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-final-three-surface-runtime-review.yml'
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: npm install --no-save playwright
+      - run: npx playwright install chromium
+      - run: python3 -m http.server 8787 >/tmp/el-http.log 2>&1 &
+      - name: Review informational surfaces and report shell
+        run: |
+          cat > final-review.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1600,height:1100}});
+          await page.goto('http://127.0.0.1:8787/index.html?finalreview='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          const info=await page.evaluate(async()=>{
+            location.hash='#swales-explained'; window.dispatchEvent(new HashChangeEvent('hashchange')); await new Promise(r=>setTimeout(r,700));
+            const sw=document.getElementById('earthlineSwalesPage16125');
+            const iframe=sw?.querySelector('iframe');
+            let swText='', swSources=0;
+            try{const doc=iframe?.contentDocument; swText=(doc?.body?.innerText||''); swSources=(doc?.querySelectorAll('.el12-source-list p')||[]).length}catch{}
+            const swZ=sw?getComputedStyle(sw).zIndex:null;
+            location.hash='#earthline-process'; window.dispatchEvent(new HashChangeEvent('hashchange')); await new Promise(r=>setTimeout(r,400));
+            const pp=document.getElementById('earthlineProcessPage16265');
+            const ppText=pp?.innerText||'';
+            const ppZ=pp?getComputedStyle(pp).zIndex:null;
+            return {
+              swalesOpen:!!sw?.classList.contains('open'),
+              swalesTextLength:swText.length,
+              swalesSources:swSources,
+              swalesZ:swZ,
+              processOpen:!!pp?.classList.contains('open'),
+              processHasSources:/Sources/i.test(ppText),
+              processZ:ppZ,
+              hasCanonical:/How Bioswales Work/i.test(swText),
+              hasCorrections:/Corrections Registry/i.test(swText)
+            };
+          });
+          console.log(JSON.stringify(info,null,2));
+          if(!info.hasCanonical) throw new Error('Swales Explained canonical narrative missing');
+          if(!info.hasCorrections) throw new Error('Swales Explained Corrections Registry missing');
+          if(!info.processHasSources) throw new Error('Earthline Process sources section missing');
+          if(Number(info.swalesZ)<50000||Number(info.processZ)<50000) throw new Error('information surface layering too low');
+          const staticAudit=await page.evaluate(()=>{
+            const src=[...document.scripts].map(s=>s.textContent||'').join('\n');
+            return {
+              reportNoFullHBW:!src.includes('${howBioswalesReportPages16388(data)}'),
+              reportNoCorrectionsDup:!src.includes('${EARTHLINE_CORRECTIONS_REGISTRY_16513}'),
+              finalSources:src.includes('el16864-final-sources'),
+              elevationLabels:src.includes('el-report-contour-label'),
+              waterStroke:src.includes('#178fc4'),
+              aquiferFill:src.includes('rgba(35,126,196,.11)')
+            };
+          });
+          console.log(JSON.stringify(staticAudit,null,2));
+          if(Object.values(staticAudit).some(v=>!v)) throw new Error('report static runtime owner mismatch');
+          await browser.close();
+          JS
+          node final-review.mjs
