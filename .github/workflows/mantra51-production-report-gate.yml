@@ -1,0 +1,66 @@
+name: Mantra 51 Production Report Gate
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-production-report-gate.yml'
+permissions: {contents: read}
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: npm install --no-save playwright
+      - run: npx playwright install chromium
+      - run: |
+          cat > production-report-gate.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1600,height:1100}});
+          const errs=[];
+          page.on('pageerror',e=>errs.push(String(e.message||e)));
+          await page.goto('https://earthlinedevelopment.org/?reportgate='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#earthlineHamburgerMenu16233 a[href="#swales-explained"]',{state:'attached',timeout:30000});
+          await page.evaluate(()=>{location.hash='#swales-explained'});
+          await page.waitForSelector('#earthlineSwalesPage16125.open',{timeout:15000});
+          await page.waitForTimeout(600);
+          const sw=await page.evaluate(()=>{
+            const p=document.getElementById('earthlineSwalesPage16125');
+            const d=p?.querySelector('iframe')?.contentDocument;
+            const t=d?.body?.innerText||'';
+            return {len:t.length,z:p?getComputedStyle(p).zIndex:null,how:/How Bioswales Work/i.test(t),corr:/Corrections Registry/i.test(t),sources:(d?.querySelectorAll('.el12-source-list p').length||0)};
+          });
+          await page.evaluate(()=>window.earthlineCloseSwalesExplained16125?.());
+          await page.evaluate(()=>{location.hash='#earthline-process'});
+          await page.waitForSelector('#earthlineProcessPage16265.open',{timeout:15000});
+          const process=await page.evaluate(()=>{
+            const p=document.getElementById('earthlineProcessPage16265');
+            const t=p?.innerText||'';
+            return {len:t.length,z:p?getComputedStyle(p).zIndex:null,sources:/Sources/i.test(t),substantial:t.length>800};
+          });
+          const report=await page.evaluate(()=>{
+            const src=[...document.scripts].map(s=>s.textContent||'').join('\n');
+            return {
+              title:src.includes('BIOSWALE <span class="el53-blue">IMPACT REPORT</span>'),
+              noFullHBW:!src.includes('${howBioswalesReportPages16388(data)}'),
+              noCorrectionsDup:!src.includes('${EARTHLINE_CORRECTIONS_REGISTRY_16513}'),
+              water:src.includes('#178fc4'),
+              aquifer:src.includes('rgba(35,126,196,.11)'),
+              elevation:src.includes('el-report-contour-label')&&src.includes("Math.round(elev)+' m'"),
+              dynamicTitle:src.includes("const title='Earthline '+(reportPlace?reportPlace+' ':'')"),
+              vtContextScoped:src.includes('if(isVermont)for(const [name,x,y] of towns)'),
+              sourceNoDup:!src.includes('<h3>Evidence register</h3>${body}'),
+              contrast:src.includes('earthline-report-contrast-16932'),
+              elevCaption:src.includes('sparse elevation labels in metres')
+            };
+          });
+          console.log(JSON.stringify({sw,process,report,errs:errs.slice(-10)},null,2));
+          if(!sw.how||!sw.corr||Number(sw.z)<50000||sw.sources<1) throw new Error('Swales Explained production gate failed');
+          if(!process.sources||!process.substantial||Number(process.z)<50000) throw new Error('Earthline Process production gate failed');
+          if(Object.values(report).some(v=>!v)) throw new Error('Bioswale Impact Report production owner gate failed');
+          await browser.close();
+          JS
+          node production-report-gate.mjs
