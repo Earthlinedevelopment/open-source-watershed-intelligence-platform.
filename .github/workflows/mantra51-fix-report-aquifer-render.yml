@@ -1,0 +1,32 @@
+name: Mantra 51 Fix Report Aquifer Rendering
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - 'scripts/fix_report_aquifer_render_16937.py'
+      - '.github/workflows/mantra51-fix-report-aquifer-render.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          python3 scripts/fix_report_aquifer_render_16937.py
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          assert 'querySourceFeatures?.(id)' in s
+          assert 'src?.serialize?.()' in s
+          assert 'AQUIFER CONTEXT' in s
+          assert 'rgba(38,126,190,.28)' in s
+          assert 'stroke="#087fb8" stroke-width="1.9"' in s
+          PY
+          git add index.html
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git commit -m "fix: restore visible aquifers and report map hierarchy"
+          git push
