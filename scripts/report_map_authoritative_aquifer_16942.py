@@ -66,7 +66,7 @@ new2="""const aquiferSvg=aquiferFeatures.map((f,i)=>{
       }).join('');
       return shapes+label;
     }).join('');"""
-s,n=pat2.subn(new2,s,count=1)
+s,n=pat2.subn(lambda m:new2,s,count=1)
 if n!=1:
     raise SystemExit('aquifer SVG owner not replaced')
 
