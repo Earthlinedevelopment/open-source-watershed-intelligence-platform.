@@ -1,0 +1,22 @@
+name: Mantra 51 Surface Sync Audit
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-surface-sync-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          for n in ['function syncSwalesPage','function syncEarthlineProcessPage','function ensureSwalesPage','function ensureEarthlineProcessPage','hashchange']:
+              i=s.find(n)
+              print('\n###',n,'POS',i)
+              if i>=0: print(s[i:i+5000].replace('\n',' '))
+          PY
