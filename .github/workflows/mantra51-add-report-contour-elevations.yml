@@ -1,0 +1,22 @@
+name: Mantra 51 Add Report Contour Elevations
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - 'scripts/add_report_contour_elevations_16929.py'
+      - '.github/workflows/mantra51-add-report-contour-elevations.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 scripts/add_report_contour_elevations_16929.py
+          git diff --check
+          git add index.html
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git commit -m "fix: add elevation numbers to report contour maps"
+          git push
