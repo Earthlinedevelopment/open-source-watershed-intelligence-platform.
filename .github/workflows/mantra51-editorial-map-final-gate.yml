@@ -52,7 +52,8 @@ jobs:
               saferFlood:body.includes('Distributed hillslope retention can convert part of a rapid surface pulse'),
               noAbsoluteDevice:!body.includes('only stormwater structure that improves with age'),
               sourcesAfter:!!sources&&!!canonical&&!!(canonical.compareDocumentPosition(sources)&Node.DOCUMENT_POSITION_FOLLOWING),
-              z:Number(host?getComputedStyle(host).zIndex:0)
+              z:Number(host?getComputedStyle(host).zIndex:0),
+              launchHidden:['earthlineLaunchLogin16872','earthlineLaunchDonate16872','earthlineLaunchMerch16872'].every(id=>getComputedStyle(document.getElementById(id)).display==='none')
             };
           });
           await p.evaluate(()=>window.earthlineCloseSwalesExplained16125?.());
@@ -81,16 +82,20 @@ jobs:
               aquiferPath:[...(svg?.querySelectorAll('path')||[])].some(x=>/43\s*,\s*132\s*,\s*199/.test(x.getAttribute('fill')||'')),
               aquiferLabel:html.includes('AQUIFER · Gate aquifer'),
               water:html.includes('#087bb4'),
+              professionalSwales:src.includes("mainW=r.grade==='A'?3.8"),
+              cleanCaption:html.includes('Figure 1. Earthline screening map for this run.'),
               elevation:html.includes('250 m'),
               liveAquiferQuery:src.includes('queryRenderedFeatures({layers:layerIds})')&&src.includes('querySourceFeatures(l.source,opts)')
             };
           });
           console.log(JSON.stringify({sw,report,errors},null,2));
-          if(sw.images<3||!sw.problemBeforeDefinition||!sw.noCoreIdea||!sw.noDuplicateLimits||!sw.noSectionRefs||!sw.precedent||!sw.blind||!sw.noBadTypo||!sw.noSoilRepeat||!sw.saferGroundwater||!sw.saferFlood||!sw.noAbsoluteDevice||!sw.sourcesAfter||sw.z<50000)throw new Error('How Bioswales editorial gate failed');
-          if(!report.opened||!report.panel||report.mapCount!==1||report.coverMapCount!==0||report.viewBox!=='0 0 820 500'||!report.aquiferPath||!report.aquiferLabel||!report.water||!report.elevation||!report.liveAquiferQuery)throw new Error('Report map gate failed');
+          if(sw.images<3||!sw.problemBeforeDefinition||!sw.noCoreIdea||!sw.noDuplicateLimits||!sw.noSectionRefs||!sw.precedent||!sw.blind||!sw.noBadTypo||!sw.noSoilRepeat||!sw.saferGroundwater||!sw.saferFlood||!sw.noAbsoluteDevice||!sw.sourcesAfter||!sw.launchHidden||sw.z<50000)throw new Error('How Bioswales editorial gate failed');
+          if(!report.opened||!report.panel||report.mapCount!==1||report.coverMapCount!==0||report.viewBox!=='0 0 820 500'||!report.aquiferPath||!report.aquiferLabel||!report.water||!report.professionalSwales||!report.cleanCaption||!report.elevation||!report.liveAquiferQuery)throw new Error('Report map gate failed');
           if(errors.some(e=>/Invalid or unexpected token|is not defined/i.test(e)))throw new Error('Runtime error: '+errors.join(' | '));
           await b.close();
           JS
           node final-gate.mjs
 
 # rerun after residual copy cleanup
+
+# final rerun after presentation and launch-rail repair
