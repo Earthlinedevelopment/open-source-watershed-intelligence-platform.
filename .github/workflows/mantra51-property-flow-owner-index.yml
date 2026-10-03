@@ -1,0 +1,31 @@
+name: Mantra 51 Property Flow Owner Index
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-property-flow-owner-index.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(errors='ignore')
+          found=[]
+          for pat in [
+            r'function\s+([A-Za-z0-9_$]*(?:flow|water|hydro|drain)[A-Za-z0-9_$]*)\s*\(',
+            r'(?:const|let|var)\s+([A-Za-z0-9_$]*(?:flow|water|hydro|drain)[A-Za-z0-9_$]*)\s*=',
+            r"id\s*:\s*['\"]([^'\"]*(?:flow|water|hydro|drain)[^'\"]*)['\"]",
+            r"['\"]([^'\"]*(?:flow|water|hydro|drain)[^'\"]*)['\"]\s*:\s*\{"
+          ]:
+            for m in re.finditer(pat,s,re.I):
+              item=(m.group(1),m.start())
+              if item not in found: found.append(item)
+          for name,i in found:
+            print('\n###',name,'@',i)
+            print(s[max(0,i-900):i+2600].replace('\n',' '))
+          PY
