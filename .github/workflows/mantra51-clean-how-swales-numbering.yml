@@ -1,0 +1,36 @@
+name: Mantra 51 Clean How Swales Numbering
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - 'scripts/clean_how_swales_numbering_16936.py'
+      - '.github/workflows/mantra51-clean-how-swales-numbering.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          python3 scripts/clean_how_swales_numbering_16936.py
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          start=s.find('const HOW_BIOSWALES_REPORT_16388=')
+          end=s.find('function earthlineCanonicalHowBioswales16923',start)
+          b=s[start:end]
+          assert 'read §' not in b
+          assert '§6.' not in b
+          assert '§1 ·' not in b
+          assert 'Corrections Registry' in b
+          assert 'What happens to rain on this land right now' in b
+          assert 'What else a swale does' in b
+          PY
+          git add index.html
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git commit -m "fix: make How Swales hierarchy logical and unnumbered"
+          git push
