@@ -1109,7 +1109,7 @@ One repair only: retain BUILD-CHECK-15803 diagnostic data but remove automatic d
 </script>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Earthline — Vermont · 16294 Natural Tree Property Swales</title>
+<title>Earthline — Aquifer Recharging Starts Here.</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&amp;display=swap" rel="stylesheet"/>
@@ -36104,12 +36104,25 @@ html.earthline-alaska-map-interaction-16921 #earthlineRegionalVectorOverlay16020
   function contours(){return visual()?.contours?.features||[]}
   function flows(){return visual()?.flows?.features||[]}
   function reportAquifers(){
-    const out=[],seen=new Set();
+    const out=[],seen=new Set(),token=String(activeToken()||snapshot()?.runToken||'');
     const addFeature=f=>{const g=f&&f.geometry;if(!g||!['Polygon','MultiPolygon'].includes(g.type)||!Array.isArray(g.coordinates))return;let key='';try{key=JSON.stringify([g.type,g.coordinates])}catch(_){key=String(out.length)}if(seen.has(key))return;seen.add(key);out.push(f)};
+    const acceptedAudit=window.EARTHLINE_ACCEPTED_REGIONAL_AQUIFER_AUDIT_16373||null;
+    const accepted=window.EARTHLINE_ACCEPTED_REGIONAL_AQUIFER_GEOJSON_16373||null;
+    if(accepted&&Array.isArray(accepted.features)&&(!acceptedAudit?.runToken||String(acceptedAudit.runToken)===token))accepted.features.forEach(addFeature);
     const v=visual();if(v&&v.aquifers&&Array.isArray(v.aquifers.features))v.aquifers.features.forEach(addFeature);
     const rows=(typeof M!=="undefined"&&Array.isArray(M.usgsAquifers))?M.usgsAquifers:[];
-    rows.map((poly,i)=>({type:"Feature",properties:{name:String(poly&&poly.name||"Mapped aquifer context"),source:String(poly&&poly.source||poly&&poly.dataSource||"Mapped groundwater context"),report_context_only:true,index:i},geometry:{type:"Polygon",coordinates:[(poly&&Array.isArray(poly.lngLatPts)?poly.lngLatPts:[]).map(c=>[Number(c[0]),Number(c[1])]).filter(c=>Number.isFinite(c[0])&&Number.isFinite(c[1]))]}})).forEach(addFeature);
-    try{const m=map(),ids=Object.keys(m?.getStyle?.().sources||{}).filter(id=>/aquifer/i.test(id));for(const id of ids){const src=m?.getSource?.(id),data=src&&src._data;if(data&&Array.isArray(data.features))data.features.forEach(addFeature)}}catch(_){}
+    rows.map((poly,k)=>({type:"Feature",properties:{name:String(poly&&poly.name||"Mapped aquifer context"),source:String(poly&&poly.source||poly&&poly.dataSource||"Mapped groundwater context"),report_context_only:true,index:k},geometry:{type:"Polygon",coordinates:[(poly&&Array.isArray(poly.lngLatPts)?poly.lngLatPts:[]).map(c=>[Number(c[0]),Number(c[1])]).filter(c=>Number.isFinite(c[0])&&Number.isFinite(c[1]))]}})).forEach(addFeature);
+    try{
+      const m=map();
+      for(const id of ['el-live-aquifer-15970','earthline-aquifer-evidence','earthline-aquifer-material','earthline-recharge-zones']){
+        const src=m?.getSource?.(id),data=src&&(src._data||src._options&&src._options.data);
+        if(data&&Array.isArray(data.features))data.features.forEach(addFeature);
+      }
+      for(const id of Object.keys(m?.getStyle?.().sources||{}).filter(id=>/aquifer/i.test(id))){
+        const src=m?.getSource?.(id),data=src&&(src._data||src._options&&src._options.data);
+        if(data&&Array.isArray(data.features))data.features.forEach(addFeature);
+      }
+    }catch(_){}
     return out;
   }
   function graded(){const counts={A:0,B:0,C:0};return swales().map((f,index)=>{const p=f.properties||{},g=/^[ABC]$/.test(String(p.grade||''))?String(p.grade):'C';counts[g]++;p.display_rank=counts[g];p.display_code=g+counts[g];return {f,p,grade:g,rank:counts[g],code:g+counts[g],score:Math.round(Number(p.score||0)),km:lineLengthKm(f.geometry?.coordinates||[]),index}})}
@@ -36139,8 +36152,7 @@ html.earthline-alaska-map-interaction-16921 #earthlineRegionalVectorOverlay16020
     const contourElevationM=f=>{const p=f&&f.properties||{};for(const k of ['ele','elevation','elevation_m','elev_m','level','levelM','contour','contour_m','z']){const v=Number(p[k]);if(Number.isFinite(v))return v}return null};
     const contourLabelPoint=f=>{const c=f&&f.geometry&&f.geometry.type==='LineString'?f.geometry.coordinates:null;if(!Array.isArray(c)||c.length<2)return null;const q=c[Math.floor((c.length-1)*.58)];return Array.isArray(q)&&Number.isFinite(+q[0])&&Number.isFinite(+q[1])?q:null};
     const aquiferFeatures=reportAquifers();
-    const aquiferSvg=aquiferFeatures.map((f,i)=>{const g=f&&f.geometry;if(!g)return '';const polys=g.type==='Polygon'?[g.coordinates]:(g.type==='MultiPolygon'?g.coordinates:[]);return polys.map(poly=>{if(!Array.isArray(poly)||!poly.length)return '';const rings=poly.filter(r=>Array.isArray(r)&&r.length>=3);if(!rings.length)return '';const dpath=rings.map(r=>pathCoords(r)+' Z').join(' ');return '<path d="'+dpath+'" fill="rgba(35,126,196,.22)" fill-rule="evenodd" stroke="#236fa8" stroke-width="'+(small?1.8:2.15)+'" stroke-dasharray="7 3" vector-effect="non-scaling-stroke" opacity=".98"><title>'+esc(f.properties?.name||'Mapped aquifer context')+' — context only</title></path>'}).join('')}).join('');
-    const towns=[['Burlington',-73.2121,44.4759],['Montpelier',-72.5754,44.2601],['Rutland',-72.9726,43.6106],['St. Johnsbury',-72.0151,44.4192],['Middlebury',-73.1673,44.0153],['St. Albans',-73.0832,44.8109],['Bennington',-73.1968,42.8781],['Brattleboro',-72.5579,42.8509],['Newport',-72.2051,44.9364],['Charlotte',-73.2271,44.3098]];
+    const aquiferSvg=aquiferFeatures.map((f,k)=>{const g=f&&f.geometry;if(!g)return '';const polys=g.type==='Polygon'?[g.coordinates]:(g.type==='MultiPolygon'?g.coordinates:[]);return polys.map(poly=>{if(!Array.isArray(poly)||!poly.length)return '';const rings=poly.filter(r=>Array.isArray(r)&&r.length>=3);if(!rings.length)return '';const dpath=rings.map(r=>pathCoords(r)+' Z').join(' '),outer=rings[0],cx=outer.reduce((a,p)=>a+Number(p[0]||0),0)/outer.length,cy=outer.reduce((a,p)=>a+Number(p[1]||0),0)/outer.length,visible=inside([cx,cy]);return '<path d="'+dpath+'" fill="rgba(69,151,207,.17)" fill-rule="evenodd" stroke="#3f83ad" stroke-width="'+(small?1.2:1.45)+'" vector-effect="non-scaling-stroke" opacity=".96"><title>'+esc(f.properties?.name||'Mapped aquifer context')+' — context only</title></path>'+(visible?'<g class="el-report-aquifer-label"><rect x="'+(sx(cx)-44).toFixed(1)+'" y="'+(sy(cy)-9).toFixed(1)+'" width="88" height="15" rx="4" fill="#f7fbfd" fill-opacity=".94" stroke="#8eb8d2" stroke-width=".55"/><text x="'+sx(cx).toFixed(1)+'" y="'+(sy(cy)+1.5).toFixed(1)+'" text-anchor="middle" fill="#215f86" font-size="'+(small?6.7:7.4)+'" font-weight="800">AQUIFER CONTEXT</text></g>':'')}).join('')}).join('');     const towns=[['Burlington',-73.2121,44.4759],['Montpelier',-72.5754,44.2601],['Rutland',-72.9726,43.6106],['St. Johnsbury',-72.0151,44.4192],['Middlebury',-73.1673,44.0153],['St. Albans',-73.0832,44.8109],['Bennington',-73.1968,42.8781],['Brattleboro',-72.5579,42.8509],['Newport',-72.2051,44.9364],['Charlotte',-73.2271,44.3098]];
     const state=[[-73.44,45.01],[-72.53,45.01],[-71.50,45.01],[-71.47,44.00],[-71.55,43.00],[-72.46,42.73],[-73.26,42.75],[-73.27,43.58],[-73.41,44.45],[-73.44,45.01]];
     const roads=[
       [[-73.20,42.85],[-73.17,43.61],[-73.17,44.02],[-73.21,44.48],[-73.08,44.81],[-73.08,45.00]],
@@ -36154,7 +36166,7 @@ html.earthline-alaska-map-interaction-16921 #earthlineRegionalVectorOverlay16020
     if(isVermont)parts.push(`<path d="${pathCoords(state)}" fill="none" stroke="#6f857c" stroke-width="1.15" opacity=".55"/>`);
     if(isVermont)for(const r of roads)parts.push(`<path d="${pathCoords(r)}" fill="none" stroke="#aa9675" stroke-width=".9" opacity=".36"/>`);
     const reportContours=contours().filter(x=>x?.geometry?.type==='LineString').slice(0,170);
-    for(const f of reportContours)parts.push(`<path d="${path(f)}" fill="none" stroke="#74847e" stroke-width=".58" opacity=".43"/>`);
+    for(const f of reportContours)parts.push(`<path d="${path(f)}" fill="none" stroke="#7b8a84" stroke-width=".34" opacity=".19"/>`);
     let contourLabelCount=0;
     for(let ci=0;ci<reportContours.length&&contourLabelCount<(small?7:12);ci+=Math.max(1,Math.floor(reportContours.length/(small?7:12)))){
       const f=reportContours[ci],elev=contourElevationM(f),pt=contourLabelPoint(f);
@@ -36163,10 +36175,9 @@ html.earthline-alaska-map-interaction-16921 #earthlineRegionalVectorOverlay16020
       parts.push(`<g class="el-report-contour-label"><rect x="${(+x-13).toFixed(1)}" y="${(+y-7).toFixed(1)}" width="26" height="11" rx="2.4" fill="#eef2ef" fill-opacity=".88"/><text x="${x}" y="${(+y+1.5).toFixed(1)}" text-anchor="middle" fill="#536a66" font-size="${small?6.8:7.4}" font-weight="700">${label}</text></g>`);
       contourLabelCount++;
     }
-    for(const f of flows().filter(x=>x?.geometry?.type==='LineString').slice(0,240)){const fp=path(f);parts.push(`<path d="${fp}" fill="none" stroke="#f8fdff" stroke-width="3.4" opacity=".84" stroke-linecap="round"/><path d="${fp}" fill="none" stroke="#087fb8" stroke-width="1.75" opacity=".98" stroke-linecap="round"/>`);}
-    const rows=graded();for(const r of rows){const color=r.grade==='A'?'#17a867':r.grade==='B'?'#d29b1f':'#e5742b',dpath=smoothPath(r.f);parts.push(`<path d="${dpath}" fill="none" stroke="#f7f4ea" stroke-width="7.1" stroke-linecap="round" stroke-linejoin="round" opacity=".86"/><path d="${dpath}" fill="none" stroke="${color}" stroke-width="4.25" stroke-linecap="round" stroke-linejoin="round"/><path d="${dpath}" fill="none" stroke="#17323d" stroke-width=".72" stroke-dasharray="5 4" stroke-linecap="round" opacity=".72"/>`)}
-    if(isVermont)for(const [name,x,y] of towns){if(!inside([x,y]))continue;parts.push(`<circle cx="${sx(x).toFixed(1)}" cy="${sy(y).toFixed(1)}" r="2.3" fill="#173d49"/><text x="${(sx(x)+5).toFixed(1)}" y="${(sy(y)-4).toFixed(1)}" fill="#173d49" font-size="9.5" font-weight="750" filter="url(#labelhalo)">${name}</text>`)}
-    parts.push(`<g transform="translate(${W-54},38)"><path d="M0 20 L9 0 L18 20 L9 15 Z" fill="#153947"/><text x="9" y="31" text-anchor="middle" fill="#153947" font-size="9" font-weight="800">N</text></g>`);
+    for(const f of flows().filter(x=>x?.geometry?.type==='LineString').slice(0,240)){const fp=path(f);parts.push(`<path d="${fp}" fill="none" stroke="#ffffff" stroke-width="1.65" opacity=".46" stroke-linecap="round"/><path d="${fp}" fill="none" stroke="#2188b2" stroke-width=".88" opacity=".72" stroke-linecap="round"/>`);}
+    const rows=graded();for(const r of rows){const color=r.grade==='A'?'#177c58':r.grade==='B'?'#ad842e':'#aa6846',mainW=r.grade==='A'?2.2:r.grade==='B'?1.7:1.25,haloW=mainW+1.15,alpha=r.grade==='A'?'.9':r.grade==='B'?'.77':'.48',dpath=smoothPath(r.f);parts.push('<path d="'+dpath+'" fill="none" stroke="#fffdf8" stroke-width="'+haloW+'" stroke-linecap="round" stroke-linejoin="round" opacity=".74"/><path d="'+dpath+'" fill="none" stroke="'+color+'" stroke-width="'+mainW+'" stroke-linecap="round" stroke-linejoin="round" opacity="'+alpha+'"/>')}     if(isVermont)for(const [name,x,y] of towns){if(!inside([x,y]))continue;parts.push(`<circle cx="${sx(x).toFixed(1)}" cy="${sy(y).toFixed(1)}" r="2.3" fill="#173d49"/><text x="${(sx(x)+5).toFixed(1)}" y="${(sy(y)-4).toFixed(1)}" fill="#173d49" font-size="9.5" font-weight="750" filter="url(#labelhalo)">${name}</text>`)}
+    if(aquiferFeatures.length||flows().length||rows.length)parts.push('<g transform="translate('+(W-224)+','+(H-111)+')"><rect width="202" height="47" rx="6" fill="#fbfcf8" fill-opacity=".94" stroke="#b7c5be" stroke-width=".7"/><rect x="10" y="9" width="17" height="7" rx="2" fill="rgba(69,151,207,.17)" stroke="#3f83ad"/><text x="33" y="15" fill="#405760" font-size="7.2">Aquifer context</text><path d="M10 27 H27" stroke="#2188b2" stroke-width="1.2"/><text x="33" y="30" fill="#405760" font-size="7.2">Water path</text><path d="M104 12 H121" stroke="#177c58" stroke-width="2.2"/><text x="127" y="15" fill="#405760" font-size="7.2">Bioswale</text><path d="M104 27 H121" stroke="#7b8a84" stroke-width=".5"/><text x="127" y="30" fill="#405760" font-size="7.2">Contour</text></g>');     parts.push(`<g transform="translate(${W-54},38)"><path d="M0 20 L9 0 L18 20 L9 15 Z" fill="#153947"/><text x="9" y="31" text-anchor="middle" fill="#153947" font-size="9" font-weight="800">N</text></g>`);
     parts.push(`<g transform="translate(${pad},${H-27})"><path d="M0 0 H${barPx}" stroke="#153947" stroke-width="3"/><path d="M0 -4 V4 M${barPx} -4 V4" stroke="#153947" stroke-width="1.5"/><text x="${barPx/2}" y="14" text-anchor="middle" fill="#153947" font-size="9" font-weight="700">${niceKm} km</text></g>`);
     parts.push(`<g transform="translate(${W-242},${H-55})"><rect width="224" height="39" rx="5" fill="#f7faf8" stroke="#b8cbc3"/><text x="9" y="13" fill="#36535d" font-size="8.5" font-weight="800">GENERATED BY THE EARTHLINE SEARCH ENGINE</text><text x="9" y="25" fill="#526d75" font-size="7.5">${String(d?.tier||'regional').toUpperCase()} · ${String(d?.runToken||'run not recorded').slice(0,28)}</text><text x="9" y="34" fill="#526d75" font-size="7.5">Screening only — not a construction or survey document</text></g>`);
     parts.push(`<text x="${pad}" y="${H-5}" fill="#39525b" font-size="8">Bounds: ${b.map(v=>Number(v).toFixed(3)).join(', ')}</text></svg>`);return parts.join('')
