@@ -1,0 +1,21 @@
+name: Mantra 51 Current Swales Composition
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-current-swales-composition.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          for term in ["const canonicalParts=window.earthlineCanonicalHowBioswales16923()", "earthline-swales-layout-16934"]:
+              i=s.find(term)
+              print("\n###",term,i)
+              if i>=0: print(s[max(0,i-2000):i+12000].replace("\n"," "))
+          PY
