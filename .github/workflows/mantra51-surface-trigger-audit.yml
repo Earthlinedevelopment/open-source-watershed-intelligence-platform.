@@ -1,0 +1,26 @@
+name: Mantra 51 Surface Trigger Audit
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-surface-trigger-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          for n in ['syncSwalesPage','earthlineSwalesPage16125','syncEarthlineProcess','earthlineProcessPage16265','swales-explained','earthline-process']:
+              print('\n##',n)
+              st=0
+              for _ in range(12):
+                  i=s.find(n,st)
+                  if i<0: break
+                  print('POS',i,s[max(0,i-1200):i+2200].replace('\n',' '))
+                  st=i+len(n)
+          PY
