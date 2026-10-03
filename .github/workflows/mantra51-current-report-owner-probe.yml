@@ -1,0 +1,21 @@
+name: Mantra 51 Current Report Owner Probe
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-current-report-owner-probe.yml'
+permissions: {contents: read}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          for term in ['function reportAquifers(){','const aquiferSvg=','const rows=graded();for(const r of rows)']:
+              i=s.find(term)
+              print('\n###',term,i)
+              if i>=0: print(s[i:i+7000].replace('\n',' '))
+          PY
