@@ -1,0 +1,40 @@
+name: Mantra 51 Aquifer Truth Audit
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-aquifer-truth-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(errors='ignore')
+          terms=[
+            'EARTHLINE_REGIONAL_VISUAL_DATA_16020=',
+            'EARTHLINE_REGIONAL_VISUAL_DATA_16020 =',
+            'aquifers:',
+            'usgsAquifers',
+            'aquifer-fill',
+            'aquifer-outline',
+            'AQUIFER EVIDENCE',
+            'groundwater evidence',
+            'Mapped aquifer',
+            'map.addSource',
+            'map.addLayer'
+          ]
+          for term in terms:
+              print('\n###',term)
+              st=0;c=0
+              while c<12:
+                  i=s.find(term,st)
+                  if i<0: break
+                  print('POS',i)
+                  print(s[max(0,i-1800):i+5200].replace('\n',' '))
+                  st=i+len(term);c+=1
+          PY
