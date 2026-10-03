@@ -1,0 +1,21 @@
+name: Mantra 51 Exact Swales Sync Audit
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-exact-swales-sync-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          for n in ['syncSwalesPage=','const syncSwalesPage','function syncSwalesPage','earthlineCloseSwalesExplained16125','openProcess16265','syncProcess16265']:
+              i=s.find(n)
+              print('\n###',n,i)
+              if i>=0: print(s[max(0,i-1200):i+4200].replace('\n',' '))
+          PY
