@@ -58,7 +58,7 @@ rep=r"""const canonicalParts=window.earthlineCanonicalHowBioswales16923();
           src=src.slice(0,mainOpenEnd+1)+visualBlock+canonicalBlock+correctionsBlock+sourceBlock+src.slice(mainClose);
         }"""
 
-s,n=pat.subn(rep,s,count=1)
+s,n=pat.subn(lambda m: rep,s,count=1)
 if n!=1: raise SystemExit('How Swales composition owner not replaced')
 
 p.write_text(s)
