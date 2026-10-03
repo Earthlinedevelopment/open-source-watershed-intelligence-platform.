@@ -1,0 +1,29 @@
+name: Mantra 51 Contour Elevation Audit
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-contour-elevation-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          needles=['contour','elevation_m','elev_m','elevation','contour_m','z_m','meters','metres']
+          for needle in needles:
+              print('\n###',needle)
+              start=0
+              shown=0
+              while shown<18:
+                  i=s.find(needle,start)
+                  if i<0: break
+                  print('POS',i, s[max(0,i-280):min(len(s),i+520)].replace('\n',' '))
+                  start=i+len(needle)
+                  shown+=1
+          PY
