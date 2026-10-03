@@ -1,0 +1,38 @@
+name: Mantra 51 Static Report Structure Gate
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-static-report-structure-gate.yml'
+      - 'index.html'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          out={}
+          out['full_hbw_in_report']='${howBioswalesReportPages16388(data)}' in s
+          out['corrections_in_report']='${EARTHLINE_CORRECTIONS_REGISTRY_16513}' in s
+          out['final_sources_calls']=s.count('${finalSourcesPage16864(data)}')
+          out['water_path_draw']=s.count('stroke="#1a9fd3"')
+          out['aquifer_draw']=s.count('stroke="#237ec4"')
+          out['technical_caption']='Gray lines are modeled contours, blue lines are modeled surface-water paths' in s
+          out['canonical_accessor']='earthlineCanonicalHowBioswales16923' in s
+          out['swales_z50000']='#earthlineSwalesPage16125{position:fixed;inset:0;z-index:50000' in s
+          out['process_z50000']='#earthlineProcessPage16265{position:fixed;inset:0;z-index:50000' in s
+          print(out)
+          if out['full_hbw_in_report']: raise SystemExit('full How Bioswales still injected into report')
+          if out['corrections_in_report']: raise SystemExit('Corrections Registry still injected into report')
+          if out['final_sources_calls'] < 1: raise SystemExit('no final sources page')
+          if out['water_path_draw'] < 1: raise SystemExit('report map water path renderer missing')
+          if out['aquifer_draw'] < 1: raise SystemExit('report map aquifer renderer missing')
+          if not out['technical_caption']: raise SystemExit('technical map caption missing')
+          if not out['canonical_accessor']: raise SystemExit('canonical How Bioswales owner missing')
+          if not out['swales_z50000'] or not out['process_z50000']: raise SystemExit('info surfaces not above account controls')
+          PY
