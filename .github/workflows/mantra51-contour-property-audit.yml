@@ -1,0 +1,27 @@
+name: Mantra 51 Contour Property Audit
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-contour-property-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          needles=["properties:{ele","properties:{elev","elevation_m","contour_elev","levelM","level_m","ele:"]
+          for n in needles:
+              print('\n##',n)
+              start=0
+              for k in range(20):
+                  i=s.find(n,start)
+                  if i<0: break
+                  print('POS',i,s[max(0,i-500):i+1000].replace('\n',' '))
+                  start=i+len(n)
+          PY
