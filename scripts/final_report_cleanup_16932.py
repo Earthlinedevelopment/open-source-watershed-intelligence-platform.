@@ -1,0 +1,13 @@
+from pathlib import Path
+p=Path('index.html')
+s=p.read_text(errors='ignore')
+old="function finalSourcesPage16864(data){const d=data&&data.d||data||{};let rows=[];try{rows=typeof sourceEntries16864==='function'?sourceEntries16864(d):[]}catch(_){rows=[]}const list=rows.map(r=>`<li><strong>${esc(r[1])}</strong><span>${esc(r[0])} · ${esc(r[2])}${r[3]?' · '+esc(r[3]):''}</span></li>`).join('');const body=typeof sourceRows==='function'?sourceRows(d):'';return `<section class=\"el49-page el16864-final-sources\"><div class=\"el49-kicker\">Sources · Final Page</div><h2>Sources and evidence register</h2><ol class=\"el16926-source-list\">${list}</ol><h3>Evidence register</h3>${body}<div class=\"el49-callout\"><b>Groundwater interpretation:</b> well location is not an aquifer boundary; water level is not storage; an aquifer polygon does not mean groundwater is present at every point; absence of a well does not mean absence of groundwater.</div>${footer(data,'Sources')}</section>`}"
+new="function finalSourcesPage16864(data){const d=data&&data.d||data||{};let rows=[];try{rows=typeof sourceEntries16864==='function'?sourceEntries16864(d):[]}catch(_){rows=[]}const list=rows.map(r=>`<li><strong>${esc(r[1])}</strong><span><b>${esc(r[0])}</b> · ${esc(r[2])}${r[3]?' · '+esc(r[3]):''}</span></li>`).join('');return `<section class=\"el49-page el16864-final-sources\"><div class=\"el49-kicker\">Sources · Final Page</div><h2>Sources and evidence register</h2><ol class=\"el16926-source-list\">${list}</ol><div class=\"el49-callout\"><b>Groundwater interpretation:</b> well location is not an aquifer boundary; water level is not storage; an aquifer polygon does not mean groundwater is present at every point; absence of a well does not mean absence of groundwater.</div>${footer(data,'Sources')}</section>`}"
+if old not in s: raise SystemExit('finalSourcesPage16864 exact owner not found')
+s=s.replace(old,new,1)
+style='''<style id="earthline-report-contrast-16932">\n.el49-report,.el49-report .el49-page{color:#17323d}\n.el49-report p,.el49-report li,.el49-report td,.el49-report th,.el49-report figcaption{color:#354a52}\n.el49-report .el49-source,.el49-report .el49-footer,.el49-report .el49-note{color:#52656d!important}\n.el49-report .el16926-source-list li{color:#354a52;font-size:12.5px;line-height:1.55}\n.el49-report .el16926-source-list li strong{color:#17323d}.el49-report .el16926-source-list li span{color:#52656d}\n</style>'''
+if 'earthline-report-contrast-16932' not in s:
+    h=s.find('</head>')
+    if h<0: raise SystemExit('head close not found')
+    s=s[:h]+style+s[h:]
+p.write_text(s)
