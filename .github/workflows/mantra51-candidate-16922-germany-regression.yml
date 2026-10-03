@@ -23,9 +23,17 @@ jobs:
       - run: |
           cat > candidate-16922-test.mjs <<'JS'
           import { chromium } from 'playwright';
+          import { readFile } from 'fs/promises';
+          const html=await readFile('index.html','utf8');
           const browser=await chromium.launch({headless:true});
           const page=await browser.newPage({viewport:{width:1800,height:1000}});
-          await page.goto('http://127.0.0.1:8787',{waitUntil:'domcontentloaded',timeout:60000});
+          await page.route('https://earthlinedevelopment.org/**', async route=>{
+            const req=route.request();
+            if(req.isNavigationRequest() && req.resourceType()==='document'){
+              await route.fulfill({status:200,contentType:'text/html',body:html,headers:{'cache-control':'no-store'}});
+            } else await route.continue();
+          });
+          await page.goto('https://earthlinedevelopment.org/?candidate16922='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
           await page.waitForSelector('#searchInput',{timeout:30000});
           async function run(q){await page.evaluate(q=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},q)}
           await run('germany country');
@@ -43,7 +51,7 @@ jobs:
           const p=await page.evaluate(()=>({tier:document.documentElement.dataset.earthlineAnalysisTier,swales:Array.isArray(M?.swales)?M.swales.length:null,displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,status:document.getElementById('earthlineVermontStatus16147')?.textContent||''}));
           console.log('CANDIDATE_PROPERTY '+JSON.stringify(p));
           await run('germany country');
-          await page.waitForTimeout(25000);
+          await page.waitForFunction(()=>window.EARTHLINE_REGIONAL_TERMINAL_16539?.status==='published' && String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{}).tier||'')==='regional',null,{timeout:180000,polling:250});
           const r=await page.evaluate(()=>({tier:document.documentElement.dataset.earthlineAnalysisTier,displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,error:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,terminal:window.EARTHLINE_REGIONAL_TERMINAL_16539||null,status:document.getElementById('earthlineVermontStatus16147')?.textContent||'',report:document.getElementById('earthlineVermontReport16149')?.textContent||''}));
           console.log('CANDIDATE_RETURN '+JSON.stringify(r));
           if(!r.displayed||String(r.displayed.tier||r.displayed.mode)!=='regional'||r.error) process.exitCode=2;
