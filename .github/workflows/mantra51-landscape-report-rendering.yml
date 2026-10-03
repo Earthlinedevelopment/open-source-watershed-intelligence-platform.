@@ -1,0 +1,31 @@
+name: Mantra 51 Landscape Report Rendering
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - 'scripts/report_landscape_rendering_16940.py'
+      - '.github/workflows/mantra51-landscape-report-rendering.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          python3 scripts/report_landscape_rendering_16940.py
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          assert '#4f8b5d' in s
+          assert 'stroke="#5b9fc2" stroke-width="2.15"' in s
+          assert 'rgba(92,170,202,.16)' in s
+          assert 'Planted bioswale' in s
+          PY
+          git config user.name Earthlinedevelopment
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git commit -m 'fix: make report map nature-forward and presentation-ready'
+          git push
