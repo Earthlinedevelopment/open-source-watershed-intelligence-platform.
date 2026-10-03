@@ -1,0 +1,28 @@
+name: Mantra 51 Disable Legacy HBW Reinjection
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - 'scripts/disable_legacy_hbw_reinjection_16936.py'
+      - '.github/workflows/mantra51-disable-legacy-hbw-reinjection.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 scripts/disable_legacy_hbw_reinjection_16936.py
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          assert "if(firstContentImg16388>=0&&!src.includes('earthlineCanonicalHowBioswales16923'))" in s
+          assert "if(!src.includes('earthlineCanonicalHowBioswales16923'))src=src.replace('</main>',precedentSection+'</main>');" in s
+          PY
+          git add index.html
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git commit -m "fix: remove duplicate legacy How Bioswales reinjection"
+          git push
