@@ -1,0 +1,58 @@
+name: Mantra 51 Production Two Report Gate
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-production-two-report-gate.yml'
+permissions: {contents: read}
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: npm install --no-save playwright
+      - run: npx playwright install chromium
+      - run: |
+          cat > prod.mjs <<'JS'
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1600,height:1100}});
+          const errors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          await page.goto('https://earthlinedevelopment.org/?tworeportgate='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#earthlineHamburgerMenu16233 a[href="#swales-explained"]',{state:'attached',timeout:30000});
+          await page.evaluate(()=>{location.hash='#swales-explained'});
+          await page.waitForSelector('#earthlineSwalesPage16125.open',{timeout:15000});
+          await page.waitForTimeout(600);
+          const sw=await page.evaluate(()=>{
+            const h=document.getElementById('earthlineSwalesPage16125'),d=h?.querySelector('iframe')?.contentDocument;
+            const ex=d?.querySelector('[aria-labelledby="swaleExamplesTitle"]'),can=d?.getElementById('earthlineCanonicalHowBioswales16923');
+            return {images:d?.querySelectorAll('img').length||0,examplesBeforeCanonical:!!ex&&!!can&&!!(ex.compareDocumentPosition(can)&Node.DOCUMENT_POSITION_FOLLOWING),font:d?.body?getComputedStyle(d.body).fontFamily:'',style:!!d?.getElementById('earthline-swales-layout-16934'),corrections:/Corrections Registry/i.test(d?.body?.innerText||'')};
+          });
+          await page.evaluate(()=>window.earthlineCloseSwalesExplained16125?.());
+          const report=await page.evaluate(()=>{
+            const tok='earthline-report-gate-16934',bounds=[-73.25,44.0,-72.75,44.4];
+            window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=tok;
+            window.EARTHLINE_DISPLAYED_RUN_16151={runToken:tok,bounds,query:'Earthline Report Gate',tier:'regional',mode:'regional',extentClass:'gate',completedAt:new Date().toISOString(),terrain:{source:'gate terrain',surfaceType:'DTM'},watersheds:{source:'gate',features:1},aquifers:{source:'gate aquifer source',features:1,boundaryClass:'context'},derived:{contours:1,waterPaths:1,swaleOpportunityLines:1}};
+            window.EARTHLINE_REGIONAL_VISUAL_DATA_16020={bounds,
+              contours:{features:[{type:'Feature',properties:{ele:250},geometry:{type:'LineString',coordinates:[[-73.2,44.08],[-72.8,44.32]]}}]},
+              flows:{features:[{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[[-73.18,44.30],[-72.82,44.10]]}}]},
+              swales:{features:[{type:'Feature',properties:{grade:'A',score:82},geometry:{type:'LineString',coordinates:[[-73.15,44.18],[-72.85,44.20]]}}]},
+              aquifers:{features:[{type:'Feature',properties:{name:'Gate aquifer'},geometry:{type:'MultiPolygon',coordinates:[[[[-73.12,44.12],[-72.90,44.12],[-72.90,44.27],[-73.12,44.27],[-73.12,44.12]]]]}}]}
+            };
+            const opened=window.earthlineOpenVermontReport16151?.();
+            const p=document.getElementById('earthlineVermontReportPanel16149');
+            const maps=p?.querySelectorAll('.el49-figure svg')||[];
+            const all=p?.innerHTML||'';
+            return {opened:!!opened,panel:!!p?.classList.contains('open'),maps:maps.length,coverMaps:p?.querySelectorAll('.el49-cover-map svg').length||0,aquifer:all.includes('Gate aquifer'),water:all.includes('#087fb8'),elevation:all.includes('250 m'),multi:all.includes('rgba(35,126,196,.22)')};
+          });
+          console.log(JSON.stringify({sw,report,errors},null,2));
+          if(sw.images<1||!sw.examplesBeforeCanonical||!/Noto Sans/i.test(sw.font)||!sw.style||!sw.corrections)throw new Error('Production How Swales presentation failed');
+          if(!report.opened||!report.panel||report.maps!==1||report.coverMaps!==0||!report.aquifer||!report.water||!report.elevation||!report.multi)throw new Error('Production Bioswale map presentation failed');
+          if(errors.some(e=>/css is not defined|Invalid or unexpected token/i.test(e)))throw new Error('Production runtime error');
+          await browser.close();
+          JS
+          node prod.mjs
