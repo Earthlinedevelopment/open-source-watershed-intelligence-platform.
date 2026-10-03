@@ -1,0 +1,31 @@
+name: Mantra 51 Finalize Report Map
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - 'scripts/finalize_report_map_16933.py'
+      - '.github/workflows/mantra51-finalize-report-map.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 scripts/finalize_report_map_16933.py
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          assert 'if(isVermont)for(const [name,x,y] of towns)' in s
+          assert 'sparse elevation labels in metres' in s
+          assert 'el-report-contour-label' in s
+          assert '#178fc4' in s
+          assert 'rgba(35,126,196,.11)' in s
+          PY
+          git add index.html
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git commit -m "fix: finalize Bioswale Impact Report map presentation"
+          git push
