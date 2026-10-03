@@ -1,0 +1,25 @@
+name: Mantra 51 Alaska Property Flow Audit
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-alaska-property-flow-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(errors='ignore')
+          terms=['water path','waterPath','flow line','flowLine','flow path','flowPath','flowlines','stream path','hydrology','downslope','steepest','D8','tributary','property flow','Property']
+          for term in terms:
+              hits=[m.start() for m in re.finditer(re.escape(term),s,re.I)]
+              print('\n###',term,'count',len(hits))
+              for i in hits[:12]:
+                  print('POS',i)
+                  print(s[max(0,i-1200):i+4200].replace('\n',' '))
+          PY
