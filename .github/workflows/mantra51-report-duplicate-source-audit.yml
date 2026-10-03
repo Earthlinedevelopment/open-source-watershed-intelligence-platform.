@@ -1,0 +1,26 @@
+name: Mantra 51 Report Duplicate Source Audit
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-report-duplicate-source-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          for needle in ['sourceRows(d)','sourceRows(data','el49-source','el16864-hbw-sources','finalSourcesPage16864','Sources and evidence register']:
+            print('\n###',needle)
+            start=0
+            for n in range(20):
+              i=s.find(needle,start)
+              if i<0: break
+              print('POS',i, s[max(0,i-350):min(len(s),i+1000)].replace('\n',' ')[:1400])
+              start=i+1
+          PY
