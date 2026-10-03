@@ -1,0 +1,38 @@
+name: Mantra 51 Three Document Final Static Gate
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-three-document-final-static-gate.yml'
+      - 'index.html'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          checks={
+            'canonical_hbw':'earthlineCanonicalHowBioswales16923' in s,
+            'no_full_hbw_in_report':'${howBioswalesReportPages16388(data)}' not in s,
+            'no_corrections_dup_in_report':'${EARTHLINE_CORRECTIONS_REGISTRY_16513}' not in s,
+            'final_sources':'el16864-final-sources' in s,
+            'alphabetized_hbw':"entries.sort((a,b)=>key(a).localeCompare" in s,
+            'alphabetized_report':'sourceEntries16864' in s and 'localeCompare' in s,
+            'process_sources':'ep-sources' in s,
+            'water_paths':'stroke=\"#178fc4\"' in s,
+            'aquifer_context':'fill=\"rgba(35,126,196,.11)\"' in s,
+            'aquifer_after_background':'fill=\"url(#elmapbg)\"/>${aquiferSvg}' in s,
+            'elevation_labels':'el-report-contour-label' in s and "Math.round(elev)+' m'" in s,
+            'global_map_title':"Earthline '+(reportPlace?reportPlace+' ':'')" in s,
+            'swales_overlay':'#earthlineSwalesPage16125{position:fixed;inset:0;z-index:50000' in s,
+            'process_overlay':'#earthlineProcessPage16265{position:fixed;inset:0;z-index:50000' in s,
+          }
+          print(checks)
+          bad=[k for k,v in checks.items() if not v]
+          if bad: raise SystemExit('FAILED: '+', '.join(bad))
+          PY
