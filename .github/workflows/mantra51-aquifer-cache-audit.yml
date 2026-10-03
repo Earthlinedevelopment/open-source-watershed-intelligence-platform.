@@ -1,0 +1,26 @@
+name: Mantra 51 Aquifer Cache Audit
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-aquifer-cache-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          for term in ['aquiferCache','AQUIFER_CACHE','REGIONAL_AQUIFER','PROPERTY_AQUIFER','earthline-aquifers-','groundwater-wells','well-source','wells-']:
+              print('\n###',term)
+              st=0
+              for _ in range(10):
+                  i=s.find(term,st)
+                  if i<0: break
+                  print('POS',i)
+                  print(s[max(0,i-900):i+2500].replace('\n',' '))
+                  st=i+len(term)
+          PY
