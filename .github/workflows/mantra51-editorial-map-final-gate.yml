@@ -1,0 +1,94 @@
+name: Mantra 51 Editorial Map Final Gate
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - 'index.html'
+      - '.github/workflows/mantra51-editorial-map-final-gate.yml'
+permissions: {contents: read}
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: npm install --no-save playwright
+      - run: npx playwright install chromium
+      - run: python3 -m http.server 8787 >/tmp/el-http.log 2>&1 &
+      - run: |
+          cat > final-gate.mjs <<'JS'
+          import {chromium} from 'playwright';
+          const b=await chromium.launch({headless:true});
+          const p=await b.newPage({viewport:{width:1600,height:1100}});
+          const errors=[];
+          p.on('pageerror',e=>errors.push(e.message));
+          await p.goto('http://127.0.0.1:8787/index.html?finalgate='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await p.waitForTimeout(4000);
+          await p.evaluate(()=>{location.hash='#swales-explained'});
+          await p.waitForSelector('#earthlineSwalesPage16125.open',{timeout:15000});
+          await p.waitForTimeout(600);
+          const sw=await p.evaluate(()=>{
+            const host=document.getElementById('earthlineSwalesPage16125');
+            const d=host?.querySelector('iframe')?.contentDocument;
+            const body=d?.body?.innerText||'';
+            const h2=[...(d?.querySelectorAll('h2')||[])].map(x=>(x.innerText||'').trim());
+            const idx=x=>h2.indexOf(x);
+            const sources=d?.getElementById('earthlineCanonicalHowBioswalesSources16923');
+            const canonical=d?.getElementById('earthlineCanonicalHowBioswales16923');
+            return {
+              images:d?.querySelectorAll('img').length||0,
+              h2,
+              problemBeforeDefinition:idx('What happens when water leaves too quickly')>=0&&idx('What a bioswale is')>idx('What happens when water leaves too quickly'),
+              noCoreIdea:!h2.includes('The core idea')&&!body.includes('If you have two minutes'),
+              noDuplicateLimits:!h2.includes('Why transparent limits matter'),
+              noSectionRefs:!body.includes('§'),
+              precedent:h2.includes('Evidence from real water-harvesting systems'),
+              blind:body.includes('Candidate sites for blind validation'),
+              noBadTypo:!body.includes('regional expatriation'),
+              noSoilRepeat:!body.includes('On soil carbon — a caution.'),
+              saferGroundwater:body.includes('where local hydrogeology allows, contribute to groundwater recharge'),
+              saferFlood:body.includes('Distributed hillslope retention can convert part of a rapid surface pulse'),
+              noAbsoluteDevice:!body.includes('only stormwater structure that improves with age'),
+              sourcesAfter:!!sources&&!!canonical&&!!(canonical.compareDocumentPosition(sources)&Node.DOCUMENT_POSITION_FOLLOWING),
+              z:Number(host?getComputedStyle(host).zIndex:0)
+            };
+          });
+          await p.evaluate(()=>window.earthlineCloseSwalesExplained16125?.());
+
+          const report=await p.evaluate(()=>{
+            const tok='report-map-final',bounds=[-73.25,44,-72.75,44.4];
+            window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=tok;
+            window.EARTHLINE_DISPLAYED_RUN_16151={runToken:tok,bounds,query:'Map Review',tier:'regional',mode:'regional',extentClass:'audit',completedAt:new Date().toISOString(),terrain:{source:'terrain',surfaceType:'DTM'},watersheds:{source:'watershed',features:1},aquifers:{source:'aquifer',features:1,boundaryClass:'context'},derived:{contours:1,waterPaths:1,swaleOpportunityLines:1}};
+            window.EARTHLINE_REGIONAL_VISUAL_DATA_16020={bounds,
+              contours:{features:[{type:'Feature',properties:{ele:250},geometry:{type:'LineString',coordinates:[[-73.2,44.08],[-72.8,44.32]]}}]},
+              flows:{features:[{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[[-73.18,44.3],[-72.82,44.1]]}}]},
+              swales:{features:[{type:'Feature',properties:{grade:'A',score:82},geometry:{type:'LineString',coordinates:[[-73.15,44.18],[-72.85,44.2]]}}]},
+              aquifers:{features:[{type:'Feature',properties:{name:'Gate aquifer'},geometry:{type:'MultiPolygon',coordinates:[[[[-73.12,44.12],[-72.90,44.12],[-72.90,44.27],[-73.12,44.27],[-73.12,44.12]]]]}}]}
+            };
+            const opened=window.earthlineOpenVermontReport16151?.();
+            const panel=document.getElementById('earthlineVermontReportPanel16149');
+            const svg=panel?.querySelector('.el49-figure svg');
+            const html=panel?.innerHTML||'';
+            const src=[...document.scripts].map(x=>x.textContent||'').join('\n');
+            return {
+              opened:!!opened,
+              panel:!!panel?.classList.contains('open'),
+              mapCount:panel?.querySelectorAll('.el49-figure svg').length||0,
+              coverMapCount:panel?.querySelectorAll('.el49-cover-map svg').length||0,
+              viewBox:svg?.getAttribute('viewBox')||'',
+              aquiferPath:html.includes('rgba(43,132,199,.27)'),
+              aquiferLabel:html.includes('AQUIFER · Gate aquifer'),
+              water:html.includes('#087bb4'),
+              elevation:html.includes('250 m'),
+              liveAquiferQuery:src.includes('queryRenderedFeatures({layers:layerIds})')&&src.includes('querySourceFeatures(l.source,opts)')
+            };
+          });
+          console.log(JSON.stringify({sw,report,errors},null,2));
+          if(sw.images<3||!sw.problemBeforeDefinition||!sw.noCoreIdea||!sw.noDuplicateLimits||!sw.noSectionRefs||!sw.precedent||!sw.blind||!sw.noBadTypo||!sw.noSoilRepeat||!sw.saferGroundwater||!sw.saferFlood||!sw.noAbsoluteDevice||!sw.sourcesAfter||sw.z<50000)throw new Error('How Bioswales editorial gate failed');
+          if(!report.opened||!report.panel||report.mapCount!==1||report.coverMapCount!==0||report.viewBox!=='0 0 820 500'||!report.aquiferPath||!report.aquiferLabel||!report.water||!report.elevation||!report.liveAquiferQuery)throw new Error('Report map gate failed');
+          if(errors.some(e=>/Invalid or unexpected token|is not defined/i.test(e)))throw new Error('Runtime error: '+errors.join(' | '));
+          await b.close();
+          JS
+          node final-gate.mjs
