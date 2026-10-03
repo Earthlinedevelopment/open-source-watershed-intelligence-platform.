@@ -30,12 +30,13 @@ jobs:
           const sw=await p.evaluate(()=>{
             const d=document.querySelector('#earthlineSwalesPage16125 iframe')?.contentDocument;
             const can=d?.getElementById('earthlineCanonicalHowBioswales16923');
-            const ex=d?.querySelector('[aria-labelledby="swaleExamplesTitle"]');
+            const ex=can?.querySelector('[aria-labelledby="swaleExamplesTitle"]');
+            const firstH2=can?.querySelector('h2');
             return {
               noSectionMarks:!(/§\d/.test(can?.innerText||'')),
               images:d?.querySelectorAll('img').length||0,
-              imagesFirst:!!ex&&!!can&&!!(ex.compareDocumentPosition(can)&Node.DOCUMENT_POSITION_FOLLOWING),
-              guide:(can?.innerText||'').includes('If you have two minutes')
+              imagesFirst:!!ex&&!!firstH2&&!!(ex.compareDocumentPosition(firstH2)&Node.DOCUMENT_POSITION_FOLLOWING),
+              guideRemoved:!(can?.innerText||'').includes('If you have two minutes')
             };
           });
           await p.evaluate(()=>window.earthlineCloseSwalesExplained16125?.());
