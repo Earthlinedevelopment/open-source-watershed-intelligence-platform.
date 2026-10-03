@@ -1,0 +1,22 @@
+name: Mantra 51 Fix Report Map Context
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - 'scripts/fix_report_map_context_16927.py'
+      - '.github/workflows/mantra51-fix-report-map-context.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 scripts/fix_report_map_context_16927.py
+          git diff --check
+          git add index.html
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git commit -m "fix: restore report water and aquifer context"
+          git push
