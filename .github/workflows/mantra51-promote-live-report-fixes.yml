@@ -1,0 +1,41 @@
+name: Mantra 51 Promote Live Report Fixes
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - 'scripts/fix_live_report_aquifers_16939.py'
+      - '.github/workflows/mantra51-promote-live-report-fixes.yml'
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          set -euo pipefail
+          cp scripts/fix_live_report_aquifers_16939.py /tmp/fix_aq.py
+          cp scripts/clean_how_swales_numbering_16936.py /tmp/fix_swales.py
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          python3 /tmp/fix_aq.py
+          python3 /tmp/fix_swales.py
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          assert 'EARTHLINE_PROPERTY_INHERITED_AQUIFER_CONTEXT_16373' in s
+          assert 'querySourceFeatures' in s
+          assert 'Earthline Water + Recharge Opportunity Map' in s
+          start=s.find('const HOW_BIOSWALES_REPORT_16388=')
+          end=s.find('function earthlineCanonicalHowBioswales16923',start)
+          assert '§' not in s[start:end]
+          PY
+          git config user.name Earthlinedevelopment
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git commit -m 'fix: show authoritative aquifers and clean report hierarchy'
+          git push origin pages-live
