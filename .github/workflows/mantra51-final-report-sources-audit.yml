@@ -1,0 +1,21 @@
+name: Mantra 51 Final Report Sources Audit
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-final-report-sources-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          for n in ['function finalSourcesPage16864','const finalSourcesPage16864','el16864-final-sources','el16926-source-list']:
+              i=s.find(n)
+              print('\n###',n,i)
+              if i>=0: print(s[max(0,i-800):i+6500].replace('\n',' '))
+          PY
