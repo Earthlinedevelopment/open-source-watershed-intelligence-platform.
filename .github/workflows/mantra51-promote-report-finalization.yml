@@ -1,0 +1,31 @@
+name: Mantra 51 Promote Report Finalization
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-promote-report-finalization.yml'
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          set -euo pipefail
+          cp index.html /tmp/earthline-report-final-index.html
+          git fetch origin pages-live
+          git checkout pages-live
+          cp /tmp/earthline-report-final-index.html index.html
+          git diff --check
+          changed="$(git diff --name-only)"
+          echo "Changed files:"
+          echo "$changed"
+          test "$changed" = "index.html"
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: finalize Earthline reports for launch"
+          git push origin pages-live
