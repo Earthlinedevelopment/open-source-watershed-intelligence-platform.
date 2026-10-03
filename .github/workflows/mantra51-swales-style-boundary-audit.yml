@@ -1,0 +1,20 @@
+name: Mantra 51 Swales Style Boundary Audit
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-swales-style-boundary-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          i=s.find('earthline-swales-professional-16389')
+          print('POS',i)
+          print(s[max(0,i-400):i+9000])
+          PY
