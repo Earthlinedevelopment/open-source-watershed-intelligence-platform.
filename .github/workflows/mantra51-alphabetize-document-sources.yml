@@ -1,0 +1,22 @@
+name: Mantra 51 Alphabetize Document Sources
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - 'scripts/alphabetize_document_sources_16926.py'
+      - '.github/workflows/mantra51-alphabetize-document-sources.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 scripts/alphabetize_document_sources_16926.py
+          git diff --check
+          git add index.html
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git commit -m "fix: alphabetize source lists at end of documents"
+          git push
