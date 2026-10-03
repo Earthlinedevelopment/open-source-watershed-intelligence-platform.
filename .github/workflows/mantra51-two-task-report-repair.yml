@@ -1,0 +1,50 @@
+name: Mantra 51 Two Task Report Repair
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - 'scripts/two_task_report_swales_16934.py'
+      - '.github/workflows/mantra51-two-task-report-repair.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          python3 scripts/two_task_report_swales_16934.py
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          s=Path('index.html').read_text(errors='ignore')
+          assert '<div class="el49-cover-map">${mapSvg(d,true)}</div>' not in s
+          assert "MultiPolygon" in s
+          assert "getStyle?.().sources" in s
+          assert 'fill="rgba(35,126,196,.22)"' in s
+          assert 'stroke="#087fb8" stroke-width="1.75"' in s
+          assert '+preserved+canonicalBlock+sourceBlock+src.slice(mainClose)' in s
+          assert 'earthline-swales-layout-16934' in s
+          class P(HTMLParser):
+              def __init__(self):
+                  super().__init__(); self.ins=False; self.buf=[]; self.scripts=[]
+              def handle_starttag(self,t,a):
+                  if t.lower()=='script': self.ins=True; self.buf=[]
+              def handle_endtag(self,t):
+                  if t.lower()=='script' and self.ins:
+                      self.scripts.append(''.join(self.buf)); self.ins=False
+              def handle_data(self,d):
+                  if self.ins:self.buf.append(d)
+          p=P();p.feed(s)
+          out=Path('/tmp/el-js');out.mkdir(exist_ok=True)
+          for i,j in enumerate(p.scripts):(out/f'{i:03}.js').write_text(j)
+          print('inline scripts',len(p.scripts))
+          PY
+          for f in /tmp/el-js/*.js; do node --check "$f" >/dev/null; done
+          git add index.html
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git commit -m "fix: professionalize report map and How Swales layout"
+          git push
