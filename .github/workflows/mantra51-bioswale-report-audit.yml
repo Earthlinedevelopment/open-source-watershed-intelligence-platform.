@@ -1,0 +1,41 @@
+name: Mantra 51 Bioswale Report Audit
+on:
+  workflow_dispatch:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-bioswale-report-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Locate report owners and approved copy
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(errors='ignore')
+          terms=[
+            'BIOSWALE IMPACT REPORT',
+            'How Bioswales Work',
+            'Corrections Registry',
+            'RUN ANALYSIS FIRST',
+            'engineer',
+            'DATA',
+            'earthlineVermontReport16149',
+            'Bioswale'
+          ]
+          lines=s.splitlines()
+          for term in terms:
+            print('\n===== TERM:',term,'=====')
+            hits=[i for i,l in enumerate(lines) if term.lower() in l.lower()]
+            print('hits',len(hits))
+            for i in hits[:30]:
+              a=max(0,i-6); b=min(len(lines),i+14)
+              print(f'--- {a+1}-{b} ---')
+              for j in range(a,b):
+                print(f'{j+1}: {lines[j]}')
+          PY
