@@ -1,0 +1,73 @@
+name: Mantra 51 Report Presentation Gate
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-report-presentation-gate.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: npm install --no-save playwright
+      - run: npx playwright install chromium
+      - run: python3 -m http.server 8787 >/tmp/el-http.log 2>&1 &
+      - name: Audit report map sources contrast duplication
+        run: |
+          cat > audit-report.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1800,height:1100}});
+          await page.goto('http://127.0.0.1:8787/index.html?reportgate='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.evaluate(()=>{
+            const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+            i.value='germany country'; i.dispatchEvent(new Event('input',{bubbles:true})); i.dispatchEvent(new Event('change',{bubbles:true})); b.click();
+          });
+          await page.waitForFunction(()=>window.EARTHLINE_REGIONAL_TERMINAL_16539?.status==='published',null,{timeout:180000,polling:250});
+          const rb=page.locator('#earthlineVermontReport16149');
+          await rb.click();
+          await page.waitForSelector('#earthlineVermontReportPanel16149.open',{timeout:30000});
+          const a=await page.evaluate(()=>{
+            const panel=document.getElementById('earthlineVermontReportPanel16149');
+            const report=panel?.querySelector('.el49-report');
+            const pages=[...(report?.querySelectorAll('.el49-page')||[])];
+            const tech=pages.find(p=>/Analysis Area and Technical Map/i.test(p.innerText||''));
+            const svg=tech?.querySelector('svg');
+            const paths=[...(svg?.querySelectorAll('path')||[])];
+            const aqua=paths.filter(p=>String(p.getAttribute('stroke')||'').toLowerCase()==='#237ec4').length;
+            const water=paths.filter(p=>String(p.getAttribute('stroke')||'').toLowerCase()==='#1a9fd3').length;
+            const allSources=pages.map((p,i)=>({i,text:p.innerText||'',sourceNodes:p.querySelectorAll('.el49-source,.el16864-hbw-sources,.el12-source-list').length}));
+            const sourcePages=allSources.filter(x=>/Sources|source|PMID|USGS|Mapbox Terrain|NOAA GRACE|WRI Aqueduct/i.test(x.text));
+            const nonFinalSourceNodes=allSources.slice(0,-1).reduce((n,x)=>n+x.sourceNodes,0);
+            const final=pages.at(-1);
+            const low=[];
+            for(const el of report?.querySelectorAll('p,li,td,th,span,small,div')||[]){
+              const txt=(el.textContent||'').trim(); if(!txt || txt.length>250) continue;
+              const cs=getComputedStyle(el), c=cs.color, bg=cs.backgroundColor;
+              const m=c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+              if(m){ const lum=.2126*+m[1]+.7152*+m[2]+.0722*+m[3]; if(lum>180) low.push({tag:el.tagName,cls:el.className,text:txt.slice(0,90),color:c,bg}); }
+            }
+            return {
+              pages:pages.length,
+              waterPathsInTechMap:water,
+              aquiferPathsInTechMap:aqua,
+              finalPage:(final?.innerText||'').slice(0,500),
+              nonFinalSourceNodes,
+              sourcePages:sourcePages.map(x=>({i:x.i,sourceNodes:x.sourceNodes,head:x.text.slice(0,160)})),
+              paleText:low.slice(0,80),
+              reportText:(report?.innerText||'').slice(0,30000)
+            };
+          });
+          console.log(JSON.stringify(a,null,2));
+          if(a.waterPathsInTechMap<1) throw new Error('Technical report map has no modeled water paths');
+          if(a.nonFinalSourceNodes>0) throw new Error('Source-class content remains before final report page');
+          if(!/Sources and evidence register/i.test(a.finalPage)) throw new Error('Final report page is not sources register');
+          await browser.close();
+          JS
+          node audit-report.mjs
