@@ -1,0 +1,72 @@
+name: Mantra 51 Two Task Runtime Gate
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - 'index.html'
+      - '.github/workflows/mantra51-two-task-runtime-gate.yml'
+permissions: {contents: read}
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: npm install --no-save playwright
+      - run: npx playwright install chromium
+      - run: python3 -m http.server 8787 >/tmp/el-http.log 2>&1 &
+      - run: |
+          cat > gate.mjs <<'JS'
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1600,height:1100}});
+          const errors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          await page.goto('http://127.0.0.1:8787/index.html?twotask='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#earthlineHamburgerMenu16233 a[href="#swales-explained"]',{state:'attached',timeout:30000});
+          await page.evaluate(()=>{location.hash='#swales-explained'});
+          await page.waitForSelector('#earthlineSwalesPage16125.open',{timeout:15000});
+          await page.waitForTimeout(700);
+          const sw=await page.evaluate(()=>{
+            const host=document.getElementById('earthlineSwalesPage16125');
+            const d=host?.querySelector('iframe')?.contentDocument;
+            const examples=d?.querySelector('[aria-labelledby="swaleExamplesTitle"]');
+            const canonical=d?.getElementById('earthlineCanonicalHowBioswales16923');
+            const sources=d?.getElementById('earthlineCanonicalHowBioswalesSources16923');
+            const corr=[...(d?.querySelectorAll('*')||[])].find(x=>/Corrections Registry/i.test(x.textContent||''));
+            const body=d?.body;
+            return {
+              images:d?.querySelectorAll('img').length||0,
+              examples:!!examples,
+              canonical:!!canonical,
+              examplesBeforeCanonical:!!examples&&!!canonical&&examples.compareDocumentPosition(canonical)&Node.DOCUMENT_POSITION_FOLLOWING?true:false,
+              style:!!d?.getElementById('earthline-swales-layout-16934'),
+              bodyFont:body?getComputedStyle(body).fontFamily:'',
+              canonicalWidth:canonical?canonical.getBoundingClientRect().width:0,
+              corrections:!!corr,
+              sources:!!sources,
+              sourcesAfterCanonical:!!sources&&!!canonical&&canonical.compareDocumentPosition(sources)&Node.DOCUMENT_POSITION_FOLLOWING?true:false,
+              z:host?getComputedStyle(host).zIndex:null
+            };
+          });
+          const report=await page.evaluate(()=>{
+            const src=[...document.scripts].map(s=>s.textContent||'').join('\n');
+            return {
+              coverMapCalls:(src.match(/mapSvg\(d,true\)/g)||[]).length,
+              fullMapCalls:(src.match(/mapSvg\(d,false\)/g)||[]).length,
+              multiPolygon:src.includes("'MultiPolygon'"),
+              liveAquiferFallback:src.includes("filter(id=>/aquifer/i.test(id))"),
+              aquiferVisible:src.includes('fill="rgba(35,126,196,.22)"'),
+              waterVisible:src.includes('stroke="#087fb8" stroke-width="1.75"'),
+              elevationLabels:src.includes('el-report-contour-label'),
+              lightweight:!src.includes('earthline-report-imagery-16934')
+            };
+          });
+          console.log(JSON.stringify({sw,report,errors},null,2));
+          if(sw.images<1||!sw.examples||!sw.canonical||!sw.examplesBeforeCanonical||!sw.style||!/Noto Sans/i.test(sw.bodyFont)||!sw.corrections||!sw.sources||!sw.sourcesAfterCanonical||Number(sw.z)<50000) throw new Error('How Swales runtime presentation gate failed');
+          if(report.coverMapCalls!==0||report.fullMapCalls<1||!report.multiPolygon||!report.liveAquiferFallback||!report.aquiferVisible||!report.waterVisible||!report.elevationLabels||!report.lightweight) throw new Error('Bioswale report map gate failed');
+          await browser.close();
+          JS
+          node gate.mjs
