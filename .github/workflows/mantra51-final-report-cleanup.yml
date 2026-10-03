@@ -1,0 +1,32 @@
+name: Mantra 51 Final Report Cleanup
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - 'scripts/final_report_cleanup_16932.py'
+      - '.github/workflows/mantra51-final-report-cleanup.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 scripts/final_report_cleanup_16932.py
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          assert 'earthline-report-contrast-16932' in s
+          i=s.find('function finalSourcesPage16864')
+          frag=s[i:i+2500]
+          assert '<h3>Evidence register</h3>' not in frag
+          assert "const body=typeof sourceRows" not in frag
+          assert 'el16926-source-list' in frag
+          PY
+          git add index.html
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git commit -m "fix: finalize report sources and text contrast"
+          git push
