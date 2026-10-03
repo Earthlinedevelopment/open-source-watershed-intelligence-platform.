@@ -1,0 +1,23 @@
+name: Mantra 51 Live Report Owners
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-live-report-owners.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          for term in ['function reportAquifers()','const HOW_BIOSWALES_REPORT_16388=','src=src.slice(0,mainOpenEnd+1)']:
+              i=s.find(term)
+              print('\n###',term,'POS',i)
+              if i>=0: print(s[i:i+6500].replace('\n',' '))
+          PY
