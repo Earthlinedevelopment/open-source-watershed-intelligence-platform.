@@ -1,0 +1,20 @@
+name: Mantra 51 Current Aquifer SVG Audit
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-current-aquifer-svg-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          i=s.find('const aquiferSvg=')
+          print('POS',i)
+          print(s[i:i+5500].replace('\n',' '))
+          PY
