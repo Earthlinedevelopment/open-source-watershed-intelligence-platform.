@@ -1,0 +1,28 @@
+name: Mantra 51 Property Flow Function Audit
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-property-flow-function-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(errors='ignore')
+          a=s.find('<script id="earthline-build-15845-target-hydrologic-causality">')
+          b=s.find('</script>',a)
+          x=s[a:b]
+          print('BLOCK',a,b,'bytes',len(x))
+          for m in re.finditer(r'function\s+([A-Za-z0-9_$]+)\s*\(',x):
+              name=m.group(1)
+              if re.search(r'flow|path|trace|water|down|stream|seed|route',name,re.I):
+                  i=a+m.start()
+                  print('\n###',name,'@',i)
+                  print(s[max(a,i-900):min(b,i+4200)].replace('\n',' '))
+          PY
