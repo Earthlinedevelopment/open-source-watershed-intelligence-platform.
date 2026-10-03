@@ -34,10 +34,11 @@ repaired=0
 while marker in s:
     m=s.find(marker)
     a=s.rfind('function finalSourcesPage16864',0,m)
-    b=s.find('function gapRows',m)
+    delim=' ;    /* Black and white by default.'
+    b=s.find(delim,m)
     if a<0 or b<0:
-        raise SystemExit('could not bound duplicate final sources owner')
-    s=s[:a]+new_fs+'   '+s[b:]
+        raise SystemExit('could not bound nested duplicate final sources owner')
+    s=s[:a]+new_fs+s[b:]
     repaired+=1
 if repaired<1:
     raise SystemExit('remaining duplicate final sources owner not found')
