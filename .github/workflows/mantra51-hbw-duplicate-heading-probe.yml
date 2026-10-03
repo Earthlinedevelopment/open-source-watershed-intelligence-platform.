@@ -1,0 +1,36 @@
+name: Mantra 51 HBW Duplicate Heading Probe
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-hbw-duplicate-heading-probe.yml'
+permissions: {contents: read}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: npm install --no-save playwright
+      - run: npx playwright install chromium
+      - run: python3 -m http.server 8787 >/tmp/el-http.log 2>&1 &
+      - run: |
+          cat > probe.mjs <<'JS'
+          import {chromium} from 'playwright';
+          const b=await chromium.launch({headless:true});
+          const p=await b.newPage();
+          await p.goto('http://127.0.0.1:8787/index.html?dup='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await p.waitForSelector('#earthlineHamburgerMenu16233 a[href="#swales-explained"]',{state:'attached',timeout:30000});
+          await p.evaluate(()=>{location.hash='#swales-explained'});
+          await p.waitForSelector('#earthlineSwalesPage16125.open',{timeout:15000});
+          await p.waitForTimeout(400);
+          const x=await p.evaluate(()=>{
+            const d=document.getElementById('earthlineSwalesPage16125').querySelector('iframe').contentDocument;
+            return [...d.querySelectorAll('h1,h2')].filter(h=>['How Bioswales Work','Sources'].includes((h.textContent||'').trim())).map(h=>({text:(h.textContent||'').trim(),tag:h.tagName,html:h.outerHTML,parent:h.parentElement?.outerHTML?.slice(0,1200)||'',anc:[...(()=>{let a=[],n=h;while(n&&a.length<5){a.push({tag:n.tagName,id:n.id,cls:n.className});n=n.parentElement}return a})()]}));
+          });
+          console.log(JSON.stringify(x,null,2));
+          await b.close();
+          JS
+          node probe.mjs
