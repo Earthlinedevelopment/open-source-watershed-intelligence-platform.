@@ -1,0 +1,69 @@
+name: Mantra 51 Reports Focus Runtime Gate
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-reports-focus-runtime-gate.yml'
+permissions: {contents: read}
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: npm install --no-save playwright
+      - run: npx playwright install chromium
+      - run: python3 -m http.server 8787 >/tmp/el-http.log 2>&1 &
+      - run: |
+          cat > gate.mjs <<'JS'
+          import {chromium} from 'playwright';
+          const b=await chromium.launch({headless:true});
+          const p=await b.newPage({viewport:{width:1600,height:1100}});
+          const errs=[];p.on('pageerror',e=>errs.push(e.message));
+          await p.goto('http://127.0.0.1:8787/index.html?gate='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await p.waitForTimeout(3500);
+          await p.evaluate(()=>{location.hash='#swales-explained'});
+          await p.waitForSelector('#earthlineSwalesPage16125.open',{timeout:15000});
+          await p.waitForTimeout(500);
+          const sw=await p.evaluate(()=>{
+            const d=document.querySelector('#earthlineSwalesPage16125 iframe')?.contentDocument;
+            const can=d?.getElementById('earthlineCanonicalHowBioswales16923');
+            const ex=d?.querySelector('[aria-labelledby="swaleExamplesTitle"]');
+            return {
+              noSectionMarks:!(/§\d/.test(can?.innerText||'')),
+              images:d?.querySelectorAll('img').length||0,
+              imagesFirst:!!ex&&!!can&&!!(ex.compareDocumentPosition(can)&Node.DOCUMENT_POSITION_FOLLOWING),
+              guide:(can?.innerText||'').includes('If you have two minutes')
+            };
+          });
+          await p.evaluate(()=>window.earthlineCloseSwalesExplained16125?.());
+          const report=await p.evaluate(()=>{
+            const tok='aq-cache-gate',bounds=[-73.25,44.0,-72.75,44.4];
+            window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=tok;
+            window.EARTHLINE_DISPLAYED_RUN_16151={runToken:tok,bounds,query:'Report Gate',tier:'regional',mode:'regional',completedAt:new Date().toISOString(),terrain:{source:'gate'},watersheds:{source:'gate',features:1},aquifers:{source:'gate',features:1,boundaryClass:'context'},derived:{contours:1,waterPaths:1,swaleOpportunityLines:1}};
+            window.EARTHLINE_REGIONAL_VISUAL_DATA_16020={bounds,
+              contours:{features:[{type:'Feature',properties:{ele:250},geometry:{type:'LineString',coordinates:[[-73.2,44.08],[-72.8,44.32]]}}]},
+              flows:{features:[{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[[-73.18,44.30],[-72.82,44.10]]}}]},
+              swales:{features:[{type:'Feature',properties:{grade:'A',score:82},geometry:{type:'LineString',coordinates:[[-73.15,44.18],[-72.85,44.20]]}}]},
+              aquifers:{features:[]}
+            };
+            window.EARTHLINE_ACCEPTED_REGIONAL_AQUIFER_GEOJSON_16373={type:'FeatureCollection',features:[{type:'Feature',properties:{name:'Verified Gate Aquifer'},geometry:{type:'Polygon',coordinates:[[[-73.12,44.12],[-72.90,44.12],[-72.90,44.27],[-73.12,44.27],[-73.12,44.12]]]}}]};
+            const opened=window.earthlineOpenVermontReport16151?.();
+            const panel=document.getElementById('earthlineVermontReportPanel16149');
+            const html=panel?.innerHTML||'';
+            return {
+              opened:!!opened,
+              oneMap:(panel?.querySelectorAll('.el49-figure svg').length||0)===1,
+              acceptedAquifer:html.includes('Verified Gate Aquifer'),
+              aquiferLabel:/AQUIFER\s*·/i.test(panel?.innerText||''),
+              newTitle:html.includes('Earthline Water + Recharge Opportunity Map'),
+              elevation:html.includes('250 m')
+            };
+          });
+          console.log(JSON.stringify({sw,report,errs},null,2));
+          if(Object.values(sw).some(v=>!v)||Object.values(report).some(v=>!v)||errs.some(e=>/Invalid or unexpected token|css is not defined/i.test(e)))throw new Error('focused reports gate failed');
+          await b.close();
+          JS
+          node gate.mjs
