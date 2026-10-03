@@ -1,0 +1,29 @@
+name: Mantra 51 Fix HBW Runtime Owner
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - 'scripts/fix_hbw_runtime_owner_16935.py'
+      - '.github/workflows/mantra51-fix-hbw-runtime-owner.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 scripts/fix_hbw_runtime_owner_16935.py
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          assert 'window.earthlineCanonicalHowBioswales16923();' in s
+          assert 'window.EARTHLINE_CORRECTIONS_REGISTRY_16513||' in s
+          assert 'window.EARTHLINE_CORRECTIONS_REGISTRY_16513=EARTHLINE_CORRECTIONS_REGISTRY_16513;' in s
+          PY
+          git add index.html
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git commit -m "fix: activate canonical How Bioswales runtime owner"
+          git push
