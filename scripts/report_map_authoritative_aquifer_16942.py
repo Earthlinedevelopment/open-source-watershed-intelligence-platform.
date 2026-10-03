@@ -43,7 +43,7 @@ if n!=1:
 
 s=s.replace("const b=reportBounds(d),W=760,H=small?360:440,pad=30;","const b=reportBounds(d),W=820,H=small?360:500,pad=34;",1)
 
-pat2=re.compile(r"const aquiferSvg=aquiferFeatures\.map\(\(f,i\)=>\{[\s\S]*?\}\)\.join\(''\);")
+pat2=re.compile(r"const aquiferSvg=aquiferFeatures\.map\(\(f,k\)=>\{[\s\S]*?\}\)\.join\(''\)\}\)\.join\(''\);")
 new2="""const aquiferSvg=aquiferFeatures.map((f,i)=>{
       const g=f&&f.geometry;if(!g)return '';
       const polys=g.type==='Polygon'?[g.coordinates]:(g.type==='MultiPolygon'?g.coordinates:[]);
@@ -73,9 +73,9 @@ if n!=1:
 # Make the technical hierarchy visibly different without changing a coordinate.
 for a,b in [
  ('<stop offset="0" stop-color="#f7f5ed"/><stop offset="1" stop-color="#e2ebe3"/>','<stop offset="0" stop-color="#f7f4ea"/><stop offset="1" stop-color="#e7ece4"/>'),
- ('stroke="#74847e" stroke-width=".58" opacity=".43"','stroke="#7d8982" stroke-width=".55" opacity=".32"'),
- ('stroke="#087fb8" stroke-width="1.75" opacity=".98"','stroke="#087bb4" stroke-width="1.95" opacity=".99"'),
- ('stroke="#c6d1cb" stroke-width=".5" opacity=".16"','stroke="#c6d1cb" stroke-width=".4" opacity=".08"')
+ ('stroke="#7b8a84" stroke-width=".34" opacity=".19"','stroke="#7d8982" stroke-width=".50" opacity=".30"'),
+ ('stroke="#2188b2" stroke-width=".88" opacity=".72"','stroke="#087bb4" stroke-width="1.45" opacity=".92"'),
+ ('stroke="#c6d1cb" stroke-width=".5" opacity=".16"','stroke="#c6d1cb" stroke-width=".4" opacity=".04"')
 ]:
     s=s.replace(a,b,1)
 
