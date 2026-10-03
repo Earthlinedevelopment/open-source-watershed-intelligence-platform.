@@ -1,0 +1,40 @@
+name: Mantra 51 Promote Focused Report Repairs
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-promote-focused-report-repairs.yml'
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          set -euo pipefail
+          cp scripts/fix_report_aquifer_cache_16938.py /tmp/fix_aq.py
+          cp scripts/clean_how_swales_numbering_16936.py /tmp/fix_swales.py
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          python3 /tmp/fix_aq.py
+          python3 /tmp/fix_swales.py
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          assert 'EARTHLINE_ACCEPTED_REGIONAL_AQUIFER_GEOJSON_16373' in s
+          assert 'EARTHLINE_PROPERTY_INHERITED_AQUIFER_CONTEXT_16373' in s
+          assert 'Earthline Water + Recharge Opportunity Map' in s
+          start=s.find('const HOW_BIOSWALES_REPORT_16388=')
+          end=s.find('function earthlineCanonicalHowBioswales16923',start)
+          assert '§' not in s[start:end]
+          PY
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name Earthlinedevelopment
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git commit -m 'fix: restore report aquifers and simplify How Swales hierarchy'
+          git push origin pages-live
