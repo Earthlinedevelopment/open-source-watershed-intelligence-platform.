@@ -1,0 +1,23 @@
+name: Mantra 51 Live Map Style Probe
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-live-map-style-probe.yml'
+permissions: {contents: read}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          for term in ['Earthline Screening Map','Water + Recharge','mainW=r.grade','stroke="#087bb4"','const title=']:
+              print(term, s.find(term))
+              i=s.find(term)
+              if i>=0: print(s[max(0,i-500):i+1800].replace('\n',' '))
+          PY
