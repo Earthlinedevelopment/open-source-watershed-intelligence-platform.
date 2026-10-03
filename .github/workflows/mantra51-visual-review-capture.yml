@@ -1,0 +1,68 @@
+name: Mantra 51 Visual Review Capture
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-visual-review-capture.yml'
+permissions: {contents: read}
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: npm install --no-save playwright
+      - run: npx playwright install chromium
+      - run: python3 -m http.server 8787 >/tmp/el-http.log 2>&1 &
+      - run: |
+          cat > capture.mjs <<'JS'
+          import {chromium} from 'playwright';
+          const b=await chromium.launch({headless:true});
+          const p=await b.newPage({viewport:{width:1600,height:1100},deviceScaleFactor:1});
+          await p.goto('http://127.0.0.1:8787/index.html?capture='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await p.waitForTimeout(3500);
+          await p.evaluate(()=>{location.hash='#swales-explained'});
+          await p.waitForSelector('#earthlineSwalesPage16125.open',{timeout:15000});
+          await p.waitForTimeout(600);
+          const frame=p.frameLocator('#earthlineSwalesPage16125 iframe');
+          await frame.locator('body').screenshot({path:'how-swales-top.png'});
+          await p.evaluate(()=>window.earthlineCloseSwalesExplained16125?.());
+          await p.evaluate(()=>{
+            const tok='visual-report',bounds=[-73.25,44,-72.75,44.4];
+            window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=tok;
+            window.EARTHLINE_DISPLAYED_RUN_16151={runToken:tok,bounds,query:'Professional Map Review',tier:'regional',mode:'regional',extentClass:'audit',completedAt:new Date().toISOString(),terrain:{source:'terrain',surfaceType:'DTM'},watersheds:{source:'watershed',features:1},aquifers:{source:'aquifer',features:1,boundaryClass:'context'},derived:{contours:6,waterPaths:3,swaleOpportunityLines:3}};
+            window.EARTHLINE_REGIONAL_VISUAL_DATA_16020={bounds,
+              contours:{features:[
+                {type:'Feature',properties:{ele:220},geometry:{type:'LineString',coordinates:[[-73.23,44.07],[-72.78,44.18]]}},
+                {type:'Feature',properties:{ele:240},geometry:{type:'LineString',coordinates:[[-73.22,44.11],[-72.78,44.22]]}},
+                {type:'Feature',properties:{ele:260},geometry:{type:'LineString',coordinates:[[-73.20,44.15],[-72.79,44.27]]}},
+                {type:'Feature',properties:{ele:280},geometry:{type:'LineString',coordinates:[[-73.18,44.19],[-72.80,44.31]]}}
+              ]},
+              flows:{features:[
+                {type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[[-73.16,44.34],[-73.02,44.25],[-72.87,44.08]]}},
+                {type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[[-73.20,44.29],[-73.05,44.22],[-72.92,44.12]]}}
+              ]},
+              swales:{features:[
+                {type:'Feature',properties:{grade:'A',score:88},geometry:{type:'LineString',coordinates:[[-73.17,44.25],[-73.02,44.24],[-72.88,44.23]]}},
+                {type:'Feature',properties:{grade:'B',score:76},geometry:{type:'LineString',coordinates:[[-73.16,44.20],[-73.01,44.19],[-72.87,44.18]]}},
+                {type:'Feature',properties:{grade:'C',score:65},geometry:{type:'LineString',coordinates:[[-73.14,44.15],[-73.00,44.14],[-72.86,44.13]]}}
+              ]},
+              aquifers:{features:[{type:'Feature',properties:{name:'Fractured bedrock groundwater'},geometry:{type:'MultiPolygon',coordinates:[[[[-73.12,44.12],[-72.91,44.12],[-72.91,44.29],[-73.12,44.29],[-73.12,44.12]]]]}}]}
+            };
+            window.earthlineOpenVermontReport16151?.();
+          });
+          await p.waitForSelector('#earthlineVermontReportPanel16149.open',{timeout:10000});
+          await p.waitForTimeout(400);
+          const fig=p.locator('#earthlineVermontReportPanel16149 .el49-figure').first();
+          await fig.screenshot({path:'impact-report-map.png'});
+          await b.close();
+          JS
+          node capture.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mantra51-visual-review
+          path: |
+            how-swales-top.png
+            impact-report-map.png
