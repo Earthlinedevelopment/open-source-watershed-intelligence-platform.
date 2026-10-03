@@ -1,0 +1,35 @@
+name: Mantra 51 Report Production Diff Audit
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - '.github/workflows/mantra51-report-production-diff-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: |
+          set -euo pipefail
+          git fetch origin pages-live
+          cp index.html /tmp/candidate.html
+          git show origin/pages-live:index.html > /tmp/live.html
+          python3 - <<'PY'
+          from pathlib import Path
+          c=Path('/tmp/candidate.html').read_text(errors='ignore')
+          l=Path('/tmp/live.html').read_text(errors='ignore')
+          keys=[
+            'earthline-report-contrast-16932',
+            '<h3>Evidence register</h3>'+'${'+'body}',
+            'if(isVermont)for(const [name,x,y] of towns)',
+            'sparse elevation labels in metres',
+            'Corrections Registry',
+            'earthlineCanonicalHowBioswalesSources16923',
+            'el12-source-list'
+          ]
+          for k in keys:
+              print(k, 'candidate=', k in c, 'live=', k in l)
+          print('candidate_bytes',len(c),'live_bytes',len(l),'same',c==l)
+          PY
