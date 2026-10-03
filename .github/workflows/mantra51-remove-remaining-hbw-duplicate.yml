@@ -1,0 +1,28 @@
+name: Mantra 51 Remove Remaining HBW Duplicate
+on:
+  push:
+    branches: [mantra51-global-repair-campaign]
+    paths:
+      - 'scripts/remove_remaining_hbw_duplicate_16937.py'
+      - '.github/workflows/mantra51-remove-remaining-hbw-duplicate.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 scripts/remove_remaining_hbw_duplicate_16937.py
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          assert '.earthline-hbw-v2-16513' in s
+          assert "holder.querySelectorAll('#earthlineHowBioswalesApproved16388,#earthlineSuccessfulSystems16149,.earthline-hbw-v2-16513,.el12-corrections')" in s
+          PY
+          git add index.html
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git commit -m "fix: remove final duplicate How Bioswales section"
+          git push
