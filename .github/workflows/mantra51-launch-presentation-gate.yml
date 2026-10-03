@@ -34,31 +34,35 @@ jobs:
             const host=document.getElementById('earthlineSwalesPage16125');
             const d=host?.querySelector('iframe')?.contentDocument;
             const c=d?.getElementById('earthlineCanonicalHowBioswales16923');
-            const v=d?.querySelector('section[aria-labelledby="swaleExamplesTitle"]');
-            const imgs=[...(d?.querySelectorAll('.eswale-card img')||[])];
-            const hs=[...(d?.querySelectorAll('main h1,main h2,main h3')||[])].map(x=>(x.textContent||'').trim());
-            const first=imgs[0];
+            const v=c?.querySelector('section[aria-labelledby="swaleExamplesTitle"]');
+            const imgs=[...(c?.querySelectorAll('.eswale-card img')||[])];
+            const links=[...(c?.querySelectorAll('.earthline-swale-image-link-16940')||[])];
+            const hs=[...(c?.querySelectorAll('h1,h2,h3')||[])].map(x=>(x.textContent||'').trim());
+            const allTop=[...(d?.querySelector('main')?.children||[])];
+            const precedent=c?.querySelector('.el-precedent-16148');
+            const corrections=allTop.find(x=>/Corrections Registry/i.test(x.textContent||''));
+            const sources=d?.getElementById('earthlineCanonicalHowBioswalesSources16923');
+            const quotes=[...(c?.querySelectorAll('.earthline-quote')||[])];
+            const visualIndex=v?[...c.children].indexOf(v):-1;
+            const firstInfo=[...c.querySelectorAll('h2')].find(h=>/What a bioswale is/i.test(h.textContent||''));
             return {
               page:!!host,
               images:imgs.length,
-              firstWidth:first?first.getBoundingClientRect().width:0,
+              firstWidth:imgs[0]?imgs[0].getBoundingClientRect().width:0,
+              links:links.length,
+              linksFull:links.length>0&&links.every(a=>a.target==='_blank'&&!!a.getAttribute('href')),
               visualInsideCanonical:!!v&&!!c&&c.contains(v),
+              visualIndex,
               h1:hs[0]||'',
-              randomNumbering:hs.some(t=>/^§\d+|^\d+\.\d+\s*·/.test(t)),
-              viewer:!!d?.getElementById('earthlineImageViewer16939'),
-              style:!!d?.getElementById('earthline-swales-structure-16939'),
-              sourceLast:!!d?.getElementById('earthlineCanonicalHowBioswalesSources16923')
+              randomNumbering:hs.some(t=>/^§\\d+|^\\d+\\.\\d+\\s*·/.test(t)),
+              firstInfo:!!firstInfo,
+              firstInfoAfterVisual:!!firstInfo&&!!v&&!!(v.compareDocumentPosition(firstInfo)&Node.DOCUMENT_POSITION_FOLLOWING),
+              precedentNearEnd:!!precedent&&!!corrections&&!!(precedent.compareDocumentPosition(corrections)&Node.DOCUMENT_POSITION_FOLLOWING),
+              quotes:quotes.length,
+              quoteMaxHeight:quotes.length?Math.max(...quotes.map(q=>q.getBoundingClientRect().height)):0,
+              style:!!d?.getElementById('earthline-swales-structure-16940'),
+              sourceLast:!!sources&&allTop[allTop.length-1]===sources
             };
-          });
-          await page.evaluate(()=>{
-            const d=document.querySelector('#earthlineSwalesPage16125 iframe')?.contentDocument;
-            d?.querySelector('.eswale-card img')?.click();
-          });
-          await page.waitForTimeout(250);
-          const viewerOpen=await page.evaluate(()=>{
-            const d=document.querySelector('#earthlineSwalesPage16125 iframe')?.contentDocument;
-            const v=d?.getElementById('earthlineImageViewer16939');
-            return !!v?.classList.contains('open') && !!v?.querySelector('img')?.getAttribute('src');
           });
           await page.evaluate(()=>window.earthlineCloseSwalesExplained16125?.());
 
@@ -99,11 +103,13 @@ jobs:
               swaleA:html.includes('#177c58')
             };
           });
-          console.log(JSON.stringify({title,sw,viewerOpen,report,errors},null,2));
+          console.log(JSON.stringify({title,sw,report,errors},null,2));
           if(title!=='Earthline — Aquifer Recharging Starts Here.') throw new Error('Browser title gate failed');
-          if(sw.images<1||sw.firstWidth<700||!sw.visualInsideCanonical||sw.h1!=='How Bioswales Work'||sw.randomNumbering||!sw.viewer||!viewerOpen||!sw.style||!sw.sourceLast) throw new Error('How Swales presentation gate failed');
+          if(sw.images<1||sw.firstWidth<700||sw.links<sw.images||!sw.linksFull||!sw.visualInsideCanonical||sw.visualIndex!==1||sw.h1!=='How Bioswales Work'||sw.randomNumbering||!sw.firstInfo||!sw.firstInfoAfterVisual||!sw.precedentNearEnd||sw.quotes<2||sw.quoteMaxHeight>360||!sw.style||!sw.sourceLast) throw new Error('How Swales presentation gate failed');
           if(!report.opened||!report.panel||report.mapCount!==1||report.coverMapCount!==0||!report.aquiferLabel||!report.acceptedAquifer||!report.aquiferFill||!report.water||!report.elevation||!report.swaleA) throw new Error('Report map presentation gate failed');
           if(errors.some(e=>/Invalid or unexpected token|css is not defined|Missing catch or finally/i.test(e))) throw new Error('Runtime syntax gate failed');
           await browser.close();
           JS
           node gate.mjs
+
+# rerun after 16940 How Swales rebuild
