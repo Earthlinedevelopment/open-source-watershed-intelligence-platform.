@@ -1,0 +1,24 @@
+name: Mantra 51 Map Style Focus Audit
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-map-style-focus-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          a=s.find('function mapSvg(d,small=false)')
+          b=s.find('function gradeSummary()',a)
+          frag=s[a:b]
+          for term in ['const aquiferSvg=','for(const f of flows()','const rows=graded()','MAP LEGEND','Aquifer context','Groundwater context']:
+              i=frag.find(term)
+              print('\n###',term,i)
+              if i>=0:print(frag[max(0,i-1400):i+5000].replace('\n',' '))
+          PY
