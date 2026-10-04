@@ -60,14 +60,15 @@ jobs:
             const target=await page.evaluate(()=>{
               try{
                 earthlineMap.jumpTo({center:[-86.68074,32.60936],zoom:17,bearing:0,pitch:0});
-                if(typeof earthlineSetTarget==='function')earthlineSetTarget(-86.68074,32.60936,false);
-                const i=document.getElementById('searchInput');if(i)i.value='';
-                return {ok:true};
+                if(typeof window.earthlineSetPropertyTarget16201!=='function')throw new Error('Property target owner unavailable');
+                window.earthlineSetPropertyTarget16201({lng:-86.68074,lat:32.60936,source:'crosshair'},{openPanel:true});
+                return {ok:true,target:window.EARTHLINE_PROPERTY_TARGET_16201};
               }catch(e){return {ok:false,error:String(e&&e.message||e)}}
             });
             if(!target.ok)throw new Error(target.error);
-            await page.waitForTimeout(1200);
-            await page.click('#runBtn');
+            await page.waitForSelector('#earthlineDeclareProperty16169',{state:'visible',timeout:15000});
+            await page.waitForFunction(()=>{const b=document.getElementById('earthlineDeclareProperty16169');return !!(b&&!b.disabled)}, {timeout:15000});
+            await page.click('#earthlineDeclareProperty16169');
             await page.waitForFunction(()=>{
               const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
               return !!(d&&String(d.tier||d.mode||'').toLowerCase()==='property');
