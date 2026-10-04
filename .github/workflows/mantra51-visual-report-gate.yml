@@ -1,0 +1,103 @@
+name: Mantra 51 Visual Report Gate
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - 'index.html'
+      - '.github/workflows/mantra51-visual-report-gate.yml'
+permissions: {contents: read}
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: npm install --no-save playwright
+      - run: npx playwright install chromium
+      - run: python3 -m http.server 8787 >/tmp/el-http.log 2>&1 &
+      - run: |
+          cat > gate.mjs <<'JS'
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1600,height:1100},deviceScaleFactor:1});
+          const errors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          await page.goto('http://127.0.0.1:8787/index.html?visualgate='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForTimeout(3500);
+
+          await page.evaluate(()=>{location.hash='#swales-explained'});
+          await page.waitForSelector('#earthlineSwalesPage16125.open',{timeout:15000});
+          await page.waitForTimeout(600);
+          const sw=await page.evaluate(()=>{
+            const h=document.getElementById('earthlineSwalesPage16125'),d=h?.querySelector('iframe')?.contentDocument;
+            const ex=d?.querySelector('[aria-labelledby="swaleExamplesTitle"]');
+            const can=d?.getElementById('earthlineCanonicalHowBioswales16923');
+            const text=d?.body?.innerText||'';
+            const core=[...(d?.querySelectorAll('h2')||[])].find(x=>/idea in one minute/i.test(x.textContent||''));
+            let coreText='';
+            if(core){for(let n=core.nextSibling;n&&!(n.nodeType===1&&n.tagName==='H2');n=n.nextSibling)coreText+=n.textContent||''}
+            return {
+              images:d?.querySelectorAll('img').length||0,
+              imagesFirst:!!ex&&!!can&&!!(ex.compareDocumentPosition(can)&Node.DOCUMENT_POSITION_FOLLOWING),
+              core:!!core,
+              coreText,
+              brokenRefs:/§\s*\d|If you have two minutes|If you have ten/i.test(coreText),
+              sourcesAtEnd:!!d?.getElementById('earthlineCanonicalHowBioswalesSources16923')
+            };
+          });
+          const frame=page.locator('#earthlineSwalesPage16125 iframe');
+          await frame.screenshot({path:'how-swales.png'});
+
+          await page.evaluate(()=>window.earthlineCloseSwalesExplained16125?.());
+          const report=await page.evaluate(()=>{
+            const tok='earthline-report-visual-16942',bounds=[-112.4,33.1,-111.7,33.7];
+            window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=tok;
+            window.EARTHLINE_DISPLAYED_RUN_16151={runToken:tok,bounds,query:'Arizona Visual Gate',tier:'regional',mode:'regional',extentClass:'regional',completedAt:new Date().toISOString(),terrain:{source:'gate terrain',surfaceType:'DTM'},watersheds:{source:'gate',features:1},aquifers:{source:'gate aquifer source',features:1,boundaryClass:'context'},derived:{contours:3,waterPaths:2,swaleOpportunityLines:2}};
+            window.EARTHLINE_REGIONAL_VISUAL_DATA_16020={bounds,
+              contours:{features:[
+                {type:'Feature',properties:{ele:400},geometry:{type:'LineString',coordinates:[[-112.32,33.18],[-111.80,33.55]]}},
+                {type:'Feature',properties:{ele:500},geometry:{type:'LineString',coordinates:[[-112.35,33.28],[-111.78,33.60]]}},
+                {type:'Feature',properties:{ele:600},geometry:{type:'LineString',coordinates:[[-112.30,33.38],[-111.76,33.64]]}}
+              ]},
+              flows:{features:[
+                {type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[[-112.28,33.58],[-112.08,33.42],[-111.84,33.22]]}},
+                {type:'Feature',properties:{},geometry:{type:'LineString',coordinates:[[-112.20,33.62],[-112.02,33.48],[-111.90,33.32]]}}
+              ]},
+              swales:{features:[
+                {type:'Feature',properties:{grade:'A',score:86},geometry:{type:'LineString',coordinates:[[-112.24,33.48],[-112.08,33.46],[-111.90,33.45]]}},
+                {type:'Feature',properties:{grade:'B',score:71},geometry:{type:'LineString',coordinates:[[-112.22,33.36],[-112.04,33.35],[-111.86,33.34]]}}
+              ]},
+              aquifers:{features:[{type:'Feature',properties:{name:'Mapped regional aquifer'},geometry:{type:'MultiPolygon',coordinates:[[[[-112.18,33.29],[-111.90,33.29],[-111.90,33.52],[-112.18,33.52],[-112.18,33.29]]]]}}]}
+            };
+            const opened=window.earthlineOpenVermontReport16151?.();
+            const p=document.getElementById('earthlineVermontReportPanel16149');
+            const html=p?.innerHTML||'';
+            return {
+              opened:!!opened,
+              panel:!!p?.classList.contains('open'),
+              maps:p?.querySelectorAll('.el49-figure svg').length||0,
+              aquiferShapes:(html.match(/rgba\(92,170,202,.18\)/g)||[]).length,
+              aquiferSpam:(html.match(/AQUIFER\s*·/g)||[]).length,
+              water:html.includes('#5b9fc2'),
+              swale:html.includes('#4f8b5d'),
+              elevation:html.includes('400 m'),
+              legend:/Groundwater \/ aquifer context/.test(html)&&/Planted bioswale/.test(html)
+            };
+          });
+          await page.waitForTimeout(500);
+          await page.locator('#earthlineVermontReportPanel16149 .el49-page').nth(2).screenshot({path:'bioswale-report-map.png'});
+          console.log(JSON.stringify({sw,report,errors},null,2));
+          if(sw.images<1||!sw.imagesFirst||!sw.core||sw.brokenRefs||!sw.sourcesAtEnd)throw new Error('How Swales hierarchy gate failed');
+          if(!report.opened||!report.panel||report.maps!==1||report.aquiferShapes<1||report.aquiferSpam!==0||!report.water||!report.swale||!report.elevation||!report.legend)throw new Error('Report map presentation gate failed');
+          if(errors.some(e=>/Invalid or unexpected token|ReferenceError/i.test(e)))throw new Error('Runtime error');
+          await browser.close();
+          JS
+          node gate.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mantra51-report-visuals
+          path: |
+            how-swales.png
+            bioswale-report-map.png
