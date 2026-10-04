@@ -179,13 +179,14 @@ window.EARTHLINE_LAUNCH_16872={build:BUILD,quota,consumePaidSearch,createAccount
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 
 
-/* EARTHLINE_REPORT_VISUAL_REPAIR_16958 — real-world aerial illustration renderer.
-   Presentation only: preserves analysis geometry and rebuilds the report SVG as a lightweight aerial landscape rendering. */
-(function installReportVisualRepair16958(){
-  if(window.EARTHLINE_REPORT_VISUAL_REPAIR_16958)return;
-  window.EARTHLINE_REPORT_VISUAL_REPAIR_16958=true;
 
-  const STYLE_ID='earthlineReportVisualRepair16958';
+/* EARTHLINE_REPORT_VISUAL_REPAIR_16959 — authoritative studio-plan renderer.
+   Lightweight vector presentation only: preserves hydrology, geometry, ranking, search, and run-state. */
+(function installReportVisualRepair16959(){
+  if(window.EARTHLINE_REPORT_VISUAL_REPAIR_16959)return;
+  window.EARTHLINE_REPORT_VISUAL_REPAIR_16959=true;
+
+  const STYLE_ID='earthlineReportVisualRepair16959';
   const NS='http://www.w3.org/2000/svg';
   const TOWNS=new Set(['Burlington','Montpelier','Rutland','St. Johnsbury','Middlebury','St. Albans','Bennington','Brattleboro','Newport','Charlotte']);
 
@@ -193,23 +194,23 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(document.getElementById(STYLE_ID))return;
     const st=document.createElement('style');st.id=STYLE_ID;
     st.textContent=[
-      'html.earthline-impact-report-open-16958 #earthlineRail16188,',
-      'html.earthline-impact-report-open-16958 #earthlineLaunchFallbackRail16872,',
-      'html.earthline-impact-report-open-16958 #earthlineLaunchLogin16872,',
-      'html.earthline-impact-report-open-16958 #earthlineLaunchDonate16872,',
-      'html.earthline-impact-report-open-16958 #earthlineLaunchMerch16872,',
-      'html.earthline-impact-report-open-16958 #searchOrb,',
-      'html.earthline-impact-report-open-16958 [id*="SearchOrb"],',
-      'html.earthline-impact-report-open-16958 [id^="earthlineRail"],',
-      'html.earthline-impact-report-open-16958 .earthline-launch-rail-btn-16872,',
-      'html.earthline-impact-report-open-16958 .el-rail-control-16188,',
-      'html.earthline-impact-report-open-16958 .mapboxgl-ctrl{display:none!important;visibility:hidden!important;pointer-events:none!important}',
+      'html.earthline-impact-report-open-16959 #earthlineRail16188,',
+      'html.earthline-impact-report-open-16959 #earthlineLaunchFallbackRail16872,',
+      'html.earthline-impact-report-open-16959 #earthlineLaunchLogin16872,',
+      'html.earthline-impact-report-open-16959 #earthlineLaunchDonate16872,',
+      'html.earthline-impact-report-open-16959 #earthlineLaunchMerch16872,',
+      'html.earthline-impact-report-open-16959 #searchOrb,',
+      'html.earthline-impact-report-open-16959 [id*="SearchOrb"],',
+      'html.earthline-impact-report-open-16959 [id^="earthlineRail"],',
+      'html.earthline-impact-report-open-16959 .earthline-launch-rail-btn-16872,',
+      'html.earthline-impact-report-open-16959 .el-rail-control-16188,',
+      'html.earthline-impact-report-open-16959 .mapboxgl-ctrl{display:none!important;visibility:hidden!important;pointer-events:none!important}',
       '.el49-report .el49-toolbar-actions .el49-tool:not(.el49-close){display:none!important}',
-      '.el49-report .el49-close{width:34px!important;height:34px!important;min-width:34px!important;padding:0!important;border-radius:50%!important;background:#eef1ee!important;color:#31413d!important;box-shadow:none!important;font-size:22px!important}',
+      '.el49-report .el49-close{width:30px!important;height:30px!important;min-width:30px!important;padding:0!important;border-radius:50%!important;background:#f2f3f0!important;color:#46554f!important;border:1px solid #d0d5d0!important;box-shadow:none!important;font-size:20px!important}',
       '.el49-report .el49-toolbar-actions{gap:0!important}',
-      '.el49-report .el49-figure{background:#f3efe4!important;padding:8px!important;border:0!important;box-shadow:0 14px 34px rgba(26,43,36,.12)!important}',
-      '.el49-report .el49-figure svg.el-report-aerial-16958{display:block!important;width:100%!important;height:auto!important;border:0!important;background:#e9ede3!important}',
-      '.el49-report .el49-figure figcaption{margin:11px 4px 2px!important;max-width:82ch!important;color:#465b55!important;font-size:11.5px!important;line-height:1.46!important}'
+      '.el49-report .el49-figure{background:#f7f5ef!important;padding:6px!important;border:0!important;box-shadow:0 7px 18px rgba(36,49,43,.08)!important}',
+      '.el49-report .el49-figure svg.el-report-studio-16959{display:block!important;width:100%!important;height:auto!important;border:1px solid #b8bdb6!important;background:#fbfaf6!important}',
+      '.el49-report .el49-figure figcaption{margin:9px 4px 2px!important;max-width:84ch!important;color:#4b5a55!important;font-size:11.5px!important;line-height:1.45!important}'
     ].join('\n');
     (document.head||document.documentElement).appendChild(st);
   }
@@ -232,7 +233,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     return e;
   }
   function color(v){return String(v||'').trim().toLowerCase()}
-  function addPath(g,d,attrs){if(!d)return null;const p=svgEl('path',Object.assign({d,fill:'none'},attrs||{}));g.appendChild(p);return p}
+  function addPath(g,d,attrs){if(!d)return null;const p=svgEl('path',Object.assign({d,fill:'none','vector-effect':'non-scaling-stroke'},attrs||{}));g.appendChild(p);return p}
 
   function collect(svg){
     const out={aquifer:[],water:[],a:[],b:[],c:[],contour:[],road:[],boundary:[],towns:[],elev:[],north:null,scale:null};
@@ -248,6 +249,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       if(st==='#aa9675'||st==='#b7a58c'){out.road.push(d);return}
       if(st==='#6f857c'||st==='#6f7e73'){out.boundary.push(d);return}
     });
+
     [...svg.querySelectorAll('text')].forEach(t=>{
       const tx=(t.textContent||'').trim();
       if(TOWNS.has(tx))out.towns.push(t.cloneNode(true));
@@ -260,127 +262,145 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
   function defs(){
     const d=svgEl('defs');
-    const land=svgEl('linearGradient',{id:'elLand16958',x1:'0',y1:'0',x2:'1',y2:'1'});
-    [['0','#d4dfcf'],['.28','#e7eadc'],['.58','#e5dfcf'],['1','#cdd9cc']].forEach(x=>land.appendChild(svgEl('stop',{offset:x[0],'stop-color':x[1]})));
-    d.appendChild(land);
 
-    const aq=svgEl('linearGradient',{id:'elAq16958',x1:'0',y1:'0',x2:'1',y2:'1'});
-    [['0','#f6b15b','.76'],['.52','#e68b2f','.57'],['1','#d36f20','.43']].forEach(x=>aq.appendChild(svgEl('stop',{offset:x[0],'stop-color':x[1],'stop-opacity':x[2]})));
+    const aq=svgEl('pattern',{id:'elAq16959',width:10,height:10,patternUnits:'userSpaceOnUse',patternTransform:'rotate(28)'});
+    aq.appendChild(svgEl('rect',{width:10,height:10,fill:'#e89643','fill-opacity':'.19'}));
+    aq.appendChild(svgEl('path',{d:'M0 0 V10',stroke:'#c96d1f','stroke-width':'.7','stroke-opacity':'.22'}));
     d.appendChild(aq);
 
-    const pat=svgEl('pattern',{id:'elAqDots16958',width:'12',height:'12',patternUnits:'userSpaceOnUse'});
-    pat.append(svgEl('circle',{cx:'2.5',cy:'2.5',r:'1.15',fill:'#a95618',opacity:'.28'}),svgEl('circle',{cx:'9',cy:'8',r:'.8',fill:'#ffd6a0',opacity:'.32'}));
-    d.appendChild(pat);
+    const textHalo=svgEl('filter',{id:'elText16959',x:'-20%',y:'-20%',width:'140%',height:'140%'});
+    textHalo.append(
+      svgEl('feMorphology',{operator:'dilate',radius:'1.1',in:'SourceAlpha',result:'d'}),
+      svgEl('feFlood',{'flood-color':'#fbfaf6','flood-opacity':'.92',result:'f'}),
+      svgEl('feComposite',{in:'f',in2:'d',operator:'in',result:'o'})
+    );
+    const merge=svgEl('feMerge');
+    merge.append(svgEl('feMergeNode',{in:'o'}),svgEl('feMergeNode',{in:'SourceGraphic'}));
+    textHalo.appendChild(merge);d.appendChild(textHalo);
 
-    const tex=svgEl('filter',{id:'elTerrainTexture16958',x:'-10%',y:'-10%',width:'120%',height:'120%'});
-    tex.append(svgEl('feTurbulence',{type:'fractalNoise',baseFrequency:'.016 .032',numOctaves:'2',seed:'31'}),svgEl('feColorMatrix',{type:'saturate',values:'.18'}));
-    const comp=svgEl('feComponentTransfer');comp.appendChild(svgEl('feFuncA',{type:'table',tableValues:'0 .10'}));tex.appendChild(comp);d.appendChild(tex);
-
-    const blur=svgEl('filter',{id:'elHill16958',x:'-15%',y:'-15%',width:'130%',height:'130%'});blur.appendChild(svgEl('feGaussianBlur',{stdDeviation:'5.5'}));d.appendChild(blur);
-    const sw=svgEl('filter',{id:'elSwaleShadow16958',x:'-20%',y:'-20%',width:'140%',height:'140%'});sw.appendChild(svgEl('feDropShadow',{dx:'0',dy:'1.5',stdDeviation:'1.4','flood-color':'#213a2d','flood-opacity':'.30'}));d.appendChild(sw);
-    const wa=svgEl('filter',{id:'elWaterShadow16958',x:'-20%',y:'-20%',width:'140%',height:'140%'});wa.appendChild(svgEl('feDropShadow',{dx:'0',dy:'1',stdDeviation:'1.1','flood-color':'#0b587d','flood-opacity':'.24'}));d.appendChild(wa);
-
-    const vig=svgEl('radialGradient',{id:'elVig16958',cx:'.5',cy:'.46',r:'.76'});
-    vig.append(svgEl('stop',{offset:'.64','stop-color':'#fff','stop-opacity':'0'}),svgEl('stop',{offset:'1','stop-color':'#51675a','stop-opacity':'.16'}));d.appendChild(vig);
     return d;
   }
 
   function rebuild(svg){
-    if(!svg||svg.dataset.earthlineAerial16958==='1')return;
+    if(!svg||svg.dataset.earthlineStudio16959==='1')return;
     const vb=svg.viewBox&&svg.viewBox.baseVal?svg.viewBox.baseVal:null;
     const W=(vb&&vb.width)||820,H=(vb&&vb.height)||500;
     const data=collect(svg);
-    const label=(svg.getAttribute('aria-label')||'Earthline').replace(/^Earthline\s*/i,'').replace(/screening map/i,'').trim();
+    const rawLabel=(svg.getAttribute('aria-label')||'').replace(/^Earthline\s*/i,'').replace(/screening map/i,'').trim();
+    const title=rawLabel||'Water + Recharge Opportunity Plan';
 
     while(svg.firstChild)svg.removeChild(svg.firstChild);
-    svg.classList.add('el-report-aerial-16958');
+    svg.classList.add('el-report-studio-16959');
     svg.setAttribute('preserveAspectRatio','xMidYMid meet');
     svg.appendChild(defs());
 
-    svg.appendChild(svgEl('rect',{width:W,height:H,fill:'#f5f2e9'}));
-    svg.appendChild(svgEl('rect',{x:14,y:14,width:W-28,height:H-28,rx:7,fill:'url(#elLand16958)'}));
-    svg.appendChild(svgEl('rect',{x:14,y:14,width:W-28,height:H-28,rx:7,fill:'#6b806f',opacity:'.065',filter:'url(#elTerrainTexture16958)'}));
+    // Clean Illustrator-style paper base.
+    svg.appendChild(svgEl('rect',{width:W,height:H,fill:'#fbfaf6'}));
+    svg.appendChild(svgEl('rect',{x:18,y:18,width:W-36,height:H-36,fill:'#f7f5ee',stroke:'#c4c8c1','stroke-width':'.8'}));
 
-    const relief=svgEl('g',{opacity:'.13',filter:'url(#elHill16958)'});
-    data.contour.filter((_,i)=>i%6===0).forEach((d,i)=>addPath(relief,d,{stroke:i%2===0?'#55705c':'#9a815e','stroke-width':i%3===0?18:12,'stroke-linecap':'round'}));
-    svg.appendChild(relief);
-
-    const aq=svgEl('g',{class:'el16958-aquifers'});
-    data.aquifer.forEach(d=>{
-      aq.appendChild(svgEl('path',{d,fill:'url(#elAq16958)','fill-rule':'evenodd',stroke:'#cd711f','stroke-width':'1.5',opacity:'.96','vector-effect':'non-scaling-stroke'}));
-      aq.appendChild(svgEl('path',{d,fill:'url(#elAqDots16958)','fill-rule':'evenodd',stroke:'none',opacity:'.38'}));
+    // Subtle pseudo-hillshade made only from existing contours: crisp, lightweight, no raster.
+    const reliefShadow=svgEl('g',{transform:'translate(1.8 1.8)',opacity:'.10'});
+    const reliefLight=svgEl('g',{transform:'translate(-1.2 -1.2)',opacity:'.38'});
+    data.contour.filter((_,i)=>i%5===0).forEach(d=>{
+      addPath(reliefShadow,d,{stroke:'#7f8a7f','stroke-width':'5.4','stroke-linecap':'round'});
+      addPath(reliefLight,d,{stroke:'#ffffff','stroke-width':'3.2','stroke-linecap':'round'});
     });
-    svg.appendChild(aq);
+    svg.append(reliefShadow,reliefLight);
 
-    const context=svgEl('g',{class:'el16958-context'});
-    data.boundary.forEach(d=>addPath(context,d,{stroke:'#6c7b70','stroke-width':'1.0',opacity:'.48'}));
-    data.road.forEach(d=>addPath(context,d,{stroke:'#b19c82','stroke-width':'1.15',opacity:'.24','stroke-linecap':'round'}));
+    // Orange aquifer field: spatial image, no words.
+    const aquifers=svgEl('g',{class:'el16959-aquifer'});
+    [...new Set(data.aquifer)].forEach(d=>{
+      aquifers.appendChild(svgEl('path',{d,fill:'url(#elAq16959)','fill-rule':'evenodd',stroke:'#cb7227','stroke-width':'1.15',opacity:'.98','vector-effect':'non-scaling-stroke'}));
+    });
+    svg.appendChild(aquifers);
+
+    // Quiet roads/boundaries.
+    const context=svgEl('g',{class:'el16959-context'});
+    data.boundary.forEach(d=>addPath(context,d,{stroke:'#879189','stroke-width':'.85',opacity:'.42'}));
+    data.road.forEach(d=>addPath(context,d,{stroke:'#baa990','stroke-width':'.85',opacity:'.20','stroke-linecap':'round'}));
     svg.appendChild(context);
 
-    const contours=svgEl('g',{class:'el16958-contours'});
-    data.contour.filter((_,i)=>i%2===0).forEach((d,i)=>addPath(contours,d,{stroke:i%7===0?'#70776f':'#969a92','stroke-width':i%7===0?'.72':'.34',opacity:i%7===0?'.34':'.14','vector-effect':'non-scaling-stroke'}));
+    // Fine topographic contour system, with restrained index contours.
+    const contours=svgEl('g',{class:'el16959-contours'});
+    data.contour.forEach((d,i)=>{
+      const major=i%6===0;
+      addPath(contours,d,{
+        stroke:major?'#7f8580':'#a8aaa5',
+        'stroke-width':major?'.58':'.28',
+        opacity:major?'.36':'.17',
+        'stroke-linecap':'round'
+      });
+    });
     svg.appendChild(contours);
 
-    const water=svgEl('g',{class:'el16958-water',filter:'url(#elWaterShadow16958)'});
-    [...new Set(data.water)].forEach(d=>{
-      addPath(water,d,{stroke:'#f6f7ef','stroke-width':'6.4',opacity:'.78','stroke-linecap':'round','stroke-linejoin':'round'});
-      addPath(water,d,{stroke:'#0f6996','stroke-width':'3.2',opacity:'.97','stroke-linecap':'round','stroke-linejoin':'round'});
-      addPath(water,d,{stroke:'#75c7df','stroke-width':'.95',opacity:'.94','stroke-linecap':'round','stroke-linejoin':'round'});
-    });
-    svg.appendChild(water);
-
-    const swales=svgEl('g',{class:'el16958-swales',filter:'url(#elSwaleShadow16958)'});
+    // Secondary opportunity first, very quiet.
+    const swaleZones=svgEl('g',{class:'el16959-swale-zones'});
+    const swaleLines=svgEl('g',{class:'el16959-swale-lines'});
     const paint=(arr,grade)=>{
-      const cfg=grade==='A'?{outer:'#294a38',mid:'#4f8056',lush:'#8ab17c',blue:'#80c7d1',w:9.0,a:.97}:grade==='B'?{outer:'#536b51',mid:'#78956c',lush:'#a8bb94',blue:'#a0cbd0',w:7.1,a:.79}:{outer:'#77745f',mid:'#99967b',lush:'#beb9a0',blue:'#abc9c9',w:5.4,a:.46};
+      const cfg=grade==='A'
+        ?{zone:'#b8cfae',zoneW:8.2,zoneO:.34,line:'#315c3d',lineW:2.0,lineO:.98,water:'#8dc2c6',waterW:.42}
+        :grade==='B'
+          ?{zone:'#d5ddbe',zoneW:6.0,zoneO:.20,line:'#6f8058',lineW:1.35,lineO:.70,water:null,waterW:0}
+          :{zone:'#e7dfcc',zoneW:4.6,zoneO:.12,line:'#9a8d73',lineW:.95,lineO:.40,water:null,waterW:0};
       [...new Set(arr)].forEach(d=>{
-        addPath(swales,d,{stroke:'#f3f2e8','stroke-width':cfg.w+5.3,opacity:'.76','stroke-linecap':'round','stroke-linejoin':'round'});
-        addPath(swales,d,{stroke:cfg.outer,'stroke-width':cfg.w,opacity:String(cfg.a),'stroke-linecap':'round','stroke-linejoin':'round'});
-        addPath(swales,d,{stroke:cfg.mid,'stroke-width':cfg.w*.72,opacity:String(cfg.a),'stroke-linecap':'round','stroke-linejoin':'round'});
-        addPath(swales,d,{stroke:cfg.lush,'stroke-width':cfg.w*.30,opacity:'.94','stroke-linecap':'round','stroke-linejoin':'round'});
-        addPath(swales,d,{stroke:cfg.blue,'stroke-width':Math.max(.7,cfg.w*.09),opacity:grade==='A'?'.78':'.46','stroke-linecap':'round','stroke-linejoin':'round'});
-        addPath(swales,d,{stroke:'#d8e6c3','stroke-width':'1.3',opacity:grade==='A'?'.46':'.26','stroke-linecap':'round','stroke-dasharray':'0.2 5.2'});
+        addPath(swaleZones,d,{stroke:cfg.zone,'stroke-width':cfg.zoneW,opacity:cfg.zoneO,'stroke-linecap':'round','stroke-linejoin':'round'});
+        addPath(swaleLines,d,{stroke:cfg.line,'stroke-width':cfg.lineW,opacity:cfg.lineO,'stroke-linecap':'round','stroke-linejoin':'round'});
+        if(cfg.water)addPath(swaleLines,d,{stroke:cfg.water,'stroke-width':cfg.waterW,opacity:'.82','stroke-linecap':'round','stroke-linejoin':'round'});
       });
     };
     paint(data.c,'C');paint(data.b,'B');paint(data.a,'A');
-    svg.appendChild(swales);
+    svg.append(swaleZones,swaleLines);
 
-    data.elev.filter((_,i)=>i%2===0).slice(0,7).forEach(t=>{
-      t.setAttribute('fill','#5f675f');t.setAttribute('font-size','7.6');t.setAttribute('font-weight','700');t.setAttribute('opacity','.84');
+    // Hydrology reads clearly without overpowering the plan.
+    const water=svgEl('g',{class:'el16959-water'});
+    [...new Set(data.water)].forEach(d=>{
+      addPath(water,d,{stroke:'#fbfaf6','stroke-width':'3.7',opacity:'.88','stroke-linecap':'round','stroke-linejoin':'round'});
+      addPath(water,d,{stroke:'#1a79a8','stroke-width':'1.65',opacity:'.96','stroke-linecap':'round','stroke-linejoin':'round'});
+    });
+    svg.appendChild(water);
+
+    // Sparse elevation and place labels.
+    data.elev.filter((_,i)=>i%2===0).slice(0,8).forEach(t=>{
+      t.setAttribute('fill','#6b716c');t.setAttribute('font-size','7.2');t.setAttribute('font-weight','650');t.setAttribute('opacity','.80');t.setAttribute('filter','url(#elText16959)');
       svg.appendChild(t);
     });
-    data.towns.forEach(t=>{t.setAttribute('fill','#40544d');t.setAttribute('font-size','8.4');t.setAttribute('font-weight','650');t.setAttribute('opacity','.82');svg.appendChild(t)});
+    data.towns.slice(0,8).forEach(t=>{
+      t.setAttribute('fill','#45554f');t.setAttribute('font-size','8.1');t.setAttribute('font-weight','650');t.setAttribute('opacity','.84');t.setAttribute('filter','url(#elText16959)');
+      svg.appendChild(t);
+    });
 
-    svg.appendChild(svgEl('rect',{x:14,y:14,width:W-28,height:H-28,rx:7,fill:'url(#elVig16958)','pointer-events':'none'}));
-    svg.appendChild(svgEl('rect',{x:14,y:14,width:W-28,height:H-28,rx:7,fill:'none',stroke:'#9ba79e','stroke-width':'.9'}));
-
-    const head=svgEl('g',{transform:'translate(32,34)'});
-    head.append(svgEl('text',{x:0,y:0,fill:'#1f4038','font-size':'15','font-weight':'850'},label||'Earthline Water + Recharge Opportunity'));
-    head.append(svgEl('text',{x:0,y:16,fill:'#66746c','font-size':'7.7','font-weight':'750','letter-spacing':'1.15'},'EARTHLINE · AERIAL LANDSCAPE RENDERING'));
+    // Minimal title block.
+    const head=svgEl('g',{transform:'translate(34,37)'});
+    head.append(svgEl('text',{x:0,y:0,fill:'#29423a','font-size':'13.5','font-weight':'820'},title));
+    head.append(svgEl('text',{x:0,y:14,fill:'#7a817c','font-size':'6.8','font-weight':'700','letter-spacing':'1.0'},'HYDROLOGY + RECHARGE OPPORTUNITY PLAN'));
     svg.appendChild(head);
 
+    // Reuse proven north arrow/scale from the engine map.
     if(data.north)svg.appendChild(data.north);
     if(data.scale)svg.appendChild(data.scale);
 
-    const key=svgEl('g',{transform:'translate('+(W-286)+','+(H-103)+')'});
-    key.appendChild(svgEl('rect',{width:258,height:66,rx:5,fill:'#fffdf8','fill-opacity':'.93',stroke:'#acb4ad','stroke-width':'.7'}));
-    key.appendChild(svgEl('rect',{x:12,y:13,width:24,height:10,rx:2,fill:'url(#elAq16958)',stroke:'#cd711f','stroke-width':'.9'}));
-    key.appendChild(svgEl('text',{x:44,y:21,fill:'#465a55','font-size':'7.4'},'Aquifer context'));
-    addPath(key,'M12 42 H36',{stroke:'#0f6996','stroke-width':'2.7','stroke-linecap':'round'});addPath(key,'M12 42 H36',{stroke:'#75c7df','stroke-width':'.8','stroke-linecap':'round'});
-    key.appendChild(svgEl('text',{x:44,y:45,fill:'#465a55','font-size':'7.4'},'Water path'));
-    addPath(key,'M139 18 H164',{stroke:'#294a38','stroke-width':'7','stroke-linecap':'round'});addPath(key,'M139 18 H164',{stroke:'#8ab17c','stroke-width':'2.4','stroke-linecap':'round'});addPath(key,'M139 18 H164',{stroke:'#80c7d1','stroke-width':'.7','stroke-linecap':'round'});
-    key.appendChild(svgEl('text',{x:172,y:21,fill:'#465a55','font-size':'7.4'},'Bioswale'));
-    addPath(key,'M139 42 H164',{stroke:'#777d76','stroke-width':'.7'});
-    key.appendChild(svgEl('text',{x:172,y:45,fill:'#465a55','font-size':'7.4'},'Elevation'));
-    key.appendChild(svgEl('text',{x:12,y:58,fill:'#788078','font-size':'6.3'},'Modeled screening · field verification required'));
+    // Compact professional key.
+    const key=svgEl('g',{transform:'translate('+(W-258)+','+(H-91)+')'});
+    key.appendChild(svgEl('rect',{width:232,height:56,rx:2.5,fill:'#fffefb','fill-opacity':'.96',stroke:'#c0c3bd','stroke-width':'.6'}));
+    key.appendChild(svgEl('rect',{x:10,y:11,width:20,height:8,rx:1,fill:'url(#elAq16959)',stroke:'#cb7227','stroke-width':'.7'}));
+    key.appendChild(svgEl('text',{x:38,y:18,fill:'#55625d','font-size':'6.8'},'Aquifer'));
+    addPath(key,'M10 35 H30',{stroke:'#1a79a8','stroke-width':'1.65','stroke-linecap':'round'});
+    key.appendChild(svgEl('text',{x:38,y:38,fill:'#55625d','font-size':'6.8'},'Water path'));
+    addPath(key,'M126 15 H149',{stroke:'#b8cfae','stroke-width':'7.2','opacity':'.42','stroke-linecap':'round'});
+    addPath(key,'M126 15 H149',{stroke:'#315c3d','stroke-width':'1.9','stroke-linecap':'round'});
+    key.appendChild(svgEl('text',{x:157,y:18,fill:'#55625d','font-size':'6.8'},'Priority swale'));
+    addPath(key,'M126 35 H149',{stroke:'#858a85','stroke-width':'.55'});
+    key.appendChild(svgEl('text',{x:157,y:38,fill:'#55625d','font-size':'6.8'},'Contour'));
+    key.appendChild(svgEl('text',{x:10,y:49,fill:'#848985','font-size':'5.6'},'Screening plan · field verification required'));
     svg.appendChild(key);
 
-    svg.dataset.earthlineAerial16958='1';
+    svg.dataset.earthlineStudio16959='1';
   }
 
   function sync(){
     ensureStyle();
     const open=reportOpen();
-    document.documentElement.classList.toggle('earthline-impact-report-open-16958',open);
+    document.documentElement.classList.toggle('earthline-impact-report-open-16959',open);
     if(!open)return;
     document.querySelectorAll('.el49-report .el49-figure svg').forEach(rebuild);
   }
