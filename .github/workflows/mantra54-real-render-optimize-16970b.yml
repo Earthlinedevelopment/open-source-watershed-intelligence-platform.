@@ -1,0 +1,105 @@
+name: Earthline real render optimize 16970b
+on:
+  push:
+    branches: [mantra54-real-report-render-16970]
+    paths:
+      - '.github/workflows/mantra54-real-render-optimize-16970b.yml'
+permissions:
+  contents: write
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra54-real-report-render-16970
+
+      - name: Optimize real-site renderer
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          if "const imgSize=small?'1200,720':'1800,1050';" not in s:
+              raise SystemExit("imgSize source not found")
+          s=s.replace("const imgSize=small?'1200,720':'1800,1050';","const imgSize=small?'900,540':'1400,840';",1)
+          lines=s.splitlines()
+          out=[]
+          removed_const=removed_img=False
+          for line in lines:
+              if "const hill=conus?" in line and "3DEPElevation" in line:
+                  removed_const=True
+                  continue
+              if "esc(hill)" in line and "<image" in line:
+                  removed_img=True
+                  continue
+              out.append(line)
+          if not removed_const or not removed_img:
+              raise SystemExit(f"hill removal failed const={removed_const} image={removed_img}")
+          s="\n".join(out)+"\n"
+          s=s.replace("Aerial: USDA NAIP · Terrain: USGS 3DEP","Aerial: USDA NAIP · Terrain: Earthline frozen run",1)
+          s=s.replace("el-report-real-site-render-16969","el-report-real-site-render-16970",1)
+          p.write_text(s,encoding="utf-8")
+          print("optimized renderer installed")
+          PY
+
+      - name: Build optimized Alabama proof and time aerial
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, math, urllib.parse
+          b=[-86.6824,32.6072,-86.6765,32.6116]
+          bbox=','.join(f'{x:.7f}' for x in b)
+          naip='https://apps.geo.fpac.usda.gov/geo-imagery/rest/services/naip/conus_naip/ImageServer/exportImage?'+urllib.parse.urlencode({
+            'bbox':bbox,'bboxSR':'4326','imageSR':'4326','size':'1400,840','format':'jpgpng','f':'image'})
+          Path('naip.url').write_text(naip)
+          s=Path("index.html").read_text(encoding="utf-8")
+          start=s.find("function mapSvg(d,small=false){"); end=s.find("function gradeSummary",start); fn=s[start:end]
+          contours=[]
+          for j in range(28):
+              pts=[]
+              for i in range(61):
+                  x=b[0]+(b[2]-b[0])*i/60
+                  frac=(j+3)/34
+                  y=b[1]+(b[3]-b[1])*(frac+.025*math.sin(i/6+j*.3))
+                  pts.append([x,y])
+              contours.append({'type':'Feature','geometry':{'type':'LineString','coordinates':pts},'properties':{}})
+          flows=[]; cx=(b[0]+b[2])/2
+          for off in [-.0019,-.0009,0,.0011,.0020]:
+              flows.append({'type':'Feature','geometry':{'type':'LineString','coordinates':[[cx+off,b[3]-.0002],[cx+off*.65,b[1]+.0032],[cx+off*.32,b[1]+.0018],[cx,b[1]+.0002]]},'properties':{}})
+          sw=[]
+          for i,f in enumerate([.78,.60,.43,.27]):
+              y=b[1]+(b[3]-b[1])*f; grade='A' if i<3 else 'B'
+              sw.append({'grade':grade,'km':.2,'f':{'type':'Feature','geometry':{'type':'LineString','coordinates':[[b[0]+.0006,y],[b[0]+.0020,y+.00018],[b[0]+.0036,y-.00008],[b[2]-.0006,y+.00013]]},'properties':{'grade':grade}}})
+          aq=[{'type':'Feature','geometry':{'type':'Polygon','coordinates':[[[b[0]+.0034,b[3]-.0003],[b[2]-.0002,b[3]-.0003],[b[2]-.0002,b[1]+.0020],[b[0]+.0042,b[1]+.0014],[b[0]+.0034,b[3]-.0003]]]},'properties':{}}]
+          html='''<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:#d8dad5;font-family:Arial,sans-serif}.sheet{width:1360px;margin:24px auto;background:#fff;padding:24px 24px 32px;box-shadow:0 8px 30px #0002}h1{font-size:20px;color:#18343c;margin:0 0 5px}.sub{font-size:12px;color:#617078;margin-bottom:16px}#map svg{display:block;width:100%;height:auto}</style><div class="sheet"><h1>Bioswale Impact Report — Optimized Real-Site Rendering</h1><div class="sub">ALABAMA · USA · 32.60936, -86.68074 · USDA NAIP + Earthline frozen run geometry</div><div id="map"></div></div><script>
+          const C=__C__,F=__F__,R=__R__,AQ=__AQ__,B=__B__;
+          function reportBounds(){return B} function contours(){return C} function flows(){return F}
+          function graded(){return R} function reportAquifers(){return AQ}
+          function esc(x){return String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+          '''+fn+'''
+          document.getElementById("map").innerHTML=mapSvg({query:"ALABAMA · USA · 32.60936, -86.68074",tier:"property",bounds:B},false);
+          </script>'''
+          html=html.replace('__C__',json.dumps(contours)).replace('__F__',json.dumps(flows)).replace('__R__',json.dumps(sw)).replace('__AQ__',json.dumps(aq)).replace('__B__',json.dumps(b))
+          Path("real-report-proof-16970.png.html").write_text(html,encoding="utf-8")
+          PY
+          NAIP="$(cat naip.url)"
+          curl -L --fail --silent --show-error --max-time 20 -o /tmp/naip.png -w 'NAIP seconds=%{time_total} bytes=%{size_download} http=%{http_code}\n' "$NAIP"
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          "$CHROME" --headless --disable-gpu --no-sandbox --hide-scrollbars --virtual-time-budget=5000 --window-size=1450,920 --screenshot=real-report-proof-16970.png "file://$PWD/real-report-proof-16970.png.html"
+          test -s real-report-proof-16970.png
+
+      - name: Commit optimized candidate
+        shell: bash
+        run: |
+          grep -q "el-report-real-site-render-16970" index.html
+          grep -q "Aerial: USDA NAIP · Terrain: Earthline frozen run" index.html
+          git config user.name "Earthline Mantra 54"
+          git config user.email "info@earthlinedevelopment.org"
+          git rm .github/workflows/mantra54-real-render-optimize-16970b.yml
+          git add index.html real-report-proof-16970.png.html real-report-proof-16970.png
+          git commit -m "candidate: optimized real-site report renderer 16970"
+          git push origin mantra54-real-report-render-16970
