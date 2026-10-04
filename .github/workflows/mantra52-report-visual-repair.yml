@@ -1,4 +1,4 @@
-name: Mantra 52 report visual repair
+name: Mantra 53 report map + property identity repair
 
 on:
   push:
@@ -19,40 +19,199 @@ jobs:
           ref: mantra52-report-visual-repair
           fetch-depth: 0
 
-      - name: Replace the actual report renderer
+      - name: Patch the two active launch defects at source
         run: |
           python - <<'PY'
           from pathlib import Path
 
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
-          start=s.index("function mapSvg(d,small=false)")
-          end=s.index("function gradeSummary()",start)
-          fn="function mapSvg(d,small=false){\n    const b=reportBounds(d),W=960,H=small?420:560;\n    const mapX=38,mapY=76,mapW=small?884:674,mapH=H-mapY-46;\n    const sideX=mapX+mapW+24;\n    const xSpan=Math.max(.000001,b[2]-b[0]),ySpan=Math.max(.000001,b[3]-b[1]);\n    const sx=x=>mapX+(x-b[0])/xSpan*mapW;\n    const sy=y=>mapY+mapH-(y-b[1])/ySpan*mapH;\n    const inside=p=>p&&p[0]>=b[0]&&p[0]<=b[2]&&p[1]>=b[1]&&p[1]<=b[3];\n    const pathCoords=coords=>(coords||[]).map((p,i)=>(i?'L':'M')+sx(+p[0]).toFixed(1)+' '+sy(+p[1]).toFixed(1)).join(' ');\n    const path=f=>pathCoords(f?.geometry?.coordinates||[]);\n    const contourElevationM=f=>{const p=f&&f.properties||{};for(const k of ['ele','elevation','elevation_m','elev_m','level','levelM','contour','contour_m','z']){const v=Number(p[k]);if(Number.isFinite(v))return v}return null};\n    const contourLabelPoint=f=>{const c=f&&f.geometry&&f.geometry.type==='LineString'?f.geometry.coordinates:null;if(!Array.isArray(c)||c.length<2)return null;const q=c[Math.floor((c.length-1)*.54)];return Array.isArray(q)&&Number.isFinite(+q[0])&&Number.isFinite(+q[1])?q:null};\n    const reportContours=contours().filter(f=>f?.geometry?.type==='LineString').slice(0,220);\n    const reportFlows=flows().filter(f=>f?.geometry?.type==='LineString').slice(0,240);\n    const rows=graded();\n    const aquiferFeatures=reportAquifers();\n    const reportPlace=String(d?.query||d?.location||d?.placeName||'Analysis Area').trim();\n    const reportTier=String(d?.tier||d?.mode||'regional').toLowerCase();\n    const title=reportPlace||'Analysis Area';\n    const lonSpan=Math.max(.0001,b[2]-b[0]),midLat=(b[1]+b[3])/2,kmWide=lonSpan*111.32*Math.cos(midLat*Math.PI/180);\n    const niceKm=kmWide>300?100:kmWide>120?50:kmWide>50?20:kmWide>20?10:kmWide>8?5:kmWide>3?2:1;\n    const barPx=Math.max(54,Math.min(150,niceKm/kmWide*mapW));\n    const clipId='elReportClip16961',aqPat='elAquifer16961';\n    const parts=[];\n    parts.push('<svg class=\"el-report-editorial-map-16961\" viewBox=\"0 0 '+W+' '+H+'\" role=\"img\" aria-label=\"'+esc('Earthline '+title+' hydrology and recharge opportunity plan')+'\">');\n    parts.push('<defs>'+\n      '<linearGradient id=\"elPaper16961\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#fbfaf7\"/><stop offset=\"1\" stop-color=\"#f3f3ec\"/></linearGradient>'+\n      '<pattern id=\"'+aqPat+'\" width=\"8\" height=\"8\" patternUnits=\"userSpaceOnUse\" patternTransform=\"rotate(28)\"><rect width=\"8\" height=\"8\" fill=\"#e79746\" fill-opacity=\".18\"/><path d=\"M0 0 V8\" stroke=\"#c96d20\" stroke-width=\".6\" stroke-opacity=\".24\"/></pattern>'+\n      '<clipPath id=\"'+clipId+'\"><rect x=\"'+mapX+'\" y=\"'+mapY+'\" width=\"'+mapW+'\" height=\"'+mapH+'\" rx=\"1.5\"/></clipPath>'+\n      '<marker id=\"elWaterArrow16961\" markerWidth=\"4.5\" markerHeight=\"4.5\" refX=\"3.8\" refY=\"2.25\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M0 0 L4.5 2.25 L0 4.5 Z\" fill=\"#237aa4\" opacity=\".64\"/></marker>'+\n      '</defs>');\n    parts.push('<rect width=\"'+W+'\" height=\"'+H+'\" fill=\"#fbfaf7\"/>');\n    parts.push('<text x=\"'+mapX+'\" y=\"31\" fill=\"#243f38\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"17\" font-weight=\"800\">'+esc(title)+'</text>');\n    parts.push('<text x=\"'+mapX+'\" y=\"49\" fill=\"#66746e\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"8.2\" font-weight=\"700\" letter-spacing=\"1.15\">HYDROLOGY + RECHARGE OPPORTUNITY PLAN</text>');\n    parts.push('<text x=\"'+mapX+'\" y=\"62\" fill=\"#8a918c\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"6.8\" font-weight=\"650\" letter-spacing=\".55\">'+esc(reportTier.toUpperCase())+' SCREENING · EARTHLINE</text>');\n    parts.push('<rect x=\"'+mapX+'\" y=\"'+mapY+'\" width=\"'+mapW+'\" height=\"'+mapH+'\" rx=\"1.5\" fill=\"url(#elPaper16961)\" stroke=\"#b6bbb5\" stroke-width=\".75\"/>');\n    parts.push('<g clip-path=\"url(#'+clipId+')\">');\n    for(let i=0;i<reportContours.length;i+=8){\n      const dpath=path(reportContours[i]);if(!dpath)continue;\n      parts.push('<path d=\"'+dpath+'\" transform=\"translate(1.5 1.5)\" fill=\"none\" stroke=\"#738076\" stroke-width=\"6\" opacity=\".035\" stroke-linecap=\"round\"/>');\n      parts.push('<path d=\"'+dpath+'\" transform=\"translate(-1 -1)\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"3.2\" opacity=\".42\" stroke-linecap=\"round\"/>');\n    }\n    for(const f of aquiferFeatures){\n      const g=f&&f.geometry;if(!g)continue;\n      const polys=g.type==='Polygon'?[g.coordinates]:(g.type==='MultiPolygon'?g.coordinates:[]);\n      for(const poly of polys){\n        if(!Array.isArray(poly)||!poly.length)continue;\n        const rings=poly.filter(r=>Array.isArray(r)&&r.length>=3);\n        if(!rings.length)continue;\n        const dpath=rings.map(r=>pathCoords(r)+' Z').join(' ');\n        parts.push('<path d=\"'+dpath+'\" fill=\"url(#'+aqPat+')\" fill-rule=\"evenodd\" stroke=\"#c96d20\" stroke-width=\".9\" opacity=\".95\" vector-effect=\"non-scaling-stroke\"/>');\n      }\n    }\n    for(let i=0;i<reportContours.length;i++){\n      const dpath=path(reportContours[i]);if(!dpath)continue;\n      const major=i%7===0;\n      parts.push('<path d=\"'+dpath+'\" fill=\"none\" stroke=\"'+(major?'#7e857f':'#afb2ad')+'\" stroke-width=\"'+(major?'.46':'.22')+'\" opacity=\"'+(major?'.31':'.14')+'\" vector-effect=\"non-scaling-stroke\"/>');\n    }\n    const drawSwale=r=>{\n      const dpath=path(r.f);if(!dpath)return;\n      const cfg=r.grade==='A'\n        ?{band:'#c1d5bc',bandW:5.2,bandO:.44,line:'#315c3d',lineW:1.15,lineO:.98}\n        :r.grade==='B'\n          ?{band:'#dbe2cf',bandW:4.0,bandO:.28,line:'#6c7d5b',lineW:.85,lineO:.62}\n          :{band:'#ece5d8',bandW:3.2,bandO:.20,line:'#958a73',lineW:.65,lineO:.34};\n      parts.push('<path d=\"'+dpath+'\" fill=\"none\" stroke=\"'+cfg.band+'\" stroke-width=\"'+cfg.bandW+'\" opacity=\"'+cfg.bandO+'\" stroke-linecap=\"round\" stroke-linejoin=\"round\" vector-effect=\"non-scaling-stroke\"/>');\n      parts.push('<path d=\"'+dpath+'\" fill=\"none\" stroke=\"'+cfg.line+'\" stroke-width=\"'+cfg.lineW+'\" opacity=\"'+cfg.lineO+'\" stroke-linecap=\"round\" stroke-linejoin=\"round\" vector-effect=\"non-scaling-stroke\"/>');\n    };\n    for(const r of rows.filter(r=>r.grade==='C'))drawSwale(r);\n    for(const r of rows.filter(r=>r.grade==='B'))drawSwale(r);\n    for(const r of rows.filter(r=>r.grade==='A'))drawSwale(r);\n    for(let i=0;i<reportFlows.length;i++){\n      const dpath=path(reportFlows[i]);if(!dpath)continue;\n      parts.push('<path d=\"'+dpath+'\" fill=\"none\" stroke=\"#f8f7f2\" stroke-width=\"2.7\" opacity=\".86\" stroke-linecap=\"round\" stroke-linejoin=\"round\" vector-effect=\"non-scaling-stroke\"/>');\n      parts.push('<path d=\"'+dpath+'\" fill=\"none\" stroke=\"#237aa4\" stroke-width=\"1.05\" opacity=\".95\" stroke-linecap=\"round\" stroke-linejoin=\"round\" vector-effect=\"non-scaling-stroke\"'+(i%11===0?' marker-end=\"url(#elWaterArrow16961)\"':'')+'/>');\n    }\n    parts.push('</g>');\n    let labelCount=0;\n    for(let i=0;i<reportContours.length&&labelCount<(small?5:7);i+=7){\n      const f=reportContours[i],elev=contourElevationM(f),pt=contourLabelPoint(f);\n      if(!Number.isFinite(elev)||!pt||!inside(pt))continue;\n      const x=sx(+pt[0]),y=sy(+pt[1]);\n      parts.push('<g><rect x=\"'+(x-12).toFixed(1)+'\" y=\"'+(y-6).toFixed(1)+'\" width=\"24\" height=\"9\" rx=\"1.5\" fill=\"#fbfaf7\" fill-opacity=\".82\"/><text x=\"'+x.toFixed(1)+'\" y=\"'+(y+.8).toFixed(1)+'\" text-anchor=\"middle\" fill=\"#737b75\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"6.2\" font-weight=\"650\">'+Math.round(elev)+' m</text></g>');\n      labelCount++;\n    }\n    const scaleY=mapY+mapH-17;\n    parts.push('<g transform=\"translate('+(mapX+16)+','+scaleY+')\"><path d=\"M0 0 H'+barPx+'\" stroke=\"#4a5954\" stroke-width=\"1.25\"/><path d=\"M0 -3 V3 M'+barPx+' -3 V3\" stroke=\"#4a5954\" stroke-width=\".8\"/><text x=\"'+(barPx/2)+'\" y=\"11\" text-anchor=\"middle\" fill=\"#626c67\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"6.2\">'+niceKm+' km</text></g>');\n    parts.push('<g transform=\"translate('+(mapX+mapW-30)+','+(mapY+17)+')\"><text x=\"7\" y=\"-4\" text-anchor=\"middle\" fill=\"#44554f\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"7\" font-weight=\"800\">N</text><path d=\"M7 1 V25\" stroke=\"#44554f\" stroke-width=\".8\"/><path d=\"M7 1 L3 10 L7 7 L11 10 Z\" fill=\"#44554f\"/></g>');\n    if(!small){\n      parts.push('<path d=\"M'+(sideX-12)+' '+mapY+' V'+(mapY+mapH)+'\" stroke=\"#d3d6d1\" stroke-width=\".7\"/>');\n      parts.push('<text x=\"'+sideX+'\" y=\"'+(mapY+2)+'\" fill=\"#344a43\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"7.4\" font-weight=\"800\" letter-spacing=\".9\">PLAN KEY</text>');\n      let yy=mapY+26;\n      parts.push('<rect x=\"'+sideX+'\" y=\"'+(yy-7)+'\" width=\"24\" height=\"10\" rx=\"1\" fill=\"url(#'+aqPat+')\" stroke=\"#c96d20\" stroke-width=\".7\"/><text x=\"'+(sideX+34)+'\" y=\"'+yy+'\" fill=\"#56635e\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"7.2\">Aquifer context</text>');\n      yy+=28;\n      parts.push('<path d=\"M'+sideX+' '+yy+' H'+(sideX+24)+'\" stroke=\"#237aa4\" stroke-width=\"1.1\"/><text x=\"'+(sideX+34)+'\" y=\"'+(yy+2.5)+'\" fill=\"#56635e\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"7.2\">Water path</text>');\n      yy+=30;\n      parts.push('<path d=\"M'+sideX+' '+yy+' H'+(sideX+24)+'\" stroke=\"#c1d5bc\" stroke-width=\"5.2\" opacity=\".55\" stroke-linecap=\"round\"/><path d=\"M'+sideX+' '+yy+' H'+(sideX+24)+'\" stroke=\"#315c3d\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><text x=\"'+(sideX+34)+'\" y=\"'+(yy+2.5)+'\" fill=\"#56635e\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"7.2\">A · highest priority</text>');\n      yy+=23;\n      parts.push('<path d=\"M'+sideX+' '+yy+' H'+(sideX+24)+'\" stroke=\"#dbe2cf\" stroke-width=\"4\" opacity=\".48\" stroke-linecap=\"round\"/><path d=\"M'+sideX+' '+yy+' H'+(sideX+24)+'\" stroke=\"#6c7d5b\" stroke-width=\".85\" stroke-linecap=\"round\"/><text x=\"'+(sideX+34)+'\" y=\"'+(yy+2.5)+'\" fill=\"#66716c\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"7.2\">B · strong</text>');\n      yy+=23;\n      parts.push('<path d=\"M'+sideX+' '+yy+' H'+(sideX+24)+'\" stroke=\"#ece5d8\" stroke-width=\"3.2\" opacity=\".62\" stroke-linecap=\"round\"/><path d=\"M'+sideX+' '+yy+' H'+(sideX+24)+'\" stroke=\"#958a73\" stroke-width=\".65\" stroke-linecap=\"round\"/><text x=\"'+(sideX+34)+'\" y=\"'+(yy+2.5)+'\" fill=\"#777b77\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"7.2\">C · general</text>');\n      yy+=30;\n      parts.push('<path d=\"M'+sideX+' '+yy+' H'+(sideX+24)+'\" stroke=\"#858a85\" stroke-width=\".5\"/><text x=\"'+(sideX+34)+'\" y=\"'+(yy+2.5)+'\" fill=\"#68716c\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"7.2\">Contour / elevation</text>');\n      const noteY=mapY+mapH-52;\n      parts.push('<text x=\"'+sideX+'\" y=\"'+noteY+'\" fill=\"#79817c\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"6.1\" font-weight=\"650\">SCREENING PLAN</text>');\n      parts.push('<text x=\"'+sideX+'\" y=\"'+(noteY+13)+'\" fill=\"#8a918c\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"5.9\">Field verification required</text>');\n      parts.push('<text x=\"'+sideX+'\" y=\"'+(noteY+23)+'\" fill=\"#8a918c\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"5.9\">before design or construction.</text>');\n    }\n    parts.push('</svg>');\n    return parts.join('');\n  }\n"
-          s=s[:start]+fn+s[end:]
+
+          # TASK 2 — remove the temporary report-publication wrapper.
+          a=s.find("/* EARTHLINE 16962 — preserve jurisdiction name in Property report identity.")
+          if a >= 0:
+              b=s.find("/* EARTHLINE REPORT RENDER OWNER 16960",a)
+              if b < 0:
+                  raise SystemExit("16962 wrapper end marker missing")
+              s=s[:a]+s[b:]
+
+          # TASK 2 — repair Property identity at the actual declared-site owner.
+          ds=s.index("  function declaredSite(center){")
+          de=s.index("  function authoritativePropertyCount16220()",ds)
+          declared="""  function declaredSite(center){
+            const m=model(),parent=m?.loc||{},helper=typeof earthlineSelectedSiteFromCenter==='function'?earthlineSelectedSiteFromCenter:null;
+            let site=helper?helper(parent,Number(center.lng),Number(center.lat),20):null;
+            if(!site)return null;
+            const coord=Number(center.lat).toFixed(5)+', '+Number(center.lng).toFixed(5);
+            const parentLabel=String(parent?.fullName||parent?.label||parent?.name||parent?.q||'').trim();
+            const humanLabel=parentLabel&&!/^20-acre project area/i.test(parentLabel)?parentLabel:'';
+            const reportLabel='20-acre project area'+(humanLabel?' · '+humanLabel:'')+' · '+coord;
+            site=Object.assign({},site,{
+              q:reportLabel,
+              name:'20-acre Project Area',
+              fullName:reportLabel,
+              jurisdictionLabel:humanLabel,
+              sub:'Declared from the map crosshair',
+              placeType:'selected_site',userSelectedSite:true,propertyMode:true,regionalMode:false,planning:false,acres:20,
+              lat:Number(center.lat),lng:Number(center.lng),zoomHint:Math.max(17,Number(map()?.getZoom?.()||17))
+            });
+            return site;
+          }
+          """
+          s=s[:ds]+declared+s[de:]
+
+          old="""    site.name=selectedCode?selectedCode+' 20-acre Project Area':'20-acre Project Area';
+              site.fullName=selectedCode?selectedCode+' 20-acre project area at '+Number(c.lat).toFixed(5)+', '+Number(c.lng).toFixed(5):site.fullName;"""
+          new="""    site.name=selectedCode?selectedCode+' 20-acre Project Area':'20-acre Project Area';
+              if(selectedCode){
+                const coordLabel=Number(c.lat).toFixed(5)+', '+Number(c.lng).toFixed(5);
+                const jurisdictionLabel=String(site.jurisdictionLabel||'').trim();
+                site.fullName=selectedCode+' · 20-acre project area'+(jurisdictionLabel?' · '+jurisdictionLabel:'')+' · '+coordLabel;
+                site.q=site.fullName;
+              }"""
+          if old not in s:
+              raise SystemExit("selected-corridor Property identity block missing")
+          s=s.replace(old,new,1)
+
+          # TASK 1 — edit the authoritative mapSvg renderer itself.
+          ms=s.index("  function mapSvg(d,small=false){")
+          me=s.index("\n  function metric(",ms)
+          m=s[ms:me]
+
+          def one(old,new,label):
+              global m
+              if old not in m:
+                  raise SystemExit("map patch marker missing: "+label)
+              m=m.replace(old,new,1)
+
+          one("const b=reportBounds(d),W=960,H=small?420:560;",
+              "const b=reportBounds(d),W=1040,H=small?450:610;","canvas")
+          one("const mapX=38,mapY=76,mapW=small?884:674,mapH=H-mapY-46;",
+              "const mapX=44,mapY=94,mapW=small?952:724,mapH=H-mapY-48;","map frame")
+          one("const sideX=mapX+mapW+24;",
+              "const sideX=mapX+mapW+28,sideW=W-sideX-34;","sidebar geometry")
+          one("const rows=graded();\n    const aquiferFeatures=reportAquifers();",
+              "const rows=graded();\n    const counts={A:rows.filter(r=>r.grade==='A').length,B:rows.filter(r=>r.grade==='B').length,C:rows.filter(r=>r.grade==='C').length};\n    const aquiferFeatures=reportAquifers();","grade counts")
+
+          m=m.replace("16961","16963").replace("el-report-editorial-map-16963","el-report-landscape-plan-16963")
+
+          h0=m.index("    parts.push('<rect width=\"'+W+'\" height=\"'+H+'\" fill=\"#fbfaf7\"/>');")
+          h1=m.index("    parts.push('<g clip-path=\"url(#'+clipId+')\">');",h0)
+          header="""    parts.push('<rect width="'+W+'" height="'+H+'" fill="#f7f5ee"/>');
+            parts.push('<rect x="0" y="0" width="'+W+'" height="70" fill="#233d36"/>');
+            parts.push('<rect x="0" y="70" width="'+W+'" height="3" fill="#51b9dd"/>');
+            parts.push('<text x="'+mapX+'" y="31" fill="#ffffff" font-family="Noto Sans,Arial,sans-serif" font-size="18.5" font-weight="800">'+esc(title)+'</text>');
+            parts.push('<text x="'+mapX+'" y="51" fill="#c8d6d0" font-family="Noto Sans,Arial,sans-serif" font-size="8.1" font-weight="700" letter-spacing="1.35">HYDROLOGY + BIOSWALE OPPORTUNITY PLAN</text>');
+            parts.push('<text x="'+(W-38)+'" y="31" text-anchor="end" fill="#ffffff" font-family="Noto Sans,Arial,sans-serif" font-size="8" font-weight="800" letter-spacing="1.2">EARTHLINE</text>');
+            parts.push('<text x="'+(W-38)+'" y="50" text-anchor="end" fill="#c8d6d0" font-family="Noto Sans,Arial,sans-serif" font-size="6.7" font-weight="650" letter-spacing=".8">'+esc(reportTier.toUpperCase())+' SCREENING</text>');
+            parts.push('<rect x="'+(mapX-4)+'" y="'+(mapY-4)+'" width="'+(mapW+8)+'" height="'+(mapH+8)+'" rx="3" fill="#ffffff" fill-opacity=".72" stroke="#c4c8c1" stroke-width=".7"/>');
+            parts.push('<rect x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" rx="2" fill="url(#elPaper16963)" stroke="#aeb6ae" stroke-width=".8"/>');
+          """
+          m=m[:h0]+header+m[h1:]
+
+          # More legible orange aquifer field and quieter contour hierarchy.
+          m=m.replace('fill="#e79746" fill-opacity=".18"','fill="#e99a43" fill-opacity=".23"',1)
+          m=m.replace('stroke="#c96d20" stroke-width=".6" stroke-opacity=".24"','stroke="#c96920" stroke-width=".7" stroke-opacity=".32"',1)
+          m=m.replace('stroke="#c96d20" stroke-width=".9" opacity=".95"','stroke="#c46821" stroke-width="1.05" opacity=".98"',1)
+          m=m.replace("(major?'#7e857f':'#afb2ad')","(major?'#737b75':'#9ea49e')",1)
+          m=m.replace("(major?'.46':'.22')","(major?'.52':'.24')",1)
+          m=m.replace("(major?'.31':'.14')","(major?'.36':'.18')",1)
+
+          # Replace swale grammar: broad planted band + disciplined edge + fine blue dotted center for A/B.
+          sw0=m.index("    const drawSwale=r=>{")
+          sw1=m.index("    for(const r of rows.filter(r=>r.grade==='C'))",sw0)
+          swale="""    const drawSwale=r=>{
+            const dpath=path(r.f);if(!dpath)return;
+            const cfg=r.grade==='A'
+              ?{band:'#b9ceb1',bandW:7.4,bandO:.62,line:'#315b3d',lineW:1.55,lineO:.98,center:'#63a9bc',centerW:.62,centerO:.86,dash:'2.2 2.8'}
+              :r.grade==='B'
+                ?{band:'#d2ddc6',bandW:5.4,bandO:.46,line:'#687c59',lineW:1.05,lineO:.78,center:'#7eb6c3',centerW:.48,centerO:.62,dash:'1.8 3.0'}
+                :{band:'#e5ddcb',bandW:4.0,bandO:.34,line:'#907e61',lineW:.78,lineO:.52,center:null,centerW:0,centerO:0,dash:''};
+            parts.push('<path d="'+dpath+'" fill="none" stroke="'+cfg.band+'" stroke-width="'+cfg.bandW+'" opacity="'+cfg.bandO+'" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
+            parts.push('<path d="'+dpath+'" fill="none" stroke="'+cfg.line+'" stroke-width="'+cfg.lineW+'" opacity="'+cfg.lineO+'" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
+            if(cfg.center)parts.push('<path d="'+dpath+'" fill="none" stroke="'+cfg.center+'" stroke-width="'+cfg.centerW+'" opacity="'+cfg.centerO+'" stroke-dasharray="'+cfg.dash+'" stroke-linecap="round" vector-effect="non-scaling-stroke"/>');
+          };
+          """
+          m=m[:sw0]+swale+m[sw1:]
+
+          m=m.replace('stroke="#f8f7f2" stroke-width="2.7" opacity=".86"','stroke="#f7f5ee" stroke-width="3.8" opacity=".92"',1)
+          m=m.replace('stroke="#237aa4" stroke-width="1.05" opacity=".95"','stroke="#0e7fac" stroke-width="1.35" opacity=".96"',1)
+          m=m.replace("i%11===0","i%8===0",1)
+
+          north_old="""    parts.push('<g transform="translate('+(mapX+mapW-30)+','+(mapY+17)+')"><text x="7" y="-4" text-anchor="middle" fill="#44554f" font-family="Noto Sans,Arial,sans-serif" font-size="7" font-weight="800">N</text><path d="M7 1 V25" stroke="#44554f" stroke-width=".8"/><path d="M7 1 L3 10 L7 7 L11 10 Z" fill="#44554f"/></g>');"""
+          north_new="""    parts.push('<g transform="translate('+(mapX+mapW-36)+','+(mapY+17)+')"><circle cx="8" cy="10" r="15" fill="#ffffff" fill-opacity=".78" stroke="#b8beb8" stroke-width=".6"/><text x="8" y="-1" text-anchor="middle" fill="#334b43" font-family="Noto Sans,Arial,sans-serif" font-size="7.2" font-weight="800">N</text><path d="M8 4 V24" stroke="#334b43" stroke-width=".9"/><path d="M8 4 L3.5 13 L8 10 L12.5 13 Z" fill="#334b43"/></g>');"""
+          if north_old not in m:
+              raise SystemExit("north arrow block missing")
+          m=m.replace(north_old,north_new,1)
+
+          sb0=m.index("    if(!small){")
+          sb1=m.index("    parts.push('</svg>');",sb0)
+          sidebar="""    if(!small){
+            parts.push('<rect x="'+sideX+'" y="'+mapY+'" width="'+sideW+'" height="'+mapH+'" rx="3" fill="#ffffff" fill-opacity=".72" stroke="#d0d4ce" stroke-width=".7"/>');
+            parts.push('<text x="'+(sideX+18)+'" y="'+(mapY+28)+'" fill="#233d36" font-family="Noto Sans,Arial,sans-serif" font-size="9.5" font-weight="850" letter-spacing="1.05">PLAN LEGEND</text>');
+            parts.push('<path d="M'+(sideX+18)+' '+(mapY+39)+' H'+(sideX+sideW-18)+'" stroke="#51b9dd" stroke-width="1.5"/>');
+            let yy=mapY+68;
+            parts.push('<rect x="'+(sideX+18)+'" y="'+(yy-9)+'" width="28" height="12" rx="1.3" fill="url(#'+aqPat+')" stroke="#c46821" stroke-width=".8"/><text x="'+(sideX+58)+'" y="'+yy+'" fill="#44544e" font-family="Noto Sans,Arial,sans-serif" font-size="7.6" font-weight="700">Aquifer context</text>');
+            yy+=34;
+            parts.push('<path d="M'+(sideX+18)+' '+yy+' H'+(sideX+46)+'" stroke="#0e7fac" stroke-width="1.5"/><text x="'+(sideX+58)+'" y="'+(yy+2.5)+'" fill="#44544e" font-family="Noto Sans,Arial,sans-serif" font-size="7.6" font-weight="700">Water path</text>');
+            yy+=38;
+            const keySw=(grade,label,band,line,center,count)=>{
+              parts.push('<path d="M'+(sideX+18)+' '+yy+' H'+(sideX+48)+'" stroke="'+band+'" stroke-width="'+(grade==='A'?7.4:grade==='B'?5.4:4)+'" opacity=".72" stroke-linecap="round"/>');
+              parts.push('<path d="M'+(sideX+18)+' '+yy+' H'+(sideX+48)+'" stroke="'+line+'" stroke-width="'+(grade==='A'?1.55:grade==='B'?1.05:.78)+'" stroke-linecap="round"/>');
+              if(center)parts.push('<path d="M'+(sideX+18)+' '+yy+' H'+(sideX+48)+'" stroke="'+center+'" stroke-width=".6" stroke-dasharray="2 2.5"/>');
+              parts.push('<text x="'+(sideX+58)+'" y="'+(yy+2.5)+'" fill="#44544e" font-family="Noto Sans,Arial,sans-serif" font-size="7.6" font-weight="750">'+grade+' · '+label+'</text>');
+              parts.push('<text x="'+(sideX+sideW-18)+'" y="'+(yy+2.5)+'" text-anchor="end" fill="#7b837e" font-family="Noto Sans,Arial,sans-serif" font-size="7.1" font-weight="700">'+count+'</text>');
+              yy+=31;
+            };
+            keySw('A','highest priority','#b9ceb1','#315b3d','#63a9bc',counts.A);
+            keySw('B','strong','#d2ddc6','#687c59','#7eb6c3',counts.B);
+            keySw('C','general','#e5ddcb','#907e61',null,counts.C);
+            parts.push('<path d="M'+(sideX+18)+' '+yy+' H'+(sideX+48)+'" stroke="#7c827d" stroke-width=".6"/><text x="'+(sideX+58)+'" y="'+(yy+2.5)+'" fill="#44544e" font-family="Noto Sans,Arial,sans-serif" font-size="7.6" font-weight="700">Contour / elevation</text>');
+            const noteY=mapY+mapH-100;
+            parts.push('<rect x="'+(sideX+14)+'" y="'+(noteY-18)+'" width="'+(sideW-28)+'" height="79" rx="2.5" fill="#f1f4ef" stroke="#d2d8d2" stroke-width=".6"/>');
+            parts.push('<text x="'+(sideX+26)+'" y="'+noteY+'" fill="#31483f" font-family="Noto Sans,Arial,sans-serif" font-size="7.2" font-weight="850" letter-spacing=".75">SCREENING PLAN</text>');
+            parts.push('<text x="'+(sideX+26)+'" y="'+(noteY+17)+'" fill="#69756f" font-family="Noto Sans,Arial,sans-serif" font-size="6.4">Existing modeled geometry.</text>');
+            parts.push('<text x="'+(sideX+26)+'" y="'+(noteY+30)+'" fill="#69756f" font-family="Noto Sans,Arial,sans-serif" font-size="6.4">Field verification required</text>');
+            parts.push('<text x="'+(sideX+26)+'" y="'+(noteY+43)+'" fill="#69756f" font-family="Noto Sans,Arial,sans-serif" font-size="6.4">before design or construction.</text>');
+          }
+          """
+          m=m[:sb0]+sidebar+m[sb1:]
+          s=s[:ms]+m+s[me:]
+
+          s=s.replace("window.EARTHLINE_REPORT_RENDER_OWNER_16960='index-mapSvg';",
+                      "window.EARTHLINE_REPORT_RENDER_OWNER_16960='index-mapSvg-16963-landscape-plan';",1)
+
           p.write_text(s,encoding="utf-8")
           PY
 
-      - name: Verify source-owner repair
+      - name: Verify both repairs
         run: |
           python - <<'PY'
           from pathlib import Path
           s=Path("index.html").read_text(encoding="utf-8")
+          a=s.index("function mapSvg(d,small=false)")
+          b=s.index("function gradeSummary()",a)
+          m=s[a:b]
           checks={
-            "editorial renderer":"el-report-editorial-map-16961" in s,
-            "orange aquifer":"elAquifer16961" in s and "#c96d20" in s,
-            "actual map owner":"function mapSvg(d,small=false)" in s,
-            "toolbar removed":'data-action="print"' not in s[s.index("function openReport()"):s.index("window.earthlineOpenVermontReport16151")],
-            "no aquifer map words":"MAPPED AQUIFER CONTEXT" not in s[s.index("function mapSvg(d,small=false)"):s.index("function gradeSummary()")]
+            "actual renderer 16963":"el-report-landscape-plan-16963" in m,
+            "dark professional title rail":'fill="#233d36"' in m and 'HYDROLOGY + BIOSWALE OPPORTUNITY PLAN' in m,
+            "illustrated swale grammar":"stroke-dasharray" in m and "#63a9bc" in m,
+            "orange aquifer fields":"#e99a43" in m and "#c46821" in m,
+            "plan legend":"PLAN LEGEND" in m and "counts.A" in m,
+            "property identity at source":"jurisdictionLabel:humanLabel" in s and "parent?.fullName" in s,
+            "selected property preserves jurisdiction":"selectedCode+' · 20-acre project area'" in s,
+            "temporary 16962 wrapper retired":"installPropertyReportJurisdiction16962" not in s,
           }
-          for k,v in checks.items(): print(("PASS" if v else "FAIL"),k)
-          if not all(checks.values()): raise SystemExit(1)
+          for k,v in checks.items():
+              print(("PASS" if v else "FAIL"),k)
+          if not all(checks.values()):
+              raise SystemExit(1)
           PY
 
-      - name: Commit focused candidate
+      - name: Commit focused branch result
         run: |
           git config user.name "Earthline Mantra 53"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m "fix: editorial landscape-plan report renderer"
+          git commit -m "fix: landscape-plan map and global property report identity"
           git push origin mantra52-report-visual-repair
