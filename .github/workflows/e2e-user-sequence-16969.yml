@@ -96,7 +96,7 @@ jobs:
               const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{};
               const ids=['earthlineLaunchLogin16872','earthlineLaunchDonate16872','earthlineLaunchMerch16872'];
               return {
-                controls:Object.fromEntries(ids.map(id=>[id,getComputedStyle(document.getElementById(id)).display])),
+                controls:Object.fromEntries(ids.map(id=>{const el=document.getElementById(id);return [id,el?getComputedStyle(el).display:'missing']})),
                 header:document.querySelector('#earthlineVermontReportPanel16149 .el49-toolbar small')?.textContent||'',
                 mapPaths:svg?svg.querySelectorAll('path').length:0,
                 mapTexts:svg?svg.querySelectorAll('text').length:0,
@@ -105,7 +105,7 @@ jobs:
               };
             });
             fs.writeFileSync('REPORT-E2E-ALABAMA-16969.txt',JSON.stringify(audit,null,2));
-            if(audit.controls.earthlineLaunchLogin16872!=='none'||audit.controls.earthlineLaunchDonate16872!=='none'||audit.controls.earthlineLaunchMerch16872!=='none')throw new Error('report controls visible');
+            for(const v of Object.values(audit.controls))if(v!=='none'&&v!=='missing')throw new Error('report controls visible: '+JSON.stringify(audit.controls));
             if(audit.mapPaths<25)throw new Error('map geometry unexpectedly sparse: '+audit.mapPaths);
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
