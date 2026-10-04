@@ -1,0 +1,28 @@
+name: Earthline Property geometry owner audit 16969
+on:
+  push:
+    branches: [report-map-candidate-16967]
+    paths:
+      - '.github/workflows/property-geometry-owner-audit-16969.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: report-map-candidate-16967
+      - name: Locate existing published Property geometry
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path("index.html").read_text(encoding="utf-8")
+          terms=["function earthlineDeliverPropertyResult15817","authoritativeSafeSwales15815","propertyPublication15816","analysisBoundaryLngLat","waterDisplayed","waterSourceFeatures","SOURCE=","property-water","earthline-property","flowLines","M.flow"]
+          for term in terms:
+              print("\n== "+term+" ==")
+              for m in list(re.finditer(re.escape(term),s,re.I))[:15]:
+                  print(s[max(0,m.start()-2200):min(len(s),m.end()+7000)].replace("\n"," ")+"\n---")
+          PY
