@@ -17,141 +17,42 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: mantra52-report-visual-repair
+          fetch-depth: 0
 
-      - name: Apply the two report presentation repairs
+      - name: Replace the actual report renderer
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
 
-          p = Path("index.html")
-          s = p.read_text(encoding="utf-8")
-          original = s
-
-          style = r"""
-<style id="earthline-impact-report-surface-16952">
-html.earthline-impact-report-open-16952 #earthlineRail16188,
-html.earthline-impact-report-open-16952 #earthlineLaunchFallbackRail16872,
-html.earthline-impact-report-open-16952 #earthlineLaunchLogin16872,
-html.earthline-impact-report-open-16952 #earthlineLaunchDonate16872,
-html.earthline-impact-report-open-16952 #earthlineLaunchMerch16872,
-html.earthline-impact-report-open-16952 #searchOrb,
-html.earthline-impact-report-open-16952 [id*="SearchOrb"],
-html.earthline-impact-report-open-16952 .mapboxgl-ctrl-top-left,
-html.earthline-impact-report-open-16952 .mapboxgl-ctrl-top-right,
-html.earthline-impact-report-open-16952 .mapboxgl-ctrl-bottom-left,
-html.earthline-impact-report-open-16952 .mapboxgl-ctrl-bottom-right{
-  display:none!important;
-  visibility:hidden!important;
-  pointer-events:none!important;
-}
-.el49-report .el49-figure{
-  border:0!important;
-  background:#f4f1e8!important;
-  padding:10px!important;
-  box-shadow:0 12px 30px rgba(26,49,43,.12)!important;
-}
-.el49-report .el49-figure svg.el-report-plan-map-16952{
-  display:block!important;
-  width:100%!important;
-  height:auto!important;
-  border:1px solid #9dad9f!important;
-  border-radius:3px!important;
-  background:#f3efe5!important;
-}
-.el49-report .el49-figure figcaption{
-  margin-top:11px!important;
-  max-width:76ch!important;
-  color:#465b58!important;
-  font-size:11.5px!important;
-  line-height:1.45!important;
-}
-</style>
-"""
-          if 'earthline-impact-report-surface-16952' not in s:
-              s = s.replace('</head>', style + '\n</head>', 1)
-
-          script = r"""
-<script id="earthline-impact-report-control-owner-16952">
-(function(){
-  function reportIsOpen(){
-    const report=document.querySelector('.el49-report');
-    if(!report)return false;
-    const shell=report.closest('[aria-hidden],.open,[class*="report"],[id*="report"]')||report;
-    const cs=getComputedStyle(shell);
-    return cs.display!=='none'&&cs.visibility!=='hidden'&&report.getClientRects().length>0;
-  }
-  function sync(){
-    document.documentElement.classList.toggle('earthline-impact-report-open-16952',reportIsOpen());
-  }
-  new MutationObserver(sync).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','aria-hidden']});
-  addEventListener('hashchange',sync);
-  document.addEventListener('click',()=>requestAnimationFrame(sync),true);
-  sync();
-})();
-</script>
-"""
-          if 'earthline-impact-report-control-owner-16952' not in s:
-              s = s.replace('</body>', script + '\n</body>', 1)
-
-          anchor = s.find('const aquiferSvg=aquiferFeatures.map((f,i)=>{')
-          end = s.find('const towns=', anchor)
-          if anchor < 0 or end < 0:
-              raise SystemExit('aquifer map block not found')
-          block = s[anchor:end]
-          if 'return shapes+label;' not in block:
-              if 'return shapes;' not in block:
-                  raise SystemExit('aquifer label return target not found')
-              block = block.replace('return shapes;', 'return shapes+label;', 1)
-          block = block.replace('fill="rgba(92,170,202,.18)"', 'fill="rgba(74,177,211,.34)"')
-          block = block.replace('stroke="#5e9fbd"', 'stroke="#247fa7"')
-          block = block.replace('stroke-width="'+(small?1.15:1.45)+'"', 'stroke-width="'+(small?1.55:2.05)+'"')
-          block = block.replace('fill="#155f91" font-size="9.2"', 'fill="#0d628b" font-size="10.2"')
-          block = block.replace('AQUIFER · ', 'MAPPED AQUIFER · ')
-          s = s[:anchor] + block + s[end:]
-
-          s = s.replace('<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${title}">', '<svg class="el-report-plan-map-16952" viewBox="0 0 ${W} ${H}" role="img" aria-label="${title}">')
-          s = s.replace('stroke="#839186" stroke-width=".48" opacity=".30"', 'stroke="#8b887c" stroke-width=".52" opacity=".27"')
-          s = s.replace('stroke="#5b9fc2" stroke-width="2.15" opacity=".86"', 'stroke="#2287bb" stroke-width="2.8" opacity=".96"')
-          s = s.replace("const rows=graded();for(const r of rows){const color=r.grade==='A'?'#4f8b5d':r.grade==='B'?'#789557':'#9b8b61',mainW=r.grade==='A'?6.4:r.grade==='B'?5.4:4.5,haloW=mainW+4.0,alpha=r.grade==='A'?'.88':r.grade==='B'?'.78':'.66'",
-                        "const rows=graded();for(const r of rows){const color=r.grade==='A'?'#2f704a':r.grade==='B'?'#64894f':'#927c55',mainW=r.grade==='A'?8.2:r.grade==='B'?7.0:5.8,haloW=mainW+5.2,alpha=r.grade==='A'?'.94':r.grade==='B'?'.84':'.72'")
-          s = s.replace('stroke="#dbe8d5"', 'stroke="#d6e4d0"')
-          s = s.replace('stroke="#f7f1cf" stroke-width="'+Math.max(1.1,mainW*.18)+'"', 'stroke="#eef3d9" stroke-width="'+Math.max(1.35,mainW*.19)+'"')
-          s = s.replace('fill="rgba(92,170,202,.18)" stroke="#5e9fbd"', 'fill="rgba(74,177,211,.34)" stroke="#247fa7"')
-          s = s.replace('stroke="#5b9fc2" stroke-width="2.0"', 'stroke="#2287bb" stroke-width="2.6"')
-          s = s.replace('stroke="#4f8b5d" stroke-width="4.8"', 'stroke="#2f704a" stroke-width="6.2"')
-          s = s.replace('<stop offset="0" stop-color="#faf6ec"/><stop offset=".58" stop-color="#eef1e5"/><stop offset="1" stop-color="#dfe8dd"/>',
-                        '<stop offset="0" stop-color="#fbf7ed"/><stop offset=".48" stop-color="#eff1e5"/><stop offset="1" stop-color="#d9e5d8"/>')
-          s = s.replace('fill="#728678" opacity=".08" filter="url(#paperTexture)"', 'fill="#6e846f" opacity=".105" filter="url(#paperTexture)"')
-
-          if s == original:
-              raise SystemExit('no changes applied')
-          p.write_text(s, encoding="utf-8")
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          start=s.index("function mapSvg(d,small=false)")
+          end=s.index("function gradeSummary()",start)
+          fn="function mapSvg(d,small=false){\n    const b=reportBounds(d),W=960,H=small?420:560;\n    const mapX=38,mapY=76,mapW=small?884:674,mapH=H-mapY-46;\n    const sideX=mapX+mapW+24;\n    const xSpan=Math.max(.000001,b[2]-b[0]),ySpan=Math.max(.000001,b[3]-b[1]);\n    const sx=x=>mapX+(x-b[0])/xSpan*mapW;\n    const sy=y=>mapY+mapH-(y-b[1])/ySpan*mapH;\n    const inside=p=>p&&p[0]>=b[0]&&p[0]<=b[2]&&p[1]>=b[1]&&p[1]<=b[3];\n    const pathCoords=coords=>(coords||[]).map((p,i)=>(i?'L':'M')+sx(+p[0]).toFixed(1)+' '+sy(+p[1]).toFixed(1)).join(' ');\n    const path=f=>pathCoords(f?.geometry?.coordinates||[]);\n    const contourElevationM=f=>{const p=f&&f.properties||{};for(const k of ['ele','elevation','elevation_m','elev_m','level','levelM','contour','contour_m','z']){const v=Number(p[k]);if(Number.isFinite(v))return v}return null};\n    const contourLabelPoint=f=>{const c=f&&f.geometry&&f.geometry.type==='LineString'?f.geometry.coordinates:null;if(!Array.isArray(c)||c.length<2)return null;const q=c[Math.floor((c.length-1)*.54)];return Array.isArray(q)&&Number.isFinite(+q[0])&&Number.isFinite(+q[1])?q:null};\n    const reportContours=contours().filter(f=>f?.geometry?.type==='LineString').slice(0,220);\n    const reportFlows=flows().filter(f=>f?.geometry?.type==='LineString').slice(0,240);\n    const rows=graded();\n    const aquiferFeatures=reportAquifers();\n    const reportPlace=String(d?.query||d?.location||d?.placeName||'Analysis Area').trim();\n    const reportTier=String(d?.tier||d?.mode||'regional').toLowerCase();\n    const title=reportPlace||'Analysis Area';\n    const lonSpan=Math.max(.0001,b[2]-b[0]),midLat=(b[1]+b[3])/2,kmWide=lonSpan*111.32*Math.cos(midLat*Math.PI/180);\n    const niceKm=kmWide>300?100:kmWide>120?50:kmWide>50?20:kmWide>20?10:kmWide>8?5:kmWide>3?2:1;\n    const barPx=Math.max(54,Math.min(150,niceKm/kmWide*mapW));\n    const clipId='elReportClip16961',aqPat='elAquifer16961';\n    const parts=[];\n    parts.push('<svg class=\"el-report-editorial-map-16961\" viewBox=\"0 0 '+W+' '+H+'\" role=\"img\" aria-label=\"'+esc('Earthline '+title+' hydrology and recharge opportunity plan')+'\">');\n    parts.push('<defs>'+\n      '<linearGradient id=\"elPaper16961\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#fbfaf7\"/><stop offset=\"1\" stop-color=\"#f3f3ec\"/></linearGradient>'+\n      '<pattern id=\"'+aqPat+'\" width=\"8\" height=\"8\" patternUnits=\"userSpaceOnUse\" patternTransform=\"rotate(28)\"><rect width=\"8\" height=\"8\" fill=\"#e79746\" fill-opacity=\".18\"/><path d=\"M0 0 V8\" stroke=\"#c96d20\" stroke-width=\".6\" stroke-opacity=\".24\"/></pattern>'+\n      '<clipPath id=\"'+clipId+'\"><rect x=\"'+mapX+'\" y=\"'+mapY+'\" width=\"'+mapW+'\" height=\"'+mapH+'\" rx=\"1.5\"/></clipPath>'+\n      '<marker id=\"elWaterArrow16961\" markerWidth=\"4.5\" markerHeight=\"4.5\" refX=\"3.8\" refY=\"2.25\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M0 0 L4.5 2.25 L0 4.5 Z\" fill=\"#237aa4\" opacity=\".64\"/></marker>'+\n      '</defs>');\n    parts.push('<rect width=\"'+W+'\" height=\"'+H+'\" fill=\"#fbfaf7\"/>');\n    parts.push('<text x=\"'+mapX+'\" y=\"31\" fill=\"#243f38\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"17\" font-weight=\"800\">'+esc(title)+'</text>');\n    parts.push('<text x=\"'+mapX+'\" y=\"49\" fill=\"#66746e\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"8.2\" font-weight=\"700\" letter-spacing=\"1.15\">HYDROLOGY + RECHARGE OPPORTUNITY PLAN</text>');\n    parts.push('<text x=\"'+mapX+'\" y=\"62\" fill=\"#8a918c\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"6.8\" font-weight=\"650\" letter-spacing=\".55\">'+esc(reportTier.toUpperCase())+' SCREENING · EARTHLINE</text>');\n    parts.push('<rect x=\"'+mapX+'\" y=\"'+mapY+'\" width=\"'+mapW+'\" height=\"'+mapH+'\" rx=\"1.5\" fill=\"url(#elPaper16961)\" stroke=\"#b6bbb5\" stroke-width=\".75\"/>');\n    parts.push('<g clip-path=\"url(#'+clipId+')\">');\n    for(let i=0;i<reportContours.length;i+=8){\n      const dpath=path(reportContours[i]);if(!dpath)continue;\n      parts.push('<path d=\"'+dpath+'\" transform=\"translate(1.5 1.5)\" fill=\"none\" stroke=\"#738076\" stroke-width=\"6\" opacity=\".035\" stroke-linecap=\"round\"/>');\n      parts.push('<path d=\"'+dpath+'\" transform=\"translate(-1 -1)\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"3.2\" opacity=\".42\" stroke-linecap=\"round\"/>');\n    }\n    for(const f of aquiferFeatures){\n      const g=f&&f.geometry;if(!g)continue;\n      const polys=g.type==='Polygon'?[g.coordinates]:(g.type==='MultiPolygon'?g.coordinates:[]);\n      for(const poly of polys){\n        if(!Array.isArray(poly)||!poly.length)continue;\n        const rings=poly.filter(r=>Array.isArray(r)&&r.length>=3);\n        if(!rings.length)continue;\n        const dpath=rings.map(r=>pathCoords(r)+' Z').join(' ');\n        parts.push('<path d=\"'+dpath+'\" fill=\"url(#'+aqPat+')\" fill-rule=\"evenodd\" stroke=\"#c96d20\" stroke-width=\".9\" opacity=\".95\" vector-effect=\"non-scaling-stroke\"/>');\n      }\n    }\n    for(let i=0;i<reportContours.length;i++){\n      const dpath=path(reportContours[i]);if(!dpath)continue;\n      const major=i%7===0;\n      parts.push('<path d=\"'+dpath+'\" fill=\"none\" stroke=\"'+(major?'#7e857f':'#afb2ad')+'\" stroke-width=\"'+(major?'.46':'.22')+'\" opacity=\"'+(major?'.31':'.14')+'\" vector-effect=\"non-scaling-stroke\"/>');\n    }\n    const drawSwale=r=>{\n      const dpath=path(r.f);if(!dpath)return;\n      const cfg=r.grade==='A'\n        ?{band:'#c1d5bc',bandW:5.2,bandO:.44,line:'#315c3d',lineW:1.15,lineO:.98}\n        :r.grade==='B'\n          ?{band:'#dbe2cf',bandW:4.0,bandO:.28,line:'#6c7d5b',lineW:.85,lineO:.62}\n          :{band:'#ece5d8',bandW:3.2,bandO:.20,line:'#958a73',lineW:.65,lineO:.34};\n      parts.push('<path d=\"'+dpath+'\" fill=\"none\" stroke=\"'+cfg.band+'\" stroke-width=\"'+cfg.bandW+'\" opacity=\"'+cfg.bandO+'\" stroke-linecap=\"round\" stroke-linejoin=\"round\" vector-effect=\"non-scaling-stroke\"/>');\n      parts.push('<path d=\"'+dpath+'\" fill=\"none\" stroke=\"'+cfg.line+'\" stroke-width=\"'+cfg.lineW+'\" opacity=\"'+cfg.lineO+'\" stroke-linecap=\"round\" stroke-linejoin=\"round\" vector-effect=\"non-scaling-stroke\"/>');\n    };\n    for(const r of rows.filter(r=>r.grade==='C'))drawSwale(r);\n    for(const r of rows.filter(r=>r.grade==='B'))drawSwale(r);\n    for(const r of rows.filter(r=>r.grade==='A'))drawSwale(r);\n    for(let i=0;i<reportFlows.length;i++){\n      const dpath=path(reportFlows[i]);if(!dpath)continue;\n      parts.push('<path d=\"'+dpath+'\" fill=\"none\" stroke=\"#f8f7f2\" stroke-width=\"2.7\" opacity=\".86\" stroke-linecap=\"round\" stroke-linejoin=\"round\" vector-effect=\"non-scaling-stroke\"/>');\n      parts.push('<path d=\"'+dpath+'\" fill=\"none\" stroke=\"#237aa4\" stroke-width=\"1.05\" opacity=\".95\" stroke-linecap=\"round\" stroke-linejoin=\"round\" vector-effect=\"non-scaling-stroke\"'+(i%11===0?' marker-end=\"url(#elWaterArrow16961)\"':'')+'/>');\n    }\n    parts.push('</g>');\n    let labelCount=0;\n    for(let i=0;i<reportContours.length&&labelCount<(small?5:7);i+=7){\n      const f=reportContours[i],elev=contourElevationM(f),pt=contourLabelPoint(f);\n      if(!Number.isFinite(elev)||!pt||!inside(pt))continue;\n      const x=sx(+pt[0]),y=sy(+pt[1]);\n      parts.push('<g><rect x=\"'+(x-12).toFixed(1)+'\" y=\"'+(y-6).toFixed(1)+'\" width=\"24\" height=\"9\" rx=\"1.5\" fill=\"#fbfaf7\" fill-opacity=\".82\"/><text x=\"'+x.toFixed(1)+'\" y=\"'+(y+.8).toFixed(1)+'\" text-anchor=\"middle\" fill=\"#737b75\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"6.2\" font-weight=\"650\">'+Math.round(elev)+' m</text></g>');\n      labelCount++;\n    }\n    const scaleY=mapY+mapH-17;\n    parts.push('<g transform=\"translate('+(mapX+16)+','+scaleY+')\"><path d=\"M0 0 H'+barPx+'\" stroke=\"#4a5954\" stroke-width=\"1.25\"/><path d=\"M0 -3 V3 M'+barPx+' -3 V3\" stroke=\"#4a5954\" stroke-width=\".8\"/><text x=\"'+(barPx/2)+'\" y=\"11\" text-anchor=\"middle\" fill=\"#626c67\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"6.2\">'+niceKm+' km</text></g>');\n    parts.push('<g transform=\"translate('+(mapX+mapW-30)+','+(mapY+17)+')\"><text x=\"7\" y=\"-4\" text-anchor=\"middle\" fill=\"#44554f\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"7\" font-weight=\"800\">N</text><path d=\"M7 1 V25\" stroke=\"#44554f\" stroke-width=\".8\"/><path d=\"M7 1 L3 10 L7 7 L11 10 Z\" fill=\"#44554f\"/></g>');\n    if(!small){\n      parts.push('<path d=\"M'+(sideX-12)+' '+mapY+' V'+(mapY+mapH)+'\" stroke=\"#d3d6d1\" stroke-width=\".7\"/>');\n      parts.push('<text x=\"'+sideX+'\" y=\"'+(mapY+2)+'\" fill=\"#344a43\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"7.4\" font-weight=\"800\" letter-spacing=\".9\">PLAN KEY</text>');\n      let yy=mapY+26;\n      parts.push('<rect x=\"'+sideX+'\" y=\"'+(yy-7)+'\" width=\"24\" height=\"10\" rx=\"1\" fill=\"url(#'+aqPat+')\" stroke=\"#c96d20\" stroke-width=\".7\"/><text x=\"'+(sideX+34)+'\" y=\"'+yy+'\" fill=\"#56635e\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"7.2\">Aquifer context</text>');\n      yy+=28;\n      parts.push('<path d=\"M'+sideX+' '+yy+' H'+(sideX+24)+'\" stroke=\"#237aa4\" stroke-width=\"1.1\"/><text x=\"'+(sideX+34)+'\" y=\"'+(yy+2.5)+'\" fill=\"#56635e\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"7.2\">Water path</text>');\n      yy+=30;\n      parts.push('<path d=\"M'+sideX+' '+yy+' H'+(sideX+24)+'\" stroke=\"#c1d5bc\" stroke-width=\"5.2\" opacity=\".55\" stroke-linecap=\"round\"/><path d=\"M'+sideX+' '+yy+' H'+(sideX+24)+'\" stroke=\"#315c3d\" stroke-width=\"1.15\" stroke-linecap=\"round\"/><text x=\"'+(sideX+34)+'\" y=\"'+(yy+2.5)+'\" fill=\"#56635e\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"7.2\">A · highest priority</text>');\n      yy+=23;\n      parts.push('<path d=\"M'+sideX+' '+yy+' H'+(sideX+24)+'\" stroke=\"#dbe2cf\" stroke-width=\"4\" opacity=\".48\" stroke-linecap=\"round\"/><path d=\"M'+sideX+' '+yy+' H'+(sideX+24)+'\" stroke=\"#6c7d5b\" stroke-width=\".85\" stroke-linecap=\"round\"/><text x=\"'+(sideX+34)+'\" y=\"'+(yy+2.5)+'\" fill=\"#66716c\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"7.2\">B · strong</text>');\n      yy+=23;\n      parts.push('<path d=\"M'+sideX+' '+yy+' H'+(sideX+24)+'\" stroke=\"#ece5d8\" stroke-width=\"3.2\" opacity=\".62\" stroke-linecap=\"round\"/><path d=\"M'+sideX+' '+yy+' H'+(sideX+24)+'\" stroke=\"#958a73\" stroke-width=\".65\" stroke-linecap=\"round\"/><text x=\"'+(sideX+34)+'\" y=\"'+(yy+2.5)+'\" fill=\"#777b77\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"7.2\">C · general</text>');\n      yy+=30;\n      parts.push('<path d=\"M'+sideX+' '+yy+' H'+(sideX+24)+'\" stroke=\"#858a85\" stroke-width=\".5\"/><text x=\"'+(sideX+34)+'\" y=\"'+(yy+2.5)+'\" fill=\"#68716c\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"7.2\">Contour / elevation</text>');\n      const noteY=mapY+mapH-52;\n      parts.push('<text x=\"'+sideX+'\" y=\"'+noteY+'\" fill=\"#79817c\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"6.1\" font-weight=\"650\">SCREENING PLAN</text>');\n      parts.push('<text x=\"'+sideX+'\" y=\"'+(noteY+13)+'\" fill=\"#8a918c\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"5.9\">Field verification required</text>');\n      parts.push('<text x=\"'+sideX+'\" y=\"'+(noteY+23)+'\" fill=\"#8a918c\" font-family=\"Noto Sans,Arial,sans-serif\" font-size=\"5.9\">before design or construction.</text>');\n    }\n    parts.push('</svg>');\n    return parts.join('');\n  }\n"
+          s=s[:start]+fn+s[end:]
+          p.write_text(s,encoding="utf-8")
           PY
 
-      - name: Verify repair markers and preserved map owners
+      - name: Verify source-owner repair
         run: |
           python - <<'PY'
           from pathlib import Path
-          s=Path('index.html').read_text(encoding='utf-8')
+          s=Path("index.html").read_text(encoding="utf-8")
           checks={
-            'report control isolation':'earthline-impact-report-control-owner-16952' in s,
-            'report map class':'el-report-plan-map-16952' in s,
-            'aquifer label rendered':'return shapes+label;' in s,
-            'aquifer visible fill':'rgba(74,177,211,.34)' in s,
-            'water path hierarchy':'#2287bb' in s,
-            'bioswale hierarchy':"#2f704a" in s,
-            'map function preserved':'function mapSvg(d,small=false)' in s,
-            'aquifer collector preserved':'function reportAquifers()' in s,
+            "editorial renderer":"el-report-editorial-map-16961" in s,
+            "orange aquifer":"elAquifer16961" in s and "#c96d20" in s,
+            "actual map owner":"function mapSvg(d,small=false)" in s,
+            "toolbar removed":'data-action="print"' not in s[s.index("function openReport()"):s.index("window.earthlineOpenVermontReport16151")],
+            "no aquifer map words":"MAPPED AQUIFER CONTEXT" not in s[s.index("function mapSvg(d,small=false)"):s.index("function gradeSummary()")]
           }
-          for k,v in checks.items(): print(('PASS' if v else 'FAIL'),k)
+          for k,v in checks.items(): print(("PASS" if v else "FAIL"),k)
           if not all(checks.values()): raise SystemExit(1)
           PY
 
       - name: Commit focused candidate
         run: |
-          git config user.name "Earthline Mantra 52"
+          git config user.name "Earthline Mantra 53"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m "fix: isolate report controls and redesign report map"
+          git commit -m "fix: editorial landscape-plan report renderer"
           git push origin mantra52-report-visual-repair
