@@ -58,14 +58,11 @@ jobs:
             parts.push('</svg>');return parts.join('');
           }
           '''
-          pat=r"  function mapSvg\(d,small=false\)\{.*?\n\s*function gradeSummary"
-          m=re.search(pat,s,flags=re.S)
-          if not m:
-              raise SystemExit("mapSvg boundary not found")
-          replacement=new+"function gradeSummary"
-          s,n=re.subn(pat,replacement,s,count=1,flags=re.S)
-          if n!=1:
-              raise SystemExit(f"expected 1 mapSvg replacement, got {n}")
+          start=s.find("function mapSvg(d,small=false){")
+          end=s.find("function gradeSummary",start)
+          if start<0 or end<0 or end<=start:
+              raise SystemExit(f"mapSvg boundary not found: start={start} end={end}")
+          s=s[:start]+new+s[end:]
           s=s.replace("blue lines show modeled surface-water movement","blue hierarchy shows primary and secondary modeled surface-water movement")
           p.write_text(s,encoding="utf-8")
           print("mapSvg 16965 installed")
