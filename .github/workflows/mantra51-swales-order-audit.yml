@@ -1,0 +1,25 @@
+name: Mantra 51 Swales Order Audit
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-swales-order-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          for term in ['src=src.slice(0,mainOpenEnd+1)','visualBlock','precedentBlock','canonicalBlock+']:
+              print('\nTERM',term)
+              st=0
+              for _ in range(5):
+                  i=s.find(term,st)
+                  if i<0: break
+                  print(s[max(0,i-1200):i+3200].replace('\n',' '))
+                  st=i+len(term)
+          PY
