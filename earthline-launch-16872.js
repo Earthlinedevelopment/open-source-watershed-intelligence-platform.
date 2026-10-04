@@ -179,40 +179,37 @@ window.EARTHLINE_LAUNCH_16872={build:BUILD,quota,consumePaidSearch,createAccount
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 
 
-/* EARTHLINE_REPORT_VISUAL_REPAIR_16954 — lightweight landscape-plan renderer.
-   Presentation only: no hydrology, geometry, ranking, search, or run-state changes. */
-(function installReportVisualRepair16954(){
-  if(window.EARTHLINE_REPORT_VISUAL_REPAIR_16954)return;
-  window.EARTHLINE_REPORT_VISUAL_REPAIR_16954=true;
+/* EARTHLINE_REPORT_VISUAL_REPAIR_16958 — real-world aerial illustration renderer.
+   Presentation only: preserves analysis geometry and rebuilds the report SVG as a lightweight aerial landscape rendering. */
+(function installReportVisualRepair16958(){
+  if(window.EARTHLINE_REPORT_VISUAL_REPAIR_16958)return;
+  window.EARTHLINE_REPORT_VISUAL_REPAIR_16958=true;
 
-  const STYLE_ID='earthlineReportVisualRepair16954';
-  const CONTROL_SELECTOR=[
-    '#earthlineRail16188','#earthlineLaunchFallbackRail16872','#earthlineLaunchLogin16872',
-    '#earthlineLaunchDonate16872','#earthlineLaunchMerch16872','#searchOrb','[id*="SearchOrb"]',
-    '[id^="earthlineRail"]','.earthline-launch-rail-btn-16872','.el-rail-control-16188','.mapboxgl-ctrl'
-  ].join(',');
+  const STYLE_ID='earthlineReportVisualRepair16958';
+  const NS='http://www.w3.org/2000/svg';
+  const TOWNS=new Set(['Burlington','Montpelier','Rutland','St. Johnsbury','Middlebury','St. Albans','Bennington','Brattleboro','Newport','Charlotte']);
 
   function ensureStyle(){
     if(document.getElementById(STYLE_ID))return;
-    const st=document.createElement('style'); st.id=STYLE_ID;
+    const st=document.createElement('style');st.id=STYLE_ID;
     st.textContent=[
-      'html.earthline-impact-report-open-16954 #earthlineRail16188,',
-      'html.earthline-impact-report-open-16954 #earthlineLaunchFallbackRail16872,',
-      'html.earthline-impact-report-open-16954 #earthlineLaunchLogin16872,',
-      'html.earthline-impact-report-open-16954 #earthlineLaunchDonate16872,',
-      'html.earthline-impact-report-open-16954 #earthlineLaunchMerch16872,',
-      'html.earthline-impact-report-open-16954 #searchOrb,',
-      'html.earthline-impact-report-open-16954 [id*="SearchOrb"],',
-      'html.earthline-impact-report-open-16954 [id^="earthlineRail"],',
-      'html.earthline-impact-report-open-16954 .earthline-launch-rail-btn-16872,',
-      'html.earthline-impact-report-open-16954 .el-rail-control-16188,',
-      'html.earthline-impact-report-open-16954 .mapboxgl-ctrl{display:none!important;visibility:hidden!important;pointer-events:none!important}',
-      '.el49-report .el49-figure{border:0!important;background:#f2eee4!important;padding:10px!important;box-shadow:0 10px 26px rgba(35,48,41,.10)!important}',
-      '.el49-report .el49-figure svg.el-report-plan-map-16954{display:block!important;width:100%!important;height:auto!important;border:1px solid #a9afa5!important;border-radius:2px!important;background:#f6f3ea!important}',
-      '.el49-report .el49-figure figcaption{margin:10px 4px 2px!important;max-width:82ch!important;color:#485a55!important;font-size:11.5px!important;line-height:1.46!important}',
-      '.el49-report .el16954-map-title{font-family:"Noto Sans",Arial,sans-serif!important;font-size:14px!important;font-weight:800!important;letter-spacing:.1px!important;fill:#26413f!important}',
-      '.el49-report .el16954-map-subtitle{font-family:"Noto Sans",Arial,sans-serif!important;font-size:7.7px!important;font-weight:700!important;letter-spacing:.95px!important;fill:#66746d!important}',
-      '.el49-report .el16954-map-key text{font-family:"Noto Sans",Arial,sans-serif}'
+      'html.earthline-impact-report-open-16958 #earthlineRail16188,',
+      'html.earthline-impact-report-open-16958 #earthlineLaunchFallbackRail16872,',
+      'html.earthline-impact-report-open-16958 #earthlineLaunchLogin16872,',
+      'html.earthline-impact-report-open-16958 #earthlineLaunchDonate16872,',
+      'html.earthline-impact-report-open-16958 #earthlineLaunchMerch16872,',
+      'html.earthline-impact-report-open-16958 #searchOrb,',
+      'html.earthline-impact-report-open-16958 [id*="SearchOrb"],',
+      'html.earthline-impact-report-open-16958 [id^="earthlineRail"],',
+      'html.earthline-impact-report-open-16958 .earthline-launch-rail-btn-16872,',
+      'html.earthline-impact-report-open-16958 .el-rail-control-16188,',
+      'html.earthline-impact-report-open-16958 .mapboxgl-ctrl{display:none!important;visibility:hidden!important;pointer-events:none!important}',
+      '.el49-report .el49-toolbar-actions .el49-tool:not(.el49-close){display:none!important}',
+      '.el49-report .el49-close{width:34px!important;height:34px!important;min-width:34px!important;padding:0!important;border-radius:50%!important;background:#eef1ee!important;color:#31413d!important;box-shadow:none!important;font-size:22px!important}',
+      '.el49-report .el49-toolbar-actions{gap:0!important}',
+      '.el49-report .el49-figure{background:#f3efe4!important;padding:8px!important;border:0!important;box-shadow:0 14px 34px rgba(26,43,36,.12)!important}',
+      '.el49-report .el49-figure svg.el-report-aerial-16958{display:block!important;width:100%!important;height:auto!important;border:0!important;background:#e9ede3!important}',
+      '.el49-report .el49-figure figcaption{margin:11px 4px 2px!important;max-width:82ch!important;color:#465b55!important;font-size:11.5px!important;line-height:1.46!important}'
     ].join('\n');
     (document.head||document.documentElement).appendChild(st);
   }
@@ -228,209 +225,172 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     return true;
   }
   function reportOpen(){return [...document.querySelectorAll('.el49-report')].some(visible)}
-
-  function forceControlsHidden(open){
-    document.querySelectorAll(CONTROL_SELECTOR).forEach(el=>{
-      if(el.closest&&el.closest('.el49-report'))return;
-      if(open){
-        if(!el.hasAttribute('data-el-report-prev-style-16954'))el.setAttribute('data-el-report-prev-style-16954',el.getAttribute('style')||'');
-        el.style.setProperty('display','none','important');
-        el.style.setProperty('visibility','hidden','important');
-        el.style.setProperty('pointer-events','none','important');
-      }else if(el.hasAttribute('data-el-report-prev-style-16954')){
-        const prev=el.getAttribute('data-el-report-prev-style-16954')||'';
-        if(prev)el.setAttribute('style',prev); else el.removeAttribute('style');
-        el.removeAttribute('data-el-report-prev-style-16954');
-      }
-    });
-  }
-
-  function setAttr(el,k,v){try{el.setAttribute(k,String(v))}catch(_){}}
   function svgEl(name,attrs,text){
-    const e=document.createElementNS('http://www.w3.org/2000/svg',name);
+    const e=document.createElementNS(NS,name);
     Object.entries(attrs||{}).forEach(([k,v])=>e.setAttribute(k,String(v)));
     if(text!=null)e.textContent=text;
     return e;
   }
+  function color(v){return String(v||'').trim().toLowerCase()}
+  function addPath(g,d,attrs){if(!d)return null;const p=svgEl('path',Object.assign({d,fill:'none'},attrs||{}));g.appendChild(p);return p}
 
-  function clearPreviousPresentation(svg){
-    svg.querySelectorAll(
-      '.el16952-aquifer-label,.el16953-aquifer-label,.el16953-map-key,.el16953-map-subtitle,.el16953-landform,'+
-      '.el16954-map-key,.el16954-map-subtitle,.el16954-landform'
-    ).forEach(n=>n.remove());
-
+  function collect(svg){
+    const out={aquifer:[],water:[],a:[],b:[],c:[],contour:[],road:[],boundary:[],towns:[],elev:[],north:null,scale:null};
+    [...svg.querySelectorAll('path')].forEach(p=>{
+      const d=p.getAttribute('d');if(!d)return;
+      const st=color(p.getAttribute('stroke')),fi=color(p.getAttribute('fill'));
+      if(fi.includes('92,170,202')||fi.includes('69,151,207')||fi.includes('74,177,211')||fi.includes('61,169,211')||fi.includes('226,132,43')){out.aquifer.push(d);return}
+      if(['#5b9fc2','#087bb4','#2188b2','#2287bb','#1686bb','#1578a6'].includes(st)){out.water.push(d);return}
+      if(['#4f8b5d','#177c58','#2e7049','#315f48','#4e7756'].includes(st)){out.a.push(d);return}
+      if(['#789557','#ad842e','#64894f','#71855f'].includes(st)){out.b.push(d);return}
+      if(['#9b8b61','#aa6846','#927c55','#a19577'].includes(st)){out.c.push(d);return}
+      if(['#839186','#7b8a84','#8c887b','#8b887c','#8f9088'].includes(st)){out.contour.push(d);return}
+      if(st==='#aa9675'||st==='#b7a58c'){out.road.push(d);return}
+      if(st==='#6f857c'||st==='#6f7e73'){out.boundary.push(d);return}
+    });
     [...svg.querySelectorAll('text')].forEach(t=>{
       const tx=(t.textContent||'').trim();
-      if(tx==='GENERATED BY THE EARTHLINE SEARCH ENGINE'){const g=t.closest('g');if(g)g.remove()}
-      if(tx==='MAPPED AQUIFER CONTEXT'){const g=t.closest('g');if(g)g.remove()}
+      if(TOWNS.has(tx))out.towns.push(t.cloneNode(true));
+      else if(/^\d+\s*m$/.test(tx))out.elev.push(t.cloneNode(true));
+      else if(tx==='N'){const g=t.closest('g');if(g)out.north=g.cloneNode(true)}
+      else if(/^\d+(?:\.\d+)?\s*km$/.test(tx)){const g=t.closest('g');if(g)out.scale=g.cloneNode(true)}
     });
+    return out;
   }
 
-  function styleBase(svg){
-    [...svg.querySelectorAll('rect')].forEach((r,i)=>{
-      const filter=(r.getAttribute('filter')||'');
-      if(filter.includes('paperTexture'))r.removeAttribute('filter');
-      const w=parseFloat(r.getAttribute('width')||'0'), h=parseFloat(r.getAttribute('height')||'0');
-      const vb=svg.viewBox.baseVal;
-      if((w>=vb.width*.95&&h>=vb.height*.95)||i===0){
-        setAttr(r,'fill','#f6f3ea'); setAttr(r,'opacity','1');
-      }
-    });
+  function defs(){
+    const d=svgEl('defs');
+    const land=svgEl('linearGradient',{id:'elLand16958',x1:'0',y1:'0',x2:'1',y2:'1'});
+    [['0','#d4dfcf'],['.28','#e7eadc'],['.58','#e5dfcf'],['1','#cdd9cc']].forEach(x=>land.appendChild(svgEl('stop',{offset:x[0],'stop-color':x[1]})));
+    d.appendChild(land);
+
+    const aq=svgEl('linearGradient',{id:'elAq16958',x1:'0',y1:'0',x2:'1',y2:'1'});
+    [['0','#f6b15b','.76'],['.52','#e68b2f','.57'],['1','#d36f20','.43']].forEach(x=>aq.appendChild(svgEl('stop',{offset:x[0],'stop-color':x[1],'stop-opacity':x[2]})));
+    d.appendChild(aq);
+
+    const pat=svgEl('pattern',{id:'elAqDots16958',width:'12',height:'12',patternUnits:'userSpaceOnUse'});
+    pat.append(svgEl('circle',{cx:'2.5',cy:'2.5',r:'1.15',fill:'#a95618',opacity:'.28'}),svgEl('circle',{cx:'9',cy:'8',r:'.8',fill:'#ffd6a0',opacity:'.32'}));
+    d.appendChild(pat);
+
+    const tex=svgEl('filter',{id:'elTerrainTexture16958',x:'-10%',y:'-10%',width:'120%',height:'120%'});
+    tex.append(svgEl('feTurbulence',{type:'fractalNoise',baseFrequency:'.016 .032',numOctaves:'2',seed:'31'}),svgEl('feColorMatrix',{type:'saturate',values:'.18'}));
+    const comp=svgEl('feComponentTransfer');comp.appendChild(svgEl('feFuncA',{type:'table',tableValues:'0 .10'}));tex.appendChild(comp);d.appendChild(tex);
+
+    const blur=svgEl('filter',{id:'elHill16958',x:'-15%',y:'-15%',width:'130%',height:'130%'});blur.appendChild(svgEl('feGaussianBlur',{stdDeviation:'5.5'}));d.appendChild(blur);
+    const sw=svgEl('filter',{id:'elSwaleShadow16958',x:'-20%',y:'-20%',width:'140%',height:'140%'});sw.appendChild(svgEl('feDropShadow',{dx:'0',dy:'1.5',stdDeviation:'1.4','flood-color':'#213a2d','flood-opacity':'.30'}));d.appendChild(sw);
+    const wa=svgEl('filter',{id:'elWaterShadow16958',x:'-20%',y:'-20%',width:'140%',height:'140%'});wa.appendChild(svgEl('feDropShadow',{dx:'0',dy:'1',stdDeviation:'1.1','flood-color':'#0b587d','flood-opacity':'.24'}));d.appendChild(wa);
+
+    const vig=svgEl('radialGradient',{id:'elVig16958',cx:'.5',cy:'.46',r:'.76'});
+    vig.append(svgEl('stop',{offset:'.64','stop-color':'#fff','stop-opacity':'0'}),svgEl('stop',{offset:'1','stop-color':'#51675a','stop-opacity':'.16'}));d.appendChild(vig);
+    return d;
   }
 
-  function addLandform(svg,contours){
-    if(!contours.length)return;
-    const g=svgEl('g',{class:'el16954-landform','pointer-events':'none'});
-    contours.forEach((p,i)=>{
-      if(i%7!==0)return;
-      const c=p.cloneNode(false);
-      c.removeAttribute('class');
-      c.setAttribute('fill','none');
-      c.setAttribute('stroke',i%14===0?'#d5ddcf':'#e1e5da');
-      c.setAttribute('stroke-width',i%14===0?'8.5':'5.5');
-      c.setAttribute('opacity',i%14===0?'.12':'.08');
-      c.setAttribute('stroke-linecap','round');
-      g.appendChild(c);
+  function rebuild(svg){
+    if(!svg||svg.dataset.earthlineAerial16958==='1')return;
+    const vb=svg.viewBox&&svg.viewBox.baseVal?svg.viewBox.baseVal:null;
+    const W=(vb&&vb.width)||820,H=(vb&&vb.height)||500;
+    const data=collect(svg);
+    const label=(svg.getAttribute('aria-label')||'Earthline').replace(/^Earthline\s*/i,'').replace(/screening map/i,'').trim();
+
+    while(svg.firstChild)svg.removeChild(svg.firstChild);
+    svg.classList.add('el-report-aerial-16958');
+    svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+    svg.appendChild(defs());
+
+    svg.appendChild(svgEl('rect',{width:W,height:H,fill:'#f5f2e9'}));
+    svg.appendChild(svgEl('rect',{x:14,y:14,width:W-28,height:H-28,rx:7,fill:'url(#elLand16958)'}));
+    svg.appendChild(svgEl('rect',{x:14,y:14,width:W-28,height:H-28,rx:7,fill:'#6b806f',opacity:'.065',filter:'url(#elTerrainTexture16958)'}));
+
+    const relief=svgEl('g',{opacity:'.13',filter:'url(#elHill16958)'});
+    data.contour.filter((_,i)=>i%6===0).forEach((d,i)=>addPath(relief,d,{stroke:i%2===0?'#55705c':'#9a815e','stroke-width':i%3===0?18:12,'stroke-linecap':'round'}));
+    svg.appendChild(relief);
+
+    const aq=svgEl('g',{class:'el16958-aquifers'});
+    data.aquifer.forEach(d=>{
+      aq.appendChild(svgEl('path',{d,fill:'url(#elAq16958)','fill-rule':'evenodd',stroke:'#cd711f','stroke-width':'1.5',opacity:'.96','vector-effect':'non-scaling-stroke'}));
+      aq.appendChild(svgEl('path',{d,fill:'url(#elAqDots16958)','fill-rule':'evenodd',stroke:'none',opacity:'.38'}));
     });
-    const firstPath=svg.querySelector('path');
-    if(firstPath)svg.insertBefore(g,firstPath); else svg.appendChild(g);
-  }
+    svg.appendChild(aq);
 
-  function addFurniture(svg){
-    const vb=svg.viewBox.baseVal,W=vb.width||820,H=vb.height||500;
-    const title=[...svg.querySelectorAll('text')].find(t=>(t.textContent||'').startsWith('Earthline Water + Recharge Opportunity Map'));
-    if(title){
-      title.classList.add('el16954-map-title');
-      setAttr(title,'x',38);setAttr(title,'y',25);
-    }
-    svg.appendChild(svgEl('text',{class:'el16954-map-subtitle',x:38,y:39},'LANDSCAPE HYDROLOGY + RECHARGE OPPORTUNITY'));
+    const context=svgEl('g',{class:'el16958-context'});
+    data.boundary.forEach(d=>addPath(context,d,{stroke:'#6c7b70','stroke-width':'1.0',opacity:'.48'}));
+    data.road.forEach(d=>addPath(context,d,{stroke:'#b19c82','stroke-width':'1.15',opacity:'.24','stroke-linecap':'round'}));
+    svg.appendChild(context);
 
-    const key=svgEl('g',{class:'el16954-map-key',transform:'translate('+(W-258)+','+(H-105)+')'});
-    key.appendChild(svgEl('rect',{width:234,height:66,rx:3,fill:'#fffdf8','fill-opacity':'.94',stroke:'#b2b7ad','stroke-width':'.7'}));
-    key.appendChild(svgEl('rect',{x:10,y:13,width:20,height:8,rx:1.5,fill:'rgba(226,132,43,.34)',stroke:'#d17a26','stroke-width':'1.1'}));
-    key.appendChild(svgEl('text',{x:38,y:20,fill:'#485a55','font-size':'7.3'},'Aquifer context'));
-    key.appendChild(svgEl('path',{d:'M10 37 H30',stroke:'#1578a6','stroke-width':'2.1','stroke-linecap':'round'}));
-    key.appendChild(svgEl('text',{x:38,y:40,fill:'#485a55','font-size':'7.3'},'Water path'));
-    key.appendChild(svgEl('path',{d:'M130 17 H152',stroke:'#4e7756','stroke-width':'5.3','stroke-linecap':'round'}));
-    key.appendChild(svgEl('text',{x:160,y:20,fill:'#485a55','font-size':'7.3'},'Bioswale'));
-    key.appendChild(svgEl('path',{d:'M130 37 H152',stroke:'#8f9088','stroke-width':'.7'}));
-    key.appendChild(svgEl('text',{x:160,y:40,fill:'#485a55','font-size':'7.3'},'Contour'));
-    key.appendChild(svgEl('text',{x:10,y:56,fill:'#7a817b','font-size':'6.3'},'Screening plan · field verification required'));
+    const contours=svgEl('g',{class:'el16958-contours'});
+    data.contour.filter((_,i)=>i%2===0).forEach((d,i)=>addPath(contours,d,{stroke:i%7===0?'#70776f':'#969a92','stroke-width':i%7===0?'.72':'.34',opacity:i%7===0?'.34':'.14','vector-effect':'non-scaling-stroke'}));
+    svg.appendChild(contours);
+
+    const water=svgEl('g',{class:'el16958-water',filter:'url(#elWaterShadow16958)'});
+    [...new Set(data.water)].forEach(d=>{
+      addPath(water,d,{stroke:'#f6f7ef','stroke-width':'6.4',opacity:'.78','stroke-linecap':'round','stroke-linejoin':'round'});
+      addPath(water,d,{stroke:'#0f6996','stroke-width':'3.2',opacity:'.97','stroke-linecap':'round','stroke-linejoin':'round'});
+      addPath(water,d,{stroke:'#75c7df','stroke-width':'.95',opacity:'.94','stroke-linecap':'round','stroke-linejoin':'round'});
+    });
+    svg.appendChild(water);
+
+    const swales=svgEl('g',{class:'el16958-swales',filter:'url(#elSwaleShadow16958)'});
+    const paint=(arr,grade)=>{
+      const cfg=grade==='A'?{outer:'#294a38',mid:'#4f8056',lush:'#8ab17c',blue:'#80c7d1',w:9.0,a:.97}:grade==='B'?{outer:'#536b51',mid:'#78956c',lush:'#a8bb94',blue:'#a0cbd0',w:7.1,a:.79}:{outer:'#77745f',mid:'#99967b',lush:'#beb9a0',blue:'#abc9c9',w:5.4,a:.46};
+      [...new Set(arr)].forEach(d=>{
+        addPath(swales,d,{stroke:'#f3f2e8','stroke-width':cfg.w+5.3,opacity:'.76','stroke-linecap':'round','stroke-linejoin':'round'});
+        addPath(swales,d,{stroke:cfg.outer,'stroke-width':cfg.w,opacity:String(cfg.a),'stroke-linecap':'round','stroke-linejoin':'round'});
+        addPath(swales,d,{stroke:cfg.mid,'stroke-width':cfg.w*.72,opacity:String(cfg.a),'stroke-linecap':'round','stroke-linejoin':'round'});
+        addPath(swales,d,{stroke:cfg.lush,'stroke-width':cfg.w*.30,opacity:'.94','stroke-linecap':'round','stroke-linejoin':'round'});
+        addPath(swales,d,{stroke:cfg.blue,'stroke-width':Math.max(.7,cfg.w*.09),opacity:grade==='A'?'.78':'.46','stroke-linecap':'round','stroke-linejoin':'round'});
+        addPath(swales,d,{stroke:'#d8e6c3','stroke-width':'1.3',opacity:grade==='A'?'.46':'.26','stroke-linecap':'round','stroke-dasharray':'0.2 5.2'});
+      });
+    };
+    paint(data.c,'C');paint(data.b,'B');paint(data.a,'A');
+    svg.appendChild(swales);
+
+    data.elev.filter((_,i)=>i%2===0).slice(0,7).forEach(t=>{
+      t.setAttribute('fill','#5f675f');t.setAttribute('font-size','7.6');t.setAttribute('font-weight','700');t.setAttribute('opacity','.84');
+      svg.appendChild(t);
+    });
+    data.towns.forEach(t=>{t.setAttribute('fill','#40544d');t.setAttribute('font-size','8.4');t.setAttribute('font-weight','650');t.setAttribute('opacity','.82');svg.appendChild(t)});
+
+    svg.appendChild(svgEl('rect',{x:14,y:14,width:W-28,height:H-28,rx:7,fill:'url(#elVig16958)','pointer-events':'none'}));
+    svg.appendChild(svgEl('rect',{x:14,y:14,width:W-28,height:H-28,rx:7,fill:'none',stroke:'#9ba79e','stroke-width':'.9'}));
+
+    const head=svgEl('g',{transform:'translate(32,34)'});
+    head.append(svgEl('text',{x:0,y:0,fill:'#1f4038','font-size':'15','font-weight':'850'},label||'Earthline Water + Recharge Opportunity'));
+    head.append(svgEl('text',{x:0,y:16,fill:'#66746c','font-size':'7.7','font-weight':'750','letter-spacing':'1.15'},'EARTHLINE · AERIAL LANDSCAPE RENDERING'));
+    svg.appendChild(head);
+
+    if(data.north)svg.appendChild(data.north);
+    if(data.scale)svg.appendChild(data.scale);
+
+    const key=svgEl('g',{transform:'translate('+(W-286)+','+(H-103)+')'});
+    key.appendChild(svgEl('rect',{width:258,height:66,rx:5,fill:'#fffdf8','fill-opacity':'.93',stroke:'#acb4ad','stroke-width':'.7'}));
+    key.appendChild(svgEl('rect',{x:12,y:13,width:24,height:10,rx:2,fill:'url(#elAq16958)',stroke:'#cd711f','stroke-width':'.9'}));
+    key.appendChild(svgEl('text',{x:44,y:21,fill:'#465a55','font-size':'7.4'},'Aquifer context'));
+    addPath(key,'M12 42 H36',{stroke:'#0f6996','stroke-width':'2.7','stroke-linecap':'round'});addPath(key,'M12 42 H36',{stroke:'#75c7df','stroke-width':'.8','stroke-linecap':'round'});
+    key.appendChild(svgEl('text',{x:44,y:45,fill:'#465a55','font-size':'7.4'},'Water path'));
+    addPath(key,'M139 18 H164',{stroke:'#294a38','stroke-width':'7','stroke-linecap':'round'});addPath(key,'M139 18 H164',{stroke:'#8ab17c','stroke-width':'2.4','stroke-linecap':'round'});addPath(key,'M139 18 H164',{stroke:'#80c7d1','stroke-width':'.7','stroke-linecap':'round'});
+    key.appendChild(svgEl('text',{x:172,y:21,fill:'#465a55','font-size':'7.4'},'Bioswale'));
+    addPath(key,'M139 42 H164',{stroke:'#777d76','stroke-width':'.7'});
+    key.appendChild(svgEl('text',{x:172,y:45,fill:'#465a55','font-size':'7.4'},'Elevation'));
+    key.appendChild(svgEl('text',{x:12,y:58,fill:'#788078','font-size':'6.3'},'Modeled screening · field verification required'));
     svg.appendChild(key);
-  }
 
-  function polishMap(svg){
-    if(!svg)return;
-    svg.classList.remove('el-report-plan-map-16952','el-report-plan-map-16953');
-    svg.classList.add('el-report-plan-map-16954');
-    setAttr(svg,'preserveAspectRatio','xMidYMid meet');
-    clearPreviousPresentation(svg);
-    styleBase(svg);
-
-    const contours=[];
-    const paths=[...svg.querySelectorAll('path')];
-
-    paths.forEach(p=>{
-      const stroke=(p.getAttribute('stroke')||'').toLowerCase();
-      const fill=(p.getAttribute('fill')||'').toLowerCase();
-      const dash=(p.getAttribute('stroke-dasharray')||'').trim();
-      const sw=parseFloat(p.getAttribute('stroke-width')||'0');
-
-      // Aquifer polygons: orange field, no in-map text labels.
-      if(fill.includes('92,170,202')||fill.includes('69,151,207')||fill.includes('61,169,211')||fill.includes('74,177,211')){
-        setAttr(p,'fill','rgba(226,132,43,.30)');
-        setAttr(p,'stroke','#d17a26');
-        setAttr(p,'stroke-width','1.55');
-        setAttr(p,'opacity','.95');
-        return;
-      }
-
-      // Remove decorative swale halos and dotted centerlines from the technical renderer.
-      if(dash || ['#dbe8d5','#d6e4d0','#f7f1cf','#eef3d9','#fffdf8'].includes(stroke)){
-        setAttr(p,'opacity','0');
-        return;
-      }
-
-      // Water: clear but quiet.
-      if(stroke==='#5b9fc2'||stroke==='#087bb4'||stroke==='#2188b2'||stroke==='#1686bb'||stroke==='#2287bb'){
-        setAttr(p,'stroke','#1578a6');
-        setAttr(p,'stroke-width',Math.max(2.0,Math.min(2.35,sw||2.0)));
-        setAttr(p,'opacity','.90');
-        setAttr(p,'stroke-linecap','round');
-        return;
-      }
-
-      // Water casing: reduce rather than eliminate.
-      if(stroke==='#ffffff'||stroke==='#fffdfa'){
-        setAttr(p,'stroke','#f6f3ea');
-        setAttr(p,'stroke-width',Math.max(3.0,Math.min(3.6,sw||3.0)));
-        setAttr(p,'opacity','.72');
-        return;
-      }
-
-      // Bioswales: clean ribbons, no ornamental dots.
-      if(stroke==='#4f8b5d'||stroke==='#177c58'||stroke==='#2e7049'){
-        setAttr(p,'stroke','#4e7756');
-        setAttr(p,'stroke-width','5.6');
-        setAttr(p,'opacity','.92');
-        setAttr(p,'stroke-linecap','round');
-        return;
-      }
-      if(stroke==='#789557'||stroke==='#ad842e'||stroke==='#64894f'){
-        setAttr(p,'stroke','#71855f');
-        setAttr(p,'stroke-width','4.4');
-        setAttr(p,'opacity','.68');
-        setAttr(p,'stroke-linecap','round');
-        return;
-      }
-      if(stroke==='#9b8b61'||stroke==='#aa6846'||stroke==='#927c55'){
-        setAttr(p,'stroke','#a19577');
-        setAttr(p,'stroke-width','3.2');
-        setAttr(p,'opacity','.38');
-        setAttr(p,'stroke-linecap','round');
-        return;
-      }
-
-      // Contours: landform information, not visual competition.
-      if(stroke==='#839186'||stroke==='#7b8a84'||stroke==='#8c887b'){
-        setAttr(p,'stroke','#8f9088');
-        setAttr(p,'stroke-width',Math.max(.38,Math.min(.52,sw||.42)));
-        setAttr(p,'opacity','.24');
-        contours.push(p);
-      }
-    });
-
-    // Tone down town/road/context labels while retaining orientation.
-    [...svg.querySelectorAll('text')].forEach(t=>{
-      const tx=(t.textContent||'').trim();
-      if(/^[A-Za-z .'-]{3,28}$/.test(tx)&&!tx.includes('Aquifer')&&!tx.includes('Bioswale')&&!tx.includes('Water')){
-        if(!t.classList.contains('el16954-map-title')&&!t.classList.contains('el16954-map-subtitle')){
-          const fs=parseFloat(t.getAttribute('font-size')||'9');
-          if(fs<=10){setAttr(t,'fill','#56655f');setAttr(t,'opacity','.76')}
-        }
-      }
-    });
-
-    addLandform(svg,contours);
-    addFurniture(svg);
-    svg.dataset.earthlinePlan16954='1';
+    svg.dataset.earthlineAerial16958='1';
   }
 
   function sync(){
     ensureStyle();
     const open=reportOpen();
-    document.documentElement.classList.toggle('earthline-impact-report-open-16954',open);
-    forceControlsHidden(open);
+    document.documentElement.classList.toggle('earthline-impact-report-open-16958',open);
     if(!open)return;
-    document.querySelectorAll('.el49-report .el49-figure svg').forEach(polishMap);
+    document.querySelectorAll('.el49-report .el49-figure svg').forEach(rebuild);
   }
 
-  let queued=false;
-  const schedule=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;sync()})};
+  let q=false;
+  const schedule=()=>{if(q)return;q=true;requestAnimationFrame(()=>{q=false;sync()})};
   new MutationObserver(schedule).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','aria-hidden']});
-  addEventListener('hashchange',schedule);
   document.addEventListener('click',schedule,true);
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',sync,{once:true}); else sync();
+  addEventListener('hashchange',schedule);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',sync,{once:true});else sync();
 })();
 
 })();
