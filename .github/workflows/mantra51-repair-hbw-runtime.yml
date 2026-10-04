@@ -1,0 +1,44 @@
+name: Mantra 51 Repair How Swales Runtime
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - 'scripts/repair_hbw_intro_collision_16944.py'
+      - '.github/workflows/mantra51-repair-hbw-runtime.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          python3 scripts/repair_hbw_intro_collision_16944.py
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          s=Path('index.html').read_text(errors='ignore')
+          assert "const coreIntro16944=take('The idea in one minute')" in s
+          assert "const sequence=[ coreIntro16944," in s
+          assert "const intro=take('The idea in one minute')" not in s
+          class P(HTMLParser):
+              def __init__(self): super().__init__(); self.ins=False; self.buf=[]; self.scripts=[]
+              def handle_starttag(self,t,a):
+                  if t.lower()=='script': self.ins=True; self.buf=[]
+              def handle_endtag(self,t):
+                  if t.lower()=='script' and self.ins:self.scripts.append(''.join(self.buf));self.ins=False
+              def handle_data(self,d):
+                  if self.ins:self.buf.append(d)
+          p=P();p.feed(s)
+          out=Path('/tmp/el-js');out.mkdir(exist_ok=True)
+          for i,j in enumerate(p.scripts):(out/f'{i:03}.js').write_text(j)
+          print('scripts',len(p.scripts))
+          PY
+          for f in /tmp/el-js/*.js; do node --check "$f" >/dev/null; done
+          git config user.name Earthlinedevelopment
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git commit -m 'fix: repair How Swales runtime collision'
+          git push
