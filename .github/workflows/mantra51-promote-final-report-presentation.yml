@@ -1,0 +1,36 @@
+name: Mantra 51 Promote Final Report Presentation
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-promote-final-report-presentation.yml'
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: |
+          set -euo pipefail
+          cp index.html /tmp/earthline-final-report-index.html
+          git config user.name Earthlinedevelopment
+          git config user.email info@earthlinedevelopment.org
+          git fetch origin mantra51-global-repair-campaign pages-live
+
+          git checkout -B mantra51-global-repair-campaign origin/mantra51-global-repair-campaign
+          cp /tmp/earthline-final-report-index.html index.html
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+          git add index.html
+          git commit -m 'fix: finalize professional report presentation'
+          git push origin mantra51-global-repair-campaign
+
+          git checkout -B pages-live origin/pages-live
+          cp /tmp/earthline-final-report-index.html index.html
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+          git add index.html
+          git commit -m 'fix: finalize professional report presentation'
+          git push origin pages-live
