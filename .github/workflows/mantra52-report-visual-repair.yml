@@ -1,0 +1,157 @@
+name: Mantra 52 report visual repair
+
+on:
+  push:
+    branches:
+      - mantra52-report-visual-repair
+    paths:
+      - .github/workflows/mantra52-report-visual-repair.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra52-report-visual-repair
+
+      - name: Apply the two report presentation repairs
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path("index.html")
+          s = p.read_text(encoding="utf-8")
+          original = s
+
+          style = r"""
+<style id="earthline-impact-report-surface-16952">
+html.earthline-impact-report-open-16952 #earthlineRail16188,
+html.earthline-impact-report-open-16952 #earthlineLaunchFallbackRail16872,
+html.earthline-impact-report-open-16952 #earthlineLaunchLogin16872,
+html.earthline-impact-report-open-16952 #earthlineLaunchDonate16872,
+html.earthline-impact-report-open-16952 #earthlineLaunchMerch16872,
+html.earthline-impact-report-open-16952 #searchOrb,
+html.earthline-impact-report-open-16952 [id*="SearchOrb"],
+html.earthline-impact-report-open-16952 .mapboxgl-ctrl-top-left,
+html.earthline-impact-report-open-16952 .mapboxgl-ctrl-top-right,
+html.earthline-impact-report-open-16952 .mapboxgl-ctrl-bottom-left,
+html.earthline-impact-report-open-16952 .mapboxgl-ctrl-bottom-right{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+.el49-report .el49-figure{
+  border:0!important;
+  background:#f4f1e8!important;
+  padding:10px!important;
+  box-shadow:0 12px 30px rgba(26,49,43,.12)!important;
+}
+.el49-report .el49-figure svg.el-report-plan-map-16952{
+  display:block!important;
+  width:100%!important;
+  height:auto!important;
+  border:1px solid #9dad9f!important;
+  border-radius:3px!important;
+  background:#f3efe5!important;
+}
+.el49-report .el49-figure figcaption{
+  margin-top:11px!important;
+  max-width:76ch!important;
+  color:#465b58!important;
+  font-size:11.5px!important;
+  line-height:1.45!important;
+}
+</style>
+"""
+          if 'earthline-impact-report-surface-16952' not in s:
+              s = s.replace('</head>', style + '\n</head>', 1)
+
+          script = r"""
+<script id="earthline-impact-report-control-owner-16952">
+(function(){
+  function reportIsOpen(){
+    const report=document.querySelector('.el49-report');
+    if(!report)return false;
+    const shell=report.closest('[aria-hidden],.open,[class*="report"],[id*="report"]')||report;
+    const cs=getComputedStyle(shell);
+    return cs.display!=='none'&&cs.visibility!=='hidden'&&report.getClientRects().length>0;
+  }
+  function sync(){
+    document.documentElement.classList.toggle('earthline-impact-report-open-16952',reportIsOpen());
+  }
+  new MutationObserver(sync).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','aria-hidden']});
+  addEventListener('hashchange',sync);
+  document.addEventListener('click',()=>requestAnimationFrame(sync),true);
+  sync();
+})();
+</script>
+"""
+          if 'earthline-impact-report-control-owner-16952' not in s:
+              s = s.replace('</body>', script + '\n</body>', 1)
+
+          anchor = s.find('const aquiferSvg=aquiferFeatures.map((f,i)=>{')
+          end = s.find('const towns=', anchor)
+          if anchor < 0 or end < 0:
+              raise SystemExit('aquifer map block not found')
+          block = s[anchor:end]
+          if 'return shapes+label;' not in block:
+              if 'return shapes;' not in block:
+                  raise SystemExit('aquifer label return target not found')
+              block = block.replace('return shapes;', 'return shapes+label;', 1)
+          block = block.replace('fill="rgba(92,170,202,.18)"', 'fill="rgba(74,177,211,.34)"')
+          block = block.replace('stroke="#5e9fbd"', 'stroke="#247fa7"')
+          block = block.replace('stroke-width="'+(small?1.15:1.45)+'"', 'stroke-width="'+(small?1.55:2.05)+'"')
+          block = block.replace('fill="#155f91" font-size="9.2"', 'fill="#0d628b" font-size="10.2"')
+          block = block.replace('AQUIFER · ', 'MAPPED AQUIFER · ')
+          s = s[:anchor] + block + s[end:]
+
+          s = s.replace('<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${title}">', '<svg class="el-report-plan-map-16952" viewBox="0 0 ${W} ${H}" role="img" aria-label="${title}">')
+          s = s.replace('stroke="#839186" stroke-width=".48" opacity=".30"', 'stroke="#8b887c" stroke-width=".52" opacity=".27"')
+          s = s.replace('stroke="#5b9fc2" stroke-width="2.15" opacity=".86"', 'stroke="#2287bb" stroke-width="2.8" opacity=".96"')
+          s = s.replace("const rows=graded();for(const r of rows){const color=r.grade==='A'?'#4f8b5d':r.grade==='B'?'#789557':'#9b8b61',mainW=r.grade==='A'?6.4:r.grade==='B'?5.4:4.5,haloW=mainW+4.0,alpha=r.grade==='A'?'.88':r.grade==='B'?'.78':'.66'",
+                        "const rows=graded();for(const r of rows){const color=r.grade==='A'?'#2f704a':r.grade==='B'?'#64894f':'#927c55',mainW=r.grade==='A'?8.2:r.grade==='B'?7.0:5.8,haloW=mainW+5.2,alpha=r.grade==='A'?'.94':r.grade==='B'?'.84':'.72'")
+          s = s.replace('stroke="#dbe8d5"', 'stroke="#d6e4d0"')
+          s = s.replace('stroke="#f7f1cf" stroke-width="'+Math.max(1.1,mainW*.18)+'"', 'stroke="#eef3d9" stroke-width="'+Math.max(1.35,mainW*.19)+'"')
+          s = s.replace('fill="rgba(92,170,202,.18)" stroke="#5e9fbd"', 'fill="rgba(74,177,211,.34)" stroke="#247fa7"')
+          s = s.replace('stroke="#5b9fc2" stroke-width="2.0"', 'stroke="#2287bb" stroke-width="2.6"')
+          s = s.replace('stroke="#4f8b5d" stroke-width="4.8"', 'stroke="#2f704a" stroke-width="6.2"')
+          s = s.replace('<stop offset="0" stop-color="#faf6ec"/><stop offset=".58" stop-color="#eef1e5"/><stop offset="1" stop-color="#dfe8dd"/>',
+                        '<stop offset="0" stop-color="#fbf7ed"/><stop offset=".48" stop-color="#eff1e5"/><stop offset="1" stop-color="#d9e5d8"/>')
+          s = s.replace('fill="#728678" opacity=".08" filter="url(#paperTexture)"', 'fill="#6e846f" opacity=".105" filter="url(#paperTexture)"')
+
+          if s == original:
+              raise SystemExit('no changes applied')
+          p.write_text(s, encoding="utf-8")
+          PY
+
+      - name: Verify repair markers and preserved map owners
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          checks={
+            'report control isolation':'earthline-impact-report-control-owner-16952' in s,
+            'report map class':'el-report-plan-map-16952' in s,
+            'aquifer label rendered':'return shapes+label;' in s,
+            'aquifer visible fill':'rgba(74,177,211,.34)' in s,
+            'water path hierarchy':'#2287bb' in s,
+            'bioswale hierarchy':"#2f704a" in s,
+            'map function preserved':'function mapSvg(d,small=false)' in s,
+            'aquifer collector preserved':'function reportAquifers()' in s,
+          }
+          for k,v in checks.items(): print(('PASS' if v else 'FAIL'),k)
+          if not all(checks.values()): raise SystemExit(1)
+          PY
+
+      - name: Commit focused candidate
+        run: |
+          git config user.name "Earthline Mantra 52"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: isolate report controls and redesign report map"
+          git push origin mantra52-report-visual-repair
