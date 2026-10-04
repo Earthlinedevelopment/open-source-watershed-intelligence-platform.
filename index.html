@@ -36353,16 +36353,15 @@ html.earthline-alaska-map-interaction-16921 #earthlineRegionalVectorOverlay16020
   const cx=(b[0]+b[2])/2,cy=(b[1]+b[3])/2;
   const conus=cx>=-125&&cx<=-66.5&&cy>=24&&cy<=50;
   const bbox=b.map(n=>Number(n).toFixed(7)).join(',');
-  const imgSize=small?'1200,720':'1800,1050';
+  const imgSize=small?'900,540':'1400,840';
   const naip=conus?'https://apps.geo.fpac.usda.gov/geo-imagery/rest/services/naip/conus_naip/ImageServer/exportImage?bbox='+encodeURIComponent(bbox)+'&bboxSR=4326&imageSR=4326&size='+imgSize+'&format=jpgpng&f=image':'';
-  const hill=conus?'https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox='+encodeURIComponent(bbox)+'&bboxSR=4326&imageSR=4326&size='+imgSize+'&format=png32&renderingRule='+encodeURIComponent(JSON.stringify({rasterFunction:'Hillshade Multidirectional'}))+'&f=image':'';
 
   const lonSpan=Math.max(.0001,b[2]-b[0]),midLat=(b[1]+b[3])/2,kmWide=lonSpan*111.32*Math.cos(midLat*Math.PI/180);
   const niceKm=kmWide>300?100:kmWide>120?50:kmWide>50?20:kmWide>20?10:kmWide>8?5:kmWide>3?2:kmWide>1?1:.5;
   const barPx=Math.max(54,Math.min(170,niceKm/kmWide*mapW));
   const clipId='elClip16969',aqPat='elAq16969',parts=[];
 
-  parts.push('<svg class="el-report-real-site-render-16969" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Earthline real-site landscape water plan">');
+  parts.push('<svg class="el-report-real-site-render-16970" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Earthline real-site landscape water plan">');
   parts.push('<defs>'+
     '<linearGradient id="elGround16969" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e7eadf"/><stop offset="1" stop-color="#cfd9ca"/></linearGradient>'+
     '<pattern id="'+aqPat+'" width="13" height="13" patternUnits="userSpaceOnUse" patternTransform="rotate(31)"><rect width="13" height="13" fill="#e9903c" fill-opacity=".22"/><path d="M0 0 V13" stroke="#bd601d" stroke-width=".8" stroke-opacity=".30"/></pattern>'+
@@ -36374,7 +36373,6 @@ html.earthline-alaska-map-interaction-16921 #earthlineRegionalVectorOverlay16020
   parts.push('<g clip-path="url(#'+clipId+')">');
   if(conus){
     parts.push('<image href="'+esc(naip)+'" x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" preserveAspectRatio="none"/>');
-    parts.push('<image href="'+esc(hill)+'" x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" preserveAspectRatio="none" opacity=".24" style="mix-blend-mode:multiply"/>');
     parts.push('<rect x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" fill="#f7f0df" opacity=".08"/>');
   } else {
     for(let i=0;i<reportContours.length;i+=10){const dp=path(reportContours[i]);if(dp)parts.push('<path d="'+dp+'" fill="none" stroke="#66796c" stroke-width="34" opacity=".035" stroke-linecap="round" vector-effect="non-scaling-stroke"/>')}
@@ -36432,7 +36430,7 @@ html.earthline-alaska-map-interaction-16921 #earthlineRegionalVectorOverlay16020
 
   if(!small){
     const lx=mapX+18,ly=mapY+18;
-    parts.push('<g transform="translate('+lx+','+ly+')"><rect width="250" height="112" rx="5" fill="#fffef9" fill-opacity=".92" stroke="#aeb8b0" stroke-width=".7"/><text x="15" y="21" fill="#203a33" font-family="Noto Sans,Arial,sans-serif" font-size="8.2" font-weight="850" letter-spacing=".8">REAL-SITE WATER PLAN</text><path d="M15 30 H235" stroke="#55bde0" stroke-width="1.4"/><rect x="15" y="43" width="23" height="10" rx="1" fill="url(#'+aqPat+')" stroke="#b55b1b" stroke-width=".7"/><text x="47" y="51" fill="#42564d" font-family="Noto Sans,Arial,sans-serif" font-size="6.3">Mapped aquifer context</text><path d="M15 69 H39" stroke="#0d6e9c" stroke-width="1.7"/><text x="47" y="72" fill="#42564d" font-family="Noto Sans,Arial,sans-serif" font-size="6.3">Principal water path</text><path d="M132 48 H160" stroke="#8dbd82" stroke-width="10" opacity=".88" stroke-linecap="round"/><path d="M132 48 H160" stroke="#224d31" stroke-width="1.5"/><text x="169" y="51" fill="#42564d" font-family="Noto Sans,Arial,sans-serif" font-size="6.3">A · priority bioswale</text><path d="M132 70 H160" stroke="#b7caa8" stroke-width="5" opacity=".8" stroke-linecap="round"/><path d="M132 70 H160" stroke="#496d4b" stroke-width="1"/><text x="169" y="73" fill="#42564d" font-family="Noto Sans,Arial,sans-serif" font-size="6.3">B · strong opportunity</text><text x="15" y="94" fill="#68776f" font-family="Noto Sans,Arial,sans-serif" font-size="5.3">'+(conus?'Aerial: USDA NAIP · Terrain: USGS 3DEP':'Terrain-only fallback outside NAIP coverage')+'</text><text x="15" y="104" fill="#68776f" font-family="Noto Sans,Arial,sans-serif" font-size="5.3">Earthline overlays use frozen published run geometry</text></g>');
+    parts.push('<g transform="translate('+lx+','+ly+')"><rect width="250" height="112" rx="5" fill="#fffef9" fill-opacity=".92" stroke="#aeb8b0" stroke-width=".7"/><text x="15" y="21" fill="#203a33" font-family="Noto Sans,Arial,sans-serif" font-size="8.2" font-weight="850" letter-spacing=".8">REAL-SITE WATER PLAN</text><path d="M15 30 H235" stroke="#55bde0" stroke-width="1.4"/><rect x="15" y="43" width="23" height="10" rx="1" fill="url(#'+aqPat+')" stroke="#b55b1b" stroke-width=".7"/><text x="47" y="51" fill="#42564d" font-family="Noto Sans,Arial,sans-serif" font-size="6.3">Mapped aquifer context</text><path d="M15 69 H39" stroke="#0d6e9c" stroke-width="1.7"/><text x="47" y="72" fill="#42564d" font-family="Noto Sans,Arial,sans-serif" font-size="6.3">Principal water path</text><path d="M132 48 H160" stroke="#8dbd82" stroke-width="10" opacity=".88" stroke-linecap="round"/><path d="M132 48 H160" stroke="#224d31" stroke-width="1.5"/><text x="169" y="51" fill="#42564d" font-family="Noto Sans,Arial,sans-serif" font-size="6.3">A · priority bioswale</text><path d="M132 70 H160" stroke="#b7caa8" stroke-width="5" opacity=".8" stroke-linecap="round"/><path d="M132 70 H160" stroke="#496d4b" stroke-width="1"/><text x="169" y="73" fill="#42564d" font-family="Noto Sans,Arial,sans-serif" font-size="6.3">B · strong opportunity</text><text x="15" y="94" fill="#68776f" font-family="Noto Sans,Arial,sans-serif" font-size="5.3">'+(conus?'Aerial: USDA NAIP · Terrain: Earthline frozen run':'Terrain-only fallback outside NAIP coverage')+'</text><text x="15" y="104" fill="#68776f" font-family="Noto Sans,Arial,sans-serif" font-size="5.3">Earthline overlays use frozen published run geometry</text></g>');
   }
   parts.push('</svg>');
   return parts.join('');
