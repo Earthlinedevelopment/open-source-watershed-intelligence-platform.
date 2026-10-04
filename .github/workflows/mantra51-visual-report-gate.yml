@@ -40,7 +40,7 @@ jobs:
             if(core){for(let n=core.nextSibling;n&&!(n.nodeType===1&&n.tagName==='H2');n=n.nextSibling)coreText+=n.textContent||''}
             return {
               images:d?.querySelectorAll('img').length||0,
-              imagesFirst:!!ex&&!!can&&!!(ex.compareDocumentPosition(can)&Node.DOCUMENT_POSITION_FOLLOWING),
+              imagesFirst:(()=>{const intro=[...(d?.querySelectorAll('h2')||[])].find(x=>/idea in one minute/i.test(x.textContent||''));return !!ex&&!!intro&&!!(ex.compareDocumentPosition(intro)&Node.DOCUMENT_POSITION_FOLLOWING)})(),
               core:!!core,
               coreText,
               brokenRefs:/§\s*\d|If you have two minutes|If you have ten/i.test(coreText),
@@ -101,3 +101,5 @@ jobs:
           path: |
             how-swales.png
             bioswale-report-map.png
+
+# rerun after 16943 How Swales sequence repair
