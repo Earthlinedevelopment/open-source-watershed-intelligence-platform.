@@ -24,48 +24,49 @@ jobs:
           end=s.index("  return parts.join('');\n}", start)+len("  return parts.join('');\n}")
           fn=s[start:end]
 
-          def one(a,b,label):
+          def many(a,b,expected,label):
               global fn
               n=fn.count(a)
-              if n != 1:
-                  raise SystemExit(f"{label}: expected 1 occurrence, found {n}")
-              fn=fn.replace(a,b,1)
+              if n != expected:
+                  raise SystemExit(f"{label}: expected {expected} occurrence(s), found {n}")
+              fn=fn.replace(a,b)
 
-          one('class="el-report-real-site-render-16973"',
-              'class="el-report-real-site-render-16974"',
-              "marker")
+          many('class="el-report-real-site-render-16973"',
+               'class="el-report-real-site-render-16974"',1,"marker")
 
-          one('<feColorMatrix type="saturate" values=".90" result="sat"/><feComponentTransfer in="sat"><feFuncR type="linear" slope="1.01" intercept=".026"/><feFuncG type="linear" slope="1.04" intercept=".024"/><feFuncB type="linear" slope=".98" intercept=".020"/></feComponentTransfer>',
-              '<feColorMatrix type="saturate" values="1.02" result="sat"/><feComponentTransfer in="sat"><feFuncR type="linear" slope="1.07" intercept=".035"/><feFuncG type="linear" slope="1.09" intercept=".034"/><feFuncB type="linear" slope="1.03" intercept=".030"/></feComponentTransfer>',
-              "aerial tone")
+          many('<feColorMatrix type="saturate" values=".90" result="sat"/><feComponentTransfer in="sat"><feFuncR type="linear" slope="1.01" intercept=".026"/><feFuncG type="linear" slope="1.04" intercept=".024"/><feFuncB type="linear" slope=".98" intercept=".020"/></feComponentTransfer>',
+               '<feColorMatrix type="saturate" values="1.02" result="sat"/><feComponentTransfer in="sat"><feFuncR type="linear" slope="1.07" intercept=".035"/><feFuncG type="linear" slope="1.09" intercept=".034"/><feFuncB type="linear" slope="1.03" intercept=".030"/></feComponentTransfer>',1,"aerial tone")
 
-          one('<stop offset="0" stop-color="#fff3d8" stop-opacity=".08"/><stop offset=".34" stop-color="#4d6b55" stop-opacity=".018"/><stop offset=".72" stop-color="#25483b" stop-opacity=".035"/><stop offset="1" stop-color="#17382f" stop-opacity=".07"/>',
-              '<stop offset="0" stop-color="#fff5df" stop-opacity=".055"/><stop offset=".34" stop-color="#5f775f" stop-opacity=".010"/><stop offset=".72" stop-color="#365344" stop-opacity=".018"/><stop offset="1" stop-color="#25463a" stop-opacity=".035"/>',
-              "aerial wash")
+          many('<stop offset="0" stop-color="#fff3d8" stop-opacity=".08"/><stop offset=".34" stop-color="#4d6b55" stop-opacity=".018"/><stop offset=".72" stop-color="#25483b" stop-opacity=".035"/><stop offset="1" stop-color="#17382f" stop-opacity=".07"/>',
+               '<stop offset="0" stop-color="#fff5df" stop-opacity=".055"/><stop offset=".34" stop-color="#5f775f" stop-opacity=".010"/><stop offset=".72" stop-color="#365344" stop-opacity=".018"/><stop offset="1" stop-color="#25463a" stop-opacity=".035"/>',1,"aerial wash")
 
-          one('<stop offset=".66" stop-color="#17372e" stop-opacity=".018"/><stop offset="1" stop-color="#0b2922" stop-opacity=".08"/>',
-              '<stop offset=".66" stop-color="#1d4035" stop-opacity=".010"/><stop offset="1" stop-color="#13342b" stop-opacity=".04"/>',
-              "vignette")
+          many('<stop offset=".66" stop-color="#17372e" stop-opacity=".018"/><stop offset="1" stop-color="#0b2922" stop-opacity=".08"/>',
+               '<stop offset=".66" stop-color="#1d4035" stop-opacity=".010"/><stop offset="1" stop-color="#13342b" stop-opacity=".04"/>',1,"vignette")
 
-          one('stroke="#f8fcfb" stroke-width="6.4" opacity=".72"',
-              'stroke="#f6fbfb" stroke-width="4.4" opacity=".46"',
-              "water halo")
+          many('stroke="#f8fcfb" stroke-width="6.4" opacity=".72"',
+               'stroke="#f6fbfb" stroke-width="4.4" opacity=".46"',1,"water halo")
 
-          one('if(r.grade===\'C\'){parts.push(\'<path d="'+dp+'" fill="none" stroke="#5d725f" stroke-width=".62" opacity=".11" stroke-dasharray="2.4 4.2" stroke-linecap="round" vector-effect="non-scaling-stroke"/>\');return}',
-              'if(r.grade===\'C\'){return}',
-              "hide C")
+          many('stroke="#5d725f" stroke-width=".62" opacity=".11" stroke-dasharray="2.4 4.2"',
+               'stroke="#5d725f" stroke-width=".62" opacity="0" stroke-dasharray="2.4 4.2"',1,"C hide")
 
-          one('parts.push(\'<path d="'+dp+'" fill="none" stroke="#173d31" stroke-width="4.4" opacity=".30" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>\');\n      parts.push(\'<path d="'+dp+'" fill="none" stroke="#4f805e" stroke-width="2.8" opacity=".48" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>\');\n      parts.push(\'<path d="'+dp+'" fill="none" stroke="#1f6670" stroke-width=".95" opacity=".70" stroke-linecap="round" vector-effect="non-scaling-stroke"/>\');return}',
-              'parts.push(\'<path d="'+dp+'" fill="none" stroke="#4d7758" stroke-width="1.45" opacity=".20" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>\');\n      parts.push(\'<path d="'+dp+'" fill="none" stroke="#2b6970" stroke-width=".62" opacity=".26" stroke-linecap="round" vector-effect="non-scaling-stroke"/>\');return}',
-              "B simplify")
+          many('stroke="#173d31" stroke-width="4.4" opacity=".30"',
+               'stroke="#3d6650" stroke-width="1.7" opacity=".16"',1,"B underlay")
+          many('stroke="#4f805e" stroke-width="2.8" opacity=".48"',
+               'stroke="#4f805e" stroke-width="1.15" opacity=".20"',1,"B ribbon")
+          many('stroke="#1f6670" stroke-width=".95" opacity=".70"',
+               'stroke="#2b6970" stroke-width=".58" opacity=".24"',1,"B core")
 
-          one('parts.push(\'<path d="'+dp+'" fill="none" stroke="#102f29" stroke-width="8.2" opacity=".55" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>\');\n    parts.push(\'<path d="'+dp+'" fill="none" stroke="#4c875d" stroke-width="5.8" opacity=".78" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>\');\n    parts.push(\'<path d="'+dp+'" fill="none" stroke="#0a5567" stroke-width="2.15" opacity=".98" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>\');\n    parts.push(\'<path d="'+dp+'" transform="translate(-1.25 -1.25)" fill="none" stroke="#72cfe1" stroke-width=".82" opacity=".95" stroke-dasharray="1.2 2.5" stroke-linecap="round" vector-effect="non-scaling-stroke"/>\');\n    parts.push(\'<path d="'+dp+'" transform="translate(1.25 1.25)" fill="none" stroke="#72cfe1" stroke-width=".82" opacity=".95" stroke-dasharray="1.2 2.5" stroke-linecap="round" vector-effect="non-scaling-stroke"/>\');',
-              'parts.push(\'<path d="'+dp+'" fill="none" stroke="#15362d" stroke-width="5.6" opacity=".38" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>\');\n    parts.push(\'<path d="'+dp+'" fill="none" stroke="#4f8a5f" stroke-width="3.3" opacity=".58" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>\');\n    parts.push(\'<path d="'+dp+'" fill="none" stroke="#0a6176" stroke-width="1.75" opacity=".97" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>\');\n    parts.push(\'<path d="'+dp+'" fill="none" stroke="#7ed7e6" stroke-width=".56" opacity=".88" stroke-linecap="round" vector-effect="non-scaling-stroke"/>\');',
-              "A simplify")
+          many('stroke="#102f29" stroke-width="8.2" opacity=".55"',
+               'stroke="#15362d" stroke-width="5.6" opacity=".38"',1,"A underlay")
+          many('stroke="#4c875d" stroke-width="5.8" opacity=".78"',
+               'stroke="#4f8a5f" stroke-width="3.3" opacity=".58"',1,"A ribbon")
+          many('stroke="#0a5567" stroke-width="2.15" opacity=".98"',
+               'stroke="#0a6176" stroke-width="1.75" opacity=".97"',1,"A core")
+          many('stroke="#72cfe1" stroke-width=".82" opacity=".95" stroke-dasharray="1.2 2.5"',
+               'stroke="#72cfe1" stroke-width=".54" opacity=".34" stroke-dasharray="1.2 3.6"',2,"A highlights")
 
-          one("rows.filter(r=>r.grade==='A').slice(0,5)",
-              "rows.filter(r=>r.grade==='A').slice(0,3)",
-              "label count")
+          many("rows.filter(r=>r.grade==='A').slice(0,5)",
+               "rows.filter(r=>r.grade==='A').slice(0,3)",1,"label count")
 
           out=s[:start]+fn+s[end:]
           if out.count("el-report-real-site-render-16974") != 1:
