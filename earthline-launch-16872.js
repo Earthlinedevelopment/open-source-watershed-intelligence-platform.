@@ -177,4 +177,106 @@ function earthlineVancouverVisibleContext16916(){
 function install(){installRail();modal();renderAccount();refreshSessionIfNeeded();earthlineVancouverVisibleContext16916();earthlineNzOverlayHitPass16914();document.addEventListener('change',e=>{syncLanguageFromTarget(e.target);earthlineNzOverlayHitPass16914()},true);document.addEventListener('click',e=>{syncLanguageFromTarget(e.target);earthlineNzOverlayHitPass16914()},true);document.addEventListener('pointerover',e=>{try{if(e.target?.closest?.('#earthlineRegionalVectorOverlay16020'))earthlineNzOverlayHitPass16914()}catch(_){}},true);document.addEventListener('earthline:analysis-complete',()=>{earthlineNzOverlayHitPass16914();setTimeout(earthlineNzOverlayHitPass16914,250)},{passive:true});document.addEventListener('earthline:analysis-complete',()=>{earthlineVancouverVisibleContext16916();setTimeout(earthlineVancouverVisibleContext16916,300);setTimeout(earthlineVancouverVisibleContext16916,1500)},{passive:true});new MutationObserver(()=>{const current=detectLang(document.documentElement.lang);if(current&&current!==launchLangOverride){launchLangOverride=current;renderAccount();scheduleTranslation()}}).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});loadConfig();scheduleTranslation();installTelemetry();document.documentElement.dataset.earthlineLaunch16872='ready'}
 window.EARTHLINE_LAUNCH_16872={build:BUILD,quota,consumePaidSearch,createAccount,signIn,signOut,openAccount,donateTarget,limits:()=>({...config}),isConfiguredDonation:()=>!!donateTarget(),translateVisibleText,centralClaim,track,refreshSessionIfNeeded};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+
+/* EARTHLINE_REPORT_VISUAL_REPAIR_16952 — report surface isolation + professional map presentation.
+   Presentation only: no hydrology, geometry, ranking, search, or run-state changes. */
+(function installReportVisualRepair16952(){
+  if(window.EARTHLINE_REPORT_VISUAL_REPAIR_16952)return;
+  window.EARTHLINE_REPORT_VISUAL_REPAIR_16952=true;
+  const STYLE_ID='earthlineReportVisualRepair16952';
+  function ensureStyle(){
+    if(document.getElementById(STYLE_ID))return;
+    const st=document.createElement('style');st.id=STYLE_ID;
+    st.textContent=`
+html.earthline-impact-report-open-16952 #earthlineRail16188,
+html.earthline-impact-report-open-16952 #earthlineLaunchFallbackRail16872,
+html.earthline-impact-report-open-16952 #earthlineLaunchLogin16872,
+html.earthline-impact-report-open-16952 #earthlineLaunchDonate16872,
+html.earthline-impact-report-open-16952 #earthlineLaunchMerch16872,
+html.earthline-impact-report-open-16952 #searchOrb,
+html.earthline-impact-report-open-16952 [id*="SearchOrb"],
+html.earthline-impact-report-open-16952 .mapboxgl-ctrl-top-left,
+html.earthline-impact-report-open-16952 .mapboxgl-ctrl-top-right,
+html.earthline-impact-report-open-16952 .mapboxgl-ctrl-bottom-left,
+html.earthline-impact-report-open-16952 .mapboxgl-ctrl-bottom-right{
+ display:none!important;visibility:hidden!important;pointer-events:none!important
+}
+.el49-report .el49-figure{border:0!important;background:#f3efe5!important;padding:12px!important;box-shadow:0 14px 34px rgba(31,50,43,.14)!important}
+.el49-report .el49-figure svg.el-report-plan-map-16952{display:block!important;width:100%!important;height:auto!important;border:1px solid #9eaa9e!important;border-radius:3px!important;background:#f4f0e6!important}
+.el49-report .el49-figure figcaption{margin:11px 4px 2px!important;max-width:78ch!important;color:#455b57!important;font-size:11.5px!important;line-height:1.46!important}
+.el49-report .el16952-map-title{font-family:"Noto Sans",Arial,sans-serif;font-size:14px;font-weight:800;letter-spacing:.3px;fill:#193c3d}
+.el49-report .el16952-aquifer-label rect{fill:#f7fcff;fill-opacity:.95;stroke:#176f9c;stroke-width:1}
+.el49-report .el16952-aquifer-label text{fill:#0d6089;font:800 9.5px "Noto Sans",Arial,sans-serif;letter-spacing:.35px}
+`;
+    (document.head||document.documentElement).appendChild(st);
+  }
+  function visible(el){
+    if(!el||!el.isConnected||!el.getClientRects().length)return false;
+    const cs=getComputedStyle(el);return cs.display!=='none'&&cs.visibility!=='hidden'&&cs.opacity!=='0';
+  }
+  function reportOpen(){
+    const reports=[...document.querySelectorAll('.el49-report')];
+    return reports.some(visible);
+  }
+  function setAttr(el,k,v){try{el.setAttribute(k,v)}catch(_){}}
+  function aquiferLabel(svg,path,index){
+    if(svg.querySelector('.el16952-aquifer-label[data-i="'+index+'"]'))return;
+    let bb;try{bb=path.getBBox()}catch(_){return}
+    if(!bb||bb.width<8||bb.height<8)return;
+    const x=bb.x+bb.width/2,y=bb.y+bb.height/2,w=126,h=22,ns='http://www.w3.org/2000/svg';
+    const g=document.createElementNS(ns,'g');g.setAttribute('class','el16952-aquifer-label');g.setAttribute('data-i',String(index));
+    const r=document.createElementNS(ns,'rect');r.setAttribute('x',String(x-w/2));r.setAttribute('y',String(y-h/2));r.setAttribute('width',String(w));r.setAttribute('height',String(h));r.setAttribute('rx','4');
+    const t=document.createElementNS(ns,'text');t.setAttribute('x',String(x));t.setAttribute('y',String(y+3.5));t.setAttribute('text-anchor','middle');t.textContent='MAPPED AQUIFER CONTEXT';
+    g.append(r,t);svg.appendChild(g);
+  }
+  function polishMap(svg){
+    if(!svg||svg.dataset.earthlinePlan16952==='1')return;
+    svg.dataset.earthlinePlan16952='1';svg.classList.add('el-report-plan-map-16952');
+    setAttr(svg,'preserveAspectRatio','xMidYMid meet');
+    let aq=0;
+    svg.querySelectorAll('path').forEach(p=>{
+      const stroke=(p.getAttribute('stroke')||'').toLowerCase();
+      const fill=(p.getAttribute('fill')||'').toLowerCase();
+      const sw=parseFloat(p.getAttribute('stroke-width')||'0');
+      if(fill.includes('92,170,202')||fill.includes('69,151,207')){
+        setAttr(p,'fill','rgba(61,169,211,.34)');setAttr(p,'stroke','#1978a5');setAttr(p,'stroke-width','2.1');setAttr(p,'opacity','.96');
+        if(aq<3)aquiferLabel(svg,p,aq++);return;
+      }
+      if(stroke==='#5b9fc2'||stroke==='#087bb4'||stroke==='#2188b2'){
+        setAttr(p,'stroke','#1686bb');setAttr(p,'stroke-width',String(Math.max(2.7,sw||0)));setAttr(p,'opacity','.96');return;
+      }
+      if(stroke==='#4f8b5d'||stroke==='#177c58'){
+        setAttr(p,'stroke','#2e7049');setAttr(p,'stroke-width',String(Math.max(8.0,sw||0)));setAttr(p,'opacity','.94');return;
+      }
+      if(stroke==='#789557'||stroke==='#ad842e'){
+        setAttr(p,'stroke','#64894f');setAttr(p,'stroke-width',String(Math.max(6.7,sw||0)));setAttr(p,'opacity','.84');return;
+      }
+      if(stroke==='#9b8b61'||stroke==='#aa6846'){
+        setAttr(p,'stroke','#927c55');setAttr(p,'stroke-width',String(Math.max(5.6,sw||0)));setAttr(p,'opacity','.72');return;
+      }
+      if(stroke==='#839186'||stroke==='#7b8a84'){
+        setAttr(p,'stroke','#8c887b');setAttr(p,'stroke-width',String(Math.max(.48,sw||0)));setAttr(p,'opacity','.27');
+      }
+    });
+    svg.querySelectorAll('rect').forEach(r=>{const f=(r.getAttribute('fill')||'').toLowerCase();if(f==='#fbfcf8'||f==='#f7faf8')setAttr(r,'fill','#fbfaf5')});
+    svg.querySelectorAll('text').forEach(t=>{
+      const tx=(t.textContent||'').trim();
+      if(tx.startsWith('Earthline Water + Recharge Opportunity Map'))t.classList.add('el16952-map-title');
+      if(tx==='GENERATED BY THE EARTHLINE SEARCH ENGINE'){const g=t.closest('g');if(g)g.remove()}
+    });
+  }
+  function sync(){
+    ensureStyle();
+    const open=reportOpen();
+    document.documentElement.classList.toggle('earthline-impact-report-open-16952',open);
+    if(!open)return;
+    document.querySelectorAll('.el49-report .el49-figure svg').forEach(polishMap);
+  }
+  let queued=false;
+  const schedule=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;sync()})};
+  new MutationObserver(schedule).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','aria-hidden']});
+  addEventListener('hashchange',schedule);document.addEventListener('click',schedule,true);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',sync,{once:true});else sync();
+})();
+
 })();
