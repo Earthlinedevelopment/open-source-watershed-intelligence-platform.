@@ -1,0 +1,28 @@
+name: Earthline report scope audit 16969
+on:
+  push:
+    branches: [report-map-candidate-16967]
+    paths:
+      - '.github/workflows/report-scope-audit-16969.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: report-map-candidate-16967
+      - name: Trace report geometry and bounds owners
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path("index.html").read_text(encoding="utf-8")
+          terms=["function visual()","function contours()","function flows()","function swales()","function graded()","function reportBounds","function captureReportData","function openReport","EARTHLINE_FROZEN_REPORT_SNAPSHOT_16149","visualSnapshot","analysisBounds","propertyBounds","EARTHLINE_PROPERTY_DECLARATION_16169"]
+          for term in terms:
+              print("\n== "+term+" ==")
+              for m in list(re.finditer(re.escape(term),s,re.I))[:12]:
+                  print(s[max(0,m.start()-1800):min(len(s),m.end()+5000)].replace("\n"," ")+"\n---")
+          PY
