@@ -1,0 +1,29 @@
+name: Mantra 51 Fix How Swales Order
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - 'scripts/fix_hbw_intro_order_16943.py'
+      - '.github/workflows/mantra51-fix-hbw-intro-order.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          python3 scripts/fix_hbw_intro_order_16943.py
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='ignore')
+          assert "const intro=take('The idea in one minute')" in s
+          assert "intro,             take('What happens when water leaves too quickly')" in s
+          PY
+          git config user.name Earthlinedevelopment
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git commit -m 'fix: put How Swales intro in logical sequence'
+          git push
