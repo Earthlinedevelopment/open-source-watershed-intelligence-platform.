@@ -33822,20 +33822,24 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
     },250);
   }
   function declaredSite(center){
-    const m=model(),parent=m?.loc||{},helper=typeof earthlineSelectedSiteFromCenter==='function'?earthlineSelectedSiteFromCenter:null;
-    let site=helper?helper(parent,Number(center.lng),Number(center.lat),20):null;
-    if(!site)return null;
-    const coord=Number(center.lat).toFixed(5)+', '+Number(center.lng).toFixed(5);
-    site=Object.assign({},site,{
-      q:'20-acre project area at '+coord,
-      name:'20-acre Project Area',
-      fullName:'20-acre project area at '+coord,
-      sub:'Declared from the map crosshair',
-      placeType:'selected_site',userSelectedSite:true,propertyMode:true,regionalMode:false,planning:false,acres:20,
-      lat:Number(center.lat),lng:Number(center.lng),zoomHint:Math.max(17,Number(map()?.getZoom?.()||17))
-    });
-    return site;
-  }
+  const m=model(),parent=m?.loc||{},helper=typeof earthlineSelectedSiteFromCenter==='function'?earthlineSelectedSiteFromCenter:null;
+  let site=helper?helper(parent,Number(center.lng),Number(center.lat),20):null;
+  if(!site)return null;
+  const coord=Number(center.lat).toFixed(5)+', '+Number(center.lng).toFixed(5);
+  const parentLabel=String(parent?.fullName||parent?.label||parent?.name||parent?.q||'').trim();
+  const humanLabel=parentLabel&&!/^20-acre project area/i.test(parentLabel)?parentLabel:'';
+  const reportLabel='20-acre project area'+(humanLabel?' · '+humanLabel:'')+' · '+coord;
+  site=Object.assign({},site,{
+    q:reportLabel,
+    name:'20-acre Project Area',
+    fullName:reportLabel,
+    jurisdictionLabel:humanLabel,
+    sub:'Declared from the map crosshair',
+    placeType:'selected_site',userSelectedSite:true,propertyMode:true,regionalMode:false,planning:false,acres:20,
+    lat:Number(center.lat),lng:Number(center.lng),zoomHint:Math.max(17,Number(map()?.getZoom?.()||17))
+  });
+  return site;
+}
   function authoritativePropertyCount16220(){
     const m=model()||{},safe=m.authoritativeSafeSwales15815,publication=m.propertyPublication15816||{},lock=m.propertyResultLock15815||{},audit=m.safetyAudit15806||{};
     const currentGen=Number(m.searchGen),publicationGen=Number(publication.searchGen),lockGen=Number(lock.searchGen);
@@ -34235,7 +34239,12 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
       }
     }
     site.name=selectedCode?selectedCode+' 20-acre Project Area':'20-acre Project Area';
-    site.fullName=selectedCode?selectedCode+' 20-acre project area at '+Number(c.lat).toFixed(5)+', '+Number(c.lng).toFixed(5):site.fullName;
+    if(selectedCode){
+      const coordLabel=Number(c.lat).toFixed(5)+', '+Number(c.lng).toFixed(5);
+      const jurisdictionLabel=String(site.jurisdictionLabel||'').trim();
+      site.fullName=selectedCode+' · 20-acre project area'+(jurisdictionLabel?' · '+jurisdictionLabel:'')+' · '+coordLabel;
+      site.q=site.fullName;
+    }
     site.sub=selectedCode?'Selected from ranked regional corridor '+selectedCode:'Declared from the map crosshair';
     const runner=typeof window.earthlineGovernedPropertyRun16202==='function'?window.earthlineGovernedPropertyRun16202:null;
     if(!runner){status('PROPERTY ANALYSIS BLOCKED — preserved governed Property owner is unavailable.','failed');return false}
@@ -36291,9 +36300,9 @@ html.earthline-alaska-map-interaction-16921 #earthlineRegionalVectorOverlay16020
   function allCoordinates(){const out=[];for(const f of [...contours(),...flows(),...swales()]){const c=f?.geometry?.coordinates;if(f?.geometry?.type==='LineString'&&Array.isArray(c))out.push(...c)}return out.filter(p=>Array.isArray(p)&&Number.isFinite(+p[0])&&Number.isFinite(+p[1]))}
   function reportBounds(d){const b=d?.bounds||visual()?.bounds;if(Array.isArray(b)&&b.length===4&&b.every(Number.isFinite))return b;const pts=allCoordinates();if(!pts.length)return[-73.5,42.7,-71.4,45.1];return[Math.min(...pts.map(p=>+p[0])),Math.min(...pts.map(p=>+p[1])),Math.max(...pts.map(p=>+p[0])),Math.max(...pts.map(p=>+p[1]))]}
   function mapSvg(d,small=false){
-    const b=reportBounds(d),W=960,H=small?420:560;
-    const mapX=38,mapY=76,mapW=small?884:674,mapH=H-mapY-46;
-    const sideX=mapX+mapW+24;
+    const b=reportBounds(d),W=1040,H=small?450:610;
+    const mapX=44,mapY=94,mapW=small?952:724,mapH=H-mapY-48;
+    const sideX=mapX+mapW+28,sideW=W-sideX-34;
     const xSpan=Math.max(.000001,b[2]-b[0]),ySpan=Math.max(.000001,b[3]-b[1]);
     const sx=x=>mapX+(x-b[0])/xSpan*mapW;
     const sy=y=>mapY+mapH-(y-b[1])/ySpan*mapH;
@@ -36305,6 +36314,7 @@ html.earthline-alaska-map-interaction-16921 #earthlineRegionalVectorOverlay16020
     const reportContours=contours().filter(f=>f?.geometry?.type==='LineString').slice(0,220);
     const reportFlows=flows().filter(f=>f?.geometry?.type==='LineString').slice(0,240);
     const rows=graded();
+    const counts={A:rows.filter(r=>r.grade==='A').length,B:rows.filter(r=>r.grade==='B').length,C:rows.filter(r=>r.grade==='C').length};
     const aquiferFeatures=reportAquifers();
     const reportPlace=String(d?.query||d?.location||d?.placeName||'Analysis Area').trim();
     const reportTier=String(d?.tier||d?.mode||'regional').toLowerCase();
@@ -36312,20 +36322,24 @@ html.earthline-alaska-map-interaction-16921 #earthlineRegionalVectorOverlay16020
     const lonSpan=Math.max(.0001,b[2]-b[0]),midLat=(b[1]+b[3])/2,kmWide=lonSpan*111.32*Math.cos(midLat*Math.PI/180);
     const niceKm=kmWide>300?100:kmWide>120?50:kmWide>50?20:kmWide>20?10:kmWide>8?5:kmWide>3?2:1;
     const barPx=Math.max(54,Math.min(150,niceKm/kmWide*mapW));
-    const clipId='elReportClip16961',aqPat='elAquifer16961';
+    const clipId='elReportClip16963',aqPat='elAquifer16963';
     const parts=[];
-    parts.push('<svg class="el-report-editorial-map-16961" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc('Earthline '+title+' hydrology and recharge opportunity plan')+'">');
+    parts.push('<svg class="el-report-landscape-plan-16963" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc('Earthline '+title+' hydrology and recharge opportunity plan')+'">');
     parts.push('<defs>'+
-      '<linearGradient id="elPaper16961" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbfaf7"/><stop offset="1" stop-color="#f3f3ec"/></linearGradient>'+
-      '<pattern id="'+aqPat+'" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(28)"><rect width="8" height="8" fill="#e79746" fill-opacity=".18"/><path d="M0 0 V8" stroke="#c96d20" stroke-width=".6" stroke-opacity=".24"/></pattern>'+
+      '<linearGradient id="elPaper16963" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbfaf7"/><stop offset="1" stop-color="#f3f3ec"/></linearGradient>'+
+      '<pattern id="'+aqPat+'" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(28)"><rect width="8" height="8" fill="#e99a43" fill-opacity=".23"/><path d="M0 0 V8" stroke="#c96920" stroke-width=".7" stroke-opacity=".32"/></pattern>'+
       '<clipPath id="'+clipId+'"><rect x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" rx="1.5"/></clipPath>'+
-      '<marker id="elWaterArrow16961" markerWidth="4.5" markerHeight="4.5" refX="3.8" refY="2.25" orient="auto" markerUnits="strokeWidth"><path d="M0 0 L4.5 2.25 L0 4.5 Z" fill="#237aa4" opacity=".64"/></marker>'+
+      '<marker id="elWaterArrow16963" markerWidth="4.5" markerHeight="4.5" refX="3.8" refY="2.25" orient="auto" markerUnits="strokeWidth"><path d="M0 0 L4.5 2.25 L0 4.5 Z" fill="#237aa4" opacity=".64"/></marker>'+
       '</defs>');
-    parts.push('<rect width="'+W+'" height="'+H+'" fill="#fbfaf7"/>');
-    parts.push('<text x="'+mapX+'" y="31" fill="#243f38" font-family="Noto Sans,Arial,sans-serif" font-size="17" font-weight="800">'+esc(title)+'</text>');
-    parts.push('<text x="'+mapX+'" y="49" fill="#66746e" font-family="Noto Sans,Arial,sans-serif" font-size="8.2" font-weight="700" letter-spacing="1.15">HYDROLOGY + RECHARGE OPPORTUNITY PLAN</text>');
-    parts.push('<text x="'+mapX+'" y="62" fill="#8a918c" font-family="Noto Sans,Arial,sans-serif" font-size="6.8" font-weight="650" letter-spacing=".55">'+esc(reportTier.toUpperCase())+' SCREENING · EARTHLINE</text>');
-    parts.push('<rect x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" rx="1.5" fill="url(#elPaper16961)" stroke="#b6bbb5" stroke-width=".75"/>');
+    parts.push('<rect width="'+W+'" height="'+H+'" fill="#f7f5ee"/>');
+  parts.push('<rect x="0" y="0" width="'+W+'" height="70" fill="#233d36"/>');
+  parts.push('<rect x="0" y="70" width="'+W+'" height="3" fill="#51b9dd"/>');
+  parts.push('<text x="'+mapX+'" y="31" fill="#ffffff" font-family="Noto Sans,Arial,sans-serif" font-size="18.5" font-weight="800">'+esc(title)+'</text>');
+  parts.push('<text x="'+mapX+'" y="51" fill="#c8d6d0" font-family="Noto Sans,Arial,sans-serif" font-size="8.1" font-weight="700" letter-spacing="1.35">HYDROLOGY + BIOSWALE OPPORTUNITY PLAN</text>');
+  parts.push('<text x="'+(W-38)+'" y="31" text-anchor="end" fill="#ffffff" font-family="Noto Sans,Arial,sans-serif" font-size="8" font-weight="800" letter-spacing="1.2">EARTHLINE</text>');
+  parts.push('<text x="'+(W-38)+'" y="50" text-anchor="end" fill="#c8d6d0" font-family="Noto Sans,Arial,sans-serif" font-size="6.7" font-weight="650" letter-spacing=".8">'+esc(reportTier.toUpperCase())+' SCREENING</text>');
+  parts.push('<rect x="'+(mapX-4)+'" y="'+(mapY-4)+'" width="'+(mapW+8)+'" height="'+(mapH+8)+'" rx="3" fill="#ffffff" fill-opacity=".72" stroke="#c4c8c1" stroke-width=".7"/>');
+  parts.push('<rect x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" rx="2" fill="url(#elPaper16963)" stroke="#aeb6ae" stroke-width=".8"/>');
     parts.push('<g clip-path="url(#'+clipId+')">');
     for(let i=0;i<reportContours.length;i+=8){
       const dpath=path(reportContours[i]);if(!dpath)continue;
@@ -36340,31 +36354,32 @@ html.earthline-alaska-map-interaction-16921 #earthlineRegionalVectorOverlay16020
         const rings=poly.filter(r=>Array.isArray(r)&&r.length>=3);
         if(!rings.length)continue;
         const dpath=rings.map(r=>pathCoords(r)+' Z').join(' ');
-        parts.push('<path d="'+dpath+'" fill="url(#'+aqPat+')" fill-rule="evenodd" stroke="#c96d20" stroke-width=".9" opacity=".95" vector-effect="non-scaling-stroke"/>');
+        parts.push('<path d="'+dpath+'" fill="url(#'+aqPat+')" fill-rule="evenodd" stroke="#c46821" stroke-width="1.05" opacity=".98" vector-effect="non-scaling-stroke"/>');
       }
     }
     for(let i=0;i<reportContours.length;i++){
       const dpath=path(reportContours[i]);if(!dpath)continue;
       const major=i%7===0;
-      parts.push('<path d="'+dpath+'" fill="none" stroke="'+(major?'#7e857f':'#afb2ad')+'" stroke-width="'+(major?'.46':'.22')+'" opacity="'+(major?'.31':'.14')+'" vector-effect="non-scaling-stroke"/>');
+      parts.push('<path d="'+dpath+'" fill="none" stroke="'+(major?'#737b75':'#9ea49e')+'" stroke-width="'+(major?'.52':'.24')+'" opacity="'+(major?'.36':'.18')+'" vector-effect="non-scaling-stroke"/>');
     }
     const drawSwale=r=>{
-      const dpath=path(r.f);if(!dpath)return;
-      const cfg=r.grade==='A'
-        ?{band:'#c1d5bc',bandW:5.2,bandO:.44,line:'#315c3d',lineW:1.15,lineO:.98}
-        :r.grade==='B'
-          ?{band:'#dbe2cf',bandW:4.0,bandO:.28,line:'#6c7d5b',lineW:.85,lineO:.62}
-          :{band:'#ece5d8',bandW:3.2,bandO:.20,line:'#958a73',lineW:.65,lineO:.34};
-      parts.push('<path d="'+dpath+'" fill="none" stroke="'+cfg.band+'" stroke-width="'+cfg.bandW+'" opacity="'+cfg.bandO+'" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
-      parts.push('<path d="'+dpath+'" fill="none" stroke="'+cfg.line+'" stroke-width="'+cfg.lineW+'" opacity="'+cfg.lineO+'" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
-    };
+  const dpath=path(r.f);if(!dpath)return;
+  const cfg=r.grade==='A'
+    ?{band:'#b9ceb1',bandW:7.4,bandO:.62,line:'#315b3d',lineW:1.55,lineO:.98,center:'#63a9bc',centerW:.62,centerO:.86,dash:'2.2 2.8'}
+    :r.grade==='B'
+      ?{band:'#d2ddc6',bandW:5.4,bandO:.46,line:'#687c59',lineW:1.05,lineO:.78,center:'#7eb6c3',centerW:.48,centerO:.62,dash:'1.8 3.0'}
+      :{band:'#e5ddcb',bandW:4.0,bandO:.34,line:'#907e61',lineW:.78,lineO:.52,center:null,centerW:0,centerO:0,dash:''};
+  parts.push('<path d="'+dpath+'" fill="none" stroke="'+cfg.band+'" stroke-width="'+cfg.bandW+'" opacity="'+cfg.bandO+'" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
+  parts.push('<path d="'+dpath+'" fill="none" stroke="'+cfg.line+'" stroke-width="'+cfg.lineW+'" opacity="'+cfg.lineO+'" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
+  if(cfg.center)parts.push('<path d="'+dpath+'" fill="none" stroke="'+cfg.center+'" stroke-width="'+cfg.centerW+'" opacity="'+cfg.centerO+'" stroke-dasharray="'+cfg.dash+'" stroke-linecap="round" vector-effect="non-scaling-stroke"/>');
+};
     for(const r of rows.filter(r=>r.grade==='C'))drawSwale(r);
     for(const r of rows.filter(r=>r.grade==='B'))drawSwale(r);
     for(const r of rows.filter(r=>r.grade==='A'))drawSwale(r);
     for(let i=0;i<reportFlows.length;i++){
       const dpath=path(reportFlows[i]);if(!dpath)continue;
-      parts.push('<path d="'+dpath+'" fill="none" stroke="#f8f7f2" stroke-width="2.7" opacity=".86" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
-      parts.push('<path d="'+dpath+'" fill="none" stroke="#237aa4" stroke-width="1.05" opacity=".95" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"'+(i%11===0?' marker-end="url(#elWaterArrow16961)"':'')+'/>');
+      parts.push('<path d="'+dpath+'" fill="none" stroke="#f7f5ee" stroke-width="3.8" opacity=".92" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
+      parts.push('<path d="'+dpath+'" fill="none" stroke="#0e7fac" stroke-width="1.35" opacity=".96" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"'+(i%8===0?' marker-end="url(#elWaterArrow16963)"':'')+'/>');
     }
     parts.push('</g>');
     let labelCount=0;
@@ -36377,27 +36392,35 @@ html.earthline-alaska-map-interaction-16921 #earthlineRegionalVectorOverlay16020
     }
     const scaleY=mapY+mapH-17;
     parts.push('<g transform="translate('+(mapX+16)+','+scaleY+')"><path d="M0 0 H'+barPx+'" stroke="#4a5954" stroke-width="1.25"/><path d="M0 -3 V3 M'+barPx+' -3 V3" stroke="#4a5954" stroke-width=".8"/><text x="'+(barPx/2)+'" y="11" text-anchor="middle" fill="#626c67" font-family="Noto Sans,Arial,sans-serif" font-size="6.2">'+niceKm+' km</text></g>');
-    parts.push('<g transform="translate('+(mapX+mapW-30)+','+(mapY+17)+')"><text x="7" y="-4" text-anchor="middle" fill="#44554f" font-family="Noto Sans,Arial,sans-serif" font-size="7" font-weight="800">N</text><path d="M7 1 V25" stroke="#44554f" stroke-width=".8"/><path d="M7 1 L3 10 L7 7 L11 10 Z" fill="#44554f"/></g>');
+    parts.push('<g transform="translate('+(mapX+mapW-36)+','+(mapY+17)+')"><circle cx="8" cy="10" r="15" fill="#ffffff" fill-opacity=".78" stroke="#b8beb8" stroke-width=".6"/><text x="8" y="-1" text-anchor="middle" fill="#334b43" font-family="Noto Sans,Arial,sans-serif" font-size="7.2" font-weight="800">N</text><path d="M8 4 V24" stroke="#334b43" stroke-width=".9"/><path d="M8 4 L3.5 13 L8 10 L12.5 13 Z" fill="#334b43"/></g>');
     if(!small){
-      parts.push('<path d="M'+(sideX-12)+' '+mapY+' V'+(mapY+mapH)+'" stroke="#d3d6d1" stroke-width=".7"/>');
-      parts.push('<text x="'+sideX+'" y="'+(mapY+2)+'" fill="#344a43" font-family="Noto Sans,Arial,sans-serif" font-size="7.4" font-weight="800" letter-spacing=".9">PLAN KEY</text>');
-      let yy=mapY+26;
-      parts.push('<rect x="'+sideX+'" y="'+(yy-7)+'" width="24" height="10" rx="1" fill="url(#'+aqPat+')" stroke="#c96d20" stroke-width=".7"/><text x="'+(sideX+34)+'" y="'+yy+'" fill="#56635e" font-family="Noto Sans,Arial,sans-serif" font-size="7.2">Aquifer context</text>');
-      yy+=28;
-      parts.push('<path d="M'+sideX+' '+yy+' H'+(sideX+24)+'" stroke="#237aa4" stroke-width="1.1"/><text x="'+(sideX+34)+'" y="'+(yy+2.5)+'" fill="#56635e" font-family="Noto Sans,Arial,sans-serif" font-size="7.2">Water path</text>');
-      yy+=30;
-      parts.push('<path d="M'+sideX+' '+yy+' H'+(sideX+24)+'" stroke="#c1d5bc" stroke-width="5.2" opacity=".55" stroke-linecap="round"/><path d="M'+sideX+' '+yy+' H'+(sideX+24)+'" stroke="#315c3d" stroke-width="1.15" stroke-linecap="round"/><text x="'+(sideX+34)+'" y="'+(yy+2.5)+'" fill="#56635e" font-family="Noto Sans,Arial,sans-serif" font-size="7.2">A · highest priority</text>');
-      yy+=23;
-      parts.push('<path d="M'+sideX+' '+yy+' H'+(sideX+24)+'" stroke="#dbe2cf" stroke-width="4" opacity=".48" stroke-linecap="round"/><path d="M'+sideX+' '+yy+' H'+(sideX+24)+'" stroke="#6c7d5b" stroke-width=".85" stroke-linecap="round"/><text x="'+(sideX+34)+'" y="'+(yy+2.5)+'" fill="#66716c" font-family="Noto Sans,Arial,sans-serif" font-size="7.2">B · strong</text>');
-      yy+=23;
-      parts.push('<path d="M'+sideX+' '+yy+' H'+(sideX+24)+'" stroke="#ece5d8" stroke-width="3.2" opacity=".62" stroke-linecap="round"/><path d="M'+sideX+' '+yy+' H'+(sideX+24)+'" stroke="#958a73" stroke-width=".65" stroke-linecap="round"/><text x="'+(sideX+34)+'" y="'+(yy+2.5)+'" fill="#777b77" font-family="Noto Sans,Arial,sans-serif" font-size="7.2">C · general</text>');
-      yy+=30;
-      parts.push('<path d="M'+sideX+' '+yy+' H'+(sideX+24)+'" stroke="#858a85" stroke-width=".5"/><text x="'+(sideX+34)+'" y="'+(yy+2.5)+'" fill="#68716c" font-family="Noto Sans,Arial,sans-serif" font-size="7.2">Contour / elevation</text>');
-      const noteY=mapY+mapH-52;
-      parts.push('<text x="'+sideX+'" y="'+noteY+'" fill="#79817c" font-family="Noto Sans,Arial,sans-serif" font-size="6.1" font-weight="650">SCREENING PLAN</text>');
-      parts.push('<text x="'+sideX+'" y="'+(noteY+13)+'" fill="#8a918c" font-family="Noto Sans,Arial,sans-serif" font-size="5.9">Field verification required</text>');
-      parts.push('<text x="'+sideX+'" y="'+(noteY+23)+'" fill="#8a918c" font-family="Noto Sans,Arial,sans-serif" font-size="5.9">before design or construction.</text>');
-    }
+  parts.push('<rect x="'+sideX+'" y="'+mapY+'" width="'+sideW+'" height="'+mapH+'" rx="3" fill="#ffffff" fill-opacity=".72" stroke="#d0d4ce" stroke-width=".7"/>');
+  parts.push('<text x="'+(sideX+18)+'" y="'+(mapY+28)+'" fill="#233d36" font-family="Noto Sans,Arial,sans-serif" font-size="9.5" font-weight="850" letter-spacing="1.05">PLAN LEGEND</text>');
+  parts.push('<path d="M'+(sideX+18)+' '+(mapY+39)+' H'+(sideX+sideW-18)+'" stroke="#51b9dd" stroke-width="1.5"/>');
+  let yy=mapY+68;
+  parts.push('<rect x="'+(sideX+18)+'" y="'+(yy-9)+'" width="28" height="12" rx="1.3" fill="url(#'+aqPat+')" stroke="#c46821" stroke-width=".8"/><text x="'+(sideX+58)+'" y="'+yy+'" fill="#44544e" font-family="Noto Sans,Arial,sans-serif" font-size="7.6" font-weight="700">Aquifer context</text>');
+  yy+=34;
+  parts.push('<path d="M'+(sideX+18)+' '+yy+' H'+(sideX+46)+'" stroke="#0e7fac" stroke-width="1.5"/><text x="'+(sideX+58)+'" y="'+(yy+2.5)+'" fill="#44544e" font-family="Noto Sans,Arial,sans-serif" font-size="7.6" font-weight="700">Water path</text>');
+  yy+=38;
+  const keySw=(grade,label,band,line,center,count)=>{
+    parts.push('<path d="M'+(sideX+18)+' '+yy+' H'+(sideX+48)+'" stroke="'+band+'" stroke-width="'+(grade==='A'?7.4:grade==='B'?5.4:4)+'" opacity=".72" stroke-linecap="round"/>');
+    parts.push('<path d="M'+(sideX+18)+' '+yy+' H'+(sideX+48)+'" stroke="'+line+'" stroke-width="'+(grade==='A'?1.55:grade==='B'?1.05:.78)+'" stroke-linecap="round"/>');
+    if(center)parts.push('<path d="M'+(sideX+18)+' '+yy+' H'+(sideX+48)+'" stroke="'+center+'" stroke-width=".6" stroke-dasharray="2 2.5"/>');
+    parts.push('<text x="'+(sideX+58)+'" y="'+(yy+2.5)+'" fill="#44544e" font-family="Noto Sans,Arial,sans-serif" font-size="7.6" font-weight="750">'+grade+' · '+label+'</text>');
+    parts.push('<text x="'+(sideX+sideW-18)+'" y="'+(yy+2.5)+'" text-anchor="end" fill="#7b837e" font-family="Noto Sans,Arial,sans-serif" font-size="7.1" font-weight="700">'+count+'</text>');
+    yy+=31;
+  };
+  keySw('A','highest priority','#b9ceb1','#315b3d','#63a9bc',counts.A);
+  keySw('B','strong','#d2ddc6','#687c59','#7eb6c3',counts.B);
+  keySw('C','general','#e5ddcb','#907e61',null,counts.C);
+  parts.push('<path d="M'+(sideX+18)+' '+yy+' H'+(sideX+48)+'" stroke="#7c827d" stroke-width=".6"/><text x="'+(sideX+58)+'" y="'+(yy+2.5)+'" fill="#44544e" font-family="Noto Sans,Arial,sans-serif" font-size="7.6" font-weight="700">Contour / elevation</text>');
+  const noteY=mapY+mapH-100;
+  parts.push('<rect x="'+(sideX+14)+'" y="'+(noteY-18)+'" width="'+(sideW-28)+'" height="79" rx="2.5" fill="#f1f4ef" stroke="#d2d8d2" stroke-width=".6"/>');
+  parts.push('<text x="'+(sideX+26)+'" y="'+noteY+'" fill="#31483f" font-family="Noto Sans,Arial,sans-serif" font-size="7.2" font-weight="850" letter-spacing=".75">SCREENING PLAN</text>');
+  parts.push('<text x="'+(sideX+26)+'" y="'+(noteY+17)+'" fill="#69756f" font-family="Noto Sans,Arial,sans-serif" font-size="6.4">Existing modeled geometry.</text>');
+  parts.push('<text x="'+(sideX+26)+'" y="'+(noteY+30)+'" fill="#69756f" font-family="Noto Sans,Arial,sans-serif" font-size="6.4">Field verification required</text>');
+  parts.push('<text x="'+(sideX+26)+'" y="'+(noteY+43)+'" fill="#69756f" font-family="Noto Sans,Arial,sans-serif" font-size="6.4">before design or construction.</text>');
+}
     parts.push('</svg>');
     return parts.join('');
   }
