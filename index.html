@@ -2549,6 +2549,26 @@ html.earthline-report-open-16966 .mapboxgl-ctrl {
   display:none!important; visibility:hidden!important; pointer-events:none!important;
 }
 </style>
+<style id="earthlineRealReportIsolation16969">
+#earthlineVermontReportPanel16149.open{
+  position:fixed!important;inset:0!important;z-index:2147483647!important;
+  background:#f4f1e8!important;isolation:isolate!important;overflow:auto!important;
+}
+#earthlineVermontReportPanel16149.open .el49-shell{position:relative!important;z-index:1!important}
+html.earthline-report-open-16966 #earthlineLaunchFallbackRail16872,
+html.earthline-report-open-16966 #earthlineLaunchLogin16872,
+html.earthline-report-open-16966 #earthlineLaunchDonate16872,
+html.earthline-report-open-16966 #earthlineLaunchMerch16872,
+html.earthline-report-open-16966 #earthlineRail16188,
+html.earthline-report-open-16966 [id^="earthlineRail"],
+html.earthline-report-open-16966 .earthline-launch-rail-btn-16872,
+html.earthline-report-open-16966 .el-rail-control-16188,
+html.earthline-report-open-16966 #searchOrb,
+html.earthline-report-open-16966 [id*="SearchOrb"],
+html.earthline-report-open-16966 .mapboxgl-ctrl{
+  display:none!important;visibility:hidden!important;pointer-events:none!important;
+}
+</style>
 </head>
 <body>
 <!-- shared SVG defs: orb + logo -->
@@ -36315,8 +36335,8 @@ html.earthline-alaska-map-interaction-16921 #earthlineRegionalVectorOverlay16020
   function allCoordinates(){const out=[];for(const f of [...contours(),...flows(),...swales()]){const c=f?.geometry?.coordinates;if(f?.geometry?.type==='LineString'&&Array.isArray(c))out.push(...c)}return out.filter(p=>Array.isArray(p)&&Number.isFinite(+p[0])&&Number.isFinite(+p[1]))}
   function reportBounds(d){const b=d?.bounds||visual()?.bounds;if(Array.isArray(b)&&b.length===4&&b.every(Number.isFinite))return b;const pts=allCoordinates();if(!pts.length)return[-73.5,42.7,-71.4,45.1];return[Math.min(...pts.map(p=>+p[0])),Math.min(...pts.map(p=>+p[1])),Math.max(...pts.map(p=>+p[0])),Math.max(...pts.map(p=>+p[1]))]}
     function mapSvg(d,small=false){
-  const b=reportBounds(d),W=1100,H=small?460:620;
-  const mapX=26,mapY=26,mapW=W-52,mapH=H-52;
+  const b=reportBounds(d),W=1100,H=small?470:620;
+  const mapX=24,mapY=24,mapW=W-48,mapH=H-48;
   const xSpan=Math.max(.000001,b[2]-b[0]),ySpan=Math.max(.000001,b[3]-b[1]);
   const sx=x=>mapX+(x-b[0])/xSpan*mapW,sy=y=>mapY+mapH-(y-b[1])/ySpan*mapH;
   const pathCoords=coords=>(coords||[]).map((q,i)=>(i?'L':'M')+sx(+q[0]).toFixed(1)+' '+sy(+q[1]).toFixed(1)).join(' ');
@@ -36327,107 +36347,90 @@ html.earthline-alaska-map-interaction-16921 #earthlineRegionalVectorOverlay16020
   const reportContours=contours().filter(f=>f?.geometry?.type==='LineString').slice(0,220);
   const reportFlows=flows().filter(f=>f?.geometry?.type==='LineString').slice(0,240);
   const rows=graded(),aquiferFeatures=reportAquifers();
-
   const flowRank=reportFlows.map(f=>({f,L:slen(f)})).sort((a,b)=>b.L-a.L);
-  const principal=flowRank.slice(0,Math.min(small?4:6,flowRank.length));
-  const A=rows.filter(r=>r.grade==='A');
-  const B=rows.filter(r=>r.grade==='B').slice(0,Math.min(12,rows.filter(r=>r.grade==='B').length));
+  const principal=flowRank.slice(0,Math.min(small?5:8,flowRank.length));
 
-  const reportPlace=String(d?.query||d?.location||d?.placeName||'Analysis Area').trim();
+  const cx=(b[0]+b[2])/2,cy=(b[1]+b[3])/2;
+  const conus=cx>=-125&&cx<=-66.5&&cy>=24&&cy<=50;
+  const bbox=b.map(n=>Number(n).toFixed(7)).join(',');
+  const imgSize=small?'900,540':'1400,840';
+  const naip=conus?'https://apps.geo.fpac.usda.gov/geo-imagery/rest/services/naip/conus_naip/ImageServer/exportImage?bbox='+encodeURIComponent(bbox)+'&bboxSR=4326&imageSR=4326&size='+imgSize+'&format=jpgpng&f=image':'';
+
   const lonSpan=Math.max(.0001,b[2]-b[0]),midLat=(b[1]+b[3])/2,kmWide=lonSpan*111.32*Math.cos(midLat*Math.PI/180);
-  const niceKm=kmWide>300?100:kmWide>120?50:kmWide>50?20:kmWide>20?10:kmWide>8?5:kmWide>3?2:1;
-  const barPx=Math.max(54,Math.min(160,niceKm/kmWide*mapW));
+  const niceKm=kmWide>300?100:kmWide>120?50:kmWide>50?20:kmWide>20?10:kmWide>8?5:kmWide>3?2:kmWide>1?1:.5;
+  const barPx=Math.max(54,Math.min(170,niceKm/kmWide*mapW));
+  const clipId='elClip16969',aqPat='elAq16969',parts=[];
 
-  const clipId='elClip16968',aqPat='elAq16968',parts=[];
-  parts.push('<svg class="el-report-landscape-plan-16968" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc('Earthline '+reportPlace+' landscape water plan')+'">');
+  parts.push('<svg class="el-report-real-site-render-16970" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Earthline real-site landscape water plan">');
   parts.push('<defs>'+
-    '<linearGradient id="elGround16968" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8f7ef"/><stop offset=".52" stop-color="#eff2e8"/><stop offset="1" stop-color="#e6ece2"/></linearGradient>'+
-    '<pattern id="'+aqPat+'" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(30)"><rect width="14" height="14" fill="#e99142" fill-opacity=".28"/><path d="M0 0 V14" stroke="#bd6320" stroke-width=".8" stroke-opacity=".28"/></pattern>'+
-    '<clipPath id="'+clipId+'"><rect x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" rx="4"/></clipPath>'+
-    '<marker id="elArrow16968" markerWidth="5.5" markerHeight="5.5" refX="4.6" refY="2.75" orient="auto" markerUnits="strokeWidth"><path d="M0 0 L5.5 2.75 L0 5.5 Z" fill="#0f6f98" opacity=".86"/></marker>'+
+    '<linearGradient id="elGround16969" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e7eadf"/><stop offset="1" stop-color="#cfd9ca"/></linearGradient>'+
+    '<pattern id="'+aqPat+'" width="13" height="13" patternUnits="userSpaceOnUse" patternTransform="rotate(31)"><rect width="13" height="13" fill="#e9903c" fill-opacity=".22"/><path d="M0 0 V13" stroke="#bd601d" stroke-width=".8" stroke-opacity=".30"/></pattern>'+
+    '<clipPath id="'+clipId+'"><rect x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" rx="5"/></clipPath>'+
+    '<marker id="elArrow16969" markerWidth="5.5" markerHeight="5.5" refX="4.7" refY="2.75" orient="auto" markerUnits="strokeWidth"><path d="M0 0 L5.5 2.75 L0 5.5 Z" fill="#0d6e9c" opacity=".9"/></marker>'+
     '</defs>');
 
-  parts.push('<rect width="'+W+'" height="'+H+'" fill="#f4f1e8"/>'+
-    '<rect x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" rx="4" fill="url(#elGround16968)" stroke="#98a49b" stroke-width=".9"/>'+
-    '<g clip-path="url(#'+clipId+')">');
-
-  /* Landform: broad tonal terraces, not contour spaghetti. */
-  const terraceIdx=[10,28,46,64,82,100,118,136,154,172,190,208].filter(i=>i<reportContours.length);
-  for(let ti=0;ti<terraceIdx.length;ti++){
-    const dp=path(reportContours[terraceIdx[ti]]); if(!dp)continue;
-    const width=ti%2?30:44;
-    const op=ti%2?.030:.045;
-    parts.push('<path d="'+dp+'" fill="none" stroke="'+(ti%2?'#6f8a76':'#91a594')+'" stroke-width="'+width+'" opacity="'+op+'" stroke-linecap="round" vector-effect="non-scaling-stroke"/>');
-    parts.push('<path d="'+dp+'" fill="none" stroke="#758279" stroke-width=".52" opacity=".17" vector-effect="non-scaling-stroke"/>');
+  parts.push('<rect width="'+W+'" height="'+H+'" fill="#f2eee5"/><rect x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" rx="5" fill="url(#elGround16969)" stroke="#7c8d82" stroke-width="1"/>');
+  parts.push('<g clip-path="url(#'+clipId+')">');
+  if(conus){
+    parts.push('<image href="'+esc(naip)+'" x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" preserveAspectRatio="none"/>');
+    parts.push('<rect x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" fill="#f7f0df" opacity=".08"/>');
+  } else {
+    for(let i=0;i<reportContours.length;i+=10){const dp=path(reportContours[i]);if(dp)parts.push('<path d="'+dp+'" fill="none" stroke="#66796c" stroke-width="34" opacity=".035" stroke-linecap="round" vector-effect="non-scaling-stroke"/>')}
   }
 
-  /* Aquifer fields are large, quiet orange areas. */
+  /* Quiet terrain cues only; the real image is the land. */
+  for(let i=0;i<reportContours.length;i+=8){const dp=path(reportContours[i]);if(dp)parts.push('<path d="'+dp+'" fill="none" stroke="#ffffff" stroke-width=".7" opacity="'+(conus?'.18':'.11')+'" vector-effect="non-scaling-stroke"/>')}
+
+  /* Aquifer stays a spatial orange field. */
   for(const f of aquiferFeatures){
     const g=f&&f.geometry;if(!g)continue;
     const polys=g.type==='Polygon'?[g.coordinates]:g.type==='MultiPolygon'?g.coordinates:[];
     for(const poly of polys){
       const rings=poly.filter(r=>Array.isArray(r)&&r.length>=3);if(!rings.length)continue;
       const dp=rings.map(r=>pathCoords(r)+' Z').join(' ');
-      parts.push('<path d="'+dp+'" fill="url(#'+aqPat+')" fill-rule="evenodd" stroke="#b95d1d" stroke-width="1.15" opacity=".93" vector-effect="non-scaling-stroke"/>');
+      parts.push('<path d="'+dp+'" fill="url(#'+aqPat+')" fill-rule="evenodd" stroke="#b55b1b" stroke-width="1.15" opacity=".86" vector-effect="non-scaling-stroke"/>');
     }
   }
 
-  /* Hydrology: only 4–6 principal paths. No secondary blue web. */
+  /* Only principal water paths read strongly. */
   let fi=0;
   for(const x of principal){
     const dp=path(x.f);if(!dp)continue;
-    parts.push('<path d="'+dp+'" fill="none" stroke="#fffdf7" stroke-width="5.6" opacity=".94" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
-    parts.push('<path d="'+dp+'" fill="none" stroke="#0f6f98" stroke-width="1.65" opacity=".92" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"'+(fi++%2===0?' marker-end="url(#elArrow16968)"':'')+'/>');
+    parts.push('<path d="'+dp+'" fill="none" stroke="#fff" stroke-width="5.2" opacity=".78" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
+    parts.push('<path d="'+dp+'" fill="none" stroke="#0d6e9c" stroke-width="1.7" opacity=".93" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"'+(fi++%2===0?' marker-end="url(#elArrow16969)"':'')+'/>');
   }
 
-  /* B corridors are soft supporting landforms. C corridors are intentionally omitted from map display. */
-  for(const r of B){
-    const dp=path(r.f);if(!dp)continue;
-    parts.push('<path d="'+dp+'" fill="none" stroke="#fffef8" stroke-width="12" opacity=".86" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
-    parts.push('<path d="'+dp+'" fill="none" stroke="#d6e0ce" stroke-width="7.8" opacity=".72" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
-    parts.push('<path d="'+dp+'" fill="none" stroke="#708060" stroke-width=".95" opacity=".58" stroke-linecap="round" vector-effect="non-scaling-stroke"/>');
-  }
-
-  /* A corridors are the dominant landscape intervention. */
-  for(const r of A){
-    const dp=path(r.f);if(!dp)continue;
-    parts.push('<path d="'+dp+'" fill="none" stroke="#fffef8" stroke-width="28" opacity=".98" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
-    parts.push('<path d="'+dp+'" fill="none" stroke="#a9c59e" stroke-width="20" opacity=".90" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
-    parts.push('<path d="'+dp+'" fill="none" stroke="#2c5337" stroke-width="1.8" opacity=".98" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
-    parts.push('<path d="'+dp+'" transform="translate(-2.6 -2.6)" fill="none" stroke="#3f9fba" stroke-width=".9" opacity=".98" stroke-dasharray="2.4 3" stroke-linecap="round" vector-effect="non-scaling-stroke"/>');
-    parts.push('<path d="'+dp+'" transform="translate(2.6 2.6)" fill="none" stroke="#3f9fba" stroke-width=".9" opacity=".98" stroke-dasharray="2.4 3" stroke-linecap="round" vector-effect="non-scaling-stroke"/>');
-  }
+  /* Earthline swales retain their actual frozen geometry; style only changes. */
+  const draw=r=>{const dp=path(r.f);if(!dp)return;
+    if(r.grade==='C'){parts.push('<path d="'+dp+'" fill="none" stroke="#7d745f" stroke-width=".8" opacity=".28" stroke-linecap="round" vector-effect="non-scaling-stroke"/>');return}
+    if(r.grade==='B'){
+      parts.push('<path d="'+dp+'" fill="none" stroke="#fff" stroke-width="7.5" opacity=".74" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
+      parts.push('<path d="'+dp+'" fill="none" stroke="#b7caa8" stroke-width="5" opacity=".74" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
+      parts.push('<path d="'+dp+'" fill="none" stroke="#496d4b" stroke-width="1.05" opacity=".88" stroke-linecap="round" vector-effect="non-scaling-stroke"/>');return}
+    parts.push('<path d="'+dp+'" fill="none" stroke="#fff" stroke-width="15" opacity=".92" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
+    parts.push('<path d="'+dp+'" fill="none" stroke="#8dbd82" stroke-width="10.5" opacity=".82" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
+    parts.push('<path d="'+dp+'" fill="none" stroke="#224d31" stroke-width="1.55" opacity=".98" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
+    parts.push('<path d="'+dp+'" transform="translate(-1.8 -1.8)" fill="none" stroke="#3ba3c3" stroke-width=".9" opacity=".98" stroke-dasharray="2.4 3" stroke-linecap="round" vector-effect="non-scaling-stroke"/>');
+    parts.push('<path d="'+dp+'" transform="translate(1.8 1.8)" fill="none" stroke="#3ba3c3" stroke-width=".9" opacity=".98" stroke-dasharray="2.4 3" stroke-linecap="round" vector-effect="non-scaling-stroke"/>');
+  };
+  for(const r of rows.filter(r=>r.grade==='C'))draw(r);
+  for(const r of rows.filter(r=>r.grade==='B'))draw(r);
+  for(const r of rows.filter(r=>r.grade==='A'))draw(r);
 
   let ai=0;
-  for(const r of A.slice(0,10)){
-    const q=mid(r.f);if(!q)continue;
-    const x=sx(+q[0]),y=sy(+q[1]);
-    parts.push('<g><circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="10.5" fill="#fffdf8" stroke="#526f59" stroke-width=".85"/><text x="'+x.toFixed(1)+'" y="'+(y+2.3).toFixed(1)+'" text-anchor="middle" fill="#284733" font-family="Noto Sans,Arial,sans-serif" font-size="6.8" font-weight="850">A'+(++ai)+'</text></g>');
+  for(const r of rows.filter(r=>r.grade==='A').slice(0,12)){
+    const q=mid(r.f);if(!q)continue;const x=sx(+q[0]),y=sy(+q[1]);
+    parts.push('<g><circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="10" fill="#fffdf7" fill-opacity=".95" stroke="#45654d" stroke-width=".8"/><text x="'+x.toFixed(1)+'" y="'+(y+2.3).toFixed(1)+'" text-anchor="middle" fill="#24432f" font-family="Noto Sans,Arial,sans-serif" font-size="6.8" font-weight="850">A'+(++ai)+'</text></g>');
   }
   parts.push('</g>');
 
-  /* Minimal map furniture. */
-  parts.push('<g transform="translate('+(mapX+18)+','+(mapY+mapH-20)+')"><path d="M0 0 H'+barPx+'" stroke="#43544c" stroke-width="1.4"/><path d="M0 -4 V4 M'+barPx+' -4 V4" stroke="#43544c" stroke-width=".9"/><text x="'+(barPx/2)+'" y="13" text-anchor="middle" fill="#56645e" font-family="Noto Sans,Arial,sans-serif" font-size="6.5" font-weight="700">'+niceKm+' km</text></g>');
-  parts.push('<g transform="translate('+(mapX+mapW-48)+','+(mapY+20)+')"><circle cx="12" cy="13" r="19" fill="#fffdf8" fill-opacity=".90" stroke="#a8b2aa" stroke-width=".7"/><text x="12" y="-1" text-anchor="middle" fill="#294239" font-family="Noto Sans,Arial,sans-serif" font-size="7.4" font-weight="850">N</text><path d="M12 4 V30" stroke="#294239" stroke-width="1"/><path d="M12 4 L6 16 L12 12 L18 16 Z" fill="#294239"/></g>');
+  /* Minimal planning-board furniture. */
+  parts.push('<g transform="translate('+(mapX+18)+','+(mapY+mapH-20)+')"><path d="M0 0 H'+barPx+'" stroke="#263d34" stroke-width="1.5"/><path d="M0 -4 V4 M'+barPx+' -4 V4" stroke="#263d34" stroke-width=".9"/><text x="'+(barPx/2)+'" y="13" text-anchor="middle" fill="#31473d" font-family="Noto Sans,Arial,sans-serif" font-size="6.5" font-weight="800">'+niceKm+' km</text></g>');
+  parts.push('<g transform="translate('+(mapX+mapW-49)+','+(mapY+20)+')"><circle cx="12" cy="13" r="20" fill="#fffdf7" fill-opacity=".91" stroke="#8d9b91" stroke-width=".8"/><text x="12" y="-1" text-anchor="middle" fill="#203a31" font-family="Noto Sans,Arial,sans-serif" font-size="7.5" font-weight="850">N</text><path d="M12 4 V30" stroke="#203a31" stroke-width="1"/><path d="M12 4 L6 16 L12 12 L18 16 Z" fill="#203a31"/></g>');
 
   if(!small){
     const lx=mapX+18,ly=mapY+18;
-    parts.push('<g transform="translate('+lx+','+ly+')">'+
-      '<rect width="252" height="104" rx="5" fill="#fffef9" fill-opacity=".95" stroke="#c0c7c1" stroke-width=".65"/>'+
-      '<text x="15" y="21" fill="#203a33" font-family="Noto Sans,Arial,sans-serif" font-size="8.3" font-weight="850" letter-spacing=".9">LANDSCAPE WATER PLAN</text>'+
-      '<path d="M15 30 H237" stroke="#55bde0" stroke-width="1.4"/>'+
-      '<rect x="15" y="44" width="24" height="10" rx="1" fill="url(#'+aqPat+')" stroke="#b95d1d" stroke-width=".7"/>'+
-      '<text x="47" y="52" fill="#465750" font-family="Noto Sans,Arial,sans-serif" font-size="6.3">Aquifer field</text>'+
-      '<path d="M15 70 H39" stroke="#0f6f98" stroke-width="1.65"/>'+
-      '<text x="47" y="73" fill="#465750" font-family="Noto Sans,Arial,sans-serif" font-size="6.3">Principal water path</text>'+
-      '<path d="M133 49 H161" stroke="#a9c59e" stroke-width="14" opacity=".92" stroke-linecap="round"/>'+
-      '<path d="M133 49 H161" stroke="#2c5337" stroke-width="1.6"/>'+
-      '<text x="170" y="52" fill="#465750" font-family="Noto Sans,Arial,sans-serif" font-size="6.3">A · priority bioswale</text>'+
-      '<path d="M133 72 H161" stroke="#d6e0ce" stroke-width="7.5" opacity=".76" stroke-linecap="round"/>'+
-      '<path d="M133 72 H161" stroke="#708060" stroke-width=".9"/>'+
-      '<text x="170" y="75" fill="#465750" font-family="Noto Sans,Arial,sans-serif" font-size="6.3">B · strong opportunity</text>'+
-      '<text x="15" y="94" fill="#7a837e" font-family="Noto Sans,Arial,sans-serif" font-size="5.4">C opportunities remain in the report data; omitted here for clarity</text>'+
-      '</g>');
+    parts.push('<g transform="translate('+lx+','+ly+')"><rect width="250" height="112" rx="5" fill="#fffef9" fill-opacity=".92" stroke="#aeb8b0" stroke-width=".7"/><text x="15" y="21" fill="#203a33" font-family="Noto Sans,Arial,sans-serif" font-size="8.2" font-weight="850" letter-spacing=".8">REAL-SITE WATER PLAN</text><path d="M15 30 H235" stroke="#55bde0" stroke-width="1.4"/><rect x="15" y="43" width="23" height="10" rx="1" fill="url(#'+aqPat+')" stroke="#b55b1b" stroke-width=".7"/><text x="47" y="51" fill="#42564d" font-family="Noto Sans,Arial,sans-serif" font-size="6.3">Mapped aquifer context</text><path d="M15 69 H39" stroke="#0d6e9c" stroke-width="1.7"/><text x="47" y="72" fill="#42564d" font-family="Noto Sans,Arial,sans-serif" font-size="6.3">Principal water path</text><path d="M132 48 H160" stroke="#8dbd82" stroke-width="10" opacity=".88" stroke-linecap="round"/><path d="M132 48 H160" stroke="#224d31" stroke-width="1.5"/><text x="169" y="51" fill="#42564d" font-family="Noto Sans,Arial,sans-serif" font-size="6.3">A · priority bioswale</text><path d="M132 70 H160" stroke="#b7caa8" stroke-width="5" opacity=".8" stroke-linecap="round"/><path d="M132 70 H160" stroke="#496d4b" stroke-width="1"/><text x="169" y="73" fill="#42564d" font-family="Noto Sans,Arial,sans-serif" font-size="6.3">B · strong opportunity</text><text x="15" y="94" fill="#68776f" font-family="Noto Sans,Arial,sans-serif" font-size="5.3">'+(conus?'Aerial: USDA NAIP · Terrain: Earthline frozen run':'Terrain-only fallback outside NAIP coverage')+'</text><text x="15" y="104" fill="#68776f" font-family="Noto Sans,Arial,sans-serif" font-size="5.3">Earthline overlays use frozen published run geometry</text></g>');
   }
   parts.push('</svg>');
   return parts.join('');
