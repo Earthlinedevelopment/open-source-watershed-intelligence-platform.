@@ -42,10 +42,10 @@ s=s.replace(old,new,1)
 # TASK 2: fix How Bioswales Work hierarchy. No broken section-number references.
 s=s.replace("'How to read this':'The core idea'","'How to read this':'The idea in one minute'",1)
 
-marker="""bh.querySelectorAll('h2,h3').forEach(h=>{             let t=String(h.textContent||'').trim().replace(/^§\d+\s*·\s*/,'').replace(/^\d+\.\d+\s*·\s*/,'');             h.textContent=map16940[t]||t;           });"""
-if marker not in s:
-    raise SystemExit('How Swales heading normalization owner not found')
-insert=marker+"""           const coreHeading=[...bh.querySelectorAll('h2')].find(h=>String(h.textContent||'').trim()==='The idea in one minute');           if(coreHeading){             let n=coreHeading.nextSibling,remove=[];             while(n&&!(n.nodeType===1&&n.tagName==='H2')){remove.push(n);n=n.nextSibling}             remove.forEach(x=>x.remove());             coreHeading.insertAdjacentHTML('afterend','<p><strong>Start with the images above.</strong> They show the physical idea: hold water in the landscape long enough for soil, roots, vegetation, and groundwater systems to use it.</p><p>This page then follows one story in order: what happens when water leaves too quickly; what a bioswale changes; where infiltrated water goes; why position matters; how the larger landscape responds; and what the evidence can and cannot support.</p><p>Measured and modeled evidence is identified where it appears. The Corrections Registry and the complete source list are kept at the end so the main explanation stays readable.</p>');           }"""
-s=s.replace(marker,insert,1)
+anchor="const replacements16941="
+i=s.find(anchor)
+if i<0: raise SystemExit('How Swales replacements owner not found')
+core="""           const coreHeading=[...bh.querySelectorAll('h2')].find(h=>String(h.textContent||'').trim()==='The idea in one minute');           if(coreHeading){             let n=coreHeading.nextSibling,remove=[];             while(n&&!(n.nodeType===1&&n.tagName==='H2')){remove.push(n);n=n.nextSibling}             remove.forEach(x=>x.remove());             coreHeading.insertAdjacentHTML('afterend','<p><strong>Start with the images above.</strong> They show the physical idea: hold water in the landscape long enough for soil, roots, vegetation, and groundwater systems to use it.</p><p>This page then follows one story in order: what happens when water leaves too quickly; what a bioswale changes; where infiltrated water goes; why position matters; how the larger landscape responds; and what the evidence can and cannot support.</p><p>Measured and modeled evidence is identified where it appears. The Corrections Registry and the complete source list are kept at the end so the main explanation stays readable.</p>');           }           """
+s=s[:i]+core+s[i:]
 
 p.write_text(s)
