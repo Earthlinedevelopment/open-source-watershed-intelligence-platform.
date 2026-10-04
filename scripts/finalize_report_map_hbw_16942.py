@@ -8,8 +8,8 @@ s=p.read_text(errors='ignore')
 repls=[
 ('<stop offset="0" stop-color="#f7f4ea"/><stop offset="1" stop-color="#e7ece4"/>',
  '<stop offset="0" stop-color="#faf6ec"/><stop offset=".58" stop-color="#eef1e5"/><stop offset="1" stop-color="#dfe8dd"/>'),
-('fill="rgba(43,132,199,.25)" fill-rule="evenodd" stroke="#1d6faa" stroke-width="'+(small?1.9:2.35)+'" stroke-dasharray="7 3" vector-effect="non-scaling-stroke" opacity=".99"',
- 'fill="rgba(92,170,202,.18)" fill-rule="evenodd" stroke="#5e9fbd" stroke-width="'+(small?1.15:1.45)+'" vector-effect="non-scaling-stroke" opacity=".94"'),
+("""fill="rgba(43,132,199,.25)" fill-rule="evenodd" stroke="#1d6faa" stroke-width="'+(small?1.9:2.35)+'" stroke-dasharray="7 3" vector-effect="non-scaling-stroke" opacity=".99" """.strip(),
+ """fill="rgba(92,170,202,.18)" fill-rule="evenodd" stroke="#5e9fbd" stroke-width="'+(small?1.15:1.45)+'" vector-effect="non-scaling-stroke" opacity=".94" """.strip()),
 ('stroke="#7f8b83" stroke-width=".62" opacity=".44"',
  'stroke="#839186" stroke-width=".48" opacity=".30"'),
 ('stroke="#fffdfa" stroke-width="3.2" opacity=".88"',
