@@ -43,7 +43,10 @@ jobs:
             await page.waitForTimeout(3500);
 
             await page.fill('#searchInput','Alabama');
-            await page.click('#runBtn');
+            await page.waitForSelector('#earthlineSearchSuggestions15970 button[data-query="Alabama state"]',{state:'visible',timeout:15000});
+            await page.click('#earthlineSearchSuggestions15970 button[data-query="Alabama state"]');
+            await page.waitForTimeout(700);
+            await page.click('#runBtn',{force:true});
             await page.waitForFunction(()=>{
               const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
               return !!(d&&String(d.tier||d.mode||'').toLowerCase()==='regional');
