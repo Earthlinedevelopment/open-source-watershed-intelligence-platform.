@@ -180,6 +180,40 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 
 
+/* EARTHLINE 16962 — preserve jurisdiction name in Property report identity.
+   Presentation identity only; no hydrology, geometry, ranking, exclusions, search or science changes. */
+(function installPropertyReportJurisdiction16962(){
+  function install(){
+    const original=window.earthlinePublishDisplayedRun16151;
+    if(typeof original!=='function'||original.__earthline16962)return false;
+    const wrapped=function(snapshot){
+      let out=snapshot;
+      try{
+        const tier=String(snapshot?.tier||snapshot?.mode||'').toLowerCase();
+        const pkg=window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||null;
+        const state=String(pkg?.identity?.name||pkg?.location?.name||'').trim();
+        if(tier==='property'&&state){
+          const c=snapshot?.center||{},lat=Number(c.lat),lng=Number(c.lng);
+          const coord=Number.isFinite(lat)&&Number.isFinite(lng)?lat.toFixed(5)+', '+lng.toFixed(5):String(snapshot?.query||'').replace(/^20-acre project area at\s*/i,'');
+          const us=String(pkg?.identity?.countryCode||'').toLowerCase()==='us';
+          out=Object.assign({},snapshot,{
+            jurisdictionName:state,
+            query:'20-acre project area · '+state+(us?' · USA':'')+(coord?' · '+coord:'')
+          });
+        }
+      }catch(_){}
+      return original.call(this,out);
+    };
+    wrapped.__earthline16962=true;
+    wrapped.__earthline16962Original=original;
+    window.earthlinePublishDisplayedRun16151=wrapped;
+    window.EARTHLINE_PROPERTY_REPORT_IDENTITY_OWNER_16962='displayed-run-publication';
+    return true;
+  }
+  const boot=()=>{if(install())return;for(const ms of [50,180,500,1200])setTimeout(install,ms)};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
+
 /* EARTHLINE REPORT RENDER OWNER 16960: index.html mapSvg */
 window.EARTHLINE_REPORT_RENDER_OWNER_16960='index-mapSvg';
 
