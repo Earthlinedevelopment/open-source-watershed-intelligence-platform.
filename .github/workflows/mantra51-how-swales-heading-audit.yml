@@ -1,0 +1,30 @@
+name: Mantra 51 How Swales Heading Audit
+on:
+  push:
+    branches: [mantra51-report-focus]
+    paths:
+      - '.github/workflows/mantra51-how-swales-heading-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, html
+          s=Path('index.html').read_text(errors='ignore')
+          i=s.find('The core idea')
+          print('CORE_POS',i)
+          if i>=0: print(s[max(0,i-1800):i+5200].replace('\n',' '))
+          j=s.find('const HOW_BIOSWALES_REPORT_16388')
+          if j<0:j=s.find('HOW_BIOSWALES_REPORT_16388=')
+          k=s.find('window.earthlineCanonicalHowBioswales16923',j)
+          frag=s[j:k if k>j else j+120000]
+          hs=re.findall(r'<h([23])[^>]*>([\s\S]*?)</h\1>',frag,re.I)
+          print('\nHEADINGS')
+          for n,t in hs:
+              t=re.sub('<[^>]+>',' ',t)
+              print(n,html.unescape(re.sub(r'\s+',' ',t)).strip())
+          PY
