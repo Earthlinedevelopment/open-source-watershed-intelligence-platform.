@@ -1,0 +1,17 @@
+name: Unblock Earthline Pages 16964
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/unblock-pages-16964.yml'
+permissions:
+  actions: write
+  contents: read
+jobs:
+  unblock:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel stale Pages run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api --method POST repos/${GITHUB_REPOSITORY}/actions/runs/37197476360/cancel || true
