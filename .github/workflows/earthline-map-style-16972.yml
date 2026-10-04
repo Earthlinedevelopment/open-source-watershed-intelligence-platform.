@@ -40,13 +40,13 @@ jobs:
           new = '<linearGradient id="elAerialWash16972" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff1cf" stop-opacity=".10"/><stop offset=".34" stop-color="#315340" stop-opacity=".035"/><stop offset=".72" stop-color="#173a31" stop-opacity=".09"/><stop offset="1" stop-color="#092820" stop-opacity=".18"/></linearGradient><radialGradient id="elAerialVignette16972" cx="50%" cy="44%" r="72%"><stop offset="0" stop-color="#173b30" stop-opacity="0"/><stop offset=".66" stop-color="#102f27" stop-opacity=".03"/><stop offset="1" stop-color="#071d19" stop-opacity=".16"/></radialGradient><filter id="elAerialTone16972" x="-2%" y="-2%" width="104%" height="104%"><feColorMatrix type="saturate" values=".78" result="sat"/><feComponentTransfer in="sat"><feFuncR type="linear" slope=".90" intercept=".018"/><feFuncG type="linear" slope=".94" intercept=".012"/><feFuncB type="linear" slope=".88" intercept=".014"/></feComponentTransfer></filter>'
           one(old,new,"aerial definitions")
 
-          one('<image href="'+esc(naip)+'" x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" preserveAspectRatio="none"/>',
-              '<image href="'+esc(naip)+'" x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" preserveAspectRatio="none" filter="url(#elAerialTone16972)"/>',
-              "aerial image")
+          old_image = """<image href="'+esc(naip)+'" x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" preserveAspectRatio="none"/>"""
+          new_image = """<image href="'+esc(naip)+'" x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" preserveAspectRatio="none" filter="url(#elAerialTone16972)"/>"""
+          one(old_image,new_image,"aerial image")
 
-          one('<rect x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" fill="url(#elAerialWash16971)"/>',
-              '<rect x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" fill="url(#elAerialWash16972)"/><rect x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" fill="url(#elAerialVignette16972)"/>',
-              "aerial mood overlays")
+          old_wash = """<rect x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" fill="url(#elAerialWash16971)"/>"""
+          new_wash = """<rect x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" fill="url(#elAerialWash16972)"/><rect x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" fill="url(#elAerialVignette16972)"/>"""
+          one(old_wash,new_wash,"aerial mood overlays")
 
           out=s[:start]+fn+s[end:]
           if out.count("el-report-real-site-render-16972") != 1:
