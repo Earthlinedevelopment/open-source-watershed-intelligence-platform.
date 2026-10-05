@@ -1,0 +1,30 @@
+name: Earthline launch CTA audit
+on:
+  push:
+    branches:
+      - pages-live
+jobs:
+  audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Inspect Contact Donate Merch Login
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          needles=["CONTACT","DONATE","MERCH","LOGIN","contact","donate","merch","login","mailto:","stripe","paypal","shop"]
+          for n in needles:
+              print("\n###",n)
+              start=0; shown=0
+              while shown<20:
+                  i=s.find(n,start)
+                  if i<0: break
+                  print("---",i,"---")
+                  print(s[max(0,i-1800):min(len(s),i+3200)])
+                  start=i+len(n);shown+=1
+          PY
