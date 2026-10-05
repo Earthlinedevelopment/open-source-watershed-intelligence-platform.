@@ -1,0 +1,42 @@
+name: Earthline report rollback 16976
+on:
+  push:
+    branches:
+      - pages-live
+permissions:
+  contents: write
+jobs:
+  rollback:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Restore rejected report renderer to 16974
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path("index.html")
+          cur=p.read_text(encoding="utf-8")
+          old=subprocess.check_output(["git","show","e8920b0c861d41604be9e2971789d636fb8dba32:index.html"], text=True)
+          def extract(s):
+              a=s.index("function mapSvg(d,small=false){")
+              b=s.index("  return parts.join('');\n}",a)+len("  return parts.join('');\n}")
+              return a,b,s[a:b]
+          ca,cb,_=extract(cur)
+          _,_,oldfn=extract(old)
+          out=cur[:ca]+oldfn+cur[cb:]
+          if "el-report-real-site-render-16974" not in oldfn:
+              raise SystemExit("16974 renderer marker missing")
+          p.write_text(out,encoding="utf-8")
+          PY
+          git config user.name "Earthline Build Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "revert: restore 16974 report renderer after 16976 rejection"
+          git push origin HEAD:pages-live
