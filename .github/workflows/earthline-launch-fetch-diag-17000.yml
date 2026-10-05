@@ -1,0 +1,25 @@
+name: Earthline Launch Fetch Diagnostic 17000
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/launch-fetch-diag-17000.mjs'
+      - '.github/workflows/earthline-launch-fetch-diag-17000.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/launch-fetch-diag-17000.mjs
