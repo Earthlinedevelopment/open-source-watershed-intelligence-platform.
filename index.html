@@ -36165,17 +36165,8 @@ body{display:block!important}
   function syncSwalesPage(){
     const swalesOpen=location.hash==='#swales-explained';     document.documentElement.classList.toggle('earthline-swales-open-16947',swalesOpen);     for(const id of ['earthlineLaunchLogin16872','earthlineLaunchDonate16872','earthlineLaunchMerch16872']){const el=document.getElementById(id);if(!el)continue;if(swalesOpen)el.style.setProperty('display','none','important');else el.style.removeProperty('display');}
     const sp=swalesOpen?ensureSwalesPage():document.getElementById('earthlineSwalesPage16125');if(sp){sp.classList.toggle('open',swalesOpen);sp.setAttribute('aria-hidden',swalesOpen?'false':'true');}
-    const processOpen=location.hash==='#earthline-process'; document.documentElement.classList.toggle('earthline-process-open-16991',processOpen); document.documentElement.classList.toggle('earthline-process-open-16991',processOpen); document.documentElement.classList.toggle('earthline-process-open-16991',processOpen); document.documentElement.classList.toggle('earthline-process-open-16991',processOpen);
+    const processOpen=location.hash==='#earthline-process';
     const pp=processOpen?ensureEarthlineProcessPage16265():document.getElementById('earthlineProcessPage16265');if(pp){pp.classList.toggle('open',processOpen);pp.setAttribute('aria-hidden',processOpen?'false':'true');}
-    // EARTHLINE_REPORT_BUTTON_RESTORE_16992
-    if(!swalesOpen&&!processOpen){
-      const report=document.getElementById('earthlineVermontReport16149');
-      const slot=document.getElementById('earthlineReportSlot16188');
-      const section=document.getElementById('earthlineReportSection16188');
-      if(section){section.style.removeProperty('display');section.style.removeProperty('visibility');}
-      if(report&&slot&&report.parentElement!==slot)slot.appendChild(report);
-      if(report){report.style.removeProperty('display');report.style.removeProperty('visibility');}
-    }
     return swalesOpen||processOpen;
   }
   function closeSwales(){if(location.hash==='#swales-explained'){history.back();setTimeout(()=>{if(location.hash==='#swales-explained')location.hash='';},180);}else{document.getElementById('earthlineSwalesPage16125')?.classList.remove('open');}}
@@ -36755,65 +36746,6 @@ ${finalSourcesPage16864(data)}
   pointer-events:none!important;
 }
 </style>
-
-<style id="earthline-process-launch-rail-hide-16991">
-html.earthline-process-open-16991 #earthlineLaunchLogin16872,
-html.earthline-process-open-16991 #earthlineLaunchDonate16872,
-html.earthline-process-open-16991 #earthlineLaunchMerch16872{
-  display:none!important;
-  visibility:hidden!important;
-  pointer-events:none!important;
-}
-</style>
-
-<style id="earthline-report-button-visibility-16993">
-html:not(.earthline-process-open-16991):not(.earthline-swales-open-16947) #earthlineReportSection16188{
-  display:block!important;
-  visibility:visible!important;
-}
-html:not(.earthline-process-open-16991):not(.earthline-swales-open-16947) #earthlineReportSlot16188{
-  display:block!important;
-  visibility:visible!important;
-}
-html:not(.earthline-process-open-16991):not(.earthline-swales-open-16947) #earthlineVermontReport16149{
-  display:flex!important;
-  visibility:visible!important;
-  opacity:1!important;
-  pointer-events:auto!important;
-}
-</style>
-<script id="earthline-report-button-restore-16993">
-(function(){
-  function restore(){
-    const processOpen=location.hash==='#earthline-process';
-    const swalesOpen=location.hash==='#swales-explained';
-    if(processOpen||swalesOpen)return;
-    const section=document.getElementById('earthlineReportSection16188');
-    const slot=document.getElementById('earthlineReportSlot16188');
-    const report=document.getElementById('earthlineVermontReport16149');
-    if(section){
-      section.style.removeProperty('display');
-      section.style.removeProperty('visibility');
-    }
-    if(slot){
-      slot.style.removeProperty('display');
-      slot.style.removeProperty('visibility');
-    }
-    if(report&&slot&&report.parentElement!==slot)slot.appendChild(report);
-    if(report){
-      report.style.removeProperty('display');
-      report.style.removeProperty('visibility');
-      report.style.removeProperty('opacity');
-      report.style.removeProperty('pointer-events');
-    }
-  }
-  window.addEventListener('hashchange',()=>{restore();setTimeout(restore,50);setTimeout(restore,250);});
-  window.addEventListener('popstate',()=>{restore();setTimeout(restore,50);setTimeout(restore,250);});
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{restore();setTimeout(restore,250);},{once:true});
-  else {restore();setTimeout(restore,250);}
-  window.EARTHLINE_REPORT_BUTTON_RESTORE_16993=restore;
-})();
-</script>
 </head><body style="font-family:system-ui;padding:32px;background:#07141d;color:#eef7fb"><h1 style="color:#ff9b82">Earthline report could not be rendered</h1><p>The tab was kept open so the failure is visible.</p><pre style="white-space:pre-wrap">'+String(err&&err.stack||err&&err.message||err).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</pre></body></html>');
         child.document.close();
       }catch(_){}
