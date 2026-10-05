@@ -218,3 +218,28 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 window.EARTHLINE_REPORT_RENDER_OWNER_16960='index-mapSvg';
 
 })();
+
+/* EARTHLINE_PROCESS_RAIL_VISIBILITY_16996 — hide only LOGIN / DONATE / MERCH while full-page Process or Swales pages are open. */
+(function(){
+  function sync(){
+    const hide=location.hash==='#earthline-process'||location.hash==='#swales-explained';
+    for(const id of ['earthlineLaunchLogin16872','earthlineLaunchDonate16872','earthlineLaunchMerch16872']){
+      const el=document.getElementById(id);
+      if(!el)continue;
+      if(hide){
+        el.style.setProperty('display','none','important');
+        el.style.setProperty('visibility','hidden','important');
+        el.style.setProperty('pointer-events','none','important');
+      }else{
+        el.style.removeProperty('display');
+        el.style.removeProperty('visibility');
+        el.style.removeProperty('pointer-events');
+      }
+    }
+  }
+  window.EARTHLINE_PROCESS_RAIL_VISIBILITY_16996=sync;
+  window.addEventListener('hashchange',sync);
+  window.addEventListener('popstate',sync);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(sync,0),{once:true});
+  else setTimeout(sync,0);
+})();
