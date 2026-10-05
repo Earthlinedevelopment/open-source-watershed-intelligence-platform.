@@ -1,0 +1,134 @@
+name: Earthline report decisive restyle 16976
+on:
+  push:
+    branches:
+      - pages-live
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Apply decisive report-map repair
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          start=s.index("function mapSvg(d,small=false){")
+          end=s.index("  return parts.join('');\n}",start)+len("  return parts.join('');\n}")
+          fn=s[start:end]
+
+          def one(a,b,label):
+              global fn
+              n=fn.count(a)
+              if n!=1:
+                  raise SystemExit(f"{label}: expected 1, found {n}")
+              fn=fn.replace(a,b,1)
+
+          one("const principal=flowRank.slice(0,Math.min(small?4:5,flowRank.length));",
+              "const principal=flowRank.slice(0,Math.min(small?3:4,flowRank.length));","principal flow count")
+          one("const clipId='elClip16975',parts=[];",
+              "const clipId='elClip16976',parts=[];","clip id")
+          one('class="el-report-real-site-render-16975"',
+              'class="el-report-real-site-render-16976"',"marker")
+          one('id="elGround16975"','id="elGround16976"',"ground id")
+          one('id="elAerialWash16975"','id="elAerialWash16976"',"wash id")
+          one('id="elVignette16975"','id="elVignette16976"',"vignette id")
+          one('id="elAerialTone16975"','id="elAerialTone16976"',"tone id")
+          one('id="elArrow16975"','id="elArrow16976"',"arrow id")
+          one('fill="url(#elGround16975)"','fill="url(#elGround16976)"',"ground ref")
+          one('filter="url(#elAerialTone16975)"','filter="url(#elAerialTone16976)"',"tone ref")
+          one('fill="url(#elAerialWash16975)"','fill="url(#elAerialWash16976)"',"wash ref")
+          one('fill="url(#elVignette16975)"','fill="url(#elVignette16976)"',"vignette ref")
+          one('marker-end="url(#elArrow16975)"','marker-end="url(#elArrow16976)"',"arrow ref")
+
+          one('<linearGradient id="elGround16976" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dce4da"/><stop offset=".58" stop-color="#c8d4c9"/><stop offset="1" stop-color="#bccabb"/></linearGradient>',
+              '<linearGradient id="elGround16976" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e5eadf"/><stop offset=".58" stop-color="#d2ddcf"/><stop offset="1" stop-color="#c6d2c4"/></linearGradient>',
+              "ground palette")
+          one('<linearGradient id="elAerialWash16976" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6df" stop-opacity=".05"/><stop offset=".48" stop-color="#f0ead9" stop-opacity=".012"/><stop offset="1" stop-color="#17382f" stop-opacity=".045"/></linearGradient>',
+              '<linearGradient id="elAerialWash16976" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff1c8" stop-opacity=".075"/><stop offset=".45" stop-color="#f4ecd7" stop-opacity=".018"/><stop offset=".78" stop-color="#5d816b" stop-opacity=".012"/><stop offset="1" stop-color="#214b40" stop-opacity=".025"/></linearGradient>',
+              "aerial wash")
+          one('<radialGradient id="elVignette16976" cx="50%" cy="46%" r="73%"><stop offset="0" stop-color="#16372f" stop-opacity="0"/><stop offset=".72" stop-color="#102e27" stop-opacity=".012"/><stop offset="1" stop-color="#071e19" stop-opacity=".055"/></radialGradient>',
+              '<radialGradient id="elVignette16976" cx="50%" cy="46%" r="78%"><stop offset="0" stop-color="#fff2cf" stop-opacity=".018"/><stop offset=".74" stop-color="#244f43" stop-opacity="0"/><stop offset="1" stop-color="#0b332b" stop-opacity=".028"/></radialGradient>',
+              "vignette")
+          one('<filter id="elAerialTone16976" x="-2%" y="-2%" width="104%" height="104%"><feColorMatrix type="saturate" values=".92" result="sat"/><feComponentTransfer in="sat"><feFuncR type="linear" slope="1.04" intercept=".025"/><feFuncG type="linear" slope="1.05" intercept=".024"/><feFuncB type="linear" slope="1.01" intercept=".022"/></feComponentTransfer></filter>',
+              '<filter id="elAerialTone16976" x="-2%" y="-2%" width="104%" height="104%"><feColorMatrix type="saturate" values="1.12" result="sat"/><feComponentTransfer in="sat"><feFuncR type="linear" slope="1.16" intercept=".040"/><feFuncG type="linear" slope="1.18" intercept=".040"/><feFuncB type="linear" slope="1.10" intercept=".034"/></feComponentTransfer></filter>',
+              "aerial tone")
+
+          one('fill="#55c7e6" opacity=".94"','fill="#83d8e9" opacity=".82"',"arrow tone")
+          one("opacity=\"'+(conus?'.07':'.08')+'\"",
+              "opacity=\"'+(conus?'.018':'.06')+'\"","contours")
+
+          one('fill-opacity=".12" fill-rule="evenodd" stroke="#be6424" stroke-width=".72" stroke-opacity=".58"',
+              'fill-opacity=".07" fill-rule="evenodd" stroke="#c56b2a" stroke-width=".48" stroke-opacity=".38"',
+              "aquifer restraint")
+
+          one('stroke="#082b3d" stroke-width="2.65" opacity=".48"',
+              'stroke="#071d2b" stroke-width="1.85" opacity=".30"',"flow casing")
+          one('stroke="#1698c9" stroke-width="1.35" opacity=".94"',
+              'stroke="#28a9d0" stroke-width="1.02" opacity=".80"',"flow line")
+          one('stroke="#94e3f3" stroke-width=".38" opacity=".74"',
+              'stroke="#9fe7f3" stroke-width=".24" opacity=".52"',"flow highlight")
+
+          one("if(r.grade==='C'){parts.push('<path d=\"'+dp+'\" fill=\"none\" stroke=\"#5d725f\" stroke-width=\".42\" opacity=\".055\" stroke-linecap=\"round\" vector-effect=\"non-scaling-stroke\"/>');return}",
+              "if(r.grade==='C'){return}","hide C")
+
+          one('stroke="#264939" stroke-width="1.8" opacity=".14"',
+              'stroke="#314b3b" stroke-width="1.15" opacity=".07"',"B casing")
+          one('stroke="#698060" stroke-width="1.05" opacity=".26"',
+              'stroke="#71845d" stroke-width=".78" opacity=".12"',"B green")
+          one('stroke="#2d747b" stroke-width=".46" opacity=".26"',
+              'stroke="#3f7f85" stroke-width=".30" opacity=".11"',"B water")
+
+          one('stroke="#071b13" stroke-width="8.1" opacity=".17"',
+              'stroke="#071b13" stroke-width="4.9" opacity=".12"',"A shadow")
+          one('stroke="#153d27" stroke-width="6.4" opacity=".64"',
+              'stroke="#173e2a" stroke-width="4.35" opacity=".54"',"A dark verge")
+          one('stroke="#715038" stroke-width="4.85" opacity=".78"',
+              'stroke="#70503a" stroke-width="3.45" opacity=".58"',"A soil")
+          one('stroke="#58784b" stroke-width="3.45" opacity=".90"',
+              'stroke="#5c874f" stroke-width="2.55" opacity=".86"',"A planted")
+          one('stroke="#8a914d" stroke-width="2.65" opacity=".76" stroke-dasharray=".01 5.3"',
+              'stroke="#92b85f" stroke-width="1.55" opacity=".66" stroke-dasharray=".01 4.6"',"A planting dots")
+          one('stroke="#007fd0" stroke-width="1.42" opacity=".98"',
+              'stroke="#118fca" stroke-width=".98" opacity=".90"',"A water core")
+          one('parts.push(\'<path d="'+dp+'" fill="none" stroke="#6ed1ef" stroke-width=".40" opacity=".86" stroke-linecap="round" vector-effect="non-scaling-stroke"/>\');',
+              'parts.push(\'<path d="'+dp+'" transform="translate(-.72 -.72)" fill="none" stroke="#7bd9ed" stroke-width=".42" opacity=".72" stroke-dasharray="1 2.8" stroke-linecap="round" vector-effect="non-scaling-stroke"/>\');\n    parts.push(\'<path d="'+dp+'" transform="translate(.72 .72)" fill="none" stroke="#7bd9ed" stroke-width=".42" opacity=".72" stroke-dasharray="1 2.8" stroke-linecap="round" vector-effect="non-scaling-stroke"/>\');',
+              "A twin water highlights")
+
+          one('r="8.2" fill="#173f2f" fill-opacity=".92" stroke="#e7c16d" stroke-width=".72"',
+              'r="7.2" fill="#173f2f" fill-opacity=".88" stroke="#d7bf7a" stroke-width=".6"',"A labels")
+
+          one('width="218" height="94" rx="6" fill="#fbfaf4" fill-opacity=".76"',
+              'width="208" height="90" rx="7" fill="#fbfaf4" fill-opacity=".70"',"legend shell")
+          one('x="204"','x="194"',"legend rule")
+          one('stroke="#153d27" stroke-width="6.4" opacity=".64"',
+              'stroke="#173e2a" stroke-width="4.35" opacity=".54"',"legend A dark")
+          one('stroke="#715038" stroke-width="4.8" opacity=".78"',
+              'stroke="#70503a" stroke-width="3.45" opacity=".58"',"legend A soil")
+          one('stroke="#58784b" stroke-width="3.4" opacity=".9"',
+              'stroke="#5c874f" stroke-width="2.55" opacity=".86"',"legend A plant")
+          one('stroke="#007fd0" stroke-width="1.4"',
+              'stroke="#118fca" stroke-width=".98"',"legend A water")
+          one('stroke="#698060" stroke-width="1.1" opacity=".35"',
+              'stroke="#71845d" stroke-width=".78" opacity=".18"',"legend B")
+
+          out=s[:start]+fn+s[end:]
+          if out.count("el-report-real-site-render-16976")!=1:
+              raise SystemExit("16976 marker validation failed")
+          if "el-report-real-site-render-16975" in out:
+              raise SystemExit("16975 marker remains")
+          p.write_text(out,encoding="utf-8")
+          PY
+          git config user.name "Earthline Build Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "style: decisive clean property-language report map 16976"
+          git push origin HEAD:pages-live
