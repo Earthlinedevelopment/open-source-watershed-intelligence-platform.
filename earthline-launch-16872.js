@@ -218,38 +218,3 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 window.EARTHLINE_REPORT_RENDER_OWNER_16960='index-mapSvg';
 
 })();
-
-/* EARTHLINE_REPORT_BUTTON_OWNER_16994 — restore existing report control only. */
-(function(){
-  function ready(){
-    return !!(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970);
-  }
-  function restore(){
-    const slot=document.getElementById('earthlineReportSlot16188');
-    if(!slot)return false;
-    let b=document.getElementById('earthlineVermontReport16149');
-    if(!b){
-      b=document.createElement('button');
-      b.id='earthlineVermontReport16149';
-      b.type='button';
-      b.innerHTML='<span aria-hidden="true">▤</span><span>BIOSWALE <span class="el53-blue">IMPACT REPORT</span></span><span class="method">FULL REPORT</span>';
-      b.addEventListener('click',function(){ if(typeof window.earthlineOpenVermontReport16151==='function') window.earthlineOpenVermontReport16151(); });
-    }
-    if(b.parentElement!==slot)slot.appendChild(b);
-    b.style.removeProperty('display');
-    b.style.removeProperty('visibility');
-    b.style.removeProperty('opacity');
-    b.style.removeProperty('pointer-events');
-    const r=ready();
-    b.disabled=!r;
-    b.dataset.ready=r?'true':'false';
-    b.setAttribute('aria-disabled',r?'false':'true');
-    const m=b.querySelector('.method'); if(m)m.textContent=r?'FULL REPORT':'RUN ANALYSIS FIRST';
-    return true;
-  }
-  window.EARTHLINE_REPORT_BUTTON_OWNER_16994=restore;
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{restore();setTimeout(restore,300);},{once:true});
-  else {restore();setTimeout(restore,300);}
-  document.addEventListener('earthline:analysis-complete',()=>{setTimeout(restore,0);setTimeout(restore,250);},{passive:true});
-  window.addEventListener('hashchange',()=>setTimeout(restore,80));
-})();
