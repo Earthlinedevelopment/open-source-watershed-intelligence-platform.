@@ -1,0 +1,104 @@
+name: Earthline accessible map typography 16989
+on:
+  push:
+    branches:
+      - pages-live
+permissions:
+  contents: write
+jobs:
+  build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Apply accessibility typography pass
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          a=s.index("function mapSvg(d,small=false){")
+          b=s.index("  return parts.join('');\n}",a)+len("  return parts.join('');\n}")
+          fn=s[a:b]
+          if "el-report-hydro-aquifer-16988" not in fn:
+              raise SystemExit("16988 report renderer missing")
+          fn=fn.replace("el-report-hydro-aquifer-16988","el-report-hydro-aquifer-16989",1)
+
+          # Accessibility pass: enlarge all supporting map text, especially side-panel copy.
+          replacements=[
+            ('font-size="10.6"','font-size="13.5"'),   # map subtitle / context header size family
+            ('font-size="8.9" font-weight="750"','font-size="11.8" font-weight="800"'),
+            ('font-size="10.5" font-weight="850"','font-size="13.0" font-weight="850"'),
+            ('font-size="9.4"','font-size="12.2"'),
+            ('font-size="10.4"','font-size="13.2"'),
+            ('font-size="9.8"','font-size="12.6"'),
+            ('font-size="9.6" font-weight="850"','font-size="12.4" font-weight="850"'),
+            ('font-size="9.2"','font-size="12.0"'),
+            ('font-size="8.8"','font-size="11.6"')
+          ]
+          for old,new in replacements:
+              if old not in fn:
+                  raise SystemExit("missing font token: "+old)
+              fn=fn.replace(old,new)
+
+          # Increase vertical breathing room in side panel blocks so larger type does not crowd.
+          fn=fn.replace("const ky=sideY+252;","const ky=sideY+270;",1)
+          fn=fn.replace("const sy0=ky+146;","const sy0=ky+166;",1)
+          fn=fn.replace("ky+31","ky+35")
+          fn=fn.replace("ky+34","ky+39")
+          fn=fn.replace("ky+54","ky+64")
+          fn=fn.replace("ky+57","ky+68")
+          fn=fn.replace("ky+72","ky+92")
+          fn=fn.replace("ky+80","ky+101")
+          fn=fn.replace("ky+96","ky+124")
+          fn=fn.replace("ky+106","ky+137")
+          fn=fn.replace("sy0+31","sy0+36")
+          fn=fn.replace("sy0+49","sy0+58")
+          fn=fn.replace("sy0+67","sy0+80")
+          fn=fn.replace("sy0+94","sy0+114")
+          fn=fn.replace("sy0+108","sy0+132")
+
+          # Stronger contrast for all supporting text.
+          contrast={
+            '#55625d':'#394741',
+            '#596661':'#3f4d47',
+            '#394d45':'#2d4038',
+            '#46564f':'#374740',
+            '#52615b':'#3f4f48',
+            '#5f6b66':'#46534e'
+          }
+          for old,new in contrast.items():
+              fn=fn.replace('fill="'+old+'"','fill="'+new+'"')
+
+          out=s[:a]+fn+s[b:]
+
+          # Figure caption: larger, darker, comfortable line-height.
+          m=re.search(r'\.el49-figure figcaption\{[^}]*\}',out)
+          if not m:
+              raise SystemExit("figure caption css missing")
+          block=m.group(0)
+          block=re.sub(r'font-size:\s*[^;}]+' ,'font-size:18px',block,count=1)
+          if 'line-height:' in block:
+              block=re.sub(r'line-height:\s*[^;}]+' ,'line-height:1.55',block,count=1)
+          else:
+              block=block[:-1]+'line-height:1.55;}'
+          if 'color:' in block:
+              block=re.sub(r'color:\s*[^;}]+' ,'color:#30444d',block,count=1)
+          else:
+              block=block[:-1]+'color:#30444d;}'
+          out=out[:m.start()]+block+out[m.end():]
+
+          if "el-report-hydro-aquifer-16989" not in out:
+              raise SystemExit("16989 marker missing")
+          p.write_text(out,encoding="utf-8")
+          PY
+          git config user.name "Earthline Build Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "style: accessible report map typography 16989"
+          git push origin HEAD:pages-live
