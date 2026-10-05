@@ -1,0 +1,29 @@
+name: Earthline info bar launch audit
+on:
+  push:
+    branches:
+      - pages-live
+jobs:
+  audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Locate info bars
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          for n in ["POTENTIAL BIOSWALES","Mapped groundwater context","Swales Explained","A Highest","B Strong","C General"]:
+              print("\n###",n)
+              start=0
+              for _ in range(10):
+                  i=s.find(n,start)
+                  if i<0: break
+                  print("---",i,"---")
+                  print(s[max(0,i-1800):min(len(s),i+2600)])
+                  start=i+len(n)
+          PY
