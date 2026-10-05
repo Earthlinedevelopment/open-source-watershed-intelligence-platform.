@@ -1,0 +1,26 @@
+name: Earthline V2 Hydrogeology Adapter Test
+
+on:
+  push:
+    branches: [version-2]
+    paths:
+      - 'v2/hydrogeology-source-adapter.js'
+      - 'v2/source-registry.json'
+      - 'tests/v2-hydrogeology-source-adapter.mjs'
+      - '.github/workflows/earthline-v2-hydrogeology-adapter.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate exact USGS schema adapter
+        run: node tests/v2-hydrogeology-source-adapter.mjs
