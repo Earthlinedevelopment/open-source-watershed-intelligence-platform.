@@ -112,3 +112,15 @@ export function normalizeHydrogeologicRegionsGeoJSON(input) {
     features: features.map(normalizeHydrogeologicRegionFeature).filter(Boolean)
   };
 }
+
+export const EARTHLINE_V2_HYDROGEOLOGY_ADAPTER = Object.freeze({
+  config: EARTHLINE_V2_HYDROGEOLOGY,
+  validateHydrogeologicRegionProperties,
+  classifyHydrogeologicRegion,
+  normalizeHydrogeologicRegionFeature,
+  normalizeHydrogeologicRegionsGeoJSON
+});
+
+if (typeof window !== 'undefined') {
+  window.EARTHLINE_V2_HYDROGEOLOGY_ADAPTER = EARTHLINE_V2_HYDROGEOLOGY_ADAPTER;
+}
