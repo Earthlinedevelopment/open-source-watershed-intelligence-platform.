@@ -1,0 +1,46 @@
+name: Earthline Arkansas NE launch audit
+on:
+  push:
+    branches:
+      - pages-live
+jobs:
+  audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Inspect regional swale slope gates
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          needles=[
+            "function makeSwales",
+            "makeSwales=",
+            "makeSwales(",
+            "regional opportunity corridors",
+            "qualifying regional opportunity corridors",
+            "slope_pct",
+            "slopePct",
+            "slopeMax",
+            "maxSlope",
+            "minSlope",
+            "slopeLimit",
+            "<=4",
+            "<4",
+            "0.04",
+            "4.0"
+          ]
+          for n in needles:
+              print("\n###",n)
+              start=0; shown=0
+              while shown<8:
+                  i=s.find(n,start)
+                  if i<0: break
+                  print("---",i,"---")
+                  print(s[max(0,i-1200):min(len(s),i+4200)])
+                  start=i+len(n); shown+=1
+          PY
