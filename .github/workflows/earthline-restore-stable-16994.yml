@@ -1,0 +1,45 @@
+name: Earthline restore stable page 16994
+on:
+  push:
+    branches: [pages-live]
+permissions:
+  contents: write
+jobs:
+  restore:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Restore stable 16990 index and isolate Process CTAs
+        run: |
+          git checkout 94ede55b733b7d83aaee8c94ed33b5b41b0e3c20 -- index.html
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          marker="earthline-process-cta-hide-16994"
+          if marker not in s:
+              css='''
+<style id="earthline-process-cta-hide-16994">
+body:has(#earthlineProcessPage16265.open) #earthlineLaunchLogin16872,
+body:has(#earthlineProcessPage16265.open) #earthlineLaunchDonate16872,
+body:has(#earthlineProcessPage16265.open) #earthlineLaunchMerch16872{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+</style>
+'''
+              i=s.lower().rfind("</head>")
+              if i<0: raise SystemExit("head close missing")
+              s=s[:i]+css+s[i:]
+          p.write_text(s,encoding="utf-8")
+          PY
+          git config user.name EarthlineBuildBot
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git commit -m "fix: restore stable 16990 page and isolate Process CTAs 16994"
+          git push
