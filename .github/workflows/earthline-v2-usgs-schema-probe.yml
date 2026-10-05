@@ -1,0 +1,105 @@
+name: Earthline V2 USGS Hydrogeologic Schema Probe
+
+on:
+  push:
+    branches: [version-2]
+    paths:
+      - '.github/workflows/earthline-v2-usgs-schema-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Inspect official USGS 2025 Hydrogeologic Regions release
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, re, sys, urllib.request, zipfile, tempfile, subprocess
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          ITEM = "6863356fd4be025653d31f4d"
+          META = f"https://data.usgs.gov/datacatalog/metadata/USGS.{ITEM}.xml"
+          SB = f"https://www.sciencebase.gov/catalog/item/{ITEM}?format=json"
+
+          def fetch(url):
+              req = urllib.request.Request(url, headers={"User-Agent": "Earthline-V2-schema-probe/1.0"})
+              with urllib.request.urlopen(req, timeout=45) as r:
+                  return r.read(), r.geturl(), r.headers.get("content-type", "")
+
+          print("=== USGS METADATA ===")
+          raw, final_url, ctype = fetch(META)
+          print("metadata_url:", final_url)
+          root = ET.fromstring(raw)
+          labels = []
+          for el in root.iter():
+              tag = el.tag.split("}")[-1].lower()
+              text = (el.text or "").strip()
+              if tag in {"attrlabl", "attrdef", "attrdefs"} and text:
+                  labels.append((tag, text))
+          for row in labels:
+              print(row[0] + ":", row[1])
+
+          print("\n=== SCIENCEBASE ITEM ===")
+          sbraw, sburl, _ = fetch(SB)
+          item = json.loads(sbraw)
+          print("title:", item.get("title"))
+          print("id:", item.get("id"))
+          files = item.get("files") or []
+          for f in files:
+              print("file:", f.get("name"), "| size:", f.get("size"), "| uri:", f.get("downloadUri") or f.get("url"))
+
+          zip_files = [
+              f for f in files
+              if str(f.get("name", "")).lower().endswith(".zip") and (f.get("downloadUri") or f.get("url"))
+          ]
+          if not zip_files:
+              raise SystemExit("NO_ZIP_FILE_IN_SCIENCEBASE_ITEM")
+
+          chosen = next((f for f in zip_files if "hydro" in str(f.get("name","")).lower() or "region" in str(f.get("name","")).lower()), zip_files[0])
+          uri = chosen.get("downloadUri") or chosen.get("url")
+          print("\nchosen_zip:", chosen.get("name"))
+          print("chosen_uri:", uri)
+
+          zraw, zurl, _ = fetch(uri)
+          print("resolved_zip_url:", zurl)
+          with tempfile.TemporaryDirectory() as td:
+              zpath = Path(td) / "data.zip"
+              zpath.write_bytes(zraw)
+              with zipfile.ZipFile(zpath) as z:
+                  names = z.namelist()
+                  print("\n=== ZIP CONTENTS ===")
+                  for n in names:
+                      print(n)
+                  z.extractall(td)
+
+              dbfs = list(Path(td).rglob("*.dbf"))
+              if not dbfs:
+                  raise SystemExit("NO_DBF_FOUND")
+
+              subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "pyshp"], check=True)
+              import shapefile
+
+              for dbf in dbfs:
+                  shp = dbf.with_suffix(".shp")
+                  if not shp.exists():
+                      continue
+                  print("\n=== SHAPEFILE SCHEMA ===")
+                  print("shapefile:", shp.name)
+                  reader = shapefile.Reader(str(shp))
+                  fields = [f for f in reader.fields if f[0] != "DeletionFlag"]
+                  print("fields_json:", json.dumps(fields))
+                  print("record_count:", len(reader))
+                  names = [f[0] for f in fields]
+                  for i, rec in enumerate(reader.iterRecords()):
+                      if i >= 8:
+                          break
+                      d = {k: v for k, v in zip(names, rec)}
+                      print("sample_record_json:", json.dumps(d, default=str))
+          PY
