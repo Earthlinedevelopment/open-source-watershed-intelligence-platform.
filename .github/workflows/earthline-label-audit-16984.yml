@@ -1,0 +1,33 @@
+name: Earthline label audit 16984
+on:
+  push:
+    branches:
+      - pages-live
+jobs:
+  audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Audit swale label owners
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path("index.html").read_text(encoding="utf-8")
+          pats=[
+            r"text-field",r"symbol",r"swale",r"grade",r"rank",r"authoritativeSafeSwales15815",
+            r"authoritativeWaterPaths15824",r"label",r"\bA\d",r"properties"
+          ]
+          hits=[]
+          for m in re.finditer(r".{0,260}(?:text-field|authoritativeSafeSwales15815|authoritativeWaterPaths15824|swale[^\n]{0,80}label|label[^\n]{0,80}swale|grade[^\n]{0,120}|rank[^\n]{0,120}).{0,520}",s,re.I):
+              t=m.group(0).replace("\n"," ")
+              if t not in hits:
+                  hits.append(t)
+          for i,t in enumerate(hits[:120]):
+              print(f"--- HIT {i+1} ---")
+              print(t)
+          PY
