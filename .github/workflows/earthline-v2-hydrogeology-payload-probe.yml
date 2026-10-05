@@ -22,7 +22,7 @@ jobs:
           python -m pip install --quiet --target "$RUNNER_TEMP/earthline-py" pyshp
           export PYTHONPATH="$RUNNER_TEMP/earthline-py"
           python - <<'PY'
-          import gzip, io, json, os, sys, tempfile, urllib.request, zipfile
+          import gzip, io, json, statistics, tempfile, urllib.request, zipfile
           from pathlib import Path
           import shapefile
 
@@ -30,7 +30,7 @@ jobs:
           SB=f"https://www.sciencebase.gov/catalog/item/{ITEM}?format=json"
 
           def fetch(url):
-              req=urllib.request.Request(url,headers={"User-Agent":"Earthline-V2-payload-probe/1.0"})
+              req=urllib.request.Request(url,headers={"User-Agent":"Earthline-V2-payload-probe/1.1"})
               with urllib.request.urlopen(req,timeout=60) as r:
                   return r.read()
 
@@ -49,6 +49,8 @@ jobs:
               features=[]
               vertices=0
               types={}
+              per=[]
+              index=[]
               for sr in reader.iterShapeRecords():
                   props=dict(zip(fields,list(sr.record)))
                   t=str(props.get("HR_Type","")).strip()
@@ -60,11 +62,35 @@ jobs:
                               return 1
                           return sum(count_coords(x) for x in v)
                       return 0
-                  vertices += count_coords(gi.get("coordinates"))
-                  features.append({"type":"Feature","properties":props,"geometry":gi})
+                  nverts=count_coords(gi.get("coordinates"))
+                  vertices += nverts
+                  feature={"type":"Feature","properties":props,"geometry":gi}
+                  features.append(feature)
+                  b=sr.shape.bbox
+                  index.append({
+                      "HR_Type":props.get("HR_Type"),
+                      "HR_ID":props.get("HR_ID"),
+                      "HR_Code":props.get("HR_Code"),
+                      "HR_Name":props.get("HR_Name"),
+                      "HR_Litholo":props.get("HR_Litholo"),
+                      "bbox":[round(float(x),7) for x in b]
+                  })
+                  one=json.dumps(feature,separators=(",",":"),ensure_ascii=False).encode("utf-8")
+                  per.append({
+                      "type":t,
+                      "id":str(props.get("HR_ID","")),
+                      "name":str(props.get("HR_Name","")),
+                      "vertices":nverts,
+                      "bytes":len(one),
+                      "gzip":len(gzip.compress(one,compresslevel=9))
+                  })
+
               fc={"type":"FeatureCollection","features":features}
               raw=json.dumps(fc,separators=(",",":"),ensure_ascii=False).encode("utf-8")
               gz=gzip.compress(raw,compresslevel=9)
+              idx=json.dumps(index,separators=(",",":"),ensure_ascii=False).encode("utf-8")
+              sizes=sorted(x["bytes"] for x in per)
+              gz_sizes=sorted(x["gzip"] for x in per)
               print("records:",len(features))
               print("types_json:",json.dumps(types,sort_keys=True))
               print("vertices:",vertices)
@@ -72,4 +98,12 @@ jobs:
               print("geojson_gzip9_bytes:",len(gz))
               print("gzip_ratio:",round(len(gz)/len(raw),4))
               print("schema:",",".join(fields))
+              print("feature_index_bytes:",len(idx))
+              print("feature_index_gzip9_bytes:",len(gzip.compress(idx,compresslevel=9)))
+              print("per_feature_median_bytes:",int(statistics.median(sizes)))
+              print("per_feature_p90_bytes:",sizes[int(round(.9*(len(sizes)-1)))])
+              print("per_feature_max_bytes:",max(sizes))
+              print("per_feature_median_gzip9:",int(statistics.median(gz_sizes)))
+              print("per_feature_max_gzip9:",max(gz_sizes))
+              print("top_features_json:",json.dumps(sorted(per,key=lambda x:x["bytes"],reverse=True)[:12]))
           PY
