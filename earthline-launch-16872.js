@@ -236,3 +236,42 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 }`;
   (document.head||document.documentElement).appendChild(style);
 })();
+
+
+/* EARTHLINE_POSTHOG_WEB_ANALYTICS_17002
+   Approved production instrumentation only.
+   No hydrology, map, report, search, authentication, or presentation ownership. */
+(function installEarthlinePostHog17002(){
+  if(window.EARTHLINE_POSTHOG_17002)return;
+  window.EARTHLINE_POSTHOG_17002={state:'loading',installedAt:new Date().toISOString()};
+  try{
+    const script=document.createElement('script');
+    script.async=true;
+    script.src='https://us.i.posthog.com/static/1/array.js';
+    script.crossOrigin='anonymous';
+    script.onload=function(){
+      try{
+        if(!window.posthog||typeof window.posthog.init!=='function')throw new Error('PostHog SDK unavailable after load');
+        window.posthog.init('phc_ycTX68j6gPMpvd5TPjZrQJnm2fGHwcnaQ3Dvx4Rq66FU',{
+          api_host:'https://us.i.posthog.com',
+          person_profiles:'identified_only',
+          capture_pageview:true,
+          capture_pageleave:true,
+          autocapture:true,
+          disable_session_recording:true
+        });
+        window.EARTHLINE_POSTHOG_17002.state='ready';
+      }catch(err){
+        window.EARTHLINE_POSTHOG_17002.state='init-error';
+        window.EARTHLINE_POSTHOG_17002.error=String(err&&err.message||err);
+      }
+    };
+    script.onerror=function(){
+      window.EARTHLINE_POSTHOG_17002.state='load-error';
+    };
+    (document.head||document.documentElement).appendChild(script);
+  }catch(err){
+    window.EARTHLINE_POSTHOG_17002.state='install-error';
+    window.EARTHLINE_POSTHOG_17002.error=String(err&&err.message||err);
+  }
+})();
