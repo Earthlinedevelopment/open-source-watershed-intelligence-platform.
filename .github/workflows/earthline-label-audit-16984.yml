@@ -16,18 +16,17 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
           s=Path("index.html").read_text(encoding="utf-8")
-          pats=[
-            r"text-field",r"symbol",r"swale",r"grade",r"rank",r"authoritativeSafeSwales15815",
-            r"authoritativeWaterPaths15824",r"label",r"\bA\d",r"properties"
-          ]
-          hits=[]
-          for m in re.finditer(r".{0,260}(?:text-field|authoritativeSafeSwales15815|authoritativeWaterPaths15824|swale[^\n]{0,80}label|label[^\n]{0,80}swale|grade[^\n]{0,120}|rank[^\n]{0,120}).{0,520}",s,re.I):
-              t=m.group(0).replace("\n"," ")
-              if t not in hits:
-                  hits.append(t)
-          for i,t in enumerate(hits[:120]):
-              print(f"--- HIT {i+1} ---")
-              print(t)
+          needles=["authoritativeSafeSwales15815","authoritativeWaterPaths15824","text-field","symbol-sort-key","A1","grade","rank","label"]
+          for n in needles:
+              print("\n###",n)
+              start=0
+              shown=0
+              while shown<25:
+                  i=s.find(n,start)
+                  if i<0: break
+                  print("---",i,"---")
+                  print(s[max(0,i-450):min(len(s),i+950)].replace("\n"," "))
+                  start=i+len(n)
+                  shown+=1
           PY
