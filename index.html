@@ -36165,7 +36165,13 @@ body{display:block!important}
   function syncSwalesPage(){
     const swalesOpen=location.hash==='#swales-explained';     document.documentElement.classList.toggle('earthline-swales-open-16947',swalesOpen);     for(const id of ['earthlineLaunchLogin16872','earthlineLaunchDonate16872','earthlineLaunchMerch16872']){const el=document.getElementById(id);if(!el)continue;if(swalesOpen)el.style.setProperty('display','none','important');else el.style.removeProperty('display');}
     const sp=swalesOpen?ensureSwalesPage():document.getElementById('earthlineSwalesPage16125');if(sp){sp.classList.toggle('open',swalesOpen);sp.setAttribute('aria-hidden',swalesOpen?'false':'true');}
+    // EARTHLINE_PROCESS_RAIL_INLINE_16998
     const processOpen=location.hash==='#earthline-process';
+    for(const id of ['earthlineLaunchLogin16872','earthlineLaunchDonate16872','earthlineLaunchMerch16872']){
+      const el=document.getElementById(id);if(!el)continue;
+      if(processOpen)el.style.setProperty('display','none','important');
+      else if(!swalesOpen)el.style.removeProperty('display');
+    }
     const pp=processOpen?ensureEarthlineProcessPage16265():document.getElementById('earthlineProcessPage16265');if(pp){pp.classList.toggle('open',processOpen);pp.setAttribute('aria-hidden',processOpen?'false':'true');}
     return swalesOpen||processOpen;
   }
