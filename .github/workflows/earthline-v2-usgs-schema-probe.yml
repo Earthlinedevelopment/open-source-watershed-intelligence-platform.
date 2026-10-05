@@ -20,7 +20,7 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
-          import json, os, re, sys, urllib.request, zipfile, tempfile, subprocess
+          import json, struct, urllib.request, zipfile, tempfile
           from pathlib import Path
           import xml.etree.ElementTree as ET
 
@@ -29,25 +29,36 @@ jobs:
           SB = f"https://www.sciencebase.gov/catalog/item/{ITEM}?format=json"
 
           def fetch(url):
-              req = urllib.request.Request(url, headers={"User-Agent": "Earthline-V2-schema-probe/1.0"})
+              req = urllib.request.Request(url, headers={"User-Agent": "Earthline-V2-schema-probe/1.1"})
               with urllib.request.urlopen(req, timeout=45) as r:
-                  return r.read(), r.geturl(), r.headers.get("content-type", "")
+                  return r.read(), r.geturl()
 
           print("=== USGS METADATA ===")
-          raw, final_url, ctype = fetch(META)
+          raw, final_url = fetch(META)
           print("metadata_url:", final_url)
           root = ET.fromstring(raw)
-          labels = []
-          for el in root.iter():
-              tag = el.tag.split("}")[-1].lower()
-              text = (el.text or "").strip()
-              if tag in {"attrlabl", "attrdef", "attrdefs"} and text:
-                  labels.append((tag, text))
-          for row in labels:
-              print(row[0] + ":", row[1])
+          for attr in root.iter():
+              if attr.tag.split("}")[-1].lower() != "attr":
+                  continue
+              values = {}
+              enums = []
+              for el in attr.iter():
+                  tag = el.tag.split("}")[-1].lower()
+                  text = (el.text or "").strip()
+                  if tag in {"attrlabl", "attrdef", "attrdefs"} and text:
+                      values[tag] = text
+                  elif tag == "edomv" and text:
+                      enums.append(text)
+              if values.get("attrlabl"):
+                  print("attribute_json:", json.dumps({
+                      "label": values.get("attrlabl"),
+                      "definition": values.get("attrdef"),
+                      "source": values.get("attrdefs"),
+                      "enumerated_values": enums
+                  }))
 
           print("\n=== SCIENCEBASE ITEM ===")
-          sbraw, sburl, _ = fetch(SB)
+          sbraw, _ = fetch(SB)
           item = json.loads(sbraw)
           print("title:", item.get("title"))
           print("id:", item.get("id"))
@@ -64,18 +75,16 @@ jobs:
 
           chosen = next((f for f in zip_files if "hydro" in str(f.get("name","")).lower() or "region" in str(f.get("name","")).lower()), zip_files[0])
           uri = chosen.get("downloadUri") or chosen.get("url")
+          zraw, zurl = fetch(uri)
           print("\nchosen_zip:", chosen.get("name"))
-          print("chosen_uri:", uri)
-
-          zraw, zurl, _ = fetch(uri)
           print("resolved_zip_url:", zurl)
+
           with tempfile.TemporaryDirectory() as td:
               zpath = Path(td) / "data.zip"
               zpath.write_bytes(zraw)
               with zipfile.ZipFile(zpath) as z:
-                  names = z.namelist()
                   print("\n=== ZIP CONTENTS ===")
-                  for n in names:
+                  for n in z.namelist():
                       print(n)
                   z.extractall(td)
 
@@ -83,23 +92,42 @@ jobs:
               if not dbfs:
                   raise SystemExit("NO_DBF_FOUND")
 
-              subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "pyshp"], check=True)
-              import shapefile
-
               for dbf in dbfs:
-                  shp = dbf.with_suffix(".shp")
-                  if not shp.exists():
-                      continue
-                  print("\n=== SHAPEFILE SCHEMA ===")
-                  print("shapefile:", shp.name)
-                  reader = shapefile.Reader(str(shp))
-                  fields = [f for f in reader.fields if f[0] != "DeletionFlag"]
-                  print("fields_json:", json.dumps(fields))
-                  print("record_count:", len(reader))
-                  names = [f[0] for f in fields]
-                  for i, rec in enumerate(reader.iterRecords()):
-                      if i >= 8:
-                          break
-                      d = {k: v for k, v in zip(names, rec)}
-                      print("sample_record_json:", json.dumps(d, default=str))
+                  data = dbf.read_bytes()
+                  nrec = struct.unpack("<I", data[4:8])[0]
+                  hlen = struct.unpack("<H", data[8:10])[0]
+                  rlen = struct.unpack("<H", data[10:12])[0]
+                  fields = []
+                  pos = 32
+                  offset = 1
+                  while pos + 32 <= hlen and data[pos] != 0x0D:
+                      desc = data[pos:pos+32]
+                      name = desc[0:11].split(b"\x00",1)[0].decode("ascii","replace")
+                      ftype = chr(desc[11])
+                      flen = desc[16]
+                      dec = desc[17]
+                      fields.append((name, ftype, flen, dec, offset))
+                      offset += flen
+                      pos += 32
+
+                  print("\n=== DBF SCHEMA ===")
+                  print("dbf:", dbf.name)
+                  print("record_count:", nrec)
+                  print("record_length:", rlen)
+                  print("fields_json:", json.dumps([f[:4] for f in fields]))
+
+                  type_values = set()
+                  for i in range(min(nrec, 12)):
+                      start = hlen + i*rlen
+                      rec = data[start:start+rlen]
+                      if not rec or rec[0:1] == b"*":
+                          continue
+                      out = {}
+                      for name, ftype, flen, dec, off in fields:
+                          rawv = rec[off:off+flen].decode("latin-1","replace").strip()
+                          out[name] = rawv
+                          if name.lower() == "hr_type" and rawv:
+                              type_values.add(rawv)
+                      print("sample_record_json:", json.dumps(out))
+                  print("sample_HR_Type_values:", json.dumps(sorted(type_values)))
           PY
