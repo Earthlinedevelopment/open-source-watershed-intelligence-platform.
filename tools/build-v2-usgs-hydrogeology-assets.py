@@ -3,8 +3,11 @@
 Build Earthline V2 web assets from the official USGS 2025 Hydrogeologic Regions
 ScienceBase release.
 
-This is a build-time converter only. It does not alter source geometry,
-simplify coordinates, or change Earthline hydrology.
+Build-time conversion only:
+- validate the official schema/counts;
+- reproject the official source CRS to EPSG:4326 for web mapping;
+- preserve every source vertex;
+- do not simplify or round coordinates.
 """
 from __future__ import annotations
 
@@ -18,6 +21,7 @@ import zipfile
 from pathlib import Path
 
 import shapefile
+from pyproj import CRS, Transformer
 
 ITEM_ID = "6863356fd4be025653d31f4d"
 SCIENCEBASE = f"https://www.sciencebase.gov/catalog/item/{ITEM_ID}?format=json"
@@ -30,7 +34,7 @@ OUT = Path("v2/data/usgs-hydrogeology-2025")
 def fetch(url: str) -> bytes:
     req = urllib.request.Request(
         url,
-        headers={"User-Agent": "Earthline-V2-USGS-asset-builder/1.0"},
+        headers={"User-Agent": "Earthline-V2-USGS-asset-builder/1.1"},
     )
     with urllib.request.urlopen(req, timeout=90) as response:
         return response.read()
@@ -38,6 +42,48 @@ def fetch(url: str) -> bytes:
 
 def minjson(value) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":")) + "\n"
+
+
+def transform_coordinates(value, transformer: Transformer):
+    if (
+        isinstance(value, (list, tuple))
+        and len(value) >= 2
+        and isinstance(value[0], (int, float))
+        and isinstance(value[1], (int, float))
+    ):
+        lon, lat = transformer.transform(float(value[0]), float(value[1]))
+        return [lon, lat]
+    if isinstance(value, (list, tuple)):
+        return [transform_coordinates(v, transformer) for v in value]
+    raise TypeError(f"Unexpected coordinate node: {type(value)!r}")
+
+
+def coordinate_bbox(value):
+    west = south = float("inf")
+    east = north = float("-inf")
+
+    def visit(node):
+        nonlocal west, south, east, north
+        if (
+            isinstance(node, list)
+            and len(node) >= 2
+            and isinstance(node[0], (int, float))
+            and isinstance(node[1], (int, float))
+        ):
+            lon, lat = float(node[0]), float(node[1])
+            west = min(west, lon)
+            south = min(south, lat)
+            east = max(east, lon)
+            north = max(north, lat)
+            return
+        if isinstance(node, list):
+            for child in node:
+                visit(child)
+
+    visit(value)
+    if west == float("inf"):
+        raise ValueError("Feature has no finite coordinates")
+    return [west, south, east, north]
 
 
 def main() -> None:
@@ -66,8 +112,16 @@ def main() -> None:
             zf.extractall(td)
 
         shp = Path(td) / "HydrogeologicRegions.shp"
+        prj = Path(td) / "HydrogeologicRegions.prj"
         if not shp.exists():
             raise SystemExit("HydrogeologicRegions.shp missing from official archive")
+        if not prj.exists():
+            raise SystemExit("HydrogeologicRegions.prj missing from official archive")
+
+        source_wkt = prj.read_text(encoding="utf-8").strip()
+        source_crs = CRS.from_wkt(source_wkt)
+        web_crs = CRS.from_epsg(4326)
+        transformer = Transformer.from_crs(source_crs, web_crs, always_xy=True)
 
         reader = shapefile.Reader(str(shp))
         fields = [f[0] for f in reader.fields if f[0] != "DeletionFlag"]
@@ -85,6 +139,19 @@ def main() -> None:
         type_counts = {}
         ids = set()
         index_features = []
+        vertex_count = 0
+
+        def count_vertices(node):
+            if (
+                isinstance(node, list)
+                and len(node) >= 2
+                and isinstance(node[0], (int, float))
+                and isinstance(node[1], (int, float))
+            ):
+                return 1
+            if isinstance(node, list):
+                return sum(count_vertices(child) for child in node)
+            return 0
 
         for sr in reader.iterShapeRecords():
             props = dict(zip(fields, list(sr.record)))
@@ -100,16 +167,34 @@ def main() -> None:
             ids.add(hr_id)
             type_counts[hr_type] = type_counts.get(hr_type, 0) + 1
 
+            source_geometry = sr.shape.__geo_interface__
+            web_coordinates = transform_coordinates(
+                source_geometry.get("coordinates"), transformer
+            )
+            vertex_count += count_vertices(web_coordinates)
+            geometry = {
+                "type": source_geometry.get("type"),
+                "coordinates": web_coordinates,
+            }
+            bbox = coordinate_bbox(web_coordinates)
+
+            if not (
+                -180 <= bbox[0] <= 180
+                and -90 <= bbox[1] <= 90
+                and -180 <= bbox[2] <= 180
+                and -90 <= bbox[3] <= 90
+            ):
+                raise SystemExit(f"Reprojected bbox out of range for {hr_id}: {bbox}")
+
             feature = {
                 "type": "Feature",
                 "properties": props,
-                "geometry": sr.shape.__geo_interface__,
+                "geometry": geometry,
             }
             (features_dir / f"{hr_id}.json").write_text(
                 minjson(feature), encoding="utf-8"
             )
 
-            bbox = [float(x) for x in sr.shape.bbox]
             index_features.append(
                 {
                     "id": hr_id,
@@ -126,6 +211,10 @@ def main() -> None:
             raise SystemExit(
                 f"USGS type-count drift: expected {EXPECTED_COUNTS}, got {type_counts}"
             )
+        if vertex_count != 1006860:
+            raise SystemExit(
+                f"USGS vertex-count drift: expected 1006860, got {vertex_count}"
+            )
 
         index_features.sort(key=lambda x: x["id"])
         index = {
@@ -136,6 +225,11 @@ def main() -> None:
             "archive": source.get("name"),
             "source_zip_sha256": archive_sha256,
             "source_modified": item.get("lastUpdated") or item.get("dateUpdated"),
+            "source_crs": {
+                "name": source_crs.name,
+                "wkt_sha256": hashlib.sha256(source_wkt.encode("utf-8")).hexdigest(),
+            },
+            "web_crs": "EPSG:4326",
             "schema": {
                 "type": "HR_Type",
                 "name": "HR_Name",
@@ -147,11 +241,13 @@ def main() -> None:
                 "records": EXPECTED_RECORDS,
                 "PA": EXPECTED_COUNTS["PA"],
                 "SHR": EXPECTED_COUNTS["SHR"],
+                "vertices": vertex_count,
             },
             "geometry": {
+                "reprojected_to_epsg4326": True,
                 "simplified": False,
                 "coordinate_rounding": False,
-                "note": "Feature geometry is emitted from the official shapefile without Earthline simplification.",
+                "note": "Every official source vertex is preserved; only CRS reprojection is applied for web mapping.",
             },
             "features": index_features,
         }
@@ -169,6 +265,9 @@ def main() -> None:
                 "status": "PASS",
                 "records": EXPECTED_RECORDS,
                 "types": EXPECTED_COUNTS,
+                "vertices": vertex_count,
+                "source_crs": source_crs.name,
+                "web_crs": "EPSG:4326",
                 "source_zip_sha256": archive_sha256,
                 "asset_bytes": total,
                 "index": str(OUT / "index.json"),
