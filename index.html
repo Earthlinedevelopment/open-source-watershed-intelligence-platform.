@@ -36361,7 +36361,16 @@ function mapSvg(d,small=false){
   const modeText=String(d?.tier||d?.mode||d?.extentClass||'').toLowerCase();
   const propertyMode=modeText.includes('property')||modeText.includes('parcel')||modeText.includes('site');
 
-  const allStatePts=state?state.rings.flat():[];
+  const refLng=(Number(rawB?.[0])+Number(rawB?.[2]))/2;
+  const wrapStateLng=x=>{
+    let v=Number(x);
+    if(!Number.isFinite(v))return v;
+    while(v-refLng>180)v-=360;
+    while(v-refLng<-180)v+=360;
+    return v;
+  };
+  const stateRings=state?(state.rings||[]).map(r=>r.map(q=>[wrapStateLng(q[0]),Number(q[1])])):[];
+  const allStatePts=stateRings.flat();
   let stateB=null;
   if(allStatePts.length){
     const xs=allStatePts.map(q=>+q[0]),ys=allStatePts.map(q=>+q[1]);
@@ -36391,7 +36400,7 @@ function mapSvg(d,small=false){
   const secondary=ranked.slice(major.length,Math.min(propertyMode?28:36,ranked.length));
 
   const clip='elHydroClip16985',arrow='elHydroArrow16985',parts=[];
-  parts.push('<svg class="el-report-hydro-aquifer-16986" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Earthline hydrology and aquifer context map">');
+  parts.push('<svg class="el-report-hydro-aquifer-16987" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Earthline hydrology and aquifer context map">');
   parts.push('<defs><clipPath id="'+clip+'"><rect x="'+mainX+'" y="'+mainY+'" width="'+mainW+'" height="'+mainH+'" rx="4"/></clipPath><marker id="'+arrow+'" markerWidth="5.2" markerHeight="5.2" refX="4.5" refY="2.6" orient="auto" markerUnits="strokeWidth"><path d="M0 0 L5.2 2.6 L0 5.2 Z" fill="#166b8c"/></marker></defs>');
   parts.push('<rect width="'+W+'" height="'+H+'" fill="#ffffff"/>');
   parts.push('<text x="'+mainX+'" y="20" fill="#17343d" font-family="Noto Sans,Arial,sans-serif" font-size="14.5" font-weight="850" letter-spacing=".7">HYDROLOGY + AQUIFER CONTEXT</text>');
@@ -36400,7 +36409,7 @@ function mapSvg(d,small=false){
   parts.push('<g clip-path="url(#'+clip+')">');
 
   if(state&&!propertyMode){
-    for(const ring of state.rings){
+    for(const ring of stateRings){
       const dp=pathCoords(ring);if(dp)parts.push('<path d="'+dp+' Z" fill="#eef1ed" stroke="#4f6259" stroke-width="1.45" vector-effect="non-scaling-stroke"/>');
     }
   }
@@ -36453,11 +36462,11 @@ function mapSvg(d,small=false){
     const sb=stateB,sdx=sb[2]-sb[0],sdy=sb[3]-sb[1];
     const sc=Math.min(iw/sdx,ih/sdy),ox=ix+(iw-sdx*sc)/2,oy=iy+(ih-sdy*sc)/2;
     const isx=x=>ox+(x-sb[0])*sc,isy=y=>oy+ih-(y-sb[1])*sc-(ih-sdy*sc)/2;
-    for(const ring of state.rings){
+    for(const ring of stateRings){
       const dp=ring.map((q,i)=>(i?'L':'M')+isx(+q[0]).toFixed(1)+' '+isy(+q[1]).toFixed(1)).join(' ');
       parts.push('<path d="'+dp+' Z" fill="#edf1ed" stroke="#56675f" stroke-width=".9"/>');
     }
-    const rcx=(rawB[0]+rawB[2])/2,rcy=(rawB[1]+rawB[3])/2;
+    const rcx=wrapStateLng((rawB[0]+rawB[2])/2),rcy=(rawB[1]+rawB[3])/2;
     parts.push('<circle cx="'+isx(rcx).toFixed(1)+'" cy="'+isy(rcy).toFixed(1)+'" r="4.2" fill="#166b8c" stroke="#ffffff" stroke-width="1.2"/>');
     parts.push('<text x="'+(sideX+18)+'" y="'+(sideY+207)+'" fill="#30483f" font-family="Noto Sans,Arial,sans-serif" font-size="9.1" font-weight="800">'+stateName.toUpperCase()+'</text>');
     parts.push('<text x="'+(sideX+18)+'" y="'+(sideY+220)+'" fill="#6f7b76" font-family="Noto Sans,Arial,sans-serif" font-size="7.2">Analysis location shown in blue</text>');
