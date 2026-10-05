@@ -18,23 +18,20 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: version-2
-      - name: Measure exact disconnected-polygon transport
+      - name: Compare exact geographic transport shards
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
-          import json
+          import json, math
           from pathlib import Path
 
           root=Path("v2/data/usgs-hydrogeology-2025")
           index=json.loads((root/"index.json").read_text(encoding="utf-8"))
           state_boxes={
-            "VT":[-73.44,42.72,-71.46,45.02],
-            "AR":[-94.62,33.0,-89.64,36.5],
-            "IA":[-96.64,40.37,-90.14,43.5],
-            "NY":[-79.76,40.49,-71.85,45.02],
-            "MA":[-73.51,41.24,-69.93,42.89],
-            "MD":[-79.49,37.91,-75.05,39.72],
+            "VT":[-73.44,42.72,-71.46,45.02],"AR":[-94.62,33.0,-89.64,36.5],
+            "IA":[-96.64,40.37,-90.14,43.5],"NY":[-79.76,40.49,-71.85,45.02],
+            "MA":[-73.51,41.24,-69.93,42.89],"MD":[-79.49,37.91,-75.05,39.72],
             "TX":[-106.65,25.84,-93.51,36.5],
           }
           def bbox(coords):
@@ -46,38 +43,40 @@ jobs:
                   if isinstance(x,list):
                       for y in x: walk(y)
               walk(coords); return [w,s,e,n]
-          def hit(a,b):
-              return not (a[2]<b[0] or a[0]>b[2] or a[3]<b[1] or a[1]>b[3])
+          def hit(a,b): return not (a[2]<b[0] or a[0]>b[2] or a[3]<b[1] or a[1]>b[3])
+          def shard_for(b,lon_step,lat_step):
+              cx=(b[0]+b[2])/2; cy=(b[1]+b[3])/2
+              return f"x{math.floor((cx+180)/lon_step):02d}-y{math.floor((cy+90)/lat_step):02d}"
 
           parts=[]
-          source_part_counts={}
           for meta in index["features"]:
               f=json.loads((root/meta["file"]).read_text(encoding="utf-8"))
-              g=f["geometry"]
-              polygons=g["coordinates"] if g["type"]=="MultiPolygon" else [g["coordinates"]]
-              source_part_counts[meta["id"]]=len(polygons)
+              g=f["geometry"]; polygons=g["coordinates"] if g["type"]=="MultiPolygon" else [g["coordinates"]]
               for i,poly in enumerate(polygons,1):
                   one={"type":"Feature","properties":f["properties"],"geometry":{"type":"Polygon","coordinates":poly}}
                   raw=json.dumps(one,separators=(",",":"),ensure_ascii=False).encode()
-                  parts.append({
-                      "source_id":meta["id"],"type":meta["type"],"part":i,
-                      "bbox":bbox(poly),"bytes":len(raw)
-                  })
+                  parts.append({"source_id":meta["id"],"type":meta["type"],"part":i,"bbox":bbox(poly),"bytes":len(raw)})
 
-          pindex=json.dumps([{"source_id":p["source_id"],"type":p["type"],"part":p["part"],"bbox":p["bbox"]} for p in parts],separators=(",",":")).encode()
-          print("source_records:",len(index["features"]))
           print("polygon_parts:",len(parts))
-          print("multipart_records:",sum(1 for v in source_part_counts.values() if v>1))
-          print("max_parts_in_record:",max(source_part_counts.values()))
-          print("part_index_bytes:",len(pindex))
-          print("part_asset_total_bytes:",sum(p["bytes"] for p in parts))
-          print("part_max_bytes:",max(p["bytes"] for p in parts))
-          print("part_median_bytes:",sorted(p["bytes"] for p in parts)[len(parts)//2])
-          for st,b in state_boxes.items():
-              h=[p for p in parts if hit(p["bbox"],b)]
-              print("state_payload_json:",json.dumps({
-                  "state":st,"parts":len(h),"bytes":sum(x["bytes"] for x in h),
-                  "PA":sum(1 for x in h if x["type"]=="PA"),
-                  "SHR":sum(1 for x in h if x["type"]=="SHR")
+          for lon_step,lat_step in [(10,10),(10,5),(5,5)]:
+              shards={}
+              for p in parts:
+                  k=shard_for(p["bbox"],lon_step,lat_step)
+                  shards.setdefault(k,0)
+                  shards[k]+=p["bytes"]+1
+                  p[f"shard_{lon_step}_{lat_step}"]=k
+              print("shard_profile_json:",json.dumps({
+                  "grid":f"{lon_step}x{lat_step}","shards":len(shards),
+                  "max_shard_bytes":max(shards.values()),
+                  "median_shard_bytes":sorted(shards.values())[len(shards)//2],
+                  "total_bytes":sum(shards.values())
               },sort_keys=True))
+              for st,b in state_boxes.items():
+                  candidates=[p for p in parts if hit(p["bbox"],b)]
+                  needed=sorted({p[f"shard_{lon_step}_{lat_step}"] for p in candidates})
+                  print("state_shard_json:",json.dumps({
+                      "grid":f"{lon_step}x{lat_step}","state":st,
+                      "candidate_parts":len(candidates),"shards":len(needed),
+                      "transfer_bytes":sum(shards[k] for k in needed)
+                  },sort_keys=True))
           PY
