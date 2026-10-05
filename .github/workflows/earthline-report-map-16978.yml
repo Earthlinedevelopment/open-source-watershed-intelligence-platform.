@@ -18,7 +18,6 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
           a=s.index("function mapSvg(d,small=false){")
@@ -34,28 +33,19 @@ jobs:
           one('class="el-report-real-site-render-16977"',
               'class="el-report-technical-plan-16978"',"renderer marker")
 
-          # Remove photographic aerial entirely from the report map and substitute a clean topo sheet.
-          pat=r'''  if\(conus\)\{\n.*?  \}else\{\n.*?  \}\n'''
-          repl='''  parts.push('<rect x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" fill="#f8f6ef"/>');\n  for(let i=0;i<reportContours.length;i+=7){const dp=path(reportContours[i]);if(dp)parts.push('<path d="'+dp+'" fill="none" stroke="#b4aea2" stroke-width=".58" opacity=".46" vector-effect="non-scaling-stroke"/>')}\n'''
-          fn2,n=re.subn(pat,repl,fn,count=1,flags=re.S)
-          if n!=1:
-              raise SystemExit("aerial block replacement failed")
-          fn=fn2
+          # Replace the entire photographic/contour prelude with a clean technical sheet.
+          st=fn.index("  if(conus){")
+          en=fn.index("  for(const f of aquiferFeatures){",st)
+          technical='''  parts.push('<rect x="'+mapX+'" y="'+mapY+'" width="'+mapW+'" height="'+mapH+'" fill="#f8f6ef"/>');\n  for(let i=0;i<reportContours.length;i+=7){const dp=path(reportContours[i]);if(dp)parts.push('<path d="'+dp+'" fill="none" stroke="#aaa59b" stroke-width=".58" opacity=".52" vector-effect="non-scaling-stroke"/>')}\n'''
+          fn=fn[:st]+technical+fn[en:]
 
-          # Neutral technical-paper base.
           fn=fn.replace('fill="url(#elGround16971)"','fill="#f8f6ef"',1)
 
-          # Existing contour overlay, if present, becomes nearly invisible under the deliberate topo layer.
-          fn=re.sub(r'(stroke="#[0-9A-Fa-f]{6}" stroke-width="[^"]+" opacity=")(?:[^"]+)(" vector-effect="non-scaling-stroke"/>\'\)\})',
-                    lambda m:m.group(1)+'0'+m.group(2),fn,count=1)
-
-          # Principal water paths: crisp engineering blue on light paper.
           one('stroke="#f6fbfb" stroke-width="2.6" opacity=".16"',
               'stroke="#cfe8ee" stroke-width="3.2" opacity=".72"',"flow halo")
           one('stroke="#0b7699" stroke-width="1.35" opacity=".88"',
               'stroke="#176f90" stroke-width="1.45" opacity=".96"',"flow line")
 
-          # B corridors: restrained dashed technical line.
           one('stroke="#3d6650" stroke-width=".82" opacity=".07"',
               'stroke="#76887a" stroke-width="1.05" opacity=".36" stroke-dasharray="4 3"',"B casing")
           one('stroke="#4f805e" stroke-width=".62" opacity=".09"',
@@ -63,7 +53,6 @@ jobs:
           one('stroke="#2b6970" stroke-width=".34" opacity=".10"',
               'stroke="#6b8e95" stroke-width=".30" opacity=".20"',"B water")
 
-          # A corridors: simple green planning band with one blue centerline; no tube/halo effects.
           one('stroke="#173d31" stroke-width="3.0" opacity=".24"',
               'stroke="#315f3d" stroke-width="3.15" opacity=".82"',"A outer")
           one('stroke="#4f8a5f" stroke-width="2.15" opacity=".62"',
@@ -71,7 +60,6 @@ jobs:
           one('stroke="#087f9a" stroke-width=".92" opacity=".94"',
               'stroke="#176f90" stroke-width=".78" opacity=".96"',"A center")
 
-          # Editorial filtering for report readability only; ranking and geometry remain untouched.
           one("for(const r of rows.filter(r=>r.grade==='C'))draw(r);",
               "/* C opportunities omitted from the report overview for readability. */","C display")
           one("for(const r of rows.filter(r=>r.grade==='B'))draw(r);",
@@ -81,7 +69,6 @@ jobs:
           one("rows.filter(r=>r.grade==='A').slice(0,0)",
               "rows.filter(r=>r.grade==='A').slice(0,3)","A labels")
 
-          # Technical-map framing language.
           fn=fn.replace("REAL-SITE WATER PLAN","ENGINE TECHNICAL PLAN")
           fn=fn.replace("Aerial: USDA NAIP · Earthline frozen run geometry","Technical plan · Earthline frozen run geometry")
 
