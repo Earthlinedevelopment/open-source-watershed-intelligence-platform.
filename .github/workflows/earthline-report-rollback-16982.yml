@@ -1,0 +1,47 @@
+name: Earthline report regression rollback 16982
+on:
+  push:
+    branches:
+      - pages-live
+permissions:
+  contents: write
+jobs:
+  rollback:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Restore last pre-aerial report renderer
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path("index.html")
+          cur=p.read_text(encoding="utf-8")
+          old=subprocess.check_output(["git","show","ccb80e550313abc948bc59790032e1832092d968:index.html"], text=True)
+
+          def extract(s):
+              a=s.index("function mapSvg(d,small=false){")
+              try:
+                  b=s.index("function gradeSummary",a)
+              except ValueError:
+                  b=s.index("  return parts.join('');\n}",a)+len("  return parts.join('');\n}")
+              return a,b,s[a:b]
+
+          ca,cb,_=extract(cur)
+          _,_,oldfn=extract(old)
+          if "el-report-landscape-plan-16968" not in oldfn:
+              raise SystemExit("16968 renderer marker missing")
+          out=cur[:ca]+oldfn+cur[cb:]
+          p.write_text(out,encoding="utf-8")
+          PY
+          git config user.name "Earthline Build Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "revert: restore pre-experiment report renderer 16982"
+          git push origin HEAD:pages-live
