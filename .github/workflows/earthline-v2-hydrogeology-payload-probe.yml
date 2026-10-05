@@ -15,95 +15,69 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Measure authoritative USGS source payload
+      - uses: actions/checkout@v4
+        with:
+          ref: version-2
+      - name: Measure exact disconnected-polygon transport
         shell: bash
         run: |
           set -euo pipefail
-          python -m pip install --quiet --target "$RUNNER_TEMP/earthline-py" pyshp
-          export PYTHONPATH="$RUNNER_TEMP/earthline-py"
           python - <<'PY'
-          import gzip, io, json, statistics, tempfile, urllib.request, zipfile
+          import json
           from pathlib import Path
-          import shapefile
 
-          ITEM="6863356fd4be025653d31f4d"
-          SB=f"https://www.sciencebase.gov/catalog/item/{ITEM}?format=json"
+          root=Path("v2/data/usgs-hydrogeology-2025")
+          index=json.loads((root/"index.json").read_text(encoding="utf-8"))
+          state_boxes={
+            "VT":[-73.44,42.72,-71.46,45.02],
+            "AR":[-94.62,33.0,-89.64,36.5],
+            "IA":[-96.64,40.37,-90.14,43.5],
+            "NY":[-79.76,40.49,-71.85,45.02],
+            "MA":[-73.51,41.24,-69.93,42.89],
+            "MD":[-79.49,37.91,-75.05,39.72],
+            "TX":[-106.65,25.84,-93.51,36.5],
+          }
+          def bbox(coords):
+              w=s=float("inf"); e=n=float("-inf")
+              def walk(x):
+                  nonlocal w,s,e,n
+                  if isinstance(x,list) and len(x)>=2 and isinstance(x[0],(int,float)) and isinstance(x[1],(int,float)):
+                      lon,lat=float(x[0]),float(x[1]); w=min(w,lon);s=min(s,lat);e=max(e,lon);n=max(n,lat);return
+                  if isinstance(x,list):
+                      for y in x: walk(y)
+              walk(coords); return [w,s,e,n]
+          def hit(a,b):
+              return not (a[2]<b[0] or a[0]>b[2] or a[3]<b[1] or a[1]>b[3])
 
-          def fetch(url):
-              req=urllib.request.Request(url,headers={"User-Agent":"Earthline-V2-payload-probe/1.1"})
-              with urllib.request.urlopen(req,timeout=60) as r:
-                  return r.read()
-
-          item=json.loads(fetch(SB))
-          files=item.get("files") or []
-          zf=next(f for f in files if str(f.get("name","")).lower()=="hydrogeologicregions.zip")
-          zraw=fetch(zf.get("downloadUri") or zf.get("url"))
-          print("source_zip_bytes:",len(zraw))
-
-          with tempfile.TemporaryDirectory() as td:
-              with zipfile.ZipFile(io.BytesIO(zraw)) as z:
-                  z.extractall(td)
-              shp=Path(td)/"HydrogeologicRegions.shp"
-              reader=shapefile.Reader(str(shp))
-              fields=[f[0] for f in reader.fields if f[0]!="DeletionFlag"]
-              features=[]
-              vertices=0
-              types={}
-              per=[]
-              index=[]
-              for sr in reader.iterShapeRecords():
-                  props=dict(zip(fields,list(sr.record)))
-                  t=str(props.get("HR_Type","")).strip()
-                  types[t]=types.get(t,0)+1
-                  gi=sr.shape.__geo_interface__
-                  def count_coords(v):
-                      if isinstance(v,(list,tuple)):
-                          if len(v)>=2 and isinstance(v[0],(int,float)) and isinstance(v[1],(int,float)):
-                              return 1
-                          return sum(count_coords(x) for x in v)
-                      return 0
-                  nverts=count_coords(gi.get("coordinates"))
-                  vertices += nverts
-                  feature={"type":"Feature","properties":props,"geometry":gi}
-                  features.append(feature)
-                  b=sr.shape.bbox
-                  index.append({
-                      "HR_Type":props.get("HR_Type"),
-                      "HR_ID":props.get("HR_ID"),
-                      "HR_Code":props.get("HR_Code"),
-                      "HR_Name":props.get("HR_Name"),
-                      "HR_Litholo":props.get("HR_Litholo"),
-                      "bbox":[round(float(x),7) for x in b]
-                  })
-                  one=json.dumps(feature,separators=(",",":"),ensure_ascii=False).encode("utf-8")
-                  per.append({
-                      "type":t,
-                      "id":str(props.get("HR_ID","")),
-                      "name":str(props.get("HR_Name","")),
-                      "vertices":nverts,
-                      "bytes":len(one),
-                      "gzip":len(gzip.compress(one,compresslevel=9))
+          parts=[]
+          source_part_counts={}
+          for meta in index["features"]:
+              f=json.loads((root/meta["file"]).read_text(encoding="utf-8"))
+              g=f["geometry"]
+              polygons=g["coordinates"] if g["type"]=="MultiPolygon" else [g["coordinates"]]
+              source_part_counts[meta["id"]]=len(polygons)
+              for i,poly in enumerate(polygons,1):
+                  one={"type":"Feature","properties":f["properties"],"geometry":{"type":"Polygon","coordinates":poly}}
+                  raw=json.dumps(one,separators=(",",":"),ensure_ascii=False).encode()
+                  parts.append({
+                      "source_id":meta["id"],"type":meta["type"],"part":i,
+                      "bbox":bbox(poly),"bytes":len(raw)
                   })
 
-              fc={"type":"FeatureCollection","features":features}
-              raw=json.dumps(fc,separators=(",",":"),ensure_ascii=False).encode("utf-8")
-              gz=gzip.compress(raw,compresslevel=9)
-              idx=json.dumps(index,separators=(",",":"),ensure_ascii=False).encode("utf-8")
-              sizes=sorted(x["bytes"] for x in per)
-              gz_sizes=sorted(x["gzip"] for x in per)
-              print("records:",len(features))
-              print("types_json:",json.dumps(types,sort_keys=True))
-              print("vertices:",vertices)
-              print("geojson_bytes:",len(raw))
-              print("geojson_gzip9_bytes:",len(gz))
-              print("gzip_ratio:",round(len(gz)/len(raw),4))
-              print("schema:",",".join(fields))
-              print("feature_index_bytes:",len(idx))
-              print("feature_index_gzip9_bytes:",len(gzip.compress(idx,compresslevel=9)))
-              print("per_feature_median_bytes:",int(statistics.median(sizes)))
-              print("per_feature_p90_bytes:",sizes[int(round(.9*(len(sizes)-1)))])
-              print("per_feature_max_bytes:",max(sizes))
-              print("per_feature_median_gzip9:",int(statistics.median(gz_sizes)))
-              print("per_feature_max_gzip9:",max(gz_sizes))
-              print("top_features_json:",json.dumps(sorted(per,key=lambda x:x["bytes"],reverse=True)[:12]))
+          pindex=json.dumps([{"source_id":p["source_id"],"type":p["type"],"part":p["part"],"bbox":p["bbox"]} for p in parts],separators=(",",":")).encode()
+          print("source_records:",len(index["features"]))
+          print("polygon_parts:",len(parts))
+          print("multipart_records:",sum(1 for v in source_part_counts.values() if v>1))
+          print("max_parts_in_record:",max(source_part_counts.values()))
+          print("part_index_bytes:",len(pindex))
+          print("part_asset_total_bytes:",sum(p["bytes"] for p in parts))
+          print("part_max_bytes:",max(p["bytes"] for p in parts))
+          print("part_median_bytes:",sorted(p["bytes"] for p in parts)[len(parts)//2])
+          for st,b in state_boxes.items():
+              h=[p for p in parts if hit(p["bbox"],b)]
+              print("state_payload_json:",json.dumps({
+                  "state":st,"parts":len(h),"bytes":sum(x["bytes"] for x in h),
+                  "PA":sum(1 for x in h if x["type"]=="PA"),
+                  "SHR":sum(1 for x in h if x["type"]=="SHR")
+              },sort_keys=True))
           PY
