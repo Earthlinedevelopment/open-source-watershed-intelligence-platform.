@@ -1,0 +1,59 @@
+name: Earthline V2 Build USGS Hydrogeology Assets
+
+on:
+  push:
+    branches: [version-2]
+    paths:
+      - 'tools/build-v2-usgs-hydrogeology-assets.py'
+      - '.github/workflows/earthline-v2-build-usgs-hydrogeology-assets.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: version-2
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install build-only shapefile reader
+        run: python -m pip install --quiet pyshp
+      - name: Build exact source assets
+        run: python tools/build-v2-usgs-hydrogeology-assets.py
+      - name: Verify generated contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("v2/data/usgs-hydrogeology-2025/index.json")
+          j=json.loads(p.read_text(encoding="utf-8"))
+          assert j["counts"] == {"records":126,"PA":57,"SHR":69}
+          assert j["geometry"]["simplified"] is False
+          assert j["geometry"]["coordinate_rounding"] is False
+          files=list((p.parent/"features").glob("*.json"))
+          assert len(files)==126, len(files)
+          print("Earthline V2 USGS asset contract: PASS")
+          PY
+          git diff --check
+      - name: Commit generated V2 assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add v2/data/usgs-hydrogeology-2025
+          if git diff --cached --quiet; then
+            echo "USGS V2 assets already current"
+            exit 0
+          fi
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git commit -m "v2: add exact USGS hydrogeologic web assets"
+          git push origin HEAD:version-2
