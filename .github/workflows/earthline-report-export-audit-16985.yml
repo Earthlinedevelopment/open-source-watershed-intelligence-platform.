@@ -1,0 +1,44 @@
+name: Earthline report export audit 16985
+on:
+  push:
+    branches:
+      - pages-live
+jobs:
+  audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Audit current map/report owners
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          needles=[
+            "new mapboxgl.Map",
+            "mapboxgl.accessToken",
+            "preserveDrawingBuffer",
+            "function reportData",
+            "function buildReport",
+            "function mapSvg",
+            "function reportAquifers",
+            "authoritativeWaterPaths15824",
+            "authoritativeSafeSwales15815",
+            "earthline-aquifers",
+            "waterPaths",
+            "map.getSource",
+            "style:"
+          ]
+          for n in needles:
+              print("\n###",n)
+              start=0; shown=0
+              while shown<12:
+                  i=s.find(n,start)
+                  if i<0: break
+                  print("---",i,"---")
+                  print(s[max(0,i-700):min(len(s),i+2200)].replace("\n"," "))
+                  start=i+len(n); shown+=1
+          PY
