@@ -18,23 +18,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: version-2
-      - name: Compare exact geographic transport shards
+      - name: Measure authoritative Census-state transport packs
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
-          import json, math
+          import json, urllib.parse, urllib.request
           from pathlib import Path
 
           root=Path("v2/data/usgs-hydrogeology-2025")
           index=json.loads((root/"index.json").read_text(encoding="utf-8"))
-          state_boxes={
-            "VT":[-73.44,42.72,-71.46,45.02],"AR":[-94.62,33.0,-89.64,36.5],
-            "IA":[-96.64,40.37,-90.14,43.5],"NY":[-79.76,40.49,-71.85,45.02],
-            "MA":[-73.51,41.24,-69.93,42.89],"MD":[-79.49,37.91,-75.05,39.72],
-            "TX":[-106.65,25.84,-93.51,36.5],
-          }
-          def bbox(coords):
+
+          def geom_bbox(geom):
               w=s=float("inf"); e=n=float("-inf")
               def walk(x):
                   nonlocal w,s,e,n
@@ -42,41 +37,53 @@ jobs:
                       lon,lat=float(x[0]),float(x[1]); w=min(w,lon);s=min(s,lat);e=max(e,lon);n=max(n,lat);return
                   if isinstance(x,list):
                       for y in x: walk(y)
-              walk(coords); return [w,s,e,n]
+              walk(geom.get("coordinates",[])); return [w,s,e,n]
+
           def hit(a,b): return not (a[2]<b[0] or a[0]>b[2] or a[3]<b[1] or a[1]>b[3])
-          def shard_for(b,lon_step,lat_step):
-              cx=(b[0]+b[2])/2; cy=(b[1]+b[3])/2
-              return f"x{math.floor((cx+180)/lon_step):02d}-y{math.floor((cy+90)/lat_step):02d}"
 
           parts=[]
           for meta in index["features"]:
               f=json.loads((root/meta["file"]).read_text(encoding="utf-8"))
-              g=f["geometry"]; polygons=g["coordinates"] if g["type"]=="MultiPolygon" else [g["coordinates"]]
-              for i,poly in enumerate(polygons,1):
+              g=f["geometry"]; polys=g["coordinates"] if g["type"]=="MultiPolygon" else [g["coordinates"]]
+              for i,poly in enumerate(polys,1):
                   one={"type":"Feature","properties":f["properties"],"geometry":{"type":"Polygon","coordinates":poly}}
                   raw=json.dumps(one,separators=(",",":"),ensure_ascii=False).encode()
-                  parts.append({"source_id":meta["id"],"type":meta["type"],"part":i,"bbox":bbox(poly),"bytes":len(raw)})
+                  parts.append({"source_id":meta["id"],"type":meta["type"],"part":i,"bbox":geom_bbox(one["geometry"]),"bytes":len(raw)})
 
+          endpoint="https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/0/query"
+          params={
+              "where":"1=1","outFields":"GEOID,STUSPS,NAME","returnGeometry":"true",
+              "outSR":"4326","f":"geojson"
+          }
+          url=endpoint+"?"+urllib.parse.urlencode(params)
+          req=urllib.request.Request(url,headers={"User-Agent":"Earthline-V2-state-pack-probe/1.0"})
+          with urllib.request.urlopen(req,timeout=60) as r:
+              states=json.loads(r.read())
+          rows=[]
+          total=0
+          for sf in states.get("features",[]):
+              p=sf.get("properties") or {}
+              abbr=str(p.get("STUSPS") or "").upper()
+              if not abbr: continue
+              sb=geom_bbox(sf.get("geometry") or {})
+              chosen=[x for x in parts if hit(x["bbox"],sb)]
+              size=sum(x["bytes"] for x in chosen)
+              total+=size
+              rows.append({
+                  "state":abbr,"name":p.get("NAME"),"parts":len(chosen),"bytes":size,
+                  "PA":sum(1 for x in chosen if x["type"]=="PA"),
+                  "SHR":sum(1 for x in chosen if x["type"]=="SHR"),
+                  "bbox":sb
+              })
+          rows.sort(key=lambda x:x["state"])
+          conus=[x for x in rows if x["state"] not in {"AK","HI","PR","GU","VI","MP","AS"} and x["bytes"]>0]
           print("polygon_parts:",len(parts))
-          for lon_step,lat_step in [(10,10),(10,5),(5,5)]:
-              shards={}
-              for p in parts:
-                  k=shard_for(p["bbox"],lon_step,lat_step)
-                  shards.setdefault(k,0)
-                  shards[k]+=p["bytes"]+1
-                  p[f"shard_{lon_step}_{lat_step}"]=k
-              print("shard_profile_json:",json.dumps({
-                  "grid":f"{lon_step}x{lat_step}","shards":len(shards),
-                  "max_shard_bytes":max(shards.values()),
-                  "median_shard_bytes":sorted(shards.values())[len(shards)//2],
-                  "total_bytes":sum(shards.values())
-              },sort_keys=True))
-              for st,b in state_boxes.items():
-                  candidates=[p for p in parts if hit(p["bbox"],b)]
-                  needed=sorted({p[f"shard_{lon_step}_{lat_step}"] for p in candidates})
-                  print("state_shard_json:",json.dumps({
-                      "grid":f"{lon_step}x{lat_step}","state":st,
-                      "candidate_parts":len(candidates),"shards":len(needed),
-                      "transfer_bytes":sum(shards[k] for k in needed)
-                  },sort_keys=True))
+          print("census_features:",len(rows))
+          print("conus_packs:",len(conus))
+          print("conus_pack_total_bytes:",sum(x["bytes"] for x in conus))
+          print("conus_pack_max_json:",json.dumps(max(conus,key=lambda x:x["bytes"]),sort_keys=True))
+          print("conus_pack_median_bytes:",sorted(x["bytes"] for x in conus)[len(conus)//2])
+          for st in ["VT","AR","IA","NY","MA","MD","TX","CA","FL","CO"]:
+              row=next((x for x in rows if x["state"]==st),None)
+              print("state_pack_json:",json.dumps(row,sort_keys=True))
           PY
