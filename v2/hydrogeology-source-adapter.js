@@ -1,51 +1,89 @@
 /*
-Earthline Version 2 — Hydrogeologic Regions adapter scaffold.
+Earthline Version 2 — USGS 2025 Hydrogeologic Regions adapter.
 NOT loaded by production. Branch: version-2.
 
-Purpose:
-- normalize the 2025 USGS National Extent Hydrogeologic Framework data
-- preserve whether a feature is a Principal Aquifer (PA) or Secondary Hydrogeologic Region (SHR)
-- keep one authoritative groundwater-context owner
+Verified official source schema (2026-10-05):
+- HR_Type: PA | SHR
+- HR_Name
+- HR_Code
+- HR_ID
+- HR_Litholo
+- 126 source polygons in HydrogeologicRegions.shp
+
+Scientific ownership:
+- PA = Principal Aquifer.
+- SHR = Secondary Hydrogeologic Region.
+- Never relabel an SHR as an aquifer.
+- A malformed/unknown source type remains generic hydrogeologic context.
 */
 
 export const EARTHLINE_V2_HYDROGEOLOGY = Object.freeze({
   sourceId: 'usgs-hydrogeologic-regions-2025',
   title: 'Hydrogeologic regions of the conterminous United States',
   doi: '10.5066/P1F39LHM',
+  scienceBaseItemId: '6863356fd4be025653d31f4d',
+  archiveName: 'HydrogeologicRegions.zip',
   releaseDate: '2025-12-19',
-  boundaryClass: 'national hydrogeologic-region extent — regional context, not a parcel boundary'
+  sourceRecordCount: 126,
+  boundaryClass: 'national hydrogeologic-region extent — regional context, not a parcel boundary',
+  schema: Object.freeze({
+    type: 'HR_Type',
+    name: 'HR_Name',
+    code: 'HR_Code',
+    id: 'HR_ID',
+    lithology: 'HR_Litholo'
+  }),
+  allowedTypes: Object.freeze(['PA', 'SHR'])
 });
 
-function firstValue(properties, keys) {
-  for (const key of keys) {
-    const value = properties?.[key];
-    if (value !== undefined && value !== null && String(value).trim() !== '') return value;
+function stringValue(value) {
+  return value === undefined || value === null ? '' : String(value).trim();
+}
+
+export function validateHydrogeologicRegionProperties(properties = {}) {
+  const s = EARTHLINE_V2_HYDROGEOLOGY.schema;
+  const missing = [];
+  for (const key of Object.values(s)) {
+    if (!stringValue(properties?.[key])) missing.push(key);
   }
-  return null;
+
+  const rawType = stringValue(properties?.[s.type]).toUpperCase();
+  const typeValid = EARTHLINE_V2_HYDROGEOLOGY.allowedTypes.includes(rawType);
+
+  return {
+    valid: missing.length === 0 && typeValid,
+    rawType,
+    missing,
+    reason: missing.length
+      ? 'missing-required-usgs-fields'
+      : typeValid
+        ? 'verified-usgs-schema'
+        : 'unknown-usgs-hr-type'
+  };
 }
 
 export function classifyHydrogeologicRegion(properties = {}) {
-  const rawClass = String(firstValue(properties, [
-    'HR_TYPE','HR_CLASS','TYPE','CLASS','SOURCE_TYPE','REGION_TYPE','FEATURE_TYPE'
-  ]) ?? '').trim();
+  const rawType = stringValue(
+    properties?.[EARTHLINE_V2_HYDROGEOLOGY.schema.type]
+  ).toUpperCase();
 
-  const rawName = String(firstValue(properties, [
-    'HR_NAME','NAME','REGION_NAME','AQ_NAME','SHR_NAME'
-  ]) ?? '').trim();
-
-  const haystack = (rawClass + ' ' + rawName).toLowerCase();
-  if (/principal\s+aquifer|\bpa\b/.test(haystack)) return 'principal_aquifer';
-  if (/secondary\s+hydrogeologic|\bshr\b/.test(haystack)) return 'secondary_hydrogeologic_region';
+  if (rawType === 'PA') return 'principal_aquifer';
+  if (rawType === 'SHR') return 'secondary_hydrogeologic_region';
   return 'hydrogeologic_region';
 }
 
 export function normalizeHydrogeologicRegionFeature(feature) {
   if (!feature || feature.type !== 'Feature' || !feature.geometry) return null;
+
   const p = feature.properties || {};
+  const s = EARTHLINE_V2_HYDROGEOLOGY.schema;
+  const validation = validateHydrogeologicRegionProperties(p);
   const classification = classifyHydrogeologicRegion(p);
-  const name = String(firstValue(p, [
-    'HR_NAME','NAME','REGION_NAME','AQ_NAME','SHR_NAME'
-  ]) ?? 'USGS hydrogeologic region').trim();
+
+  const name = stringValue(p[s.name]) || 'USGS hydrogeologic region';
+  const code = stringValue(p[s.code]) || null;
+  const id = stringValue(p[s.id]) || null;
+  const lithology = stringValue(p[s.lithology]) || null;
 
   return {
     type: 'Feature',
@@ -54,6 +92,12 @@ export function normalizeHydrogeologicRegionFeature(feature) {
       ...p,
       name,
       earthline_context_class: classification,
+      earthline_source_type: validation.rawType || null,
+      earthline_source_code: code,
+      earthline_source_id: id,
+      earthline_lithology: lithology,
+      earthline_source_schema_valid: validation.valid,
+      earthline_source_schema_reason: validation.reason,
       earthline_source: EARTHLINE_V2_HYDROGEOLOGY.title,
       earthline_source_doi: EARTHLINE_V2_HYDROGEOLOGY.doi,
       earthline_boundary_class: EARTHLINE_V2_HYDROGEOLOGY.boundaryClass
