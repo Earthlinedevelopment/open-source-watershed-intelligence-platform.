@@ -334,6 +334,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     transform:none!important;margin:0!important;
     align-items:center!important;box-sizing:border-box!important;
     gap:8px!important;
+    padding-left:4px!important;padding-right:4px!important;
     padding-top:max(10px,env(safe-area-inset-top))!important;
     padding-bottom:max(10px,env(safe-area-inset-bottom))!important;
   }
@@ -343,6 +344,12 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   #earthlineLaunchMerch16872{
     margin-left:auto!important;margin-right:auto!important;
     transform:none!important;align-self:center!important;
+    max-width:46px!important;
+  }
+  html.earthline-panel-open-16188 #earthlineLaunchLogin16872,
+  html.earthline-panel-open-16188 #earthlineLaunchDonate16872,
+  html.earthline-panel-open-16188 #earthlineLaunchMerch16872{
+    visibility:visible!important;opacity:1!important;pointer-events:auto!important;
   }
   #earthlinePanel16188{
     position:fixed!important;
@@ -585,6 +592,23 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
         el.style.setProperty('touch-action','manipulation','important');
         el.style.setProperty('-webkit-tap-highlight-color','transparent','important');
       }
+      requestAnimationFrame(()=>{
+        try{
+          if(!box.classList.contains('open'))return;
+          const input=document.getElementById('searchInput');
+          const ir=input?.getBoundingClientRect(),br=box.getBoundingClientRect();
+          const vh=Math.round(window.visualViewport?.height||window.innerHeight||0);
+          const topOffset=Math.round(window.visualViewport?.offsetTop||0);
+          const bottomLimit=topOffset+vh-8;
+          if(ir&&br.height>0&&br.bottom>bottomLimit){
+            const above=Math.max(topOffset+8,Math.round(ir.top-br.height-8));
+            box.style.setProperty('top',above+'px','important');
+            box.style.setProperty('bottom','auto','important');
+            box.style.setProperty('max-height',Math.max(96,Math.min(240,ir.top-topOffset-16))+'px','important');
+            box.style.setProperty('overflow-y','auto','important');
+          }
+        }catch(_){}
+      });
       return true;
     }catch(_){return false}
   }
