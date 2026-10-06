@@ -29,7 +29,16 @@ for(const tc of cases){
      bodyText:String(document.body.innerText||'').slice(0,5000)
    }
  });
- console.log('EARTHLINE_PREPOP '+JSON.stringify({case:tc.name,state,errs}));
+ let tap=null;
+ if(tc.name==='mobile'){
+   const opt=page.locator('#earthlineSearchSuggestions15970 [role="option"]').first();
+   if(await opt.count()){
+     await opt.tap();
+     await page.waitForTimeout(500);
+     tap=await page.evaluate(()=>({value:document.getElementById('searchInput')?.value||'',open:document.getElementById('earthlineSearchSuggestions15970')?.classList.contains('open')||false,active:document.activeElement===document.getElementById('searchInput')}));
+   }
+ }
+ console.log('EARTHLINE_PREPOP '+JSON.stringify({case:tc.name,state,tap,errs}));
  await context.close();
 }
 await browser.close();
