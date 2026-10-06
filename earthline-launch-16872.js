@@ -461,3 +461,26 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     window.EARTHLINE_MOBILE_PANEL_STACK_17004={state:'error',error:String(err&&err.message||err)};
   }
 })();
+
+
+/* EARTHLINE_RETIRE_PUBLIC_COVERAGE_UI_17005
+   Production cleanup for the historical BUILD-CHECK-15803 diagnostic UI.
+   Internal coverage diagnostics remain available; the public WHY NOT HERE
+   black map box is retired at its runtime owner. */
+(function retirePublicCoverageUI17005(){
+  function retire(){
+    try{
+      window.earthlineInstallCoverageUI15803=function(){
+        try{document.getElementById('earthlineWhyNotHere15803')?.remove();}catch(_){}
+      };
+      document.getElementById('earthlineWhyNotHere15803')?.remove();
+      window.EARTHLINE_PUBLIC_COVERAGE_UI_17005='retired';
+    }catch(_){}
+  }
+  retire();
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',()=>setTimeout(retire,0),{once:true});
+  }else{
+    setTimeout(retire,0);
+  }
+})();
