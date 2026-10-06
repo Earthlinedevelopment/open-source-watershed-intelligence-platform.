@@ -52,7 +52,7 @@ jobs:
 
           endpoint="https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/0/query"
           params={
-              "where":"1=1","outFields":"GEOID,STUSPS,NAME","returnGeometry":"true",
+              "where":"1=1","outFields":"GEOID,STUSAB,NAME","returnGeometry":"true",
               "outSR":"4326","f":"geojson"
           }
           url=endpoint+"?"+urllib.parse.urlencode(params)
@@ -63,7 +63,7 @@ jobs:
           total=0
           for sf in states.get("features",[]):
               p=sf.get("properties") or {}
-              abbr=str(p.get("STUSPS") or "").upper()
+              abbr=str(p.get("STUSAB") or "").upper()
               if not abbr: continue
               sb=geom_bbox(sf.get("geometry") or {})
               chosen=[x for x in parts if hit(x["bbox"],sb)]
@@ -76,7 +76,11 @@ jobs:
                   "bbox":sb
               })
           rows.sort(key=lambda x:x["state"])
+          if not rows:
+              raise RuntimeError("Census TIGERweb returned zero state features; state-pack sizing aborted")
           conus=[x for x in rows if x["state"] not in {"AK","HI","PR","GU","VI","MP","AS"} and x["bytes"]>0]
+          if not conus:
+              raise RuntimeError("No CONUS state packs intersect the hydrogeology assets")
           print("polygon_parts:",len(parts))
           print("census_features:",len(rows))
           print("conus_packs:",len(conus))
