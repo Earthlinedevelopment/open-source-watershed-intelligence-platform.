@@ -727,11 +727,13 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 
   document.addEventListener('click',e=>{
     if(!isMobile())return;
+    if(e.target?.closest?.('#earthlineRailSearch16188'))root.classList.remove('earthline-mobile-zoom-active-17014');
     if(targetIsCorridor(e.target)){
       setTimeout(closeSheet,0);
       return;
     }
     if(targetIsZoom(e.target)){
+      root.classList.add('earthline-mobile-zoom-active-17014');
       showBusy('ZOOMING TO LOCATION…',10000);
       closeSheet();
       try{
