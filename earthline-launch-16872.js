@@ -740,6 +740,13 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     }
   },true);
 
+  document.addEventListener('pointerdown',e=>{
+    if(!isMobile()||!panelOpen())return;
+    const map=e.target?.closest?.('#mapboxBase,.mapboxgl-canvas-container,.mapboxgl-canvas');
+    const control=e.target?.closest?.('.mapboxgl-control-container,.mapboxgl-ctrl,.mapboxgl-popup,#earthlineMobilePropertyAction17004,#earthlineMobileBusy17004');
+    if(map&&!control)closeSheet();
+  },true);
+
   document.addEventListener('earthline:analysis-complete',()=>{
     if(!isMobile())return;
     hideBusy();
