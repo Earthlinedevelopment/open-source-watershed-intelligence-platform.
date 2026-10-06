@@ -531,49 +531,243 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 })();
 
 /* EARTHLINE_MOBILE_PANEL_STACK_17004
-   Mobile presentation-only stacking repair.
-   When the search/results panel is open, map controls and the left rail must not
-   sit above the panel. No hydrology, search, map, science, or desktop behavior. */
+   Authoritative mobile presentation owner.
+   Phone web/PWA shell only: fixed task rail + map-first viewport + one contextual
+   bottom sheet. Desktop and all hydrology/search/science owners remain unchanged. */
 (function installEarthlineMobilePanelStack17004(){
-  if(window.EARTHLINE_MOBILE_PANEL_STACK_17004)return;
+  if(window.EARTHLINE_MOBILE_PANEL_STACK_17004?.version==='map-first-2')return;
+  const isMobile=()=>!!(window.matchMedia&&window.matchMedia('(max-width:760px)').matches);
+  const root=document.documentElement;
+  let busyTimer=0;
+
   try{
+    const old=document.getElementById('earthlineMobilePanelStack17004');
+    if(old)old.remove();
     const style=document.createElement('style');
     style.id='earthlineMobilePanelStack17004';
     style.textContent=`
 @media(max-width:760px){
-  html.earthline-panel-open-16188 #earthlinePanel16188{
-    left:var(--el-rail-16188)!important;
-    right:0!important;
-    width:calc(100vw - var(--el-rail-16188))!important;
-    max-width:calc(100vw - var(--el-rail-16188))!important;
+  :root{--el-mobile-rail:54px;--el-mobile-sheet-h:min(64dvh,580px)}
+
+  /* The task rail is viewport-owned. Search/results/report state cannot move it. */
+  #earthlineRail16188{
+    position:fixed!important;
+    left:0!important;right:auto!important;top:0!important;bottom:auto!important;
+    width:var(--el-mobile-rail)!important;min-width:var(--el-mobile-rail)!important;max-width:var(--el-mobile-rail)!important;
+    height:100dvh!important;max-height:100dvh!important;
+    box-sizing:border-box!important;
+    transform:none!important;translate:none!important;
+    margin:0!important;padding-left:4px!important;padding-right:4px!important;
+    align-items:center!important;
+    z-index:2147482400!important;
+  }
+  #earthlineRail16188 > *,
+  #earthlineRail16188 > .earthline-launch-rail-btn-16872,
+  #earthlineLaunchLogin16872,#earthlineLaunchDonate16872,#earthlineLaunchMerch16872{
+    position:static!important;
+    left:auto!important;right:auto!important;
+    margin-left:0!important;margin-right:0!important;
+    transform:none!important;translate:none!important;
+    align-self:center!important;
+  }
+  #earthlineLaunchFallbackRail16872{
+    position:fixed!important;left:0!important;right:auto!important;transform:none!important;
+    width:var(--el-mobile-rail)!important;max-width:var(--el-mobile-rail)!important;
+  }
+
+  /* One mobile contextual sheet. The map remains visible above it. */
+  #earthlinePanel16188{
+    position:fixed!important;
+    left:var(--el-mobile-rail)!important;right:0!important;
+    top:auto!important;bottom:0!important;
+    width:calc(100vw - var(--el-mobile-rail))!important;
+    max-width:calc(100vw - var(--el-mobile-rail))!important;
+    height:var(--el-mobile-sheet-h)!important;
+    max-height:calc(100dvh - 12px)!important;
+    border-radius:18px 18px 0 0!important;
+    overflow:hidden!important;
+    transform:translateY(105%)!important;
+    opacity:0!important;visibility:hidden!important;pointer-events:none!important;
+    transition:transform .18s ease,opacity .14s ease!important;
     z-index:2147482500!important;
+    box-shadow:0 -10px 32px rgba(0,0,0,.38)!important;
   }
-  html.earthline-panel-open-16188 #earthlineRail16188{
-    opacity:1!important;
-    visibility:visible!important;
-    pointer-events:auto!important;
-    left:0!important;
-    transform:none!important;
-    z-index:2147482550!important;
+  html.earthline-panel-open-16188 #earthlinePanel16188{
+    transform:translateY(0)!important;
+    opacity:1!important;visibility:visible!important;pointer-events:auto!important;
   }
+  #earthlinePanelBody16188{
+    height:100%!important;max-height:100%!important;
+    overflow-y:auto!important;overflow-x:hidden!important;
+    padding-bottom:max(22px,calc(14px + env(safe-area-inset-bottom)))!important;
+  }
+
+  /* The rail remains visible; overlapping map controls do not. */
+  html.earthline-panel-open-16188 #earthlineRail16188,
   html.earthline-panel-open-16188 #earthlineLaunchFallbackRail16872{
-    opacity:0!important;
-    visibility:hidden!important;
-    pointer-events:none!important;
+    opacity:1!important;visibility:visible!important;pointer-events:auto!important;
   }
   html.earthline-panel-open-16188 .mapboxgl-ctrl-bottom-left,
   html.earthline-panel-open-16188 .mapboxgl-ctrl-bottom-right{
-    opacity:0!important;
-    visibility:hidden!important;
+    opacity:0!important;visibility:hidden!important;pointer-events:none!important;
+  }
+
+  /* Mobile next-action control: no need to reopen navigation after zoom. */
+  #earthlineMobilePropertyAction17004{
+    position:fixed!important;
+    left:calc(var(--el-mobile-rail) + 12px)!important;right:12px!important;
+    bottom:max(14px,env(safe-area-inset-bottom))!important;
+    min-height:48px!important;
+    display:none!important;
+    align-items:center!important;justify-content:center!important;
+    border:1px solid rgba(78,201,255,.78)!important;border-radius:14px!important;
+    background:rgba(9,40,56,.96)!important;color:#effbff!important;
+    font:850 12px/1.15 system-ui,-apple-system,"Segoe UI",sans-serif!important;
+    letter-spacing:.035em!important;padding:10px 14px!important;
+    box-shadow:0 9px 26px rgba(0,0,0,.38)!important;
+    z-index:2147482300!important;
+    touch-action:manipulation!important;
+  }
+  html.earthline-property-ready-16188:not(.earthline-panel-open-16188) #earthlineMobilePropertyAction17004{
+    display:flex!important;
+  }
+  html[data-earthline-analysis-tier="property"] #earthlineMobilePropertyAction17004{
+    display:none!important;
+  }
+
+  #earthlineMobileBusy17004{
+    position:fixed!important;
+    left:calc(var(--el-mobile-rail) + 50%)!important;
+    top:max(14px,env(safe-area-inset-top))!important;
+    transform:translateX(-50%)!important;
+    display:none!important;align-items:center!important;gap:8px!important;
+    min-height:38px!important;padding:8px 12px!important;
+    border:1px solid rgba(78,201,255,.60)!important;border-radius:999px!important;
+    background:rgba(8,24,34,.96)!important;color:#edfaff!important;
+    font:800 11px/1 system-ui,-apple-system,"Segoe UI",sans-serif!important;
+    z-index:2147482750!important;
+    box-shadow:0 7px 22px rgba(0,0,0,.35)!important;
     pointer-events:none!important;
   }
+  #earthlineMobileBusy17004.open{display:flex!important}
+  #earthlineMobileBusy17004::before{
+    content:""!important;width:14px!important;height:14px!important;border-radius:50%!important;
+    border:2px solid rgba(255,255,255,.28)!important;border-top-color:#4ec9ff!important;
+    animation:earthlineMobileBusy17004 .72s linear infinite!important;
+  }
+  @keyframes earthlineMobileBusy17004{to{transform:rotate(360deg)}}
+
+  /* Keep corridor/detail overlays above the sheet when the map is the active task. */
+  #earthlineCorridorDetail16149{z-index:2147482700!important}
+}
+@media(max-width:420px){
+  :root{--el-mobile-sheet-h:min(66dvh,560px)}
 }
 `;
     (document.head||document.documentElement).appendChild(style);
-    window.EARTHLINE_MOBILE_PANEL_STACK_17004={state:'ready'};
-  }catch(err){
-    window.EARTHLINE_MOBILE_PANEL_STACK_17004={state:'error',error:String(err&&err.message||err)};
+  }catch(err){}
+
+  function panelOpen(){return root.classList.contains('earthline-panel-open-16188')}
+  function closeSheet(){
+    if(!isMobile())return;
+    try{
+      root.classList.remove('earthline-panel-open-16188');
+      document.getElementById('earthlineRailSearch16188')?.classList.remove('active');
+      setTimeout(()=>{try{(window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null))?.resize?.()}catch(_){}},180);
+    }catch(_){}
   }
+  function ensurePropertyAction(){
+    let b=document.getElementById('earthlineMobilePropertyAction17004');
+    if(!b){
+      b=document.createElement('button');
+      b.id='earthlineMobilePropertyAction17004';
+      b.type='button';
+      b.textContent='ANALYZE 20-ACRE PROPERTY';
+      b.setAttribute('aria-label','Analyze 20-acre property at selected location');
+      b.addEventListener('click',async()=>{
+        if(!isMobile())return;
+        showBusy('ANALYZING PROPERTY…',15000);
+        try{
+          const original=document.getElementById('earthlineDeclareProperty16169');
+          if(original){original.click();return}
+          if(typeof window.earthlineDeclarePropertyAtCrosshair16169==='function')
+            await window.earthlineDeclarePropertyAtCrosshair16169();
+        }catch(_){hideBusy()}
+      });
+      document.body.appendChild(b);
+    }
+    return b;
+  }
+  function ensureBusy(){
+    let b=document.getElementById('earthlineMobileBusy17004');
+    if(!b){b=document.createElement('div');b.id='earthlineMobileBusy17004';b.setAttribute('role','status');b.setAttribute('aria-live','polite');document.body.appendChild(b)}
+    return b;
+  }
+  function showBusy(label='LOADING…',maxMs=12000){
+    if(!isMobile())return;
+    const b=ensureBusy();b.textContent=label;b.classList.add('open');
+    clearTimeout(busyTimer);
+    busyTimer=setTimeout(hideBusy,maxMs);
+  }
+  function hideBusy(){clearTimeout(busyTimer);ensureBusy().classList.remove('open')}
+
+  function targetIsCorridor(el){
+    if(!el)return false;
+    const a=el.closest?.('[aria-label^="Open details for A"],[aria-label^="Open details for B"],[aria-label^="Open details for C"],.earthline-swale-hit-16070,.earthline-swale-label-16149');
+    return !!a;
+  }
+  function targetIsZoom(el){
+    const c=el?.closest?.('button,[role="button"],a');
+    if(!c)return false;
+    const txt=String(c.textContent||c.getAttribute?.('aria-label')||'').replace(/\s+/g,' ').trim();
+    return /zoom\s+to\s+location/i.test(txt);
+  }
+
+  document.addEventListener('click',e=>{
+    if(!isMobile())return;
+    if(targetIsCorridor(e.target)){
+      setTimeout(closeSheet,0);
+      return;
+    }
+    if(targetIsZoom(e.target)){
+      showBusy('ZOOMING TO LOCATION…',10000);
+      closeSheet();
+      try{
+        const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+        if(m?.once)m.once('moveend',()=>setTimeout(hideBusy,120));
+        else setTimeout(hideBusy,1200);
+      }catch(_){setTimeout(hideBusy,1200)}
+    }
+  },true);
+
+  document.addEventListener('earthline:analysis-complete',()=>{
+    if(!isMobile())return;
+    hideBusy();
+    closeSheet();
+  },{passive:true});
+
+  const observer=new MutationObserver(()=>{
+    if(!isMobile())return;
+    ensurePropertyAction();
+    if(String(root.dataset.earthlineAnalysisTier||'').toLowerCase()==='property')hideBusy();
+  });
+
+  function audit(){
+    const box=id=>{const el=document.getElementById(id);if(!el)return null;const r=el.getBoundingClientRect(),s=getComputedStyle(el);return {x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height),display:s.display,visibility:s.visibility,opacity:s.opacity}};
+    return {
+      version:'map-first-2',mobile:isMobile(),panelOpen:panelOpen(),
+      rail:box('earthlineRail16188'),panel:box('earthlinePanel16188'),
+      login:box('earthlineLaunchLogin16872'),donate:box('earthlineLaunchDonate16872'),merch:box('earthlineLaunchMerch16872'),
+      propertyAction:box('earthlineMobilePropertyAction17004'),busy:box('earthlineMobileBusy17004')
+    };
+  }
+
+  window.EARTHLINE_MOBILE_PANEL_STACK_17004={state:'ready',version:'map-first-2',closeSheet,showBusy,hideBusy,audit};
+  const boot=()=>{
+    ensurePropertyAction();ensureBusy();
+    try{observer.observe(root,{attributes:true,attributeFilter:['class','data-earthline-analysis-tier']});observer.observe(document.body,{childList:true,subtree:true})}catch(_){}
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
 
 
