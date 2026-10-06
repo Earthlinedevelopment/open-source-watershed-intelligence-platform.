@@ -1098,3 +1098,49 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   },true);};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
+
+
+/* EARTHLINE_ALASKA_DATELINE_LABEL_PROJECTION_17015
+   Alaska-only presentation repair.
+   Normalizes longitudes to the current Mapbox world copy before custom overlay
+   projection so Regional A1-A30 labels/hit geometry cannot jump across the
+   antimeridian. No hydrology, ranking, geometry generation, or other state changes. */
+(function installEarthlineAlaskaProjection17015(){
+  if(window.EARTHLINE_ALASKA_DATELINE_LABEL_PROJECTION_17015)return;
+  function isAlaska(){
+    try{
+      const q=String(window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.query||'');
+      if(/\balaska\b/i.test(q))return true;
+      const p=window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556||window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||null;
+      return /\balaska\b/i.test(String(p?.identity?.name||p?.location?.name||''));
+    }catch(_){return false}
+  }
+  function install(){
+    let m=null;try{m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){}
+    if(!m||typeof m.project!=='function')return false;
+    if(m.project.__earthlineAlaska17015)return true;
+    const original=m.project.bind(m);
+    const wrapped=function(input){
+      if(!isAlaska())return original(input);
+      try{
+        const center=Number(m.getCenter?.().lng);
+        if(!Number.isFinite(center))return original(input);
+        let lng,lat,kind='object';
+        if(Array.isArray(input)){lng=Number(input[0]);lat=Number(input[1]);kind='array'}
+        else{lng=Number(input?.lng);lat=Number(input?.lat)}
+        if(!Number.isFinite(lng)||!Number.isFinite(lat))return original(input);
+        while(lng-center>180)lng-=360;
+        while(lng-center<-180)lng+=360;
+        return original(kind==='array'?[lng,lat]:{lng,lat});
+      }catch(_){return original(input)}
+    };
+    wrapped.__earthlineAlaska17015=true;
+    wrapped.__earthlineAlaska17015Original=original;
+    m.project=wrapped;
+    return true;
+  }
+  window.EARTHLINE_ALASKA_DATELINE_LABEL_PROJECTION_17015={state:'ready',install,isAlaska};
+  const boot=()=>{if(install())return;for(const ms of [50,180,500,1200,2500])setTimeout(install,ms)};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+  document.addEventListener('earthline:analysis-complete',()=>{install();},{passive:true});
+})();
