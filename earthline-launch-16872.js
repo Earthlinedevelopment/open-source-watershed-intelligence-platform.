@@ -796,3 +796,68 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   const boot=()=>{obs.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});schedule()};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
+
+
+/* EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011
+   Presentation-only fail-visible guard.
+   It does not render, generate, rank, filter, or replace any Property swale.
+   The existing 16236 natural-texture owner remains authoritative. When that
+   optional texture has not verified, keep its existing authoritative safe-line
+   fallback visible instead of allowing both presentations to be transparent. */
+(function installEarthlinePropertyFallbackFailVisible17011(){
+  if(window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011)return;
+  const SAFE=[
+    'earthline-property-safe-casing-16221',
+    'earthline-property-safe-earth-16221',
+    'earthline-property-safe-life-16221',
+    'earthline-property-safe-water-16221'
+  ];
+  function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
+  function propertyPublished(){
+    const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+    const p=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||a?.publicationAudit||null;
+    return String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property' &&
+      a?.settled===true && a?.result===true && p?.published===true && Number(p?.safeCount||p?.publicationCount||0)>0;
+  }
+  function textureVerified(){
+    const run=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+    const t=run?.texture||null;
+    if(t?.ok===true && Number(t?.sourceFeatures||0)>0 && t?.layersReady===true && t?.imagesReady===true)return true;
+    try{
+      const a=typeof window.earthlinePropertyTextureAudit16169==='function'?window.earthlinePropertyTextureAudit16169():null;
+      const x=a?.texture||null;
+      return !!(x && Number(a?.sourceFeatures||0)>0 && x.imagesReady===true &&
+        x.orientationComplete===true && x.layers &&
+        Object.values(x.layers).every(Boolean));
+    }catch(_){return false}
+  }
+  function enforce(reason='check'){
+    const m=map();
+    if(!m||!propertyPublished())return false;
+    if(textureVerified())return false;
+    let changed=0;
+    for(const id of SAFE){
+      try{
+        if(!m.getLayer?.(id))continue;
+        m.setLayoutProperty?.(id,'visibility','visible');
+        const opacity=m.getPaintProperty?.(id,'line-opacity');
+        if(opacity===0||opacity==null){m.setPaintProperty(id,'line-opacity',.98);changed++}
+        m.moveLayer?.(id);
+      }catch(_){}
+    }
+    window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011.last={
+      reason,changed,textureVerified:false,
+      safeCount:Number((window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{}).safeCount||0),
+      at:new Date().toISOString()
+    };
+    return changed>0;
+  }
+  function afterPublication(reason){
+    for(const ms of [0,120,450,1100])setTimeout(()=>enforce(reason+'-'+ms),ms);
+  }
+  window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011={state:'ready',enforce,textureVerified};
+  document.addEventListener('earthline:analysis-complete',()=>{
+    if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property')
+      afterPublication('analysis-complete');
+  },{passive:true});
+})();
