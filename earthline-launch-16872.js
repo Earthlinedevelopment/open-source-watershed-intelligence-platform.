@@ -275,3 +275,134 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     window.EARTHLINE_POSTHOG_17002.error=String(err&&err.message||err);
   }
 })();
+
+
+/* EARTHLINE_MOBILE_PRODUCTION_HOTFIX_17003
+   Approved production mobile usability repair only.
+   No hydrology, terrain, swale geometry, ranking, exclusions, recharge science,
+   report science, search ownership, or map ownership changes. */
+(function installEarthlineMobileProduction17003(){
+  if(window.EARTHLINE_MOBILE_PRODUCTION_17003)return;
+  const isMobile=()=>!!(window.matchMedia&&window.matchMedia('(max-width:760px)').matches);
+
+  try{
+    const viewport=document.querySelector('meta[name="viewport"]');
+    if(viewport)viewport.setAttribute('content','width=device-width, initial-scale=1, viewport-fit=cover');
+  }catch(_){}
+
+  try{
+    let style=document.getElementById('earthlineMobileProduction17003');
+    if(!style){
+      style=document.createElement('style');
+      style.id='earthlineMobileProduction17003';
+      style.textContent=`
+@supports (height:100dvh){
+  .main,.center,.map-area,#mapboxBase{height:100dvh!important;min-height:100dvh!important}
+}
+@media(max-width:760px){
+  html,body{
+    width:100%!important;height:100%!important;min-height:100%!important;
+    overflow:hidden!important;overscroll-behavior:none!important;
+    -webkit-text-size-adjust:100%!important;text-size-adjust:100%!important;
+  }
+  :root{--el-rail-16188:54px}
+  .main,.center,.map-area,#mapboxBase{
+    top:0!important;bottom:0!important;height:100dvh!important;min-height:100dvh!important;
+  }
+  #earthlineRail16188{
+    top:0!important;bottom:auto!important;height:100dvh!important;max-height:100dvh!important;
+    gap:8px!important;
+    padding-top:max(10px,env(safe-area-inset-top))!important;
+    padding-bottom:max(10px,env(safe-area-inset-bottom))!important;
+  }
+  #earthlinePanel16188{
+    top:0!important;bottom:auto!important;
+    width:calc(100vw - var(--el-rail-16188))!important;
+    height:100dvh!important;max-height:100dvh!important;
+  }
+  #earthlinePanelBody16188{
+    min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important;
+    padding-bottom:calc(26px + env(safe-area-inset-bottom))!important;
+  }
+  #earthlinePanelClose16188{
+    width:44px!important;height:44px!important;
+    top:max(6px,env(safe-area-inset-top))!important;right:8px!important;
+    touch-action:manipulation!important;-webkit-tap-highlight-color:transparent!important;
+  }
+  #earthlineSearchSlot16188 .searchbox.grow{
+    width:100%!important;min-width:0!important;min-height:48px!important;
+  }
+  #earthlineSearchSlot16188 #searchInput{
+    min-width:0!important;font-size:16px!important;line-height:1.25!important;
+  }
+  #earthlineSearchSlot16188 #runBtn,
+  #earthlineDeclareProperty16169{
+    min-height:46px!important;height:46px!important;max-height:46px!important;
+    padding:0 12px!important;touch-action:manipulation!important;
+    -webkit-tap-highlight-color:transparent!important;
+  }
+  #earthlineHamburgerMenu16233{
+    left:calc(var(--el-rail-16188) + 6px)!important;
+    top:max(62px,calc(env(safe-area-inset-top) + 56px))!important;
+    min-width:0!important;width:min(260px,calc(100vw - var(--el-rail-16188) - 12px))!important;
+    max-height:calc(100dvh - 76px - env(safe-area-inset-bottom))!important;overflow:auto!important;
+  }
+  #earthlineHamburgerMenu16233 a{min-height:44px!important}
+  #earthlineRechargeDataModal16488{
+    padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom)) 8px!important;
+  }
+  #earthlineRechargeDataShell16488{
+    margin-left:var(--el-rail-16188)!important;
+    width:calc(100vw - var(--el-rail-16188) - 8px)!important;
+    max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px)!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+  #earthlineRechargeDataClose16488{width:44px!important;height:44px!important}
+  .mapboxgl-ctrl-group button,.mapboxgl-ctrl-zoom-in,.mapboxgl-ctrl-zoom-out{
+    width:46px!important;height:46px!important;min-width:46px!important;min-height:46px!important;
+  }
+}
+@media(max-width:420px){
+  #earthlinePanelBody16188{padding-left:12px!important;padding-right:12px!important}
+  #earthlinePanelBrand16201 .brand img{width:min(210px,100%)!important;max-height:78px!important}
+  #earthlinePanelBrand16201 .mantra-primary{font-size:21px!important;white-space:normal!important}
+}
+`;
+      (document.head||document.documentElement).appendChild(style);
+    }
+  }catch(_){}
+
+  function returnToMap(){
+    if(!isMobile())return;
+    try{
+      document.documentElement.classList.remove('earthline-panel-open-16188');
+      document.getElementById('earthlineRailSearch16188')?.classList.remove('active');
+    }catch(_){}
+    setTimeout(()=>{
+      try{
+        const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+        if(m&&typeof m.resize==='function')m.resize();
+      }catch(_){}
+    },220);
+  }
+
+  document.addEventListener('earthline:analysis-complete',returnToMap,{passive:true});
+
+  function audit(){
+    const box=id=>{const el=document.getElementById(id);if(!el)return null;const r=el.getBoundingClientRect();return {width:Math.round(r.width),height:Math.round(r.height)}};
+    return {
+      build:'17003',
+      mobile:isMobile(),
+      viewport:document.querySelector('meta[name="viewport"]')?.getAttribute('content')||null,
+      dynamicViewport:!!(window.CSS&&CSS.supports&&CSS.supports('height','100dvh')),
+      run:box('runBtn'),
+      property:box('earthlineDeclareProperty16169'),
+      panelClose:box('earthlinePanelClose16188'),
+      dataClose:box('earthlineRechargeDataClose16488'),
+      panelOpen:document.documentElement.classList.contains('earthline-panel-open-16188')
+    };
+  }
+  window.earthlineMobileAudit17003=audit;
+  window.EARTHLINE_MOBILE_PRODUCTION_17003={state:'ready',installedAt:new Date().toISOString(),audit};
+})();
