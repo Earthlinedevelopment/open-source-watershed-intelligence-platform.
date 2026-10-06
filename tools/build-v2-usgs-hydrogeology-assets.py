@@ -29,6 +29,10 @@ EXPECTED_FIELDS = ["HR_Type", "HR_Name", "HR_Code", "HR_ID", "HR_Litholo"]
 EXPECTED_COUNTS = {"PA": 57, "SHR": 69}
 EXPECTED_RECORDS = 126
 OUT = Path("v2/data/usgs-hydrogeology-2025")
+SHARD_DEGREES = 5
+EXPECTED_POLYGON_PARTS = 5632
+EXPECTED_SHARDS_5X5 = 50
+MAX_SHARD_BYTES_5X5 = 3_100_000
 
 
 def fetch(url: str) -> bytes:
@@ -86,6 +90,37 @@ def coordinate_bbox(value):
     return [west, south, east, north]
 
 
+def iter_polygon_parts(geometry):
+    gtype = geometry.get("type")
+    coords = geometry.get("coordinates")
+    if gtype == "Polygon":
+        yield coords
+        return
+    if gtype == "MultiPolygon":
+        yield from coords
+        return
+    raise ValueError(f"Unsupported hydrogeology geometry type: {gtype!r}")
+
+
+def merge_bbox(a, b):
+    if a is None:
+        return list(b)
+    return [
+        min(a[0], b[0]),
+        min(a[1], b[1]),
+        max(a[2], b[2]),
+        max(a[3], b[3]),
+    ]
+
+
+def shard_key_5x5(part_bbox):
+    cx = (part_bbox[0] + part_bbox[2]) / 2
+    cy = (part_bbox[1] + part_bbox[3]) / 2
+    x = int((cx + 180) // SHARD_DEGREES)
+    y = int((cy + 90) // SHARD_DEGREES)
+    return f"x{x:02d}-y{y:02d}"
+
+
 def main() -> None:
     item = json.loads(fetch(SCIENCEBASE))
     files = item.get("files") or []
@@ -135,11 +170,16 @@ def main() -> None:
         staged = Path(td) / "web"
         features_dir = staged / "features"
         features_dir.mkdir(parents=True)
+        shards_dir = staged / "shards-5x5"
+        shards_dir.mkdir(parents=True)
 
         type_counts = {}
         ids = set()
         index_features = []
         vertex_count = 0
+        polygon_part_count = 0
+        shard_vertex_count = 0
+        shards = {}
 
         def count_vertices(node):
             if (
@@ -195,6 +235,30 @@ def main() -> None:
                 minjson(feature), encoding="utf-8"
             )
 
+            for part_index, poly in enumerate(iter_polygon_parts(geometry), start=1):
+                polygon_part_count += 1
+                shard_vertex_count += count_vertices(poly)
+                part_bbox = coordinate_bbox(poly)
+                key = shard_key_5x5(part_bbox)
+                shard = shards.setdefault(
+                    key,
+                    {"bbox": None, "features": [], "PA": 0, "SHR": 0, "source_ids": set()},
+                )
+                shard["bbox"] = merge_bbox(shard["bbox"], part_bbox)
+                shard["PA"] += 1 if hr_type == "PA" else 0
+                shard["SHR"] += 1 if hr_type == "SHR" else 0
+                shard["source_ids"].add(hr_id)
+                shard["features"].append(
+                    {
+                        "type": "Feature",
+                        "properties": {
+                            **props,
+                            "earthline_transport_part": part_index,
+                        },
+                        "geometry": {"type": "Polygon", "coordinates": poly},
+                    }
+                )
+
             index_features.append(
                 {
                     "id": hr_id,
@@ -215,6 +279,68 @@ def main() -> None:
             raise SystemExit(
                 f"USGS vertex-count drift: expected 1006860, got {vertex_count}"
             )
+        if polygon_part_count != EXPECTED_POLYGON_PARTS:
+            raise SystemExit(
+                f"USGS polygon-part drift: expected {EXPECTED_POLYGON_PARTS}, got {polygon_part_count}"
+            )
+        if shard_vertex_count != vertex_count:
+            raise SystemExit(
+                f"Shard vertex mismatch: source {vertex_count}, shards {shard_vertex_count}"
+            )
+
+        shard_rows = []
+        for key, shard in sorted(shards.items()):
+            payload = {
+                "type": "FeatureCollection",
+                "features": shard["features"],
+            }
+            out_file = shards_dir / f"{key}.json"
+            out_file.write_text(minjson(payload), encoding="utf-8")
+            size = out_file.stat().st_size
+            shard_rows.append(
+                {
+                    "id": key,
+                    "file": f"shards-5x5/{key}.json",
+                    "bbox": shard["bbox"],
+                    "bytes": size,
+                    "feature_parts": len(shard["features"]),
+                    "PA_parts": shard["PA"],
+                    "SHR_parts": shard["SHR"],
+                    "source_ids": sorted(shard["source_ids"]),
+                }
+            )
+
+        if len(shard_rows) != EXPECTED_SHARDS_5X5:
+            raise SystemExit(
+                f"5x5 shard-count drift: expected {EXPECTED_SHARDS_5X5}, got {len(shard_rows)}"
+            )
+        max_shard_bytes = max(row["bytes"] for row in shard_rows)
+        if max_shard_bytes > MAX_SHARD_BYTES_5X5:
+            raise SystemExit(
+                f"5x5 shard too large: {max_shard_bytes} > {MAX_SHARD_BYTES_5X5}"
+            )
+
+        shard_index = {
+            "earthline_asset": "usgs-hydrogeologic-regions-2025-transport",
+            "source_asset": "../index.json",
+            "grid_degrees": SHARD_DEGREES,
+            "selection_rule": "fetch every shard whose recorded geometry bbox intersects the requested map/analysis bounds",
+            "geometry": {
+                "simplified": False,
+                "coordinate_rounding": False,
+                "parts_preserved_exactly_once": True,
+            },
+            "counts": {
+                "shards": len(shard_rows),
+                "polygon_parts": polygon_part_count,
+                "vertices": shard_vertex_count,
+            },
+            "max_shard_bytes": max_shard_bytes,
+            "shards": shard_rows,
+        }
+        (shards_dir / "index.json").write_text(
+            minjson(shard_index), encoding="utf-8"
+        )
 
         index_features.sort(key=lambda x: x["id"])
         index = {
@@ -248,6 +374,15 @@ def main() -> None:
                 "simplified": False,
                 "coordinate_rounding": False,
                 "note": "Every official source vertex is preserved; only CRS reprojection is applied for web mapping.",
+            },
+            "transport": {
+                "preferred": "5x5_exact_geometry_shards",
+                "index": "shards-5x5/index.json",
+                "grid_degrees": SHARD_DEGREES,
+                "shards": len(shard_rows),
+                "polygon_parts": polygon_part_count,
+                "max_shard_bytes": max_shard_bytes,
+                "selection_rule": "shard bbox intersects requested map/analysis bounds",
             },
             "features": index_features,
         }
