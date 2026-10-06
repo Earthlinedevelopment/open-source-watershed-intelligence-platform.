@@ -35,6 +35,12 @@ const out=await page.evaluate(()=>({
   flow:window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null,
   boundary:window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||null,
   statePackage:window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||null,
+  terrainGap:window.EARTHLINE_TERRAIN_GAP_REFINEMENT_16730||null,
+  statewideSupertile:window.EARTHLINE_STATEWIDE_SUPERTILE_16839||null,
+  fineOpportunity:window.EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16781||null,
+  coverageGap:window.EARTHLINE_COVERAGE_GAP_REFINEMENT_16731||null,
+  lateGap:window.EARTHLINE_LATE_GAP_REFINEMENT_16741||null,
+  scaleRefine:window.EARTHLINE_SCALE_REFINED_INPUT_16702||null,
   status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim(),
   panelOpen:document.documentElement.classList.contains('earthline-panel-open-16188')
 }));
@@ -42,3 +48,5 @@ out.wallMs=Date.now()-before;
 console.log('EARTHLINE_AZ_MOBILE_PERF '+JSON.stringify({out,errs}));
 await browser.close();
 if(out.err||!/screening published\./i.test(out.status||''))process.exitCode=1;
+
+// detailed phase audit rerun
