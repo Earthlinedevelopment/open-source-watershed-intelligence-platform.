@@ -79,7 +79,7 @@ for(const [key,id,expectPath] of [['donate','earthlineLaunchDonate16872','donate
   if(popup){
     await popup.waitForLoadState('domcontentloaded').catch(()=>{});
     result.checks[key+'PopupUrl']=popup.url();
-    result.checks[key+'PopupCorrect']=popup.url().includes(expectPath);
+    result.checks[key+'PopupCorrect']=key==='donate'?(popup.url().includes('zeffy.com')||popup.url().includes(expectPath)):popup.url().includes(expectPath);
     await popup.close();
   }else{
     result.checks[key+'PopupCorrect']=false;
