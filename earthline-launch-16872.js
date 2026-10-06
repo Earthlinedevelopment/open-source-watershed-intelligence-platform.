@@ -484,3 +484,158 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     setTimeout(retire,0);
   }
 })();
+
+
+/* EARTHLINE_MOBILE_SEARCH_TOUCH_17007
+   Mobile presentation/input repair only.
+   The existing autocomplete owner remains authoritative; this only places its
+   suggestion surface above the mobile panel so real touch events reach options. */
+(function installEarthlineMobileSearchTouch17007(){
+  if(window.EARTHLINE_MOBILE_SEARCH_TOUCH_17007)return;
+  try{
+    const style=document.createElement('style');
+    style.id='earthlineMobileSearchTouch17007';
+    style.textContent=`
+@media(max-width:760px){
+  #earthlineSearchSuggestions15970{
+    z-index:2147482600!important;
+    pointer-events:auto!important;
+    touch-action:manipulation!important;
+    -webkit-tap-highlight-color:transparent!important;
+  }
+  #earthlineSearchSuggestions15970 [role="option"],
+  #earthlineSearchSuggestions15970 button{
+    pointer-events:auto!important;
+    touch-action:manipulation!important;
+    -webkit-tap-highlight-color:transparent!important;
+  }
+}
+`;
+    (document.head||document.documentElement).appendChild(style);
+    window.EARTHLINE_MOBILE_SEARCH_TOUCH_17007={state:'ready'};
+  }catch(err){
+    window.EARTHLINE_MOBILE_SEARCH_TOUCH_17007={state:'error',error:String(err&&err.message||err)};
+  }
+})();
+
+/* EARTHLINE_BIOSWALE_REPORT_TOOLBAR_RESTORE_17008
+   Restores the previously approved Bioswale Impact Report toolbar actions:
+   Print / Save PDF, Open in New Tab, Download HTML, Close.
+   Presentation/export only; report science and analysis state are unchanged. */
+(function installEarthlineBioswaleReportToolbar17008(){
+  if(window.EARTHLINE_BIOSWALE_REPORT_TOOLBAR_RESTORE_17008)return;
+
+  function esc(s){
+    return String(s||'').replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  }
+  function reportPanel(){return document.getElementById('earthlineVermontReportPanel16149')}
+  function reportStandaloneHtml(){
+    const panel=reportPanel();
+    const report=panel?.querySelector('.el49-report');
+    const shell=panel?.querySelector('.el49-shell');
+    const body=(report||shell||panel)?.outerHTML||'';
+    const styles=[...document.querySelectorAll('style')].map(s=>s.outerHTML).join('\n');
+    const links=[...document.querySelectorAll('link[rel="stylesheet"]')].map(l=>l.outerHTML).join('\n');
+    const title=panel?.querySelector('.el49-toolbar strong')?.textContent?.trim()||'Earthline Bioswale Impact Report';
+    return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title)+'</title>'+links+styles+'</head><body>'+body+'</body></html>';
+  }
+  function openTab(){
+    const child=window.open('','_blank');
+    if(!child)return false;
+    try{
+      child.document.open();
+      child.document.write(reportStandaloneHtml());
+      child.document.close();
+      return true;
+    }catch(_){try{child.close()}catch(__){};return false}
+  }
+  function downloadHtml(){
+    try{
+      const snap=window.EARTHLINE_FROZEN_REPORT_SNAPSHOT_16149||window.EARTHLINE_FROZEN_REPORT_SNAPSHOT_16151||null;
+      const raw=String(snap?.reportId||'Earthline-Bioswale-Impact-Report').replace(/[^A-Za-z0-9._-]+/g,'-');
+      const blob=new Blob([reportStandaloneHtml()],{type:'text/html;charset=utf-8'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;a.download=raw+'.html';
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),1500);
+      return true;
+    }catch(_){return false}
+  }
+  function button(label,action,primary){
+    const b=document.createElement('button');
+    b.type='button';
+    b.className='el49-tool'+(primary?' primary':'');
+    b.dataset.action=action;
+    b.textContent=label;
+    return b;
+  }
+  function ensure(){
+    const panel=reportPanel();
+    if(!panel)return false;
+    const actions=panel.querySelector('.el49-toolbar-actions');
+    if(!actions)return false;
+    const close=actions.querySelector('[data-action="close"],.el49-close');
+    const wanted=[
+      ['Print / Save PDF','print',true],
+      ['Open in New Tab','newtab',false],
+      ['Download HTML','download',false]
+    ];
+    for(const [label,action,primary] of wanted){
+      if(actions.querySelector('[data-action="'+action+'"]'))continue;
+      const b=button(label,action,primary);
+      if(close)actions.insertBefore(b,close);else actions.appendChild(b);
+    }
+    const p=actions.querySelector('[data-action="print"]');
+    const n=actions.querySelector('[data-action="newtab"]');
+    const d=actions.querySelector('[data-action="download"]');
+    if(p&&!p.__earthline17008){p.__earthline17008=true;p.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();window.print()})}
+    if(n&&!n.__earthline17008){n.__earthline17008=true;n.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openTab()})}
+    if(d&&!d.__earthline17008){d.__earthline17008=true;d.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();downloadHtml()})}
+    try{
+      let style=document.getElementById('earthlineBioswaleReportToolbar17008');
+      if(!style){
+        style=document.createElement('style');
+        style.id='earthlineBioswaleReportToolbar17008';
+        style.textContent=`
+@media(max-width:760px){
+  #earthlineVermontReportPanel16149 .el49-toolbar{
+    align-items:flex-start!important;
+    gap:8px!important;
+    padding:max(10px,env(safe-area-inset-top)) 10px 10px!important;
+  }
+  #earthlineVermontReportPanel16149 .el49-toolbar-actions{
+    display:flex!important;
+    justify-content:flex-end!important;
+    gap:6px!important;
+    flex-wrap:wrap!important;
+    max-width:58%!important;
+  }
+  #earthlineVermontReportPanel16149 .el49-tool{
+    min-height:38px!important;
+    padding:8px 10px!important;
+    font-size:11px!important;
+    line-height:1.1!important;
+    touch-action:manipulation!important;
+  }
+  #earthlineVermontReportPanel16149 .el49-close{
+    width:38px!important;min-width:38px!important;padding:0!important;
+  }
+}
+`;
+        (document.head||document.documentElement).appendChild(style);
+      }
+    }catch(_){}
+    window.EARTHLINE_BIOSWALE_REPORT_TOOLBAR_RESTORE_17008.state='ready';
+    return true;
+  }
+
+  window.EARTHLINE_BIOSWALE_REPORT_TOOLBAR_RESTORE_17008={state:'installing',ensure,openTab,downloadHtml};
+  const schedule=()=>{for(const ms of [0,40,140,400])setTimeout(ensure,ms)};
+  document.addEventListener('click',e=>{
+    if(e.target?.closest?.('#earthlineVermontReport16149'))schedule();
+  },true);
+  const obs=new MutationObserver(()=>{const p=reportPanel();if(p?.classList?.contains('open'))ensure()});
+  const boot=()=>{obs.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});schedule()};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
