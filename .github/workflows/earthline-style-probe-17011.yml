@@ -1,0 +1,23 @@
+name: Earthline Style Probe 17011
+on:
+  workflow_dispatch:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mobile-style-probe-17011.mjs'
+      - '.github/workflows/earthline-style-probe-17011.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/mobile-style-probe-17011.mjs
