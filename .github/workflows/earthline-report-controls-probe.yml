@@ -1,0 +1,25 @@
+name: Earthline Report Controls Probe
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/report-controls-probe.mjs'
+      - '.github/workflows/earthline-report-controls-probe.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/report-controls-probe.mjs
