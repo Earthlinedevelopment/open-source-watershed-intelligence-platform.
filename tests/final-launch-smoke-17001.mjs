@@ -6,7 +6,8 @@ const ROLLOUT=['Vermont','Maryland','New York','Massachusetts','Arizona','Colora
 const WATCH=['Iowa','Arkansas'];
 const ALL=['Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut','Delaware','Florida','Georgia','Hawaii','Idaho','Illinois','Indiana','Iowa','Kansas','Kentucky','Louisiana','Maine','Maryland','Massachusetts','Michigan','Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada','New Hampshire','New Jersey','New Mexico','New York','North Carolina','North Dakota','Ohio','Oklahoma','Oregon','Pennsylvania','Rhode Island','South Carolina','South Dakota','Tennessee','Texas','Utah','Vermont','Virginia','Washington','West Virginia','Wisconsin','Wyoming'];
 const REST=ALL.filter(s=>!ROLLOUT.includes(s)&&!WATCH.includes(s));
-const STATES=[...ROLLOUT,...WATCH,...REST];
+const OVERRIDE=(process.env.EARTHLINE_QUERIES||'').split('|').map(s=>s.trim()).filter(Boolean);
+const STATES=OVERRIDE.length?OVERRIDE:[...ROLLOUT,...WATCH,...REST];
 mkdirSync('artifacts/final-launch-smoke-17001',{recursive:true});
 
 const browser=await chromium.launch({headless:true});
