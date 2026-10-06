@@ -19,6 +19,14 @@ const info=await page.evaluate(()=>{
  return {option:{x,y,left:r.left,top:r.top,w:r.width,h:r.height,z:s.zIndex,pe:s.pointerEvents},container:o.parentElement?{id:o.parentElement.id,z:p.zIndex,pe:p.pointerEvents,pos:p.position}:null,elementAtCenter:walk};
 });
 console.log('EARTHLINE_TAP_PROBE '+JSON.stringify(info));
+let physical=null;
+try{
+ const o=page.locator('#earthlineSearchSuggestions15970 [role="option"]').first();
+ const bb=await o.boundingBox();
+ if(bb){await page.touchscreen.tap(bb.x+bb.width/2,bb.y+bb.height/2);await page.waitForTimeout(400);physical=await page.evaluate(()=>({value:document.getElementById('searchInput')?.value||'',open:document.getElementById('earthlineSearchSuggestions15970')?.classList.contains('open')||false}));}
+}catch(e){physical={error:String(e)}}
+console.log('EARTHLINE_TAP_PHYSICAL '+JSON.stringify(physical));
+if(physical?.value?.includes('61 Sleepy Hollow')){await browser.close();process.exit(0);}
 const program=await page.evaluate(()=>{const o=document.querySelector('#earthlineSearchSuggestions15970 [role="option"]');o?.click();return {value:document.getElementById('searchInput')?.value||'',open:document.getElementById('earthlineSearchSuggestions15970')?.classList.contains('open')||false}});
 console.log('EARTHLINE_TAP_PROGRAM '+JSON.stringify(program));
 await browser.close();
