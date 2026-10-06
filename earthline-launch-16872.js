@@ -677,7 +677,6 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     }catch(_){}
   }
   function ensurePropertyAction(){
-    if(!isMobile())return null;
     let b=document.getElementById('earthlineMobilePropertyAction17004');
     if(!b){
       b=document.createElement('button');
@@ -700,7 +699,6 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     return b;
   }
   function ensureBusy(){
-    if(!isMobile())return null;
     let b=document.getElementById('earthlineMobileBusy17004');
     if(!b){b=document.createElement('div');b.id='earthlineMobileBusy17004';b.setAttribute('role','status');b.setAttribute('aria-live','polite');document.body.appendChild(b)}
     return b;
@@ -711,7 +709,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     clearTimeout(busyTimer);
     busyTimer=setTimeout(hideBusy,maxMs);
   }
-  function hideBusy(){clearTimeout(busyTimer);const b=ensureBusy();if(b)b.classList.remove('open')}
+  function hideBusy(){clearTimeout(busyTimer);ensureBusy().classList.remove('open')}
 
   function targetIsCorridor(el){
     if(!el)return false;
@@ -773,7 +771,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 
   window.EARTHLINE_MOBILE_PANEL_STACK_17004={state:'ready',version:'map-first-2',closeSheet,showBusy,hideBusy,audit};
   const boot=()=>{
-    if(isMobile()){ensurePropertyAction();ensureBusy();}
+    ensurePropertyAction();ensureBusy();
     try{observer.observe(root,{attributes:true,attributeFilter:['class','data-earthline-analysis-tier']});observer.observe(document.body,{childList:true,subtree:true})}catch(_){}
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
@@ -1063,36 +1061,4 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property')
       afterPublication('analysis-complete');
   },{passive:true});
-})();
-
-
-/* EARTHLINE_SWALE_PRINCIPLE_COPY_17013
-   Requested copy correction only: Earthline follows/uses the principle;
-   this must not imply Earthline originated the concept. */
-(function(){
-  if(window.EARTHLINE_SWALE_PRINCIPLE_COPY_17013)return;
-  const FROM1='Earthline’s three-word principle describes the sequence:';
-  const FROM2="Earthline's three-word principle describes the sequence:";
-  const TO='Earthline follows this three-word principle:';
-  function apply(){
-    const page=document.getElementById('earthlineSwalesPage16125');
-    if(!page)return false;
-    const walker=document.createTreeWalker(page,NodeFilter.SHOW_TEXT);
-    let node,changed=false;
-    while((node=walker.nextNode())){
-      const v=String(node.nodeValue||'');
-      if(v.includes(FROM1)||v.includes(FROM2)){
-        node.nodeValue=v.replace(FROM1,TO).replace(FROM2,TO);
-        changed=true;
-      }
-    }
-    return changed;
-  }
-  window.EARTHLINE_SWALE_PRINCIPLE_COPY_17013={state:'ready',apply};
-  const boot=()=>{apply();document.addEventListener('click',e=>{
-    const el=e.target?.closest?.('button,a,[role="button"]');
-    const label=String(el?.textContent||el?.getAttribute?.('aria-label')||'').replace(/\s+/g,' ').trim();
-    if(/how\s+bioswales\s+work/i.test(label))setTimeout(apply,0);
-  },true);};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
