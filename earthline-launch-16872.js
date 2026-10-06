@@ -567,17 +567,34 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 
 /* EARTHLINE_MOBILE_SEARCH_TOUCH_17007
    Mobile presentation/input repair only.
-   The existing autocomplete owner remains authoritative; this only places its
-   suggestion surface above the mobile panel so real touch events reach options. */
+   The existing autocomplete owner remains authoritative; this enforces its
+   touch surface above the mobile contextual sheet even when search rebuilds CSS. */
 (function installEarthlineMobileSearchTouch17007(){
   if(window.EARTHLINE_MOBILE_SEARCH_TOUCH_17007)return;
+  const isMobile=()=>!!(window.matchMedia&&window.matchMedia('(max-width:760px)').matches);
+  function enforce(){
+    if(!isMobile())return false;
+    const box=document.getElementById('earthlineSearchSuggestions15970');
+    if(!box)return false;
+    try{
+      box.style.setProperty('z-index','2147482650','important');
+      box.style.setProperty('pointer-events','auto','important');
+      box.style.setProperty('touch-action','manipulation','important');
+      for(const el of box.querySelectorAll('[role="option"],button')){
+        el.style.setProperty('pointer-events','auto','important');
+        el.style.setProperty('touch-action','manipulation','important');
+        el.style.setProperty('-webkit-tap-highlight-color','transparent','important');
+      }
+      return true;
+    }catch(_){return false}
+  }
   try{
     const style=document.createElement('style');
     style.id='earthlineMobileSearchTouch17007';
     style.textContent=`
 @media(max-width:760px){
   #earthlineSearchSuggestions15970{
-    z-index:2147482600!important;
+    z-index:2147482650!important;
     pointer-events:auto!important;
     touch-action:manipulation!important;
     -webkit-tap-highlight-color:transparent!important;
@@ -591,10 +608,19 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 }
 `;
     (document.head||document.documentElement).appendChild(style);
-    window.EARTHLINE_MOBILE_SEARCH_TOUCH_17007={state:'ready'};
-  }catch(err){
-    window.EARTHLINE_MOBILE_SEARCH_TOUCH_17007={state:'error',error:String(err&&err.message||err)};
-  }
+  }catch(_){}
+  const observer=new MutationObserver(()=>enforce());
+  const boot=()=>{
+    enforce();
+    try{observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']})}catch(_){}
+    document.addEventListener('input',e=>{if(e.target?.id==='searchInput')requestAnimationFrame(enforce)},true);
+    document.addEventListener('focusin',e=>{if(e.target?.id==='searchInput')requestAnimationFrame(enforce)},true);
+    document.addEventListener('touchstart',e=>{
+      if(e.target?.closest?.('#earthlineSearchSuggestions15970'))enforce();
+    },{capture:true,passive:true});
+  };
+  window.EARTHLINE_MOBILE_SEARCH_TOUCH_17007={state:'ready',enforce};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
 
 /* EARTHLINE_BIOSWALE_REPORT_TOOLBAR_RESTORE_17008
