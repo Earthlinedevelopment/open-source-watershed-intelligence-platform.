@@ -6,5 +6,6 @@ await p.waitForSelector('#earthlinePanel16188',{state:'attached',timeout:20000})
 await p.waitForTimeout(700);
 if(await p.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'))){await p.evaluate(()=>document.getElementById('earthlinePanelClose16188')?.click());await p.waitForTimeout(300);}
 const out=await p.evaluate(()=>['earthlineSwaleLegend16050','earthlineAquiferLegend16070','earthlineDiagramLegend16080'].map(id=>{const e=document.getElementById(id);const s=e?getComputedStyle(e):null;return {id,attr:e?.getAttribute('style')||'',cssText:e?.style?.cssText||'',display:s?.display,visibility:s?.visibility,owner:e?.parentElement?.id||e?.parentElement?.className||''}}));
-console.log('EARTHLINE_STYLE_PROBE_17011 '+JSON.stringify(out));
+const sheets=await p.evaluate(()=>[...document.styleSheets].map(s=>{let hit=false,media=[];try{for(const r of [...s.cssRules]){const t=r.cssText||'';if(t.includes('EARTHLINE_MOBILE_CHROME_RETIRE_17007')||t.includes('#earthlineSwaleLegend16050')){hit=true;media.push(t.slice(0,500));}}}catch(e){}return {href:s.href||'inline',hit,media}}));
+console.log('EARTHLINE_STYLE_PROBE_17011 '+JSON.stringify({out,sheets,media:matchMedia('(max-width:760px)').matches}));
 await b.close();
