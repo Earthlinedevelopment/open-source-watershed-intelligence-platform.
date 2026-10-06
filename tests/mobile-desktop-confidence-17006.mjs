@@ -74,7 +74,6 @@ for(const tc of CASES){
     }
 
     // Real Regional run through the public controls.
-    if(tc.mobile && !document){} // no-op keeps source legible
     await page.evaluate(()=>{
       const open=document.documentElement.classList.contains('earthline-panel-open-16188');
       if(!open)document.getElementById('earthlineRailSearch16188')?.click();
