@@ -1,3 +1,4 @@
+// MOBILE FINAL ACCEPTANCE AFTER 8f85 LEGEND OVERRIDE
 // FINAL deployed-state mobile confidence 17010
 // post-deploy mobile chrome verification 17007
 import { chromium } from 'playwright';
