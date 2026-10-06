@@ -57,7 +57,6 @@ out.reportPass=['Print / Save PDF','Open in New Tab','Download HTML'].every(t=>o
 // Arizona regional timing, same live public action.
 await page.evaluate(()=>document.querySelector('#earthlineVermontReportPanel16149 [data-action="close"]')?.click());
 await page.waitForTimeout(200);
-if(!document){} 
 console.log('EARTHLINE_MOBILE_MAP_FIRST_17009 '+JSON.stringify({out,errors}));
 await browser.close();
 if(!(out.railXStable&&out.launchStable&&out.sheetPass&&out.overflowPass&&out.afterTap.value.includes('61 Sleepy Hollow')&&out.reportPass&&errors.length===0))process.exitCode=1;
