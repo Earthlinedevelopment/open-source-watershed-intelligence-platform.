@@ -1,3 +1,4 @@
+// FINAL deployed-state mobile confidence 17010
 // post-deploy mobile chrome verification 17007
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
