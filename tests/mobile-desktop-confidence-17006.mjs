@@ -37,7 +37,7 @@ for(const tc of CASES){
     const audit=async label=>{
       const x=await page.evaluate(()=>{
         const box=el=>{if(!el)return null;const s=getComputedStyle(el),r=el.getBoundingClientRect();return {display:s.display,visibility:s.visibility,opacity:s.opacity,pointerEvents:s.pointerEvents,x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height),bg:s.backgroundColor,z:s.zIndex,visible:s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity||1)>0&&r.width>1&&r.height>1}};
-        const ids=['earthlineRail16188','earthlinePanel16188','earthlinePanelClose16188','runBtn','earthlineDeclareProperty16169','earthlineSwaleLegend16050','earthlineAquiferLegend16070','earthlineWhyNotHere15803','earthlineLaunchFallbackRail16872','earthlineRechargeDataPanel16488','earthlineVermontReportPanel16149'];
+        const ids=['earthlineRail16188','earthlinePanel16188','earthlinePanelClose16188','runBtn','earthlineDeclareProperty16169','earthlineSwaleLegend16050','earthlineAquiferLegend16070','earthlineDiagramLegend16080','earthlineWhyNotHere15803','earthlineLaunchFallbackRail16872','earthlineRechargeDataPanel16488','earthlineVermontReportPanel16149'];
         const map={}; for(const id of ids)map[id]=box(document.getElementById(id));
         for(const [i,e] of [...document.querySelectorAll('.scalebar')].entries())map['scalebar'+i]=box(e);
         return {
@@ -168,7 +168,10 @@ for(const tc of CASES){
     const propertyPass=!propError&&prep.ok&&prop?.audit?.result===true&&prop?.audit?.settled===true&&corridors>0&&prop?.safety?.verified===true&&prop?.lock?.safetyVerified===true&&!prop?.debugVisible&&row.steps.propertyWallMs<=15000;
     const overflowPass=row.steps.initial.doc.scrollW<=tc.w+2;
     const panelPass=!tc.mobile||row.steps.panelPriority===true;
-    row.pass={regionalPass,propertyPass,overflowPass,panelPass,noPageErrors:errors.length===0};
+    const chromeIds=['earthlineSwaleLegend16050','earthlineAquiferLegend16070','earthlineDiagramLegend16080','scalebar0'];
+    const mobileChromePass=!tc.mobile||chromeIds.every(id=>!row.steps.afterClose?.boxes?.[id]?.visible)&&chromeIds.every(id=>!row.steps.postRegional?.boxes?.[id]?.visible);
+    const reportPass=row.steps.report.attempted===true&&row.steps.report.opened===true;
+    row.pass={regionalPass,propertyPass,overflowPass,panelPass,mobileChromePass,reportPass,noPageErrors:errors.length===0};
     row.overall=Object.values(row.pass).every(Boolean);
   }catch(e){
     row.fatal=String(e); row.overall=false;
