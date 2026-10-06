@@ -51,20 +51,20 @@ const opened=await audit('02-opened');
 
 const railHidden=opened.rail && opened.rail.visibility==='hidden' && opened.rail.pointerEvents==='none';
 const panelOpen=opened.panelOpen===true && opened.panel && opened.panel.w>=380;
-if(!railHidden) throw new Error('Mobile rail remains interactive/visible above open panel: '+JSON.stringify(opened.rail));
-if(!panelOpen) throw new Error('Mobile search panel did not become authoritative full-width surface: '+JSON.stringify(opened.panel));
+if(!railHidden){ console.error('EARTHLINE_MOBILE_17005_FAIL rail '+JSON.stringify({initial,opened})); throw new Error('Mobile rail remains interactive/visible above open panel: '+JSON.stringify(opened.rail)); }
+if(!panelOpen){ console.error('EARTHLINE_MOBILE_17005_FAIL panel '+JSON.stringify({initial,opened})); throw new Error('Mobile search panel did not become authoritative full-width surface: '+JSON.stringify(opened.panel)); }
 
 await page.click('#earthlinePanelClose16188');
 await page.waitForTimeout(700);
 const closed=await audit('03-closed');
 
-if(closed.panelOpen) throw new Error('Panel-open state remained after close');
+if(closed.panelOpen){ console.error('EARTHLINE_MOBILE_17005_FAIL close '+JSON.stringify({opened,closed})); throw new Error('Panel-open state remained after close'); }
 const suspiciousAfterClose=closed.blackCandidates.filter(x=>{
   const txt=(x.text||'').toLowerCase();
   const allowed = x.id==='mapboxBase' || x.cls.includes('mapboxgl') || txt.includes('earthline');
   return !allowed;
 });
-if(suspiciousAfterClose.length) throw new Error('Suspicious black overlay(s) after panel close: '+JSON.stringify(suspiciousAfterClose));
+if(suspiciousAfterClose.length){ console.error('EARTHLINE_MOBILE_17005_FAIL black '+JSON.stringify({closed,suspiciousAfterClose})); throw new Error('Suspicious black overlay(s) after panel close: '+JSON.stringify(suspiciousAfterClose)); }
 
 writeFileSync('artifacts/mobile-acceptance-17005/summary.json',JSON.stringify({pass:true,errors,initial,opened,closed},null,2));
 await page.screenshot({path:'artifacts/mobile-acceptance-17005/after-close.png',fullPage:true});
