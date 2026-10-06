@@ -14,7 +14,7 @@ await page.waitForTimeout(700);
 const controls=await page.evaluate(()=>[...document.querySelectorAll('button,[role="button"]')].map((e,i)=>{const s=getComputedStyle(e),r=e.getBoundingClientRect();return{i,id:e.id,cls:String(e.className||''),text:String(e.textContent||e.getAttribute('aria-label')||'').replace(/\s+/g,' ').trim(),visible:s.display!=='none'&&s.visibility!=='hidden'&&r.width>1&&r.height>1,x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height)}}).filter(x=>x.visible&&(/\bA1\b/i.test(x.text)||/zoom to location/i.test(x.text)||/20-acre|20 acre|property/i.test(x.text))));
 console.log('EARTHLINE_AZ_A1_CONTROLS '+JSON.stringify(controls));
 
-let a1=page.locator('[aria-label*="Open details for A1"],[title*="A1"]').first();
+let a1=page.locator('[aria-label="Open details for A1"]').first();
 if(!(await a1.count()))a1=page.getByText(/^A1$/i).first();
 let a1Clicked=false;
 if(await a1.count()){try{await a1.tap({timeout:8000});a1Clicked=true}catch(_){const bb=await a1.boundingBox();if(bb){await page.touchscreen.tap(bb.x+bb.width/2,bb.y+bb.height/2);a1Clicked=true}}await page.waitForTimeout(650);}
@@ -52,8 +52,25 @@ const out=await page.evaluate(()=>({
  safety:M?.safetyAudit15806||null,
  lock:M?.propertyResultLock15815||null,
  swales:Number(M?.swales?.length||0),
- safeSwales:Number(M?.authoritativeSafeSwales15815?.length||0),
- waterPaths:Number(M?.waterPaths?.length||M?.flowPaths?.length||0),
+ safeSwales:Number(M?.authoritativeSafeSwales15815?.features?.length||M?.authoritativeSafeSwales15815?.length||0),
+ render:(()=>{
+   try{
+     const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+     const ids=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'];
+     const src=m?.getSource?.('earthline-property-safe-visible-16221');
+     const data=src&&(src._data||src._options?.data);
+     return {
+       sourceFeatures:Array.isArray(data?.features)?data.features.length:null,
+       layers:ids.map(id=>({
+         id,exists:!!m?.getLayer?.(id),
+         visibility:m?.getLayoutProperty?.(id,'visibility')??null,
+         opacity:m?.getPaintProperty?.(id,'line-opacity')??null,
+         width:m?.getPaintProperty?.(id,'line-width')??null
+       }))
+     };
+   }catch(e){return {error:String(e)}}
+ })(),
+ waterPaths:Number(M?.waterPaths?.features?.length||M?.waterPaths?.length||M?.flowPaths?.features?.length||M?.flowPaths?.length||0),
  aquifers:Number(M?.usgsAquifers?.length||0),
  recharge:Number(M?.rechZones?.length||0),
  status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim()
@@ -66,3 +83,5 @@ if(!propClicked||!out.audit?.settled)process.exitCode=1;
 // rerun with render-layer audit
 
 // exact A1 detail tap rerun
+
+// exact A1 + layer/source audit
