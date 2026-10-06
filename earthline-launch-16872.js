@@ -502,6 +502,34 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 })();
 
 
+/* EARTHLINE_MOBILE_ORB_BUSY_RESTORE_17010
+   Mobile presentation-only repair.
+   Reuses existing authoritative busy attributes; no new run lifecycle owner. */
+(function installEarthlineMobileOrbBusy17010(){
+  if(window.EARTHLINE_MOBILE_ORB_BUSY_RESTORE_17010)return;
+  try{
+    const style=document.createElement('style');
+    style.id='earthlineMobileOrbBusy17010';
+    style.textContent=`
+@media(max-width:760px){
+  #runBtn[data-busy="1"] > i.earthline-orb-shell-16244,
+  #runBtn[aria-busy="true"] > i.earthline-orb-shell-16244,
+  #earthlineDeclareProperty16169[data-busy="1"] > i.earthline-orb-shell-16244,
+  #earthlineDeclareProperty16169[data-terminal-running="1"] > i.earthline-orb-shell-16244,
+  #earthlineDeclareProperty16169[aria-busy="true"] > i.earthline-orb-shell-16244{
+    animation:earthlineOrbCounterClockwise16245 1.05s linear infinite!important;
+    transform-origin:50% 50%!important;
+    will-change:transform!important;
+  }
+}
+`;
+    (document.head||document.documentElement).appendChild(style);
+    window.EARTHLINE_MOBILE_ORB_BUSY_RESTORE_17010={state:'ready'};
+  }catch(err){
+    window.EARTHLINE_MOBILE_ORB_BUSY_RESTORE_17010={state:'error',error:String(err&&err.message||err)};
+  }
+})();
+
 /* EARTHLINE_MOBILE_PANEL_STACK_17004
    Mobile presentation-only stacking repair.
    When the search/results panel is open, map controls and the left rail must not
