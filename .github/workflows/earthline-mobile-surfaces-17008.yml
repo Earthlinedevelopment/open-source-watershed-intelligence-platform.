@@ -1,0 +1,31 @@
+name: Earthline Mobile Surfaces 17008
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mobile-surfaces-17008.mjs'
+      - '.github/workflows/earthline-mobile-surfaces-17008.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mobile-surfaces:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/mobile-surfaces-17008.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-mobile-surfaces-17008
+          path: artifacts/mobile-surfaces-17008/
+          if-no-files-found: warn
