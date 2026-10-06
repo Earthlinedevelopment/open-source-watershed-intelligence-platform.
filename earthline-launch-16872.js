@@ -1,3 +1,20 @@
+/* EARTHLINE 17003 — MOBILE VIEWPORT PRODUCTION REPAIR ONLY.
+   Ensures phone browsers use the physical device width so the already-existing
+   Earthline mobile breakpoints activate. No hydrology, map science, swale,
+   recharge, search ownership, or desktop-layout rules are changed. */
+(function earthlineInstallMobileViewport17003(){
+  try{
+    let meta=document.querySelector('meta[name="viewport"]');
+    if(!meta){
+      meta=document.createElement('meta');
+      meta.setAttribute('name','viewport');
+      (document.head||document.documentElement).appendChild(meta);
+    }
+    meta.setAttribute('content','width=device-width, initial-scale=1, viewport-fit=cover');
+    document.documentElement.dataset.earthlineMobileViewport17003='active';
+  }catch(_){}
+})();
+
 (function(){
 'use strict';
 /* EARTHLINE 16913 — NZ real-canvas crosshair release only.
