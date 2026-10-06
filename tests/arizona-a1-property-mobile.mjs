@@ -78,10 +78,13 @@ const out=await page.evaluate(()=>({
 await page.screenshot({path:'/tmp/earthline-az-a1-property-mobile.png',fullPage:true});
 console.log('EARTHLINE_AZ_A1_PROPERTY '+JSON.stringify({controls,a1Clicked,a1Detail,zoomClicked,afterZoom,propVisible,propClicked,out,errs}));
 await browser.close();
-if(!propClicked||!out.audit?.settled)process.exitCode=1;
+const visibleFallback=Number(out?.render?.sourceFeatures||0)>0 && Array.isArray(out?.render?.layers) && out.render.layers.some(x=>x.exists&&x.visibility!=='none'&&Number(x.opacity)>0);
+if(!propClicked||!out.audit?.settled||!visibleFallback)process.exitCode=1;
 
 // rerun with render-layer audit
 
 // exact A1 detail tap rerun
 
 // exact A1 + layer/source audit
+
+// verify fail-visible 17011
