@@ -13,7 +13,7 @@ const snap=async label=>page.evaluate(label=>{
  return {label,panelOpen:document.documentElement.classList.contains('earthline-panel-open-16188'),rail:box('earthlineRail16188'),panel:box('earthlinePanel16188'),launch,spinner:box('earthlineMobileZoomSpinner17003'),suggestions:box('earthlineSearchSuggestions15970'),scrollW:document.documentElement.scrollWidth,innerW:innerWidth};
 },label);
 
-const out={};
+const out={liveRepair:'74ed3c0e'};
 out.initial=await snap('initial');
 if(!out.initial.panelOpen){await page.evaluate(()=>document.getElementById('earthlineRailSearch16188')?.click());await page.waitForTimeout(300);}
 out.open=await snap('open');
