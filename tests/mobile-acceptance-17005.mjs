@@ -65,14 +65,19 @@ await page.waitForTimeout(700);
 const closed=await audit('03-closed');
 
 if(closed.panelOpen){ console.error('EARTHLINE_MOBILE_17005_FAIL close '+JSON.stringify({opened,closed})); throw new Error('Panel-open state remained after close'); }
-const suspiciousAfterClose=closed.blackCandidates.filter(x=>{
-  const txt=(x.text||'').toLowerCase();
-  const allowed = x.id==='mapboxBase' || x.cls.includes('mapboxgl') || txt.includes('earthline');
-  return !allowed;
+const chrome=await page.evaluate(()=>{
+  const visible=e=>{if(!e)return false;const s=getComputedStyle(e),r=e.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity||1)>0&&r.width>1&&r.height>1};
+  return {
+    swale:visible(document.getElementById('earthlineSwaleLegend16050')),
+    aquifer:visible(document.getElementById('earthlineAquiferLegend16070')),
+    diagram:visible(document.getElementById('earthlineDiagramLegend16080')),
+    whyNotHere:visible(document.getElementById('earthlineWhyNotHere15803')),
+    scale:[...document.querySelectorAll('.scalebar')].some(visible)
+  };
 });
-if(suspiciousAfterClose.length){ console.error('EARTHLINE_MOBILE_17005_FAIL black '+JSON.stringify({closed,suspiciousAfterClose})); throw new Error('Suspicious black overlay(s) after panel close: '+JSON.stringify(suspiciousAfterClose)); }
+if(Object.values(chrome).some(Boolean)){ console.error('EARTHLINE_MOBILE_17005_FAIL chrome '+JSON.stringify({closed,chrome})); throw new Error('Legacy map chrome remains visible after panel close: '+JSON.stringify(chrome)); }
 
 writeFileSync('artifacts/mobile-acceptance-17005/summary.json',JSON.stringify({pass:true,errors,initial,opened,closed},null,2));
 await page.screenshot({path:'artifacts/mobile-acceptance-17005/after-close.png',fullPage:true});
-console.log('EARTHLINE_MOBILE_17005 PASS '+JSON.stringify({railHidden,panelOpen,blackCandidatesAfterClose:closed.blackCandidates.length,pageErrors:errors.length}));
+console.log('EARTHLINE_MOBILE_17005 PASS '+JSON.stringify({railHidden,panelOpen,legacyChrome:chrome,pageErrors:errors.length}));
 await browser.close();
