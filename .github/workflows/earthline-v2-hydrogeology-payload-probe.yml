@@ -23,7 +23,7 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
-          import json, urllib.parse, urllib.request
+          import json, time, urllib.parse, urllib.request
           from pathlib import Path
 
           root=Path("v2/data/usgs-hydrogeology-2025")
@@ -50,15 +50,41 @@ jobs:
                   raw=json.dumps(one,separators=(",",":"),ensure_ascii=False).encode()
                   parts.append({"source_id":meta["id"],"type":meta["type"],"part":i,"bbox":geom_bbox(one["geometry"]),"bytes":len(raw)})
 
-          endpoint="https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/0/query"
           params={
               "where":"1=1","outFields":"GEOID,STUSAB,NAME","returnGeometry":"true",
               "outSR":"4326","f":"geojson"
           }
-          url=endpoint+"?"+urllib.parse.urlencode(params)
-          req=urllib.request.Request(url,headers={"User-Agent":"Earthline-V2-state-pack-probe/1.0"})
-          with urllib.request.urlopen(req,timeout=60) as r:
-              states=json.loads(r.read())
+          endpoints=[
+              "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/USLandmass/MapServer/0/query",
+              "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/0/query",
+          ]
+          states=None
+          errors=[]
+          for endpoint in endpoints:
+              url=endpoint+"?"+urllib.parse.urlencode(params)
+              for attempt in range(1,4):
+                  try:
+                      req=urllib.request.Request(url,headers={
+                          "User-Agent":"Earthline-V2-state-pack-probe/1.0",
+                          "Accept":"application/geo+json, application/json"
+                      })
+                      with urllib.request.urlopen(req,timeout=60) as r:
+                          raw=r.read()
+                      if not raw:
+                          raise RuntimeError("empty response")
+                      candidate=json.loads(raw.decode("utf-8"))
+                      if not isinstance(candidate,dict) or not candidate.get("features"):
+                          raise RuntimeError("no features in Census response")
+                      states=candidate
+                      print("census_endpoint:",endpoint)
+                      break
+                  except Exception as exc:
+                      errors.append(f"{endpoint} attempt {attempt}: {exc}")
+                      time.sleep(attempt)
+              if states is not None:
+                  break
+          if states is None:
+              raise RuntimeError("Census boundary fetch failed: "+" | ".join(errors))
           rows=[]
           total=0
           for sf in states.get("features",[]):
