@@ -423,3 +423,41 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   window.earthlineMobileAudit17003=audit;
   window.EARTHLINE_MOBILE_PRODUCTION_17003={state:'ready',installedAt:new Date().toISOString(),audit};
 })();
+
+
+/* EARTHLINE_MOBILE_PANEL_STACK_17004
+   Mobile presentation-only stacking repair.
+   When the search/results panel is open, map controls and the left rail must not
+   sit above the panel. No hydrology, search, map, science, or desktop behavior. */
+(function installEarthlineMobilePanelStack17004(){
+  if(window.EARTHLINE_MOBILE_PANEL_STACK_17004)return;
+  try{
+    const style=document.createElement('style');
+    style.id='earthlineMobilePanelStack17004';
+    style.textContent=`
+@media(max-width:760px){
+  html.earthline-panel-open-16188 #earthlinePanel16188{
+    left:0!important;
+    right:0!important;
+    width:100vw!important;
+    max-width:100vw!important;
+    z-index:2147482500!important;
+  }
+  html.earthline-panel-open-16188 #earthlineRail16188,
+  html.earthline-panel-open-16188 #earthlineLaunchFallbackRail16872,
+  html.earthline-panel-open-16188 .mapboxgl-ctrl-top-left,
+  html.earthline-panel-open-16188 .mapboxgl-ctrl-top-right,
+  html.earthline-panel-open-16188 .mapboxgl-ctrl-bottom-left,
+  html.earthline-panel-open-16188 .mapboxgl-ctrl-bottom-right{
+    opacity:0!important;
+    visibility:hidden!important;
+    pointer-events:none!important;
+  }
+}
+`;
+    (document.head||document.documentElement).appendChild(style);
+    window.EARTHLINE_MOBILE_PANEL_STACK_17004={state:'ready'};
+  }catch(err){
+    window.EARTHLINE_MOBILE_PANEL_STACK_17004={state:'error',error:String(err&&err.message||err)};
+  }
+})();
