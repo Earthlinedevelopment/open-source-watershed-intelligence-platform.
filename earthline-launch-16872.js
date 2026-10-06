@@ -1062,3 +1062,35 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       afterPublication('analysis-complete');
   },{passive:true});
 })();
+
+
+/* EARTHLINE_SWALE_PRINCIPLE_COPY_17013
+   Requested copy correction only: Earthline follows/uses the principle;
+   this must not imply Earthline originated the concept. */
+(function(){
+  if(window.EARTHLINE_SWALE_PRINCIPLE_COPY_17013)return;
+  const FROM1='Earthline’s three-word principle describes the sequence:';
+  const FROM2="Earthline's three-word principle describes the sequence:";
+  const TO='Earthline follows this three-word principle:';
+  function apply(){
+    const page=document.getElementById('earthlineSwalesPage16125');
+    if(!page)return false;
+    const walker=document.createTreeWalker(page,NodeFilter.SHOW_TEXT);
+    let node,changed=false;
+    while((node=walker.nextNode())){
+      const v=String(node.nodeValue||'');
+      if(v.includes(FROM1)||v.includes(FROM2)){
+        node.nodeValue=v.replace(FROM1,TO).replace(FROM2,TO);
+        changed=true;
+      }
+    }
+    return changed;
+  }
+  window.EARTHLINE_SWALE_PRINCIPLE_COPY_17013={state:'ready',apply};
+  const boot=()=>{apply();document.addEventListener('click',e=>{
+    const el=e.target?.closest?.('button,a,[role="button"]');
+    const label=String(el?.textContent||el?.getAttribute?.('aria-label')||'').replace(/\s+/g,' ').trim();
+    if(/how\s+bioswales\s+work/i.test(label))setTimeout(apply,0);
+  },true);};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
