@@ -1,0 +1,35 @@
+name: Earthline Alaska A-Buttons Owner Repair
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-alaska-a-buttons-owner-repair.yml'
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Repair authoritative regional projection owner
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          old="""  function project(ll){const map=m();if(!map||!ll)return null;try{const p=map.project({lng:Number(ll[0]),lat:Number(ll[1])});return Number.isFinite(p.x)&&Number.isFinite(p.y)?{x:p.x,y:p.y}:null;}catch(_){try{const p=map.project([Number(ll[0]),Number(ll[1])]);return p&&Number.isFinite(p.x)&&Number.isFinite(p.y)?{x:p.x,y:p.y}:null;}catch(__){return null;}}}"""
+          new="""  function project(ll){const map=m();if(!map||!ll)return null;let lng=Number(ll[0]),lat=Number(ll[1]);if(!Number.isFinite(lng)||!Number.isFinite(lat))return null;try{const centerLng=Number(map.getCenter?.().lng);if(Number.isFinite(centerLng)){while(lng-centerLng>180)lng-=360;while(lng-centerLng<-180)lng+=360;}}catch(_){}try{const p=map.project({lng,lat});return Number.isFinite(p.x)&&Number.isFinite(p.y)?{x:p.x,y:p.y}:null;}catch(_){try{const p=map.project([lng,lat]);return p&&Number.isFinite(p.x)&&Number.isFinite(p.y)?{x:p.x,y:p.y}:null;}catch(__){return null;}}}"""
+          if old not in s:
+              raise SystemExit("authoritative project() owner not found")
+          if s.count(old) != 1:
+              raise SystemExit(f"expected one owner, found {s.count(old)}")
+          p.write_text(s.replace(old,new,1),encoding="utf-8")
+      - name: Commit Alaska owner repair
+        run: |
+          git config user.name "Earthline"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: normalize Alaska A-button projection across antimeridian"
+          git push origin HEAD:pages-live
