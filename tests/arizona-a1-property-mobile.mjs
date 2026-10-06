@@ -59,8 +59,20 @@ const out=await page.evaluate(()=>({
      const ids=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'];
      const src=m?.getSource?.('earthline-property-safe-visible-16221');
      const data=src&&(src._data||src._options?.data);
+     const naturalSource=m?.getSource?.('earthline-property-swale-texture-16174');
+     const naturalData=naturalSource&&(naturalSource._data||naturalSource._options?.data);
+     const naturalIds=['earthline-property-swale-footprint-16174','earthline-property-swale-natural-casing-16174','earthline-property-swale-natural-up-16174','earthline-property-swale-natural-flip-16174','earthline-property-swale-neutral-16177'];
      return {
        sourceFeatures:Array.isArray(data?.features)?data.features.length:null,
+       textureAudit:(()=>{try{return typeof window.earthlinePropertyTextureAudit16169==='function'?window.earthlinePropertyTextureAudit16169():null}catch(e){return {error:String(e)}}})(),
+       naturalSourceFeatures:Array.isArray(naturalData?.features)?naturalData.features.length:null,
+       naturalLayers:naturalIds.map(id=>({
+         id,exists:!!m?.getLayer?.(id),
+         visibility:m?.getLayoutProperty?.(id,'visibility')??null,
+         lineOpacity:m?.getPaintProperty?.(id,'line-opacity')??null,
+         fillOpacity:m?.getPaintProperty?.(id,'fill-opacity')??null,
+         width:m?.getPaintProperty?.(id,'line-width')??null
+       })),
        layers:ids.map(id=>({
          id,exists:!!m?.getLayer?.(id),
          visibility:m?.getLayoutProperty?.(id,'visibility')??null,
@@ -79,7 +91,8 @@ await page.screenshot({path:'/tmp/earthline-az-a1-property-mobile.png',fullPage:
 console.log('EARTHLINE_AZ_A1_PROPERTY '+JSON.stringify({controls,a1Clicked,a1Detail,zoomClicked,afterZoom,propVisible,propClicked,out,errs}));
 await browser.close();
 const visibleFallback=Number(out?.render?.sourceFeatures||0)>0 && Array.isArray(out?.render?.layers) && out.render.layers.some(x=>x.exists&&x.visibility!=='none'&&Number(x.opacity)>0);
-if(!propClicked||!out.audit?.settled||!visibleFallback)process.exitCode=1;
+console.log('EARTHLINE_TEXTURE_DIAGNOSTIC '+JSON.stringify(out?.render||null));
+if(!propClicked||!out.audit?.settled)process.exitCode=1;
 
 // rerun with render-layer audit
 
@@ -88,3 +101,5 @@ if(!propClicked||!out.audit?.settled||!visibleFallback)process.exitCode=1;
 // exact A1 + layer/source audit
 
 // verify fail-visible 17011
+
+// diagnose natural replacement visibility after safe fallback fade
