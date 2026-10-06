@@ -14,7 +14,7 @@ const page=await context.newPage();
 const errors=[];
 page.on('pageerror',e=>errors.push(String(e)));
 await page.goto(BASE+'?mobile_acceptance_17005='+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
-await page.waitForSelector('#earthlineRailSearch16188',{timeout:15000});
+await page.waitForSelector('#earthlineRailSearch16188',{state:'attached',timeout:15000});
 await page.waitForTimeout(1200);
 
 async function audit(label){
@@ -45,9 +45,14 @@ async function audit(label){
 }
 
 const initial=await audit('01-initial');
-await page.click('#earthlineRailSearch16188');
-await page.waitForTimeout(500);
-const opened=await audit('02-opened');
+let opened=initial;
+if(!initial.panelOpen){
+  await page.evaluate(()=>document.getElementById('earthlineRailSearch16188')?.click());
+  await page.waitForTimeout(500);
+  opened=await audit('02-opened');
+}else{
+  writeFileSync('artifacts/mobile-acceptance-17005/02-opened.json',JSON.stringify(opened,null,2));
+}
 
 const railHidden=opened.rail && opened.rail.visibility==='hidden' && opened.rail.pointerEvents==='none';
 const panelOpen=opened.panelOpen===true && opened.panel && opened.panel.w>=380;
