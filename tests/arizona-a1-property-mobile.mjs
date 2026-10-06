@@ -14,9 +14,12 @@ await page.waitForTimeout(700);
 const controls=await page.evaluate(()=>[...document.querySelectorAll('button,[role="button"]')].map((e,i)=>{const s=getComputedStyle(e),r=e.getBoundingClientRect();return{i,id:e.id,cls:String(e.className||''),text:String(e.textContent||e.getAttribute('aria-label')||'').replace(/\s+/g,' ').trim(),visible:s.display!=='none'&&s.visibility!=='hidden'&&r.width>1&&r.height>1,x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height)}}).filter(x=>x.visible&&(/\bA1\b/i.test(x.text)||/zoom to location/i.test(x.text)||/20-acre|20 acre|property/i.test(x.text))));
 console.log('EARTHLINE_AZ_A1_CONTROLS '+JSON.stringify(controls));
 
-let a1=page.getByRole('button',{name:/^A1(?:\b|\s|$)/i}).first();
-if(!(await a1.count()))a1=page.locator('button').filter({hasText:/\bA1\b/}).first();
-if(await a1.count()){await a1.tap({timeout:8000});await page.waitForTimeout(500);}
+let a1=page.locator('[aria-label*="Open details for A1"],[title*="A1"]').first();
+if(!(await a1.count()))a1=page.getByText(/^A1$/i).first();
+let a1Clicked=false;
+if(await a1.count()){try{await a1.tap({timeout:8000});a1Clicked=true}catch(_){const bb=await a1.boundingBox();if(bb){await page.touchscreen.tap(bb.x+bb.width/2,bb.y+bb.height/2);a1Clicked=true}}await page.waitForTimeout(650);}
+const a1Detail=await page.evaluate(()=>[...document.querySelectorAll('button,[role="button"],a')].map(e=>{const s=getComputedStyle(e),r=e.getBoundingClientRect();return {id:e.id,tag:e.tagName,cls:String(e.className||''),aria:e.getAttribute('aria-label')||'',text:String(e.textContent||'').replace(/\s+/g,' ').trim(),visible:s.display!=='none'&&s.visibility!=='hidden'&&r.width>1&&r.height>1,x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height)}}).filter(x=>x.visible&&(/A1/i.test(x.text+x.aria)||/zoom to location/i.test(x.text+x.aria))));
+console.log('EARTHLINE_AZ_A1_DETAIL '+JSON.stringify({a1Clicked,a1Detail}));
 let zoom=page.getByRole('button',{name:/zoom to location/i}).first();
 if(!(await zoom.count()))zoom=page.locator('button').filter({hasText:/zoom to location/i}).first();
 let zoomClicked=false;
@@ -56,8 +59,10 @@ const out=await page.evaluate(()=>({
  status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim()
 }));
 await page.screenshot({path:'/tmp/earthline-az-a1-property-mobile.png',fullPage:true});
-console.log('EARTHLINE_AZ_A1_PROPERTY '+JSON.stringify({controls,zoomClicked,afterZoom,propVisible,propClicked,out,errs}));
+console.log('EARTHLINE_AZ_A1_PROPERTY '+JSON.stringify({controls,a1Clicked,a1Detail,zoomClicked,afterZoom,propVisible,propClicked,out,errs}));
 await browser.close();
 if(!propClicked||!out.audit?.settled)process.exitCode=1;
 
 // rerun with render-layer audit
+
+// exact A1 detail tap rerun
