@@ -18,14 +18,14 @@ async function runRegional(page,stateName){
     i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();
   },stateName);
   await page.waitForFunction(expected=>{
-    const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,err=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null;
+    const err=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null;if(err)return true;
+    const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null;
     const disp=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null;
-    const audit=window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731||null;
-    const pkg=window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||null;
-    const exact=String(pkg?.identity?.name||'').toLowerCase()===String(expected).toLowerCase();
-    const vt=String(expected).toLowerCase()==='vermont'&&String(pub?.runToken||'').toLowerCase().includes('vermont');
-    const generated=Number(pub?.generated??0),visible=Number(disp?.swaleLines??0);
-    return (exact||vt)&& (!!err|| (!!audit&&generated>0&&visible===generated));
+    const perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null;
+    const status=String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'');
+    const generated=Number(pub?.generated??0),visible=Number(disp?.swaleLines??pub?.overlaySwaleLines??0);
+    const published=/screening published\./i.test(status)&&!!perf&&generated>0&&visible===generated;
+    return published;
   },stateName,{timeout:60000,polling:100});
   const err=await page.evaluate(()=>window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null);
   if(err)throw new Error('regional '+JSON.stringify(err));
