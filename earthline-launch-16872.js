@@ -327,15 +327,35 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     top:0!important;bottom:0!important;height:100dvh!important;min-height:100dvh!important;
   }
   #earthlineRail16188{
-    top:0!important;bottom:auto!important;height:100dvh!important;max-height:100dvh!important;
+    position:fixed!important;
+    left:0!important;right:auto!important;top:0!important;bottom:auto!important;
+    width:var(--el-rail-16188)!important;min-width:var(--el-rail-16188)!important;max-width:var(--el-rail-16188)!important;
+    height:100dvh!important;max-height:100dvh!important;
+    transform:none!important;margin:0!important;
+    align-items:center!important;box-sizing:border-box!important;
     gap:8px!important;
     padding-top:max(10px,env(safe-area-inset-top))!important;
     padding-bottom:max(10px,env(safe-area-inset-bottom))!important;
   }
+  #earthlineRail16188 > *,
+  #earthlineLaunchLogin16872,
+  #earthlineLaunchDonate16872,
+  #earthlineLaunchMerch16872{
+    margin-left:auto!important;margin-right:auto!important;
+    transform:none!important;align-self:center!important;
+  }
   #earthlinePanel16188{
-    top:0!important;bottom:auto!important;
+    position:fixed!important;
+    left:var(--el-rail-16188)!important;right:0!important;
+    top:auto!important;bottom:0!important;
     width:calc(100vw - var(--el-rail-16188))!important;
-    height:100dvh!important;max-height:100dvh!important;
+    height:min(56dvh,520px)!important;max-height:min(56dvh,520px)!important;
+    border-radius:16px 16px 0 0!important;
+    box-shadow:0 -12px 36px rgba(0,0,0,.38)!important;
+    transform:translateY(calc(100% + 10px))!important;
+  }
+  html.earthline-panel-open-16188 #earthlinePanel16188{
+    transform:translateY(0)!important;
   }
   #earthlinePanelBody16188{
     min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;
@@ -406,6 +426,56 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 
   document.addEventListener('earthline:analysis-complete',returnToMap,{passive:true});
 
+  function mobileZoomFeedback(){
+    if(!isMobile())return null;
+    let el=document.getElementById('earthlineMobileZoomSpinner17003');
+    if(!el){
+      el=document.createElement('div');
+      el.id='earthlineMobileZoomSpinner17003';
+      el.setAttribute('role','status');
+      el.setAttribute('aria-live','polite');
+      el.innerHTML='<span aria-hidden="true"></span><b>ZOOMING TO LOCATION…</b>';
+      document.body.appendChild(el);
+      const style=document.createElement('style');
+      style.id='earthlineMobileZoomSpinnerStyle17003';
+      style.textContent=`
+@media(max-width:760px){
+  #earthlineMobileZoomSpinner17003{
+    position:fixed;left:calc(var(--el-rail-16188) + 12px);top:max(14px,env(safe-area-inset-top));
+    z-index:2147482700;display:none;align-items:center;gap:9px;
+    padding:10px 13px;border:1px solid rgba(113,203,244,.72);border-radius:999px;
+    background:rgba(7,20,29,.94);color:#effaff;
+    font:850 11px/1 system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35);
+    pointer-events:none
+  }
+  #earthlineMobileZoomSpinner17003.open{display:flex}
+  #earthlineMobileZoomSpinner17003 span{
+    width:16px;height:16px;border-radius:50%;
+    border:2px solid rgba(255,255,255,.28);border-top-color:#fff;
+    animation:earthlineMobileSpin17003 .72s linear infinite
+  }
+  @keyframes earthlineMobileSpin17003{to{transform:rotate(360deg)}}
+`;
+      (document.head||document.documentElement).appendChild(style);
+    }
+    el.classList.add('open');
+    clearTimeout(el._earthlineTm17003);
+    const done=()=>{el.classList.remove('open');try{m?.off?.('moveend',done);m?.off?.('idle',done)}catch(_){}};
+    let m=null;try{m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){}
+    try{m?.once?.('moveend',done);m?.once?.('idle',done)}catch(_){}
+    el._earthlineTm17003=setTimeout(done,5000);
+    return el;
+  }
+  document.addEventListener('click',e=>{
+    if(!isMobile())return;
+    const b=e.target?.closest?.('button,[role="button"],a');
+    if(!b)return;
+    const label=String(b.getAttribute?.('aria-label')||b.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+    if(label.includes('zoom to location')||label.includes('zoom to selected')||label==='zoom'){
+      mobileZoomFeedback();
+    }
+  },true);
+
   function audit(){
     const box=id=>{const el=document.getElementById(id);if(!el)return null;const r=el.getBoundingClientRect();return {width:Math.round(r.width),height:Math.round(r.height)}};
     return {
@@ -437,16 +507,25 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     style.textContent=`
 @media(max-width:760px){
   html.earthline-panel-open-16188 #earthlinePanel16188{
-    left:0!important;
+    left:var(--el-rail-16188)!important;
     right:0!important;
-    width:100vw!important;
-    max-width:100vw!important;
+    width:calc(100vw - var(--el-rail-16188))!important;
+    max-width:calc(100vw - var(--el-rail-16188))!important;
     z-index:2147482500!important;
   }
-  html.earthline-panel-open-16188 #earthlineRail16188,
-  html.earthline-panel-open-16188 #earthlineLaunchFallbackRail16872,
-  html.earthline-panel-open-16188 .mapboxgl-ctrl-top-left,
-  html.earthline-panel-open-16188 .mapboxgl-ctrl-top-right,
+  html.earthline-panel-open-16188 #earthlineRail16188{
+    opacity:1!important;
+    visibility:visible!important;
+    pointer-events:auto!important;
+    left:0!important;
+    transform:none!important;
+    z-index:2147482550!important;
+  }
+  html.earthline-panel-open-16188 #earthlineLaunchFallbackRail16872{
+    opacity:0!important;
+    visibility:hidden!important;
+    pointer-events:none!important;
+  }
   html.earthline-panel-open-16188 .mapboxgl-ctrl-bottom-left,
   html.earthline-panel-open-16188 .mapboxgl-ctrl-bottom-right{
     opacity:0!important;
