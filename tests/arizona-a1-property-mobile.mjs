@@ -55,6 +55,9 @@ const out=await page.evaluate(()=>({
  recharge:Number(M?.rechZones?.length||0),
  status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim()
 }));
+await page.screenshot({path:'/tmp/earthline-az-a1-property-mobile.png',fullPage:true});
 console.log('EARTHLINE_AZ_A1_PROPERTY '+JSON.stringify({controls,zoomClicked,afterZoom,propVisible,propClicked,out,errs}));
 await browser.close();
 if(!propClicked||!out.audit?.settled)process.exitCode=1;
+
+// rerun with render-layer audit
