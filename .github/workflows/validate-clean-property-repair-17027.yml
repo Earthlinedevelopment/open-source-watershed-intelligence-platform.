@@ -24,7 +24,7 @@ jobs:
       - name: Fetch validator
         run: |
           git fetch origin candidate-property-integrity-17019
-          git show origin/candidate-property-integrity-17019:tests/validate-property-integrity-17027.mjs > /tmp/validate-17027.mjs
+          git show origin/candidate-property-integrity-17019:tests/validate-property-integrity-17027.mjs > ./validate-17027.mjs
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -35,4 +35,4 @@ jobs:
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-server.log 2>&1 &
           sleep 2
       - name: Validate candidate behavior
-        run: EARTHLINE_URL='http://127.0.0.1:8787/' node /tmp/validate-17027.mjs
+        run: EARTHLINE_URL='http://127.0.0.1:8787/' node ./validate-17027.mjs
