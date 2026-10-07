@@ -1,0 +1,38 @@
+name: Earthline Property Fallback Geometry Audit 17040
+on:
+  push:
+    branches: [candidate-property-integrity-17019]
+    paths:
+      - '.github/workflows/property-fallback-geometry-audit-17040.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Trace safe fallback geometry ownership
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          for path in ['index.html','earthline-launch-16872.js','builds/16598/earthline-live.js']:
+            s=Path(path).read_text(encoding='utf-8')
+            print('\n===== FILE '+path+' =====')
+            for n in ['authoritativeSafeSwales15815','safeCount','PROPERTY_FALLBACK_FAIL_VISIBLE_17011','syncSafePropertyFallback16221','earthline-property-safe','earthline-property-swale-natural-16174','earthlineSyncPropertyTexture16169']:
+              pos=[];st=0
+              while True:
+                i=s.find(n,st)
+                if i<0: break
+                pos.append(i);st=i+len(n)
+              print('\n###',n,pos[:12])
+              for i in pos[:4]:
+                print(s[max(0,i-2800):min(len(s),i+6500)])
+          PY
+          echo '=== HISTORY fallback owner ==='
+          git log --all --date=iso --pretty='%H|%ad|%s' -S'PROPERTY_FALLBACK_FAIL_VISIBLE_17011' -- earthline-launch-16872.js | head -30
+          echo '=== HISTORY safe property fallback ==='
+          git log --all --date=iso --pretty='%H|%ad|%s' -S'syncSafePropertyFallback16221' -- index.html earthline-launch-16872.js | head -30
