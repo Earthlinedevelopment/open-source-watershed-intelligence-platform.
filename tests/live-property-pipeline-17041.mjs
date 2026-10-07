@@ -84,7 +84,6 @@ const out=await page.evaluate(()=>{
   }
   const safeBins=geoBins(safe);
   return {
-    invoke,
     run:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
     publication:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||m.propertyPublication15816||null,
     texture:typeof window.earthlinePropertyTextureAudit16169==='function'?window.earthlinePropertyTextureAudit16169():window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null,
@@ -99,7 +98,7 @@ const out=await page.evaluate(()=>{
     swaleMeta:m.swaleMeta||null
   };
 });
-console.log('PROPERTY_PIPELINE_17041 '+JSON.stringify(out));
-if(out.invoke?.error) throw new Error(out.invoke.error);
+console.log('PROPERTY_PIPELINE_17041 '+JSON.stringify({invoke,out}));
+if(invoke?.error) throw new Error(invoke.error);
 if(!out.run?.result) throw new Error('Property run did not publish: '+JSON.stringify(out.run));
 await browser.close();
