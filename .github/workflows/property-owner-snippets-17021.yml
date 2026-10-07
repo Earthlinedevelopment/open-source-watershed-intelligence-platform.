@@ -1,0 +1,32 @@
+name: Earthline Exact Property Owner Snippets 17021
+on:
+  push:
+    branches: [candidate-property-integrity-17019]
+    paths:
+      - '.github/workflows/property-owner-snippets-17021.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exact snippets
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for label,n,b,a in [
+            ('MAKE_SWALES','function makeSwales',0,9000),
+            ('FOCUS_CAP','focusMode?80',2200,4200),
+            ('SPACING72','0.72',2200,4200),
+            ('EXCL_INCOMPLETE','Exclusion evidence did not complete',3500,5000),
+            ('NO_MAPPED','NO MAPPED EXCLUSIONS RETURNED',3500,5000),
+            ('PUB_BLOCK','propertyPublicationBlock16176',2200,5000),
+          ]:
+            i=s.find(n)
+            print('\n===== '+label+' POS '+str(i)+' =====')
+            if i>=0: print(s[max(0,i-b):min(len(s),i+a)])
+          PY
