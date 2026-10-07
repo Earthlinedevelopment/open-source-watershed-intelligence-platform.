@@ -1,0 +1,39 @@
+name: Earthline PrescribeSwales Active Owner 17038
+on:
+  push:
+    branches: [test-property-coverage-17031]
+    paths:
+      - '.github/workflows/prescribe-swales-owner-17038.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract current active Property prescriber and lineage
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          needle='function prescribeSwales15778'
+          start=s.find(needle)
+          print('START',start)
+          assert start>=0
+          next_fn=s.find('\n  function ',start+len(needle))
+          next_async=s.find('\n  async function ',start+len(needle))
+          stops=[x for x in (next_fn,next_async) if x>=0]
+          end=min(stops) if stops else min(len(s),start+80000)
+          fn=s[start:end]
+          Path('/tmp/current-prescribe.js').write_text(fn,encoding='utf-8')
+          print('FUNCTION_BYTES',len(fn),'LINES',len(fn.splitlines()))
+          print(fn)
+          PY
+          echo '=== COMMITS TOUCHING prescribeSwales15778 ==='
+          git log --all --oneline -S'prescribeSwales15778' -- index.html | head -80 || true
+          echo '=== RECENT COMMITS TOUCHING PROPERTY PRESCRIBER TOKENS ==='
+          git log --all --oneline -G'prescribeSwales15778|spacingStats|corridor' --since='2026-09-25' -- index.html | head -120 || true
