@@ -1069,29 +1069,10 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
         Object.values(x.layers).every(Boolean));
     }catch(_){return false}
   }
-  function restoreApprovedBlue(){
-    const m=map();if(!m||!propertyPublished())return false;
-    const id='earthline-property-swale-ditch-16166';
-    try{
-      if(!m.getLayer?.(id))return false;
-      m.setPaintProperty(id,'line-color','#008cff');
-      m.setPaintProperty(id,'line-opacity',1);
-      m.moveLayer?.(id);
-      return true;
-    }catch(_){return false}
-  }
   function enforce(reason='check'){
     const m=map();
     if(!m||!propertyPublished())return false;
-    const blueRestored=restoreApprovedBlue();
-    if(textureVerified()){
-      window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011.last={
-        reason,changed:0,textureVerified:true,blueRestored,
-        safeCount:Number((window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{}).safeCount||0),
-        at:new Date().toISOString()
-      };
-      return blueRestored;
-    }
+    if(textureVerified())return false;
     let changed=0;
     for(const id of SAFE){
       try{
@@ -1103,16 +1084,16 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       }catch(_){}
     }
     window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011.last={
-      reason,changed,textureVerified:false,blueRestored,
+      reason,changed,textureVerified:false,
       safeCount:Number((window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{}).safeCount||0),
       at:new Date().toISOString()
     };
-    return changed>0||blueRestored;
+    return changed>0;
   }
   function afterPublication(reason){
     for(const ms of [0,120,450,1100])setTimeout(()=>enforce(reason+'-'+ms),ms);
   }
-  window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011={state:'ready',enforce,textureVerified,restoreApprovedBlue};
+  window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011={state:'ready',enforce,textureVerified};
   document.addEventListener('earthline:analysis-complete',()=>{
     if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property')
       afterPublication('analysis-complete');
