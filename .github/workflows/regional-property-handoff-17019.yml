@@ -1,0 +1,42 @@
+name: Earthline Regional Property Handoff Candidate 17019
+on:
+  push:
+    branches: [candidate-regional-property-handoff-17019]
+    paths:
+      - 'tools/patch-regional-property-handoff-17019.py'
+      - 'tests/regional-property-handoff-17019.mjs'
+      - '.github/workflows/regional-property-handoff-17019.yml'
+permissions:
+  contents: write
+jobs:
+  candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-regional-property-handoff-17019
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: python3 tools/patch-regional-property-handoff-17019.py
+      - name: Exact scope check
+        run: |
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+          grep -q "EARTHLINE 17019" index.html
+      - run: npm install --no-save playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - name: Serve candidate
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-17019.log 2>&1 &
+          sleep 2
+      - run: node tests/regional-property-handoff-17019.mjs
+      - name: Commit tested candidate index only
+        run: |
+          git config user.name "Earthline Candidate Repair"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "candidate: restore direct Regional to Property handoff 17019"
+          git push origin HEAD:candidate-regional-property-handoff-17019
