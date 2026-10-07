@@ -1,0 +1,55 @@
+name: Earthline Property Input Source Diff 17039
+on:
+  push:
+    branches: [candidate-property-integrity-17019]
+    paths:
+      - '.github/workflows/property-input-source-diff-17039.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compare Property boundary helper and DEM input path
+        shell: bash
+        run: |
+          git show 74343a24f90fed7d7abbe9267ef11a2836220de7:index.html > /tmp/a.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,re
+          A=Path('/tmp/a.html').read_text(encoding='utf-8')
+          C=Path('index.html').read_text(encoding='utf-8')
+          def extract(s,name):
+            pats=['async function '+name,'function '+name,'window.'+name+'=function','window.'+name+'=async function']
+            starts=[s.find(p) for p in pats if s.find(p)>=0]
+            if not starts:return None
+            i=min(starts); b=s.find('{',i); d=0
+            for j in range(b,len(s)):
+              if s[j]=='{': d+=1
+              elif s[j]=='}':
+                d-=1
+                if d==0:return s[i:j+1]
+            return None
+          names=['earthlineSelectedSiteFromCenter','earthlinePropertyTerrainDEM','earthlineLoadTerrainDEM','earthlineEnsureTerrainDEM','sampleDEMForLocation','buildAnalysisGrid','earthlineBuildAnalysisGrid']
+          for n in names:
+            a=extract(A,n); c=extract(C,n)
+            print('\n###',n)
+            print('accepted',None if a is None else (len(a),hashlib.sha256(a.encode()).hexdigest()))
+            print('current ',None if c is None else (len(c),hashlib.sha256(c.encode()).hexdigest()))
+            print('SAME',a==c)
+          for label,s in [('ACCEPTED',A),('CURRENT',C)]:
+            print('\n===== '+label+' TERRAIN-DEM CONTEXT =====')
+            needle='Mapbox GL Terrain-DEM fallback did not reach usable coverage'
+            i=s.find(needle)
+            print('POS',i)
+            if i>=0: print(s[max(0,i-6500):min(len(s),i+6500)])
+            print('\n===== '+label+' SELECTED SITE CONTEXT =====')
+            n='function earthlineSelectedSiteFromCenter'
+            i=s.find(n)
+            print('POS',i)
+            if i>=0: print(s[i:i+9000])
+          PY
