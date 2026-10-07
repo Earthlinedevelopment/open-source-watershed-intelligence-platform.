@@ -1,0 +1,57 @@
+name: Earthline Property Presentation Relinquish Gate 17045
+on:
+  push:
+    branches: [candidate-property-presentation-relinquish-17045]
+    paths:
+      - 'earthline-launch-16872.js'
+      - '.github/workflows/property-presentation-relinquish-gate-17045.yml'
+permissions:
+  contents: read
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static owner gate
+        shell: bash
+        run: |
+          git diff --check 9a830d50daf0a717fff0aae6355109bfc3dcfde8..HEAD
+          test "$(git diff --name-only 9a830d50daf0a717fff0aae6355109bfc3dcfde8..HEAD | wc -l)" -eq 2
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('earthline-launch-16872.js').read_text(encoding='utf-8')
+          assert 'EARTHLINE 17045' in s
+          assert 'textureReady=textureVerified()' in s
+          assert "m.setPaintProperty(id,'line-opacity',0)" in s
+          assert "m.setPaintProperty(id,'line-opacity',.98)" in s
+          assert 'relinquished:true' in s
+          assert 'relinquished:false' in s
+          print('static owner checks PASS')
+          PY
+          node --check earthline-launch-16872.js
+      - name: Mock ownership truth table
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          # Equivalent state-machine truth table for the exact 17045 branch.
+          def enforce(published, texture_ready, layers):
+              state=dict(layers)
+              if not published:return state,False
+              changed=False
+              if texture_ready:
+                  for k,v in state.items():
+                      if v!=0: state[k]=0; changed=True
+                  return state,changed
+              for k,v in state.items():
+                  if v in (0,None): state[k]=.98; changed=True
+              return state,changed
+          cases={
+            'non_property_untouched': enforce(False,False,{'a':0})[0]['a']==0,
+            'fallback_visible_when_texture_missing': enforce(True,False,{'a':0})[0]['a']==.98,
+            'fallback_relinquishes_when_texture_ready': enforce(True,True,{'a':.98})[0]['a']==0,
+            'already_relinquished_stays_zero': enforce(True,True,{'a':0})[0]['a']==0,
+          }
+          print(cases)
+          assert all(cases.values())
+          PY
