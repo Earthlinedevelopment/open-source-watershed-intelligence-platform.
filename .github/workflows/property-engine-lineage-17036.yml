@@ -1,0 +1,55 @@
+name: Earthline Property Engine Lineage 17036
+on:
+  push:
+    branches: [candidate-property-integrity-17019]
+    paths:
+      - '.github/workflows/property-engine-lineage-17036.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Trace authoritative Property behavior changes
+        shell: bash
+        run: |
+          echo "=== FLOW FIRST ==="
+          git log --all --date=iso --pretty='%H|%ad|%s' -S'primaryFlowFirst15836' -- index.html | head -30
+          echo "=== PRESCRIPTION FLOW SCORE ==="
+          git log --all --date=iso --pretty='%H|%ad|%s' -S'prescriptionFlowScore15833' -- index.html | head -30
+          echo "=== SEED SELECTION CONTEXT ==="
+          git log --all --date=iso --pretty='%H|%ad|%s' -S'earthlineSeedSelectionContext15841' -- index.html | head -30
+          echo "=== ORDERING ==="
+          git log --all --date=iso --pretty='%H|%ad|%s' -S'Number(!!b.primaryFlowFirst15836)' -- index.html | head -30
+          echo "=== ACCEPTED VS CURRENT prescribeSwales hash ==="
+          git show 74343a24f90fed7d7abbe9267ef11a2836220de7:index.html > /tmp/a.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,difflib
+          def extract(s,name):
+              i=s.find('async function prescribeSwales')
+              if i<0:i=s.find('function prescribeSwales')
+              if i<0: raise SystemExit('no prescribeSwales '+name)
+              b=s.find('{',i); d=0
+              for j in range(b,len(s)):
+                  if s[j]=='{': d+=1
+                  elif s[j]=='}':
+                      d-=1
+                      if d==0:return s[i:j+1]
+              raise SystemExit('unclosed')
+          A=extract(Path('/tmp/a.html').read_text(encoding='utf-8'),'accepted')
+          C=extract(Path('index.html').read_text(encoding='utf-8'),'current')
+          print('accepted bytes',len(A),'sha',hashlib.sha256(A.encode()).hexdigest())
+          print('current bytes',len(C),'sha',hashlib.sha256(C.encode()).hexdigest())
+          diff=list(difflib.unified_diff(A.splitlines(),C.splitlines(),fromfile='16584',tofile='current',n=2))
+          keys=('flowFirst','primaryFlowFirst','prescriptionFlowScore','seedCandidatesForLevel','ordered=','maxCandidates','maxFinal','deadline','coverageDiag','perLevel')
+          for idx,line in enumerate(diff):
+              if any(k in line for k in keys):
+                  lo=max(0,idx-5); hi=min(len(diff),idx+15)
+                  print('\n'.join(diff[lo:hi]))
+                  print('---')
+          PY
