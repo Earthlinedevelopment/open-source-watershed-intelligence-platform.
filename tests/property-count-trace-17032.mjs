@@ -40,7 +40,6 @@ for(let attempt=1;attempt<=4;attempt++){
       }catch(_){}
     }
     return {
-      invoke,
       run:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
       publication:window.M?.propertyPublication15816||window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,
       selection:window.EARTHLINE_REGIONAL_SCORE_ORDER_16717||null,
@@ -58,6 +57,7 @@ for(let attempt=1;attempt<=4;attempt++){
       audits
     };
   });
+  out.invoke=invoke;
   console.log('PROPERTY_COUNT_TRACE_ATTEMPT_'+attempt+' '+JSON.stringify(out));
   last=out;
   await page.close();
