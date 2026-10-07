@@ -30,11 +30,20 @@ jobs:
           node-version: '20'
       - run: npm install --no-save playwright@1.55.0
       - run: npx playwright install --with-deps chromium
-      - name: Serve candidate
+      - name: Serve candidate as production-equivalent HTTPS origin
         run: |
-          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-server.log 2>&1 &
+          openssl req -x509 -nodes -newkey rsa:2048 -keyout /tmp/earthline-key.pem -out /tmp/earthline-cert.pem -days 1 -subj '/CN=earthlinedevelopment.org' -addext 'subjectAltName=DNS:earthlinedevelopment.org'
+          cat > /tmp/serve_https.py <<'PY'
+          import http.server, ssl
+          server=http.server.ThreadingHTTPServer(('0.0.0.0',443),http.server.SimpleHTTPRequestHandler)
+          ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+          ctx.load_cert_chain('/tmp/earthline-cert.pem','/tmp/earthline-key.pem')
+          server.socket=ctx.wrap_socket(server.socket,server_side=True)
+          server.serve_forever()
+          PY
+          sudo -E python3 /tmp/serve_https.py >/tmp/earthline-server.log 2>&1 &
           sleep 2
       - name: Validate candidate behavior
-        run: EARTHLINE_URL='http://127.0.0.1:8787/' node ./validate-17027.mjs
+        run: EARTHLINE_URL='https://earthlinedevelopment.org/' node ./validate-17027.mjs
 
 # diag-refresh-17027
