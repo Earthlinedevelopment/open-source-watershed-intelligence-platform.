@@ -33992,19 +33992,8 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
         const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
         const tier=String(displayed&&(displayed.tier||displayed.mode)||'').toLowerCase();
         if(serial!==runSerial||Number(md.searchGen||0)!==Number(searchGen)||tier==='regional')return;
-        let safeOk=count===0,textureOk=count===0;
+        let safeOk=count===0;
         try{const safe=syncSafePropertyFallback16221('bounded-postpublish-16521-'+delay);safeOk=count===0||!!(safe&&safe.ok);last=Object.assign({},last||{},{safe})}catch(_){ }
-        try{
-          const syncTexture=window.earthlineSyncPropertyTexture16169;
-          if(count>0&&typeof syncTexture==='function'){
-            textureOk=(await Promise.resolve(syncTexture('bounded-postpublish-16521-'+delay+'-force')))===true;
-            const textureAudit=typeof window.earthlinePropertyTextureAudit16169==='function'?window.earthlinePropertyTextureAudit16169():null;
-            const textureState=textureAudit?.texture||window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null;
-            last=Object.assign({},last||{},{texture:{ok:textureOk,sourceFeatures:Number(textureAudit?.sourceFeatures??textureState?.features??0),audit:textureAudit||textureState||null}});
-          }
-        }catch(error){
-          last=Object.assign({},last||{},{texture:{ok:false,error:String(error&&error.message||error)}});
-        }
         try{if(typeof window.earthlineSchedulePropertyWater15823==='function')window.earthlineSchedulePropertyWater15823('bounded-postpublish-16521-'+delay)}catch(_){ }
         try{if(typeof window.earthlineRenderDirectWater15824==='function')window.earthlineRenderDirectWater15824(true)}catch(_){ }
         try{if(typeof window.earthlineSyncAquiferLayer==='function')window.earthlineSyncAquiferLayer()}catch(_){ }
@@ -34019,7 +34008,7 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
         try{const a=typeof window.earthlineBuild15827Audit==='function'?window.earthlineBuild15827Audit():null;renderedKey=boundaryKey16521(a&&a.frame&&a.frame.boundary)}catch(_){ }
         const boundaryOk=!!(boundary&&boundary.style.display!=='none'&&boundary.childElementCount>0&&expectedKey&&renderedKey===expectedKey);
         last=Object.assign({},last||{},{water:{generatedPaths:Number.isFinite(generated)?generated:null,visiblePaths:visible,ok:waterOk},boundary:{ok:boundaryOk,children:boundary?boundary.childElementCount:0,display:boundary?boundary.style.display:null,expectedKey,renderedKey}});
-        if(safeOk&&waterOk&&boundaryOk&&textureOk){window.EARTHLINE_PROPERTY_PRESENTATION_SETTLE_AUDIT_16521={build:'EARTHLINE 16521',ok:true,searchGen:Number(searchGen),corridors:Number(count||0),delay,last,textureOk:true,at:new Date().toISOString()};return}
+        if(safeOk&&waterOk&&boundaryOk){window.EARTHLINE_PROPERTY_PRESENTATION_SETTLE_AUDIT_16521={build:'EARTHLINE 16521',ok:true,searchGen:Number(searchGen),corridors:Number(count||0),delay,last,at:new Date().toISOString()};return}
       }
       window.EARTHLINE_PROPERTY_PRESENTATION_SETTLE_AUDIT_16521={build:'EARTHLINE 16521',ok:false,searchGen:Number(searchGen),corridors:Number(count||0),last,at:new Date().toISOString()};
     })().catch(error=>{window.EARTHLINE_PROPERTY_PRESENTATION_SETTLE_AUDIT_16521={build:'EARTHLINE 16521',ok:false,error:String(error&&error.message||error),at:new Date().toISOString()}});

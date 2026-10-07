@@ -1069,39 +1069,29 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
         Object.values(x.layers).every(Boolean));
     }catch(_){return false}
   }
-  function setFallbackVisibility(show){
-    const m=map();if(!m)return false;
-    const target=show?'visible':'none';
+  function enforce(reason='check'){
+    const m=map();
+    if(!m||!propertyPublished())return false;
+    if(textureVerified())return false;
     let changed=0;
     for(const id of SAFE){
       try{
         if(!m.getLayer?.(id))continue;
-        const current=m.getLayoutProperty?.(id,'visibility');
-        if(current!==target){m.setLayoutProperty?.(id,'visibility',target);changed++}
-        if(show){
-          const opacity=m.getPaintProperty?.(id,'line-opacity');
-          if(opacity===0||opacity==null){m.setPaintProperty(id,'line-opacity',.98);changed++}
-          m.moveLayer?.(id);
-        }
+        m.setLayoutProperty?.(id,'visibility','visible');
+        const opacity=m.getPaintProperty?.(id,'line-opacity');
+        if(opacity===0||opacity==null){m.setPaintProperty(id,'line-opacity',.98);changed++}
+        m.moveLayer?.(id);
       }catch(_){}
     }
-    return changed>0;
-  }
-  function enforce(reason='check'){
-    const m=map();
-    if(!m||!propertyPublished())return false;
-    const ready=textureVerified();
-    const changed=setFallbackVisibility(!ready);
     window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011.last={
-      reason,changed,textureVerified:ready,
-      fallbackVisible:!ready,
+      reason,changed,textureVerified:false,
       safeCount:Number((window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{}).safeCount||0),
       at:new Date().toISOString()
     };
-    return changed;
+    return changed>0;
   }
   function afterPublication(reason){
-    for(const ms of [0,120,450,1100,2400,5000])setTimeout(()=>enforce(reason+'-'+ms),ms);
+    for(const ms of [0,120,450,1100])setTimeout(()=>enforce(reason+'-'+ms),ms);
   }
   window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011={state:'ready',enforce,textureVerified};
   document.addEventListener('earthline:analysis-complete',()=>{
