@@ -1,0 +1,62 @@
+name: Earthline Governed Property Generator 17036
+on:
+  push:
+    branches: [test-property-coverage-17031]
+    paths:
+      - '.github/workflows/governed-property-generator-17036.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Narrow governed Property generator
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          name='async function earthlineGovernedPropertyRun16202'
+          start=s.find(name)
+          if start<0:
+              name='function earthlineGovernedPropertyRun16202'
+              start=s.find(name)
+          print('START',start)
+          assert start>=0
+          brace=s.find('{',start); depth=0; end=None
+          for i in range(brace,len(s)):
+              if s[i]=='{': depth+=1
+              elif s[i]=='}':
+                  depth-=1
+                  if depth==0:
+                      end=i+1; break
+          assert end
+          fn=s[start:end]
+          lines=fn.splitlines()
+          keys=['M.swales','swale','Swale','prescrib','makeSwales','generate','contour','spacing']
+          shown=set()
+          for i,line in enumerate(lines):
+              if any(k in line for k in keys):
+                  lo=max(0,i-4); hi=min(len(lines),i+6)
+                  if (lo,hi) in shown: continue
+                  shown.add((lo,hi))
+                  print('\n--- lines',lo+1,'to',hi,'---')
+                  for n in range(lo,hi):
+                      print(f'{n+1:04d}: {lines[n]}')
+          print('\nFUNCTION_BYTES',len(fn),'LINES',len(lines))
+          print('\n=== ALL GLOBAL M.swales ASSIGNMENTS ===')
+          for token in ['M.swales=','M.swales =']:
+              st=0
+              while True:
+                  i=s.find(token,st)
+                  if i<0: break
+                  before=s.rfind('function ',0,i)
+                  async_before=s.rfind('async function ',0,i)
+                  owner=max(before,async_before)
+                  owner_line=s[owner:s.find('{',owner)].strip() if owner>=0 else 'unknown'
+                  print('\nPOS',i,'OWNER',owner_line)
+                  print(s[max(0,i-700):min(len(s),i+1200)])
+                  st=i+len(token)
+          PY
