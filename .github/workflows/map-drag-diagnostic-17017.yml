@@ -1,0 +1,22 @@
+name: Earthline Map Drag Diagnostic 17017
+on:
+  push:
+    branches: [diag-map-drag-17017]
+    paths:
+      - 'tests/map-drag-diagnostic-17017.mjs'
+      - '.github/workflows/map-drag-diagnostic-17017.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  drag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/map-drag-diagnostic-17017.mjs
