@@ -1,0 +1,30 @@
+name: Earthline Property Budget Diff 17035
+on:
+  push:
+    branches: [candidate-property-integrity-17019]
+    paths:
+      - '.github/workflows/property-budget-diff-17035.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Exact current and 16584 budget blocks
+        shell: bash
+        run: |
+          git show 74343a24f90fed7d7abbe9267ef11a2836220de7:index.html > /tmp/accepted.html
+          python3 - <<'PY'
+          from pathlib import Path
+          for label,path in [('CURRENT','index.html'),('ACCEPTED_16584','/tmp/accepted.html')]:
+            s=Path(path).read_text(encoding='utf-8')
+            print('\n===== '+label+' =====')
+            for needle in ['work15771=', 'const work15771', 'deadline15771=', 'minSpacingM15771=', 'targetSpacingM15771=']:
+              i=s.find(needle)
+              print('\n'+needle+' POS '+str(i))
+              if i>=0: print(s[max(0,i-1200):min(len(s),i+3000)])
+          PY
