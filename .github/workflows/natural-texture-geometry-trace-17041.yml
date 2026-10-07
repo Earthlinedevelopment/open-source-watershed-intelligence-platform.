@@ -1,0 +1,31 @@
+name: Earthline Natural Texture Geometry Trace 17041
+on:
+  push:
+    branches: [test-property-coverage-17031]
+    paths:
+      - '.github/workflows/natural-texture-geometry-trace-17041.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract natural texture source owner
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for n in ['earthlineSyncPropertyTexture16169','earthlinePropertyTextureAudit16169','earthline-property-swale-natural-16174','authoritativeSafeSwales15815']:
+              print('\n===== '+n+' =====')
+              st=0; hits=0
+              while True:
+                  i=s.find(n,st)
+                  if i<0 or hits>=10: break
+                  print('\n--- @',i,'---')
+                  print(s[max(0,i-4200):min(len(s),i+9000)])
+                  st=i+len(n);hits+=1
+              print('HITS',hits)
+          PY
