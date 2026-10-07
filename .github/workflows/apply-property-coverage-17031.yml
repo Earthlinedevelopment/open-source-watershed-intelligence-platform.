@@ -1,0 +1,44 @@
+name: Earthline Property Coverage Candidate 17031
+on:
+  push:
+    branches: [candidate-property-coverage-17031]
+    paths:
+      - 'tools/apply-property-coverage-17031.py'
+      - '.github/workflows/apply-property-coverage-17031.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-property-coverage-17031
+          fetch-depth: 0
+      - run: python3 tools/apply-property-coverage-17031.py
+      - run: git diff --check
+      - name: Guard assertions
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          marker="/* EARTHLINE 16783 — final published 12x12 candidate-cell spread."
+          i=s.find(marker); assert i>=0
+          chunk=s[i:i+3000]
+          assert "if(chosen.length&&candidates.length){" in chunk
+          assert "if(!focusMode&&chosen.length&&candidates.length){" not in chunk
+          assert "focusMode?52:" in s
+          assert "primarySpacing=focusMode?Math.max(6" in s
+          assert "focusMode?Math.max(4,Math.round(primarySpacing*.72))" in s
+          print("candidate guard assertions PASS")
+          PY
+      - name: Commit candidate
+        shell: bash
+        run: |
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'candidate: apply existing count-neutral spread to Property 17031'
+          git push origin HEAD:candidate-property-coverage-17031
