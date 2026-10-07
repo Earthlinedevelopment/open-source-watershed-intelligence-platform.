@@ -1,0 +1,27 @@
+name: Earthline Texture Verification Shape Audit 17044
+on:
+  push:
+    branches: [candidate-property-integrity-17019]
+    paths:
+      - '.github/workflows/texture-verification-shape-audit-17044.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare renderer audit output with fail-visible verifier
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          idx=Path('index.html').read_text(encoding='utf-8')
+          launch=Path('earthline-launch-16872.js').read_text(encoding='utf-8')
+          for label,s,n in [('INDEX_AUDIT',idx,'function audit('),('INDEX_TEXTURE_AUDIT',idx,'earthlinePropertyTextureAudit16169'),('LAUNCH_VERIFY',launch,'function textureVerified(')]:
+            print('\n===== '+label+' =====')
+            i=s.find(n)
+            print('POS',i)
+            if i>=0: print(s[max(0,i-2600):min(len(s),i+6500)])
+          PY
