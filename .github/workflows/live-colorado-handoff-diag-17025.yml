@@ -1,0 +1,21 @@
+name: Earthline Live Colorado Handoff Diagnostic 17025
+on:
+  push:
+    branches: [candidate-property-integrity-17019]
+    paths:
+      - 'tests/live-colorado-handoff-diag-17025.mjs'
+      - '.github/workflows/live-colorado-handoff-diag-17025.yml'
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/live-colorado-handoff-diag-17025.mjs
