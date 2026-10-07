@@ -1,0 +1,48 @@
+name: Earthline 16584 Property Selector Diff 17024
+on:
+  push:
+    branches: [candidate-property-integrity-17019]
+    paths:
+      - '.github/workflows/property-selector-16584-diff-17024.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compare current makeSwales to accepted 16584
+        shell: bash
+        run: |
+          git show 74343a24f90fed7d7abbe9267ef11a2836220de7:index.html > /tmp/accepted.html
+          cp index.html /tmp/current.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          def extract(path):
+              s=Path(path).read_text(encoding='utf-8')
+              start=s.find('function makeSwales')
+              if start<0: raise SystemExit('makeSwales not found '+path)
+              brace=s.find('{',start); depth=0; end=None
+              for i in range(brace,len(s)):
+                  if s[i]=='{': depth+=1
+                  elif s[i]=='}':
+                      depth-=1
+                      if depth==0:
+                          end=i+1;break
+              if end is None: raise SystemExit('unclosed makeSwales '+path)
+              return s[start:end]
+          for name,path in [('accepted','/tmp/accepted.html'),('current','/tmp/current.html')]:
+              fn=extract(path)
+              Path('/tmp/'+name+'-makeSwales.js').write_text(fn,encoding='utf-8')
+              print(name,'bytes',len(fn),'sha256',hashlib.sha256(fn.encode()).hexdigest())
+              print('--- '+name+' focus lines ---')
+              for line in fn.splitlines():
+                  if any(k in line for k in ['focusMode','chosen.length','spacing','coverageGroups','regionalCapacity','minSpacing','0.72']):
+                      print(line)
+          PY
+          echo "=== DIFF ==="
+          diff -u /tmp/accepted-makeSwales.js /tmp/current-makeSwales.js | head -500 || true
