@@ -1,0 +1,45 @@
+name: Earthline Property Boundary Function Diff 17038
+on:
+  push:
+    branches: [candidate-property-integrity-17019]
+    paths:
+      - '.github/workflows/property-boundary-function-diff-17038.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Diff exact changed Property boundary functions
+        shell: bash
+        run: |
+          git show 74343a24f90fed7d7abbe9267ef11a2836220de7:index.html > /tmp/a.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import difflib
+          A=Path('/tmp/a.html').read_text(encoding='utf-8')
+          C=Path('index.html').read_text(encoding='utf-8')
+          def extract(s,name):
+            starts=[s.find('function '+name),s.find('async function '+name)]
+            starts=[x for x in starts if x>=0]
+            if not starts:return ''
+            i=min(starts); b=s.find('{',i); d=0
+            for j in range(b,len(s)):
+              if s[j]=='{': d+=1
+              elif s[j]=='}':
+                d-=1
+                if d==0:return s[i:j+1]
+            return ''
+          for name in ['declaredSite','publishPropertyDisplay16220']:
+            a=extract(A,name); c=extract(C,name)
+            print('\n===== '+name+' =====')
+            print('\n'.join(difflib.unified_diff(a.splitlines(),c.splitlines(),fromfile='16584',tofile='current',n=6)))
+          PY
+          echo '=== LINEAGE declaredSite ==='
+          git log --all --date=iso --pretty='%H|%ad|%s' -L :declaredSite:index.html | head -120 || true
+          echo '=== LINEAGE publishPropertyDisplay16220 ==='
+          git log --all --date=iso --pretty='%H|%ad|%s' -L :publishPropertyDisplay16220:index.html | head -180 || true
