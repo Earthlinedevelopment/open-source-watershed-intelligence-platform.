@@ -1,0 +1,56 @@
+name: Earthline Active Property Final Selection 17039
+on:
+  push:
+    branches: [test-property-coverage-17031]
+    paths:
+      - '.github/workflows/active-property-final-selection-17039.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compare active Property prescriber current vs accepted
+        shell: bash
+        run: |
+          git show 74343a24f90fed7d7abbe9267ef11a2836220de7:index.html > /tmp/accepted.html
+          python3 - <<'PY'
+          from pathlib import Path
+          def block(path):
+              s=Path(path).read_text(encoding='utf-8')
+              a=s.find('function prescribeSwales15778')
+              assert a>=0
+              b=s.find('\n  function ',a+10)
+              c=s.find('\n  async function ',a+10)
+              stops=[x for x in (b,c) if x>=0]
+              z=min(stops) if stops else min(len(s),a+90000)
+              return s[a:z]
+          cur=block('index.html'); acc=block('/tmp/accepted.html')
+          Path('/tmp/current.js').write_text(cur,encoding='utf-8')
+          Path('/tmp/accepted.js').write_text(acc,encoding='utf-8')
+          print('CURRENT',len(cur),'ACCEPTED',len(acc))
+          needles=['maxFinal','afterDedupe','rejectFinalSpacing','M.swales=','M.swales =','final.push','selected.push','finalCandidates','candidateTermination','finalTermination','minSpacingM15771','work15771']
+          for label,txt in [('CURRENT',cur),('ACCEPTED',acc)]:
+              print('\n===== '+label+' FINAL-SELECTION SNIPPETS =====')
+              lines=txt.splitlines()
+              seen=set()
+              for i,line in enumerate(lines):
+                  if any(n in line for n in needles):
+                      lo=max(0,i-5); hi=min(len(lines),i+12)
+                      key=(lo,hi)
+                      if key in seen: continue
+                      seen.add(key)
+                      print('\n---',lo+1,'to',hi,'---')
+                      for j in range(lo,hi): print(f'{j+1:04d}: {lines[j]}')
+          PY
+          echo '=== FUNCTION DIFF ==='
+          diff -u /tmp/accepted.js /tmp/current.js | grep -E '^[-+].*(maxFinal|maxCandidates|maxSeedsPerLevel|MIN_M|TARGET_M|claimR|spacing|final|candidate|swales)' | head -300 || true
+          echo '=== HISTORY OF maxFinal Property budget ==='
+          git log --all --oneline -S'maxFinal:200' -- index.html | head -50 || true
+          git log --all --oneline -S'maxFinal:80' -- index.html | head -50 || true
+          git log --all --oneline -S'maxFinal:120' -- index.html | head -50 || true
+          git log --all --oneline -S'maxCandidates:256' -- index.html | head -50 || true
