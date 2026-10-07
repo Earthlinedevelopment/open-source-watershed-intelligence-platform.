@@ -1,0 +1,29 @@
+name: Earthline Texture Sync Definition 17042
+on:
+  push:
+    branches: [test-property-coverage-17031]
+    paths:
+      - '.github/workflows/texture-sync-definition-17042.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exact texture sync definition
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          lines=s.splitlines()
+          for needle in ['function earthlineSyncPropertyTexture16169','earthlineSyncPropertyTexture16169 =','earthlineSyncPropertyTexture16169=','window.earthlineSyncPropertyTexture16169']:
+              print('\n===== '+needle+' =====')
+              for idx,line in enumerate(lines):
+                  if needle in line:
+                      print('LINE',idx+1)
+                      for j in range(max(0,idx-35),min(len(lines),idx+120)):
+                          print(f'{j+1:05d}: {lines[j]}')
+          PY
