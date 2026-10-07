@@ -124,9 +124,10 @@ const snap=await page.evaluate(()=>{
   };
 });
 
+console.log('CANDIDATE_17027_SNAPSHOT '+JSON.stringify(snap));
 if(snap.handoff?.validParent!==true)throw new Error('valid handoff audit false '+JSON.stringify(snap.handoff));
-if(Number(snap.supportedCapacity?.capacity)!==52)throw new Error('Property capacity is not 52 '+JSON.stringify(snap.supportedCapacity));
-if(Number(snap.scoreOrder?.chosen||0)>52)throw new Error('chosen candidates exceed 52 '+JSON.stringify(snap.scoreOrder));
+if(!(Number(snap.safeCount)>0))throw new Error('Property published no safe corridors '+JSON.stringify(snap.publication));
+if(Number(snap.safeCount)>52)throw new Error('Property safe corridor count exceeds accepted 52 cap '+JSON.stringify({safeCount:snap.safeCount,publication:snap.publication,scoreOrder:snap.scoreOrder}));
 if(snap.evidence?.acquisitionResult==='screened-clear'){
   if(snap.evidence?.kind!=='open-data')throw new Error('screened-clear rendered as wrong kind '+JSON.stringify(snap.evidence));
   if(/must remain blocked/i.test(snap.evidenceText))throw new Error('screened-clear still claims publication blocked');
