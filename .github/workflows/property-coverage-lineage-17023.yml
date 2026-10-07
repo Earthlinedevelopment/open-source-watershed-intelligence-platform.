@@ -1,0 +1,40 @@
+name: Earthline Property Coverage Lineage 17023
+on:
+  push:
+    branches: [candidate-property-integrity-17019]
+    paths:
+      - '.github/workflows/property-coverage-lineage-17023.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Coverage owner and lineage
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          i=s.find('focusMode?80')
+          print('FOCUS',i)
+          lo=max(0,i-7000);hi=min(len(s),i+18000)
+          chunk=s[lo:hi]
+          for n in ['0.72','chosen.length','minDist','spacing','coverageGroups16736','if(!focusMode)']:
+            ps=[];st=0
+            while True:
+              j=chunk.find(n,st)
+              if j<0: break
+              ps.append(lo+j);st=j+len(n)
+            print(n,ps[:30])
+          print('\n=== OWNER CHUNK ===\n')
+          print(chunk)
+          PY
+          echo "=== GIT LINEAGE focusMode?80 ==="
+          git log --all --oneline -S'focusMode?80' -- index.html | head -30 || true
+          echo "=== GIT LINEAGE minSpacingScale ==="
+          git log --all --oneline -S'.72' -- index.html | head -40 || true
