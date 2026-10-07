@@ -1,0 +1,42 @@
+name: Earthline Property Rectangle Diff 17042
+on:
+  push:
+    branches: [candidate-property-integrity-17019]
+    paths:
+      - '.github/workflows/property-rectangle-diff-17042.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compare exact 20-acre rectangle constructor
+        shell: bash
+        run: |
+          git show 74343a24f90fed7d7abbe9267ef11a2836220de7:index.html > /tmp/a.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,difflib
+          A=Path('/tmp/a.html').read_text(encoding='utf-8')
+          C=Path('index.html').read_text(encoding='utf-8')
+          def extract(s,name):
+            i=s.find('function '+name)
+            if i<0:return ''
+            b=s.find('{',i);d=0
+            for j in range(b,len(s)):
+              if s[j]=='{':d+=1
+              elif s[j]=='}':
+                d-=1
+                if d==0:return s[i:j+1]
+            return ''
+          for n in ['earthlineRectangleAround','earthlineSelectedSiteFromCenter']:
+            a=extract(A,n);c=extract(C,n)
+            print(n,'accepted',len(a),hashlib.sha256(a.encode()).hexdigest())
+            print(n,'current ',len(c),hashlib.sha256(c.encode()).hexdigest())
+            print(n,'same',a==c)
+            if a!=c:print('\n'.join(difflib.unified_diff(a.splitlines(),c.splitlines(),fromfile='16584',tofile='current',n=8)))
+          PY
