@@ -1,0 +1,31 @@
+name: Earthline Property Publication Owner Trace 17033
+on:
+  push:
+    branches: [test-property-coverage-17031]
+    paths:
+      - '.github/workflows/property-publication-owner-trace-17033.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract downstream Property owners
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for n in ['authoritativeSafeSwales15815','authoritativePropertySwales15800','propertyResultLock15815','propertyPublication15816','EARTHLINE_PROPERTY_SAFETY_AUDIT_15806']:
+              print('\n===== '+n+' =====')
+              start=0;hits=0
+              while True:
+                  i=s.find(n,start)
+                  if i<0 or hits>=8: break
+                  print('\n--- @',i,'---')
+                  print(s[max(0,i-4500):min(len(s),i+8500)])
+                  start=i+len(n);hits+=1
+              print('HITS',hits)
+          PY
