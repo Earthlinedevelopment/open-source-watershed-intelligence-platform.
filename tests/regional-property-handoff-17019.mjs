@@ -17,7 +17,7 @@ const pre=await page.evaluate(()=>{
 await page.waitForFunction(()=>!!window.EARTHLINE_PROPERTY_TARGET_16201?.code,{timeout:5000});
 const before=await page.evaluate(()=>JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_TARGET_16201)));
 await page.evaluate(()=>{ window.EARTHLINE_PROPERTY_TARGET_16201.parentRunToken=''; });
-await page.locator('#earthlineDeclareProperty16169').click();
+await page.evaluate(()=>document.getElementById('earthlineDeclareProperty16169')?.click());
 await page.waitForFunction(()=>window.EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347!=null,{timeout:10000,polling:50});
 const audit=await page.evaluate(()=>window.EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347);
 console.log('HANDOFF_BEFORE '+JSON.stringify(before));
