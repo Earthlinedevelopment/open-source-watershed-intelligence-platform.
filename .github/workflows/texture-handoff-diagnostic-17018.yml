@@ -1,0 +1,22 @@
+name: Earthline Texture Handoff Diagnostic 17018
+on:
+  push:
+    branches: [diag-map-drag-17017]
+    paths:
+      - 'tests/texture-handoff-diagnostic-17018.mjs'
+      - '.github/workflows/texture-handoff-diagnostic-17018.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/texture-handoff-diagnostic-17018.mjs
