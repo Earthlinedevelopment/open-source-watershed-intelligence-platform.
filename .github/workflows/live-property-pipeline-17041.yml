@@ -1,0 +1,21 @@
+name: Earthline Live Property Pipeline Diagnostic 17041
+on:
+  push:
+    branches: [candidate-property-integrity-17019]
+    paths:
+      - 'tests/live-property-pipeline-17041.mjs'
+      - '.github/workflows/live-property-pipeline-17041.yml'
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/live-property-pipeline-17041.mjs
