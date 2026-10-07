@@ -1072,8 +1072,26 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   function enforce(reason='check'){
     const m=map();
     if(!m||!propertyPublished())return false;
-    if(textureVerified())return false;
+    const textureReady=textureVerified();
     let changed=0;
+    if(textureReady){
+      /* EARTHLINE 17045 — presentation ownership is exclusive. Once the approved
+         natural-texture owner verifies, explicitly relinquish the solid safe-line
+         fallback. Geometry, ranking, safety and publication remain unchanged. */
+      for(const id of SAFE){
+        try{
+          if(!m.getLayer?.(id))continue;
+          const opacity=m.getPaintProperty?.(id,'line-opacity');
+          if(opacity!==0){m.setPaintProperty(id,'line-opacity',0);changed++}
+        }catch(_){}
+      }
+      window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011.last={
+        reason,changed,textureVerified:true,relinquished:true,
+        safeCount:Number((window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{}).safeCount||0),
+        at:new Date().toISOString()
+      };
+      return changed>0;
+    }
     for(const id of SAFE){
       try{
         if(!m.getLayer?.(id))continue;
@@ -1084,7 +1102,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       }catch(_){}
     }
     window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011.last={
-      reason,changed,textureVerified:false,
+      reason,changed,textureVerified:false,relinquished:false,
       safeCount:Number((window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{}).safeCount||0),
       at:new Date().toISOString()
     };
