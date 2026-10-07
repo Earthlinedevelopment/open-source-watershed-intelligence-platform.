@@ -1,0 +1,83 @@
+name: Earthline Static Gate Property Repair 17028
+on:
+  push:
+    branches:
+      - candidate-property-integrity-17019
+    paths:
+      - .github/workflows/static-gate-property-repair-17028.yml
+permissions:
+  contents: read
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-property-integrity-live-17028
+          fetch-depth: 0
+      - name: Verify one-file delta
+        run: |
+          test "$(git diff --name-only 445677cffdf93d3a2a44353eb1126fa22c6dcc27..HEAD | wc -l)" -eq 1
+          test "$(git diff --name-only 445677cffdf93d3a2a44353eb1126fa22c6dcc27..HEAD)" = "index.html"
+          git diff --check 445677cffdf93d3a2a44353eb1126fa22c6dcc27..HEAD
+      - name: Verify exact owners and syntax
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(encoding='utf-8')
+          checks={
+            'focus_primary_accepted': 'primarySpacing=focusMode?Math.max(6,Math.round(hy.w/31)):Math.max(3,Math.round(hy.w/31))' in s,
+            'focus_capacity_accepted': 'baseRegionalCapacity16755=focusMode?52:' in s and 'regionalCapacity16755=focusMode?52:' in s,
+            'focus_post20_accepted': 'focusMode?Math.max(4,Math.round(primarySpacing*.72)):Math.max(2,Math.round(primarySpacing*.72))' in s,
+            'regional_density_preserved': 'Math.min(120,Math.max(80,coverageGroups16736.size*4))' in s and 'supportExtra16755=focusMode?0:Math.min(54' in s,
+            'screened_clear_owner': 'sourceTier==="open-data"&&acquisitionResult==="screened-clear"' in s,
+            'screened_clear_no_false_block': 'This is screened-clear, not authoritative-clear; field verification remains required before any siting decision.' in s,
+            'handoff_publication_owner': 'publicationToken16347' in s and "build:'EARTHLINE 17027'" in s,
+            'five_token_gate_removed': 'displayedToken16347===liveToken16347&&displayedToken16347===targetParentToken16347&&displayedToken16347===activePublishedToken16347' not in s,
+          }
+          print(checks)
+          if not all(checks.values()): raise SystemExit('owner checks failed')
+
+          # Truth table for new Regional -> Property identity rule.
+          def valid(parentTier,displayed,target,pub,generated,state):
+              no_new=state not in ('running','failed')
+              return parentTier=='regional' and bool(displayed) and displayed==target and displayed==pub and generated>0 and no_new
+          truth={
+            'valid_published':valid('regional','r1','r1','r1',10,'published'),
+            'valid_idle_after_publish':valid('regional','r1','r1','r1',10,'idle'),
+            'stale_target_blocks':not valid('regional','r1','old','r1',10,'published'),
+            'stale_publication_blocks':not valid('regional','r1','r1','old',10,'published'),
+            'zero_publication_blocks':not valid('regional','r1','r1','r1',0,'published'),
+            'new_run_blocks':not valid('regional','r1','r1','r1',10,'running'),
+          }
+          print(truth)
+          if not all(truth.values()): raise SystemExit('handoff truth table failed')
+
+          # Extract only script blocks containing the three changed owners for JS syntax checks.
+          blocks=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',s,flags=re.S|re.I)
+          markers=['function makeSwales','EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347','earthline-16516-evidence-grade-js']
+          selected=[]
+          for b in blocks:
+              if 'function makeSwales' in b or 'EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347' in b or 'earthlineGetExclusionEvidence16516' in b:
+                  selected.append(b)
+          if len(selected)<3:
+              raise SystemExit(f'expected >=3 changed owner script blocks, got {len(selected)}')
+          for i,b in enumerate(selected):
+              Path(f'/tmp/owner-{i}.js').write_text(b,encoding='utf-8')
+          print('syntax blocks',len(selected))
+          PY
+          for f in /tmp/owner-*.js; do node --check "$f"; done
+      - name: Confirm accepted 16584 Property constants
+        run: |
+          git show 74343a24f90fed7d7abbe9267ef11a2836220de7:index.html > /tmp/accepted.html
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/accepted.html').read_text(encoding='utf-8')
+          assert 'const chosen=[],primarySpacing=Math.max(6,Math.round(hy.w/31));' in s
+          assert 'if(chosen.length>=52)break;' in s
+          assert 'const spacing=chosen.length<20?primarySpacing:Math.max(4,Math.round(primarySpacing*.72));' in s
+          print('accepted 16584 Property constants confirmed')
+          PY
