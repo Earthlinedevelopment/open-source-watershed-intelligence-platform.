@@ -1,0 +1,21 @@
+name: Earthline Runtime Production Coverage AB 17031
+on:
+  push:
+    branches: [test-property-coverage-17031]
+    paths:
+      - 'tests/runtime-production-coverage-ab-17031.mjs'
+      - '.github/workflows/runtime-production-coverage-ab-17031.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/runtime-production-coverage-ab-17031.mjs
