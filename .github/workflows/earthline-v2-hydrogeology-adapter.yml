@@ -8,9 +8,11 @@ on:
       - 'v2/hydrogeology-transport.js'
       - 'v2/data/usgs-hydrogeology-2025/shards-5x5/**'
       - 'v2/source-registry.json'
+      - 'v2/naip-imagery-adapter.js'
       - 'tests/v2-hydrogeology-source-adapter.mjs'
       - 'tests/v2-hydrogeology-transport.mjs'
       - 'tests/v2-hydrogeology-representative-regions.mjs'
+      - 'tests/v2-naip-imagery-adapter.mjs'
       - '.github/workflows/earthline-v2-hydrogeology-adapter.yml'
   workflow_dispatch:
 
@@ -32,3 +34,7 @@ jobs:
         run: node tests/v2-hydrogeology-transport.mjs
       - name: Validate representative V2 hydrogeology regions
         run: node tests/v2-hydrogeology-representative-regions.mjs
+      - name: Validate non-blocking NAIP imagery adapter
+        env:
+          EARTHLINE_NAIP_LIVE: "1"
+        run: node tests/v2-naip-imagery-adapter.mjs
