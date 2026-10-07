@@ -88,39 +88,7 @@ function updateQuotaText(){if(document.getElementById('earthlineAccountModal1687
 function openAccount(mode='login'){const m=modal();m.dataset.mode=mode;m.classList.add('open');track(mode==='create'?'account_create_open':'login_open');renderAccount();setTimeout(()=>m.querySelector('input:not([hidden])')?.focus(),40)}
 function donateTarget(){try{return String(window.EARTHLINE_DONATE_URL_16872||localStorage.getItem('earthlineDonateUrl16872')||'https://www.zeffy.com/en-US/donation-form/donate-to-change-lives-25645')}catch(_){return String(window.EARTHLINE_DONATE_URL_16872||'https://www.zeffy.com/en-US/donation-form/donate-to-change-lives-25645')}}
 function donate(){track('donate_click');const u=donateTarget();if(u){window.open(u,'_blank','noopener');return}window.open('donate.html','_blank','noopener')}
-let launchRailRetry16872=0;
-function installRail(){
-  const rail=document.getElementById('earthlineRail16188');
-  if(!rail){
-    const delays=[0,40,160,500];
-    if(launchRailRetry16872<delays.length)setTimeout(installRail,delays[launchRailRetry16872++]);
-    return false;
-  }
-  launchRailRetry16872=0;
-  if(document.getElementById('earthlineLaunchLogin16872')){
-    document.getElementById('earthlineLaunchFallbackRail16872')?.remove();
-    return true;
-  }
-  const mk=(id,txt)=>{
-    const b=document.createElement('button');
-    b.id=id;
-    b.type='button';
-    b.className='el-rail-control-16188 earthline-launch-rail-btn-16872';
-    b.textContent=txt;
-    b.setAttribute('aria-label',txt);
-    return b;
-  };
-  const L=mk('earthlineLaunchLogin16872',t().login);
-  const D=mk('earthlineLaunchDonate16872',t().donate);
-  const M=mk('earthlineLaunchMerch16872',t().merch);
-  L.onclick=()=>openAccount('login');
-  D.onclick=donate;
-  M.onclick=()=>{track('merch_click');window.open('merchandise.html','_blank','noopener')};
-  rail.append(L,D,M);
-  document.getElementById('earthlineLaunchFallbackRail16872')?.remove();
-  renderAccount();
-  return true;
-}
+function installRail(){if(document.getElementById('earthlineLaunchLogin16872'))return;const rail=document.getElementById('earthlineRail16188');const contact=document.getElementById('earthlineRailContact16512');const host=rail||contact?.parentElement||document.body;const mk=(id,txt)=>{const b=document.createElement('button');b.id=id;b.type='button';b.className=(rail?'el-rail-control-16188 ':'')+'earthline-launch-rail-btn-16872';b.textContent=txt;b.setAttribute('aria-label',txt);return b};const L=mk('earthlineLaunchLogin16872',t().login),D=mk('earthlineLaunchDonate16872',t().donate),M=mk('earthlineLaunchMerch16872',t().merch);L.onclick=()=>openAccount('login');D.onclick=donate;M.onclick=()=>{track('merch_click');window.open('merchandise.html','_blank','noopener')};if(rail){rail.append(L,D,M)}else if(contact){host.append(L,D,M)}else{const wrap=document.createElement('div');wrap.id='earthlineLaunchFallbackRail16872';wrap.append(L,D,M);document.body.appendChild(wrap)}renderAccount()}
 async function loadConfig(){try{const r=await rawFetch(CONFIG_URL+'?v=16877',{cache:'no-store'});if(!r.ok)throw new Error('config');const j=await r.json();config={...FALLBACK,...j};configReady=true}catch(_){config={...FALLBACK,paidSearchEnabled:false};configReady=true}updateQuotaText()}
 const tq=[];let tt=null,tf=false,analysisStarted=0,sessionStarted=performance.now();
 function telemetrySession(){try{let v=sessionStorage.getItem(keys.telemetry);if(!v){v='t_'+(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));sessionStorage.setItem(keys.telemetry,v)}return v}catch(_){return 't_'+Date.now().toString(36)+Math.random().toString(36).slice(2)}}
@@ -1036,10 +1004,11 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 
 
 /* EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011
-   Property presentation fail-visible guard.
-   No science, geometry, ranking, spacing, exclusions or hydrology changes.
-   The existing natural-texture owner remains authoritative; this guard must not
-   resize, recolor, hide or replace that approved swale presentation. */
+   Presentation-only fail-visible guard.
+   It does not render, generate, rank, filter, or replace any Property swale.
+   The existing 16236 natural-texture owner remains authoritative. When that
+   optional texture has not verified, keep its existing authoritative safe-line
+   fallback visible instead of allowing both presentations to be transparent. */
 (function installEarthlinePropertyFallbackFailVisible17011(){
   if(window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011)return;
   const SAFE=[
@@ -1049,23 +1018,11 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     'earthline-property-safe-water-16221'
   ];
   function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
-  function model(){try{return typeof M!=='undefined'?M:null}catch(_){return null}}
-  function authoritativeSafeCount(){
-    const md=model()||{},fc=md.authoritativeSafeSwales15815;
-    const modelCount=fc&&fc.type==='FeatureCollection'&&Array.isArray(fc.features)?fc.features.length:0;
-    const runCount=Number((window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{}).corridors||0);
-    const publicationCount=Number(md?.propertyPublication15816?.safeSegments||0);
-    const displayCount=Number((window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{}).safeCount||0);
-    return Math.max(modelCount,runCount,publicationCount,displayCount);
-  }
   function propertyPublished(){
     const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
     const p=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||a?.publicationAudit||null;
-    const md=model()||{},pub=md.propertyPublication15816||{},count=authoritativeSafeCount();
-    const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property';
-    const auditPublished=a?.settled===true&&a?.result===true&&p?.published===true;
-    const modelPublished=pub?.committed===true&&pub?.safetyVerified===true;
-    return tier&&count>0&&(auditPublished||modelPublished);
+    return String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property' &&
+      a?.settled===true && a?.result===true && p?.published===true && Number(p?.safeCount||p?.publicationCount||0)>0;
   }
   function textureVerified(){
     const run=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
@@ -1079,30 +1036,10 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
         Object.values(x.layers).every(Boolean));
     }catch(_){return false}
   }
-  function reconcileScreenedClear(){
-    const c=model()?.vectorNoBuildCoverage||null;
-    if(!c||String(c.sourceTier||'')!=='open-data'||String(c.acquisitionResult||'')!=='screened-clear')return false;
-    const el=document.getElementById('earthlineExclusionEvidence16516');
-    if(!el)return false;
-    el.dataset.kind='open-data';
-    const grade=el.querySelector('.el16516-grade');
-    const detail=el.querySelector('.el16516-detail');
-    if(grade)grade.textContent=String(c.evidenceGrade||'OPEN-DATA SCREENING · NO MAPPED EXCLUSIONS RETURNED · FIELD VERIFICATION REQUIRED');
-    if(detail)detail.textContent='Open-data road and building sources were queried successfully and returned no mapped exclusions in this 20-acre frame. Coverage is not authoritative; field verification is required before any siting decision.';
-    return true;
-  }
   function enforce(reason='check'){
     const m=map();
-    if(!m)return false;
-    const statusReconciled=reconcileScreenedClear();
-    if(!propertyPublished())return statusReconciled;
-    if(textureVerified()){
-      window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011.last={
-        reason,changed:0,textureVerified:true,statusReconciled,
-        safeCount:authoritativeSafeCount(),at:new Date().toISOString()
-      };
-      return statusReconciled;
-    }
+    if(!m||!propertyPublished())return false;
+    if(textureVerified())return false;
     let changed=0;
     for(const id of SAFE){
       try{
@@ -1114,15 +1051,16 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       }catch(_){}
     }
     window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011.last={
-      reason,changed,textureVerified:false,statusReconciled,
-      safeCount:authoritativeSafeCount(),at:new Date().toISOString()
+      reason,changed,textureVerified:false,
+      safeCount:Number((window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{}).safeCount||0),
+      at:new Date().toISOString()
     };
-    return changed>0||statusReconciled;
+    return changed>0;
   }
   function afterPublication(reason){
-    for(const ms of [0,120,450,1100,2400,5000])setTimeout(()=>enforce(reason+'-'+ms),ms);
+    for(const ms of [0,120,450,1100])setTimeout(()=>enforce(reason+'-'+ms),ms);
   }
-  window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011={state:'ready',enforce,textureVerified,reconcileScreenedClear};
+  window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011={state:'ready',enforce,textureVerified};
   document.addEventListener('earthline:analysis-complete',()=>{
     if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property')
       afterPublication('analysis-complete');
