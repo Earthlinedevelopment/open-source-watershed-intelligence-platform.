@@ -1,4 +1,4 @@
-name: Earthline production cache bust 17014
+name: Earthline production cache bust 17015
 on:
   push:
     branches: [pages-live]
@@ -14,21 +14,18 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 1
-      - name: Force current launch assets only
+      - name: Force current launch CSS
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
-          old_css='earthline-launch-16872.css?v=16872'
-          old_js='earthline-launch-16872.js?v=16960'
+          old_css='earthline-launch-16872.css?v=17014'
+          new_css='earthline-launch-16872.css?v=17015'
           if s.count(old_css)!=1:
               raise SystemExit(f"CSS asset anchor count {s.count(old_css)}")
-          if s.count(old_js)!=1:
-              raise SystemExit(f"JS asset anchor count {s.count(old_js)}")
-          s=s.replace(old_css,'earthline-launch-16872.css?v=17014',1)
-          s=s.replace(old_js,'earthline-launch-16872.js?v=17014',1)
+          s=s.replace(old_css,new_css,1)
           p.write_text(s,encoding="utf-8")
           PY
       - name: Verify exact scope
@@ -36,13 +33,12 @@ jobs:
         run: |
           git diff --check
           test "$(git diff --name-only | tr -d '\r')" = "index.html"
-          grep -q 'earthline-launch-16872.css?v=17014' index.html
-          grep -q 'earthline-launch-16872.js?v=17014' index.html
-      - name: Commit production cache bust
+          grep -q 'earthline-launch-16872.css?v=17015' index.html
+      - name: Commit production CSS cache bust
         shell: bash
         run: |
           git config user.name "Earthline Production Repair"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m "fix: force current launch assets for production users"
+          git commit -m "fix: force B7 interaction CSS for production users"
           git push origin HEAD:pages-live
