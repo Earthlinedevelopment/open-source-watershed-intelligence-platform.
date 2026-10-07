@@ -21,15 +21,14 @@ const before=await page.evaluate(()=>({
  target:window.EARTHLINE_PROPERTY_TARGET_16201||null
 }));
 const found=await page.evaluate(()=>{
- const nodes=[...document.querySelectorAll('[aria-label],button,[role="button"]')];
- const el=nodes.find(n=>/\bA10\b/i.test(String(n.getAttribute('aria-label')||n.textContent||'')));
- if(el){el.click();return {found:true,label:String(el.getAttribute('aria-label')||el.textContent||'')}}
  const sw=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.swales?.features||[];
  const f=sw.find(x=>String(x.properties?.display_code||x.properties?.code||'').toUpperCase()==='A10')||sw[9]||sw[0];
  if(!f)return {found:false,noFeature:true};
  const c=f.geometry.coordinates[Math.floor((f.geometry.coordinates.length-1)/2)];
- const t={lng:Number(c[0]),lat:Number(c[1]),source:'handoff-diag',code:String(f.properties?.display_code||f.properties?.code||'A10'),score:Number(f.properties?.score||0),query:'Colorado',parentRunToken:String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{}).runToken||''),at:new Date().toISOString()};
- window.EARTHLINE_PROPERTY_TARGET_16201=t;window.earthlineSetPropertyTarget16201?.(t);return {found:false,syntheticTarget:t};
+ const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{};
+ const t={lng:Number(c[0]),lat:Number(c[1]),source:'handoff-diag',code:String(f.properties?.display_code||f.properties?.code||'A10'),score:Number(f.properties?.score||0),query:'Colorado',parentRunToken:String(d.runToken||''),at:new Date().toISOString()};
+ window.EARTHLINE_PROPERTY_TARGET_16201=t;window.earthlineSetPropertyTarget16201?.(t);
+ return {found:true,syntheticTarget:t};
 });
 await page.waitForTimeout(700);
 const selected=await page.evaluate(()=>({
