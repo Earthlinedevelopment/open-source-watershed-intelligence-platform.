@@ -1,0 +1,21 @@
+name: Earthline Property Count Trace 17032
+on:
+  push:
+    branches: [test-property-coverage-17031]
+    paths:
+      - 'tests/property-count-trace-17032.mjs'
+      - '.github/workflows/property-count-trace-17032.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/property-count-trace-17032.mjs
