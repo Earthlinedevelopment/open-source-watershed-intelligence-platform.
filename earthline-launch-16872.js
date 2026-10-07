@@ -97,28 +97,25 @@ function installRail(){
     return false;
   }
   launchRailRetry16872=0;
+  if(document.getElementById('earthlineLaunchLogin16872')){
+    document.getElementById('earthlineLaunchFallbackRail16872')?.remove();
+    return true;
+  }
   const mk=(id,txt)=>{
-    let el=document.getElementById(id);
-    if(el&&el.tagName!=='DIV'){el.remove();el=null}
-    if(!el){el=document.createElement('div');el.id=id}
-    el.className='el-rail-control-16188 earthline-launch-rail-btn-16872';
-    el.setAttribute('role','button');
-    el.setAttribute('tabindex','0');
-    el.setAttribute('aria-label',txt);
-    el.title=txt;
-    el.textContent=txt;
-    return el;
-  };
-  const activate=(el,fn)=>{
-    el.onclick=fn;
-    el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fn(e)}};
+    const b=document.createElement('button');
+    b.id=id;
+    b.type='button';
+    b.className='el-rail-control-16188 earthline-launch-rail-btn-16872';
+    b.textContent=txt;
+    b.setAttribute('aria-label',txt);
+    return b;
   };
   const L=mk('earthlineLaunchLogin16872',t().login);
   const D=mk('earthlineLaunchDonate16872',t().donate);
   const M=mk('earthlineLaunchMerch16872',t().merch);
-  activate(L,()=>openAccount('login'));
-  activate(D,donate);
-  activate(M,()=>{track('merch_click');window.open('merchandise.html','_blank','noopener')});
+  L.onclick=()=>openAccount('login');
+  D.onclick=donate;
+  M.onclick=()=>{track('merch_click');window.open('merchandise.html','_blank','noopener')};
   rail.append(L,D,M);
   document.getElementById('earthlineLaunchFallbackRail16872')?.remove();
   renderAccount();
@@ -1039,10 +1036,10 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 
 
 /* EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011
-   Authoritative Property presentation guard.
+   Property presentation fail-visible guard.
    No science, geometry, ranking, spacing, exclusions or hydrology changes.
-   Keeps verified fallback visible when optional texture fails; also reconciles
-   the existing open-data screened-clear status and restrains dense texture width. */
+   The existing natural-texture owner remains authoritative; this guard must not
+   resize, recolor, hide or replace that approved swale presentation. */
 (function installEarthlinePropertyFallbackFailVisible17011(){
   if(window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011)return;
   const SAFE=[
@@ -1051,13 +1048,6 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     'earthline-property-safe-life-16221',
     'earthline-property-safe-water-16221'
   ];
-  const NATURAL={
-    casing:'earthline-property-swale-natural-casing-16174',
-    neutral:'earthline-property-swale-neutral-16177',
-    up:'earthline-property-swale-natural-up-16174',
-    flip:'earthline-property-swale-natural-flip-16174',
-    footprint:'earthline-property-swale-footprint-16174'
-  };
   function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
   function model(){try{return typeof M!=='undefined'?M:null}catch(_){return null}}
   function authoritativeSafeCount(){
@@ -1101,42 +1091,17 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     if(detail)detail.textContent='Open-data road and building sources were queried successfully and returned no mapped exclusions in this 20-acre frame. Coverage is not authoritative; field verification is required before any siting decision.';
     return true;
   }
-  function restrainDenseTexture(){
-    const m=map();if(!m)return false;
-    const count=authoritativeSafeCount();
-    if(!(count>80))return false;
-    try{
-      if(m.getLayer?.(NATURAL.casing)){m.setPaintProperty(NATURAL.casing,'line-width',3.2);m.setPaintProperty(NATURAL.casing,'line-opacity',.44)}
-      if(m.getLayer?.(NATURAL.neutral)){m.setPaintProperty(NATURAL.neutral,'line-width',2.4);m.setPaintProperty(NATURAL.neutral,'line-opacity',.62)}
-      if(m.getLayer?.(NATURAL.up)){m.setPaintProperty(NATURAL.up,'line-width',2.4);m.setPaintProperty(NATURAL.up,'line-opacity',.72)}
-      if(m.getLayer?.(NATURAL.flip)){m.setPaintProperty(NATURAL.flip,'line-width',2.4);m.setPaintProperty(NATURAL.flip,'line-opacity',.72)}
-      if(m.getLayer?.(NATURAL.footprint))m.setPaintProperty(NATURAL.footprint,'fill-opacity',.008);
-      for(const id of ['earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806']){
-        if(m.getLayer?.(id))m.setLayoutProperty(id,'visibility','none');
-      }
-      const safeWidths={
-        'earthline-property-safe-casing-16221':3.2,
-        'earthline-property-safe-earth-16221':2.6,
-        'earthline-property-safe-life-16221':1.8,
-        'earthline-property-safe-water-16221':1.5
-      };
-      for(const [id,width] of Object.entries(safeWidths))if(m.getLayer?.(id))m.setPaintProperty(id,'line-width',width);
-      return true;
-    }catch(_){return false}
-  }
   function enforce(reason='check'){
     const m=map();
     if(!m)return false;
     const statusReconciled=reconcileScreenedClear();
     if(!propertyPublished())return statusReconciled;
-    const textureRestrained=restrainDenseTexture();
     if(textureVerified()){
       window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011.last={
-        reason,changed:0,textureVerified:true,statusReconciled,textureRestrained,
-        safeCount:Number((window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{}).safeCount||0),
-        at:new Date().toISOString()
+        reason,changed:0,textureVerified:true,statusReconciled,
+        safeCount:authoritativeSafeCount(),at:new Date().toISOString()
       };
-      return statusReconciled||textureRestrained;
+      return statusReconciled;
     }
     let changed=0;
     for(const id of SAFE){
@@ -1149,16 +1114,15 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       }catch(_){}
     }
     window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011.last={
-      reason,changed,textureVerified:false,statusReconciled,textureRestrained,
-      safeCount:Number((window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{}).safeCount||0),
-      at:new Date().toISOString()
+      reason,changed,textureVerified:false,statusReconciled,
+      safeCount:authoritativeSafeCount(),at:new Date().toISOString()
     };
-    return changed>0||statusReconciled||textureRestrained;
+    return changed>0||statusReconciled;
   }
   function afterPublication(reason){
     for(const ms of [0,120,450,1100,2400,5000])setTimeout(()=>enforce(reason+'-'+ms),ms);
   }
-  window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011={state:'ready',enforce,textureVerified,reconcileScreenedClear,restrainDenseTexture};
+  window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011={state:'ready',enforce,textureVerified,reconcileScreenedClear};
   document.addEventListener('earthline:analysis-complete',()=>{
     if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property')
       afterPublication('analysis-complete');
