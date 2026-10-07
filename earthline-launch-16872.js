@@ -1091,7 +1091,18 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     return changed>0;
   }
   function afterPublication(reason){
-    for(const ms of [0,120,450,1100])setTimeout(()=>enforce(reason+'-'+ms),ms);
+    /* EARTHLINE 17016 — use the existing bounded settlement schedule to give the
+       approved natural-texture owner a post-publication chance to consume the
+       already-verified Property geometry. If texture still cannot verify, the
+       existing fail-visible fallback remains authoritative and visible. */
+    for(const ms of [0,120,450,1100])setTimeout(async()=>{
+      try{
+        const syncTexture=window.earthlineSyncPropertyTexture16169;
+        if(typeof syncTexture==='function')
+          await Promise.resolve(syncTexture(reason+'-texture-'+ms+'-force'));
+      }catch(_){}
+      enforce(reason+'-'+ms);
+    },ms);
   }
   window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011={state:'ready',enforce,textureVerified};
   document.addEventListener('earthline:analysis-complete',()=>{
@@ -1176,4 +1187,50 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   const boot=()=>{if(install())return;for(const ms of [50,180,500,1200,2500])setTimeout(install,ms)};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
   document.addEventListener('earthline:analysis-complete',()=>{install();},{passive:true});
+})();
+
+
+/* EARTHLINE_REGIONAL_PROPERTY_PARENT_REBIND_17016
+   Handoff-only repair. The governed Property owner remains authoritative.
+   A missing corridor parent token may be rebound only when the canonical
+   displayed Regional result, cached live Regional result, active run token,
+   and published state already agree. A non-empty mismatched token is never
+   rewritten and therefore continues to fail closed in EARTHLINE 16347. */
+(function installEarthlineRegionalPropertyParentRebind17016(){
+  if(window.EARTHLINE_REGIONAL_PROPERTY_PARENT_REBIND_17016)return;
+  const prior=window.earthlineDeclarePropertyAtCrosshair16173;
+  if(typeof prior!=='function'){
+    window.EARTHLINE_REGIONAL_PROPERTY_PARENT_REBIND_17016={state:'unavailable',reason:'governed Property owner unavailable'};
+    return;
+  }
+  window.earthlineDeclarePropertyAtCrosshair16173=function(){
+    const target=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+    let rebound=false,canonical=false,token='',liveToken='',activeToken='',tier='',published=false;
+    if(target&&target.code&&!String(target.parentRunToken||'')){
+      const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+      const live=window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||null;
+      tier=String(displayed&&(displayed.tier||displayed.mode)||'').toLowerCase();
+      token=String(displayed&&displayed.runToken||'');
+      liveToken=String(live&&live.runToken||'');
+      activeToken=String(window.EARTHLINE_ACTIVE_RUN_TOKEN_16151||'');
+      published=String(document.documentElement.dataset.earthlineRunState||'')==='published';
+      canonical=tier==='regional'&&!!token&&token===liveToken&&token===activeToken&&published;
+      if(canonical){
+        target.parentRunToken=token;
+        rebound=true;
+      }
+    }
+    window.EARTHLINE_REGIONAL_PROPERTY_PARENT_REBIND_17016.last={
+      rebound,canonical,tier,token:token||null,liveToken:liveToken||null,
+      activeToken:activeToken||null,published,
+      targetCode:target&&target.code?String(target.code):null,
+      existingParent:target&&target.parentRunToken?String(target.parentRunToken):null,
+      at:new Date().toISOString()
+    };
+    return prior.apply(this,arguments);
+  };
+  window.EARTHLINE_REGIONAL_PROPERTY_PARENT_REBIND_17016={
+    state:'ready',
+    rule:'missing parent token only; canonical published Regional owners must agree; non-empty mismatches remain fail-closed'
+  };
 })();
