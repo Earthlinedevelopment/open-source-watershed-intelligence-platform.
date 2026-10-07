@@ -43,10 +43,10 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Prepare candidate Property texture audit
         run: |
-          cp tests/arizona-a1-property-mobile.mjs /tmp/earthline-17017-test.mjs
+          cp tests/arizona-a1-property-mobile.mjs tests/earthline-17017-candidate-test.mjs
           node - <<'NODE'
           const fs=require('fs');
-          const p='/tmp/earthline-17017-test.mjs';
+          const p='tests/earthline-17017-candidate-test.mjs';
           let s=fs.readFileSync(p,'utf8');
           s=s.replace("await page.goto('https://earthlinedevelopment.org/?az_a1_property='+Date.now()", "await page.goto('http://127.0.0.1:8787/?az_a1_property='+Date.now()");
           s=s.replace('await page.waitForTimeout(500);','await page.waitForTimeout(6500);');
@@ -66,7 +66,7 @@ jobs:
           server=$!
           trap 'kill $server || true' EXIT
           sleep 2
-          node /tmp/earthline-17017-test.mjs
+          node tests/earthline-17017-candidate-test.mjs
       - name: Commit candidate only after audit passes
         run: |
           git config user.name "github-actions[bot]"
