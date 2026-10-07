@@ -5,8 +5,11 @@ on:
     branches: [version-2]
     paths:
       - 'v2/hydrogeology-source-adapter.js'
+      - 'v2/hydrogeology-transport.js'
+      - 'v2/data/usgs-hydrogeology-2025/shards-5x5/**'
       - 'v2/source-registry.json'
       - 'tests/v2-hydrogeology-source-adapter.mjs'
+      - 'tests/v2-hydrogeology-transport.mjs'
       - '.github/workflows/earthline-v2-hydrogeology-adapter.yml'
   workflow_dispatch:
 
@@ -24,3 +27,5 @@ jobs:
           node-version: '22'
       - name: Validate exact USGS schema adapter
         run: node tests/v2-hydrogeology-source-adapter.mjs
+      - name: Validate exact hydrogeology transport owner
+        run: node tests/v2-hydrogeology-transport.mjs
