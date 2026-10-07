@@ -1,0 +1,30 @@
+name: Earthline Minimal Property Snippets 17022
+on:
+  push:
+    branches: [candidate-property-integrity-17019]
+    paths:
+      - '.github/workflows/property-minimal-snippets-17022.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Minimal snippets
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for label,n,b,a in [
+            ('FOCUS_CAP','focusMode?80',1000,2200),
+            ('SPACING72','0.72',1000,2200),
+            ('EXCL_INCOMPLETE','Exclusion evidence did not complete',1600,2400),
+            ('PUB_ALLOWED','publicationAllowed=true',700,1500),
+          ]:
+            i=s.find(n)
+            print('\n===== '+label+' POS '+str(i)+' =====')
+            print(s[max(0,i-b):min(len(s),i+a)] if i>=0 else 'NOT FOUND')
+          PY
