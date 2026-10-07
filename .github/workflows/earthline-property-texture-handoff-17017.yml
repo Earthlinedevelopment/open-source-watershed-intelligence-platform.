@@ -48,7 +48,11 @@ jobs:
           const fs=require('fs');
           const p='tests/earthline-17017-candidate-test.mjs';
           let s=fs.readFileSync(p,'utf8');
-          s=s.replace("await page.goto('https://earthlinedevelopment.org/?az_a1_property='+Date.now()", "await page.goto('http://127.0.0.1:8787/?az_a1_property='+Date.now()");
+          s=s.replace("import { chromium } from 'playwright';", "import { chromium } from 'playwright';\\nimport fs from 'node:fs';");
+          const anchor="const page=await context.newPage(); const errs=[]; page.on('pageerror',e=>errs.push(String(e)));";
+          const inject=anchor+"\\nconst candidateHtml=fs.readFileSync('index.html','utf8');\\nawait page.route('https://earthlinedevelopment.org/**',async route=>{const req=route.request(),u=new URL(req.url());if(req.isNavigationRequest()&&req.resourceType()==='document'&&u.hostname==='earthlinedevelopment.org'&&u.pathname==='/'){await route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:candidateHtml});}else await route.continue();});";
+          if(!s.includes(anchor))throw new Error('document interception anchor missing');
+          s=s.replace(anchor,inject);
           s=s.replace('await page.waitForTimeout(500);','await page.waitForTimeout(6500);');
           const old="if(!propClicked||!out.audit?.settled)process.exitCode=1;";
           const neu=`const naturalReady=Number(out?.render?.naturalSourceFeatures||0)>0;
@@ -60,13 +64,8 @@ jobs:
           s=s.replace(old,neu);
           fs.writeFileSync(p,s);
           NODE
-      - name: Run candidate locally
-        run: |
-          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-17017-http.log 2>&1 &
-          server=$!
-          trap 'kill $server || true' EXIT
-          sleep 2
-          node tests/earthline-17017-candidate-test.mjs
+      - name: Run candidate under production origin
+        run: node tests/earthline-17017-candidate-test.mjs
       - name: Commit candidate only after audit passes
         run: |
           git config user.name "github-actions[bot]"
