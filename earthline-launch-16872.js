@@ -1004,11 +1004,10 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 
 
 /* EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011
-   Presentation-only fail-visible guard.
-   It does not render, generate, rank, filter, or replace any Property swale.
-   The existing 16236 natural-texture owner remains authoritative. When that
-   optional texture has not verified, keep its existing authoritative safe-line
-   fallback visible instead of allowing both presentations to be transparent. */
+   Authoritative Property presentation guard.
+   No science, geometry, ranking, spacing, exclusions or hydrology changes.
+   Keeps verified fallback visible when optional texture fails; also reconciles
+   the existing open-data screened-clear status and restrains dense texture width. */
 (function installEarthlinePropertyFallbackFailVisible17011(){
   if(window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011)return;
   const SAFE=[
@@ -1017,7 +1016,15 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     'earthline-property-safe-life-16221',
     'earthline-property-safe-water-16221'
   ];
+  const NATURAL={
+    casing:'earthline-property-swale-natural-casing-16174',
+    neutral:'earthline-property-swale-neutral-16177',
+    up:'earthline-property-swale-natural-up-16174',
+    flip:'earthline-property-swale-natural-flip-16174',
+    footprint:'earthline-property-swale-footprint-16174'
+  };
   function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
+  function model(){try{return typeof M!=='undefined'?M:null}catch(_){return null}}
   function propertyPublished(){
     const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
     const p=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||a?.publicationAudit||null;
@@ -1036,10 +1043,44 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
         Object.values(x.layers).every(Boolean));
     }catch(_){return false}
   }
+  function reconcileScreenedClear(){
+    const c=model()?.vectorNoBuildCoverage||null;
+    if(!c||String(c.sourceTier||'')!=='open-data'||String(c.acquisitionResult||'')!=='screened-clear')return false;
+    const el=document.getElementById('earthlineExclusionEvidence16516');
+    if(!el)return false;
+    el.dataset.kind='open-data';
+    const grade=el.querySelector('.el16516-grade');
+    const detail=el.querySelector('.el16516-detail');
+    if(grade)grade.textContent=String(c.evidenceGrade||'OPEN-DATA SCREENING · NO MAPPED EXCLUSIONS RETURNED · FIELD VERIFICATION REQUIRED');
+    if(detail)detail.textContent='Open-data road and building sources were queried successfully and returned no mapped exclusions in this 20-acre frame. Coverage is not authoritative; field verification is required before any siting decision.';
+    return true;
+  }
+  function restrainDenseTexture(){
+    const m=map();if(!m)return false;
+    const count=Number((window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{}).corridors||0);
+    if(!(count>0))return false;
+    try{
+      if(m.getLayer?.(NATURAL.casing))m.setPaintProperty(NATURAL.casing,'line-width',5);
+      if(m.getLayer?.(NATURAL.neutral))m.setPaintProperty(NATURAL.neutral,'line-width',4);
+      if(m.getLayer?.(NATURAL.up))m.setPaintProperty(NATURAL.up,'line-width',4);
+      if(m.getLayer?.(NATURAL.flip))m.setPaintProperty(NATURAL.flip,'line-width',4);
+      if(m.getLayer?.(NATURAL.footprint))m.setPaintProperty(NATURAL.footprint,'fill-opacity',.035);
+      return true;
+    }catch(_){return false}
+  }
   function enforce(reason='check'){
     const m=map();
     if(!m||!propertyPublished())return false;
-    if(textureVerified())return false;
+    const statusReconciled=reconcileScreenedClear();
+    const textureRestrained=restrainDenseTexture();
+    if(textureVerified()){
+      window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011.last={
+        reason,changed:0,textureVerified:true,statusReconciled,textureRestrained,
+        safeCount:Number((window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{}).safeCount||0),
+        at:new Date().toISOString()
+      };
+      return statusReconciled||textureRestrained;
+    }
     let changed=0;
     for(const id of SAFE){
       try{
@@ -1051,16 +1092,16 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       }catch(_){}
     }
     window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011.last={
-      reason,changed,textureVerified:false,
+      reason,changed,textureVerified:false,statusReconciled,textureRestrained,
       safeCount:Number((window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{}).safeCount||0),
       at:new Date().toISOString()
     };
-    return changed>0;
+    return changed>0||statusReconciled||textureRestrained;
   }
   function afterPublication(reason){
-    for(const ms of [0,120,450,1100])setTimeout(()=>enforce(reason+'-'+ms),ms);
+    for(const ms of [0,120,450,1100,2400])setTimeout(()=>enforce(reason+'-'+ms),ms);
   }
-  window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011={state:'ready',enforce,textureVerified};
+  window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011={state:'ready',enforce,textureVerified,reconcileScreenedClear,restrainDenseTexture};
   document.addEventListener('earthline:analysis-complete',()=>{
     if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property')
       afterPublication('analysis-complete');
