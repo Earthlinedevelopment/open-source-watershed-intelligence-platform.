@@ -1,0 +1,52 @@
+name: Earthline Governed Property Owner Audit 17033
+on:
+  push:
+    branches: [candidate-property-integrity-17019]
+    paths:
+      - '.github/workflows/governed-property-owner-audit-17033.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract authoritative Property work limits
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          needles=[
+            'work15771=',
+            'maxCandidates:',
+            'maxFinal:',
+            'maxSeedsPerLevel:',
+            'perLevel:',
+            'minSpacingM15771',
+            'targetSpacingM15771',
+            'coverageDiag15803',
+            'seedCandidatesForLevel',
+            'earthlineGovernedPropertyRun16202'
+          ]
+          for n in needles:
+            print('\n===== '+n+' =====')
+            pos=[];st=0
+            while True:
+              i=s.find(n,st)
+              if i<0: break
+              pos.append(i);st=i+len(n)
+            print('POSITIONS',pos[:20])
+            for i in pos[:5]:
+              print('\n---')
+              print(s[max(0,i-3000):min(len(s),i+7000)])
+          PY
+          echo "=== HISTORY maxFinal ==="
+          git log --all --oneline -S'maxFinal:' -- index.html | head -50 || true
+          echo "=== HISTORY maxCandidates ==="
+          git log --all --oneline -S'maxCandidates:' -- index.html | head -50 || true
+          echo "=== HISTORY minSpacingM15771 ==="
+          git log --all --oneline -S'minSpacingM15771' -- index.html | head -50 || true
