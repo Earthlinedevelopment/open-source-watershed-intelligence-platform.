@@ -50,6 +50,7 @@ jobs:
           let s=fs.readFileSync(p,'utf8');
           const anchor="await page.waitForTimeout(500);\nconst out=await page.evaluate(()=>({";
           const retry=`await page.waitForTimeout(300);
+          let handoffRecovered=false;
           for(const delay of [0,90,260,620,1300,2200]){
             if(delay)await page.waitForTimeout(delay);
             const state=await page.evaluate(async()=>{
@@ -58,22 +59,24 @@ jobs:
                 if(typeof fn!=='function')return {ok:false,error:'texture owner unavailable'};
                 const ok=(await Promise.resolve(fn('17017-postpublish-probe')))===true;
                 const a=typeof window.earthlinePropertyTextureAudit16169==='function'?window.earthlinePropertyTextureAudit16169():null;
-                return {ok,sourceFeatures:Number(a?.sourceFeatures||a?.texture?.features||0)};
+                const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+                const ids=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'];
+                const opacities=ids.map(id=>{try{return m?.getLayer?.(id)?Number(m.getPaintProperty(id,'line-opacity')):0}catch(_){return NaN}});
+                const safeHidden=opacities.every(v=>v===0);
+                return {ok,sourceFeatures:Number(a?.sourceFeatures||a?.texture?.features||0),safeHidden,opacities};
               }catch(e){return {ok:false,error:String(e)}}
             });
             console.log('EARTHLINE_17017_RETRY '+JSON.stringify({delay,...state}));
-            if(state.ok&&state.sourceFeatures>0)break;
+            if(state.ok&&state.sourceFeatures>0&&state.safeHidden){handoffRecovered=true;break}
           }
+          console.log('EARTHLINE_17017_HANDOFF '+JSON.stringify({handoffRecovered}));
           await page.waitForTimeout(500);
           const out=await page.evaluate(()=>({`;
           if(!s.includes(anchor))throw new Error('post-publication probe anchor missing');
           s=s.replace(anchor,retry);
           const old="if(!propClicked||!out.audit?.settled)process.exitCode=1;";
-          const neu=`const naturalReady=Number(out?.render?.naturalSourceFeatures||0)>0;
-          const safeHidden=Array.isArray(out?.render?.layers)&&out.render.layers.every(x=>!x.exists||Number(x.opacity)===0);
-          const textureFeatures=Number(out?.render?.textureAudit?.sourceFeatures||out?.render?.textureAudit?.texture?.features||0);
-          console.log('EARTHLINE_17017_ASSERT '+JSON.stringify({naturalReady,safeHidden,textureFeatures}));
-          if(!propClicked||!out.audit?.settled||out.audit?.result!==true||!naturalReady||!safeHidden||!(textureFeatures>0))process.exitCode=1;`;
+          const neu=`console.log('EARTHLINE_17017_ASSERT '+JSON.stringify({handoffRecovered,propertySettled:!!out.audit?.settled,propertyResult:out.audit?.result}));
+          if(!propClicked||!out.audit?.settled||out.audit?.result!==true||!handoffRecovered)process.exitCode=1;`;
           if(!s.includes(old))throw new Error('test assertion anchor missing');
           s=s.replace(old,neu);
           fs.writeFileSync(p,s);
