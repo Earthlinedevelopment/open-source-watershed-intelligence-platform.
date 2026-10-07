@@ -109,7 +109,7 @@ function installRail(){
   const mk=(id,txt)=>{
     const b=document.createElement('button');
     b.id=id;b.type='button';
-    b.className='el-rail-control-16188 earthline-launch-rail-btn-16872';
+    b.className='earthline-launch-rail-btn-16872';
     b.textContent=txt;b.setAttribute('aria-label',txt);
     return b;
   };
