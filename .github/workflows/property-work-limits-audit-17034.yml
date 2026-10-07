@@ -1,0 +1,31 @@
+name: Earthline Property Work Limits Audit 17034
+on:
+  push:
+    branches: [candidate-property-integrity-17019]
+    paths:
+      - '.github/workflows/property-work-limits-audit-17034.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exact work limits and termination
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for n in ['const work15771','work15771={','maxFinal','maxCandidates','maxSeedsPerLevel','perLevel','deadline15771','candidate-cap','time-budget','final-cap']:
+            print('\n###',n)
+            start=0;count=0
+            while True:
+              i=s.find(n,start)
+              if i<0: break
+              print('POS',i)
+              print(s[max(0,i-1800):min(len(s),i+4200)])
+              start=i+len(n);count+=1
+              if count>=5: break
+          PY
