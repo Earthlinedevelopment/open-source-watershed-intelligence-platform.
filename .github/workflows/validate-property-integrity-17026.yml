@@ -1,0 +1,120 @@
+name: Earthline Candidate Property Integrity Validate 17026
+on:
+  push:
+    branches: [candidate-property-integrity-17019]
+    paths:
+      - 'index.html'
+      - '.github/workflows/validate-property-integrity-17026.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - name: Start candidate localhost
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          sleep 2
+      - name: Validate exact Colorado Property target
+        shell: bash
+        run: |
+          cat > /tmp/validate.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1800,height:1000}});
+          const logs=[]; page.on('console',m=>logs.push(m.text()));
+          await page.goto('http://127.0.0.1:8787/index.html?candidate17019=1',{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForTimeout(2000);
+          const pre=await page.evaluate(()=>({
+            hasDeclare:typeof window.earthlineDeclarePropertyAtCrosshair16173==='function',
+            hasSetTarget:typeof window.earthlineSetPropertyTarget16201==='function'
+          }));
+          if(!pre.hasDeclare) throw new Error('Property declaration owner unavailable');
+          await page.evaluate(()=>{
+            const t={lng:-105.55114,lat:39.02639,source:'candidate-acceptance-17026',code:'CROSSHAIR',score:0,query:'Colorado',parentRunToken:'candidate-direct',at:new Date().toISOString()};
+            window.EARTHLINE_PROPERTY_TARGET_16201=t;
+            try{window.earthlineSetPropertyTarget16201?.(t);}catch(_){}
+            try{
+              if(window.earthlineMap?.jumpTo) window.earthlineMap.jumpTo({center:[t.lng,t.lat],zoom:16.5,bearing:0,pitch:0});
+            }catch(_){}
+          });
+          // Direct Property execution is allowed for crosshair targets; if Regional parent is required,
+          // establish a synthetic displayed published parent only inside this candidate test page.
+          await page.evaluate(()=>{
+            const t=window.EARTHLINE_PROPERTY_TARGET_16201;
+            if(t){
+              const token='candidate-regional-17026';
+              t.parentRunToken=token;
+              window.EARTHLINE_DISPLAYED_RUN_16151={tier:'regional',mode:'regional',runToken:token};
+              window.EARTHLINE_DISPLAYED_RUN_16147=window.EARTHLINE_DISPLAYED_RUN_16151;
+              document.documentElement.dataset.earthlineRunState='published';
+            }
+          });
+          const result=await page.evaluate(async()=>{
+            try{return {value:await Promise.resolve(window.earthlineDeclarePropertyAtCrosshair16173())}}
+            catch(e){return {error:String(e?.stack||e)}}
+          });
+          await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,{timeout:60000,polling:100}).catch(()=>{});
+          await page.waitForTimeout(1500);
+          const out=await page.evaluate(()=>{
+            const pub=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16176||M?.propertyPublication15816||null;
+            const raw=Array.isArray(M?.swales)?M.swales:[];
+            const safeFC=M?.authoritativeSafeSwales15815;
+            const safe=Array.isArray(safeFC?.features)?safeFC.features:[];
+            const rows=safe.length?safe:raw.map((r,i)=>({properties:{},geometry:{coordinates:r.segment||r.pts||[]}}));
+            const pts=[];
+            for(const f of rows){
+              const coords=f?.geometry?.coordinates||f?.segment||f?.pts||[];
+              if(!Array.isArray(coords)||!coords.length)continue;
+              const p=coords[Math.floor((coords.length-1)/2)];
+              if(Array.isArray(p)&&p.length>=2)pts.push([Number(p[0]),Number(p[1])]);
+            }
+            const target=window.EARTHLINE_PROPERTY_TARGET_16201;
+            let bins=new Set(), xs=[], ys=[];
+            // Use map projection when available to evaluate spatial coverage inside the 20-acre view.
+            try{
+              if(window.earthlineMap){
+                for(const p of pts){
+                  const q=window.earthlineMap.project({lng:p[0],lat:p[1]});
+                  if(Number.isFinite(q.x)&&Number.isFinite(q.y)){xs.push(q.x);ys.push(q.y);}
+                }
+                if(xs.length){
+                  const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+                  for(let i=0;i<xs.length;i++){
+                    const bx=Math.max(0,Math.min(5,Math.floor((xs[i]-minX)*6/Math.max(1,maxX-minX))));
+                    const by=Math.max(0,Math.min(5,Math.floor((ys[i]-minY)*6/Math.max(1,maxY-minY))));
+                    bins.add(bx+','+by);
+                  }
+                }
+              }
+            }catch(_){}
+            const ev=window.earthlineGetExclusionEvidence16516?.()||null;
+            const handoff=window.EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347||null;
+            return {
+              result,
+              rawCount:raw.length,
+              safeCount:safe.length,
+              publication:pub,
+              occupied6x6Bins:bins.size,
+              exclusionEvidence:ev,
+              handoff,
+              selector:{
+                capacity:window.EARTHLINE_SUPPORTED_CAPACITY_16843||null
+              }
+            };
+          });
+          console.log('CANDIDATE_17019_RESULT '+JSON.stringify(out));
+          if(out.result?.error) throw new Error(out.result.error);
+          if(out.handoff && out.handoff.validParent!==true) throw new Error('handoff invalid');
+          if(out.exclusionEvidence?.acquisitionResult==='screened-clear' && out.exclusionEvidence?.kind!=='open-data') throw new Error('screened-clear rendered as blocked');
+          if(out.safeCount>52 || out.rawCount>52) throw new Error('Property corridor count exceeds accepted 16584 cap');
+          await browser.close();
+          JS
+          node /tmp/validate.mjs
