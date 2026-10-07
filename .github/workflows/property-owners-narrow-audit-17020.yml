@@ -1,0 +1,41 @@
+name: Earthline Property Owners Narrow Audit 17020
+on:
+  push:
+    branches: [candidate-property-integrity-17019]
+    paths:
+      - '.github/workflows/property-owners-narrow-audit-17020.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract narrow owners
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          tests=[
+            ('MAKE_SWALES','function makeSwales'),
+            ('FOCUS_CAP','focusMode?80'),
+            ('SPACING72','0.72'),
+            ('EXCL_INCOMPLETE','Exclusion evidence did not complete'),
+            ('NO_MAPPED','NO MAPPED EXCLUSIONS RETURNED'),
+            ('PUB_BLOCK','propertyPublicationBlock16176'),
+            ('VECTOR_COVERAGE','vectorNoBuildCoverage'),
+          ]
+          for label,n in tests:
+            print('\n===== '+label+' =====')
+            pos=[];start=0
+            while True:
+              i=s.find(n,start)
+              if i<0: break
+              pos.append(i);start=i+len(n)
+            print('POSITIONS',pos[:20])
+            for i in pos[:4]:
+              print('\n---')
+              print(s[max(0,i-3500):min(len(s),i+10000)])
+          PY
