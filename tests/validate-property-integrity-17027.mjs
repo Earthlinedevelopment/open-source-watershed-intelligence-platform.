@@ -70,7 +70,20 @@ await page.evaluate(()=>{
   try{ document.documentElement.dataset.earthlineRunState='idle'; }catch(_){}
 });
 const validResult=await runProperty();
-if(!validResult.ok)throw new Error('valid published target blocked '+JSON.stringify(validResult));
+if(!validResult.ok){
+  const blocked=await page.evaluate(()=>({
+    handoff:window.EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347||null,
+    status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||''),
+    displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,
+    publication:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,
+    active:String(window.EARTHLINE_ACTIVE_RUN_TOKEN_16151||''),
+    live:window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||null,
+    runState:String(document.documentElement.dataset.earthlineRunState||''),
+    target:window.EARTHLINE_PROPERTY_TARGET_16201||null
+  }));
+  console.log('VALID_HANDOFF_BLOCK_DIAG '+JSON.stringify({validTarget,validResult,blocked}));
+  throw new Error('valid published target blocked '+JSON.stringify(validResult));
+}
 await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,{timeout:60000,polling:100});
 await page.waitForTimeout(1200);
 
