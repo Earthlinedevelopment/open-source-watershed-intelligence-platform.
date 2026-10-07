@@ -1,8 +1,8 @@
 import { chromium } from 'playwright';
 
 const URL=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
-const browser=await chromium.launch({headless:true});
-const page=await browser.newPage({viewport:{width:1800,height:1000}});
+const browser=await chromium.launch({headless:true,args:['--host-resolver-rules=MAP earthlinedevelopment.org 127.0.0.1','--ignore-certificate-errors']});
+const page=await browser.newPage({viewport:{width:1800,height:1000},ignoreHTTPSErrors:true});
 const errors=[];
 page.on('pageerror',e=>errors.push(String(e)));
 page.on('console',m=>{ if(m.type()==='error') errors.push('console:'+m.text()); });
