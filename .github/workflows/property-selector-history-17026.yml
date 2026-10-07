@@ -1,0 +1,23 @@
+name: Earthline Property Selector History 17026
+on:
+  push:
+    branches: [candidate-property-integrity-17019]
+    paths:
+      - '.github/workflows/property-selector-history-17026.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Trace selector history
+        shell: bash
+        run: |
+          echo "=== COMMITS TOUCHING PROPERTY SELECTOR EXPRESSIONS ==="
+          git log --oneline --all -G'primarySpacing|chosen.length>=52|focusMode\?80|regionalCapacity16755|Math.max\(2,Math.round\(primarySpacing\*\.72\)\)' -- index.html | head -80
+          echo "=== PATCH HISTORY ==="
+          git log -p --all -G'primarySpacing|chosen.length>=52|focusMode\?80|regionalCapacity16755' -- index.html | head -1600
