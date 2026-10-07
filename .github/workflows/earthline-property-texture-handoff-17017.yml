@@ -1,0 +1,77 @@
+name: Earthline Property Texture Handoff 17017
+
+on:
+  push:
+    branches: [candidate-property-texture-handoff-17017]
+    paths:
+      - 'tools/apply-property-texture-handoff-17017.mjs'
+      - '.github/workflows/earthline-property-texture-handoff-17017.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply exact Property texture handoff repair
+        run: node tools/apply-property-texture-handoff-17017.mjs
+      - name: Static ownership gate
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const s=fs.readFileSync('index.html','utf8');
+          const checks={
+            retry:(s.match(/bounded-postpublish-16521-'\+delay\+'-force/g)||[]).length===1,
+            settle:(s.match(/safeOk&&waterOk&&boundaryOk&&textureOk/g)||[]).length===1,
+            noDense:!s.includes('restrainDenseTexture'),
+            owner:(s.match(/function settleCurrentPropertyPresentation16521\(/g)||[]).length===1
+          };
+          console.log('EARTHLINE_17017_STATIC '+JSON.stringify(checks));
+          if(!Object.values(checks).every(Boolean))process.exit(1);
+          NODE
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Prepare candidate Property texture audit
+        run: |
+          cp tests/arizona-a1-property-mobile.mjs /tmp/earthline-17017-test.mjs
+          node - <<'NODE'
+          const fs=require('fs');
+          const p='/tmp/earthline-17017-test.mjs';
+          let s=fs.readFileSync(p,'utf8');
+          s=s.replace("await page.goto('https://earthlinedevelopment.org/?az_a1_property='+Date.now()", "await page.goto('http://127.0.0.1:8787/?az_a1_property='+Date.now()");
+          s=s.replace('await page.waitForTimeout(500);','await page.waitForTimeout(6500);');
+          const old="if(!propClicked||!out.audit?.settled)process.exitCode=1;";
+          const neu=`const naturalReady=Number(out?.render?.naturalSourceFeatures||0)>0;
+          const safeHidden=Array.isArray(out?.render?.layers)&&out.render.layers.every(x=>!x.exists||Number(x.opacity)===0);
+          const textureFeatures=Number(out?.render?.textureAudit?.sourceFeatures||out?.render?.textureAudit?.texture?.features||0);
+          console.log('EARTHLINE_17017_ASSERT '+JSON.stringify({naturalReady,safeHidden,textureFeatures}));
+          if(!propClicked||!out.audit?.settled||!naturalReady||!safeHidden||!(textureFeatures>0))process.exitCode=1;`;
+          if(!s.includes(old))throw new Error('test assertion anchor missing');
+          s=s.replace(old,neu);
+          fs.writeFileSync(p,s);
+          NODE
+      - name: Run candidate locally
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-17017-http.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 2
+          node /tmp/earthline-17017-test.mjs
+      - name: Commit candidate only after audit passes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && { echo "No candidate index change"; exit 1; }
+          git commit -m "fix: restore post-publication natural Property texture handoff"
+          git push origin HEAD:candidate-property-texture-handoff-17017
