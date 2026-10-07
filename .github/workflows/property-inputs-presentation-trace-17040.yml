@@ -1,0 +1,44 @@
+name: Earthline Property Inputs Presentation Trace 17040
+on:
+  push:
+    branches: [test-property-coverage-17031]
+    paths:
+      - '.github/workflows/property-inputs-presentation-trace-17040.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compare Property constants and prescriber tail
+        shell: bash
+        run: |
+          git show 74343a24f90fed7d7abbe9267ef11a2836220de7:index.html > /tmp/accepted.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          cur=Path('index.html').read_text(encoding='utf-8')
+          acc=Path('/tmp/accepted.html').read_text(encoding='utf-8')
+          for label,s in [('CURRENT',cur),('ACCEPTED',acc)]:
+              print('\n===== '+label+' CONSTANTS =====')
+              for n in ['TARGET_M','MIN_M','MAX_M','earthlineRectangleAround','analysisBoundaryLngLat']:
+                  hits=[]; st=0
+                  while True:
+                      i=s.find(n,st)
+                      if i<0: break
+                      hits.append(i);st=i+len(n)
+                  print(n,hits[:12])
+                  for i in hits[:4]: print(s[max(0,i-350):min(len(s),i+700)])
+              a=s.find('function prescribeSwales15778')
+              b=s.find('\n  function ',a+10); c=s.find('\n  async function ',a+10)
+              stops=[x for x in (b,c) if x>=0]; z=min(stops) if stops else a+90000
+              fn=s[a:z]
+              print('\n===== '+label+' PRESCRIBER TAIL =====')
+              print('\n'.join(fn.splitlines()[-240:]))
+          PY
+          echo '=== CURRENT VS ACCEPTED CONSTANT DIFF ==='
+          diff -u /tmp/accepted.html index.html | grep -E '^[-+].*(TARGET_M|MIN_M|MAX_M|analysisBoundaryLngLat|RectangleAround|property.*frame|Property.*frame)' | head -250 || true
