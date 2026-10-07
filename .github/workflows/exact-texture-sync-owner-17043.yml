@@ -1,0 +1,21 @@
+name: Earthline Exact Texture Sync Owner 17043
+on:
+  push:
+    branches: [test-property-coverage-17031]
+    paths:
+      - '.github/workflows/exact-texture-sync-owner-17043.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exact natural texture sync block
+        shell: bash
+        run: |
+          echo '=== GREP ==='
+          grep -n -E 'earthlineSyncPropertyTexture16169|earthlinePropertyTextureAudit16169|authoritativeSafeSwales15815|earthline-property-swale-natural-16174' index.html | sed -n '1,140p'
+          echo '=== WINDOW 33640-33880 ==='
+          nl -ba index.html | sed -n '33640,33880p'
