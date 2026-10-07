@@ -14,7 +14,10 @@
       "verified_schema": {
         "record_count": 126,
         "type_field": "HR_Type",
-        "type_values": ["PA", "SHR"],
+        "type_values": [
+          "PA",
+          "SHR"
+        ],
         "name_field": "HR_Name",
         "code_field": "HR_Code",
         "id_field": "HR_ID",
@@ -24,7 +27,21 @@
         "do not call every polygon an aquifer",
         "HR_Type=PA may be presented as Principal Aquifer; HR_Type=SHR must remain Secondary Hydrogeologic Region",
         "sand-and-gravel aquifers of alluvial and glacial origin are not included"
-      ]
+      ],
+      "transport": {
+        "owner": "v2/hydrogeology-transport.js",
+        "mode": "5x5_exact_geometry_shards",
+        "index": "v2/data/usgs-hydrogeology-2025/shards-5x5/index.json",
+        "selection": "shard geometry bbox intersects requested map/analysis bounds",
+        "shards": 50,
+        "polygon_parts": 5632,
+        "vertices": 1006860,
+        "max_shard_bytes": 2833950,
+        "simplified": false,
+        "coordinate_rounding": false,
+        "external_state_boundary_dependency": false,
+        "failure_behavior": "return unavailable; fall through to approved Principal Aquifers transition fallback"
+      }
     },
     "usgs_principal_aquifers": {
       "role": "existing_production_primary_and_v2_transition_fallback",
