@@ -1,0 +1,48 @@
+name: Earthline production cache bust 17014
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-production-cache-bust-17014.yml'
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 1
+      - name: Force current launch assets only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          old_css='earthline-launch-16872.css?v=16872'
+          old_js='earthline-launch-16872.js?v=16960'
+          if s.count(old_css)!=1:
+              raise SystemExit(f"CSS asset anchor count {s.count(old_css)}")
+          if s.count(old_js)!=1:
+              raise SystemExit(f"JS asset anchor count {s.count(old_js)}")
+          s=s.replace(old_css,'earthline-launch-16872.css?v=17014',1)
+          s=s.replace(old_js,'earthline-launch-16872.js?v=17014',1)
+          p.write_text(s,encoding="utf-8")
+          PY
+      - name: Verify exact scope
+        shell: bash
+        run: |
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+          grep -q 'earthline-launch-16872.css?v=17014' index.html
+          grep -q 'earthline-launch-16872.js?v=17014' index.html
+      - name: Commit production cache bust
+        shell: bash
+        run: |
+          git config user.name "Earthline Production Repair"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: force current launch assets for production users"
+          git push origin HEAD:pages-live
