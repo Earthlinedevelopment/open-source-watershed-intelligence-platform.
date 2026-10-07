@@ -1,0 +1,27 @@
+name: Earthline Property Coverage AB 17031
+on:
+  push:
+    branches: [test-property-coverage-17031]
+    paths:
+      - 'tests/property-coverage-ab-17031.mjs'
+      - '.github/workflows/property-coverage-ab-17031.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: git show 9a830d50daf0a717fff0aae6355109bfc3dcfde8:index.html > baseline-9a830.html
+      - run: npm install --no-save playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          sleep 2
+      - run: node tests/property-coverage-ab-17031.mjs
