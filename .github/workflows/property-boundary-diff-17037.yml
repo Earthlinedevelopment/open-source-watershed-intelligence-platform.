@@ -1,0 +1,52 @@
+name: Earthline Property Boundary Diff 17037
+on:
+  push:
+    branches: [candidate-property-integrity-17019]
+    paths:
+      - '.github/workflows/property-boundary-diff-17037.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compare Property input and publication boundary functions
+        shell: bash
+        run: |
+          git show 74343a24f90fed7d7abbe9267ef11a2836220de7:index.html > /tmp/a.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          A=Path('/tmp/a.html').read_text(encoding='utf-8')
+          C=Path('index.html').read_text(encoding='utf-8')
+          names=['declaredSite','earthlineGovernedPropertyRun16202','publishPropertyDisplay16220','earthlineFilterAuthorityCorridors15874','earthlineEvaluateAuthorityCorridors15874','earthlineValidateNoBuildMask15870','earthlineSetPropertyTarget16201','earthlineDeclarePropertyAtCrosshair16173','earthlineBuildPropertySafeFeatureCollection16220']
+          def extract(s,name):
+            pats=['async function '+name,'function '+name,'window.'+name+'=function','window.'+name+'=async function']
+            starts=[s.find(p) for p in pats if s.find(p)>=0]
+            if not starts:return None
+            i=min(starts); b=s.find('{',i)
+            if b<0:return None
+            d=0
+            for j in range(b,len(s)):
+              ch=s[j]
+              if ch=='{': d+=1
+              elif ch=='}':
+                d-=1
+                if d==0:return s[i:j+1]
+            return None
+          for n in names:
+            a=extract(A,n); c=extract(C,n)
+            print('\n###',n)
+            print('accepted',None if a is None else (len(a),hashlib.sha256(a.encode()).hexdigest()))
+            print('current ',None if c is None else (len(c),hashlib.sha256(c.encode()).hexdigest()))
+            print('SAME',a==c)
+          PY
+          echo '=== FRAME/HANDOFF HISTORY ==='
+          for term in pendingAnalysisFrame15827 internalAnalysisZoom analysisBoundaryLngLat authoritativeSafeSwales15815 earthlineFilterAuthorityCorridors15874; do
+            echo "--- $term ---"
+            git log --all --date=iso --pretty='%H|%ad|%s' -S"$term" -- index.html | head -25
+          done
