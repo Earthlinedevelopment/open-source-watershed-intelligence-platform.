@@ -1,0 +1,38 @@
+name: Earthline Validate Clean Property Repair 17027
+on:
+  push:
+    branches:
+      - candidate-property-integrity-17019
+    paths:
+      - .github/workflows/validate-clean-property-repair-17027.yml
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-property-integrity-clean-17027
+          fetch-depth: 0
+      - name: Verify clean diff
+        run: |
+          test "$(git diff --name-only acaf37c805250f97e2da842d5e900b9a71073629..HEAD | wc -l)" -eq 1
+          test "$(git diff --name-only acaf37c805250f97e2da842d5e900b9a71073629..HEAD)" = "index.html"
+          git diff --check acaf37c805250f97e2da842d5e900b9a71073629..HEAD
+      - name: Fetch validator
+        run: |
+          git fetch origin candidate-property-integrity-17019
+          git show origin/candidate-property-integrity-17019:tests/validate-property-integrity-17027.mjs > /tmp/validate-17027.mjs
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - name: Serve candidate
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-server.log 2>&1 &
+          sleep 2
+      - name: Validate candidate behavior
+        run: EARTHLINE_URL='http://127.0.0.1:8787/' node /tmp/validate-17027.mjs
