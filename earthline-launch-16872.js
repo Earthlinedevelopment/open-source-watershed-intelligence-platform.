@@ -1072,26 +1072,8 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   function enforce(reason='check'){
     const m=map();
     if(!m||!propertyPublished())return false;
-    const textureReady=textureVerified();
+    if(textureVerified())return false;
     let changed=0;
-    if(textureReady){
-      /* EARTHLINE 17045 — presentation ownership is exclusive. Once the approved
-         natural-texture owner verifies, explicitly relinquish the solid safe-line
-         fallback. Geometry, ranking, safety and publication remain unchanged. */
-      for(const id of SAFE){
-        try{
-          if(!m.getLayer?.(id))continue;
-          const opacity=m.getPaintProperty?.(id,'line-opacity');
-          if(opacity!==0){m.setPaintProperty(id,'line-opacity',0);changed++}
-        }catch(_){}
-      }
-      window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011.last={
-        reason,changed,textureVerified:true,relinquished:true,
-        safeCount:Number((window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{}).safeCount||0),
-        at:new Date().toISOString()
-      };
-      return changed>0;
-    }
     for(const id of SAFE){
       try{
         if(!m.getLayer?.(id))continue;
@@ -1102,25 +1084,14 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       }catch(_){}
     }
     window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011.last={
-      reason,changed,textureVerified:false,relinquished:false,
+      reason,changed,textureVerified:false,
       safeCount:Number((window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{}).safeCount||0),
       at:new Date().toISOString()
     };
     return changed>0;
   }
   function afterPublication(reason){
-    /* EARTHLINE 17016 — use the existing bounded settlement schedule to give the
-       approved natural-texture owner a post-publication chance to consume the
-       already-verified Property geometry. If texture still cannot verify, the
-       existing fail-visible fallback remains authoritative and visible. */
-    for(const ms of [0,120,450,1100])setTimeout(async()=>{
-      try{
-        const syncTexture=window.earthlineSyncPropertyTexture16169;
-        if(typeof syncTexture==='function')
-          await Promise.resolve(syncTexture(reason+'-texture-'+ms+'-force'));
-      }catch(_){}
-      enforce(reason+'-'+ms);
-    },ms);
+    for(const ms of [0,120,450,1100])setTimeout(()=>enforce(reason+'-'+ms),ms);
   }
   window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011={state:'ready',enforce,textureVerified};
   document.addEventListener('earthline:analysis-complete',()=>{
