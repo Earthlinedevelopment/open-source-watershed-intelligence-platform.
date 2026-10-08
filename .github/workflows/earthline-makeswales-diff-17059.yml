@@ -1,0 +1,45 @@
+name: Earthline makeSwales Diff 17059
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-makeswales-diff-17059.yml'
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0, ref: pages-live}
+      - name: Diff complete accepted/live makeSwales
+        shell: bash
+        run: |
+          git show 74343a24f90fed7d7abbe9267ef11a2836220de7:index.html > /tmp/accepted.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import difflib
+          def extract(text):
+              lines=text.splitlines()
+              start=next(i for i,x in enumerate(lines) if 'function makeSwales(' in x)
+              depth=0; begun=False
+              out=[]
+              for i in range(start,len(lines)):
+                  line=lines[i]
+                  out.append(line)
+                  for ch in line:
+                      if ch=='{': depth+=1; begun=True
+                      elif ch=='}': depth-=1
+                  if begun and depth==0: break
+              return out,start
+          a,sa=extract(Path('/tmp/accepted.html').read_text(encoding='utf-8'))
+          b,sb=extract(Path('index.html').read_text(encoding='utf-8'))
+          print('ACCEPTED_START',sa+1,'LINES',len(a))
+          print('LIVE_START',sb+1,'LINES',len(b))
+          print('===== ACCEPTED FUNCTION =====')
+          for i,x in enumerate(a,sa+1): print(f'{i:06d}: {x}')
+          print('===== LIVE FUNCTION =====')
+          for i,x in enumerate(b,sb+1): print(f'{i:06d}: {x}')
+          print('===== FUNCTION DIFF =====')
+          for x in difflib.unified_diff(a,b,fromfile='accepted16584-makeSwales',tofile='live-makeSwales',n=4):
+              print(x)
+          PY
