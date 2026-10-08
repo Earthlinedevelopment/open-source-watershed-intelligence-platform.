@@ -1,0 +1,62 @@
+name: Earthline Property Restore 17046
+on:
+  push:
+    branches:
+      - candidate/property-restore-working-selector-17046
+    paths:
+      - .github/workflows/property-restore-17046.yml
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/property-restore-working-selector-17046
+          fetch-depth: 0
+      - name: Restore exact last-working Property selector parameters
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          reps=[
+            ("const chosen=[],primarySpacing=focusMode?Math.max(6,Math.round(hy.w/31)):Math.max(3,Math.round(hy.w/31));",
+             "const chosen=[],primarySpacing=Math.max(3,Math.round(hy.w/31));"),
+            ("const baseRegionalCapacity16755=focusMode?52:Math.min(120,Math.max(80,coverageGroups16736.size*4));",
+             "const baseRegionalCapacity16755=focusMode?80:Math.min(120,Math.max(80,coverageGroups16736.size*4));"),
+            ("const regionalCapacity16755=focusMode?52:baseRegionalCapacity16755+supportExtra16755;",
+             "const regionalCapacity16755=focusMode?80:baseRegionalCapacity16755+supportExtra16755;"),
+            ("const spacing=chosen.length<20?primarySpacing:(focusMode?Math.max(4,Math.round(primarySpacing*.72)):Math.max(2,Math.round(primarySpacing*.72)));",
+             "const spacing=chosen.length<20?primarySpacing:Math.max(2,Math.round(primarySpacing*.72));"),
+            ("if(chosen.length&&candidates.length){",
+             "if(!focusMode&&chosen.length&&candidates.length){")
+          ]
+          for old,new in reps:
+            n=s.count(old)
+            if n != 1:
+              raise SystemExit(f"Expected one exact match, found {n}: {old}")
+            s=s.replace(old,new,1)
+          p.write_text(s,encoding="utf-8")
+      - name: Verify rollback scope
+        shell: python
+        run: |
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          required=[
+            "const chosen=[],primarySpacing=Math.max(3,Math.round(hy.w/31));",
+            "const baseRegionalCapacity16755=focusMode?80:Math.min(120,Math.max(80,coverageGroups16736.size*4));",
+            "const regionalCapacity16755=focusMode?80:baseRegionalCapacity16755+supportExtra16755;",
+            "const spacing=chosen.length<20?primarySpacing:Math.max(2,Math.round(primarySpacing*.72));",
+            "if(!focusMode&&chosen.length&&candidates.length){"
+          ]
+          for x in required:
+            assert s.count(x) >= 1, x
+      - name: Commit candidate only
+        run: |
+          git config user.name "Earthline Repair"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "candidate: restore last working Property selector parameters 17046"
+          git push origin HEAD:candidate/property-restore-working-selector-17046
