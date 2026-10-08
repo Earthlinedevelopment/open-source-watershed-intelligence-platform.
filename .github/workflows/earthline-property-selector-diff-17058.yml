@@ -1,0 +1,59 @@
+name: Earthline Property Selector Diff 17058
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-property-selector-diff-17058.yml'
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0, ref: pages-live}
+      - name: Compare accepted and live selector blocks
+        shell: bash
+        run: |
+          git show 74343a24f90fed7d7abbe9267ef11a2836220de7:index.html > /tmp/accepted.html
+          python3 - <<'PY'
+          from pathlib import Path
+          files=[("ACCEPTED",Path("/tmp/accepted.html")),("LIVE",Path("index.html"))]
+          needles=[
+            "candidates.sort((a,b)=>b.score-a.score);",
+            "const chosen=[],primarySpacing",
+            "coverageGroups16736",
+            "regionalCapacity16755",
+            "subgroups16775",
+            "nx16783=12"
+          ]
+          for label,p in files:
+              s=p.read_text(encoding="utf-8")
+              lines=s.splitlines()
+              print("\n===== "+label+" =====")
+              hits=[]
+              for needle in needles:
+                  for i,line in enumerate(lines):
+                      if needle in line:
+                          hits.append((needle,i))
+                          break
+              print("HITS",hits)
+              anchors=[i for _,i in hits if i is not None]
+              if anchors:
+                  start=max(0,min(anchors)-80); end=min(len(lines),max(anchors)+260)
+                  print(f"BLOCK {start+1}-{end}")
+                  for n in range(start,end):
+                      print(f"{n+1:06d}: {lines[n]}")
+          PY
+          echo '===== FOCUSED DIFF ====='
+          python3 - <<'PY'
+          from pathlib import Path
+          import difflib
+          a=Path("/tmp/accepted.html").read_text(encoding="utf-8").splitlines()
+          b=Path("index.html").read_text(encoding="utf-8").splitlines()
+          needle="candidates.sort((a,b)=>b.score-a.score);"
+          def block(lines):
+              idx=next(i for i,x in enumerate(lines) if needle in x)
+              return lines[max(0,idx-90):min(len(lines),idx+430)]
+          for line in difflib.unified_diff(block(a),block(b),fromfile="accepted16584",tofile="live",n=5):
+              print(line)
+          PY
