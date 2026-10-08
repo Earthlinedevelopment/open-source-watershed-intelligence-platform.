@@ -1,0 +1,62 @@
+name: Earthline 17046 Colorado Production-Origin Gate
+on:
+  push:
+    branches:
+      - test/property-selector-17046-production-origin
+    paths:
+      - .github/workflows/property-selector-17046-origin.yml
+permissions:
+  contents: write
+jobs:
+  colorado:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/property-selector-17046-production-origin
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Build candidate-document harness
+        shell: python
+        run: |
+          from pathlib import Path
+          src=Path("lab/validate-16728-property-50states.mjs").read_text(encoding="utf-8")
+          needle="  const page=await browser.newPage({viewport:{width:1600,height:900}});"
+          inject="""  const page=await browser.newPage({viewport:{width:1600,height:900}});
+  await page.route('https://earthlinedevelopment.org/**',async route=>{
+    const req=route.request(),u=new URL(req.url());
+    if(req.resourceType()==='document'&&u.origin==='https://earthlinedevelopment.org'&&(u.pathname==='/'||u.pathname==='/index.html')){
+      await route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:fs.readFileSync('index.html','utf8')});
+    }else{
+      await route.continue();
+    }
+  });"""
+          if src.count(needle)!=1:
+              raise SystemExit("candidate harness insertion point mismatch")
+          Path("/tmp/validate-17046-candidate.mjs").write_text(src.replace(needle,inject,1),encoding="utf-8")
+      - name: Run Colorado Property gate
+        shell: bash
+        run: |
+          set +e
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Colorado' OUT='lab/property-selector-17046-origin.json' node /tmp/validate-17046-candidate.mjs
+          code=$?
+          echo "$code" > lab/property-selector-17046-origin.exit
+          exit 0
+      - name: Persist result
+        if: always()
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          test -f lab/property-selector-17046-origin.exit || echo "99" > lab/property-selector-17046-origin.exit
+          git add lab/property-selector-17046-origin.json lab/property-selector-17046-origin.exit || true
+          git commit -m "test: persist 17046 production-origin Colorado gate [skip ci]" || true
+          git push origin HEAD:test/property-selector-17046-production-origin
+          test "$(cat lab/property-selector-17046-origin.exit)" = "0"
