@@ -1,0 +1,53 @@
+name: Earthline Property Prescriber Diff 17060
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-property-prescriber-diff-17060.yml'
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0, ref: pages-live}
+      - name: Compare accepted and live Property prescriber
+        shell: bash
+        run: |
+          git show 74343a24f90fed7d7abbe9267ef11a2836220de7:index.html > /tmp/accepted.html
+          echo '=== DECLARATIONS ==='
+          echo ACCEPTED
+          grep -n -E "function +prescribeSwales|prescribeSwales[0-9]* *=|window\.prescribeSwales" /tmp/accepted.html | head -n 40
+          echo LIVE
+          grep -n -E "function +prescribeSwales|prescribeSwales[0-9]* *=|window\.prescribeSwales" index.html | head -n 40
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,difflib,re
+          def find_func(text):
+              lines=text.splitlines()
+              pats=['async function prescribeSwales','function prescribeSwales']
+              hits=[]
+              for i,x in enumerate(lines):
+                  if any(p in x for p in pats): hits.append(i)
+              print('HITS',hits)
+              if not hits: return [],-1
+              # choose declaration containing 15778 when present, else last/first substantial one
+              start=next((i for i in hits if '15778' in lines[i]),hits[0])
+              depth=0; begun=False; out=[]
+              for i in range(start,len(lines)):
+                  line=lines[i]; out.append(line)
+                  # crude brace count is sufficient for this source block
+                  for ch in line:
+                      if ch=='{': depth+=1; begun=True
+                      elif ch=='}': depth-=1
+                  if begun and depth==0: break
+              return out,start
+          atext=Path('/tmp/accepted.html').read_text(encoding='utf-8')
+          btext=Path('index.html').read_text(encoding='utf-8')
+          a,sa=find_func(atext); b,sb=find_func(btext)
+          print('ACCEPTED_START',sa+1,'LINES',len(a),'SHA256',hashlib.sha256('\n'.join(a).encode()).hexdigest())
+          print('LIVE_START',sb+1,'LINES',len(b),'SHA256',hashlib.sha256('\n'.join(b).encode()).hexdigest())
+          print('===== PRESCRIBER DIFF =====')
+          for x in difflib.unified_diff(a,b,fromfile='accepted16584-prescriber',tofile='live-prescriber',n=5):
+              print(x)
+          PY
