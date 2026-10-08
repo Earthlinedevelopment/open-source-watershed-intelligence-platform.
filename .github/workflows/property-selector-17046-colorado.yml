@@ -1,0 +1,54 @@
+name: Earthline Property Selector 17046 Colorado Runtime
+on:
+  push:
+    branches:
+      - test/property-selector-17046-colorado-runtime
+    paths:
+      - .github/workflows/property-selector-17046-colorado.yml
+permissions:
+  contents: write
+jobs:
+  colorado:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/property-selector-17046-colorado-runtime
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Serve rollback candidate locally
+        run: |
+          nohup python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-17046-server.log 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8787/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/earthline-17046-server.log
+          exit 1
+      - name: Run existing Colorado Property certification against candidate
+        id: runtime
+        shell: bash
+        run: |
+          set +e
+          EARTHLINE_URL='http://127.0.0.1:8787/' STATES='Colorado' OUT='lab/property-selector-17046-colorado.json' node lab/validate-16728-property-50states.mjs
+          code=$?
+          echo "$code" > lab/property-selector-17046-colorado.exit
+          exit 0
+      - name: Persist isolated runtime evidence
+        if: always()
+        shell: bash
+        run: |
+          git config user.name "Earthline Diagnostic"
+          git config user.email "actions@users.noreply.github.com"
+          test -f lab/property-selector-17046-colorado.exit || echo "99" > lab/property-selector-17046-colorado.exit
+          git add lab/property-selector-17046-colorado.json lab/property-selector-17046-colorado.exit || true
+          git commit -m "test: persist Property selector 17046 Colorado runtime [skip ci]" || true
+          git push origin HEAD:test/property-selector-17046-colorado-runtime
+          test "$(cat lab/property-selector-17046-colorado.exit)" = "0"
