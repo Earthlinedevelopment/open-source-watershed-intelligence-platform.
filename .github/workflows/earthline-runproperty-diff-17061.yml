@@ -1,0 +1,43 @@
+name: Earthline runProperty Diff 17061
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-runproperty-diff-17061.yml'
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0, ref: pages-live}
+      - name: Compare accepted and live runProperty
+        shell: bash
+        run: |
+          git show 74343a24f90fed7d7abbe9267ef11a2836220de7:index.html > /tmp/accepted.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,difflib
+          def extract(text,name):
+              lines=text.splitlines()
+              hits=[i for i,x in enumerate(lines) if name in x and ('function' in x)]
+              print(name,'HITS',hits)
+              if not hits:return [],-1
+              start=hits[0]; depth=0; begun=False; out=[]
+              for i in range(start,len(lines)):
+                  line=lines[i];out.append(line)
+                  for ch in line:
+                      if ch=='{':depth+=1;begun=True
+                      elif ch=='}':depth-=1
+                  if begun and depth==0:break
+              return out,start
+          atext=Path('/tmp/accepted.html').read_text(encoding='utf-8')
+          btext=Path('index.html').read_text(encoding='utf-8')
+          for name in ['runProperty15778','propertySite15778','rebuildModel']:
+              a,sa=extract(atext,name);b,sb=extract(btext,name)
+              print('\n===== '+name+' =====')
+              print('ACCEPTED',sa+1,len(a),hashlib.sha256('\n'.join(a).encode()).hexdigest() if a else None)
+              print('LIVE',sb+1,len(b),hashlib.sha256('\n'.join(b).encode()).hexdigest() if b else None)
+              print('===== DIFF '+name+' =====')
+              for x in difflib.unified_diff(a,b,fromfile='accepted-'+name,tofile='live-'+name,n=5):print(x)
+          PY
