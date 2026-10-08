@@ -1,0 +1,85 @@
+name: Verify Property Density 17047
+
+on:
+  push:
+    branches:
+      - "candidate/property-accepted-density-17047"
+    paths:
+      - "index.html"
+      - ".github/workflows/verify-property-density-17047.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: "candidate/property-accepted-density-17047"
+          fetch-depth: 0
+
+      - name: Verify exact accepted Property selector restoration
+        shell: python
+        run: |
+          import subprocess
+          from pathlib import Path
+
+          parent = "d7adc19045b9eef8dd270d178fa8f0b38af7ed0a"
+          expected_blob = "3db6ab7eed7c637829b649e3d669e02c7e369c73"
+          current = Path("index.html").read_text(encoding="utf-8")
+          old = subprocess.check_output(["git","show",f"{parent}:index.html"], text=True)
+
+          got_blob = subprocess.check_output(["git","hash-object","index.html"], text=True).strip()
+          if got_blob != expected_blob:
+              raise SystemExit(f"Unexpected candidate blob: {got_blob}")
+
+          a = old.splitlines()
+          b = current.splitlines()
+          if len(a) != len(b):
+              raise SystemExit(f"Line count changed: live={len(a)} candidate={len(b)}")
+          changed = [(i+1,x,y) for i,(x,y) in enumerate(zip(a,b)) if x != y]
+          if len(changed) != 4:
+              raise SystemExit(f"Expected exactly 4 changed lines; found {len(changed)}")
+
+          expected_new = {
+              "const chosen=[],primarySpacing=focusMode?Math.max(6,Math.round(hy.w/31)):Math.max(3,Math.round(hy.w/31));",
+              "const baseRegionalCapacity16755=focusMode?52:Math.min(120,Math.max(80,coverageGroups16736.size*4));",
+              "const regionalCapacity16755=focusMode?52:baseRegionalCapacity16755+supportExtra16755;",
+              "const spacing=chosen.length<20?primarySpacing:(focusMode?Math.max(4,Math.round(primarySpacing*.72)):Math.max(2,Math.round(primarySpacing*.72)));",
+          }
+          actual_new = {y.strip() for _,_,y in changed}
+          if actual_new != expected_new:
+              raise SystemExit("Changed lines do not exactly match accepted Property density restoration.")
+
+          marker = "/* EARTHLINE 16783 — final published 12x12 candidate-cell spread."
+          i = current.find(marker)
+          if i < 0:
+              raise SystemExit("16783 spread marker missing.")
+          block = current[i:i+700]
+          if "if(!focusMode&&chosen.length&&candidates.length){" not in block:
+              raise SystemExit("Property is not excluded from 16783 Regional spread.")
+
+      - name: Syntax-check inline JavaScript
+        shell: python
+        run: |
+          import re, subprocess, tempfile
+          from pathlib import Path
+          html = Path("index.html").read_text(encoding="utf-8")
+          scripts = re.findall(r"<script\\b([^>]*)>(.*?)</script\\s*>", html, flags=re.I|re.S)
+          checked = 0
+          for attrs, body in scripts:
+              if re.search(r"\\bsrc\\s*=", attrs, flags=re.I):
+                  continue
+              m = re.search(r"\\btype\\s*=\\s*['\"]([^'\"]+)['\"]", attrs, flags=re.I)
+              if m and m.group(1).lower() not in ("text/javascript","application/javascript","module"):
+                  continue
+              with tempfile.NamedTemporaryFile("w", suffix=".mjs", encoding="utf-8", delete=False) as f:
+                  f.write(body)
+                  name=f.name
+              subprocess.run(["node","--check",name], check=True, capture_output=True, text=True)
+              checked += 1
+          if checked == 0:
+              raise SystemExit("No inline JavaScript blocks checked.")
+          print(f"PASS: {checked} inline JavaScript blocks syntax-checked.")
