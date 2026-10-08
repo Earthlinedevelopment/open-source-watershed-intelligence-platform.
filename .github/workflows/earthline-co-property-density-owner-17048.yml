@@ -42,6 +42,22 @@ jobs:
             return {ok:!!result,err};
           });
           await page.waitForTimeout(3000);
+          // 17049 visual-only trial: keep authoritative 50 centerlines and 9 m analytical
+          // footprint geometry, but narrow the rendered natural swale ribbon so adjacent
+          // 7 m-spaced corridors do not visually merge into one carpet.
+          await page.evaluate(()=>{
+            const mp=(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap)||null;
+            if(!mp)return;
+            const set=(id,prop,val)=>{try{if(mp.getLayer?.(id))mp.setPaintProperty(id,prop,val)}catch(_){}};
+            set('earthline-property-swale-natural-casing-16174','line-width',5.2);
+            set('earthline-property-swale-natural-up-16174','line-width',4.2);
+            set('earthline-property-swale-natural-flip-16174','line-width',4.2);
+            set('earthline-property-swale-neutral-16177','line-width',4.0);
+            set('earthline-property-swale-footprint-16174','fill-opacity',.035);
+            mp.triggerRepaint?.();
+          });
+          await page.waitForTimeout(400);
+          await page.screenshot({path:'/tmp/co-property-17049-narrow.png',fullPage:true});
           const audit=await page.evaluate(()=>{
             const mp=window.earthlineMap||null;
             const safeIds=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'];
@@ -84,5 +100,7 @@ jobs:
         if: always()
         with:
           name: co-property-density-owner-17048
-          path: /tmp/co-property-17048.png
+          path: |
+            /tmp/co-property-17048.png
+            /tmp/co-property-17049-narrow.png
           if-no-files-found: warn
