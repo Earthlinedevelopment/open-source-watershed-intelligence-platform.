@@ -1,0 +1,53 @@
+name: Earthline Apply Property Natural Presentation 17064
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-apply-property-natural-presentation-17064.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: candidate/property-natural-presentation-17064
+      - name: Apply exact presentation-only patch
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          anchor="const w=applyWidth(),registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};"
+          if s.count(anchor)!=1:
+              raise SystemExit(f'expected exactly one presentation anchor, found {s.count(anchor)}')
+          patch="""const w=applyWidth();
+          /* EARTHLINE 17064 — Property natural-presentation density only.
+             Preserve authoritative corridor geometry, spacing, ranking, exclusions and safety.
+             Reduce only the rendered ribbon/planting mass so adjacent valid contours remain visually distinct. */
+          try{
+            if(mp.getLayer?.(LAYERS.casing))mp.setPaintProperty(LAYERS.casing,'line-width',Math.max(3.2,w*.634));
+            if(mp.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',Math.max(2.8,w*.512));
+            if(mp.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',Math.max(2.8,w*.512));
+            if(mp.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(2.6,w*.488));
+            if(mp.getLayer?.(LAYERS.footprint))mp.setPaintProperty(LAYERS.footprint,'fill-opacity',.025);
+            const plantShadow17064='earthline-swale-planting-shadow-15806',plant17064='earthline-swale-planting-layer-15806';
+            if(mp.getLayer?.(plantShadow17064))mp.setPaintProperty(plantShadow17064,'circle-radius',['interpolate',['linear'],['zoom'],14,['*',['get','size'],.32],17,['*',['get','size'],.60],20,['*',['get','size'],.85]]);
+            if(mp.getLayer?.(plant17064))mp.setPaintProperty(plant17064,'circle-radius',['interpolate',['linear'],['zoom'],14,['*',['get','size'],.25],17,['*',['get','size'],.50],20,['*',['get','size'],.70]]);
+          }catch(_){}
+          const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};"""
+          s=s.replace(anchor,patch)
+          p.write_text(s,encoding='utf-8')
+          if s.count('EARTHLINE 17064')!=1:
+              raise SystemExit('17064 marker count mismatch')
+          PY
+          git diff --check
+          git diff -- index.html
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "candidate: reduce Property natural presentation density 17064"
+          git push origin HEAD:candidate/property-natural-presentation-17064
