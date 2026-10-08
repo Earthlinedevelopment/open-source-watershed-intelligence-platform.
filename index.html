@@ -21856,6 +21856,14 @@ var prescribeSwales;
         :!!(M.layers&&M.layers.flow&&M.layers.flow.on)
     )&&validationView==="all";
     const swaleOn=propertyCommitted&&!!(M.layers&&M.layers.swales&&M.layers.swales.on);
+    /* EARTHLINE 17068 — the 15792 living-swale renderer is fallback only once
+       the verified natural Property renderer has taken ownership. Its delayed
+       rehydrate must not republish duplicate visual swales after settlement. */
+    const naturalPropertySwalesReady=!!(
+      property&&window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169&&
+      Number(window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169.centerlines||0)>0&&
+      Number(window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169.footprints||0)===Number(window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169.centerlines||0)
+    );
     const rechargeOn=propertyCommitted&&!!(M.layers&&M.layers.recharge&&M.layers.recharge.on)&&validationView==="all";
     const contourOn=propertyCommitted&&!!(M.layers&&M.layers.contours&&M.layers.contours.on)&&(validationView==="all"||swalesContours);
     const aquiferOn=propertyCommitted&&!state.propertyAquiferHold16359&&!!(M.layers&&M.layers.usgsAquifer&&M.layers.usgsAquifer.on)&&validationView==="all";
@@ -21863,7 +21871,7 @@ var prescribeSwales;
       (M&&M.vtGroundwaterSummaryPoint16398)||
       (M&&Array.isArray(M.usgsAquifers)&&M.usgsAquifers.length)
     );
-    setGroup(active.water,flowOn);setGroup(active.swales,swaleOn);
+    setGroup(active.water,flowOn);setGroup(active.swales,swaleOn&&!naturalPropertySwalesReady);
     setGroup(active.recharge,rechargeOn);setGroup(active.contours,contourOn);setGroup(active.aquifer,aquiferOn);
     updateAquiferTopText16501(property,aquiferTextOn);
     /* EARTHLINE 16414 — authoritative hydro evidence visibility order.
