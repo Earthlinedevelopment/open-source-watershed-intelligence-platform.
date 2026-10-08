@@ -1,0 +1,21 @@
+name: Earthline Living Swale Owner Trace 17066
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-living-swale-owner-trace-17066.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - name: Trace legacy living swale owner
+        shell: bash
+        run: |
+          echo '=== INDEX MATCHES ==='
+          grep -n -E -C 14 "earthline-living-swales-(glow|earth|life|water)-15792|earthline-living-swales-15792|earthlineApplyRendererOwnership15805" index.html | head -n 1200
+          echo '=== LAUNCH JS MATCHES ==='
+          grep -n -E -C 14 "earthline-living-swales-(glow|earth|life|water)-15792|earthline-living-swales-15792|earthlineApplyRendererOwnership15805" earthline-launch-16872.js | head -n 1200 || true
