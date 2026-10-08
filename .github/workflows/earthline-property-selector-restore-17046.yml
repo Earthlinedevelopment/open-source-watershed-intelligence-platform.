@@ -1,0 +1,77 @@
+name: Earthline Property Selector Restore 17046
+
+on:
+  push:
+    branches:
+      - "candidate/property-restore-working-selector-17046"
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: "candidate/property-restore-working-selector-17046"
+          fetch-depth: 1
+      - name: Restore exact pre-regression Property selector
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path("index.html")
+          s = p.read_text(encoding="utf-8")
+          reps = [
+              (
+                  "const chosen=[],primarySpacing=focusMode?Math.max(6,Math.round(hy.w/31)):Math.max(3,Math.round(hy.w/31));",
+                  "const chosen=[],primarySpacing=Math.max(3,Math.round(hy.w/31));",
+              ),
+              (
+                  "const baseRegionalCapacity16755=focusMode?52:Math.min(120,Math.max(80,coverageGroups16736.size*4));",
+                  "const baseRegionalCapacity16755=focusMode?80:Math.min(120,Math.max(80,coverageGroups16736.size*4));",
+              ),
+              (
+                  "const regionalCapacity16755=focusMode?52:baseRegionalCapacity16755+supportExtra16755;",
+                  "const regionalCapacity16755=focusMode?80:baseRegionalCapacity16755+supportExtra16755;",
+              ),
+              (
+                  "const spacing=chosen.length<20?primarySpacing:(focusMode?Math.max(4,Math.round(primarySpacing*.72)):Math.max(2,Math.round(primarySpacing*.72)));",
+                  "const spacing=chosen.length<20?primarySpacing:Math.max(2,Math.round(primarySpacing*.72));",
+              ),
+              (
+                  "if(chosen.length&&candidates.length){",
+                  "if(!focusMode&&chosen.length&&candidates.length){",
+              ),
+          ]
+          for old, new in reps:
+              n = s.count(old)
+              if n != 1:
+                  raise SystemExit(f"Expected one exact match, found {n}: {old}")
+              s = s.replace(old, new, 1)
+          p.write_text(s, encoding="utf-8")
+      - name: Verify exact rollback only
+        shell: python
+        run: |
+          from pathlib import Path
+          s = Path("index.html").read_text(encoding="utf-8")
+          required = [
+              "const chosen=[],primarySpacing=Math.max(3,Math.round(hy.w/31));",
+              "const baseRegionalCapacity16755=focusMode?80:Math.min(120,Math.max(80,coverageGroups16736.size*4));",
+              "const regionalCapacity16755=focusMode?80:baseRegionalCapacity16755+supportExtra16755;",
+              "const spacing=chosen.length<20?primarySpacing:Math.max(2,Math.round(primarySpacing*.72));",
+              "if(!focusMode&&chosen.length&&candidates.length){",
+          ]
+          missing = [x for x in required if x not in s]
+          if missing:
+              raise SystemExit("Rollback verification failed: "+repr(missing))
+      - name: Commit candidate rollback
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --check
+          git commit -m "candidate: restore pre-regression Property selector parameters 17046 [skip ci]"
+          git push origin HEAD:"candidate/property-restore-working-selector-17046"
