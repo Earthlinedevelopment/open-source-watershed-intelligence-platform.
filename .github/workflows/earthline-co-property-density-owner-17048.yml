@@ -1,4 +1,4 @@
-# rerun 17062 authoritative live layer audit
+# rerun 17063 final Mapbox Property layer state
 name: Earthline CO Property Density Owner 17048
 on:
   push:
@@ -66,13 +66,13 @@ jobs:
             const safeIds=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'];
             const naturalIds=['earthline-property-swale-footprint-16174','earthline-property-swale-natural-casing-16174','earthline-property-swale-natural-up-16174','earthline-property-swale-natural-flip-16174','earthline-property-swale-neutral-16177','earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'];
             const layer=id=>{
-              try{return mp?.getLayer?.(id)?{
-                visibility:mp.getLayoutProperty?.(id,'visibility')??'visible',
-                lineOpacity:mp.getPaintProperty?.(id,'line-opacity')??null,
-                fillOpacity:mp.getPaintProperty?.(id,'fill-opacity')??null,
-                lineWidth:mp.getPaintProperty?.(id,'line-width')??null,
-                circleOpacity:mp.getPaintProperty?.(id,'circle-opacity')??null
-              }:null}catch(e){return {error:String(e)}}
+              try{
+                const row=(mp?.getStyle?.()?.layers||[]).find(x=>x&&x.id===id)||null;
+                if(!row)return null;
+                const src=row.source?mp?.getSource?.(row.source):null;
+                const sourceCount=Array.isArray(src?._data?.features)?src._data.features.length:null;
+                return {type:row.type||null,source:row.source||null,sourceCount,layout:row.layout||{},paint:row.paint||{}};
+              }catch(e){return {error:String(e)}}
             };
             const tex=typeof window.earthlinePropertyTextureAudit16169==='function'?window.earthlinePropertyTextureAudit16169():null;
             return {
