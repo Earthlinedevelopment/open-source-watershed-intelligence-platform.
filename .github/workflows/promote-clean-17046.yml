@@ -1,0 +1,40 @@
+name: Promote Clean Property Selector 17046
+
+on:
+  push:
+    branches:
+      - "candidate/property-restore-working-selector-17046"
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: "candidate/property-restore-working-selector-17046"
+          fetch-depth: 0
+
+      - name: Verify clean tree before promotion
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code 2b81511751939751087065c39a1d40d758cba90f -- . ':(exclude).github/workflows/promote-clean-17046.yml' >/tmp/diff.txt || true
+          changed="$(git diff --name-only 2b81511751939751087065c39a1d40d758cba90f -- . ':(exclude).github/workflows/promote-clean-17046.yml')"
+          test "$changed" = "index.html"
+          count="$(git diff --numstat 2b81511751939751087065c39a1d40d758cba90f -- index.html | awk '{print $1+$2}')"
+          test "$count" = "10"
+
+      - name: Remove helper and promote exact clean tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/promote-clean-17046.yml
+          git commit -m "cleanup: remove temporary 17046 promotion workflow [skip ci]"
+          git push origin HEAD:"candidate/property-restore-working-selector-17046"
+          git push origin HEAD:pages-live
