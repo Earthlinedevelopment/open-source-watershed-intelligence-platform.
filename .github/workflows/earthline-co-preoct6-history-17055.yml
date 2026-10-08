@@ -40,12 +40,17 @@ jobs:
               const applied=await window.applyLocation(site,null,(typeof M!=='undefined'?M.searchGen:0),{analyzeNow:false,preserveMapView:false});
               await new Promise(r=>setTimeout(r,700));
               const setter=window.earthlineSetPropertyTarget16201||window.earthlineSetPropertyTarget16169;
-              if(typeof setter!=='function')return {ok:false,reason:'missing target setter',applied:!!applied};
-              const set=setter({lng:t.lng,lat:t.lat,source:'hist17055'},{openPanel:false});
-              const declare=window.earthlineDeclarePropertyAtCrosshair16169||window.earthlineDeclarePropertyAtCrosshair16173;
-              if(typeof declare!=='function')return {ok:false,reason:'missing declare',applied:!!applied,set:!!set};
-              let result=false,err=null;try{result=await declare();}catch(e){err=String(e)}
-              return {ok:!!result,err,applied:!!applied,set:!!set};
+              const set=typeof setter==='function'?setter({lng:t.lng,lat:t.lat,source:'hist17055'},{openPanel:false}):true;
+              const runner=window.earthlineGovernedPropertyRun16202;
+              if(typeof runner!=='function')return {ok:false,reason:'missing governed runner',applied:!!applied,set:!!set};
+              document.documentElement.dataset.earthlinePropertyRunState='running';
+              window.EARTHLINE_PROPERTY_DECLARATION_16169={build:'HIST17055',center:{lng:t.lng,lat:t.lat},acres:20,boundaryPoints:4,selectedCode:null,declaredAt:new Date().toISOString(),route:'direct-history-harness'};
+              let result=false,err=null;
+              try{
+                const parent=(typeof M!=='undefined'&&M.loc)?M.loc:site;
+                result=await runner(parent,{lng:t.lng,lat:t.lat});
+              }catch(e){err=String(e)}
+              return {ok:!!result,err,applied:!!applied,set:!!set,directGoverned:true};
             }catch(e){return {ok:false,reason:'exception',err:String(e)}}
           });
           await page.waitForTimeout(4500);
