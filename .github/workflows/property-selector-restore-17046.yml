@@ -1,0 +1,87 @@
+name: Earthline Property selector restore 17046
+
+on:
+  push:
+    branches:
+      - candidate/property-restore-working-selector-17046
+
+permissions:
+  contents: write
+
+jobs:
+  restore-selector:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/property-restore-working-selector-17046
+          fetch-depth: 0
+      - name: Restore last working Property selector parameters
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path("index.html")
+          s = p.read_text(encoding="utf-8")
+          replacements = [
+            (
+              "const chosen=[],primarySpacing=focusMode?Math.max(6,Math.round(hy.w/31)):Math.max(3,Math.round(hy.w/31));",
+              "const chosen=[],primarySpacing=Math.max(3,Math.round(hy.w/31));"
+            ),
+            (
+              "const baseRegionalCapacity16755=focusMode?52:Math.min(120,Math.max(80,coverageGroups16736.size*4));",
+              "const baseRegionalCapacity16755=focusMode?80:Math.min(120,Math.max(80,coverageGroups16736.size*4));"
+            ),
+            (
+              "const regionalCapacity16755=focusMode?52:baseRegionalCapacity16755+supportExtra16755;",
+              "const regionalCapacity16755=focusMode?80:baseRegionalCapacity16755+supportExtra16755;"
+            ),
+            (
+              "const spacing=chosen.length<20?primarySpacing:(focusMode?Math.max(4,Math.round(primarySpacing*.72)):Math.max(2,Math.round(primarySpacing*.72)));",
+              "const spacing=chosen.length<20?primarySpacing:Math.max(2,Math.round(primarySpacing*.72));"
+            ),
+            (
+              "if(chosen.length&&candidates.length){",
+              "if(!focusMode&&chosen.length&&candidates.length){"
+            ),
+          ]
+          changed = 0
+          for old, new in replacements:
+            n = s.count(old)
+            if n == 1:
+              s = s.replace(old, new, 1)
+              changed += 1
+            elif n == 0 and s.count(new) == 1:
+              pass
+            else:
+              raise SystemExit(f"unsafe match count old={n} new={s.count(new)} for {old}")
+          if changed:
+            p.write_text(s, encoding="utf-8")
+          print(f"rollback replacements applied: {changed}")
+      - name: Verify exact selector state
+        shell: python
+        run: |
+          from pathlib import Path
+          s = Path("index.html").read_text(encoding="utf-8")
+          required = [
+            "const chosen=[],primarySpacing=Math.max(3,Math.round(hy.w/31));",
+            "const baseRegionalCapacity16755=focusMode?80:Math.min(120,Math.max(80,coverageGroups16736.size*4));",
+            "const regionalCapacity16755=focusMode?80:baseRegionalCapacity16755+supportExtra16755;",
+            "const spacing=chosen.length<20?primarySpacing:Math.max(2,Math.round(primarySpacing*.72));",
+            "if(!focusMode&&chosen.length&&candidates.length){",
+          ]
+          for x in required:
+            if s.count(x) != 1:
+              raise SystemExit(f"verification failed for: {x}")
+          print("exact last-working Property selector state verified")
+      - name: Commit candidate rollback
+        shell: bash
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "No selector change required."
+            exit 0
+          fi
+          git config user.name "Earthline CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "candidate: restore last working Property selector parameters 17046 [skip ci]"
+          git push origin HEAD:candidate/property-restore-working-selector-17046
