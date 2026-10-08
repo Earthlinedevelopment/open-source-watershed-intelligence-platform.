@@ -1,0 +1,23 @@
+name: Earthline Promote Delayed Owner 17068
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-promote-delayed-owner-17068.yml'
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: pages-live
+      - name: Promote owner fix
+        shell: bash
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git cherry-pick 9574fe1b480c91e1be668f2578135cbd21da28f5
+          git push origin HEAD:pages-live
