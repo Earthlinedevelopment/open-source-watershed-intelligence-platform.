@@ -1,0 +1,18 @@
+name: Earthline Property Owner Body 17057
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-property-owner-body-17057.yml'
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0, ref: pages-live}
+      - name: Extract pre-Oct6 runProperty body
+        shell: bash
+        run: |
+          git show 2ccc3eed0cad21eba7b8494a5b7b98355fa63749:index.html > /tmp/preoct6.html
+          sed -n '17280,17645p' /tmp/preoct6.html
