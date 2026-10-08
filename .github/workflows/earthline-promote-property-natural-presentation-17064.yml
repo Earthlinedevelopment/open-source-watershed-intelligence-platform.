@@ -1,0 +1,23 @@
+name: Earthline Promote Property Natural Presentation 17064
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-promote-property-natural-presentation-17064.yml'
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: pages-live
+      - name: Apply vetted 17064 presentation-only patch
+        shell: bash
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git cherry-pick 935f9e957432ffcf46b983bbd52be0506b003e42
+          git push origin HEAD:pages-live
