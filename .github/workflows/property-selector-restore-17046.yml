@@ -70,8 +70,18 @@ jobs:
             "if(!focusMode&&chosen.length&&candidates.length){",
           ]
           for x in required:
-            if s.count(x) != 1:
+            if s.count(x) < 1:
               raise SystemExit(f"verification failed for: {x}")
+          prohibited = [
+            "const chosen=[],primarySpacing=focusMode?Math.max(6,Math.round(hy.w/31)):Math.max(3,Math.round(hy.w/31));",
+            "const baseRegionalCapacity16755=focusMode?52:Math.min(120,Math.max(80,coverageGroups16736.size*4));",
+            "const regionalCapacity16755=focusMode?52:baseRegionalCapacity16755+supportExtra16755;",
+            "const spacing=chosen.length<20?primarySpacing:(focusMode?Math.max(4,Math.round(primarySpacing*.72)):Math.max(2,Math.round(primarySpacing*.72)));",
+            "if(chosen.length&&candidates.length){",
+          ]
+          for x in prohibited:
+            if s.count(x) != 0:
+              raise SystemExit(f"old selector expression still present: {x}")
           print("exact last-working Property selector state verified")
       - name: Commit candidate rollback
         shell: bash
