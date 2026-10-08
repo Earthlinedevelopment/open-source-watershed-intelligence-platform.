@@ -23,7 +23,7 @@ jobs:
           git checkout 2ccc3eed0cad21eba7b8494a5b7b98355fa63749
           python3 -m http.server 8787 >/tmp/earthline-17055-server.log 2>&1 &
           sleep 1
-          cat > /tmp/hist17055.mjs <<'EOF'
+          cat > hist17055.mjs <<'EOF'
           import { chromium } from 'playwright';
           const browser=await chromium.launch({headless:true});
           const context=await browser.newContext({viewport:{width:1800,height:1000}});
@@ -86,7 +86,7 @@ jobs:
           await page.screenshot({path:'/tmp/preoct6-17055.png',fullPage:true});
           await browser.close();
           EOF
-          node /tmp/hist17055.mjs
+          node hist17055.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
