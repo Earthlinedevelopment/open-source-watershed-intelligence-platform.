@@ -1,4 +1,4 @@
-# rerun 17053 live-owner audit
+# rerun 17062 authoritative live layer audit
 name: Earthline CO Property Density Owner 17048
 on:
   push:
@@ -62,7 +62,7 @@ jobs:
           await page.waitForTimeout(400);
           await page.screenshot({path:'/tmp/co-property-17050-narrow-planting.png',fullPage:true});
           const audit=await page.evaluate(()=>{
-            const mp=window.earthlineMap||null;
+            const mp=(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap)||null;
             const safeIds=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'];
             const naturalIds=['earthline-property-swale-footprint-16174','earthline-property-swale-natural-casing-16174','earthline-property-swale-natural-up-16174','earthline-property-swale-natural-flip-16174','earthline-property-swale-neutral-16177','earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'];
             const layer=id=>{
