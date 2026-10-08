@@ -1,0 +1,88 @@
+name: Earthline CO Property Density Owner 17048
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-co-property-density-owner-17048.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Diagnose exact Colorado Property
+        run: |
+          cat > /tmp/diag.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const context=await browser.newContext({viewport:{width:1600,height:1000}});
+          const page=await context.newPage();
+          const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+          await page.goto('https://earthlinedevelopment.org/?co_density_owner_17048='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:20000});
+          await page.waitForTimeout(1400);
+          const prep=await page.evaluate(async()=>{
+            const t={lng:-105.55114,lat:39.02639};
+            const site=window.earthlineSelectedSiteFromCenter(M?.loc||null,t.lng,t.lat,20);
+            const applied=await window.applyLocation(site,null,M.searchGen,{analyzeNow:false,preserveMapView:false});
+            if(!applied)return {ok:false,reason:'apply'};
+            await new Promise(r=>setTimeout(r,700));
+            const set=window.earthlineSetPropertyTarget16201({lng:t.lng,lat:t.lat,source:'co-density-owner-17048'},{openPanel:false});
+            if(!set)return {ok:false,reason:'target'};
+            let result=false,err=null;
+            try{result=await window.earthlineDeclarePropertyAtCrosshair16169();}catch(e){err=String(e)}
+            return {ok:!!result,err};
+          });
+          await page.waitForTimeout(3000);
+          const audit=await page.evaluate(()=>{
+            const mp=window.earthlineMap||null;
+            const safeIds=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'];
+            const naturalIds=['earthline-property-swale-footprint-16174','earthline-property-swale-natural-casing-16174','earthline-property-swale-natural-up-16174','earthline-property-swale-natural-flip-16174','earthline-property-swale-neutral-16177','earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'];
+            const layer=id=>{
+              try{return mp?.getLayer?.(id)?{
+                visibility:mp.getLayoutProperty?.(id,'visibility')??'visible',
+                lineOpacity:mp.getPaintProperty?.(id,'line-opacity')??null,
+                fillOpacity:mp.getPaintProperty?.(id,'fill-opacity')??null,
+                lineWidth:mp.getPaintProperty?.(id,'line-width')??null,
+                circleOpacity:mp.getPaintProperty?.(id,'circle-opacity')??null
+              }:null}catch(e){return {error:String(e)}}
+            };
+            const tex=typeof window.earthlinePropertyTextureAudit16169==='function'?window.earthlinePropertyTextureAudit16169():null;
+            return {
+              build:window.EARTHLINE_BUILD||null,
+              tier:document.documentElement.dataset.earthlineAnalysisTier||null,
+              runState:document.documentElement.dataset.earthlineRunState||null,
+              propertyRunState:document.documentElement.dataset.earthlinePropertyRunState||null,
+              mSwales:Array.isArray(M?.swales)?M.swales.length:null,
+              authoritativeSafe:Number(M?.authoritativeSafeSwales15815?.features?.length??-1),
+              publication:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,
+              runAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+              texture:tex,
+              textureState:window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null,
+              fallback:window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011?.last||null,
+              planting:M?.naturalSwalePlanting15806||null,
+              safeLayers:Object.fromEntries(safeIds.map(id=>[id,layer(id)])),
+              naturalLayers:Object.fromEntries(naturalIds.map(id=>[id,layer(id)])),
+              swaleMeta:M?.swaleMeta||null,
+              spacing:M?.spacingStats||null
+            };
+          });
+          console.log('EARTHLINE_CO_PROPERTY_DENSITY_OWNER_17048 '+JSON.stringify({prep,audit,errors}));
+          await page.screenshot({path:'/tmp/co-property-17048.png',fullPage:true});
+          await browser.close();
+          EOF
+          node /tmp/diag.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: co-property-density-owner-17048
+          path: /tmp/co-property-17048.png
+          if-no-files-found: warn
