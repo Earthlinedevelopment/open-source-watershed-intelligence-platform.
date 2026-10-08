@@ -1,0 +1,23 @@
+name: Earthline Property History 17054
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-property-history-17054.yml'
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0, ref: pages-live}
+      - name: Compare accepted and live Property presentation constants
+        shell: bash
+        run: |
+          set +e
+          echo '=== ACCEPTED 16584 / 74343a ==='
+          git show 74343a24f90fed7d7abbe9267ef11a2836220de7:index.html | grep -n -E -C 3 "groundWidthM|naturalSwalePlanting15806|earthline-swale-planting|targetSpacingM|acceptedSpacingM|property-swale-footprint|widthPx" | head -n 500
+          echo '=== LIVE pages-live ==='
+          grep -n -E -C 3 "groundWidthM|naturalSwalePlanting15806|earthline-swale-planting|targetSpacingM|acceptedSpacingM|property-swale-footprint|widthPx" index.html | head -n 500
+          echo '=== DIFF focused ==='
+          git diff --unified=5 74343a24f90fed7d7abbe9267ef11a2836220de7 -- index.html | grep -n -E -C 6 "groundWidthM|naturalSwalePlanting15806|earthline-swale-planting|targetSpacingM|acceptedSpacingM|property-swale-footprint|widthPx" | head -n 700
