@@ -1,0 +1,20 @@
+name: Earthline Property Owner Signature 17056
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-property-owner-signature-17056.yml'
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0, ref: pages-live}
+      - name: Extract historical governed Property owner
+        shell: bash
+        run: |
+          echo '=== PREOCT6 OWNER ==='
+          git show 2ccc3eed0cad21eba7b8494a5b7b98355fa63749:index.html | grep -n -A 180 -B 30 "earthlineGovernedPropertyRun16202" | head -n 500
+          echo '=== ACCEPTED 16584 OWNER ==='
+          git show 74343a24f90fed7d7abbe9267ef11a2836220de7:index.html | grep -n -A 180 -B 30 "earthlineGovernedPropertyRun16202" | head -n 500
