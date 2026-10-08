@@ -1,0 +1,103 @@
+name: Earthline Property Delayed Owner 17065
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-property-delayed-owner-17065.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Trace delayed Property republisher
+        shell: bash
+        run: |
+          cat > diag-17065.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const context=await browser.newContext({viewport:{width:1800,height:1000}});
+          const page=await context.newPage();
+          const errors=[];
+          page.on('pageerror',e=>errors.push(String(e)));
+          await page.goto('https://earthlinedevelopment.org/?delayed_owner_17065='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:20000});
+          await page.waitForTimeout(1400);
+          const prep=await page.evaluate(async()=>{
+            const t={lng:-105.55114,lat:39.02639};
+            const site=window.earthlineSelectedSiteFromCenter(M?.loc||null,t.lng,t.lat,20);
+            const applied=await window.applyLocation(site,null,M.searchGen,{analyzeNow:false,preserveMapView:false});
+            if(!applied)return {ok:false,reason:'apply'};
+            await new Promise(r=>setTimeout(r,700));
+            const set=window.earthlineSetPropertyTarget16201({lng:t.lng,lat:t.lat,source:'delayed-owner-17065'},{openPanel:false});
+            if(!set)return {ok:false,reason:'target'};
+            let result=false,err=null;
+            try{result=await window.earthlineDeclarePropertyAtCrosshair16169();}catch(e){err=String(e)}
+            return {ok:!!result,err,at:Date.now()};
+          });
+          const snap=async(label)=>{
+            const data=await page.evaluate((label)=>{
+              const mp=(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap)||null;
+              const style=mp?.getStyle?.()||{};
+              const all=(style.layers||[]).filter(l=>/(swale|plant|property-safe|living)/i.test(l.id||'')).map(l=>{
+                const src=l.source?mp?.getSource?.(l.source):null;
+                const sourceCount=Array.isArray(src?._data?.features)?src._data.features.length:null;
+                return {
+                  id:l.id,type:l.type,source:l.source||null,sourceCount,
+                  visibility:l.layout?.visibility??'visible',
+                  lineOpacity:l.paint?.['line-opacity']??null,
+                  fillOpacity:l.paint?.['fill-opacity']??null,
+                  circleOpacity:l.paint?.['circle-opacity']??null,
+                  lineWidth:l.paint?.['line-width']??null,
+                  circleRadius:l.paint?.['circle-radius']??null
+                };
+              });
+              const tex=window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null;
+              const pub=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null;
+              const run=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+              const planting=M?.naturalSwalePlanting15806||null;
+              return {
+                label,now:Date.now(),
+                searchGen:M?.searchGen??null,
+                tier:document.documentElement.dataset.earthlineAnalysisTier||null,
+                runState:document.documentElement.dataset.earthlineRunState||null,
+                propertyRunState:document.documentElement.dataset.earthlinePropertyRunState||null,
+                mSwales:Array.isArray(M?.swales)?M.swales.length:null,
+                authoritativeSafe:Number(M?.authoritativeSafeSwales15815?.features?.length??-1),
+                textureFeatures:Number(tex?.features??0),
+                textureCenterlines:Number(tex?.centerlines??0),
+                textureFootprints:Number(tex?.footprints??0),
+                plantingFeatures:Number(planting?.features??-1),
+                publicationCount:Number(pub?.publicationCount??-1),
+                runCorridors:Number(run?.corridors??-1),
+                all
+              };
+            },label);
+            console.log('EARTHLINE_17065_SNAPSHOT '+JSON.stringify(data));
+            await page.screenshot({path:'/tmp/17065-'+label+'.png',fullPage:true});
+            return data;
+          };
+          const snapshots=[];
+          snapshots.push(await snap('t0'));
+          for(const [label,delay] of [['t1',1000],['t3',2000],['t5',2000],['t8',3000],['t12',4000]]){
+            await page.waitForTimeout(delay);
+            snapshots.push(await snap(label));
+          }
+          console.log('EARTHLINE_17065_SUMMARY '+JSON.stringify({prep,snapshots,errors}));
+          await browser.close();
+          EOF
+          node diag-17065.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: property-delayed-owner-17065
+          path: /tmp/17065-*.png
+          if-no-files-found: warn
