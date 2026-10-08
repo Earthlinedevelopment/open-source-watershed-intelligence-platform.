@@ -1,0 +1,95 @@
+name: Earthline CO Pre-Oct6 History 17055
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-co-preoct6-history-17055.yml'
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0, ref: pages-live}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run exact Colorado Property on pre-Oct6 code
+        shell: bash
+        run: |
+          git checkout 2ccc3eed0cad21eba7b8494a5b7b98355fa63749
+          python3 -m http.server 8787 >/tmp/earthline-17055-server.log 2>&1 &
+          sleep 1
+          cat > /tmp/hist17055.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const context=await browser.newContext({viewport:{width:1800,height:1000}});
+          const page=await context.newPage();
+          const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+          await page.goto('http://127.0.0.1:8787/index.html?hist17055='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForTimeout(1600);
+          const prep=await page.evaluate(async()=>{
+            try{
+              const t={lng:-105.55114,lat:39.02639};
+              if(typeof window.earthlineSelectedSiteFromCenter!=='function')return {ok:false,reason:'missing selectedSite'};
+              const site=window.earthlineSelectedSiteFromCenter((typeof M!=='undefined'?M?.loc:null),t.lng,t.lat,20);
+              if(typeof window.applyLocation!=='function')return {ok:false,reason:'missing applyLocation'};
+              const applied=await window.applyLocation(site,null,(typeof M!=='undefined'?M.searchGen:0),{analyzeNow:false,preserveMapView:false});
+              await new Promise(r=>setTimeout(r,700));
+              const setter=window.earthlineSetPropertyTarget16201||window.earthlineSetPropertyTarget16169;
+              if(typeof setter!=='function')return {ok:false,reason:'missing target setter',applied:!!applied};
+              const set=setter({lng:t.lng,lat:t.lat,source:'hist17055'},{openPanel:false});
+              const declare=window.earthlineDeclarePropertyAtCrosshair16169||window.earthlineDeclarePropertyAtCrosshair16173;
+              if(typeof declare!=='function')return {ok:false,reason:'missing declare',applied:!!applied,set:!!set};
+              let result=false,err=null;try{result=await declare();}catch(e){err=String(e)}
+              return {ok:!!result,err,applied:!!applied,set:!!set};
+            }catch(e){return {ok:false,reason:'exception',err:String(e)}}
+          });
+          await page.waitForTimeout(4500);
+          const audit=await page.evaluate(()=>{
+            const mp=(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap)||null;
+            const md=(typeof M!=='undefined'?M:null);
+            const layers=[];
+            try{
+              const style=mp?.getStyle?.();
+              for(const l of (style?.layers||[])){
+                if(!/(swale|plant|property-safe)/i.test(l.id))continue;
+                let vis=null,opacity=null,width=null,radius=null,fillOpacity=null,sourceCount=null;
+                try{vis=mp.getLayoutProperty(l.id,'visibility')??'visible'}catch(_){}
+                try{opacity=mp.getPaintProperty(l.id,'line-opacity')??mp.getPaintProperty(l.id,'circle-opacity')??null}catch(_){}
+                try{width=mp.getPaintProperty(l.id,'line-width')??null}catch(_){}
+                try{radius=mp.getPaintProperty(l.id,'circle-radius')??null}catch(_){}
+                try{fillOpacity=mp.getPaintProperty(l.id,'fill-opacity')??null}catch(_){}
+                try{if(l.source)sourceCount=mp.querySourceFeatures(l.source)?.length??null}catch(_){}
+                layers.push({id:l.id,type:l.type,source:l.source||null,vis,opacity,width,radius,fillOpacity,sourceCount});
+              }
+            }catch(_){}
+            let texture=null;try{texture=typeof window.earthlinePropertyTextureAudit16169==='function'?window.earthlinePropertyTextureAudit16169():window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null}catch(_){}
+            return {
+              build:window.EARTHLINE_BUILD||null,
+              tier:document.documentElement.dataset.earthlineAnalysisTier||null,
+              runState:document.documentElement.dataset.earthlineRunState||null,
+              swales:Array.isArray(md?.swales)?md.swales.length:null,
+              authoritativeSafe:Number(md?.authoritativeSafeSwales15815?.features?.length??md?.authoritativeSafeSwales15806?.features?.length??-1),
+              planting:md?.naturalSwalePlanting15806||null,
+              swaleMeta:md?.swaleMeta||null,
+              spacing:md?.spacingStats||null,
+              texture,
+              layers,
+              errors
+            };
+          });
+          console.log('EARTHLINE_PREOCT6_17055 '+JSON.stringify({prep,audit}));
+          await page.screenshot({path:'/tmp/preoct6-17055.png',fullPage:true});
+          await browser.close();
+          EOF
+          node /tmp/hist17055.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: co-preoct6-17055
+          path: /tmp/preoct6-17055.png
+          if-no-files-found: warn
