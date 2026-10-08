@@ -1,0 +1,92 @@
+name: Earthline Test Delayed Owner 17068
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-test-delayed-owner-17068.yml'
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/property-delayed-owner-17068
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify no delayed legacy swales
+        shell: bash
+        run: |
+          python3 -m http.server 8787 >/tmp/earthline17068.log 2>&1 &
+          sleep 1
+          cat > diag17068.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const context=await browser.newContext({viewport:{width:1800,height:1000}});
+          const page=await context.newPage();
+          const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+          await page.goto('http://127.0.0.1:8787/index.html?test17068='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:20000});
+          await page.waitForTimeout(1400);
+          const prep=await page.evaluate(async()=>{
+            const t={lng:-105.55114,lat:39.02639};
+            const site=window.earthlineSelectedSiteFromCenter(M?.loc||null,t.lng,t.lat,20);
+            const applied=await window.applyLocation(site,null,M.searchGen,{analyzeNow:false,preserveMapView:false});
+            if(!applied)return {ok:false,reason:'apply'};
+            await new Promise(r=>setTimeout(r,700));
+            const set=window.earthlineSetPropertyTarget16201({lng:t.lng,lat:t.lat,source:'test17068'},{openPanel:false});
+            if(!set)return {ok:false,reason:'target'};
+            let result=false,err=null;
+            try{result=await window.earthlineDeclarePropertyAtCrosshair16169();}catch(e){err=String(e)}
+            return {ok:!!result,err};
+          });
+          const snap=async(label)=>page.evaluate((label)=>{
+            const mp=(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap)||null;
+            const style=mp?.getStyle?.()||{};
+            const livingIds=[
+              'earthline-living-swales-glow-15792',
+              'earthline-living-swales-earth-15792',
+              'earthline-living-swales-life-15792',
+              'earthline-living-swales-water-15792'
+            ];
+            const living=livingIds.map(id=>{
+              const row=(style.layers||[]).find(x=>x&&x.id===id)||null;
+              if(!row)return {id,missing:true};
+              const src=row.source?mp?.getSource?.(row.source):null;
+              return {
+                id,visibility:row.layout?.visibility??'visible',
+                opacity:row.paint?.['line-opacity']??null,
+                sourceCount:Array.isArray(src?._data?.features)?src._data.features.length:null
+              };
+            });
+            const tex=window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null;
+            return {
+              label,mSwales:Array.isArray(M?.swales)?M.swales.length:null,
+              safe:Number(M?.authoritativeSafeSwales15815?.features?.length??-1),
+              textureCenterlines:Number(tex?.centerlines??0),
+              textureFootprints:Number(tex?.footprints??0),
+              living,
+              livingVisible:living.filter(x=>!x.missing&&x.visibility!=='none'&&(x.opacity===null||Number(x.opacity)>0)).map(x=>x.id)
+            };
+          },label);
+          const out=[];
+          out.push(await snap('t0'));
+          for(const [label,delay] of [['t1',1000],['t3',2000],['t5',2000],['t8',3000],['t12',4000]]){
+            await page.waitForTimeout(delay);
+            out.push(await snap(label));
+          }
+          console.log('EARTHLINE_17068_RESULT '+JSON.stringify({prep,out,errors}));
+          const bad=out.filter(x=>x.mSwales!==50||x.safe!==50||x.textureCenterlines!==50||x.textureFootprints!==50||x.livingVisible.length);
+          if(!prep.ok||errors.length||bad.length){
+            console.error('EARTHLINE_17068_FAIL '+JSON.stringify({prep,bad,errors}));
+            process.exitCode=1;
+          }else{
+            console.log('EARTHLINE_17068_PASS');
+          }
+          await browser.close();
+          EOF
+          node diag17068.mjs
