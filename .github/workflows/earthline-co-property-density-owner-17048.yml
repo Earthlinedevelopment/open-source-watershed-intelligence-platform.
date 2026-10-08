@@ -20,7 +20,7 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Diagnose exact Colorado Property
         run: |
-          cat > /tmp/diag.mjs <<'EOF'
+          cat > diag-17048.mjs <<'EOF'
           import { chromium } from 'playwright';
           const browser=await chromium.launch({headless:true});
           const context=await browser.newContext({viewport:{width:1600,height:1000}});
@@ -79,7 +79,7 @@ jobs:
           await page.screenshot({path:'/tmp/co-property-17048.png',fullPage:true});
           await browser.close();
           EOF
-          node /tmp/diag.mjs
+          node diag-17048.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
