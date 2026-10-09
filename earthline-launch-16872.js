@@ -1458,3 +1458,78 @@ html:not(.earthline-report-open-16966):not(.earthline-swales-open-16947):not(.ea
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
   else install();
 })();
+
+
+/* EARTHLINE_NAV_RAIL_EDGE_OWNER_17070
+   Presentation-only repair. When the navigation pane is closed/full-map is active,
+   keep the task rail anchored fully inside the viewport so Search remains visible.
+   No map, search, hydrology, swale, recharge or report-data ownership changes. */
+(function installEarthlineNavRailEdgeOwner17070(){
+  if(window.EARTHLINE_NAV_RAIL_EDGE_OWNER_17070)return;
+  function install(){
+    let style=document.getElementById('earthlineNavRailEdgeOwner17070');
+    if(!style){
+      style=document.createElement('style');
+      style.id='earthlineNavRailEdgeOwner17070';
+      style.textContent=`
+html:not(.earthline-report-open-16966) #earthlineRail16188{
+  position:fixed!important;
+  left:0!important;right:auto!important;
+  top:0!important;bottom:0!important;
+  transform:none!important;translate:none!important;
+  margin-left:0!important;
+  box-sizing:border-box!important;
+  width:var(--el-rail-16188,62px)!important;
+  min-width:var(--el-rail-16188,62px)!important;
+  max-width:var(--el-rail-16188,62px)!important;
+  opacity:1!important;visibility:visible!important;pointer-events:auto!important;
+  overflow:visible!important;
+  z-index:2147482400!important;
+}
+html:not(.earthline-report-open-16966) #earthlineRailSearch16188{
+  display:grid!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+  position:static!important;
+  left:auto!important;right:auto!important;
+  transform:none!important;translate:none!important;
+  margin-left:0!important;margin-right:0!important;
+  flex:0 0 46px!important;
+}
+`;
+      (document.head||document.documentElement).appendChild(style);
+    }
+    const enforce=()=>{
+      if(document.documentElement.classList.contains('earthline-report-open-16966'))return;
+      const rail=document.getElementById('earthlineRail16188');
+      const search=document.getElementById('earthlineRailSearch16188');
+      if(rail){
+        rail.style.setProperty('left','0','important');
+        rail.style.setProperty('right','auto','important');
+        rail.style.setProperty('transform','none','important');
+        rail.style.setProperty('translate','none','important');
+        rail.style.setProperty('margin-left','0','important');
+        rail.style.setProperty('visibility','visible','important');
+        rail.style.setProperty('opacity','1','important');
+      }
+      if(search){
+        search.style.setProperty('display','grid','important');
+        search.style.setProperty('visibility','visible','important');
+        search.style.setProperty('opacity','1','important');
+        search.style.setProperty('transform','none','important');
+        search.style.setProperty('translate','none','important');
+        search.style.setProperty('pointer-events','auto','important');
+      }
+    };
+    enforce();
+    try{
+      const observer=new MutationObserver(()=>requestAnimationFrame(enforce));
+      observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style']});
+    }catch(_){}
+    window.addEventListener('resize',enforce,{passive:true});
+    window.EARTHLINE_NAV_RAIL_EDGE_OWNER_17070={state:'ready',enforce};
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
+})();
