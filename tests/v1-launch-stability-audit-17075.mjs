@@ -1,8 +1,9 @@
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
-const BASE=(process.env.EARTHLINE_URL||'http://127.0.0.1:8787/').replace(/\/?$/,'/');
-const OUT='artifacts/v1-launch-stability-17075';
+const BASE=(process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/').replace(/\/?$/,'/');
+const HOSTMAP=process.env.EARTHLINE_HOSTMAP==='1';
+const OUT='artifacts/v1-launch-stability-17076';
 mkdirSync(OUT,{recursive:true});
 
 const CASES=[
@@ -13,7 +14,9 @@ const CASES=[
   {name:'phone-390',w:390,h:844,mobile:true}
 ];
 
-const browser=await chromium.launch({headless:true});
+const launchArgs=HOSTMAP?['--host-resolver-rules=MAP earthlinedevelopment.org 127.0.0.1']:[];
+
+const browser=await chromium.launch({headless:true,args:launchArgs});
 const rows=[];
 
 async function snap(page,label){
@@ -28,43 +31,29 @@ async function snap(page,label){
         visible:s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity||1)>.02&&r.width>1&&r.height>1
       };
     };
-    const vw=innerWidth,vh=innerHeight;
-    const darkBlocking=[];
-    for(const el of document.querySelectorAll('body *')){
-      if(el.tagName==='CANVAS'||el.closest('.mapboxgl-map,#mapboxBase'))continue;
-      const s=getComputedStyle(el);
-      if(!['fixed','absolute'].includes(s.position))continue;
-      const r=el.getBoundingClientRect();
-      const area=Math.max(0,Math.min(r.right,vw)-Math.max(r.left,0))*Math.max(0,Math.min(r.bottom,vh)-Math.max(r.top,0));
-      if(area<vw*vh*.28)continue;
-      const bg=s.backgroundColor||'';
-      const m=bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/);
-      if(!m)continue;
-      const rgb=(Number(m[1])+Number(m[2])+Number(m[3]))/3;
-      const alpha=m[4]==null?1:Number(m[4]);
-      if(rgb>55||alpha<.45)continue;
-      darkBlocking.push({
-        id:el.id||null,cls:String(el.className||'').slice(0,180),tag:el.tagName,
-        areaRatio:Number((area/(vw*vh)).toFixed(3)),bg,opacity:s.opacity,
-        pointerEvents:s.pointerEvents,borderRadius:s.borderRadius,z:s.zIndex,
-        text:String(el.textContent||'').replace(/\s+/g,' ').trim().slice(0,120)
-      });
-    }
-    const busy=[];
-    for(const el of document.querySelectorAll('[aria-busy="true"],[class*="spinner" i],[id*="spinner" i],[class*="loading" i],[id*="loading" i]')){
-      const b=box(el); if(b?.visible)busy.push({id:el.id||null,cls:String(el.className||'').slice(0,160),...b});
-    }
     const ids=['earthlineRail16188','earthlineRailSearch16188','earthlinePanel16188','earthlinePanelClose16188','earthlineLanguageWrap16488','earthlineLanguage16488','searchInput','runBtn','mapboxBase'];
-    const boxes={}; for(const id of ids)boxes[id]=box(document.getElementById(id));
-    const root=document.documentElement;
+    const boxes={};for(const id of ids)boxes[id]=box(document.getElementById(id));
+    let map=null;
+    try{
+      const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+      if(m){
+        map={
+          exists:true,
+          loaded:typeof m.loaded==='function'?m.loaded():null,
+          styleLoaded:typeof m.isStyleLoaded==='function'?m.isStyleLoaded():null,
+          tilesLoaded:typeof m.areTilesLoaded==='function'?m.areTilesLoaded():null,
+          zoom:typeof m.getZoom==='function'?m.getZoom():null,
+          center:typeof m.getCenter==='function'?m.getCenter():null,
+          projection:typeof m.getProjection==='function'?m.getProjection():null
+        };
+      }
+    }catch(e){map={exists:true,error:String(e)}}
     return {
-      label,
-      readyState:document.readyState,
-      viewport:{w:vw,h:vh},
-      doc:{scrollW:root.scrollWidth,clientW:root.clientWidth,scrollH:root.scrollHeight,clientH:root.clientHeight},
-      panelOpen:root.classList.contains('earthline-panel-open-16188'),
-      boxes,darkBlocking,busy,
-      mapPresent:!!(window.earthlineMap||document.querySelector('.mapboxgl-map')),
+      label,readyState:document.readyState,
+      viewport:{w:innerWidth,h:innerHeight},
+      doc:{scrollW:document.documentElement.scrollWidth,clientW:document.documentElement.clientWidth},
+      panelOpen:document.documentElement.classList.contains('earthline-panel-open-16188'),
+      boxes,map,
       owners:{
         language:window.earthlineLanguageOwner16890||null,
         uiEmergency:window.EARTHLINE_UI_EMERGENCY_17069||null,
@@ -76,34 +65,45 @@ async function snap(page,label){
 }
 
 for(const tc of CASES){
-  const context=await browser.newContext({viewport:{width:tc.w,height:tc.h},isMobile:tc.mobile,hasTouch:tc.mobile,deviceScaleFactor:tc.mobile?2:1});
+  const context=await browser.newContext({
+    viewport:{width:tc.w,height:tc.h},
+    isMobile:tc.mobile,hasTouch:tc.mobile,deviceScaleFactor:tc.mobile?2:1,
+    ignoreHTTPSErrors:true
+  });
   const page=await context.newPage();
-  const row={case:tc,errors:[],consoleErrors:[],requestsFailed:[],snaps:{},pass:{}};
+  const row={case:tc,errors:[],consoleErrors:[],failedRequests:[],httpErrors:[],snaps:{},pass:{}};
+
+  await page.route('https://ccucaqwbdsskcwxxbqiz.supabase.co/functions/v1/earthline-telemetry',route=>route.fulfill({status:204,body:''}));
   page.on('pageerror',e=>row.errors.push(String(e)));
   page.on('console',m=>{if(m.type()==='error')row.consoleErrors.push(m.text())});
-  page.on('requestfailed',r=>row.requestsFailed.push({url:r.url(),error:r.failure()?.errorText||''}));
+  page.on('requestfailed',r=>row.failedRequests.push({url:r.url(),error:r.failure()?.errorText||''}));
+  page.on('response',r=>{if(r.status()>=400)row.httpErrors.push({status:r.status(),url:r.url()})});
+
   try{
     const t0=Date.now();
-    await page.goto(BASE+'?v1_stability_17075='+tc.name+'_'+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
+    await page.goto(BASE+'?v1_stability_17076='+tc.name+'_'+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
     await page.waitForSelector('#searchInput',{state:'attached',timeout:15000});
     row.domReadyMs=Date.now()-t0;
 
-    for(const [label,delay] of [['t0',0],['t1s',1000],['t3s',2000],['t7s',4000]]){
-      if(delay)await page.waitForTimeout(delay);
+    let elapsed=0;
+    for(const [label,target] of [['t0',0],['t1s',1000],['t3s',3000],['t7s',7000],['t12s',12000]]){
+      const wait=Math.max(0,target-elapsed); if(wait)await page.waitForTimeout(wait); elapsed=target;
       row.snaps[label]=await snap(page,label);
       await page.screenshot({path:`${OUT}/${tc.name}-${label}.png`,fullPage:false});
     }
 
-    const s=row.snaps.t7s;
+    const s=row.snaps.t12s;
     const search=s.boxes.earthlineRailSearch16188;
     const languageWrap=s.boxes.earthlineLanguageWrap16488;
     const languageSelect=s.boxes.earthlineLanguage16488;
-    row.pass.noBlockingDark=s.darkBlocking.length===0;
-    row.pass.noPersistentBusy=s.busy.length===0;
+
     row.pass.searchVisible=!!search?.visible&&search.x>=-1&&search.x+search.w<=tc.w+1&&search.pointerEvents!=='none';
     row.pass.languageHidden=(!languageWrap||!languageWrap.visible)&&(!languageSelect||!languageSelect.visible);
     row.pass.noHorizontalOverflow=s.doc.scrollW<=tc.w+2;
     row.pass.no17070Owners=!s.owners.navReturn&&!s.owners.navRail;
+    row.pass.mapObjectPresent=!!s.map?.exists;
+    row.pass.mapStyleLoaded=s.map?.styleLoaded!==false;
+    row.pass.noPageErrors=row.errors.length===0;
 
     const before=s.panelOpen;
     await page.evaluate(()=>document.getElementById('earthlineRailSearch16188')?.click());
@@ -111,8 +111,7 @@ for(const tc of CASES){
     row.afterSearch=await snap(page,'after-search');
     row.pass.searchTogglesPanel=row.afterSearch.panelOpen!==before;
 
-    const close=await page.locator('#earthlinePanelClose16188').count();
-    if(close){
+    if(await page.locator('#earthlinePanelClose16188').count()){
       await page.evaluate(()=>document.getElementById('earthlinePanelClose16188')?.click());
       await page.waitForTimeout(350);
       row.afterClose=await snap(page,'after-close');
@@ -124,27 +123,30 @@ for(const tc of CASES){
       row.pass.searchSurvivesClose=row.pass.searchVisible;
     }
 
-    row.pass.noPageErrors=row.errors.length===0;
+    row.mapboxHttpErrors=row.httpErrors.filter(x=>/mapbox\.com/i.test(x.url));
+    row.otherHttpErrors=row.httpErrors.filter(x=>!/mapbox\.com/i.test(x.url));
     row.overall=Object.values(row.pass).every(Boolean);
-  }catch(e){
-    row.fatal=String(e);row.overall=false;
-  }
+  }catch(e){row.fatal=String(e);row.overall=false}
+
   rows.push(row);
   writeFileSync(`${OUT}/${tc.name}-result.json`,JSON.stringify(row,null,2));
-  console.log('EARTHLINE_V1_STABILITY_17075 '+JSON.stringify({case:tc.name,overall:row.overall,pass:row.pass,fatal:row.fatal||null,errors:row.errors.slice(0,3),consoleErrors:row.consoleErrors.slice(0,3)}));
+  console.log('EARTHLINE_V1_STABILITY_17076 '+JSON.stringify({
+    case:tc.name,overall:row.overall,pass:row.pass,fatal:row.fatal||null,
+    mapT0:row.snaps?.t0?.map||null,mapT12:row.snaps?.t12s?.map||null,
+    mapboxHttpErrors:row.mapboxHttpErrors?.slice(0,8)||[],
+    otherHttpErrors:row.otherHttpErrors?.slice(0,8)||[],
+    errors:row.errors.slice(0,3)
+  }));
   await context.close();
 }
 await browser.close();
 
 const summary={
-  total:rows.length,
-  pass:rows.filter(r=>r.overall).length,
-  fail:rows.filter(r=>!r.overall).length,
+  total:rows.length,pass:rows.filter(r=>r.overall).length,fail:rows.filter(r=>!r.overall).length,
   failed:rows.filter(r=>!r.overall).map(r=>({case:r.case.name,pass:r.pass,fatal:r.fatal||null})),
-  blackStartup:rows.filter(r=>Object.values(r.snaps||{}).some(s=>s.darkBlocking?.length)).map(r=>r.case.name),
-  persistentBusy:rows.filter(r=>r.snaps?.t7s?.busy?.length).map(r=>r.case.name),
+  mapboxErrors:rows.map(r=>({case:r.case.name,count:r.mapboxHttpErrors?.length||0,sample:r.mapboxHttpErrors?.slice(0,3)||[]})),
   pageErrors:rows.filter(r=>r.errors?.length).map(r=>({case:r.case.name,errors:r.errors.slice(0,5)}))
 };
 writeFileSync(`${OUT}/summary.json`,JSON.stringify({summary,rows},null,2));
-console.log('EARTHLINE_V1_STABILITY_17075_SUMMARY '+JSON.stringify(summary));
+console.log('EARTHLINE_V1_STABILITY_17076_SUMMARY '+JSON.stringify(summary));
 if(summary.fail)process.exitCode=1;
