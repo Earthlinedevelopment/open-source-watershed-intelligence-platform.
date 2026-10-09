@@ -88,7 +88,34 @@ jobs:
 
                 const button=page.locator('#earthlineVermontReport16149');
                 row.reportButton=await button.count()?await button.evaluate(el=>({disabled:el.disabled,ready:el.dataset.ready,text:el.textContent.trim()})):null;
+                const reportReachability=()=>page.evaluate(()=>{
+                  const button=document.getElementById('earthlineVermontReport16149');
+                  const section=document.getElementById('earthlineReportSection16188');
+                  const body=document.getElementById('earthlinePanelBody16188');
+                  const panel=document.getElementById('earthlinePanel16188');
+                  const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect(),s=getComputedStyle(e);return{x:r.x,y:r.y,w:r.width,h:r.height,right:r.right,bottom:r.bottom,display:s.display,visibility:s.visibility,position:s.position,transform:s.transform,overflowY:s.overflowY}};
+                  return {
+                    rootClass:document.documentElement.className,
+                    panelOpen:document.documentElement.classList.contains('earthline-panel-open-16188'),
+                    buttonParent:button?.parentElement?.id||null,
+                    button:rect(button),section:rect(section),body:rect(body),panel:rect(panel),
+                    bodyScrollTop:body?.scrollTop??null,bodyClientHeight:body?.clientHeight??null,bodyScrollHeight:body?.scrollHeight??null,
+                    viewport:{w:innerWidth,h:innerHeight}
+                  };
+                });
+                row.reportReachabilityBefore=await reportReachability();
                 if(row.reportButton && !row.reportButton.disabled){
+                  if(tc.mobile){
+                    if(!row.reportReachabilityBefore.panelOpen){
+                      const railSearch=page.locator('#earthlineRailSearch16188');
+                      if(await railSearch.count())await railSearch.click();
+                      await page.waitForTimeout(250);
+                    }
+                    const reportSection=page.locator('#earthlineReportSection16188');
+                    if(await reportSection.count())await reportSection.scrollIntoViewIfNeeded().catch(()=>{});
+                    await page.waitForTimeout(250);
+                  }
+                  row.reportReachabilityAfter=await reportReachability();
                   await button.click();
                   await page.waitForTimeout(600);
                   row.layout=await page.evaluate(()=>{
