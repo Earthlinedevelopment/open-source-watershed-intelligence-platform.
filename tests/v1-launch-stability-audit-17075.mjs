@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 
 const BASE=(process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/').replace(/\/?$/,'/');
 const HOSTMAP=process.env.EARTHLINE_HOSTMAP==='1';
-const OUT='artifacts/v1-launch-stability-17076';
+const OUT='artifacts/v1-launch-stability-17077';
 mkdirSync(OUT,{recursive:true});
 
 const CASES=[
@@ -14,8 +14,12 @@ const CASES=[
   {name:'phone-390',w:390,h:844,mobile:true}
 ];
 
-const launchArgs=HOSTMAP?['--host-resolver-rules=MAP earthlinedevelopment.org 127.0.0.1']:[];
+// Fixed regression area only. This is NOT an address-based Property launch.
+// The map is moved here, then physically dragged so Earthline's existing
+// dragend/moveend crosshair owners create the Property target.
+const REGRESSION_CENTER={lng:-73.012909,lat:44.513845};
 
+const launchArgs=HOSTMAP?['--host-resolver-rules=MAP earthlinedevelopment.org 127.0.0.1']:[];
 const browser=await chromium.launch({headless:true,args:launchArgs});
 const rows=[];
 
@@ -27,11 +31,11 @@ async function snap(page,label){
       return {
         x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height),
         display:s.display,visibility:s.visibility,opacity:s.opacity,pointerEvents:s.pointerEvents,
-        position:s.position,background:s.backgroundColor,borderRadius:s.borderRadius,
+        position:s.position,background:s.backgroundColor,borderRadius:s.borderRadius,zIndex:s.zIndex,
         visible:s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity||1)>.02&&r.width>1&&r.height>1
       };
     };
-    const ids=['earthlineRail16188','earthlineRailSearch16188','earthlinePanel16188','earthlinePanelClose16188','earthlineLanguageWrap16488','earthlineLanguage16488','searchInput','runBtn','mapboxBase'];
+    const ids=['earthlineRail16188','earthlineRailSearch16188','earthlinePanel16188','earthlinePanelClose16188','earthlineLanguageWrap16488','earthlineLanguage16488','searchInput','runBtn','mapboxBase','map','earthlineDeclareProperty16169','earthlineWhyNotHere15803'];
     const boxes={};for(const id of ids)boxes[id]=box(document.getElementById(id));
     let map=null;
     try{
@@ -53,7 +57,14 @@ async function snap(page,label){
       viewport:{w:innerWidth,h:innerHeight},
       doc:{scrollW:document.documentElement.scrollWidth,clientW:document.documentElement.clientWidth},
       panelOpen:document.documentElement.classList.contains('earthline-panel-open-16188'),
+      analysisTier:String(document.documentElement.dataset.earthlineAnalysisTier||''),
+      propertyRunState:String(document.documentElement.dataset.earthlinePropertyRunState||''),
       boxes,map,
+      propertyTarget:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+      propertyRun:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+      propertyPublication:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,
+      propertySafety:(typeof M!=='undefined'&&M)?M.safetyAudit15806||null:null,
+      safeSwales:(typeof M!=='undefined'&&M)?Number(M.authoritativeSafeSwales15815?.length||0):0,
       owners:{
         language:window.earthlineLanguageOwner16890||null,
         uiEmergency:window.EARTHLINE_UI_EMERGENCY_17069||null,
@@ -62,6 +73,113 @@ async function snap(page,label){
       }
     };
   },label);
+}
+
+async function runRegional(page){
+  if(!await page.locator('#searchInput').count()||!await page.locator('#runBtn').count())return {ok:false,reason:'regional controls missing'};
+  if(!await page.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'))){
+    await page.evaluate(()=>document.getElementById('earthlineRailSearch16188')?.click());
+    await page.waitForTimeout(250);
+  }
+  const started=Date.now();
+  await page.evaluate(()=>{
+    const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+    i.value='Vermont';
+    i.dispatchEvent(new Event('input',{bubbles:true}));
+    i.dispatchEvent(new Event('change',{bubbles:true}));
+    b.click();
+  });
+  try{
+    await page.waitForFunction(()=>{
+      const err=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null;
+      const s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'');
+      return !!err||/screening published\./i.test(s);
+    },{timeout:25000,polling:120});
+  }catch(_){}
+  return await page.evaluate(started=>({
+    ok:/screening published\./i.test(String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'')),
+    wallMs:Date.now()-started,
+    perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,
+    error:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,
+    status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim()
+  }),started);
+}
+
+async function moveCrosshairByRealDrag(page){
+  // Camera navigation is allowed; Property target is NOT directly assigned.
+  await page.evaluate(center=>{
+    const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+    if(!m)throw new Error('map unavailable');
+    m.jumpTo({center:[center.lng,center.lat],zoom:16.2,bearing:0,pitch:0});
+  },REGRESSION_CENTER);
+  await page.waitForTimeout(500);
+
+  const canvas=page.locator('.mapboxgl-canvas').first();
+  const b=await canvas.boundingBox();
+  if(!b)throw new Error('map canvas unavailable for crosshair drag');
+
+  // Physical drag reproduces the user's crosshair workflow and fires dragend.
+  const x=b.x+b.width*0.55, y=b.y+b.height*0.55;
+  await page.mouse.move(x,y);
+  await page.mouse.down();
+  await page.mouse.move(x+24,y+12,{steps:6});
+  await page.mouse.up();
+  await page.waitForTimeout(700);
+
+  return await page.evaluate(()=>({
+    center:(()=>{try{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);return m?.getCenter?.()||null}catch(_){return null}})(),
+    target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+    buttonText:String(document.getElementById('earthlineDeclareProperty16169')?.textContent||'').replace(/\s+/g,' ').trim(),
+    buttonDisabled:!!document.getElementById('earthlineDeclareProperty16169')?.disabled
+  }));
+}
+
+async function runCrosshairProperty(page){
+  const moved=await moveCrosshairByRealDrag(page);
+  const source=String(moved.target?.source||'');
+  const targetIsCrosshair=source==='crosshair'||source.startsWith('crosshair-user-drag');
+  if(!targetIsCrosshair)return {ok:false,stage:'target',moved,reason:'drag did not create crosshair target'};
+
+  if(!await page.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'))){
+    await page.evaluate(()=>document.getElementById('earthlineRailSearch16188')?.click());
+    await page.waitForTimeout(250);
+  }
+
+  const started=Date.now();
+  // Click the existing Property control. Do not call direct-address or target setters.
+  await page.evaluate(()=>{
+    const b=document.getElementById('earthlineDeclareProperty16169');
+    if(!b)throw new Error('Property button missing');
+    b.click();
+  });
+
+  try{
+    await page.waitForFunction(()=>{
+      const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+      return !!(a&&a.settled===true);
+    },{timeout:22000,polling:150});
+  }catch(_){}
+
+  return await page.evaluate(({started,moved})=>{
+    const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+    const p=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null;
+    const s=(typeof M!=='undefined'&&M)?M.safetyAudit15806||null:null;
+    const lock=(typeof M!=='undefined'&&M)?M.propertyResultLock15815||null:null;
+    const target=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+    return {
+      ok:!!(a?.settled===true&&a?.result===true),
+      wallMs:Date.now()-started,
+      moved,
+      target,
+      targetSource:String(target?.source||''),
+      run:a,
+      publication:p,
+      safety:s,
+      lock,
+      safeSwales:(typeof M!=='undefined'&&M)?Number(M.authoritativeSafeSwales15815?.length||0):0,
+      status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim()
+    };
+  },{started,moved});
 }
 
 for(const tc of CASES){
@@ -81,7 +199,7 @@ for(const tc of CASES){
 
   try{
     const t0=Date.now();
-    await page.goto(BASE+'?v1_stability_17076='+tc.name+'_'+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
+    await page.goto(BASE+'?v1_stability_17077='+tc.name+'_'+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
     await page.waitForSelector('#searchInput',{state:'attached',timeout:15000});
     row.domReadyMs=Date.now()-t0;
 
@@ -103,7 +221,7 @@ for(const tc of CASES){
     row.pass.no17070Owners=!s.owners.navReturn&&!s.owners.navRail;
     row.pass.mapObjectPresent=!!s.map?.exists;
     row.pass.mapStyleLoaded=s.map?.styleLoaded!==false;
-    row.pass.noPageErrors=row.errors.length===0;
+    row.pass.noPageErrorsAtStartup=row.errors.length===0;
 
     const before=s.panelOpen;
     await page.evaluate(()=>document.getElementById('earthlineRailSearch16188')?.click());
@@ -123,18 +241,33 @@ for(const tc of CASES){
       row.pass.searchSurvivesClose=row.pass.searchVisible;
     }
 
+    row.regional=await runRegional(page);
+    row.pass.regionalPublished=row.regional.ok===true;
+    row.pass.regionalUnder15=Number(row.regional?.perf?.totalMs||0)>0&&Number(row.regional?.perf?.totalMs||0)<=15000;
+
+    row.crosshairProperty=await runCrosshairProperty(page);
+    row.pass.crosshairTarget=/^crosshair(?:-user-drag)?/.test(String(row.crosshairProperty?.targetSource||''));
+    row.pass.propertyPublished=row.crosshairProperty.ok===true;
+    row.pass.propertyUnder15=Number(row.crosshairProperty?.wallMs||0)>0&&Number(row.crosshairProperty?.wallMs||0)<=15000;
+    row.pass.safeSwales=Number(row.crosshairProperty?.safeSwales||0)>0;
+    row.pass.propertySafety=row.crosshairProperty?.safety?.verified===true&&row.crosshairProperty?.lock?.safetyVerified===true;
+
+    row.afterProperty=await snap(page,'after-property');
+    await page.screenshot({path:`${OUT}/${tc.name}-after-property.png`,fullPage:false});
+
     row.mapboxHttpErrors=row.httpErrors.filter(x=>/mapbox\.com/i.test(x.url));
     row.otherHttpErrors=row.httpErrors.filter(x=>!/mapbox\.com/i.test(x.url));
+    row.pass.noPageErrors=row.errors.length===0;
     row.overall=Object.values(row.pass).every(Boolean);
   }catch(e){row.fatal=String(e);row.overall=false}
 
   rows.push(row);
   writeFileSync(`${OUT}/${tc.name}-result.json`,JSON.stringify(row,null,2));
-  console.log('EARTHLINE_V1_STABILITY_17076 '+JSON.stringify({
+  console.log('EARTHLINE_V1_STABILITY_17077 '+JSON.stringify({
     case:tc.name,overall:row.overall,pass:row.pass,fatal:row.fatal||null,
-    mapT0:row.snaps?.t0?.map||null,mapT12:row.snaps?.t12s?.map||null,
-    mapboxHttpErrors:row.mapboxHttpErrors?.slice(0,8)||[],
-    otherHttpErrors:row.otherHttpErrors?.slice(0,8)||[],
+    regional:{ok:row.regional?.ok||false,coreMs:row.regional?.perf?.totalMs||null,error:row.regional?.error||null},
+    crosshairProperty:{ok:row.crosshairProperty?.ok||false,source:row.crosshairProperty?.targetSource||null,wallMs:row.crosshairProperty?.wallMs||null,safeSwales:row.crosshairProperty?.safeSwales||0},
+    mapboxHttpErrors:row.mapboxHttpErrors?.slice(0,5)||[],
     errors:row.errors.slice(0,3)
   }));
   await context.close();
@@ -144,9 +277,17 @@ await browser.close();
 const summary={
   total:rows.length,pass:rows.filter(r=>r.overall).length,fail:rows.filter(r=>!r.overall).length,
   failed:rows.filter(r=>!r.overall).map(r=>({case:r.case.name,pass:r.pass,fatal:r.fatal||null})),
-  mapboxErrors:rows.map(r=>({case:r.case.name,count:r.mapboxHttpErrors?.length||0,sample:r.mapboxHttpErrors?.slice(0,3)||[]})),
+  workflows:rows.map(r=>({
+    case:r.case.name,
+    regionalOk:r.regional?.ok||false,
+    regionalCoreMs:r.regional?.perf?.totalMs||null,
+    crosshairSource:r.crosshairProperty?.targetSource||null,
+    propertyOk:r.crosshairProperty?.ok||false,
+    propertyWallMs:r.crosshairProperty?.wallMs||null,
+    safeSwales:r.crosshairProperty?.safeSwales||0
+  })),
   pageErrors:rows.filter(r=>r.errors?.length).map(r=>({case:r.case.name,errors:r.errors.slice(0,5)}))
 };
 writeFileSync(`${OUT}/summary.json`,JSON.stringify({summary,rows},null,2));
-console.log('EARTHLINE_V1_STABILITY_17076_SUMMARY '+JSON.stringify(summary));
+console.log('EARTHLINE_V1_STABILITY_17077_SUMMARY '+JSON.stringify(summary));
 if(summary.fail)process.exitCode=1;
