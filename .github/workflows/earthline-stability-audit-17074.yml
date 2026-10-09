@@ -1,0 +1,37 @@
+name: Earthline Stability Audit 17074
+on:
+  push:
+    branches:
+      - audit/stability-17074
+    paths:
+      - 'tests/stability-audit-17074.mjs'
+      - '.github/workflows/earthline-stability-audit-17074.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start isolated local site
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 > /tmp/earthline-http.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/index.html >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run isolated stability audit
+        run: node tests/stability-audit-17074.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-stability-audit-17074
+          path: artifacts/stability-audit-17074/
+          if-no-files-found: warn
+          retention-days: 7
