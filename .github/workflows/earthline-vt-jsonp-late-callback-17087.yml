@@ -1,0 +1,57 @@
+name: Earthline Vermont JSONP Late Callback Diagnostic 17087
+
+on:
+  push:
+    branches:
+      - stability/v1-launch-audit-17075
+    paths:
+      - 'tests/vt-jsonp-late-callback-17087.mjs'
+      - '.github/workflows/earthline-vt-jsonp-late-callback-17087.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: stability/v1-launch-audit-17075
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start isolated HTTPS server under production hostname
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes \
+            -keyout /tmp/earthline-key.pem -out /tmp/earthline-cert.pem -days 1 \
+            -subj "/CN=earthlinedevelopment.org" \
+            -addext "subjectAltName=DNS:earthlinedevelopment.org"
+          cat >/tmp/earthline_https.py <<'PY'
+          import http.server, ssl, os
+          os.chdir(os.environ['GITHUB_WORKSPACE'])
+          srv=http.server.ThreadingHTTPServer(('0.0.0.0',443),http.server.SimpleHTTPRequestHandler)
+          ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+          ctx.load_cert_chain('/tmp/earthline-cert.pem','/tmp/earthline-key.pem')
+          srv.socket=ctx.wrap_socket(srv.socket,server_side=True)
+          srv.serve_forever()
+          PY
+          sudo -E python3 /tmp/earthline_https.py >/tmp/earthline-https.log 2>&1 &
+          sleep 2
+      - name: Reproduce late callback race
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+        run: node tests/vt-jsonp-late-callback-17087.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-vt-jsonp-late-callback-17087
+          path: artifacts/vt-jsonp-late-callback-17087/
+          if-no-files-found: warn
+          retention-days: 7
