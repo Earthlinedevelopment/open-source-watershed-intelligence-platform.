@@ -117,8 +117,18 @@ async function reportAudit(page){
         maxRight=Math.max(maxRight,er.right-r.left);
         maxBottom=Math.max(maxBottom,er.bottom-r.top);
       }
+      const overflowing=[...p.querySelectorAll('*')].map(el=>{
+        const er=el.getBoundingClientRect(),es=getComputedStyle(el);
+        return {
+          tag:el.tagName,id:el.id||null,cls:String(el.className||'').slice(0,140),
+          text:String(el.textContent||'').replace(/\s+/g,' ').trim().slice(0,120),
+          x:Math.round(er.x-r.left),right:Math.round(er.right-r.left),w:Math.round(er.width),
+          display:es.display,overflow:es.overflow,minWidth:es.minWidth,width:es.width
+        };
+      }).filter(x=>x.w>1 && (x.right>r.width+2 || x.x<-2)).slice(0,25);
       return {
         index:index+1,
+        title:String(p.querySelector('h1,h2,h3')?.textContent||'').replace(/\s+/g,' ').trim().slice(0,160),
         cls:String(p.className||''),
         x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height),
         clientW:p.clientWidth,clientH:p.clientHeight,scrollW:p.scrollWidth,scrollH:p.scrollHeight,
@@ -126,7 +136,8 @@ async function reportAudit(page){
         padding:cs.padding,
         maxChildRight:Math.round(maxRight),maxChildBottom:Math.round(maxBottom),
         horizontalClip:maxRight>r.width+2 || p.scrollWidth>p.clientWidth+2,
-        verticalClip:maxBottom>r.height+2 || p.scrollHeight>p.clientHeight+2
+        verticalClip:maxBottom>r.height+2 || p.scrollHeight>p.clientHeight+2,
+        overflowing
       };
     });
     const close=panel.querySelector('[data-action="close"]');
@@ -137,7 +148,7 @@ async function reportAudit(page){
       rootOpen:document.documentElement.classList.contains('earthline-report-open-16966'),
       panel:box(panel),shell:box(shell),toolbar:box(toolbar),report:box(report),
       pageCount:pages.length,pages,
-      clippedPages:pages.filter(p=>p.horizontalClip||p.verticalClip).map(p=>({index:p.index,horizontalClip:p.horizontalClip,verticalClip:p.verticalClip,scrollW:p.scrollW,clientW:p.clientW,scrollH:p.scrollH,clientH:p.clientH,maxChildRight:p.maxChildRight,maxChildBottom:p.maxChildBottom,w:p.w,h:p.h})),
+      clippedPages:pages.filter(p=>p.horizontalClip||p.verticalClip).map(p=>({index:p.index,title:p.title,horizontalClip:p.horizontalClip,verticalClip:p.verticalClip,scrollW:p.scrollW,clientW:p.clientW,scrollH:p.scrollH,clientH:p.clientH,maxChildRight:p.maxChildRight,maxChildBottom:p.maxChildBottom,w:p.w,h:p.h,overflowing:p.overflowing})),
       closeCount:panel.querySelectorAll('[data-action="close"]').length,
       closeBox,
       closeInViewport:!!(closeRect&&closeRect.left>=0&&closeRect.top>=0&&closeRect.right<=innerWidth&&closeRect.bottom<=innerHeight),
