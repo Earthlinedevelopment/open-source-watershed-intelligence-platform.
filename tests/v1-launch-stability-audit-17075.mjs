@@ -266,7 +266,23 @@ for(const tc of CASES){
   console.log('EARTHLINE_V1_STABILITY_17077 '+JSON.stringify({
     case:tc.name,overall:row.overall,pass:row.pass,fatal:row.fatal||null,
     regional:{ok:row.regional?.ok||false,coreMs:row.regional?.perf?.totalMs||null,error:row.regional?.error||null},
-    crosshairProperty:{ok:row.crosshairProperty?.ok||false,source:row.crosshairProperty?.targetSource||null,wallMs:row.crosshairProperty?.wallMs||null,safeSwales:row.crosshairProperty?.safeSwales||0},
+    crosshairProperty:{
+      ok:row.crosshairProperty?.ok||false,
+      source:row.crosshairProperty?.targetSource||null,
+      target:row.crosshairProperty?.target?{lng:Number(row.crosshairProperty.target.lng),lat:Number(row.crosshairProperty.target.lat)}:null,
+      wallMs:row.crosshairProperty?.wallMs||null,
+      safeSwales:row.crosshairProperty?.safeSwales||0,
+      publication:row.crosshairProperty?.publication?{
+        safeCount:Number(row.crosshairProperty.publication.safeCount||0),
+        publicationCount:Number(row.crosshairProperty.publication.publicationCount||0),
+        engineCount:Number(row.crosshairProperty.publication.engineCount||0),
+        sourceStateFingerprint:row.crosshairProperty.publication.sourceStateFingerprint||null,
+        scientificInputFingerprint:row.crosshairProperty.publication.scientificInputFingerprint||null,
+        noBuildMaskHash:row.crosshairProperty.publication.noBuildMaskHash||null,
+        drivewayFeatureCount:Number(row.crosshairProperty.publication.drivewayFeatureCount||0),
+        buildingFeatureCount:Number(row.crosshairProperty.publication.buildingFeatureCount||0)
+      }:null
+    },
     mapboxHttpErrors:row.mapboxHttpErrors?.slice(0,5)||[],
     errors:row.errors.slice(0,3)
   }));
@@ -282,9 +298,20 @@ const summary={
     regionalOk:r.regional?.ok||false,
     regionalCoreMs:r.regional?.perf?.totalMs||null,
     crosshairSource:r.crosshairProperty?.targetSource||null,
+    target:r.crosshairProperty?.target?{lng:Number(r.crosshairProperty.target.lng),lat:Number(r.crosshairProperty.target.lat)}:null,
     propertyOk:r.crosshairProperty?.ok||false,
     propertyWallMs:r.crosshairProperty?.wallMs||null,
-    safeSwales:r.crosshairProperty?.safeSwales||0
+    safeSwales:r.crosshairProperty?.safeSwales||0,
+    publication:r.crosshairProperty?.publication?{
+      safeCount:Number(r.crosshairProperty.publication.safeCount||0),
+      publicationCount:Number(r.crosshairProperty.publication.publicationCount||0),
+      engineCount:Number(r.crosshairProperty.publication.engineCount||0),
+      sourceStateFingerprint:r.crosshairProperty.publication.sourceStateFingerprint||null,
+      scientificInputFingerprint:r.crosshairProperty.publication.scientificInputFingerprint||null,
+      noBuildMaskHash:r.crosshairProperty.publication.noBuildMaskHash||null,
+      drivewayFeatureCount:Number(r.crosshairProperty.publication.drivewayFeatureCount||0),
+      buildingFeatureCount:Number(r.crosshairProperty.publication.buildingFeatureCount||0)
+    }:null
   })),
   pageErrors:rows.filter(r=>r.errors?.length).map(r=>({case:r.case.name,errors:r.errors.slice(0,5)}))
 };
