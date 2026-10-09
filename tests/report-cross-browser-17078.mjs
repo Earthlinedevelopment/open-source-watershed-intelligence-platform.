@@ -108,12 +108,40 @@ async function reportAudit(page){
         zIndex:s.zIndex,maxHeight:s.maxHeight,padding:s.padding
       };
     };
+    const pages=[...panel.querySelectorAll('.el49-page')].map((p,index)=>{
+      const r=p.getBoundingClientRect(), cs=getComputedStyle(p);
+      let maxRight=0,maxBottom=0;
+      for(const el of p.querySelectorAll('*')){
+        const er=el.getBoundingClientRect();
+        if(er.width<1||er.height<1)continue;
+        maxRight=Math.max(maxRight,er.right-r.left);
+        maxBottom=Math.max(maxBottom,er.bottom-r.top);
+      }
+      return {
+        index:index+1,
+        cls:String(p.className||''),
+        x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height),
+        clientW:p.clientWidth,clientH:p.clientHeight,scrollW:p.scrollWidth,scrollH:p.scrollHeight,
+        overflow:cs.overflow,overflowX:cs.overflowX,overflowY:cs.overflowY,
+        padding:cs.padding,
+        maxChildRight:Math.round(maxRight),maxChildBottom:Math.round(maxBottom),
+        horizontalClip:maxRight>r.width+2 || p.scrollWidth>p.clientWidth+2,
+        verticalClip:maxBottom>r.height+2 || p.scrollHeight>p.clientHeight+2
+      };
+    });
+    const close=panel.querySelector('[data-action="close"]');
+    const closeBox=close?box(close):null;
+    const closeRect=close?.getBoundingClientRect();
     return {
       open:panel.classList.contains('open'),
       rootOpen:document.documentElement.classList.contains('earthline-report-open-16966'),
       panel:box(panel),shell:box(shell),toolbar:box(toolbar),report:box(report),
-      pageCount:panel.querySelectorAll('.el49-page').length,
-      closeCount:panel.querySelectorAll('[data-action="close"]').length
+      pageCount:pages.length,pages,
+      clippedPages:pages.filter(p=>p.horizontalClip||p.verticalClip).map(p=>({index:p.index,horizontalClip:p.horizontalClip,verticalClip:p.verticalClip,scrollW:p.scrollW,clientW:p.clientW,scrollH:p.scrollH,clientH:p.clientH,maxChildRight:p.maxChildRight,maxChildBottom:p.maxChildBottom,w:p.w,h:p.h})),
+      closeCount:panel.querySelectorAll('[data-action="close"]').length,
+      closeBox,
+      closeInViewport:!!(closeRect&&closeRect.left>=0&&closeRect.top>=0&&closeRect.right<=innerWidth&&closeRect.bottom<=innerHeight),
+      viewport:{w:innerWidth,h:innerHeight}
     };
   });
 }
@@ -270,6 +298,8 @@ for(const tc of CASES){
       panelReopened:row.panelAfterReopen?.open===true,
       reportPhysicalClick:row.physicalClick.ok===true,
       reportOpened:!!(row.reportAfterPhysical?.open||row.reportAfterProgrammatic?.open),
+      noClippedReportPages:(row.reportAfterPhysical||row.reportAfterProgrammatic)?.clippedPages?.length===0,
+      reportCloseVisible:(row.reportAfterPhysical||row.reportAfterProgrammatic)?.closeInViewport===true,
       reportClosed:row.afterClose?row.afterClose.open===false:false
     };
     row.overall=Object.values(row.pass).every(Boolean);
@@ -279,7 +309,7 @@ for(const tc of CASES){
   console.log('EARTHLINE_REPORT_17078 '+JSON.stringify({
     engine:ENGINE,case:tc.name,overall:row.overall,pass:row.pass,
     button:row.buttonBefore?{x:row.buttonBefore.x,y:row.buttonBefore.y,w:row.buttonBefore.w,h:row.buttonBefore.h,bottom:row.buttonBefore.bottom,viewport:row.buttonBefore.viewport,intersects:row.buttonBefore.intersectsViewport}:null,
-    physicalClick:row.physicalClick,fatal:row.fatal||null
+    physicalClick:row.physicalClick,clippedPages:(row.reportAfterPhysical||row.reportAfterProgrammatic)?.clippedPages||[],fatal:row.fatal||null
   }));
   await context.close();
 }
