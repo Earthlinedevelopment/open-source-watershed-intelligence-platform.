@@ -1,4 +1,4 @@
-name: Earthline V1 Launch Stability Audit 17075
+name: Earthline V1 Launch Stability Audit 17076
 
 on:
   push:
@@ -31,23 +31,29 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Start isolated Earthline server
+      - name: Start isolated HTTPS server under production hostname
         run: |
-          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
-          for i in {1..30}; do
-            if curl -fsS http://127.0.0.1:8787/ >/dev/null; then exit 0; fi
-            sleep 1
-          done
-          cat /tmp/earthline-http.log
-          exit 1
-      - name: Run cross-platform startup and navigation stability audit
+          openssl req -x509 -newkey rsa:2048 -nodes             -keyout /tmp/earthline-key.pem -out /tmp/earthline-cert.pem -days 1             -subj "/CN=earthlinedevelopment.org"             -addext "subjectAltName=DNS:earthlinedevelopment.org"
+          cat >/tmp/earthline_https.py <<'PY'
+          import http.server, ssl, os
+          os.chdir(os.environ['GITHUB_WORKSPACE'])
+          srv=http.server.ThreadingHTTPServer(('0.0.0.0',443),http.server.SimpleHTTPRequestHandler)
+          ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+          ctx.load_cert_chain('/tmp/earthline-cert.pem','/tmp/earthline-key.pem')
+          srv.socket=ctx.wrap_socket(srv.socket,server_side=True)
+          srv.serve_forever()
+          PY
+          sudo -E python3 /tmp/earthline_https.py >/tmp/earthline-https.log 2>&1 &
+          sleep 2
+      - name: Run production-origin cross-platform startup/navigation audit
         env:
-          EARTHLINE_URL: http://127.0.0.1:8787/
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_HOSTMAP: '1'
         run: node tests/v1-launch-stability-audit-17075.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: earthline-v1-launch-stability-17075
-          path: artifacts/v1-launch-stability-17075/
+          name: earthline-v1-launch-stability-17076
+          path: artifacts/v1-launch-stability-17076/
           if-no-files-found: warn
           retention-days: 7
