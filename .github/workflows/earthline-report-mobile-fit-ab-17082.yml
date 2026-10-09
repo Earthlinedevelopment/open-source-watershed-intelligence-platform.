@@ -1,4 +1,4 @@
-name: Earthline Report Mobile Fit A-B 17082
+name: Earthline Report Mobile Fit A-B 17083
 
 on:
   push:
@@ -27,42 +27,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Inject off-production report containment A-B
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
-          marker='earthline-report-mobile-fit-ab-17082'
-          assert marker not in s
-          css=r'''
-          <style id="earthline-report-mobile-fit-ab-17082">
-          @media(max-width:760px){
-            #earthlineVermontReportPanel16149 .el49-table{
-              width:100%!important;
-              max-width:100%!important;
-              table-layout:fixed!important;
-            }
-            #earthlineVermontReportPanel16149 .el49-table th,
-            #earthlineVermontReportPanel16149 .el49-table td{
-              padding:7px 4px!important;
-              overflow-wrap:anywhere!important;
-              word-break:break-word!important;
-            }
-            #earthlineVermontReportPanel16149 .el91-report-top{
-              gap:12px!important;
-            }
-          }
-          </style>
-          '''
-          pos=s.rfind('</head>')
-          assert pos>=0
-          p.write_text(s[:pos]+css+s[pos:],encoding='utf-8')
-          PY
-          git diff --check
-          test "$(git diff --name-only | tr -d '\r')" = "index.html"
-          grep -q "earthline-report-mobile-fit-ab-17082" index.html
       - name: Install Playwright browser
         shell: bash
         run: |
@@ -72,14 +36,15 @@ jobs:
           else
             npx playwright install --with-deps chromium
           fi
-      - name: Run report A-B
+      - name: Run browser-only report mobile-fit A-B
         env:
           EARTHLINE_BROWSER: ${{ matrix.browser }}
+          EARTHLINE_REPORT_FIX_AB: '1'
         run: node tests/report-cross-browser-17078.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: earthline-report-mobile-fit-ab-17082-${{ matrix.browser }}
+          name: earthline-report-mobile-fit-ab-17083-${{ matrix.browser }}
           path: artifacts/report-cross-browser-17078/${{ matrix.browser }}/
           if-no-files-found: warn
           retention-days: 7
