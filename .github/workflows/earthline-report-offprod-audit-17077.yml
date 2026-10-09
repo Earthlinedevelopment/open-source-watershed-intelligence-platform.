@@ -36,7 +36,7 @@ jobs:
       - name: Run report layout audit
         run: |
           mkdir -p artifacts/report-offprod-17077
-          cat > /tmp/report-audit-17077.mjs <<'EOF'
+          cat > tests/report-audit-17077-run.mjs <<'EOF'
           import { chromium } from 'playwright';
           import { writeFileSync } from 'node:fs';
 
@@ -127,7 +127,7 @@ jobs:
           await browser.close();
           writeFileSync('artifacts/report-offprod-17077/results.json',JSON.stringify(rows,null,2));
           EOF
-          node /tmp/report-audit-17077.mjs
+          node tests/report-audit-17077-run.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
