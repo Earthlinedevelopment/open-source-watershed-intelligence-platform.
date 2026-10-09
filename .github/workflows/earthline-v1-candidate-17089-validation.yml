@@ -1,0 +1,88 @@
+name: Earthline V1 Candidate 17089 Validation
+
+on:
+  push:
+    branches:
+      - stability/v1-launch-audit-17075
+    paths:
+      - '.github/workflows/earthline-v1-candidate-17089-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout audit harness
+        uses: actions/checkout@v4
+        with:
+          ref: stability/v1-launch-audit-17075
+          path: harness
+
+      - name: Checkout exact 17089 candidate
+        uses: actions/checkout@v4
+        with:
+          ref: e6ec7546c30eb235c6963f29068a3388662b48fd
+          path: product
+
+      - name: Verify exact candidate lineage and scope
+        working-directory: product
+        run: |
+          test "$(git rev-parse HEAD)" = "e6ec7546c30eb235c6963f29068a3388662b48fd"
+          test "$(git diff --name-only 4dc2c10d66c4ffaa8e38cb2bf21a05a4bc50ef1d HEAD | tr -d '\r')" = "index.html"
+          grep -q "EARTHLINE 17089" index.html
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright Chromium
+        working-directory: harness
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start exact candidate under production hostname
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes \
+            -keyout /tmp/earthline-key.pem -out /tmp/earthline-cert.pem -days 1 \
+            -subj "/CN=earthlinedevelopment.org" \
+            -addext "subjectAltName=DNS:earthlinedevelopment.org"
+          cat >/tmp/earthline_https.py <<'PY'
+          import http.server, ssl, os
+          os.chdir(os.path.join(os.environ['GITHUB_WORKSPACE'],'product'))
+          srv=http.server.ThreadingHTTPServer(('0.0.0.0',443),http.server.SimpleHTTPRequestHandler)
+          ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+          ctx.load_cert_chain('/tmp/earthline-cert.pem','/tmp/earthline-key.pem')
+          srv.socket=ctx.wrap_socket(srv.socket,server_side=True)
+          srv.serve_forever()
+          PY
+          sudo -E python3 /tmp/earthline_https.py >/tmp/earthline-https.log 2>&1 &
+          sleep 2
+
+      - name: Run full V1 cross-platform workflow on exact candidate
+        working-directory: product
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_HOSTMAP: '1'
+        run: node ../harness/tests/v1-launch-stability-audit-17075.mjs
+
+      - name: Re-run deterministic late-callback gate on exact candidate
+        working-directory: product
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_EXPECT_JSONP_REFERENCE_ERROR: '0'
+        run: node ../harness/tests/vt-jsonp-late-callback-17087.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-v1-candidate-17089-validation
+          path: |
+            product/artifacts/v1-launch-stability-17077/
+            product/artifacts/vt-jsonp-late-callback-17087/
+          if-no-files-found: warn
+          retention-days: 7
