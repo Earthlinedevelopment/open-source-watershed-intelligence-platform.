@@ -1,0 +1,221 @@
+name: Earthline V1 Off-Production Stability Audit 17075
+
+on:
+  push:
+    branches:
+      - stability/v1-launch-audit-17075
+    paths:
+      - '.github/workflows/earthline-v1-offprod-stability-17075.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start isolated localhost site
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 > /tmp/earthline-http.log 2>&1 &
+          echo $! > /tmp/earthline-http.pid
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/earthline-http.log
+          exit 1
+      - name: Run V1 startup and cross-platform audit
+        run: |
+          mkdir -p artifacts/v1-stability-17075
+          cat > /tmp/earthline-v1-stability-17075.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          import { writeFileSync } from 'node:fs';
+
+          const BASE='http://127.0.0.1:8787/';
+          const cases=[
+            {name:'desktop',w:1440,h:900,mobile:false},
+            {name:'tablet',w:1024,h:768,mobile:false},
+            {name:'phone-small',w:360,h:800,mobile:true},
+            {name:'phone',w:390,h:844,mobile:true},
+            {name:'phone-large',w:430,h:932,mobile:true},
+            {name:'phone-landscape',w:844,h:390,mobile:true}
+          ];
+
+          const browser=await chromium.launch({headless:true});
+          const rows=[];
+
+          async function inspect(page){
+            return await page.evaluate(()=>{
+              const visible = el => {
+                if(!el)return null;
+                const s=getComputedStyle(el), r=el.getBoundingClientRect();
+                return {
+                  id:el.id||null,
+                  tag:el.tagName,
+                  cls:String(el.className||'').slice(0,180),
+                  display:s.display,
+                  visibility:s.visibility,
+                  opacity:s.opacity,
+                  background:s.backgroundColor,
+                  color:s.color,
+                  position:s.position,
+                  zIndex:s.zIndex,
+                  borderRadius:s.borderRadius,
+                  x:Math.round(r.x), y:Math.round(r.y),
+                  w:Math.round(r.width), h:Math.round(r.height),
+                  visible:s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity||1)>.02&&r.width>2&&r.height>2
+                };
+              };
+              const vw=innerWidth,vh=innerHeight;
+              const all=[...document.querySelectorAll('body *')];
+              const largeBlack=all.map(visible).filter(x=>x&&x.visible&&
+                x.w>=vw*.45&&x.h>=vh*.20&&
+                /rgba?\(\s*(?:0|[0-2]?\d)\s*,\s*(?:0|[0-2]?\d)\s*,\s*(?:0|[0-2]?\d)/.test(x.background));
+              const highZ=all.map(visible).filter(x=>x&&x.visible&&Number.parseInt(x.zIndex||'0',10)>=100000);
+              const ids=['mapboxBase','earthlineRail16188','earthlineRailSearch16188','earthlinePanel16188','searchInput','runBtn','earthlineLanguageWrap16488','earthlineLanguage16488','earthlineWhyNotHere15803'];
+              const boxes={};
+              for(const id of ids)boxes[id]=visible(document.getElementById(id));
+              return {
+                readyState:document.readyState,
+                bodyText:String(document.body?.innerText||'').slice(0,500),
+                classes:document.documentElement.className,
+                doc:{scrollW:document.documentElement.scrollWidth,clientW:document.documentElement.clientWidth,scrollH:document.documentElement.scrollHeight,clientH:document.documentElement.clientHeight},
+                boxes,
+                largeBlack:largeBlack.slice(0,25),
+                highZ:highZ.slice(0,25),
+                spinnerText:[...document.querySelectorAll('*')].filter(e=>/loading|please wait|analyzing/i.test(String(e.textContent||''))&&visible(e)?.visible).slice(0,20).map(e=>visible(e)),
+                owners:{
+                  ui17069:!!window.EARTHLINE_UI_EMERGENCY_17069,
+                  nav17070:!!window.EARTHLINE_NAV_RETURN_OWNER_17070,
+                  navEdge17070:!!window.EARTHLINE_NAV_RAIL_EDGE_OWNER_17070,
+                  language:window.earthlineLanguageOwner16890||null
+                }
+              };
+            });
+          }
+
+          for(const tc of cases){
+            const context=await browser.newContext({
+              viewport:{width:tc.w,height:tc.h},
+              isMobile:tc.mobile,
+              hasTouch:tc.mobile,
+              deviceScaleFactor:tc.mobile?2:1
+            });
+            const page=await context.newPage();
+            const errors=[],consoleErrors=[],failedRequests=[];
+            page.on('pageerror',e=>errors.push(String(e)));
+            page.on('console',m=>{if(m.type()==='error')consoleErrors.push(m.text())});
+            page.on('requestfailed',r=>failedRequests.push({url:r.url(),error:r.failure()?.errorText||''}));
+            const row={case:tc,errors,consoleErrors,failedRequests:[]};
+            const started=Date.now();
+            try{
+              await page.goto(BASE+'?offprod17075='+tc.name+'_'+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+              row.domContentLoadedMs=Date.now()-started;
+              row.t0=await inspect(page);
+              await page.waitForTimeout(250);
+              row.t250=await inspect(page);
+              await page.waitForTimeout(750);
+              row.t1000=await inspect(page);
+              await page.waitForTimeout(2000);
+              row.t3000=await inspect(page);
+              row.failedRequests=failedRequests.slice(0,40);
+
+              const searchVisible=!!row.t3000.boxes.earthlineRailSearch16188?.visible;
+              const languageHidden=!(row.t3000.boxes.earthlineLanguageWrap16488?.visible||row.t3000.boxes.earthlineLanguage16488?.visible);
+              const overflow=row.t3000.doc.scrollW>tc.w+2;
+
+              // Navigation toggle only if existing control is present.
+              let nav={attempted:false};
+              if(await page.locator('#earthlineRailSearch16188').count()){
+                nav.attempted=true;
+                nav.before=await page.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'));
+                await page.evaluate(()=>document.getElementById('earthlineRailSearch16188')?.click());
+                await page.waitForTimeout(300);
+                nav.afterClick=await page.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'));
+                nav.after=await inspect(page);
+              }
+              row.nav=nav;
+
+              // Attempt a Vermont Regional run locally. Transport-specific failure is recorded, not hidden.
+              row.regional={attempted:false};
+              if(await page.locator('#searchInput').count() && await page.locator('#runBtn').count()){
+                row.regional.attempted=true;
+                const r0=Date.now();
+                await page.evaluate(()=>{
+                  const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+                  i.value='Vermont';
+                  i.dispatchEvent(new Event('input',{bubbles:true}));
+                  i.dispatchEvent(new Event('change',{bubbles:true}));
+                  b.click();
+                });
+                try{
+                  await page.waitForFunction(()=>{
+                    const err=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null;
+                    const s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'');
+                    return !!err||/screening published\./i.test(s);
+                  },{timeout:20000,polling:150});
+                }catch(_){}
+                row.regional.wallMs=Date.now()-r0;
+                row.regional.result=await page.evaluate(()=>({
+                  perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,
+                  error:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,
+                  status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim(),
+                  publication:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,
+                  flow:window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null
+                }));
+              }
+
+              const blackAt3=row.t3000.largeBlack.length;
+              row.pass={
+                loaded:!!row.t3000.boxes.searchInput,
+                searchVisible,
+                languageHidden,
+                noOverflow:!overflow,
+                noPageErrors:errors.length===0,
+                noPersistentLargeBlack:blackAt3===0,
+                navToggle:!nav.attempted||nav.afterClick!==nav.before
+              };
+              row.overall=Object.values(row.pass).every(Boolean);
+              await page.screenshot({path:`artifacts/v1-stability-17075/${tc.name}.png`,fullPage:true});
+            }catch(e){
+              row.fatal=String(e);
+              row.overall=false;
+            }
+            rows.push(row);
+            writeFileSync(`artifacts/v1-stability-17075/${tc.name}.json`,JSON.stringify(row,null,2));
+            console.log('EARTHLINE_V1_17075 '+JSON.stringify({case:tc.name,overall:row.overall,pass:row.pass,fatal:row.fatal||null,black0:row.t0?.largeBlack?.length??null,black3:row.t3000?.largeBlack?.length??null,regionalStatus:row.regional?.result?.status||null,regionalError:row.regional?.result?.error||null}));
+            await context.close();
+          }
+          await browser.close();
+
+          const summary={
+            total:rows.length,
+            pass:rows.filter(r=>r.overall).length,
+            fail:rows.filter(r=>!r.overall).length,
+            failed:rows.filter(r=>!r.overall).map(r=>({case:r.case.name,pass:r.pass,fatal:r.fatal||null})),
+            startupBlack:rows.map(r=>({case:r.case.name,t0:r.t0?.largeBlack||[],t250:r.t250?.largeBlack||[],t1000:r.t1000?.largeBlack||[],t3000:r.t3000?.largeBlack||[]})),
+            pageErrors:rows.map(r=>({case:r.case.name,errors:r.errors,consoleErrors:r.consoleErrors.slice(0,10)})),
+            regional:rows.map(r=>({case:r.case.name,wallMs:r.regional?.wallMs||null,result:r.regional?.result||null}))
+          };
+          writeFileSync('artifacts/v1-stability-17075/summary.json',JSON.stringify({summary,rows},null,2));
+          console.log('EARTHLINE_V1_17075_SUMMARY '+JSON.stringify({total:summary.total,pass:summary.pass,fail:summary.fail,failed:summary.failed}));
+          if(summary.fail)process.exitCode=1;
+          EOF
+          node /tmp/earthline-v1-stability-17075.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-v1-offprod-stability-17075
+          path: artifacts/v1-stability-17075/
+          if-no-files-found: warn
+          retention-days: 7
