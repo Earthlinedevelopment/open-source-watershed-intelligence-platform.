@@ -1533,3 +1533,161 @@ html:not(.earthline-report-open-16966) #earthlineRailSearch16188{
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
   else install();
 })();
+
+
+/* EARTHLINE_FIRST_USE_GUIDANCE_17072
+   OFF-PRODUCTION CANDIDATE.
+   First-use guidance only. No analysis, map science, search, swale geometry,
+   aquifer acquisition, recharge, ranking, exclusion, report, or Mapbox owner changes. */
+(function installEarthlineFirstUseGuidance17072(){
+  if(window.EARTHLINE_FIRST_USE_GUIDANCE_17072)return;
+  const root=document.documentElement;
+  const SS=window.sessionStorage;
+  const KEYS={
+    property:'earthline17072-property-button-seen',
+    aquifer:'earthline17072-aquifer-seen',
+    swale:'earthline17072-swale-seen',
+    propertyResult:'earthline17072-first-property-result'
+  };
+  let tip=null,tipTimer=0;
+
+  function seen(k){try{return SS.getItem(k)==='1'}catch(_){return false}}
+  function mark(k){try{SS.setItem(k,'1')}catch(_){}}
+  function visible(el){
+    if(!el)return false;
+    const s=getComputedStyle(el),r=el.getBoundingClientRect();
+    return s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity||1)>.05&&r.width>8&&r.height>8;
+  }
+  function removeTip(){
+    clearTimeout(tipTimer);
+    if(tip){try{tip.remove()}catch(_){}}
+    tip=null;
+  }
+  function ensureStyle(){
+    if(document.getElementById('earthlineFirstUseStyle17072'))return;
+    const s=document.createElement('style');
+    s.id='earthlineFirstUseStyle17072';
+    s.textContent=`
+#earthlineFirstUseTip17072{
+  position:fixed;z-index:2147483500;max-width:min(320px,calc(100vw - 24px));
+  background:#fff;color:#17323d;border:1px solid #c8a34b;border-radius:9px;
+  box-shadow:0 8px 24px rgba(0,0,0,.28);padding:11px 34px 11px 13px;
+  font:650 13px/1.38 "Noto Sans",system-ui,sans-serif;pointer-events:auto
+}
+#earthlineFirstUseTip17072 b{color:#0e4f66}
+#earthlineFirstUseTip17072 button{
+  position:absolute;right:7px;top:5px;width:24px;height:24px;border:0;background:transparent;
+  color:#53636a;font:900 18px/1 system-ui;cursor:pointer
+}
+#earthlineFirstUseTip17072 .el17072-arrow{
+  position:absolute;width:10px;height:10px;background:#fff;border-left:1px solid #c8a34b;
+  border-bottom:1px solid #c8a34b;transform:rotate(45deg);left:-6px;top:18px
+}
+@media(max-width:760px){
+  #earthlineFirstUseTip17072{font-size:12px;max-width:min(286px,calc(100vw - 18px))}
+}
+`;
+    (document.head||document.documentElement).appendChild(s);
+  }
+  function showAt(x,y,html,key,ms=8000){
+    ensureStyle(); removeTip();
+    if(key)mark(key);
+    const box=document.createElement('div');
+    box.id='earthlineFirstUseTip17072';
+    box.setAttribute('role','status');
+    box.innerHTML='<span class="el17072-arrow" aria-hidden="true"></span><button type="button" aria-label="Dismiss">×</button><div>'+html+'</div>';
+    document.body.appendChild(box);
+    tip=box;
+    const w=Math.min(320,Math.max(240,box.offsetWidth||300)),h=Math.max(70,box.offsetHeight||82);
+    const rightSpace=window.innerWidth-x;
+    let left=rightSpace>=w+28?x+18:x-w-18;
+    left=Math.max(8,Math.min(window.innerWidth-w-8,left));
+    let top=Math.max(8,Math.min(window.innerHeight-h-8,y-18));
+    box.style.left=left+'px';box.style.top=top+'px';
+    const arrow=box.querySelector('.el17072-arrow');
+    if(left<x){
+      arrow.style.left='auto';arrow.style.right='-6px';arrow.style.transform='rotate(225deg)';
+    }
+    box.querySelector('button').onclick=removeTip;
+    tipTimer=setTimeout(removeTip,ms);
+    return box;
+  }
+  function showForElement(el,html,key,ms=8000){
+    if(!visible(el))return false;
+    const r=el.getBoundingClientRect();
+    showAt(r.left+r.width/2,r.top+r.height/2,html,key,ms);
+    return true;
+  }
+  function mapObj(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
+  function featureScreenPoint(layerIds){
+    const m=mapObj();if(!m?.getCanvas||!m?.queryRenderedFeatures||!m?.project)return null;
+    const c=m.getCanvas(),w=c.clientWidth||c.width,h=c.clientHeight||c.height;
+    const ids=layerIds.filter(id=>m.getLayer?.(id));if(!ids.length)return null;
+    let fs=[];try{fs=m.queryRenderedFeatures([[0,0],[w,h]],{layers:ids})||[]}catch(_){return null}
+    for(const f of fs){
+      const g=f?.geometry;if(!g)continue;
+      let ll=null;
+      if(g.type==='Point')ll=g.coordinates;
+      else if(g.type==='LineString'&&g.coordinates?.length)ll=g.coordinates[Math.floor(g.coordinates.length/2)];
+      else if(g.type==='Polygon'&&g.coordinates?.[0]?.length)ll=g.coordinates[0][Math.floor(g.coordinates[0].length/2)];
+      if(!ll)continue;
+      try{
+        const p=m.project(ll),r=c.getBoundingClientRect();
+        if(Number.isFinite(p.x)&&Number.isFinite(p.y))return {x:r.left+p.x,y:r.top+p.y};
+      }catch(_){}
+    }
+    return null;
+  }
+  function maybePropertyButtonHelp(){
+    if(seen(KEYS.property))return false;
+    const b=document.getElementById('earthlineDeclareProperty16169');
+    return showForElement(b,'<b>Property swales:</b> Press here to generate property-level swales for the 20-acre analysis area.',KEYS.property,9000);
+  }
+  function showAquiferHelp(){
+    if(seen(KEYS.aquifer))return false;
+    const top=document.getElementById('earthlineAquiferTopText16501');
+    if(showForElement(top,'<b>Aquifer / groundwater evidence:</b> mapped groundwater context or nearby well evidence. It is not a parcel aquifer boundary.',KEYS.aquifer,7500))return true;
+    const p=featureScreenPoint([
+      'earthline-aquifer-evidence-label-16398','earthline-aquifers-label',
+      'earthline-aquifers-line','earthline-aquifers-highlight'
+    ]);
+    if(p){showAt(p.x,p.y,'<b>Aquifer / groundwater evidence:</b> mapped groundwater context or nearby well evidence. It is not a parcel aquifer boundary.',KEYS.aquifer,7500);return true}
+    return false;
+  }
+  function showSwaleHelp(){
+    if(seen(KEYS.swale))return false;
+    const p=featureScreenPoint([
+      'earthline-property-swale-natural-up-16174',
+      'earthline-property-swale-natural-flip-16174',
+      'earthline-property-swale-neutral-16177',
+      'earthline-swales-line'
+    ]);
+    if(!p)return false;
+    showAt(p.x,p.y,'<b>Proposed bioswale corridor:</b> Earthline follows contour to slow, spread and sink runoff. Field verification is required before construction.',KEYS.swale,8500);
+    return true;
+  }
+  function firstPropertyResult(){
+    if(seen(KEYS.propertyResult))return;
+    mark(KEYS.propertyResult);
+    setTimeout(()=>{
+      const aq=showAquiferHelp();
+      setTimeout(()=>{removeTip();showSwaleHelp()},aq?7800:900);
+    },650);
+  }
+  function analysisComplete(e){
+    const raw=String(e?.detail?.tier||e?.detail?.mode||root.dataset.earthlineAnalysisTier||'').toLowerCase();
+    if(raw.includes('property')){firstPropertyResult();return}
+    for(const ms of [100,450,1100])setTimeout(maybePropertyButtonHelp,ms);
+  }
+  function boot(){
+    for(const ms of [250,900,1800])setTimeout(maybePropertyButtonHelp,ms);
+    document.addEventListener('earthline:analysis-complete',analysisComplete,{passive:true});
+    document.addEventListener('click',e=>{
+      if(e.target?.closest?.('#earthlineDeclareProperty16169'))mark(KEYS.property);
+    },true);
+    window.EARTHLINE_FIRST_USE_GUIDANCE_17072={
+      state:'ready',candidate:true,maybePropertyButtonHelp,showAquiferHelp,showSwaleHelp,removeTip
+    };
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
