@@ -60,16 +60,21 @@ try{
 }catch(e){fatal=String(e)}
 
 const lateCallbackErrors=pageErrors.filter(e=>/__earthlineVtInfra16458_.*is not defined/i.test(e));
+const expectReferenceError=process.env.EARTHLINE_EXPECT_JSONP_REFERENCE_ERROR!=='0';
+const reproduced=lateCallbackErrors.length>0;
+const pass=expectReferenceError?reproduced:(!reproduced&&result?.ok===true&&!fatal);
 const evidence={
   build:'EARTHLINE JSONP LATE CALLBACK DIAGNOSTIC 17087',
   result,fatal,requests,
   pageErrors,consoleErrors,
-  reproduced:lateCallbackErrors.length>0,
+  expectReferenceError,reproduced,pass,
   lateCallbackErrors
 };
 writeFileSync(`${OUT}/result.json`,JSON.stringify(evidence,null,2));
 console.log('EARTHLINE_VT_JSONP_17087 '+JSON.stringify({
+  expectReferenceError:evidence.expectReferenceError,
   reproduced:evidence.reproduced,
+  pass:evidence.pass,
   fatal,
   requestCount:requests.length,
   jsonpCount:requests.filter(x=>x.callback).length,
@@ -78,4 +83,4 @@ console.log('EARTHLINE_VT_JSONP_17087 '+JSON.stringify({
 }));
 await context.close();
 await browser.close();
-if(!evidence.reproduced)process.exitCode=1;
+if(!evidence.pass)process.exitCode=1;
