@@ -1,0 +1,66 @@
+name: Earthline Report Candidate 17085 Validation
+
+on:
+  push:
+    branches:
+      - stability/v1-launch-audit-17075
+    paths:
+      - '.github/workflows/earthline-report-candidate-17085.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: ${{ matrix.browser }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, edge, webkit]
+    steps:
+      - name: Checkout audit harness
+        uses: actions/checkout@v4
+        with:
+          ref: stability/v1-launch-audit-17075
+          path: harness
+      - name: Checkout exact 17085 candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 4dc2c10d66c4ffaa8e38cb2bf21a05a4bc50ef1d
+          path: product
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browser in harness
+        working-directory: harness
+        run: |
+          npm install --no-save playwright@1.55.0
+          if [ "${{ matrix.browser }}" = "edge" ]; then
+            npx playwright install --with-deps msedge
+          else
+            npx playwright install --with-deps ${{ matrix.browser }}
+          fi
+      - name: Run exact-candidate report containment audit
+        working-directory: product
+        env:
+          EARTHLINE_BROWSER: ${{ matrix.browser }}
+          EARTHLINE_REPORT_FIX_AB: '0'
+        run: node ../harness/tests/report-cross-browser-17078.mjs
+      - name: Run exact-candidate real report access path
+        if: always()
+        working-directory: product
+        env:
+          EARTHLINE_BROWSER: ${{ matrix.browser }}
+        run: node ../harness/tests/report-real-path-17079.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-report-candidate-17085-${{ matrix.browser }}
+          path: |
+            product/artifacts/report-cross-browser-17078/${{ matrix.browser }}/
+            product/artifacts/report-real-path-17079/${{ matrix.browser }}/
+          if-no-files-found: warn
+          retention-days: 7
