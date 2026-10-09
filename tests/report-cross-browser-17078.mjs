@@ -3,6 +3,18 @@ import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 
 const ENGINE=process.env.EARTHLINE_BROWSER||'chromium';
+const MOBILE_FIT_AB=process.env.EARTHLINE_REPORT_FIX_AB==='1';
+const MOBILE_FIT_CSS=`
+@media(max-width:760px){
+  #earthlineVermontReportPanel16149 .el49-table{
+    width:100%!important;max-width:100%!important;table-layout:fixed!important;
+  }
+  #earthlineVermontReportPanel16149 .el49-table th,
+  #earthlineVermontReportPanel16149 .el49-table td{
+    padding:7px 4px!important;overflow-wrap:anywhere!important;word-break:break-word!important;
+  }
+  #earthlineVermontReportPanel16149 .el91-report-top{gap:12px!important;}
+}`;
 const BASE='https://earthlinedevelopment.org/';
 const OUT=`artifacts/report-cross-browser-17078/${ENGINE}`;
 mkdirSync(OUT,{recursive:true});
@@ -242,6 +254,8 @@ for(const tc of CASES){
     await page.goto(BASE+'?reportCrossBrowser17078='+tc.name+'_'+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
     await page.waitForSelector('#searchInput',{timeout:20000});
     await page.waitForTimeout(1200);
+    if(MOBILE_FIT_AB)await page.addStyleTag({content:MOBILE_FIT_CSS});
+    row.mobileFitAB=MOBILE_FIT_AB;
 
     row.regional=await runRegional(page);
     row.property=await runCrosshairProperty(page);
