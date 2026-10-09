@@ -42,7 +42,7 @@ jobs:
           BLOCKER: ${{ matrix.blocker }}
         run: |
           mkdir -p artifacts/nav-cross-browser-17070
-          cat > /tmp/earthline-nav-17070.mjs <<'EOF'
+          cat > tests/earthline-nav-cross-browser-17070.mjs <<'EOF'
           import { chromium, firefox, webkit } from 'playwright';
           import fetch from 'cross-fetch';
           import { PlaywrightBlocker } from '@ghostery/adblocker-playwright';
@@ -115,7 +115,7 @@ jobs:
           await browser.close();
           if(criticalFailed.length)process.exit(1);
           EOF
-          node /tmp/earthline-nav-17070.mjs
+          node tests/earthline-nav-cross-browser-17070.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
