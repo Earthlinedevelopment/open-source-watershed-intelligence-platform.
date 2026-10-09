@@ -208,6 +208,22 @@ for(const tc of CASES){
     row.property=await runCrosshairProperty(page);
     await page.waitForTimeout(1000);
 
+    // Property intentionally recesses the mobile sheet to return map space.
+    // Reproduce the real user path: tap the existing Search Orb to reopen
+    // navigation before selecting the existing Bioswale Report control.
+    row.panelBeforeReport=await page.evaluate(()=>({
+      open:document.documentElement.classList.contains('earthline-panel-open-16188'),
+      panel:(()=>{const e=document.getElementById('earthlinePanel16188');if(!e)return null;const r=e.getBoundingClientRect(),cs=getComputedStyle(e);return{x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height),transform:cs.transform,pointerEvents:cs.pointerEvents}})()
+    }));
+    if(!row.panelBeforeReport.open){
+      await page.evaluate(()=>document.getElementById('earthlineRailSearch16188')?.click());
+      await page.waitForTimeout(350);
+    }
+    row.panelAfterReopen=await page.evaluate(()=>({
+      open:document.documentElement.classList.contains('earthline-panel-open-16188'),
+      panel:(()=>{const e=document.getElementById('earthlinePanel16188');if(!e)return null;const r=e.getBoundingClientRect(),cs=getComputedStyle(e);return{x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height),transform:cs.transform,pointerEvents:cs.pointerEvents}})()
+    }));
+
     row.buttonBefore=await buttonAudit(page);
     row.physicalClick={attempted:false,ok:false,error:null};
     const button=page.locator('#earthlineVermontReport16149');
@@ -251,7 +267,7 @@ for(const tc of CASES){
       regionalPublished:!row.regional?.error&&/screening published\./i.test(row.regional?.status||''),
       crosshairTarget:/^crosshair/.test(String(row.property?.target?.source||'')),
       reportButtonExists:!!row.buttonBefore,
-      reportButtonInViewport:!!row.buttonBefore?.intersectsViewport,
+      panelReopened:row.panelAfterReopen?.open===true,
       reportPhysicalClick:row.physicalClick.ok===true,
       reportOpened:!!(row.reportAfterPhysical?.open||row.reportAfterProgrammatic?.open),
       reportClosed:row.afterClose?row.afterClose.open===false:false
