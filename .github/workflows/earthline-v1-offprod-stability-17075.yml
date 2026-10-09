@@ -37,7 +37,7 @@ jobs:
       - name: Run V1 startup and cross-platform audit
         run: |
           mkdir -p artifacts/v1-stability-17075
-          cat > /tmp/earthline-v1-stability-17075.mjs <<'EOF'
+          cat > earthline-v1-stability-17075.mjs <<'EOF'
           import { chromium } from 'playwright';
           import { writeFileSync } from 'node:fs';
 
@@ -211,7 +211,7 @@ jobs:
           console.log('EARTHLINE_V1_17075_SUMMARY '+JSON.stringify({total:summary.total,pass:summary.pass,fail:summary.fail,failed:summary.failed}));
           if(summary.fail)process.exitCode=1;
           EOF
-          node /tmp/earthline-v1-stability-17075.mjs
+          node earthline-v1-stability-17075.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
