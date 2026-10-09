@@ -1,0 +1,58 @@
+name: Earthline Report Candidate 17084 Validation
+
+on:
+  push:
+    branches:
+      - stability/v1-launch-audit-17075
+    paths:
+      - '.github/workflows/earthline-report-candidate-17084.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: ${{ matrix.browser }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, edge, webkit]
+    steps:
+      - name: Checkout audit harness
+        uses: actions/checkout@v4
+        with:
+          ref: stability/v1-launch-audit-17075
+          path: harness
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ccac64dc258bf0fc900fa99199c48fdf35654f45
+          path: product
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browser in harness
+        working-directory: harness
+        run: |
+          npm install --no-save playwright@1.55.0
+          if [ "${{ matrix.browser }}" = "edge" ]; then
+            npx playwright install --with-deps msedge
+          else
+            npx playwright install --with-deps ${{ matrix.browser }}
+          fi
+      - name: Run exact-candidate report audit
+        working-directory: product
+        env:
+          EARTHLINE_BROWSER: ${{ matrix.browser }}
+          EARTHLINE_REPORT_FIX_AB: '0'
+        run: node ../harness/tests/report-cross-browser-17078.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-report-candidate-17084-${{ matrix.browser }}
+          path: product/artifacts/report-cross-browser-17078/${{ matrix.browser }}/
+          if-no-files-found: warn
+          retention-days: 7
