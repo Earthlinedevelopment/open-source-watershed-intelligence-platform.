@@ -64,7 +64,7 @@ async function snap(page,label){
       propertyRun:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
       propertyPublication:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,
       propertySafety:(typeof M!=='undefined'&&M)?M.safetyAudit15806||null:null,
-      safeSwales:(typeof M!=='undefined'&&M)?Number(M.authoritativeSafeSwales15815?.length||0):0,
+      safeSwales:(typeof M!=='undefined'&&M)?Number(M.authoritativeSafeSwales15815?.features?.length||0):0,
       owners:{
         language:window.earthlineLanguageOwner16890||null,
         uiEmergency:window.EARTHLINE_UI_EMERGENCY_17069||null,
@@ -176,7 +176,7 @@ async function runCrosshairProperty(page){
       publication:p,
       safety:s,
       lock,
-      safeSwales:(typeof M!=='undefined'&&M)?Number(M.authoritativeSafeSwales15815?.length||0):0,
+      safeSwales:(typeof M!=='undefined'&&M)?Number(M.authoritativeSafeSwales15815?.features?.length||0):0,
       status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim()
     };
   },{started,moved});
