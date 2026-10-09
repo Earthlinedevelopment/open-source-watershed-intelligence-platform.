@@ -11309,8 +11309,8 @@ async function directGeocode(q){
     return new Promise((resolve,reject)=>{
       const cb="__earthlineVtInfra16458_"+Date.now()+"_"+Math.random().toString(36).slice(2),script=document.createElement("script");
       let done=false;
-      function cleanup(){try{script.remove()}catch(_){}try{delete window[cb]}catch(_){window[cb]=undefined}}
-      const timer=setTimeout(()=>{if(done)return;done=true;cleanup();reject(new Error("JSONP timeout"));},timeoutMs);
+      /* EARTHLINE 17089 — timeout-only one-shot late-callback tombstone. */ function cleanup(retainLateCallback=false){if(retainLateCallback){window[cb]=()=>{try{delete window[cb]}catch(_){window[cb]=undefined}}}else{try{delete window[cb]}catch(_){window[cb]=undefined}}try{script.remove()}catch(_){}}
+      const timer=setTimeout(()=>{if(done)return;done=true;cleanup(true);reject(new Error("JSONP timeout"));},timeoutMs);
       window[cb]=data=>{if(done)return;done=true;clearTimeout(timer);try{const fc=earthlineEsriJsonToGeoJSON16458(data);cleanup();resolve(fc);}catch(error){cleanup();reject(error);}};
       script.onerror=()=>{if(done)return;done=true;clearTimeout(timer);cleanup();reject(new Error("JSONP failed"));};
       try{
