@@ -1223,3 +1223,124 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     rule:'missing parent token only; canonical published Regional owners must agree; non-empty mismatches remain fail-closed'
   };
 })();
+
+
+/* EARTHLINE_UI_EMERGENCY_17069
+   Presentation-only repair:
+   1) keep LOGIN / DONATE / MERCH in English,
+   2) permanently suppress the retired public WHY NOT HERE black overlay,
+   3) after the navigation pane is dismissed, briefly explain that the search
+      magnifying glass restores it.
+   No hydrology, search ownership, map science, swale geometry, ranking,
+   exclusions, recharge, or report data are changed. */
+(function installEarthlineUiEmergency17069(){
+  if(window.EARTHLINE_UI_EMERGENCY_17069)return;
+  window.EARTHLINE_UI_EMERGENCY_17069={state:'installing'};
+
+  const commerce=[
+    ['earthlineLaunchLogin16872','LOGIN'],
+    ['earthlineLaunchDonate16872','DONATE'],
+    ['earthlineLaunchMerch16872','MERCH']
+  ];
+  function forceCommerceEnglish(){
+    for(const [id,label] of commerce){
+      const el=document.getElementById(id);
+      if(!el)continue;
+      if(el.textContent!==label)el.textContent=label;
+      if(el.getAttribute('aria-label')!==label)el.setAttribute('aria-label',label);
+    }
+  }
+
+  function suppressLegacyBlackBox(){
+    try{
+      document.querySelectorAll('#earthlineWhyNotHere15803,[id^="earthlineWhyNotHere15803-"]').forEach(el=>el.remove());
+      window.earthlineInstallCoverageUI15803=function(){
+        try{document.querySelectorAll('#earthlineWhyNotHere15803,[id^="earthlineWhyNotHere15803-"]').forEach(el=>el.remove())}catch(_){}
+      };
+    }catch(_){}
+  }
+
+  let tipTimer=0;
+  function hideNavTip(){
+    clearTimeout(tipTimer);
+    document.getElementById('earthlineNavReturnTip17069')?.remove();
+  }
+  function showNavTip(){
+    const search=document.getElementById('earthlineRailSearch16188');
+    if(!search)return;
+    hideNavTip();
+    const tip=document.createElement('div');
+    tip.id='earthlineNavReturnTip17069';
+    tip.setAttribute('role','status');
+    tip.textContent='Navigation pane hidden — click the magnifying glass to bring it back.';
+    document.body.appendChild(tip);
+    const r=search.getBoundingClientRect();
+    const maxLeft=Math.max(8,window.innerWidth-318);
+    tip.style.left=Math.min(maxLeft,Math.max(8,r.right+12))+'px';
+    tip.style.top=Math.max(8,Math.min(window.innerHeight-92,r.top-4))+'px';
+    tipTimer=setTimeout(hideNavTip,7000);
+  }
+  function panelVisible(){
+    const p=document.getElementById('earthlinePanel16188');
+    if(!p)return false;
+    const s=getComputedStyle(p),r=p.getBoundingClientRect();
+    return s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity||1)>.05&&
+      r.width>20&&r.height>20&&r.right>0&&r.left<window.innerWidth&&r.bottom>0&&r.top<window.innerHeight;
+  }
+
+  function install(){
+    let style=document.getElementById('earthlineUiEmergencyStyle17069');
+    if(!style){
+      style=document.createElement('style');
+      style.id='earthlineUiEmergencyStyle17069';
+      style.textContent=`
+#earthlineWhyNotHere15803,[id^="earthlineWhyNotHere15803-"]{display:none!important;visibility:hidden!important;pointer-events:none!important}
+#earthlineNavReturnTip17069{
+  position:fixed;z-index:2147483646;max-width:290px;
+  background:#fff;color:#17212b;border:1px solid #c9a24a;border-radius:8px;
+  box-shadow:0 5px 18px rgba(0,0,0,.22);padding:10px 12px;
+  font:600 13px/1.35 "Noto Sans",Arial,sans-serif;
+}
+#earthlineNavReturnTip17069:before{
+  content:"";position:absolute;left:-7px;top:16px;width:12px;height:12px;
+  background:#fff;border-left:1px solid #c9a24a;border-bottom:1px solid #c9a24a;
+  transform:rotate(45deg);
+}
+`;
+      (document.head||document.documentElement).appendChild(style);
+    }
+
+    forceCommerceEnglish();
+    suppressLegacyBlackBox();
+
+    let last=panelVisible();
+    let queued=false;
+    const reconcile=()=>{
+      if(queued)return;
+      queued=true;
+      requestAnimationFrame(()=>{
+        queued=false;
+        forceCommerceEnglish();
+        suppressLegacyBlackBox();
+        const now=panelVisible();
+        if(last&&!now&&window.innerWidth>760)showNavTip();
+        if(now)hideNavTip();
+        last=now;
+      });
+    };
+
+    try{
+      const observer=new MutationObserver(reconcile);
+      observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class','style','hidden']});
+    }catch(_){}
+    window.addEventListener('resize',reconcile,{passive:true});
+    document.addEventListener('click',e=>{
+      if(e.target?.closest?.('#earthlineRailSearch16188'))hideNavTip();
+    },true);
+
+    window.EARTHLINE_UI_EMERGENCY_17069={state:'ready',forceCommerceEnglish,suppressLegacyBlackBox,showNavTip,hideNavTip};
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
+})();
