@@ -1,0 +1,81 @@
+name: Earthline V1 Priority Geographic Crosshair Audit 17090
+
+on:
+  push:
+    branches:
+      - stability/v1-launch-audit-17075
+    paths:
+      - 'tests/v1-priority-geographic-crosshair-17090.mjs'
+      - '.github/workflows/earthline-v1-priority-geographic-17090.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  priority-geographic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout audit harness
+        uses: actions/checkout@v4
+        with:
+          ref: stability/v1-launch-audit-17075
+          path: harness
+
+      - name: Checkout exact live 17089 product
+        uses: actions/checkout@v4
+        with:
+          ref: e6ec7546c30eb235c6963f29068a3388662b48fd
+          path: product
+
+      - name: Verify exact product
+        working-directory: product
+        run: |
+          test "$(git rev-parse HEAD)" = "e6ec7546c30eb235c6963f29068a3388662b48fd"
+          grep -q "EARTHLINE 17089" index.html
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright Chromium
+        working-directory: harness
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start exact product under production hostname
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes \
+            -keyout /tmp/earthline-key.pem -out /tmp/earthline-cert.pem -days 1 \
+            -subj "/CN=earthlinedevelopment.org" \
+            -addext "subjectAltName=DNS:earthlinedevelopment.org"
+          cat >/tmp/earthline_https.py <<'PY'
+          import http.server, ssl, os
+          os.chdir(os.path.join(os.environ['GITHUB_WORKSPACE'],'product'))
+          srv=http.server.ThreadingHTTPServer(('0.0.0.0',443),http.server.SimpleHTTPRequestHandler)
+          ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+          ctx.load_cert_chain('/tmp/earthline-cert.pem','/tmp/earthline-key.pem')
+          srv.socket=ctx.wrap_socket(srv.socket,server_side=True)
+          srv.serve_forever()
+          PY
+          sudo -E python3 /tmp/earthline_https.py >/tmp/earthline-https.log 2>&1 &
+          sleep 2
+
+      - name: Run nine-state Regional real-crosshair Property repeat audit
+        working-directory: product
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_HOSTMAP: '1'
+          STATES: Vermont|New York|Arkansas|Iowa|Oklahoma|Texas|Colorado|Maryland|California
+          OUT: artifacts/v1-priority-geographic-17090
+        run: node ../harness/tests/v1-priority-geographic-crosshair-17090.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-v1-priority-geographic-17090
+          path: product/artifacts/v1-priority-geographic-17090/
+          if-no-files-found: warn
+          retention-days: 7
