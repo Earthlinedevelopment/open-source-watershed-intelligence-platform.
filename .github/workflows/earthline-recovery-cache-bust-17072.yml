@@ -2,14 +2,16 @@ name: Earthline Recovery Cache Bust 17072
 on:
   push:
     branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-recovery-cache-bust-17072.yml'
 
 permissions:
   contents: write
 
 jobs:
   cache-bust:
-    if: ${{ github.event.head_commit.message == 'ops: install one-time recovery cache bust 17072' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout pages-live
         uses: actions/checkout@v4
@@ -31,15 +33,16 @@ jobs:
           assert s.count(old1)==1, f"launch ref count={s.count(old1)}"
           assert s.count(old2)==1, f"language ref count={s.count(old2)}"
           t=s.replace(old1,new1).replace(old2,new2)
-          assert t.count(new1)==1 and t.count(new2)==1
           p.write_text(t,encoding="utf-8")
           PY
 
-      - name: Commit only index cache-key change
+      - name: Verify and commit only index.html
         shell: bash
         run: |
           test "$(git status --short | wc -l)" -eq 1
           git status --short | grep -q '^ M index.html$'
+          grep -q 'earthline-launch-16872.js?v=17072-recovery' index.html
+          grep -q 'earthline-language-hotfix-16890.js?v=17072-recovery' index.html
           git config user.name "Earthlinedevelopment"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
