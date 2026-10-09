@@ -1344,3 +1344,117 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
   else install();
 })();
+
+
+/* EARTHLINE_NAV_RETURN_OWNER_17070
+   Presentation-only recovery for the navigation pane return control.
+   When the map is opened fully and the panel is hidden, the EXISTING Search
+   magnifying-glass control is forced visible/clickable at the left edge.
+   If an older full-map presentation owner swallows the normal reopen state,
+   the existing panel class is restored as a fail-safe after the same click.
+   No map science, search engine, hydrology, swale, ranking, exclusion or data
+   ownership changes. */
+(function installEarthlineNavReturnOwner17070(){
+  if(window.EARTHLINE_NAV_RETURN_OWNER_17070)return;
+  const root=document.documentElement;
+  const MAG='url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Ccircle cx=\'10.7\' cy=\'10.7\' r=\'6.6\' fill=\'none\' stroke=\'%23e9f3f8\' stroke-width=\'2.5\'/%3E%3Cpath d=\'M15.6 15.6 21 21\' fill=\'none\' stroke=\'%23e9f3f8\' stroke-width=\'2.5\' stroke-linecap=\'round\'/%3E%3C/svg%3E")';
+
+  function protectedSurface(){
+    return root.classList.contains('earthline-report-open-16966')||
+           root.classList.contains('earthline-swales-open-16947')||
+           root.classList.contains('earthline-process-open-16265');
+  }
+
+  function enforce(){
+    if(protectedSurface())return;
+    const rail=document.getElementById('earthlineRail16188');
+    const search=document.getElementById('earthlineRailSearch16188');
+    if(rail){
+      rail.style.setProperty('visibility','visible','important');
+      rail.style.setProperty('opacity','1','important');
+      rail.style.setProperty('pointer-events','auto','important');
+      rail.style.setProperty('transform','none','important');
+      rail.style.setProperty('translate','none','important');
+      rail.style.setProperty('left','0','important');
+    }
+    if(search){
+      search.style.setProperty('display','grid','important');
+      search.style.setProperty('visibility','visible','important');
+      search.style.setProperty('opacity','1','important');
+      search.style.setProperty('pointer-events','auto','important');
+      search.style.setProperty('position','relative','important');
+      search.style.setProperty('left','auto','important');
+      search.style.setProperty('right','auto','important');
+      search.style.setProperty('top','auto','important');
+      search.style.setProperty('transform','none','important');
+      search.style.setProperty('translate','none','important');
+      search.style.setProperty('width','46px','important');
+      search.style.setProperty('min-width','46px','important');
+      search.style.setProperty('height','46px','important');
+      search.style.setProperty('min-height','46px','important');
+      search.style.setProperty('flex','0 0 46px','important');
+      search.style.setProperty('z-index','2147483600','important');
+      search.style.setProperty('background-image',MAG,'important');
+      search.style.setProperty('background-repeat','no-repeat','important');
+      search.style.setProperty('background-position','center','important');
+      search.style.setProperty('background-size','30px 30px','important');
+      search.style.setProperty('background-color','#16232d','important');
+      search.style.setProperty('color','transparent','important');
+      search.setAttribute('aria-label','Open or close Earthline navigation pane');
+      search.title='Open or close Earthline navigation pane';
+    }
+  }
+
+  function failSafeOpen(e){
+    const search=e.target?.closest?.('#earthlineRailSearch16188');
+    if(!search)return;
+    const wasOpen=root.classList.contains('earthline-panel-open-16188');
+    if(wasOpen)return;
+    setTimeout(()=>{
+      if(root.classList.contains('earthline-panel-open-16188'))return;
+      root.classList.add('earthline-panel-open-16188');
+      search.classList.add('active');
+      document.getElementById('earthlineNavReturnTip17069')?.remove();
+      try{
+        const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+        setTimeout(()=>m?.resize?.(),220);
+      }catch(_){}
+    },60);
+  }
+
+  function install(){
+    let style=document.getElementById('earthlineNavReturnStyle17070');
+    if(!style){
+      style=document.createElement('style');
+      style.id='earthlineNavReturnStyle17070';
+      style.textContent=`
+html:not(.earthline-report-open-16966):not(.earthline-swales-open-16947):not(.earthline-process-open-16265) #earthlineRail16188{
+  visibility:visible!important;opacity:1!important;pointer-events:auto!important;
+  transform:none!important;translate:none!important;left:0!important;
+}
+html:not(.earthline-report-open-16966):not(.earthline-swales-open-16947):not(.earthline-process-open-16265) #earthlineRailSearch16188{
+  display:grid!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;
+  position:relative!important;left:auto!important;right:auto!important;top:auto!important;
+  width:46px!important;min-width:46px!important;height:46px!important;min-height:46px!important;
+  flex:0 0 46px!important;transform:none!important;translate:none!important;z-index:2147483600!important;
+  background-image:${MAG}!important;background-repeat:no-repeat!important;
+  background-position:center!important;background-size:30px 30px!important;background-color:#16232d!important;
+  color:transparent!important;
+}
+`;
+      (document.head||document.documentElement).appendChild(style);
+    }
+    enforce();
+    document.addEventListener('click',failSafeOpen,true);
+    try{
+      new MutationObserver(()=>requestAnimationFrame(enforce))
+        .observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','hidden']});
+    }catch(_){}
+    new MutationObserver(()=>requestAnimationFrame(enforce))
+      .observe(root,{attributes:true,attributeFilter:['class','style']});
+    window.addEventListener('resize',enforce,{passive:true});
+    window.EARTHLINE_NAV_RETURN_OWNER_17070={state:'ready',enforce};
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
+})();
