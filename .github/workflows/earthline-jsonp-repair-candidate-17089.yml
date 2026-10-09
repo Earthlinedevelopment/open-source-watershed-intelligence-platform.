@@ -1,0 +1,101 @@
+name: Earthline JSONP Repair Candidate 17089
+
+on:
+  push:
+    branches:
+      - stability/v1-launch-audit-17075
+    paths:
+      - '.github/workflows/earthline-jsonp-repair-candidate-17089.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout audit harness
+        uses: actions/checkout@v4
+        with:
+          ref: stability/v1-launch-audit-17075
+          path: harness
+
+      - name: Checkout exact production-based candidate
+        uses: actions/checkout@v4
+        with:
+          ref: candidate/v1-jsonp-late-callback-17089
+          path: product
+
+      - name: Assert exact candidate parent
+        working-directory: product
+        run: |
+          test "$(git rev-parse HEAD)" = "4dc2c10d66c4ffaa8e38cb2bf21a05a4bc50ef1d"
+
+      - name: Apply one-owner JSONP timeout cleanup repair
+        working-directory: product
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old_cleanup='function cleanup(){try{script.remove()}catch(_){}try{delete window[cb]}catch(_){window[cb]=undefined}}'
+          new_cleanup='/* EARTHLINE 17089 — timeout-only one-shot late-callback tombstone. */ function cleanup(retainLateCallback=false){if(retainLateCallback){window[cb]=()=>{try{delete window[cb]}catch(_){window[cb]=undefined}}}else{try{delete window[cb]}catch(_){window[cb]=undefined}}try{script.remove()}catch(_){}}'
+          old_timeout='const timer=setTimeout(()=>{if(done)return;done=true;cleanup();reject(new Error("JSONP timeout"));},timeoutMs);'
+          new_timeout='const timer=setTimeout(()=>{if(done)return;done=true;cleanup(true);reject(new Error("JSONP timeout"));},timeoutMs);'
+          assert s.count(old_cleanup)==1, f'cleanup owner count={s.count(old_cleanup)}'
+          assert s.count(old_timeout)==1, f'timeout owner count={s.count(old_timeout)}'
+          s=s.replace(old_cleanup,new_cleanup).replace(old_timeout,new_timeout)
+          p.write_text(s,encoding='utf-8')
+          PY
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+          grep -q "EARTHLINE 17089" index.html
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright in audit harness
+        working-directory: harness
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start patched candidate under production hostname
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes \
+            -keyout /tmp/earthline-key.pem -out /tmp/earthline-cert.pem -days 1 \
+            -subj "/CN=earthlinedevelopment.org" \
+            -addext "subjectAltName=DNS:earthlinedevelopment.org"
+          cat >/tmp/earthline_https.py <<'PY'
+          import http.server, ssl, os
+          os.chdir(os.path.join(os.environ['GITHUB_WORKSPACE'],'product'))
+          srv=http.server.ThreadingHTTPServer(('0.0.0.0',443),http.server.SimpleHTTPRequestHandler)
+          ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+          ctx.load_cert_chain('/tmp/earthline-cert.pem','/tmp/earthline-key.pem')
+          srv.socket=ctx.wrap_socket(srv.socket,server_side=True)
+          srv.serve_forever()
+          PY
+          sudo -E python3 /tmp/earthline_https.py >/tmp/earthline-https.log 2>&1 &
+          sleep 2
+
+      - name: Require late JSONP callback to be consumed without ReferenceError
+        working-directory: product
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_EXPECT_JSONP_REFERENCE_ERROR: '0'
+        run: node ../harness/tests/vt-jsonp-late-callback-17087.mjs
+
+      - name: Commit exact tested candidate
+        working-directory: product
+        run: |
+          rm -rf artifacts
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+          git config user.name "Earthline Stability Audit"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "repair: consume late Vermont JSONP callback safely 17089"
+          git push origin HEAD:candidate/v1-jsonp-late-callback-17089
+          echo "CANDIDATE_SHA=$(git rev-parse HEAD)"
