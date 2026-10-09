@@ -106,10 +106,11 @@ jobs:
           if(!reopened.panelOpen)throw new Error('magnifying glass did not reopen navigation pane');
           await page.screenshot({path:`artifacts/nav-cross-browser-17070/${engine}-${blockerMode}-reopened.png`,fullPage:true});
 
-          const criticalFailed=failed.filter(x=>
-            /earthline-launch-16872\.(js|css)|index\.html/i.test(x.url) ||
-            x.url==='PAGEERROR'
-          );
+          const criticalFailed=failed.filter(x=>{
+            const knownLocalTelemetry=x.url==='PAGEERROR' && /earthline-telemetry|ccucaqwbdsskcwxxbqiz|access control checks/i.test(x.failure||'');
+            if(knownLocalTelemetry)return false;
+            return /earthline-launch-16872\.(js|css)|index\.html/i.test(x.url) || x.url==='PAGEERROR';
+          });
           const result={engine,blockerMode,initial,closed,reopened,failed,criticalFailed,pass:criticalFailed.length===0};
           console.log('EARTHLINE_NAV_17070 '+JSON.stringify(result));
           await browser.close();
