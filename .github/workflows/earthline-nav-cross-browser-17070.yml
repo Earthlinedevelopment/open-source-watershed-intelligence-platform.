@@ -1,0 +1,124 @@
+name: Earthline Navigation Cross Browser 17070
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-nav-cross-browser-17070.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, firefox, webkit]
+        blocker: [off, on]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/nav-return-17070
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install test browsers
+        run: |
+          npm install --no-save playwright@1.55.0 @ghostery/adblocker-playwright@2.11.0 cross-fetch@4.1.0
+          npx playwright install --with-deps ${{ matrix.engine }}
+      - name: Run local Earthline
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 > /tmp/earthline-http.log 2>&1 &
+          echo $! > /tmp/earthline-http.pid
+          for i in {1..30}; do
+            curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0
+            sleep 1
+          done
+          exit 1
+      - name: Cross-browser navigation + blocker test
+        env:
+          ENGINE: ${{ matrix.engine }}
+          BLOCKER: ${{ matrix.blocker }}
+        run: |
+          mkdir -p artifacts/nav-cross-browser-17070
+          cat > /tmp/earthline-nav-17070.mjs <<'EOF'
+          import { chromium, firefox, webkit } from 'playwright';
+          import fetch from 'cross-fetch';
+          import { PlaywrightBlocker } from '@ghostery/adblocker-playwright';
+
+          const engine=process.env.ENGINE;
+          const blockerMode=process.env.BLOCKER;
+          const types={chromium,firefox,webkit};
+          const browser=await types[engine].launch({headless:true});
+          const context=await browser.newContext({viewport:{width:1440,height:900}});
+          const page=await context.newPage();
+          const failed=[];
+          page.on('requestfailed',r=>failed.push({url:r.url(),failure:r.failure()?.errorText||''}));
+          page.on('pageerror',e=>failed.push({url:'PAGEERROR',failure:String(e)}));
+
+          let blocker=null;
+          if(blockerMode==='on'){
+            blocker=await PlaywrightBlocker.fromPrebuiltAdsAndTracking(fetch);
+            await blocker.enableBlockingInPage(page);
+          }
+
+          await page.goto('http://127.0.0.1:8787/?nav17070='+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
+          await page.waitForSelector('#earthlineRailSearch16188',{state:'attached',timeout:20000});
+          await page.waitForTimeout(1600);
+
+          const read=async()=>await page.evaluate(()=>{
+            const vis=id=>{
+              const e=document.getElementById(id); if(!e)return null;
+              const r=e.getBoundingClientRect(),s=getComputedStyle(e);
+              return {display:s.display,visibility:s.visibility,opacity:Number(s.opacity||1),x:r.x,y:r.y,w:r.width,h:r.height,pointer:s.pointerEvents};
+            };
+            return {
+              panelOpen:document.documentElement.classList.contains('earthline-panel-open-16188'),
+              search:vis('earthlineRailSearch16188'),
+              rail:vis('earthlineRail16188'),
+              whyNotHere:!!document.getElementById('earthlineWhyNotHere15803'),
+              login:document.getElementById('earthlineLaunchLogin16872')?.textContent?.trim()||null,
+              donate:document.getElementById('earthlineLaunchDonate16872')?.textContent?.trim()||null,
+              merch:document.getElementById('earthlineLaunchMerch16872')?.textContent?.trim()||null,
+              tip:document.getElementById('earthlineNavReturnTip17069')?.textContent?.trim()||null
+            };
+          });
+
+          const initial=await read();
+          if(!initial.panelOpen) throw new Error('navigation pane not initially open');
+          await page.click('#earthlinePanelClose16188');
+          await page.waitForTimeout(450);
+          const closed=await read();
+          const sv=closed.search;
+          if(!sv||sv.display==='none'||sv.visibility==='hidden'||sv.opacity<0.9||sv.w<40||sv.h<40||sv.x<0||sv.x+sv.w>1440||sv.pointer==='none'){
+            throw new Error('magnifying glass not visible/clickable after panel close: '+JSON.stringify(sv));
+          }
+          if(closed.whyNotHere)throw new Error('legacy black WHY NOT HERE box exists after close');
+          if(closed.login!=='LOGIN'||closed.donate!=='DONATE'||closed.merch!=='MERCH'){
+            throw new Error('commerce labels not English: '+JSON.stringify({login:closed.login,donate:closed.donate,merch:closed.merch}));
+          }
+          await page.screenshot({path:`artifacts/nav-cross-browser-17070/${engine}-${blockerMode}-closed.png`,fullPage:true});
+
+          await page.click('#earthlineRailSearch16188');
+          await page.waitForTimeout(450);
+          const reopened=await read();
+          if(!reopened.panelOpen)throw new Error('magnifying glass did not reopen navigation pane');
+          await page.screenshot({path:`artifacts/nav-cross-browser-17070/${engine}-${blockerMode}-reopened.png`,fullPage:true});
+
+          const criticalFailed=failed.filter(x=>
+            /earthline-launch-16872\.(js|css)|index\.html/i.test(x.url) ||
+            x.url==='PAGEERROR'
+          );
+          const result={engine,blockerMode,initial,closed,reopened,failed,criticalFailed,pass:criticalFailed.length===0};
+          console.log('EARTHLINE_NAV_17070 '+JSON.stringify(result));
+          await browser.close();
+          if(criticalFailed.length)process.exit(1);
+          EOF
+          node /tmp/earthline-nav-17070.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nav-17070-${{ matrix.engine }}-${{ matrix.blocker }}
+          path: artifacts/nav-cross-browser-17070/
+          if-no-files-found: warn
