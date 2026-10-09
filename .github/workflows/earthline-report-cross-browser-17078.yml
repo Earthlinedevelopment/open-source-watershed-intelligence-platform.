@@ -13,14 +13,14 @@ permissions:
   contents: read
 
 jobs:
-  linux-browsers:
+  browsers:
     name: ${{ matrix.browser }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium, firefox, webkit]
+        browser: [chromium, firefox, webkit, edge]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,10 +28,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install Playwright
+      - name: Install Playwright browser
         run: |
           npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps ${{ matrix.browser }}
+          if [ "${{ matrix.browser }}" = "edge" ]; then
+            npx playwright install --with-deps msedge
+          else
+            npx playwright install --with-deps ${{ matrix.browser }}
+          fi
       - name: Run isolated report audit
         env:
           EARTHLINE_BROWSER: ${{ matrix.browser }}
@@ -41,34 +45,5 @@ jobs:
         with:
           name: earthline-report-17078-${{ matrix.browser }}
           path: artifacts/report-cross-browser-17078/${{ matrix.browser }}/
-          if-no-files-found: warn
-          retention-days: 7
-
-  edge-windows:
-    name: edge-windows
-    runs-on: windows-latest
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: stability/v1-launch-audit-17075
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Playwright and Edge
-        shell: pwsh
-        run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install msedge
-      - name: Run isolated Edge report audit
-        shell: pwsh
-        env:
-          EARTHLINE_BROWSER: edge
-        run: node tests/report-cross-browser-17078.mjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: earthline-report-17078-edge
-          path: artifacts/report-cross-browser-17078/edge/
           if-no-files-found: warn
           retention-days: 7
