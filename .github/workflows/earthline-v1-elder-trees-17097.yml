@@ -1,0 +1,31 @@
+name: Earthline V1 Elder Trees 17097
+
+on:
+  push:
+    branches:
+      - feature/v1-elder-trees-17097
+    paths:
+      - 'earthline-launch-16872.js'
+      - 'data/elder-trees/v1/**'
+      - 'tests/elder-tree-harness-17097.html'
+      - 'tests/elder-tree-v1-17097.mjs'
+      - '.github/workflows/earthline-v1-elder-trees-17097.yml'
+  workflow_dispatch:
+
+permissions: {contents: read}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/v1-elder-trees-17097
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/elder-tree-v1-17097.mjs
