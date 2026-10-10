@@ -1,0 +1,36 @@
+name: Earthline Elder Trees U.S. EPT Resolver Probe
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/us_ept_point_resolver_probe.py'
+      - '.github/workflows/earthline-elder-tree-us-ept-resolver.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install geospatial dependencies
+        run: pip install geopandas pyogrio shapely requests
+      - name: Resolve known Vermont public champion-tree GPS point
+        run: python tools/elder_trees/us_ept_point_resolver_probe.py -73.199238191 44.480345151 | tee ept-resolver-result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-tree-us-ept-resolver-probe
+          path: ept-resolver-result.json
+          if-no-files-found: warn
+          retention-days: 14
