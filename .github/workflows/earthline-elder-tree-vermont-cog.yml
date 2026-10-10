@@ -1,0 +1,35 @@
+name: Earthline Elder Trees Vermont COG Discovery
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/vermont_cog_discovery.py'
+      - '.github/workflows/earthline-elder-tree-vermont-cog.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Discover Vermont statewide QL1 COGs and public Big Tree points
+        run: python tools/elder_trees/vermont_cog_discovery.py artifacts/elder-trees-vermont-cog
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-trees-vermont-cog-discovery
+          path: artifacts/elder-trees-vermont-cog/
+          if-no-files-found: warn
+          retention-days: 14
