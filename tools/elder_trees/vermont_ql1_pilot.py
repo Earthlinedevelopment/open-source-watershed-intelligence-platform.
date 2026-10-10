@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Earthline Elder Trees — Vermont QL1 LiDAR pilot v0.1
-OFF-PRODUCTION ONLY.
+OFF-PRODUCTION ONLY. Uses only the public champion-tree map filter.
 
 Validation:
 - Only Vermont map records matching the exact public-map filter:
