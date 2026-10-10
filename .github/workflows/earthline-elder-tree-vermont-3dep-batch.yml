@@ -59,16 +59,3 @@ jobs:
           path: artifacts/vermont-3dep-batch/
           if-no-files-found: warn
           retention-days: 14
-      - name: Persist Vermont LiDAR-upgraded candidate data
-        if: success()
-        run: |
-          mkdir -p data/elder-trees/generated/vermont-lidar-upgraded
-          cp artifacts/vermont-3dep-batch/vermont-lidar-upgraded.geojson data/elder-trees/generated/vermont-lidar-upgraded/
-          cp artifacts/vermont-3dep-batch/summary.json data/elder-trees/generated/vermont-lidar-upgraded/
-          git config user.name "Earthline Research Bot"
-          git config user.email "info@earthlinedevelopment.org"
-          git add data/elder-trees/generated/vermont-lidar-upgraded/
-          git diff --cached --quiet || git commit -m "data: persist Vermont LiDAR-upgraded Elder candidates"
-          git fetch origin v2/elder-tree-layer-research
-          git rebase origin/v2/elder-tree-layer-research
-          git push origin HEAD:v2/elder-tree-layer-research
