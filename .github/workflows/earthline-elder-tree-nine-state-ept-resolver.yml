@@ -1,0 +1,48 @@
+name: Earthline Elder Trees Nine-State EPT Resolver
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/us_ept_point_resolver_fast.py'
+      - 'data/elder-trees/priority-us-resolver-points.json'
+      - '.github/workflows/earthline-elder-tree-nine-state-ept-resolver.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Resolve nine priority U.S. points to public 3DEP EPT projects
+        run: |
+          python tools/elder_trees/us_ept_point_resolver_fast.py             --points data/elder-trees/priority-us-resolver-points.json             --out artifacts/elder-trees-nine-state-ept/resolver.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-trees-nine-state-ept-resolver
+          path: artifacts/elder-trees-nine-state-ept/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Persist resolver result
+        if: success()
+        run: |
+          mkdir -p data/elder-trees/generated/us-national
+          cp artifacts/elder-trees-nine-state-ept/resolver.json data/elder-trees/generated/us-national/nine-state-ept-resolver.json
+          git config user.name "Earthline Research Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add data/elder-trees/generated/us-national/nine-state-ept-resolver.json
+          git diff --cached --quiet || git commit -m "data: persist nine-state Elder Tree EPT resolver results"
+          git fetch origin v2/elder-tree-layer-research
+          git rebase origin/v2/elder-tree-layer-research
+          git push origin HEAD:v2/elder-tree-layer-research
