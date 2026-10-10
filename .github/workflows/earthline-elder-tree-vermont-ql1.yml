@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   pilot:
@@ -40,3 +40,15 @@ jobs:
           path: artifacts/elder-trees-vermont-ql1/
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Persist off-production Vermont pilot data
+        if: success()
+        run: |
+          mkdir -p data/elder-trees/generated/vermont-pilot
+          cp artifacts/elder-trees-vermont-ql1/vermont-elder-tree-candidates.geojson data/elder-trees/generated/vermont-pilot/
+          cp artifacts/elder-trees-vermont-ql1/validation-summary.json data/elder-trees/generated/vermont-pilot/
+          git config user.name "Earthline Research Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add data/elder-trees/generated/vermont-pilot/
+          git diff --cached --quiet || git commit -m "data: persist Vermont Elder Tree QL1 pilot candidates"
+          git push origin HEAD:v2/elder-tree-layer-research
