@@ -1,0 +1,64 @@
+name: Earthline Elder Tree Confidence England ATI Validation
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/chmv2_aoi_candidates.py'
+      - 'tools/elder_trees/england_confidence_validation.py'
+      - '.github/workflows/earthline-elder-tree-england-confidence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install scientific dependencies
+        run: pip install numpy scipy rasterio pyproj requests
+      - name: Generate dense Windsor candidate control set
+        run: |
+          python tools/elder_trees/chmv2_aoi_candidates.py \
+            --bbox=-0.615,51.420,-0.575,51.450 \
+            --max-per-tile=400 \
+            --out artifacts/elder-tree-confidence-england/candidates
+      - name: Locate generated candidate file
+        id: locate
+        run: |
+          CANDIDATE=$(find artifacts/elder-tree-confidence-england/candidates -name '*.geojson' | head -n 1)
+          echo "candidate=$CANDIDATE" >> "$GITHUB_OUTPUT"
+          echo "$CANDIDATE"
+      - name: Validate confidence against ATI
+        run: |
+          python tools/elder_trees/england_confidence_validation.py \
+            --candidates "${{ steps.locate.outputs.candidate }}" \
+            --out artifacts/elder-tree-confidence-england/validation.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-tree-confidence-england-ati
+          path: artifacts/elder-tree-confidence-england/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Persist validation summary
+        if: success()
+        run: |
+          mkdir -p data/elder-trees/generated/confidence-validation
+          cp artifacts/elder-tree-confidence-england/validation.json data/elder-trees/generated/confidence-validation/england-ati-v04.json
+          git config user.name "Earthline Research Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add data/elder-trees/generated/confidence-validation/england-ati-v04.json
+          git diff --cached --quiet || git commit -m "data: persist Elder Tree Confidence England ATI validation"
+          git fetch origin v2/elder-tree-layer-research
+          git rebase origin/v2/elder-tree-layer-research
+          git push origin HEAD:v2/elder-tree-layer-research
