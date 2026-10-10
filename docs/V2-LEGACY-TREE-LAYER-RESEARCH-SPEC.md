@@ -184,3 +184,90 @@ Earthline should support two-way exchange rather than create a closed proprietar
 Use the simplest defensible architecture:
 verified points + predictive hotspots + candidate evidence.
 Do not build a second competing tree-verification system, duplicate an external inventory unnecessarily, or infer biological relationships that the data cannot measure.
+
+
+## ATI UI / UX patterns worth adopting
+
+Earthline should align with the strongest interaction patterns in the Ancient Tree Inventory without copying its visual design.
+
+### Useful ATI patterns
+- **Persistent center crosshair:** ATI keeps a faint crosshair fixed at map center and reads coordinates from it. This is directly relevant to Earthline's Regional → move map → Property workflow.
+- **Map / list duality:** ATI allows users to toggle between a map and a list of the trees currently visible in the map extent.
+- **Viewport-scoped filtering:** filters apply to the current map view and refresh as the user pans/zooms.
+- **Multiple contextual basemaps:** road, satellite, modern OS mapping, and a historic map can be switched without changing the record itself.
+- **Historic/modern comparison:** users are encouraged to compare 1860–1890 mapping with modern satellite imagery to judge persistence.
+- **Progressive disclosure:** the map shows compact symbols; clicking reveals a compact summary; a second action opens the full record.
+- **Field-first mobile design:** recording is intentionally usable on mobile/tablet while standing at the tree.
+- **Simple guided contribution:** mandatory fields are collected first; optional detail follows.
+- **Verifier state is visible:** verified records and unverified records are distinct; public visibility respects verification/privacy.
+- **Size filtering:** minimum / maximum girth filtering helps users find the oldest/largest likely candidates quickly.
+
+### Earthline translation
+- Keep the Earthline Search Orb and single map.
+- Add a Legacy Tree layer toggle, not a second map.
+- Candidate symbols should be visually distinct from verified records.
+- Selecting a symbol should open a compact evidence card first, then a full record/report.
+- Filters should remain map-extent aware: Verified / Strong Candidate / Candidate / Hotspot, species/genus, minimum structural size, confidence, historic-persistence evidence.
+- Historic imagery/map comparison should be an evidence view, not a competing navigation mode.
+- The center crosshair remains the authoritative Property target and must never be hidden by a presentation owner.
+- Mobile field verification should allow location confirmation, photos, species/genus, girth, veteran features and notes.
+
+## Thailand terrain-source audit
+
+### Current Earthline state
+The current production engine is **not yet Thailand-LiDAR-backed**.
+
+Measured source ownership in the current product:
+- Regional `loadDEM()` uses **Open Terrarium elevation tiles** as its principal elevation source.
+- Regional can use **Mapbox Terrain-RGB** as a fallback through the live map.
+- Property terrain uses **Mapbox Terrain-RGB** directly where available, with the existing Mapbox terrain sampler as a bounded fallback.
+- Property generated/procedural terrain is forbidden for publishable Property results by the existing fail-closed rule.
+- There is no Thailand RTSD / HII LiDAR source owner in the current code.
+
+Therefore Earthline must not describe Thailand hydrology as LiDAR-based until an AOI actually intersects an integrated, verified LiDAR dataset and the run provenance identifies that dataset.
+
+### Thailand authoritative/open LiDAR sources found
+1. **Royal Thai Survey Department / Royal Thai Armed Forces open-data index**
+   - Central watershed LiDAR survey.
+   - Published resolution: **1 metre**.
+   - Published vertical accuracy: **better than 15 cm**.
+   - Public dataset/index distributed via Thailand's open-data portal.
+   - Licence shown as Creative Commons Attribution.
+   - Coverage is regional/partial, not nationwide.
+
+2. **Hydro-Informatics Institute (HII) small-reservoir DTM**
+   - Derived from bathymetric boat survey plus drone LiDAR.
+   - 2025 dataset covers 60 small reservoirs in 8 provinces.
+   - Useful for those reservoir AOIs but not a national terrain replacement.
+
+### Required Thailand source hierarchy
+For every Thailand hydrology run:
+1. Test the requested AOI against the authoritative Thai LiDAR coverage index.
+2. If covered and the actual terrain raster/point-cloud resource is openly retrievable and licence-compatible, use the Thai bare-earth DTM/LiDAR-derived terrain as the terrain owner.
+3. Record source agency, dataset, acquisition/update date, nominal resolution, vertical accuracy, CRS and exact coverage fingerprint in the run provenance.
+4. If not covered, fall back to the existing real global DEM path and explicitly label it **non-LiDAR terrain**.
+5. Do not silently substitute modeled/procedural terrain for Property publication.
+6. Do not imply national Thailand LiDAR coverage where only regional coverage exists.
+
+### Integration target
+The desired Earthline Thailand terrain interface is:
+
+`AOI -> Thailand LiDAR coverage resolver -> authoritative Thai DTM/LiDAR terrain if covered -> existing shared hydrology / D8 / flow / contour / swale engine`
+
+The LiDAR source must replace only the terrain input. It must **not** create a Thailand-specific hydrology engine or duplicate swale science.
+
+### Acceptance test
+A Thailand LiDAR-backed run is accepted only when:
+- the AOI intersects a published Thai LiDAR work unit;
+- Earthline successfully loads the actual LiDAR-derived terrain resource;
+- the DEM fingerprint/provenance is recorded;
+- the hydrology result is generated from that terrain;
+- the UI/report says **LiDAR-derived terrain**;
+- moving the same AOI outside LiDAR coverage switches provenance to the global fallback rather than retaining the LiDAR claim.
+
+## V1 crosshair refresh defect noted during research
+The current production file contains a presentation ownership conflict:
+- earlier code restores `#earthlineCenterTarget15782`;
+- later public-map CSS explicitly hides `#earthlineCenterTarget15782` with `display:none!important`.
+
+This explains the observed post-refresh disappearance. The correct repair is to remove/consolidate the later conflicting presentation ownership, not add another timer or duplicate crosshair.
