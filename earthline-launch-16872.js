@@ -1298,3 +1298,252 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   },true);
   window.EARTHLINE_CROSSHAIR_MOVE_HINT_17093={state:'ready',show,remove,oncePerPageLoad:true,dismissOnCorridorDetail:true};
 })();
+
+
+/* EARTHLINE_ELDER_TREES_V1_17097
+   Authorized V1 Elder Tree GPS-point presentation.
+   One evidence owner, one Mapbox source/layer owner, no polling/observer/styledata/camera-motion owner.
+   Counts are evidence counts, not claims of true population. Confidence is structural-evidence confidence,
+   not probability of age/ancient status. No recharge-score or swale-science changes. */
+(function installEarthlineElderTrees17097(){
+  if(window.EARTHLINE_ELDER_TREES_V1_17097)return;
+  const MANIFEST='data/elder-trees/v1/manifest.json';
+  const SOURCE='earthline-elder-trees-17097';
+  const LAYER='earthline-elder-tree-points-17097';
+  const state={loaded:false,loading:null,manifest:null,all:[],active:[],lastSummary:null};
+
+  function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
+  function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
+  function clampConfidence(v){v=Number(v);return Number.isFinite(v)?Math.max(1,Math.min(99,Math.round(v))):null}
+  function isVerified(p){return String(p?.record_class||'').toUpperCase()==='VERIFIED_ELDER_TREE'||String(p?.record_class||'').toUpperCase()==='VERIFIED_EXTERNAL_TREE'||/verified/i.test(String(p?.verification_status||''))}
+  function isLidar(p){return /LIDAR/i.test(String(p?.record_class||''))||/LIDAR/i.test(String(p?.source_class||''))||/LIDAR/i.test(String(p?.source_name||''))}
+  function classify(p){
+    if(isVerified(p))return 'VERIFIED';
+    if(isLidar(p))return 'LIDAR-CONFIRMED CANDIDATE';
+    return 'MODELED CANDIDATE';
+  }
+  function bounds(){
+    const m=map();
+    try{
+      const b=m?.getBounds?.();
+      if(b)return [Number(b.getWest()),Number(b.getSouth()),Number(b.getEast()),Number(b.getNorth())];
+    }catch(_){}
+    return null;
+  }
+  function inBounds(f,b){
+    const q=f?.geometry?.coordinates;
+    if(!Array.isArray(q)||q.length<2||!b)return false;
+    const x=Number(q[0]),y=Number(q[1]);
+    if(!Number.isFinite(x)||!Number.isFinite(y))return false;
+    const west=b[0],south=b[1],east=b[2],north=b[3];
+    const lonOk=west<=east?(x>=west&&x<=east):(x>=west||x<=east);
+    return lonOk&&y>=south&&y<=north;
+  }
+  async function load(){
+    if(state.loaded)return state;
+    if(state.loading)return state.loading;
+    state.loading=(async()=>{
+      const manifest=await fetch(MANIFEST,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('Elder Tree manifest '+r.status);return r.json()});
+      const all=[];
+      for(const d of (manifest.datasets||[])){
+        try{
+          const fc=await fetch(d.path,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(String(r.status));return r.json()});
+          for(const f of (fc.features||[])){
+            if(f?.geometry?.type!=='Point')continue;
+            const copy={type:'Feature',geometry:f.geometry,properties:Object.assign({},f.properties||{},{
+              elder_dataset_id:d.id||'',
+              elder_dataset_label:d.label||d.id||'',
+              elder_coverage_complete:d.coverage_complete===true
+            })};
+            all.push(copy);
+          }
+        }catch(err){
+          (manifest.load_errors||(manifest.load_errors=[])).push({dataset:d.id||d.path,error:String(err&&err.message||err)});
+        }
+      }
+      state.manifest=manifest;state.all=all;state.loaded=true;
+      return state;
+    })().finally(()=>{state.loading=null});
+    return state.loading;
+  }
+  function summarize(features){
+    let verified=0,lidar=0,modeled=0,confSum=0,confN=0,partial=false;
+    for(const f of features){
+      const p=f.properties||{};
+      if(isVerified(p))verified++;
+      else if(isLidar(p))lidar++;
+      else modeled++;
+      const q=clampConfidence(p.confidence_pct);
+      if(q!=null){confSum+=q;confN++}
+      if(p.elder_coverage_complete!==true)partial=true;
+    }
+    return {
+      total:features.length,verified,lidar,modeled,candidates:lidar+modeled,
+      meanConfidence:confN?Math.round(confSum/confN):null,
+      partial,
+      evidenceLabel:verified&&lidar+modeled?verified+' verified · '+(lidar+modeled)+' candidates':verified?verified+' verified':(lidar+modeled)?(lidar+modeled)+' candidates':'no points in current cached coverage'
+    };
+  }
+  function activeFeatures(){
+    const b=bounds();
+    return b?state.all.filter(f=>inBounds(f,b)):[];
+  }
+  function publishMap(features){
+    const m=map();if(!m||!m.getStyle?.())return false;
+    const fc={type:'FeatureCollection',features};
+    try{
+      const src=m.getSource?.(SOURCE);
+      if(src?.setData)src.setData(fc);
+      else{
+        m.addSource(SOURCE,{type:'geojson',data:fc});
+        m.addLayer({
+          id:LAYER,type:'circle',source:SOURCE,
+          paint:{
+            'circle-radius':['case',['==',['get','record_class'],'VERIFIED_ELDER_TREE'],7,6],
+            'circle-color':['case',
+              ['any',['==',['get','record_class'],'VERIFIED_ELDER_TREE'],['==',['get','record_class'],'VERIFIED_EXTERNAL_TREE']],'#174d2a',
+              ['any',['==',['get','source_class'],'LIDAR'],['==',['get','record_class'],'LIDAR_CONFIRMED_ELDER_TREE_CANDIDATE']],'#2f7d48',
+              '#4f9b62'
+            ],
+            'circle-stroke-color':'#ffffff',
+            'circle-stroke-width':1.5,
+            'circle-opacity':0.92
+          }
+        });
+        m.on('click',LAYER,e=>{
+          const f=e?.features?.[0];if(!f)return;
+          const p=f.properties||{},coords=f.geometry?.coordinates||[],verified=isVerified(p),conf=clampConfidence(p.confidence_pct);
+          const title=verified?'VERIFIED ELDER TREE':classify(p);
+          const confidence=verified?'Verified external/field evidence':(conf==null?'Confidence not available':'Earthline Confidence '+conf+'%');
+          const h=Number(p.height_m);
+          const body='<div style="font:700 13px/1.25 system-ui,sans-serif;color:#17323d">'+esc(title)+'</div>'+
+            '<div style="margin-top:5px;font:800 12px/1.2 system-ui,sans-serif;color:#2f6f46">'+esc(confidence)+'</div>'+
+            (Number.isFinite(h)?'<div style="margin-top:4px;font:600 11px/1.35 system-ui,sans-serif">Canopy height: '+esc(h.toFixed(1))+' m</div>':'')+
+            '<div style="margin-top:4px;font:500 10px/1.35 system-ui,sans-serif;color:#526159">'+esc(p.source_name||'Earthline Elder Tree evidence')+'</div>'+
+            (!verified?'<div style="margin-top:6px;font:500 9.5px/1.35 system-ui,sans-serif;color:#6e766a">Confidence ranks structural evidence; it is not a probability of tree age or ancient/veteran status.</div>':'');
+          try{new mapboxgl.Popup({closeButton:true,closeOnClick:true,offset:8}).setLngLat(coords).setHTML(body).addTo(m)}catch(_){}
+        });
+      }
+      return true;
+    }catch(_){return false}
+  }
+  function gaugeLine(summary){
+    const wrap=document.querySelector('.earthline-recharge-gauge-wrap-16488');if(!wrap)return false;
+    let el=document.getElementById('earthlineElderTreesGauge17097');
+    if(!el){el=document.createElement('div');el.id='earthlineElderTreesGauge17097';el.style.cssText='margin-top:3px;color:#41614c;font:800 9px/1.25 "Noto Sans",system-ui,sans-serif;text-align:center';wrap.appendChild(el)}
+    el.textContent='Elder Trees: '+summary.evidenceLabel+(summary.partial?' · current Earthline coverage':'');
+    return true;
+  }
+  function dataBlock(summary){
+    const content=document.getElementById('earthlineRechargeDataContent16488');if(!content)return false;
+    let el=document.getElementById('earthlineElderTreesData17097');
+    if(!el){
+      el=document.createElement('div');el.id='earthlineElderTreesData17097';
+      el.style.cssText='margin:0 0 16px;padding:10px 11px;border-left:2px solid #3d8152;background:rgba(61,129,82,.08);color:#344b3b;font:550 10px/1.45 "Noto Sans",Arial,sans-serif';
+      const rain=content.querySelector('.earthline-data-rain16488');
+      rain?.insertAdjacentElement('afterend',el);
+    }
+    el.innerHTML='<b style="color:#254d31">ELDER TREE EVIDENCE</b><br>'+esc(summary.evidenceLabel)+
+      (summary.meanConfidence!=null?'<br>Mean candidate confidence: <b>'+esc(summary.meanConfidence)+'%</b>':'')+
+      '<br><span style="color:#68756b">Confidence is relative structural-evidence strength, not probability of age. Elder Trees have zero weight in Recharge Potential.</span>'+
+      (summary.partial?'<br><span style="color:#7c6240">Counts reflect current Earthline Elder Tree coverage, not a complete natural-population census.</span>':'');
+    return true;
+  }
+  function reportBlock(summary){
+    const panel=document.getElementById('earthlineVermontReportPanel16149');if(!panel?.classList?.contains('open'))return false;
+    const page=panel.querySelector('.el49-page');if(!page)return false;
+    let el=panel.querySelector('#earthlineElderTreesReport17097');
+    if(!el){
+      el=document.createElement('div');el.id='earthlineElderTreesReport17097';el.className='el49-callout';
+      const meta=page.querySelector('.el49-cover-meta');
+      if(meta)meta.insertAdjacentElement('afterend',el);else page.appendChild(el);
+    }
+    el.innerHTML='<b>Elder Tree evidence</b><br>'+esc(summary.evidenceLabel)+
+      (summary.meanConfidence!=null?' · mean candidate confidence '+esc(summary.meanConfidence)+'%':'')+
+      '<br><span style="font-size:10.5px">Candidate confidence describes remote-sensing structural evidence, not probability of age or ancient/veteran status.</span>'+
+      (summary.partial?'<br><span style="font-size:10.5px">Current Earthline coverage is partial; this is not a complete tree census.</span>':'');
+    return true;
+  }
+  function corridorBlock(summary){
+    const panel=document.getElementById('earthlineCorridorDetail16149');if(!panel?.classList?.contains('open'))return false;
+    const body=panel.querySelector('.el49-detail-body');if(!body)return false;
+    let el=panel.querySelector('#earthlineElderTreesCorridor17097');
+    if(!el){
+      el=document.createElement('div');el.id='earthlineElderTreesCorridor17097';el.className='el49-detail-note';
+      const actions=body.querySelector('.el49-detail-actions');
+      if(actions)body.insertBefore(el,actions);else body.appendChild(el);
+    }
+    el.innerHTML='<b>Elder Tree evidence in this analysis area.</b> '+esc(summary.evidenceLabel)+
+      (summary.meanConfidence!=null?' · mean candidate confidence '+esc(summary.meanConfidence)+'%':'')+
+      (summary.partial?' · current Earthline coverage':'')+'.';
+    return true;
+  }
+  function howParagraph(){
+    const page=document.getElementById('earthlineSwalesPage16125'),frame=page?.querySelector('iframe');if(!frame)return false;
+    const apply=()=>{
+      let doc=null;try{doc=frame.contentDocument}catch(_){}
+      if(!doc||doc.getElementById('earthlineElderTreesHow17097'))return !!doc;
+      const main=doc.querySelector('main');if(!main)return false;
+      const el=doc.createElement('section');el.id='earthlineElderTreesHow17097';
+      el.innerHTML='<h2>Elder Trees and water</h2><p><b>Water and forest structure are linked.</b> Bioswales slow, spread and sink runoff, helping soil retain moisture that supports roots, soil organisms and the long-lived trees that can become important structural anchors in forests. Earthline maps Verified Elder Trees where authoritative records exist and flags Elder Tree Candidates where remote-sensing evidence is strong. Candidate confidence describes the strength of structural evidence; it is not proof of age or mycorrhizal-hub status.</p>';
+      const first=main.querySelector('section');if(first)first.insertAdjacentElement('afterend',el);else main.prepend(el);
+      return true;
+    };
+    if(apply())return true;
+    frame.addEventListener('load',apply,{once:true});
+    return false;
+  }
+  function refreshSurfaces(){
+    const s=state.lastSummary||summarize(state.active);
+    gaugeLine(s);dataBlock(s);reportBlock(s);corridorBlock(s);
+  }
+  async function refresh(){
+    try{
+      await load();
+      state.active=activeFeatures();
+      state.lastSummary=summarize(state.active);
+      publishMap(state.active);
+      refreshSurfaces();
+      window.EARTHLINE_ELDER_TREE_LAST_17097={summary:state.lastSummary,featureCount:state.active.length,at:new Date().toISOString()};
+      return state.lastSummary;
+    }catch(err){
+      window.EARTHLINE_ELDER_TREE_LAST_17097={error:String(err&&err.message||err),at:new Date().toISOString()};
+      return null;
+    }
+  }
+  function wrapCorridor(){
+    const prior=window.earthlineOpenCorridorDetail16149;
+    if(typeof prior!=='function'||prior.__earthlineElder17097)return false;
+    const wrapped=function(){
+      const out=prior.apply(this,arguments);
+      corridorBlock(state.lastSummary||summarize(state.active));
+      return out;
+    };
+    wrapped.__earthlineElder17097=true;wrapped.__earthlineElder17097Original=prior;
+    window.earthlineOpenCorridorDetail16149=wrapped;
+    return true;
+  }
+  function click(e){
+    const t=e.target?.closest?.('button,a,[role="button"],#earthlineRailData16488,#earthlineVermontReport16149');
+    if(!t)return;
+    if(t.id==='earthlineRailData16488')dataBlock(state.lastSummary||summarize(state.active));
+    if(t.id==='earthlineVermontReport16149')reportBlock(state.lastSummary||summarize(state.active));
+  }
+  function hash(){if(location.hash==='#swales-explained')howParagraph()}
+  function install(){
+    wrapCorridor();
+    document.addEventListener('click',click,false);
+    window.addEventListener('hashchange',hash,false);
+    document.addEventListener('earthline:analysis-complete',()=>{wrapCorridor();refresh();},{passive:true});
+    load().then(()=>{if(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970)refresh()}).catch(()=>{});
+    if(location.hash==='#swales-explained')howParagraph();
+    window.EARTHLINE_ELDER_TREES_V1_17097={
+      state:'candidate',manifest:MANIFEST,source:SOURCE,layer:LAYER,
+      refresh,summary:()=>state.lastSummary||summarize(state.active),
+      features:()=>state.active.slice(),
+      confidenceRule:'relative structural-evidence percentile; modeled candidates capped below verified status; not age probability',
+      rechargeWeight:0
+    };
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+})();
