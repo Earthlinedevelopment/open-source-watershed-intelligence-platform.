@@ -1,0 +1,26 @@
+name: Earthline Elder Tree Production-Origin Property Control
+
+on:
+  push:
+    branches:
+      - v1/elder-tree-integration-17097
+    paths:
+      - 'tests/elder-tree-production-property-control-17097.mjs'
+      - '.github/workflows/earthline-elder-tree-production-property-control.yml'
+  workflow_dispatch:
+
+permissions: {contents: read}
+
+jobs:
+  control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: v1/elder-tree-integration-17097}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/elder-tree-production-property-control-17097.mjs
