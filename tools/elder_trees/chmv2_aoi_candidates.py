@@ -22,7 +22,7 @@ from scipy import ndimage
 import requests
 
 ROOT="https://dataforgood-fb-data.s3.amazonaws.com/forests/v2/global/dinov3_global_chm_v2_ml3/chm/"
-METHOD="earthline-elder-tree-aoi-chmv2-v0.5-local-morphology-index"
+METHOD="earthline-elder-tree-aoi-chmv2-v0.4-local-evidence-index"
 UA={"User-Agent":"Earthline-ElderTree-Research/1.6"}
 
 def tile_xy(lon,lat,z=10):
@@ -166,9 +166,9 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                     "local_canopy_floor_m":round(canopy_floor_m,2),
                     "raw_structural_evidence_score":round(float(structural),4),
                     "screen_structural_score":round(float(sc),5),
-                    "elder_tree_confidence_pct":None,
-                    "confidence_pct":None,
-                    "confidence_definition":"Earthline Elder Tree Confidence is a local relative morphology index combining height rank, crown-breadth proxy, local emergence, and open-grown context in the analyzed area. It is not the probability that the tree is ancient, veteran, or a mycorrhizal hub.",
+                    "elder_tree_confidence_pct":int(round(max(0.0,min(100.0,100.0*sc)))),
+                    "confidence_pct":int(round(max(0.0,min(100.0,100.0*sc)))),
+                    "confidence_definition":"Earthline Elder Tree Confidence is a local relative structural-evidence index built from height rank, local prominence rank, and open-grown context in the analyzed area. It is not the probability that the tree is ancient, veteran, or a mycorrhizal hub.",
                     "height_m":round(h,2),"emergent_height_m":round(emerg,2),
                     "crown_area_proxy_m2":round(area,1),"open_context_fraction":round(openf,3),
                     "evidence_limit":"Candidate only; modeled canopy structure is not proof of age or mycorrhizal hub status."
@@ -176,30 +176,6 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                 })
                 if len(feats)>=max_per_tile:break
 
-            # Elder Tree Confidence is computed AFTER native refinement from the
-            # morphology features that performed best in the England calibration.
-            # All ranks are local to this analyzed tile/AOI candidate pool.
-            if feats:
-                def local_rank(values):
-                    a=np.asarray(values,dtype=float)
-                    order=np.argsort(a,kind="stable")
-                    ranks=np.empty(len(a),dtype=float)
-                    ranks[order]=(np.arange(len(a),dtype=float)+1.0)/len(a)
-                    return ranks
-                hp=local_rank([float(f["properties"].get("height_m") or 0) for f in feats])
-                cp=local_rank([float(f["properties"].get("crown_area_proxy_m2") or 0) for f in feats])
-                ep=local_rank([float(f["properties"].get("emergent_height_m") or 0) for f in feats])
-                op=local_rank([float(f["properties"].get("open_context_fraction") or 0) for f in feats])
-                for i,f in enumerate(feats):
-                    conf=100.0*(.20*hp[i]+.30*cp[i]+.25*ep[i]+.25*op[i])
-                    f["properties"]["elder_tree_confidence_pct"]=int(round(max(0.0,min(100.0,conf))))
-                    f["properties"]["confidence_pct"]=f["properties"]["elder_tree_confidence_pct"]
-                    f["properties"]["confidence_components"]={
-                      "height_rank_pct":round(100.0*hp[i],1),
-                      "crown_breadth_rank_pct":round(100.0*cp[i],1),
-                      "emergence_rank_pct":round(100.0*ep[i],1),
-                      "open_context_rank_pct":round(100.0*op[i],1)
-                    }
             return feats,{"quadkey":q,"status":"OK","candidate_count":len(feats),"screen_shape":[oh,ow],"canopy_floor_m":round(canopy_floor_m,2),"reference_peak_count":reference_peak_count}
 
 def main():
