@@ -149,9 +149,9 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                     "quadkey":q,"method_version":METHOD,"screen_rank":rank,
                     "screen_reference_peak_count":reference_peak_count,
                     "raw_structural_evidence_score":round(float(structural),4),
-                    "relative_elder_confidence_pct":int(round(100.0*(1.0-(rank-1)/max(1,reference_peak_count-1)))) if reference_peak_count else None,
+                    "elder_tree_confidence_pct":int(round(100.0*(1.0-(rank-1)/max(1,reference_peak_count-1)))) if reference_peak_count else None,
                     "confidence_pct":int(round(100.0*(1.0-(rank-1)/max(1,reference_peak_count-1)))) if reference_peak_count else None,
-                    "confidence_definition":"Earthline Relative Elder Confidence is a local percentile: how strongly this structure ranks against other detected tree/canopy structures in the same analyzed source tile/AOI. It is not the probability that the tree is ancient, veteran, or a mycorrhizal hub.",
+                    "confidence_definition":"Earthline Elder Tree Confidence is a local percentile: how strongly this structure ranks against other detected tree/canopy structures in the same analyzed source tile/AOI. It is not the probability that the tree is ancient, veteran, or a mycorrhizal hub.",
                     "height_m":round(h,2),"emergent_height_m":round(emerg,2),
                     "crown_area_proxy_m2":round(area,1),"open_context_fraction":round(openf,3),
                     "evidence_limit":"Candidate only; modeled canopy structure is not proof of age or mycorrhizal hub status."
