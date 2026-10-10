@@ -1,0 +1,50 @@
+name: Earthline Elder Trees U.S. Fast EPT Spatial Index
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/usgs_ept_spatial_index.py'
+      - '.github/workflows/earthline-elder-tree-us-fast-ept-index.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install geospatial dependencies
+        run: pip install geopandas pyogrio shapely pyproj requests
+      - name: Build fast public EPT spatial index and state matrix
+        run: python tools/elder_trees/usgs_ept_spatial_index.py artifacts/elder-trees-us-ept-index
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-trees-us-fast-ept-index
+          path: artifacts/elder-trees-us-ept-index/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Persist compact U.S. EPT index
+        if: success()
+        run: |
+          mkdir -p data/elder-trees/generated/us-national
+          cp artifacts/elder-trees-us-ept-index/usgs-ept-spatial-index.json data/elder-trees/generated/us-national/
+          cp artifacts/elder-trees-us-ept-index/us-state-public-ept-coverage.json data/elder-trees/generated/us-national/
+          cp artifacts/elder-trees-us-ept-index/usgs-ept-spatial-index-summary.json data/elder-trees/generated/us-national/
+          git config user.name "Earthline Research Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add data/elder-trees/generated/us-national/
+          git diff --cached --quiet || git commit -m "data: persist fast U.S. Elder Tree EPT spatial index"
+          git fetch origin v2/elder-tree-layer-research
+          git rebase origin/v2/elder-tree-layer-research
+          git push origin HEAD:v2/elder-tree-layer-research
