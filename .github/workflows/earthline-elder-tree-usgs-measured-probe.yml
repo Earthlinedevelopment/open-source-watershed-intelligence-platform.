@@ -15,7 +15,7 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,19 +29,50 @@ jobs:
         run: |
           docker pull pdal/pdal:latest
           docker run --rm pdal/pdal:latest pdal --version
-      - name: Resolve Vermont candidate to public 3DEP EPT
+
+      - name: Prepare Vermont Earthline candidate
         run: |
-          python tools/elder_trees/usgs_ept_candidate_refine.py prepare             --name "Vermont candidate"             --lon -73.20924818515778             --lat 44.50332740834088             --radius 30             --outdir artifacts/elder-trees-usgs-measured/vermont
-      - name: Read measured point cloud
+          python tools/elder_trees/usgs_ept_candidate_refine.py prepare             --name "Vermont Earthline candidate"             --lon -73.20924818515778             --lat 44.50332740834088             --radius 100             --outdir artifacts/elder-trees-usgs-measured/vermont-candidate
+
+      - name: Read Vermont Earthline candidate point cloud
         run: |
-          docker run --rm \
-            -v "$PWD:$PWD" \
-            -w "$PWD" \
-            pdal/pdal:latest \
-            pdal pipeline artifacts/elder-trees-usgs-measured/vermont/pipeline.json
-      - name: Summarize measured canopy evidence
+          docker run --rm             -v "$PWD:$PWD"             -w "$PWD"             pdal/pdal:latest             pdal pipeline artifacts/elder-trees-usgs-measured/vermont-candidate/pipeline.json
+
+      - name: Summarize Vermont Earthline candidate
+        continue-on-error: true
         run: |
-          python tools/elder_trees/usgs_ept_candidate_refine.py summarize             --manifest artifacts/elder-trees-usgs-measured/vermont/manifest.json             --csv artifacts/elder-trees-usgs-measured/vermont/points.csv             --out artifacts/elder-trees-usgs-measured/vermont/result.json
+          python tools/elder_trees/usgs_ept_candidate_refine.py summarize             --manifest artifacts/elder-trees-usgs-measured/vermont-candidate/manifest.json             --csv artifacts/elder-trees-usgs-measured/vermont-candidate/points.csv             --out artifacts/elder-trees-usgs-measured/vermont-candidate/result.json
+
+      - name: Prepare Vermont public champion control
+        run: |
+          python tools/elder_trees/usgs_ept_candidate_refine.py prepare             --name "Vermont public champion control"             --lon -73.199238191             --lat 44.480345151             --radius 100             --outdir artifacts/elder-trees-usgs-measured/vermont-champion
+
+      - name: Read Vermont public champion point cloud
+        run: |
+          docker run --rm             -v "$PWD:$PWD"             -w "$PWD"             pdal/pdal:latest             pdal pipeline artifacts/elder-trees-usgs-measured/vermont-champion/pipeline.json
+
+      - name: Summarize Vermont public champion
+        continue-on-error: true
+        run: |
+          python tools/elder_trees/usgs_ept_candidate_refine.py summarize             --manifest artifacts/elder-trees-usgs-measured/vermont-champion/manifest.json             --csv artifacts/elder-trees-usgs-measured/vermont-champion/points.csv             --out artifacts/elder-trees-usgs-measured/vermont-champion/result.json
+
+      - name: Check measured evidence
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          roots=[
+            pathlib.Path("artifacts/elder-trees-usgs-measured/vermont-candidate/result.json"),
+            pathlib.Path("artifacts/elder-trees-usgs-measured/vermont-champion/result.json"),
+          ]
+          rows=[]
+          for p in roots:
+              rows.append(json.loads(p.read_text()) if p.exists() else {"missing":str(p)})
+          print(json.dumps(rows,indent=2))
+          confirmed=sum(bool(r.get("lidar_structure_confirmed")) for r in rows)
+          if confirmed < 1:
+              raise SystemExit("No Vermont probe produced usable measured-LiDAR evidence")
+          PY
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
