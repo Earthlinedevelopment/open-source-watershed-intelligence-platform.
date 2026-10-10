@@ -17,7 +17,9 @@ import requests
 
 BIG_TREE_TABLE="https://anrmaps.vermont.gov/arcgis/rest/services/map_services/MAP_ANR_ANRATLASFPR_WM_NOCACHE/MapServer/31"
 NDSM_WCS="https://maps.vcgi.vermont.gov/arcgis/services/EGC_services/IMG_VCGI_LIDARNDSM_WM_CACHE_v1/ImageServer/WCSServer"
-UA={"User-Agent":"Earthline-ElderTree-Research/0.3"}
+UA={"User-Agent":"Earthline-ElderTree-Research/0.4"}
+EXPERIENCE_ITEM="7637f5256b65454aa123e0c631f1f46a"
+PORTAL="https://www.arcgis.com/sharing/rest/content/items"
 
 def get_json(url,params=None):
     r=requests.get(url,params=params,headers=UA,timeout=90); r.raise_for_status()
@@ -70,6 +72,44 @@ def wcs_caps():
         errors.append({"request":p,"error":str(e)})
     return {"url":NDSM_WCS,"errors":errors}
 
+def discover_experience_sources():
+    item_data=get_json(f"{PORTAL}/{EXPERIENCE_ITEM}/data",{"f":"json"})
+    ids=set()
+    def walk(v):
+        if isinstance(v,dict):
+            for k,x in v.items():
+                if isinstance(x,str):
+                    for m in re.findall(r"\b[a-fA-F0-9]{32}\b",x): ids.add(m)
+                    if "arcgis.com" in x.lower() or "featureserver" in x.lower() or "mapserver" in x.lower():
+                        pass
+                walk(x)
+        elif isinstance(v,list):
+            for x in v: walk(x)
+        elif isinstance(v,str):
+            for m in re.findall(r"\b[a-fA-F0-9]{32}\b",v): ids.add(m)
+    walk(item_data)
+    discovered=[]
+    for iid in sorted(ids):
+        try:
+            meta=get_json(f"{PORTAL}/{iid}",{"f":"json"})
+            title=str(meta.get("title") or "")
+            typ=str(meta.get("type") or "")
+            url=meta.get("url")
+            if re.search(r"(tree|big|vermont)",title,re.I) or typ in ("Web Map","Feature Service","Map Service"):
+                rec={"id":iid,"title":title,"type":typ,"url":url}
+                if typ=="Web Map":
+                    try:
+                        d=get_json(f"{PORTAL}/{iid}/data",{"f":"json"})
+                        rec["operationalLayers"]=[
+                            {"title":ly.get("title"),"url":ly.get("url"),"itemId":ly.get("itemId")}
+                            for ly in (d.get("operationalLayers") or [])
+                        ]
+                    except Exception as e: rec["data_error"]=str(e)
+                discovered.append(rec)
+        except Exception:
+            pass
+    return {"experience_item":EXPERIENCE_ITEM,"sources":discovered}
+
 def main():
     out=Path(sys.argv[1] if len(sys.argv)>1 else "artifacts/elder-trees-vermont")
     out.mkdir(parents=True,exist_ok=True)
@@ -79,6 +119,7 @@ def main():
       "geography":"Vermont",
       "big_tree":public_big_tree_data(),
       "lidar_ndsm":wcs_caps(),
+      "experience_builder":discover_experience_sources(),
       "notes":[
         "Vermont Big Tree records are independent large-tree validation evidence, not Elder Tree verification.",
         "VCGI nDSM is LiDAR-derived height-above-ground and is suitable for structural candidate screening.",
