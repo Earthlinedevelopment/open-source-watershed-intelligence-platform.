@@ -1,0 +1,68 @@
+name: Earthline Colorado Arizona Elder Trees 3DEP Batch
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/usgs_ept_candidate_refine.py'
+      - 'tools/elder_trees/usgs_ept_batch_refine.py'
+      - '.github/workflows/earthline-elder-tree-co-az-3dep-batch.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  refine:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: colorado
+            input: data/elder-trees/generated/dryland-calibration/colorado-mount-goliath/elder-tree-candidate-pool-1807ade4fdd50c8a.geojson
+          - id: arizona
+            input: data/elder-trees/generated/dryland-calibration/arizona-san-francisco-peaks/elder-tree-candidate-pool-364c4bef4390fc6a.geojson
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pyproj requests
+      - name: Verify PDAL container
+        run: |
+          docker pull pdal/pdal:latest
+          docker run --rm pdal/pdal:latest pdal --version
+      - name: Prepare exact work-unit crops
+        run: |
+          python tools/elder_trees/usgs_ept_batch_refine.py prepare \
+            --input '${{ matrix.input }}' \
+            --radius 30 \
+            --outdir 'artifacts/${{ matrix.id }}-3dep'
+      - name: Read measured point clouds
+        run: |
+          set +e
+          for P in artifacts/${{ matrix.id }}-3dep/*/pipeline.json; do
+            [ -f "$P" ] || continue
+            docker run --rm -v "$PWD:$PWD" -w "$PWD" pdal/pdal:latest pdal pipeline "$P"
+          done
+          exit 0
+      - name: Merge measured evidence
+        run: |
+          python tools/elder_trees/usgs_ept_batch_refine.py merge \
+            --outdir 'artifacts/${{ matrix.id }}-3dep' \
+            --output 'artifacts/${{ matrix.id }}-3dep/${{ matrix.id }}-lidar-upgraded.geojson' \
+            --summary 'artifacts/${{ matrix.id }}-3dep/summary.json'
+      - name: Remove bulky point CSVs
+        run: find 'artifacts/${{ matrix.id }}-3dep' -name 'points.csv' -delete
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-${{ matrix.id }}-elder-trees-3dep
+          path: artifacts/${{ matrix.id }}-3dep/
+          if-no-files-found: warn
+          retention-days: 14
