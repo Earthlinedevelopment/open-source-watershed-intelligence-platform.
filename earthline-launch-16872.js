@@ -1223,3 +1223,32 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     rule:'missing parent token only; canonical published Regional owners must agree; non-empty mismatches remain fail-closed'
   };
 })();
+
+
+/* EARTHLINE_REGIONAL_MAP_DRAG_17092
+   V1 launch-stability repair.
+   The Regional vector presentation must not own the full map input surface.
+   Map drag remains owned by Mapbox; deliberate corridor hit targets remain clickable.
+   Static CSS only: no observer, timer, science, hydrology, or Property-owner change. */
+(function installEarthlineRegionalMapDrag17092(){
+  if(window.EARTHLINE_REGIONAL_MAP_DRAG_17092)return;
+  try{
+    const style=document.createElement('style');
+    style.id='earthlineRegionalMapDrag17092';
+    style.textContent=`
+#earthlineRegionalVectorOverlay16020{
+  pointer-events:none!important;
+}
+#earthlineRegionalVectorOverlay16020 .earthline-swale-hit-16070{
+  pointer-events:auto!important;
+}
+`;
+    (document.head||document.documentElement).appendChild(style);
+    window.EARTHLINE_REGIONAL_MAP_DRAG_17092={
+      state:'ready',
+      rule:'Regional presentation does not own map dragging; corridor hit targets remain deliberate click surfaces'
+    };
+  }catch(err){
+    window.EARTHLINE_REGIONAL_MAP_DRAG_17092={state:'failed',error:String(err)};
+  }
+})();
