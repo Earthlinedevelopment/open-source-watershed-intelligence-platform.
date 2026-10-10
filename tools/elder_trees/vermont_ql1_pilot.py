@@ -60,15 +60,18 @@ def fetch_public():
       "f":"json",
       "resultRecordCount":"500"
     })
+    exact={norm(f):f for f in fields}
     mapping={
-      "common":pick_field(fields,["common"]),
-      "species":pick_field(fields,["scientific"]) or pick_field(fields,["species"]),
-      "height":pick_field(fields,["height"]),
-      "crown":pick_field(fields,["crown","spread"]),
-      "circ":pick_field(fields,["circum"]),
-      "score":pick_field(fields,["score"]) or pick_field(fields,["points"]),
-      "objectid":pick_field(fields,["objectid"]) or pick_field(fields,["globalid"])
+      "common":exact.get("commonname") or pick_field(fields,["common"]),
+      "species":exact.get("species") or exact.get("genusspecies") or pick_field(fields,["scientific"]) or pick_field(fields,["species"]),
+      "height":exact.get("totalheight"),
+      "crown":exact.get("crownspread"),
+      "circ":exact.get("breastheightcirc"),
+      "score":exact.get("bigtreepoints") or pick_field(fields,["score"]) or pick_field(fields,["points"]),
+      "objectid":exact.get("objectid") or exact.get("globalid")
     }
+    if not mapping["height"] or not mapping["circ"]:
+        raise RuntimeError("Expected Vermont Big Tree measurement fields missing; fail closed")
     out=[]
     for f in q.get("features",[]):
         g=f.get("geometry") or {}; a=f.get("attributes") or {}
