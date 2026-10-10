@@ -101,7 +101,14 @@ def discover_experience_sources():
                     try:
                         d=get_json(f"{PORTAL}/{iid}/data",{"f":"json"})
                         rec["operationalLayers"]=[
-                            {"title":ly.get("title"),"url":ly.get("url"),"itemId":ly.get("itemId")}
+                            {
+                              "title":ly.get("title"),
+                              "url":ly.get("url"),
+                              "itemId":ly.get("itemId"),
+                              "definitionExpression":(ly.get("layerDefinition") or {}).get("definitionExpression"),
+                              "visibility":ly.get("visibility"),
+                              "showLabels":ly.get("showLabels")
+                            }
                             for ly in (d.get("operationalLayers") or [])
                         ]
                     except Exception as e: rec["data_error"]=str(e)
