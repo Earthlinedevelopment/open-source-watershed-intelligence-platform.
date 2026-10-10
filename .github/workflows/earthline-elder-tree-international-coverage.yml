@@ -1,0 +1,47 @@
+name: Earthline Elder Trees International CHMv2 Coverage
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/international_chmv2_coverage.py'
+      - '.github/workflows/earthline-elder-tree-international-coverage.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build actual international CHMv2 coverage matrix
+        run: python tools/elder_trees/international_chmv2_coverage.py artifacts/elder-trees-global-coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-trees-international-chmv2-coverage
+          path: artifacts/elder-trees-global-coverage/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Persist international coverage matrix
+        if: success()
+        run: |
+          mkdir -p data/elder-trees/generated/global
+          cp artifacts/elder-trees-global-coverage/international-chmv2-coverage.json data/elder-trees/generated/global/
+          cp artifacts/elder-trees-global-coverage/international-chmv2-coverage-summary.json data/elder-trees/generated/global/
+          git config user.name "Earthline Research Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add data/elder-trees/generated/global/
+          git diff --cached --quiet || git commit -m "data: persist international Elder Tree CHMv2 coverage"
+          git fetch origin v2/elder-tree-layer-research
+          git rebase origin/v2/elder-tree-layer-research
+          git push origin HEAD:v2/elder-tree-layer-research
