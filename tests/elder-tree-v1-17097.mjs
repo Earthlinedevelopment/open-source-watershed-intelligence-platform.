@@ -75,8 +75,8 @@ const checks={
   twelve:audit.summary.total===12&&audit.sourceFeatures===12,
   candidateCount:audit.summary.candidates===12,
   gauge:/12 candidates/i.test(audit.gauge),
-  data:/12 candidates/i.test(audit.data)&&/not probability of age/i.test(audit.data),
-  report:/12 candidates/i.test(audit.report),
+  data:/12 candidates/i.test(audit.data)&&/not probability of age/i.test(audit.data)&&/WRI\/Meta CHMv2/i.test(audit.data)&&/CC BY 4\.0/i.test(audit.data),
+  report:/12 candidates/i.test(audit.report)&&/WRI\/Meta CHMv2/i.test(audit.report)&&/CC BY 4\.0/i.test(audit.report),
   corridor:/12 candidates/i.test(audit.corridor),
   map:audit.layer&&audit.clickHandler,
   confidence:audit.confidences.length===12&&audit.confidences.every(v=>v>=1&&v<=95)&&Math.min(...audit.confidences)<Math.max(...audit.confidences),
@@ -85,6 +85,15 @@ const checks={
   noErrors:errors.length===0
 };
 console.log('EARTHLINE_ELDER_17097_CHECKS '+JSON.stringify(checks));
+
+// Fail-visible no-data behavior: move the authoritative test map bounds outside all cached pilot coverage.
+const noData=await page.evaluate(async()=>{
+  window.earthlineMap.getBounds=()=>({getWest:()=>10,getSouth:()=>-40,getEast:()=>11,getNorth:()=>-39});
+  return await window.EARTHLINE_ELDER_TREES_V1_17097.refresh();
+});
+console.log('EARTHLINE_ELDER_17097_NODATA '+JSON.stringify(noData));
+if(!(noData&&noData.total===0&&/no points/i.test(String(noData.evidenceLabel||''))))process.exitCode=1;
+
 await browser.close();
 server.kill('SIGTERM');
 if(!Object.values(checks).every(Boolean))process.exitCode=1;
