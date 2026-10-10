@@ -1292,5 +1292,9 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     const raw=String(e?.detail?.tier||e?.detail?.mode||'regional').toLowerCase();
     if(!raw.includes('property'))show();
   },{passive:true});
-  window.EARTHLINE_CROSSHAIR_MOVE_HINT_17093={state:'ready',show,remove,oncePerPageLoad:true};
+  document.addEventListener('click',e=>{
+    const target=e.target?.closest?.('[aria-label^="Open details for A"],[aria-label^="Open details for B"],[aria-label^="Open details for C"],.earthline-swale-hit-16070,.earthline-swale-label-16149');
+    if(target)remove();
+  },true);
+  window.EARTHLINE_CROSSHAIR_MOVE_HINT_17093={state:'ready',show,remove,oncePerPageLoad:true,dismissOnCorridorDetail:true};
 })();
