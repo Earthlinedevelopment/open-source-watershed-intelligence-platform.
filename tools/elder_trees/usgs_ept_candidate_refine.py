@@ -22,26 +22,109 @@ Scientific boundary:
 LiDAR confirms structure, not age / ancient-veteran status / mycorrhizal-hub status.
 """
 from __future__ import annotations
-import argparse, csv, json, math, statistics
+import argparse, csv, json, math, re
 from pathlib import Path
+from urllib.parse import urlparse, unquote
 import requests
 from pyproj import CRS, Transformer
 
-INDEX=Path("data/elder-trees/generated/us-national/usgs-ept-spatial-index.json")
-UA={"User-Agent":"Earthline-ElderTree-Research/1.8"}
-METHOD="earthline-usgs-3dep-elder-refinement-v0.1"
+EPT_CATALOG=Path("data/elder-trees/generated/us-national/usgs-public-ept-projects.json")
+USGS_LPC_QUERY="https://index.nationalmap.gov/arcgis/rest/services/3DEPElevationIndex/MapServer/8/query"
+UA={"User-Agent":"Earthline-ElderTree-Research/2.0"}
+METHOD="earthline-usgs-3dep-elder-refinement-v0.2-exact-workunit"
 
-def contains(b,lon,lat):
-    return b[0] <= lon <= b[2] and b[1] <= lat <= b[3]
+def norm(s):
+    s=str(s or "").lower()
+    s=s.replace("usgs_lpc_","").replace("usgs_lidar_","")
+    return re.sub(r"[^a-z0-9]+","",s)
 
-def area(b):
-    return max(0.0,b[2]-b[0])*max(0.0,b[3]-b[1])
+def ql_value(v):
+    m=re.search(r"([0-9]+(?:\\.[0-9]+)?)",str(v or ""))
+    return float(m.group(1)) if m else 99.0
+
+def project_token(link):
+    if not link:return None
+    parts=[p for p in unquote(urlparse(str(link)).path).split("/") if p]
+    for marker in ("Projects","projects"):
+        if marker in parts:
+            i=parts.index(marker)
+            if i+1<len(parts):return parts[i+1]
+    for p in parts:
+        if "USGS_LPC" in p.upper() or "USGS_LIDAR" in p.upper() or p.startswith("VT_Statewide_"):
+            return p
+    return None
+
+def exact_workunits(lon,lat):
+    params={
+      "f":"json",
+      "geometry":f"{lon},{lat}",
+      "geometryType":"esriGeometryPoint",
+      "inSR":"4326",
+      "spatialRel":"esriSpatialRelIntersects",
+      "outFields":"*",
+      "returnGeometry":"false",
+      "resultRecordCount":"100"
+    }
+    r=requests.get(USGS_LPC_QUERY,params=params,headers=UA,timeout=120)
+    r.raise_for_status()
+    d=r.json()
+    if isinstance(d,dict) and d.get("error"):
+        raise RuntimeError(json.dumps(d["error"]))
+    return [f.get("attributes") or {} for f in d.get("features") or []]
 
 def resolve(lon,lat):
-    idx=json.loads(INDEX.read_text())
-    matches=[p for p in idx if contains(p["bbox_wgs84"],lon,lat)]
-    matches.sort(key=lambda p:(-(p.get("year_hint") or 0),area(p["bbox_wgs84"]),-(int(p.get("points") or 0))))
-    return matches
+    workunits=exact_workunits(lon,lat)
+    if not workunits:
+        return []
+    catalog=json.loads(EPT_CATALOG.read_text())
+    valid=[p for p in catalog if p.get("status")==200 and p.get("ept_url")]
+    pn=[(p,norm(p.get("prefix"))) for p in valid]
+    resolved=[]
+    for a in workunits:
+        token=project_token(a.get("lpc_link"))
+        sources=[token,a.get("project"),a.get("project_id")]
+        candidates=[]
+        for src in sources:
+            ns=norm(src)
+            if not ns:continue
+            exact=[p for p,nv in pn if nv==ns]
+            fuzzy=[p for p,nv in pn if len(ns)>=8 and (ns in nv or nv in ns)]
+            for p in exact+fuzzy:
+                if p not in candidates:candidates.append(p)
+        for p in candidates:
+            resolved.append({
+              **p,
+              "workunit":a.get("workunit"),
+              "workunit_id":a.get("workunit_id"),
+              "project":a.get("project"),
+              "project_id":a.get("project_id"),
+              "ql":a.get("ql"),
+              "collect_start":a.get("collect_start"),
+              "collect_end":a.get("collect_end"),
+              "lpc_category":a.get("lpc_category"),
+              "lpc_reason":a.get("lpc_reason"),
+              "lpc_link":a.get("lpc_link"),
+              "metadata_link":a.get("metadata_link"),
+              "resolver":"USGS 3DEP Lidar Point Cloud exact work-unit polygon"
+            })
+    def datekey(x):
+        return str(x.get("collect_end") or "")
+    resolved.sort(key=lambda x:(ql_value(x.get("ql")),-int(re.sub(r"\\D","",datekey(x))[:8] or "0")))
+    # Prefer newest within best quality level.
+    resolved.sort(key=lambda x:(ql_value(x.get("ql")), datekey(x)),reverse=False)
+    if resolved:
+        bestql=min(ql_value(x.get("ql")) for x in resolved)
+        same=[x for x in resolved if ql_value(x.get("ql"))==bestql]
+        same.sort(key=lambda x:datekey(x),reverse=True)
+        others=[x for x in resolved if x not in same]
+        resolved=same+others
+    # Deduplicate identical EPT prefix while retaining exact work-unit provenance.
+    out=[];seen=set()
+    for x in resolved:
+        key=(x.get("prefix"),x.get("workunit_id"),x.get("workunit"))
+        if key in seen:continue
+        seen.add(key);out.append(x)
+    return out
 
 def ept_crs(meta):
     srs=meta.get("srs") or {}
@@ -65,7 +148,7 @@ def cmd_prepare(args):
     matches=resolve(lon,lat)
     if not matches:
         result={
-          "name":args.name,"lon":lon,"lat":lat,"status":"NO_PUBLIC_EPT_PROJECT_BOUNDS_MATCH",
+          "name":args.name,"lon":lon,"lat":lat,"status":"NO_EXACT_USGS_LPC_WORKUNIT_EPT_MATCH",
           "method_version":METHOD,
           "scientific_limit":"No measured-LiDAR upgrade attempted; modeled candidate remains modeled."
         }
@@ -92,16 +175,24 @@ def cmd_prepare(args):
     manifest={
       "name":args.name,"lon":lon,"lat":lat,"status":"EPT_PROJECT_RESOLVED",
       "method_version":METHOD,"radius_m":radius,
-      "project_bounds_match_count":len(matches),
-      "project_bounds_matches":[
+      "resolver":"USGS 3DEP Lidar Point Cloud exact work-unit polygon",
+      "exact_workunit_ept_match_count":len(matches),
+      "exact_workunit_ept_matches":[
         {
           "prefix":m.get("prefix"),"ept_url":m.get("ept_url"),"year_hint":m.get("year_hint"),
-          "project_points":m.get("points"),"bbox_wgs84":m.get("bbox_wgs84")
+          "project_points":m.get("points"),"workunit":m.get("workunit"),"workunit_id":m.get("workunit_id"),
+          "project":m.get("project"),"project_id":m.get("project_id"),"ql":m.get("ql"),
+          "collect_start":m.get("collect_start"),"collect_end":m.get("collect_end"),
+          "lpc_link":m.get("lpc_link"),"metadata_link":m.get("metadata_link")
         } for m in matches[:10]
       ],
       "selected_project":{
         "prefix":selected.get("prefix"),"ept_url":url,"year_hint":selected.get("year_hint"),
-        "project_points":selected.get("points"),"bbox_wgs84":selected.get("bbox_wgs84")
+        "project_points":selected.get("points"),"workunit":selected.get("workunit"),
+        "workunit_id":selected.get("workunit_id"),"project":selected.get("project"),
+        "project_id":selected.get("project_id"),"ql":selected.get("ql"),
+        "collect_start":selected.get("collect_start"),"collect_end":selected.get("collect_end"),
+        "lpc_link":selected.get("lpc_link"),"metadata_link":selected.get("metadata_link")
       },
       "ept_srs":meta.get("srs"),"center_projected":{"x":x,"y":y},
       "pdal_pipeline":str((outdir/"pipeline.json").resolve()),
