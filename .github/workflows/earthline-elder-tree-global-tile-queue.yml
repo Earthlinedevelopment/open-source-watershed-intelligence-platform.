@@ -1,0 +1,48 @@
+name: Earthline Elder Trees Global CHMv2 Tile Queue
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/global_country_tile_queue.py'
+      - '.github/workflows/earthline-elder-tree-global-tile-queue.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  queue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install geospatial dependencies
+        run: pip install geopandas pyogrio shapely requests
+      - name: Build global country CHMv2 tile queue
+        run: python tools/elder_trees/global_country_tile_queue.py artifacts/elder-trees-global-tiles
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-trees-global-chmv2-tile-queue
+          path: artifacts/elder-trees-global-tiles/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Persist global tile summary
+        if: success()
+        run: |
+          mkdir -p data/elder-trees/generated/global
+          cp artifacts/elder-trees-global-tiles/global-country-chmv2-tile-summary.json data/elder-trees/generated/global/
+          git config user.name "Earthline Research Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add data/elder-trees/generated/global/
+          git diff --cached --quiet || git commit -m "data: persist global Elder Tree CHMv2 tile summary"
+          git fetch origin v2/elder-tree-layer-research
+          git rebase origin/v2/elder-tree-layer-research
+          git push origin HEAD:v2/elder-tree-layer-research
