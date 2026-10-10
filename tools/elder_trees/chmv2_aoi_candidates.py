@@ -127,7 +127,8 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
             ranked=all_ranked[:max_per_tile*3]
             # Confidence reference is the full canopy-evidence field, not only preselected peaks.
             # This preserves discrimination among strong candidates while remaining a relative evidence percentile.
-            score_reference=np.asarray(score[mask],dtype=float)
+            canopy_mask=(z>=5)
+            score_reference=np.asarray(score[canopy_mask],dtype=float)
 
             # map screening pixel back to native source coordinate inside cropped window
             sx=win.width/ow;sy=win.height/oh
