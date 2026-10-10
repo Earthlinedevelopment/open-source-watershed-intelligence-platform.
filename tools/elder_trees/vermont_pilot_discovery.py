@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Earthline Elder Trees — Vermont public Big Tree + QL1 LiDAR pilot discovery.
-OFF-PRODUCTION ONLY.
+OFF-PRODUCTION ONLY. This run uses only public validation geometry.
 
 Uses only the public champion-tree ArcGIS layer for validation.
 Never emits private-tree coordinates.
