@@ -53,15 +53,3 @@ jobs:
           path: artifacts/elder-trees-dryland/
           if-no-files-found: warn
           retention-days: 14
-      - name: Persist dryland calibration data
-        if: success()
-        run: |
-          mkdir -p data/elder-trees/generated/dryland-calibration
-          cp -R artifacts/elder-trees-dryland/* data/elder-trees/generated/dryland-calibration/
-          git config user.name "Earthline Research Bot"
-          git config user.email "info@earthlinedevelopment.org"
-          git add data/elder-trees/generated/dryland-calibration/
-          git diff --cached --quiet || git commit -m "data: persist Colorado Arizona Elder Tree dryland calibration"
-          git fetch origin v2/elder-tree-layer-research
-          git rebase origin/v2/elder-tree-layer-research
-          git push origin HEAD:v2/elder-tree-layer-research
