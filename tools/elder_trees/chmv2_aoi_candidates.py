@@ -22,7 +22,9 @@ from scipy import ndimage
 import requests
 
 ROOT="https://dataforgood-fb-data.s3.amazonaws.com/forests/v2/global/dinov3_global_chm_v2_ml3/chm/"
-METHOD="earthline-elder-tree-aoi-chmv2-v0.5-density-prior"\nCURRENT_ELDER_TARGET_PER_HA=15.0\nFUTURE_ELDER_RATIO=2.5
+METHOD="earthline-elder-tree-aoi-chmv2-v0.5-density-prior"
+CURRENT_ELDER_TARGET_PER_HA=15.0
+FUTURE_ELDER_RATIO=2.5
 UA={"User-Agent":"Earthline-ElderTree-Research/1.6"}
 
 def tile_xy(lon,lat,z=10):
@@ -218,7 +220,9 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                 feats.append({
                   "type":"Feature","geometry":{"type":"Point","coordinates":[lon,lat]},
                   "properties":{
-                    "record_class":"ELDER_TREE_CANDIDATE",\n                    "elder_cohort":cohort,\n                    "cohort_definition":"CURRENT = top locally ranked structures under the research density prior; FUTURE = successor structures retained for continuity. Neither label proves age.",
+                    "record_class":"ELDER_TREE_CANDIDATE",
+                    "elder_cohort":cohort,
+                    "cohort_definition":"CURRENT = top locally ranked structures under the research density prior; FUTURE = successor structures retained for continuity. Neither label proves age.",
                     "verification_status":"modeled remote-sensing candidate only",
                     "source_class":"MODELED_CHMV2","source_name":"WRI/Meta CHMv2",
                     "source_url":url,"source_license":"CC BY 4.0",
@@ -287,7 +291,8 @@ def main():
           "candidate_count":len(ded),"candidate_pool_count":len(ded),
           "display_count":len(display),"display_limit_per_tile":args.display_per_tile,
           "count_owner":"candidate_pool","map_owner":"display_subset" if args.display_per_tile is not None else "candidate_pool",
-          "scientific_boundary":"All output points are unverified Elder Tree Candidates. CURRENT/FUTURE cohort labels are research priors for high-recall calibration, not proof of age. Display density is not detector recall and is not the evidence-count owner.",\n          "density_prior":{"current_elder_target_per_ha":CURRENT_ELDER_TARGET_PER_HA,"future_elder_ratio":FUTURE_ELDER_RATIO}}
+          "scientific_boundary":"All output points are unverified Elder Tree Candidates. CURRENT/FUTURE cohort labels are research priors for high-recall calibration, not proof of age. Display density is not detector recall and is not the evidence-count owner.",
+          "density_prior":{"current_elder_target_per_ha":CURRENT_ELDER_TARGET_PER_HA,"future_elder_ratio":FUTURE_ELDER_RATIO}}
     (out/f"elder-tree-candidate-pool-{key}.geojson").write_text(json.dumps(pool_fc,indent=2))
     (out/f"elder-trees-{key}.geojson").write_text(json.dumps(display_fc,indent=2))
     (out/f"elder-trees-{key}.json").write_text(json.dumps(meta,indent=2))
