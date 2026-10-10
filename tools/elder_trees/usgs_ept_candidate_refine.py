@@ -82,7 +82,7 @@ def resolve(lon,lat):
     resolved=[]
     for a in workunits:
         token=project_token(a.get("lpc_link"))
-        sources=[token,a.get("project"),a.get("project_id")]
+        sources=[a.get("workunit"),token,a.get("project"),a.get("project_id")]
         candidates=[]
         for src in sources:
             ns=norm(src)
