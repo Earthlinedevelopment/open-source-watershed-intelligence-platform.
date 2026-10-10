@@ -1,0 +1,43 @@
+name: Earthline Elder Tree False Zero 17099
+
+on:
+  push:
+    branches:
+      - repair/elder-tree-false-zero-17099
+    paths:
+      - 'earthline-launch-16872.js'
+      - 'data/elder-trees/v1/**'
+      - 'tests/elder-tree-false-zero-17099.mjs'
+      - 'tests/elder-tree-v1-17097.mjs'
+      - 'tests/elder-tree-fullpage-17097.mjs'
+      - 'tests/elder-tree-v1-launch-regression-17097.mjs'
+      - 'tests/elder-tree-hydrology-prefix-identity-17097.mjs'
+      - 'tests/elder-tree-production-property-control-17097.mjs'
+      - '.github/workflows/earthline-elder-tree-false-zero-17099.yml'
+  workflow_dispatch:
+
+permissions: {contents: read}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/elder-tree-false-zero-17099
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Gate false-zero coverage behavior
+        run: node tests/elder-tree-false-zero-17099.mjs
+      - name: Parse-check launch JavaScript
+        run: node --check earthline-launch-16872.js
+      - run: node tests/elder-tree-v1-17097.mjs
+      - run: node tests/elder-tree-fullpage-17097.mjs
+      - run: node tests/elder-tree-v1-launch-regression-17097.mjs
+      - run: node tests/elder-tree-hydrology-prefix-identity-17097.mjs
+      - run: node tests/elder-tree-production-property-control-17097.mjs
