@@ -1,0 +1,62 @@
+name: Earthline Alaska Elder Resolution Sweep 17101
+
+on:
+  push:
+    branches:
+      - research/elder-density-calibration-17100
+    paths:
+      - '.github/workflows/earthline-alaska-elder-resolution-sweep-17101.yml'
+      - 'tools/elder_trees/chmv2_aoi_candidates.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-density-calibration-17100
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy scipy rasterio pyproj requests
+      - name: Alaska screen-resolution sweep
+        run: |
+          set -e
+          BBOX="-135.36,57.045,-135.34,57.060"
+          for S in 256 384 512 768 1024; do
+            python tools/elder_trees/chmv2_aoi_candidates.py --bbox="$BBOX" --max-per-tile=1000 --screen-size="$S" --out="artifacts/alaska-$S"
+          done
+      - name: Summarize sweep
+        run: |
+          python - <<'PY'
+          import glob,json,pathlib
+          out={}
+          for p in glob.glob('artifacts/alaska-*/*.json'):
+              if p.endswith('.geojson'): continue
+              d=json.load(open(p))
+              s=pathlib.Path(p).parent.name.split('-')[-1]
+              tiles=[t for t in d.get('tile_results',[]) if t.get('status')=='OK']
+              out[s]={
+                'candidate_count':d.get('candidate_count',0),
+                'forest_area_ha':round(sum(t.get('forest_area_ha',0) for t in tiles),3),
+                'current_selected_total':sum(t.get('current_selected_total',0) for t in tiles),
+                'future_selected_total':sum(t.get('future_selected_total',0) for t in tiles),
+                'reference_peak_count':sum(t.get('reference_peak_count',0) for t in tiles),
+                'screen_pixel_m':sorted({t.get('screen_pixel_m') for t in tiles})
+              }
+          print(json.dumps(out,indent=2))
+          vals=[v.get('reference_peak_count',0) for _,v in sorted(out.items(),key=lambda kv:int(kv[0]))]
+          if not vals or max(vals)==0: raise SystemExit('No Alaska peaks detected')
+          pathlib.Path('artifacts/alaska-resolution-summary.json').write_text(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-alaska-elder-resolution-sweep-17101
+          path: artifacts/
+          retention-days: 14
