@@ -312,3 +312,63 @@ The LiDAR peak detector is capable of locating canopy structures near a majority
 Immediate rule:
 Use verified GPS points directly where authoritative inventories exist.
 Keep Earthline-generated points labeled ELDER_TREE_CANDIDATE until calibration improves.
+
+
+## Whole-U.S. and international scaling doctrine
+
+### U.S. national processing
+Earthline will process the United States from the current USGS 3DEP WESM work-unit catalog rather than by state-specific custom code.
+
+Each candidate point must retain:
+- workunit / project identity
+- quality level
+- acquisition dates
+- point-cloud source link
+- method version
+- candidate class
+- verification status
+
+Processing unit:
+- bounded LiDAR work unit / tile
+- one shared candidate detector
+- merge/deduplicate at boundaries
+- never infer statewide coverage from one project
+- fail closed where point-cloud coverage is absent or does not meet the required quality gate
+
+Zero-cost rule:
+Prefer the public no-account USGS Entwine Point Tile resource when the same project is available there.
+Do not use requester-pays raw LAZ as the default Earthline processing source.
+
+### International processing
+Every ISO country/territory is carried in the Earthline source registry.
+Individual GPS candidate generation is disabled by default.
+It is enabled only after an authoritative high-resolution national/regional source is verified.
+
+Countries currently identified as point-capable or regionally point-capable include:
+- United Kingdom: England via Environment Agency National LIDAR Programme; other UK nations require separate source audits
+- France: IGN LiDAR HD
+- Spain: PNOA-LiDAR
+- Netherlands: AHN
+- Finland: National Land Survey laser scanning
+- New Zealand: LINZ LiDAR DSM/DEM composite
+- Switzerland: swissSURFACE3D where published
+
+Thailand remains a priority partial-source audit.
+Laos and Vietnam remain screening-only until a suitable individual-tree source is verified.
+
+### WRI / Meta CHMv2 global accelerator — under calibration
+Earthline is evaluating the WRI/Meta Version 2 High Resolution Canopy Height Maps (CHMv2).
+
+Source characteristics:
+- world-scale / global and regional high-resolution canopy height product
+- generated from very-high-resolution satellite imagery with a LiDAR-trained machine-learning model
+- public AWS access
+- CC BY 4.0
+- intended to resolve individual trees/canopy edges at sub-meter scale
+
+Scientific treatment:
+- CHMv2 is modeled evidence, not measured LiDAR and not field verification.
+- CHMv2 may only generate ELDER_TREE_CANDIDATE points.
+- It must first be calibrated against England ATI and Vermont public Big Tree controls.
+- National/airborne LiDAR remains the preferred structural source where available.
+- CHMv2 may become the global candidate baseline only if calibration demonstrates acceptable positional and structural performance.
