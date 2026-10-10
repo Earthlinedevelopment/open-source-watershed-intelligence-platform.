@@ -1,0 +1,65 @@
+name: Earthline Elder Trees Worldwide AOI Validation
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/chmv2_aoi_candidates.py'
+      - '.github/workflows/earthline-elder-tree-aoi-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install scientific dependencies
+        run: pip install numpy scipy rasterio pyproj requests
+      - name: Generate five bounded AOI candidate datasets
+        run: |
+          python tools/elder_trees/chmv2_aoi_candidates.py --bbox=-73.23,44.45,-73.17,44.51 --max-per-tile=12 --out artifacts/elder-trees-aoi/vermont
+          python tools/elder_trees/chmv2_aoi_candidates.py --bbox=-0.615,51.420,-0.575,51.450 --max-per-tile=12 --out artifacts/elder-trees-aoi/england
+          python tools/elder_trees/chmv2_aoi_candidates.py --bbox=101.38,14.31,101.48,14.40 --max-per-tile=12 --out artifacts/elder-trees-aoi/thailand
+          python tools/elder_trees/chmv2_aoi_candidates.py --bbox=103.25,19.95,103.35,20.05 --max-per-tile=12 --out artifacts/elder-trees-aoi/laos
+          python tools/elder_trees/chmv2_aoi_candidates.py --bbox=105.57,20.27,105.67,20.36 --max-per-tile=12 --out artifacts/elder-trees-aoi/vietnam
+      - name: Summarize AOI candidate counts
+        run: |
+          python - <<'PY'
+          import json, glob, pathlib
+          out={}
+          for p in glob.glob("artifacts/elder-trees-aoi/*/*.json"):
+              if p.endswith(".geojson"): continue
+              d=json.load(open(p))
+              out[pathlib.Path(p).parent.name]={"candidate_count":d.get("candidate_count"),"requested_tiles":len(d.get("requested_tiles",[])),"cache_key":d.get("cache_key")}
+          print(json.dumps(out,indent=2))
+          open("artifacts/elder-trees-aoi/summary.json","w").write(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-trees-worldwide-aoi-validation
+          path: artifacts/elder-trees-aoi/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Persist first bounded international AOI samples
+        if: success()
+        run: |
+          mkdir -p data/elder-trees/generated/aoi-validation
+          cp -R artifacts/elder-trees-aoi/* data/elder-trees/generated/aoi-validation/
+          git config user.name "Earthline Research Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add data/elder-trees/generated/aoi-validation/
+          git diff --cached --quiet || git commit -m "data: persist first worldwide Elder Tree AOI candidates"
+          git fetch origin v2/elder-tree-layer-research
+          git rebase origin/v2/elder-tree-layer-research
+          git push origin HEAD:v2/elder-tree-layer-research
