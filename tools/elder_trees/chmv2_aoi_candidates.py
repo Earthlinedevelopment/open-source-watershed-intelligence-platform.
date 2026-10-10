@@ -125,7 +125,9 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
             rows,cols=np.where(peak)
             all_ranked=sorted([(float(score[r,c]),r,c) for r,c in zip(rows.tolist(),cols.tolist())],reverse=True)
             ranked=all_ranked[:max_per_tile*3]
-            score_values=np.asarray([x[0] for x in all_ranked],dtype=float)
+            # Confidence reference is the full canopy-evidence field, not only preselected peaks.
+            # This preserves discrimination among strong candidates while remaining a relative evidence percentile.
+            score_reference=np.asarray(score[mask],dtype=float)
 
             # map screening pixel back to native source coordinate inside cropped window
             sx=win.width/ow;sy=win.height/oh
@@ -148,8 +150,8 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                     "source_class":"MODELED_CHMV2","source_name":"WRI/Meta CHMv2",
                     "source_url":url,"source_license":"CC BY 4.0",
                     "quadkey":q,"method_version":METHOD,"screen_rank":rank,
-                    "confidence_pct":min(95,int(round(100.0*float(np.mean(score_values<=sc))))) if score_values.size else None,
-                    "confidence_definition":"Relative structural-evidence percentile within the analyzed CHMv2 tile; not a probability of tree age or ancient/veteran status.",
+                    "confidence_pct":min(95,int(round(100.0*float(np.mean(score_reference<=sc))))) if score_reference.size else None,
+                    "confidence_definition":"Relative structural-evidence percentile against all canopy-evidence cells in the analyzed CHMv2 area; capped at 95 for modeled candidates and not a probability of tree age or ancient/veteran status.",
                     "height_m":round(h,2),"emergent_height_m":round(emerg,2),
                     "crown_area_proxy_m2":round(area,1),"open_context_fraction":round(openf,3),
                     "evidence_limit":"Candidate only; modeled canopy structure is not proof of age or mycorrhizal hub status."
