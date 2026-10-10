@@ -1,0 +1,46 @@
+name: Earthline Elder Trees Global Source Registry
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/international_source_registry.py'
+      - '.github/workflows/earthline-elder-tree-global-registry.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  registry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pycountry
+      - name: Build global Elder Tree source registry
+        run: python tools/elder_trees/international_source_registry.py artifacts/elder-trees-global-registry
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-trees-global-source-registry
+          path: artifacts/elder-trees-global-registry/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Persist global source registry
+        if: success()
+        run: |
+          mkdir -p data/elder-trees/generated/global
+          cp artifacts/elder-trees-global-registry/international-elder-tree-source-registry.json data/elder-trees/generated/global/
+          cp artifacts/elder-trees-global-registry/international-elder-tree-source-summary.json data/elder-trees/generated/global/
+          git config user.name "Earthline Research Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add data/elder-trees/generated/global/
+          git diff --cached --quiet || git commit -m "data: persist global Elder Tree source registry"
+          git push origin HEAD:v2/elder-tree-layer-research
