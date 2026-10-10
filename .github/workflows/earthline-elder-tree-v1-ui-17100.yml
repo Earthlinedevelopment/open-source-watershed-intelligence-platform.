@@ -1,0 +1,57 @@
+name: Earthline Elder Tree V1 UI 17100 Audit
+
+on:
+  push:
+    branches:
+      - feature/elder-tree-v1-ui-17100
+    paths:
+      - 'earthline-launch-16872.js'
+      - '.github/workflows/earthline-elder-tree-v1-ui-17100.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/elder-tree-v1-ui-17100
+      - name: JavaScript syntax
+        run: node --check earthline-launch-16872.js
+      - name: Elder Tree UI contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path("earthline-launch-16872.js").read_text()
+          required=[
+            "EARTHLINE_ELDER_TREE_VISIBILITY_17100",
+            "earthlineSetElderTreeContext17100",
+            "earthlineElderStateCount17100",
+            "earthlinePropertyElderCount17100",
+            "earthline-data-elder-17100",
+            "earthline-elder-detail-metric-17100",
+            "earthline-report-elder-17100",
+            "earthline-elder-intro-17100",
+            "Elder Tree Candidates in analyzed area",
+            "mapped statewide",
+            "fakeZeroForbidden:true",
+            "mutationObservers:0",
+            "pollingLoops:0",
+            "scoreWeight:0"
+          ]
+          missing=[x for x in required if x not in s]
+          if missing:
+            raise SystemExit("missing Elder Tree UI contracts: "+", ".join(missing))
+          forbidden=[
+            "new MutationObserver(()=>{const elder",
+            "setInterval(()=>earthlineRefreshElderTreeUi17100"
+          ]
+          bad=[x for x in forbidden if x in s]
+          if bad:
+            raise SystemExit("forbidden Elder Tree owners present: "+", ".join(bad))
+          print("Elder Tree V1 UI contract PASS")
+          PY
