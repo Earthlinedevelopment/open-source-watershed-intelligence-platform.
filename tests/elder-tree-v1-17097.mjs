@@ -11,8 +11,15 @@ const marker='/* EARTHLINE_ELDER_TREES_V1_17097';
 const at=js.indexOf(marker);
 if(at<0)throw new Error('Elder Tree owner block missing');
 const block=js.slice(at);
-for(const forbidden of ['MutationObserver','setInterval(','styledata']){
-  if(block.includes(forbidden))throw new Error('Forbidden runtime owner in Elder Tree block: '+forbidden);
+const forbiddenRuntime=[
+  ['MutationObserver',/\bnew\s+MutationObserver\s*\(/],
+  ['setInterval',/\bsetInterval\s*\(/],
+  ['styledata listener',/\.on\s*\(\s*['"]styledata['"]/],
+  ['idle listener',/\.on\s*\(\s*['"]idle['"]/],
+  ['map render listener',/\.on\s*\(\s*['"]render['"]/]
+];
+for(const [label,rx] of forbiddenRuntime){
+  if(rx.test(block))throw new Error('Forbidden runtime owner in Elder Tree block: '+label);
 }
 
 const browser=await chromium.launch({headless:true});
