@@ -1314,7 +1314,8 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 
   function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
-  function clampConfidence(v){v=Number(v);return Number.isFinite(v)?Math.max(1,Math.min(99,Math.round(v))):null}
+  function clampConfidence(v){v=Number(v);return Number.isFinite(v)?Math.max(0,Math.min(100,Math.round(v))):null}
+  function elderConfidence(p){return clampConfidence(p?.elder_tree_confidence_pct??p?.confidence_pct)}
   function isVerified(p){return String(p?.record_class||'').toUpperCase()==='VERIFIED_ELDER_TREE'||String(p?.record_class||'').toUpperCase()==='VERIFIED_EXTERNAL_TREE'||/verified/i.test(String(p?.verification_status||''))}
   function isLidar(p){return /LIDAR/i.test(String(p?.record_class||''))||/LIDAR/i.test(String(p?.source_class||''))||/LIDAR/i.test(String(p?.source_name||''))}
   function classify(p){
@@ -1330,6 +1331,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     }catch(_){}
     return null;
   }
+  function hav(a,b){const R=6371008.8,p1=a[1]*Math.PI/180,p2=b[1]*Math.PI/180,dp=(b[1]-a[1])*Math.PI/180,dl=(b[0]-a[0])*Math.PI/180,q=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(q)))}
   function inBounds(f,b){
     const q=f?.geometry?.coordinates;
     if(!Array.isArray(q)||q.length<2||!b)return false;
@@ -1374,7 +1376,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       if(isVerified(p))verified++;
       else if(isLidar(p))lidar++;
       else modeled++;
-      const q=clampConfidence(p.confidence_pct);
+      const q=elderConfidence(p);
       if(q!=null){confSum+=q;confN++}
       if(p.elder_coverage_complete!==true)partial=true;
       const src=String(p.source_name||'').trim(),lic=String(p.source_license||'').trim();
@@ -1384,11 +1386,20 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       total:features.length,verified,lidar,modeled,candidates:lidar+modeled,
       meanConfidence:confN?Math.round(confSum/confN):null,
       partial,sources:[...sources],
-      evidenceLabel:verified&&lidar+modeled?verified+' verified · '+(lidar+modeled)+' candidates':verified?verified+' verified':(lidar+modeled)?(lidar+modeled)+' candidates':'no points in current cached coverage'
+      evidenceLabel:verified&&lidar+modeled?verified+' verified · '+(lidar+modeled)+' candidates':verified?verified+' verified':(lidar+modeled)?(lidar+modeled)+' candidates':'Elder Tree evidence not yet generated for this area'
     };
   }
   function activeFeatures(){
-    const b=bounds();
+    const b=bounds(),t=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
+    if(t==='property'){
+      let center=null;
+      try{
+        const loc=(typeof M!=='undefined'&&M&&M.loc)||window.M?.loc||window.EARTHLINE_PROPERTY_TARGET_16201||null;
+        const lng=Number(loc?.lng),lat=Number(loc?.lat);
+        if(Number.isFinite(lng)&&Number.isFinite(lat))center=[lng,lat];
+      }catch(_){}
+      if(center)return state.all.filter(f=>Array.isArray(f?.geometry?.coordinates)&&hav(center,f.geometry.coordinates)<=350);
+    }
     return b?state.all.filter(f=>inBounds(f,b)):[];
   }
   function publishMap(features){
@@ -1415,15 +1426,15 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
         });
         m.on('click',LAYER,e=>{
           const f=e?.features?.[0];if(!f)return;
-          const p=f.properties||{},coords=f.geometry?.coordinates||[],verified=isVerified(p),conf=clampConfidence(p.confidence_pct);
+          const p=f.properties||{},coords=f.geometry?.coordinates||[],verified=isVerified(p),conf=elderConfidence(p);
           const title=verified?'VERIFIED ELDER TREE':classify(p);
-          const confidence=verified?'Verified external/field evidence':(conf==null?'Confidence not available':'Earthline Confidence '+conf+'%');
+          const confidence=verified?'Verified external/field evidence':(conf==null?'Confidence not available':'Elder Tree Confidence '+conf+'%');
           const h=Number(p.height_m);
           const body='<div style="font:700 13px/1.25 system-ui,sans-serif;color:#17323d">'+esc(title)+'</div>'+
             '<div style="margin-top:5px;font:800 12px/1.2 system-ui,sans-serif;color:#2f6f46">'+esc(confidence)+'</div>'+
             (Number.isFinite(h)?'<div style="margin-top:4px;font:600 11px/1.35 system-ui,sans-serif">Canopy height: '+esc(h.toFixed(1))+' m</div>':'')+
             '<div style="margin-top:4px;font:500 10px/1.35 system-ui,sans-serif;color:#526159">'+esc(p.source_name||'Earthline Elder Tree evidence')+'</div>'+
-            (!verified?'<div style="margin-top:6px;font:500 9.5px/1.35 system-ui,sans-serif;color:#6e766a">Confidence is Earthline’s relative structural-evidence index; it is not a probability of tree age or ancient/veteran status.</div>':'');
+            (!verified?'<div style="margin-top:6px;font:500 9.5px/1.35 system-ui,sans-serif;color:#6e766a">Elder Tree Confidence is the tree’s local structural-evidence percentile compared with other detected tree/canopy structures in the same analyzed source area; it is not a probability of age or ancient/veteran status.</div>':'');
           try{new mapboxgl.Popup({closeButton:true,closeOnClick:true,offset:8}).setLngLat(coords).setHTML(body).addTo(m)}catch(_){}
         });
       }
@@ -1448,7 +1459,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     }
     el.innerHTML='<b style="color:#254d31">ELDER TREE EVIDENCE</b><br>'+esc(summary.evidenceLabel)+
       (summary.meanConfidence!=null?'<br>Mean candidate confidence: <b>'+esc(summary.meanConfidence)+'%</b>':'')+
-      '<br><span style="color:#68756b">Confidence is Earthline’s relative structural-evidence index, not probability of age. Elder Trees have zero weight in Recharge Potential.</span>'+
+      '<br><span style="color:#68756b">Elder Tree Confidence is a local structural-evidence percentile, not probability of age. Elder Trees have zero weight in Recharge Potential.</span>'+
       (summary.sources?.length?'<br><span style="color:#68756b">Source: '+summary.sources.map(esc).join(' · ')+'</span>':'')+
       (summary.partial?'<br><span style="color:#7c6240">Counts reflect current Earthline Elder Tree coverage, not a complete natural-population census.</span>':'');
     return true;
@@ -1464,22 +1475,39 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     }
     el.innerHTML='<b>Elder Tree evidence</b><br>'+esc(summary.evidenceLabel)+
       (summary.meanConfidence!=null?' · mean candidate confidence '+esc(summary.meanConfidence)+'%':'')+
-      '<br><span style="font-size:10.5px">Candidate confidence is Earthline’s relative structural-evidence index, not probability of age or ancient/veteran status.</span>'+
+      '<br><span style="font-size:10.5px">Elder Tree Confidence is a local structural-evidence percentile, not probability of age or ancient/veteran status.</span>'+
       (summary.sources?.length?'<br><span style="font-size:10.5px">Source: '+summary.sources.map(esc).join(' · ')+'</span>':'')+
       (summary.partial?'<br><span style="font-size:10.5px">Current Earthline coverage is partial; this is not a complete tree census.</span>':'');
     return true;
   }
-  function corridorBlock(summary){
+  function pointSegM(p,a,b){
+    const lat0=(p[1]+a[1]+b[1])/3*Math.PI/180,kx=111320*Math.cos(lat0),ky=110540;
+    const px=p[0]*kx,py=p[1]*ky,ax=a[0]*kx,ay=a[1]*ky,bx=b[0]*kx,by=b[1]*ky,dx=bx-ax,dy=by-ay;
+    const q=dx*dx+dy*dy?Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy))):0;
+    return Math.hypot(px-(ax+q*dx),py-(ay+q*dy))
+  }
+  function corridorNearby(feature){
+    const coords=feature?.geometry?.type==='LineString'?feature.geometry.coordinates:[];
+    if(coords.length<2)return [];
+    return state.active.filter(tree=>{
+      const p=tree?.geometry?.coordinates;if(!Array.isArray(p))return false;
+      let d=Infinity;for(let i=1;i<coords.length;i++)d=Math.min(d,pointSegM(p,coords[i-1],coords[i]));
+      return d<=100;
+    });
+  }
+  function corridorBlock(feature){
     const panel=document.getElementById('earthlineCorridorDetail16149');if(!panel?.classList?.contains('open'))return false;
-    const body=panel.querySelector('.el49-detail-body');if(!body)return false;
+    const body=panel.querySelector('.el49-detail-body')||panel;if(!body)return false;
     let el=panel.querySelector('#earthlineElderTreesCorridor17097');
     if(!el){
       el=document.createElement('div');el.id='earthlineElderTreesCorridor17097';el.className='el49-detail-note';
       const actions=body.querySelector('.el49-detail-actions');
       if(actions)body.insertBefore(el,actions);else body.appendChild(el);
     }
-    el.innerHTML='<b>Elder Tree evidence in this analysis area.</b> '+esc(summary.evidenceLabel)+
-      (summary.meanConfidence!=null?' · mean candidate confidence '+esc(summary.meanConfidence)+'%':'')+
+    const nearby=feature?corridorNearby(feature):[],summary=summarize(nearby);
+    const confs=nearby.map(f=>elderConfidence(f.properties||{})).filter(v=>v!=null),high=confs.length?Math.max(...confs):null;
+    el.innerHTML='<b>Elder Trees within 100 m of this corridor.</b> '+esc(summary.evidenceLabel)+
+      (high!=null?' · highest Elder Tree Confidence '+esc(high)+'%':'')+
       (summary.partial?' · current Earthline coverage':'')+'.';
     return true;
   }
@@ -1490,7 +1518,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       if(!doc||doc.getElementById('earthlineElderTreesHow17097'))return !!doc;
       const main=doc.querySelector('main');if(!main)return false;
       const el=doc.createElement('section');el.id='earthlineElderTreesHow17097';
-      el.innerHTML='<h2>Elder Trees and water</h2><p><b>Water and forest structure are linked.</b> Bioswales slow, spread and sink runoff, helping soil retain moisture that supports roots, soil organisms and the long-lived trees that can become important structural anchors in forests. Earthline maps Verified Elder Trees where authoritative records exist and flags Elder Tree Candidates where remote-sensing evidence is strong. Candidate confidence describes the strength of structural evidence; it is not proof of age or mycorrhizal-hub status.</p>';
+      el.innerHTML='<h2>Elder Trees and water</h2><p><b>Water and forest structure are linked.</b> Bioswales slow, spread and sink runoff, helping soil retain moisture that supports roots, soil organisms and the long-lived trees that can become important structural anchors in forests. Earthline maps Verified Elder Trees where authoritative records exist and flags Elder Tree Candidates where remote-sensing evidence is strong. Elder Tree Confidence describes the tree’s relative structural rank in the local analyzed area; it is not proof of age or mycorrhizal-hub status.</p>';
       const first=main.querySelector('section');if(first)first.insertAdjacentElement('afterend',el);else main.prepend(el);
       return true;
     };
@@ -1500,7 +1528,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   }
   function refreshSurfaces(){
     const s=state.lastSummary||summarize(state.active);
-    gaugeLine(s);dataBlock(s);reportBlock(s);corridorBlock(s);
+    gaugeLine(s);dataBlock(s);reportBlock(s);
   }
   async function refresh(){
     try{
@@ -1521,7 +1549,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     if(typeof prior!=='function'||prior.__earthlineElder17097)return false;
     const wrapped=function(){
       const out=prior.apply(this,arguments);
-      corridorBlock(state.lastSummary||summarize(state.active));
+      corridorBlock(f);
       return out;
     };
     wrapped.__earthlineElder17097=true;wrapped.__earthlineElder17097Original=prior;
@@ -1548,7 +1576,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       state:'candidate',manifest:MANIFEST,source:SOURCE,layer:LAYER,
       refresh,summary:()=>state.lastSummary||summarize(state.active),
       features:()=>state.active.slice(),
-      confidenceRule:'relative structural-evidence index; modeled candidates capped at 95; not age probability',
+      confidenceRule:'Elder Tree Confidence = local structural-evidence percentile within the analyzed source area; not age probability',
       rechargeWeight:0
     };
   }
