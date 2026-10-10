@@ -1,0 +1,94 @@
+name: Earthline Elder Trees Priority Europe Validation
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/priority_europe_validation.py'
+      - '.github/workflows/earthline-elder-tree-priority-europe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        region: [ENG, SCT, IRL, DNK, NOR, SWE, FRA, DEU]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install scientific dependencies
+        run: pip install numpy scipy rasterio pyproj requests
+      - name: Validate priority European region
+        run: |
+          python tools/elder_trees/priority_europe_validation.py             --region ${{ matrix.region }}             --out artifacts/${{ matrix.region }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: priority-europe-${{ matrix.region }}
+          path: artifacts/${{ matrix.region }}/
+          if-no-files-found: warn
+          retention-days: 14
+
+  summarize:
+    needs: validate
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: priority-europe-*
+          path: downloaded
+          merge-multiple: true
+      - name: Summarize priority Europe results
+        run: |
+          python - <<'PY'
+          import glob,json,pathlib
+          rows=[]
+          for p in glob.glob("downloaded/*-priority-europe.json"):
+              try:d=json.load(open(p,encoding="utf-8"))
+              except:continue
+              rows.append(d)
+          rows.sort(key=lambda x:x.get("name") or "")
+          out=pathlib.Path("priority-europe-summary");out.mkdir(exist_ok=True)
+          summary={
+            "mode":"off-production",
+            "priority":["England","Scotland","Ireland","Denmark","Norway","Sweden","France","Germany"],
+            "completed_region_count":len(rows),
+            "regions":rows,
+            "scientific_boundary":"England and Scotland use direct ATI verified Ancient/Veteran controls. Other regions are source/candidate-generation validation until a comparable authoritative inventory is integrated."
+          }
+          (out/"priority-europe-validation-summary.json").write_text(json.dumps(summary,indent=2,ensure_ascii=False),encoding="utf-8")
+          print(json.dumps(summary,indent=2,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: earthline-elder-trees-priority-europe-summary
+          path: priority-europe-summary/
+          retention-days: 30
+      - name: Persist priority Europe summary
+        run: |
+          mkdir -p data/elder-trees/generated/priority-europe
+          cp priority-europe-summary/priority-europe-validation-summary.json data/elder-trees/generated/priority-europe/
+          git config user.name "Earthline Research Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add data/elder-trees/generated/priority-europe/
+          git diff --cached --quiet || git commit -m "data: persist priority Europe Elder Tree validation"
+          git fetch origin v2/elder-tree-layer-research
+          git rebase origin/v2/elder-tree-layer-research
+          git push origin HEAD:v2/elder-tree-layer-research
