@@ -20,3 +20,13 @@ for p in POINTS:
     print("POINT",p["name"])
     print(json.dumps({"point":p,"error":d.get("error"),"feature_count":len(d.get("features") or []),
       "attributes":[f.get("attributes") or {} for f in d.get("features") or []]},indent=2,default=str))
+
+print("EPT_VERMONT_PREFIXES")
+catalog=json.loads(open("data/elder-trees/generated/us-national/usgs-public-ept-projects.json").read())
+hits=[]
+for p in catalog:
+    prefix=str(p.get("prefix") or "")
+    low=prefix.lower()
+    if any(k in low for k in ("vt_","vermont","easternvt","easternvermont","statewide")):
+        hits.append({"prefix":prefix,"status":p.get("status"),"points":p.get("points"),"ept_url":p.get("ept_url")})
+print(json.dumps(hits,indent=2))
