@@ -23,6 +23,7 @@ from pathlib import Path
 import numpy as np
 import rasterio
 from rasterio.enums import Resampling
+from rasterio.vrt import WarpedVRT
 from rasterio.windows import Window
 from rasterio.transform import Affine
 from pyproj import Transformer
@@ -103,10 +104,16 @@ def process(quadkey,max_candidates=50,coarse_size=512):
     os.environ.setdefault("CPL_VSIL_CURL_ALLOWED_EXTENSIONS",".tif")
     with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR",CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif"):
         with rasterio.open(vsi) as ds:
-            arr=ds.read(
-              1,out_shape=(coarse_size,coarse_size),
+            coarse_transform=ds.transform*Affine.scale(ds.width/coarse_size,ds.height/coarse_size)
+            with WarpedVRT(
+              ds,
+              crs=ds.crs,
+              transform=coarse_transform,
+              width=coarse_size,
+              height=coarse_size,
               resampling=Resampling.max
-            ).astype("float32")
+            ) as vrt:
+                arr=vrt.read(1).astype("float32")
             if ds.nodata is not None:arr[arr==ds.nodata]=np.nan
             arr[(~np.isfinite(arr))|(arr<0)|(arr>80)]=np.nan
             mask=np.isfinite(arr)&(arr>=5)
