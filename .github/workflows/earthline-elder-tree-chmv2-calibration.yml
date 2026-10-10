@@ -1,0 +1,52 @@
+name: Earthline Elder Trees CHMv2 Cross Calibration
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/global_chmv2_calibration.py'
+      - '.github/workflows/earthline-elder-tree-chmv2-calibration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install scientific dependencies
+        run: pip install numpy scipy rasterio pyproj requests
+      - name: Cross-calibrate CHMv2 against England and Vermont controls
+        run: python tools/elder_trees/global_chmv2_calibration.py artifacts/elder-trees-chmv2-calibration
+      - name: Print summary
+        if: always()
+        run: |
+          if [ -f artifacts/elder-trees-chmv2-calibration/chmv2-cross-calibration-summary.json ]; then
+            cat artifacts/elder-trees-chmv2-calibration/chmv2-cross-calibration-summary.json
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-trees-chmv2-cross-calibration
+          path: artifacts/elder-trees-chmv2-calibration/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Persist CHMv2 calibration summary
+        if: success()
+        run: |
+          mkdir -p data/elder-trees/generated/global
+          cp artifacts/elder-trees-chmv2-calibration/chmv2-cross-calibration-summary.json data/elder-trees/generated/global/
+          git config user.name "Earthline Research Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add data/elder-trees/generated/global/
+          git diff --cached --quiet || git commit -m "data: persist CHMv2 Elder Tree cross calibration"
+          git push origin HEAD:v2/elder-tree-layer-research
