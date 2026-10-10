@@ -18,7 +18,7 @@ Off-production research only.
 | Norway | 2907 | 3 | 28 | 5.0–16.0 | PASS_CANDIDATE_GENERATION |
 | Svalbard and Jan Mayen | 0 | 0 | 0 | — | NO_CHMV2_SOURCE |
 | Sweden | 1579 | 3 | 36 | 5.0–23.0 | PASS_CANDIDATE_GENERATION |
-| United Kingdom | 635 | 3 | 25 | 12.0–39.0 | PASS_CANDIDATE_GENERATION |
+| United Kingdom | 635 | 3 | 25 | 12.0–43.0 | PASS_CANDIDATE_GENERATION |
 | Åland Islands | 8 | 3 | 36 | 8.0–30.0 | PASS_CANDIDATE_GENERATION |
 
 England/United Kingdom is additionally calibrated against the Woodland Trust Ancient Tree Inventory.
