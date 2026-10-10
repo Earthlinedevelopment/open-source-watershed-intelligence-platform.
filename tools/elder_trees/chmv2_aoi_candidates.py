@@ -94,7 +94,7 @@ def refine(ds,cx,cy,canopy_floor_m=2.0,radius_m=45):
         if best is None or rec[0]>best[0]:best=rec
     return best
 
-def process_tile(q,bbox,max_per_tile=20,screen_size=512):
+def process_tile(q,bbox,max_per_tile=20,screen_size=512,refine_radius_m=45):
     url=ROOT+q+".tif"
     if not exists(q):return [],{"quadkey":q,"status":"NO_TILE"}
     with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR",CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif"):
@@ -223,7 +223,7 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
             feats=[]
             for rank,(sc,r,c,cohort) in enumerate(ranked,1):
                 cx,cy=rasterio.transform.xy(screen_tr,r,c,offset="center")
-                ref=refine(ds,cx,cy,canopy_floor_m=canopy_floor_m)
+                ref=refine(ds,cx,cy,canopy_floor_m=canopy_floor_m,radius_m=refine_radius_m)
                 if not ref:continue
                 structural,x,y,h,emerg,area,openf=ref
                 lon,lat=to4326.transform(x,y)
@@ -253,7 +253,7 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                 })
                 if len(feats)>=max_per_tile:break
 
-            return feats,{"quadkey":q,"status":"OK","candidate_count":len(feats),"screen_shape":[oh,ow],"canopy_floor_m":round(canopy_floor_m,2),"reference_peak_count":reference_peak_count,"screen_pixel_m":round(screen_px_m,2),"stand_target_m":stand_target_m,"forest_cells":forest_cells,"forest_cells_with_candidate":forest_cells_with_candidate,"forest_candidate_coverage_pct":round(100.0*forest_cells_with_candidate/max(1,forest_cells),1),"forest_area_ha":round(forest_area_ha,3),"current_elder_target_per_ha":CURRENT_ELDER_TARGET_PER_HA,"future_elder_ratio":FUTURE_ELDER_RATIO,"current_target_total":current_target_total,"future_target_total":future_target_total,"current_selected_total":current_selected_total,"future_selected_total":future_selected_total}
+            return feats,{"quadkey":q,"status":"OK","candidate_count":len(feats),"refine_radius_m":refine_radius_m,"screen_shape":[oh,ow],"canopy_floor_m":round(canopy_floor_m,2),"reference_peak_count":reference_peak_count,"screen_pixel_m":round(screen_px_m,2),"stand_target_m":stand_target_m,"forest_cells":forest_cells,"forest_cells_with_candidate":forest_cells_with_candidate,"forest_candidate_coverage_pct":round(100.0*forest_cells_with_candidate/max(1,forest_cells),1),"forest_area_ha":round(forest_area_ha,3),"current_elder_target_per_ha":CURRENT_ELDER_TARGET_PER_HA,"future_elder_ratio":FUTURE_ELDER_RATIO,"current_target_total":current_target_total,"future_target_total":future_target_total,"current_selected_total":current_selected_total,"future_selected_total":future_selected_total}
 
 def main():
     ap=argparse.ArgumentParser()
@@ -261,7 +261,7 @@ def main():
     ap.add_argument("--out",required=True)
     ap.add_argument("--max-per-tile",type=int,default=240,help="Evidence-pool ceiling per source tile after forest-local refinement; map density is controlled separately")
     ap.add_argument("--screen-size",type=int,default=512,help="Maximum screening dimension; use higher values for individual-tree calibration")
-    ap.add_argument("--display-per-tile",type=int,default=None,help="Optional sparse map-display limit per tile; does not change candidate-pool count")
+    ap.add_argument("--display-per-tile",type=int,default=None,help="Optional sparse map-display limit per tile; does not change candidate-pool count")\n    ap.add_argument("--refine-radius-m",type=float,default=45.0,help="Native-resolution refinement search radius around each screen-stage candidate")
     args=ap.parse_args()
     bbox=tuple(float(x) for x in args.bbox.split(","))
     if bbox[0]>=bbox[2] or bbox[1]>=bbox[3]:raise SystemExit("invalid bbox")
@@ -270,7 +270,7 @@ def main():
     if len(qs)>64:raise SystemExit(f"AOI spans {len(qs)} CHMv2 tiles; split into bounded requests")
     feats=[];tiles=[]
     for q in qs:
-        f,m=process_tile(q,bbox,args.max_per_tile,args.screen_size);feats.extend(f);tiles.append(m)
+        f,m=process_tile(q,bbox,args.max_per_tile,args.screen_size,args.refine_radius_m);feats.extend(f);tiles.append(m)
     ded=[]
     for f in sorted(feats,key=lambda x:x["properties"].get("height_m",0),reverse=True):
         p=f["geometry"]["coordinates"]
@@ -301,7 +301,7 @@ def main():
     meta={"mode":"off-production","method_version":METHOD,"bbox":bbox,"cache_key":key,
           "requested_tiles":qs,"tile_results":tiles,
           "candidate_count":len(ded),"candidate_pool_count":len(ded),
-          "display_count":len(display),"display_limit_per_tile":args.display_per_tile,
+          "display_count":len(display),"display_limit_per_tile":args.display_per_tile,"refine_radius_m":args.refine_radius_m,
           "count_owner":"candidate_pool","map_owner":"display_subset" if args.display_per_tile is not None else "candidate_pool",
           "scientific_boundary":"All output points are unverified Elder Tree Candidates. CURRENT/FUTURE cohort labels are research priors for high-recall calibration, not proof of age. Display density is not detector recall and is not the evidence-count owner.",
           "density_prior":{"current_elder_target_per_ha":CURRENT_ELDER_TARGET_PER_HA,"future_elder_ratio":FUTURE_ELDER_RATIO}}
