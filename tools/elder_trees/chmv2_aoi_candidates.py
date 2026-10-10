@@ -22,7 +22,7 @@ from scipy import ndimage
 import requests
 
 ROOT="https://dataforgood-fb-data.s3.amazonaws.com/forests/v2/global/dinov3_global_chm_v2_ml3/chm/"
-METHOD="earthline-elder-tree-aoi-chmv2-v0.4-local-evidence-index"
+METHOD="earthline-elder-tree-aoi-chmv2-v0.4.1-forest-coverage"
 UA={"User-Agent":"Earthline-ElderTree-Research/1.6"}
 
 def tile_xy(lon,lat,z=10):
@@ -135,10 +135,56 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
             open_context=np.clip(1.0-local_density,0.0,1.0)
             score=np.zeros_like(z,dtype="float32")
             score[canopy]=.40*h_pct[canopy]+.35*p_pct[canopy]+.25*open_context[canopy]
-            eligible=canopy&(h_pct>=.70)&((p_pct>=.65)|(open_context>=.60))
-            peak=(score==ndimage.maximum_filter(score,size=9,mode="nearest"))&eligible
-            rows,cols=np.where(peak)
-            all_ranked=sorted([(float(score[r,c]),r,c) for r,c in zip(rows.tolist(),cols.tolist())],reverse=True)
+
+            # Forest-coverage owner:
+            # Candidate selection is local to forested stand cells so one very strong
+            # forest cannot suppress every other forest in the AOI. Confidence still
+            # uses the same local structural-evidence score; only candidate coverage changes.
+            screen_px_m=max(
+                abs(ds.transform.a)*float(win.width)/max(1,ow),
+                abs(ds.transform.e)*float(win.height)/max(1,oh)
+            )
+            stand_target_m=300.0
+            stand_px=max(4,int(round(stand_target_m/max(screen_px_m,0.01))))
+            nms_px=max(3,int(round(35.0/max(screen_px_m,0.01))))
+            if nms_px%2==0:nms_px+=1
+
+            candidates=[]
+            forest_cells=0
+            forest_cells_with_candidate=0
+            for r0 in range(0,oh,stand_px):
+                for c0 in range(0,ow,stand_px):
+                    r1=min(oh,r0+stand_px); c1=min(ow,c0+stand_px)
+                    cm=canopy[r0:r1,c0:c1]
+                    if cm.size==0:continue
+                    forest_fraction=float(np.mean(cm))
+                    if forest_fraction<0.18:continue
+                    forest_cells+=1
+                    hs_cell=h_pct[r0:r1,c0:c1]
+                    ps_cell=p_pct[r0:r1,c0:c1]
+                    op_cell=open_context[r0:r1,c0:c1]
+                    sc_cell=score[r0:r1,c0:c1]
+                    # Relative thresholds within this forest cell. This makes sparse,
+                    # dry and short forests compete with themselves rather than humid
+                    # tall forests elsewhere in the tile.
+                    hv=hs_cell[cm]; pv=ps_cell[cm]
+                    hcut=max(.55,float(np.percentile(hv,65))) if hv.size else .55
+                    pcut=max(.50,float(np.percentile(pv,60))) if pv.size else .50
+                    eligible_cell=cm&(hs_cell>=hcut)&((ps_cell>=pcut)|(op_cell>=.55))
+                    if not np.any(eligible_cell):continue
+                    peak_cell=(sc_cell==ndimage.maximum_filter(sc_cell,size=nms_px,mode="nearest"))&eligible_cell
+                    rr,cc=np.where(peak_cell)
+                    if not len(rr):continue
+                    forest_cells_with_candidate+=1
+                    ranked_cell=sorted(
+                        [(float(sc_cell[r,c]),r0+r,c0+c) for r,c in zip(rr.tolist(),cc.tolist())],
+                        reverse=True
+                    )
+                    # Keep several candidates per forest cell; map density is handled
+                    # separately downstream and must never own the evidence count.
+                    candidates.extend(ranked_cell[:3])
+
+            all_ranked=sorted(candidates,reverse=True)
             ranked=all_ranked[:max_per_tile*3]
             reference_peak_count=len(all_ranked)
             # map screening pixel back to native source coordinate inside cropped window
@@ -176,13 +222,13 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                 })
                 if len(feats)>=max_per_tile:break
 
-            return feats,{"quadkey":q,"status":"OK","candidate_count":len(feats),"screen_shape":[oh,ow],"canopy_floor_m":round(canopy_floor_m,2),"reference_peak_count":reference_peak_count}
+            return feats,{"quadkey":q,"status":"OK","candidate_count":len(feats),"screen_shape":[oh,ow],"canopy_floor_m":round(canopy_floor_m,2),"reference_peak_count":reference_peak_count,"screen_pixel_m":round(screen_px_m,2),"stand_target_m":stand_target_m,"forest_cells":forest_cells,"forest_cells_with_candidate":forest_cells_with_candidate,"forest_candidate_coverage_pct":round(100.0*forest_cells_with_candidate/max(1,forest_cells),1)}
 
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--bbox",required=True,help="minlon,minlat,maxlon,maxlat")
     ap.add_argument("--out",required=True)
-    ap.add_argument("--max-per-tile",type=int,default=20,help="Candidate-pool limit per source tile after native refinement")
+    ap.add_argument("--max-per-tile",type=int,default=240,help="Evidence-pool ceiling per source tile after forest-local refinement; map density is controlled separately")
     ap.add_argument("--screen-size",type=int,default=512,help="Maximum screening dimension; use higher values for individual-tree calibration")
     ap.add_argument("--display-per-tile",type=int,default=None,help="Optional sparse map-display limit per tile; does not change candidate-pool count")
     args=ap.parse_args()
