@@ -1547,7 +1547,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   function wrapCorridor(){
     const prior=window.earthlineOpenCorridorDetail16149;
     if(typeof prior!=='function'||prior.__earthlineElder17097)return false;
-    const wrapped=function(){
+    const wrapped=function(f,index){
       const out=prior.apply(this,arguments);
       corridorBlock(f);
       return out;
