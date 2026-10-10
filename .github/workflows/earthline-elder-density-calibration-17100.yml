@@ -1,0 +1,81 @@
+name: Earthline Elder Density Calibration 17100
+
+on:
+  push:
+    branches:
+      - research/elder-density-calibration-17100
+    paths:
+      - 'tools/elder_trees/chmv2_aoi_candidates.py'
+      - 'data/elder-trees/research-decisions/elder-density-prior-2026-10-10.json'
+      - '.github/workflows/earthline-elder-density-calibration-17100.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-density-calibration-17100
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install scientific dependencies
+        run: pip install numpy scipy rasterio pyproj requests
+      - name: Syntax and prior lock
+        run: |
+          python -m py_compile tools/elder_trees/chmv2_aoi_candidates.py
+          python - <<'PY'
+          import json
+          d=json.load(open('data/elder-trees/research-decisions/elder-density-prior-2026-10-10.json'))
+          assert d['prior']['current_elder_candidates_per_ha']==15
+          assert d['prior']['future_elder_ratio']==2.5
+          assert d['mode'].startswith('V2 research')
+          print('density prior locked')
+          PY
+      - name: Run seven biome calibration AOIs
+        run: |
+          set -e
+          run(){ n="$1"; b="$2"; python tools/elder_trees/chmv2_aoi_candidates.py --bbox="$b" --max-per-tile=100 --screen-size=384 --out "artifacts/elder-density/$n"; }
+          run alaska "-135.36,57.045,-135.34,57.060"
+          run vermont "-73.205,44.475,-73.185,44.490"
+          run colorado "-105.61,39.625,-105.59,39.640"
+          run england "-0.603,51.430,-0.583,51.445"
+          run thailand "101.420,14.340,101.440,14.355"
+          run laos "103.290,19.990,103.310,20.005"
+          run vietnam "105.610,20.305,105.630,20.320"
+      - name: Summarize density calibration
+        run: |
+          python - <<'PY'
+          import glob,json,pathlib
+          out={}
+          for p in glob.glob('artifacts/elder-density/*/*.json'):
+              if p.endswith('.geojson'): continue
+              d=json.load(open(p))
+              tiles=[t for t in d.get('tile_results',[]) if t.get('status')=='OK']
+              out[pathlib.Path(p).parent.name]={
+                'candidate_count':d.get('candidate_count',0),
+                'current_target_total':sum(t.get('current_target_total',0) for t in tiles),
+                'future_target_total':sum(t.get('future_target_total',0) for t in tiles),
+                'current_selected_total':sum(t.get('current_selected_total',0) for t in tiles),
+                'future_selected_total':sum(t.get('future_selected_total',0) for t in tiles),
+                'forest_area_ha':round(sum(t.get('forest_area_ha',0) for t in tiles),3),
+                'forest_cells':sum(t.get('forest_cells',0) for t in tiles),
+                'forest_cells_with_candidate':sum(t.get('forest_cells_with_candidate',0) for t in tiles)
+              }
+          print(json.dumps(out,indent=2))
+          if out.get('alaska',{}).get('forest_area_ha',0)>0 and out['alaska'].get('candidate_count',0)==0:
+              raise SystemExit('Alaska false zero under density calibration')
+          pathlib.Path('artifacts/elder-density/summary.json').write_text(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-density-calibration-17100
+          path: artifacts/elder-density/
+          if-no-files-found: warn
+          retention-days: 14
