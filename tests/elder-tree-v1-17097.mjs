@@ -76,7 +76,7 @@ const checks={
   report:/12 candidates/i.test(audit.report),
   corridor:/12 candidates/i.test(audit.corridor),
   map:audit.layer&&audit.clickHandler,
-  confidence:audit.confidences.length===12&&audit.confidences.every(v=>v>=1&&v<=95),
+  confidence:audit.confidences.length===12&&audit.confidences.every(v=>v>=1&&v<=95)&&Math.min(...audit.confidences)<Math.max(...audit.confidences),
   rechargeWeight:audit.rechargeWeight===0,
   noErrors:errors.length===0
 };
