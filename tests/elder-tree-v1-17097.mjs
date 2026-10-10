@@ -92,7 +92,7 @@ const noData=await page.evaluate(async()=>{
   return await window.EARTHLINE_ELDER_TREES_V1_17097.refresh();
 });
 console.log('EARTHLINE_ELDER_17097_NODATA '+JSON.stringify(noData));
-if(!(noData&&noData.total===0&&/not yet generated for this area/i.test(String(noData.evidenceLabel||''))))process.exitCode=1;
+if(!(noData&&noData.total===0&&noData.coverageKnown===false&&/coverage not yet processed for this area/i.test(String(noData.evidenceLabel||''))))process.exitCode=1;
 
 await browser.close();
 server.kill('SIGTERM');
