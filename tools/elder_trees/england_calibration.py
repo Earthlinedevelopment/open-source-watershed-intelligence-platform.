@@ -29,15 +29,22 @@ from rasterio.warp import transform_bounds
 from pyproj import CRS, Transformer
 from scipy import ndimage
 
-DSM_WCS="https://environment.data.gov.uk/spatialdata/lidar-composite-digital-surface-model-last-return-dsm-1m/wcs"
+DSM_WCS="https://environment.data.gov.uk/spatialdata/lidar-composite-digital-surface-model-first-return-dsm-1m/wcs"
 DTM_WCS="https://environment.data.gov.uk/spatialdata/lidar-composite-digital-terrain-model-dtm-1m/wcs"
 ATI="https://services-eu1.arcgis.com/WIfgdJeDbrZU1cnA/ArcGIS/rest/services/Ancient%20Tree%20Inventory%20%28ATI%29/FeatureServer/0"
 METHOD="earthline-elder-tree-england-calibration-v0.1"
 
 def get_xml(url, params):
-    r=requests.get(url, params=params, timeout=90)
-    r.raise_for_status()
-    return ET.fromstring(r.content)
+    headers={"User-Agent":"Earthline-ElderTree-Research/0.1"}
+    last=None
+    for _ in range(3):
+        r=requests.get(url, params=params, headers=headers, timeout=90)
+        last=r
+        if r.status_code < 500:
+            r.raise_for_status()
+            return ET.fromstring(r.content)
+    last.raise_for_status()
+    return ET.fromstring(last.content)
 
 def coverage_id(base):
     root=get_xml(base,{"service":"WCS","version":"2.0.1","request":"GetCapabilities"})
