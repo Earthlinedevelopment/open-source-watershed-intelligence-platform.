@@ -1,0 +1,35 @@
+name: Earthline Elder Trees Vermont Pilot Discovery
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/vermont_pilot_discovery.py'
+      - '.github/workflows/earthline-elder-tree-vermont-pilot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Discover public Big Tree GPS and QL1 LiDAR services
+        run: python tools/elder_trees/vermont_pilot_discovery.py artifacts/elder-trees-vermont-pilot
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-trees-vermont-pilot-discovery
+          path: artifacts/elder-trees-vermont-pilot/
+          if-no-files-found: warn
+          retention-days: 14
