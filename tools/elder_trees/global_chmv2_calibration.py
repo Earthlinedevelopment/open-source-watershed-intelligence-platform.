@@ -25,7 +25,7 @@ ATI="https://services-eu1.arcgis.com/WIfgdJeDbrZU1cnA/ArcGIS/rest/services/Ancie
 VT="https://services5.arcgis.com/Uzks6LSde6r23wwG/arcgis/rest/services/Big_Tree_Survey_View/FeatureServer/0"
 VT_WHERE="(public_access = 'yes') AND (Champion = 'yes')"
 WINDSOR=(-0.615,51.420,-0.575,51.450)
-METHOD="earthline-elder-tree-chmv2-calibration-v0.1"
+METHOD="earthline-elder-tree-chmv2-calibration-v0.2"
 
 def quadkey(lon,lat,z=10):
     lat=max(-85.05112878,min(85.05112878,lat))
@@ -130,7 +130,32 @@ def peaks_for_control(control):
                     px,py=rasterio.transform.xy(tr,rr,cc,offset="center")
                     lon,lat=to4326.transform(px,py)
                     h=float(arr[rr,cc]) if np.isfinite(arr[rr,cc]) else float(sm[rr,cc])
-                    pts.append((lon,lat,h))
+                    rad=max(6,int(round(22.0/max(pix,0.01))))
+                    r0,r1=max(0,rr-rad),min(arr.shape[0],rr+rad+1)
+                    c0,c1=max(0,cc-rad),min(arr.shape[1],cc+rad+1)
+                    local=arr[r0:r1,c0:c1]
+                    lv=local[np.isfinite(local)]
+                    med=float(np.median(lv)) if lv.size else 0.0
+                    emerg=max(0.0,h-med)
+                    open_fraction=float(np.mean(np.nan_to_num(local,nan=0.0)<4.0))
+                    sub=np.nan_to_num(local,nan=0.0)
+                    mask=sub>=max(3.0,h*0.45)
+                    lab,_=ndimage.label(mask)
+                    rrr,ccc=rr-r0,cc-c0
+                    labid=lab[rrr,ccc] if 0<=rrr<lab.shape[0] and 0<=ccc<lab.shape[1] else 0
+                    crown_px=int(np.sum(lab==labid)) if labid>0 else 0
+                    crown_area=crown_px*abs(tr.a*tr.e)
+                    pts.append({"lon":lon,"lat":lat,"h":h,"emerg":emerg,"open":open_fraction,"crown":crown_area})
+                if pts:
+                    def pct(vals):
+                        vals=np.asarray(vals,dtype=float)
+                        order=np.argsort(vals)
+                        ranks=np.empty(len(vals),dtype=float);ranks[order]=np.arange(len(vals),dtype=float)
+                        return 100.0*(ranks+1)/len(vals)
+                    hp=pct([p["h"] for p in pts]); ep=pct([p["emerg"] for p in pts])
+                    op=pct([p["open"] for p in pts]); cp=pct([p["crown"] for p in pts])
+                    for i,p in enumerate(pts):
+                        p["score"]=float(.20*hp[i]+.30*cp[i]+.25*ep[i]+.25*op[i])
                 return q,url,str(ds.crs),pix,pts,None
     except Exception as e:
         return q,url,None,None,[],str(e)
@@ -144,21 +169,41 @@ def validate(label,controls):
             rows.append({"index":i,"quadkey":q,"tile_error":err,"nearest_m":None})
             continue
         nearest=None
-        for lon,lat,h in pts:
-            d=hav((c["lon"],c["lat"]),(lon,lat))
-            if nearest is None or d<nearest[0]:nearest=(d,h)
+        for p in pts:
+            d=hav((c["lon"],c["lat"]),(p["lon"],p["lat"]))
+            if nearest is None or d<nearest[0]:nearest=(d,p)
+        score_rank=None
+        if nearest and pts:
+            ordered=sorted(pts,key=lambda p:p.get("score",0),reverse=True)
+            try:score_rank=ordered.index(nearest[1])+1
+            except:score_rank=None
         row={
           "index":i,"quadkey":q,"candidate_count":len(pts),
           "nearest_m":round(nearest[0],2) if nearest else None,
-          "candidate_height_m":round(nearest[1],2) if nearest else None,
+          "candidate_height_m":round(nearest[1]["h"],2) if nearest else None,
+          "candidate_score":round(nearest[1].get("score",0),2) if nearest else None,
+          "candidate_score_rank":score_rank,
+          "candidate_score_percentile_from_top":round(100.0*score_rank/max(1,len(pts)),2) if score_rank else None,
           "measured_height_m":c.get("measured_height_m"),"pixel_size":pix
         }
         if nearest and c.get("measured_height_m") is not None:
-            try:row["height_error_m"]=round(nearest[1]-float(c["measured_height_m"]),2)
+            try:row["height_error_m"]=round(nearest[1]["h"]-float(c["measured_height_m"]),2)
             except:pass
+        for keep_pct in (5,10,20,40,100):
+            n=max(1,int(math.ceil(len(pts)*keep_pct/100.0))) if pts else 0
+            kept=sorted(pts,key=lambda p:p.get("score",0),reverse=True)[:n]
+            hit=min((hav((c["lon"],c["lat"]),(p["lon"],p["lat"])) for p in kept),default=1e9)
+            row[f"top_{keep_pct}pct_hit_20m"]=bool(hit<=20)
+            row[f"top_{keep_pct}pct_hit_10m"]=bool(hit<=10)
         rows.append(row)
     ds=[r["nearest_m"] for r in rows if r.get("nearest_m") is not None]
     he=[abs(r["height_error_m"]) for r in rows if r.get("height_error_m") is not None]
+    rank_sweep={}
+    for keep_pct in (5,10,20,40,100):
+        rank_sweep[str(keep_pct)]={
+          "hit_10m":sum(bool(r.get(f"top_{keep_pct}pct_hit_10m")) for r in rows),
+          "hit_20m":sum(bool(r.get(f"top_{keep_pct}pct_hit_20m")) for r in rows)
+        }
     summary={
       "label":label,"control_count":len(controls),
       "controls_with_readable_CHMv2_tile":len(ds),
@@ -168,6 +213,8 @@ def validate(label,controls):
       "within_30m":sum(d<=30 for d in ds),
       "median_nearest_m":round(float(np.median(ds)),2) if ds else None,
       "median_abs_height_error_m":round(float(np.median(he)),2) if he else None,
+      "median_control_peak_rank_percentile_from_top":round(float(np.median([r["candidate_score_percentile_from_top"] for r in rows if r.get("candidate_score_percentile_from_top") is not None])),2) if rows else None,
+      "rank_sweep":rank_sweep,
       "tile_error_count":len(tile_errors)
     }
     return rows,summary
@@ -183,8 +230,8 @@ def main():
       "source":"WRI/Meta CHMv2 modeled sub-meter canopy height","license":"CC BY 4.0",
       "england":es,"vermont":vs,
       "gate":{
-        "decision":"PENDING_EVIDENCE",
-        "rule":"CHMv2 may generate ELDER_TREE_CANDIDATE GPS points globally only if cross-calibration is adequate; never verified points."
+        "decision":"POSITIONAL_PASS_RANKING_UNDER_TEST",
+        "rule":"CHMv2 has passed a positional candidate-location gate in England and Vermont. Global publication remains blocked until a sparse ranking threshold is selected; never verified points."
       }
     }
     (out/"england-detail.json").write_text(json.dumps(erows,indent=2,default=str))
