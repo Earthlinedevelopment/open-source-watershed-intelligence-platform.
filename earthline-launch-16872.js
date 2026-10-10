@@ -1252,20 +1252,20 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 #earthlineCrosshairMoveHint17093{
   position:fixed!important;
   left:50%!important;
-  top:calc(50% - 82px)!important;
+  top:calc(50% - 54px)!important;
   transform:translateX(-50%)!important;
   z-index:2147482900!important;
   display:flex!important;
   align-items:center!important;
-  gap:9px!important;
-  max-width:min(360px,calc(100vw - 32px))!important;
-  padding:9px 11px 9px 13px!important;
+  gap:8px!important;
+  max-width:min(350px,calc(100vw - 32px))!important;
+  padding:6px 9px 6px 11px!important;
   border:1px solid rgba(78,201,255,.72)!important;
-  border-radius:12px!important;
+  border-radius:10px!important;
   background:rgba(8,24,34,.96)!important;
   color:#f4fbff!important;
   box-shadow:0 8px 24px rgba(0,0,0,.34)!important;
-  font:800 12px/1.25 system-ui,-apple-system,"Segoe UI",sans-serif!important;
+  font:800 11px/1.15 system-ui,-apple-system,"Segoe UI",sans-serif!important;
   text-align:center!important;
   pointer-events:auto!important;
 }
@@ -1282,9 +1282,9 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 }
 @media(max-width:760px){
   #earthlineCrosshairMoveHint17093{
-    top:calc(50% - 72px)!important;
-    max-width:min(320px,calc(100vw - 24px))!important;
-    font-size:11px!important;
+    top:calc(50% - 48px)!important;
+    max-width:min(310px,calc(100vw - 24px))!important;
+    font-size:10.5px!important;
   }
 }
 `;
