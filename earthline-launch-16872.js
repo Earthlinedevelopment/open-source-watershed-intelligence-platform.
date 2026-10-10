@@ -1368,6 +1368,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   }
   function summarize(features){
     let verified=0,lidar=0,modeled=0,confSum=0,confN=0,partial=false;
+    const sources=new Set();
     for(const f of features){
       const p=f.properties||{};
       if(isVerified(p))verified++;
@@ -1376,11 +1377,13 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       const q=clampConfidence(p.confidence_pct);
       if(q!=null){confSum+=q;confN++}
       if(p.elder_coverage_complete!==true)partial=true;
+      const src=String(p.source_name||'').trim(),lic=String(p.source_license||'').trim();
+      if(src)sources.add(src+(lic?' · '+lic:''));
     }
     return {
       total:features.length,verified,lidar,modeled,candidates:lidar+modeled,
       meanConfidence:confN?Math.round(confSum/confN):null,
-      partial,
+      partial,sources:[...sources],
       evidenceLabel:verified&&lidar+modeled?verified+' verified · '+(lidar+modeled)+' candidates':verified?verified+' verified':(lidar+modeled)?(lidar+modeled)+' candidates':'no points in current cached coverage'
     };
   }
@@ -1446,6 +1449,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     el.innerHTML='<b style="color:#254d31">ELDER TREE EVIDENCE</b><br>'+esc(summary.evidenceLabel)+
       (summary.meanConfidence!=null?'<br>Mean candidate confidence: <b>'+esc(summary.meanConfidence)+'%</b>':'')+
       '<br><span style="color:#68756b">Confidence is Earthline’s relative structural-evidence index, not probability of age. Elder Trees have zero weight in Recharge Potential.</span>'+
+      (summary.sources?.length?'<br><span style="color:#68756b">Source: '+summary.sources.map(esc).join(' · ')+'</span>':'')+
       (summary.partial?'<br><span style="color:#7c6240">Counts reflect current Earthline Elder Tree coverage, not a complete natural-population census.</span>':'');
     return true;
   }
@@ -1461,6 +1465,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     el.innerHTML='<b>Elder Tree evidence</b><br>'+esc(summary.evidenceLabel)+
       (summary.meanConfidence!=null?' · mean candidate confidence '+esc(summary.meanConfidence)+'%':'')+
       '<br><span style="font-size:10.5px">Candidate confidence is Earthline’s relative structural-evidence index, not probability of age or ancient/veteran status.</span>'+
+      (summary.sources?.length?'<br><span style="font-size:10.5px">Source: '+summary.sources.map(esc).join(' · ')+'</span>':'')+
       (summary.partial?'<br><span style="font-size:10.5px">Current Earthline coverage is partial; this is not a complete tree census.</span>':'');
     return true;
   }
