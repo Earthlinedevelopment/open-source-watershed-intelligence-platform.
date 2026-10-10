@@ -22,3 +22,5 @@ console.log(JSON.stringify({
   alaska_dataset_present:false,
   unprocessed_label:'Coverage not yet processed for this area'
 },null,2));
+
+// 17099 workflow trigger after workflow installation.
