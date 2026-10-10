@@ -1,0 +1,42 @@
+name: Earthline Elder Trees Vermont QL1 Pilot
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/vermont_ql1_pilot.py'
+      - '.github/workflows/earthline-elder-tree-vermont-ql1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install scientific dependencies
+        run: pip install numpy scipy rasterio pyproj requests
+      - name: Generate Vermont Elder Tree GPS candidates from statewide QL1 nDSM
+        run: python tools/elder_trees/vermont_ql1_pilot.py artifacts/elder-trees-vermont-ql1
+      - name: Print validation summary
+        if: always()
+        run: |
+          if [ -f artifacts/elder-trees-vermont-ql1/validation-summary.json ]; then
+            cat artifacts/elder-trees-vermont-ql1/validation-summary.json
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-trees-vermont-ql1-pilot
+          path: artifacts/elder-trees-vermont-ql1/
+          if-no-files-found: warn
+          retention-days: 14
