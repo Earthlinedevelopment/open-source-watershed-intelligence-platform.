@@ -59,7 +59,8 @@ const property=await desk.page.evaluate(()=>({
   lock:M?.propertyResultLock15815||null,
   safe:Number(M?.authoritativeSafeSwales15815?.length||0),
   elder:window.EARTHLINE_ELDER_TREES_V1_17097?.summary?.()||null,
-  elderGauge:String(document.getElementById('earthlineElderTreesGauge17097')?.textContent||'')
+  elderGauge:String(document.getElementById('earthlineElderTreesGauge17097')?.textContent||''),
+  confidenceRule:String(window.EARTHLINE_ELDER_TREES_V1_17097?.confidenceRule||'')
 }));
 property.wallMs=Date.now()-p0;property.error=pErr;
 
@@ -76,7 +77,7 @@ const pass={
   arizona:!rows.Arizona.error&&Number(rows.Arizona.perf?.totalMs)>0&&Number(rows.Arizona.perf?.totalMs)<=15000&&Number(rows.Arizona.elder?.total)>0&&!/not yet generated/i.test(rows.Arizona.elderGauge),
   vermont:!rows.Vermont.error&&Number(rows.Vermont.perf?.totalMs)>0&&Number(rows.Vermont.perf?.totalMs)<=15000&&Number(rows.Vermont.elder?.total)>0,
   property:prep&&!pErr&&property.audit?.settled===true&&property.audit?.result===true&&property.safe>0&&property.safety?.verified===true&&property.lock?.safetyVerified===true&&property.wallMs<=15000,
-  confidenceName:/Elder Tree Confidence/i.test(String(window?.name||''))||true,
+  confidenceName:/Elder Tree Confidence/i.test(String(property.confidenceRule||'')),
   desktopErrors:desk.errors.length===0,
   mobile:mobileAudit.rail&&mobileAudit.orb&&mobileAudit.elderOwner&&mobileAudit.overflow&&mobile.errors.length===0
 };
