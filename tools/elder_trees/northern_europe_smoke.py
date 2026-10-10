@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Earthline Elder Trees — Northern Europe area smoke test.
-OFF-PRODUCTION ONLY.
+OFF-PRODUCTION ONLY. Covers the full UN M49 Northern Europe batch.
 
 Tests one UN M49 Northern Europe country/area per invocation:
 - actual CHMv2 coverage
