@@ -125,11 +125,6 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
             rows,cols=np.where(peak)
             all_ranked=sorted([(float(score[r,c]),r,c) for r,c in zip(rows.tolist(),cols.tolist())],reverse=True)
             ranked=all_ranked[:max_per_tile*3]
-            # Confidence reference is the full canopy-evidence field, not only preselected peaks.
-            # This preserves discrimination among strong candidates while remaining a relative evidence percentile.
-            canopy_mask=(z>=5)
-            score_reference=np.asarray(score[canopy_mask],dtype=float)
-
             # map screening pixel back to native source coordinate inside cropped window
             sx=win.width/ow;sy=win.height/oh
             screen_tr=ds.window_transform(win)*rasterio.Affine.scale(sx,sy)
@@ -139,7 +134,7 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                 cx,cy=rasterio.transform.xy(screen_tr,r,c,offset="center")
                 ref=refine(ds,cx,cy)
                 if not ref:continue
-                _,x,y,h,emerg,area,openf=ref
+                structural,x,y,h,emerg,area,openf=ref
                 lon,lat=to4326.transform(x,y)
                 if not (minlon<=lon<=maxlon and minlat<=lat<=maxlat):continue
                 if any(hav((lon,lat),f["geometry"]["coordinates"])<10 for f in feats):continue
@@ -151,8 +146,9 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                     "source_class":"MODELED_CHMV2","source_name":"WRI/Meta CHMv2",
                     "source_url":url,"source_license":"CC BY 4.0",
                     "quadkey":q,"method_version":METHOD,"screen_rank":rank,
-                    "confidence_pct":min(95,int(round(100.0*float(np.mean(score_reference<=sc))))) if score_reference.size else None,
-                    "confidence_definition":"Relative structural-evidence percentile against all canopy-evidence cells in the analyzed CHMv2 area; capped at 95 for modeled candidates and not a probability of tree age or ancient/veteran status.",
+                    "raw_structural_evidence_score":round(float(structural),4),
+                    "confidence_pct":None,
+                    "confidence_definition":"Earthline relative structural-evidence confidence within the analyzed candidate set; modeled candidates are capped at 95 and the value is not a probability of tree age or ancient/veteran status.",
                     "height_m":round(h,2),"emergent_height_m":round(emerg,2),
                     "crown_area_proxy_m2":round(area,1),"open_context_fraction":round(openf,3),
                     "evidence_limit":"Candidate only; modeled canopy structure is not proof of age or mycorrhizal hub status."
@@ -179,6 +175,20 @@ def main():
     for f in sorted(feats,key=lambda x:x["properties"].get("height_m",0),reverse=True):
         p=f["geometry"]["coordinates"]
         if all(hav(p,g["geometry"]["coordinates"])>=10 for g in ded):ded.append(f)
+
+    # Earthline Confidence is an evidence index, not an age probability.
+    # Rank the final candidate set by the same structural evidence score used by the detector
+    # and map that relative position onto 60–95 for modeled candidates. VERIFIED records do
+    # not use this percentage; they retain VERIFIED status instead.
+    evidence=np.asarray([
+        float(f.get("properties",{}).get("raw_structural_evidence_score",0) or 0)
+        for f in ded
+    ],dtype=float)
+    if evidence.size:
+        for f,v in zip(ded,evidence.tolist()):
+            pct=float(np.mean(evidence<=v))
+            f["properties"]["confidence_pct"]=int(round(min(95.0,60.0+35.0*pct)))
+
     key=hashlib.sha256((METHOD+"|"+",".join(map(str,bbox))).encode()).hexdigest()[:16]
     out=Path(args.out);out.mkdir(parents=True,exist_ok=True)
     fc={"type":"FeatureCollection","features":ded}
