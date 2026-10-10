@@ -51,15 +51,3 @@ jobs:
           path: artifacts/elder-trees-aoi/
           if-no-files-found: warn
           retention-days: 14
-      - name: Persist first bounded international AOI samples
-        if: success()
-        run: |
-          mkdir -p data/elder-trees/generated/aoi-validation
-          cp -R artifacts/elder-trees-aoi/* data/elder-trees/generated/aoi-validation/
-          git config user.name "Earthline Research Bot"
-          git config user.email "info@earthlinedevelopment.org"
-          git add data/elder-trees/generated/aoi-validation/
-          git diff --cached --quiet || git commit -m "data: persist first worldwide Elder Tree AOI candidates"
-          git fetch origin v2/elder-tree-layer-research
-          git rebase origin/v2/elder-tree-layer-research
-          git push origin HEAD:v2/elder-tree-layer-research
