@@ -1,0 +1,47 @@
+name: Earthline Elder Trees U.S. National 3DEP Inventory
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/us_national_3dep_inventory.py'
+      - '.github/workflows/earthline-elder-tree-us-national.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Build current national 3DEP inventory
+        run: python tools/elder_trees/us_national_3dep_inventory.py artifacts/elder-trees-us-national
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-trees-us-national-3dep-inventory
+          path: artifacts/elder-trees-us-national/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Persist national source catalog
+        if: success()
+        run: |
+          mkdir -p data/elder-trees/generated/us-national
+          cp artifacts/elder-trees-us-national/us-wesm-summary.json data/elder-trees/generated/us-national/
+          cp artifacts/elder-trees-us-national/us-3dep-projects.json data/elder-trees/generated/us-national/
+          cp artifacts/elder-trees-us-national/us-jurisdiction-queue.json data/elder-trees/generated/us-national/
+          git config user.name "Earthline Research Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add data/elder-trees/generated/us-national/
+          git diff --cached --quiet || git commit -m "data: persist national Elder Tree 3DEP source catalog"
+          git push origin HEAD:v2/elder-tree-layer-research
