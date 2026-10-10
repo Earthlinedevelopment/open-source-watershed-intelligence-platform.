@@ -152,7 +152,7 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
             # A second, explicitly separate future-Elder cohort is retained at 2.5x
             # the current cohort when enough distinct canopy maxima exist.
             # These are model priors, not assertions of age.
-            nms_px=max(3,int(round(12.0/max(screen_px_m,0.01))))
+            nms_px=max(3,int(round(8.0/max(screen_px_m,0.01))))
             if nms_px%2==0:nms_px+=1
 
             candidates=[]
@@ -184,7 +184,7 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                     sc_cell=score[r0:r1,c0:c1]
                     # Relaxed eligibility maximizes recall, while local ranking still
                     # determines which structures enter current versus future cohorts.
-                    eligible_cell=cm&(hs_cell>=.45)&((ps_cell>=.40)|(op_cell>=.50))
+                    eligible_cell=cm&(hs_cell>=.35)&((ps_cell>=.30)|(op_cell>=.45))
                     if not np.any(eligible_cell):continue
                     peak_cell=(sc_cell==ndimage.maximum_filter(sc_cell,size=nms_px,mode="nearest"))&eligible_cell
                     rr,cc=np.where(peak_cell)
@@ -194,8 +194,20 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                         [(float(sc_cell[r,c]),r0+r,c0+c) for r,c in zip(rr.tolist(),cc.tolist())],
                         reverse=True
                     )
-                    current_items=ranked_cell[:current_target]
-                    future_items=ranked_cell[current_target:current_target+future_target]
+                    total_target=current_target+future_target
+                    selected=ranked_cell[:total_target]
+                    # When the source cannot supply the full density prior, preserve
+                    # the current:future cohort ratio instead of consuming all scarce
+                    # maxima as current Elders. This keeps succession visible while
+                    # remaining fail-honest about the density shortfall.
+                    if len(selected)>=total_target:
+                        current_n=current_target
+                    else:
+                        current_n=max(1,int(round(len(selected)/(1.0+FUTURE_ELDER_RATIO)))) if selected else 0
+                        current_n=min(current_target,current_n)
+                    future_n=min(future_target,max(0,len(selected)-current_n))
+                    current_items=selected[:current_n]
+                    future_items=selected[current_n:current_n+future_n]
                     current_selected_total+=len(current_items)
                     future_selected_total+=len(future_items)
                     candidates.extend([(sc,r,c,"CURRENT_ELDER_CANDIDATE") for sc,r,c in current_items])
