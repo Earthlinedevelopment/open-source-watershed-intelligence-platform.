@@ -32,6 +32,7 @@ jobs:
               r.raise_for_status()
               return r
           page=get('/').text
+          launch=get('/earthline-launch-16872.js').text
           manifest=get('/data/elder-trees/v1/manifest.json').json()
           vt=get('/data/elder-trees/v1/vermont.geojson').json()
           assert manifest.get('version')=='earthline-elder-tree-v1-pilot-17098', manifest.get('version')
@@ -61,7 +62,7 @@ jobs:
               assert p.get('lidar_source_ql')=='QL 1'
               assert int(p.get('lidar_canopy_evidence_points_within_8m') or 0)>0
               assert p.get('height_source')=='USGS 3DEP 2023 QL1 measured local canopy'
-          assert 'EARTHLINE_ELDER_TREES_V1_17097' in page
+          assert 'EARTHLINE_ELDER_TREES_V1_17097' in launch
           print(json.dumps({
             'status':'PASS',
             'manifest_version':manifest['version'],
