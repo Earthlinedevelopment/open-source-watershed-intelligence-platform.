@@ -1,0 +1,73 @@
+name: Earthline Live Elder Tree 17098 Origin Verify
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - '.github/workflows/earthline-live-elder-17098-verify.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Verify production origin
+        run: |
+          python - <<'PY'
+          import requests, json, time
+          base='https://earthlinedevelopment.org'
+          q='?earthline17098='+str(int(time.time()))
+          def get(path):
+              r=requests.get(base+path+q,headers={'Cache-Control':'no-cache','User-Agent':'Earthline-17098-Origin-Verify'},timeout=60)
+              print(path,r.status_code,len(r.content))
+              r.raise_for_status()
+              return r
+          page=get('/').text
+          manifest=get('/data/elder-trees/v1/manifest.json').json()
+          vt=get('/data/elder-trees/v1/vermont.geojson').json()
+          assert manifest.get('version')=='earthline-elder-tree-v1-pilot-17098', manifest.get('version')
+          feats=vt.get('features') or []
+          assert len(feats)==12, len(feats)
+          expected={
+            '-73.21961224079132,44.46938896465844':99,
+            '-73.21147978305817,44.47416634005954':100,
+            '-73.21075022220612,44.504345103542484':100,
+            '-73.20929110050201,44.49986098987354':100,
+            '-73.2092696428299,44.45487835220653':100,
+            '-73.20924818515778,44.50332740834088':100,
+            '-73.2090014219284,44.459304662697704':100,
+            '-73.20689857006074,44.495789789361815':99,
+            '-73.2047528028488,44.50295246352503':99,
+            '-73.19840133190155,44.48989675885477':99,
+            '-73.19113790988922,44.492935187907264':99,
+            '-73.1861811876297,44.49615712739033':99
+          }
+          for f in feats:
+              p=f.get('properties') or {}
+              k=','.join(str(float(x)) for x in f['geometry']['coordinates'])
+              assert k in expected, k
+              assert p.get('elder_tree_confidence_pct')==expected[k], (k,p.get('elder_tree_confidence_pct'))
+              assert p.get('method_version')=='earthline-elder-tree-aoi-chmv2-v0.3-local-relative'
+              assert p.get('record_class')=='LIDAR_CONFIRMED_ELDER_TREE_CANDIDATE'
+              assert p.get('lidar_source_ql')=='QL 1'
+              assert int(p.get('lidar_canopy_evidence_points_within_8m') or 0)>0
+              assert p.get('height_source')=='USGS 3DEP 2023 QL1 measured local canopy'
+          assert 'EARTHLINE_ELDER_TREES_V1_17097' in page
+          print(json.dumps({
+            'status':'PASS',
+            'manifest_version':manifest['version'],
+            'vermont_features':len(feats),
+            'lidar_confirmed':sum((f.get('properties') or {}).get('record_class')=='LIDAR_CONFIRMED_ELDER_TREE_CANDIDATE' for f in feats),
+            'confidence_identity':'12/12 17097 values',
+            'runtime_marker':True
+          },indent=2))
+          PY
