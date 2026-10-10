@@ -1368,7 +1368,27 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     })().finally(()=>{state.loading=null});
     return state.loading;
   }
-  function summarize(features){
+  function datasetCoversBounds(d,b){
+    const q=d?.bbox;
+    if(!Array.isArray(q)||q.length<4||!b)return false;
+    const dw=Number(q[0]),ds=Number(q[1]),de=Number(q[2]),dn=Number(q[3]);
+    if(![dw,ds,de,dn].every(Number.isFinite))return false;
+    const [west,south,east,north]=b;
+    const latOverlap=dn>=south&&ds<=north;
+    const lonOverlap=west<=east?(de>=west&&dw<=east):(de>=west||dw<=east);
+    return latOverlap&&lonOverlap;
+  }
+  function activeCoverage(){
+    const b=bounds();
+    const datasets=state.manifest?.datasets||[];
+    const covered=datasets.filter(d=>datasetCoversBounds(d,b));
+    return {
+      known:covered.length>0,
+      datasetIds:covered.map(d=>d.id||d.path||''),
+      complete:covered.length>0&&covered.every(d=>d.coverage_complete===true)
+    };
+  }
+  function summarize(features,coverage=activeCoverage()){
     let verified=0,lidar=0,modeled=0,confSum=0,confN=0,partial=false;
     const sources=new Set();
     for(const f of features){
@@ -1382,11 +1402,22 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       const src=String(p.source_name||'').trim(),lic=String(p.source_license||'').trim();
       if(src)sources.add(src+(lic?' · '+lic:''));
     }
+    const coverageKnown=coverage?.known===true;
+    if(coverageKnown&&coverage?.complete!==true)partial=true;
+    const evidenceLabel=!coverageKnown
+      ?'Coverage not yet processed for this area'
+      :verified&&lidar+modeled
+        ?verified+' verified · '+(lidar+modeled)+' candidates'
+        :verified
+          ?verified+' verified'
+          :(lidar+modeled)
+            ?(lidar+modeled)+' candidates'
+            :'No Elder Tree candidates detected in current Earthline coverage';
     return {
       total:features.length,verified,lidar,modeled,candidates:lidar+modeled,
       meanConfidence:confN?Math.round(confSum/confN):null,
-      partial,sources:[...sources],
-      evidenceLabel:verified&&lidar+modeled?verified+' verified · '+(lidar+modeled)+' candidates':verified?verified+' verified':(lidar+modeled)?(lidar+modeled)+' candidates':'Elder Tree evidence not yet generated for this area'
+      partial,coverageKnown,coverageDatasetIds:coverage?.datasetIds||[],sources:[...sources],
+      evidenceLabel
     };
   }
   function activeFeatures(){
@@ -1445,7 +1476,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     const wrap=document.querySelector('.earthline-recharge-gauge-wrap-16488');if(!wrap)return false;
     let el=document.getElementById('earthlineElderTreesGauge17097');
     if(!el){el=document.createElement('div');el.id='earthlineElderTreesGauge17097';el.style.cssText='margin-top:3px;color:#41614c;font:800 9px/1.25 "Noto Sans",system-ui,sans-serif;text-align:center';wrap.appendChild(el)}
-    el.textContent='Elder Trees: '+summary.evidenceLabel+(summary.partial?' · current Earthline coverage':'');
+    el.textContent='Elder Trees: '+summary.evidenceLabel+(summary.coverageKnown&&summary.partial?' · current Earthline coverage':'');
     return true;
   }
   function dataBlock(summary){
@@ -1461,7 +1492,8 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       (summary.meanConfidence!=null?'<br>Mean candidate confidence: <b>'+esc(summary.meanConfidence)+'%</b>':'')+
       '<br><span style="color:#68756b">Elder Tree Confidence is a local structural-evidence percentile, not probability of age. Elder Trees have zero weight in Recharge Potential.</span>'+
       (summary.sources?.length?'<br><span style="color:#68756b">Source: '+summary.sources.map(esc).join(' · ')+'</span>':'')+
-      (summary.partial?'<br><span style="color:#7c6240">Counts reflect current Earthline Elder Tree coverage, not a complete natural-population census.</span>':'');
+      (summary.coverageKnown&&summary.partial?'<br><span style="color:#7c6240">Counts reflect current Earthline Elder Tree coverage, not a complete natural-population census.</span>':'')+
+      (!summary.coverageKnown?'<br><span style="color:#7c6240">No Elder Tree count is reported because this area has not yet been processed into the current V1 evidence coverage.</span>':'');
     return true;
   }
   function reportBlock(summary){
@@ -1534,7 +1566,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     try{
       await load();
       state.active=activeFeatures();
-      state.lastSummary=summarize(state.active);
+      state.lastSummary=summarize(state.active,activeCoverage());
       publishMap(state.active);
       refreshSurfaces();
       window.EARTHLINE_ELDER_TREE_LAST_17097={summary:state.lastSummary,featureCount:state.active.length,at:new Date().toISOString()};
