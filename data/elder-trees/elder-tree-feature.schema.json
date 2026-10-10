@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Earthline Elder Tree Evidence Feature",
+  "type": "object",
+  "required": ["type", "geometry", "properties"],
+  "properties": {
+    "type": {"const": "Feature"},
+    "geometry": {
+      "type": "object",
+      "required": ["type", "coordinates"],
+      "properties": {
+        "type": {"const": "Point"},
+        "coordinates": {
+          "type": "array",
+          "prefixItems": [{"type": "number"}, {"type": "number"}],
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "properties": {
+      "type": "object",
+      "required": [
+        "record_class",
+        "verification_status",
+        "method_version",
+        "source_name",
+        "source_urls",
+        "confidence",
+        "evidence_limit"
+      ],
+      "properties": {
+        "record_class": {
+          "enum": [
+            "VERIFIED_EXTERNAL_TREE",
+            "VERIFIED_FIELD_TREE",
+            "ELDER_TREE_STRONG_CANDIDATE",
+            "ELDER_TREE_CANDIDATE",
+            "ELDER_TREE_HOTSPOT",
+            "MYCORRHIZAL_HUB_VERIFIED"
+          ]
+        },
+        "verification_status": {"type": "string"},
+        "method_version": {"type": "string"},
+        "source_name": {"type": "string"},
+        "source_urls": {"type": "array", "items": {"type": "string"}},
+        "source_projects": {"type": "array", "items": {"type": "string"}},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 100},
+        "height_m": {"type": ["number", "null"]},
+        "emergent_height_m": {"type": ["number", "null"]},
+        "height_percentile": {"type": ["number", "null"]},
+        "crown_area_proxy_m2": {"type": ["number", "null"]},
+        "species": {"type": ["string", "null"]},
+        "genus": {"type": ["string", "null"]},
+        "historic_persistence_evidence": {"type": ["string", "null"]},
+        "mycorrhizal_network_evidence": {"type": ["string", "null"]},
+        "evidence_limit": {"type": "string"}
+      }
+    }
+  }
+}
