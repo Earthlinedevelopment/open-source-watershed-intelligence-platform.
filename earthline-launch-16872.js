@@ -1528,6 +1528,8 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     if(!t)return;
     if(t.id==='earthlineRailData16488')dataBlock(state.lastSummary||summarize(state.active));
     if(t.id==='earthlineVermontReport16149')reportBlock(state.lastSummary||summarize(state.active));
+    const label=String(t.getAttribute?.('aria-label')||t.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+    if(t.matches?.('[data-action="zoom"]')||label.includes('zoom to location')||label.includes('zoom to this location'))refresh();
   }
   function hash(){if(location.hash==='#swales-explained')howParagraph()}
   function install(){
