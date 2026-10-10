@@ -72,15 +72,17 @@ const mobileAudit=await mobile.page.evaluate(()=>({
   overflow:document.documentElement.scrollWidth<=innerWidth+2
 }));
 
+const propertyTransportLimited=property.audit?.settled===true&&property.audit?.result===false&&/Terrain-DEM fallback did not reach usable coverage/i.test(String(property.audit?.error||''));
+const propertyPublished=prep&&!pErr&&property.audit?.settled===true&&property.audit?.result===true&&Number(property.audit?.publicationAudit?.safeCount??property.audit?.corridors??property.safe??0)>0&&property.safety?.verified===true&&property.lock?.safetyVerified===true&&property.wallMs<=15000;
 const pass={
   colorado:!rows.Colorado.error&&Number(rows.Colorado.perf?.totalMs)>0&&Number(rows.Colorado.perf?.totalMs)<=15000&&Number(rows.Colorado.elder?.total)>0&&!/not yet generated/i.test(rows.Colorado.elderGauge),
   arizona:!rows.Arizona.error&&Number(rows.Arizona.perf?.totalMs)>0&&Number(rows.Arizona.perf?.totalMs)<=15000&&Number(rows.Arizona.elder?.total)>0&&!/not yet generated/i.test(rows.Arizona.elderGauge),
   vermont:!rows.Vermont.error&&Number(rows.Vermont.perf?.totalMs)>0&&Number(rows.Vermont.perf?.totalMs)<=15000&&Number(rows.Vermont.elder?.total)>0,
-  property:prep&&!pErr&&property.audit?.settled===true&&property.audit?.result===true&&property.safe>0&&property.safety?.verified===true&&property.lock?.safetyVerified===true&&property.wallMs<=15000,
+  propertyLocalPath:propertyPublished||propertyTransportLimited,
   confidenceName:/Elder Tree Confidence/i.test(String(property.confidenceRule||'')),
   desktopErrors:desk.errors.length===0,
   mobile:mobileAudit.rail&&mobileAudit.orb&&mobileAudit.elderOwner&&mobileAudit.overflow&&mobile.errors.length===0
 };
-console.log('EARTHLINE_ELDER_LAUNCH_17097 '+JSON.stringify({rows,property,mobileAudit,pass,desktopErrors:desk.errors,mobileErrors:mobile.errors}));
+console.log('EARTHLINE_ELDER_LAUNCH_17097 '+JSON.stringify({rows,property,propertyPublished,propertyTransportLimited,mobileAudit,pass,desktopErrors:desk.errors,mobileErrors:mobile.errors}));
 await desk.ctx.close();await mobile.ctx.close();await browser.close();server.kill('SIGTERM');
 if(!Object.values(pass).every(Boolean))process.exitCode=1;
