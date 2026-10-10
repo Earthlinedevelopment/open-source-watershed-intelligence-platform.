@@ -48,6 +48,8 @@ await page.evaluate(code=>(0,eval)(code),block);
 await page.waitForFunction(()=>!!window.EARTHLINE_ELDER_TREES_V1_17097,{timeout:5000});
 const summary=await page.evaluate(async()=>await window.EARTHLINE_ELDER_TREES_V1_17097.refresh());
 await page.waitForTimeout(100);
+await page.evaluate(()=>{location.hash='swales-explained';window.dispatchEvent(new HashChangeEvent('hashchange'))});
+await page.waitForTimeout(100);
 
 const audit=await page.evaluate(()=>{
   window.earthlineOpenCorridorDetail16149({properties:{},geometry:{type:'LineString',coordinates:[[-73.21,44.47],[-73.20,44.48]]}},0);
@@ -63,7 +65,8 @@ const audit=await page.evaluate(()=>{
     layer:!!window.earthlineMap.__layers.get('earthline-elder-tree-points-17097'),
     clickHandler:!!window.earthlineMap.__handlers['click:earthline-elder-tree-points-17097'],
     confidences:window.EARTHLINE_ELDER_TREES_V1_17097.features().map(f=>Number(f.properties?.confidence_pct)).filter(Number.isFinite),
-    rechargeWeight:window.EARTHLINE_ELDER_TREES_V1_17097.rechargeWeight
+    rechargeWeight:window.EARTHLINE_ELDER_TREES_V1_17097.rechargeWeight,
+    howText:String(document.getElementById('earthlineSwalesPage16125')?.querySelector('iframe')?.contentDocument?.getElementById('earthlineElderTreesHow17097')?.textContent||'')
   };
 });
 
@@ -78,6 +81,7 @@ const checks={
   map:audit.layer&&audit.clickHandler,
   confidence:audit.confidences.length===12&&audit.confidences.every(v=>v>=1&&v<=95)&&Math.min(...audit.confidences)<Math.max(...audit.confidences),
   rechargeWeight:audit.rechargeWeight===0,
+  how:/Elder Trees and water/i.test(audit.howText)&&/not proof of age/i.test(audit.howText),
   noErrors:errors.length===0
 };
 console.log('EARTHLINE_ELDER_17097_CHECKS '+JSON.stringify(checks));
