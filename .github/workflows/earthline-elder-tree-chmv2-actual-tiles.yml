@@ -1,0 +1,48 @@
+name: Earthline Elder Trees Actual CHMv2 Tile Inventory
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/chmv2_actual_tile_inventory.py'
+      - '.github/workflows/earthline-elder-tree-chmv2-actual-tiles.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Build deduplicated actual CHMv2 tile inventory
+        run: python tools/elder_trees/chmv2_actual_tile_inventory.py artifacts/elder-trees-chmv2-actual
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-trees-chmv2-actual-tiles
+          path: artifacts/elder-trees-chmv2-actual/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Persist actual tile inventory
+        if: success()
+        run: |
+          mkdir -p data/elder-trees/generated/global
+          cp artifacts/elder-trees-chmv2-actual/chmv2-actual-tiles.json data/elder-trees/generated/global/
+          cp artifacts/elder-trees-chmv2-actual/chmv2-actual-tiles-summary.json data/elder-trees/generated/global/
+          git config user.name "Earthline Research Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add data/elder-trees/generated/global/
+          git diff --cached --quiet || git commit -m "data: persist actual global CHMv2 tile inventory"
+          git fetch origin v2/elder-tree-layer-research
+          git rebase origin/v2/elder-tree-layer-research
+          git push origin HEAD:v2/elder-tree-layer-research
