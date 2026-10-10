@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   probe:
@@ -80,3 +80,17 @@ jobs:
           path: artifacts/elder-trees-usgs-measured/
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Persist measured-LiDAR probe evidence
+        if: success()
+        run: |
+          mkdir -p data/elder-trees/generated/usgs-measured-probe
+          cp artifacts/elder-trees-usgs-measured/vermont-candidate/result.json data/elder-trees/generated/usgs-measured-probe/vermont-candidate.json
+          cp artifacts/elder-trees-usgs-measured/vermont-champion/result.json data/elder-trees/generated/usgs-measured-probe/vermont-public-champion.json
+          git config user.name "Earthline Research Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add data/elder-trees/generated/usgs-measured-probe/
+          git diff --cached --quiet || git commit -m "data: persist measured 3DEP Elder Tree probe evidence"
+          git fetch origin v2/elder-tree-layer-research
+          git rebase origin/v2/elder-tree-layer-research
+          git push origin HEAD:v2/elder-tree-layer-research
