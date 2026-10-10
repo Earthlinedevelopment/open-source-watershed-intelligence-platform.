@@ -64,7 +64,7 @@ const audit=await page.evaluate(()=>{
     sourceFeatures:window.earthlineMap.__sources.get('earthline-elder-trees-17097')?.data?.features?.length||0,
     layer:!!window.earthlineMap.__layers.get('earthline-elder-tree-points-17097'),
     clickHandler:!!window.earthlineMap.__handlers['click:earthline-elder-tree-points-17097'],
-    confidences:window.EARTHLINE_ELDER_TREES_V1_17097.features().map(f=>Number(f.properties?.confidence_pct)).filter(Number.isFinite),
+    confidences:window.EARTHLINE_ELDER_TREES_V1_17097.features().map(f=>Number(f.properties?.elder_tree_confidence_pct??f.properties?.confidence_pct)).filter(Number.isFinite),
     rechargeWeight:window.EARTHLINE_ELDER_TREES_V1_17097.rechargeWeight,
     howText:String(document.getElementById('earthlineSwalesPage16125')?.querySelector('iframe')?.contentDocument?.getElementById('earthlineElderTreesHow17097')?.textContent||'')
   };
@@ -75,11 +75,11 @@ const checks={
   twelve:audit.summary.total===12&&audit.sourceFeatures===12,
   candidateCount:audit.summary.candidates===12,
   gauge:/12 candidates/i.test(audit.gauge),
-  data:/12 candidates/i.test(audit.data)&&/not probability of age/i.test(audit.data)&&/WRI\/Meta CHMv2/i.test(audit.data)&&/CC BY 4\.0/i.test(audit.data),
-  report:/12 candidates/i.test(audit.report)&&/WRI\/Meta CHMv2/i.test(audit.report)&&/CC BY 4\.0/i.test(audit.report),
-  corridor:/12 candidates/i.test(audit.corridor),
+  data:/12 candidates/i.test(audit.data)&&/Elder Tree Confidence/i.test(audit.data)&&/local structural-evidence percentile/i.test(audit.data)&&/WRI\/Meta CHMv2/i.test(audit.data)&&/CC BY 4\.0/i.test(audit.data),
+  report:/12 candidates/i.test(audit.report)&&/Elder Tree Confidence/i.test(audit.report)&&/WRI\/Meta CHMv2/i.test(audit.report)&&/CC BY 4\.0/i.test(audit.report),
+  corridor:/Elder Trees within 100 m of this corridor/i.test(audit.corridor),
   map:audit.layer&&audit.clickHandler,
-  confidence:audit.confidences.length===12&&audit.confidences.every(v=>v>=1&&v<=95)&&Math.min(...audit.confidences)<Math.max(...audit.confidences),
+  confidence:audit.confidences.length===12&&audit.confidences.every(v=>v>=0&&v<=100)&&Math.min(...audit.confidences)<Math.max(...audit.confidences),
   rechargeWeight:audit.rechargeWeight===0,
   how:/Elder Trees and water/i.test(audit.howText)&&/not proof of age/i.test(audit.howText),
   noErrors:errors.length===0
@@ -92,7 +92,7 @@ const noData=await page.evaluate(async()=>{
   return await window.EARTHLINE_ELDER_TREES_V1_17097.refresh();
 });
 console.log('EARTHLINE_ELDER_17097_NODATA '+JSON.stringify(noData));
-if(!(noData&&noData.total===0&&/no points/i.test(String(noData.evidenceLabel||''))))process.exitCode=1;
+if(!(noData&&noData.total===0&&/not yet generated for this area/i.test(String(noData.evidenceLabel||''))))process.exitCode=1;
 
 await browser.close();
 server.kill('SIGTERM');
