@@ -1,0 +1,69 @@
+name: Earthline Elder Trees CHMv2 Five-Tile Validation
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/chmv2_candidate_worker.py'
+      - '.github/workflows/earthline-elder-tree-chmv2-five-tile.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install scientific dependencies
+        run: pip install numpy scipy rasterio pyproj requests
+      - name: Generate sparse candidate GPS points in five calibration/rollout tiles
+        run: |
+          mkdir -p artifacts/elder-trees-chmv2-five
+          python tools/elder_trees/chmv2_candidate_worker.py --quadkey 0302330023 --max-candidates 20 --out artifacts/elder-trees-chmv2-five
+          python tools/elder_trees/chmv2_candidate_worker.py --quadkey 0313131310 --max-candidates 20 --out artifacts/elder-trees-chmv2-five
+          python tools/elder_trees/chmv2_candidate_worker.py --quadkey 1322031301 --max-candidates 20 --out artifacts/elder-trees-chmv2-five
+          python tools/elder_trees/chmv2_candidate_worker.py --quadkey 1322102033 --max-candidates 20 --out artifacts/elder-trees-chmv2-five
+          python tools/elder_trees/chmv2_candidate_worker.py --quadkey 1322130003 --max-candidates 20 --out artifacts/elder-trees-chmv2-five
+          cat > artifacts/elder-trees-chmv2-five/manifest.json <<'EOF'
+          {
+            "mode":"off-production",
+            "method":"earthline-chmv2-sparse-candidate-v0.1",
+            "tiles":[
+              {"quadkey":"0302330023","label":"Vermont validation tile"},
+              {"quadkey":"0313131310","label":"Windsor England validation tile"},
+              {"quadkey":"1322031301","label":"Thailand rollout sample"},
+              {"quadkey":"1322102033","label":"Laos rollout sample"},
+              {"quadkey":"1322130003","label":"Vietnam rollout sample"}
+            ],
+            "rule":"All generated points are modeled ELDER_TREE_CANDIDATE research points only."
+          }
+          EOF
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-trees-chmv2-five-tile
+          path: artifacts/elder-trees-chmv2-five/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Persist first international research samples
+        if: success()
+        run: |
+          mkdir -p data/elder-trees/generated/chmv2-five-tile
+          cp artifacts/elder-trees-chmv2-five/*.geojson data/elder-trees/generated/chmv2-five-tile/
+          cp artifacts/elder-trees-chmv2-five/manifest.json data/elder-trees/generated/chmv2-five-tile/
+          git config user.name "Earthline Research Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add data/elder-trees/generated/chmv2-five-tile/
+          git diff --cached --quiet || git commit -m "data: add first international CHMv2 Elder Tree candidate samples"
+          git fetch origin v2/elder-tree-layer-research
+          git rebase origin/v2/elder-tree-layer-research
+          git push origin HEAD:v2/elder-tree-layer-research
