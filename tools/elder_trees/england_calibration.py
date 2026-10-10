@@ -2,7 +2,7 @@
 """
 Earthline Elder Trees — England calibration pilot.
 
-OFF-PRODUCTION RESEARCH ONLY.
+OFF-PRODUCTION RESEARCH ONLY. England is the independent calibration geography.
 
 Inputs:
 - Environment Agency 1 m LIDAR Composite DSM and DTM via WCS.
