@@ -1,0 +1,136 @@
+name: Earthline Elder Trees Northern Europe Batch
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/northern_europe_smoke.py'
+      - '.github/workflows/earthline-elder-tree-northern-europe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  country-smoke:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        iso3: [ALA, DNK, EST, FRO, FIN, GGY, ISL, IRL, IMN, JEY, LVA, LTU, NOR, SJM, SWE, GBR]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install scientific dependencies
+        run: pip install numpy scipy rasterio pyproj
+      - name: Test Northern Europe country or area
+        run: |
+          python tools/elder_trees/northern_europe_smoke.py \
+            --iso3 ${{ matrix.iso3 }} \
+            --out artifacts/${{ matrix.iso3 }} \
+            --max-success-tiles 3 \
+            --max-attempts 10 \
+            --max-candidates 12
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: northern-europe-${{ matrix.iso3 }}
+          path: artifacts/${{ matrix.iso3 }}/
+          if-no-files-found: warn
+          retention-days: 14
+
+  summarize:
+    needs: country-smoke
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: northern-europe-*
+          path: downloaded
+          merge-multiple: true
+      - name: Build Northern Europe validation summary
+        run: |
+          python - <<'PY'
+          import glob, json, pathlib
+          rows=[]
+          for p in glob.glob("downloaded/*-northern-europe-smoke.json"):
+              try:
+                  d=json.load(open(p,encoding="utf-8"))
+              except Exception:
+                  continue
+              rows.append({
+                "iso3":d.get("iso3"),
+                "name":d.get("name"),
+                "actual_chmv2_tile_count":d.get("actual_chmv2_tile_count"),
+                "attempted_tile_count":d.get("attempted_tile_count"),
+                "successful_candidate_tile_count":d.get("successful_candidate_tile_count"),
+                "candidate_count":d.get("candidate_count"),
+                "height_m":(d.get("candidate_stats") or {}).get("height_m"),
+                "verdict":d.get("verdict")
+              })
+          rows.sort(key=lambda x:x.get("name") or "")
+          expected=16
+          summary={
+            "mode":"off-production",
+            "region_standard":"UN M49 Northern Europe",
+            "expected_area_count":expected,
+            "completed_area_count":len(rows),
+            "pass_candidate_generation_count":sum(r.get("verdict")=="PASS_CANDIDATE_GENERATION" for r in rows),
+            "source_present_no_canopy_count":sum(r.get("verdict")=="SOURCE_PRESENT_NO_CANOPY_IN_SMOKE_TILES" for r in rows),
+            "no_source_count":sum(r.get("verdict")=="NO_CHMV2_SOURCE" for r in rows),
+            "fail_sanity_count":sum(r.get("verdict")=="FAIL_SANITY" for r in rows),
+            "areas":rows,
+            "scientific_boundary":"Northern Europe smoke testing validates source access and candidate generation only. England ATI remains the direct ancient/veteran calibration control."
+          }
+          out=pathlib.Path("northern-europe-summary")
+          out.mkdir(exist_ok=True)
+          (out/"northern-europe-validation-summary.json").write_text(json.dumps(summary,indent=2,ensure_ascii=False),encoding="utf-8")
+          lines=[
+            "# Earthline Elder Trees — Northern Europe Validation",
+            "",
+            "Off-production research only.",
+            "",
+            "| Area | CHMv2 tiles | Successful test tiles | Candidates | Height range (m) | Verdict |",
+            "|---|---:|---:|---:|---|---|"
+          ]
+          for r in rows:
+              h=r.get("height_m") or {}
+              hr="—" if h.get("min") is None else f'{h.get("min")}–{h.get("max")}'
+              lines.append(f'| {r.get("name")} | {r.get("actual_chmv2_tile_count")} | {r.get("successful_candidate_tile_count")} | {r.get("candidate_count")} | {hr} | {r.get("verdict")} |')
+          lines += [
+            "",
+            "England/United Kingdom is additionally calibrated against the Woodland Trust Ancient Tree Inventory.",
+            "Generated points remain Elder Tree Candidates unless an authoritative inventory or field verification confirms the tree."
+          ]
+          (out/"NORTHERN-EUROPE-VALIDATION.md").write_text("\n".join(lines)+"\n",encoding="utf-8")
+          print(json.dumps(summary,indent=2,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: earthline-elder-trees-northern-europe-summary
+          path: northern-europe-summary/
+          retention-days: 30
+      - name: Persist Northern Europe summary on research branch
+        run: |
+          mkdir -p data/elder-trees/generated/northern-europe
+          cp northern-europe-summary/northern-europe-validation-summary.json data/elder-trees/generated/northern-europe/
+          cp northern-europe-summary/NORTHERN-EUROPE-VALIDATION.md data/elder-trees/generated/northern-europe/
+          git config user.name "Earthline Research Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add data/elder-trees/generated/northern-europe/
+          git diff --cached --quiet || git commit -m "data: persist Northern Europe Elder Tree validation"
+          git fetch origin v2/elder-tree-layer-research
+          git rebase origin/v2/elder-tree-layer-research
+          git push origin HEAD:v2/elder-tree-layer-research
