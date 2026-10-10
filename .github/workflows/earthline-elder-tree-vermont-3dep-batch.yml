@@ -1,0 +1,74 @@
+name: Earthline Vermont Elder Trees 3DEP Batch Refinement
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/usgs_ept_candidate_refine.py'
+      - 'tools/elder_trees/usgs_ept_batch_refine.py'
+      - '.github/workflows/earthline-elder-tree-vermont-3dep-batch.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Python dependencies
+        run: pip install pyproj requests
+      - name: Verify PDAL container
+        run: |
+          docker pull pdal/pdal:latest
+          docker run --rm pdal/pdal:latest pdal --version
+      - name: Prepare exact-workunit crops for Vermont candidate pool
+        run: |
+          python tools/elder_trees/usgs_ept_batch_refine.py prepare \
+            --input data/elder-trees/generated/aoi-validation/vermont/elder-tree-candidate-pool-78ed6365b2cacca4.geojson \
+            --radius 30 \
+            --outdir artifacts/vermont-3dep-batch
+      - name: Read measured point clouds
+        run: |
+          set +e
+          for P in artifacts/vermont-3dep-batch/*/pipeline.json; do
+            [ -f "$P" ] || continue
+            docker run --rm -v "$PWD:$PWD" -w "$PWD" pdal/pdal:latest pdal pipeline "$P"
+          done
+          exit 0
+      - name: Merge measured evidence into Vermont candidates
+        run: |
+          python tools/elder_trees/usgs_ept_batch_refine.py merge \
+            --outdir artifacts/vermont-3dep-batch \
+            --output artifacts/vermont-3dep-batch/vermont-lidar-upgraded.geojson \
+            --summary artifacts/vermont-3dep-batch/summary.json
+      - name: Remove bulky point CSVs before artifact upload
+        run: find artifacts/vermont-3dep-batch -name 'points.csv' -delete
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-vermont-elder-trees-3dep-batch
+          path: artifacts/vermont-3dep-batch/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Persist Vermont LiDAR-upgraded candidate data
+        if: success()
+        run: |
+          mkdir -p data/elder-trees/generated/vermont-lidar-upgraded
+          cp artifacts/vermont-3dep-batch/vermont-lidar-upgraded.geojson data/elder-trees/generated/vermont-lidar-upgraded/
+          cp artifacts/vermont-3dep-batch/summary.json data/elder-trees/generated/vermont-lidar-upgraded/
+          git config user.name "Earthline Research Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add data/elder-trees/generated/vermont-lidar-upgraded/
+          git diff --cached --quiet || git commit -m "data: persist Vermont LiDAR-upgraded Elder candidates"
+          git fetch origin v2/elder-tree-layer-research
+          git rebase origin/v2/elder-tree-layer-research
+          git push origin HEAD:v2/elder-tree-layer-research
