@@ -180,7 +180,8 @@ def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--bbox",required=True,help="minlon,minlat,maxlon,maxlat")
     ap.add_argument("--out",required=True)
-    ap.add_argument("--max-per-tile",type=int,default=20)
+    ap.add_argument("--max-per-tile",type=int,default=20,help="Candidate-pool limit per source tile after native refinement")
+    ap.add_argument("--display-per-tile",type=int,default=None,help="Optional sparse map-display limit per tile; does not change candidate-pool count")
     args=ap.parse_args()
     bbox=tuple(float(x) for x in args.bbox.split(","))
     if bbox[0]>=bbox[2] or bbox[1]>=bbox[3]:raise SystemExit("invalid bbox")
@@ -195,13 +196,36 @@ def main():
         p=f["geometry"]["coordinates"]
         if all(hav(p,g["geometry"]["coordinates"])>=10 for g in ded):ded.append(f)
 
+    # Candidate-pool evidence and map-display density are separate owners.
+    # Counts/reporting use the candidate pool; the optional display subset exists
+    # only to keep the map readable and must never be interpreted as detector recall.
+    display=ded
+    if args.display_per_tile is not None:
+        grouped={}
+        for f in ded:
+            q=str((f.get("properties") or {}).get("quadkey") or "")
+            grouped.setdefault(q,[]).append(f)
+        display=[]
+        for q,items in grouped.items():
+            items=sorted(items,key=lambda x:(
+              float((x.get("properties") or {}).get("elder_tree_confidence_pct") or 0),
+              float((x.get("properties") or {}).get("height_m") or 0)
+            ),reverse=True)
+            display.extend(items[:max(0,args.display_per_tile)])
+        display=sorted(display,key=lambda x:float((x.get("properties") or {}).get("elder_tree_confidence_pct") or 0),reverse=True)
+
     key=hashlib.sha256((METHOD+"|"+",".join(map(str,bbox))).encode()).hexdigest()[:16]
     out=Path(args.out);out.mkdir(parents=True,exist_ok=True)
-    fc={"type":"FeatureCollection","features":ded}
+    pool_fc={"type":"FeatureCollection","features":ded}
+    display_fc={"type":"FeatureCollection","features":display}
     meta={"mode":"off-production","method_version":METHOD,"bbox":bbox,"cache_key":key,
-          "requested_tiles":qs,"tile_results":tiles,"candidate_count":len(ded),
-          "scientific_boundary":"All output points are unverified Elder Tree Candidates."}
-    (out/f"elder-trees-{key}.geojson").write_text(json.dumps(fc,indent=2))
+          "requested_tiles":qs,"tile_results":tiles,
+          "candidate_count":len(ded),"candidate_pool_count":len(ded),
+          "display_count":len(display),"display_limit_per_tile":args.display_per_tile,
+          "count_owner":"candidate_pool","map_owner":"display_subset" if args.display_per_tile is not None else "candidate_pool",
+          "scientific_boundary":"All output points are unverified Elder Tree Candidates. Display density is not detector recall and is not the evidence-count owner."}
+    (out/f"elder-tree-candidate-pool-{key}.geojson").write_text(json.dumps(pool_fc,indent=2))
+    (out/f"elder-trees-{key}.geojson").write_text(json.dumps(display_fc,indent=2))
     (out/f"elder-trees-{key}.json").write_text(json.dumps(meta,indent=2))
     print(json.dumps(meta,indent=2))
 
