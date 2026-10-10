@@ -277,3 +277,38 @@ This explains the observed post-refresh disappearance. The correct repair is to 
 Earthline's public and internal product term is **Elder Trees**.
 Use “ancient tree”, “veteran tree”, “legacy tree”, or “Mother Tree” only when quoting or translating an external scientific/inventory classification.
 Earthline record classes use ELDER_TREE_* names.
+
+
+## Initial Earthline deployment architecture — GPS points only
+
+Jon approved the simplest first implementation:
+
+- Elder Trees are point records at GPS coordinates.
+- No projected Elder Tree zones in the first implementation.
+- No ecological weighting in Aquifer Recharge Potential.
+- No automatic swale avoidance from Elder Tree candidates yet.
+- Verified external/field records and Earthline remote-sensing candidates must remain visually and semantically distinct.
+- Future Elder Tree zones, probability surfaces, and stewardship scoring are deferred until point detection/ranking is validated.
+
+### England calibration benchmark
+
+England is included in the first research batch specifically as a calibration control against the Woodland Trust Ancient Tree Inventory (ATI).
+
+Windsor pilot v0.2:
+- ATI Ancient/Veteran reference points: 127
+- LiDAR structural peaks detected: 6,558
+- All-peak upper-bound ATI recall:
+  - within 15 m: 30 / 127 = 23.6%
+  - within 30 m: 65 / 127 = 51.2%
+  - within 60 m: 97 / 127 = 76.4%
+- Ranking is not yet strong enough to publish remote candidates as a trusted Elder Tree layer:
+  - top 400 candidates recover only 22 / 127 ATI trees within 60 m (17.3%)
+  - top 1,200 recover 54 / 127 (42.5%)
+  - top 4,000 recover 94 / 127 (74.0%)
+
+Interpretation:
+The LiDAR peak detector is capable of locating canopy structures near a majority of independently verified ATI Ancient/Veteran records, but the current score does not reliably rank the verified trees near the top. Height alone is clearly insufficient. Crown breadth, open-grown form, species-relative morphology, retrenchment/veteran structure, historic persistence, and field evidence must inform later ranking.
+
+Immediate rule:
+Use verified GPS points directly where authoritative inventories exist.
+Keep Earthline-generated points labeled ELDER_TREE_CANDIDATE until calibration improves.
