@@ -1,4 +1,4 @@
-const fs=require('fs');
+import fs from 'node:fs';
 const src=fs.readFileSync('earthline-launch-16872.js','utf8');
 
 function must(re,msg){ if(!re.test(src)) throw new Error(msg); }
@@ -22,5 +22,3 @@ console.log(JSON.stringify({
   alaska_dataset_present:false,
   unprocessed_label:'Coverage not yet processed for this area'
 },null,2));
-
-// 17099 workflow trigger after workflow installation.
