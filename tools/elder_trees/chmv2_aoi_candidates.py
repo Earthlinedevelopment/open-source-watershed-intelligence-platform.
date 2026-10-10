@@ -148,7 +148,7 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                     "source_class":"MODELED_CHMV2","source_name":"WRI/Meta CHMv2",
                     "source_url":url,"source_license":"CC BY 4.0",
                     "quadkey":q,"method_version":METHOD,"screen_rank":rank,
-                    "confidence_pct":int(round(100.0*float(np.mean(score_values<=sc)))) if score_values.size else None,
+                    "confidence_pct":min(95,int(round(100.0*float(np.mean(score_values<=sc))))) if score_values.size else None,
                     "confidence_definition":"Relative structural-evidence percentile within the analyzed CHMv2 tile; not a probability of tree age or ancient/veteran status.",
                     "height_m":round(h,2),"emergent_height_m":round(emerg,2),
                     "crown_area_proxy_m2":round(area,1),"open_context_fraction":round(openf,3),
