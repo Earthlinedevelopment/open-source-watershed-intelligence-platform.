@@ -22,7 +22,7 @@ from scipy import ndimage
 import requests
 
 ROOT="https://dataforgood-fb-data.s3.amazonaws.com/forests/v2/global/dinov3_global_chm_v2_ml3/chm/"
-METHOD="earthline-elder-tree-aoi-chmv2-v0.4.1-forest-coverage"
+METHOD="earthline-elder-tree-aoi-chmv2-v0.5-density-prior"\nCURRENT_ELDER_TARGET_PER_HA=15.0\nFUTURE_ELDER_RATIO=2.5
 UA={"User-Agent":"Earthline-ElderTree-Research/1.6"}
 
 def tile_xy(lon,lat,z=10):
@@ -146,12 +146,22 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
             )
             stand_target_m=300.0
             stand_px=max(4,int(round(stand_target_m/max(screen_px_m,0.01))))
-            nms_px=max(3,int(round(35.0/max(screen_px_m,0.01))))
+            # High-recall research prior: current Elder cohort centers near 15/ha.
+            # A second, explicitly separate future-Elder cohort is retained at 2.5x
+            # the current cohort when enough distinct canopy maxima exist.
+            # These are model priors, not assertions of age.
+            nms_px=max(3,int(round(12.0/max(screen_px_m,0.01))))
             if nms_px%2==0:nms_px+=1
 
             candidates=[]
             forest_cells=0
             forest_cells_with_candidate=0
+            forest_area_ha=0.0
+            current_target_total=0
+            future_target_total=0
+            current_selected_total=0
+            future_selected_total=0
+            pixel_area_m2=screen_px_m*screen_px_m
             for r0 in range(0,oh,stand_px):
                 for c0 in range(0,ow,stand_px):
                     r1=min(oh,r0+stand_px); c1=min(ow,c0+stand_px)
@@ -160,17 +170,19 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                     forest_fraction=float(np.mean(cm))
                     if forest_fraction<0.18:continue
                     forest_cells+=1
+                    canopy_area_ha=float(np.sum(cm))*pixel_area_m2/10000.0
+                    forest_area_ha+=canopy_area_ha
+                    current_target=max(1,int(math.ceil(canopy_area_ha*CURRENT_ELDER_TARGET_PER_HA)))
+                    future_target=max(1,int(math.ceil(current_target*FUTURE_ELDER_RATIO)))
+                    current_target_total+=current_target
+                    future_target_total+=future_target
                     hs_cell=h_pct[r0:r1,c0:c1]
                     ps_cell=p_pct[r0:r1,c0:c1]
                     op_cell=open_context[r0:r1,c0:c1]
                     sc_cell=score[r0:r1,c0:c1]
-                    # Relative thresholds within this forest cell. This makes sparse,
-                    # dry and short forests compete with themselves rather than humid
-                    # tall forests elsewhere in the tile.
-                    hv=hs_cell[cm]; pv=ps_cell[cm]
-                    hcut=max(.55,float(np.percentile(hv,65))) if hv.size else .55
-                    pcut=max(.50,float(np.percentile(pv,60))) if pv.size else .50
-                    eligible_cell=cm&(hs_cell>=hcut)&((ps_cell>=pcut)|(op_cell>=.55))
+                    # Relaxed eligibility maximizes recall, while local ranking still
+                    # determines which structures enter current versus future cohorts.
+                    eligible_cell=cm&(hs_cell>=.45)&((ps_cell>=.40)|(op_cell>=.50))
                     if not np.any(eligible_cell):continue
                     peak_cell=(sc_cell==ndimage.maximum_filter(sc_cell,size=nms_px,mode="nearest"))&eligible_cell
                     rr,cc=np.where(peak_cell)
@@ -180,11 +192,14 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                         [(float(sc_cell[r,c]),r0+r,c0+c) for r,c in zip(rr.tolist(),cc.tolist())],
                         reverse=True
                     )
-                    # Keep several candidates per forest cell; map density is handled
-                    # separately downstream and must never own the evidence count.
-                    candidates.extend(ranked_cell[:3])
+                    current_items=ranked_cell[:current_target]
+                    future_items=ranked_cell[current_target:current_target+future_target]
+                    current_selected_total+=len(current_items)
+                    future_selected_total+=len(future_items)
+                    candidates.extend([(sc,r,c,"CURRENT_ELDER_CANDIDATE") for sc,r,c in current_items])
+                    candidates.extend([(sc,r,c,"FUTURE_ELDER_CANDIDATE") for sc,r,c in future_items])
 
-            all_ranked=sorted(candidates,reverse=True)
+            all_ranked=sorted(candidates,key=lambda x:x[0],reverse=True)
             ranked=all_ranked[:max_per_tile*3]
             reference_peak_count=len(all_ranked)
             # map screening pixel back to native source coordinate inside cropped window
@@ -192,7 +207,7 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
             screen_tr=ds.window_transform(win)*rasterio.Affine.scale(sx,sy)
             to4326=Transformer.from_crs(ds.crs,4326,always_xy=True)
             feats=[]
-            for rank,(sc,r,c) in enumerate(ranked,1):
+            for rank,(sc,r,c,cohort) in enumerate(ranked,1):
                 cx,cy=rasterio.transform.xy(screen_tr,r,c,offset="center")
                 ref=refine(ds,cx,cy,canopy_floor_m=canopy_floor_m)
                 if not ref:continue
@@ -203,7 +218,7 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                 feats.append({
                   "type":"Feature","geometry":{"type":"Point","coordinates":[lon,lat]},
                   "properties":{
-                    "record_class":"ELDER_TREE_CANDIDATE",
+                    "record_class":"ELDER_TREE_CANDIDATE",\n                    "elder_cohort":cohort,\n                    "cohort_definition":"CURRENT = top locally ranked structures under the research density prior; FUTURE = successor structures retained for continuity. Neither label proves age.",
                     "verification_status":"modeled remote-sensing candidate only",
                     "source_class":"MODELED_CHMV2","source_name":"WRI/Meta CHMv2",
                     "source_url":url,"source_license":"CC BY 4.0",
@@ -222,7 +237,7 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                 })
                 if len(feats)>=max_per_tile:break
 
-            return feats,{"quadkey":q,"status":"OK","candidate_count":len(feats),"screen_shape":[oh,ow],"canopy_floor_m":round(canopy_floor_m,2),"reference_peak_count":reference_peak_count,"screen_pixel_m":round(screen_px_m,2),"stand_target_m":stand_target_m,"forest_cells":forest_cells,"forest_cells_with_candidate":forest_cells_with_candidate,"forest_candidate_coverage_pct":round(100.0*forest_cells_with_candidate/max(1,forest_cells),1)}
+            return feats,{"quadkey":q,"status":"OK","candidate_count":len(feats),"screen_shape":[oh,ow],"canopy_floor_m":round(canopy_floor_m,2),"reference_peak_count":reference_peak_count,"screen_pixel_m":round(screen_px_m,2),"stand_target_m":stand_target_m,"forest_cells":forest_cells,"forest_cells_with_candidate":forest_cells_with_candidate,"forest_candidate_coverage_pct":round(100.0*forest_cells_with_candidate/max(1,forest_cells),1),"forest_area_ha":round(forest_area_ha,3),"current_elder_target_per_ha":CURRENT_ELDER_TARGET_PER_HA,"future_elder_ratio":FUTURE_ELDER_RATIO,"current_target_total":current_target_total,"future_target_total":future_target_total,"current_selected_total":current_selected_total,"future_selected_total":future_selected_total}
 
 def main():
     ap=argparse.ArgumentParser()
@@ -272,7 +287,7 @@ def main():
           "candidate_count":len(ded),"candidate_pool_count":len(ded),
           "display_count":len(display),"display_limit_per_tile":args.display_per_tile,
           "count_owner":"candidate_pool","map_owner":"display_subset" if args.display_per_tile is not None else "candidate_pool",
-          "scientific_boundary":"All output points are unverified Elder Tree Candidates. Display density is not detector recall and is not the evidence-count owner."}
+          "scientific_boundary":"All output points are unverified Elder Tree Candidates. CURRENT/FUTURE cohort labels are research priors for high-recall calibration, not proof of age. Display density is not detector recall and is not the evidence-count owner.",\n          "density_prior":{"current_elder_target_per_ha":CURRENT_ELDER_TARGET_PER_HA,"future_elder_ratio":FUTURE_ELDER_RATIO}}
     (out/f"elder-tree-candidate-pool-{key}.geojson").write_text(json.dumps(pool_fc,indent=2))
     (out/f"elder-trees-{key}.geojson").write_text(json.dumps(display_fc,indent=2))
     (out/f"elder-trees-{key}.json").write_text(json.dumps(meta,indent=2))
