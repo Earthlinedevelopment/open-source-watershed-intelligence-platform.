@@ -26,7 +26,8 @@ const result=await page.evaluate(()=>({
   safe:Number(M?.authoritativeSafeSwales15815?.length||0),
   liveCommitOwner:window.EARTHLINE_ELDER_TREES_V1_17097?.state||null
 }));
-const pass=prepared&&!callError&&result.audit?.settled===true&&result.audit?.result===true&&result.safe>0&&result.safety?.verified===true&&result.lock?.safetyVerified===true&&wallMs<=15000&&errors.length===0;
-console.log('EARTHLINE_ELDER_PRODUCTION_PROPERTY_CONTROL_17097 '+JSON.stringify({prepared,wallMs,callError,result,errors,pass}));
+const safeCount=Number(result.audit?.publicationAudit?.safeCount??result.audit?.corridors??result.safe??0);
+const pass=prepared&&!callError&&result.audit?.settled===true&&result.audit?.result===true&&safeCount>0&&result.safety?.verified===true&&result.lock?.safetyVerified===true&&wallMs<=15000&&errors.length===0;
+console.log('EARTHLINE_ELDER_PRODUCTION_PROPERTY_CONTROL_17097 '+JSON.stringify({prepared,wallMs,callError,safeCount,result,errors,pass}));
 await browser.close();
 if(!pass)process.exitCode=1;
