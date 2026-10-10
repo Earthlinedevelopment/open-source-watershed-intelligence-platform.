@@ -123,12 +123,34 @@ async function createCrosshairByRealDrag(page,target){
   const b=await canvas.boundingBox();
   if(!b)return {ok:false,reason:'map canvas unavailable',stable};
 
-  const x=b.x+b.width*0.52,y=b.y+b.height*0.52;
+  const dragPoint=await page.evaluate(({left,top,width,height})=>{
+    const candidates=[
+      [0.78,0.72],[0.22,0.72],[0.78,0.28],[0.22,0.28],
+      [0.68,0.82],[0.32,0.82],[0.68,0.18],[0.32,0.18]
+    ];
+    for(const [fx,fy] of candidates){
+      const x=left+width*fx,y=top+height*fy;
+      const el=document.elementFromPoint(x,y);
+      if(!el)continue;
+      const blocked=el.closest?.(
+        '[aria-label^="Open details for"],.earthline-swale-hit-16070,.earthline-swale-label-16149,'+
+        'button,a,[role="button"],.mapboxgl-control-container,#earthlineRail16188,#earthlinePanel16188,'+
+        '#earthlineCorridorDetail16149'
+      );
+      if(blocked)continue;
+      const mapSurface=el.matches?.('.mapboxgl-canvas,canvas')||el.closest?.('.mapboxgl-canvas-container');
+      if(mapSurface)return {x,y,tag:el.tagName||'',id:el.id||'',cls:String(el.className||'')};
+    }
+    return null;
+  },{left:b.x,top:b.y,width:b.width,height:b.height});
+  if(!dragPoint)return {ok:false,reason:'no unobstructed real map drag point',stable};
+
+  const x=dragPoint.x,y=dragPoint.y;
   await page.mouse.move(x,y);
   await page.mouse.down();
   await page.mouse.move(x+12,y+6,{steps:5});
   await page.mouse.up();
-  await page.waitForTimeout(750);
+  await page.waitForTimeout(900);
 
   const after=await page.evaluate(()=>({
     target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
