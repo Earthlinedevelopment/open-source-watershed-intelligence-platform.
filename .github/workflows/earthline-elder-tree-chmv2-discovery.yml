@@ -1,0 +1,45 @@
+name: Earthline Elder Trees CHMv2 Discovery
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/global_chmv2_discovery.py'
+      - '.github/workflows/earthline-elder-tree-chmv2-discovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Discover CHMv2 public AWS structure
+        run: python tools/elder_trees/global_chmv2_discovery.py artifacts/elder-trees-chmv2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-trees-chmv2-discovery
+          path: artifacts/elder-trees-chmv2/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Persist CHMv2 source manifest
+        if: success()
+        run: |
+          mkdir -p data/elder-trees/generated/global
+          cp artifacts/elder-trees-chmv2/chmv2-discovery.json data/elder-trees/generated/global/
+          git config user.name "Earthline Research Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add data/elder-trees/generated/global/
+          git diff --cached --quiet || git commit -m "data: persist CHMv2 Elder Tree source discovery"
+          git push origin HEAD:v2/elder-tree-layer-research
