@@ -1,0 +1,47 @@
+name: Earthline Elder Trees USGS 3DEP Measured Probe
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/usgs_ept_candidate_refine.py'
+      - '.github/workflows/earthline-elder-tree-usgs-measured-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Python dependencies
+        run: pip install pyproj requests
+      - name: Install PDAL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pdal
+          pdal --version
+      - name: Resolve Vermont candidate to public 3DEP EPT
+        run: |
+          python tools/elder_trees/usgs_ept_candidate_refine.py prepare             --name "Vermont candidate"             --lon -73.20924818515778             --lat 44.50332740834088             --radius 30             --outdir artifacts/elder-trees-usgs-measured/vermont
+      - name: Read measured point cloud
+        run: pdal pipeline artifacts/elder-trees-usgs-measured/vermont/pipeline.json
+      - name: Summarize measured canopy evidence
+        run: |
+          python tools/elder_trees/usgs_ept_candidate_refine.py summarize             --manifest artifacts/elder-trees-usgs-measured/vermont/manifest.json             --csv artifacts/elder-trees-usgs-measured/vermont/points.csv             --out artifacts/elder-trees-usgs-measured/vermont/result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-trees-usgs-measured-probe
+          path: artifacts/elder-trees-usgs-measured/
+          if-no-files-found: warn
+          retention-days: 14
