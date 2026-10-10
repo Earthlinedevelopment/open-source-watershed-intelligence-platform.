@@ -92,6 +92,13 @@ def cmd_prepare(args):
     manifest={
       "name":args.name,"lon":lon,"lat":lat,"status":"EPT_PROJECT_RESOLVED",
       "method_version":METHOD,"radius_m":radius,
+      "project_bounds_match_count":len(matches),
+      "project_bounds_matches":[
+        {
+          "prefix":m.get("prefix"),"ept_url":m.get("ept_url"),"year_hint":m.get("year_hint"),
+          "project_points":m.get("points"),"bbox_wgs84":m.get("bbox_wgs84")
+        } for m in matches[:10]
+      ],
       "selected_project":{
         "prefix":selected.get("prefix"),"ept_url":url,"year_hint":selected.get("year_hint"),
         "project_points":selected.get("points"),"bbox_wgs84":selected.get("bbox_wgs84")
