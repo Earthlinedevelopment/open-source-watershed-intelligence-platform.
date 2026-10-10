@@ -30,11 +30,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install numpy scipy rasterio pyproj requests
 
+      - name: Reuse successful authoritative England LiDAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: earthline-elder-trees-england-calibration
+          path: seed/elder-trees-england
+          run-id: 38019463764
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Generate Windsor Elder Tree GPS candidates and compare to ATI
         run: |
           python tools/elder_trees/england_calibration.py \
             --name "Windsor England calibration" \
             --bbox=-0.615,51.420,-0.575,51.450 \
+            --dsm seed/elder-trees-england/dsm.tif \
+            --dtm seed/elder-trees-england/dtm.tif \
             --out artifacts/elder-trees-england
 
       - name: Publish summary to job log
