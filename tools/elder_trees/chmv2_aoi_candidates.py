@@ -181,6 +181,7 @@ def main():
     ap.add_argument("--bbox",required=True,help="minlon,minlat,maxlon,maxlat")
     ap.add_argument("--out",required=True)
     ap.add_argument("--max-per-tile",type=int,default=20,help="Candidate-pool limit per source tile after native refinement")
+    ap.add_argument("--screen-size",type=int,default=512,help="Maximum screening dimension; use higher values for individual-tree calibration")
     ap.add_argument("--display-per-tile",type=int,default=None,help="Optional sparse map-display limit per tile; does not change candidate-pool count")
     args=ap.parse_args()
     bbox=tuple(float(x) for x in args.bbox.split(","))
@@ -190,7 +191,7 @@ def main():
     if len(qs)>64:raise SystemExit(f"AOI spans {len(qs)} CHMv2 tiles; split into bounded requests")
     feats=[];tiles=[]
     for q in qs:
-        f,m=process_tile(q,bbox,args.max_per_tile);feats.extend(f);tiles.append(m)
+        f,m=process_tile(q,bbox,args.max_per_tile,args.screen_size);feats.extend(f);tiles.append(m)
     ded=[]
     for f in sorted(feats,key=lambda x:x["properties"].get("height_m",0),reverse=True):
         p=f["geometry"]["coordinates"]
