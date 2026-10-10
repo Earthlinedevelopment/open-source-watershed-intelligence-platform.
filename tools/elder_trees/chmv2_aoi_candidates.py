@@ -123,7 +123,9 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
             score=(z/max(np.nanmax(z),1))*.55+(prom/max(np.nanmax(prom),1))*.45
             peak=(score==ndimage.maximum_filter(score,size=9,mode="nearest"))&(z>=pcut)&((prom>=ecut)|(z>=np.percentile(vals,95)))
             rows,cols=np.where(peak)
-            ranked=sorted([(float(score[r,c]),r,c) for r,c in zip(rows.tolist(),cols.tolist())],reverse=True)[:max_per_tile*3]
+            all_ranked=sorted([(float(score[r,c]),r,c) for r,c in zip(rows.tolist(),cols.tolist())],reverse=True)
+            ranked=all_ranked[:max_per_tile*3]
+            score_values=np.asarray([x[0] for x in all_ranked],dtype=float)
 
             # map screening pixel back to native source coordinate inside cropped window
             sx=win.width/ow;sy=win.height/oh
@@ -146,6 +148,8 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                     "source_class":"MODELED_CHMV2","source_name":"WRI/Meta CHMv2",
                     "source_url":url,"source_license":"CC BY 4.0",
                     "quadkey":q,"method_version":METHOD,"screen_rank":rank,
+                    "confidence_pct":int(round(100.0*float(np.mean(score_values<=sc)))) if score_values.size else None,
+                    "confidence_definition":"Relative structural-evidence percentile within the analyzed CHMv2 tile; not a probability of tree age or ancient/veteran status.",
                     "height_m":round(h,2),"emergent_height_m":round(emerg,2),
                     "crown_area_proxy_m2":round(area,1),"open_context_fraction":round(openf,3),
                     "evidence_limit":"Candidate only; modeled canopy structure is not proof of age or mycorrhizal hub status."
