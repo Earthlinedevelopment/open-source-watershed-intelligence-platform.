@@ -22,7 +22,7 @@ from scipy import ndimage
 import requests
 
 ROOT="https://dataforgood-fb-data.s3.amazonaws.com/forests/v2/global/dinov3_global_chm_v2_ml3/chm/"
-METHOD="earthline-elder-tree-aoi-chmv2-v0.3-local-relative"
+METHOD="earthline-elder-tree-aoi-chmv2-v0.4-local-evidence-index"
 UA={"User-Agent":"Earthline-ElderTree-Research/1.6"}
 
 def tile_xy(lon,lat,z=10):
@@ -165,9 +165,9 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                     "screen_reference_peak_count":reference_peak_count,
                     "local_canopy_floor_m":round(canopy_floor_m,2),
                     "raw_structural_evidence_score":round(float(structural),4),
-                    "elder_tree_confidence_pct":int(round(100.0*(1.0-(rank-1)/max(1,reference_peak_count-1)))) if reference_peak_count else None,
-                    "confidence_pct":int(round(100.0*(1.0-(rank-1)/max(1,reference_peak_count-1)))) if reference_peak_count else None,
-                    "confidence_definition":"Earthline Elder Tree Confidence is a local percentile: how strongly this structure ranks against other detected tree/canopy structures in the same analyzed source tile/AOI. It is not the probability that the tree is ancient, veteran, or a mycorrhizal hub.",
+                    "elder_tree_confidence_pct":int(round(max(0.0,min(100.0,100.0*sc)))),
+                    "confidence_pct":int(round(max(0.0,min(100.0,100.0*sc)))),
+                    "confidence_definition":"Earthline Elder Tree Confidence is a local relative structural-evidence index built from height rank, local prominence rank, and open-grown context in the analyzed area. It is not the probability that the tree is ancient, veteran, or a mycorrhizal hub.",
                     "height_m":round(h,2),"emergent_height_m":round(emerg,2),
                     "crown_area_proxy_m2":round(area,1),"open_context_fraction":round(openf,3),
                     "evidence_limit":"Candidate only; modeled canopy structure is not proof of age or mycorrhizal hub status."
