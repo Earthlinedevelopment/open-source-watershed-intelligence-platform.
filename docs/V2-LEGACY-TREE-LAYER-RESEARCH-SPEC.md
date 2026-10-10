@@ -1,14 +1,14 @@
-# Earthline V2 — Legacy / Mother Tree Candidate Layer
+# Earthline V2 — Elder Tree / Mother Tree Candidate Layer
 ## Research and Interoperability Specification
 Status: Research branch only. No V1 production or science changes.
-Branch: `v2/legacy-tree-layer-research`
+Branch: `v2/elder-tree-layer-research`
 
 ## Purpose
 Add a scientifically defensible tree-conservation layer that can:
-1. ingest verified ancient/veteran/legacy-tree records;
-2. predict likely legacy-tree hotspots where verified records are incomplete;
+1. ingest verified ancient/veteran/elder-tree records;
+2. predict likely elder-tree hotspots where verified records are incomplete;
 3. identify remotely sensed individual-tree candidates where data resolution permits;
-4. preserve a strict distinction between a remotely sensed legacy-tree candidate and a field/genetically verified mycorrhizal hub ("Mother Tree");
+4. preserve a strict distinction between a remotely sensed elder-tree candidate and a field/genetically verified mycorrhizal hub ("Mother Tree");
 5. remain interoperable with external inventories such as the Woodland Trust Ancient Tree Inventory (ATI).
 
 ## England / Woodland Trust alignment
@@ -43,9 +43,9 @@ Earthline should preserve a separate predictive layer rather than conflating pre
 ### Record classes
 - VERIFIED_EXTERNAL_TREE
 - VERIFIED_FIELD_TREE
-- LEGACY_TREE_STRONG_CANDIDATE
-- LEGACY_TREE_CANDIDATE
-- LEGACY_TREE_HOTSPOT
+- ELDER_TREE_STRONG_CANDIDATE
+- ELDER_TREE_CANDIDATE
+- ELDER_TREE_HOTSPOT
 - MYCORRHIZAL_HUB_VERIFIED
 
 ### Required fields
@@ -77,7 +77,7 @@ Fields may be null when unavailable. Unknown must remain unknown rather than inf
 ## Scientific boundary
 Large/old tree status and mycorrhizal network-hub status are not equivalent.
 Earthline must never label a tree a verified Mother Tree solely from LiDAR, imagery, canopy height, crown morphology, age proxy, or size.
-Remote sensing may support LEGACY_TREE_CANDIDATE classes.
+Remote sensing may support ELDER_TREE_CANDIDATE classes.
 MYCORRHIZAL_HUB_VERIFIED requires direct field/root/fungal/genetic evidence or an authoritative source that documents such evidence.
 
 ## U.S. rollout approach
@@ -137,17 +137,17 @@ For Laos and Vietnam, Earthline should begin with global GEDI/Sentinel canopy st
 Do not contaminate the existing Aquifer Recharge Potential score with a biological quantity that measures something different.
 
 Phase 1:
-- Add a separate `Legacy Tree Evidence` / `Ecological Sensitivity` indicator.
+- Add a separate `Elder Tree Evidence` / `Ecological Sensitivity` indicator.
 - Weight = 0 in the Recharge Potential score.
 - Show verified/candidate/hotspot status transparently.
 
 Phase 2:
-- Use legacy-tree proximity as a corridor protection / avoidance factor after validation.
+- Use elder-tree proximity as a corridor protection / avoidance factor after validation.
 - Verified trees receive the strongest protection treatment.
 - Candidates receive a cautionary buffer, not an automatic exclusion, until field verification.
 
 Phase 3:
-- If Earthline later creates a broader Site Suitability / Stewardship score, legacy-tree protection can become an explicit weighted component there while Recharge Potential remains hydrologically interpretable.
+- If Earthline later creates a broader Site Suitability / Stewardship score, elder-tree protection can become an explicit weighted component there while Recharge Potential remains hydrologically interpretable.
 
 ## Interoperability strategy
 Earthline should support two-way exchange rather than create a closed proprietary ontology.
@@ -204,7 +204,7 @@ Earthline should align with the strongest interaction patterns in the Ancient Tr
 
 ### Earthline translation
 - Keep the Earthline Search Orb and single map.
-- Add a Legacy Tree layer toggle, not a second map.
+- Add a Elder Tree layer toggle, not a second map.
 - Candidate symbols should be visually distinct from verified records.
 - Selecting a symbol should open a compact evidence card first, then a full record/report.
 - Filters should remain map-extent aware: Verified / Strong Candidate / Candidate / Hotspot, species/genus, minimum structural size, confidence, historic-persistence evidence.
@@ -271,3 +271,9 @@ The current production file contains a presentation ownership conflict:
 - later public-map CSS explicitly hides `#earthlineCenterTarget15782` with `display:none!important`.
 
 This explains the observed post-refresh disappearance. The correct repair is to remove/consolidate the later conflicting presentation ownership, not add another timer or duplicate crosshair.
+
+
+## Naming lock — Elder Trees
+Earthline's public and internal product term is **Elder Trees**.
+Use “ancient tree”, “veteran tree”, “legacy tree”, or “Mother Tree” only when quoting or translating an external scientific/inventory classification.
+Earthline record classes use ELDER_TREE_* names.
