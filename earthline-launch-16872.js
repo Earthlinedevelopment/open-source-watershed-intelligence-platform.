@@ -1223,3 +1223,76 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     rule:'missing parent token only; canonical published Regional owners must agree; non-empty mismatches remain fail-closed'
   };
 })();
+
+
+/* EARTHLINE_CROSSHAIR_MOVE_HINT_17093
+   Temporary V1 launch guidance only.
+   Shows once per browser session after the first Regional publication.
+   No map, crosshair, hydrology, Property, or science ownership changes. */
+(function installEarthlineCrosshairMoveHint17093(){
+  if(window.EARTHLINE_CROSSHAIR_MOVE_HINT_17093)return;
+  const KEY='earthline-crosshair-move-hint-17093-shown';
+  function shown(){try{return sessionStorage.getItem(KEY)==='1'}catch(_){return !!window.__earthlineCrosshairMoveHint17093Shown}}
+  function markShown(){try{sessionStorage.setItem(KEY,'1')}catch(_){window.__earthlineCrosshairMoveHint17093Shown=true}}
+  function remove(){try{document.getElementById('earthlineCrosshairMoveHint17093')?.remove()}catch(_){}}
+  function show(){
+    if(shown()||document.getElementById('earthlineCrosshairMoveHint17093'))return;
+    markShown();
+    const box=document.createElement('div');
+    box.id='earthlineCrosshairMoveHint17093';
+    box.setAttribute('role','status');
+    box.innerHTML='<span>Place hand cursor over bare land to move map.</span><button type="button" aria-label="Dismiss crosshair movement hint">GOT IT</button>';
+    box.querySelector('button')?.addEventListener('click',remove,{once:true});
+    document.body.appendChild(box);
+  }
+  try{
+    const style=document.createElement('style');
+    style.id='earthlineCrosshairMoveHint17093Style';
+    style.textContent=`
+#earthlineCrosshairMoveHint17093{
+  position:fixed!important;
+  left:50%!important;
+  top:calc(50% - 82px)!important;
+  transform:translateX(-50%)!important;
+  z-index:2147482900!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:9px!important;
+  max-width:min(360px,calc(100vw - 32px))!important;
+  padding:9px 11px 9px 13px!important;
+  border:1px solid rgba(78,201,255,.72)!important;
+  border-radius:12px!important;
+  background:rgba(8,24,34,.96)!important;
+  color:#f4fbff!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.34)!important;
+  font:800 12px/1.25 system-ui,-apple-system,"Segoe UI",sans-serif!important;
+  text-align:center!important;
+  pointer-events:auto!important;
+}
+#earthlineCrosshairMoveHint17093 button{
+  appearance:none!important;
+  border:1px solid rgba(255,255,255,.42)!important;
+  border-radius:8px!important;
+  background:rgba(255,255,255,.08)!important;
+  color:#fff!important;
+  padding:5px 7px!important;
+  font:900 10px/1 system-ui,-apple-system,"Segoe UI",sans-serif!important;
+  cursor:pointer!important;
+  white-space:nowrap!important;
+}
+@media(max-width:760px){
+  #earthlineCrosshairMoveHint17093{
+    top:calc(50% - 72px)!important;
+    max-width:min(320px,calc(100vw - 24px))!important;
+    font-size:11px!important;
+  }
+}
+`;
+    (document.head||document.documentElement).appendChild(style);
+  }catch(_){}
+  document.addEventListener('earthline:analysis-complete',e=>{
+    const raw=String(e?.detail?.tier||e?.detail?.mode||'regional').toLowerCase();
+    if(!raw.includes('property'))show();
+  },{passive:true});
+  window.EARTHLINE_CROSSHAIR_MOVE_HINT_17093={state:'ready',show,remove,sessionOnly:true};
+})();
