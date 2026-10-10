@@ -22,7 +22,7 @@ from scipy import ndimage
 import requests
 
 ROOT="https://dataforgood-fb-data.s3.amazonaws.com/forests/v2/global/dinov3_global_chm_v2_ml3/chm/"
-METHOD="earthline-elder-tree-aoi-chmv2-v0.1"
+METHOD="earthline-elder-tree-aoi-chmv2-v0.3-local-relative"
 UA={"User-Agent":"Earthline-ElderTree-Research/1.6"}
 
 def tile_xy(lon,lat,z=10):
@@ -57,7 +57,7 @@ def hav(a,b):
     q=math.sin(dp/2)**2+math.cos(p1)*math.cos(p2)*math.sin(dl/2)**2
     return 2*R*math.asin(min(1,math.sqrt(q)))
 
-def refine(ds,cx,cy,radius_m=45):
+def refine(ds,cx,cy,canopy_floor_m=2.0,radius_m=45):
     col,row=~ds.transform*(cx,cy)
     pix=max(abs(ds.transform.a),abs(ds.transform.e))
     rr=max(10,int(round(radius_m/max(pix,.01))))
@@ -69,7 +69,7 @@ def refine(ds,cx,cy,radius_m=45):
     sep=max(3,int(round(5/max(pix,.01))))
     if sep%2==0:sep+=1
     sm=ndimage.gaussian_filter(z,sigma=max(.8,min(2.5,1/max(pix,.01))))
-    peak=(sm==ndimage.maximum_filter(sm,size=sep,mode="nearest"))&(sm>=5)
+    peak=(sm==ndimage.maximum_filter(sm,size=sep,mode="nearest"))&(sm>=canopy_floor_m)
     rows,cols=np.where(peak)
     best=None
     for r,c in zip(rows.tolist(),cols.tolist()):
@@ -82,7 +82,7 @@ def refine(ds,cx,cy,radius_m=45):
         emerg=max(0,h-med)
         openf=float(np.mean(np.nan_to_num(local,nan=0)<4))
         sub=np.nan_to_num(local,nan=0)
-        lab,_=ndimage.label(sub>=max(3,h*.45))
+        lab,_=ndimage.label(sub>=max(1.5,canopy_floor_m*.75,h*.45))
         rr0,cc0=r-r0,c-c0; lid=lab[rr0,cc0] if 0<=rr0<lab.shape[0] and 0<=cc0<lab.shape[1] else 0
         area=float(np.sum(lab==lid)*abs(tr.a*tr.e)) if lid else 0
         x,y=rasterio.transform.xy(tr,r,c,offset="center")
@@ -115,13 +115,28 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
             arr=ds.read(1,window=win,out_shape=(oh,ow),resampling=Resampling.nearest).astype("float32")
             arr[(~np.isfinite(arr))|(arr<0)|(arr>80)]=np.nan
             z=np.nan_to_num(arr,nan=0)
-            if np.nanmax(z)<5:return [],{"quadkey":q,"status":"NO_CANOPY"}
+            woody=z[z>=1.5]
+            if woody.size<8:return [],{"quadkey":q,"status":"NO_CANOPY"}
+            # Local-relative canopy floor: dry/alpine stands are not forced to meet
+            # the same absolute height profile as humid/tall forests.
+            canopy_floor_m=float(max(2.0,min(5.0,np.percentile(woody,25))))
+            canopy=z>=canopy_floor_m
+            vals=z[canopy]
+            if vals.size<8:return [],{"quadkey":q,"status":"NO_CANOPY","canopy_floor_m":round(canopy_floor_m,2)}
             med=ndimage.median_filter(z,size=9,mode="nearest")
             prom=np.maximum(0,z-med)
-            vals=z[z>=5]; pcut=float(np.percentile(vals,80)) if vals.size else 999
-            pvals=prom[z>=5]; ecut=float(np.percentile(pvals,75)) if pvals.size else 999
-            score=(z/max(np.nanmax(z),1))*.55+(prom/max(np.nanmax(prom),1))*.45
-            peak=(score==ndimage.maximum_filter(score,size=9,mode="nearest"))&(z>=pcut)&((prom>=ecut)|(z>=np.percentile(vals,95)))
+            pvals=prom[canopy]
+            hs=np.sort(vals); ps=np.sort(pvals)
+            h_pct=np.zeros_like(z,dtype="float32")
+            p_pct=np.zeros_like(z,dtype="float32")
+            h_pct[canopy]=np.searchsorted(hs,z[canopy],side="right")/max(1,len(hs))
+            p_pct[canopy]=np.searchsorted(ps,prom[canopy],side="right")/max(1,len(ps))
+            local_density=ndimage.uniform_filter(canopy.astype("float32"),size=9,mode="nearest")
+            open_context=np.clip(1.0-local_density,0.0,1.0)
+            score=np.zeros_like(z,dtype="float32")
+            score[canopy]=.40*h_pct[canopy]+.35*p_pct[canopy]+.25*open_context[canopy]
+            eligible=canopy&(h_pct>=.70)&((p_pct>=.65)|(open_context>=.60))
+            peak=(score==ndimage.maximum_filter(score,size=9,mode="nearest"))&eligible
             rows,cols=np.where(peak)
             all_ranked=sorted([(float(score[r,c]),r,c) for r,c in zip(rows.tolist(),cols.tolist())],reverse=True)
             ranked=all_ranked[:max_per_tile*3]
@@ -133,7 +148,7 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
             feats=[]
             for rank,(sc,r,c) in enumerate(ranked,1):
                 cx,cy=rasterio.transform.xy(screen_tr,r,c,offset="center")
-                ref=refine(ds,cx,cy)
+                ref=refine(ds,cx,cy,canopy_floor_m=canopy_floor_m)
                 if not ref:continue
                 structural,x,y,h,emerg,area,openf=ref
                 lon,lat=to4326.transform(x,y)
@@ -148,6 +163,7 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                     "source_url":url,"source_license":"CC BY 4.0",
                     "quadkey":q,"method_version":METHOD,"screen_rank":rank,
                     "screen_reference_peak_count":reference_peak_count,
+                    "local_canopy_floor_m":round(canopy_floor_m,2),
                     "raw_structural_evidence_score":round(float(structural),4),
                     "elder_tree_confidence_pct":int(round(100.0*(1.0-(rank-1)/max(1,reference_peak_count-1)))) if reference_peak_count else None,
                     "confidence_pct":int(round(100.0*(1.0-(rank-1)/max(1,reference_peak_count-1)))) if reference_peak_count else None,
@@ -158,7 +174,7 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512):
                   }
                 })
                 if len(feats)>=max_per_tile:break
-            return feats,{"quadkey":q,"status":"OK","candidate_count":len(feats),"screen_shape":[oh,ow]}
+            return feats,{"quadkey":q,"status":"OK","candidate_count":len(feats),"screen_shape":[oh,ow],"canopy_floor_m":round(canopy_floor_m,2),"reference_peak_count":reference_peak_count}
 
 def main():
     ap=argparse.ArgumentParser()
