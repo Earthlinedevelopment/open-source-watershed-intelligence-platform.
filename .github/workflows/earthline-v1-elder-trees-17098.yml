@@ -1,0 +1,59 @@
+name: Earthline V1 Elder Trees Vermont LiDAR 17098
+
+on:
+  push:
+    branches:
+      - v1/elder-tree-lidar-vermont-17098
+    paths:
+      - 'earthline-launch-16872.js'
+      - 'data/elder-trees/v1/**'
+      - 'tests/elder-tree-harness-17097.html'
+      - 'tests/elder-tree-v1-17097.mjs'
+      - 'tests/elder-tree-fullpage-17097.mjs'
+      - 'tests/elder-tree-v1-launch-regression-17097.mjs'
+      - 'tests/elder-tree-production-property-control-17097.mjs'
+      - 'tests/elder-tree-hydrology-prefix-identity-17097.mjs'
+      - '.github/workflows/earthline-v1-elder-trees-17098.yml'
+  workflow_dispatch:
+
+permissions: {contents: read}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v1/elder-tree-lidar-vermont-17098
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Gate Vermont exact QL1 evidence
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const fc=JSON.parse(fs.readFileSync('data/elder-trees/v1/vermont.geojson','utf8'));
+          const f=fc.features||[];
+          if(f.length!==12) throw new Error('expected 12 Vermont candidates, got '+f.length);
+          for(const [i,x] of f.entries()){
+            const p=x.properties||{};
+            if(p.record_class!=='LIDAR_CONFIRMED_ELDER_TREE_CANDIDATE') throw new Error('feature '+i+' not LiDAR-confirmed');
+            if(p.lidar_source_ql!=='QL 1') throw new Error('feature '+i+' not QL1');
+            if(!String(p.lidar_source_workunit||'').startsWith('VT_Statewide_')) throw new Error('feature '+i+' missing statewide workunit');
+            if(!(Number(p.lidar_point_count_within_8m)>0)) throw new Error('feature '+i+' lacks direct 8m returns');
+            if(!(Number(p.lidar_canopy_evidence_points_within_8m)>0)) throw new Error('feature '+i+' lacks 8m canopy evidence');
+            if(!(Number(p.lidar_measured_local_canopy_height_m)>=2)) throw new Error('feature '+i+' invalid measured canopy height');
+          }
+          console.log(JSON.stringify({vermont_features:f.length,lidar_confirmed:f.length,ql:'QL 1',direct_core_m:8},null,2));
+          NODE
+      - name: Parse-check launch JavaScript
+        run: node --check earthline-launch-16872.js
+      - run: node tests/elder-tree-v1-17097.mjs
+      - run: node tests/elder-tree-fullpage-17097.mjs
+      - run: node tests/elder-tree-v1-launch-regression-17097.mjs
+      - run: node tests/elder-tree-hydrology-prefix-identity-17097.mjs
+      - run: node tests/elder-tree-production-property-control-17097.mjs
