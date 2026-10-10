@@ -1,0 +1,47 @@
+name: Earthline Elder Trees U.S. State 3DEP Coverage
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/us_state_3dep_coverage.py'
+      - '.github/workflows/earthline-elder-tree-us-state-coverage.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install geospatial dependencies
+        run: pip install geopandas pyogrio shapely requests
+      - name: Build exact state/territory 3DEP coverage matrix
+        run: python tools/elder_trees/us_state_3dep_coverage.py artifacts/elder-trees-us-coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-trees-us-state-3dep-coverage
+          path: artifacts/elder-trees-us-coverage/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Persist state coverage matrix
+        if: success()
+        run: |
+          mkdir -p data/elder-trees/generated/us-national
+          cp artifacts/elder-trees-us-coverage/us-state-3dep-coverage.json data/elder-trees/generated/us-national/
+          cp artifacts/elder-trees-us-coverage/us-state-3dep-coverage-summary.json data/elder-trees/generated/us-national/
+          git config user.name "Earthline Research Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add data/elder-trees/generated/us-national/
+          git diff --cached --quiet || git commit -m "data: persist U.S. Elder Tree 3DEP state coverage"
+          git push origin HEAD:v2/elder-tree-layer-research
