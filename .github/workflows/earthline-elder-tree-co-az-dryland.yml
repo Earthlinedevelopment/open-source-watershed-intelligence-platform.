@@ -1,0 +1,67 @@
+name: Earthline Elder Trees Colorado Arizona Dryland Calibration
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'data/elder-trees/dryland-calibration-controls.json'
+      - 'tools/elder_trees/chmv2_aoi_candidates.py'
+      - '.github/workflows/earthline-elder-tree-co-az-dryland.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install scientific dependencies
+        run: pip install numpy scipy rasterio pyproj requests
+      - name: Run Colorado and Arizona documented old-tree AOIs
+        run: |
+          python tools/elder_trees/chmv2_aoi_candidates.py             --bbox=-105.64,39.60,-105.55,39.68             --max-per-tile=24             --out artifacts/elder-trees-dryland/colorado-mount-goliath
+          python tools/elder_trees/chmv2_aoi_candidates.py             --bbox=-111.75,35.27,-111.63,35.39             --max-per-tile=24             --out artifacts/elder-trees-dryland/arizona-san-francisco-peaks
+      - name: Summarize dryland calibration
+        run: |
+          python - <<'PY'
+          import json, glob, pathlib
+          out={}
+          for p in glob.glob("artifacts/elder-trees-dryland/*/*.json"):
+              if p.endswith(".geojson"): continue
+              d=json.load(open(p))
+              out[pathlib.Path(p).parent.name]={
+                "candidate_count":d.get("candidate_count"),
+                "requested_tiles":d.get("requested_tiles"),
+                "tile_results":d.get("tile_results")
+              }
+          print(json.dumps(out,indent=2))
+          pathlib.Path("artifacts/elder-trees-dryland/summary.json").write_text(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-trees-co-az-dryland-calibration
+          path: artifacts/elder-trees-dryland/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Persist dryland calibration data
+        if: success()
+        run: |
+          mkdir -p data/elder-trees/generated/dryland-calibration
+          cp -R artifacts/elder-trees-dryland/* data/elder-trees/generated/dryland-calibration/
+          git config user.name "Earthline Research Bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add data/elder-trees/generated/dryland-calibration/
+          git diff --cached --quiet || git commit -m "data: persist Colorado Arizona Elder Tree dryland calibration"
+          git fetch origin v2/elder-tree-layer-research
+          git rebase origin/v2/elder-tree-layer-research
+          git push origin HEAD:v2/elder-tree-layer-research
