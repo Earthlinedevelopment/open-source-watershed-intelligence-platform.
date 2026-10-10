@@ -1420,7 +1420,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
             '<div style="margin-top:5px;font:800 12px/1.2 system-ui,sans-serif;color:#2f6f46">'+esc(confidence)+'</div>'+
             (Number.isFinite(h)?'<div style="margin-top:4px;font:600 11px/1.35 system-ui,sans-serif">Canopy height: '+esc(h.toFixed(1))+' m</div>':'')+
             '<div style="margin-top:4px;font:500 10px/1.35 system-ui,sans-serif;color:#526159">'+esc(p.source_name||'Earthline Elder Tree evidence')+'</div>'+
-            (!verified?'<div style="margin-top:6px;font:500 9.5px/1.35 system-ui,sans-serif;color:#6e766a">Confidence ranks structural evidence; it is not a probability of tree age or ancient/veteran status.</div>':'');
+            (!verified?'<div style="margin-top:6px;font:500 9.5px/1.35 system-ui,sans-serif;color:#6e766a">Confidence is Earthline’s relative structural-evidence index; it is not a probability of tree age or ancient/veteran status.</div>':'');
           try{new mapboxgl.Popup({closeButton:true,closeOnClick:true,offset:8}).setLngLat(coords).setHTML(body).addTo(m)}catch(_){}
         });
       }
@@ -1445,7 +1445,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     }
     el.innerHTML='<b style="color:#254d31">ELDER TREE EVIDENCE</b><br>'+esc(summary.evidenceLabel)+
       (summary.meanConfidence!=null?'<br>Mean candidate confidence: <b>'+esc(summary.meanConfidence)+'%</b>':'')+
-      '<br><span style="color:#68756b">Confidence is relative structural-evidence strength, not probability of age. Elder Trees have zero weight in Recharge Potential.</span>'+
+      '<br><span style="color:#68756b">Confidence is Earthline’s relative structural-evidence index, not probability of age. Elder Trees have zero weight in Recharge Potential.</span>'+
       (summary.partial?'<br><span style="color:#7c6240">Counts reflect current Earthline Elder Tree coverage, not a complete natural-population census.</span>':'');
     return true;
   }
@@ -1460,7 +1460,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     }
     el.innerHTML='<b>Elder Tree evidence</b><br>'+esc(summary.evidenceLabel)+
       (summary.meanConfidence!=null?' · mean candidate confidence '+esc(summary.meanConfidence)+'%':'')+
-      '<br><span style="font-size:10.5px">Candidate confidence describes remote-sensing structural evidence, not probability of age or ancient/veteran status.</span>'+
+      '<br><span style="font-size:10.5px">Candidate confidence is Earthline’s relative structural-evidence index, not probability of age or ancient/veteran status.</span>'+
       (summary.partial?'<br><span style="font-size:10.5px">Current Earthline coverage is partial; this is not a complete tree census.</span>':'');
     return true;
   }
@@ -1541,7 +1541,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       state:'candidate',manifest:MANIFEST,source:SOURCE,layer:LAYER,
       refresh,summary:()=>state.lastSummary||summarize(state.active),
       features:()=>state.active.slice(),
-      confidenceRule:'relative structural-evidence percentile; modeled candidates capped below verified status; not age probability',
+      confidenceRule:'relative structural-evidence index; modeled candidates capped at 95; not age probability',
       rechargeWeight:0
     };
   }
