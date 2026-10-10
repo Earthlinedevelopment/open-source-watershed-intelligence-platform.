@@ -17,13 +17,16 @@ import pycountry
 METHOD="earthline-elder-tree-global-registry-v0.1"
 
 DEFAULT={
-  "point_status":"SCREENING_ONLY_PENDING_HIGH_RES_SOURCE",
-  "point_generation_allowed":False,
+  "point_status":"CHMV2_RESEARCH_CANDIDATE_IF_TILE_AVAILABLE",
+  "point_generation_allowed":True,
+  "publication_allowed":False,
+  "preferred_point_source":"WRI/Meta CHMv2 modeled sub-meter canopy height unless a higher-confidence national LiDAR source is available",
   "screening_sources":[
-    "NASA GEDI L2A canopy structure where footprints exist",
-    "Open global Sentinel-2/GEDI canopy-height products"
+    "WRI/Meta CHMv2 for modeled individual-candidate research where tiles exist",
+    "NASA GEDI L2A canopy structure for coarse structural context",
+    "Open global Sentinel-2/GEDI canopy-height products for coarse structural context"
   ],
-  "scientific_rule":"Do not emit an individual Elder Tree GPS candidate from coarse canopy screening alone."
+  "scientific_rule":"CHMv2 may emit ELDER_TREE_CANDIDATE research points after positional calibration, but never verified Elder Trees. Coarse GEDI/10 m products still cannot emit individual-tree GPS points."
 }
 
 OVERRIDES={
@@ -126,7 +129,9 @@ OVERRIDES={
   },
   "TH":{
     "point_status":"PARTIAL_LIDAR_SOURCE_AUDIT",
-    "point_generation_allowed":False,
+    "point_generation_allowed":True,
+    "publication_allowed":False,
+    "preferred_point_source":"CHMv2 research candidates now; Thai LiDAR refinement after AOI source verification",
     "sources":[
       {
         "provider":"Thailand government open-data sources",
@@ -138,13 +143,15 @@ OVERRIDES={
     "priority":"EARTHLINE_ROLLOUT"
   },
   "LA":{
-    "point_status":"SCREENING_ONLY_PENDING_HIGH_RES_SOURCE",
-    "point_generation_allowed":False,
+    "point_status":"CHMV2_RESEARCH_CANDIDATE_IF_TILE_AVAILABLE",
+    "point_generation_allowed":True,
+    "publication_allowed":False,
     "priority":"EARTHLINE_ROLLOUT"
   },
   "VN":{
-    "point_status":"SCREENING_ONLY_PENDING_HIGH_RES_SOURCE",
-    "point_generation_allowed":False,
+    "point_status":"CHMV2_RESEARCH_CANDIDATE_IF_TILE_AVAILABLE",
+    "point_generation_allowed":True,
+    "publication_allowed":False,
     "priority":"EARTHLINE_ROLLOUT"
   }
 }
