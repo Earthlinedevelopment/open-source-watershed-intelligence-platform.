@@ -271,6 +271,8 @@ def validation(cands,refs):
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--bbox",required=True); ap.add_argument("--name",required=True); ap.add_argument("--out",required=True)
+    ap.add_argument("--dsm",default=None,help="Optional existing authoritative DSM GeoTIFF")
+    ap.add_argument("--dtm",default=None,help="Optional existing authoritative DTM GeoTIFF")
     args=ap.parse_args()
     bbox=tuple(float(x) for x in args.bbox.split(","))
     out=Path(args.out); out.mkdir(parents=True,exist_ok=True)
@@ -279,10 +281,18 @@ def main():
     xs,ys=tx.transform([minlon,maxlon,maxlon,minlon],[minlat,minlat,maxlat,maxlat])
     b27700=(min(xs),min(ys),max(xs),max(ys))
 
-    dsm_meta=get_wcs_tif(DSM_WCS_OPTIONS,b27700,out/"dsm.tif")
-    dtm_meta=get_wcs_tif(DTM_WCS,b27700,out/"dtm.tif")
+    if args.dsm and args.dtm:
+        dsm_path=Path(args.dsm); dtm_path=Path(args.dtm)
+        if not dsm_path.exists() or not dtm_path.exists():
+            raise RuntimeError("Supplied DSM/DTM artifact missing; fail closed")
+        dsm_meta={"source":"reused successful Environment Agency LiDAR artifact","path":str(dsm_path)}
+        dtm_meta={"source":"reused successful Environment Agency LiDAR artifact","path":str(dtm_path)}
+    else:
+        dsm_path=out/"dsm.tif"; dtm_path=out/"dtm.tif"
+        dsm_meta=get_wcs_tif(DSM_WCS_OPTIONS,b27700,dsm_path)
+        dtm_meta=get_wcs_tif(DTM_WCS,b27700,dtm_path)
     refs,ati_meta=fetch_ati(bbox)
-    cands,chm_meta=structural_candidates(out/"dsm.tif",out/"dtm.tif")
+    cands,chm_meta=structural_candidates(dsm_path,dtm_path)
     val=validation(cands,refs)
 
     # Keep a bounded point layer for visual inspection; full ranking remains in artifact only.
