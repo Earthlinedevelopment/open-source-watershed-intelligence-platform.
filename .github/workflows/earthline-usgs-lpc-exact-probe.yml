@@ -1,0 +1,28 @@
+name: Earthline USGS LPC Exact Attribute Probe
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/usgs_lpc_exact_probe.py'
+      - '.github/workflows/earthline-usgs-lpc-exact-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Query exact USGS LPC work-unit fields
+        run: python tools/elder_trees/usgs_lpc_exact_probe.py
