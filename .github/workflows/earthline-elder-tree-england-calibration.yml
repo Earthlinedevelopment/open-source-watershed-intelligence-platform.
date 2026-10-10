@@ -1,0 +1,53 @@
+name: Earthline Elder Trees England Calibration
+
+on:
+  push:
+    branches:
+      - v2/elder-tree-layer-research
+    paths:
+      - 'tools/elder_trees/england_calibration.py'
+      - '.github/workflows/earthline-elder-tree-england-calibration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  england-calibration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/elder-tree-layer-research
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install scientific dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy scipy rasterio pyproj requests
+
+      - name: Generate Windsor Elder Tree GPS candidates and compare to ATI
+        run: |
+          python tools/elder_trees/england_calibration.py \
+            --name "Windsor England calibration" \
+            --bbox=-0.615,51.420,-0.575,51.450 \
+            --out artifacts/elder-trees-england
+
+      - name: Publish summary to job log
+        if: always()
+        run: |
+          if [ -f artifacts/elder-trees-england/validation-summary.json ]; then
+            cat artifacts/elder-trees-england/validation-summary.json
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-trees-england-calibration
+          path: artifacts/elder-trees-england/
+          if-no-files-found: warn
+          retention-days: 14
