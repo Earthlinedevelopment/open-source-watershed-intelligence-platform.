@@ -230,9 +230,10 @@ def cmd_summarize(args):
             rows.append((x,y,z,int(cls) if cls is not None else None))
     cx=man["center_projected"]["x"];cy=man["center_projected"]["y"]
     local=[r for r in rows if math.hypot(r[0]-cx,r[1]-cy)<=20.0]
+    core=[r for r in rows if math.hypot(r[0]-cx,r[1]-cy)<=8.0]
     ground=[r[2] for r in local if r[3]==2]
-    usable=[r[2] for r in local if r[3] not in (7,18)]
-    vegetation=[r[2] for r in local if r[3] in (1,3,4,5)]
+    usable=[r[2] for r in core if r[3] not in (7,18)]
+    vegetation=[r[2] for r in core if r[3] in (1,3,4,5)]
     ground_method="classification-2"
     if len(ground)>=3:
         ground_z=pct(ground,50)
@@ -245,7 +246,7 @@ def cmd_summarize(args):
     top_z=pct(top_source,99.5) if ground_z is not None and top_source else None
     height=(top_z-ground_z) if top_z is not None else None
     confirmed=bool(
-      len(local)>=20 and
+      len(core)>=20 and
       ground_z is not None and
       height is not None and
       2.0 <= height <= 80.0
@@ -258,15 +259,19 @@ def cmd_summarize(args):
       "source_name":"USGS 3DEP public EPT",
       "source_url":man["selected_project"]["ept_url"],
       "source_year_hint":man["selected_project"].get("year_hint"),
+      "source_ql":man["selected_project"].get("ql"),
+      "source_collect_start":man["selected_project"].get("collect_start"),
+      "source_collect_end":man["selected_project"].get("collect_end"),
+      "source_workunit":man["selected_project"].get("workunit"),
       "crop_radius_m":man.get("radius_m"),
-      "point_count_crop":len(rows),"point_count_within_20m":len(local),
-      "ground_point_count":len(ground),"vegetation_or_unclassified_count":len(top_source),
+      "point_count_crop":len(rows),"point_count_within_20m":len(local),"point_count_within_8m":len(core),
+      "ground_point_count_within_20m":len(ground),"canopy_evidence_point_count_within_8m":len(top_source),
       "ground_method":ground_method if ground_z is not None else None,
       "ground_z":round(ground_z,3) if ground_z is not None else None,
       "canopy_top_z_p99_5":round(top_z,3) if top_z is not None else None,
       "measured_canopy_height_m":round(height,2) if height is not None else None,
       "lidar_structure_confirmed":confirmed,
-      "evidence_limit":"Measured LiDAR confirms local canopy structure only. It does not prove tree age, ancient/veteran status, or mycorrhizal-hub status."
+      "evidence_limit":"Measured LiDAR confirmation requires usable canopy returns within 8 m of the candidate GPS point, using the surrounding 20 m for ground reference. It confirms structure only, not tree age, ancient/veteran status, or mycorrhizal-hub status."
     }
     Path(args.out).write_text(json.dumps(result,indent=2))
     print(json.dumps(result,indent=2))
