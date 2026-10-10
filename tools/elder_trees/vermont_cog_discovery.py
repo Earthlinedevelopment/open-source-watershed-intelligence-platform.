@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Earthline Elder Trees — Vermont COG discovery.
-OFF-PRODUCTION ONLY.
+OFF-PRODUCTION ONLY. Uses public-domain Vermont open geospatial data.
 
 Discovers final statewide 2023 QL1 elevation COGs from Vermont's public S3 bucket
 and inspects only the public Big Tree validation layer.
