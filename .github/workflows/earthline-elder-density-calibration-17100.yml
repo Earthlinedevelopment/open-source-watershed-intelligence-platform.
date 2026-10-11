@@ -40,7 +40,7 @@ jobs:
       - name: Run seven biome calibration AOIs
         run: |
           set -e
-          run(){ n="$1"; b="$2"; python tools/elder_trees/chmv2_aoi_candidates.py --bbox="$b" --max-per-tile=100 --screen-size=384 --out "artifacts/elder-density/$n"; }
+          run(){ n="$1"; b="$2"; python tools/elder_trees/chmv2_aoi_candidates.py --bbox="$b" --max-per-tile=2000 --screen-size=1024 --refine-radius-m=15 --out "artifacts/elder-density/$n"; }
           run alaska "-135.36,57.045,-135.34,57.060"
           run vermont "-73.205,44.475,-73.185,44.490"
           run colorado "-105.61,39.625,-105.59,39.640"
@@ -65,7 +65,8 @@ jobs:
                 'future_selected_total':sum(t.get('future_selected_total',0) for t in tiles),
                 'forest_area_ha':round(sum(t.get('forest_area_ha',0) for t in tiles),3),
                 'forest_cells':sum(t.get('forest_cells',0) for t in tiles),
-                'forest_cells_with_candidate':sum(t.get('forest_cells_with_candidate',0) for t in tiles)
+                'forest_cells_with_candidate':sum(t.get('forest_cells_with_candidate',0) for t in tiles),
+                'refine_radius_m':d.get('refine_radius_m')
               }
           print(json.dumps(out,indent=2))
           if out.get('alaska',{}).get('forest_area_ha',0)>0 and out['alaska'].get('candidate_count',0)==0:
