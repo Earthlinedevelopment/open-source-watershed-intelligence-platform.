@@ -1,0 +1,139 @@
+name: Earthline Vermont Selector-Gate Diagnostic 17109
+
+on:
+  push:
+    branches:
+      - research/elder-density-calibration-17100
+    paths:
+      - '.github/workflows/earthline-vermont-selector-gates-17109.yml'
+      - 'tools/elder_trees/vermont_ql1_pilot.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-density-calibration-17100
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy scipy rasterio pyproj requests
+      - name: Generate authoritative Vermont controls
+        run: python tools/elder_trees/vermont_ql1_pilot.py artifacts/vermont-controls
+      - name: Diagnose exact selector gates at controls
+        run: |
+          python - <<'PY'
+          import json,math,pathlib,requests
+          import numpy as np
+          import rasterio
+          from rasterio.windows import Window
+          from pyproj import Transformer
+          from scipy import ndimage
+
+          ROOT="https://dataforgood-fb-data.s3.amazonaws.com/forests/v2/global/dinov3_global_chm_v2_ml3/chm/"
+          UA={"User-Agent":"Earthline-ElderTree-Research/1.8"}
+
+          def tile_xy(lon,lat,z=10):
+              lat=max(-85.05112878,min(85.05112878,lat)); n=1<<z
+              x=int(min(n-1,max(0,(lon+180.0)/360.0*n)))
+              s=math.sin(math.radians(lat))
+              y=int(min(n-1,max(0,(0.5-math.log((1+s)/(1-s))/(4*math.pi))*n)))
+              return x,y
+          def quadkey(x,y,z=10):
+              out=[]
+              for i in range(z,0,-1):
+                  bit=1<<(i-1);d=0
+                  if x&bit:d+=1
+                  if y&bit:d+=2
+                  out.append(str(d))
+              return "".join(out)
+
+          refs=json.load(open('artifacts/vermont-controls/vermont-public-big-tree-controls.geojson'))['features']
+          detail=[]
+          with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR",CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif"):
+            for i,f in enumerate(refs):
+              lon,lat=f['geometry']['coordinates']; x,y=tile_xy(lon,lat); q=quadkey(x,y)
+              url=ROOT+q+".tif"
+              if requests.head(url,headers=UA,timeout=45).status_code!=200:
+                  detail.append({'control_index':i,'status':'NO_TILE'}); continue
+              with rasterio.open('/vsicurl/'+url) as ds:
+                tx=Transformer.from_crs(4326,ds.crs,always_xy=True); cx,cy=tx.transform(lon,lat)
+                col,row=~ds.transform*(cx,cy); pix=max(abs(ds.transform.a),abs(ds.transform.e))
+                rr=max(50,int(round(180/max(pix,.01))))
+                win=Window(int(col)-rr,int(row)-rr,2*rr+1,2*rr+1)
+                a=ds.read(1,window=win,boundless=True,fill_value=0).astype('float32')
+                tr=ds.window_transform(win)
+                a[(~np.isfinite(a))|(a<0)|(a>80)]=np.nan
+                z=np.nan_to_num(a,nan=0)
+                woody=z[z>=1.5]
+                if woody.size<8:
+                  detail.append({'control_index':i,'status':'NO_CANOPY'}); continue
+                floor=float(max(2.0,min(5.0,np.percentile(woody,25))))
+                canopy=z>=floor; vals=z[canopy]
+                med=ndimage.median_filter(z,size=9,mode='nearest'); prom=np.maximum(0,z-med)
+                pvals=prom[canopy]; hs=np.sort(vals); ps=np.sort(pvals)
+                h_pct=np.zeros_like(z,dtype='float32'); p_pct=np.zeros_like(z,dtype='float32')
+                h_pct[canopy]=np.searchsorted(hs,z[canopy],side='right')/max(1,len(hs))
+                p_pct[canopy]=np.searchsorted(ps,prom[canopy],side='right')/max(1,len(ps))
+                density=ndimage.uniform_filter(canopy.astype('float32'),size=9,mode='nearest')
+                openctx=np.clip(1.0-density,0,1)
+                score=.40*h_pct+.35*p_pct+.25*openctx
+
+                sep=max(3,int(round(5/max(pix,.01))))
+                if sep%2==0: sep+=1
+                sm=ndimage.gaussian_filter(z,sigma=max(.8,min(2.5,1/max(pix,.01))))
+                raw=(sm==ndimage.maximum_filter(sm,size=sep,mode='nearest'))&(sm>=2.0)
+                rows,cols=np.where(raw)
+                peaks=[]
+                for r,c in zip(rows.tolist(),cols.tolist()):
+                  px,py=rasterio.transform.xy(tr,r,c,offset='center')
+                  d=((px-cx)**2+(py-cy)**2)**.5
+                  if d<=30:
+                    eligible=bool(canopy[r,c] and h_pct[r,c]>=.35 and (p_pct[r,c]>=.30 or openctx[r,c]>=.45))
+                    peaks.append((d,r,c,eligible,float(h_pct[r,c]),float(p_pct[r,c]),float(openctx[r,c]),float(score[r,c]),float(z[r,c])))
+                peaks.sort(key=lambda t:t[0])
+                if not peaks:
+                  detail.append({'control_index':i,'status':'NO_RAW_PEAK_30M'}); continue
+                p=peaks[0]
+                # Rank against all eligible raw maxima in the local diagnostic window.
+                eligible_raw=[]
+                for r,c in zip(rows.tolist(),cols.tolist()):
+                  ok=bool(canopy[r,c] and h_pct[r,c]>=.35 and (p_pct[r,c]>=.30 or openctx[r,c]>=.45))
+                  if ok: eligible_raw.append((float(score[r,c]),r,c))
+                eligible_raw.sort(reverse=True)
+                rank=None
+                for k,(_,r,c) in enumerate(eligible_raw,1):
+                  if r==p[1] and c==p[2]: rank=k; break
+                detail.append({
+                  'control_index':i,'status':'OK','nearest_raw_peak_m':round(p[0],2),
+                  'eligible':p[3],'height_pct':round(p[4],3),'prominence_pct':round(p[5],3),
+                  'open_context':round(p[6],3),'structural_score':round(p[7],3),
+                  'height_m':round(p[8],2),'eligible_rank_local_window':rank,
+                  'eligible_peak_count_local_window':len(eligible_raw)
+                })
+          ok=[d for d in detail if d.get('status')=='OK']
+          summary={
+            'control_count':len(refs),'controls_diagnosed':len(ok),
+            'nearest_raw_peak_eligible':sum(bool(d.get('eligible')) for d in ok),
+            'nearest_raw_peak_ineligible':sum(not bool(d.get('eligible')) for d in ok),
+            'ineligible_height_gate':sum(d.get('height_pct',1)<.35 for d in ok),
+            'ineligible_prominence_and_open_gate':sum((d.get('prominence_pct',1)<.30 and d.get('open_context',1)<.45) for d in ok),
+            'eligible_rank_le_10':sum((d.get('eligible_rank_local_window') or 10**9)<=10 for d in ok),
+            'eligible_rank_le_50':sum((d.get('eligible_rank_local_window') or 10**9)<=50 for d in ok),
+            'interpretation':'If nearby raw peaks are mostly ineligible, gates are the recall loss. If eligible but low-ranked, quota/ranking is the recall loss.'
+          }
+          pathlib.Path('artifacts/vermont-selector-gates-17109.json').write_text(json.dumps({'summary':summary,'detail':detail},indent=2))
+          print(json.dumps(summary,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-vermont-selector-gates-17109
+          path: artifacts/
+          retention-days: 14
