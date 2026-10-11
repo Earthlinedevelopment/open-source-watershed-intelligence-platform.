@@ -1,0 +1,140 @@
+name: Earthline Vermont Stage-Loss Diagnostic 17113
+
+on:
+  push:
+    branches:
+      - research/elder-density-calibration-17100
+    paths:
+      - '.github/workflows/earthline-vermont-stage-loss-17113.yml'
+      - 'tools/elder_trees/chmv2_aoi_candidates.py'
+      - 'tools/elder_trees/vermont_ql1_pilot.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-density-calibration-17100
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy scipy rasterio pyproj requests
+      - name: Generate Vermont controls
+        run: python tools/elder_trees/vermont_ql1_pilot.py artifacts/vermont-controls
+      - name: Trace score seed to refinement to final pool
+        run: |
+          python - <<'PY'
+          import glob,json,math,pathlib,subprocess,requests,sys
+          import numpy as np
+          import rasterio
+          from rasterio.windows import from_bounds
+          from pyproj import Transformer
+          from scipy import ndimage
+          sys.path.insert(0,'.')
+          from tools.elder_trees.chmv2_aoi_candidates import tile_xy,quadkey,refine,ROOT
+
+          UA={"User-Agent":"Earthline-ElderTree-Research/2.1"}
+          def hav(a,b):
+              lon1,lat1=a;lon2,lat2=b;R=6371008.8
+              p1,p2=math.radians(lat1),math.radians(lat2)
+              dp=math.radians(lat2-lat1);dl=math.radians(lon2-lon1)
+              q=math.sin(dp/2)**2+math.cos(p1)*math.cos(p2)*math.sin(dl/2)**2
+              return 2*R*math.asin(min(1,math.sqrt(q)))
+          refs=json.load(open('artifacts/vermont-controls/vermont-public-big-tree-controls.geojson'))['features']
+          detail=[]
+          root=pathlib.Path('artifacts/final'); root.mkdir(parents=True,exist_ok=True)
+          for i,f in enumerate(refs):
+              lon,lat=f['geometry']['coordinates']
+              bbox=(lon-.006,lat-.0045,lon+.006,lat+.0045)
+              out=root/f'control-{i:02d}'
+              subprocess.run([
+                'python','tools/elder_trees/chmv2_aoi_candidates.py',
+                '--bbox='+','.join(map(str,bbox)),'--max-per-tile=6000','--screen-size=1024',
+                '--refine-radius-m=15','--preserve-all-eligible','--out',str(out)
+              ],check=True,stdout=subprocess.DEVNULL)
+              pools=glob.glob(str(out/'elder-tree-candidate-pool-*.geojson'))
+              final_feats=json.load(open(pools[0]))['features'] if pools else []
+              final_d=min((hav((lon,lat),g['geometry']['coordinates']) for g in final_feats),default=None)
+
+              x,y=tile_xy(lon,lat);q=quadkey(x,y);url=ROOT+q+'.tif'
+              if requests.head(url,headers=UA,timeout=45).status_code!=200:
+                  detail.append({'control_index':i,'status':'NO_TILE','final_m':final_d});continue
+              with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR',CPL_VSIL_CURL_ALLOWED_EXTENSIONS='.tif'):
+                with rasterio.open('/vsicurl/'+url) as ds:
+                  tx=Transformer.from_crs(4326,ds.crs,always_xy=True)
+                  minlon,minlat,maxlon,maxlat=bbox
+                  xs,ys=tx.transform([minlon,maxlon,maxlon,minlon],[minlat,minlat,maxlat,maxlat])
+                  left=max(min(xs),ds.bounds.left);right=min(max(xs),ds.bounds.right)
+                  bottom=max(min(ys),ds.bounds.bottom);top=min(max(ys),ds.bounds.top)
+                  win=from_bounds(left,bottom,right,top,ds.transform).round_offsets().round_lengths()
+                  wh=max(1,int(win.height));ww=max(1,int(win.width));aspect=ww/max(1,wh)
+                  if aspect>=1: ow=1024;oh=max(32,int(round(1024/aspect)))
+                  else: oh=1024;ow=max(32,int(round(1024*aspect)))
+                  arr=ds.read(1,window=win,out_shape=(oh,ow),resampling=rasterio.enums.Resampling.nearest).astype('float32')
+                  arr[(~np.isfinite(arr))|(arr<0)|(arr>80)]=np.nan
+                  z=np.nan_to_num(arr,nan=0);woody=z[z>=1.5]
+                  if woody.size<8:
+                    detail.append({'control_index':i,'status':'NO_CANOPY','final_m':final_d});continue
+                  floor=float(max(2.0,min(5.0,np.percentile(woody,25))))
+                  canopy=z>=floor; vals=z[canopy]
+                  med=ndimage.median_filter(z,size=9,mode='nearest');prom=np.maximum(0,z-med)
+                  pvals=prom[canopy];hs=np.sort(vals);ps=np.sort(pvals)
+                  hp=np.zeros_like(z,dtype='float32');pp=np.zeros_like(z,dtype='float32')
+                  hp[canopy]=np.searchsorted(hs,z[canopy],side='right')/max(1,len(hs))
+                  pp[canopy]=np.searchsorted(ps,prom[canopy],side='right')/max(1,len(ps))
+                  openctx=np.clip(1.0-ndimage.uniform_filter(canopy.astype('float32'),size=9,mode='nearest'),0,1)
+                  score=np.zeros_like(z,dtype='float32');score[canopy]=.40*hp[canopy]+.35*pp[canopy]+.25*openctx[canopy]
+                  eligible=canopy&(hp>=.35)&((pp>=.30)|(openctx>=.45))
+                  sx=win.width/ow;sy=win.height/oh
+                  tr=ds.window_transform(win)*rasterio.Affine.scale(sx,sy)
+                  screen_px=max(abs(tr.a),abs(tr.e));nms=max(3,int(round(8.0/max(screen_px,.01))))
+                  if nms%2==0:nms+=1
+                  peaks=(score==ndimage.maximum_filter(score,size=nms,mode='nearest'))&eligible
+                  rr,cc=np.where(peaks);to_src=Transformer.from_crs(4326,ds.crs,always_xy=True)
+                  cx0,cy0=to_src.transform(lon,lat)
+                  nearest=None
+                  for r,c in zip(rr.tolist(),cc.tolist()):
+                    cx,cy=rasterio.transform.xy(tr,r,c,offset='center')
+                    d=((cx-cx0)**2+(cy-cy0)**2)**.5
+                    if nearest is None or d<nearest[0]:nearest=(d,cx,cy)
+                  if nearest is None:
+                    detail.append({'control_index':i,'status':'NO_SEED','final_m':final_d});continue
+                  seed_d,cx,cy=nearest
+                  ref=refine(ds,cx,cy,canopy_floor_m=floor,radius_m=15)
+                  if ref:
+                    _,rx,ry,*_=ref
+                    refined_d=((rx-cx0)**2+(ry-cy0)**2)**.5
+                  else: refined_d=None
+                  detail.append({
+                    'control_index':i,'status':'OK',
+                    'seed_m':round(float(seed_d),2),
+                    'refined_m':round(float(refined_d),2) if refined_d is not None else None,
+                    'final_m':round(float(final_d),2) if final_d is not None else None,
+                    'final_pool_count':len(final_feats)
+                  })
+          ok=[d for d in detail if d.get('status')=='OK']
+          def summary(vals):
+              a=sorted(x for x in vals if x is not None);n=len(a)
+              med=(a[n//2] if n%2 else (a[n//2-1]+a[n//2])/2) if a else None
+              return {'count':len(a),'within_10m':int(sum(x<=10 for x in a)),'within_20m':int(sum(x<=20 for x in a)),'within_30m':int(sum(x<=30 for x in a)),'median_m':round(float(med),2) if med is not None else None}
+          out={
+            'seed':summary([d.get('seed_m') for d in ok]),
+            'refined_nearest_seed':summary([d.get('refined_m') for d in ok]),
+            'final_candidate_pool':summary([d.get('final_m') for d in ok]),
+            'interpretation':'The first stage whose recall drops identifies the remaining loss owner.'
+          }
+          pathlib.Path('artifacts/vermont-stage-loss-17113.json').write_text(json.dumps({'summary':out,'detail':detail},indent=2))
+          print(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-vermont-stage-loss-17113
+          path: artifacts/
+          retention-days: 14
