@@ -1,0 +1,161 @@
+name: Earthline Vermont Exact Stand-Quota Diagnostic 17110
+
+on:
+  push:
+    branches:
+      - research/elder-density-calibration-17100
+    paths:
+      - '.github/workflows/earthline-vermont-stand-quota-17110.yml'
+      - 'tools/elder_trees/vermont_ql1_pilot.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-density-calibration-17100
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy scipy rasterio pyproj requests
+      - name: Generate authoritative Vermont controls
+        run: python tools/elder_trees/vermont_ql1_pilot.py artifacts/vermont-controls
+      - name: Diagnose actual stand-cell quota inclusion
+        run: |
+          python - <<'PY'
+          import json,math,pathlib,requests
+          import numpy as np
+          import rasterio
+          from rasterio.windows import from_bounds
+          from pyproj import Transformer
+          from scipy import ndimage
+
+          ROOT="https://dataforgood-fb-data.s3.amazonaws.com/forests/v2/global/dinov3_global_chm_v2_ml3/chm/"
+          UA={"User-Agent":"Earthline-ElderTree-Research/1.9"}
+          CURRENT=15.0; FUTURE=2.5
+
+          def tile_xy(lon,lat,z=10):
+              lat=max(-85.05112878,min(85.05112878,lat)); n=1<<z
+              x=int(min(n-1,max(0,(lon+180.0)/360.0*n)))
+              s=math.sin(math.radians(lat))
+              y=int(min(n-1,max(0,(0.5-math.log((1+s)/(1-s))/(4*math.pi))*n)))
+              return x,y
+          def quadkey(x,y,z=10):
+              out=[]
+              for i in range(z,0,-1):
+                  bit=1<<(i-1);d=0
+                  if x&bit:d+=1
+                  if y&bit:d+=2
+                  out.append(str(d))
+              return "".join(out)
+
+          refs=json.load(open('artifacts/vermont-controls/vermont-public-big-tree-controls.geojson'))['features']
+          detail=[]
+          with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR",CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif"):
+            for i,f in enumerate(refs):
+              lon,lat=f['geometry']['coordinates']; x,y=tile_xy(lon,lat); q=quadkey(x,y)
+              url=ROOT+q+".tif"
+              if requests.head(url,headers=UA,timeout=45).status_code!=200:
+                detail.append({'control_index':i,'status':'NO_TILE'}); continue
+              with rasterio.open('/vsicurl/'+url) as ds:
+                tx=Transformer.from_crs(4326,ds.crs,always_xy=True); cx,cy=tx.transform(lon,lat)
+                # Use one 300 m stand centered on the control to test the intended local prior.
+                half=150.0
+                win=from_bounds(cx-half,cy-half,cx+half,cy+half,ds.transform).round_offsets().round_lengths()
+                wh=max(1,int(win.height));ww=max(1,int(win.width))
+                # Match V2 1024 screening but never upscale beyond native.
+                aspect=ww/max(1,wh)
+                if aspect>=1:
+                    ow=min(1024,ww); oh=max(32,int(round(ow/aspect)))
+                else:
+                    oh=min(1024,wh); ow=max(32,int(round(oh*aspect)))
+                arr=ds.read(1,window=win,out_shape=(oh,ow),resampling=rasterio.enums.Resampling.nearest).astype('float32')
+                arr[(~np.isfinite(arr))|(arr<0)|(arr>80)]=np.nan
+                z=np.nan_to_num(arr,nan=0)
+                woody=z[z>=1.5]
+                if woody.size<8:
+                  detail.append({'control_index':i,'status':'NO_CANOPY'}); continue
+                floor=float(max(2.0,min(5.0,np.percentile(woody,25))))
+                canopy=z>=floor; vals=z[canopy]
+                med=ndimage.median_filter(z,size=9,mode='nearest'); prom=np.maximum(0,z-med)
+                pvals=prom[canopy]; hs=np.sort(vals); ps=np.sort(pvals)
+                h_pct=np.zeros_like(z,dtype='float32'); p_pct=np.zeros_like(z,dtype='float32')
+                h_pct[canopy]=np.searchsorted(hs,z[canopy],side='right')/max(1,len(hs))
+                p_pct[canopy]=np.searchsorted(ps,prom[canopy],side='right')/max(1,len(ps))
+                density=ndimage.uniform_filter(canopy.astype('float32'),size=9,mode='nearest')
+                openctx=np.clip(1.0-density,0,1)
+                score=np.zeros_like(z,dtype='float32')
+                score[canopy]=.40*h_pct[canopy]+.35*p_pct[canopy]+.25*openctx[canopy]
+
+                sx=win.width/ow; sy=win.height/oh
+                screen_tr=ds.window_transform(win)*rasterio.Affine.scale(sx,sy)
+                screen_px=max(abs(screen_tr.a),abs(screen_tr.e))
+                nms=max(3,int(round(8.0/max(screen_px,.01))))
+                if nms%2==0:nms+=1
+                eligible=canopy&(h_pct>=.35)&((p_pct>=.30)|(openctx>=.45))
+                peaks=(score==ndimage.maximum_filter(score,size=nms,mode='nearest'))&eligible
+                rr,cc=np.where(peaks)
+                ranked=sorted([(float(score[r,c]),r,c) for r,c in zip(rr.tolist(),cc.tolist())],reverse=True)
+
+                pixel_area=screen_px*screen_px
+                canopy_ha=float(np.sum(canopy))*pixel_area/10000.0
+                current=max(1,int(math.ceil(canopy_ha*CURRENT)))
+                future=max(1,int(math.ceil(current*FUTURE)))
+                total=current+future
+
+                # nearest raw local maximum to control in same screened stand
+                raw=(z==ndimage.maximum_filter(z,size=max(3,nms),mode='nearest'))&(z>=2.0)
+                rraw,craw=np.where(raw)
+                nearest=None
+                for r,c in zip(rraw.tolist(),craw.tolist()):
+                  px,py=rasterio.transform.xy(screen_tr,r,c,offset='center')
+                  d=((px-cx)**2+(py-cy)**2)**.5
+                  if nearest is None or d<nearest[0]: nearest=(d,r,c)
+
+                if nearest is None:
+                  detail.append({'control_index':i,'status':'NO_RAW_PEAK'}); continue
+                d,rn,cn=nearest
+                # nearest eligible selected peak to that raw crown
+                rank=None
+                raw_eligible=bool(eligible[rn,cn])
+                if raw_eligible:
+                  for k,(_,r,c) in enumerate(ranked,1):
+                    if r==rn and c==cn: rank=k; break
+                detail.append({
+                  'control_index':i,'status':'OK',
+                  'nearest_raw_peak_m':round(d,2),
+                  'raw_peak_eligible':raw_eligible,
+                  'raw_peak_rank_in_stand':rank,
+                  'canopy_area_ha':round(canopy_ha,3),
+                  'current_target':current,'future_target':future,'total_target':total,
+                  'eligible_peak_count':len(ranked),
+                  'included_by_quota': bool(rank is not None and rank<=total)
+                })
+
+          ok=[d for d in detail if d.get('status')=='OK']
+          elig=[d for d in ok if d.get('raw_peak_eligible')]
+          summary={
+            'control_count':len(refs),
+            'controls_diagnosed':len(ok),
+            'raw_peak_eligible':sum(d.get('raw_peak_eligible',False) for d in ok),
+            'eligible_peaks_included_by_current_plus_future_quota':sum(d.get('included_by_quota',False) for d in elig),
+            'eligible_peaks_excluded_by_quota':sum(not d.get('included_by_quota',False) for d in elig),
+            'median_total_target':sorted([d['total_target'] for d in ok])[len(ok)//2] if ok else None,
+            'max_observed_rank_of_nearby_eligible_control_peak':max([d['raw_peak_rank_in_stand'] for d in elig if d.get('raw_peak_rank_in_stand') is not None],default=None),
+            'interpretation':'If eligible control peaks fall outside current+future total_target, density quota is the recall bottleneck. If they are inside quota but missing later, downstream ranking/refinement/dedupe is the bottleneck.'
+          }
+          pathlib.Path('artifacts/vermont-stand-quota-17110.json').write_text(json.dumps({'summary':summary,'detail':detail},indent=2))
+          print(json.dumps(summary,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-vermont-stand-quota-17110
+          path: artifacts/
+          retention-days: 14
