@@ -1,0 +1,145 @@
+name: Earthline Vermont Seed-Owner Diagnostic 17112
+
+on:
+  push:
+    branches:
+      - research/elder-density-calibration-17100
+    paths:
+      - '.github/workflows/earthline-vermont-seed-owner-17112.yml'
+      - 'tools/elder_trees/vermont_ql1_pilot.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-density-calibration-17100
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy scipy rasterio pyproj requests
+      - name: Generate Vermont controls
+        run: python tools/elder_trees/vermont_ql1_pilot.py artifacts/vermont-controls
+      - name: Compare current score maxima with canopy-height maxima
+        run: |
+          python - <<'PY'
+          import json,math,pathlib,requests
+          import numpy as np
+          import rasterio
+          from rasterio.windows import from_bounds
+          from pyproj import Transformer
+          from scipy import ndimage
+
+          ROOT="https://dataforgood-fb-data.s3.amazonaws.com/forests/v2/global/dinov3_global_chm_v2_ml3/chm/"
+          UA={"User-Agent":"Earthline-ElderTree-Research/2.0"}
+
+          def tile_xy(lon,lat,z=10):
+              lat=max(-85.05112878,min(85.05112878,lat)); n=1<<z
+              x=int(min(n-1,max(0,(lon+180.0)/360.0*n)))
+              s=math.sin(math.radians(lat))
+              y=int(min(n-1,max(0,(0.5-math.log((1+s)/(1-s))/(4*math.pi))*n)))
+              return x,y
+          def quadkey(x,y,z=10):
+              out=[]
+              for i in range(z,0,-1):
+                  bit=1<<(i-1);d=0
+                  if x&bit:d+=1
+                  if y&bit:d+=2
+                  out.append(str(d))
+              return "".join(out)
+          def nearest_dist(mask,tr,cx,cy):
+              rr,cc=np.where(mask)
+              if not len(rr): return None
+              best=None
+              for r,c in zip(rr.tolist(),cc.tolist()):
+                  x,y=rasterio.transform.xy(tr,r,c,offset='center')
+                  d=((x-cx)**2+(y-cy)**2)**.5
+                  if best is None or d<best: best=d
+              return best
+
+          refs=json.load(open('artifacts/vermont-controls/vermont-public-big-tree-controls.geojson'))['features']
+          detail=[]
+          with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR",CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif"):
+            for i,f in enumerate(refs):
+              lon,lat=f['geometry']['coordinates']; x,y=tile_xy(lon,lat); q=quadkey(x,y)
+              url=ROOT+q+".tif"
+              if requests.head(url,headers=UA,timeout=45).status_code!=200:
+                  detail.append({'control_index':i,'status':'NO_TILE'}); continue
+              with rasterio.open('/vsicurl/'+url) as ds:
+                tx=Transformer.from_crs(4326,ds.crs,always_xy=True); cx,cy=tx.transform(lon,lat)
+                halfx=500.0; halfy=500.0
+                win=from_bounds(cx-halfx,cy-halfy,cx+halfx,cy+halfy,ds.transform).round_offsets().round_lengths()
+                wh=max(1,int(win.height));ww=max(1,int(win.width))
+                aspect=ww/max(1,wh)
+                if aspect>=1:
+                  ow=1024;oh=max(32,int(round(1024/aspect)))
+                else:
+                  oh=1024;ow=max(32,int(round(1024*aspect)))
+                arr=ds.read(1,window=win,out_shape=(oh,ow),resampling=rasterio.enums.Resampling.nearest).astype('float32')
+                arr[(~np.isfinite(arr))|(arr<0)|(arr>80)]=np.nan
+                z=np.nan_to_num(arr,nan=0)
+                woody=z[z>=1.5]
+                if woody.size<8:
+                  detail.append({'control_index':i,'status':'NO_CANOPY'}); continue
+                floor=float(max(2.0,min(5.0,np.percentile(woody,25))))
+                canopy=z>=floor; vals=z[canopy]
+                med=ndimage.median_filter(z,size=9,mode='nearest'); prom=np.maximum(0,z-med)
+                pvals=prom[canopy]; hs=np.sort(vals); ps=np.sort(pvals)
+                hp=np.zeros_like(z,dtype='float32'); pp=np.zeros_like(z,dtype='float32')
+                hp[canopy]=np.searchsorted(hs,z[canopy],side='right')/max(1,len(hs))
+                pp[canopy]=np.searchsorted(ps,prom[canopy],side='right')/max(1,len(ps))
+                openctx=np.clip(1.0-ndimage.uniform_filter(canopy.astype('float32'),size=9,mode='nearest'),0,1)
+                score=np.zeros_like(z,dtype='float32');score[canopy]=.40*hp[canopy]+.35*pp[canopy]+.25*openctx[canopy]
+                eligible=canopy&(hp>=.35)&((pp>=.30)|(openctx>=.45))
+                sx=win.width/ow;sy=win.height/oh
+                tr=ds.window_transform(win)*rasterio.Affine.scale(sx,sy)
+                px=max(abs(tr.a),abs(tr.e))
+                nms=max(3,int(round(8.0/max(px,.01))))
+                if nms%2==0:nms+=1
+                score_peak=(score==ndimage.maximum_filter(score,size=nms,mode='nearest'))&eligible
+                sm=ndimage.gaussian_filter(z,sigma=max(.8,min(2.5,1/max(px,.01))))
+                canopy_peak=(sm==ndimage.maximum_filter(sm,size=nms,mode='nearest'))&eligible
+                ds_score=nearest_dist(score_peak,tr,cx,cy)
+                ds_canopy=nearest_dist(canopy_peak,tr,cx,cy)
+                detail.append({
+                  'control_index':i,'status':'OK','screen_pixel_m':round(px,2),
+                  'nearest_score_seed_m':round(ds_score,2) if ds_score is not None else None,
+                  'nearest_canopy_seed_m':round(ds_canopy,2) if ds_canopy is not None else None,
+                  'score_seed_count':int(np.sum(score_peak)),
+                  'canopy_seed_count':int(np.sum(canopy_peak))
+                })
+
+          ok=[d for d in detail if d.get('status')=='OK']
+          score=[d['nearest_score_seed_m'] for d in ok if d.get('nearest_score_seed_m') is not None]
+          canopy=[d['nearest_canopy_seed_m'] for d in ok if d.get('nearest_canopy_seed_m') is not None]
+          def median(a):
+              a=sorted(a);n=len(a)
+              return a[n//2] if n%2 else (a[n//2-1]+a[n//2])/2
+          summary={
+            'control_count':len(refs),
+            'controls_diagnosed':len(ok),
+            'score_seed_within_10m':sum(x<=10 for x in score),
+            'score_seed_within_20m':sum(x<=20 for x in score),
+            'score_seed_within_30m':sum(x<=30 for x in score),
+            'score_seed_median_m':round(median(score),2) if score else None,
+            'canopy_seed_within_10m':sum(x<=10 for x in canopy),
+            'canopy_seed_within_20m':sum(x<=20 for x in canopy),
+            'canopy_seed_within_30m':sum(x<=30 for x in canopy),
+            'canopy_seed_median_m':round(median(canopy),2) if canopy else None,
+            'interpretation':'If canopy-height maxima materially outperform composite-score maxima, seed ownership—not source data—is the remaining recall bottleneck.'
+          }
+          pathlib.Path('artifacts/vermont-seed-owner-17112.json').write_text(json.dumps({'summary':summary,'detail':detail},indent=2))
+          print(json.dumps(summary,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-vermont-seed-owner-17112
+          path: artifacts/
+          retention-days: 14
