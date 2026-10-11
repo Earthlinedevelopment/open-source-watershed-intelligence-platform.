@@ -1,0 +1,97 @@
+name: Earthline Elder Control Validation 17105
+
+on:
+  push:
+    branches:
+      - research/elder-density-calibration-17100
+    paths:
+      - '.github/workflows/earthline-elder-control-validation-17105.yml'
+      - 'tools/elder_trees/chmv2_aoi_candidates.py'
+      - 'tools/elder_trees/england_calibration.py'
+      - 'tools/elder_trees/vermont_ql1_pilot.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-density-calibration-17100
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy scipy rasterio pyproj requests
+      - name: Reuse authoritative Windsor LiDAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: earthline-elder-trees-england-calibration
+          path: seed/elder-trees-england
+          run-id: 38019463764
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run authoritative England and Vermont control validators
+        run: |
+          set -e
+          python tools/elder_trees/england_calibration.py             --name "Windsor England calibration 17105"             --bbox=-0.615,51.420,-0.575,51.450             --dsm seed/elder-trees-england/dsm.tif             --dtm seed/elder-trees-england/dtm.tif             --out artifacts/controls/england
+          python tools/elder_trees/vermont_ql1_pilot.py artifacts/controls/vermont
+      - name: Run current CHMv2 baseline over matching control AOIs
+        run: |
+          set -e
+          python tools/elder_trees/chmv2_aoi_candidates.py --bbox=-0.615,51.420,-0.575,51.450 --max-per-tile=4000 --screen-size=1024 --refine-radius-m=15 --out artifacts/chmv2/england
+          python tools/elder_trees/chmv2_aoi_candidates.py --bbox=-73.23,44.45,-73.17,44.51 --max-per-tile=4000 --screen-size=1024 --refine-radius-m=15 --out artifacts/chmv2/vermont
+      - name: Compare CHMv2 candidate positions to authoritative controls
+        run: |
+          python - <<'PY'
+          import glob,json,math,pathlib
+          def hav(a,b):
+              lon1,lat1=a;lon2,lat2=b;R=6371008.8
+              p1,p2=math.radians(lat1),math.radians(lat2)
+              dp=math.radians(lat2-lat1);dl=math.radians(lon2-lon1)
+              q=math.sin(dp/2)**2+math.cos(p1)*math.cos(p2)*math.sin(dl/2)**2
+              return 2*R*math.asin(min(1,math.sqrt(q)))
+          def loadfc(p):
+              return json.load(open(p)).get('features',[])
+          controls={
+            'england':loadfc('artifacts/controls/england/ati-reference.geojson'),
+            'vermont':loadfc('artifacts/controls/vermont/vermont-public-big-tree-controls.geojson')
+          }
+          out={}
+          for place in ('england','vermont'):
+              pools=glob.glob(f'artifacts/chmv2/{place}/elder-tree-candidate-pool-*.geojson')
+              if not pools: raise SystemExit(f'No CHMv2 candidate pool for {place}')
+              cands=loadfc(pools[0]); refs=controls[place]
+              cp=[f['geometry']['coordinates'] for f in cands]
+              rp=[f['geometry']['coordinates'] for f in refs]
+              if not cp or not rp: raise SystemExit(f'Missing candidates or controls for {place}')
+              nearest=[min(hav(r,c) for c in cp) for r in rp]
+              nearest_sorted=sorted(nearest)
+              def med(a):
+                  n=len(a); return a[n//2] if n%2 else (a[n//2-1]+a[n//2])/2
+              out[place]={
+                'control_count':len(rp),
+                'chmv2_candidate_pool_count':len(cp),
+                'within_5m':sum(x<=5 for x in nearest),
+                'within_10m':sum(x<=10 for x in nearest),
+                'within_20m':sum(x<=20 for x in nearest),
+                'within_30m':sum(x<=30 for x in nearest),
+                'median_nearest_m':round(med(nearest_sorted),2),
+                'p90_nearest_m':round(nearest_sorted[min(len(nearest_sorted)-1,int(.9*(len(nearest_sorted)-1)))],2)
+              }
+          out['authoritative_validator_summaries']={
+            'england':json.load(open('artifacts/controls/england/validation-summary.json')),
+            'vermont':json.load(open('artifacts/controls/vermont/validation-summary.json'))
+          }
+          pathlib.Path('artifacts/control-validation-summary.json').write_text(json.dumps(out,indent=2))
+          print(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-control-validation-17105
+          path: artifacts/
+          retention-days: 14
