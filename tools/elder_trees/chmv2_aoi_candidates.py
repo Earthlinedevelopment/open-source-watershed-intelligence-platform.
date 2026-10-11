@@ -22,7 +22,7 @@ from scipy import ndimage
 import requests
 
 ROOT="https://dataforgood-fb-data.s3.amazonaws.com/forests/v2/global/dinov3_global_chm_v2_ml3/chm/"
-METHOD="earthline-elder-tree-aoi-chmv2-v0.5-density-prior"
+METHOD="earthline-elder-tree-aoi-chmv2-v0.6-crown-identity"
 CURRENT_ELDER_TARGET_PER_HA=15.0
 FUTURE_ELDER_RATIO=2.5
 UA={"User-Agent":"Earthline-ElderTree-Research/1.6"}
@@ -89,10 +89,16 @@ def refine(ds,cx,cy,canopy_floor_m=2.0,radius_m=45):
         area=float(np.sum(lab==lid)*abs(tr.a*tr.e)) if lid else 0
         x,y=rasterio.transform.xy(tr,r,c,offset="center")
         dist=((x-cx)**2+(y-cy)**2)**.5
-        score=.45*h+.65*emerg+.025*min(area,800)+4*openf-.03*dist
-        rec=(score,x,y,h,emerg,area,openf)
-        if best is None or rec[0]>best[0]:best=rec
-    return best
+        # Preserve the screen-stage crown identity during native refinement.
+        # Distance is now the primary owner; structural score only breaks ties
+        # among nearby maxima. This prevents refinement from jumping to a
+        # stronger neighboring crown and degrading GPS accuracy.
+        structural=.45*h+.65*emerg+.025*min(area,800)+4*openf
+        rec=(dist,-structural,x,y,h,emerg,area,openf)
+        if best is None or rec<best:best=rec
+    if best is None:return None
+    dist,neg_structural,x,y,h,emerg,area,openf=best
+    return (-neg_structural,x,y,h,emerg,area,openf)
 
 def process_tile(q,bbox,max_per_tile=20,screen_size=512,refine_radius_m=45):
     url=ROOT+q+".tif"
