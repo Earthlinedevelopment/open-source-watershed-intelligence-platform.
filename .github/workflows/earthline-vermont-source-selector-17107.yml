@@ -1,0 +1,127 @@
+name: Earthline Vermont CHMv2 Source-vs-Selector Diagnostic 17107
+
+on:
+  push:
+    branches:
+      - research/elder-density-calibration-17100
+    paths:
+      - '.github/workflows/earthline-vermont-source-selector-17107.yml'
+      - 'tools/elder_trees/vermont_ql1_pilot.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-density-calibration-17100
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy scipy rasterio pyproj requests
+      - name: Generate authoritative Vermont controls
+        run: python tools/elder_trees/vermont_ql1_pilot.py artifacts/vermont-controls
+      - name: Measure raw CHMv2 source maxima around each control
+        run: |
+          python - <<'PY'
+          import json,math,pathlib,requests
+          import numpy as np
+          import rasterio
+          from rasterio.windows import Window
+          from pyproj import Transformer
+          from scipy import ndimage
+
+          ROOT="https://dataforgood-fb-data.s3.amazonaws.com/forests/v2/global/dinov3_global_chm_v2_ml3/chm/"
+          UA={"User-Agent":"Earthline-ElderTree-Research/1.7"}
+
+          def tile_xy(lon,lat,z=10):
+              lat=max(-85.05112878,min(85.05112878,lat)); n=1<<z
+              x=int(min(n-1,max(0,(lon+180.0)/360.0*n)))
+              s=math.sin(math.radians(lat))
+              y=int(min(n-1,max(0,(0.5-math.log((1+s)/(1-s))/(4*math.pi))*n)))
+              return x,y
+
+          def quadkey(x,y,z=10):
+              out=[]
+              for i in range(z,0,-1):
+                  bit=1<<(i-1);d=0
+                  if x&bit:d+=1
+                  if y&bit:d+=2
+                  out.append(str(d))
+              return "".join(out)
+
+          refs=json.load(open('artifacts/vermont-controls/vermont-public-big-tree-controls.geojson'))['features']
+          detail=[]
+          with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR",CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif"):
+              for i,f in enumerate(refs):
+                  lon,lat=f['geometry']['coordinates']
+                  x,y=tile_xy(lon,lat); q=quadkey(x,y)
+                  url=ROOT+q+".tif"
+                  if requests.head(url,headers=UA,timeout=45).status_code!=200:
+                      detail.append({'control_index':i,'status':'NO_TILE','quadkey':q}); continue
+                  with rasterio.open('/vsicurl/'+url) as ds:
+                      tx=Transformer.from_crs(4326,ds.crs,always_xy=True)
+                      cx,cy=tx.transform(lon,lat)
+                      col,row=~ds.transform*(cx,cy)
+                      pix=max(abs(ds.transform.a),abs(ds.transform.e))
+                      rr=max(20,int(round(120/max(pix,.01))))
+                      win=Window(int(col)-rr,int(row)-rr,2*rr+1,2*rr+1)
+                      a=ds.read(1,window=win,boundless=True,fill_value=0).astype('float32')
+                      tr=ds.window_transform(win)
+                      a[(~np.isfinite(a))|(a<0)|(a>80)]=np.nan
+                      z=np.nan_to_num(a,nan=0)
+                      center_r=center_c=rr
+                      control_height=float(a[center_r,center_c]) if 0<=center_r<a.shape[0] and 0<=center_c<a.shape[1] and np.isfinite(a[center_r,center_c]) else None
+                      sm=ndimage.gaussian_filter(z,sigma=max(.8,min(2.5,1/max(pix,.01))))
+                      sep=max(3,int(round(5/max(pix,.01))))
+                      if sep%2==0:sep+=1
+                      peak=(sm==ndimage.maximum_filter(sm,size=sep,mode='nearest'))&(sm>=2.0)
+                      rows,cols=np.where(peak)
+                      ds_to_peak=[]
+                      for r,c in zip(rows.tolist(),cols.tolist()):
+                          px,py=rasterio.transform.xy(tr,r,c,offset='center')
+                          d=((px-cx)**2+(py-cy)**2)**.5
+                          ds_to_peak.append((d,float(a[r,c]) if np.isfinite(a[r,c]) else float(sm[r,c])))
+                      ds_to_peak.sort(key=lambda t:t[0])
+                      nearest=ds_to_peak[0] if ds_to_peak else (None,None)
+                      within20=sum(d<=20 for d,_ in ds_to_peak)
+                      within30=sum(d<=30 for d,_ in ds_to_peak)
+                      detail.append({
+                          'control_index':i,'status':'OK','quadkey':q,
+                          'native_pixel_m':round(pix,3),
+                          'control_pixel_height_m':round(control_height,2) if control_height is not None else None,
+                          'nearest_raw_peak_m':round(nearest[0],2) if nearest[0] is not None else None,
+                          'nearest_raw_peak_height_m':round(nearest[1],2) if nearest[1] is not None else None,
+                          'raw_peaks_within_20m':within20,'raw_peaks_within_30m':within30
+                      })
+          ds=sorted(d['nearest_raw_peak_m'] for d in detail if d.get('nearest_raw_peak_m') is not None)
+          hs=[d['control_pixel_height_m'] for d in detail if d.get('control_pixel_height_m') is not None]
+          def median(a):
+              n=len(a); return a[n//2] if n%2 else (a[n//2-1]+a[n//2])/2
+          summary={
+              'control_count':len(refs),
+              'controls_with_raw_peak':len(ds),
+              'raw_peak_within_5m':sum(x<=5 for x in ds),
+              'raw_peak_within_10m':sum(x<=10 for x in ds),
+              'raw_peak_within_20m':sum(x<=20 for x in ds),
+              'raw_peak_within_30m':sum(x<=30 for x in ds),
+              'median_raw_peak_distance_m':round(median(ds),2) if ds else None,
+              'p90_raw_peak_distance_m':round(ds[min(len(ds)-1,int(.9*(len(ds)-1)))],2) if ds else None,
+              'controls_with_positive_CHMv2_height':sum(h>0 for h in hs),
+              'diagnostic_boundary':'Raw CHMv2 local maxima only; no Earthline cohort ranking, density quota, refinement scoring, or candidate dedupe applied.'
+          }
+          pathlib.Path('artifacts/vermont-source-selector-17107.json').write_text(json.dumps({'summary':summary,'detail':detail},indent=2))
+          print(json.dumps(summary,indent=2))
+          if not ds: raise SystemExit('No raw CHMv2 peaks around Vermont controls')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-vermont-source-selector-17107
+          path: artifacts/
+          retention-days: 14
