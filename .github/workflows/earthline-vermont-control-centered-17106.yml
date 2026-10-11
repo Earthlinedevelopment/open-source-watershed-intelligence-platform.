@@ -1,0 +1,93 @@
+name: Earthline Vermont Control-Centered CHMv2 Validation 17106
+
+on:
+  push:
+    branches:
+      - research/elder-density-calibration-17100
+    paths:
+      - '.github/workflows/earthline-vermont-control-centered-17106.yml'
+      - 'tools/elder_trees/chmv2_aoi_candidates.py'
+      - 'tools/elder_trees/vermont_ql1_pilot.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-density-calibration-17100
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy scipy rasterio pyproj requests
+      - name: Generate authoritative Vermont public controls
+        run: python tools/elder_trees/vermont_ql1_pilot.py artifacts/vermont-controls
+      - name: Run current CHMv2 baseline around each control
+        run: |
+          python - <<'PY'
+          import json,subprocess,pathlib
+          controls=json.load(open('artifacts/vermont-controls/vermont-public-big-tree-controls.geojson'))['features']
+          root=pathlib.Path('artifacts/vermont-chmv2'); root.mkdir(parents=True,exist_ok=True)
+          for i,f in enumerate(controls):
+              lon,lat=f['geometry']['coordinates']
+              # ~450 m half-width: enough local context while staying bounded.
+              dx=0.006
+              dy=0.0045
+              bbox=f"{lon-dx},{lat-dy},{lon+dx},{lat+dy}"
+              subprocess.run([
+                'python','tools/elder_trees/chmv2_aoi_candidates.py',
+                '--bbox='+bbox,'--max-per-tile=1000','--screen-size=1024',
+                '--refine-radius-m=15','--out',str(root/f'control-{i:02d}')
+              ],check=True)
+          PY
+      - name: Measure CHMv2 distance to each Vermont control
+        run: |
+          python - <<'PY'
+          import glob,json,math,pathlib
+          def hav(a,b):
+              lon1,lat1=a;lon2,lat2=b;R=6371008.8
+              p1,p2=math.radians(lat1),math.radians(lat2)
+              dp=math.radians(lat2-lat1);dl=math.radians(lon2-lon1)
+              q=math.sin(dp/2)**2+math.cos(p1)*math.cos(p2)*math.sin(dl/2)**2
+              return 2*R*math.asin(min(1,math.sqrt(q)))
+          refs=json.load(open('artifacts/vermont-controls/vermont-public-big-tree-controls.geojson'))['features']
+          detail=[]
+          for i,r in enumerate(refs):
+              pools=glob.glob(f'artifacts/vermont-chmv2/control-{i:02d}/elder-tree-candidate-pool-*.geojson')
+              if not pools:
+                  detail.append({'control_index':i,'candidate_count':0,'nearest_m':None})
+                  continue
+              feats=json.load(open(pools[0]))['features']
+              rp=r['geometry']['coordinates']
+              ds=[hav(rp,f['geometry']['coordinates']) for f in feats]
+              detail.append({'control_index':i,'candidate_count':len(feats),'nearest_m':round(min(ds),2) if ds else None})
+          ds=sorted(x['nearest_m'] for x in detail if x['nearest_m'] is not None)
+          def median(a):
+              n=len(a); return a[n//2] if n%2 else (a[n//2-1]+a[n//2])/2
+          summary={
+            'control_count':len(refs),
+            'controls_with_candidates':len(ds),
+            'within_5m':sum(x<=5 for x in ds),
+            'within_10m':sum(x<=10 for x in ds),
+            'within_20m':sum(x<=20 for x in ds),
+            'within_30m':sum(x<=30 for x in ds),
+            'median_nearest_m':round(median(ds),2) if ds else None,
+            'p90_nearest_m':round(ds[min(len(ds)-1,int(.9*(len(ds)-1)))],2) if ds else None,
+            'detector':'CHMv2 V2 research baseline: 1024 screen + 15 m refinement',
+            'scientific_boundary':'Vermont Big Tree records are large-tree detection controls, not automatically verified Elder Trees.'
+          }
+          pathlib.Path('artifacts/vermont-control-centered-summary.json').write_text(json.dumps({'summary':summary,'detail':detail},indent=2))
+          print(json.dumps(summary,indent=2))
+          if len(ds)==0: raise SystemExit('No CHMv2 candidates near any Vermont controls')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-vermont-control-centered-17106
+          path: artifacts/
+          retention-days: 14
