@@ -97,7 +97,7 @@ jobs:
                           'control_pixel_height_m':round(control_height,2) if control_height is not None else None,
                           'nearest_raw_peak_m':round(nearest[0],2) if nearest[0] is not None else None,
                           'nearest_raw_peak_height_m':round(nearest[1],2) if nearest[1] is not None else None,
-                          'raw_peaks_within_20m':within20,'raw_peaks_within_30m':within30
+                          'raw_peaks_within_20m':int(within20),'raw_peaks_within_30m':int(within30)
                       })
           ds=sorted(d['nearest_raw_peak_m'] for d in detail if d.get('nearest_raw_peak_m') is not None)
           hs=[d['control_pixel_height_m'] for d in detail if d.get('control_pixel_height_m') is not None]
@@ -106,13 +106,13 @@ jobs:
           summary={
               'control_count':len(refs),
               'controls_with_raw_peak':len(ds),
-              'raw_peak_within_5m':sum(x<=5 for x in ds),
-              'raw_peak_within_10m':sum(x<=10 for x in ds),
-              'raw_peak_within_20m':sum(x<=20 for x in ds),
-              'raw_peak_within_30m':sum(x<=30 for x in ds),
+              'raw_peak_within_5m':int(sum(x<=5 for x in ds)),
+              'raw_peak_within_10m':int(sum(x<=10 for x in ds)),
+              'raw_peak_within_20m':int(sum(x<=20 for x in ds)),
+              'raw_peak_within_30m':int(sum(x<=30 for x in ds)),
               'median_raw_peak_distance_m':round(median(ds),2) if ds else None,
               'p90_raw_peak_distance_m':round(ds[min(len(ds)-1,int(.9*(len(ds)-1)))],2) if ds else None,
-              'controls_with_positive_CHMv2_height':sum(h>0 for h in hs),
+              'controls_with_positive_CHMv2_height':int(sum(h>0 for h in hs)),
               'diagnostic_boundary':'Raw CHMv2 local maxima only; no Earthline cohort ranking, density quota, refinement scoring, or candidate dedupe applied.'
           }
           pathlib.Path('artifacts/vermont-source-selector-17107.json').write_text(json.dumps({'summary':summary,'detail':detail},indent=2))
