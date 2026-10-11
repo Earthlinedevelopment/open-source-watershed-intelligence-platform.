@@ -100,7 +100,7 @@ def refine(ds,cx,cy,canopy_floor_m=2.0,radius_m=45):
     dist,neg_structural,x,y,h,emerg,area,openf=best
     return (-neg_structural,x,y,h,emerg,area,openf)
 
-def process_tile(q,bbox,max_per_tile=20,screen_size=512,refine_radius_m=45):
+def process_tile(q,bbox,max_per_tile=20,screen_size=512,refine_radius_m=45,preserve_all_eligible=False):
     url=ROOT+q+".tif"
     if not exists(q):return [],{"quadkey":q,"status":"NO_TILE"}
     with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR",CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif"):
@@ -201,23 +201,23 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512,refine_radius_m=45):
                         reverse=True
                     )
                     total_target=current_target+future_target
-                    selected=ranked_cell[:total_target]
-                    # When the source cannot supply the full density prior, preserve
-                    # the current:future cohort ratio instead of consuming all scarce
-                    # maxima as current Elders. This keeps succession visible while
-                    # remaining fail-honest about the density shortfall.
-                    if len(selected)>=total_target:
+                    quota_selected=ranked_cell[:total_target]
+                    # Density priors label cohorts; in high-recall research mode they
+                    # do not discard structurally valid canopy maxima.
+                    if len(quota_selected)>=total_target:
                         current_n=current_target
                     else:
-                        current_n=max(1,int(round(len(selected)/(1.0+FUTURE_ELDER_RATIO)))) if selected else 0
+                        current_n=max(1,int(round(len(quota_selected)/(1.0+FUTURE_ELDER_RATIO)))) if quota_selected else 0
                         current_n=min(current_target,current_n)
-                    future_n=min(future_target,max(0,len(selected)-current_n))
-                    current_items=selected[:current_n]
-                    future_items=selected[current_n:current_n+future_n]
+                    future_n=min(future_target,max(0,len(quota_selected)-current_n))
+                    current_items=quota_selected[:current_n]
+                    future_items=quota_selected[current_n:current_n+future_n]
                     current_selected_total+=len(current_items)
                     future_selected_total+=len(future_items)
                     candidates.extend([(sc,r,c,"CURRENT_ELDER_CANDIDATE") for sc,r,c in current_items])
                     candidates.extend([(sc,r,c,"FUTURE_ELDER_CANDIDATE") for sc,r,c in future_items])
+                    if preserve_all_eligible and len(ranked_cell)>len(quota_selected):
+                        candidates.extend([(sc,r,c,"OUTSIDE_DENSITY_PRIOR") for sc,r,c in ranked_cell[len(quota_selected):]])
 
             all_ranked=sorted(candidates,key=lambda x:x[0],reverse=True)
             ranked=all_ranked[:max_per_tile*3]
@@ -269,6 +269,7 @@ def main():
     ap.add_argument("--screen-size",type=int,default=1024,help="Maximum screening dimension; 1024 is the V2 research default after cross-biome calibration")
     ap.add_argument("--display-per-tile",type=int,default=None,help="Optional sparse map-display limit per tile; does not change candidate-pool count")
     ap.add_argument("--refine-radius-m",type=float,default=15.0,help="Native-resolution refinement search radius; 15 m is the V2 research default after cross-biome calibration")
+    ap.add_argument("--preserve-all-eligible",action="store_true",help="Research diagnostic: retain eligible canopy maxima outside the density prior instead of discarding them")
     args=ap.parse_args()
     bbox=tuple(float(x) for x in args.bbox.split(","))
     if bbox[0]>=bbox[2] or bbox[1]>=bbox[3]:raise SystemExit("invalid bbox")
@@ -277,7 +278,7 @@ def main():
     if len(qs)>64:raise SystemExit(f"AOI spans {len(qs)} CHMv2 tiles; split into bounded requests")
     feats=[];tiles=[]
     for q in qs:
-        f,m=process_tile(q,bbox,args.max_per_tile,args.screen_size,args.refine_radius_m);feats.extend(f);tiles.append(m)
+        f,m=process_tile(q,bbox,args.max_per_tile,args.screen_size,args.refine_radius_m,args.preserve_all_eligible);feats.extend(f);tiles.append(m)
     ded=[]
     for f in sorted(feats,key=lambda x:x["properties"].get("height_m",0),reverse=True):
         p=f["geometry"]["coordinates"]
@@ -308,7 +309,7 @@ def main():
     meta={"mode":"off-production","method_version":METHOD,"bbox":bbox,"cache_key":key,
           "requested_tiles":qs,"tile_results":tiles,
           "candidate_count":len(ded),"candidate_pool_count":len(ded),
-          "display_count":len(display),"display_limit_per_tile":args.display_per_tile,"refine_radius_m":args.refine_radius_m,
+          "display_count":len(display),"display_limit_per_tile":args.display_per_tile,"refine_radius_m":args.refine_radius_m,"preserve_all_eligible":args.preserve_all_eligible,
           "count_owner":"candidate_pool","map_owner":"display_subset" if args.display_per_tile is not None else "candidate_pool",
           "scientific_boundary":"All output points are unverified Elder Tree Candidates. CURRENT/FUTURE cohort labels are research priors for high-recall calibration, not proof of age. Display density is not detector recall and is not the evidence-count owner.",
           "density_prior":{"current_elder_target_per_ha":CURRENT_ELDER_TARGET_PER_HA,"future_elder_ratio":FUTURE_ELDER_RATIO}}
