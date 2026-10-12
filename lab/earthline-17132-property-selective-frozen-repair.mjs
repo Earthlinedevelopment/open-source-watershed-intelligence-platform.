@@ -80,6 +80,6 @@ const out=await page.evaluate(()=>({
   safety:(window.M&&window.M.safetyAudit15806)||null
 }));
 console.log('REPAIR17132 '+JSON.stringify({TARGET,patched,regionalError,propertyWaitError,out}));
-const pass=!!(out.pub?.published===true && out.run?.result===true && Number(out.pub?.publicationCount||0)>0 && out.safety?.verified===true);
+const pass=!!(out.pub?.published===true && out.run?.result===true && Number(out.pub?.publicationCount||0)>0 && Number(out.pub?.safeCount)===Number(out.pub?.publicationCount) && !out.block);
 await browser.close();
 if(!pass)process.exitCode=1;
