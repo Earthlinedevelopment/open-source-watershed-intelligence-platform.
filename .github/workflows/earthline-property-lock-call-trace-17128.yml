@@ -1,0 +1,32 @@
+name: Earthline Property Lock Call Trace 17128
+on:
+  push:
+    branches: [research/elder-density-calibration-17100]
+    paths:
+      - '.github/workflows/earthline-property-lock-call-trace-17128.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - name: Trace all Property safety-lock call sites
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8',errors='replace')
+          for n in ['earthlineLockPropertyResult15815(', 'earthlinePublishRawPropertyResult15816(', 'vectorNoBuild15778(', 'earthlineFrozenPropertyClearanceAudit16255(']:
+              print('\n===== '+n+' =====')
+              pos=0; count=0
+              while True:
+                  i=t.find(n,pos)
+                  if i<0: break
+                  count+=1
+                  print('\n--- occurrence',count,'at',i,'---')
+                  print(t[max(0,i-5000):min(len(t),i+8000)])
+                  pos=i+len(n)
+              print('COUNT',count)
+          PY
