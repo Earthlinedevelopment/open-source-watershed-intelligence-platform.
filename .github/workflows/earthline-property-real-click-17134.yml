@@ -1,0 +1,27 @@
+name: Earthline Property Real Click 17134
+on:
+  push:
+    branches: [research/elder-density-calibration-17100]
+    paths:
+      - '.github/workflows/earthline-property-real-click-17134.yml'
+      - 'lab/earthline-17134-property-real-click.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  click:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ['Thailand','Uruguay','Comoros','Cabo Verde','New Zealand']
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: research/elder-density-calibration-17100}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: npm install --no-save playwright && npx playwright install --with-deps chromium
+      - env:
+          TARGET: ${{ matrix.target }}
+        run: node lab/earthline-17134-property-real-click.mjs
