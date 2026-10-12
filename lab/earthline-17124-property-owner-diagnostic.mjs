@@ -63,7 +63,10 @@ const snap=await page.evaluate(()=>{
     safetyAudit: small(m.safetyAudit15806||null),
     propertyLock: small(m.propertyResultLock15815||null),
     locationIntegrity: small(m.lastLocationIntegrity15801||window.EARTHLINE_LOCATION_INTEGRITY_15801||null),
-    propertyRunFailure: small(m.propertyRunFailure16539||null)
+    propertyRunFailure: small(m.propertyRunFailure16539||null),
+    runtimeLockSource: typeof window.earthlineLockPropertyResult15815==='function'?String(window.earthlineLockPropertyResult15815):null,
+    runtimeFilterSource: typeof window.earthlineFilterCorridors15788==='function'?String(window.earthlineFilterCorridors15788):null,
+    runtimeAuditSource: typeof window.earthlineAuditCorridorClearance15806==='function'?String(window.earthlineAuditCorridorClearance15806):null
   };
 });
 console.log(JSON.stringify({TARGET,regionalError,propertyWaitError,pageErrors:errors,snap},null,2));
