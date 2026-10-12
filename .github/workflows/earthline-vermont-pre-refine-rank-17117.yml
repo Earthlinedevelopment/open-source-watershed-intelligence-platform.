@@ -1,0 +1,129 @@
+name: Earthline Vermont Pre-Refine Rank Diagnostic 17117
+
+on:
+  push:
+    branches:
+      - research/elder-density-calibration-17100
+    paths:
+      - '.github/workflows/earthline-vermont-pre-refine-rank-17117.yml'
+      - 'tools/elder_trees/chmv2_aoi_candidates.py'
+      - 'tools/elder_trees/vermont_ql1_pilot.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-density-calibration-17100
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy scipy rasterio pyproj requests
+      - name: Generate Vermont controls
+        run: python tools/elder_trees/vermont_ql1_pilot.py artifacts/vermont-controls
+      - name: Measure exact pre-refine rank of surviving missed controls
+        run: |
+          python - <<'PY'
+          import json,math,pathlib,requests
+          import numpy as np
+          import rasterio
+          from rasterio.windows import from_bounds
+          from pyproj import Transformer
+          from scipy import ndimage
+          from tools.elder_trees.chmv2_aoi_candidates import tile_xy,quadkey,ROOT,CURRENT_ELDER_TARGET_PER_HA,FUTURE_ELDER_RATIO
+
+          controls=[7,8,11,12,16,17,22]
+          refs=json.load(open('artifacts/vermont-controls/vermont-public-big-tree-controls.geojson'))['features']
+          UA={"User-Agent":"Earthline-ElderTree-Research/2.4"}
+          detail=[]
+          with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR',CPL_VSIL_CURL_ALLOWED_EXTENSIONS='.tif'):
+            for i in controls:
+              f=refs[i];lon,lat=f['geometry']['coordinates']
+              bbox=(lon-.006,lat-.0045,lon+.006,lat+.0045)
+              x,y=tile_xy(lon,lat);q=quadkey(x,y);url=ROOT+q+'.tif'
+              if requests.head(url,headers=UA,timeout=45).status_code!=200:
+                detail.append({'control_index':i,'status':'NO_TILE'});continue
+              with rasterio.open('/vsicurl/'+url) as ds:
+                tx=Transformer.from_crs(4326,ds.crs,always_xy=True);cx0,cy0=tx.transform(lon,lat)
+                minlon,minlat,maxlon,maxlat=bbox
+                xs,ys=tx.transform([minlon,maxlon,maxlon,minlon],[minlat,minlat,maxlat,maxlat])
+                left=max(min(xs),ds.bounds.left);right=min(max(xs),ds.bounds.right)
+                bottom=max(min(ys),ds.bounds.bottom);top=min(max(ys),ds.bounds.top)
+                win=from_bounds(left,bottom,right,top,ds.transform).round_offsets().round_lengths()
+                wh=max(1,int(win.height));ww=max(1,int(win.width));aspect=ww/max(1,wh)
+                if aspect>=1: ow=1024;oh=max(32,int(round(1024/aspect)))
+                else: oh=1024;ow=max(32,int(round(1024*aspect)))
+                arr=ds.read(1,window=win,out_shape=(oh,ow),resampling=rasterio.enums.Resampling.nearest).astype('float32')
+                arr[(~np.isfinite(arr))|(arr<0)|(arr>80)]=np.nan
+                z=np.nan_to_num(arr,nan=0);woody=z[z>=1.5]
+                if woody.size<8:
+                  detail.append({'control_index':i,'status':'NO_CANOPY'});continue
+                floor=float(max(2.0,min(5.0,np.percentile(woody,25))))
+                canopy=z>=floor;vals=z[canopy]
+                med=ndimage.median_filter(z,size=9,mode='nearest');prom=np.maximum(0,z-med)
+                pvals=prom[canopy];hs=np.sort(vals);ps=np.sort(pvals)
+                hp=np.zeros_like(z,dtype='float32');pp=np.zeros_like(z,dtype='float32')
+                hp[canopy]=np.searchsorted(hs,z[canopy],side='right')/max(1,len(hs))
+                pp[canopy]=np.searchsorted(ps,prom[canopy],side='right')/max(1,len(ps))
+                openctx=np.clip(1.0-ndimage.uniform_filter(canopy.astype('float32'),size=9,mode='nearest'),0,1)
+                score=np.zeros_like(z,dtype='float32');score[canopy]=.40*hp[canopy]+.35*pp[canopy]+.25*openctx[canopy]
+                screen_px=max(abs(ds.transform.a)*float(win.width)/max(1,ow),abs(ds.transform.e)*float(win.height)/max(1,oh))
+                stand_px=max(4,int(round(300.0/max(screen_px,.01))))
+                nms=max(3,int(round(8.0/max(screen_px,.01))))
+                if nms%2==0:nms+=1
+                screen_tr=ds.window_transform(win)*rasterio.Affine.scale(win.width/ow,win.height/oh)
+                candidates=[]
+                for r0 in range(0,oh,stand_px):
+                  for c0 in range(0,ow,stand_px):
+                    r1=min(oh,r0+stand_px);c1=min(ow,c0+stand_px)
+                    cm=canopy[r0:r1,c0:c1]
+                    if cm.size==0 or float(np.mean(cm))<0.18: continue
+                    hs_cell=hp[r0:r1,c0:c1];ps_cell=pp[r0:r1,c0:c1]
+                    op_cell=openctx[r0:r1,c0:c1];sc_cell=score[r0:r1,c0:c1]
+                    elig=cm&(hs_cell>=.35)&((ps_cell>=.30)|(op_cell>=.45))
+                    if not np.any(elig): continue
+                    peaks=(sc_cell==ndimage.maximum_filter(sc_cell,size=nms,mode='nearest'))&elig
+                    rr,cc=np.where(peaks)
+                    ranked_cell=sorted([(float(sc_cell[r,c]),r0+r,c0+c) for r,c in zip(rr.tolist(),cc.tolist())],reverse=True)
+                    candidates.extend(ranked_cell)
+                all_ranked=sorted(candidates,key=lambda x:x[0],reverse=True)
+                nearest=None
+                for rank,(sc,r,c) in enumerate(all_ranked,1):
+                  px,py=rasterio.transform.xy(screen_tr,r,c,offset='center')
+                  d=((px-cx0)**2+(py-cy0)**2)**.5
+                  if nearest is None or d<nearest[0]: nearest=(d,rank,sc,r,c)
+                if nearest is None:
+                  detail.append({'control_index':i,'status':'NO_CANDIDATE'});continue
+                d,rank,sc,r,c=nearest
+                detail.append({
+                  'control_index':i,'status':'OK',
+                  'nearest_pre_refine_candidate_m':round(float(d),2),
+                  'global_rank':int(rank),
+                  'screen_score':round(float(sc),5),
+                  'reference_peak_count':len(all_ranked),
+                  'passes_rank_18000_cap':bool(rank<=18000)
+                })
+          ok=[d for d in detail if d.get('status')=='OK']
+          summary={
+            'controls':len(controls),
+            'diagnosed':len(ok),
+            'nearest_candidate_within_20m':int(sum(d['nearest_pre_refine_candidate_m']<=20 for d in ok)),
+            'nearest_candidate_within_30m':int(sum(d['nearest_pre_refine_candidate_m']<=30 for d in ok)),
+            'nearest_candidate_below_rank_18000':int(sum(not d['passes_rank_18000_cap'] for d in ok))
+          }
+          payload={'summary':summary,'detail':detail}
+          pathlib.Path('artifacts/vermont-pre-refine-rank-17117.json').write_text(json.dumps(payload,indent=2))
+          print(json.dumps(payload,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-vermont-pre-refine-rank-17117
+          path: artifacts/
+          retention-days: 14
