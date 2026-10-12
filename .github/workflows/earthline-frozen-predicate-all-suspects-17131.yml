@@ -1,0 +1,51 @@
+name: Earthline Frozen Predicate All Suspects 17131
+
+on:
+  push:
+    branches: [research/elder-density-calibration-17100]
+    paths:
+      - '.github/workflows/earthline-frozen-predicate-all-suspects-17131.yml'
+      - 'lab/earthline-17131-frozen-predicate-all.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        target:
+          - 'Algeria'
+          - 'Cabo Verde'
+          - 'Chad'
+          - 'Comoros'
+          - 'Tunisia'
+          - 'Niger'
+          - 'Sierra Leone'
+          - 'Guatemala'
+          - 'Peru'
+          - 'Uruguay'
+          - 'Cambodia'
+          - 'New Zealand'
+          - 'Saudi Arabia'
+          - 'Thailand'
+          - 'Vietnam'
+          - 'Vermont'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-density-calibration-17100
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright && npx playwright install --with-deps chromium
+      - name: Diagnose frozen clearance
+        env:
+          TARGET: ${{ matrix.target }}
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+        run: node lab/earthline-17131-frozen-predicate-all.mjs
