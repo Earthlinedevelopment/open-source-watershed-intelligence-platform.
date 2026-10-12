@@ -221,7 +221,7 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512,refine_radius_m=45,prese
                     if not len(rr):continue
                     forest_cells_with_candidate+=1
                     ranked_cell=sorted(
-                        [(float(sc_cell[r,c]),r0+r,c0+c) for r,c in zip(rr.tolist(),cc.tolist())],
+                        [(float(sc_cell[r,c]),r0+r,c0+c) for r,c in zip(rr,cc)],
                         reverse=True
                     )
                     total_target=current_target+future_target
