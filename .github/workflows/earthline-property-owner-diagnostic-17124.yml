@@ -1,0 +1,40 @@
+name: Earthline Property Owner Diagnostic 17124
+
+on:
+  push:
+    branches: [research/elder-density-calibration-17100]
+    paths:
+      - '.github/workflows/earthline-property-owner-diagnostic-17124.yml'
+      - 'lab/earthline-17124-property-owner-diagnostic.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - 'Chad'
+          - 'Guatemala'
+          - 'Cambodia'
+          - 'Comoros'
+          - 'New Zealand'
+          - 'Uruguay'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-density-calibration-17100
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright && npx playwright install --with-deps chromium
+      - name: Capture current-live Property owner state
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          TARGET: ${{ matrix.target }}
+        run: node lab/earthline-17124-property-owner-diagnostic.mjs
