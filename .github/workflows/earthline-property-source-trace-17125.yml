@@ -1,0 +1,58 @@
+name: Earthline Property Source Trace 17125
+
+on:
+  push:
+    branches: [research/elder-density-calibration-17100]
+    paths:
+      - '.github/workflows/earthline-property-source-trace-17125.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Trace Property exclusion and clearance owners
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          files=['index.html','earthline-launch-16872.js']
+          needles=[
+            'vectorNoBuild15778',
+            'earthlineGovernedPropertyRun16202',
+            'earthlineCollectParcelInfrastructure15862P',
+            'propertyResultLock15815',
+            'safetyAudit15806',
+            'open-data-screened-clear-not-authoritative',
+            'clearance-audit-unverified',
+            'exclusion-index-unavailable',
+            'frozenClearance16255'
+          ]
+          for fn in files:
+              p=Path(fn)
+              if not p.exists(): continue
+              t=p.read_text(encoding='utf-8',errors='replace')
+              print('\n===== FILE',fn,'len',len(t),'=====')
+              for n in needles:
+                  pos=0; found=0
+                  while True:
+                      i=t.find(n,pos)
+                      if i<0: break
+                      found+=1
+                      print('\n---',n,'occurrence',found,'at',i,'---')
+                      print(t[max(0,i-3500):min(len(t),i+6500)])
+                      pos=i+len(n)
+                      if found>=4: break
+                  if not found: print('\n---',n,'NOT FOUND ---')
+          PY
+      - name: Trace commits mentioning exclusion verification
+        shell: bash
+        run: |
+          git log --all --oneline --decorate --grep='exclusion\|clearance\|property safety\|open-data' -i -n 40 || true
