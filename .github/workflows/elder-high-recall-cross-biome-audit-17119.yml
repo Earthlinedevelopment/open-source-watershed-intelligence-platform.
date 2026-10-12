@@ -1,0 +1,165 @@
+name: "17119 Elder High-Recall Cross-Biome Audit"
+
+on:
+  push:
+    branches:
+      - research/elder-density-calibration-17100
+    paths:
+      - ".github/workflows/elder-high-recall-cross-biome-audit-17119.yml"
+      - "tools/elder_trees/chmv2_aoi_candidates.py"
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install research dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy scipy rasterio pyproj requests
+
+      - name: Run 17118 high-recall detector across seven biomes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          run_region () {
+            local name="$1"
+            local bbox="$2"
+            python tools/elder_trees/chmv2_aoi_candidates.py \
+              --bbox="$bbox" \
+              --max-per-tile=6000 \
+              --screen-size=1024 \
+              --refine-radius-m=15 \
+              --preserve-all-eligible \
+              --out="artifacts/$name"
+          }
+
+          run_region alaska   "-135.36,57.045,-135.34,57.060"
+          run_region colorado "-105.61,39.625,-105.59,39.640"
+          run_region england  "-0.603,51.430,-0.583,51.445"
+          run_region vermont  "-73.205,44.475,-73.185,44.490"
+          run_region thailand "101.420,14.340,101.440,14.355"
+          run_region laos     "103.290,19.990,103.310,20.005"
+          run_region vietnam  "105.610,20.305,105.630,20.320"
+
+      - name: Summarize volume, cohort mix, cap status, and spatial spread
+        run: |
+          python - <<'PY'
+          import glob, json, math, pathlib, statistics
+          from collections import Counter
+
+          ROOT=pathlib.Path("artifacts")
+          regions=["alaska","colorado","england","vermont","thailand","laos","vietnam"]
+
+          def pct(values,p):
+              if not values:
+                  return None
+              s=sorted(values)
+              if len(s)==1:
+                  return round(float(s[0]),4)
+              k=(len(s)-1)*p
+              lo=int(math.floor(k)); hi=int(math.ceil(k))
+              if lo==hi:
+                  v=s[lo]
+              else:
+                  v=s[lo]+(s[hi]-s[lo])*(k-lo)
+              return round(float(v),4)
+
+          out={
+              "mode":"off-production",
+              "audit":"17119",
+              "source_method_expected":"earthline-elder-tree-aoi-chmv2-v0.7-high-recall-plateau-collapse",
+              "max_per_tile":6000,
+              "screen_size":1024,
+              "refine_radius_m":15,
+              "preserve_all_eligible":True,
+              "regions":{}
+          }
+
+          for region in regions:
+              metas=glob.glob(str(ROOT/region/"elder-trees-*.json"))
+              pools=glob.glob(str(ROOT/region/"elder-tree-candidate-pool-*.geojson"))
+              if len(metas)!=1 or len(pools)!=1:
+                  raise SystemExit(f"{region}: expected one metadata JSON and one candidate pool")
+              meta=json.load(open(metas[0]))
+              fc=json.load(open(pools[0]))
+              feats=fc.get("features",[])
+              props=[f.get("properties") or {} for f in feats]
+              bbox=meta["bbox"]
+              minlon,minlat,maxlon,maxlat=bbox
+
+              cohorts=Counter(p.get("elder_cohort") for p in props)
+              scores=[float(p["screen_structural_score"]) for p in props if p.get("screen_structural_score") is not None]
+              heights=[float(p["height_m"]) for p in props if p.get("height_m") is not None]
+
+              tile_results=[x for x in meta.get("tile_results",[]) if x.get("status")=="OK"]
+              forest_area=sum(float(x.get("forest_area_ha") or 0) for x in tile_results)
+              ref_peaks=sum(int(x.get("reference_peak_count") or 0) for x in tile_results)
+              cap_hits=sum(1 for x in tile_results if int(x.get("candidate_count") or 0)>=6000)
+
+              # Coarse 4x4 occupancy is a spatial-distribution diagnostic only.
+              occupied=set()
+              cell_counts=Counter()
+              for f in feats:
+                  lon,lat=f["geometry"]["coordinates"]
+                  if maxlon==minlon or maxlat==minlat:
+                      ix=iy=0
+                  else:
+                      ix=min(3,max(0,int(4*(lon-minlon)/(maxlon-minlon))))
+                      iy=min(3,max(0,int(4*(lat-minlat)/(maxlat-minlat))))
+                  occupied.add((ix,iy))
+                  cell_counts[(ix,iy)]+=1
+              max_cell=max(cell_counts.values()) if cell_counts else 0
+
+              count=len(feats)
+              outside=cohorts.get("OUTSIDE_DENSITY_PRIOR",0)
+              out["regions"][region]={
+                  "method_version":meta.get("method_version"),
+                  "candidate_pool_count":count,
+                  "source_tile_count":len(tile_results),
+                  "tile_cap_hits":cap_hits,
+                  "volume_censored_by_tile_cap":bool(cap_hits),
+                  "forest_area_ha":round(forest_area,3),
+                  "candidates_per_forest_ha":round(count/forest_area,3) if forest_area else None,
+                  "reference_peak_count":ref_peaks,
+                  "retained_vs_reference_peak_pct":round(100*count/ref_peaks,2) if ref_peaks else None,
+                  "cohort_counts":dict(cohorts),
+                  "outside_density_prior_pct":round(100*outside/count,2) if count else None,
+                  "score_p10":pct(scores,.10),
+                  "score_median":pct(scores,.50),
+                  "score_p90":pct(scores,.90),
+                  "height_m_p10":pct(heights,.10),
+                  "height_m_median":pct(heights,.50),
+                  "height_m_p90":pct(heights,.90),
+                  "grid_4x4_occupied_cells":len(occupied),
+                  "grid_4x4_occupancy_pct":round(100*len(occupied)/16,1),
+                  "largest_grid_cell_share_pct":round(100*max_cell/count,1) if count else None
+              }
+
+          vals=[v["candidate_pool_count"] for v in out["regions"].values()]
+          out["cross_biome"]={
+              "min_candidate_pool_count":min(vals),
+              "median_candidate_pool_count":statistics.median(vals),
+              "max_candidate_pool_count":max(vals),
+              "regions_with_tile_cap_hits":[k for k,v in out["regions"].items() if v["tile_cap_hits"]>0],
+              "interpretation":"Candidate volume and spatial spread audit only. Without external exhaustive truth labels, this workflow does not estimate a false-positive rate."
+          }
+
+          p=ROOT/"high-recall-cross-biome-audit-17119.json"
+          p.write_text(json.dumps(out,indent=2))
+          print(json.dumps(out,indent=2))
+          PY
+
+      - name: Upload 17119 audit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-elder-high-recall-cross-biome-audit-17119
+          path: artifacts/
+          retention-days: 14
