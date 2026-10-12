@@ -1,0 +1,69 @@
+name: Earthline High-Recall Cross-Biome Validation 17119
+
+on:
+  push:
+    branches:
+      - research/elder-density-calibration-17100
+    paths:
+      - '.github/workflows/earthline-high-recall-cross-biome-17119.yml'
+      - 'tools/elder_trees/chmv2_aoi_candidates.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-density-calibration-17100
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy scipy rasterio pyproj requests
+      - name: Run seven biomes in high-recall mode
+        run: |
+          set -e
+          run(){ n="$1"; b="$2"; python tools/elder_trees/chmv2_aoi_candidates.py --bbox="$b" --max-per-tile=2000 --screen-size=1024 --refine-radius-m=15 --preserve-all-eligible --out "artifacts/high-recall/$n"; }
+          run alaska "-135.36,57.045,-135.34,57.060"
+          run vermont "-73.205,44.475,-73.185,44.490"
+          run colorado "-105.61,39.625,-105.59,39.640"
+          run england "-0.603,51.430,-0.583,51.445"
+          run thailand "101.420,14.340,101.440,14.355"
+          run laos "103.290,19.990,103.310,20.005"
+          run vietnam "105.610,20.305,105.630,20.320"
+      - name: Summarize
+        run: |
+          python - <<'PY'
+          import glob,json,pathlib
+          out={}
+          for p in glob.glob('artifacts/high-recall/*/*.json'):
+              if p.endswith('.geojson'): continue
+              d=json.load(open(p))
+              tiles=[t for t in d.get('tile_results',[]) if t.get('status')=='OK']
+              out[pathlib.Path(p).parent.name]={
+                'candidate_count':d.get('candidate_count',0),
+                'refine_radius_m':d.get('refine_radius_m'),
+                'preserve_all_eligible':d.get('preserve_all_eligible'),
+                'forest_area_ha':round(sum(t.get('forest_area_ha',0) for t in tiles),3),
+                'forest_cells':sum(t.get('forest_cells',0) for t in tiles),
+                'forest_cells_with_candidate':sum(t.get('forest_cells_with_candidate',0) for t in tiles),
+                'reference_peak_count':sum(t.get('reference_peak_count',0) for t in tiles)
+              }
+          print(json.dumps(out,indent=2))
+          required={'alaska','vermont','colorado','england','thailand','laos','vietnam'}
+          if set(out)!=required:
+              raise SystemExit(f'Missing biome outputs: {required-set(out)}')
+          if any(v['candidate_count']==0 for v in out.values()):
+              raise SystemExit('High-recall false zero in one or more biomes')
+          pathlib.Path('artifacts/high-recall/summary.json').write_text(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-high-recall-cross-biome-17119
+          path: artifacts/high-recall/
+          retention-days: 14
