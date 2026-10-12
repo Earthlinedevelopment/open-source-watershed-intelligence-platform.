@@ -22,7 +22,7 @@ from scipy import ndimage
 import requests
 
 ROOT="https://dataforgood-fb-data.s3.amazonaws.com/forests/v2/global/dinov3_global_chm_v2_ml3/chm/"
-METHOD="earthline-elder-tree-aoi-chmv2-v0.6-crown-identity"
+METHOD="earthline-elder-tree-aoi-chmv2-v0.7-high-recall-plateau-collapse"
 CURRENT_ELDER_TARGET_PER_HA=15.0
 FUTURE_ELDER_RATIO=2.5
 UA={"User-Agent":"Earthline-ElderTree-Research/1.6"}
@@ -176,7 +176,11 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512,refine_radius_m=45,prese
                     cm=canopy[r0:r1,c0:c1]
                     if cm.size==0:continue
                     forest_fraction=float(np.mean(cm))
-                    if forest_fraction<0.18:continue
+                    # Individual Elder candidates can be open-grown or urban/park trees.
+                    # In high-recall research mode, low stand-level forest cover must not
+                    # erase a structurally valid canopy peak. The 18% gate remains for
+                    # ordinary density-calibration mode.
+                    if forest_fraction<0.18 and not preserve_all_eligible:continue
                     forest_cells+=1
                     canopy_area_ha=float(np.sum(cm))*pixel_area_m2/10000.0
                     forest_area_ha+=canopy_area_ha
@@ -193,7 +197,27 @@ def process_tile(q,bbox,max_per_tile=20,screen_size=512,refine_radius_m=45,prese
                     eligible_cell=cm&(hs_cell>=.35)&((ps_cell>=.30)|(op_cell>=.45))
                     if not np.any(eligible_cell):continue
                     peak_cell=(sc_cell==ndimage.maximum_filter(sc_cell,size=nms_px,mode="nearest"))&eligible_cell
-                    rr,cc=np.where(peak_cell)
+                    # Percentile-based structural scores create broad equal-value
+                    # plateaus. Counting every plateau pixel as a separate maximum
+                    # floods the global rank list and can discard real nearby crowns.
+                    # Collapse each connected peak plateau to one representative,
+                    # choosing the tallest member, then prominence, then score.
+                    labels,nlab=ndimage.label(peak_cell)
+                    rr=[];cc=[]
+                    z_cell=z[r0:r1,c0:c1]
+                    for lab_id in range(1,nlab+1):
+                        pr,pc=np.where(labels==lab_id)
+                        if not len(pr):continue
+                        best=max(
+                            range(len(pr)),
+                            key=lambda k:(
+                                float(z_cell[pr[k],pc[k]]),
+                                float(ps_cell[pr[k],pc[k]]),
+                                float(sc_cell[pr[k],pc[k]]),
+                                -int(pr[k]),-int(pc[k])
+                            )
+                        )
+                        rr.append(int(pr[best]));cc.append(int(pc[best]))
                     if not len(rr):continue
                     forest_cells_with_candidate+=1
                     ranked_cell=sorted(
