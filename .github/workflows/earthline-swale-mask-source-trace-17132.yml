@@ -1,0 +1,41 @@
+name: Earthline Swale Mask Source Trace 17132
+on:
+  push:
+    branches: [research/elder-density-calibration-17100]
+    paths:
+      - '.github/workflows/earthline-swale-mask-source-trace-17132.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - name: Trace Property swale prescription vs frozen no-build mask
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8',errors='replace')
+          needles=[
+            'function prescribeSwales15778',
+            'prescribeSwales15778',
+            'noBuildMask',
+            'earthlineGridToLngLat',
+            'earthlineLngLatToGrid',
+            'prescriptionMaskAudit15870'
+          ]
+          for n in needles:
+              print('\n===== '+n+' =====')
+              pos=0;c=0
+              while True:
+                  i=t.find(n,pos)
+                  if i<0:break
+                  c+=1
+                  print('\n---',c,'at',i,'---')
+                  print(t[max(0,i-5000):min(len(t),i+10000)])
+                  pos=i+len(n)
+                  if c>=5:break
+              print('COUNT',c)
+          PY
