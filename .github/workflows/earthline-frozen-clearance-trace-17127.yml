@@ -1,0 +1,41 @@
+name: Earthline Frozen Clearance Trace 17127
+on:
+  push:
+    branches: [research/elder-density-calibration-17100]
+    paths:
+      - '.github/workflows/earthline-frozen-clearance-trace-17127.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Trace frozen clearance implementation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8',errors='replace')
+          needles=[
+            'earthlineFrozenPropertyClearanceAudit16255',
+            'earthlineFilterCorridors15788',
+            'earthlineAuditCorridorClearance15806',
+            'filtered.stats.indexAvailable',
+            'audit.stats.verified'
+          ]
+          for n in needles:
+              print('\n===== '+n+' =====')
+              pos=0; count=0
+              while True:
+                  i=t.find(n,pos)
+                  if i<0: break
+                  count+=1
+                  print('\n--- occurrence',count,'at',i,'---')
+                  print(t[max(0,i-7000):min(len(t),i+12000)])
+                  pos=i+len(n)
+                  if count>=6: break
+              if not count: print('NOT FOUND')
+          PY
