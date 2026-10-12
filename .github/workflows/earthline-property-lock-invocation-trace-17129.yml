@@ -1,0 +1,37 @@
+name: Earthline Property Lock Invocation Trace 17129
+on:
+  push:
+    branches: [research/elder-density-calibration-17100]
+    paths:
+      - '.github/workflows/earthline-property-lock-invocation-trace-17129.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Print actual Property safety-lock invocations
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          t=Path('index.html').read_text(encoding='utf-8',errors='replace')
+          pat=re.compile(r'earthlineLockPropertyResult15815\s*\(')
+          hits=[]
+          for m in pat.finditer(t):
+              i=m.start()
+              prefix=t[max(0,i-80):i]
+              if re.search(r'function\s+$',prefix):
+                  kind='definition'
+              else:
+                  kind='call'
+              hits.append((i,kind))
+          print('TOTAL',len(hits))
+          for n,(i,kind) in enumerate(hits,1):
+              print(f'\n=== {n} {kind} at {i} ===')
+              print(t[max(0,i-1800):min(len(t),i+2800)])
+          PY
