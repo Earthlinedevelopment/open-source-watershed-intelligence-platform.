@@ -1,0 +1,111 @@
+name: "17120 Elder SE Asia Saturation Audit"
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - research/elder-density-calibration-17100
+    paths:
+      - ".github/workflows/elder-seasia-saturation-audit-17120.yml"
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install research dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy scipy rasterio pyproj requests
+
+      - name: Run uncapped-enough high-recall audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          run_region () {
+            local name="$1"
+            local bbox="$2"
+            python tools/elder_trees/chmv2_aoi_candidates.py \
+              --bbox="$bbox" \
+              --max-per-tile=20000 \
+              --screen-size=1024 \
+              --refine-radius-m=15 \
+              --preserve-all-eligible \
+              --out="artifacts/$name"
+          }
+          run_region thailand "101.420,14.340,101.440,14.355"
+          run_region vietnam  "105.610,20.305,105.630,20.320"
+
+      - name: Summarize saturation result
+        run: |
+          python - <<'PY'
+          import glob,json,pathlib
+          from collections import Counter
+
+          out={
+            "mode":"off-production",
+            "audit":"17120",
+            "max_per_tile":20000,
+            "screen_size":1024,
+            "refine_radius_m":15,
+            "preserve_all_eligible":True,
+            "regions":{}
+          }
+
+          for region in ("thailand","vietnam"):
+              m=json.load(open(glob.glob(f"artifacts/{region}/elder-trees-*.json")[0]))
+              fc=json.load(open(glob.glob(f"artifacts/{region}/elder-tree-candidate-pool-*.geojson")[0]))
+              feats=fc["features"]
+              cohorts=Counter((f.get("properties") or {}).get("elder_cohort") for f in feats)
+              tiles=[x for x in m.get("tile_results",[]) if x.get("status")=="OK"]
+              ref=sum(int(x.get("reference_peak_count") or 0) for x in tiles)
+              area=sum(float(x.get("forest_area_ha") or 0) for x in tiles)
+              count=len(feats)
+              out["regions"][region]={
+                "method_version":m.get("method_version"),
+                "candidate_pool_count":count,
+                "reference_peak_count":ref,
+                "retained_vs_reference_peak_pct":round(100*count/ref,2) if ref else None,
+                "forest_area_ha":round(area,3),
+                "candidates_per_forest_ha":round(count/area,3) if area else None,
+                "cohort_counts":dict(cohorts),
+                "outside_density_prior_pct":round(100*cohorts.get("OUTSIDE_DENSITY_PRIOR",0)/count,2) if count else None,
+                "hit_20000_cap": any(int(x.get("candidate_count") or 0)>=20000 for x in tiles)
+              }
+
+          out["verdict"]="Saturation audit only; does not estimate false-positive rate."
+          pathlib.Path("artifacts/17120-seasia-saturation.json").write_text(json.dumps(out,indent=2))
+          print(json.dumps(out,indent=2))
+          PY
+
+      - name: Record 17120 audit summary on research branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p research/elder_trees/audits
+          cp artifacts/17120-seasia-saturation.json research/elder_trees/audits/17120-seasia-saturation.json
+          git config user.name "earthline-research-bot"
+          git config user.email "earthline-research-bot@users.noreply.github.com"
+          git add research/elder_trees/audits/17120-seasia-saturation.json
+          if git diff --cached --quiet; then
+            echo "Audit summary unchanged"
+          else
+            git commit -m "research: record 17120 SE Asia saturation audit"
+            git push origin HEAD:research/elder-density-calibration-17100
+          fi
+
+      - name: Upload 17120 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-elder-seasia-saturation-audit-17120
+          path: artifacts/
+          retention-days: 14
