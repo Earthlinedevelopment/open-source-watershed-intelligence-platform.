@@ -1,0 +1,47 @@
+name: Earthline Property Selective Frozen Repair 17132
+
+on:
+  push:
+    branches: [research/elder-density-calibration-17100]
+    paths:
+      - '.github/workflows/earthline-property-selective-frozen-repair-17132.yml'
+      - 'lab/earthline-17132-property-selective-frozen-repair.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        target:
+          - 'Algeria'
+          - 'Cabo Verde'
+          - 'Chad'
+          - 'Comoros'
+          - 'Tunisia'
+          - 'Niger'
+          - 'Sierra Leone'
+          - 'Guatemala'
+          - 'Peru'
+          - 'Uruguay'
+          - 'Cambodia'
+          - 'New Zealand'
+          - 'Saudi Arabia'
+          - 'Thailand'
+          - 'Vietnam'
+          - 'Vermont'
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: research/elder-density-calibration-17100}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: npm install --no-save playwright && npx playwright install --with-deps chromium
+      - env:
+          TARGET: ${{ matrix.target }}
+        run: node lab/earthline-17132-property-selective-frozen-repair.mjs
