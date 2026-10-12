@@ -26,13 +26,23 @@ const out=await page.evaluate(()=>{
     status:document.getElementById('earthlineVermontStatus16147')?.textContent||'',
     run:prim(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{}),
     publication:prim(window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{}),
-    safetyAudit:prim(audit),
-    propertyLock:prim(lock),
-    clearance:prim(clear),
-    provenance:prim(prov),
-    vectorCoverage:prim(cov),
+    safetyAudit:Object.assign(prim(audit),{
+      failures:Array.isArray(audit.failures)?audit.failures.slice():[],
+      filter:audit.filter||null,
+      clearance:audit.clearance||null,
+      finalMaskAvailable:audit.finalMaskAvailable,
+      fallbackReason:audit.fallbackReason||null,
+      frozenClearance16255:audit.frozenClearance16255||null
+    }),
+    propertyLock:Object.assign(prim(lock),{
+      failures:Array.isArray(lock.failures)?lock.failures.slice():[],
+      frozenClearance16255:lock.frozenClearance16255||null
+    }),
+    clearance:clear||null,
+    provenance:prov||null,
+    vectorCoverage:cov||null,
     frozenClearance:audit.frozenClearance16255||lock.frozenClearance16255||null,
-    maskAudit:prim(m.prescriptionMaskAudit15870||{}),
+    maskAudit:m.prescriptionMaskAudit15870||null,
     propertyFailure:prim(m.propertyRunFailure16539||{}),
     exclusionEvidence:typeof window.earthlineGetExclusionEvidence16516==='function'?window.earthlineGetExclusionEvidence16516():null
   };
