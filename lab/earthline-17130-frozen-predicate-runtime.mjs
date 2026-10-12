@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 
 const TARGET=process.env.TARGET||'Cambodia';
-const URL='https://earthlinedevelopment.org/';
+const BASE='https://earthlinedevelopment.org/';
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1600,height:900}});
 let patched=false;
@@ -41,7 +41,7 @@ await page.route('**/*', async route=>{
   await route.continue();
 });
 
-await page.goto(URL+'?diag17130='+encodeURIComponent(TARGET)+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+await page.goto(BASE+'?diag17130='+encodeURIComponent(TARGET)+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
 await page.waitForSelector('#searchInput',{timeout:30000});
 await page.evaluate(q=>{
   const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
