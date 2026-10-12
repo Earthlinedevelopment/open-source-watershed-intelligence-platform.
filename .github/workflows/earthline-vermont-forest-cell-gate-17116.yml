@@ -1,0 +1,107 @@
+name: Earthline Vermont Forest-Cell Gate Diagnostic 17116
+
+on:
+  push:
+    branches:
+      - research/elder-density-calibration-17100
+    paths:
+      - '.github/workflows/earthline-vermont-forest-cell-gate-17116.yml'
+      - 'tools/elder_trees/chmv2_aoi_candidates.py'
+      - 'tools/elder_trees/vermont_ql1_pilot.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-density-calibration-17100
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy scipy rasterio pyproj requests
+      - name: Generate Vermont controls
+        run: python tools/elder_trees/vermont_ql1_pilot.py artifacts/vermont-controls
+      - name: Measure control stand-cell forest fractions
+        run: |
+          python - <<'PY'
+          import json,math,pathlib,requests
+          import numpy as np
+          import rasterio
+          from rasterio.windows import from_bounds
+          from pyproj import Transformer
+          from tools.elder_trees.chmv2_aoi_candidates import tile_xy,quadkey,ROOT
+
+          misses=[0,5,7,8,10,11,12,14,16,17,22]
+          refs=json.load(open('artifacts/vermont-controls/vermont-public-big-tree-controls.geojson'))['features']
+          UA={"User-Agent":"Earthline-ElderTree-Research/2.3"}
+          detail=[]
+          with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR',CPL_VSIL_CURL_ALLOWED_EXTENSIONS='.tif'):
+            for i in misses:
+              f=refs[i];lon,lat=f['geometry']['coordinates']
+              bbox=(lon-.006,lat-.0045,lon+.006,lat+.0045)
+              x,y=tile_xy(lon,lat);q=quadkey(x,y);url=ROOT+q+'.tif'
+              if requests.head(url,headers=UA,timeout=45).status_code!=200:
+                detail.append({'control_index':i,'status':'NO_TILE'});continue
+              with rasterio.open('/vsicurl/'+url) as ds:
+                tx=Transformer.from_crs(4326,ds.crs,always_xy=True)
+                minlon,minlat,maxlon,maxlat=bbox
+                xs,ys=tx.transform([minlon,maxlon,maxlon,minlon],[minlat,minlat,maxlat,maxlat])
+                left=max(min(xs),ds.bounds.left);right=min(max(xs),ds.bounds.right)
+                bottom=max(min(ys),ds.bounds.bottom);top=min(max(ys),ds.bounds.top)
+                win=from_bounds(left,bottom,right,top,ds.transform).round_offsets().round_lengths()
+                wh=max(1,int(win.height));ww=max(1,int(win.width));aspect=ww/max(1,wh)
+                if aspect>=1:
+                  ow=1024;oh=max(32,int(round(1024/aspect)))
+                else:
+                  oh=1024;ow=max(32,int(round(1024*aspect)))
+                arr=ds.read(1,window=win,out_shape=(oh,ow),resampling=rasterio.enums.Resampling.nearest).astype('float32')
+                arr[(~np.isfinite(arr))|(arr<0)|(arr>80)]=np.nan
+                z=np.nan_to_num(arr,nan=0);woody=z[z>=1.5]
+                if woody.size<8:
+                  detail.append({'control_index':i,'status':'NO_CANOPY'});continue
+                floor=float(max(2.0,min(5.0,np.percentile(woody,25))))
+                canopy=z>=floor
+                screen_px=max(abs(ds.transform.a)*float(win.width)/max(1,ow),abs(ds.transform.e)*float(win.height)/max(1,oh))
+                stand_px=max(4,int(round(300.0/max(screen_px,.01))))
+                screen_tr=ds.window_transform(win)*rasterio.Affine.scale(win.width/ow,win.height/oh)
+                cx,cy=tx.transform(lon,lat)
+                col,row=~screen_tr*(cx,cy)
+                rr=max(0,min(oh-1,int(row)));cc=max(0,min(ow-1,int(col)))
+                r0=(rr//stand_px)*stand_px;c0=(cc//stand_px)*stand_px
+                r1=min(oh,r0+stand_px);c1=min(ow,c0+stand_px)
+                cm=canopy[r0:r1,c0:c1]
+                frac=float(np.mean(cm)) if cm.size else 0.0
+                detail.append({
+                  'control_index':i,'status':'OK',
+                  'canopy_floor_m':round(floor,2),
+                  'screen_pixel_m':round(screen_px,2),
+                  'stand_px':int(stand_px),
+                  'stand_forest_fraction':round(frac,4),
+                  'stand_passes_18pct_gate':bool(frac>=0.18),
+                  'control_pixel_height_m':round(float(z[rr,cc]),2),
+                  'control_pixel_is_canopy':bool(canopy[rr,cc])
+                })
+          ok=[d for d in detail if d.get('status')=='OK']
+          summary={
+            'missed_control_count':len(misses),
+            'diagnosed':len(ok),
+            'control_stands_below_18pct':int(sum(not d['stand_passes_18pct_gate'] for d in ok)),
+            'control_stands_at_or_above_18pct':int(sum(d['stand_passes_18pct_gate'] for d in ok)),
+            'controls_on_canopy_pixels':int(sum(d['control_pixel_is_canopy'] for d in ok))
+          }
+          payload={'summary':summary,'detail':detail}
+          pathlib.Path('artifacts/vermont-forest-cell-gate-17116.json').write_text(json.dumps(payload,indent=2))
+          print(json.dumps(payload,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-vermont-forest-cell-gate-17116
+          path: artifacts/
+          retention-days: 14
