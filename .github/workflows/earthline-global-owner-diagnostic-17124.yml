@@ -1,0 +1,146 @@
+name: Earthline Global Owner Diagnostic 17124
+
+on:
+  push:
+    branches: [research/elder-density-calibration-17100]
+    paths:
+      - '.github/workflows/earthline-global-owner-diagnostic-17124.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  property-owner:
+    name: Property exclusion-clearance owner
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: npm install --no-save playwright && npx playwright install --with-deps chromium
+      - name: Trace Peru Property failure owner
+        run: |
+          cat > /tmp/property-owner.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1600,height:900}});
+          const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+          await page.goto('https://earthlinedevelopment.org/?owner17124=peru-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.evaluate(()=>{
+            const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+            i.value='Peru';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();
+          });
+          await page.waitForFunction(()=>String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||{}).query||'').toLowerCase()==='peru',{timeout:95000});
+          await page.waitForTimeout(500);
+          await page.evaluate(()=>{const b=document.getElementById('earthlineDeclareProperty16169');if(!b)throw new Error('Property button missing');b.click();});
+          await page.waitForTimeout(8000);
+          const out=await page.evaluate(()=>{
+            const names=Object.keys(window).filter(k=>/EXCLUSION|CLEARANCE|PROPERTY|EVIDENCE|WATER_BODY|SCREEN/i.test(k)).sort();
+            const globals={};
+            for(const k of names){
+              try{
+                const v=window[k];
+                if(typeof v==='function')globals[k]={type:'function',src:String(v).slice(0,5000)};
+                else if(v&&typeof v==='object')globals[k]={type:'object',value:JSON.parse(JSON.stringify(v,(key,val)=>typeof val==='function'?'[function]':val))};
+                else globals[k]={type:typeof v,value:v};
+              }catch(e){globals[k]={error:String(e)}}
+            }
+            const terms=['exclusion-index-unavailable','clearance-audit-unverified','PROPERTY ANALYSIS STOPPED SAFELY','clearance','exclusion'];
+            const scriptHits=[];
+            for(const [si,s] of [...document.scripts].entries()){
+              const txt=s.textContent||'';
+              for(const term of terms){
+                const low=txt.toLowerCase(),needle=term.toLowerCase(),i=low.indexOf(needle);
+                if(i>=0)scriptHits.push({script:si,term,snippet:txt.slice(Math.max(0,i-1800),Math.min(txt.length,i+5000))});
+              }
+            }
+            return {
+              status:document.getElementById('earthlineVermontStatus16147')?.textContent||'',
+              analysisTier:document.documentElement.dataset.earthlineAnalysisTier||'',
+              propertyRunState:document.documentElement.dataset.earthlinePropertyRunState||'',
+              pub:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,
+              run:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+              exclusion:typeof window.earthlineGetExclusionEvidence16516==='function'?window.earthlineGetExclusionEvidence16516():null,
+              globals,scriptHits
+            };
+          });
+          console.log(JSON.stringify(out,null,2));
+          if(errors.length)console.log('PAGE_ERRORS',JSON.stringify(errors));
+          await browser.close();
+          JS
+          node /tmp/property-owner.mjs
+
+  canada-performance:
+    name: Canada Regional performance owner
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: npm install --no-save playwright && npx playwright install --with-deps chromium
+      - name: Trace Canada performance
+        run: |
+          cat > /tmp/canada.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1600,height:900}});
+          await page.goto('https://earthlinedevelopment.org/?owner17124=canada-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.evaluate(()=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='Canada';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
+          await page.waitForFunction(()=>{const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||{};return String(d.query||'').toLowerCase()==='canada'&&Number.isFinite(Number(window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.totalMs));},{timeout:95000});
+          const out=await page.evaluate(()=>{
+            const perf={};
+            for(const k of Object.keys(window).filter(k=>/PERF|TIMING|REGIONAL.*AUDIT|SUPERTILE|CAPACITY|DISPERSION|LAND_VALIDITY/i.test(k)).sort()){
+              try{const v=window[k];if(v&&typeof v==='object')perf[k]=JSON.parse(JSON.stringify(v));}catch{}
+            }
+            return {primary:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,perf};
+          });
+          console.log(JSON.stringify(out,null,2));
+          await browser.close();
+          JS
+          node /tmp/canada.mjs
+
+  fiji-camera:
+    name: Fiji camera owner
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: npm install --no-save playwright && npx playwright install --with-deps chromium
+      - name: Trace Fiji final-frame camera
+        run: |
+          cat > /tmp/fiji.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1600,height:900}});
+          const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+          await page.goto('https://earthlinedevelopment.org/?owner17124=fiji-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.evaluate(()=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='Fiji';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
+          await page.waitForFunction(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||String((window.EARTHLINE_DISPLAYED_RUN_16151||{}).query||'').toLowerCase()==='fiji',{timeout:95000});
+          const out=await page.evaluate(()=>{
+            const terms=['regional final-frame camera reassert failed','final-frame camera','camera reassert','reassert'];
+            const scriptHits=[];
+            for(const [si,s] of [...document.scripts].entries()){
+              const txt=s.textContent||'',low=txt.toLowerCase();
+              for(const term of terms){const i=low.indexOf(term.toLowerCase());if(i>=0)scriptHits.push({script:si,term,snippet:txt.slice(Math.max(0,i-2200),Math.min(txt.length,i+5200))});}
+            }
+            const names=Object.keys(window).filter(k=>/CAMERA|REGIONAL.*(FRAME|VIEW|CAMERA)|ATOMIC_STATE|JURISDICTION/i.test(k)).sort();
+            const globals={};
+            for(const k of names){try{const v=window[k];globals[k]=typeof v==='function'?String(v).slice(0,5000):(v&&typeof v==='object'?JSON.parse(JSON.stringify(v)):v)}catch{}}
+            return {error:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,scriptHits,globals};
+          });
+          console.log(JSON.stringify(out,null,2));
+          if(errors.length)console.log('PAGE_ERRORS',JSON.stringify(errors));
+          await browser.close();
+          JS
+          node /tmp/fiji.mjs
