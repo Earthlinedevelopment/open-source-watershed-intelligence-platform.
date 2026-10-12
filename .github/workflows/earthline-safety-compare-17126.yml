@@ -1,0 +1,28 @@
+name: Earthline Safety Compare 17126
+on:
+  push:
+    branches: [research/elder-density-calibration-17100]
+    paths:
+      - '.github/workflows/earthline-safety-compare-17126.yml'
+      - 'lab/earthline-17126-safety-compare.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ['Vermont','Thailand','Vietnam','Cambodia','Guatemala']
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: research/elder-density-calibration-17100}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: npm install --no-save playwright && npx playwright install --with-deps chromium
+      - env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          TARGET: ${{ matrix.target }}
+        run: node lab/earthline-17126-safety-compare.mjs
