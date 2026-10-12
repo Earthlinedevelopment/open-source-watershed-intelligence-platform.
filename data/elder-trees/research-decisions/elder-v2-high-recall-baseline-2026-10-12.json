@@ -1,0 +1,108 @@
+{
+  "decision_id": "elder-v2-high-recall-baseline-2026-10-12",
+  "status": "V2 research baseline only; not production science promotion",
+  "detector_source_commit": "98f5496b6e796a42aebe44f05902f20a952abb30",
+  "validation_workflow_commit": "06f9d574e0975774513bec015f44a14bdd0049d5",
+  "method_version": "earthline-elder-tree-aoi-chmv2-v0.7-high-recall-plateau-collapse",
+  "architecture": {
+    "source": "WRI/Meta CHMv2 modeled canopy height",
+    "screen_size": 1024,
+    "native_refine_radius_m": 15,
+    "preserve_all_eligible": true,
+    "recharge_weight": 0,
+    "evidence_classes": [
+      "VERIFIED_ELDER_TREE",
+      "LIDAR_CONFIRMED_ELDER_TREE_CANDIDATE",
+      "MODELED_ELDER_TREE_CANDIDATE"
+    ],
+    "key_repairs": [
+      "Do not discard structurally valid open-grown canopy peaks solely because the 300 m stand cell is below 18% forest cover in high-recall mode.",
+      "Collapse connected equal-score peak plateaus to one representative before global ranking so tied pixels do not bury valid crowns.",
+      "Density priors label cohorts but do not destroy structurally eligible evidence in high-recall mode."
+    ]
+  },
+  "vermont_control_validation": {
+    "control_count": 24,
+    "high_recall_within_5m": 11,
+    "high_recall_within_10m": 19,
+    "high_recall_within_20m": 23,
+    "high_recall_within_30m": 24,
+    "high_recall_median_nearest_m": 5.73,
+    "raw_chmv2_reference": {
+      "within_5m": 7,
+      "within_10m": 19,
+      "within_20m": 23,
+      "within_30m": 24,
+      "median_nearest_m": 6.8
+    },
+    "note": "Vermont high-recall detector now preserves essentially all spatial recall available from the raw CHMv2 source at 20–30 m."
+  },
+  "cross_biome_validation": {
+    "workflow_run": 38197030294,
+    "conclusion": "success",
+    "biomes": {
+      "alaska": {
+        "candidate_count": 870,
+        "forest_area_ha": 82.593,
+        "forest_cells": 99,
+        "forest_cells_with_candidate": 56,
+        "reference_peak_count": 3841
+      },
+      "vermont": {
+        "candidate_count": 2000,
+        "forest_area_ha": 179.515,
+        "forest_cells": 64,
+        "forest_cells_with_candidate": 64,
+        "reference_peak_count": 13411
+      },
+      "colorado": {
+        "candidate_count": 2224,
+        "forest_area_ha": 97.547,
+        "forest_cells": 64,
+        "forest_cells_with_candidate": 33,
+        "reference_peak_count": 6720
+      },
+      "england": {
+        "candidate_count": 2000,
+        "forest_area_ha": 311.041,
+        "forest_cells": 72,
+        "forest_cells_with_candidate": 72,
+        "reference_peak_count": 17351
+      },
+      "thailand": {
+        "candidate_count": 2000,
+        "forest_area_ha": 376.924,
+        "forest_cells": 48,
+        "forest_cells_with_candidate": 48,
+        "reference_peak_count": 18748
+      },
+      "laos": {
+        "candidate_count": 2000,
+        "forest_area_ha": 175.559,
+        "forest_cells": 48,
+        "forest_cells_with_candidate": 47,
+        "reference_peak_count": 9427
+      },
+      "vietnam": {
+        "candidate_count": 2000,
+        "forest_area_ha": 390.294,
+        "forest_cells": 48,
+        "forest_cells_with_candidate": 48,
+        "reference_peak_count": 15393
+      }
+    }
+  },
+  "scientific_boundaries": [
+    "Modeled CHMv2 candidate points do not prove age, veteran status, or mycorrhizal-hub status.",
+    "Measured airborne LiDAR can confirm canopy structure but still does not prove age.",
+    "Absence of mapped Elder evidence is not evidence of absence of Elder Trees.",
+    "Elder Tree evidence is decision-support and education only and does not change Aquifer Recharge Potential or A# hydrology scoring."
+  ],
+  "production_state": {
+    "production_scoring_changed": false,
+    "accepted_science_parent_changed": false,
+    "accepted_science_parent": "16584",
+    "map_marker_style_deployed_separately": true,
+    "marker_commit": "9170e7e46ce062a587d91da9ebad20c736998825"
+  }
+}
