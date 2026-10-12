@@ -1,0 +1,119 @@
+name: Earthline Vermont Missed Seed-Refine Diagnostic 17115
+
+on:
+  push:
+    branches:
+      - research/elder-density-calibration-17100
+    paths:
+      - '.github/workflows/earthline-vermont-missed-seed-refine-17115.yml'
+      - 'tools/elder_trees/chmv2_aoi_candidates.py'
+      - 'tools/elder_trees/vermont_ql1_pilot.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-density-calibration-17100
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy scipy rasterio pyproj requests
+      - name: Generate Vermont controls
+        run: python tools/elder_trees/vermont_ql1_pilot.py artifacts/vermont-controls
+      - name: Trace missed score seeds through native refinement
+        run: |
+          python - <<'PY'
+          import json,math,pathlib,requests,sys
+          import numpy as np
+          import rasterio
+          from rasterio.windows import from_bounds
+          from pyproj import Transformer
+          from scipy import ndimage
+          sys.path.insert(0,'.')
+          from tools.elder_trees.chmv2_aoi_candidates import tile_xy,quadkey,refine,ROOT
+
+          misses=[0,5,7,8,10,11,12,14,16,17,22]
+          refs=json.load(open('artifacts/vermont-controls/vermont-public-big-tree-controls.geojson'))['features']
+          UA={"User-Agent":"Earthline-ElderTree-Research/2.2"}
+          detail=[]
+          with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR',CPL_VSIL_CURL_ALLOWED_EXTENSIONS='.tif'):
+            for i in misses:
+              f=refs[i];lon,lat=f['geometry']['coordinates']
+              x,y=tile_xy(lon,lat);q=quadkey(x,y);url=ROOT+q+'.tif'
+              if requests.head(url,headers=UA,timeout=45).status_code!=200:
+                detail.append({'control_index':i,'status':'NO_TILE'});continue
+              with rasterio.open('/vsicurl/'+url) as ds:
+                tx=Transformer.from_crs(4326,ds.crs,always_xy=True);cx0,cy0=tx.transform(lon,lat)
+                half=500.0
+                win=from_bounds(cx0-half,cy0-half,cx0+half,cy0+half,ds.transform).round_offsets().round_lengths()
+                wh=max(1,int(win.height));ww=max(1,int(win.width));aspect=ww/max(1,wh)
+                if aspect>=1: ow=1024;oh=max(32,int(round(1024/aspect)))
+                else: oh=1024;ow=max(32,int(round(1024*aspect)))
+                a=ds.read(1,window=win,out_shape=(oh,ow),resampling=rasterio.enums.Resampling.nearest).astype('float32')
+                a[(~np.isfinite(a))|(a<0)|(a>80)]=np.nan
+                z=np.nan_to_num(a,nan=0);woody=z[z>=1.5]
+                if woody.size<8:
+                  detail.append({'control_index':i,'status':'NO_CANOPY'});continue
+                floor=float(max(2.0,min(5.0,np.percentile(woody,25))))
+                canopy=z>=floor;vals=z[canopy]
+                med=ndimage.median_filter(z,size=9,mode='nearest');prom=np.maximum(0,z-med)
+                pvals=prom[canopy];hs=np.sort(vals);ps=np.sort(pvals)
+                hp=np.zeros_like(z,dtype='float32');pp=np.zeros_like(z,dtype='float32')
+                hp[canopy]=np.searchsorted(hs,z[canopy],side='right')/max(1,len(hs))
+                pp[canopy]=np.searchsorted(ps,prom[canopy],side='right')/max(1,len(ps))
+                openctx=np.clip(1.0-ndimage.uniform_filter(canopy.astype('float32'),size=9,mode='nearest'),0,1)
+                score=np.zeros_like(z,dtype='float32');score[canopy]=.40*hp[canopy]+.35*pp[canopy]+.25*openctx[canopy]
+                eligible=canopy&(hp>=.35)&((pp>=.30)|(openctx>=.45))
+                sx=win.width/ow;sy=win.height/oh
+                tr=ds.window_transform(win)*rasterio.Affine.scale(sx,sy)
+                px=max(abs(tr.a),abs(tr.e));nms=max(3,int(round(8.0/max(px,.01))))
+                if nms%2==0:nms+=1
+                peaks=(score==ndimage.maximum_filter(score,size=nms,mode='nearest'))&eligible
+                rr,cc=np.where(peaks)
+                nearest=None
+                for r,c in zip(rr.tolist(),cc.tolist()):
+                  cx,cy=rasterio.transform.xy(tr,r,c,offset='center')
+                  d=((cx-cx0)**2+(cy-cy0)**2)**.5
+                  if nearest is None or d<nearest[0]: nearest=(d,cx,cy,float(score[r,c]))
+                if nearest is None:
+                  detail.append({'control_index':i,'status':'NO_SEED'});continue
+                seed_d,cx,cy,sc=nearest
+                ref=refine(ds,cx,cy,canopy_floor_m=floor,radius_m=15)
+                if ref:
+                  structural,rx,ry,h,emerg,area,openf=ref
+                  refined_d=((rx-cx0)**2+(ry-cy0)**2)**.5
+                  shift=((rx-cx)**2+(ry-cy)**2)**.5
+                else:
+                  refined_d=None;shift=None
+                detail.append({
+                  'control_index':i,'status':'OK',
+                  'seed_m':round(float(seed_d),2),
+                  'seed_score':round(float(sc),5),
+                  'refine_returned':bool(ref),
+                  'refined_m':round(float(refined_d),2) if refined_d is not None else None,
+                  'refine_shift_m':round(float(shift),2) if shift is not None else None
+                })
+          valid=[d for d in detail if d.get('status')=='OK']
+          summary={
+            'missed_control_count':len(misses),
+            'seed_within_20m':int(sum(d['seed_m']<=20 for d in valid)),
+            'refine_returned_count':int(sum(d['refine_returned'] for d in valid)),
+            'refined_within_20m':int(sum((d['refined_m'] is not None and d['refined_m']<=20) for d in valid)),
+            'refined_within_30m':int(sum((d['refined_m'] is not None and d['refined_m']<=30) for d in valid))
+          }
+          pathlib.Path('artifacts/vermont-missed-seed-refine-17115.json').write_text(json.dumps({'summary':summary,'detail':detail},indent=2))
+          print(json.dumps({'summary':summary,'detail':detail},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-vermont-missed-seed-refine-17115
+          path: artifacts/
+          retention-days: 14
