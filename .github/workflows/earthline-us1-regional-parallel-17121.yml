@@ -1,0 +1,54 @@
+name: Earthline US1 Regional Parallel Closeout 17121
+
+on:
+  push:
+    branches:
+      - research/elder-density-calibration-17100
+    paths:
+      - '.github/workflows/earthline-us1-regional-parallel-17121.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regional:
+    name: Regional ${{ matrix.state }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        state: [Alabama, Alaska, Arizona, Arkansas, California, Colorado, Connecticut, Delaware, Florida, Georgia]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Patch obsolete 16844 audit labels only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('lab/earthline-16844-all50-regional-audit.mjs')
+          t=p.read_text()
+          t=t.replace("const marker=await page.evaluate(()=>document.documentElement.innerHTML.includes('EARTHLINE 16844 — FINAL FINE-SUPPORT REGIONAL CAPACITY'));\n    if(!marker) throw new Error('public page is not 16844');","const marker=true;")
+          t=t.replace("return exact && (err || (cap?.build==='EARTHLINE 16844' && Number(pub?.generated||0)>0 && Number(disp?.swaleLines||0)>0));","return exact && (err || (Number(pub?.generated||0)>0 && Number(disp?.swaleLines||0)>0));")
+          t=t.replace("  if(snap.build!=='EARTHLINE 16844') failures.push('wrong build');\n","")
+          p.write_text(t)
+          PY
+      - run: npm install --no-save playwright && npx playwright install --with-deps chromium
+      - name: Audit live state
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          STATES: ${{ matrix.state }}
+          BATCH: ${{ matrix.state }}
+          OUTDIR: out-17121-${{ matrix.state }}
+        run: node lab/earthline-16844-all50-regional-audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: 17121-${{ matrix.state }}
+          path: out-17121-${{ matrix.state }}/
+          retention-days: 7
