@@ -1,0 +1,46 @@
+name: Earthline Canada Fiji Owner Diagnostic 17131
+on:
+  push:
+    branches: [research/elder-density-calibration-17100]
+    paths:
+      - '.github/workflows/earthline-canada-fiji-owner-17131.yml'
+      - 'lab/earthline-17131-regional-owner.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ['Canada','Fiji']
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: research/elder-density-calibration-17100}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: npm install --no-save playwright && npx playwright install --with-deps chromium
+      - env:
+          TARGET: ${{ matrix.target }}
+        run: node lab/earthline-17131-regional-owner.mjs
+  source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - name: Trace Fiji camera error owner
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('index.html').read_text(encoding='utf-8',errors='replace')
+          for n in ['regional final-frame camera reassert failed','final-frame camera','camera reassert','reassert failed']:
+              print('\n====',n,'====')
+              pos=0;c=0
+              while True:
+                  i=t.lower().find(n.lower(),pos)
+                  if i<0:break
+                  c+=1;print('\n--',c,'at',i,'--');print(t[max(0,i-5000):min(len(t),i+9000)]);pos=i+len(n)
+              print('COUNT',c)
+          PY
