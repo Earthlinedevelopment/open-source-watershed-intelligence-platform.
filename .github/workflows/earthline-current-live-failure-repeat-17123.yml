@@ -1,0 +1,106 @@
+name: Earthline Current-Live Failure Repeat 17123
+
+on:
+  push:
+    branches: [research/elder-density-calibration-17100]
+    paths:
+      - '.github/workflows/earthline-current-live-failure-repeat-17123.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  property-repeat:
+    name: Property current-live ${{ matrix.target }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        target: [Algeria, Cabo Verde, Chad, Comoros, Tunisia, Niger, Sierra Leone, Guatemala, Peru, Uruguay, Cambodia, New Zealand, Saudi Arabia]
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: npm install --no-save playwright && npx playwright install --with-deps chromium
+      - name: Remove stale 16844 identity assertion only
+        run: python - <<'PY'
+          from pathlib import Path
+          p=Path('lab/earthline-16844-global-property-audit.mjs')
+          s=p.read_text()
+          old="    const marker=await page.evaluate(()=>document.documentElement.innerHTML.includes('EARTHLINE 16844 — FINAL FINE-SUPPORT REGIONAL CAPACITY'));\n    if(!marker)throw new Error('public page is not 16844');\n"
+          if old not in s: raise SystemExit('stale marker assertion not found')
+          p.write_text(s.replace(old,""))
+          PY
+      - name: Repeat current live Property three times
+        shell: bash
+        env: {TARGET: "${{ matrix.target }}"}
+        run: |
+          set +e
+          mkdir -p repeat-17123/property
+          slug=$(echo "$TARGET" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')
+          pass=0
+          for n in 1 2 3; do
+            EARTHLINE_URL='https://earthlinedevelopment.org/' TARGETS="$TARGET" BATCH="$slug-$n" OUTDIR="repeat-17123/property/$slug-$n" node lab/earthline-16844-global-property-audit.mjs
+            code=$?
+            echo "$code" > "repeat-17123/property/$slug-$n.exit"
+            [ "$code" = "0" ] && pass=$((pass+1))
+          done
+          echo "$pass" > "repeat-17123/property/$slug.passcount"
+          test "$pass" = "3"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: 17123-property-${{ matrix.target }}
+          path: repeat-17123/property/
+          retention-days: 7
+
+  regional-repeat:
+    name: Regional current-live ${{ matrix.target }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        target: [Canada, China, Fiji]
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: npm install --no-save playwright && npx playwright install --with-deps chromium
+      - name: Remove stale 16844 identity assertion only
+        run: python - <<'PY'
+          from pathlib import Path
+          p=Path('lab/earthline-16844-global-gauge-regional-audit.mjs')
+          s=p.read_text()
+          old="    const marker=await page.evaluate(()=>document.documentElement.innerHTML.includes('EARTHLINE 16844 — FINAL FINE-SUPPORT REGIONAL CAPACITY'));\n    if(!marker) throw new Error('public page is not 16844');\n"
+          if old not in s: raise SystemExit('stale marker assertion not found')
+          p.write_text(s.replace(old,""))
+          PY
+      - name: Repeat current live Regional three times
+        shell: bash
+        env: {TARGET: "${{ matrix.target }}"}
+        run: |
+          set +e
+          mkdir -p repeat-17123/regional
+          slug=$(echo "$TARGET" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')
+          pass=0
+          for n in 1 2 3; do
+            EARTHLINE_URL='https://earthlinedevelopment.org/' TARGETS="$TARGET" BATCH="$slug-$n" OUTDIR="repeat-17123/regional/$slug-$n" node lab/earthline-16844-global-gauge-regional-audit.mjs
+            code=$?
+            echo "$code" > "repeat-17123/regional/$slug-$n.exit"
+            [ "$code" = "0" ] && pass=$((pass+1))
+          done
+          echo "$pass" > "repeat-17123/regional/$slug.passcount"
+          test "$pass" = "3"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: 17123-regional-${{ matrix.target }}
+          path: repeat-17123/regional/
+          retention-days: 7
