@@ -1,0 +1,110 @@
+name: Earthline Global Failure Repeat 17122
+
+on:
+  push:
+    branches: [research/elder-density-calibration-17100]
+    paths:
+      - '.github/workflows/earthline-global-failure-repeat-17122.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  property-repeat:
+    name: Property repeat ${{ matrix.target }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        target:
+          - Algeria
+          - Cabo Verde
+          - Chad
+          - Comoros
+          - Tunisia
+          - Niger
+          - Sierra Leone
+          - Guatemala
+          - Peru
+          - Uruguay
+          - Cambodia
+          - New Zealand
+          - Saudi Arabia
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright && npx playwright install --with-deps chromium
+      - name: Repeat live Property three times
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set +e
+          mkdir -p "repeat-17122/property"
+          slug=$(echo "$TARGET" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')
+          pass=0
+          for n in 1 2 3; do
+            EARTHLINE_URL='https://earthlinedevelopment.org/' TARGETS="$TARGET" BATCH="$slug-$n" OUTDIR="repeat-17122/property/$slug-$n" node lab/earthline-16844-global-property-audit.mjs
+            code=$?
+            echo "$code" > "repeat-17122/property/$slug-$n.exit"
+            if [ "$code" = "0" ]; then pass=$((pass+1)); fi
+          done
+          echo "$pass" > "repeat-17122/property/$slug.passcount"
+          test "$pass" = "3"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: 17122-property-${{ matrix.target }}
+          path: repeat-17122/property/
+          retention-days: 7
+
+  regional-repeat:
+    name: Regional repeat ${{ matrix.target }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        target:
+          - Canada
+          - China
+          - Fiji
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright && npx playwright install --with-deps chromium
+      - name: Repeat live Regional three times
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set +e
+          mkdir -p "repeat-17122/regional"
+          slug=$(echo "$TARGET" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')
+          pass=0
+          for n in 1 2 3; do
+            EARTHLINE_URL='https://earthlinedevelopment.org/' TARGETS="$TARGET" BATCH="$slug-$n" OUTDIR="repeat-17122/regional/$slug-$n" node lab/earthline-16844-global-gauge-regional-audit.mjs
+            code=$?
+            echo "$code" > "repeat-17122/regional/$slug-$n.exit"
+            if [ "$code" = "0" ]; then pass=$((pass+1)); fi
+          done
+          echo "$pass" > "repeat-17122/regional/$slug.passcount"
+          test "$pass" = "3"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: 17122-regional-${{ matrix.target }}
+          path: repeat-17122/regional/
+          retention-days: 7
