@@ -1,0 +1,87 @@
+name: Earthline Live California Elder Matrix 17132
+
+on:
+  push:
+    branches:
+      - research/elder-browser-engine-17129
+    paths:
+      - '.github/workflows/earthline-live-california-matrix-17132.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install browser runtime
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Exercise live Elder detector across California
+        run: |
+          cat > run-live-ca-matrix.mjs <<'JS'
+          import { chromium } from "playwright";
+          const cases=[
+            {id:"humboldt",bbox:[-124.003,40.347,-123.997,40.353]},
+            {id:"mendocino",bbox:[-123.533,39.267,-123.527,39.273]},
+            {id:"shasta",bbox:[-122.323,41.307,-122.317,41.313]},
+            {id:"tahoe",bbox:[-120.163,38.897,-120.157,38.903]},
+            {id:"yosemite",bbox:[-119.603,37.497,-119.597,37.503]},
+            {id:"sequoia",bbox:[-118.753,36.557,-118.747,36.563]},
+            {id:"big-sur",bbox:[-121.773,36.217,-121.767,36.223]},
+            {id:"san-bernardino",bbox:[-116.923,34.217,-116.917,34.223]}
+          ];
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage();
+          page.on("pageerror",e=>console.error("PAGEERROR",e));
+          await page.goto("https://earthlinedevelopment.org/",{waitUntil:"domcontentloaded",timeout:60000});
+          const results=await page.evaluate(async(cases)=>{
+            const w=new Worker("/earthline-elder-worker-17129.js",{type:"module"});
+            let seq=0;
+            const ask=(msg,timeout=90000)=>new Promise((resolve,reject)=>{
+              const id="ca-"+(++seq)+"-"+Date.now(),t0=performance.now();
+              const timer=setTimeout(()=>{w.removeEventListener("message",on);reject(new Error("timeout "+id))},timeout);
+              function on(e){
+                if(e.data?.id!==id)return;
+                clearTimeout(timer);w.removeEventListener("message",on);
+                if(!e.data?.ok)reject(new Error(e.data?.error||"worker failed"));
+                else resolve({elapsedMs:performance.now()-t0,data:e.data});
+              }
+              w.addEventListener("message",on);
+              w.postMessage(Object.assign({id},msg));
+            });
+            const warm=await ask({warm:true},90000);
+            const out={warmMs:Math.round(warm.elapsedMs),sites:{}};
+            for(const c of cases){
+              const r=await ask({bbox:c.bbox,options:{displayPerTile:24,maxPerTile:240}},90000);
+              const x=r.data.result||{},e=x.earthline||{};
+              out.sites[c.id]={
+                elapsedMs:Math.round(r.elapsedMs),
+                pool:Number(e.candidate_pool_count||0),
+                display:Number(e.display_count||0),
+                tiles:e.tile_results||[]
+              };
+            }
+            w.terminate();
+            return out;
+          },cases);
+          await browser.close();
+          console.log(JSON.stringify(results,null,2));
+          let failed=false;
+          for(const [name,r] of Object.entries(results.sites)){
+            const tileOK=(r.tiles||[]).length>0&&(r.tiles||[]).every(t=>t.status==="OK");
+            const ok=r.pool>0&&r.display>0&&tileOK&&r.elapsedMs<=15000;
+            console.log(name,ok?"PASS":"FAIL",r);
+            failed ||= !ok;
+          }
+          if(failed)throw new Error("live California Elder matrix failed");
+          JS
+          node run-live-ca-matrix.mjs
