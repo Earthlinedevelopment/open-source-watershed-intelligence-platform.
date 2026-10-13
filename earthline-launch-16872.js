@@ -1611,6 +1611,11 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     dynamicWorker().postMessage({id,warm:true});
     return state.dynamic.warmPromise;
   }
+  function invalidateDynamicPropertyRun(){
+    state.dynamic.key='';
+    state.dynamic.result=null;
+    state.dynamic.error=null;
+  }
   async function dynamicPropertyEvidence(){
     const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
     if(tier!=='property')return null;
@@ -1620,10 +1625,11 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     if(!key)return null;
     if(state.dynamic.key===key&&state.dynamic.result)return state.dynamic.result;
     if(state.dynamic.key===key&&state.dynamic.promise)return state.dynamic.promise;
-    const id='elder-'+(++state.dynamic.seq);
-    state.dynamic.key=key;state.dynamic.result=null;state.dynamic.error=null;
-    state.dynamic.promise=new Promise((resolve,reject)=>state.dynamic.pending.set(id,{resolve,reject}))
+    const id='elder-'+(++state.dynamic.seq),requestKey=key;
+    state.dynamic.key=requestKey;state.dynamic.result=null;state.dynamic.error=null;
+    const promise=new Promise((resolve,reject)=>state.dynamic.pending.set(id,{resolve,reject}))
       .then(result=>{
+        if(state.dynamic.key!==requestKey)return null;
         const features=(result?.features||[]).map(f=>({
           type:'Feature',geometry:f.geometry,
           properties:Object.assign({},f.properties||{},{
@@ -1636,10 +1642,14 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
         state.dynamic.result=normalized;state.dynamic.error=null;
         return normalized;
       })
-      .catch(err=>{state.dynamic.error=String(err&&err.message||err);return null})
-      .finally(()=>{state.dynamic.promise=null});
+      .catch(err=>{
+        if(state.dynamic.key===requestKey)state.dynamic.error=String(err&&err.message||err);
+        return null;
+      })
+      .finally(()=>{if(state.dynamic.promise===promise)state.dynamic.promise=null});
+    state.dynamic.promise=promise;
     dynamicWorker().postMessage({id,bbox:b,options:{displayPerTile:24,maxPerTile:240}});
-    return state.dynamic.promise;
+    return promise;
   }
   async function refresh(){
     try{
@@ -1689,7 +1699,18 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     wrapCorridor();
     document.addEventListener('click',click,false);
     window.addEventListener('hashchange',hash,false);
-    document.addEventListener('earthline:analysis-complete',()=>{wrapCorridor();refresh();},{passive:true});
+    document.addEventListener('earthline:analysis-complete',()=>{
+      wrapCorridor();
+      if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property'){
+        invalidateDynamicPropertyRun();
+        state.active=[];
+        state.lastSummary=null;
+        publishMap([]);
+        const gauge=document.getElementById('earthlineElderTreesGauge17097');
+        if(gauge)gauge.textContent='';
+      }
+      refresh();
+    },{passive:true});
     prewarmDynamicWorker();
     load().then(()=>{if(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970)refresh()}).catch(()=>{});
     if(location.hash==='#swales-explained')howParagraph();
