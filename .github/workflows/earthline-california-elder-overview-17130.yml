@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -89,3 +89,42 @@ jobs:
             artifacts/california-elder/california-regional-overview.geojson
             artifacts/california-elder/california-regional-overview.json
           retention-days: 14
+
+      - name: Install verified California overview on isolated 17130 candidate
+        run: |
+          set -euo pipefail
+          cp artifacts/california-elder/california-regional-overview.geojson /tmp/california-regional-overview.geojson
+          cp artifacts/california-elder/california-regional-overview.json /tmp/california-regional-overview.json
+          git fetch origin candidate/elder-on-demand-17130
+          git checkout -B candidate/elder-on-demand-17130 origin/candidate/elder-on-demand-17130
+          mkdir -p data/elder-trees/v2
+          cp /tmp/california-regional-overview.geojson data/elder-trees/v2/california-regional-overview.geojson
+          cp /tmp/california-regional-overview.json data/elder-trees/v2/california-regional-overview.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("data/elder-trees/v2/manifest.json")
+          m=json.loads(p.read_text())
+          m["datasets"]=[d for d in m.get("datasets",[]) if d.get("id")!="california-regional-overview-17130"]
+          m["datasets"].append({
+            "id":"california-regional-overview-17130",
+            "label":"California regional Elder V2 overview",
+            "path":"data/elder-trees/v2/california-regional-overview.geojson",
+            "bbox":[-124.48,32.53,-114.13,42.01],
+            "coverage_complete":False,
+            "property_eligible":False,
+            "evidence_class":"V2 modeled candidates · regional sparse display only",
+            "method_version":"earthline-elder-tree-aoi-chmv2-v0.7-high-recall-plateau-collapse",
+            "science_baseline":"17118",
+            "display_count":190,
+            "count_owner":"site candidate pools; not statewide count",
+            "map_owner":"regional sparse display subset"
+          })
+          p.write_text(json.dumps(m,indent=2)+"\n")
+          PY
+          git config user.name "earthline-research-bot"
+          git config user.email "earthline-research-bot@users.noreply.github.com"
+          git add data/elder-trees/v2/california-regional-overview.geojson data/elder-trees/v2/california-regional-overview.json data/elder-trees/v2/manifest.json
+          git diff --cached --check
+          git commit -m "elder: add exact-17118 California regional overview to 17130 candidate"
+          git push origin HEAD:candidate/elder-on-demand-17130
