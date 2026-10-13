@@ -54,7 +54,19 @@ await page.evaluate(({lng,lat})=>{
   if(!m)throw new Error('map missing');
   m.jumpTo({center:[lng,lat],zoom:16.5});
 },TARGET);
-await page.waitForTimeout(1400);
+await page.waitForTimeout(900);
+
+/* Use a genuine user drag after positioning the preview. The application intentionally
+   retargets Property to CROSSHAIR on pointer movement, not on programmatic camera calls. */
+const mapCanvas=page.locator('.mapboxgl-canvas').first();
+const mapBox=await mapCanvas.boundingBox();
+if(!mapBox)throw new Error('Map canvas missing for west Property pointer retarget');
+const sx=mapBox.x+mapBox.width*.72, sy=mapBox.y+mapBox.height*.62;
+await page.mouse.move(sx,sy);
+await page.mouse.down();
+await page.mouse.move(sx-6,sy+2,{steps:4});
+await page.mouse.up();
+await page.waitForTimeout(1100);
 
 const propertyBtn=page.locator('#earthlineDeclareProperty16169');
 if(!(await propertyBtn.isVisible()))throw new Error('Property button missing');
@@ -99,7 +111,11 @@ const ids=Array.isArray(result.last?.summary?.coverageDatasetIds)?result.last.su
 if(!ids.includes('dynamic-property-17130'))failures.push('Dynamic Property Elder dataset missing: '+JSON.stringify(ids));
 if(Number(result.last?.dynamicCandidatePoolCount||0)<=0)failures.push('Dynamic Property candidate pool is zero');
 if(Number(result.last?.featureCount||0)<=0)failures.push('Dynamic Property display feature count is zero');
+if(Number(result.last?.summary?.modeled||0)<=0)failures.push('Fresh dynamic Property candidates were not classified as modeled');
+if(Number(result.last?.summary?.legacyCandidate||0)!==0)failures.push('Fresh dynamic Property candidates were misclassified as earlier/legacy evidence');
 if(Number(result.renderedElderCount||0)<=0)failures.push('No Elder pins rendered for west Property');
+const pc=result.propertyAudit?.center;
+if(!pc||Math.abs(Number(pc.lng)-TARGET.lng)>.01||Math.abs(Number(pc.lat)-TARGET.lat)>.01)failures.push('Property run did not bind to west target: '+JSON.stringify(pc));
 if(errors.length)failures.push('Page errors '+JSON.stringify(errors));
 const summary={targetState,result,errors,failures};
 writeFileSync(OUT+'/result.json',JSON.stringify(summary,null,2));
