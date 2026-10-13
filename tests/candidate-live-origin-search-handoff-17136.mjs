@@ -100,9 +100,23 @@ if(!dragBox){
   failures.push('Rendered Mapbox drag surface missing');
 }else{
   const start=await page.evaluate(()=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),c=m?.getCenter?.();return {center:c?{lng:c.lng,lat:c.lat}:null,dragPan:!!m?.dragPan?.isEnabled?.(),target:window.EARTHLINE_PROPERTY_TARGET_16201||null}});
-  const sx=dragBox.x+dragBox.width*.72,sy=dragBox.y+dragBox.height*.62;
-  const hitAtStart=await page.evaluate(({sx,sy})=>{const e=document.elementFromPoint(sx,sy);return e?{tag:e.tagName,id:e.id||'',class:typeof e.className==='string'?e.className:''}:null},{sx,sy});
-  await page.mouse.move(sx,sy);await page.mouse.down();await page.mouse.move(sx-120,sy+35,{steps:16});await page.mouse.up();
+  const safePoint=await page.evaluate(({box})=>{
+    const xs=[.82,.68,.54,.40,.26],ys=[.78,.66,.54,.42,.30,.18];
+    for(const yf of ys)for(const xf of xs){
+      const x=box.x+box.width*xf,y=box.y+box.height*yf,e=document.elementFromPoint(x,y);
+      const isMap=!!(e&&(e.matches?.('.mapboxgl-canvas,.mapboxgl-canvas-container')||e.closest?.('.mapboxgl-canvas-container')));
+      const isOverlay=!!e?.closest?.('#earthlineRegionalVectorOverlay16020');
+      const isControl=!!e?.closest?.('button,a,[role="button"],.mapboxgl-control-container,#earthlinePanel16188,#earthlineRail16188');
+      if(isMap&&!isOverlay&&!isControl)return {x,y,hit:{tag:e.tagName,id:e.id||'',class:typeof e.className==='string'?e.className:''}};
+    }
+    return null;
+  },{box:dragBox});
+  if(!safePoint){
+    failures.push('No unobstructed bare-map drag point was available');
+  }
+  const sx=safePoint?.x??(dragBox.x+dragBox.width*.72),sy=safePoint?.y??(dragBox.y+dragBox.height*.62);
+  const hitAtStart=safePoint?.hit||await page.evaluate(({sx,sy})=>{const e=document.elementFromPoint(sx,sy);return e?{tag:e.tagName,id:e.id||'',class:typeof e.className==='string'?e.className:''}:null},{sx,sy});
+  if(safePoint){await page.mouse.move(sx,sy);await page.mouse.down();await page.mouse.move(sx-120,sy+35,{steps:16});await page.mouse.up();}
   await page.waitForTimeout(1100);
   const end=await page.evaluate(()=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),c=m?.getCenter?.(),b=document.getElementById('earthlineDeclareProperty16169'),span=b?.querySelector('[data-crosshair16247]');return {center:c?{lng:c.lng,lat:c.lat}:null,dragPan:!!m?.dragPan?.isEnabled?.(),target:window.EARTHLINE_PROPERTY_TARGET_16201||null,button:{text:String(b?.textContent||'').replace(/\s+/g,' ').trim(),crosshair:span?.getAttribute('data-crosshair16247')||null}}});
   dragAudit={dragBox,hitAtStart,start,end};
