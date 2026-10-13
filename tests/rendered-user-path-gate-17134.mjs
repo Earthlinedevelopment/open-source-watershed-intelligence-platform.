@@ -47,9 +47,18 @@ await shot('00-initial');
 const input=page.locator('#searchInput');
 await input.click();
 await input.fill('California');
-await page.waitForTimeout(700);
-const suggestion=page.locator('#earthlineSearchSuggestions15970 [role="option"]').filter({hasText:/California state/i}).first();
-if(!(await suggestion.count()))throw new Error('Rendered California suggestion missing');
+await page.waitForTimeout(900);
+await shot('00b-suggestions');
+const options=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
+const optionCount=await options.count();
+if(!optionCount)throw new Error('No rendered search suggestions after typing California');
+const suggestionDump=await options.evaluateAll(els=>els.map(el=>({
+  text:String(el.textContent||'').replace(/\s+/g,' ').trim(),
+  query:el.getAttribute('data-query')||'',
+  box:(()=>{const r=el.getBoundingClientRect();return{x:r.x,y:r.y,w:r.width,h:r.height}})()
+})));
+console.log('EARTHLINE_RENDERED_SUGGESTIONS '+JSON.stringify(suggestionDump));
+const suggestion=options.first();
 await suggestion.click();
 await page.waitForTimeout(250);
 await page.locator('#runBtn').click();
