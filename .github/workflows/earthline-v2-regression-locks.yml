@@ -1,0 +1,21 @@
+name: Earthline V2 Regression Locks
+on:
+  push:
+    branches: [v2/stable-replacement-17138]
+    paths:
+      - 'v2/**'
+      - 'tests/v2-regression-locks.mjs'
+      - '.github/workflows/earthline-v2-regression-locks.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  locks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tests/v2-regression-locks.mjs
