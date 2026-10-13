@@ -1,0 +1,24 @@
+name: Earthline Live Regional Zoom Property 17133
+on:
+  push:
+    branches: [research/elder-browser-engine-17129]
+    paths:
+      - 'tests/live-regional-zoom-property-17133.mjs'
+      - '.github/workflows/earthline-live-regional-zoom-property-17133.yml'
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-browser-engine-17129
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - run: node tests/live-regional-zoom-property-17133.mjs
