@@ -16,11 +16,29 @@ jobs:
           ref: pages-live
           fetch-depth: 0
       - name: Remove actual Language owner only
+        shell: bash
         run: |
-          python3 .github/scripts/remove-live-language-owner-17137.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          pattern=re.compile(r"function ensureLanguage\(\)\{[\s\S]*?\nfunction earthlineApplyUiLanguage16871",re.M)
+          matches=list(pattern.finditer(s))
+          if len(matches)!=1:
+              raise SystemExit(f"Expected exactly one ensureLanguage owner, found {len(matches)}")
+          replacement="""function ensureLanguage(){const wrap=document.getElementById('earthlineLanguageWrap16488');if(wrap)wrap.remove();return null}
+          function earthlineApplyUiLanguage16871"""
+          s=pattern.sub(replacement,s,count=1)
+          if "wrap=document.createElement('label');wrap.id='earthlineLanguageWrap16488'" in s:
+              raise SystemExit("Language creation code still present")
+          p.write_text(s,encoding="utf-8")
+          print("17137 Language owner removal PASS")
+          PY
           git diff --check
-          git diff -- index.html
+          test "$(git diff --name-only)" = "index.html"
       - name: Commit only index owner removal
+        shell: bash
         run: |
           git config user.name "earthline-release-bot"
           git config user.email "earthline-release-bot@users.noreply.github.com"
