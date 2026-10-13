@@ -1,0 +1,30 @@
+name: Earthline Remove Live Language Owner 17137
+on:
+  push:
+    branches: [research/elder-browser-engine-17129]
+    paths:
+      - '.github/workflows/earthline-remove-live-language-owner-17137.yml'
+permissions:
+  contents: write
+jobs:
+  remove:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Remove actual Language owner only
+        run: |
+          python3 .github/scripts/remove-live-language-owner-17137.py
+          git diff --check
+          git diff -- index.html
+      - name: Commit only index owner removal
+        run: |
+          git config user.name "earthline-release-bot"
+          git config user.email "earthline-release-bot@users.noreply.github.com"
+          git add index.html
+          git commit -m "ui: remove Language control owner from locked live page 17137"
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live
