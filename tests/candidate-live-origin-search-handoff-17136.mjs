@@ -122,3 +122,5 @@ writeFileSync(`${OUT}/result.json`,JSON.stringify(result,null,2));
 console.log('EARTHLINE_CANDIDATE_17136 '+JSON.stringify(result));
 await browser.close();
 if(failures.length)throw new Error('Candidate live-origin failures: '+JSON.stringify(failures));
+
+// rerun-17136-menu-priority
