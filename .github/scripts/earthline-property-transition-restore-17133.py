@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 p=Path("index.html")
 s=p.read_text(encoding="utf-8")
@@ -9,17 +10,11 @@ if s.count(old_visibility)!=1:
     raise SystemExit(f"Expected one 17124 visibility block, found {s.count(old_visibility)}")
 s=s.replace(old_visibility,new_visibility,1)
 
-source_marker="/* EARTHLINE 17125 — Property source stability."
-source_end="""                lastSwaleData=fc;
-                src.setData(fc);
-              }"""
-m0=s.find(source_marker)
-if m0<0:
-    raise SystemExit("17125 source marker not found")
-m1=s.find(source_end,m0)
-if m1<0:
-    raise SystemExit("17125 source block end not found")
-m1+=len(source_end)
+source_pattern=re.compile(r"/\* EARTHLINE 17125 — Property source stability\.[\s\S]*?src\.setData\(fc\);\s*\}",re.M)
+matches=list(source_pattern.finditer(s))
+if len(matches)!=1:
+    raise SystemExit(f"Expected one 17125 source block, found {len(matches)}")
+
 new_source="""// A committed result is small and must be republished on every authoritative
               // refresh. Signature caching is not allowed to conceal an externally emptied
               // Mapbox source.
@@ -33,9 +28,7 @@ new_source="""// A committed result is small and must be republished on every au
               }"""
 s=s[:m0]+new_source+s[m1:]
 
-if s.count(old_source)!=1:
-    raise SystemExit(f"Expected one 17125 source block, found {s.count(old_source)}")
-s=s.replace(old_source,new_source,1)
+s=source_pattern.sub(new_source,s,count=1)
 
 blue="paint:{'line-color':'#008cff','line-width':['interpolate',['linear'],['zoom'],14,3.4,17,5.4,20,7.2],'line-opacity':.82}}"
 zoom=".el49-detail-shell{width:min(680px,96vw);max-height:calc(100vh - 36px);overflow:auto;"
