@@ -119,14 +119,23 @@ console.log('V1_AFTER_ZOOM '+JSON.stringify(afterZoom));
 if(!/^CROSSHAIR\b/i.test(afterZoom.propertyButton?.text||'')||afterZoom.propertyButton?.crosshair!=='1')failures.push('Regional Zoom did not hand Property search to CROSSHAIR');
 if(afterZoom.propertyTarget?.code)failures.push('Regional corridor code remained authoritative after Zoom');
 
-// 3. Real user drag. Try to start on a corridor hit path first; the map must still drag.
-const dragTarget=page.locator('#earthlineRegionalVectorOverlay16020 .earthline-swale-hit-16070').first();
-let db=await dragTarget.boundingBox();
-if(!db)db=await page.locator('.mapboxgl-canvas-container').first().boundingBox();
+// 3. Real user drag from an unobstructed map point.
+const db=await page.locator('.mapboxgl-canvas-container').first().boundingBox();
 if(!db)throw new Error('No rendered map drag target');
 const before=afterZoom.center;
-const sx=db.x+Math.min(Math.max(db.width*.5,2),Math.max(2,db.width-2));
-const sy=db.y+Math.min(Math.max(db.height*.5,2),Math.max(2,db.height-2));
+const safe=await page.evaluate(({db})=>{
+  const xs=[.84,.72,.60,.48,.36,.24],ys=[.82,.70,.58,.46,.34,.22];
+  for(const yf of ys)for(const xf of xs){
+    const x=db.x+db.width*xf,y=db.y+db.height*yf,e=document.elementFromPoint(x,y);
+    if(!e)continue;
+    const inMap=!!e.closest?.('.mapboxgl-canvas-container');
+    const blocked=!!e.closest?.('#earthlineRegionalVectorOverlay16020,button,a,[role="button"],#earthlinePanel16188,#earthlineRail16188,.mapboxgl-control-container');
+    if(inMap&&!blocked)return{x,y,tag:e.tagName,id:e.id||'',cls:typeof e.className==='string'?e.className:''};
+  }
+  return null;
+},{db});
+if(!safe)throw new Error('No unobstructed bare-map drag point');
+const sx=safe.x,sy=safe.y;
 await page.mouse.move(sx,sy);
 await page.mouse.down();
 await page.mouse.move(sx-115,sy+30,{steps:18});
