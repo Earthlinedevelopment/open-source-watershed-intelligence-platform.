@@ -1,0 +1,110 @@
+name: Earthline Property Source Stability 17125
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-property-source-stability-17125.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+
+      - name: Stop redundant committed Property source reloads
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+
+          old='''    // A committed result is small and must be republished on every authoritative
+              // refresh. Signature caching is not allowed to conceal an externally emptied
+              // Mapbox source.
+              if(
+                src&&src.setData&&
+                (force||committedProperty||sourceChanged||signature!==lastSwaleSignature)
+              ){
+                lastSwaleSignature=signature;
+                lastSwaleData=fc;
+                src.setData(fc);
+              }'''
+
+          new='''    /* EARTHLINE 17125 — Property source stability.
+                 The persistent blue ditch and the living-swale renderer share SWALE_SOURCE.
+                 Do not reload an unchanged committed GeoJSON source on every bounded rehydrate:
+                 Mapbox can briefly blank/redraw that source, which presents as blue flicker.
+                 Re-publish only for a new source, changed authoritative geometry, or an
+                 actually emptied committed source. Non-committed forced refresh behavior is
+                 preserved for pre-publication recovery. */
+              let sourceData15792=src&&src._data;
+              try{
+                if((!sourceData15792||typeof sourceData15792==="string")&&src&&typeof src.serialize==="function"){
+                  const serialized15792=src.serialize();
+                  sourceData15792=serialized15792&&serialized15792.data;
+                }
+              }catch(_){}
+              const sourceFeatureCount15792=safeData(sourceData15792).features.length;
+              const sourceNeedsRestore15792=!!(
+                committedProperty&&fc.features.length>0&&sourceFeatureCount15792===0
+              );
+              if(
+                src&&src.setData&&
+                (sourceChanged||signature!==lastSwaleSignature||sourceNeedsRestore15792||(!committedProperty&&force))
+              ){
+                lastSwaleSignature=signature;
+                lastSwaleData=fc;
+                src.setData(fc);
+              }'''
+
+          if s.count(old) != 1:
+              raise SystemExit(f"Expected exactly one Property source rehydrate block; found {s.count(old)}")
+
+          blue="paint:{'line-color':'#008cff','line-width':['interpolate',['linear'],['zoom'],14,3.4,17,5.4,20,7.2],'line-opacity':.82}}"
+          zoom=".el49-detail-shell{width:min(680px,96vw);max-height:calc(100vh - 36px);overflow:auto;"
+          owner="EARTHLINE 17124 — BUILD-CHECK-15805 is the single Property swale visibility owner."
+          if blue not in s: raise SystemExit("Verified Property blue lock missing")
+          if zoom not in s: raise SystemExit("Verified Zoom repair missing")
+          if owner not in s: raise SystemExit("17124 single-owner lock missing")
+          if "earthline-presentation-lock-17139" in s: raise SystemExit("Rejected Regional override present")
+
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding="utf-8")
+          PY
+
+          git diff --check
+
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          assert s.count("EARTHLINE 17125 — Property source stability.") == 1
+          assert "(force||committedProperty||sourceChanged||signature!==lastSwaleSignature)" not in s
+          assert "(sourceChanged||signature!==lastSwaleSignature||sourceNeedsRestore15792||(!committedProperty&&force))" in s
+          assert "paint:{'line-color':'#008cff','line-width':['interpolate',['linear'],['zoom'],14,3.4,17,5.4,20,7.2],'line-opacity':.82}}" in s
+          assert ".el49-detail-shell{width:min(680px,96vw);max-height:calc(100vh - 36px);overflow:auto;" in s
+          assert "EARTHLINE 17124 — BUILD-CHECK-15805 is the single Property swale visibility owner." in s
+          assert "earthline-presentation-lock-17139" not in s
+          print("17125 Property source-stability contract PASS")
+          PY
+
+      - name: Commit exact repair and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/earthline-property-source-stability-17125.yml
+          git config user.name "earthline-release-bot"
+          git config user.email "earthline-release-bot@users.noreply.github.com"
+          git add index.html .github/workflows/earthline-property-source-stability-17125.yml
+          git diff --cached --name-only
+          git commit -m "ui: stop redundant Property source rehydration flicker 17125"
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live
