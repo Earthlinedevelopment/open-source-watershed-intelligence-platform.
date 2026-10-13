@@ -1235,7 +1235,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   const MANIFEST='data/elder-trees/v2/manifest.json';
   const SOURCE='earthline-elder-trees-17097';
   const LAYER='earthline-elder-tree-points-17097';
-  const state={loaded:false,loading:null,manifest:null,all:[],active:[],lastSummary:null};
+  const state={loaded:false,loading:null,manifest:null,all:[],active:[],lastSummary:null,dynamic:{worker:null,seq:0,pending:new Map(),key:'',result:null,promise:null,error:null}};
 
   function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
@@ -1349,8 +1349,9 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   }
   function activeCoverage(){
     const b=coverageQueryBounds();
+    const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
     const datasets=state.manifest?.datasets||[];
-    const covered=datasets.filter(d=>datasetCoversBounds(d,b));
+    const covered=datasets.filter(d=>!(tier==='property'&&d?.property_eligible===false)&&datasetCoversBounds(d,b));
     return {
       known:covered.length>0,
       datasetIds:covered.map(d=>d.id||d.path||''),
@@ -1606,14 +1607,73 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     const s=state.lastSummary||summarize(state.active);
     gaugeLine(s);propertyCard(s);dataBlock(s);reportBlock(s);
   }
+  function dynamicKey(b){return Array.isArray(b)?b.map(v=>Number(v).toFixed(6)).join(','):''}
+  function dynamicWorker(){
+    if(state.dynamic.worker)return state.dynamic.worker;
+    const w=new Worker('earthline-elder-worker-17129.js',{type:'module'});
+    w.onmessage=e=>{
+      const id=e.data?.id,p=state.dynamic.pending.get(id);
+      if(!p)return;
+      state.dynamic.pending.delete(id);
+      if(e.data?.ok)p.resolve(e.data.result);else p.reject(new Error(String(e.data?.error||'Elder worker failed')));
+    };
+    w.onerror=e=>{
+      const err=new Error(String(e?.message||'Elder worker error'));
+      for(const p of state.dynamic.pending.values())p.reject(err);
+      state.dynamic.pending.clear();
+      try{w.terminate()}catch(_){}
+      state.dynamic.worker=null;
+    };
+    state.dynamic.worker=w;
+    return w;
+  }
+  async function dynamicPropertyEvidence(){
+    const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
+    if(tier!=='property')return null;
+    const coverage=activeCoverage();
+    if(coverage.known)return null;
+    const b=coverageQueryBounds(),key=dynamicKey(b);
+    if(!key)return null;
+    if(state.dynamic.key===key&&state.dynamic.result)return state.dynamic.result;
+    if(state.dynamic.key===key&&state.dynamic.promise)return state.dynamic.promise;
+    const id='elder-'+(++state.dynamic.seq);
+    state.dynamic.key=key;state.dynamic.result=null;state.dynamic.error=null;
+    state.dynamic.promise=new Promise((resolve,reject)=>state.dynamic.pending.set(id,{resolve,reject}))
+      .then(result=>{
+        const features=(result?.features||[]).map(f=>({
+          type:'Feature',geometry:f.geometry,
+          properties:Object.assign({},f.properties||{},{
+            elder_dataset_id:'dynamic-property-17130',
+            elder_dataset_label:'On-demand Elder V2',
+            elder_coverage_complete:false
+          })
+        }));
+        const normalized=Object.assign({},result,{features});
+        state.dynamic.result=normalized;state.dynamic.error=null;
+        return normalized;
+      })
+      .catch(err=>{state.dynamic.error=String(err&&err.message||err);return null})
+      .finally(()=>{state.dynamic.promise=null});
+    dynamicWorker().postMessage({id,bbox:b,options:{displayPerTile:24,maxPerTile:240}});
+    return state.dynamic.promise;
+  }
   async function refresh(){
     try{
       await load();
-      state.active=activeFeatures();
-      state.lastSummary=summarize(state.active,activeCoverage());
+      let coverage=activeCoverage();
+      const dynamic=await dynamicPropertyEvidence();
+      if(dynamic){
+        state.active=dynamic.features||[];
+        coverage={known:true,datasetIds:['dynamic-property-17130'],complete:false,dynamic:true,candidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0)};
+      }else state.active=activeFeatures();
+      state.lastSummary=summarize(state.active,coverage);
       publishMap(state.active);
       refreshSurfaces();
-      window.EARTHLINE_ELDER_TREE_LAST_17097={summary:state.lastSummary,featureCount:state.active.length,at:new Date().toISOString()};
+      window.EARTHLINE_ELDER_TREE_LAST_17097={
+        summary:state.lastSummary,featureCount:state.active.length,
+        dynamicCandidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0),
+        dynamicError:state.dynamic.error||null,at:new Date().toISOString()
+      };
       return state.lastSummary;
     }catch(err){
       window.EARTHLINE_ELDER_TREE_LAST_17097={error:String(err&&err.message||err),at:new Date().toISOString()};
