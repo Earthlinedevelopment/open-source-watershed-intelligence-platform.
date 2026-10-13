@@ -1,0 +1,14 @@
+import { chromium } from "playwright";
+import fs from "node:fs";
+const browser=await chromium.launch({headless:true});
+const page=await browser.newPage();
+page.on("console",m=>console.log("BROWSER",m.type(),m.text()));
+page.on("pageerror",e=>console.error("PAGEERROR",e));
+await page.goto("http://127.0.0.1:8765/tests/elder-browser-california.html",{waitUntil:"domcontentloaded",timeout:30000});
+await page.waitForFunction(()=>window.__ELDER_DONE__===true,null,{timeout:240000});
+const payload=await page.evaluate(()=>({results:window.__ELDER_RESULTS__||null,error:window.__ELDER_ERROR__||null}));
+await browser.close();
+if(payload.error)throw new Error(payload.error);
+fs.mkdirSync("artifacts/elder-browser",{recursive:true});
+fs.writeFileSync("artifacts/elder-browser/browser.json",JSON.stringify(payload.results,null,2));
+console.log(JSON.stringify(Object.fromEntries(Object.entries(payload.results).map(([k,v])=>[k,{pool:v.earthline?.candidate_pool_count,display:v.earthline?.display_count,tiles:v.earthline?.requested_tiles}])) ,null,2));
