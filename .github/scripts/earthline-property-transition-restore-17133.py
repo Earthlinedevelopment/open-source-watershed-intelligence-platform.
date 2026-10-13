@@ -9,33 +9,18 @@ if s.count(old_visibility)!=1:
     raise SystemExit(f"Expected one 17124 visibility block, found {s.count(old_visibility)}")
 s=s.replace(old_visibility,new_visibility,1)
 
-old_source="""    /* EARTHLINE 17125 — Property source stability.
-                 The persistent blue ditch and the living-swale renderer share SWALE_SOURCE.
-                 Do not reload an unchanged committed GeoJSON source on every bounded rehydrate:
-                 Mapbox can briefly blank/redraw that source, which presents as blue flicker.
-                 Re-publish only for a new source, changed authoritative geometry, or an
-                 actually emptied committed source. Non-committed forced refresh behavior is
-                 preserved for pre-publication recovery. */
-              let sourceData15792=src&&src._data;
-              try{
-                if((!sourceData15792||typeof sourceData15792==="string")&&src&&typeof src.serialize==="function"){
-                  const serialized15792=src.serialize();
-                  sourceData15792=serialized15792&&serialized15792.data;
-                }
-              }catch(_){}
-              const sourceFeatureCount15792=safeData(sourceData15792).features.length;
-              const sourceNeedsRestore15792=!!(
-                committedProperty&&fc.features.length>0&&sourceFeatureCount15792===0
-              );
-              if(
-                src&&src.setData&&
-                (sourceChanged||signature!==lastSwaleSignature||sourceNeedsRestore15792||(!committedProperty&&force))
-              ){
-                lastSwaleSignature=signature;
-                lastSwaleData=fc;
+source_marker="/* EARTHLINE 17125 — Property source stability."
+source_end="""                lastSwaleData=fc;
                 src.setData(fc);
               }"""
-new_source="""    // A committed result is small and must be republished on every authoritative
+m0=s.find(source_marker)
+if m0<0:
+    raise SystemExit("17125 source marker not found")
+m1=s.find(source_end,m0)
+if m1<0:
+    raise SystemExit("17125 source block end not found")
+m1+=len(source_end)
+new_source="""// A committed result is small and must be republished on every authoritative
               // refresh. Signature caching is not allowed to conceal an externally emptied
               // Mapbox source.
               if(
@@ -46,6 +31,8 @@ new_source="""    // A committed result is small and must be republished on ever
                 lastSwaleData=fc;
                 src.setData(fc);
               }"""
+s=s[:m0]+new_source+s[m1:]
+
 if s.count(old_source)!=1:
     raise SystemExit(f"Expected one 17125 source block, found {s.count(old_source)}")
 s=s.replace(old_source,new_source,1)
