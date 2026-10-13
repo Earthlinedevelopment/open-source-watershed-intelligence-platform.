@@ -1235,7 +1235,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   const MANIFEST='data/elder-trees/v2/manifest.json';
   const SOURCE='earthline-elder-trees-17097';
   const LAYER='earthline-elder-tree-points-17097';
-  const state={loaded:false,loading:null,manifest:null,all:[],active:[],lastSummary:null,dynamic:{worker:null,seq:0,pending:new Map(),key:'',result:null,promise:null,error:null}};
+  const state={loaded:false,loading:null,manifest:null,all:[],active:[],lastSummary:null,dynamic:{worker:null,seq:0,pending:new Map(),key:'',result:null,promise:null,error:null,warmPromise:null,warmed:false}};
 
   function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
@@ -1615,7 +1615,8 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       const id=e.data?.id,p=state.dynamic.pending.get(id);
       if(!p)return;
       state.dynamic.pending.delete(id);
-      if(e.data?.ok)p.resolve(e.data.result);else p.reject(new Error(String(e.data?.error||'Elder worker failed')));
+      if(e.data?.warm===true)state.dynamic.warmed=e.data?.ok===true;
+      if(e.data?.ok)p.resolve(e.data?.warm===true?e.data:e.data.result);else p.reject(new Error(String(e.data?.error||'Elder worker failed')));
     };
     w.onerror=e=>{
       const err=new Error(String(e?.message||'Elder worker error'));
@@ -1626,6 +1627,17 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     };
     state.dynamic.worker=w;
     return w;
+  }
+  function prewarmDynamicWorker(){
+    if(state.dynamic.warmed)return Promise.resolve(true);
+    if(state.dynamic.warmPromise)return state.dynamic.warmPromise;
+    const id='elder-warm-'+(++state.dynamic.seq);
+    state.dynamic.warmPromise=new Promise((resolve,reject)=>state.dynamic.pending.set(id,{resolve,reject}))
+      .then(()=>{state.dynamic.warmed=true;return true})
+      .catch(err=>{state.dynamic.error=String(err&&err.message||err);return false})
+      .finally(()=>{state.dynamic.warmPromise=null});
+    dynamicWorker().postMessage({id,warm:true});
+    return state.dynamic.warmPromise;
   }
   async function dynamicPropertyEvidence(){
     const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
@@ -1706,6 +1718,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     document.addEventListener('click',click,false);
     window.addEventListener('hashchange',hash,false);
     document.addEventListener('earthline:analysis-complete',()=>{wrapCorridor();refresh();},{passive:true});
+    prewarmDynamicWorker();
     load().then(()=>{if(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970)refresh()}).catch(()=>{});
     if(location.hash==='#swales-explained')howParagraph();
     window.EARTHLINE_ELDER_TREES_V1_17097={
