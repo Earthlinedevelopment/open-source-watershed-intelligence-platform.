@@ -1,0 +1,47 @@
+name: Earthline V2 Property Input Race Audit 17145
+on:
+  push:
+    branches: [v2/stable-replacement-17138]
+    paths:
+      - '.github/workflows/earthline-v2-property-input-race-audit-17145.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect Property acquisition and fingerprint owners
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8',errors='ignore')
+          terms=[
+            'earthlineGovernedPropertyRun16202',
+            'runProperty15778',
+            'sourceFeatureCount',
+            'processedFeatureCount',
+            'sourceStateFingerprint',
+            'scientificInputFingerprint',
+            'vectorNoBuildMaskHash',
+            'mapped roads/buildings',
+            'fetchRoad',
+            'fetchOverpass',
+            'overpass',
+            'roads/buildings',
+            'earthlineLockPropertyResult15815',
+            'earthlinePublishRawPropertyResult15816',
+            'earthlineFrozenPropertyClearanceAudit16255'
+          ]
+          for term in terms:
+              print('\n===== '+term+' =====')
+              start=0;n=0
+              while True:
+                  i=s.lower().find(term.lower(),start)
+                  if i<0 or n>=10: break
+                  print('\n---',i,'---')
+                  print(s[max(0,i-3500):min(len(s),i+9000)])
+                  start=i+len(term);n+=1
+          PY
