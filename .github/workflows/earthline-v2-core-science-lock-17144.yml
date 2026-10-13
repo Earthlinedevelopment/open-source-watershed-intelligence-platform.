@@ -1,0 +1,28 @@
+name: Earthline V2 Core Science Lock 17144
+on:
+  push:
+    branches: [v2/stable-replacement-17138]
+    paths:
+      - 'index.html'
+      - 'tests/v2-core-science-lock-17144.mjs'
+      - '.github/workflows/earthline-v2-core-science-lock-17144.yml'
+  workflow_dispatch:
+concurrency:
+  group: earthline-v2-science-lock-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Fetch locked V1 reference
+        run: git fetch origin production-lock-17137:refs/remotes/origin/production-lock-17137 --depth=1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tests/v2-core-science-lock-17144.mjs
