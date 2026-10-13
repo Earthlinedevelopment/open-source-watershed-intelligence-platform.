@@ -1,0 +1,114 @@
+name: Earthline Elder Candidate Acceptance 17130
+
+on:
+  push:
+    branches:
+      - research/elder-browser-engine-17129
+    paths:
+      - '.github/workflows/earthline-elder-candidate-acceptance-17130.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  accept:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/elder-on-demand-17130
+          fetch-depth: 0
+
+      - name: Verify isolated candidate diff
+        run: |
+          set -euo pipefail
+          BASE=c9abec3e74ba1f30530087524c114dacf1bf01e3
+          git diff --check "$BASE"..HEAD
+          git diff --name-only "$BASE"..HEAD | sort > /tmp/changed.txt
+          cat >/tmp/expected.txt <<'EOF'
+          data/elder-trees/v2/california-regional-overview.geojson
+          data/elder-trees/v2/california-regional-overview.json
+          data/elder-trees/v2/manifest.json
+          earthline-elder-worker-17129.js
+          earthline-launch-16872.js
+          tools/elder_trees/chmv2_array_detector_17129.py
+          EOF
+          sort /tmp/expected.txt -o /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/changed.txt
+          ! git diff --name-only "$BASE"..HEAD | grep -E '^(index\.html|earthline-launch-16872\.css)$'
+          ADDED="$(git diff -U0 "$BASE"..HEAD -- earthline-launch-16872.js | grep '^+' | grep -v '^+++' || true)"
+          ! printf '%s\n' "$ADDED" | grep -E 'styledata|setInterval|MutationObserver|moveend|zoomend|map\.on\(.render|requestAnimationFrame'
+          ! printf '%s\n' "$ADDED" | grep -Ei 'hydrology|rechargeWeight|swale|Search Orb|logo'
+          grep -F "paint:{'line-color':'#008cff','line-width':['interpolate',['linear'],['zoom'],14,3.4,17,5.4,20,7.2],'line-opacity':.82}}" index.html
+          grep -F ".el49-detail-shell{width:min(680px,96vw);max-height:calc(100vh - 36px);overflow:auto;" index.html
+
+      - name: Parse JavaScript
+        run: |
+          node --check earthline-launch-16872.js
+          node --check earthline-elder-worker-17129.js
+
+      - name: Verify California Regional contract
+        run: |
+          python - <<'PY'
+          import json
+          m=json.load(open("data/elder-trees/v2/manifest.json"))
+          d=[x for x in m["datasets"] if x.get("id")=="california-regional-overview-17130"]
+          assert len(d)==1,d
+          d=d[0]
+          assert d["science_baseline"]=="17118"
+          assert d["property_eligible"] is False
+          assert d["coverage_complete"] is False
+          fc=json.load(open("data/elder-trees/v2/california-regional-overview.geojson"))
+          fs=fc["features"]
+          assert len(fs)==190,len(fs)
+          assert all(f.get("properties",{}).get("regional_display_only") is True for f in fs)
+          assert all(f.get("properties",{}).get("method_version")=="earthline-elder-tree-aoi-chmv2-v0.7-high-recall-plateau-collapse" for f in fs)
+          print("California Regional contract PASS",len(fs))
+          PY
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install browser smoke runtime
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Run bounded California Property engine smoke
+        run: |
+          cat > elder-candidate-smoke.html <<'HTML'
+          <!doctype html><meta charset="utf-8"><pre id="out">running</pre>
+          <script type="module">
+          const w=new Worker("/earthline-elder-worker-17129.js",{type:"module"});
+          const id="smoke",t0=performance.now();
+          const timer=setTimeout(()=>{window.__DONE__={ok:false,error:"timeout"}},120000);
+          w.onmessage=e=>{
+            if(e.data?.id!==id)return;
+            clearTimeout(timer);
+            window.__DONE__={...e.data,elapsedMs:performance.now()-t0};
+            document.querySelector("#out").textContent=JSON.stringify(window.__DONE__,null,2);
+          };
+          w.postMessage({id,bbox:[-118.754,36.559,-118.751,36.562],options:{displayPerTile:24,maxPerTile:240}});
+          </script>
+          HTML
+          cat > /tmp/run-smoke.mjs <<'JS'
+          import { chromium } from "playwright";
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage();
+          page.on("pageerror",e=>console.error("PAGEERROR",e));
+          await page.goto("http://127.0.0.1:8765/elder-candidate-smoke.html",{waitUntil:"domcontentloaded",timeout:30000});
+          await page.waitForFunction(()=>window.__DONE__,null,{timeout:150000});
+          const r=await page.evaluate(()=>window.__DONE__);
+          await browser.close();
+          console.log(JSON.stringify({ok:r.ok,elapsedMs:Math.round(r.elapsedMs),pool:r.result?.earthline?.candidate_pool_count,display:r.result?.earthline?.display_count,tiles:r.result?.earthline?.tile_results},null,2));
+          if(!r.ok)throw new Error(r.error||"worker failed");
+          if(!(r.result?.earthline?.candidate_pool_count>0))throw new Error("zero candidate pool");
+          if(!(r.result?.earthline?.display_count>0))throw new Error("zero display");
+          if((r.result?.earthline?.tile_results||[]).some(t=>t.status!=="OK"))throw new Error("tile failure");
+          if(r.elapsedMs>20000)throw new Error("bounded Property Elder engine exceeded 20s CI gate");
+          JS
+          python -m http.server 8765 >/tmp/earthline-17130-http.log 2>&1 &
+          node /tmp/run-smoke.mjs
