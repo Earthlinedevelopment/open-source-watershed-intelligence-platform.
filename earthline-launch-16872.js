@@ -1384,12 +1384,12 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     const evidenceLabel=!coverageKnown
       ?'Coverage not yet processed for this area'
       :verified&&candidates
-        ?verified+' verified · '+candidates+' candidates'
+        ?verified+' verified · '+candidates+' candidate display points'
         :verified
           ?verified+' verified'
           :candidates
-            ?candidates+' candidates'
-            :'No Elder Tree candidates detected in current Earthline coverage';
+            ?candidates+' candidate display points'
+            :'No Elder Tree display points fall inside this area in the current thinned map subset';
     return {
       total:features.length,verified,lidar,modeled,legacyCandidate,current,future,outsidePrior,candidates,
       meanConfidence:confN?Math.round(confSum/confN):null,
@@ -1518,7 +1518,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       (legacy?row('EARLIER CANDIDATE EVIDENCE',legacy):'')+
       (verified?row('VERIFIED ELDER TREES',verified):'')+
       (summary.meanConfidence!=null?'<div style="margin-top:6px;color:#a7c7b2">Mean Elder Tree Confidence <b style="color:#dff7e6">'+esc(summary.meanConfidence)+'%</b></div>':'')+
-      '<div style="margin-top:6px;color:#81998a;font-size:9px">Confidence is a local structural-evidence percentile, not probability of age. Elder Trees have zero weight in Recharge Potential.</div>'+
+      '<div style="margin-top:6px;color:#81998a;font-size:9px">Displayed candidate counts are the approved thinned map subset; the high-recall structural pool remains the evidence-count owner. Confidence is a local structural-evidence percentile, not probability of age. Elder Trees have zero weight in Recharge Potential.</div>'+
       (summary.partial?'<div style="margin-top:4px;color:#c7ad7a;font-size:9px">Current Earthline coverage is partial; this is not a complete natural-population census.</div>':'');
     return true;
   }
@@ -1534,7 +1534,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     }
     el.innerHTML='<b style="color:#254d31">ELDER TREE EVIDENCE</b><br>'+esc(summary.evidenceLabel)+
       (summary.meanConfidence!=null?'<br>Mean candidate confidence: <b>'+esc(summary.meanConfidence)+'%</b>':'')+
-      '<br><span style="color:#68756b">Elder Tree Confidence is a local structural-evidence percentile, not probability of age. Elder Trees have zero weight in Recharge Potential.</span>'+
+      '<br><span style="color:#68756b">Displayed candidate counts are the approved thinned map subset; the high-recall structural pool remains the evidence-count owner. Elder Tree Confidence is a local structural-evidence percentile, not probability of age. Elder Trees have zero weight in Recharge Potential.</span>'+
       (summary.sources?.length?'<br><span style="color:#68756b">Source: '+summary.sources.map(esc).join(' · ')+'</span>':'')+
       (summary.coverageKnown&&summary.partial?'<br><span style="color:#7c6240">Counts reflect current Earthline Elder Tree coverage, not a complete natural-population census.</span>':'')+
       (!summary.coverageKnown?'<br><span style="color:#7c6240">No Elder Tree count is reported because this area has not yet been processed into the current Elder V2 evidence coverage.</span>':'');
@@ -1551,7 +1551,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     }
     el.innerHTML='<b>Elder Tree evidence</b><br>'+esc(summary.evidenceLabel)+
       (summary.meanConfidence!=null?' · mean candidate confidence '+esc(summary.meanConfidence)+'%':'')+
-      '<br><span style="font-size:10.5px">Elder Tree Confidence is a local structural-evidence percentile, not probability of age or ancient/veteran status.</span>'+
+      '<br><span style="font-size:10.5px">Displayed candidate counts are the approved thinned map subset; the high-recall structural pool remains the evidence-count owner. Elder Tree Confidence is a local structural-evidence percentile, not probability of age or ancient/veteran status.</span>'+
       (summary.sources?.length?'<br><span style="font-size:10.5px">Source: '+summary.sources.map(esc).join(' · ')+'</span>':'')+
       (summary.partial?'<br><span style="font-size:10.5px">Current Earthline coverage is partial; this is not a complete tree census.</span>':'');
     return true;
@@ -1582,7 +1582,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     }
     const nearby=feature?corridorNearby(feature):[],summary=summarize(nearby);
     const confs=nearby.map(f=>elderConfidence(f.properties||{})).filter(v=>v!=null),high=confs.length?Math.max(...confs):null;
-    el.innerHTML='<b>Elder Trees within 100 m of this corridor.</b> '+esc(summary.evidenceLabel)+
+    el.innerHTML='<b>Elder Tree display points within 100 m of this corridor.</b> '+esc(summary.evidenceLabel)+
       (high!=null?' · highest Elder Tree Confidence '+esc(high)+'%':'')+
       (summary.partial?' · current Earthline coverage':'')+'.';
     return true;
@@ -1660,6 +1660,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       build:'17126',scienceBaseline:'17118',
       propertyBoundaryOwner:'M.analysisBoundaryLngLat with 350 m fallback only when boundary unavailable',
       coverageQueryOwner:'Property boundary/center bounds for false-zero protection; map bounds for non-Property',
+      countOwner:'17118 high-recall structural pool; displayed points are a thinned map subset',
       propertyCardVisible:!!document.getElementById('earthlineElderTreesProperty17126')&&!document.getElementById('earthlineElderTreesProperty17126').hidden,
       summary:state.lastSummary||summarize(state.active),
       at:new Date().toISOString()
