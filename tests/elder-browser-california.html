@@ -1,0 +1,35 @@
+<!doctype html><meta charset="utf-8"><title>Earthline Elder Browser California Validation</title>
+<pre id="out">running</pre>
+<script type="module">
+const CASES=[
+  {id:"sequoia",bbox:[-118.756,36.557,-118.748,36.565]},
+  {id:"mariposa",bbox:[-119.602,37.495,-119.592,37.505]},
+  {id:"humboldt",bbox:[-123.995,40.335,-123.985,40.345]}
+];
+const worker=new Worker("/earthline-elder-worker-17129.js",{type:"module"});
+let seq=0;
+function run(bbox){
+  return new Promise((resolve,reject)=>{
+    const id="q"+(++seq);
+    const timer=setTimeout(()=>reject(new Error("worker timeout "+id)),180000);
+    const fn=e=>{
+      if(e.data?.id!==id)return;
+      worker.removeEventListener("message",fn);clearTimeout(timer);
+      if(e.data.ok)resolve(e.data.result);else reject(new Error(e.data.error||"worker error"));
+    };
+    worker.addEventListener("message",fn);
+    worker.postMessage({id,bbox,options:{displayPerTile:24,maxPerTile:240}});
+  });
+}
+(async()=>{
+  try{
+    const results={};
+    for(const c of CASES)results[c.id]=await run(c.bbox);
+    window.__ELDER_RESULTS__=results;window.__ELDER_DONE__=true;
+    document.querySelector("#out").textContent=JSON.stringify(results,null,2);
+  }catch(err){
+    window.__ELDER_ERROR__=String(err?.stack||err);window.__ELDER_DONE__=true;
+    document.querySelector("#out").textContent=window.__ELDER_ERROR__;
+  }
+})();
+</script>
