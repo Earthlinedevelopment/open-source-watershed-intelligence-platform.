@@ -186,9 +186,15 @@ async function detect(bbox,{displayPerTile=24,maxPerTile=240}={}){
 self.onmessage=async(e)=>{
   const id=e.data?.id;
   try{
+    if(e.data?.warm===true){
+      const t0=performance.now();
+      await ensurePy();
+      self.postMessage({id,ok:true,warm:true,elapsedMs:performance.now()-t0});
+      return;
+    }
     const result=await detect(e.data?.bbox,e.data?.options||{});
     self.postMessage({id,ok:true,result});
   }catch(err){
-    self.postMessage({id,ok:false,error:String(err?.stack||err?.message||err)});
+    self.postMessage({id,ok:false,warm:e.data?.warm===true,error:String(err?.stack||err?.message||err)});
   }
 };
