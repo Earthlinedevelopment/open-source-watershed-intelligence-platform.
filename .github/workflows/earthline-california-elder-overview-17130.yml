@@ -1,0 +1,91 @@
+name: Earthline California Regional Elder Overview 17130
+
+on:
+  push:
+    branches:
+      - research/elder-browser-engine-17129
+    paths:
+      - '.github/workflows/earthline-california-elder-overview-17130.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-browser-engine-17129
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy scipy rasterio pyproj requests
+      - name: Build exact-17118 California regional display samples
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/california-elder
+          python tools/elder_trees/chmv2_aoi_candidates.py --bbox=-124.02,40.33,-123.98,40.37 --screen-size=1024 --refine-radius-m=15 --max-per-tile=240 --display-per-tile=24 --preserve-all-eligible --out artifacts/california-elder/humboldt
+          python tools/elder_trees/chmv2_aoi_candidates.py --bbox=-123.55,39.25,-123.51,39.29 --screen-size=1024 --refine-radius-m=15 --max-per-tile=240 --display-per-tile=24 --preserve-all-eligible --out artifacts/california-elder/mendocino
+          python tools/elder_trees/chmv2_aoi_candidates.py --bbox=-122.34,41.29,-122.30,41.33 --screen-size=1024 --refine-radius-m=15 --max-per-tile=240 --display-per-tile=24 --preserve-all-eligible --out artifacts/california-elder/shasta
+          python tools/elder_trees/chmv2_aoi_candidates.py --bbox=-120.18,38.88,-120.14,38.92 --screen-size=1024 --refine-radius-m=15 --max-per-tile=240 --display-per-tile=24 --preserve-all-eligible --out artifacts/california-elder/tahoe
+          python tools/elder_trees/chmv2_aoi_candidates.py --bbox=-119.62,37.48,-119.58,37.52 --screen-size=1024 --refine-radius-m=15 --max-per-tile=240 --display-per-tile=24 --preserve-all-eligible --out artifacts/california-elder/yosemite
+          python tools/elder_trees/chmv2_aoi_candidates.py --bbox=-118.77,36.54,-118.73,36.58 --screen-size=1024 --refine-radius-m=15 --max-per-tile=240 --display-per-tile=24 --preserve-all-eligible --out artifacts/california-elder/sequoia
+          python tools/elder_trees/chmv2_aoi_candidates.py --bbox=-121.79,36.20,-121.75,36.24 --screen-size=1024 --refine-radius-m=15 --max-per-tile=240 --display-per-tile=24 --preserve-all-eligible --out artifacts/california-elder/big-sur
+          python tools/elder_trees/chmv2_aoi_candidates.py --bbox=-116.94,34.20,-116.90,34.24 --screen-size=1024 --refine-radius-m=15 --max-per-tile=240 --display-per-tile=24 --preserve-all-eligible --out artifacts/california-elder/san-bernardino
+
+      - name: Merge sparse regional display without changing evidence ownership
+        run: |
+          python - <<'PY'
+          import glob,json,math,pathlib
+          def hav(a,b):
+              R=6371008.8
+              p1,p2=math.radians(a[1]),math.radians(b[1])
+              dp=math.radians(b[1]-a[1]);dl=math.radians(b[0]-a[0])
+              q=math.sin(dp/2)**2+math.cos(p1)*math.cos(p2)*math.sin(dl/2)**2
+              return 2*R*math.asin(min(1,math.sqrt(q)))
+          features=[]; sites=[]; pool_total=0
+          for p in sorted(glob.glob("artifacts/california-elder/*/elder-trees-*.geojson")):
+              site=pathlib.Path(p).parent.name
+              fc=json.load(open(p))
+              meta_path=glob.glob(str(pathlib.Path(p).parent/"elder-trees-*.json"))[0]
+              meta=json.load(open(meta_path))
+              fs=fc.get("features",[])
+              sites.append({"site":site,"display_count":len(fs),"candidate_pool_count":meta.get("candidate_pool_count",meta.get("candidate_count",0))})
+              pool_total += int(meta.get("candidate_pool_count",meta.get("candidate_count",0)) or 0)
+              for f in fs:
+                  f.setdefault("properties",{})["elder_dataset_id"]="california-regional-overview-17130"
+                  f["properties"]["regional_display_only"]=True
+                  features.append(f)
+          ded=[]
+          for f in sorted(features,key=lambda f:(float(f.get("properties",{}).get("elder_tree_confidence_pct") or 0),float(f.get("properties",{}).get("height_m") or 0)),reverse=True):
+              p=f["geometry"]["coordinates"]
+              if all(hav(p,g["geometry"]["coordinates"])>=20 for g in ded): ded.append(f)
+          out={"type":"FeatureCollection","features":ded}
+          pathlib.Path("artifacts/california-elder/california-regional-overview.geojson").write_text(json.dumps(out,separators=(",",":")))
+          summary={
+            "science_baseline":"17118",
+            "method_version":"earthline-elder-tree-aoi-chmv2-v0.7-high-recall-plateau-collapse",
+            "coverage_complete":False,
+            "property_eligible":False,
+            "display_count":len(ded),
+            "sample_candidate_pool_total":pool_total,
+            "sites":sites,
+            "count_owner":"site candidate pools; not statewide count",
+            "map_owner":"regional sparse display subset",
+            "scientific_boundary":"Regional overview is a sparse exact-17118 display sample. It is not complete California Elder coverage and is never used as Property evidence."
+          }
+          pathlib.Path("artifacts/california-elder/california-regional-overview.json").write_text(json.dumps(summary,indent=2))
+          print(json.dumps(summary,indent=2))
+          if len(ded)<40: raise SystemExit("California regional display too sparse")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: earthline-california-elder-overview-17130
+          path: |
+            artifacts/california-elder/california-regional-overview.geojson
+            artifacts/california-elder/california-regional-overview.json
+          retention-days: 14
