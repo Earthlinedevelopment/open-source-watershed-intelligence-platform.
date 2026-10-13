@@ -1490,38 +1490,10 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     return true;
   }
   function propertyCard(summary){
-    const slot=document.getElementById('earthlinePropertySlot16188');if(!slot)return false;
-    let el=document.getElementById('earthlineElderTreesProperty17126');
-    if(!el){
-      el=document.createElement('div');el.id='earthlineElderTreesProperty17126';
-      el.style.cssText='margin-top:8px;padding:10px 11px 11px;border:1px solid rgba(116,186,138,.42);border-radius:10px;background:rgba(18,42,31,.58);color:#d8eee0;font:650 10px/1.35 "Noto Sans",system-ui,sans-serif';
-      slot.appendChild(el);
-    }
-    const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
-    if(tier!=='property'){el.hidden=true;return false}
-    el.hidden=false;
-    if(!summary.coverageKnown){
-      el.innerHTML='<div style="color:#8fd8a9;font-weight:900;letter-spacing:.08em">ELDER TREES</div>'+
-        '<div style="margin-top:5px;color:#b9c9c0">Coverage not yet processed for this area.</div>';
-      return true;
-    }
-    const modeled=Number(summary.modeled||0),legacy=Number(summary.legacyCandidate||0),lidar=Number(summary.lidar||0),verified=Number(summary.verified||0);
-    const cohortBits=[];
-    if(Number(summary.current||0)>0)cohortBits.push('Current '+Number(summary.current));
-    if(Number(summary.future||0)>0)cohortBits.push('Future '+Number(summary.future));
-    if(Number(summary.outsidePrior||0)>0)cohortBits.push('Outside density prior '+Number(summary.outsidePrior));
-    const row=(label,value)=>'<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:5px"><span style="color:#a9c4b2;font-weight:850;letter-spacing:.035em">'+esc(label)+'</span><b style="color:#f0fff4;font-size:12px">'+esc(value)+'</b></div>';
-    el.innerHTML='<div style="color:#8fd8a9;font-weight:950;letter-spacing:.08em">ELDER TREES</div>'+
-      '<div style="margin-top:4px;color:#d7e6dc">'+esc(summary.evidenceLabel)+'</div>'+
-      row('MODELED CANDIDATES',modeled)+
-      (cohortBits.length?'<div style="margin-top:2px;color:#86a994;font-size:9px">'+esc(cohortBits.join(' · '))+'</div>':'')+
-      (lidar?row('LIDAR-CONFIRMED',lidar):'')+
-      (legacy?row('EARLIER CANDIDATE EVIDENCE',legacy):'')+
-      (verified?row('VERIFIED ELDER TREES',verified):'')+
-      (summary.meanConfidence!=null?'<div style="margin-top:6px;color:#a7c7b2">Mean Elder Tree Confidence <b style="color:#dff7e6">'+esc(summary.meanConfidence)+'%</b></div>':'')+
-      '<div style="margin-top:6px;color:#81998a;font-size:9px">Displayed candidate counts are the approved thinned map subset; the high-recall structural pool remains the evidence-count owner. Confidence is a local structural-evidence percentile, not probability of age. Elder Trees have zero weight in Recharge Potential.</div>'+
-      (summary.partial?'<div style="margin-top:4px;color:#c7ad7a;font-size:9px">Current Earthline coverage is partial; this is not a complete natural-population census.</div>':'');
-    return true;
+    /* EARTHLINE 17149 — approved UI removal: no standalone Elder Property card above Bioswale Impact. */
+    const el=document.getElementById('earthlineElderTreesProperty17126');
+    if(el)el.remove();
+    return false;
   }
 
   function dataBlock(summary){
