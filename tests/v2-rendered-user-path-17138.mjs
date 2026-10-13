@@ -78,10 +78,11 @@ const v2Bootstrap=await page.evaluate(()=>({
   state:window.EARTHLINE_V2?.state||null,
   productionMutationAllowed:window.EARTHLINE_V2?.productionMutationAllowed,
   renderedPageIsAcceptanceAuthority:window.EARTHLINE_V2?.renderedPageIsAcceptanceAuthority,
-  languageExists:!!document.getElementById('earthlineLanguageWrap16488')
+  languageExists:!!document.getElementById('earthlineLanguageWrap16488'),
+  origin:location.origin
 }));
 if(v2Bootstrap.build!=='17138')throw new Error('V2 bootstrap not rendered');
-if(location.origin!=='https://earthlinedevelopment.org')throw new Error('V2 preview is not running under production origin semantics');
+if(v2Bootstrap.origin!=='https://earthlinedevelopment.org')throw new Error('V2 preview is not running under production origin semantics');
 if(v2Bootstrap.productionMutationAllowed!==false)throw new Error('V2 bootstrap production mutation lock missing');
 if(v2Bootstrap.renderedPageIsAcceptanceAuthority!==true)throw new Error('V2 rendered-page authority lock missing');
 if(v2Bootstrap.languageExists)throw new Error('Language control regressed into V2');
