@@ -63,11 +63,11 @@ function projectedWindow(image,bbox){
   const origin=image.getOrigin(),res=image.getResolution(),ib=image.getBoundingBox();
   const rx=Number(res[0]),ry=Number(res[1]),ox=Number(origin[0]),oy=Number(origin[1]);
   if(!Number.isFinite(rx)||!Number.isFinite(ry)||rx===0||ry===0)throw new Error("invalid GeoTIFF resolution");
-  const [a,b]=merc(bbox[0],bbox[1]),[c,d]=merc(bbox[2],bbox[3]);
+  const a=merc(bbox[0],bbox[1]),c=merc(bbox[2],bbox[3]);
   let left=Math.max(Math.min(a[0],c[0]),Number(ib[0]));
   let right=Math.min(Math.max(a[0],c[0]),Number(ib[2]));
-  let bottom=Math.max(Math.min(b[1],d[1]),Number(ib[1]));
-  let top=Math.min(Math.max(b[1],d[1]),Number(ib[3]));
+  let bottom=Math.max(Math.min(a[1],c[1]),Number(ib[1]));
+  let top=Math.min(Math.max(a[1],c[1]),Number(ib[3]));
   if(!(left<right&&bottom<top))return null;
   let col0=Math.floor((left-ox)/rx);
   let row0=Math.floor((top-oy)/ry);
