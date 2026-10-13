@@ -80,6 +80,19 @@ async function runProperty(t,previousAt){
     const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173;
     return a?.settled===true && Number(a?.serial||0)>preSerial;
   },{preSerial},{timeout:45000,polling:150});
+
+  const handoff=await page.evaluate(()=>{
+    const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+    const gauge=String(document.getElementById('earthlineElderTreesGauge17097')?.textContent||'').trim();
+    const ids=Array.isArray(x?.summary?.coverageDatasetIds)?x.summary.coverageDatasetIds:[];
+    return {state:x?.state||'',featureCount:Number(x?.featureCount||0),ids,gauge};
+  });
+  const validPending=handoff.state==='property-pending'&&handoff.featureCount===0&&handoff.gauge==='';
+  const validCommitted=handoff.state==='committed'&&handoff.ids.includes('dynamic-property-17130');
+  if(!validPending&&!validCommitted){
+    throw new Error('Stale Elder state survived Property handoff: '+JSON.stringify(handoff));
+  }
+
   await page.waitForFunction(({previousAt})=>{
     const x=window.EARTHLINE_ELDER_TREE_LAST_17097;
     const at=String(x?.at||'');
