@@ -26,7 +26,6 @@ new_source="""// A committed result is small and must be republished on every au
                 lastSwaleData=fc;
                 src.setData(fc);
               }"""
-s=s[:m0]+new_source+s[m1:]
 
 s=source_pattern.sub(new_source,s,count=1)
 
