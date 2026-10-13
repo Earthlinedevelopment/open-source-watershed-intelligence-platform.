@@ -1,0 +1,32 @@
+name: Earthline V2 Elder Two Property 17148
+on:
+  push:
+    branches: [v2/stable-replacement-17138]
+    paths:
+      - 'tests/v2-elder-two-property-sequence-17148.mjs'
+      - '.github/workflows/earthline-v2-elder-two-property-sequence-17148.yml'
+      - 'earthline-elder-worker-17129.js'
+      - 'tools/elder_trees/chmv2_array_detector_17129.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  two-property:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - run: node tests/v2-elder-two-property-sequence-17148.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-v2-elder-two-property-17148
+          path: artifacts/v2-elder-two-property-sequence-17148/
+          if-no-files-found: warn
+          retention-days: 7
