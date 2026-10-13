@@ -94,7 +94,7 @@ jobs:
           w.postMessage({id,bbox:[-118.754,36.559,-118.751,36.562],options:{displayPerTile:24,maxPerTile:240}});
           </script>
           HTML
-          cat > /tmp/run-smoke.mjs <<'JS'
+          cat > run-smoke.mjs <<'JS'
           import { chromium } from "playwright";
           const browser=await chromium.launch({headless:true});
           const page=await browser.newPage();
@@ -111,4 +111,4 @@ jobs:
           if(r.elapsedMs>20000)throw new Error("bounded Property Elder engine exceeded 20s CI gate");
           JS
           python -m http.server 8765 >/tmp/earthline-17130-http.log 2>&1 &
-          node /tmp/run-smoke.mjs
+          node run-smoke.mjs
