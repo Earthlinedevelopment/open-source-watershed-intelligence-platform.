@@ -146,12 +146,26 @@ if(!mapBoxForDrag)failures.push('Map canvas missing for crosshair move');
 let dragState={};
 if(mapBoxForDrag){
   dragState.before=await page.evaluate(()=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);const c=m?.getCenter?.();return c?{lng:c.lng,lat:c.lat}:null});
-  const sx=mapBoxForDrag.x+mapBoxForDrag.width*0.70;
-  const sy=mapBoxForDrag.y+mapBoxForDrag.height*0.62;
-  await page.mouse.move(sx,sy);
-  await page.mouse.down();
-  await page.mouse.move(sx-90,sy+25,{steps:12});
-  await page.mouse.up();
+  const safePoint=await page.evaluate(({box})=>{
+    const xs=[.82,.68,.54,.40,.26],ys=[.78,.66,.54,.42,.30,.18];
+    for(const yf of ys)for(const xf of xs){
+      const x=box.x+box.width*xf,y=box.y+box.height*yf,e=document.elementFromPoint(x,y);
+      const isMap=!!(e&&(e.matches?.('.mapboxgl-canvas,.mapboxgl-canvas-container')||e.closest?.('.mapboxgl-canvas-container')));
+      const isOverlay=!!e?.closest?.('#earthlineRegionalVectorOverlay16020');
+      const isControl=!!e?.closest?.('button,a,[role="button"],.mapboxgl-control-container,#earthlinePanel16188,#earthlineRail16188');
+      if(isMap&&!isOverlay&&!isControl)return {x,y,hit:{tag:e.tagName,id:e.id||'',class:typeof e.className==='string'?e.className:''}};
+    }
+    return null;
+  },{box:mapBoxForDrag});
+  if(!safePoint)failures.push('No unobstructed bare-map drag point was available');
+  const sx=safePoint?.x??(mapBoxForDrag.x+mapBoxForDrag.width*0.70);
+  const sy=safePoint?.y??(mapBoxForDrag.y+mapBoxForDrag.height*0.62);
+  if(safePoint){
+    await page.mouse.move(sx,sy);
+    await page.mouse.down();
+    await page.mouse.move(sx-120,sy+35,{steps:16});
+    await page.mouse.up();
+  }
   await page.waitForTimeout(900);
   dragState.after=await page.evaluate(()=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);const c=m?.getCenter?.();return c?{lng:c.lng,lat:c.lat}:null});
   dragState.button=await page.evaluate(()=>({
