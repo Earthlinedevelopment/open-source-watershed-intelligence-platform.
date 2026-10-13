@@ -1,0 +1,55 @@
+{
+  "version": "earthline-v2-architecture-17139",
+  "principles": {
+    "rendered_page_is_authority": true,
+    "one_owner_per_state": true,
+    "atomic_publication": true,
+    "stale_async_rejected_by_run_token": true,
+    "core_before_optional_context": true,
+    "production_origin_equivalent_acceptance": true,
+    "accepted_baseline_immutable": true,
+    "zero_cost": true
+  },
+  "lifecycle": {
+    "states": [
+      "IDLE",
+      "REGIONAL_RUNNING",
+      "REGIONAL_COMMITTED",
+      "PROPERTY_TARGETED",
+      "PROPERTY_RUNNING",
+      "PROPERTY_COMMITTED",
+      "FAILED"
+    ],
+    "single_commit_event": "earthline:v2-commit",
+    "required_commit_payload": [
+      "runToken",
+      "tier",
+      "boundary",
+      "publishedAt"
+    ]
+  },
+  "owners": {
+    "regional_publication": "v2/core-lifecycle.js",
+    "property_target": "v2/core-lifecycle.js",
+    "property_publication": "v2/core-lifecycle.js",
+    "property_swale_visibility": "v2/property-renderer.js",
+    "elder_property_refresh": "v2/elder-controller.js",
+    "hydrogeology": "v2/hydrogeology-controller.js",
+    "imagery": "v2/imagery-controller.js",
+    "report": "v2/report-controller.js"
+  },
+  "optional_downstream_modules": [
+    "elder",
+    "naip_imagery",
+    "report_decoration",
+    "telemetry"
+  ],
+  "positive_controls": {
+    "elder_california_2026_10_13": {
+      "required": true,
+      "expected": "fresh visible Property Elder candidates",
+      "minimum_display_count": 1,
+      "observed_display_count": 24
+    }
+  }
+}
