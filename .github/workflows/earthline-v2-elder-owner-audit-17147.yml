@@ -1,0 +1,42 @@
+name: Earthline V2 Elder Owner Audit 17147
+on:
+  push:
+    branches: [v2/stable-replacement-17138]
+    paths:
+      - '.github/workflows/earthline-v2-elder-owner-audit-17147.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect Elder publication and classification owners
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8',errors='ignore')
+          terms=[
+            'dynamicCandidatePoolCount',
+            'legacyCandidate',
+            'EARTHLINE_ELDER_TREE_LAST_17097',
+            'dynamic-property-17130',
+            'MODELED CANDIDATES',
+            'EARTHLINE_ELDER_TREES_V2_17118'
+          ]
+          for term in terms:
+              print('\n===== '+term+' =====')
+              start=0
+              count=0
+              low=s.lower()
+              needle=term.lower()
+              while count<12:
+                  i=low.find(needle,start)
+                  if i<0: break
+                  print('\n--- OFFSET',i,'---')
+                  print(s[max(0,i-1800):min(len(s),i+4200)])
+                  start=i+len(term)
+                  count+=1
+          PY
