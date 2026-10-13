@@ -20557,12 +20557,27 @@ var prescribeSwales;
     const sourceChanged=!!src&&src!==lastSwaleSource15799;
     if(sourceChanged)lastSwaleSource15799=src;
 
-    // A committed result is small and must be republished on every authoritative
-    // refresh. Signature caching is not allowed to conceal an externally emptied
-    // Mapbox source.
+    /* EARTHLINE 17125 — Property source stability.
+       The persistent blue ditch and the living-swale renderer share SWALE_SOURCE.
+       Do not reload an unchanged committed GeoJSON source on every bounded rehydrate:
+       Mapbox can briefly blank/redraw that source, which presents as blue flicker.
+       Re-publish only for a new source, changed authoritative geometry, or an
+       actually emptied committed source. Non-committed forced refresh behavior is
+       preserved for pre-publication recovery. */
+    let sourceData15792=src&&src._data;
+    try{
+      if((!sourceData15792||typeof sourceData15792==="string")&&src&&typeof src.serialize==="function"){
+        const serialized15792=src.serialize();
+        sourceData15792=serialized15792&&serialized15792.data;
+      }
+    }catch(_){}
+    const sourceFeatureCount15792=safeData(sourceData15792).features.length;
+    const sourceNeedsRestore15792=!!(
+      committedProperty&&fc.features.length>0&&sourceFeatureCount15792===0
+    );
     if(
       src&&src.setData&&
-      (force||committedProperty||sourceChanged||signature!==lastSwaleSignature)
+      (sourceChanged||signature!==lastSwaleSignature||sourceNeedsRestore15792||(!committedProperty&&force))
     ){
       lastSwaleSignature=signature;
       lastSwaleData=fc;
