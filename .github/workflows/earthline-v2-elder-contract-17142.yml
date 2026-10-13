@@ -1,0 +1,25 @@
+name: Earthline V2 Elder Contract 17142
+on:
+  push:
+    branches: [v2/stable-replacement-17138]
+    paths:
+      - 'v2/elder-runtime-contract.js'
+      - 'v2/bootstrap.js'
+      - 'tests/v2-elder-runtime-contract.mjs'
+      - '.github/workflows/earthline-v2-elder-contract-17142.yml'
+  workflow_dispatch:
+concurrency:
+  group: earthline-v2-elder-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  elder:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tests/v2-elder-runtime-contract.mjs
