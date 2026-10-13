@@ -1,0 +1,32 @@
+name: Earthline V2 Crosshair Audit 17139
+on:
+  push:
+    branches: [v2/stable-replacement-17138]
+    paths:
+      - '.github/workflows/earthline-v2-crosshair-audit-17139.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect authoritative crosshair and drag owners
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8',errors='ignore')
+          terms=['data-crosshair16247','setPropertyTarget16201','earthlinePropertyTargetMarkup16871',
+                 'EARTHLINE_COUNTRY_TARGET_LOCK_16845','dragPan','corridor-navigation-16251',
+                 'map.dragPan','pointerdown','movestart','moveend']
+          for term in terms:
+              print('\n===== '+term+' =====')
+              start=0;n=0
+              while True:
+                  i=s.find(term,start)
+                  if i<0 or n>=12: break
+                  print('\n---',i,'---')
+                  print(s[max(0,i-2200):min(len(s),i+6500)])
+                  start=i+len(term);n+=1
+          PY
