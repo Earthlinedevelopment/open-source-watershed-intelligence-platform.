@@ -94,7 +94,7 @@ await page.evaluate(({TARGET})=>{
   m?.jumpTo?.({center:[TARGET.lng,TARGET.lat],zoom:16.49,bearing:0,pitch:0});
 },{TARGET});
 await page.waitForTimeout(600);
-const canvas=page.locator('#map .mapboxgl-canvas').first();
+const canvas=page.locator('.mapboxgl-canvas').first();
 const box=await canvas.boundingBox();
 if(!box)throw new Error('Map canvas unavailable');
 const sx=box.x+box.width*0.72,sy=box.y+box.height*0.55;
