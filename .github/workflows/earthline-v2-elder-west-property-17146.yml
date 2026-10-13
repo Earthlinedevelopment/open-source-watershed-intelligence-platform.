@@ -1,0 +1,38 @@
+name: Earthline V2 Elder West Property 17146
+on:
+  push:
+    branches: [v2/stable-replacement-17138]
+    paths:
+      - 'index.html'
+      - 'earthline-launch-16872.js'
+      - 'earthline-elder-worker-17129.js'
+      - 'tools/elder_trees/chmv2_array_detector_17129.py'
+      - 'v2/**'
+      - 'tests/v2-elder-west-property-17146.mjs'
+      - '.github/workflows/earthline-v2-elder-west-property-17146.yml'
+  workflow_dispatch:
+concurrency:
+  group: earthline-v2-elder-west-property-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  west-property:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - run: node tests/v2-elder-west-property-17146.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-v2-elder-west-property-17146
+          path: artifacts/v2-elder-west-property-17146/
+          if-no-files-found: warn
+          retention-days: 7
