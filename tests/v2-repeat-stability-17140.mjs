@@ -229,6 +229,22 @@ const rendered=await page.evaluate(()=>{
     const id=f.layer?.id||'unknown';
     byLayer[id]=(byLayer[id]||0)+1;
   }
+  let elderQuery=[];
+  try{
+    const elderLayers=(m.getStyle()?.layers||[]).filter(l=>/elder/i.test(l.id)).map(l=>l.id);
+    if(elderLayers.length){
+      const pad=20;
+      elderQuery=m.queryRenderedFeatures(
+        [[pad,pad],[Math.max(pad+1,(cb?.width||0)-pad),Math.max(pad+1,(cb?.height||0)-pad)]],
+        {layers:elderLayers}
+      );
+    }
+  }catch(_){}
+  const elderByLayer={};
+  for(const f of elderQuery){
+    const id=f.layer?.id||'unknown';
+    elderByLayer[id]=(elderByLayer[id]||0)+1;
+  }
   const elderEls=[...document.querySelectorAll('[class*="elder" i],[id*="elder" i]')].filter(el=>{
     const r=el.getBoundingClientRect(),s=getComputedStyle(el);
     return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity||1)>.01;
@@ -239,6 +255,8 @@ const rendered=await page.evaluate(()=>{
     map:{w:cb?.width||0,h:cb?.height||0},
     renderedFeatureCount:query.length,
     renderedByLayer:byLayer,
+    elderRenderedFeatureCount:elderQuery.length,
+    elderRenderedByLayer:elderByLayer,
     elderVisibleElements:elderEls,
     elderLast:window.EARTHLINE_ELDER_TREE_LAST_17097||null,
     propertyAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null
@@ -255,7 +273,8 @@ const elderFresh=rendered.elderLast?.summary?.coverageDatasetIds?.includes('dyna
 
 if(errors.length)failures.push('Page errors '+JSON.stringify(errors));
 if(swaleRenderedCount<=0)failures.push('No Property swale features actually rendered in viewport');
-if(!elderFresh)failures.push('No fresh Property Elder pins actually available after Property run');
+if(!elderFresh)failures.push('No fresh Property Elder evidence after Property run');
+if(Number(rendered.elderRenderedFeatureCount||0)<=0)failures.push('No Elder Tree points actually rendered in the map viewport');
 
 const repeatRuns=[];
 let previousSerial=Number(rendered.propertyAudit?.serial||0);
@@ -290,12 +309,22 @@ for(let repeat=2;repeat<=3;repeat++){
       const id=f.layer?.id||'unknown';
       byLayer[id]=(byLayer[id]||0)+1;
     }
+    let elderQuery=[];
+    try{
+      const c=m?.getCanvas?.(),r=c?.getBoundingClientRect?.();
+      const elderLayers=(m?.getStyle?.()?.layers||[]).filter(l=>/elder/i.test(l.id)).map(l=>l.id);
+      if(r&&elderLayers.length)elderQuery=m.queryRenderedFeatures(
+        [[20,20],[Math.max(21,r.width-20),Math.max(21,r.height-20)]],
+        {layers:elderLayers}
+      );
+    }catch(_){}
     const audit=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
     const elder=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
     return {
       audit,
       elder,
       renderedFeatureCount:query.length,
+      repeatElderRenderedFeatureCount:elderQuery.length,
       renderedByLayer:byLayer,
       buttonText:String(document.getElementById('earthlineDeclareProperty16169')?.textContent||'').replace(/\s+/g,' ').trim(),
       crosshair:document.querySelector('#earthlineDeclareProperty16169 [data-crosshair16247]')?.getAttribute('data-crosshair16247')||null
@@ -309,6 +338,7 @@ for(let repeat=2;repeat<=3;repeat++){
     && state.audit?.scientificResult===true
     && Number(state.audit?.elapsedSeconds||999)<=15
     && state.renderedFeatureCount>0
+    && state.repeatElderRenderedFeatureCount>0
     && fresh
     && state.crosshair==='1';
   repeatRuns.push({repeat,repeatOk,state});
