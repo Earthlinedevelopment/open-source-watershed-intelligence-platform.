@@ -1,13 +1,42 @@
 import { chromium } from 'playwright';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, existsSync, statSync } from 'node:fs';
+import { resolve, extname } from 'node:path';
 
-const BASE='http://127.0.0.1:8787/';
+const BASE='https://earthlinedevelopment.org/';
 const OUT='artifacts/v2-rendered-user-path-17138';
 mkdirSync(OUT,{recursive:true});
 
 const browser=await chromium.launch({headless:true});
 const context=await browser.newContext({viewport:{width:1440,height:900},deviceScaleFactor:1});
 const page=await context.newPage();
+
+const ROOT=process.cwd();
+const MIME={
+  '.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8',
+  '.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8',
+  '.json':'application/json; charset=utf-8','.geojson':'application/geo+json; charset=utf-8',
+  '.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml',
+  '.txt':'text/plain; charset=utf-8','.py':'text/plain; charset=utf-8'
+};
+await page.route('https://earthlinedevelopment.org/**', async route=>{
+  const u=new URL(route.request().url());
+  let rel=decodeURIComponent(u.pathname.replace(/^\/+/,'')) || 'index.html';
+  if(rel.endsWith('/'))rel+='index.html';
+  const local=resolve(ROOT,rel);
+  if(!local.startsWith(ROOT))return route.abort();
+  if(existsSync(local)&&statSync(local).isFile()){
+    return route.fulfill({
+      status:200,
+      body:readFileSync(local),
+      headers:{
+        'content-type':MIME[extname(local).toLowerCase()]||'application/octet-stream',
+        'cache-control':'no-store',
+        'x-earthline-v2-preview':'17138'
+      }
+    });
+  }
+  return route.continue();
+});
 const errors=[];
 const failures=[];
 page.on('pageerror',e=>errors.push(String(e)));
@@ -52,6 +81,7 @@ const v2Bootstrap=await page.evaluate(()=>({
   languageExists:!!document.getElementById('earthlineLanguageWrap16488')
 }));
 if(v2Bootstrap.build!=='17138')throw new Error('V2 bootstrap not rendered');
+if(location.origin!=='https://earthlinedevelopment.org')throw new Error('V2 preview is not running under production origin semantics');
 if(v2Bootstrap.productionMutationAllowed!==false)throw new Error('V2 bootstrap production mutation lock missing');
 if(v2Bootstrap.renderedPageIsAcceptanceAuthority!==true)throw new Error('V2 rendered-page authority lock missing');
 if(v2Bootstrap.languageExists)throw new Error('Language control regressed into V2');
@@ -212,7 +242,7 @@ if(errors.length)failures.push('Page errors '+JSON.stringify(errors));
 if(swaleRenderedCount<=0)failures.push('No Property swale features actually rendered in viewport');
 if(!elderFresh)failures.push('No fresh Property Elder pins actually available after Property run');
 
-const result={v2Bootstrap,errors,failures,afterZoomRendered,dragState,crosshairVisual,rendered,swaleRenderedCount,elderFresh};
+const result={previewOrigin:BASE,v2Bootstrap,errors,failures,afterZoomRendered,dragState,crosshairVisual,rendered,swaleRenderedCount,elderFresh};
 writeFileSync(`${OUT}/result.json`,JSON.stringify(result,null,2));
 console.log('EARTHLINE_V2_RENDERED_17138 '+JSON.stringify(result));
 
