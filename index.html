@@ -33434,7 +33434,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     for(const id of ['earthlineSearchSuggestions15920','earthlineSearchSuggestions15940','earthlineSearchSuggestions15970'])document.getElementById(id)?.remove();
     const menu=document.createElement('div');menu.id='earthlineSearchSuggestions15970';menu.setAttribute('role','listbox');document.body.appendChild(menu);
     const rows=suggestions();
-    function positionMenu16201(){const r=box.getBoundingClientRect(),w=Math.max(320,Math.min(620,window.innerWidth-r.left-18));menu.style.setProperty('left',r.left+'px','important');menu.style.setProperty('top',(r.bottom+8)+'px','important');menu.style.setProperty('width',w+'px','important');}
+    function positionMenu16201(){const r=box.getBoundingClientRect(),run=document.getElementById('runBtn'),rr=run?.getBoundingClientRect?.(),bottom=rr&&rr.width>0&&rr.height>0?Math.max(r.bottom,rr.bottom):r.bottom,w=Math.max(320,Math.min(620,window.innerWidth-r.left-18));menu.style.setProperty('left',r.left+'px','important');menu.style.setProperty('top',(bottom+8)+'px','important');menu.style.setProperty('width',w+'px','important');window.EARTHLINE_SEARCH_MENU_POSITION_17140={left:r.left,top:bottom+8,width:w,at:new Date().toISOString()};}window.earthlinePositionSearchMenu16201=positionMenu16201;
     function placeIntentRows16539(raw){
       const v=clean(raw),kq=key(v);
       if(v.length<3||/\d/.test(v)||/,/.test(v)||/\b(?:state|province|region|country|nation|city|address|road|rd|street|st|avenue|ave|drive|dr|lane|ln|highway|hwy|route)\b/i.test(v))return [];
@@ -36870,21 +36870,24 @@ ${finalSourcesPage16864(data)}
   function installCorridorInteraction16152(){
     if(window.__EARTHLINE_CORRIDOR_INTERACTION_16152_INSTALLED)return;
     window.__EARTHLINE_CORRIDOR_INTERACTION_16152_INSTALLED=true;
+    let corridorSuppressClickUntil16152=0;
     document.addEventListener('pointerdown',e=>{
       const t=corridorEventTarget16152(e);if(!t)return;
       corridorPointer16152={...t,pointerId:e.pointerId,x:e.clientX,y:e.clientY,at:performance.now()};
-      t.el.classList.add('el52-pressed');stopCorridorEvent16152(e);
-    },{capture:true,passive:false});
+      t.el.classList.add('el52-pressed');
+    },{capture:true,passive:true});
     document.addEventListener('pointerup',e=>{
       const p=corridorPointer16152;if(!p||p.pointerId!==e.pointerId)return;
       const moved=Math.hypot(e.clientX-p.x,e.clientY-p.y),elapsed=performance.now()-p.at;
-      stopCorridorEvent16152(e);clearCorridorPress16152();
-      if(moved<=18&&elapsed<=1600)openCorridor16152(p,'pointer');
+      clearCorridorPress16152();
+      if(moved<=18&&elapsed<=1600){stopCorridorEvent16152(e);openCorridor16152(p,'pointer');}
+      else corridorSuppressClickUntil16152=performance.now()+500;
     },{capture:true,passive:false});
-    document.addEventListener('pointercancel',e=>{if(corridorPointer16152&&corridorPointer16152.pointerId===e.pointerId){stopCorridorEvent16152(e);clearCorridorPress16152();}},{capture:true,passive:false});
+    document.addEventListener('pointercancel',e=>{if(corridorPointer16152&&corridorPointer16152.pointerId===e.pointerId)clearCorridorPress16152();},{capture:true,passive:true});
     document.addEventListener('click',e=>{
       const t=corridorEventTarget16152(e);if(!t)return;
       stopCorridorEvent16152(e);
+      if(performance.now()<corridorSuppressClickUntil16152)return;
       if(performance.now()-lastCorridorOpen16152>350)openCorridor16152(t,'click-fallback');
     },true);
     document.addEventListener('keydown',e=>{
@@ -37960,7 +37963,7 @@ html[data-earthline-analysis-tier="property"] #earthlineDiagramLegend16080{displ
     syncOrbMotion16240();
   }
   function closeSuggestions16233(){const menu=document.getElementById('earthlineSearchSuggestions15970');if(menu)menu.classList.remove('open')}
-  function positionSuggestions16233(){const input=document.getElementById('searchInput'),menu=document.getElementById('earthlineSearchSuggestions15970');if(!input||!menu)return;const r=input.closest('.searchbox')?.getBoundingClientRect()||input.getBoundingClientRect();menu.style.left=Math.round(r.left)+'px';menu.style.top=Math.round(r.bottom+7)+'px';menu.style.width=Math.round(r.width)+'px'}
+  function positionSuggestions16233(){if(typeof window.earthlinePositionSearchMenu16201==='function')return window.earthlinePositionSearchMenu16201();const input=document.getElementById('searchInput'),menu=document.getElementById('earthlineSearchSuggestions15970');if(!input||!menu)return false}
   function openSuggestions16233(){if(!searchEngaged16233)return;const menu=document.getElementById('earthlineSearchSuggestions15970');if(!menu)return;positionSuggestions16233();if(menu.querySelector('button'))menu.classList.add('open')}
   function bindSearchSuggestions16233(){const input=document.getElementById('searchInput'),menu=document.getElementById('earthlineSearchSuggestions15970');if(!input||!menu||input.dataset.earthline16233Bound==='1')return;input.dataset.earthline16233Bound='1';for(const ev of ['focus','pointerdown'])input.addEventListener(ev,()=>{searchEngaged16233=true;setTimeout(openSuggestions16233,0)});input.addEventListener('input',()=>{if(document.documentElement.dataset.earthlineSuggestionCommit16246==='1'){searchEngaged16233=false;closeSuggestions16233();return;}searchEngaged16233=true;setTimeout(openSuggestions16233,0)});input.addEventListener('keydown',e=>{if(e.key==='Enter')closeSuggestions16233();if(e.key==='Escape'){searchEngaged16233=false;closeSuggestions16233()}});menu.addEventListener('click',()=>{searchEngaged16233=false;closeSuggestions16233()});document.addEventListener('pointerdown',e=>{if(e.target===input||e.target.closest('#earthlineSearchSuggestions15970'))return;searchEngaged16233=false;closeSuggestions16233()},true);const mo=new MutationObserver(()=>{if(!searchEngaged16233)closeSuggestions16233();else positionSuggestions16233()});mo.observe(menu,{attributes:true,attributeFilter:['class'],childList:true,subtree:true});for(const delay of [0,80,300,900])setTimeout(()=>{if(!searchEngaged16233)closeSuggestions16233()},delay)}
   function propertyTargetLabel16233(target){if(target&&target.code)return String(target.code)+' · ANALYZE · 20 ACRES';if(target&&Number.isFinite(Number(target.lat))&&Number.isFinite(Number(target.lng)))return 'CROSSHAIR · '+Number(target.lat).toFixed(5)+', '+Number(target.lng).toFixed(5)+' · 20 ACRES';return 'PROPERTY SEARCH · 20 ACRES'}function propertyTargetMarkup16871(target){const lang=String(window.EARTHLINE_LANGUAGE_16488||'en'),raw=propertyTargetLabel16233(target);let s=raw;if(lang==='es')s=s.replace('CROSSHAIR','PUNTO DE MIRA').replace('ANALYZE','ANALIZAR').replace('PROPERTY SEARCH','BÚSQUEDA DE PROPIEDAD');else if(lang==='vi')s=s.replace('CROSSHAIR','TÂM NGẮM').replace('ANALYZE','PHÂN TÍCH').replace('PROPERTY SEARCH','TÌM KHU ĐẤT');else if(lang==='th')s=s.replace('CROSSHAIR','เป้าเล็ง').replace('ANALYZE','วิเคราะห์').replace('PROPERTY SEARCH','ค้นหาพื้นที่');return s.replace(/20 ACRES/g,'<strong class="earthline-acres-16871">20 ACRES</strong>')}window.earthlinePropertyTargetMarkup16871=propertyTargetMarkup16871;
@@ -37977,7 +37980,7 @@ html[data-earthline-analysis-tier="property"] #earthlineDiagramLegend16080{displ
   },true);
 }
 function syncPropertyTargetFromMap16201(){const m=panelMap16188();if(!m||typeof m.getCenter!=='function')return false;const c=m.getCenter();if(!c||!Number.isFinite(Number(c.lng))||!Number.isFinite(Number(c.lat)))return false;const existing=window.EARTHLINE_PROPERTY_TARGET_16201;
-  if(existing&&existing.source==='country-center'&&window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845&&window.EARTHLINE_COUNTRY_TARGET_LOCK_16845!==false)return true;if(existing&&existing.code)return true;return setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair'},{openPanel:false})}
+  if(existing&&existing.source==='country-center'&&window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845&&window.EARTHLINE_COUNTRY_TARGET_LOCK_16845!==false)return true;const lng=Number(c.lng),lat=Number(c.lat),same=!!(existing&&!existing.code&&Math.abs(Number(existing.lng)-lng)<1e-7&&Math.abs(Number(existing.lat)-lat)<1e-7);if(same)return true;return setPropertyTarget16201({lng,lat,source:existing&&existing.code?'crosshair-corridor-zoom-17140':'crosshair'},{openPanel:false})}
   const CORRIDOR_TIP_KEY_16248='earthline.corridor-tip.seen.v3';
   let corridorTipRegionalReady16252=false;
   let corridorTipSeenThisPage16253=false;
