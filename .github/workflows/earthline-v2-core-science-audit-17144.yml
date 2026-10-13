@@ -1,0 +1,29 @@
+name: Earthline V2 Core Science Audit 17144
+on:
+  push:
+    branches: [v2/stable-replacement-17138]
+    paths:
+      - '.github/workflows/earthline-v2-core-science-audit-17144.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inventory core science functions
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(encoding='utf-8',errors='ignore')
+          rx=re.compile(r'\b(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(')
+          names=[m.group(1) for m in rx.finditer(s)]
+          keys=('flow','swale','recharge','terrain','dem','property','aquifer','slope','corridor','pit','soil')
+          chosen=[n for n in names if any(k in n.lower() for k in keys)]
+          print('EARTHLINE_V2_CORE_FUNCTIONS '+repr(chosen))
+          print('COUNT',len(chosen))
+          PY
