@@ -96,7 +96,7 @@ const afterZoomRendered=await page.evaluate(()=>{
 });
 if(afterZoomRendered.count<=0 && afterZoomRendered.svgHits<=0)failures.push('No swales visibly available immediately after Zoom: '+JSON.stringify(afterZoomRendered));
 
-const mapCanvas=page.locator('#map .mapboxgl-canvas').first();
+const mapCanvas=page.locator('.mapboxgl-canvas').first();
 const mapBoxForDrag=await mapCanvas.boundingBox();
 if(!mapBoxForDrag)failures.push('Map canvas missing for crosshair move');
 let dragState={};
