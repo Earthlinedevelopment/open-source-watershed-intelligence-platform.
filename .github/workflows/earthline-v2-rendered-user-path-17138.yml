@@ -26,16 +26,6 @@ jobs:
       - run: |
           npm install --no-save playwright@1.56.1
           npx playwright install --with-deps chromium
-      - name: Serve V2 branch
-        run: |
-          python3 -m http.server 8787 --bind 127.0.0.1 > /tmp/earthline-v2-http.log 2>&1 &
-          echo $! > /tmp/earthline-v2-http.pid
-          for i in {1..30}; do
-            if curl -fsS http://127.0.0.1:8787/ >/dev/null; then exit 0; fi
-            sleep 1
-          done
-          cat /tmp/earthline-v2-http.log
-          exit 1
       - name: Run rendered V2 user path
         run: node tests/v2-rendered-user-path-17138.mjs
       - uses: actions/upload-artifact@v4
