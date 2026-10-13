@@ -89,8 +89,9 @@ async function processTile(py,q,bbox,maxPerTile=240){
   }catch(err){
     return {features:[],tile:{quadkey:q,status:"NO_TILE",error:String(err?.message||err)}};
   }
+  const debugGeo={origin:image.getOrigin(),resolution:image.getResolution(),bbox:image.getBoundingBox(),projectedSW:merc(bbox[0],bbox[1]),projectedNE:merc(bbox[2],bbox[3])};
   const w=projectedWindow(image,bbox);
-  if(!w)return {features:[],tile:{quadkey:q,status:"NO_INTERSECTION"}};
+  if(!w)return {features:[],tile:{quadkey:q,status:"NO_INTERSECTION",debugGeo}};
   const aspect=w.ww/Math.max(1,w.wh);
   let ow,oh;
   if(aspect>=1){ow=1024;oh=Math.max(32,Math.round(1024/aspect))}
