@@ -1,6 +1,7 @@
 import { EARTHLINE_V2_HYDROGEOLOGY_ADAPTER } from './hydrogeology-source-adapter.js';
 import { EARTHLINE_V2_HYDROGEOLOGY_TRANSPORT_OWNER } from './hydrogeology-transport.js';
 import { EARTHLINE_V2_NAIP, buildNaipExportUrl, loadNaipImage } from './naip-imagery-adapter.js';
+import { EARTHLINE_V2_ELDER_RUNTIME } from './elder-runtime-contract.js';
 
 export const EARTHLINE_V2_BUILD = '17138';
 const V2_STABILITY_CSS = './v2/stability-compat.css';
@@ -19,13 +20,11 @@ function ensureV2StabilityCss(){
 const frozen = value => Object.freeze(value);
 
 function elderCapability() {
-  const runtime = window.EARTHLINE_ELDER_TREES_V2_17118 || null;
+  const snap = EARTHLINE_V2_ELDER_RUNTIME.snapshot(window);
   return frozen({
-    available: !!runtime,
-    scienceBaseline: '17118',
-    method: 'earthline-elder-tree-aoi-chmv2-v0.7-high-recall-plateau-collapse',
-    rechargeWeight: 0,
-    runtime
+    ...snap,
+    runtime: EARTHLINE_V2_ELDER_RUNTIME.runtime(window),
+    contract: EARTHLINE_V2_ELDER_RUNTIME
   });
 }
 
