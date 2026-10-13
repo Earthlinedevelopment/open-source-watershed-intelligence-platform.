@@ -1,0 +1,147 @@
+name: "17122 Elder V2 Public Display Package"
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - research/elder-density-calibration-17100
+    paths:
+      - ".github/workflows/elder-v2-public-display-17122.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install research dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy scipy rasterio pyproj requests
+
+      - name: Build approved 17118 V2 public display subsets
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf artifacts/public-v2
+          mkdir -p artifacts/public-v2
+
+          run_region () {
+            local name="$1"
+            local label="$2"
+            local bbox="$3"
+            local out="artifacts/public-v2/$name"
+            python tools/elder_trees/chmv2_aoi_candidates.py \
+              --bbox="$bbox" \
+              --max-per-tile=20000 \
+              --screen-size=1024 \
+              --refine-radius-m=15 \
+              --preserve-all-eligible \
+              --display-per-tile=240 \
+              --out="$out"
+          }
+
+          run_region alaska   "Alaska pilot"   "-135.36,57.045,-135.34,57.060"
+          run_region colorado "Colorado pilot" "-105.61,39.625,-105.59,39.640"
+          run_region england  "England pilot"  "-0.603,51.430,-0.583,51.445"
+          run_region vermont  "Vermont pilot"  "-73.205,44.475,-73.185,44.490"
+          run_region thailand "Thailand pilot" "101.420,14.340,101.440,14.355"
+          run_region laos     "Laos pilot"     "103.290,19.990,103.310,20.005"
+          run_region vietnam  "Vietnam pilot"  "105.610,20.305,105.630,20.320"
+
+      - name: Assemble public V2 package
+        run: |
+          python - <<'PY'
+          import glob,json,pathlib,shutil
+
+          labels={
+            "alaska":"Alaska pilot",
+            "colorado":"Colorado pilot",
+            "england":"England pilot",
+            "vermont":"Vermont pilot",
+            "thailand":"Thailand pilot",
+            "laos":"Laos pilot",
+            "vietnam":"Vietnam pilot",
+          }
+          outroot=pathlib.Path("data/elder-trees/v2")
+          outroot.mkdir(parents=True,exist_ok=True)
+          datasets=[]
+
+          for region,label in labels.items():
+              root=pathlib.Path("artifacts/public-v2")/region
+              meta_path=glob.glob(str(root/"elder-trees-*.json"))
+              display_path=glob.glob(str(root/"elder-trees-*.geojson"))
+              if len(meta_path)!=1 or len(display_path)!=1:
+                  raise SystemExit(f"{region}: missing V2 output")
+              meta=json.load(open(meta_path[0]))
+              dest=outroot/f"{region}.geojson"
+              shutil.copyfile(display_path[0],dest)
+              datasets.append({
+                  "id":region,
+                  "label":label,
+                  "path":str(dest).replace("\\","/"),
+                  "bbox":meta["bbox"],
+                  "coverage_complete":False,
+                  "record_class":"MODELED_ELDER_TREE_CANDIDATE",
+                  "source_class":"MODELED_CHMV2",
+                  "source_name":"WRI/Meta CHMv2",
+                  "source_license":"CC BY 4.0",
+                  "method_version":meta["method_version"],
+                  "candidate_pool_count":meta["candidate_pool_count"],
+                  "display_count":meta["display_count"],
+                  "count_owner":"candidate_pool",
+                  "map_owner":"display_subset"
+              })
+
+          manifest={
+              "version":"earthline-elder-tree-v2-17118-public-display",
+              "status":"APPROVED Elder V2 science baseline 17118; public modeled-candidate display package",
+              "science_baseline":"17118",
+              "method_version":"earthline-elder-tree-aoi-chmv2-v0.7-high-recall-plateau-collapse",
+              "confidence_label":"Elder Tree Confidence",
+              "confidence_definition":"Local relative structural-evidence percentile. Not probability of age.",
+              "scientific_boundary":"All modeled points are remote-sensing candidates only. Display density is not detector recall or evidence-pool size.",
+              "public_source":"WRI/Meta CHMv2",
+              "public_source_license":"CC BY 4.0",
+              "recharge_weight":0,
+              "datasets":datasets,
+              "rules":[
+                  "High-recall structurally eligible pool is the evidence owner.",
+                  "Density/cohort prior is a classification owner, not a destructive evidence owner.",
+                  "Public map is a thinned display subset; candidate_pool_count remains the evidence-count owner.",
+                  "Modeled candidates do not prove age, ancient status, Mother Tree status, or mycorrhizal-hub status.",
+                  "Absence of Elder evidence does not mean absence of Elder Trees.",
+                  "Elder Trees have zero weight in Recharge Potential."
+              ]
+          }
+          (outroot/"manifest.json").write_text(json.dumps(manifest,indent=2))
+          print(json.dumps(manifest,indent=2))
+          PY
+
+      - name: Record V2 public display package on research branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "earthline-research-bot"
+          git config user.email "earthline-research-bot@users.noreply.github.com"
+          git add data/elder-trees/v2
+          if git diff --cached --quiet; then
+            echo "V2 public package unchanged"
+          else
+            git commit -m "research: build approved Elder V2 public display package 17122"
+            git push origin HEAD:research/elder-density-calibration-17100
+          fi
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-elder-v2-public-display-17122
+          path: data/elder-trees/v2/
+          retention-days: 14
