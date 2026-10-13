@@ -1,0 +1,40 @@
+name: Earthline V2 Repeat Stability 17140
+on:
+  push:
+    branches: [v2/stable-replacement-17138]
+    paths:
+      - 'index.html'
+      - 'earthline-launch-16872.js'
+      - 'earthline-launch-16872.css'
+      - 'earthline-elder-worker-17129.js'
+      - 'tools/elder_trees/chmv2_array_detector_17129.py'
+      - 'v2/**'
+      - 'tests/v2-repeat-stability-17140.mjs'
+      - '.github/workflows/earthline-v2-repeat-stability-17140.yml'
+  workflow_dispatch:
+concurrency:
+  group: earthline-v2-repeat-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  repeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Run same-session V2 repeat gate
+        run: node tests/v2-repeat-stability-17140.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-v2-repeat-stability-17140
+          path: artifacts/v2-repeat-stability-17140/
+          if-no-files-found: error
+          retention-days: 7
