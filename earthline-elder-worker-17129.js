@@ -170,7 +170,16 @@ async function detect(bbox,{displayPerTile=24,maxPerTile=240}={}){
     const r=await processTile(py,q,bbox,maxPerTile);
     features.push(...(r.features||[]));tiles.push(r.tile||{quadkey:q,status:"UNKNOWN"});
   }
-  const pool=dedupe(features,10),display=displaySubset(pool,displayPerTile);
+  const pool=dedupe(features,10).map(f=>({
+    type:"Feature",
+    geometry:f.geometry,
+    properties:Object.assign({},f.properties||{},{
+      science_baseline:"17118",
+      method_version:METHOD,
+      elder_evidence_class:"MODELED_CHMV2"
+    })
+  }));
+  const display=displaySubset(pool,displayPerTile);
   return {
     type:"FeatureCollection",features:display,
     earthline:{
