@@ -79,6 +79,48 @@ await zoom.click();
 await page.waitForTimeout(1400);
 await shot('03-after-zoom');
 
+const afterZoomRendered=await page.evaluate(()=>{
+  const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+  let q=[];
+  try{
+    const ids=(m?.getStyle?.()?.layers||[]).filter(l=>/swale/i.test(l.id)).map(l=>l.id);
+    const c=m?.getCanvas?.(); const r=c?.getBoundingClientRect?.();
+    if(r&&ids.length)q=m.queryRenderedFeatures([[20,20],[Math.max(21,r.width-20),Math.max(21,r.height-20)]],{layers:ids});
+  }catch(_){}
+  return {
+    count:q.length,
+    byLayer:q.reduce((a,f)=>{const id=f.layer?.id||'unknown';a[id]=(a[id]||0)+1;return a},{}),
+    svgHits:document.querySelectorAll('#earthlineRegionalVectorOverlay16020 .earthline-swale-hit-16070').length,
+    svgVisible:(()=>{const e=document.getElementById('earthlineRegionalVectorOverlay16020');if(!e)return null;const cs=getComputedStyle(e),r=e.getBoundingClientRect();return {display:cs.display,visibility:cs.visibility,opacity:cs.opacity,w:r.width,h:r.height}})()
+  };
+});
+if(afterZoomRendered.count<=0 && afterZoomRendered.svgHits<=0)failures.push('No swales visibly available immediately after Zoom: '+JSON.stringify(afterZoomRendered));
+
+const mapCanvas=page.locator('#map .mapboxgl-canvas').first();
+const mapBoxForDrag=await mapCanvas.boundingBox();
+if(!mapBoxForDrag)failures.push('Map canvas missing for crosshair move');
+let dragState={};
+if(mapBoxForDrag){
+  dragState.before=await page.evaluate(()=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);const c=m?.getCenter?.();return c?{lng:c.lng,lat:c.lat}:null});
+  const sx=mapBoxForDrag.x+mapBoxForDrag.width*0.70;
+  const sy=mapBoxForDrag.y+mapBoxForDrag.height*0.62;
+  await page.mouse.move(sx,sy);
+  await page.mouse.down();
+  await page.mouse.move(sx-90,sy+25,{steps:12});
+  await page.mouse.up();
+  await page.waitForTimeout(900);
+  dragState.after=await page.evaluate(()=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);const c=m?.getCenter?.();return c?{lng:c.lng,lat:c.lat}:null});
+  dragState.button=await page.evaluate(()=>({
+    text:String(document.getElementById('earthlineDeclareProperty16169')?.textContent||'').replace(/\s+/g,' ').trim(),
+    data:document.querySelector('#earthlineDeclareProperty16169 [data-crosshair16247]')?.getAttribute('data-crosshair16247')||null,
+    target:window.EARTHLINE_PROPERTY_TARGET_16201||null
+  }));
+  await shot('03c-after-map-drag');
+  const moved=dragState.before&&dragState.after&&(Math.abs(dragState.before.lng-dragState.after.lng)>1e-6||Math.abs(dragState.before.lat-dragState.after.lat)>1e-6);
+  if(!moved)failures.push('Regional map did not move under a real drag: '+JSON.stringify(dragState));
+  if(!/^CROSSHAIR\b/i.test(dragState.button?.text||'')||dragState.button?.data!=='1')failures.push('20-acre Property search did not retarget to CROSSHAIR after real map drag: '+JSON.stringify(dragState.button));
+}
+
 const propertyBtn=page.locator('#earthlineDeclareProperty16169');
 if(!(await propertyBtn.isVisible()))throw new Error('Rendered Property button missing after Zoom');
 const propertyBtnBox=await rect(propertyBtn);
@@ -157,7 +199,7 @@ if(errors.length)failures.push('Page errors '+JSON.stringify(errors));
 if(swaleRenderedCount<=0)failures.push('No Property swale features actually rendered in viewport');
 if(!elderFresh)failures.push('No fresh Property Elder pins actually available after Property run');
 
-const result={errors,failures,crosshairVisual,rendered,swaleRenderedCount,elderFresh};
+const result={errors,failures,afterZoomRendered,dragState,crosshairVisual,rendered,swaleRenderedCount,elderFresh};
 writeFileSync(`${OUT}/result.json`,JSON.stringify(result,null,2));
 console.log('EARTHLINE_RENDERED_17134 '+JSON.stringify(result));
 
