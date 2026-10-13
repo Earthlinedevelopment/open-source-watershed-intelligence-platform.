@@ -1,0 +1,30 @@
+name: Earthline Elder California COG CRS Inspect 17129
+
+on:
+  push:
+    branches:
+      - research/elder-browser-engine-17129
+    paths:
+      - '.github/workflows/earthline-elder-california-crs-17129.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-browser-engine-17129
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install rasterio
+      - name: Inspect California CHMv2 COGs
+        run: |
+          python tools/elder_trees/chmv2_tile_inspect.py 0230121110
+          python tools/elder_trees/chmv2_tile_inspect.py 0230103211
+          python tools/elder_trees/chmv2_tile_inspect.py 0230011131
