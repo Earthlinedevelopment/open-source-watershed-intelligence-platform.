@@ -1817,3 +1817,10 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   document.addEventListener('click',schedule,true);
   window.earthlineRepairElderPanelVisibility17121=repair;
 })();
+
+
+/* EARTHLINE V2 17138 — branch-only modular bootstrap; production pages-live does not load this. */
+if(typeof window!=='undefined'&&!window.EARTHLINE_V2_BOOTSTRAP_17138){
+  window.EARTHLINE_V2_BOOTSTRAP_17138=true;
+  import('./v2/bootstrap.js').catch(err=>{window.EARTHLINE_V2_BOOTSTRAP_ERROR_17138=String(err&&err.stack||err)});
+}
