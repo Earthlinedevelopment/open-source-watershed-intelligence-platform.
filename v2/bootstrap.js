@@ -3,6 +3,18 @@ import { EARTHLINE_V2_HYDROGEOLOGY_TRANSPORT_OWNER } from './hydrogeology-transp
 import { EARTHLINE_V2_NAIP, buildNaipExportUrl, loadNaipImage } from './naip-imagery-adapter.js';
 
 export const EARTHLINE_V2_BUILD = '17138';
+const V2_STABILITY_CSS = './v2/stability-compat.css';
+
+function ensureV2StabilityCss(){
+  let link=document.getElementById('earthlineV2StabilityCss17138');
+  if(link)return link;
+  link=document.createElement('link');
+  link.id='earthlineV2StabilityCss17138';
+  link.rel='stylesheet';
+  link.href=V2_STABILITY_CSS;
+  (document.head||document.documentElement).appendChild(link);
+  return link;
+}
 
 const frozen = value => Object.freeze(value);
 
@@ -35,6 +47,7 @@ export function v2Capabilities() {
 }
 
 export function installEarthlineV2() {
+  ensureV2StabilityCss();
   if (window.EARTHLINE_V2?.build === EARTHLINE_V2_BUILD) return window.EARTHLINE_V2;
   const api = frozen({
     build: EARTHLINE_V2_BUILD,
