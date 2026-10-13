@@ -20557,32 +20557,17 @@ var prescribeSwales;
     const sourceChanged=!!src&&src!==lastSwaleSource15799;
     if(sourceChanged)lastSwaleSource15799=src;
 
-    /* EARTHLINE 17125 — Property source stability.
-       The persistent blue ditch and the living-swale renderer share SWALE_SOURCE.
-       Do not reload an unchanged committed GeoJSON source on every bounded rehydrate:
-       Mapbox can briefly blank/redraw that source, which presents as blue flicker.
-       Re-publish only for a new source, changed authoritative geometry, or an
-       actually emptied committed source. Non-committed forced refresh behavior is
-       preserved for pre-publication recovery. */
-    let sourceData15792=src&&src._data;
-    try{
-      if((!sourceData15792||typeof sourceData15792==="string")&&src&&typeof src.serialize==="function"){
-        const serialized15792=src.serialize();
-        sourceData15792=serialized15792&&serialized15792.data;
-      }
-    }catch(_){}
-    const sourceFeatureCount15792=safeData(sourceData15792).features.length;
-    const sourceNeedsRestore15792=!!(
-      committedProperty&&fc.features.length>0&&sourceFeatureCount15792===0
-    );
-    if(
-      src&&src.setData&&
-      (sourceChanged||signature!==lastSwaleSignature||sourceNeedsRestore15792||(!committedProperty&&force))
-    ){
-      lastSwaleSignature=signature;
-      lastSwaleData=fc;
-      src.setData(fc);
-    }
+    // A committed result is small and must be republished on every authoritative
+              // refresh. Signature caching is not allowed to conceal an externally emptied
+              // Mapbox source.
+              if(
+                src&&src.setData&&
+                (force||committedProperty||sourceChanged||signature!==lastSwaleSignature)
+              ){
+                lastSwaleSignature=signature;
+                lastSwaleData=fc;
+                src.setData(fc);
+              }
 
     if(typeof window.earthlineSyncNaturalSwalePlanting15806==="function"){
       window.earthlineSyncNaturalSwalePlanting15806(fc);
@@ -37276,7 +37261,7 @@ html[data-earthline-analysis-tier="focus"] #earthlineRegionalVectorOverlay16020 
     const focus=t==='focus',property=t==='property';
     for(const id of ORIGINAL)visible(id,!focus&&!property);
     for(const id of Object.values(FOCUS))visible(id,false);
-    /* EARTHLINE 17124 — BUILD-CHECK-15805 is the single Property swale visibility owner. */if(t==='regional'){setPaint('earthline-ranked-swale-water-15777','line-color','#008cff');setPaint('earthline-ranked-swale-water-15777','line-opacity',1)}
+    for(const id of Object.values(PROPERTY))visible(id,property);if(t==='regional'){setPaint('earthline-ranked-swale-water-15777','line-color','#008cff');setPaint('earthline-ranked-swale-water-15777','line-opacity',1)}
     visible(LOCATION_HIT,!property);visible(LOCATION_LABEL,!property);
     try{const m=map();if(!property&&m?.getLayer?.(LOCATION_HIT))m.moveLayer(LOCATION_HIT);if(!property&&m?.getLayer?.(LOCATION_LABEL))m.moveLayer(LOCATION_LABEL);}catch(_){}
     if(property){
