@@ -1,9 +1,9 @@
-name: Earthline Live Language Hidden 17136
+name: Earthline Live Language Removed 17137
 on:
   push:
     branches: [research/elder-browser-engine-17129]
     paths:
-      - '.github/workflows/earthline-live-language-hidden-17136.yml'
+      - '.github/workflows/earthline-live-language-removed-17137.yml'
 permissions:
   contents: read
 jobs:
@@ -43,16 +43,18 @@ jobs:
               runVisible:vis(document.getElementById('runBtn'))
             };
           });
-          console.log('EARTHLINE_17136_RENDER '+JSON.stringify(state));
+          console.log('EARTHLINE_17137_RENDER '+JSON.stringify(state));
           await page.screenshot({path:'artifacts/language-hidden-17136/live.png',fullPage:true});
           await browser.close();
-          if(state.languageVisible)throw new Error('Language control still rendered');
+          if(state.languageExists)throw new Error('Language control still exists in rendered DOM');
           if(!state.dataVisible||!state.contactVisible||!state.runVisible)throw new Error('Unrequested control regression '+JSON.stringify(state));
           NODE
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: earthline-live-language-hidden-17136
+          name: earthline-live-language-removed-17137
           path: artifacts/language-hidden-17136/
           if-no-files-found: error
           retention-days: 7
+
+# rerun after owner removal 17137
