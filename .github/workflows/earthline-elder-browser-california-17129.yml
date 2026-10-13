@@ -1,0 +1,106 @@
+name: Earthline Elder Browser California Validation 17129
+
+on:
+  push:
+    branches:
+      - research/elder-browser-engine-17129
+    paths:
+      - 'earthline-elder-worker-17129.js'
+      - 'tools/elder_trees/chmv2_array_detector_17129.py'
+      - 'tests/elder-browser-california.html'
+      - 'tests/elder-browser-california-run.mjs'
+      - '.github/workflows/earthline-elder-browser-california-17129.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-browser-engine-17129
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install reference detector dependencies
+        run: pip install numpy scipy rasterio pyproj requests
+
+      - name: Run authoritative 17118 Python detector on California controls
+        run: |
+          mkdir -p artifacts/elder-reference
+          python tools/elder_trees/chmv2_aoi_candidates.py --bbox=-118.756,36.557,-118.748,36.565 --screen-size=1024 --refine-radius-m=15 --max-per-tile=240 --display-per-tile=24 --preserve-all-eligible --out artifacts/elder-reference/sequoia
+          python tools/elder_trees/chmv2_aoi_candidates.py --bbox=-119.602,37.495,-119.592,37.505 --screen-size=1024 --refine-radius-m=15 --max-per-tile=240 --display-per-tile=24 --preserve-all-eligible --out artifacts/elder-reference/mariposa
+          python tools/elder_trees/chmv2_aoi_candidates.py --bbox=-123.995,40.335,-123.985,40.345 --screen-size=1024 --refine-radius-m=15 --max-per-tile=240 --display-per-tile=24 --preserve-all-eligible --out artifacts/elder-reference/humboldt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install browser test runtime
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Run browser worker against the same California controls
+        run: |
+          python -m http.server 8765 >/tmp/earthline-elder-http.log 2>&1 &
+          echo $! >/tmp/earthline-elder-http.pid
+          node tests/elder-browser-california-run.mjs
+
+      - name: Compare browser engine to authoritative Python coordinates
+        run: |
+          python - <<'PY'
+          import glob,json,math,pathlib,sys
+          def hav(a,b):
+              R=6371008.8
+              p1,p2=math.radians(a[1]),math.radians(b[1])
+              dp=math.radians(b[1]-a[1]);dl=math.radians(b[0]-a[0])
+              q=math.sin(dp/2)**2+math.cos(p1)*math.cos(p2)*math.sin(dl/2)**2
+              return 2*R*math.asin(min(1,math.sqrt(q)))
+          browser=json.load(open("artifacts/elder-browser/browser.json"))
+          summary={}
+          failed=False
+          for name in ("sequoia","mariposa","humboldt"):
+              refp=glob.glob(f"artifacts/elder-reference/{name}/elder-tree-candidate-pool-*.geojson")
+              if len(refp)!=1:
+                  raise SystemExit(f"{name}: expected one reference pool, got {refp}")
+              ref=json.load(open(refp[0]))["features"]
+              got=browser[name]["candidatePool"]
+              if not ref or not got:
+                  print(f"{name}: hard fail ref={len(ref)} browser={len(got)}")
+                  failed=True
+                  continue
+              nearest=[min(hav(f["geometry"]["coordinates"],g["geometry"]["coordinates"]) for g in got) for f in ref]
+              within10=sum(d<=10 for d in nearest)
+              within20=sum(d<=20 for d in nearest)
+              median=sorted(nearest)[len(nearest)//2]
+              ratio=len(got)/len(ref)
+              ok=(0.65<=ratio<=1.55 and within20/max(1,len(ref))>=0.70 and median<=12)
+              summary[name]={
+                  "reference_count":len(ref),"browser_count":len(got),"count_ratio":round(ratio,3),
+                  "within_10m":within10,"within_20m":within20,
+                  "within_20m_fraction":round(within20/max(1,len(ref)),3),
+                  "median_nearest_m":round(median,3),"pass":ok
+              }
+              failed |= not ok
+          pathlib.Path("artifacts/elder-browser").mkdir(parents=True,exist_ok=True)
+          pathlib.Path("artifacts/elder-browser/comparison.json").write_text(json.dumps(summary,indent=2))
+          print(json.dumps(summary,indent=2))
+          if failed: raise SystemExit("California browser engine parity gate FAILED")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-elder-browser-california-17129
+          path: |
+            artifacts/elder-reference/
+            artifacts/elder-browser/
+          if-no-files-found: warn
+          retention-days: 14
