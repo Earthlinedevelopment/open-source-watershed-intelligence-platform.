@@ -1,4 +1,4 @@
-name: Earthline Elder Candidate Acceptance 17130
+name: Earthline Elder Candidate Acceptance 17131
 
 on:
   push:
@@ -18,22 +18,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: candidate/elder-on-demand-17130
+          ref: candidate/elder-warm-17131
           fetch-depth: 0
 
       - name: Verify isolated candidate diff
         run: |
           set -euo pipefail
-          BASE=c9abec3e74ba1f30530087524c114dacf1bf01e3
+          BASE=6435393f7f4547c0f10b8f75bd4f1a3eb2da92a9
           git diff --check "$BASE"..HEAD
           git diff --name-only "$BASE"..HEAD | sort > /tmp/changed.txt
           cat >/tmp/expected.txt <<'EOF'
-          data/elder-trees/v2/california-regional-overview.geojson
-          data/elder-trees/v2/california-regional-overview.json
-          data/elder-trees/v2/manifest.json
           earthline-elder-worker-17129.js
           earthline-launch-16872.js
-          tools/elder_trees/chmv2_array_detector_17129.py
           EOF
           sort /tmp/expected.txt -o /tmp/expected.txt
           diff -u /tmp/expected.txt /tmp/changed.txt
@@ -83,15 +79,22 @@ jobs:
           <!doctype html><meta charset="utf-8"><pre id="out">running</pre>
           <script type="module">
           const w=new Worker("/earthline-elder-worker-17129.js",{type:"module"});
-          const id="smoke",t0=performance.now();
+          const warmId="warm",detectId="smoke",t0=performance.now();
           const timer=setTimeout(()=>{window.__DONE__={ok:false,error:"timeout"}},120000);
+          let warmMs=null,detectStart=null;
           w.onmessage=e=>{
-            if(e.data?.id!==id)return;
+            if(e.data?.id===warmId){
+              if(!e.data?.ok){clearTimeout(timer);window.__DONE__={ok:false,error:e.data?.error||"warm failed"};return}
+              warmMs=performance.now()-t0;detectStart=performance.now();
+              w.postMessage({id:detectId,bbox:[-118.754,36.559,-118.751,36.562],options:{displayPerTile:24,maxPerTile:240}});
+              return;
+            }
+            if(e.data?.id!==detectId)return;
             clearTimeout(timer);
-            window.__DONE__={...e.data,elapsedMs:performance.now()-t0};
+            window.__DONE__={...e.data,warmMs,detectMs:performance.now()-detectStart,totalMs:performance.now()-t0};
             document.querySelector("#out").textContent=JSON.stringify(window.__DONE__,null,2);
           };
-          w.postMessage({id,bbox:[-118.754,36.559,-118.751,36.562],options:{displayPerTile:24,maxPerTile:240}});
+          w.postMessage({id:warmId,warm:true});
           </script>
           HTML
           cat > run-smoke.mjs <<'JS'
@@ -103,12 +106,12 @@ jobs:
           await page.waitForFunction(()=>window.__DONE__,null,{timeout:150000});
           const r=await page.evaluate(()=>window.__DONE__);
           await browser.close();
-          console.log(JSON.stringify({ok:r.ok,elapsedMs:Math.round(r.elapsedMs),pool:r.result?.earthline?.candidate_pool_count,display:r.result?.earthline?.display_count,tiles:r.result?.earthline?.tile_results},null,2));
+          console.log(JSON.stringify({ok:r.ok,warmMs:Math.round(r.warmMs),detectMs:Math.round(r.detectMs),totalMs:Math.round(r.totalMs),pool:r.result?.earthline?.candidate_pool_count,display:r.result?.earthline?.display_count,tiles:r.result?.earthline?.tile_results},null,2));
           if(!r.ok)throw new Error(r.error||"worker failed");
           if(!(r.result?.earthline?.candidate_pool_count>0))throw new Error("zero candidate pool");
           if(!(r.result?.earthline?.display_count>0))throw new Error("zero display");
           if((r.result?.earthline?.tile_results||[]).some(t=>t.status!=="OK"))throw new Error("tile failure");
-          if(r.elapsedMs>20000)throw new Error("bounded Property Elder engine exceeded 20s CI gate");
+          if(r.detectMs>15000)throw new Error("prewarmed bounded Property Elder detector exceeded 15s CI gate");
           JS
           python -m http.server 8765 >/tmp/earthline-17130-http.log 2>&1 &
           node run-smoke.mjs
