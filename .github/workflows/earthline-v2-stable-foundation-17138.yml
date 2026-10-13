@@ -1,0 +1,24 @@
+name: Earthline V2 Stable Foundation 17138
+on:
+  push:
+    branches: [v2/stable-replacement-17138]
+    paths:
+      - 'v2/**'
+      - 'earthline-launch-16872.js'
+      - 'earthline-elder-worker-17129.js'
+      - 'tools/elder_trees/chmv2_array_detector_17129.py'
+      - 'tests/v2-foundation-contract.mjs'
+      - '.github/workflows/earthline-v2-stable-foundation-17138.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tests/v2-foundation-contract.mjs
