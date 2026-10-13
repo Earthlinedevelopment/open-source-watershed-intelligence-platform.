@@ -1243,9 +1243,16 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   function elderConfidence(p){return clampConfidence(p?.elder_tree_confidence_pct??p?.confidence_pct)}
   function isVerified(p){return String(p?.record_class||'').toUpperCase()==='VERIFIED_ELDER_TREE'||String(p?.record_class||'').toUpperCase()==='VERIFIED_EXTERNAL_TREE'||/verified/i.test(String(p?.verification_status||''))}
   function isLidar(p){return /LIDAR/i.test(String(p?.record_class||''))||/LIDAR/i.test(String(p?.source_class||''))||/LIDAR/i.test(String(p?.source_name||''))}
+  function elderCohort(p){return String(p?.elder_cohort||'').trim().toUpperCase()}
+  function isLegacyCandidate(p){return String(p?.record_class||'').toUpperCase()==='ELDER_TREE_CANDIDATE'&&!p?.science_baseline}
   function classify(p){
-    if(isVerified(p))return 'VERIFIED';
+    if(isVerified(p))return 'VERIFIED ELDER TREE';
     if(isLidar(p))return 'LIDAR-CONFIRMED CANDIDATE';
+    const c=elderCohort(p);
+    if(c==='CURRENT_ELDER_CANDIDATE')return 'CURRENT ELDER CANDIDATE';
+    if(c==='FUTURE_ELDER_CANDIDATE')return 'FUTURE ELDER CANDIDATE';
+    if(c==='OUTSIDE_DENSITY_PRIOR')return 'MODELED CANDIDATE · OUTSIDE DENSITY PRIOR';
+    if(isLegacyCandidate(p))return 'ELDER TREE CANDIDATE';
     return 'MODELED CANDIDATE';
   }
   function bounds(){
@@ -1265,6 +1272,19 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     const west=b[0],south=b[1],east=b[2],north=b[3];
     const lonOk=west<=east?(x>=west&&x<=east):(x>=west||x<=east);
     return lonOk&&y>=south&&y<=north;
+  }
+  function inPolygonLngLat(point,poly){
+    if(!Array.isArray(point)||point.length<2||!Array.isArray(poly)||poly.length<3)return false;
+    const x=Number(point[0]),y=Number(point[1]);if(!Number.isFinite(x)||!Number.isFinite(y))return false;
+    let inside=false;
+    for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+      const a=poly[i],b=poly[j];
+      const xi=Number(a?.[0]),yi=Number(a?.[1]),xj=Number(b?.[0]),yj=Number(b?.[1]);
+      if(![xi,yi,xj,yj].every(Number.isFinite))continue;
+      const crosses=((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/((yj-yi)||1e-12)+xi);
+      if(crosses)inside=!inside;
+    }
+    return inside;
   }
   async function load(){
     if(state.loaded)return state;
@@ -1314,13 +1334,20 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     };
   }
   function summarize(features,coverage=activeCoverage()){
-    let verified=0,lidar=0,modeled=0,confSum=0,confN=0,partial=false;
+    let verified=0,lidar=0,modeled=0,legacyCandidate=0,current=0,future=0,outsidePrior=0,confSum=0,confN=0,partial=false;
     const sources=new Set();
     for(const f of features){
       const p=f.properties||{};
       if(isVerified(p))verified++;
       else if(isLidar(p))lidar++;
-      else modeled++;
+      else if(isLegacyCandidate(p))legacyCandidate++;
+      else{
+        modeled++;
+        const c=elderCohort(p);
+        if(c==='CURRENT_ELDER_CANDIDATE')current++;
+        else if(c==='FUTURE_ELDER_CANDIDATE')future++;
+        else if(c==='OUTSIDE_DENSITY_PRIOR')outsidePrior++;
+      }
       const q=elderConfidence(p);
       if(q!=null){confSum+=q;confN++}
       if(p.elder_coverage_complete!==true)partial=true;
@@ -1329,17 +1356,18 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     }
     const coverageKnown=coverage?.known===true;
     if(coverageKnown&&coverage?.complete!==true)partial=true;
+    const candidates=lidar+legacyCandidate+modeled;
     const evidenceLabel=!coverageKnown
       ?'Coverage not yet processed for this area'
-      :verified&&lidar+modeled
-        ?verified+' verified · '+(lidar+modeled)+' candidates'
+      :verified&&candidates
+        ?verified+' verified · '+candidates+' candidates'
         :verified
           ?verified+' verified'
-          :(lidar+modeled)
-            ?(lidar+modeled)+' candidates'
+          :candidates
+            ?candidates+' candidates'
             :'No Elder Tree candidates detected in current Earthline coverage';
     return {
-      total:features.length,verified,lidar,modeled,candidates:lidar+modeled,
+      total:features.length,verified,lidar,modeled,legacyCandidate,current,future,outsidePrior,candidates,
       meanConfidence:confN?Math.round(confSum/confN):null,
       partial,coverageKnown,coverageDatasetIds:coverage?.datasetIds||[],sources:[...sources],
       evidenceLabel
@@ -1348,12 +1376,15 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   function activeFeatures(){
     const b=bounds(),t=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
     if(t==='property'){
-      let center=null;
+      let boundary=[],center=null;
       try{
-        const loc=(typeof M!=='undefined'&&M&&M.loc)||window.M?.loc||window.EARTHLINE_PROPERTY_TARGET_16201||null;
+        const md=(typeof M!=='undefined'&&M)||window.M||null;
+        boundary=Array.isArray(md?.analysisBoundaryLngLat)?md.analysisBoundaryLngLat.filter(p=>Array.isArray(p)&&p.length>=2):[];
+        const loc=md?.loc||window.EARTHLINE_PROPERTY_TARGET_16201||null;
         const lng=Number(loc?.lng),lat=Number(loc?.lat);
         if(Number.isFinite(lng)&&Number.isFinite(lat))center=[lng,lat];
       }catch(_){}
+      if(boundary.length>=3)return state.all.filter(f=>inPolygonLngLat(f?.geometry?.coordinates,boundary));
       if(center)return state.all.filter(f=>Array.isArray(f?.geometry?.coordinates)&&hav(center,f.geometry.coordinates)<=350);
     }
     return b?state.all.filter(f=>inBounds(f,b)):[];
@@ -1433,6 +1464,41 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     el.textContent='Elder Trees: '+summary.evidenceLabel+(summary.coverageKnown&&summary.partial?' · current Earthline coverage':'');
     return true;
   }
+  function propertyCard(summary){
+    const slot=document.getElementById('earthlinePropertySlot16188');if(!slot)return false;
+    let el=document.getElementById('earthlineElderTreesProperty17126');
+    if(!el){
+      el=document.createElement('div');el.id='earthlineElderTreesProperty17126';
+      el.style.cssText='margin-top:8px;padding:10px 11px 11px;border:1px solid rgba(116,186,138,.42);border-radius:10px;background:rgba(18,42,31,.58);color:#d8eee0;font:650 10px/1.35 "Noto Sans",system-ui,sans-serif';
+      slot.appendChild(el);
+    }
+    const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
+    if(tier!=='property'){el.hidden=true;return false}
+    el.hidden=false;
+    if(!summary.coverageKnown){
+      el.innerHTML='<div style="color:#8fd8a9;font-weight:900;letter-spacing:.08em">ELDER TREES</div>'+
+        '<div style="margin-top:5px;color:#b9c9c0">Coverage not yet processed for this area.</div>';
+      return true;
+    }
+    const modeled=Number(summary.modeled||0),legacy=Number(summary.legacyCandidate||0),lidar=Number(summary.lidar||0),verified=Number(summary.verified||0);
+    const cohortBits=[];
+    if(Number(summary.current||0)>0)cohortBits.push('Current '+Number(summary.current));
+    if(Number(summary.future||0)>0)cohortBits.push('Future '+Number(summary.future));
+    if(Number(summary.outsidePrior||0)>0)cohortBits.push('Outside density prior '+Number(summary.outsidePrior));
+    const row=(label,value)=>'<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:5px"><span style="color:#a9c4b2;font-weight:850;letter-spacing:.035em">'+esc(label)+'</span><b style="color:#f0fff4;font-size:12px">'+esc(value)+'</b></div>';
+    el.innerHTML='<div style="color:#8fd8a9;font-weight:950;letter-spacing:.08em">ELDER TREES</div>'+
+      '<div style="margin-top:4px;color:#d7e6dc">'+esc(summary.evidenceLabel)+'</div>'+
+      row('MODELED CANDIDATES',modeled)+
+      (cohortBits.length?'<div style="margin-top:2px;color:#86a994;font-size:9px">'+esc(cohortBits.join(' · '))+'</div>':'')+
+      (lidar?row('LIDAR-CONFIRMED',lidar):'')+
+      (legacy?row('EARLIER CANDIDATE EVIDENCE',legacy):'')+
+      (verified?row('VERIFIED ELDER TREES',verified):'')+
+      (summary.meanConfidence!=null?'<div style="margin-top:6px;color:#a7c7b2">Mean Elder Tree Confidence <b style="color:#dff7e6">'+esc(summary.meanConfidence)+'%</b></div>':'')+
+      '<div style="margin-top:6px;color:#81998a;font-size:9px">Confidence is a local structural-evidence percentile, not probability of age. Elder Trees have zero weight in Recharge Potential.</div>'+
+      (summary.partial?'<div style="margin-top:4px;color:#c7ad7a;font-size:9px">Current Earthline coverage is partial; this is not a complete natural-population census.</div>':'');
+    return true;
+  }
+
   function dataBlock(summary){
     const content=document.getElementById('earthlineRechargeDataContent16488');if(!content)return false;
     let el=document.getElementById('earthlineElderTreesData17097');
@@ -1514,7 +1580,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   }
   function refreshSurfaces(){
     const s=state.lastSummary||summarize(state.active);
-    gaugeLine(s);dataBlock(s);reportBlock(s);
+    gaugeLine(s);propertyCard(s);dataBlock(s);reportBlock(s);
   }
   async function refresh(){
     try{
@@ -1566,6 +1632,13 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       rechargeWeight:0
     };
     window.EARTHLINE_ELDER_TREES_V2_17118=window.EARTHLINE_ELDER_TREES_V1_17097;
+    window.earthlineElderTreeUiAudit17126=()=>({
+      build:'17126',scienceBaseline:'17118',
+      propertyBoundaryOwner:'M.analysisBoundaryLngLat with 350 m fallback only when boundary unavailable',
+      propertyCardVisible:!!document.getElementById('earthlineElderTreesProperty17126')&&!document.getElementById('earthlineElderTreesProperty17126').hidden,
+      summary:state.lastSummary||summarize(state.active),
+      at:new Date().toISOString()
+    });
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
