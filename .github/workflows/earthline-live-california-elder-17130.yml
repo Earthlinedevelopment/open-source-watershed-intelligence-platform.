@@ -1,4 +1,4 @@
-name: Earthline Live California Elder Acceptance 17130
+name: Earthline Live California Elder Acceptance 17131
 
 on:
   push:
@@ -28,7 +28,9 @@ jobs:
             if curl -fsSL --max-time 20 https://earthlinedevelopment.org/data/elder-trees/v2/manifest.json > /tmp/manifest.json &&
                grep -q 'california-regional-overview-17130' /tmp/manifest.json &&
                curl -fsSL --max-time 20 https://earthlinedevelopment.org/earthline-elder-worker-17129.js > /tmp/worker.js &&
-               grep -q 'RANGE_PROXY' /tmp/worker.js; then
+               grep -q 'warm===true' /tmp/worker.js &&
+               curl -fsSL --max-time 20 https://earthlinedevelopment.org/earthline-launch-16872.js > /tmp/launch.js &&
+               grep -q 'prewarmDynamicWorker();' /tmp/launch.js; then
               ok=1; break
             fi
             sleep 5
@@ -52,25 +54,32 @@ jobs:
           await page.goto("https://earthlinedevelopment.org/",{waitUntil:"domcontentloaded",timeout:60000});
           const result=await page.evaluate(async()=>{
             const bbox=[-118.754,36.559,-118.751,36.562];
-            const id="live-17130-"+Date.now(),t0=performance.now();
+            const warmId="live-warm-"+Date.now(),detectId="live-detect-"+Date.now(),t0=performance.now();
             return await new Promise((resolve,reject)=>{
               const w=new Worker("/earthline-elder-worker-17129.js",{type:"module"});
               const tm=setTimeout(()=>{try{w.terminate()}catch(_){};reject(new Error("live worker timeout"))},90000);
+              let warmMs=null,detectStart=null;
               w.onmessage=e=>{
-                if(e.data?.id!==id)return;
+                if(e.data?.id===warmId){
+                  if(!e.data?.ok){clearTimeout(tm);try{w.terminate()}catch(_){};reject(new Error(e.data?.error||"live warm failed"));return}
+                  warmMs=performance.now()-t0;detectStart=performance.now();
+                  w.postMessage({id:detectId,bbox,options:{displayPerTile:24,maxPerTile:240}});
+                  return;
+                }
+                if(e.data?.id!==detectId)return;
                 clearTimeout(tm);try{w.terminate()}catch(_){}
                 if(!e.data?.ok)reject(new Error(e.data?.error||"live worker failed"));
-                else resolve({elapsedMs:performance.now()-t0,result:e.data.result});
+                else resolve({warmMs,detectMs:performance.now()-detectStart,totalMs:performance.now()-t0,result:e.data.result});
               };
               w.onerror=e=>{clearTimeout(tm);reject(new Error(e.message||"live worker error"))};
-              w.postMessage({id,bbox,options:{displayPerTile:24,maxPerTile:240}});
+              w.postMessage({id:warmId,warm:true});
             });
           });
           await browser.close();
-          console.log(JSON.stringify({elapsedMs:Math.round(result.elapsedMs),pool:result.result?.earthline?.candidate_pool_count,display:result.result?.earthline?.display_count,tiles:result.result?.earthline?.tile_results},null,2));
+          console.log(JSON.stringify({warmMs:Math.round(result.warmMs),detectMs:Math.round(result.detectMs),totalMs:Math.round(result.totalMs),pool:result.result?.earthline?.candidate_pool_count,display:result.result?.earthline?.display_count,tiles:result.result?.earthline?.tile_results},null,2));
           if(!(result.result?.earthline?.candidate_pool_count>0))throw new Error("live candidate pool zero");
           if(!(result.result?.earthline?.display_count>0))throw new Error("live display zero");
           if((result.result?.earthline?.tile_results||[]).some(t=>t.status!=="OK"))throw new Error("live CHMv2 tile failed");
-          if(result.elapsedMs>20000)throw new Error("live bounded Elder detector exceeded 20s gate");
+          if(result.detectMs>15000)throw new Error("live prewarmed bounded Elder detector exceeded 15s gate");
           JS
           node run-live.mjs
