@@ -2,6 +2,7 @@ import { fromUrl } from "https://cdn.jsdelivr.net/npm/geotiff@3.0.5/+esm";
 import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/v0.29.5/full/pyodide.mjs";
 
 const ROOT="https://dataforgood-fb-data.s3.amazonaws.com/forests/v2/global/dinov3_global_chm_v2_ml3/chm/";
+const RANGE_PROXY="https://ccucaqwbdsskcwxxbqiz.supabase.co/functions/v1/earthline-chmv2-range";
 const METHOD="earthline-elder-tree-aoi-chmv2-v0.7-high-recall-plateau-collapse";
 let pyReady=null;
 
@@ -80,9 +81,10 @@ function projectedWindow(image,bbox){
 }
 async function processTile(py,q,bbox,maxPerTile=240){
   const url=ROOT+q+".tif";
+  const transport=RANGE_PROXY+"?q="+encodeURIComponent(q);
   let tif,image;
   try{
-    tif=await fromUrl(url,{cacheSize:32});
+    tif=await fromUrl(transport,{cacheSize:32});
     image=await tif.getImage();
   }catch(err){
     return {features:[],tile:{quadkey:q,status:"NO_TILE",error:String(err?.message||err)}};
