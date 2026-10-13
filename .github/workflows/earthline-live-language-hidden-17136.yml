@@ -1,0 +1,58 @@
+name: Earthline Live Language Hidden 17136
+on:
+  push:
+    branches: [research/elder-browser-engine-17129]
+    paths:
+      - '.github/workflows/earthline-live-language-hidden-17136.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-browser-engine-17129
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify rendered live rail
+        shell: bash
+        run: |
+          mkdir -p artifacts/language-hidden-17136
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:900}});
+          await page.goto('https://earthlinedevelopment.org/?verify17136='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#earthlineRail16188',{timeout:20000});
+          await page.waitForTimeout(1800);
+          const state=await page.evaluate(()=>{
+            const lang=document.getElementById('earthlineLanguageWrap16488');
+            const vis=el=>{if(!el)return false;const r=el.getBoundingClientRect(),s=getComputedStyle(el);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity||1)>.01};
+            return {
+              languageExists:!!lang,
+              languageVisible:vis(lang),
+              languageDisplay:lang?getComputedStyle(lang).display:null,
+              dataVisible:vis(document.getElementById('earthlineRailData16488')),
+              contactVisible:vis(document.getElementById('earthlineRailContact16512')),
+              runVisible:vis(document.getElementById('runBtn'))
+            };
+          });
+          console.log('EARTHLINE_17136_RENDER '+JSON.stringify(state));
+          await page.screenshot({path:'artifacts/language-hidden-17136/live.png',fullPage:true});
+          await browser.close();
+          if(state.languageVisible)throw new Error('Language control still rendered');
+          if(!state.dataVisible||!state.contactVisible||!state.runVisible)throw new Error('Unrequested control regression '+JSON.stringify(state));
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-live-language-hidden-17136
+          path: artifacts/language-hidden-17136/
+          if-no-files-found: error
+          retention-days: 7
