@@ -9,6 +9,7 @@ const browser=await chromium.launch({headless:true});
 const context=await browser.newContext({viewport:{width:1440,height:900},deviceScaleFactor:1});
 const page=await context.newPage();
 const errors=[];
+const failures=[];
 page.on('pageerror',e=>errors.push(String(e)));
 
 async function shot(name,clip){
@@ -86,23 +87,22 @@ await shot('03b-property-button',propertyBtnBox);
 const crosshairVisual=await page.evaluate(()=>{
   const b=document.getElementById('earthlineDeclareProperty16169');
   if(!b)return {ok:false,reason:'button-missing'};
-  const svg=b.querySelector('svg');
-  const shell=b.querySelector('.earthline-orb-shell-16244');
   const span=b.querySelector('[data-crosshair16247]');
   const rb=b.getBoundingClientRect();
-  const rs=svg?.getBoundingClientRect();
-  const ri=shell?.getBoundingClientRect();
+  const rs=span?.getBoundingClientRect();
   const css=span?getComputedStyle(span):null;
+  const text=String(b.textContent||'').replace(/\s+/g,' ').trim();
+  const data=span?.getAttribute('data-crosshair16247')||null;
   return {
-    ok:!!(svg&&shell&&span&&rs?.width>0&&rs?.height>0&&ri?.width>0&&ri?.height>0),
+    ok:!!(span&&/^CROSSHAIR\b/i.test(text)&&data==='1'&&rs?.width>0&&rs?.height>0&&css?.display!=='none'&&css?.visibility!=='hidden'),
+    text,data,
     button:{x:rb.x,y:rb.y,w:rb.width,h:rb.height},
-    svg:rs&&{x:rs.x,y:rs.y,w:rs.width,h:rs.height},
-    shell:ri&&{x:ri.x,y:ri.y,w:ri.width,h:ri.height},
+    span:rs&&{x:rs.x,y:rs.y,w:rs.width,h:rs.height},
     spanDisplay:css?.display||null,
     spanVisibility:css?.visibility||null
   };
 });
-if(!crosshairVisual.ok)throw new Error('Crosshair/orb is not actually rendered in the Property button '+JSON.stringify(crosshairVisual));
+if(!crosshairVisual.ok)failures.push('Property button did not render CROSSHAIR target state: '+JSON.stringify(crosshairVisual));
 
 await propertyBtn.click();
 await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,{timeout:30000,polling:150});
@@ -153,12 +153,13 @@ const elderFresh=rendered.elderLast?.summary?.coverageDatasetIds?.includes('dyna
   && Number(rendered.elderLast?.featureCount||0)>0
   && Number(rendered.elderLast?.dynamicCandidatePoolCount||0)>0;
 
-const result={errors,crosshairVisual,rendered,swaleRenderedCount,elderFresh};
+if(errors.length)failures.push('Page errors '+JSON.stringify(errors));
+if(swaleRenderedCount<=0)failures.push('No Property swale features actually rendered in viewport');
+if(!elderFresh)failures.push('No fresh Property Elder pins actually available after Property run');
+
+const result={errors,failures,crosshairVisual,rendered,swaleRenderedCount,elderFresh};
 writeFileSync(`${OUT}/result.json`,JSON.stringify(result,null,2));
 console.log('EARTHLINE_RENDERED_17134 '+JSON.stringify(result));
 
-if(errors.length)throw new Error('Page errors '+JSON.stringify(errors));
-if(swaleRenderedCount<=0)throw new Error('No Property swale features actually rendered in viewport');
-if(!elderFresh)throw new Error('No fresh Property Elder pins actually available after Property run');
-
 await browser.close();
+if(failures.length)throw new Error('Rendered user-path failures: '+JSON.stringify(failures));
