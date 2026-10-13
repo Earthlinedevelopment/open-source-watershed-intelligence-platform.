@@ -1323,8 +1323,32 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     const lonOverlap=west<=east?(de>=west&&dw<=east):(de>=west||dw<=east);
     return latOverlap&&lonOverlap;
   }
+  function coverageQueryBounds(){
+    const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
+    if(tier==='property'){
+      try{
+        const md=(typeof M!=='undefined'&&M)||window.M||null;
+        const poly=Array.isArray(md?.analysisBoundaryLngLat)?md.analysisBoundaryLngLat.filter(p=>Array.isArray(p)&&p.length>=2):[];
+        if(poly.length>=3){
+          let west=Infinity,south=Infinity,east=-Infinity,north=-Infinity;
+          for(const p of poly){
+            const x=Number(p[0]),y=Number(p[1]);if(!Number.isFinite(x)||!Number.isFinite(y))continue;
+            west=Math.min(west,x);east=Math.max(east,x);south=Math.min(south,y);north=Math.max(north,y);
+          }
+          if([west,south,east,north].every(Number.isFinite))return [west,south,east,north];
+        }
+        const loc=md?.loc||window.EARTHLINE_PROPERTY_TARGET_16201||null;
+        const lng=Number(loc?.lng),lat=Number(loc?.lat);
+        if(Number.isFinite(lng)&&Number.isFinite(lat)){
+          const dy=350/111320,dx=350/(111320*Math.max(.05,Math.cos(lat*Math.PI/180)));
+          return [lng-dx,lat-dy,lng+dx,lat+dy];
+        }
+      }catch(_){}
+    }
+    return bounds();
+  }
   function activeCoverage(){
-    const b=bounds();
+    const b=coverageQueryBounds();
     const datasets=state.manifest?.datasets||[];
     const covered=datasets.filter(d=>datasetCoversBounds(d,b));
     return {
@@ -1635,6 +1659,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     window.earthlineElderTreeUiAudit17126=()=>({
       build:'17126',scienceBaseline:'17118',
       propertyBoundaryOwner:'M.analysisBoundaryLngLat with 350 m fallback only when boundary unavailable',
+      coverageQueryOwner:'Property boundary/center bounds for false-zero protection; map bounds for non-Property',
       propertyCardVisible:!!document.getElementById('earthlineElderTreesProperty17126')&&!document.getElementById('earthlineElderTreesProperty17126').hidden,
       summary:state.lastSummary||summarize(state.active),
       at:new Date().toISOString()
