@@ -1,0 +1,75 @@
+name: Earthline Live Language Owner Audit 17137
+on:
+  push:
+    branches: [research/elder-browser-engine-17129]
+    paths:
+      - '.github/workflows/earthline-live-language-owner-audit-17137.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/elder-browser-engine-17129
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Audit every rendered language control
+        shell: bash
+        run: |
+          mkdir -p artifacts/language-owner-17137
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const context=await browser.newContext({viewport:{width:1800,height:900},serviceWorkers:'block'});
+          const page=await context.newPage();
+          await page.route('**/*', async route=>{
+            const req=route.request();
+            const h={...req.headers(),'cache-control':'no-cache','pragma':'no-cache'};
+            await route.continue({headers:h});
+          });
+          await page.goto('https://earthlinedevelopment.org/?langowner17137='+Date.now(),{waitUntil:'networkidle',timeout:60000});
+          await page.waitForTimeout(2000);
+          const state=await page.evaluate(()=>{
+            const all=[...document.querySelectorAll('*')];
+            const vis=el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity||1)>.01};
+            const rows=all.filter(el=>{
+              const txt=String(el.textContent||'').trim();
+              const aria=String(el.getAttribute?.('aria-label')||'');
+              const title=String(el.getAttribute?.('title')||'');
+              const id=String(el.id||'');
+              return /language|ภาษา|ngôn ngữ|idioma/i.test(txt+' '+aria+' '+title+' '+id);
+            }).map(el=>{
+              const r=el.getBoundingClientRect(),s=getComputedStyle(el);
+              return {
+                tag:el.tagName,id:el.id||'',cls:typeof el.className==='string'?el.className:'',
+                text:String(el.textContent||'').replace(/\s+/g,' ').trim().slice(0,180),
+                aria:el.getAttribute?.('aria-label')||'',title:el.getAttribute?.('title')||'',
+                visible:vis(el),display:s.display,visibility:s.visibility,opacity:s.opacity,
+                box:{x:r.x,y:r.y,w:r.width,h:r.height},
+                parentId:el.parentElement?.id||'',parentClass:typeof el.parentElement?.className==='string'?el.parentElement.className:''
+              };
+            });
+            return {
+              rows,
+              rail:document.getElementById('earthlineRail16188')?.innerHTML||'',
+              css:[...document.styleSheets].map(ss=>ss.href||'inline')
+            };
+          });
+          console.log('EARTHLINE_LANG_OWNER_17137 '+JSON.stringify(state));
+          await page.screenshot({path:'artifacts/language-owner-17137/live.png',fullPage:true});
+          await browser.close();
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-live-language-owner-17137
+          path: artifacts/language-owner-17137/
+          if-no-files-found: error
+          retention-days: 7
