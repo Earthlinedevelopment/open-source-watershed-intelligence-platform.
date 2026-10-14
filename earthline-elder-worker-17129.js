@@ -149,12 +149,40 @@ function displaySubset(features,perTile=24){
     groups.get(q).push(f);
   }
   const out=[];
-  for(const items of groups.values()){
-    items.sort((a,b)=>
-      Number(b?.properties?.elder_tree_confidence_pct||0)-Number(a?.properties?.elder_tree_confidence_pct||0) ||
-      Number(b?.properties?.height_m||0)-Number(a?.properties?.height_m||0)
-    );
-    out.push(...items.slice(0,perTile));
+  const rank=(a,b)=>
+    Number(b?.properties?.elder_tree_confidence_pct||0)-Number(a?.properties?.elder_tree_confidence_pct||0) ||
+    Number(b?.properties?.height_m||0)-Number(a?.properties?.height_m||0);
+  for(const items0 of groups.values()){
+    const items=[...items0].sort(rank);
+    if(items.length<=perTile){out.push(...items);continue}
+    let west=Infinity,south=Infinity,east=-Infinity,north=-Infinity;
+    for(const f of items){
+      const c=f?.geometry?.coordinates;
+      if(!Array.isArray(c))continue;
+      west=Math.min(west,+c[0]);east=Math.max(east,+c[0]);
+      south=Math.min(south,+c[1]);north=Math.max(north,+c[1]);
+    }
+    const cols=Math.max(2,Math.ceil(Math.sqrt(perTile)));
+    const rows=Math.max(2,Math.ceil(perTile/cols));
+    const dx=Math.max(1e-12,east-west),dy=Math.max(1e-12,north-south);
+    const cells=new Map();
+    for(const f of items){
+      const c=f?.geometry?.coordinates;if(!Array.isArray(c))continue;
+      const ix=Math.min(cols-1,Math.max(0,Math.floor((+c[0]-west)/dx*cols)));
+      const iy=Math.min(rows-1,Math.max(0,Math.floor((+c[1]-south)/dy*rows)));
+      const key=iy*cols+ix;
+      if(!cells.has(key))cells.set(key,f);
+    }
+    const chosen=[...cells.values()].sort(rank).slice(0,perTile);
+    const picked=new Set(chosen);
+    if(chosen.length<perTile){
+      for(const f of items){
+        if(picked.has(f))continue;
+        chosen.push(f);picked.add(f);
+        if(chosen.length>=perTile)break;
+      }
+    }
+    out.push(...chosen);
   }
   return out;
 }
