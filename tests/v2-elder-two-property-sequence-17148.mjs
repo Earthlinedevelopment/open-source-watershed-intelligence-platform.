@@ -87,7 +87,7 @@ async function runProperty(t,previousAt){
     const ids=Array.isArray(x?.summary?.coverageDatasetIds)?x.summary.coverageDatasetIds:[];
     return {state:x?.state||'',featureCount:Number(x?.featureCount||0),ids,gauge};
   });
-  const validPending=handoff.state==='property-pending'&&handoff.featureCount===0&&handoff.gauge==='';
+  const validPending=handoff.state==='property-pending'&&handoff.featureCount===0&&/analyzing Property canopy/i.test(handoff.gauge);
   const validCommitted=handoff.state==='committed'&&handoff.ids.includes('dynamic-property-17130');
   if(!validPending&&!validCommitted){
     throw new Error('Stale Elder state survived Property handoff: '+JSON.stringify(handoff));
@@ -96,10 +96,12 @@ async function runProperty(t,previousAt){
   await page.waitForFunction(({previousAt})=>{
     const x=window.EARTHLINE_ELDER_TREE_LAST_17097;
     const at=String(x?.at||'');
-    return x?.summary?.coverageDatasetIds?.includes('dynamic-property-17130') &&
+    return x?.state==='committed' &&
+      x?.summary?.coverageDatasetIds?.includes('dynamic-property-17130') &&
       Number(x?.dynamicCandidatePoolCount||0)>0 &&
       Number(x?.featureCount||0)>0 &&
       Number(x?.summary?.modeled||0)>0 &&
+      x?.treeCoverRule?.satisfied!==false &&
       (!previousAt || at!==previousAt);
   },{previousAt},{timeout:120000,polling:500});
 
@@ -127,7 +129,9 @@ async function runProperty(t,previousAt){
       propertyCenter:a?.center||null,
       propertySerial:a?.serial||0,
       propertySettled:a?.settled===true,
-      propertyCorridors:a?.corridors||0
+      propertyCorridors:a?.corridors||0,
+      propertyRunIdentity:last?.propertyRunIdentity||'',
+      treeCoverRule:last?.treeCoverRule||null
     };
   },t);
 }
@@ -148,6 +152,8 @@ for(const r of results){
   if(r.featureCount<=0) failures.push(r.target.name+': zero display features');
   if(Number(s.modeled||0)<=0) failures.push(r.target.name+': zero modeled candidates');
   if(Number(s.legacyCandidate||0)!==0) failures.push(r.target.name+': stale/legacy Elder contamination');
+  if(r.treeCoverRule?.treeCovered===true && r.treeCoverRule?.satisfied!==true) failures.push(r.target.name+': tree-covered Property violated Elder expectation');
+  if(r.treeCoverRule?.treeCovered===true && r.renderedElderCount<=0) failures.push(r.target.name+': tree-covered Property rendered zero Elder pins');
   if(r.renderedElderCount<=0) failures.push(r.target.name+': zero Elder pins actually rendered');
   if(!r.propertySettled) failures.push(r.target.name+': Property not settled');
   const c=r.propertyCenter;
