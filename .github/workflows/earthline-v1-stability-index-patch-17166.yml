@@ -1,4 +1,4 @@
-name: Earthline V1 Natural After Safe 17183
+name: Earthline V1 Immediate Property Frame 17185
 on:
   push:
     branches: [repair/v1-stability-17166]
@@ -16,24 +16,24 @@ jobs:
         with:
           ref: repair/v1-stability-17166
           fetch-depth: 0
-      - name: Defer optional natural texture until safe swales render
+      - name: Make existing Property frame immediate
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8',errors='strict')
-          marker='EARTHLINE_NATURAL_AFTER_SAFE_17183'
-          old="}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline')"
-          new="}const safeAudit17183=window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null;if(active&&Number(safeAudit17183?.count||0)>0&&safeAudit17183?.visible!==true)return false;/* EARTHLINE_NATURAL_AFTER_SAFE_17183 */if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline')"
+          marker='EARTHLINE_PROPERTY_FRAME_IMMEDIATE_17185'
+          old="mp.fitBounds(bounds,{padding:{top:92,right:92,bottom:92,left:92},duration:850,maxZoom:19.1});"
+          new="mp.fitBounds(bounds,{padding:{top:92,right:92,bottom:92,left:92},duration:0,maxZoom:19.1}); /* EARTHLINE_PROPERTY_FRAME_IMMEDIATE_17185 */"
           if marker not in s:
               if s.count(old)!=1:
-                  raise SystemExit('Expected one natural texture sync anchor, found '+str(s.count(old)))
+                  raise SystemExit('Expected one Property fitBounds owner, found '+str(s.count(old)))
               s=s.replace(old,new,1)
           if s.count(marker)!=1:
-              raise SystemExit('Natural-after-safe marker count invalid')
+              raise SystemExit('Immediate Property frame marker count invalid')
           p.write_text(s,encoding='utf-8')
-          print('V1 natural-after-safe patch PASS')
+          print('V1 immediate Property frame patch PASS')
           PY
           git diff --check
           test "$(git diff --name-only)" = "index.html"
@@ -43,6 +43,6 @@ jobs:
           git config user.name "earthline-release-bot"
           git config user.email "earthline-release-bot@users.noreply.github.com"
           git add index.html
-          git commit -m "repair: defer natural texture until safe swales render 17183"
+          git commit -m "repair: frame Property immediately for first-paint stability 17185"
           git pull --rebase origin repair/v1-stability-17166
           git push origin HEAD:repair/v1-stability-17166
