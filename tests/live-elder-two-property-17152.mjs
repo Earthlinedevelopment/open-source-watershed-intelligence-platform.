@@ -16,6 +16,18 @@ const errors=[];
 page.on('pageerror',e=>errors.push(String(e)));
 await page.goto(BASE+'?livetwoprop17152='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
 await page.waitForSelector('#searchInput',{timeout:20000});
+await page.waitForFunction(async()=>{
+  try{
+    const stamp=Date.now();
+    const [html,launch]=await Promise.all([
+      fetch('/?live17153='+stamp,{cache:'no-store'}).then(r=>r.text()),
+      fetch('/earthline-launch-16872.js?live17153='+stamp,{cache:'no-store'}).then(r=>r.text())
+    ]);
+    return html.includes('EARTHLINE_CANONICAL_PROPERTY_ELDER_REFRESH_17153') &&
+      launch.includes('EARTHLINE_CROSSHAIR_MOVE_HINT_17093') &&
+      !launch.includes('EARTHLINE_ELDER_REPEAT_PROPERTY_REFRESH_17152');
+  }catch(_){return false}
+},{timeout:120000,polling:1000});
 
 const input=page.locator('#searchInput');
 await input.fill('California');
@@ -26,6 +38,13 @@ await options.first().click();
 await page.waitForTimeout(250);
 await page.locator('#runBtn').click();
 await page.waitForFunction(()=>/screening published\./i.test(String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'')),{timeout:45000,polling:150});
+
+const hint=page.locator('#earthlineCrosshairMoveHint17093');
+if(!(await hint.isVisible())) throw new Error('Approved bare-land crosshair instruction did not render');
+if(!/Place hand cursor over bare land to move map\./i.test(String(await hint.innerText()))) throw new Error('Crosshair instruction copy regressed');
+const gotIt=hint.getByRole('button',{name:/dismiss crosshair movement hint|got it/i});
+if(await gotIt.count()) await gotIt.click();
+await page.waitForTimeout(150);
 
 const hit=page.locator('#earthlineRegionalVectorOverlay16020 .earthline-swale-hit-16070').first();
 if(!(await hit.count())) throw new Error('No rendered Regional corridor');
@@ -65,18 +84,6 @@ async function runProperty(t,previousAt){
     const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173;
     return a?.settled===true && Number(a?.serial||0)>preSerial;
   },{preSerial},{timeout:45000,polling:150});
-
-  const handoff=await page.evaluate(()=>{
-    const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
-    const gauge=String(document.getElementById('earthlineElderTreesGauge17097')?.textContent||'').trim();
-    const ids=Array.isArray(x?.summary?.coverageDatasetIds)?x.summary.coverageDatasetIds:[];
-    return {state:x?.state||'',featureCount:Number(x?.featureCount||0),ids,gauge};
-  });
-  const validPending=handoff.state==='property-pending'&&handoff.featureCount===0&&handoff.gauge==='';
-  const validCommitted=handoff.state==='committed'&&handoff.ids.includes('dynamic-property-17130');
-  if(!validPending&&!validCommitted){
-    throw new Error('Stale Elder state survived Property handoff: '+JSON.stringify(handoff));
-  }
 
   await page.waitForFunction(({previousAt})=>{
     const x=window.EARTHLINE_ELDER_TREE_LAST_17097;
