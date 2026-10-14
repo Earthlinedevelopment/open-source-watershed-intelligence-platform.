@@ -1703,16 +1703,17 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     try{
       const b=propertyBounds17166(),runIdentity=propertyRunIdentity17166(b);
       if(!b||!runIdentity)return null;
-      state.active=[];state.lastSummary=null;
-      publishMap([]);
-      const gauge=document.getElementById('earthlineElderTreesGauge17097');
-      if(gauge)gauge.textContent='Elder Trees: analyzing Property canopy…';
       window.EARTHLINE_ELDER_TREE_LAST_17097={
         state:'property-pending',propertyRunIdentity:runIdentity,
         summary:null,featureCount:0,dynamicCandidatePoolCount:0,dynamicError:null,
         at:new Date().toISOString()
-      }; /* EARTHLINE_ELDER_PROPERTY_STATE_IMMEDIATE_17200 */
-      const dynamic=await dynamicPropertyEvidence(true);
+      };
+      const gauge=document.getElementById('earthlineElderTreesGauge17097');
+      if(gauge)gauge.textContent='Elder Trees: analyzing Property canopy…';
+      const dynamicPromise17166=dynamicPropertyEvidence(true); /* EARTHLINE_ELDER_REQUEST_FIRST_17206 */
+      state.active=[];state.lastSummary=null;
+      publishMap([]);
+      const dynamic=await dynamicPromise17166;
       if(!dynamic||propertyRunIdentity17166(propertyBounds17166())!==runIdentity)return null;
       state.active=dynamic.features||[];
       const coverage={known:true,datasetIds:['dynamic-property-17130'],complete:false,dynamic:true,candidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0)};
