@@ -1,0 +1,32 @@
+name: Earthline V1 Property Stability 17165
+on:
+  push:
+    branches: [repair/v1-property-stability-17165]
+    paths:
+      - 'earthline-launch-16872.js'
+      - 'earthline-elder-worker-17129.js'
+      - 'tests/v1-property-stability-17165.mjs'
+      - '.github/workflows/earthline-v1-property-stability-17165.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rendered:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - run: node tests/v1-property-stability-17165.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-v1-property-stability-17165
+          path: artifacts/v1-property-stability-17165/
+          if-no-files-found: warn
+          retention-days: 7
