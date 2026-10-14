@@ -5,6 +5,7 @@ const ROOT="https://dataforgood-fb-data.s3.amazonaws.com/forests/v2/global/dinov
 const RANGE_PROXY="https://ccucaqwbdsskcwxxbqiz.supabase.co/functions/v1/earthline-chmv2-range";
 const METHOD="earthline-elder-tree-aoi-chmv2-v0.7-high-recall-plateau-collapse";
 let pyReady=null;
+const tileCache17196=new Map();
 
 function tileXY(lon,lat,z=10){
   lat=Math.max(-85.05112878,Math.min(85.05112878,lat));
@@ -84,11 +85,20 @@ async function processTile(py,q,bbox,maxPerTile=240){
   const transport=RANGE_PROXY+"?q="+encodeURIComponent(q);
   let tif,image;
   try{
-    tif=await fromUrl(transport,{cacheSize:32});
-    image=await tif.getImage();
+    let cached=tileCache17196.get(q);
+    if(!cached){
+      cached=(async()=>{
+        const tif17196=await fromUrl(transport,{cacheSize:96});
+        const image17196=await tif17196.getImage();
+        return {tif:tif17196,image:image17196};
+      })();
+      tileCache17196.set(q,cached);
+    }
+    ({tif,image}=await cached);
   }catch(err){
+    tileCache17196.delete(q);
     return {features:[],tile:{quadkey:q,status:"NO_TILE",error:String(err?.message||err)}};
-  }
+  } /* EARTHLINE_ELDER_TILE_CACHE_17196 */
   const debugGeo={origin:image.getOrigin(),resolution:image.getResolution(),bbox:image.getBoundingBox(),projectedSW:merc(bbox[0],bbox[1]),projectedNE:merc(bbox[2],bbox[3])};
   const w=projectedWindow(image,bbox);
   if(!w)return {features:[],tile:{quadkey:q,status:"NO_INTERSECTION",debugGeo}};
