@@ -1,0 +1,41 @@
+name: Earthline Live V1 Owner Inspect 17163
+on:
+  push:
+    branches: [research/elder-browser-engine-17129]
+    paths: ['.github/workflows/earthline-live-v1-owner-inspect-17163.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 1
+      - name: Inspect current Property crosshair owner
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8',errors='ignore')
+          for term in [
+            'earthlineDeclareProperty16169',
+            'data-crosshair16247',
+            'EARTHLINE_PROPERTY_TARGET_16201',
+            'setPropertyTarget',
+            'Zoom to this location',
+            'ZOOM TO THIS LOCATION',
+            'earthlineOpenCorridorDetail16149',
+            'moveend'
+          ]:
+              print('\n===== '+term+' =====')
+              pos=0; low=s.lower(); needle=term.lower(); n=0
+              while n<10:
+                  i=low.find(needle,pos)
+                  if i<0: break
+                  print('\n--- OFFSET',i,'---')
+                  print(s[max(0,i-2600):min(len(s),i+7800)])
+                  pos=i+len(needle);n+=1
+          PY
