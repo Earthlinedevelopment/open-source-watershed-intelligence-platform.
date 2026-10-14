@@ -1731,7 +1731,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
         state:'committed',propertyRunIdentity:runIdentity,
         summary:state.lastSummary,featureCount:state.active.length,
         dynamicCandidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0),
-        dynamicError:null,at:new Date().toISOString()
+        dynamicError:null,workerTimings:dynamic?.earthline?.worker_timings_ms||null,at:new Date().toISOString()
       };
       return state.lastSummary;
     }catch(err){
@@ -1759,7 +1759,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
         state:'committed',propertyRunIdentity:String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property'?propertyRunIdentity17166(coverageQueryBounds()):'',
         summary:state.lastSummary,featureCount:state.active.length,
         dynamicCandidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0),
-        dynamicError:state.dynamic.error||null,at:new Date().toISOString()
+        dynamicError:state.dynamic.error||null,workerTimings:dynamic?.earthline?.worker_timings_ms||null,at:new Date().toISOString()
       };
       return state.lastSummary;
     }catch(err){
