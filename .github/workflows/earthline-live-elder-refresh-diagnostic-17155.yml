@@ -1,0 +1,23 @@
+name: Earthline Live Elder Refresh Diagnostic 17155
+on:
+  push:
+    branches: [v2/stable-replacement-17138]
+    paths:
+      - 'tests/live-elder-refresh-diagnostic-17155.mjs'
+      - '.github/workflows/earthline-live-elder-refresh-diagnostic-17155.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - run: node tests/live-elder-refresh-diagnostic-17155.mjs
