@@ -218,6 +218,14 @@ const quadrants=features=>{const [w,s,e,n]=bbox,mx=(w+e)/2,my=(s+n)/2,q=[0,0,0,0
 const poolQ=quadrants(spatial.pool),displayQ=quadrants(spatial.display);
 const missed=[];for(let i=0;i<4;i++)if(poolQ[i]>=3&&displayQ[i]===0)missed.push(i);
 if(missed.length)throw new Error('Spatial thinning left populated quadrants empty: '+JSON.stringify({poolQ,displayQ,missed}));
+const cells=(features,cols=6,rows=4)=>{
+ const [w,s,e,n]=bbox,dx=(e-w)/cols,dy=(n-s)/rows,out=Array(cols*rows).fill(0);
+ for(const f of features){const c=f?.geometry?.coordinates;if(!c)continue;const ix=Math.min(cols-1,Math.max(0,Math.floor((c[0]-w)/dx))),iy=Math.min(rows-1,Math.max(0,Math.floor((c[1]-s)/dy)));out[iy*cols+ix]++}
+ return out;
+};
+const poolCells=cells(spatial.pool),displayCells=cells(spatial.display),missedCells=[];
+for(let i=0;i<poolCells.length;i++)if(poolCells[i]>=2&&displayCells[i]===0)missedCells.push(i);
+if(missedCells.length)throw new Error('Spatial thinning left populated AOI cells empty: '+JSON.stringify({poolCells,displayCells,missedCells}));
 
 const firstElderIdentity=String(elder.last?.propertyRunIdentity||'');
 const firstElderAt=String(elder.last?.at||'');
@@ -278,7 +286,7 @@ await page.waitForTimeout(1200);
 const postSecondIdentity=await page.evaluate(()=>String(window.EARTHLINE_ELDER_TREE_LAST_17097?.propertyRunIdentity||''));
 if(postSecondIdentity!==String(second.last?.propertyRunIdentity||''))throw new Error('Older Elder response overwrote second Property identity: '+JSON.stringify({postSecondIdentity,second:second.last}));
 
-const report={a10:true,regionalLabels,crosshair,pendingMs,settledMs,firstBlueMs,blueAfterSettleMs,elderMs,firstVisibleMs,elderAfterSettleMs,property,elder:{summary:elder.last?.summary,featureCount:elder.last?.featureCount,rendered:elder.rendered},spatial:{pool:Number(spatial.earthline?.candidate_pool_count||0),display:Number(spatial.earthline?.display_count||0),poolQ,displayQ,missed},second:{crosshair:crosshair2,settledMs:secondSettledMs,summary:second.last?.summary,featureCount:second.last?.featureCount,renderedElder:second.renderedElder,renderedSafe:second.renderedSafe,identity:second.last?.propertyRunIdentity,at:second.last?.at},errors};
+const report={a10:true,regionalLabels,crosshair,pendingMs,settledMs,firstBlueMs,blueAfterSettleMs,elderMs,firstVisibleMs,elderAfterSettleMs,property,elder:{summary:elder.last?.summary,featureCount:elder.last?.featureCount,rendered:elder.rendered},spatial:{pool:Number(spatial.earthline?.candidate_pool_count||0),display:Number(spatial.earthline?.display_count||0),poolQ,displayQ,missed,poolCells,displayCells,missedCells},second:{crosshair:crosshair2,settledMs:secondSettledMs,summary:second.last?.summary,featureCount:second.last?.featureCount,renderedElder:second.renderedElder,renderedSafe:second.renderedSafe,identity:second.last?.propertyRunIdentity,at:second.last?.at},errors};
 writeFileSync(OUT+'/result.json',JSON.stringify(report,null,2));
 console.log('EARTHLINE_V1_STABILITY_17166 '+JSON.stringify(report));
 await browser.close();
