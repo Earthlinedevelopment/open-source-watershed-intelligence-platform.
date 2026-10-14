@@ -22,7 +22,7 @@ await page.waitForFunction(()=>/screening published\./i.test(String(document.get
 const hint=page.locator('#earthlineCrosshairMoveHint17093');
 if(!(await hint.isVisible()))throw new Error('Bare-land crosshair movement popup missing after Regional run');
 const hintText=String(await hint.innerText()).replace(/\s+/g,' ').trim();
-if(!/crosshair/i.test(hintText)||!/(bare|open|land)/i.test(hintText))throw new Error('Crosshair popup copy wrong: '+hintText);
+if(!/(bare|open) land/i.test(hintText))throw new Error('Crosshair popup copy wrong: '+hintText);
 const dismiss=hint.getByRole('button',{name:/got it|dismiss/i});if(await dismiss.count())await dismiss.click();
 
 const hit=page.locator('#earthlineRegionalVectorOverlay16020 .earthline-swale-hit-16070').first();
