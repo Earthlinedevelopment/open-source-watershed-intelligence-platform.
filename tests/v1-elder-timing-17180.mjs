@@ -1,0 +1,32 @@
+import { chromium } from 'playwright';
+import {readFileSync,existsSync,statSync} from 'node:fs';
+import {resolve,extname} from 'node:path';
+const BASE='https://earthlinedevelopment.org/',ROOT=process.cwd();
+const MIME={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.geojson':'application/json','.py':'text/plain'};
+const browser=await chromium.launch({headless:true});
+const page=await browser.newPage({viewport:{width:1908,height:882}});
+await page.route('https://earthlinedevelopment.org/**',async route=>{
+ const u=new URL(route.request().url());let rel=decodeURIComponent(u.pathname.replace(/^\/+/,''))||'index.html';if(rel.endsWith('/'))rel+='index.html';
+ const local=resolve(ROOT,rel);if(local.startsWith(ROOT)&&existsSync(local)&&statSync(local).isFile())return route.fulfill({status:200,body:readFileSync(local),headers:{'content-type':MIME[extname(local)]||'application/octet-stream','cache-control':'no-store'}});
+ return route.continue();
+});
+await page.goto(BASE+'?timing17180='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+await page.waitForFunction(()=>window.EARTHLINE_ELDER_TREES_V1_17097,{timeout:30000});
+const r=await page.evaluate(async()=>{
+ const bbox=[-119.310217,37.418060,-119.306767,37.420444];
+ const out={};
+ const t0=performance.now();
+ await window.EARTHLINE_ELDER_TREES_V1_17097?.summary?.();
+ out.afterInstall=performance.now()-t0;
+ const worker=new Worker('/earthline-elder-worker-17129.js?timing='+Date.now(),{type:'module'});
+ let seq=0;const pending=new Map();
+ worker.onmessage=e=>{const p=pending.get(e.data?.id);if(p){pending.delete(e.data.id);p.resolve(e.data)}};
+ const ask=(payload,timeout=180000)=>new Promise((resolve,reject)=>{const id='q'+(++seq);pending.set(id,{resolve,reject});worker.postMessage({...payload,id});setTimeout(()=>{if(pending.has(id)){pending.delete(id);reject(new Error('timeout'))}},timeout)});
+ let t=performance.now();await ask({warm:true},180000);out.warmMs=performance.now()-t;
+ t=performance.now();const a=await ask({bbox,options:{displayPerTile:24,maxPerTile:240}},180000);out.detect1Ms=performance.now()-t;out.pool1=a.result?.earthline?.candidate_pool_count;out.display1=a.result?.features?.length;
+ t=performance.now();const b=await ask({bbox,options:{displayPerTile:24,maxPerTile:240}},180000);out.detect2Ms=performance.now()-t;out.pool2=b.result?.earthline?.candidate_pool_count;out.display2=b.result?.features?.length;
+ worker.terminate();
+ return out;
+});
+console.log('EARTHLINE_ELDER_TIMING_17180 '+JSON.stringify(r));
+await browser.close();
