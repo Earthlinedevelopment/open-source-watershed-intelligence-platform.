@@ -8,7 +8,8 @@ export const EARTHLINE_V2_ELDER = Object.freeze({
   scienceBaseline: '17118',
   method: 'earthline-elder-tree-aoi-chmv2-v0.7-high-recall-plateau-collapse',
   rechargeWeight: 0,
-  dynamicPropertyDatasetId: 'dynamic-property-17130'
+  dynamicPropertyDatasetId: 'dynamic-property-17130',
+  operationalRule: 'tree-covered Property with valid CHMv2 coverage should normally return at least one modeled Elder candidate; unexplained zero is an exception'
 });
 
 export function elderRuntime(win = globalThis.window) {
@@ -53,10 +54,37 @@ export function propertyElderFreshForRun(runAudit, last) {
     && elderAt >= runStarted;
 }
 
+
+export function propertyTreeCoverRule(last) {
+  const rule = last?.treeCoverRule || null;
+  if (!rule) return Object.freeze({
+    known: false,
+    treeCovered: false,
+    candidatePool: Number(last?.dynamicCandidatePoolCount || 0),
+    satisfied: null
+  });
+  return Object.freeze({
+    known: rule.validCoverage === true,
+    treeCovered: rule.treeCovered === true,
+    forestAreaHa: Number(rule.forestAreaHa || 0),
+    forestCells: Number(rule.forestCells || 0),
+    candidatePool: Number(rule.candidatePool || last?.dynamicCandidatePoolCount || 0),
+    satisfied: rule.satisfied !== false
+  });
+}
+
+export function propertyElderExpectationSatisfied(last) {
+  const rule = propertyTreeCoverRule(last);
+  if (!rule.known || !rule.treeCovered) return true;
+  return rule.satisfied === true && rule.candidatePool > 0 && Number(last?.featureCount || 0) > 0;
+}
+
 export const EARTHLINE_V2_ELDER_RUNTIME = Object.freeze({
   config: EARTHLINE_V2_ELDER,
   runtime: elderRuntime,
   last: elderLast,
   snapshot: elderSnapshot,
-  propertyFreshForRun: propertyElderFreshForRun
+  propertyFreshForRun: propertyElderFreshForRun,
+  propertyTreeCoverRule,
+  propertyExpectationSatisfied: propertyElderExpectationSatisfied
 });
