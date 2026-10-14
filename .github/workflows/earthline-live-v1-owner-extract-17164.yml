@@ -1,4 +1,4 @@
-name: Earthline V1 Natural Renderer Inspect 17182
+name: Earthline V1 Property Camera Inspect 17184
 on:
   push:
     branches:
@@ -20,21 +20,13 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8',errors='ignore')
-          for term in [
-            'EARTHLINE 17064',
-            'ensureTextureLayers',
-            'orientedFC()',
-            'earthline-property-swale-natural',
-            'earthlineSyncNatural',
-            'natural-texture',
-            'syncNatural'
-          ]:
+          for term in ['function frameDeclaredProperty','frameDeclaredProperty=', 'fitBounds(', 'easeTo(', 'flyTo(']:
               print('\n===== '+term+' =====')
               p=0
               while True:
                   i=s.find(term,p)
                   if i<0: break
                   print('\n---',i,'---')
-                  print(s[max(0,i-7000):min(len(s),i+15000)])
+                  print(s[max(0,i-3000):min(len(s),i+9000)])
                   p=i+len(term)
           PY
