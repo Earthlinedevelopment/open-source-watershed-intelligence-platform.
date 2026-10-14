@@ -1611,19 +1611,55 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     dynamicWorker().postMessage({id,warm:true});
     return state.dynamic.warmPromise;
   }
-  async function dynamicPropertyEvidence(){
+  function propertyBounds17166(){
+    try{
+      const md=(typeof M!=='undefined'&&M)||window.M||null;
+      const poly=Array.isArray(md?.analysisBoundaryLngLat)?md.analysisBoundaryLngLat.filter(p=>Array.isArray(p)&&p.length>=2):[];
+      if(poly.length>=3){
+        let west=Infinity,south=Infinity,east=-Infinity,north=-Infinity;
+        for(const p of poly){
+          const x=Number(p[0]),y=Number(p[1]);if(!Number.isFinite(x)||!Number.isFinite(y))continue;
+          west=Math.min(west,x);east=Math.max(east,x);south=Math.min(south,y);north=Math.max(north,y);
+        }
+        if([west,south,east,north].every(Number.isFinite))return [west,south,east,north];
+      }
+      const loc=md?.loc||window.EARTHLINE_PROPERTY_TARGET_16201||null;
+      const lng=Number(loc?.lng),lat=Number(loc?.lat);
+      if(Number.isFinite(lng)&&Number.isFinite(lat)){
+        const areaM2=20*4046.8564224,wM=Math.sqrt(areaM2*1.15),hM=areaM2/wM;
+        const dLat=hM/(2*111320),dLng=wM/(2*111320*Math.max(.05,Math.cos(lat*Math.PI/180)));
+        return [lng-dLng,lat-dLat,lng+dLng,lat+dLat];
+      }
+    }catch(_){}
+    return null;
+  }
+  function propertyRunIdentity17166(b){
+    const d=window.EARTHLINE_PROPERTY_DECLARATION_16169||null;
+    const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+    return [
+      String(d?.declaredAt||t?.at||''),
+      Number(d?.center?.lng??t?.lng).toFixed?.(6)||'',
+      Number(d?.center?.lat??t?.lat).toFixed?.(6)||'',
+      dynamicKey(b)
+    ].join('|');
+  }
+  async function dynamicPropertyEvidence(forceProperty=false){
     const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
-    if(tier!=='property')return null;
-    const coverage=activeCoverage();
-    if(coverage.known)return null;
-    const b=coverageQueryBounds(),key=dynamicKey(b);
-    if(!key)return null;
+    if(!forceProperty&&tier!=='property')return null;
+    if(!forceProperty){
+      const coverage=activeCoverage();
+      if(coverage.known)return null;
+    }
+    const b=forceProperty?propertyBounds17166():coverageQueryBounds();
+    const key=propertyRunIdentity17166(b);
+    if(!b||!key)return null;
     if(state.dynamic.key===key&&state.dynamic.result)return state.dynamic.result;
     if(state.dynamic.key===key&&state.dynamic.promise)return state.dynamic.promise;
-    const id='elder-'+(++state.dynamic.seq);
-    state.dynamic.key=key;state.dynamic.result=null;state.dynamic.error=null;
-    state.dynamic.promise=new Promise((resolve,reject)=>state.dynamic.pending.set(id,{resolve,reject}))
+    const id='elder-'+(++state.dynamic.seq),requestKey=key;
+    state.dynamic.key=requestKey;state.dynamic.result=null;state.dynamic.error=null;
+    const promise=new Promise((resolve,reject)=>state.dynamic.pending.set(id,{resolve,reject}))
       .then(result=>{
+        if(state.dynamic.key!==requestKey)return null;
         const features=(result?.features||[]).map(f=>({
           type:'Feature',geometry:f.geometry,
           properties:Object.assign({},f.properties||{},{
@@ -1636,16 +1672,52 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
         state.dynamic.result=normalized;state.dynamic.error=null;
         return normalized;
       })
-      .catch(err=>{state.dynamic.error=String(err&&err.message||err);return null})
-      .finally(()=>{state.dynamic.promise=null});
+      .catch(err=>{
+        if(state.dynamic.key===requestKey)state.dynamic.error=String(err&&err.message||err);
+        return null;
+      })
+      .finally(()=>{if(state.dynamic.promise===promise)state.dynamic.promise=null});
+    state.dynamic.promise=promise;
     dynamicWorker().postMessage({id,bbox:b,options:{displayPerTile:24,maxPerTile:240}});
-    return state.dynamic.promise;
+    return promise;
+  }
+  async function startProperty17166(){
+    try{
+      await load();
+      const b=propertyBounds17166(),runIdentity=propertyRunIdentity17166(b);
+      if(!b||!runIdentity)return null;
+      state.active=[];state.lastSummary=null;
+      publishMap([]);
+      const gauge=document.getElementById('earthlineElderTreesGauge17097');
+      if(gauge)gauge.textContent='Elder Trees: analyzing Property canopy…';
+      window.EARTHLINE_ELDER_TREE_LAST_17097={
+        state:'property-pending',propertyRunIdentity:runIdentity,
+        summary:null,featureCount:0,dynamicCandidatePoolCount:0,dynamicError:null,
+        at:new Date().toISOString()
+      };
+      const dynamic=await dynamicPropertyEvidence(true);
+      if(!dynamic||propertyRunIdentity17166(propertyBounds17166())!==runIdentity)return null;
+      state.active=dynamic.features||[];
+      const coverage={known:true,datasetIds:['dynamic-property-17130'],complete:false,dynamic:true,candidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0)};
+      state.lastSummary=summarize(state.active,coverage);
+      publishMap(state.active);refreshSurfaces();
+      window.EARTHLINE_ELDER_TREE_LAST_17097={
+        state:'committed',propertyRunIdentity:runIdentity,
+        summary:state.lastSummary,featureCount:state.active.length,
+        dynamicCandidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0),
+        dynamicError:null,at:new Date().toISOString()
+      };
+      return state.lastSummary;
+    }catch(err){
+      window.EARTHLINE_ELDER_TREE_LAST_17097={state:'failed',error:String(err&&err.message||err),featureCount:0,at:new Date().toISOString()};
+      return null;
+    }
   }
   async function refresh(){
     try{
       await load();
       let coverage=activeCoverage();
-      const dynamic=await dynamicPropertyEvidence();
+      const dynamic=await dynamicPropertyEvidence(false);
       if(dynamic){
         state.active=dynamic.features||[];
         coverage={known:true,datasetIds:['dynamic-property-17130'],complete:false,dynamic:true,candidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0)};
@@ -1654,13 +1726,14 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       publishMap(state.active);
       refreshSurfaces();
       window.EARTHLINE_ELDER_TREE_LAST_17097={
+        state:'committed',propertyRunIdentity:String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property'?propertyRunIdentity17166(coverageQueryBounds()):'',
         summary:state.lastSummary,featureCount:state.active.length,
         dynamicCandidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0),
         dynamicError:state.dynamic.error||null,at:new Date().toISOString()
       };
       return state.lastSummary;
     }catch(err){
-      window.EARTHLINE_ELDER_TREE_LAST_17097={error:String(err&&err.message||err),at:new Date().toISOString()};
+      window.EARTHLINE_ELDER_TREE_LAST_17097={state:'failed',error:String(err&&err.message||err),at:new Date().toISOString()};
       return null;
     }
   }
@@ -1695,7 +1768,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     if(location.hash==='#swales-explained')howParagraph();
     window.EARTHLINE_ELDER_TREES_V1_17097={
       state:'approved-v2-17118',manifest:MANIFEST,source:SOURCE,layer:LAYER,scienceBaseline:'17118',
-      refresh,summary:()=>state.lastSummary||summarize(state.active),
+      refresh,startProperty:startProperty17166,summary:()=>state.lastSummary||summarize(state.active),
       features:()=>state.active.slice(),
       confidenceRule:'Elder Tree Confidence = local structural-evidence percentile within the analyzed source area; not age probability',
       rechargeWeight:0
