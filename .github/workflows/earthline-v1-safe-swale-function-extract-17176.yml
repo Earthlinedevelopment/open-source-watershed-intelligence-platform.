@@ -1,0 +1,24 @@
+name: Earthline V1 Safe Swale Function Extract 17176
+on:
+  push:
+    branches: [research/elder-browser-engine-17129]
+    paths: ['.github/workflows/earthline-v1-safe-swale-function-extract-17176.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-stability-17166
+          fetch-depth: 1
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8',errors='ignore')
+          a=s.find('function syncSafePropertyFallback16221')
+          b=s.find('function scheduleSafePropertyFallback16221',a)
+          print(s[a:b])
+          PY
