@@ -1792,18 +1792,14 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 
 
 /* EARTHLINE_CROSSHAIR_MOVE_HINT_17093
-   Temporary V1 launch guidance only.
-   Shows once per browser session after the first Regional publication.
-   No map, crosshair, hydrology, Property, or science ownership changes. */
+   Temporary launch guidance only.
+   Shows after every Regional publication and dismisses for that Regional→Property transition.
+   No map, crosshair, hydrology, Property, Elder, or science ownership changes. */
 (function installEarthlineCrosshairMoveHint17093(){
   if(window.EARTHLINE_CROSSHAIR_MOVE_HINT_17093)return;
-  const KEY='earthline-crosshair-move-hint-17093-shown';
-  function shown(){try{return sessionStorage.getItem(KEY)==='1'}catch(_){return !!window.__earthlineCrosshairMoveHint17093Shown}}
-  function markShown(){try{sessionStorage.setItem(KEY,'1')}catch(_){window.__earthlineCrosshairMoveHint17093Shown=true}}
   function remove(){try{document.getElementById('earthlineCrosshairMoveHint17093')?.remove()}catch(_){}}
   function show(){
-    if(shown()||document.getElementById('earthlineCrosshairMoveHint17093'))return;
-    markShown();
+    if(document.getElementById('earthlineCrosshairMoveHint17093'))return;
     const box=document.createElement('div');
     box.id='earthlineCrosshairMoveHint17093';
     box.setAttribute('role','status');
@@ -1860,5 +1856,5 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     const raw=String(e?.detail?.tier||e?.detail?.mode||'regional').toLowerCase();
     if(!raw.includes('property'))show();
   },{passive:true});
-  window.EARTHLINE_CROSSHAIR_MOVE_HINT_17093={state:'ready',show,remove,sessionOnly:true};
+  window.EARTHLINE_CROSSHAIR_MOVE_HINT_17093={state:'ready',show,remove,showAfterEveryRegional:true};
 })();
