@@ -1738,6 +1738,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
           span.setAttribute('data-crosshair16247','1');
           span.innerHTML='CROSSHAIR · '+lat.toFixed(5)+', '+lng.toFixed(5)+' · <strong class="earthline-acres-16871">20 ACRES</strong>';
           b.setAttribute('aria-label','Declare a twenty-acre project area centered on the map crosshair and run property analysis');
+          primeDynamicPropertyEvidence();
         }catch(_){}
       }));
     }
