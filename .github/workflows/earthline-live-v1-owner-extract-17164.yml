@@ -1,0 +1,33 @@
+name: Earthline Live V1 Owner Extract 17164
+on:
+  push:
+    branches: [research/elder-browser-engine-17129]
+    paths: ['.github/workflows/earthline-live-v1-owner-extract-17164.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 1
+      - name: Extract exact target/button functions
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8',errors='ignore')
+          terms=['function earthlineSetPropertyTarget','function earthlineUpdateProperty','data-crosshair16247','earthlineDeclareProperty16169','source:"crosshair"','source:\"crosshair\"','function earthlineOpenCorridorDetail16149']
+          for term in terms:
+              print('\n===== '+term+' =====')
+              pos=0
+              while True:
+                  i=s.find(term,pos)
+                  if i<0: break
+                  print('\n---',i,'---')
+                  print(s[max(0,i-1800):min(len(s),i+9000)])
+                  pos=i+len(term)
+          PY
