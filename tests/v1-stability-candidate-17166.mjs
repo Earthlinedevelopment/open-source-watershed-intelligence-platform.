@@ -30,11 +30,12 @@ const hint=page.locator('#earthlineCrosshairMoveHint17093');
 if(!(await hint.isVisible()))throw new Error('Approved crosshair movement hint missing');
 const got=hint.getByRole('button',{name:/got it|dismiss/i});if(await got.count())await got.click();
 
-const hit=page.locator('#earthlineRegionalVectorOverlay16020 .earthline-swale-hit-16070').first();
-if(!(await hit.count()))throw new Error('No Regional corridor');
+const regionalLabels=await page.locator('#earthlineRegionalVectorOverlay16020 .earthline-swale-hit-16070').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('aria-label')||''));
+const hit=page.locator('#earthlineRegionalVectorOverlay16020 .earthline-swale-hit-16070[aria-label^="Open details for A10 "]').first();
+if(!(await hit.count()))throw new Error('Required A10 Regional corridor missing: '+JSON.stringify(regionalLabels));
 await hit.click({force:true});await page.waitForTimeout(250);
 const beforeZoom=String(await page.locator('#earthlineDeclareProperty16169').innerText()).replace(/\s+/g,' ').trim();
-if(!/^[ABC]\d+\s*·\s*ANALYZE/i.test(beforeZoom))throw new Error('Expected corridor-coded Property target before Zoom, got '+beforeZoom);
+if(!/^A10\s*·\s*ANALYZE/i.test(beforeZoom))throw new Error('Expected A10 Property target before Zoom, got '+beforeZoom);
 const zoom=page.getByRole('button',{name:/zoom to (this )?location/i}).first();
 if(!(await zoom.count()))throw new Error('Zoom to location button missing');
 await zoom.click();
@@ -206,7 +207,64 @@ const poolQ=quadrants(spatial.pool),displayQ=quadrants(spatial.display);
 const missed=[];for(let i=0;i<4;i++)if(poolQ[i]>=3&&displayQ[i]===0)missed.push(i);
 if(missed.length)throw new Error('Spatial thinning left populated quadrants empty: '+JSON.stringify({poolQ,displayQ,missed}));
 
-const report={crosshair,pendingMs,settledMs,firstBlueMs,blueAfterSettleMs,elderMs,firstVisibleMs,elderAfterSettleMs,property,elder:{summary:elder.last?.summary,featureCount:elder.last?.featureCount,rendered:elder.rendered},spatial:{pool:Number(spatial.earthline?.candidate_pool_count||0),display:Number(spatial.earthline?.display_count||0),poolQ,displayQ,missed},errors};
+const firstElderIdentity=String(elder.last?.propertyRunIdentity||'');
+const firstElderAt=String(elder.last?.at||'');
+const firstTarget={lng:Number(crosshair.target?.lng),lat:Number(crosshair.target?.lat)};
+await page.evaluate(()=>new Promise((resolve,reject)=>{
+  const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+  if(!m?.panBy)return reject(new Error('map panBy unavailable'));
+  let done=false;
+  const finish=()=>{if(done)return;done=true;resolve(true)};
+  try{m.once?.('moveend',finish);m.panBy([180,0],{duration:0});setTimeout(finish,1200)}catch(e){reject(e)}
+}));
+await page.waitForFunction(first=>{
+  const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+  if(!t||t.source!=='crosshair'||!Number.isFinite(Number(t.lng))||!Number.isFinite(Number(t.lat)))return false;
+  return Math.abs(Number(t.lng)-Number(first.lng))>0.00001||Math.abs(Number(t.lat)-Number(first.lat))>0.00001;
+},firstTarget,{timeout:8000,polling:100});
+const crosshair2=await page.evaluate(()=>({
+  text:String(document.getElementById('earthlineDeclareProperty16169')?.innerText||'').replace(/\s+/g,' ').trim(),
+  flag:document.querySelector('#earthlineDeclareProperty16169 [data-crosshair16247]')?.dataset.crosshair16247||'',
+  target:window.EARTHLINE_PROPERTY_TARGET_16201||null
+}));
+if(crosshair2.flag!=='1'||crosshair2.target?.code||!/^CROSSHAIR\b/i.test(crosshair2.text))throw new Error('Second Property target did not remain CROSSHAIR: '+JSON.stringify(crosshair2));
+const pre2=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
+const t2=Date.now();await btn.click();
+await page.waitForFunction(firstIdentity=>{
+  const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+  return (x?.state==='property-pending'||x?.state==='committed')&&String(x?.propertyRunIdentity||'')!==String(firstIdentity||'');
+},firstElderIdentity,{timeout:5000,polling:80});
+await page.waitForFunction(({pre2})=>{
+  const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+  return a?.settled===true&&a?.result===true&&a?.renderVerified===true&&Number(a?.serial||0)>pre2;
+},{pre2},{timeout:45000,polling:150});
+const secondSettledMs=Date.now()-t2;
+await page.waitForFunction(firstIdentity=>{
+  const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+  return x?.state==='committed'&&x?.summary?.coverageDatasetIds?.includes('dynamic-property-17130')&&Number(x?.featureCount||0)>0&&String(x?.propertyRunIdentity||'')!==String(firstIdentity||'');
+},firstElderIdentity,{timeout:90000,polling:250});
+const second=await page.evaluate(()=>{
+  const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+  const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+  const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+  let renderedElder=0,renderedSafe=0;
+  try{
+    const canvas=m?.getCanvas?.(),box=canvas&&[[0,0],[canvas.clientWidth||canvas.width,canvas.clientHeight||canvas.height]];
+    if(box&&m?.getLayer?.('earthline-elder-tree-points-17097'))renderedElder=m.queryRenderedFeatures(box,{layers:['earthline-elder-tree-points-17097']}).length;
+    const safeIds=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'].filter(id=>m?.getLayer?.(id));
+    if(box&&safeIds.length)renderedSafe=m.queryRenderedFeatures(box,{layers:safeIds}).length;
+  }catch(_){}
+  return {last:x,audit:a,renderedElder,renderedSafe,target:window.EARTHLINE_PROPERTY_TARGET_16201||null};
+});
+if(String(second.last?.propertyRunIdentity||'')===firstElderIdentity)throw new Error('Second Property retained first Elder identity');
+if(String(second.last?.at||'')===firstElderAt)throw new Error('Second Property retained first Elder timestamp');
+if(Number(second.renderedElder||0)<=0)throw new Error('Second Property committed Elder data without rendered pins: '+JSON.stringify(second));
+if(Number(second.renderedSafe||0)<=0)throw new Error('Second Property settled without rendered safe swales: '+JSON.stringify(second));
+await page.waitForTimeout(1200);
+const postSecondIdentity=await page.evaluate(()=>String(window.EARTHLINE_ELDER_TREE_LAST_17097?.propertyRunIdentity||''));
+if(postSecondIdentity!==String(second.last?.propertyRunIdentity||''))throw new Error('Older Elder response overwrote second Property identity: '+JSON.stringify({postSecondIdentity,second:second.last}));
+
+const report={a10:true,regionalLabels,crosshair,pendingMs,settledMs,firstBlueMs,blueAfterSettleMs,elderMs,firstVisibleMs,elderAfterSettleMs,property,elder:{summary:elder.last?.summary,featureCount:elder.last?.featureCount,rendered:elder.rendered},spatial:{pool:Number(spatial.earthline?.candidate_pool_count||0),display:Number(spatial.earthline?.display_count||0),poolQ,displayQ,missed},second:{crosshair:crosshair2,settledMs:secondSettledMs,summary:second.last?.summary,featureCount:second.last?.featureCount,renderedElder:second.renderedElder,renderedSafe:second.renderedSafe,identity:second.last?.propertyRunIdentity,at:second.last?.at},errors};
 writeFileSync(OUT+'/result.json',JSON.stringify(report,null,2));
 console.log('EARTHLINE_V1_STABILITY_17166 '+JSON.stringify(report));
 await browser.close();
