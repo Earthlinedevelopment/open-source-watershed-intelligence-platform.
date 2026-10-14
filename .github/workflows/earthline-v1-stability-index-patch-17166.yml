@@ -1,4 +1,4 @@
-name: Earthline V1 Immediate Property Frame 17185
+name: Earthline V1 Frame Before Safe Visibility 17187
 on:
   push:
     branches: [repair/v1-stability-17166]
@@ -16,24 +16,47 @@ jobs:
         with:
           ref: repair/v1-stability-17166
           fetch-depth: 0
-      - name: Make existing Property frame immediate
+      - name: Move existing Property frame before first safe-swale visibility check
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8',errors='strict')
-          marker='EARTHLINE_PROPERTY_FRAME_IMMEDIATE_17185'
-          old="mp.fitBounds(bounds,{padding:{top:92,right:92,bottom:92,left:92},duration:850,maxZoom:19.1});"
-          new="mp.fitBounds(bounds,{padding:{top:92,right:92,bottom:92,left:92},duration:0,maxZoom:19.1}); /* EARTHLINE_PROPERTY_FRAME_IMMEDIATE_17185 */"
+          marker='EARTHLINE 17187'
+          early='''      try{window.getSelection?.()?.removeAllRanges?.();button()?.blur?.()}catch(_){}
+
+      earthlinePropertyTrace16319("safe fallback + texture verify","enter");'''
+          early_new='''      try{window.getSelection?.()?.removeAllRanges?.();button()?.blur?.()}catch(_){}
+
+      /* EARTHLINE 17187 — frame the already-selected Property before the first authoritative safe-swale visibility check. This reorders the existing frame owner only; geometry, hydrology, styles and lifecycle ownership are unchanged. */
+      earthlinePropertyTrace16319("frameDeclaredProperty","enter");
+      frameDeclaredProperty(site);
+      earthlinePropertyTrace16319("frameDeclaredProperty","exit");
+      restoreLocationIdentity16202();
+
+      earthlinePropertyTrace16319("safe fallback + texture verify","enter");'''
+          late='''      earthlinePropertyTrace16319("frameDeclaredProperty","enter");
+      frameDeclaredProperty(site);
+      earthlinePropertyTrace16319("frameDeclaredProperty","exit");
+      restoreLocationIdentity16202();
+
+      try{
+        if(typeof window.earthlineSchedulePropertyWater15823!=='function')'''
+          late_new='''      try{
+        if(typeof window.earthlineSchedulePropertyWater15823!=='function')'''
           if marker not in s:
-              if s.count(old)!=1:
-                  raise SystemExit('Expected one Property fitBounds owner, found '+str(s.count(old)))
-              s=s.replace(old,new,1)
+              if s.count(early)!=1:
+                  raise SystemExit('Expected one early safe-verify anchor, found '+str(s.count(early)))
+              if s.count(late)!=1:
+                  raise SystemExit('Expected one late frame block, found '+str(s.count(late)))
+              s=s.replace(early,early_new,1).replace(late,late_new,1)
           if s.count(marker)!=1:
-              raise SystemExit('Immediate Property frame marker count invalid')
+              raise SystemExit('17187 marker count invalid: '+str(s.count(marker)))
+          if s.count('earthlinePropertyTrace16319("frameDeclaredProperty","enter")')!=1:
+              raise SystemExit('Property frame owner count invalid after move')
           p.write_text(s,encoding='utf-8')
-          print('V1 immediate Property frame patch PASS')
+          print('V1 frame-before-safe patch PASS')
           PY
           git diff --check
           test "$(git diff --name-only)" = "index.html"
@@ -43,6 +66,6 @@ jobs:
           git config user.name "earthline-release-bot"
           git config user.email "earthline-release-bot@users.noreply.github.com"
           git add index.html
-          git commit -m "repair: frame Property immediately for first-paint stability 17185"
+          git commit -m "repair: frame Property before safe-swale visibility check 17187"
           git pull --rebase origin repair/v1-stability-17166
           git push origin HEAD:repair/v1-stability-17166
