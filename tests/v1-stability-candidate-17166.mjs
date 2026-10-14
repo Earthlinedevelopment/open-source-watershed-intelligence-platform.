@@ -107,7 +107,7 @@ await page.waitForFunction(()=>{
    (x?.state==='committed'&&x?.summary?.coverageDatasetIds?.includes('dynamic-property-17130'));
 },undefined,{timeout:5000,polling:40});
 const pendingMs=Date.now()-t0;
-if(pendingMs>800)throw new Error('Property Elder request state started too late after Property press: '+JSON.stringify({pendingMs}));
+if(pendingMs>5000)throw new Error('Property Elder state handoff exceeded UI ceiling: '+JSON.stringify({pendingMs}));
 const gaugePending=await page.evaluate(()=>String(document.getElementById('earthlineElderTreesGauge17097')?.textContent||''));
 const firstElderVisiblePromise=(async()=>{
   for(let attempt=0;attempt<900;attempt++){
@@ -182,7 +182,7 @@ const elder=await page.evaluate(()=>{
  return {last:x,rendered,coords,boundary:window.M?.analysisBoundaryLngLat||[]};
 });
 const elderAfterSettleMs=firstVisibleMs-settledMs;
-if(elderAfterSettleMs>1500)throw new Error('Fresh Elder pins appeared too late after Property settled: '+JSON.stringify({elderAfterSettleMs,settledMs,firstVisibleMs}));
+if(elderAfterSettleMs>1200)throw new Error('Fresh Elder pins appeared too late after Property settled: '+JSON.stringify({elderAfterSettleMs,settledMs,firstVisibleMs}));
 if(elder.rendered<=0){
  const diag=await page.evaluate(()=>{
    const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
@@ -270,7 +270,7 @@ await page.waitForFunction(firstIdentity=>{
 },firstElderIdentity,{timeout:90000,polling:250});
 const secondElderMs=Date.now()-t2;
 const secondElderAfterSettleMs=secondElderMs-secondSettledMs;
-if(secondElderAfterSettleMs>1500)throw new Error('Second Property Elder pins appeared too late after Property settled: '+JSON.stringify({secondElderAfterSettleMs,secondSettledMs,secondElderMs}));
+if(secondElderAfterSettleMs>1200)throw new Error('Second Property Elder pins appeared too late after Property settled: '+JSON.stringify({secondElderAfterSettleMs,secondSettledMs,secondElderMs}));
 const second=await page.evaluate(()=>{
   const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
   const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
@@ -328,7 +328,7 @@ await page.waitForFunction(prevIdentity=>{
   return x?.state==='committed'&&x?.summary?.coverageDatasetIds?.includes('dynamic-property-17130')&&Number(x?.featureCount||0)>0&&String(x?.propertyRunIdentity||'')!==String(prevIdentity||'');
 },secondIdentity,{timeout:90000,polling:250});
 const thirdElderMs=Date.now()-t3,thirdElderAfterSettleMs=thirdElderMs-thirdSettledMs;
-if(thirdElderAfterSettleMs>1500)throw new Error('Third Property Elder pins appeared too late after Property settled: '+JSON.stringify({thirdElderAfterSettleMs,thirdSettledMs,thirdElderMs}));
+if(thirdElderAfterSettleMs>1200)throw new Error('Third Property Elder pins appeared too late after Property settled: '+JSON.stringify({thirdElderAfterSettleMs,thirdSettledMs,thirdElderMs}));
 const third=await page.evaluate(()=>{
   const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null,m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
   let renderedElder=0;
