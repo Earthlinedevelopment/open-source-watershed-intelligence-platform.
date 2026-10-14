@@ -182,7 +182,7 @@ const elder=await page.evaluate(()=>{
  return {last:x,rendered,coords,boundary:window.M?.analysisBoundaryLngLat||[]};
 });
 const elderAfterSettleMs=firstVisibleMs-settledMs;
-if(elderAfterSettleMs>1200)throw new Error('Fresh Elder pins appeared too late after Property settled: '+JSON.stringify({elderAfterSettleMs,settledMs,firstVisibleMs}));
+if(elderAfterSettleMs>1200)throw new Error('Fresh Elder pins appeared too late after Property settled: '+JSON.stringify({elderAfterSettleMs,settledMs,firstVisibleMs,pendingMs,elderMs,workerTimings:elder.last?.workerTimings||null}));
 if(elder.rendered<=0){
  const diag=await page.evaluate(()=>{
    const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
