@@ -1624,6 +1624,13 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   }
   function propertyBounds17166(){
     try{
+      const target=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+      const lng=Number(target?.lng),lat=Number(target?.lat);
+      if(Number.isFinite(lng)&&Number.isFinite(lat)){
+        const areaM2=20*4046.8564224,wM=Math.sqrt(areaM2*1.15),hM=areaM2/wM;
+        const dLat=hM/(2*111320),dLng=wM/(2*111320*Math.max(.05,Math.cos(lat*Math.PI/180)));
+        return [lng-dLng,lat-dLat,lng+dLng,lat+dLat];
+      }
       const md=(typeof M!=='undefined'&&M)||window.M||null;
       const poly=Array.isArray(md?.analysisBoundaryLngLat)?md.analysisBoundaryLngLat.filter(p=>Array.isArray(p)&&p.length>=2):[];
       if(poly.length>=3){
@@ -1634,23 +1641,16 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
         }
         if([west,south,east,north].every(Number.isFinite))return [west,south,east,north];
       }
-      const loc=md?.loc||window.EARTHLINE_PROPERTY_TARGET_16201||null;
-      const lng=Number(loc?.lng),lat=Number(loc?.lat);
-      if(Number.isFinite(lng)&&Number.isFinite(lat)){
-        const areaM2=20*4046.8564224,wM=Math.sqrt(areaM2*1.15),hM=areaM2/wM;
-        const dLat=hM/(2*111320),dLng=wM/(2*111320*Math.max(.05,Math.cos(lat*Math.PI/180)));
-        return [lng-dLng,lat-dLat,lng+dLng,lat+dLat];
-      }
     }catch(_){}
     return null;
   }
   function propertyRunIdentity17166(b){
-    const d=window.EARTHLINE_PROPERTY_DECLARATION_16169||null;
     const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+    const d=window.EARTHLINE_PROPERTY_DECLARATION_16169||null;
+    const lng=Number(t?.lng??d?.center?.lng),lat=Number(t?.lat??d?.center?.lat);
     return [
-      String(d?.declaredAt||t?.at||''),
-      Number(d?.center?.lng??t?.lng).toFixed?.(6)||'',
-      Number(d?.center?.lat??t?.lat).toFixed?.(6)||'',
+      Number.isFinite(lng)?lng.toFixed(6):'',
+      Number.isFinite(lat)?lat.toFixed(6):'',
       dynamicKey(b)
     ].join('|');
   }
@@ -1771,6 +1771,11 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   function hash(){if(location.hash==='#swales-explained')howParagraph()}
   function install(){
     wrapCorridor();
+    document.addEventListener('pointerdown',e=>{
+      const b=e.target?.closest?.('#earthlineDeclareProperty16169');
+      if(!b||b.disabled)return;
+      void startProperty17166();
+    },true);
     document.addEventListener('click',click,false);
     window.addEventListener('hashchange',hash,false);
     document.addEventListener('earthline:analysis-complete',()=>{wrapCorridor();refresh();},{passive:true});
