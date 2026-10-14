@@ -83,7 +83,29 @@ const elder=await page.evaluate(()=>{
  try{const r=m.getCanvas().getBoundingClientRect();const fs=m.queryRenderedFeatures([[10,10],[r.width-10,r.height-10]],{layers:['earthline-elder-tree-points-17097']});rendered=fs.length;coords=fs.map(f=>f.geometry?.coordinates||null)}catch(_){}
  return {last:x,rendered,coords,boundary:window.M?.analysisBoundaryLngLat||[]};
 });
-if(elder.rendered<=0)throw new Error('Fresh Elder data committed but no pins rendered');
+if(elder.rendered<=0){
+ const diag=await page.evaluate(()=>{
+   const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+   const src=m?.getSource?.('earthline-elder-trees-17097');
+   const layer=m?.getLayer?.('earthline-elder-tree-points-17097');
+   const b=m?.getBounds?.();
+   let sourceCount=null,sourceData=null,visibility=null,images={};
+   try{sourceData=src?._data||src?._options?.data||null;sourceCount=Array.isArray(sourceData?.features)?sourceData.features.length:null}catch(_){}
+   try{visibility=layer?m.getLayoutProperty('earthline-elder-tree-points-17097','visibility'):null}catch(_){}
+   for(const id of ['earthline-elder-pin-verified','earthline-elder-pin-lidar','earthline-elder-pin-modeled']){try{images[id]=!!m?.hasImage?.(id)}catch(_){images[id]=false}}
+   return {
+     sourceExists:!!src,layerExists:!!layer,sourceCount,visibility,images,
+     mapBounds:b?{west:b.getWest(),south:b.getSouth(),east:b.getEast(),north:b.getNorth()}:null,
+     zoom:m?.getZoom?.(),center:m?.getCenter?.(),
+     elderFeatures:window.EARTHLINE_ELDER_TREES_V1_17097?.features?.()||[],
+     last:window.EARTHLINE_ELDER_TREE_LAST_17097||null,
+     propertyBoundary:window.M?.analysisBoundaryLngLat||[]
+   };
+ });
+ console.log('ELDER_RENDER_DIAG '+JSON.stringify(diag));
+ await page.screenshot({path:OUT+'/elder-render-failure.png',animations:'disabled'});
+ throw new Error('Fresh Elder data committed but no pins rendered: '+JSON.stringify(diag));
+}
 await page.screenshot({path:OUT+'/property.png',animations:'disabled'});
 
 // Direct known-positive spatial check: every quadrant with >=3 pool candidates must be represented.
