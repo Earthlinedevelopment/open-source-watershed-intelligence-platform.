@@ -151,51 +151,60 @@ function dedupe(features,minM=10){
   }
   return out;
 }
-function displaySubset(features,perTile=24){
-  const groups=new Map();
-  for(const f of features){
-    const q=String(f?.properties?.quadkey||"");
-    if(!groups.has(q))groups.set(q,[]);
-    groups.get(q).push(f);
-  }
-  const out=[];
+function displaySubset(features,limit=24,bbox=null){
   const rank=(a,b)=>
     Number(b?.properties?.elder_tree_confidence_pct||0)-Number(a?.properties?.elder_tree_confidence_pct||0) ||
     Number(b?.properties?.height_m||0)-Number(a?.properties?.height_m||0);
-  for(const items0 of groups.values()){
-    const items=[...items0].sort(rank);
-    if(items.length<=perTile){out.push(...items);continue}
-    let west=Infinity,south=Infinity,east=-Infinity,north=-Infinity;
+  const items=[...features].sort(rank);
+  if(items.length<=limit)return items;
+
+  let west=Number(bbox?.[0]),south=Number(bbox?.[1]),east=Number(bbox?.[2]),north=Number(bbox?.[3]);
+  if(![west,south,east,north].every(Number.isFinite)||!(west<east&&south<north)){
+    west=Infinity;south=Infinity;east=-Infinity;north=-Infinity;
     for(const f of items){
-      const c=f?.geometry?.coordinates;
-      if(!Array.isArray(c))continue;
+      const c=f?.geometry?.coordinates;if(!Array.isArray(c))continue;
       west=Math.min(west,+c[0]);east=Math.max(east,+c[0]);
       south=Math.min(south,+c[1]);north=Math.max(north,+c[1]);
     }
-    const cols=Math.max(2,Math.ceil(Math.sqrt(perTile)));
-    const rows=Math.max(2,Math.ceil(perTile/cols));
-    const dx=Math.max(1e-12,east-west),dy=Math.max(1e-12,north-south);
-    const cells=new Map();
-    for(const f of items){
-      const c=f?.geometry?.coordinates;if(!Array.isArray(c))continue;
-      const ix=Math.min(cols-1,Math.max(0,Math.floor((+c[0]-west)/dx*cols)));
-      const iy=Math.min(rows-1,Math.max(0,Math.floor((+c[1]-south)/dy*rows)));
-      const key=iy*cols+ix;
-      if(!cells.has(key))cells.set(key,f);
-    }
-    const chosen=[...cells.values()].sort(rank).slice(0,perTile);
-    const picked=new Set(chosen);
-    if(chosen.length<perTile){
-      for(const f of items){
-        if(picked.has(f))continue;
-        chosen.push(f);picked.add(f);
-        if(chosen.length>=perTile)break;
-      }
-    }
-    out.push(...chosen);
   }
-  return out;
-}
+
+  const cols=6,rows=4,dx=Math.max(1e-12,east-west),dy=Math.max(1e-12,north-south);
+  const cells=new Map();
+  for(const f of items){
+    const c=f?.geometry?.coordinates;if(!Array.isArray(c))continue;
+    const ix=Math.min(cols-1,Math.max(0,Math.floor((+c[0]-west)/dx*cols)));
+    const iy=Math.min(rows-1,Math.max(0,Math.floor((+c[1]-south)/dy*rows)));
+    const key=iy*cols+ix;
+    const prior=cells.get(key);
+    if(!prior||rank(f,prior)<0)cells.set(key,f);
+  }
+
+  const chosen=[...cells.values()].sort(rank).slice(0,limit);
+  const picked=new Set(chosen);
+
+  // Fill remaining slots by maximizing distance from already chosen points,
+  // using evidence rank only as a tie-breaker. This preserves real clustering
+  // when the candidate pool is genuinely clustered, but prevents the display
+  // subset itself from creating artificial east/west concentration.
+  while(chosen.length<limit){
+    let best=null,bestD=-1;
+    for(const f of items){
+      if(picked.has(f))continue;
+      const c=f?.geometry?.coordinates;if(!Array.isArray(c))continue;
+      const nx=(+c[0]-west)/dx,ny=(+c[1]-south)/dy;
+      let d=Infinity;
+      for(const g of chosen){
+        const gc=g?.geometry?.coordinates;if(!Array.isArray(gc))continue;
+        const gx=(+gc[0]-west)/dx,gy=(+gc[1]-south)/dy;
+        d=Math.min(d,(nx-gx)*(nx-gx)+(ny-gy)*(ny-gy));
+      }
+      if(d>bestD+1e-12||(Math.abs(d-bestD)<=1e-12&&best&&rank(f,best)<0)){best=f;bestD=d}
+    }
+    if(!best)break;
+    chosen.push(best);picked.add(best);
+  }
+  return chosen;
+} /* EARTHLINE_ELDER_AOI_BALANCED_DISPLAY_17198 */
 async function detect(bbox,{displayPerTile=24,maxPerTile=240}={}){
   if(!Array.isArray(bbox)||bbox.length!==4||bbox.some(v=>!Number.isFinite(Number(v))))throw new Error("invalid bbox");
   bbox=bbox.map(Number);
@@ -217,7 +226,7 @@ async function detect(bbox,{displayPerTile=24,maxPerTile=240}={}){
       elder_evidence_class:"MODELED_CHMV2"
     })
   }));
-  const display=displaySubset(pool,displayPerTile);
+  const display=displaySubset(pool,displayPerTile,bbox);
   return {
     type:"FeatureCollection",features:display,
     earthline:{
