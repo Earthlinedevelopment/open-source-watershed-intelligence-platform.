@@ -1,0 +1,41 @@
+name: Earthline V1 Safe Opacity Inspect 17171
+on:
+  push:
+    branches:
+      - research/elder-browser-engine-17129
+    paths:
+      - .github/workflows/earthline-v1-safe-opacity-inspect-17171.yml
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 1
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8',errors='ignore')
+          for term in [
+            'earthline-property-safe-water-16221',
+            'line-opacity\',0',
+            'line-opacity",0',
+            'settlePropertyMapVisibility16260',
+            'terminal-immediate-16260',
+            'natural-texture',
+            'authoritative-safe-lines'
+          ]:
+              print("\n===== "+term+" =====")
+              pos=0;n=0
+              while n<12:
+                  i=s.find(term,pos)
+                  if i<0: break
+                  print("\n---",i,"---")
+                  print(s[max(0,i-5000):min(len(s),i+15000)])
+                  pos=i+len(term);n+=1
+          PY
