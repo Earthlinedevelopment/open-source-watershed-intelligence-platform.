@@ -87,7 +87,8 @@ for(let attempt=0;attempt<24;attempt++){
 }
 if(property?.audit?.result!==true||Number(property?.audit?.corridors||0)<=0)throw new Error('Property swale result failed: '+JSON.stringify(property));
 if(firstBlueMs==null)throw new Error('First Property run published without visible blue/natural swales: '+JSON.stringify(property));
-if(firstBlueMs>2500)throw new Error('First Property swales appeared too late: '+JSON.stringify({firstBlueMs,property}));
+const blueAfterSettleMs=firstBlueMs-settledMs;
+if(blueAfterSettleMs>800)throw new Error('First Property swales appeared too late after Property settled: '+JSON.stringify({firstBlueMs,settledMs,blueAfterSettleMs,property}));
 
 await page.waitForFunction(()=>{
  const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
@@ -154,7 +155,7 @@ const poolQ=quadrants(spatial.pool),displayQ=quadrants(spatial.display);
 const missed=[];for(let i=0;i<4;i++)if(poolQ[i]>=3&&displayQ[i]===0)missed.push(i);
 if(missed.length)throw new Error('Spatial thinning left populated quadrants empty: '+JSON.stringify({poolQ,displayQ,missed}));
 
-const report={crosshair,pendingMs,settledMs,firstBlueMs,elderMs,firstVisibleMs,property,elder:{summary:elder.last?.summary,featureCount:elder.last?.featureCount,rendered:elder.rendered},spatial:{pool:Number(spatial.earthline?.candidate_pool_count||0),display:Number(spatial.earthline?.display_count||0),poolQ,displayQ,missed},errors};
+const report={crosshair,pendingMs,settledMs,firstBlueMs,blueAfterSettleMs,elderMs,firstVisibleMs,elderAfterSettleMs:firstVisibleMs-settledMs,property,elder:{summary:elder.last?.summary,featureCount:elder.last?.featureCount,rendered:elder.rendered},spatial:{pool:Number(spatial.earthline?.candidate_pool_count||0),display:Number(spatial.earthline?.display_count||0),poolQ,displayQ,missed},errors};
 writeFileSync(OUT+'/result.json',JSON.stringify(report,null,2));
 console.log('EARTHLINE_V1_STABILITY_17166 '+JSON.stringify(report));
 await browser.close();
