@@ -113,8 +113,13 @@ async function processTile(py,q,bbox,maxPerTile=240){
   if(!w)return {features:[],tile:{quadkey:q,status:"NO_INTERSECTION",debugGeo}};
   const aspect=w.ww/Math.max(1,w.wh);
   let ow,oh;
-  if(aspect>=1){ow=1024;oh=Math.max(32,Math.round(1024/aspect))}
-  else{oh=1024;ow=Math.max(32,Math.round(1024*aspect))}
+  if(Math.max(w.ww,w.wh)<=1024){
+    // Preserve the source window exactly. Upscaling a small Property AOI adds
+    // no CHMv2 information and only multiplies scipy work.
+    ow=w.ww;oh=w.wh;
+  }else if(aspect>=1){ow=1024;oh=Math.max(1,Math.round(1024/aspect))}
+  else{oh=1024;ow=Math.max(1,Math.round(1024*aspect))}
+  /* EARTHLINE_ELDER_NO_SCREEN_UPSAMPLE_17215 */
   const screenRaw=await image.readRasters({
     window:[w.col0,w.row0,w.col0+w.ww,w.row0+w.wh],
     samples:[0],interleave:true,width:ow,height:oh,resampleMethod:"nearest"
