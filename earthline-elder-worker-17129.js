@@ -141,6 +141,53 @@ function dedupe(features,minM=10){
   }
   return out;
 }
+function elderRank(a,b){
+  return Number(b?.properties?.elder_tree_confidence_pct||0)-Number(a?.properties?.elder_tree_confidence_pct||0) ||
+    Number(b?.properties?.height_m||0)-Number(a?.properties?.height_m||0);
+}
+function spatialDisplaySubset(items,limit=24){
+  if(items.length<=limit)return [...items].sort(elderRank);
+  const ranked=[...items].sort(elderRank);
+  let west=Infinity,south=Infinity,east=-Infinity,north=-Infinity;
+  for(const f of ranked){
+    const p=f?.geometry?.coordinates;
+    if(!Array.isArray(p))continue;
+    const x=Number(p[0]),y=Number(p[1]);
+    if(!Number.isFinite(x)||!Number.isFinite(y))continue;
+    west=Math.min(west,x);east=Math.max(east,x);south=Math.min(south,y);north=Math.max(north,y);
+  }
+  if(![west,south,east,north].every(Number.isFinite)||west===east||south===north)return ranked.slice(0,limit);
+
+  /* 17165 presentation-only spatial thinning:
+     preserve the full scientific candidate pool, but choose the visible subset from
+     spatial cells so a forested 20-acre AOI is not represented by a confidence cluster
+     in only one portion of the Property. Highest-confidence evidence owns each cell. */
+  const aspect=Math.max(.35,Math.min(2.85,(east-west)*Math.cos(((south+north)/2)*Math.PI/180)/Math.max(1e-12,north-south)));
+  let cols=Math.max(3,Math.round(Math.sqrt(limit*aspect)));
+  let rows=Math.max(3,Math.ceil(limit/cols));
+  while(cols*rows<limit){if(cols<=rows)cols++;else rows++}
+  const cells=new Map();
+  for(const f of ranked){
+    const p=f?.geometry?.coordinates;
+    if(!Array.isArray(p))continue;
+    const x=Number(p[0]),y=Number(p[1]);
+    if(!Number.isFinite(x)||!Number.isFinite(y))continue;
+    const cx=Math.max(0,Math.min(cols-1,Math.floor((x-west)/Math.max(1e-12,east-west)*cols)));
+    const cy=Math.max(0,Math.min(rows-1,Math.floor((y-south)/Math.max(1e-12,north-south)*rows)));
+    const key=cy*cols+cx;
+    if(!cells.has(key))cells.set(key,f);
+  }
+  const picked=[...cells.values()].sort(elderRank).slice(0,limit);
+  if(picked.length<limit){
+    const have=new Set(picked);
+    for(const f of ranked){
+      if(have.has(f))continue;
+      picked.push(f);have.add(f);
+      if(picked.length>=limit)break;
+    }
+  }
+  return picked;
+}
 function displaySubset(features,perTile=24){
   const groups=new Map();
   for(const f of features){
@@ -149,13 +196,7 @@ function displaySubset(features,perTile=24){
     groups.get(q).push(f);
   }
   const out=[];
-  for(const items of groups.values()){
-    items.sort((a,b)=>
-      Number(b?.properties?.elder_tree_confidence_pct||0)-Number(a?.properties?.elder_tree_confidence_pct||0) ||
-      Number(b?.properties?.height_m||0)-Number(a?.properties?.height_m||0)
-    );
-    out.push(...items.slice(0,perTile));
-  }
+  for(const items of groups.values())out.push(...spatialDisplaySubset(items,perTile));
   return out;
 }
 async function detect(bbox,{displayPerTile=24,maxPerTile=240}={}){
