@@ -270,7 +270,9 @@ const second=await page.evaluate(()=>{
 if(String(second.last?.propertyRunIdentity||'')===firstElderIdentity)throw new Error('Second Property retained first Elder identity');
 if(String(second.last?.at||'')===firstElderAt)throw new Error('Second Property retained first Elder timestamp');
 if(Number(second.renderedElder||0)<=0)throw new Error('Second Property committed Elder data without rendered pins: '+JSON.stringify(second));
-if(Number(second.renderedSafe||0)<=0)throw new Error('Second Property settled without rendered safe swales: '+JSON.stringify(second));
+const secondCorridors=Number(second.audit?.corridors||0);
+if(secondCorridors>0&&Number(second.renderedSafe||0)<=0)throw new Error('Second Property has corridors but no rendered safe swales: '+JSON.stringify(second));
+if(secondCorridors===0&&Number(second.renderedSafe||0)!==0)throw new Error('Second Property is a verified zero-corridor result but stale safe swales survived: '+JSON.stringify(second));
 await page.waitForTimeout(1200);
 const postSecondIdentity=await page.evaluate(()=>String(window.EARTHLINE_ELDER_TREE_LAST_17097?.propertyRunIdentity||''));
 if(postSecondIdentity!==String(second.last?.propertyRunIdentity||''))throw new Error('Older Elder response overwrote second Property identity: '+JSON.stringify({postSecondIdentity,second:second.last}));
