@@ -1,0 +1,64 @@
+name: Earthline V1 Stability Index Patch 17166
+on:
+  push:
+    branches: [repair/v1-stability-17166]
+    paths:
+      - '.github/workflows/earthline-v1-stability-index-patch-17166.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-stability-17166
+          fetch-depth: 0
+      - name: Patch only Property Elder start and corridor-to-crosshair handoff
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8',errors='strict')
+
+          # 1. Start the existing Elder owner as soon as the 20-acre declaration/boundary exists,
+          #    overlapping Elder work with the governed Property analysis.
+          marker='EARTHLINE_PROPERTY_ELDER_EARLY_START_17166'
+          if marker not in s:
+              needle="""window.EARTHLINE_PROPERTY_DECLARATION_16169={build:BUILD,center:{lng:site.lng,lat:site.lat},acres:20,boundaryPoints:m.analysisBoundaryLngLat.length,selectedCode:selectedCode||null,declaredAt:new Date().toISOString(),route:'window.earthlineGovernedPropertyRun16202'};"""
+              if s.count(needle)!=1:
+                  raise SystemExit(f'Expected exactly one Property declaration anchor, found {s.count(needle)}')
+              repl=needle+"""
+    try{void window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()}catch(_){} /* EARTHLINE_PROPERTY_ELDER_EARLY_START_17166 */"""
+              s=s.replace(needle,repl,1)
+
+          # 2. Keep selected corridor code until the map actually reaches that corridor via Zoom.
+          #    Then moveend hands the 20-acre target to the fixed map crosshair.
+          old="""if(existing&&existing.source==='country-center'&&window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845&&window.EARTHLINE_COUNTRY_TARGET_LOCK_16845!==false)return true;if(existing&&existing.code)return true;return setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair'},{openPanel:false})"""
+          new="""if(existing&&existing.source==='country-center'&&window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845&&window.EARTHLINE_COUNTRY_TARGET_LOCK_16845!==false)return true;if(existing&&existing.code){const lat0=Number(existing.lat),lng0=Number(existing.lng),lat=Number(c.lat),lng=Number(c.lng),dy=(lat-lat0)*111320,dx=(lng-lng0)*111320*Math.max(.05,Math.cos(lat0*Math.PI/180));if(Math.hypot(dx,dy)>18)return true;return setPropertyTarget16201({lng,lat,source:'crosshair'},{openPanel:false})}return setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair'},{openPanel:false})"""
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit('Crosshair owner anchor not found')
+
+          if s.count(marker)!=1:
+              raise SystemExit('Early Elder start marker count invalid')
+          if "if(existing&&existing.code)return true;" in s:
+              raise SystemExit('Old corridor-code crosshair block still present')
+          p.write_text(s,encoding='utf-8')
+          print('V1 17166 index patch PASS')
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+      - name: Commit candidate
+        shell: bash
+        run: |
+          git config user.name "earthline-release-bot"
+          git config user.email "earthline-release-bot@users.noreply.github.com"
+          git add index.html
+          git commit -m "repair: overlap Elder with Property and hand Zoom to crosshair 17166"
+          git pull --rebase origin repair/v1-stability-17166
+          git push origin HEAD:repair/v1-stability-17166
