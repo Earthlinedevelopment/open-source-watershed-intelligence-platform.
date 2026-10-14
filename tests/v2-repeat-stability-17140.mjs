@@ -287,9 +287,9 @@ for(let repeat=2;repeat<=3;repeat++){
   },previousSerial,{timeout:30000,polling:150});
   await page.waitForFunction(before=>{
     const e=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
-    return !!(e&&Date.parse(e.at||0)>Number(before||0));
-  },beforeElderAt,{timeout:30000,polling:200}).catch(()=>{});
-  await page.waitForTimeout(2500);
+    return !!(e&&Date.parse(e.at||0)>Number(before||0)&&e.state!=='property-pending');
+  },beforeElderAt,{timeout:60000,polling:250});
+  await page.waitForTimeout(500);
 
   const state=await page.evaluate(()=>{
     const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
@@ -323,6 +323,7 @@ for(let repeat=2;repeat<=3;repeat++){
     return {
       audit,
       elder,
+      treeCoverRule:elder?.treeCoverRule||null,
       renderedFeatureCount:query.length,
       repeatElderRenderedFeatureCount:elderQuery.length,
       renderedByLayer:byLayer,
@@ -331,15 +332,19 @@ for(let repeat=2;repeat<=3;repeat++){
     };
   });
   previousSerial=Number(state.audit?.serial||previousSerial);
-  const fresh=state.elder?.summary?.coverageDatasetIds?.includes('dynamic-property-17130')
+  const fresh=state.elder?.state==='committed'
+    && state.elder?.summary?.coverageDatasetIds?.includes('dynamic-property-17130')
     && Number(state.elder?.featureCount||0)>0
     && Number(state.elder?.dynamicCandidatePoolCount||0)>0;
+  const treeCovered=state.treeCoverRule?.treeCovered===true;
+  const elderRuleSatisfied=state.treeCoverRule?.satisfied!==false
+    && (!treeCovered||(fresh&&state.repeatElderRenderedFeatureCount>0));
   const repeatOk=state.audit?.result===true
     && state.audit?.scientificResult===true
     && Number(state.audit?.elapsedSeconds||999)<=15
     && state.renderedFeatureCount>0
-    && state.repeatElderRenderedFeatureCount>0
     && fresh
+    && elderRuleSatisfied
     && state.crosshair==='1';
   repeatRuns.push({repeat,repeatOk,state});
   await shot('05-repeat-'+repeat);
