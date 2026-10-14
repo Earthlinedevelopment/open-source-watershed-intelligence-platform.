@@ -1611,19 +1611,26 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     dynamicWorker().postMessage({id,warm:true});
     return state.dynamic.warmPromise;
   }
-  async function dynamicPropertyEvidence(){
-    const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
-    if(tier!=='property')return null;
-    const coverage=activeCoverage();
-    if(coverage.known)return null;
-    const b=coverageQueryBounds(),key=dynamicKey(b);
-    if(!key)return null;
-    if(state.dynamic.key===key&&state.dynamic.result)return state.dynamic.result;
+  function propertyTargetBounds(){
+    try{
+      const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+      const lng=Number(t?.lng),lat=Number(t?.lat);
+      if(!Number.isFinite(lng)||!Number.isFinite(lat))return null;
+      const areaM2=20*4046.8564224,w=Math.sqrt(areaM2*1.15),h=areaM2/w;
+      const dLat=h/(2*111320),dLng=w/(2*111320*Math.max(.05,Math.cos(lat*Math.PI/180)));
+      return [lng-dLng,lat-dLat,lng+dLng,lat+dLat];
+    }catch(_){return null}
+  }
+  function requestDynamicPropertyEvidence(b){
+    const key=dynamicKey(b);
+    if(!key)return Promise.resolve(null);
+    if(state.dynamic.key===key&&state.dynamic.result)return Promise.resolve(state.dynamic.result);
     if(state.dynamic.key===key&&state.dynamic.promise)return state.dynamic.promise;
-    const id='elder-'+(++state.dynamic.seq);
-    state.dynamic.key=key;state.dynamic.result=null;state.dynamic.error=null;
-    state.dynamic.promise=new Promise((resolve,reject)=>state.dynamic.pending.set(id,{resolve,reject}))
+    const id='elder-'+(++state.dynamic.seq),requestKey=key;
+    state.dynamic.key=requestKey;state.dynamic.result=null;state.dynamic.error=null;
+    const promise=new Promise((resolve,reject)=>state.dynamic.pending.set(id,{resolve,reject}))
       .then(result=>{
+        if(state.dynamic.key!==requestKey)return null;
         const features=(result?.features||[]).map(f=>({
           type:'Feature',geometry:f.geometry,
           properties:Object.assign({},f.properties||{},{
@@ -1636,10 +1643,38 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
         state.dynamic.result=normalized;state.dynamic.error=null;
         return normalized;
       })
-      .catch(err=>{state.dynamic.error=String(err&&err.message||err);return null})
-      .finally(()=>{state.dynamic.promise=null});
+      .catch(err=>{
+        if(state.dynamic.key===requestKey)state.dynamic.error=String(err&&err.message||err);
+        return null;
+      })
+      .finally(()=>{if(state.dynamic.promise===promise)state.dynamic.promise=null});
+    state.dynamic.promise=promise;
     dynamicWorker().postMessage({id,bbox:b,options:{displayPerTile:24,maxPerTile:240}});
-    return state.dynamic.promise;
+    return promise;
+  }
+  function primeDynamicPropertyEvidence(){
+    const b=propertyTargetBounds();
+    if(!b)return false;
+    const gauge=document.getElementById('earthlineElderTreesGauge17097');
+    if(gauge)gauge.textContent='Elder Trees: analyzing Property canopy…';
+    window.EARTHLINE_ELDER_PROPERTY_PRIME_17165={
+      key:dynamicKey(b),startedAt:new Date().toISOString(),state:'pending'
+    };
+    requestDynamicPropertyEvidence(b).then(result=>{
+      const a=window.EARTHLINE_ELDER_PROPERTY_PRIME_17165;
+      if(a&&a.key===dynamicKey(b)){
+        a.state=result?'ready':'failed';a.completedAt=new Date().toISOString();
+      }
+    }).catch(()=>{});
+    return true;
+  }
+  async function dynamicPropertyEvidence(){
+    const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
+    if(tier!=='property')return null;
+    const coverage=activeCoverage();
+    if(coverage.known)return null;
+    const b=coverageQueryBounds();
+    return requestDynamicPropertyEvidence(b);
   }
   async function refresh(){
     try{
@@ -1682,7 +1717,30 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     if(t.id==='earthlineRailData16488')dataBlock(state.lastSummary||summarize(state.active));
     if(t.id==='earthlineVermontReport16149')reportBlock(state.lastSummary||summarize(state.active));
     const label=String(t.getAttribute?.('aria-label')||t.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
-    /* EARTHLINE 17133 — Elder is downstream of Property publication; Zoom no longer invokes Elder refresh. */
+
+    /* EARTHLINE 17165 — Property Elder work begins from the existing user Property
+       click, using the same worker/cache that publication later consumes. This removes
+       the post-publication wait without creating a second Elder evidence owner. */
+    if(t.id==='earthlineDeclareProperty16169')primeDynamicPropertyEvidence();
+
+    /* EARTHLINE 17165 — corridor Zoom places its resolved target under the fixed map
+       crosshair. Reflect that truth on the 20-acre button immediately; this changes
+       presentation only, not the governed Property target or hydrology. */
+    if(/zoom to (this )?location/i.test(label)&&t.closest?.('#earthlineCorridorDetail16149')){
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        try{
+          const q=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+          const lng=Number(q?.lng),lat=Number(q?.lat);
+          const b=document.getElementById('earthlineDeclareProperty16169');
+          if(!b||!Number.isFinite(lng)||!Number.isFinite(lat))return;
+          let span=b.querySelector('[data-crosshair16247]')||b.querySelector('span');
+          if(!span){span=document.createElement('span');b.appendChild(span)}
+          span.setAttribute('data-crosshair16247','1');
+          span.innerHTML='CROSSHAIR · '+lat.toFixed(5)+', '+lng.toFixed(5)+' · <strong class="earthline-acres-16871">20 ACRES</strong>';
+          b.setAttribute('aria-label','Declare a twenty-acre project area centered on the map crosshair and run property analysis');
+        }catch(_){}
+      }));
+    }
   }
   function hash(){if(location.hash==='#swales-explained')howParagraph()}
   function install(){
