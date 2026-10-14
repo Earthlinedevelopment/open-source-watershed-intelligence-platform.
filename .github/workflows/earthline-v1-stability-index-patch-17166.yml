@@ -16,71 +16,28 @@ jobs:
         with:
           ref: repair/v1-stability-17166
           fetch-depth: 0
-      - name: Preserve crosshair/Elder repairs and make safe swales truly visible first
+      - name: Make authoritative safe swales truly visible before optional context
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8',errors='strict')
-
-          # 1. Start the existing Elder owner as soon as the 20-acre declaration/boundary exists,
-          #    overlapping Elder work with the governed Property analysis.
-          marker='EARTHLINE_PROPERTY_ELDER_EARLY_START_17166'
+          marker='EARTHLINE_SAFE_FIRST_PRESENTATION_17181'
+          old_safe="    const visibleLayers=Object.values(SAFE_LAYERS_16221).filter(id=>{try{return !!mp.getLayer?.(id)&&mp.getLayoutProperty?.(id,'visibility')!=='none'}catch(_){return false}});\n    const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length;\n    const audit={build:BUILD,reason,active,verified:true,count,sourceReady:true,layersReady:true,visible:ok,visibleLayers,moved,geometrySource:'M.authoritativeSafeSwales15815',safetyGate:'propertyPublication15816 + propertyResultLock15815 + safetyAudit15806 + searchGen match',at:new Date().toISOString()};"
+          new_safe="    const visibleLayers=Object.values(SAFE_LAYERS_16221).filter(id=>{try{return !!mp.getLayer?.(id)&&mp.getLayoutProperty?.(id,'visibility')!=='none'}catch(_){return false}});\n    let renderedFeatures17181=0;\n    try{const canvas17181=mp.getCanvas?.(),box17181=canvas17181&&[[0,0],[canvas17181.clientWidth||canvas17181.width,canvas17181.clientHeight||canvas17181.height]];if(box17181&&visibleLayers.length)renderedFeatures17181=(mp.queryRenderedFeatures?.(box17181,{layers:visibleLayers})||[]).length}catch(_){}\n    const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length&&renderedFeatures17181>0; /* EARTHLINE_SAFE_FIRST_PRESENTATION_17181 */\n    const audit={build:BUILD,reason,active,verified:true,count,sourceReady:true,layersReady:true,visible:ok,renderedFeatures:renderedFeatures17181,visibleLayers,moved,geometrySource:'M.authoritativeSafeSwales15815',safetyGate:'propertyPublication15816 + propertyResultLock15815 + safetyAudit15806 + searchGen match',at:new Date().toISOString()};"
+          old_settle="        let safeOk=count===0;\n        try{const safe=syncSafePropertyFallback16221('bounded-postpublish-16521-'+delay);safeOk=count===0||!!(safe&&safe.ok);last=Object.assign({},last||{},{safe})}catch(_){ }\n        try{if(typeof window.earthlineSchedulePropertyWater15823==='function')window.earthlineSchedulePropertyWater15823('bounded-postpublish-16521-'+delay)}catch(_){ }"
+          new_settle="        let safeOk=count===0;\n        try{const safe=syncSafePropertyFallback16221('bounded-postpublish-16521-'+delay);safeOk=count===0||!!(safe&&safe.ok);last=Object.assign({},last||{},{safe})}catch(_){ }\n        if(count>0&&!safeOk)continue; /* EARTHLINE_SAFE_FIRST_PRESENTATION_17181 */\n        try{if(typeof window.earthlineSchedulePropertyWater15823==='function')window.earthlineSchedulePropertyWater15823('bounded-postpublish-16521-'+delay)}catch(_){ }"
           if marker not in s:
-              needle="""window.EARTHLINE_PROPERTY_DECLARATION_16169={build:BUILD,center:{lng:site.lng,lat:site.lat},acres:20,boundaryPoints:m.analysisBoundaryLngLat.length,selectedCode:selectedCode||null,declaredAt:new Date().toISOString(),route:'window.earthlineGovernedPropertyRun16202'};"""
-              if s.count(needle)!=1:
-                  raise SystemExit(f'Expected exactly one Property declaration anchor, found {s.count(needle)}')
-              repl=needle+"""
-    try{void window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()}catch(_){} /* EARTHLINE_PROPERTY_ELDER_EARLY_START_17166 */"""
-              s=s.replace(needle,repl,1)
-
-          # 2. Keep selected corridor code until the map actually reaches that corridor via Zoom.
-          #    Then moveend hands the 20-acre target to the fixed map crosshair.
-          old="""if(existing&&existing.source==='country-center'&&window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845&&window.EARTHLINE_COUNTRY_TARGET_LOCK_16845!==false)return true;if(existing&&existing.code)return true;return setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair'},{openPanel:false})"""
-          new="""if(existing&&existing.source==='country-center'&&window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845&&window.EARTHLINE_COUNTRY_TARGET_LOCK_16845!==false)return true;if(existing&&existing.code){const lat0=Number(existing.lat),lng0=Number(existing.lng),lat=Number(c.lat),lng=Number(c.lng),dy=(lat-lat0)*111320,dx=(lng-lng0)*111320*Math.max(.05,Math.cos(lat0*Math.PI/180));if(Math.hypot(dx,dy)>18)return true;return setPropertyTarget16201({lng,lat,source:'crosshair'},{openPanel:false})}return setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair'},{openPanel:false})"""
-          if old in s:
-              s=s.replace(old,new,1)
-          elif new not in s:
-              raise SystemExit('Crosshair owner anchor not found')
-
-          if s.count(marker)!=1:
-              raise SystemExit('Early Elder start marker count invalid')
-          if "if(existing&&existing.code)return true;" in s:
-              raise SystemExit('Old corridor-code crosshair block still present')
-          # 3. A safe Property result is not "visible" until Mapbox actually renders
-          #    at least one authoritative safe feature. Layout visibility alone is insufficient.
-          safe_marker='EARTHLINE_SAFE_FIRST_PRESENTATION_17181'
-          old_safe="""    const visibleLayers=Object.values(SAFE_LAYERS_16221).filter(id=>{try{return !!mp.getLayer?.(id)&&mp.getLayoutProperty?.(id,'visibility')!=='none'}catch(_){return false}});
-    const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length;
-    const audit={build:BUILD,reason,active,verified:true,count,sourceReady:true,layersReady:true,visible:ok,visibleLayers,moved,geometrySource:'M.authoritativeSafeSwales15815',safetyGate:'propertyPublication15816 + propertyResultLock15815 + safetyAudit15806 + searchGen match',at:new Date().toISOString()};"""
-          new_safe="""    const visibleLayers=Object.values(SAFE_LAYERS_16221).filter(id=>{try{return !!mp.getLayer?.(id)&&mp.getLayoutProperty?.(id,'visibility')!=='none'}catch(_){return false}});
-    let renderedFeatures17181=0;
-    try{const canvas17181=mp.getCanvas?.(),box17181=canvas17181&&[[0,0],[canvas17181.clientWidth||canvas17181.width,canvas17181.clientHeight||canvas17181.height]];if(box17181&&visibleLayers.length)renderedFeatures17181=(mp.queryRenderedFeatures?.(box17181,{layers:visibleLayers})||[]).length}catch(_){}
-    const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length&&renderedFeatures17181>0; /* EARTHLINE_SAFE_FIRST_PRESENTATION_17181 */
-    const audit={build:BUILD,reason,active,verified:true,count,sourceReady:true,layersReady:true,visible:ok,renderedFeatures:renderedFeatures17181,visibleLayers,moved,geometrySource:'M.authoritativeSafeSwales15815',safetyGate:'propertyPublication15816 + propertyResultLock15815 + safetyAudit15806 + searchGen match',at:new Date().toISOString()};"""
-          if safe_marker not in s:
               if old_safe not in s:
                   raise SystemExit('Safe rendered visibility anchor not found')
               s=s.replace(old_safe,new_safe,1)
-
-          # 4. Do not run heavy optional water/aquifer/boundary settlement until the
-          #    authoritative blue/green/brown swales have actually painted.
-          old_settle="""        let safeOk=count===0;
-        try{const safe=syncSafePropertyFallback16221('bounded-postpublish-16521-'+delay);safeOk=count===0||!!(safe&&safe.ok);last=Object.assign({},last||{},{safe})}catch(_){ }
-        try{if(typeof window.earthlineSchedulePropertyWater15823==='function')window.earthlineSchedulePropertyWater15823('bounded-postpublish-16521-'+delay)}catch(_){ }"""
-          new_settle="""        let safeOk=count===0;
-        try{const safe=syncSafePropertyFallback16221('bounded-postpublish-16521-'+delay);safeOk=count===0||!!(safe&&safe.ok);last=Object.assign({},last||{},{safe})}catch(_){ }
-        if(count>0&&!safeOk)continue; /* EARTHLINE_SAFE_FIRST_PRESENTATION_17181 */
-        try{if(typeof window.earthlineSchedulePropertyWater15823==='function')window.earthlineSchedulePropertyWater15823('bounded-postpublish-16521-'+delay)}catch(_){ }"""
           if old_settle in s:
               s=s.replace(old_settle,new_settle,1)
           elif new_settle not in s:
               raise SystemExit('Safe-first postpublish anchor not found')
-
-          if s.count(safe_marker)!=2:
-              raise SystemExit(f'Safe-first marker count invalid: {s.count(safe_marker)}')
-
+          if s.count(marker)!=2:
+              raise SystemExit('Safe-first marker count invalid: '+str(s.count(marker)))
           p.write_text(s,encoding='utf-8')
           print('V1 safe-first candidate patch PASS')
           PY
