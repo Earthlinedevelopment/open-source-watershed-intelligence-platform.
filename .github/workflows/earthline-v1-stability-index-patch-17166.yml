@@ -1,4 +1,4 @@
-name: Earthline V1 A10 Back-to-Back Gate 17190
+name: Earthline V1 Rendered Corridor Authority 17191
 on:
   push:
     branches: [repair/v1-stability-17166]
@@ -6,30 +6,41 @@ on:
       - '.github/workflows/earthline-v1-stability-index-patch-17166.yml'
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
-  rendered-gate:
+  patch:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
         with:
           ref: repair/v1-stability-17166
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Playwright Chromium
+          fetch-depth: 0
+      - name: Make rendered corridor code authoritative on click
         shell: bash
         run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
-      - name: Run V1 rendered stability candidate
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8',errors='strict')
+          old="""if(!f)return false;const rows=graded(),fp=f.properties||{},fg=/^[ABC]$/.test(String(fp.grade||''))?String(fp.grade):'C',fr=Math.max(1,Number(fp.display_rank||fp.rank||index+1)),fc=String(fp.display_code||'').trim()||(fg+fr),row=rows.find(x=>x.f===f)||{p:Object.assign({},fp,{display_rank:fr,display_code:fc}),grade:fg,rank:fr,code:fc,score:Math.round(Number(fp.score||0)),km:lineLengthKm(f.geometry?.coordinates||[]),index:Number(index||0),identityOwner:'EARTHLINE_CORRIDOR_RENDERED_IDENTITY_17190'};const p=row.p||{},slope="""
+          new="""if(!f)return false;const fp=f.properties||{},fg=/^[ABC]$/.test(String(fp.grade||''))?String(fp.grade):'C',fr=Math.max(1,Number(fp.display_rank||fp.rank||index+1)),fc=String(fp.display_code||'').trim()||(fg+fr),row={p:Object.assign({},fp,{display_rank:fr,display_code:fc}),grade:fg,rank:fr,code:fc,score:Math.round(Number(fp.score||0)),km:lineLengthKm(f.geometry?.coordinates||[]),index:Number(index||0),identityOwner:'EARTHLINE_RENDERED_CORRIDOR_AUTHORITY_17191'};const p=row.p||{},slope="""
+          if s.count(old)!=1:
+              raise SystemExit('Expected one 17190 corridor resolver, found '+str(s.count(old)))
+          s=s.replace(old,new,1)
+          if s.count('EARTHLINE_RENDERED_CORRIDOR_AUTHORITY_17191')!=1:
+              raise SystemExit('17191 marker count invalid')
+          p.write_text(s,encoding='utf-8')
+          print('V1 rendered corridor authority patch PASS')
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+      - name: Commit candidate
         shell: bash
-        run: node tests/v1-stability-candidate-17166.mjs
-      - name: Upload V1 stability evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: earthline-v1-stability-17190
-          path: artifacts/v1-stability-17166
-          if-no-files-found: ignore
+        run: |
+          git config user.name "earthline-release-bot"
+          git config user.email "earthline-release-bot@users.noreply.github.com"
+          git add index.html
+          git commit -m "repair: make rendered corridor identity authoritative 17191"
+          git pull --rebase origin repair/v1-stability-17166
+          git push origin HEAD:repair/v1-stability-17166
