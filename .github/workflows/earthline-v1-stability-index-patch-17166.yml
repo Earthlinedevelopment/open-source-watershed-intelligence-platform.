@@ -1,4 +1,4 @@
-name: Earthline V1 A10 Identity Diagnostic 17192
+name: Earthline V1 Corridor Hit Priority 17193
 on:
   push:
     branches: [repair/v1-stability-17166]
@@ -6,30 +6,54 @@ on:
       - '.github/workflows/earthline-v1-stability-index-patch-17166.yml'
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
-  rendered-gate:
+  patch:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
         with:
           ref: repair/v1-stability-17166
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Playwright Chromium
+          fetch-depth: 0
+      - name: Order invisible corridor hit surfaces by displayed priority
         shell: bash
         run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
-      - name: Run V1 rendered stability candidate
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8',errors='strict')
+          marker='EARTHLINE_CORRIDOR_HIT_PRIORITY_17193'
+          old="hit.dataset.swaleIndex=String(i);hit.__earthlineFeature=f;"
+          new="hit.dataset.swaleIndex=String(i);hit.dataset.swaleGrade=grade;hit.dataset.swaleRank=String(rank);hit.__earthlineFeature=f;"
+          anchor="      document.documentElement.dataset.earthlineSwaleGpsHover=String(count);"
+          ordered="""      /* EARTHLINE_CORRIDOR_HIT_PRIORITY_17193 — invisible hit paths overlap in dense Regional views. Keep lower-priority corridors beneath higher-priority corridors so a shared click point resolves to the displayed Earthline priority instead of DOM append order. */
+      const hitPriority17193={C:0,B:1,A:2};
+      Array.from(group.querySelectorAll('.earthline-swale-hit-16070')).sort((a,b)=>{
+        const ga=hitPriority17193[a.dataset.swaleGrade]??0,gb=hitPriority17193[b.dataset.swaleGrade]??0;
+        if(ga!==gb)return ga-gb;
+        return Number(b.dataset.swaleRank||999)-Number(a.dataset.swaleRank||999);
+      }).forEach(el=>group.appendChild(el));
+      document.documentElement.dataset.earthlineSwaleGpsHover=String(count);"""
+          if marker not in s:
+              if s.count(old)!=1:
+                  raise SystemExit('Expected one hit identity anchor, found '+str(s.count(old)))
+              if s.count(anchor)!=1:
+                  raise SystemExit('Expected one hit finalization anchor, found '+str(s.count(anchor)))
+              s=s.replace(old,new,1).replace(anchor,ordered,1)
+          if s.count(marker)!=1:
+              raise SystemExit('17193 marker count invalid: '+str(s.count(marker)))
+          p.write_text(s,encoding='utf-8')
+          print('V1 corridor hit priority patch PASS')
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+      - name: Commit candidate
         shell: bash
-        run: node tests/v1-stability-candidate-17166.mjs
-      - name: Upload V1 stability evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: earthline-v1-stability-17192
-          path: artifacts/v1-stability-17166
-          if-no-files-found: ignore
+        run: |
+          git config user.name "earthline-release-bot"
+          git config user.email "earthline-release-bot@users.noreply.github.com"
+          git add index.html
+          git commit -m "repair: prioritize overlapping corridor hit targets 17193"
+          git pull --rebase origin repair/v1-stability-17166
+          git push origin HEAD:repair/v1-stability-17166
