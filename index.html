@@ -35883,10 +35883,17 @@ body{display:block!important}
       for(let i=0;i<count;i++){
         const f=features[i],props=f.properties||{},coords=f.geometry&&f.geometry.coordinates||[],ll=middleCoordinate(coords),corePath=corePaths.find(p=>Number(p.dataset.swaleIndex)===i)||corePaths[i];if(!corePath||!ll)continue;
         const grade=/^[ABC]$/.test(String(props.grade||''))?String(props.grade):'C',rank=Math.max(1,Number(props.display_rank||props.rank||i+1)),score=Math.max(0,Math.min(100,Math.round(Number(props.score||0))));
-        const hit=document.createElementNS('http://www.w3.org/2000/svg','path');hit.setAttribute('class','earthline-swale-hit-16070');hit.setAttribute('d',corePath.getAttribute('d')||'');hit.setAttribute('fill','none');hit.setAttribute('stroke','rgba(0,0,0,0.001)');hit.setAttribute('stroke-width','30');hit.setAttribute('stroke-linecap','round');hit.setAttribute('stroke-linejoin','round');hit.setAttribute('vector-effect','non-scaling-stroke');hit.setAttribute('tabindex','0');hit.setAttribute('role','button');hit.setAttribute('aria-label','Open details for '+grade+rank+' score '+score);hit.dataset.swaleIndex=String(i);hit.__earthlineFeature=f;
+        const hit=document.createElementNS('http://www.w3.org/2000/svg','path');hit.setAttribute('class','earthline-swale-hit-16070');hit.setAttribute('d',corePath.getAttribute('d')||'');hit.setAttribute('fill','none');hit.setAttribute('stroke','rgba(0,0,0,0.001)');hit.setAttribute('stroke-width','30');hit.setAttribute('stroke-linecap','round');hit.setAttribute('stroke-linejoin','round');hit.setAttribute('vector-effect','non-scaling-stroke');hit.setAttribute('tabindex','0');hit.setAttribute('role','button');hit.setAttribute('aria-label','Open details for '+grade+rank+' score '+score);hit.dataset.swaleIndex=String(i);hit.dataset.swaleGrade=grade;hit.dataset.swaleRank=String(rank);hit.__earthlineFeature=f;
         
         hit.addEventListener('mouseenter',ev=>{if(!tooltip)return;tooltip.innerHTML='<strong>'+grade+rank+' · Score '+score+'/100</strong><span>'+formatGps(ll)+'</span>';tooltip.style.display='block';tooltipMove(ev);});hit.addEventListener('mousemove',tooltipMove);hit.addEventListener('mouseleave',()=>{if(tooltip)tooltip.style.display='none';});group.appendChild(hit);
       }
+      /* EARTHLINE_CORRIDOR_HIT_PRIORITY_17193 — invisible hit paths overlap in dense Regional views. Keep lower-priority corridors beneath higher-priority corridors so a shared click point resolves to the displayed Earthline priority instead of DOM append order. */
+      const hitPriority17193={C:0,B:1,A:2};
+      Array.from(group.querySelectorAll('.earthline-swale-hit-16070')).sort((a,b)=>{
+        const ga=hitPriority17193[a.dataset.swaleGrade]??0,gb=hitPriority17193[b.dataset.swaleGrade]??0;
+        if(ga!==gb)return ga-gb;
+        return Number(b.dataset.swaleRank||999)-Number(a.dataset.swaleRank||999);
+      }).forEach(el=>group.appendChild(el));
       document.documentElement.dataset.earthlineSwaleGpsHover=String(count);
     }finally{decorating=false;}
   }
