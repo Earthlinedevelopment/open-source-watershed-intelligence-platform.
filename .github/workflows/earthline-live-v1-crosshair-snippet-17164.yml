@@ -1,0 +1,32 @@
+name: Earthline Live V1 Crosshair Snippet 17164
+on:
+  push:
+    branches: [research/elder-browser-engine-17129]
+    paths: ['.github/workflows/earthline-live-v1-crosshair-snippet-17164.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 1
+      - name: Extract crosshair button owner
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8',errors='ignore')
+          for term in ['data-crosshair16247','earthlineSetPropertyTarget16201','earthlineDeclareProperty16169']:
+              print('\n===== '+term+' =====')
+              pos=0;n=0
+              while n<6:
+                  i=s.find(term,pos)
+                  if i<0: break
+                  print('\n--- OFFSET',i,'---')
+                  print(s[max(0,i-1800):min(len(s),i+4200)])
+                  pos=i+len(term);n+=1
+          PY
