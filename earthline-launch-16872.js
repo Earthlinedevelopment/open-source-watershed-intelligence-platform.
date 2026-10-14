@@ -1710,9 +1710,17 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       };
       const gauge=document.getElementById('earthlineElderTreesGauge17097');
       if(gauge)gauge.textContent='Elder Trees: analyzing Property canopy…';
-      const dynamicPromise17166=dynamicPropertyEvidence(true); /* EARTHLINE_ELDER_REQUEST_FIRST_17206 */
       state.active=[];state.lastSummary=null;
       publishMap([]);
+
+      // Property hydrology owns the click-time critical path. Reuse only work that
+      // was already started by corridor/crosshair prefetch; never launch a new
+      // CHMv2/Pyodide job from the Property press itself.
+      let dynamicPromise17166=null;
+      if(state.dynamic.key===runIdentity&&state.dynamic.result)dynamicPromise17166=Promise.resolve(state.dynamic.result);
+      else if(state.dynamic.key===runIdentity&&state.dynamic.promise)dynamicPromise17166=state.dynamic.promise;
+      if(!dynamicPromise17166)return null; /* EARTHLINE_ELDER_PREFETCH_ONLY_AT_PROPERTY_PRESS_17208 */
+
       const dynamic=await dynamicPromise17166;
       if(!dynamic||propertyRunIdentity17166(propertyBounds17166())!==runIdentity)return null;
       state.active=dynamic.features||[];
