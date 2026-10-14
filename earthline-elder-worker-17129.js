@@ -80,25 +80,32 @@ function projectedWindow(image,bbox){
   wh=Math.max(1,Math.min(image.getHeight()-row0,wh));
   return {origin,res,ib,rx,ry,ox,oy,col0,row0,ww,wh,left,right,bottom,top};
 }
+async function getTile17196(q){
+  let cached=tileCache17196.get(q);
+  if(!cached){
+    const transport=RANGE_PROXY+"?q="+encodeURIComponent(q);
+    cached=(async()=>{
+      const tif=await fromUrl(transport,{cacheSize:96});
+      const image=await tif.getImage();
+      return {tif,image};
+    })();
+    tileCache17196.set(q,cached);
+  }
+  try{return await cached}catch(err){tileCache17196.delete(q);throw err}
+}
+async function warmTiles17210(bbox){
+  const qs=bboxTiles(bbox);
+  await Promise.all(qs.map(q=>getTile17196(q)));
+  return {warmBbox:true,requested_tiles:qs};
+}
 async function processTile(py,q,bbox,maxPerTile=240){
   const url=ROOT+q+".tif";
-  const transport=RANGE_PROXY+"?q="+encodeURIComponent(q);
   let tif,image;
   try{
-    let cached=tileCache17196.get(q);
-    if(!cached){
-      cached=(async()=>{
-        const tif17196=await fromUrl(transport,{cacheSize:96});
-        const image17196=await tif17196.getImage();
-        return {tif:tif17196,image:image17196};
-      })();
-      tileCache17196.set(q,cached);
-    }
-    ({tif,image}=await cached);
+    ({tif,image}=await getTile17196(q));
   }catch(err){
-    tileCache17196.delete(q);
     return {features:[],tile:{quadkey:q,status:"NO_TILE",error:String(err?.message||err)}};
-  } /* EARTHLINE_ELDER_TILE_CACHE_17196 */
+  } /* EARTHLINE_ELDER_LIGHT_TILE_WARM_17210 */
   const debugGeo={origin:image.getOrigin(),resolution:image.getResolution(),bbox:image.getBoundingBox(),projectedSW:merc(bbox[0],bbox[1]),projectedNE:merc(bbox[2],bbox[3])};
   const w=projectedWindow(image,bbox);
   if(!w)return {features:[],tile:{quadkey:q,status:"NO_INTERSECTION",debugGeo}};
@@ -246,6 +253,12 @@ self.onmessage=async(e)=>{
       const t0=performance.now();
       await ensurePy();
       self.postMessage({id,ok:true,warm:true,elapsedMs:performance.now()-t0});
+      return;
+    }
+    if(e.data?.warmBbox===true){
+      const bbox=(e.data?.bbox||[]).map(Number);
+      const result=await warmTiles17210(bbox);
+      self.postMessage({id,ok:true,result});
       return;
     }
     const result=await detect(e.data?.bbox,e.data?.options||{});
