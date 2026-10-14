@@ -1,0 +1,60 @@
+name: Earthline V2 Canonical Elder Owner 17157
+on:
+  push:
+    branches: [v2/stable-replacement-17138]
+    paths:
+      - '.github/workflows/earthline-v2-canonical-elder-owner-17157.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v2/stable-replacement-17138
+          fetch-depth: 0
+      - name: Attach Elder refresh to authoritative Property success exits
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8',errors='strict')
+          marker='EARTHLINE_V2_CANONICAL_PROPERTY_ELDER_REFRESH_17157'
+          if marker not in s:
+              pending=re.compile(
+                  r"(setAudit\(\{settled:true,result:true,timedOut:false,corridors:count,renderVerified:false,renderPending:true,renderMode:'pending-authoritative-safe-lines'[\s\S]*?settledAt:settledAt16260\}\);\s*"
+                  r"settlePropertyMapVisibility16260\(count,texture,serial\);)(\s*return true;)"
+              )
+              s,n1=pending.subn(
+                  r"\1\n        try{window.EARTHLINE_ELDER_TREES_V2_17118?.refresh?.()}catch(_){} /* EARTHLINE_V2_CANONICAL_PROPERTY_ELDER_REFRESH_17157 */\2",
+                  s,count=1
+              )
+              complete=re.compile(
+                  r"(setAudit\(\{stage:'published',stageLabel:'published',settled:true,result:true,timedOut:false,corridors:count,renderVerified,renderMode:texture\.ok\?'natural-texture':\(safeFallback\.ok\?'authoritative-safe-lines':'verified-zero'\)[\s\S]*?settledAt:new Date\(\)\.toISOString\(\)\}\);)(return true;)"
+              )
+              s,n2=complete.subn(
+                  r"\1try{window.EARTHLINE_ELDER_TREES_V2_17118?.refresh?.()}catch(_){} /* EARTHLINE_V2_CANONICAL_PROPERTY_ELDER_REFRESH_17157 */\2",
+                  s,count=1
+              )
+              if n1!=1 or n2!=1:
+                  raise SystemExit(f'Expected 1 pending + 1 complete Property success patch, got {n1}+{n2}')
+          if s.count(marker)!=2:
+              raise SystemExit(f'Expected exactly two canonical Elder refresh exits, found {s.count(marker)}')
+          p.write_text(s,encoding='utf-8')
+          print('V2 canonical Elder owner PASS')
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name "earthline-release-bot"
+          git config user.email "earthline-release-bot@users.noreply.github.com"
+          git add index.html
+          git commit -m "v2: make Property publication sole Elder refresh owner 17157"
+          git pull --rebase origin v2/stable-replacement-17138
+          git push origin HEAD:v2/stable-replacement-17138
