@@ -1,4 +1,4 @@
-name: Earthline V1 Rendered Stability Gate 17187
+name: Earthline V1 Render-Truth Settlement 17188
 on:
   push:
     branches: [repair/v1-stability-17166]
@@ -6,30 +6,43 @@ on:
       - '.github/workflows/earthline-v1-stability-index-patch-17166.yml'
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
-  rendered-gate:
+  patch:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
         with:
           ref: repair/v1-stability-17166
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Playwright Chromium
+          fetch-depth: 0
+      - name: Keep Property unsettled while core swale render is pending
         shell: bash
         run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
-      - name: Run V1 rendered stability candidate
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8',errors='strict')
+          marker='EARTHLINE_RENDER_TRUTH_SETTLEMENT_17188'
+          old="setAudit({settled:true,result:true,timedOut:false,corridors:count,renderVerified:false,renderPending:true,renderMode:'pending-authoritative-safe-lines'"
+          new="setAudit({settled:false,result:true,timedOut:false,corridors:count,renderVerified:false,renderPending:true,renderMode:'pending-authoritative-safe-lines',renderTruthOwner:'EARTHLINE_RENDER_TRUTH_SETTLEMENT_17188'"
+          if marker not in s:
+              if s.count(old)!=1:
+                  raise SystemExit('Expected one pending-render settlement state, found '+str(s.count(old)))
+              s=s.replace(old,new,1)
+          if s.count(marker)!=1:
+              raise SystemExit('17188 marker count invalid: '+str(s.count(marker)))
+          p.write_text(s,encoding='utf-8')
+          print('V1 render-truth settlement patch PASS')
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+      - name: Commit candidate
         shell: bash
-        run: node tests/v1-stability-candidate-17166.mjs
-      - name: Upload V1 stability evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: earthline-v1-stability-17187
-          path: artifacts/v1-stability-17166
-          if-no-files-found: ignore
+        run: |
+          git config user.name "earthline-release-bot"
+          git config user.email "earthline-release-bot@users.noreply.github.com"
+          git add index.html
+          git commit -m "repair: settle Property only after core swales render 17188"
+          git pull --rebase origin repair/v1-stability-17166
+          git push origin HEAD:repair/v1-stability-17166
