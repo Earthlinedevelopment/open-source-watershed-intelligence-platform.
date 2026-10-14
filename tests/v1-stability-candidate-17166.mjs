@@ -109,6 +109,21 @@ await page.waitForFunction(()=>{
 const pendingMs=Date.now()-t0;
 if(pendingMs>800)throw new Error('Property Elder request state started too late after Property press: '+JSON.stringify({pendingMs}));
 const gaugePending=await page.evaluate(()=>String(document.getElementById('earthlineElderTreesGauge17097')?.textContent||''));
+const firstElderVisiblePromise=(async()=>{
+  for(let attempt=0;attempt<900;attempt++){
+    const n=await page.evaluate(()=>{
+      const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+      try{
+        if(!m?.getLayer?.('earthline-elder-tree-points-17097'))return 0;
+        const canvas=m.getCanvas();
+        return m.queryRenderedFeatures([[0,0],[canvas.clientWidth||canvas.width,canvas.clientHeight||canvas.height]],{layers:['earthline-elder-tree-points-17097']}).length;
+      }catch(_){return 0}
+    });
+    if(n>0)return {ms:Date.now()-t0,count:n};
+    await page.waitForTimeout(100);
+  }
+  return {ms:null,count:0};
+})();
 
 await page.waitForFunction(({pre})=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173;return a?.settled===true&&Number(a?.serial||0)>pre},{pre},{timeout:45000,polling:150});
 const settledMs=Date.now()-t0;
@@ -157,19 +172,9 @@ await page.waitForFunction(()=>{
  return x?.state==='committed'&&x?.summary?.coverageDatasetIds?.includes('dynamic-property-17130')&&Number(x?.featureCount||0)>0&&Number(x?.summary?.modeled||0)>0;
 },undefined,{timeout:90000,polling:250});
 const elderMs=Date.now()-t0;
-let firstVisibleMs=null;
-for(let attempt=0;attempt<80;attempt++){
-  const n=await page.evaluate(()=>{
-    const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
-    try{
-      if(!m?.getLayer?.('earthline-elder-tree-points-17097'))return 0;
-      const canvas=m.getCanvas();
-      return m.queryRenderedFeatures([[0,0],[canvas.clientWidth||canvas.width,canvas.clientHeight||canvas.height]],{layers:['earthline-elder-tree-points-17097']}).length;
-    }catch(_){return 0}
-  });
-  if(n>0){firstVisibleMs=Date.now()-t0;break}
-  await page.waitForTimeout(250);
-}
+const firstElderVisible=await firstElderVisiblePromise;
+const firstVisibleMs=firstElderVisible.ms;
+if(firstVisibleMs==null)throw new Error('Fresh Elder pins never became visible on first Property');
 const elder=await page.evaluate(()=>{
  const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
  let rendered=0,coords=[];
