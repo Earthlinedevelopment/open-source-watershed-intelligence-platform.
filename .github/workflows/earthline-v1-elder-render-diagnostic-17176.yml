@@ -1,0 +1,19 @@
+name: Earthline V1 Elder Render Diagnostic 17176
+on:
+  push:
+    branches: [repair/v1-stable-17175]
+    paths: ['tests/v1-elder-render-diagnostic-17176.mjs','.github/workflows/earthline-v1-elder-render-diagnostic-17176.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - run: node tests/v1-elder-render-diagnostic-17176.mjs
