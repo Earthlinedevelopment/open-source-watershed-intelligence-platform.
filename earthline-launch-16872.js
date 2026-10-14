@@ -1235,7 +1235,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   const MANIFEST='data/elder-trees/v2/manifest.json';
   const SOURCE='earthline-elder-trees-17097';
   const LAYER='earthline-elder-tree-points-17097';
-  const state={loaded:false,loading:null,manifest:null,all:[],active:[],lastSummary:null,dynamic:{worker:null,seq:0,pending:new Map(),key:'',result:null,promise:null,error:null,warmPromise:null,warmed:false}};
+  const state={loaded:false,loading:null,manifest:null,all:[],active:[],lastSummary:null,dynamic:{worker:null,seq:0,pending:new Map(),key:'',result:null,promise:null,error:null,warmPromise:null,warmed:false,tileWarmKey:'',tileWarmPromise:null}};
 
   function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
@@ -1694,34 +1694,34 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   }
   async function prefetchProperty17174(){
     try{
-      const b=propertyBounds17166();
-      if(!b)return null;
-      return await dynamicPropertyEvidence(true);
+      const b=propertyBounds17166(),key=dynamicKey(b);
+      if(!b||!key)return null;
+      if(state.dynamic.tileWarmKey===key&&state.dynamic.tileWarmPromise)return state.dynamic.tileWarmPromise;
+      const id='elder-tile-warm-'+(++state.dynamic.seq);
+      state.dynamic.tileWarmKey=key;
+      const promise=new Promise((resolve,reject)=>state.dynamic.pending.set(id,{resolve,reject}))
+        .catch(()=>null)
+        .finally(()=>{if(state.dynamic.tileWarmPromise===promise)state.dynamic.tileWarmPromise=null});
+      state.dynamic.tileWarmPromise=promise;
+      dynamicWorker().postMessage({id,warmBbox:true,bbox:b});
+      return await promise;
     }catch(_){return null}
-  } /* EARTHLINE_ELDER_DYNAMIC_PREFETCH_NO_MANIFEST_WAIT_17200 */
+  } /* EARTHLINE_ELDER_IO_ONLY_PREFETCH_17211 */
   async function startProperty17166(){
     try{
+      await load();
       const b=propertyBounds17166(),runIdentity=propertyRunIdentity17166(b);
       if(!b||!runIdentity)return null;
+      state.active=[];state.lastSummary=null;
+      publishMap([]);
+      const gauge=document.getElementById('earthlineElderTreesGauge17097');
+      if(gauge)gauge.textContent='Elder Trees: analyzing Property canopy…';
       window.EARTHLINE_ELDER_TREE_LAST_17097={
         state:'property-pending',propertyRunIdentity:runIdentity,
         summary:null,featureCount:0,dynamicCandidatePoolCount:0,dynamicError:null,
         at:new Date().toISOString()
       };
-      const gauge=document.getElementById('earthlineElderTreesGauge17097');
-      if(gauge)gauge.textContent='Elder Trees: analyzing Property canopy…';
-      state.active=[];state.lastSummary=null;
-      publishMap([]);
-
-      // Property hydrology owns the click-time critical path. Reuse only work that
-      // was already started by corridor/crosshair prefetch; never launch a new
-      // CHMv2/Pyodide job from the Property press itself.
-      let dynamicPromise17166=null;
-      if(state.dynamic.key===runIdentity&&state.dynamic.result)dynamicPromise17166=Promise.resolve(state.dynamic.result);
-      else if(state.dynamic.key===runIdentity&&state.dynamic.promise)dynamicPromise17166=state.dynamic.promise;
-      if(!dynamicPromise17166)return null; /* EARTHLINE_ELDER_PREFETCH_ONLY_AT_PROPERTY_PRESS_17208 */
-
-      const dynamic=await dynamicPromise17166;
+      const dynamic=await dynamicPropertyEvidence(true); /* EARTHLINE_ELDER_GOVERNED_COMPUTE_17211 */
       if(!dynamic||propertyRunIdentity17166(propertyBounds17166())!==runIdentity)return null;
       state.active=dynamic.features||[];
       const coverage={known:true,datasetIds:['dynamic-property-17130'],complete:false,dynamic:true,candidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0)};
@@ -1791,11 +1791,6 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   function hash(){if(location.hash==='#swales-explained')howParagraph()}
   function install(){
     wrapCorridor();
-    document.addEventListener('pointerdown',e=>{
-      const b=e.target?.closest?.('#earthlineDeclareProperty16169');
-      if(!b||b.disabled)return;
-      void startProperty17166();
-    },true); /* EARTHLINE_ELDER_PROPERTY_PRESS_START_17195 */
     document.addEventListener('click',click,false);
     window.addEventListener('hashchange',hash,false);
     document.addEventListener('earthline:analysis-complete',()=>{wrapCorridor();refresh();},{passive:true});
