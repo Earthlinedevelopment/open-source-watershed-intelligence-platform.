@@ -1692,6 +1692,14 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     dynamicWorker().postMessage({id,bbox:b,options:{displayPerTile:24,maxPerTile:240}});
     return promise;
   }
+  async function prefetchProperty17174(){
+    try{
+      await load();
+      const b=propertyBounds17166();
+      if(!b)return null;
+      return await dynamicPropertyEvidence(true);
+    }catch(_){return null}
+  }
   async function startProperty17166(){
     try{
       await load();
@@ -1771,11 +1779,6 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   function hash(){if(location.hash==='#swales-explained')howParagraph()}
   function install(){
     wrapCorridor();
-    document.addEventListener('pointerdown',e=>{
-      const b=e.target?.closest?.('#earthlineDeclareProperty16169');
-      if(!b||b.disabled)return;
-      void startProperty17166();
-    },true);
     document.addEventListener('click',click,false);
     window.addEventListener('hashchange',hash,false);
     document.addEventListener('earthline:analysis-complete',()=>{wrapCorridor();refresh();},{passive:true});
@@ -1784,7 +1787,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     if(location.hash==='#swales-explained')howParagraph();
     window.EARTHLINE_ELDER_TREES_V1_17097={
       state:'approved-v2-17118',manifest:MANIFEST,source:SOURCE,layer:LAYER,scienceBaseline:'17118',
-      refresh,startProperty:startProperty17166,summary:()=>state.lastSummary||summarize(state.active),
+      refresh,startProperty:startProperty17166,prefetchPropertyTarget:prefetchProperty17174,summary:()=>state.lastSummary||summarize(state.active),
       features:()=>state.active.slice(),
       confidenceRule:'Elder Tree Confidence = local structural-evidence percentile within the analyzed source area; not age probability',
       rechargeWeight:0
