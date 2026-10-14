@@ -1,0 +1,50 @@
+name: Earthline V1 Crosshair Elder Prefetch 17174
+on:
+  push:
+    branches:
+      - research/elder-browser-engine-17129
+    paths:
+      - .github/workflows/earthline-v1-crosshair-elder-prefetch-17174.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-stability-17166
+          fetch-depth: 0
+      - name: Prefetch Elder from existing crosshair moveend owner
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8',errors='strict')
+          old="if(existing&&existing.source==='country-center'&&window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845&&window.EARTHLINE_COUNTRY_TARGET_LOCK_16845!==false)return true;if(existing&&existing.code){const lat0=Number(existing.lat),lng0=Number(existing.lng),lat=Number(c.lat),lng=Number(c.lng),dy=(lat-lat0)*111320,dx=(lng-lng0)*111320*Math.max(.05,Math.cos(lat0*Math.PI/180));if(Math.hypot(dx,dy)>18)return true;return setPropertyTarget16201({lng,lat,source:'crosshair'},{openPanel:false})}return setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair'},{openPanel:false})"
+          new="if(existing&&existing.source==='country-center'&&window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845&&window.EARTHLINE_COUNTRY_TARGET_LOCK_16845!==false)return true;const prefetch17174=ok=>{if(ok){try{void window.EARTHLINE_ELDER_TREES_V1_17097?.prefetchPropertyTarget?.()}catch(_){}}return ok};if(existing&&existing.code){const lat0=Number(existing.lat),lng0=Number(existing.lng),lat=Number(c.lat),lng=Number(c.lng),dy=(lat-lat0)*111320,dx=(lng-lng0)*111320*Math.max(.05,Math.cos(lat0*Math.PI/180));if(Math.hypot(dx,dy)>18)return true;return prefetch17174(setPropertyTarget16201({lng,lat,source:'crosshair'},{openPanel:false}))}return prefetch17174(setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair'},{openPanel:false}))"
+          if old not in s:
+              if 'prefetch17174' in s:
+                  print('prefetch already installed')
+              else:
+                  raise SystemExit('crosshair prefetch anchor not found')
+          else:
+              s=s.replace(old,new,1)
+          if s.count('prefetch17174')<3:
+              raise SystemExit('prefetch marker missing')
+          p.write_text(s,encoding='utf-8')
+          print('crosshair Elder prefetch patch PASS')
+          PY
+          git diff --check
+      - name: Commit isolated candidate
+        shell: bash
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "earthline-release-bot"
+          git config user.email "earthline-release-bot@users.noreply.github.com"
+          git add index.html
+          git commit -m "repair: prefetch Elder from existing crosshair moveend 17174"
+          git pull --rebase origin repair/v1-stability-17166
+          git push origin HEAD:repair/v1-stability-17166
