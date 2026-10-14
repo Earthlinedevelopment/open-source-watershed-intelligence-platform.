@@ -1,4 +1,4 @@
-name: Earthline V1 Safe Swale Visibility Inspect 17178
+name: Earthline V1 Postpublish Block Inspect 17180
 on:
   push:
     branches:
@@ -21,17 +21,20 @@ jobs:
           from pathlib import Path
           s=Path("index.html").read_text(encoding="utf-8",errors="ignore")
           for term in [
-            "const safeFallback=await verifySafePropertyFallback16221",
-            "verifySafePropertyFallback16221(count)",
-            "renderPending:true",
-            "renderVerified:safeFallback",
-            "safeFallback=await"
+            "const texture=",
+            "syncNatural",
+            "settleCurrentPropertyPresentation16521",
+            "frameDeclaredProperty(site)",
+            "earthlineSchedulePropertyWater15823",
+            "publishPropertyDisplay16220(site,selectedCode)",
+            "verifySafePropertyFallback16221"
           ]:
               print("\n===== "+term+" =====")
               p=0
               while True:
                   i=s.find(term,p)
                   if i<0: break
-                  print(s[max(0,i-5000):min(len(s),i+12000)])
+                  print("\n---",i,"---")
+                  print(s[max(0,i-7000):min(len(s),i+15000)])
                   p=i+len(term)
           PY
