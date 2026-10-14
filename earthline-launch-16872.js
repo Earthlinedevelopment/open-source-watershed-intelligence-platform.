@@ -1661,7 +1661,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       const coverage=activeCoverage();
       if(coverage.known)return null;
     }
-    const b=forceProperty?propertyBounds17166():coverageQueryBounds();
+    const b=(forceProperty||tier==='property')?propertyBounds17166():coverageQueryBounds();
     const key=propertyRunIdentity17166(b);
     if(!b||!key)return null;
     if(state.dynamic.key===key&&state.dynamic.result)return state.dynamic.result;
@@ -1743,9 +1743,10 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       }else state.active=activeFeatures();
       state.lastSummary=summarize(state.active,coverage);
       publishMap(state.active);
+      try{requestAnimationFrame(()=>{publishMap(state.active);refreshSurfaces();})}catch(_){}
       refreshSurfaces();
       window.EARTHLINE_ELDER_TREE_LAST_17097={
-        state:'committed',propertyRunIdentity:String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property'?propertyRunIdentity17166(coverageQueryBounds()):'',
+        state:'committed',propertyRunIdentity:String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property'?propertyRunIdentity17166(propertyBounds17166()):'',
         summary:state.lastSummary,featureCount:state.active.length,
         dynamicCandidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0),
         dynamicError:state.dynamic.error||null,at:new Date().toISOString()
