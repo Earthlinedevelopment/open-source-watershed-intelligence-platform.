@@ -1789,8 +1789,27 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     /* EARTHLINE 17133 — Elder is downstream of Property publication; Zoom no longer invokes Elder refresh. */
   }
   function hash(){if(location.hash==='#swales-explained')howParagraph()}
+  let propertyPrimeTimer17212=0,propertyPrimeToken17212=0;
+  function schedulePropertyPrime17212(){
+    const b=propertyBounds17166(),identity=propertyRunIdentity17166(b);
+    if(!b||!identity)return false;
+    const token=++propertyPrimeToken17212;
+    clearTimeout(propertyPrimeTimer17212);
+    propertyPrimeTimer17212=setTimeout(()=>{
+      if(token!==propertyPrimeToken17212)return;
+      const nowB=propertyBounds17166();
+      if(propertyRunIdentity17166(nowB)!==identity)return;
+      void dynamicPropertyEvidence(true);
+    },3500);
+    return true;
+  } /* EARTHLINE_ELDER_STAGGERED_PROPERTY_PRIME_17212 */
   function install(){
     wrapCorridor();
+    document.addEventListener('pointerdown',e=>{
+      const b=e.target?.closest?.('#earthlineDeclareProperty16169');
+      if(!b||b.disabled)return;
+      schedulePropertyPrime17212();
+    },true);
     document.addEventListener('click',click,false);
     window.addEventListener('hashchange',hash,false);
     document.addEventListener('earthline:analysis-complete',()=>{wrapCorridor();refresh();},{passive:true});
