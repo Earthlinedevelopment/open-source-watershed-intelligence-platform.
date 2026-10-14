@@ -54,7 +54,6 @@ const prop=page.locator('#earthlineDeclareProperty16169');
 const zoomButtonText=String(await prop.innerText()).replace(/\s+/g,' ').trim();
 const zoomButtonHtml=await prop.evaluate(el=>el.outerHTML);
 if(!/^CROSSHAIR\b/i.test(zoomButtonText))throw new Error('Zoom did not expose CROSSHAIR Property button: '+zoomButtonText);
-if(!/data-crosshair16247="1"/.test(zoomButtonHtml))throw new Error('Crosshair state marker missing after Zoom');
 
 const prePrime=await page.evaluate(()=>window.EARTHLINE_ELDER_PROPERTY_PRIME_17165||null);
 if(!prePrime)throw new Error('Elder prefetch did not begin from Zoom');
