@@ -1862,34 +1862,3 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   },{passive:true});
   window.EARTHLINE_CROSSHAIR_MOVE_HINT_17093={state:'ready',show,remove,sessionOnly:true};
 })();
-
-
-/* EARTHLINE_ELDER_REPEAT_PROPERTY_REFRESH_17152
-   Repeat-Property lifecycle repair only.
-   Preserve the working first Property Elder result. After each governed Property
-   invocation finishes, ask the existing Elder owner to refresh against the newly
-   committed Property AOI. No detector, hydrology, swale, scoring, map-style, or
-   presentation changes. */
-(function installEarthlineElderRepeatPropertyRefresh17152(){
-  if(window.EARTHLINE_ELDER_REPEAT_PROPERTY_REFRESH_17152)return;
-  const prior=window.earthlineDeclarePropertyAtCrosshair16173;
-  if(typeof prior!=='function'){
-    window.EARTHLINE_ELDER_REPEAT_PROPERTY_REFRESH_17152={state:'unavailable'};
-    return;
-  }
-  let serial=0;
-  const wrapped=function(){
-    const my=++serial;
-    const out=prior.apply(this,arguments);
-    Promise.resolve(out).then(result=>{
-      if(my!==serial||result===false)return;
-      const api=window.EARTHLINE_ELDER_TREES_V1_17097||window.EARTHLINE_ELDER_TREES_V2_17118||null;
-      if(api&&typeof api.refresh==='function')return api.refresh();
-    }).catch(()=>{});
-    return out;
-  };
-  wrapped.__earthlineElderRepeat17152=true;
-  wrapped.__earthlineElderRepeat17152Original=prior;
-  window.earthlineDeclarePropertyAtCrosshair16173=wrapped;
-  window.EARTHLINE_ELDER_REPEAT_PROPERTY_REFRESH_17152={state:'ready',rule:'refresh existing Elder owner after every completed Property invocation'};
-})();
