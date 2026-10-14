@@ -1446,11 +1446,14 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     const m=map();if(!m||!m.getStyle?.())return false;
     const fc={type:'FeatureCollection',features};
     try{
-      const src=m.getSource?.(SOURCE);
+      ensureElderPinImages(m);
+      let src=m.getSource?.(SOURCE);
       if(src?.setData)src.setData(fc);
       else{
-        ensureElderPinImages(m);
         m.addSource(SOURCE,{type:'geojson',data:fc});
+        src=m.getSource?.(SOURCE);
+      }
+      if(!m.getLayer?.(LAYER)){
         m.addLayer({
           id:LAYER,type:'symbol',source:SOURCE,
           layout:{
@@ -1462,7 +1465,8 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
             'icon-size':['interpolate',['linear'],['zoom'],6,0.55,10,0.72,14,0.9],
             'icon-anchor':'bottom',
             'icon-allow-overlap':true,
-            'icon-ignore-placement':true
+            'icon-ignore-placement':true,
+            'visibility':'visible'
           }
         });
         m.on('click',LAYER,e=>{
@@ -1479,7 +1483,14 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
           try{new mapboxgl.Popup({closeButton:true,closeOnClick:true,offset:8}).setLngLat(coords).setHTML(body).addTo(m)}catch(_){}
         });
       }
-      return true;
+      try{
+        if(m.getLayer?.(LAYER)){
+          m.setLayoutProperty?.(LAYER,'visibility','visible');
+          m.moveLayer?.(LAYER);
+        }
+        m.triggerRepaint?.();
+      }catch(_){}
+      return !!m.getLayer?.(LAYER);
     }catch(_){return false}
   }
   function gaugeLine(summary){
