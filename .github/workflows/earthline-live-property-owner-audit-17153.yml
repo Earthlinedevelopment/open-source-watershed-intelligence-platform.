@@ -1,0 +1,48 @@
+name: Earthline Live Property Owner Audit 17153
+on:
+  push:
+    branches: [v2/stable-replacement-17138]
+    paths:
+      - '.github/workflows/earthline-live-property-owner-audit-17153.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 1
+      - name: Inspect Property button and publication owner
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8',errors='ignore')
+          terms=[
+            'earthlineDeclareProperty16169',
+            'earthlineDeclarePropertyAtCrosshair16173',
+            'EARTHLINE_PROPERTY_RUN_AUDIT_16173',
+            'earthline:analysis-complete',
+            'analysis-complete',
+            'settled=true',
+            'settled: true',
+            'settled:true',
+            'publicationAudit'
+          ]
+          low=s.lower()
+          for term in terms:
+              print('\n===== '+term+' =====')
+              needle=term.lower()
+              pos=0
+              count=0
+              while count<14:
+                  i=low.find(needle,pos)
+                  if i<0: break
+                  print('\n--- OFFSET',i,'---')
+                  print(s[max(0,i-2600):min(len(s),i+7600)])
+                  pos=i+len(needle)
+                  count+=1
+          PY
