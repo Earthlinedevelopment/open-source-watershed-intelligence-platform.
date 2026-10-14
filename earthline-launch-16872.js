@@ -1762,6 +1762,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     const wrapped=function(f,index){
       const out=prior.apply(this,arguments);
       corridorBlock(f);
+      try{void prefetchProperty17174()}catch(_){} /* EARTHLINE_ELDER_CORRIDOR_PREFETCH_17195 */
       return out;
     };
     wrapped.__earthlineElder17097=true;wrapped.__earthlineElder17097Original=prior;
@@ -1779,6 +1780,11 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   function hash(){if(location.hash==='#swales-explained')howParagraph()}
   function install(){
     wrapCorridor();
+    document.addEventListener('pointerdown',e=>{
+      const b=e.target?.closest?.('#earthlineDeclareProperty16169');
+      if(!b||b.disabled)return;
+      void startProperty17166();
+    },true); /* EARTHLINE_ELDER_PROPERTY_PRESS_START_17195 */
     document.addEventListener('click',click,false);
     window.addEventListener('hashchange',hash,false);
     document.addEventListener('earthline:analysis-complete',()=>{wrapCorridor();refresh();},{passive:true});
