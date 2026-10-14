@@ -1699,39 +1699,12 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       return null;
     }
   }
-  function reflectCrosshairPropertyButton17165(){
-    try{
-      const q=window.EARTHLINE_PROPERTY_TARGET_16201||null;
-      const lng=Number(q?.lng),lat=Number(q?.lat);
-      const b=document.getElementById('earthlineDeclareProperty16169');
-      if(!b||!Number.isFinite(lng)||!Number.isFinite(lat))return false;
-      let span=b.querySelector('[data-crosshair16247]')||b.querySelector('span');
-      if(!span){span=document.createElement('span');b.appendChild(span)}
-      span.setAttribute('data-crosshair16247','1');
-      span.innerHTML='CROSSHAIR · '+lat.toFixed(5)+', '+lng.toFixed(5)+' · <strong class="earthline-acres-16871">20 ACRES</strong>';
-      b.setAttribute('aria-label','Declare a twenty-acre project area centered on the map crosshair and run property analysis');
-      return true;
-    }catch(_){return false}
-  }
   function wrapCorridor(){
     const prior=window.earthlineOpenCorridorDetail16149;
     if(typeof prior!=='function'||prior.__earthlineElder17097)return false;
     const wrapped=function(f,index){
       const out=prior.apply(this,arguments);
       corridorBlock(f);
-      const zoom=document.querySelector('#earthlineCorridorDetail16149 [data-action="zoom"]');
-      if(zoom&&typeof zoom.onclick==='function'&&!zoom.__earthlineCrosshair17165){
-        const priorZoom=zoom.onclick;
-        zoom.onclick=function(){
-          const result=priorZoom.apply(this,arguments);
-          requestAnimationFrame(()=>requestAnimationFrame(()=>{
-            reflectCrosshairPropertyButton17165();
-            primeDynamicPropertyEvidence();
-          }));
-          return result;
-        };
-        zoom.__earthlineCrosshair17165=true;
-      }
       return out;
     };
     wrapped.__earthlineElder17097=true;wrapped.__earthlineElder17097Original=prior;
@@ -1762,7 +1735,8 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     if(location.hash==='#swales-explained')howParagraph();
     window.EARTHLINE_ELDER_TREES_V1_17097={
       state:'approved-v2-17118',manifest:MANIFEST,source:SOURCE,layer:LAYER,scienceBaseline:'17118',
-      refresh,summary:()=>state.lastSummary||summarize(state.active),
+      refresh,primeProperty:primeDynamicPropertyEvidence,
+      summary:()=>state.lastSummary||summarize(state.active),
       features:()=>state.active.slice(),
       confidenceRule:'Elder Tree Confidence = local structural-evidence percentile within the analyzed source area; not age probability',
       rechargeWeight:0
