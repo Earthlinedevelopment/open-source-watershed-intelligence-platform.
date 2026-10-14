@@ -1,0 +1,49 @@
+name: Earthline V1 Authoritative Crosshair 17165
+on:
+  push:
+    branches: [repair/v1-property-stability-17165]
+    paths:
+      - '.github/workflows/earthline-v1-authoritative-crosshair-17165.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-stability-17165
+          fetch-depth: 0
+      - name: Patch only authoritative corridor Zoom handoff
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8',errors='strict')
+          marker='EARTHLINE_AUTHORITATIVE_ZOOM_CROSSHAIR_17165'
+          if marker in s:
+              print('already patched')
+          else:
+              old='''      try{map()?.stop?.();map()?.jumpTo?.({center:[lng,lat],zoom:Math.max(12.6,Math.min(14,Number(map()?.getZoom?.()||12.6))),bearing:0,pitch:0})}catch(_){}\n      return true'''
+              new='''      try{map()?.stop?.();map()?.jumpTo?.({center:[lng,lat],zoom:Math.max(12.6,Math.min(14,Number(map()?.getZoom?.()||12.6))),bearing:0,pitch:0})}catch(_){}\n      try{\n        const b=document.getElementById('earthlineDeclareProperty16169');\n        if(b){\n          let span=b.querySelector('span');if(!span){span=document.createElement('span');b.appendChild(span)}\n          span.setAttribute('data-crosshair16247','1');\n          span.innerHTML='CROSSHAIR · '+lat.toFixed(5)+', '+lng.toFixed(5)+' · <strong class="earthline-acres-16871">20 ACRES</strong>';\n          b.setAttribute('aria-label','Declare a twenty-acre project area centered on the map crosshair and run property analysis');\n        }\n        window.EARTHLINE_ELDER_TREES_V1_17097?.primeProperty?.();\n      }catch(_){} /* EARTHLINE_AUTHORITATIVE_ZOOM_CROSSHAIR_17165 */\n      return true'''
+              if old not in s:
+                  raise SystemExit('authoritative Zoom owner exact anchor not found')
+              s=s.replace(old,new,1)
+              if s.count(marker)!=1:
+                  raise SystemExit('expected exactly one crosshair marker')
+              p.write_text(s,encoding='utf-8')
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+      - name: Commit repair branch only
+        shell: bash
+        run: |
+          git config user.name "earthline-repair-bot"
+          git config user.email "earthline-repair-bot@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "repair: make corridor Zoom publish CROSSHAIR Property state 17165"
+          git pull --rebase origin repair/v1-property-stability-17165
+          git push origin HEAD:repair/v1-property-stability-17165
