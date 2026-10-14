@@ -99,6 +99,7 @@ async function warmTiles17210(bbox){
   return {warmBbox:true,requested_tiles:qs};
 }
 async function processTile(py,q,bbox,maxPerTile=240){
+  const tTile0=performance.now();
   const url=ROOT+q+".tif";
   let tif,image;
   try{
@@ -106,6 +107,7 @@ async function processTile(py,q,bbox,maxPerTile=240){
   }catch(err){
     return {features:[],tile:{quadkey:q,status:"NO_TILE",error:String(err?.message||err)}};
   } /* EARTHLINE_ELDER_LIGHT_TILE_WARM_17210 */
+  const tOpen=performance.now();
   const debugGeo={origin:image.getOrigin(),resolution:image.getResolution(),bbox:image.getBoundingBox(),projectedSW:merc(bbox[0],bbox[1]),projectedNE:merc(bbox[2],bbox[3])};
   const w=projectedWindow(image,bbox);
   if(!w)return {features:[],tile:{quadkey:q,status:"NO_INTERSECTION",debugGeo}};
@@ -117,6 +119,7 @@ async function processTile(py,q,bbox,maxPerTile=240){
     window:[w.col0,w.row0,w.col0+w.ww,w.row0+w.wh],
     samples:[0],interleave:true,width:ow,height:oh,resampleMethod:"nearest"
   });
+  const tScreen=performance.now();
   const pix=Math.max(Math.abs(w.rx),Math.abs(w.ry));
   const pad=Math.max(64,Math.ceil(60/Math.max(.01,pix)));
   const ncol0=Math.max(0,w.col0-pad),nrow0=Math.max(0,w.row0-pad);
@@ -124,6 +127,7 @@ async function processTile(py,q,bbox,maxPerTile=240){
   const nativeRaw=await image.readRasters({
     window:[ncol0,nrow0,ncol1,nrow1],samples:[0],interleave:true
   });
+  const tNative=performance.now();
   const screen=f32(screenRaw),native=f32(nativeRaw);
   const sid="screen_"+q+".bin",nid="native_"+q+".bin";
   py.FS.writeFile("/tmp/"+sid,new Uint8Array(screen.buffer,screen.byteOffset,screen.byteLength));
@@ -146,8 +150,18 @@ async function processTile(py,q,bbox,maxPerTile=240){
     try{py.FS.unlink("/tmp/"+nid)}catch(_){}
     try{py.globals.delete("__el_meta")}catch(_){}
   }
+  const tDone=performance.now();
+  out.tile=Object.assign({},out.tile||{quadkey:q,status:'OK'},{
+    worker_timings_ms:{
+      open:Number((tOpen-tTile0).toFixed(1)),
+      screen:Number((tScreen-tOpen).toFixed(1)),
+      native:Number((tNative-tScreen).toFixed(1)),
+      python:Number((tDone-tNative).toFixed(1)),
+      total:Number((tDone-tTile0).toFixed(1))
+    }
+  });
   return out;
-}
+} /* EARTHLINE_ELDER_WORKER_TIMINGS_17213 */
 function dedupe(features,minM=10){
   const out=[];
   const sorted=[...features].sort((a,b)=>Number(b?.properties?.height_m||0)-Number(a?.properties?.height_m||0));
@@ -213,12 +227,14 @@ function displaySubset(features,limit=24,bbox=null){
   return chosen;
 } /* EARTHLINE_ELDER_AOI_BALANCED_DISPLAY_17198 */
 async function detect(bbox,{displayPerTile=24,maxPerTile=240}={}){
+  const tDetect0=performance.now();
   if(!Array.isArray(bbox)||bbox.length!==4||bbox.some(v=>!Number.isFinite(Number(v))))throw new Error("invalid bbox");
   bbox=bbox.map(Number);
   if(!(bbox[0]<bbox[2]&&bbox[1]<bbox[3]))throw new Error("invalid bbox order");
   const qs=bboxTiles(bbox);
   if(qs.length>16)throw new Error("bounded AOI required; "+qs.length+" CHMv2 tiles");
   const py=await ensurePy();
+  const tPyReady=performance.now();
   const features=[],tiles=[];
   for(const q of qs){
     const r=await processTile(py,q,bbox,maxPerTile);
@@ -241,6 +257,7 @@ async function detect(bbox,{displayPerTile=24,maxPerTile=240}={}){
       candidate_pool_count:pool.length,display_count:display.length,
       count_owner:"candidate_pool",map_owner:"display_subset",
       preserve_all_eligible:true,tile_results:tiles,
+      worker_timings_ms:{ensurePy:Number((tPyReady-tDetect0).toFixed(1)),total:Number((performance.now()-tDetect0).toFixed(1)),tiles:tiles.map(t=>t?.worker_timings_ms||null)},
       scientific_boundary:"Modeled remote-sensing candidates only; not proof of age, veteran status, or mycorrhizal-hub status."
     },
     candidatePool:pool
