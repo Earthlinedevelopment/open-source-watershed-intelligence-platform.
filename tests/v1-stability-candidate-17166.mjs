@@ -253,7 +253,7 @@ const t2=Date.now();await btn.click();
 await page.waitForFunction(firstIdentity=>{
   const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
   return (x?.state==='property-pending'||x?.state==='committed')&&String(x?.propertyRunIdentity||'')!==String(firstIdentity||'');
-},firstElderIdentity,{timeout:5000,polling:80});
+},firstElderIdentity,{timeout:1000,polling:50});
 await page.waitForFunction(({pre2})=>{
   const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
   return a?.settled===true&&a?.result===true&&a?.renderVerified===true&&Number(a?.serial||0)>pre2;
@@ -263,6 +263,9 @@ await page.waitForFunction(firstIdentity=>{
   const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
   return x?.state==='committed'&&x?.summary?.coverageDatasetIds?.includes('dynamic-property-17130')&&Number(x?.featureCount||0)>0&&String(x?.propertyRunIdentity||'')!==String(firstIdentity||'');
 },firstElderIdentity,{timeout:90000,polling:250});
+const secondElderMs=Date.now()-t2;
+const secondElderAfterSettleMs=secondElderMs-secondSettledMs;
+if(secondElderAfterSettleMs>1500)throw new Error('Second Property Elder pins appeared too late after Property settled: '+JSON.stringify({secondElderAfterSettleMs,secondSettledMs,secondElderMs}));
 const second=await page.evaluate(()=>{
   const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
   const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
@@ -286,7 +289,50 @@ await page.waitForTimeout(1200);
 const postSecondIdentity=await page.evaluate(()=>String(window.EARTHLINE_ELDER_TREE_LAST_17097?.propertyRunIdentity||''));
 if(postSecondIdentity!==String(second.last?.propertyRunIdentity||''))throw new Error('Older Elder response overwrote second Property identity: '+JSON.stringify({postSecondIdentity,second:second.last}));
 
-const report={a10:true,regionalLabels,crosshair,pendingMs,settledMs,firstBlueMs,blueAfterSettleMs,elderMs,firstVisibleMs,elderAfterSettleMs,property,elder:{summary:elder.last?.summary,featureCount:elder.last?.featureCount,rendered:elder.rendered},spatial:{pool:Number(spatial.earthline?.candidate_pool_count||0),display:Number(spatial.earthline?.display_count||0),poolQ,displayQ,missed,poolCells,displayCells,missedCells},second:{crosshair:crosshair2,settledMs:secondSettledMs,summary:second.last?.summary,featureCount:second.last?.featureCount,renderedElder:second.renderedElder,renderedSafe:second.renderedSafe,identity:second.last?.propertyRunIdentity,at:second.last?.at},errors};
+// Third consecutive Property: move east again and require a new, prompt Elder identity.
+const secondIdentity=String(second.last?.propertyRunIdentity||'');
+const secondTarget={lng:Number(crosshair2.target?.lng),lat:Number(crosshair2.target?.lat)};
+await page.evaluate(()=>new Promise((resolve,reject)=>{
+  const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+  if(!m?.panBy)return reject(new Error('map panBy unavailable for third Property'));
+  let done=false;const finish=()=>{if(done)return;done=true;resolve(true)};
+  try{m.once?.('moveend',finish);m.panBy([180,0],{duration:0});setTimeout(finish,1200)}catch(e){reject(e)}
+}));
+await page.waitForFunction(prev=>{
+  const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+  return t?.source==='crosshair'&&
+    (Math.abs(Number(t.lng)-Number(prev.lng))>0.00001||Math.abs(Number(t.lat)-Number(prev.lat))>0.00001);
+},secondTarget,{timeout:8000,polling:100});
+const crosshair3=await page.evaluate(()=>({
+  text:String(document.getElementById('earthlineDeclareProperty16169')?.innerText||'').replace(/\s+/g,' ').trim(),
+  target:window.EARTHLINE_PROPERTY_TARGET_16201||null
+}));
+const pre3=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
+const t3=Date.now();await btn.click();
+await page.waitForFunction(prevIdentity=>{
+  const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+  return (x?.state==='property-pending'||x?.state==='committed')&&String(x?.propertyRunIdentity||'')!==String(prevIdentity||'');
+},secondIdentity,{timeout:1000,polling:50});
+await page.waitForFunction(({pre3})=>{
+  const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+  return a?.settled===true&&a?.result===true&&a?.renderVerified===true&&Number(a?.serial||0)>pre3;
+},{pre3},{timeout:45000,polling:150});
+const thirdSettledMs=Date.now()-t3;
+await page.waitForFunction(prevIdentity=>{
+  const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+  return x?.state==='committed'&&x?.summary?.coverageDatasetIds?.includes('dynamic-property-17130')&&Number(x?.featureCount||0)>0&&String(x?.propertyRunIdentity||'')!==String(prevIdentity||'');
+},secondIdentity,{timeout:90000,polling:250});
+const thirdElderMs=Date.now()-t3,thirdElderAfterSettleMs=thirdElderMs-thirdSettledMs;
+if(thirdElderAfterSettleMs>1500)throw new Error('Third Property Elder pins appeared too late after Property settled: '+JSON.stringify({thirdElderAfterSettleMs,thirdSettledMs,thirdElderMs}));
+const third=await page.evaluate(()=>{
+  const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null,m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+  let renderedElder=0;
+  try{const canvas=m?.getCanvas?.(),box=canvas&&[[0,0],[canvas.clientWidth||canvas.width,canvas.clientHeight||canvas.height]];if(box&&m?.getLayer?.('earthline-elder-tree-points-17097'))renderedElder=m.queryRenderedFeatures(box,{layers:['earthline-elder-tree-points-17097']}).length}catch(_){}
+  return {last:x,renderedElder};
+});
+if(Number(third.renderedElder||0)<=0)throw new Error('Third Property committed Elder data without rendered pins: '+JSON.stringify(third));
+
+const report={a10:true,regionalLabels,crosshair,pendingMs,settledMs,firstBlueMs,blueAfterSettleMs,elderMs,firstVisibleMs,elderAfterSettleMs,property,elder:{summary:elder.last?.summary,featureCount:elder.last?.featureCount,rendered:elder.rendered},spatial:{pool:Number(spatial.earthline?.candidate_pool_count||0),display:Number(spatial.earthline?.display_count||0),poolQ,displayQ,missed,poolCells,displayCells,missedCells},second:{crosshair:crosshair2,settledMs:secondSettledMs,elderMs:secondElderMs,elderAfterSettleMs:secondElderAfterSettleMs,summary:second.last?.summary,featureCount:second.last?.featureCount,renderedElder:second.renderedElder,renderedSafe:second.renderedSafe,identity:second.last?.propertyRunIdentity,at:second.last?.at},third:{crosshair:crosshair3,settledMs:thirdSettledMs,elderMs:thirdElderMs,elderAfterSettleMs:thirdElderAfterSettleMs,summary:third.last?.summary,featureCount:third.last?.featureCount,renderedElder:third.renderedElder,identity:third.last?.propertyRunIdentity,at:third.last?.at},errors};
 writeFileSync(OUT+'/result.json',JSON.stringify(report,null,2));
 console.log('EARTHLINE_V1_STABILITY_17166 '+JSON.stringify(report));
 await browser.close();
