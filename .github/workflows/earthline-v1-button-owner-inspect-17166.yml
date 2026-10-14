@@ -1,0 +1,36 @@
+name: Earthline V1 Button Owner Inspect 17166
+on:
+  push:
+    branches: [repair/v1-property-stability-17165]
+    paths: ['.github/workflows/earthline-v1-button-owner-inspect-17166.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8',errors='ignore')
+          terms=[
+            "ANALYZE · 20 ACRES",
+            "20 ACRES</strong>",
+            "data-crosshair16247",
+            "earthlineDeclareProperty16169",
+            "earthlineSetPropertyTarget16201",
+            "propertyTarget"
+          ]
+          for term in terms:
+              print("\n===== "+term+" =====")
+              pos=0;n=0
+              while n<20:
+                  i=s.find(term,pos)
+                  if i<0: break
+                  print("\n---",i,"---")
+                  print(s[max(0,i-1800):min(len(s),i+5000)])
+                  pos=i+len(term);n+=1
+          PY
