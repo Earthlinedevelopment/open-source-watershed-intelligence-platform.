@@ -1,0 +1,26 @@
+name: Earthline V2 Tree Covered Elder Matrix 17158
+on:
+  push:
+    branches: [v2/stable-replacement-17138]
+    paths:
+      - 'earthline-elder-worker-17129.js'
+      - 'tools/elder_trees/chmv2_array_detector_17129.py'
+      - 'data/elder-trees/v2/california-regional-overview.geojson'
+      - 'tests/v2-elder-tree-covered-matrix-17158.mjs'
+      - '.github/workflows/earthline-v2-elder-tree-covered-matrix-17158.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tree-covered:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - run: node tests/v2-elder-tree-covered-matrix-17158.mjs
