@@ -1,0 +1,32 @@
+name: Earthline Live V1 Property Owner Snippet 17164
+on:
+  push:
+    branches: [research/elder-browser-engine-17129]
+    paths: ['.github/workflows/earthline-live-v1-property-owner-snippet-17164.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 1
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8',errors='ignore')
+          terms=['function earthlineDeclarePropertyAtCrosshair16173','earthlineDeclarePropertyAtCrosshair16173=','async function terminalPropertyRun','function terminalPropertyRun','EARTHLINE_PROPERTY_DECLARATION_16169=']
+          for term in terms:
+              print('\n===== '+term+' =====')
+              pos=0
+              while True:
+                  i=s.find(term,pos)
+                  if i<0: break
+                  print(s[max(0,i-5000):min(len(s),i+18000)])
+                  pos=i+len(term)
+                  break
+          PY
