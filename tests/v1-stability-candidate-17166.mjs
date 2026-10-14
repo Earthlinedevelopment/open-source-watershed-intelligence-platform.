@@ -48,6 +48,46 @@ if(crosshair.flag!=='1'||crosshair.target?.code)throw new Error('Zoom did not ha
 
 const btn=page.locator('#earthlineDeclareProperty16169');
 const pre=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
+await page.evaluate(()=>{
+  window.__EARTHLINE_TIMING_TRACE_17186=[];
+  const names=[
+    'earthlinePublishDisplayedRun16151',
+    'earthlineDeliverPropertyResult15817',
+    'earthlineSyncLivingSwales15792',
+    'earthlineSchedulePropertyWater15823',
+    'earthlineRenderDirectWater15824',
+    'earthlineSyncAquiferLayer',
+    'earthlineApplyRendererOwnership15805',
+    'earthlineQueueAnalysisBoundary15827',
+    'earthlineSyncRechargeLayer'
+  ];
+  for(const name of names){
+    const fn=window[name];
+    if(typeof fn!=='function'||fn.__trace17186)continue;
+    const wrapped=function(){
+      const t=performance.now();
+      try{return fn.apply(this,arguments)}
+      finally{
+        window.__EARTHLINE_TIMING_TRACE_17186.push({name,ms:Number((performance.now()-t).toFixed(1)),at:Number(performance.now().toFixed(1))});
+      }
+    };
+    wrapped.__trace17186=true;
+    wrapped.__original17186=fn;
+    window[name]=wrapped;
+  }
+  const elder=window.EARTHLINE_ELDER_TREES_V1_17097;
+  if(elder&&typeof elder.refresh==='function'&&!elder.refresh.__trace17186){
+    const fn=elder.refresh;
+    elder.refresh=function(){
+      const t=performance.now();
+      const out=fn.apply(this,arguments);
+      Promise.resolve(out).finally(()=>window.__EARTHLINE_TIMING_TRACE_17186.push({name:'elder.refresh.async',ms:Number((performance.now()-t).toFixed(1)),at:Number(performance.now().toFixed(1))}));
+      window.__EARTHLINE_TIMING_TRACE_17186.push({name:'elder.refresh.sync',ms:Number((performance.now()-t).toFixed(1)),at:Number(performance.now().toFixed(1))});
+      return out;
+    };
+    elder.refresh.__trace17186=true;
+  }
+});
 const t0=Date.now();await btn.click();
 await page.waitForFunction(()=>{
  const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
@@ -92,7 +132,12 @@ if(property?.audit?.result!==true||Number(property?.audit?.corridors||0)<=0)thro
 if(firstBlueMs==null)throw new Error('First Property run published without visible blue/natural swales: '+JSON.stringify({property,blueSamples}));
 const blueAfterSettleMs=firstBlueMs-settledMs;
 console.log('EARTHLINE_BLUE_TIMELINE_17179 '+JSON.stringify({settledMs,firstBlueMs,blueAfterSettleMs,blueSamples}));
-if(blueAfterSettleMs>800)throw new Error('First Property swales appeared too late after Property settled: '+JSON.stringify({firstBlueMs,settledMs,blueAfterSettleMs,property,blueSamples}));
+if(blueAfterSettleMs>800){
+  const timingTrace=await page.evaluate(()=>window.__EARTHLINE_TIMING_TRACE_17186||[]);
+  const longTasks=await page.evaluate(()=>performance.getEntriesByType('longtask').map(e=>({start:Number(e.startTime.toFixed(1)),duration:Number(e.duration.toFixed(1)),name:e.name})).slice(-40));
+  console.log('EARTHLINE_POSTPUBLISH_TRACE_17186 '+JSON.stringify({timingTrace,longTasks}));
+  throw new Error('First Property swales appeared too late after Property settled: '+JSON.stringify({firstBlueMs,settledMs,blueAfterSettleMs,property,blueSamples,timingTrace}));
+}
 
 await page.waitForFunction(()=>{
  const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
