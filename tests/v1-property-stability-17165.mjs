@@ -82,6 +82,24 @@ const swale=await page.evaluate(()=>{
     const r=m?.getCanvas?.()?.getBoundingClientRect?.();
     if(r&&layers.length)rendered=m.queryRenderedFeatures([[10,10],[Math.max(11,r.width-10),Math.max(11,r.height-10)]],{layers}).length;
   }catch(_){}
+  const details=layers.map(id=>{
+    const l=m?.getLayer?.(id)||null,sourceId=l?.source||'';
+    const src=sourceId?m?.getSource?.(sourceId):null;
+    let dataCount=null,sourceQueryCount=null;
+    try{
+      const d=src?._data||src?._options?.data||null;
+      dataCount=Array.isArray(d?.features)?d.features.length:null;
+    }catch(_){}
+    try{sourceQueryCount=sourceId?m.querySourceFeatures(sourceId).length:null}catch(_){}
+    return {
+      id,type:l?.type||'',source:sourceId,minzoom:l?.minzoom??null,maxzoom:l?.maxzoom??null,
+      visibility:(()=>{try{return m.getLayoutProperty(id,'visibility')||'visible'}catch(_){return null}})(),
+      lineOpacity:(()=>{try{return m.getPaintProperty(id,'line-opacity')}catch(_){return null}})(),
+      lineWidth:(()=>{try{return m.getPaintProperty(id,'line-width')}catch(_){return null}})(),
+      lineColor:(()=>{try{return m.getPaintProperty(id,'line-color')}catch(_){return null}})(),
+      dataCount,sourceQueryCount
+    };
+  });
   return {
     corridors:Number(a?.corridors||0),
     settled:a?.settled===true,
@@ -89,13 +107,17 @@ const swale=await page.evaluate(()=>{
     renderMode:a?.renderMode||'',
     fallbackVisible:a?.safeFallback?.visible===true,
     fallbackCount:Number(a?.safeFallback?.count||0),
-    layers,
-    rendered
+    layers,details,rendered,
+    zoom:Number(m?.getZoom?.()||0),center:m?.getCenter?.()||null,
+    styleLoaded:!!m?.isStyleLoaded?.(),
+    rendererOwnership:window.EARTHLINE_RENDERER_OWNERSHIP_15805||null
   };
 });
 if(!swale.settled||swale.corridors<=0)throw new Error('Property produced no swale corridors: '+JSON.stringify(swale));
 if(!swale.fallbackVisible||swale.fallbackCount<=0)throw new Error('Property swales computed but visible fallback failed: '+JSON.stringify(swale));
-if(swale.rendered<=0)throw new Error('Property swales not actually rendered: '+JSON.stringify(swale));
+await page.screenshot({path:OUT+'/property-swale-state.png',animations:'disabled'});
+const swaleRenderFailure=swale.rendered<=0;
+console.log('EARTHLINE_V1_SWALE_STATE_17165 '+JSON.stringify(swale));
 
 await page.waitForFunction(()=>{
   const x=window.EARTHLINE_ELDER_TREE_LAST_17097;
@@ -196,4 +218,7 @@ const report={
 writeFileSync(OUT+'/result.json',JSON.stringify(report,null,2));
 console.log('EARTHLINE_V1_PROPERTY_STABILITY_17165 '+JSON.stringify(report));
 await browser.close();
-if(errors.length)throw new Error('Page errors: '+JSON.stringify(errors));
+const failures=[];
+if(swaleRenderFailure)failures.push('Property computed '+swale.corridors+' swales but rendered 0');
+if(errors.length)failures.push('Page errors '+JSON.stringify(errors));
+if(failures.length)throw new Error('V1 Property stability failures: '+JSON.stringify(failures));
