@@ -1,0 +1,59 @@
+name: Earthline V1 Stable Index 17175
+on:
+  push:
+    branches: [repair/v1-stable-17175]
+    paths:
+      - '.github/workflows/earthline-v1-stable-index-17175.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-stable-17175
+          fetch-depth: 0
+      - name: Apply only crosshair + Elder prefetch index changes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8',errors='strict')
+
+          marker='EARTHLINE_PROPERTY_ELDER_EARLY_START_17166'
+          needle="window.EARTHLINE_PROPERTY_DECLARATION_16169={build:BUILD,center:{lng:site.lng,lat:site.lat},acres:20,boundaryPoints:m.analysisBoundaryLngLat.length,selectedCode:selectedCode||null,declaredAt:new Date().toISOString(),route:'window.earthlineGovernedPropertyRun16202'};"
+          repl=needle+"\n    try{void window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()}catch(_){} /* EARTHLINE_PROPERTY_ELDER_EARLY_START_17166 */"
+          if marker not in s:
+              if s.count(needle)!=1: raise SystemExit(f'Property declaration anchor count {s.count(needle)}')
+              s=s.replace(needle,repl,1)
+
+          old="if(existing&&existing.source==='country-center'&&window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845&&window.EARTHLINE_COUNTRY_TARGET_LOCK_16845!==false)return true;if(existing&&existing.code)return true;return setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair'},{openPanel:false})"
+          mid="if(existing&&existing.source==='country-center'&&window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845&&window.EARTHLINE_COUNTRY_TARGET_LOCK_16845!==false)return true;if(existing&&existing.code){const lat0=Number(existing.lat),lng0=Number(existing.lng),lat=Number(c.lat),lng=Number(c.lng),dy=(lat-lat0)*111320,dx=(lng-lng0)*111320*Math.max(.05,Math.cos(lat0*Math.PI/180));if(Math.hypot(dx,dy)>18)return true;return setPropertyTarget16201({lng,lat,source:'crosshair'},{openPanel:false})}return setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair'},{openPanel:false})"
+          new="if(existing&&existing.source==='country-center'&&window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845&&window.EARTHLINE_COUNTRY_TARGET_LOCK_16845!==false)return true;const prefetch17174=ok=>{if(ok){try{void window.EARTHLINE_ELDER_TREES_V1_17097?.prefetchPropertyTarget?.()}catch(_){}}return ok};if(existing&&existing.code){const lat0=Number(existing.lat),lng0=Number(existing.lng),lat=Number(c.lat),lng=Number(c.lng),dy=(lat-lat0)*111320,dx=(lng-lng0)*111320*Math.max(.05,Math.cos(lat0*Math.PI/180));if(Math.hypot(dx,dy)>18)return true;return prefetch17174(setPropertyTarget16201({lng,lat,source:'crosshair'},{openPanel:false}))}return prefetch17174(setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair'},{openPanel:false}))"
+          if 'prefetch17174' not in s:
+              if old in s: s=s.replace(old,new,1)
+              elif mid in s: s=s.replace(mid,new,1)
+              else: raise SystemExit('Crosshair handoff anchor not found')
+
+          if s.count(marker)!=1: raise SystemExit('Elder early-start marker invalid')
+          if 'prefetch17174' not in s: raise SystemExit('Elder prefetch marker missing')
+          if "if(existing&&existing.code)return true;" in s: raise SystemExit('Old corridor lock remains')
+          if '17172: fail visibly' in s: raise SystemExit('Failed swale experiment leaked into clean candidate')
+          p.write_text(s,encoding='utf-8')
+          print('clean index patch PASS')
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name "earthline-release-bot"
+          git config user.email "earthline-release-bot@users.noreply.github.com"
+          git add index.html
+          git commit -m "candidate: hand Zoom to crosshair and prefetch Elder 17175"
+          git pull --rebase origin repair/v1-stable-17175
+          git push origin HEAD:repair/v1-stable-17175
