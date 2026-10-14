@@ -1588,6 +1588,30 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     gaugeLine(s);propertyCard(s);dataBlock(s);reportBlock(s);
   }
   function dynamicKey(b){return Array.isArray(b)?b.map(v=>Number(v).toFixed(6)).join(','):''}
+  function propertyRunIdentity(b){
+    const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+    const serial=Number(a?.serial||0);
+    const token=String(a?.publicationAudit?.runToken||'');
+    return [serial,token,dynamicKey(b)].join('|');
+  }
+  function treeCoverRule(dynamic){
+    const tiles=Array.isArray(dynamic?.earthline?.tile_results)?dynamic.earthline.tile_results:[];
+    const valid=tiles.filter(t=>String(t?.status||'').toUpperCase()==='OK');
+    const forestAreaHa=valid.reduce((n,t)=>n+Math.max(0,Number(t?.forest_area_ha||0)),0);
+    const forestCells=valid.reduce((n,t)=>n+Math.max(0,Number(t?.forest_cells||0)),0);
+    const candidatePool=Math.max(0,Number(dynamic?.earthline?.candidate_pool_count||dynamic?.candidatePool?.length||0));
+    const treeCovered=valid.length>0&&(forestCells>0||forestAreaHa>0);
+    return Object.freeze({
+      validCoverage:valid.length>0,
+      validTileCount:valid.length,
+      forestAreaHa:Number(forestAreaHa.toFixed(3)),
+      forestCells,
+      treeCovered,
+      candidatePool,
+      satisfied:!treeCovered||candidatePool>0,
+      rule:'tree-covered Property with valid CHMv2 coverage should normally return at least one modeled Elder candidate; unexplained zero is an exception'
+    });
+  }
   function dynamicWorker(){
     if(state.dynamic.worker)return state.dynamic.worker;
     const w=new Worker('earthline-elder-worker-17129.js',{type:'module'});
@@ -1619,17 +1643,12 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     dynamicWorker().postMessage({id,warm:true});
     return state.dynamic.warmPromise;
   }
-  function invalidateDynamicPropertyRun(){
-    state.dynamic.key='';
-    state.dynamic.result=null;
-    state.dynamic.error=null;
-  }
   async function dynamicPropertyEvidence(){
     const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
     if(tier!=='property')return null;
     const coverage=activeCoverage();
     if(coverage.known)return null;
-    const b=coverageQueryBounds(),key=dynamicKey(b);
+    const b=coverageQueryBounds(),key=propertyRunIdentity(b);
     if(!key)return null;
     if(state.dynamic.key===key&&state.dynamic.result)return state.dynamic.result;
     if(state.dynamic.key===key&&state.dynamic.promise)return state.dynamic.promise;
@@ -1659,23 +1678,25 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     dynamicWorker().postMessage({id,bbox:b,options:{displayPerTile:24,maxPerTile:240}});
     return promise;
   }
-  function clearPropertyElderBeforeRefresh(){
+  function clearPropertyElderBeforeRefresh(runIdentity){
     const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
     if(tier!=='property')return false;
     state.active=[];
     state.lastSummary=null;
     publishMap([]);
     const gauge=document.getElementById('earthlineElderTreesGauge17097');
-    if(gauge)gauge.textContent='';
+    if(gauge)gauge.textContent='Elder Trees: analyzing Property canopy…';
     document.getElementById('earthlineElderTreesData17097')?.remove();
     document.getElementById('earthlineElderTreesReport17097')?.remove();
     document.getElementById('earthlineElderTreesCorridor17097')?.remove();
     window.EARTHLINE_ELDER_TREE_LAST_17097={
       state:'property-pending',
+      propertyRunIdentity:runIdentity||'',
       summary:null,
       featureCount:0,
       dynamicCandidatePoolCount:0,
       dynamicError:null,
+      treeCoverRule:null,
       at:new Date().toISOString()
     };
     return true;
@@ -1684,21 +1705,32 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     try{
       await load();
       const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
-      if(tier==='property')clearPropertyElderBeforeRefresh();
+      const runIdentity=tier==='property'?propertyRunIdentity(coverageQueryBounds()):'';
+      if(tier==='property')clearPropertyElderBeforeRefresh(runIdentity);
       let coverage=activeCoverage();
       const dynamic=await dynamicPropertyEvidence();
+      if(tier==='property'&&runIdentity!==propertyRunIdentity(coverageQueryBounds()))return null;
+      let rule=null;
       if(dynamic){
         state.active=dynamic.features||[];
         coverage={known:true,datasetIds:['dynamic-property-17130'],complete:false,dynamic:true,candidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0)};
+        rule=treeCoverRule(dynamic);
       }else state.active=activeFeatures();
       state.lastSummary=summarize(state.active,coverage);
       publishMap(state.active);
       refreshSurfaces();
+      if(tier==='property'&&rule?.treeCovered&&!rule.satisfied){
+        const gauge=document.getElementById('earthlineElderTreesGauge17097');
+        if(gauge)gauge.textContent='Elder Trees: tree cover detected · candidate review required';
+      }
       window.EARTHLINE_ELDER_TREE_LAST_17097={
-        state:'committed',
+        state:tier==='property'&&rule?.treeCovered&&!rule.satisfied?'zero-anomaly':'committed',
+        propertyRunIdentity:runIdentity,
         summary:state.lastSummary,featureCount:state.active.length,
         dynamicCandidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0),
-        dynamicError:state.dynamic.error||null,at:new Date().toISOString()
+        dynamicError:state.dynamic.error||null,
+        treeCoverRule:rule,
+        at:new Date().toISOString()
       };
       return state.lastSummary;
     }catch(err){
@@ -1707,7 +1739,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
         state.lastSummary=null;
         publishMap([]);
         const gauge=document.getElementById('earthlineElderTreesGauge17097');
-        if(gauge)gauge.textContent='';
+        if(gauge)gauge.textContent='Elder Trees: Property analysis unavailable';
       }
       window.EARTHLINE_ELDER_TREE_LAST_17097={state:'failed',error:String(err&&err.message||err),featureCount:0,dynamicCandidatePoolCount:0,at:new Date().toISOString()};
       return null;
@@ -1740,14 +1772,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     window.addEventListener('hashchange',hash,false);
     document.addEventListener('earthline:analysis-complete',()=>{
       wrapCorridor();
-      if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property'){
-        invalidateDynamicPropertyRun();
-        state.active=[];
-        state.lastSummary=null;
-        publishMap([]);
-        const gauge=document.getElementById('earthlineElderTreesGauge17097');
-        if(gauge)gauge.textContent='';
-      }
+      if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property')return;
       refresh();
     },{passive:true});
     prewarmDynamicWorker();
@@ -1927,32 +1952,3 @@ if(typeof window!=='undefined'&&!window.EARTHLINE_V2_BOOTSTRAP_17138){
 })();
 
 
-/* EARTHLINE_ELDER_REPEAT_PROPERTY_REFRESH_17152
-   Repeat-Property lifecycle repair only.
-   Preserve the working first Property Elder result. After each governed Property
-   invocation finishes, ask the existing Elder owner to refresh against the newly
-   committed Property AOI. No detector, hydrology, swale, scoring, map-style, or
-   presentation changes. */
-(function installEarthlineElderRepeatPropertyRefresh17152(){
-  if(window.EARTHLINE_ELDER_REPEAT_PROPERTY_REFRESH_17152)return;
-  const prior=window.earthlineDeclarePropertyAtCrosshair16173;
-  if(typeof prior!=='function'){
-    window.EARTHLINE_ELDER_REPEAT_PROPERTY_REFRESH_17152={state:'unavailable'};
-    return;
-  }
-  let serial=0;
-  const wrapped=function(){
-    const my=++serial;
-    const out=prior.apply(this,arguments);
-    Promise.resolve(out).then(result=>{
-      if(my!==serial||result===false)return;
-      const api=window.EARTHLINE_ELDER_TREES_V1_17097||window.EARTHLINE_ELDER_TREES_V2_17118||null;
-      if(api&&typeof api.refresh==='function')return api.refresh();
-    }).catch(()=>{});
-    return out;
-  };
-  wrapped.__earthlineElderRepeat17152=true;
-  wrapped.__earthlineElderRepeat17152Original=prior;
-  window.earthlineDeclarePropertyAtCrosshair16173=wrapped;
-  window.EARTHLINE_ELDER_REPEAT_PROPERTY_REFRESH_17152={state:'ready',rule:'refresh existing Elder owner after every completed Property invocation'};
-})();
