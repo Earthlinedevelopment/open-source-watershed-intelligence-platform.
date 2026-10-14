@@ -27,14 +27,7 @@ jobs:
           old="hit.dataset.swaleIndex=String(i);hit.__earthlineFeature=f;"
           new="hit.dataset.swaleIndex=String(i);hit.dataset.swaleGrade=grade;hit.dataset.swaleRank=String(rank);hit.__earthlineFeature=f;"
           anchor="      document.documentElement.dataset.earthlineSwaleGpsHover=String(count);"
-          ordered="""      /* EARTHLINE_CORRIDOR_HIT_PRIORITY_17193 — invisible hit paths overlap in dense Regional views. Keep lower-priority corridors beneath higher-priority corridors so a shared click point resolves to the displayed Earthline priority instead of DOM append order. */
-      const hitPriority17193={C:0,B:1,A:2};
-      Array.from(group.querySelectorAll('.earthline-swale-hit-16070')).sort((a,b)=>{
-        const ga=hitPriority17193[a.dataset.swaleGrade]??0,gb=hitPriority17193[b.dataset.swaleGrade]??0;
-        if(ga!==gb)return ga-gb;
-        return Number(b.dataset.swaleRank||999)-Number(a.dataset.swaleRank||999);
-      }).forEach(el=>group.appendChild(el));
-      document.documentElement.dataset.earthlineSwaleGpsHover=String(count);"""
+          ordered="      /* EARTHLINE_CORRIDOR_HIT_PRIORITY_17193 — invisible hit paths overlap in dense Regional views. Keep lower-priority corridors beneath higher-priority corridors so a shared click point resolves to the displayed Earthline priority instead of DOM append order. */\n      const hitPriority17193={C:0,B:1,A:2};\n      Array.from(group.querySelectorAll('.earthline-swale-hit-16070')).sort((a,b)=>{\n        const ga=hitPriority17193[a.dataset.swaleGrade]??0,gb=hitPriority17193[b.dataset.swaleGrade]??0;\n        if(ga!==gb)return ga-gb;\n        return Number(b.dataset.swaleRank||999)-Number(a.dataset.swaleRank||999);\n      }).forEach(el=>group.appendChild(el));\n      document.documentElement.dataset.earthlineSwaleGpsHover=String(count);"
           if marker not in s:
               if s.count(old)!=1:
                   raise SystemExit('Expected one hit identity anchor, found '+str(s.count(old)))
