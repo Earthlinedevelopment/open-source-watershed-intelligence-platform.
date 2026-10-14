@@ -1,0 +1,49 @@
+name: Earthline V1 Safe Swale Repaint 17177
+on:
+  push:
+    branches: [research/elder-browser-engine-17129]
+    paths: ['.github/workflows/earthline-v1-safe-swale-repaint-17177.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-stability-17166
+          fetch-depth: 0
+      - name: Add repaint to existing safe-swale publication owner
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8',errors='strict')
+          marker='EARTHLINE_SAFE_SWALE_REPAINT_17177'
+          if marker not in s:
+              old="""    for(const id of Object.values(SAFE_LAYERS_16221)){try{if(mp.getLayer?.(id)){mp.moveLayer?.(id);moved.push(id)}}catch(_){ }}
+    const visibleLayers=Object.values(SAFE_LAYERS_16221).filter(id=>{try{return !!mp.getLayer?.(id)&&mp.getLayoutProperty?.(id,'visibility')!=='none'}catch(_){return false}});"""
+              new="""    for(const id of Object.values(SAFE_LAYERS_16221)){try{if(mp.getLayer?.(id)){mp.moveLayer?.(id);moved.push(id)}}catch(_){ }}
+    try{mp.triggerRepaint?.()}catch(_){} /* EARTHLINE_SAFE_SWALE_REPAINT_17177 */
+    const visibleLayers=Object.values(SAFE_LAYERS_16221).filter(id=>{try{return !!mp.getLayer?.(id)&&mp.getLayoutProperty?.(id,'visibility')!=='none'}catch(_){return false}});"""
+              if old not in s:
+                  raise SystemExit('safe swale owner anchor not found')
+              s=s.replace(old,new,1)
+          if s.count(marker)!=1:
+              raise SystemExit(f'expected exactly one repaint marker, found {s.count(marker)}')
+          p.write_text(s,encoding='utf-8')
+          print('safe swale repaint patch PASS')
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+      - name: Commit candidate repair
+        shell: bash
+        run: |
+          git config user.name "earthline-release-bot"
+          git config user.email "earthline-release-bot@users.noreply.github.com"
+          git add index.html
+          git commit -m "repair: repaint authoritative safe swales immediately 17177"
+          git pull --rebase origin repair/v1-stability-17166
+          git push origin HEAD:repair/v1-stability-17166
