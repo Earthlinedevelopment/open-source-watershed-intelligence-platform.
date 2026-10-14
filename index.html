@@ -34068,6 +34068,7 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
     setSafeLayerVisibility16221(true);
     const moved=[];
     for(const id of Object.values(SAFE_LAYERS_16221)){try{if(mp.getLayer?.(id)){mp.moveLayer?.(id);moved.push(id)}}catch(_){ }}
+    try{mp.triggerRepaint?.()}catch(_){} /* EARTHLINE_SAFE_SWALE_REPAINT_17177 */
     const visibleLayers=Object.values(SAFE_LAYERS_16221).filter(id=>{try{return !!mp.getLayer?.(id)&&mp.getLayoutProperty?.(id,'visibility')!=='none'}catch(_){return false}});
     const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length;
     const audit={build:BUILD,reason,active,verified:true,count,sourceReady:true,layersReady:true,visible:ok,visibleLayers,moved,geometrySource:'M.authoritativeSafeSwales15815',safetyGate:'propertyPublication15816 + propertyResultLock15815 + safetyAudit15806 + searchGen match',at:new Date().toISOString()};
