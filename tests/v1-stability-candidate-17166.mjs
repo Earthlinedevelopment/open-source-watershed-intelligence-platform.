@@ -33,9 +33,20 @@ const got=hint.getByRole('button',{name:/got it|dismiss/i});if(await got.count()
 const regionalLabels=await page.locator('#earthlineRegionalVectorOverlay16020 .earthline-swale-hit-16070').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('aria-label')||''));
 const hit=page.locator('#earthlineRegionalVectorOverlay16020 .earthline-swale-hit-16070[aria-label^="Open details for A10 "]').first();
 if(!(await hit.count()))throw new Error('Required A10 Regional corridor missing: '+JSON.stringify(regionalLabels));
+const clickedIdentity=await hit.evaluate(el=>({aria:el.getAttribute('aria-label')||'',index:el.dataset.swaleIndex||'',props:el.__earthlineFeature?.properties||null,geomType:el.__earthlineFeature?.geometry?.type||null}));
 await hit.click({force:true});await page.waitForTimeout(250);
 const beforeZoom=String(await page.locator('#earthlineDeclareProperty16169').innerText()).replace(/\s+/g,' ').trim();
-if(!/^A10\s*·\s*ANALYZE/i.test(beforeZoom))throw new Error('Expected A10 Property target before Zoom, got '+beforeZoom);
+if(!/^A10\s*·\s*ANALYZE/i.test(beforeZoom)){
+  const diag=await page.evaluate(()=>({
+    target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+    detailTitle:document.querySelector('#earthlineCorridorDetail16149 h2')?.textContent||'',
+    corridorAudit:window.earthlineCorridorInteractionAudit16152?.()||null,
+    ledger:(window.EARTHLINE_RUN_LEDGER_16147||[]).slice(-12),
+    hits:[...document.querySelectorAll('#earthlineRegionalVectorOverlay16020 .earthline-swale-hit-16070')].map(el=>({aria:el.getAttribute('aria-label')||'',index:el.dataset.swaleIndex||'',props:el.__earthlineFeature?.properties||null})).filter(x=>/^Open details for A10\b/.test(x.aria)||x.index==='9').slice(0,8)
+  }));
+  console.log('EARTHLINE_A10_IDENTITY_DIAG_17192 '+JSON.stringify({clickedIdentity,beforeZoom,diag}));
+  throw new Error('Expected A10 Property target before Zoom, got '+beforeZoom+' '+JSON.stringify({clickedIdentity,diag}));
+}
 const zoom=page.getByRole('button',{name:/zoom to (this )?location/i}).first();
 if(!(await zoom.count()))throw new Error('Zoom to location button missing');
 await zoom.click();
