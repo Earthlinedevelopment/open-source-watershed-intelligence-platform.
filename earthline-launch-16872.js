@@ -1783,7 +1783,6 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     document.addEventListener('click',click,false);
     window.addEventListener('hashchange',hash,false);
     document.addEventListener('earthline:analysis-complete',()=>{wrapCorridor();refresh();},{passive:true});
-    prewarmDynamicWorker();
     load().then(()=>{if(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970)refresh()}).catch(()=>{});
     if(location.hash==='#swales-explained')howParagraph();
     window.EARTHLINE_ELDER_TREES_V1_17097={
@@ -1804,6 +1803,8 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       at:new Date().toISOString()
     });
   }
+  /* EARTHLINE 17181 — start the existing one-shot Elder runtime warmup at script evaluation so its Pyodide/scipy cost overlaps startup/Regional work. No new worker owner or science change. */
+  prewarmDynamicWorker();
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
 
