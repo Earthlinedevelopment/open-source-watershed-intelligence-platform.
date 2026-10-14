@@ -36352,12 +36352,9 @@ html.earthline-alaska-map-interaction-16921 #earthlineRegionalVectorOverlay16020
       panel.classList.remove('open');
       try{map()?.stop?.();map()?.jumpTo?.({center:[lng,lat],zoom:Math.max(12.6,Math.min(14,Number(map()?.getZoom?.()||12.6))),bearing:0,pitch:0})}catch(_){}
       try{
-        const b=document.getElementById('earthlineDeclareProperty16169');
-        if(b){
-          let span=b.querySelector('span');if(!span){span=document.createElement('span');b.appendChild(span)}
-          span.setAttribute('data-crosshair16247','1');
-          span.innerHTML='CROSSHAIR · '+lat.toFixed(5)+', '+lng.toFixed(5)+' · <strong class="earthline-acres-16871">20 ACRES</strong>';
-          b.setAttribute('aria-label','Declare a twenty-acre project area centered on the map crosshair and run property analysis');
+        const current=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+        if(typeof window.earthlineSetPropertyTarget16201==='function'){
+          window.earthlineSetPropertyTarget16201({lng,lat,source:'crosshair',code:'',score:row.score,parentRunToken:String(current?.parentRunToken||'')},{openPanel:false});
         }
         window.EARTHLINE_ELDER_TREES_V1_17097?.primeProperty?.();
       }catch(_){} /* EARTHLINE_AUTHORITATIVE_ZOOM_CROSSHAIR_17165 */
