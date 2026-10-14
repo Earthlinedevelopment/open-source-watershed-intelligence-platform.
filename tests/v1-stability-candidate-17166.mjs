@@ -76,7 +76,19 @@ await page.waitForFunction(()=>{
  return x?.state==='committed'&&x?.summary?.coverageDatasetIds?.includes('dynamic-property-17130')&&Number(x?.featureCount||0)>0&&Number(x?.summary?.modeled||0)>0;
 },{timeout:90000,polling:250});
 const elderMs=Date.now()-t0;
-await page.waitForTimeout(500);
+let firstVisibleMs=null;
+for(let attempt=0;attempt<80;attempt++){
+  const n=await page.evaluate(()=>{
+    const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+    try{
+      if(!m?.getLayer?.('earthline-elder-tree-points-17097'))return 0;
+      const canvas=m.getCanvas();
+      return m.queryRenderedFeatures([[0,0],[canvas.clientWidth||canvas.width,canvas.clientHeight||canvas.height]],{layers:['earthline-elder-tree-points-17097']}).length;
+    }catch(_){return 0}
+  });
+  if(n>0){firstVisibleMs=Date.now()-t0;break}
+  await page.waitForTimeout(250);
+}
 const elder=await page.evaluate(()=>{
  const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
  let rendered=0,coords=[];
@@ -104,7 +116,7 @@ if(elder.rendered<=0){
  });
  console.log('ELDER_RENDER_DIAG '+JSON.stringify(diag));
  await page.screenshot({path:OUT+'/elder-render-failure.png',animations:'disabled'});
- throw new Error('Fresh Elder data committed but no pins rendered: '+JSON.stringify(diag));
+ throw new Error('Fresh Elder data committed but no pins rendered within 20s: '+JSON.stringify({pendingMs,settledMs,elderMs,firstVisibleMs,diag}));
 }
 await page.screenshot({path:OUT+'/property.png',animations:'disabled'});
 
@@ -124,7 +136,7 @@ const poolQ=quadrants(spatial.pool),displayQ=quadrants(spatial.display);
 const missed=[];for(let i=0;i<4;i++)if(poolQ[i]>=3&&displayQ[i]===0)missed.push(i);
 if(missed.length)throw new Error('Spatial thinning left populated quadrants empty: '+JSON.stringify({poolQ,displayQ,missed}));
 
-const report={crosshair,pendingMs,settledMs,elderMs,property,elder:{summary:elder.last?.summary,featureCount:elder.last?.featureCount,rendered:elder.rendered},spatial:{pool:Number(spatial.earthline?.candidate_pool_count||0),display:Number(spatial.earthline?.display_count||0),poolQ,displayQ,missed},errors};
+const report={crosshair,pendingMs,settledMs,elderMs,firstVisibleMs,property,elder:{summary:elder.last?.summary,featureCount:elder.last?.featureCount,rendered:elder.rendered},spatial:{pool:Number(spatial.earthline?.candidate_pool_count||0),display:Number(spatial.earthline?.display_count||0),poolQ,displayQ,missed},errors};
 writeFileSync(OUT+'/result.json',JSON.stringify(report,null,2));
 console.log('EARTHLINE_V1_STABILITY_17166 '+JSON.stringify(report));
 await browser.close();
