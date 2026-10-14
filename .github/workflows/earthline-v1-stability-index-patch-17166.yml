@@ -1,4 +1,4 @@
-name: Earthline V1 Safe-First Presentation 17181
+name: Earthline V1 Natural After Safe 17183
 on:
   push:
     branches: [repair/v1-stability-17166]
@@ -16,30 +16,24 @@ jobs:
         with:
           ref: repair/v1-stability-17166
           fetch-depth: 0
-      - name: Make authoritative safe swales truly visible before optional context
+      - name: Defer optional natural texture until safe swales render
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8',errors='strict')
-          marker='EARTHLINE_SAFE_FIRST_PRESENTATION_17181'
-          old_safe="    const visibleLayers=Object.values(SAFE_LAYERS_16221).filter(id=>{try{return !!mp.getLayer?.(id)&&mp.getLayoutProperty?.(id,'visibility')!=='none'}catch(_){return false}});\n    const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length;\n    const audit={build:BUILD,reason,active,verified:true,count,sourceReady:true,layersReady:true,visible:ok,visibleLayers,moved,geometrySource:'M.authoritativeSafeSwales15815',safetyGate:'propertyPublication15816 + propertyResultLock15815 + safetyAudit15806 + searchGen match',at:new Date().toISOString()};"
-          new_safe="    const visibleLayers=Object.values(SAFE_LAYERS_16221).filter(id=>{try{return !!mp.getLayer?.(id)&&mp.getLayoutProperty?.(id,'visibility')!=='none'}catch(_){return false}});\n    let renderedFeatures17181=0;\n    try{const canvas17181=mp.getCanvas?.(),box17181=canvas17181&&[[0,0],[canvas17181.clientWidth||canvas17181.width,canvas17181.clientHeight||canvas17181.height]];if(box17181&&visibleLayers.length)renderedFeatures17181=(mp.queryRenderedFeatures?.(box17181,{layers:visibleLayers})||[]).length}catch(_){}\n    const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length&&renderedFeatures17181>0; /* EARTHLINE_SAFE_FIRST_PRESENTATION_17181 */\n    const audit={build:BUILD,reason,active,verified:true,count,sourceReady:true,layersReady:true,visible:ok,renderedFeatures:renderedFeatures17181,visibleLayers,moved,geometrySource:'M.authoritativeSafeSwales15815',safetyGate:'propertyPublication15816 + propertyResultLock15815 + safetyAudit15806 + searchGen match',at:new Date().toISOString()};"
-          old_settle="        let safeOk=count===0;\n        try{const safe=syncSafePropertyFallback16221('bounded-postpublish-16521-'+delay);safeOk=count===0||!!(safe&&safe.ok);last=Object.assign({},last||{},{safe})}catch(_){ }\n        try{if(typeof window.earthlineSchedulePropertyWater15823==='function')window.earthlineSchedulePropertyWater15823('bounded-postpublish-16521-'+delay)}catch(_){ }"
-          new_settle="        let safeOk=count===0;\n        try{const safe=syncSafePropertyFallback16221('bounded-postpublish-16521-'+delay);safeOk=count===0||!!(safe&&safe.ok);last=Object.assign({},last||{},{safe})}catch(_){ }\n        if(count>0&&!safeOk)continue; /* EARTHLINE_SAFE_FIRST_PRESENTATION_17181 */\n        try{if(typeof window.earthlineSchedulePropertyWater15823==='function')window.earthlineSchedulePropertyWater15823('bounded-postpublish-16521-'+delay)}catch(_){ }"
+          marker='EARTHLINE_NATURAL_AFTER_SAFE_17183'
+          old="}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline')"
+          new="}const safeAudit17183=window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null;if(active&&Number(safeAudit17183?.count||0)>0&&safeAudit17183?.visible!==true)return false;/* EARTHLINE_NATURAL_AFTER_SAFE_17183 */if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline')"
           if marker not in s:
-              if old_safe not in s:
-                  raise SystemExit('Safe rendered visibility anchor not found')
-              s=s.replace(old_safe,new_safe,1)
-          if old_settle in s:
-              s=s.replace(old_settle,new_settle,1)
-          elif new_settle not in s:
-              raise SystemExit('Safe-first postpublish anchor not found')
-          if s.count(marker)!=2:
-              raise SystemExit('Safe-first marker count invalid: '+str(s.count(marker)))
+              if s.count(old)!=1:
+                  raise SystemExit('Expected one natural texture sync anchor, found '+str(s.count(old)))
+              s=s.replace(old,new,1)
+          if s.count(marker)!=1:
+              raise SystemExit('Natural-after-safe marker count invalid')
           p.write_text(s,encoding='utf-8')
-          print('V1 safe-first candidate patch PASS')
+          print('V1 natural-after-safe patch PASS')
           PY
           git diff --check
           test "$(git diff --name-only)" = "index.html"
@@ -49,6 +43,6 @@ jobs:
           git config user.name "earthline-release-bot"
           git config user.email "earthline-release-bot@users.noreply.github.com"
           git add index.html
-          git commit -m "repair: paint authoritative swales before optional Property context 17181"
+          git commit -m "repair: defer natural texture until safe swales render 17183"
           git pull --rebase origin repair/v1-stability-17166
           git push origin HEAD:repair/v1-stability-17166
