@@ -52,7 +52,8 @@ const t0=Date.now();await btn.click();
 await page.waitForFunction(()=>{
  const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
  const gauge=String(document.getElementById('earthlineElderTreesGauge17097')?.textContent||'');
- return x?.state==='property-pending'&&/analyzing Property canopy/i.test(gauge);
+ return (x?.state==='property-pending'&&/analyzing Property canopy/i.test(gauge)) ||
+   (x?.state==='committed'&&x?.summary?.coverageDatasetIds?.includes('dynamic-property-17130'));
 },{timeout:5000,polling:80});
 const pendingMs=Date.now()-t0;
 
@@ -114,6 +115,8 @@ const elder=await page.evaluate(()=>{
  try{const r=m.getCanvas().getBoundingClientRect();const fs=m.queryRenderedFeatures([[10,10],[r.width-10,r.height-10]],{layers:['earthline-elder-tree-points-17097']});rendered=fs.length;coords=fs.map(f=>f.geometry?.coordinates||null)}catch(_){}
  return {last:x,rendered,coords,boundary:window.M?.analysisBoundaryLngLat||[]};
 });
+const elderAfterSettleMs=firstVisibleMs-settledMs;
+if(elderAfterSettleMs>3500)throw new Error('Fresh Elder pins appeared too late after Property settled: '+JSON.stringify({elderAfterSettleMs,settledMs,firstVisibleMs}));
 if(elder.rendered<=0){
  const diag=await page.evaluate(()=>{
    const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
@@ -155,7 +158,7 @@ const poolQ=quadrants(spatial.pool),displayQ=quadrants(spatial.display);
 const missed=[];for(let i=0;i<4;i++)if(poolQ[i]>=3&&displayQ[i]===0)missed.push(i);
 if(missed.length)throw new Error('Spatial thinning left populated quadrants empty: '+JSON.stringify({poolQ,displayQ,missed}));
 
-const report={crosshair,pendingMs,settledMs,firstBlueMs,blueAfterSettleMs,elderMs,firstVisibleMs,elderAfterSettleMs:firstVisibleMs-settledMs,property,elder:{summary:elder.last?.summary,featureCount:elder.last?.featureCount,rendered:elder.rendered},spatial:{pool:Number(spatial.earthline?.candidate_pool_count||0),display:Number(spatial.earthline?.display_count||0),poolQ,displayQ,missed},errors};
+const report={crosshair,pendingMs,settledMs,firstBlueMs,blueAfterSettleMs,elderMs,firstVisibleMs,elderAfterSettleMs,property,elder:{summary:elder.last?.summary,featureCount:elder.last?.featureCount,rendered:elder.rendered},spatial:{pool:Number(spatial.earthline?.candidate_pool_count||0),display:Number(spatial.earthline?.display_count||0),poolQ,displayQ,missed},errors};
 writeFileSync(OUT+'/result.json',JSON.stringify(report,null,2));
 console.log('EARTHLINE_V1_STABILITY_17166 '+JSON.stringify(report));
 await browser.close();
