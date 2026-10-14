@@ -1,0 +1,32 @@
+name: Earthline V1 Safe Swale Owner Inspect 17175
+on:
+  push:
+    branches: [research/elder-browser-engine-17129]
+    paths: ['.github/workflows/earthline-v1-safe-swale-owner-inspect-17175.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-stability-17166
+          fetch-depth: 1
+      - name: Inspect safe swale publication owner
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8',errors='ignore')
+          for term in ['terminal-immediate-16260','settlePropertyMapVisibility16260','earthline-property-safe-water-16221','safeFallback','renderVerified:true','triggerRepaint']:
+              print('\n===== '+term+' =====')
+              pos=0
+              while True:
+                  i=s.find(term,pos)
+                  if i<0: break
+                  print('\n---',i,'---')
+                  print(s[max(0,i-2600):min(len(s),i+9500)])
+                  pos=i+len(term)
+          PY
