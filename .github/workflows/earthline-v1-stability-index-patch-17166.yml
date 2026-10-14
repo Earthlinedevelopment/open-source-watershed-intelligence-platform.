@@ -1,4 +1,4 @@
-name: Earthline V1 Frame Before Safe Visibility 17187
+name: Earthline V1 Rendered Stability Gate 17187
 on:
   push:
     branches: [repair/v1-stability-17166]
@@ -6,49 +6,30 @@ on:
       - '.github/workflows/earthline-v1-stability-index-patch-17166.yml'
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 jobs:
-  patch:
+  rendered-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
         with:
           ref: repair/v1-stability-17166
-          fetch-depth: 0
-      - name: Move existing Property frame before first safe-swale visibility check
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright Chromium
         shell: bash
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8',errors='strict')
-          marker='EARTHLINE 17187'
-          early='      try{window.getSelection?.()?.removeAllRanges?.();button()?.blur?.()}catch(_){}\n\n      earthlinePropertyTrace16319("safe fallback + texture verify","enter");'
-          early_new='      try{window.getSelection?.()?.removeAllRanges?.();button()?.blur?.()}catch(_){}\n\n      /* EARTHLINE 17187 — frame the already-selected Property before the first authoritative safe-swale visibility check. This reorders the existing frame owner only; geometry, hydrology, styles and lifecycle ownership are unchanged. */\n      earthlinePropertyTrace16319("frameDeclaredProperty","enter");\n      frameDeclaredProperty(site);\n      earthlinePropertyTrace16319("frameDeclaredProperty","exit");\n      restoreLocationIdentity16202();\n\n      earthlinePropertyTrace16319("safe fallback + texture verify","enter");'
-          late='      earthlinePropertyTrace16319("frameDeclaredProperty","enter");\n      frameDeclaredProperty(site);\n      earthlinePropertyTrace16319("frameDeclaredProperty","exit");\n      restoreLocationIdentity16202();\n\n      try{\n        if(typeof window.earthlineSchedulePropertyWater15823!==\'function\')'
-          late_new='      try{\n        if(typeof window.earthlineSchedulePropertyWater15823!==\'function\')'
-          if marker not in s:
-              if s.count(early)!=1:
-                  raise SystemExit('Expected one early safe-verify anchor, found '+str(s.count(early)))
-              if s.count(late)!=1:
-                  raise SystemExit('Expected one late frame block, found '+str(s.count(late)))
-              s=s.replace(early,early_new,1).replace(late,late_new,1)
-          if s.count(marker)!=1:
-              raise SystemExit('17187 marker count invalid: '+str(s.count(marker)))
-          if s.count('earthlinePropertyTrace16319("frameDeclaredProperty","enter")')!=1:
-              raise SystemExit('Property frame owner count invalid after move')
-          p.write_text(s,encoding='utf-8')
-          print('V1 frame-before-safe patch PASS')
-          PY
-          git diff --check
-          test "$(git diff --name-only)" = "index.html"
-      - name: Commit candidate
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run V1 rendered stability candidate
         shell: bash
-        run: |
-          git config user.name "earthline-release-bot"
-          git config user.email "earthline-release-bot@users.noreply.github.com"
-          git add index.html
-          git commit -m "repair: frame Property before safe-swale visibility check 17187"
-          git pull --rebase origin repair/v1-stability-17166
-          git push origin HEAD:repair/v1-stability-17166
+        run: node tests/v1-stability-candidate-17166.mjs
+      - name: Upload V1 stability evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-v1-stability-17187
+          path: artifacts/v1-stability-17166
+          if-no-files-found: ignore
