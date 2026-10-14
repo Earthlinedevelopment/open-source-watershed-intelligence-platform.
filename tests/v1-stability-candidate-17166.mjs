@@ -58,18 +58,36 @@ const pendingMs=Date.now()-t0;
 
 await page.waitForFunction(({pre})=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173;return a?.settled===true&&Number(a?.serial||0)>pre},{pre},{timeout:45000,polling:150});
 const settledMs=Date.now()-t0;
-const property=await page.evaluate(()=>{
- const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
- const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
- let visibleSafe=0;
- try{
-  const ids=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'].filter(id=>m?.getLayer?.(id));
-  if(ids.length){const r=m.getCanvas().getBoundingClientRect();visibleSafe=m.queryRenderedFeatures([[10,10],[r.width-10,r.height-10]],{layers:ids}).length}
- }catch(_){}
- return {audit:a,visibleSafe};
-});
-if(property.audit?.result!==true||Number(property.audit?.corridors||0)<=0)throw new Error('Property swale result failed: '+JSON.stringify(property));
-if(property.visibleSafe<=0&&property.audit?.renderVerified!==true)throw new Error('Property swales not visibly verified');
+let property=null;
+let firstBlueMs=null;
+for(let attempt=0;attempt<24;attempt++){
+ property=await page.evaluate(()=>{
+  const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+  const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+  const safeIds=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'];
+  const naturalIds=['earthline-property-swale-natural-casing-16174','earthline-property-swale-neutral-16177','earthline-property-swale-natural-up-16174','earthline-property-swale-natural-flip-16174'];
+  let visibleSafe=0,visibleNatural=0,safeWaterOpacity=null,safeVis=null;
+  try{
+   const canvas=m?.getCanvas?.(),box=canvas&&[[0,0],[canvas.clientWidth||canvas.width,canvas.clientHeight||canvas.height]];
+   const presentSafe=safeIds.filter(id=>m?.getLayer?.(id));
+   const presentNatural=naturalIds.filter(id=>m?.getLayer?.(id));
+   if(box&&presentSafe.length)visibleSafe=m.queryRenderedFeatures(box,{layers:presentSafe}).length;
+   if(box&&presentNatural.length)visibleNatural=m.queryRenderedFeatures(box,{layers:presentNatural}).length;
+   if(m?.getLayer?.('earthline-property-safe-water-16221')){
+     safeWaterOpacity=m.getPaintProperty('earthline-property-safe-water-16221','line-opacity');
+     safeVis=m.getLayoutProperty('earthline-property-safe-water-16221','visibility');
+   }
+  }catch(_){}
+  return {audit:a,visibleSafe,visibleNatural,safeWaterOpacity,safeVis};
+ });
+ const blueFallbackOn=property?.safeVis!=='none'&&Number(property?.safeWaterOpacity||0)>0&&Number(property?.visibleSafe||0)>0;
+ const naturalOn=Number(property?.visibleNatural||0)>0;
+ if(blueFallbackOn||naturalOn){firstBlueMs=Date.now()-t0;break}
+ await page.waitForTimeout(100);
+}
+if(property?.audit?.result!==true||Number(property?.audit?.corridors||0)<=0)throw new Error('Property swale result failed: '+JSON.stringify(property));
+if(firstBlueMs==null)throw new Error('First Property run published without visible blue/natural swales: '+JSON.stringify(property));
+if(firstBlueMs>2500)throw new Error('First Property swales appeared too late: '+JSON.stringify({firstBlueMs,property}));
 
 await page.waitForFunction(()=>{
  const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
@@ -136,7 +154,7 @@ const poolQ=quadrants(spatial.pool),displayQ=quadrants(spatial.display);
 const missed=[];for(let i=0;i<4;i++)if(poolQ[i]>=3&&displayQ[i]===0)missed.push(i);
 if(missed.length)throw new Error('Spatial thinning left populated quadrants empty: '+JSON.stringify({poolQ,displayQ,missed}));
 
-const report={crosshair,pendingMs,settledMs,elderMs,firstVisibleMs,property,elder:{summary:elder.last?.summary,featureCount:elder.last?.featureCount,rendered:elder.rendered},spatial:{pool:Number(spatial.earthline?.candidate_pool_count||0),display:Number(spatial.earthline?.display_count||0),poolQ,displayQ,missed},errors};
+const report={crosshair,pendingMs,settledMs,firstBlueMs,elderMs,firstVisibleMs,property,elder:{summary:elder.last?.summary,featureCount:elder.last?.featureCount,rendered:elder.rendered},spatial:{pool:Number(spatial.earthline?.candidate_pool_count||0),display:Number(spatial.earthline?.display_count||0),poolQ,displayQ,missed},errors};
 writeFileSync(OUT+'/result.json',JSON.stringify(report,null,2));
 console.log('EARTHLINE_V1_STABILITY_17166 '+JSON.stringify(report));
 await browser.close();
