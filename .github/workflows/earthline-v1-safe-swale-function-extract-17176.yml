@@ -1,4 +1,4 @@
-name: Earthline V1 Safe Swale Repaint 17177
+name: Earthline V1 Safe Swale Visibility Inspect 17178
 on:
   push:
     branches:
@@ -6,43 +6,32 @@ on:
     paths:
       - .github/workflows/earthline-v1-safe-swale-function-extract-17176.yml
 permissions:
-  contents: write
+  contents: read
 jobs:
-  patch:
+  inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
           ref: repair/v1-stability-17166
-          fetch-depth: 0
-      - name: Patch existing safe-swale owner
-        shell: bash
-        run: |
+          fetch-depth: 1
+      - run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path("index.html")
-          s=p.read_text(encoding="utf-8",errors="strict")
-          marker="EARTHLINE_SAFE_SWALE_REPAINT_17177"
-          old="    for(const id of Object.values(SAFE_LAYERS_16221)){try{if(mp.getLayer?.(id)){mp.moveLayer?.(id);moved.push(id)}}catch(_){ }}\n    const visibleLayers=Object.values(SAFE_LAYERS_16221).filter(id=>{try{return !!mp.getLayer?.(id)&&mp.getLayoutProperty?.(id,'visibility')!=='none'}catch(_){return false}});"
-          new="    for(const id of Object.values(SAFE_LAYERS_16221)){try{if(mp.getLayer?.(id)){mp.moveLayer?.(id);moved.push(id)}}catch(_){ }}\n    try{mp.triggerRepaint?.()}catch(_){} /* "+marker+" */\n    const visibleLayers=Object.values(SAFE_LAYERS_16221).filter(id=>{try{return !!mp.getLayer?.(id)&&mp.getLayoutProperty?.(id,'visibility')!=='none'}catch(_){return false}});"
-          if marker not in s:
-              if old not in s:
-                  raise SystemExit("safe swale owner anchor not found")
-              s=s.replace(old,new,1)
-          if s.count(marker)!=1:
-              raise SystemExit("expected exactly one repaint marker")
-          p.write_text(s,encoding="utf-8")
-          print("safe swale repaint patch PASS")
+          s=Path("index.html").read_text(encoding="utf-8",errors="ignore")
+          for term in [
+            "const safeFallback=await verifySafePropertyFallback16221",
+            "verifySafePropertyFallback16221(count)",
+            "renderPending:true",
+            "renderVerified:safeFallback",
+            "safeFallback=await"
+          ]:
+              print("\n===== "+term+" =====")
+              p=0
+              while True:
+                  i=s.find(term,p)
+                  if i<0: break
+                  print(s[max(0,i-5000):min(len(s),i+12000)])
+                  p=i+len(term)
           PY
-          git diff --check
-          test "$(git diff --name-only)" = "index.html"
-      - name: Commit candidate repair
-        shell: bash
-        run: |
-          git config user.name earthline-release-bot
-          git config user.email earthline-release-bot@users.noreply.github.com
-          git add index.html
-          git commit -m "repair: repaint authoritative safe swales immediately 17177"
-          git pull --rebase origin repair/v1-stability-17166
-          git push origin HEAD:repair/v1-stability-17166
