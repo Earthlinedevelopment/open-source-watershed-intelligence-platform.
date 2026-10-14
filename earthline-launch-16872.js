@@ -1694,15 +1694,13 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   }
   async function prefetchProperty17174(){
     try{
-      await load();
       const b=propertyBounds17166();
       if(!b)return null;
       return await dynamicPropertyEvidence(true);
     }catch(_){return null}
-  }
+  } /* EARTHLINE_ELDER_DYNAMIC_PREFETCH_NO_MANIFEST_WAIT_17200 */
   async function startProperty17166(){
     try{
-      await load();
       const b=propertyBounds17166(),runIdentity=propertyRunIdentity17166(b);
       if(!b||!runIdentity)return null;
       state.active=[];state.lastSummary=null;
@@ -1713,7 +1711,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
         state:'property-pending',propertyRunIdentity:runIdentity,
         summary:null,featureCount:0,dynamicCandidatePoolCount:0,dynamicError:null,
         at:new Date().toISOString()
-      };
+      }; /* EARTHLINE_ELDER_PROPERTY_STATE_IMMEDIATE_17200 */
       const dynamic=await dynamicPropertyEvidence(true);
       if(!dynamic||propertyRunIdentity17166(propertyBounds17166())!==runIdentity)return null;
       state.active=dynamic.features||[];
