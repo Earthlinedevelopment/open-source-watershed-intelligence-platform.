@@ -24,7 +24,7 @@ const input=page.locator('#searchInput');await input.fill('California');await pa
 const opts=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
 if(!(await opts.count()))throw new Error('No California suggestion');
 await opts.first().click();await page.waitForTimeout(250);await page.locator('#runBtn').click();
-await page.waitForFunction(()=>/screening published\./i.test(String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'')),{timeout:45000,polling:150});
+await page.waitForFunction(()=>/screening published\./i.test(String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'')),undefined,{timeout:45000,polling:150});
 
 const hint=page.locator('#earthlineCrosshairMoveHint17093');
 if(!(await hint.isVisible()))throw new Error('Approved crosshair movement hint missing');
@@ -50,7 +50,7 @@ if(!/^A10\s*·\s*ANALYZE/i.test(beforeZoom)){
 const zoom=page.getByRole('button',{name:/zoom to (this )?location/i}).first();
 if(!(await zoom.count()))throw new Error('Zoom to location button missing');
 await zoom.click();
-await page.waitForFunction(()=>/^CROSSHAIR\b/i.test(String(document.getElementById('earthlineDeclareProperty16169')?.innerText||'')),{timeout:8000,polling:100});
+await page.waitForFunction(()=>/^CROSSHAIR\b/i.test(String(document.getElementById('earthlineDeclareProperty16169')?.innerText||'')),undefined,{timeout:8000,polling:100});
 const crosshair=await page.evaluate(()=>({
  text:String(document.getElementById('earthlineDeclareProperty16169')?.innerText||'').replace(/\s+/g,' ').trim(),
  flag:document.querySelector('#earthlineDeclareProperty16169 [data-crosshair16247]')?.dataset.crosshair16247||'',
@@ -106,8 +106,9 @@ await page.waitForFunction(()=>{
  const gauge=String(document.getElementById('earthlineElderTreesGauge17097')?.textContent||'');
  return (x?.state==='property-pending'&&/analyzing Property canopy/i.test(gauge)) ||
    (x?.state==='committed'&&x?.summary?.coverageDatasetIds?.includes('dynamic-property-17130'));
-},{timeout:5000,polling:80});
+},undefined,{timeout:5000,polling:80});
 const pendingMs=Date.now()-t0;
+if(pendingMs>800)throw new Error('Property Elder pending/committed state started too late after Property press: '+JSON.stringify({pendingMs}));
 
 await page.waitForFunction(({pre})=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173;return a?.settled===true&&Number(a?.serial||0)>pre},{pre},{timeout:45000,polling:150});
 const settledMs=Date.now()-t0;
@@ -154,7 +155,7 @@ if(blueAfterSettleMs>800){
 await page.waitForFunction(()=>{
  const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
  return x?.state==='committed'&&x?.summary?.coverageDatasetIds?.includes('dynamic-property-17130')&&Number(x?.featureCount||0)>0&&Number(x?.summary?.modeled||0)>0;
-},{timeout:90000,polling:250});
+},undefined,{timeout:90000,polling:250});
 const elderMs=Date.now()-t0;
 let firstVisibleMs=null;
 for(let attempt=0;attempt<80;attempt++){
@@ -176,7 +177,7 @@ const elder=await page.evaluate(()=>{
  return {last:x,rendered,coords,boundary:window.M?.analysisBoundaryLngLat||[]};
 });
 const elderAfterSettleMs=firstVisibleMs-settledMs;
-if(elderAfterSettleMs>3500)throw new Error('Fresh Elder pins appeared too late after Property settled: '+JSON.stringify({elderAfterSettleMs,settledMs,firstVisibleMs}));
+if(elderAfterSettleMs>1500)throw new Error('Fresh Elder pins appeared too late after Property settled: '+JSON.stringify({elderAfterSettleMs,settledMs,firstVisibleMs}));
 if(elder.rendered<=0){
  const diag=await page.evaluate(()=>{
    const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
