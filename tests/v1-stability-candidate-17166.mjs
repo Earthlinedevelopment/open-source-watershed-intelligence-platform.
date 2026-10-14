@@ -61,7 +61,8 @@ await page.waitForFunction(({pre})=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT
 const settledMs=Date.now()-t0;
 let property=null;
 let firstBlueMs=null;
-for(let attempt=0;attempt<24;attempt++){
+const blueSamples=[];
+for(let attempt=0;attempt<40;attempt++){
  property=await page.evaluate(()=>{
   const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
   const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
@@ -83,13 +84,15 @@ for(let attempt=0;attempt<24;attempt++){
  });
  const blueFallbackOn=property?.safeVis!=='none'&&Number(property?.safeWaterOpacity||0)>0&&Number(property?.visibleSafe||0)>0;
  const naturalOn=Number(property?.visibleNatural||0)>0;
+ blueSamples.push({ms:Date.now()-t0,visibleSafe:property?.visibleSafe,visibleNatural:property?.visibleNatural,safeWaterOpacity:property?.safeWaterOpacity,safeVis:property?.safeVis,renderVerified:property?.audit?.renderVerified,renderPending:property?.audit?.renderPending,renderMode:property?.audit?.renderMode});
  if(blueFallbackOn||naturalOn){firstBlueMs=Date.now()-t0;break}
  await page.waitForTimeout(100);
 }
 if(property?.audit?.result!==true||Number(property?.audit?.corridors||0)<=0)throw new Error('Property swale result failed: '+JSON.stringify(property));
-if(firstBlueMs==null)throw new Error('First Property run published without visible blue/natural swales: '+JSON.stringify(property));
+if(firstBlueMs==null)throw new Error('First Property run published without visible blue/natural swales: '+JSON.stringify({property,blueSamples}));
 const blueAfterSettleMs=firstBlueMs-settledMs;
-if(blueAfterSettleMs>800)throw new Error('First Property swales appeared too late after Property settled: '+JSON.stringify({firstBlueMs,settledMs,blueAfterSettleMs,property}));
+console.log('EARTHLINE_BLUE_TIMELINE_17179 '+JSON.stringify({settledMs,firstBlueMs,blueAfterSettleMs,blueSamples}));
+if(blueAfterSettleMs>800)throw new Error('First Property swales appeared too late after Property settled: '+JSON.stringify({firstBlueMs,settledMs,blueAfterSettleMs,property,blueSamples}));
 
 await page.waitForFunction(()=>{
  const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
