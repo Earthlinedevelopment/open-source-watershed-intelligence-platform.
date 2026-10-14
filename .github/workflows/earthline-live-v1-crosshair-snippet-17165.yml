@@ -1,0 +1,29 @@
+name: Earthline Live V1 Crosshair Snippet 17165
+on:
+  push:
+    branches: [research/elder-browser-engine-17129]
+    paths: ['.github/workflows/earthline-live-v1-crosshair-snippet-17165.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live, fetch-depth: 1}
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8',errors='ignore')
+          for term in ["CROSSHAIR ·","data-crosshair","ZOOM TO THIS LOCATION","Zoom to this location","earthlinePropertyTarget","setPropertyTarget","source:'crosshair'","source=\"crosshair\""]:
+              print("\n===== "+term+" =====")
+              pos=0;n=0
+              while n<8:
+                  i=s.find(term,pos)
+                  if i<0: break
+                  print("\n---",i,"---")
+                  print(s[max(0,i-3500):min(len(s),i+11000)])
+                  pos=i+len(term);n+=1
+          PY
