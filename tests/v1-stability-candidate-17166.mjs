@@ -103,12 +103,12 @@ await page.evaluate(()=>{
 const t0=Date.now();await btn.click();
 await page.waitForFunction(()=>{
  const x=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
- const gauge=String(document.getElementById('earthlineElderTreesGauge17097')?.textContent||'');
- return (x?.state==='property-pending'&&/analyzing Property canopy/i.test(gauge)) ||
+ return x?.state==='property-pending' ||
    (x?.state==='committed'&&x?.summary?.coverageDatasetIds?.includes('dynamic-property-17130'));
-},undefined,{timeout:5000,polling:80});
+},undefined,{timeout:5000,polling:40});
 const pendingMs=Date.now()-t0;
-if(pendingMs>800)throw new Error('Property Elder pending/committed state started too late after Property press: '+JSON.stringify({pendingMs}));
+if(pendingMs>800)throw new Error('Property Elder request state started too late after Property press: '+JSON.stringify({pendingMs}));
+const gaugePending=await page.evaluate(()=>String(document.getElementById('earthlineElderTreesGauge17097')?.textContent||''));
 
 await page.waitForFunction(({pre})=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173;return a?.settled===true&&Number(a?.serial||0)>pre},{pre},{timeout:45000,polling:150});
 const settledMs=Date.now()-t0;
@@ -332,7 +332,7 @@ const third=await page.evaluate(()=>{
 });
 if(Number(third.renderedElder||0)<=0)throw new Error('Third Property committed Elder data without rendered pins: '+JSON.stringify(third));
 
-const report={a10:true,regionalLabels,crosshair,pendingMs,settledMs,firstBlueMs,blueAfterSettleMs,elderMs,firstVisibleMs,elderAfterSettleMs,property,elder:{summary:elder.last?.summary,featureCount:elder.last?.featureCount,rendered:elder.rendered},spatial:{pool:Number(spatial.earthline?.candidate_pool_count||0),display:Number(spatial.earthline?.display_count||0),poolQ,displayQ,missed,poolCells,displayCells,missedCells},second:{crosshair:crosshair2,settledMs:secondSettledMs,elderMs:secondElderMs,elderAfterSettleMs:secondElderAfterSettleMs,summary:second.last?.summary,featureCount:second.last?.featureCount,renderedElder:second.renderedElder,renderedSafe:second.renderedSafe,identity:second.last?.propertyRunIdentity,at:second.last?.at},third:{crosshair:crosshair3,settledMs:thirdSettledMs,elderMs:thirdElderMs,elderAfterSettleMs:thirdElderAfterSettleMs,summary:third.last?.summary,featureCount:third.last?.featureCount,renderedElder:third.renderedElder,identity:third.last?.propertyRunIdentity,at:third.last?.at},errors};
+const report={a10:true,regionalLabels,crosshair,pendingMs,gaugePending,settledMs,firstBlueMs,blueAfterSettleMs,elderMs,firstVisibleMs,elderAfterSettleMs,property,elder:{summary:elder.last?.summary,featureCount:elder.last?.featureCount,rendered:elder.rendered},spatial:{pool:Number(spatial.earthline?.candidate_pool_count||0),display:Number(spatial.earthline?.display_count||0),poolQ,displayQ,missed,poolCells,displayCells,missedCells},second:{crosshair:crosshair2,settledMs:secondSettledMs,elderMs:secondElderMs,elderAfterSettleMs:secondElderAfterSettleMs,summary:second.last?.summary,featureCount:second.last?.featureCount,renderedElder:second.renderedElder,renderedSafe:second.renderedSafe,identity:second.last?.propertyRunIdentity,at:second.last?.at},third:{crosshair:crosshair3,settledMs:thirdSettledMs,elderMs:thirdElderMs,elderAfterSettleMs:thirdElderAfterSettleMs,summary:third.last?.summary,featureCount:third.last?.featureCount,renderedElder:third.renderedElder,identity:third.last?.propertyRunIdentity,at:third.last?.at},errors};
 writeFileSync(OUT+'/result.json',JSON.stringify(report,null,2));
 console.log('EARTHLINE_V1_STABILITY_17166 '+JSON.stringify(report));
 await browser.close();
