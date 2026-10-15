@@ -21,24 +21,29 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Apply browser-neutral jurisdiction index optimization
+      - name: Apply exact single-sort quantile optimization
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('index.html'); s=p.read_text(encoding='utf-8')
-          old='const scale16722=4,bins16722=new Map();'
-          new='const scale16722=64,bins16722=new Map(); /* EARTHLINE_BROWSER_STABILITY_17249 */'
-          assert s.count(old)==1, s.count(old)
-          s=s.replace(old,new,1)
-          # EARTHLINE_BROWSER_STABILITY_17251 — candidate-only refinement contours
-          # are consumed only as LineStrings by makeSwales. Suppress creation of
-          # contour-label Point features in those temporary calls; contour geometry,
-          # levels, ranking, clipping, safety and final publication are unchanged.
-          old_labels="if(labelable&&labelCount<84){"
-          new_labels="if(!candidateQuantile16609&&labelable&&labelCount<84){"
-          assert s.count(old_labels)==1, s.count(old_labels)
-          s=s.replace(old_labels,new_labels,1)
+          # EARTHLINE_BROWSER_STABILITY_17252 — exact single-sort quantiles.
+          # Existing percentile() sorts its full input on every call. makeContours
+          # can request 21 percentiles from the same elevation grid and makeSwales
+          # requests four from the same accumulation grid. Sort each immutable run
+          # input once per function call and use the identical floor-index rule.
+          old_contours="const min=percentile(hy.elev,0.02),max=percentile(hy.elev,0.98),range=Math.max(1,max-min),step=niceInterval(range,20),levels=[];"
+          new_contours="const elevSorted17252=[];for(let i17252=0;i17252<hy.elev.length;i17252++)if(Number.isFinite(hy.elev[i17252]))elevSorted17252.push(hy.elev[i17252]);elevSorted17252.sort((a17252,b17252)=>a17252-b17252);const elevQ17252=p17252=>elevSorted17252[Math.max(0,Math.min(elevSorted17252.length-1,Math.floor((elevSorted17252.length-1)*p17252)))]||0,min=elevQ17252(0.02),max=elevQ17252(0.98),range=Math.max(1,max-min),step=niceInterval(range,20),levels=[]; /* EARTHLINE_BROWSER_STABILITY_17252 */"
+          assert s.count(old_contours)==1, s.count(old_contours)
+          s=s.replace(old_contours,new_contours,1)
+          old_q="for(let qi16609=1;qi16609<20;qi16609++){const v16609=percentile(hy.elev,qi16609/20),k16609=Math.round(v16609*10)/10;"
+          new_q="for(let qi16609=1;qi16609<20;qi16609++){const v16609=elevQ17252(qi16609/20),k16609=Math.round(v16609*10)/10;"
+          assert s.count(old_q)==1, s.count(old_q)
+          s=s.replace(old_q,new_q,1)
+          old_swales="const channel=percentile(hy.acc,.972),accLow=percentile(hy.acc,.22),accMid=percentile(hy.acc,.72),accHigh=percentile(hy.acc,.91),candidates=[];"
+          new_swales="const accSorted17252=[];for(let i17252=0;i17252<hy.acc.length;i17252++)if(Number.isFinite(hy.acc[i17252]))accSorted17252.push(hy.acc[i17252]);accSorted17252.sort((a17252,b17252)=>a17252-b17252);const accQ17252=p17252=>accSorted17252[Math.max(0,Math.min(accSorted17252.length-1,Math.floor((accSorted17252.length-1)*p17252)))]||0,channel=accQ17252(.972),accLow=accQ17252(.22),accMid=accQ17252(.72),accHigh=accQ17252(.91),candidates=[];"
+          assert s.count(old_swales)==1, s.count(old_swales)
+          s=s.replace(old_swales,new_swales,1)
           p.write_text(s,encoding='utf-8')
           PY
       - name: Install browser
@@ -107,24 +112,29 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Apply browser-neutral jurisdiction index optimization
+      - name: Apply exact single-sort quantile optimization
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('index.html'); s=p.read_text(encoding='utf-8')
-          old='const scale16722=4,bins16722=new Map();'
-          new='const scale16722=64,bins16722=new Map(); /* EARTHLINE_BROWSER_STABILITY_17249 */'
-          assert s.count(old)==1, s.count(old)
-          s=s.replace(old,new,1)
-          # EARTHLINE_BROWSER_STABILITY_17251 — candidate-only refinement contours
-          # are consumed only as LineStrings by makeSwales. Suppress creation of
-          # contour-label Point features in those temporary calls; contour geometry,
-          # levels, ranking, clipping, safety and final publication are unchanged.
-          old_labels="if(labelable&&labelCount<84){"
-          new_labels="if(!candidateQuantile16609&&labelable&&labelCount<84){"
-          assert s.count(old_labels)==1, s.count(old_labels)
-          s=s.replace(old_labels,new_labels,1)
+          # EARTHLINE_BROWSER_STABILITY_17252 — exact single-sort quantiles.
+          # Existing percentile() sorts its full input on every call. makeContours
+          # can request 21 percentiles from the same elevation grid and makeSwales
+          # requests four from the same accumulation grid. Sort each immutable run
+          # input once per function call and use the identical floor-index rule.
+          old_contours="const min=percentile(hy.elev,0.02),max=percentile(hy.elev,0.98),range=Math.max(1,max-min),step=niceInterval(range,20),levels=[];"
+          new_contours="const elevSorted17252=[];for(let i17252=0;i17252<hy.elev.length;i17252++)if(Number.isFinite(hy.elev[i17252]))elevSorted17252.push(hy.elev[i17252]);elevSorted17252.sort((a17252,b17252)=>a17252-b17252);const elevQ17252=p17252=>elevSorted17252[Math.max(0,Math.min(elevSorted17252.length-1,Math.floor((elevSorted17252.length-1)*p17252)))]||0,min=elevQ17252(0.02),max=elevQ17252(0.98),range=Math.max(1,max-min),step=niceInterval(range,20),levels=[]; /* EARTHLINE_BROWSER_STABILITY_17252 */"
+          assert s.count(old_contours)==1, s.count(old_contours)
+          s=s.replace(old_contours,new_contours,1)
+          old_q="for(let qi16609=1;qi16609<20;qi16609++){const v16609=percentile(hy.elev,qi16609/20),k16609=Math.round(v16609*10)/10;"
+          new_q="for(let qi16609=1;qi16609<20;qi16609++){const v16609=elevQ17252(qi16609/20),k16609=Math.round(v16609*10)/10;"
+          assert s.count(old_q)==1, s.count(old_q)
+          s=s.replace(old_q,new_q,1)
+          old_swales="const channel=percentile(hy.acc,.972),accLow=percentile(hy.acc,.22),accMid=percentile(hy.acc,.72),accHigh=percentile(hy.acc,.91),candidates=[];"
+          new_swales="const accSorted17252=[];for(let i17252=0;i17252<hy.acc.length;i17252++)if(Number.isFinite(hy.acc[i17252]))accSorted17252.push(hy.acc[i17252]);accSorted17252.sort((a17252,b17252)=>a17252-b17252);const accQ17252=p17252=>accSorted17252[Math.max(0,Math.min(accSorted17252.length-1,Math.floor((accSorted17252.length-1)*p17252)))]||0,channel=accQ17252(.972),accLow=accQ17252(.22),accMid=accQ17252(.72),accHigh=accQ17252(.91),candidates=[];"
+          assert s.count(old_swales)==1, s.count(old_swales)
+          s=s.replace(old_swales,new_swales,1)
           p.write_text(s,encoding='utf-8')
           PY
       - name: Install WebKit
