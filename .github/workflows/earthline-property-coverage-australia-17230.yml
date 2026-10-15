@@ -1,0 +1,35 @@
+name: Earthline Property Coverage Australia 17230
+on:
+  push:
+    branches: [repair/v1-property-coverage-17223]
+    paths:
+      - 'tests/property-coverage-australia-17230.mjs'
+      - '.github/workflows/earthline-property-coverage-australia-17230.yml'
+      - 'index.html'
+      - 'earthline-launch-16872.js'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-coverage-17223
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run exact Australia Property coverage comparison
+        run: node tests/property-coverage-australia-17230.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-property-coverage-australia-17230
+          path: artifacts/property-coverage-australia-17230/
+          if-no-files-found: warn
