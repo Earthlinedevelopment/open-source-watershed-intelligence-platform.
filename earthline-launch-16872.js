@@ -1790,19 +1790,33 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   }
   function hash(){if(location.hash==='#swales-explained')howParagraph()}
   let propertyPrimeTimer17212=0,propertyPrimeToken17212=0;
-  function schedulePropertyPrime17212(){
+  function beginPropertyElderState17216(){
     const b=propertyBounds17166(),identity=propertyRunIdentity17166(b);
-    if(!b||!identity)return false;
-    const token=++propertyPrimeToken17212;
+    if(!b||!identity)return null;
+    state.active=[];state.lastSummary=null;
+    publishMap([]);
+    const gauge=document.getElementById('earthlineElderTreesGauge17097');
+    if(gauge)gauge.textContent='Elder Trees: analyzing Property canopy…';
+    window.EARTHLINE_ELDER_TREE_LAST_17097={
+      state:'property-pending',propertyRunIdentity:identity,
+      summary:null,featureCount:0,dynamicCandidatePoolCount:0,dynamicError:null,
+      at:new Date().toISOString()
+    };
+    return {b,identity};
+  } /* EARTHLINE_ELDER_IMMEDIATE_REPEAT_OWNERSHIP_17216 */
+  function schedulePropertyPrime17212(){
+    const started=beginPropertyElderState17216();
+    if(!started)return false;
+    const {identity}=started,token=++propertyPrimeToken17212;
     clearTimeout(propertyPrimeTimer17212);
     propertyPrimeTimer17212=setTimeout(()=>{
       if(token!==propertyPrimeToken17212)return;
       const nowB=propertyBounds17166();
       if(propertyRunIdentity17166(nowB)!==identity)return;
-      void dynamicPropertyEvidence(true);
-    },3500);
+      void startProperty17166();
+    },1200);
     return true;
-  } /* EARTHLINE_ELDER_STAGGERED_PROPERTY_PRIME_17212 */
+  } /* EARTHLINE_ELDER_STAGGERED_PROPERTY_PRIME_17216 */
   function install(){
     wrapCorridor();
     document.addEventListener('pointerdown',e=>{
