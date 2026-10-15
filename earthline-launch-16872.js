@@ -2001,3 +2001,41 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   },{passive:true});
   window.EARTHLINE_CROSSHAIR_MOVE_HINT_17093={state:'ready',show,remove,showAfterEveryRegional:true};
 })();
+
+
+/* EARTHLINE_CROSS_BROWSER_SEARCH_HANDOFF_17240
+   Browser-compatibility repair only.
+   Suppresses the redundant globe projection forced at the start of a location handoff.
+   The existing projection owner still selects globe for planetary overview and Mercator
+   for Regional/Property analysis. No hydrology, ranking, exclusions, Property science,
+   swale geometry, scoring, report, logo, Search Orb, or state-specific behavior changes. */
+(function installEarthlineCrossBrowserSearchHandoff17240(){
+  'use strict';
+  if(window.EARTHLINE_CROSS_BROWSER_SEARCH_HANDOFF_17240)return;
+  const original=window.earthlineSetMapView;
+  const proto=window.mapboxgl&&window.mapboxgl.Map&&window.mapboxgl.Map.prototype;
+  if(typeof original!=='function'||!proto||typeof proto.setProjection!=='function'){
+    window.EARTHLINE_CROSS_BROWSER_SEARCH_HANDOFF_17240={installed:false,reason:'owner-unavailable'};
+    return;
+  }
+  const nativeSetProjection=proto.setProjection;
+  let suppressNextGlobe=false;
+  proto.setProjection=function(p,...rest){
+    const name=(typeof p==='string')?p:(p&&p.name);
+    if(suppressNextGlobe&&name==='globe'){
+      suppressNextGlobe=false;
+      return this;
+    }
+    return nativeSetProjection.call(this,p,...rest);
+  };
+  window.earthlineSetMapView=function(loc){
+    suppressNextGlobe=true;
+    try{return original.call(this,loc);}
+    finally{suppressNextGlobe=false;}
+  };
+  window.EARTHLINE_CROSS_BROWSER_SEARCH_HANDOFF_17240={
+    installed:true,
+    scope:'search-handoff-projection-only',
+    at:new Date().toISOString()
+  };
+})();
