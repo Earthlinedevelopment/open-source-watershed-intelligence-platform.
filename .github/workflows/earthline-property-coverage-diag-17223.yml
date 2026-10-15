@@ -14,26 +14,38 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: repair/v1-property-coverage-17223
-      - name: Inspect Property grid, boundary, and prescription extent
+      - name: Extract exact Property extent code
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
-          terms=[
-            'M.inP','inP=new','inP = new','GW=','GH=','const GW','let GW',
-            'analysisBoundaryLngLat=','analysisBoundaryLngLat =',
-            'propertyBoundary','propertyGrid','gridW','gridH','cellM',
-            'seedCandidatesForLevel','prescribe','authoritativeSafeSwales15815=',
-            'safeSwales15815=','buildProperty','20*4046','4046.856','80937'
+          needles=[
+            'requestedCellM=',
+            'requestedCellM =',
+            'M.requestedCellM',
+            'M.inP=',
+            'M.inP =',
+            'analysisBoundaryLngLat=[',
+            'analysisBoundaryLngLat = [',
+            'Math.sqrt(areaM2*1.15)',
+            'wM=Math.sqrt',
+            'hM=areaM2/wM',
+            'GW*.82',
+            'GH*.82',
+            'inP[i]',
+            'inP[idx',
+            'pointIn',
+            'analysisBoundary'
           ]
-          for term in terms:
-              print('\n===== '+term+' =====')
-              start=0; shown=0
-              while shown<8:
-                  p=s.find(term,start)
+          for needle in needles:
+              print('\n===== '+needle+' =====')
+              pos=[]; start=0
+              while True:
+                  p=s.find(needle,start)
                   if p<0: break
-                  block=s[max(0,p-2200):p+7200]
-                  print('\n--- hit',shown,'at',p,'---\n',block[:9400])
-                  start=p+len(term); shown+=1
+                  pos.append(p);start=p+len(needle)
+              print('count',len(pos),'positions',pos[:20])
+              for p in pos[:12]:
+                  print('\n---',p,'---\n'+s[max(0,p-1300):p+3200])
           PY
