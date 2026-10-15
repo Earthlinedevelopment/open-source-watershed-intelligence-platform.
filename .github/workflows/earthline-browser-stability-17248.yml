@@ -42,7 +42,7 @@ jobs:
       - name: Create browser gate
         shell: bash
         run: |
-          cat > /tmp/earthline-browser-17248.mjs <<'JS'
+          cat > earthline-browser-17248.mjs <<'JS'
           import { chromium, firefox } from 'playwright';
           import { readFileSync,existsSync,statSync } from 'node:fs';
           import { resolve,extname } from 'node:path';
@@ -85,9 +85,9 @@ jobs:
           BROWSER: ${{ matrix.browser }}
         run: |
           if [ "$BROWSER" = "firefox" ]; then
-            xvfb-run -a node /tmp/earthline-browser-17248.mjs
+            xvfb-run -a node earthline-browser-17248.mjs
           else
-            node /tmp/earthline-browser-17248.mjs
+            node earthline-browser-17248.mjs
           fi
 
   webkit-macos:
@@ -117,7 +117,7 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PY'
-          p='/tmp/earthline-browser-17248.mjs'
+          p='earthline-browser-17248.mjs'
           src=open('.github/workflows/earthline-browser-stability-17248.yml',encoding='utf-8').read()
           start=src.index("          import { chromium, firefox } from 'playwright';")
           end=src.index("          JS",start)
@@ -126,4 +126,4 @@ jobs:
           open(p,'w',encoding='utf-8').write(js)
           PY
       - name: Run WebKit gate
-        run: node /tmp/earthline-browser-17248.mjs
+        run: node earthline-browser-17248.mjs
