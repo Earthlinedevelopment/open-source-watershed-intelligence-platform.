@@ -54,6 +54,12 @@ for(const query of STATES){
     root:window.EARTHLINE_STANDARD_ROOT_CAUSE_AUDIT_16784||null,
     spread:window.EARTHLINE_FINAL_PUBLISHED_SPREAD_16783||null,
     fine:window.EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16781||null,
+    scaleRefined:window.EARTHLINE_SCALE_REFINED_INPUT_16702||null,
+    terrainGap:window.EARTHLINE_TERRAIN_GAP_REFINEMENT_16730||null,
+    supertile:window.EARTHLINE_STATEWIDE_SUPERTILE_16839||null,
+    coverageGap:window.EARTHLINE_COVERAGE_GAP_REFINEMENT_16731||null,
+    lateGap:window.EARTHLINE_LATE_GAP_REFINEMENT_16741||null,
+    orb:window.EARTHLINE_ORB_RESPONSIVENESS_16245||null,
     lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,
     status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim()
   }));
@@ -76,6 +82,23 @@ for(const query of STATES){
     hardRootFail,lineage:a?.root?.cellLineage??null,candidateCells:a?.spread?.candidateCells??null,
     selectedCells:a?.spread?.finalCells??null,targetCells:a?.spread?.targetCells??null,
     refinementSelected:a?.fine?.selected?.length??null,refinementAdded:a?.fine?.added??null,
+    refinementTiming:{
+      scaleRefinedMs:a?.scaleRefined?.elapsedMs??null,
+      terrainGapMs:a?.terrainGap?.elapsedMs??null,
+      supertileMs:a?.supertile?.elapsedMs??null,
+      fineMs:a?.fine?.elapsedMs??null,
+      coverageGapMs:a?.coverageGap?.elapsedMs??null,
+      lateGapMs:a?.lateGap?.elapsedMs??null,
+      productsBeforeFlowMs:a?.orb?.productsMs??null
+    },
+    refinementFlags:{
+      scaleRefined:a?.scaleRefined||null,
+      terrainGap:a?.terrainGap||null,
+      supertile:a?.supertile||null,
+      fine:a?.fine||null,
+      coverageGap:a?.coverageGap||null,
+      lateGap:a?.lateGap||null
+    },
     landAcquisition:a?.land?.acquisitionResult??null,lastError:a?.lastError||null,status:a?.status||''
   };
   results.push(row);
