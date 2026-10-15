@@ -1,4 +1,4 @@
-name: Earthline Seven-State Cross-Browser Gate 17236
+name: Earthline Seven-State Cross-Browser Gate 17237
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
@@ -9,11 +9,7 @@ on:
 permissions:
   contents: read
 jobs:
-  browser-gate:
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: [chromium, firefox, webkit]
+  chromium:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -23,34 +19,81 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install Playwright browser engines
+      - name: Install Chromium
         run: |
           npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium firefox webkit
-      - name: Run seven rollout states in ${{ matrix.browser }}
+          npx playwright install --with-deps chromium
+      - name: Run seven rollout states in Chromium
         shell: bash
         run: |
           set +e
           EARTHLINE_URL='https://earthlinedevelopment.org/' \
-          BROWSER='${{ matrix.browser }}' \
+          BROWSER='chromium' \
+          HEADLESS='true' \
           STATES='Arizona|New Mexico|Colorado|Texas|California|Vermont|New York' \
-          OUT='property-rollout-${{ matrix.browser }}-17236.json' \
+          OUT='property-rollout-chromium-17237.json' \
           node lab/validate-16728-property-50states.mjs
           code=$?
-          echo "$code" > 'property-rollout-${{ matrix.browser }}-17236.exit'
-          cat 'property-rollout-${{ matrix.browser }}-17236.json'
+          echo "$code" > property-rollout-chromium-17237.exit
+          cat property-rollout-chromium-17237.json
           exit 0
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: earthline-seven-state-${{ matrix.browser }}-17236
+          name: earthline-seven-state-chromium-17237
           path: |
-            property-rollout-${{ matrix.browser }}-17236.json
-            property-rollout-${{ matrix.browser }}-17236.exit
+            property-rollout-chromium-17237.json
+            property-rollout-chromium-17237.exit
           if-no-files-found: error
-      - name: Enforce browser gate
+      - name: Enforce Chromium gate
         if: always()
+        run: test "$(cat property-rollout-chromium-17237.exit)" = "0"
+
+  headed-engines:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-coverage-17223
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install ${{ matrix.browser }} and Xvfb
         shell: bash
         run: |
-          test -f 'property-rollout-${{ matrix.browser }}-17236.exit'
-          test "$(cat 'property-rollout-${{ matrix.browser }}-17236.exit')" = "0"
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps '${{ matrix.browser }}'
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+      - name: Run seven rollout states in headed ${{ matrix.browser }}
+        shell: bash
+        run: |
+          set +e
+          xvfb-run -a env \
+          EARTHLINE_URL='https://earthlinedevelopment.org/' \
+          BROWSER='${{ matrix.browser }}' \
+          HEADLESS='false' \
+          STATES='Arizona|New Mexico|Colorado|Texas|California|Vermont|New York' \
+          OUT='property-rollout-${{ matrix.browser }}-headed-17237.json' \
+          node lab/validate-16728-property-50states.mjs
+          code=$?
+          echo "$code" > 'property-rollout-${{ matrix.browser }}-headed-17237.exit'
+          cat 'property-rollout-${{ matrix.browser }}-headed-17237.json'
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-seven-state-${{ matrix.browser }}-headed-17237
+          path: |
+            property-rollout-${{ matrix.browser }}-headed-17237.json
+            property-rollout-${{ matrix.browser }}-headed-17237.exit
+          if-no-files-found: error
+      - name: Enforce headed browser gate
+        if: always()
+        shell: bash
+        run: test "$(cat 'property-rollout-${{ matrix.browser }}-headed-17237.exit')" = "0"
