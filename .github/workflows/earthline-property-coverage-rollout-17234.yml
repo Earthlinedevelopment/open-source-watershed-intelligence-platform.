@@ -1,0 +1,61 @@
+name: Earthline Property Coverage Rollout 17234
+on:
+  push:
+    branches: [repair/v1-property-coverage-17223]
+    paths:
+      - 'index.html'
+      - 'earthline-launch-16872.js'
+      - 'lab/validate-16728-property-50states.mjs'
+      - '.github/workflows/earthline-property-coverage-rollout-17234.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rollout-nine:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-coverage-17223
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Serve isolated repair branch
+        shell: bash
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-17234-http.log 2>&1 &
+          echo $! >/tmp/earthline-17234-http.pid
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/earthline-17234-http.log || true
+          exit 1
+      - name: Run nine rollout-state Property regression
+        shell: bash
+        run: |
+          set +e
+          EARTHLINE_URL='http://127.0.0.1:8787/'           STATES='Texas|Vermont|New York|Arkansas|Iowa|Oklahoma|Colorado|Maryland|California'           OUT='property-rollout-17234.json'           node lab/validate-16728-property-50states.mjs
+          code=$?
+          echo "$code" > property-rollout-17234.exit
+          cat property-rollout-17234.json
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-property-rollout-17234
+          path: |
+            property-rollout-17234.json
+            property-rollout-17234.exit
+          if-no-files-found: error
+      - name: Enforce rollout gate
+        if: always()
+        shell: bash
+        run: |
+          test -f property-rollout-17234.exit
+          test "$(cat property-rollout-17234.exit)" = "0"
