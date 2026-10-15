@@ -1,0 +1,59 @@
+name: Earthline Seven-State Browser Regional 17238
+on:
+  push:
+    branches: [repair/v1-browser-compat-17238]
+    paths:
+      - 'index.html'
+      - 'tests/browser-seven-regional-17238.mjs'
+      - '.github/workflows/earthline-browser-seven-regional-17238.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-browser-compat-17238
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browser engine
+        shell: bash
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps '${{ matrix.browser }}'
+          if [ '${{ matrix.browser }}' != 'chromium' ]; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+      - name: Serve browser candidate
+        shell: bash
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-browser17238.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/earthline-browser17238.log || true
+          exit 1
+      - name: Run seven-state browser gate
+        shell: bash
+        run: |
+          if [ '${{ matrix.browser }}' = 'chromium' ]; then
+            env BROWSER='${{ matrix.browser }}' HEADLESS='true' EARTHLINE_URL='http://127.0.0.1:8787/' OUT='browser-${{ matrix.browser }}-17238.json' node tests/browser-seven-regional-17238.mjs
+          else
+            xvfb-run -a env BROWSER='${{ matrix.browser }}' HEADLESS='false' EARTHLINE_URL='http://127.0.0.1:8787/' OUT='browser-${{ matrix.browser }}-17238.json' node tests/browser-seven-regional-17238.mjs
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-browser-${{ matrix.browser }}-17238
+          path: browser-${{ matrix.browser }}-17238.json
+          if-no-files-found: warn
