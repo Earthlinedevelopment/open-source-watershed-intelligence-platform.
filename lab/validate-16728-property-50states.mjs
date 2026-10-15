@@ -107,7 +107,8 @@ async function snap(page){
       safeVisible:sv?.visible===true,safeCount:Number(sv?.count||0),
       integrity:window.EARTHLINE_LOCATION_INTEGRITY_15801||null,
       reclaim:window.EARTHLINE_PROPERTY_DISPLAY_RECLAIM_16727||null,
-      timeoutAudit:window.EARTHLINE_PROPERTY_TIMEOUT_AUDIT_16178||null
+      timeoutAudit:window.EARTHLINE_PROPERTY_TIMEOUT_AUDIT_16178||null,
+      regionalPerf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null
     };
   });
 }
