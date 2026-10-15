@@ -8,7 +8,10 @@ if(!STATES.length)throw new Error('STATES required');
 const BROWSER=(process.env.BROWSER||'chromium').toLowerCase();
 const HEADLESS=!/^(0|false|no)$/i.test(String(process.env.HEADLESS||'true'));
 const browserType=BROWSER==='firefox'?firefox:BROWSER==='webkit'?webkit:chromium;
-const browser=await browserType.launch({headless:HEADLESS});
+const launchOptions={headless:HEADLESS};
+if(BROWSER==='chrome')launchOptions.channel='chrome';
+if(BROWSER==='edge'||BROWSER==='msedge')launchOptions.channel='msedge';
+const browser=await browserType.launch(launchOptions);
 const rows=[];
 
 async function runRegional(page,stateName){
