@@ -1,0 +1,42 @@
+name: Earthline Browser Source Diagnostic 17253
+on:
+  push:
+    branches: [repair/v1-browser-stability-17248]
+    paths:
+      - '.github/workflows/earthline-browser-source-diagnostic-17253.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Extract Regional refinement dependency graph
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          terms=[
+            'supplementalCandidates16702',
+            'EARTHLINE_STATEWIDE_SUPERTILE_16839',
+            'EARTHLINE_SCALE_REFINED_INPUT_16702',
+            'EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16781',
+            'EARTHLINE_COVERAGE_GAP_REFINEMENT_16731',
+            'terrainProductsAndPublishMs',
+            'makeSwales(hy',
+            'makeContours(hy'
+          ]
+          for term in terms:
+            print('\n### '+term)
+            start=0
+            for n in range(6):
+              p=s.find(term,start)
+              if p<0: break
+              print('\n===== @ '+str(p)+' =====\n')
+              print(s[max(0,p-14000):p+42000])
+              start=p+len(term)
+          PY
