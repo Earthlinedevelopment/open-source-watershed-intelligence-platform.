@@ -35,6 +35,8 @@ async function runRegional(page,stateName){
   },stateName,{timeout:60000,polling:100});
   const err=await page.evaluate(()=>window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null);
   if(err)throw new Error('regional '+JSON.stringify(err));
+  const regionalPerf=await page.evaluate(()=>({perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,camera:window.EARTHLINE_REGIONAL_CAMERA_SETTLE_AUDIT_16334||null,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim()}));
+  window.__earthlineLastRegionalDiag=regionalPerf;
   return Date.now()-started;
 }
 
@@ -121,7 +123,8 @@ for(const stateName of STATES){
   if(s.integrity&&s.integrity.ok!==true)failures.push('location integrity '+JSON.stringify(s.integrity.reasons||[]));
   if(s.timeoutAudit)failures.push('Property timeout audit present');
   if(propertyMs!=null&&propertyMs>55000)failures.push('Property wall '+propertyMs);
-  rows.push({state:stateName,elapsedMs:Date.now()-started,regionalMs,propertyMs,usedTarget,attempts,snap:s,failures,pass:failures.length===0});
+  const regionalDiag=await page.evaluate(()=>window.__earthlineLastRegionalDiag||{perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,camera:window.EARTHLINE_REGIONAL_CAMERA_SETTLE_AUDIT_16334||null,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim()}).catch(()=>null);
+  rows.push({state:stateName,elapsedMs:Date.now()-started,regionalMs,propertyMs,usedTarget,attempts,regionalDiag,snap:s,failures,pass:failures.length===0});
   await page.close();
 }
 await browser.close();
