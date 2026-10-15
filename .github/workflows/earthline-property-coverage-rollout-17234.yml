@@ -1,9 +1,9 @@
-name: Earthline Browser-Neutral Yield Candidate 17252
+name: Earthline Exact Ring Index Sweep 17255
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
     paths:
-      - 'tests/apply-fast-yield-17252.py'
+      - 'tests/apply-ring-scale-17255.py'
       - '.github/workflows/earthline-property-coverage-rollout-17234.yml'
   workflow_dispatch:
 
@@ -11,11 +11,12 @@ permissions:
   contents: read
 
 jobs:
-  linux-engines:
+  linux:
     strategy:
       fail-fast: false
       matrix:
         browser: [chromium, firefox]
+        scale: [256, 1024]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -25,8 +26,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Apply shared scheduling repair candidate
-        run: python3 tests/apply-fast-yield-17252.py
+      - name: Apply exact ring index only
+        run: RING_SCALE='${{ matrix.scale }}' python3 tests/apply-ring-scale-17255.py
       - name: Install browser
         shell: bash
         run: |
@@ -38,21 +39,22 @@ jobs:
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
           exit 1
-      - name: Run Texas and Vermont twice
+      - name: Texas/Vermont exact-semantics regression
         shell: bash
         run: |
-          for rep in 1 2; do
-            rm -rf artifacts/mantra46-16791-50state
-            if [ '${{ matrix.browser }}' = 'firefox' ]; then
-              xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' WAIT_MS='120000' STATES='Texas|Vermont' OUT="yield17252-firefox-${rep}.json" node tests/mantra46-16791-50state-production.mjs
-            else
-              env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='chromium' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' OUT="yield17252-chromium-${rep}.json" node tests/mantra46-16791-50state-production.mjs
-            fi
-          done
+          if [ '${{ matrix.browser }}' = 'firefox' ]; then
+            xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
+          else
+            env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='chromium' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
+          fi
 
-  webkit-macos:
+  webkit:
+    strategy:
+      fail-fast: false
+      matrix:
+        scale: [256, 1024]
     runs-on: macos-14
-    timeout-minutes: 25
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -60,8 +62,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Apply shared scheduling repair candidate
-        run: python3 tests/apply-fast-yield-17252.py
+      - name: Apply exact ring index only
+        run: RING_SCALE='${{ matrix.scale }}' python3 tests/apply-ring-scale-17255.py
       - name: Install WebKit
         run: |
           npm install --no-save playwright@1.55.0
@@ -72,10 +74,5 @@ jobs:
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
           exit 1
-      - name: Run Texas and Vermont twice
-        shell: bash
-        run: |
-          for rep in 1 2; do
-            rm -rf artifacts/mantra46-16791-50state
-            env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' OUT="yield17252-webkit-${rep}.json" node tests/mantra46-16791-50state-production.mjs
-          done
+      - name: Texas/Vermont exact-semantics regression
+        run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
