@@ -1,4 +1,4 @@
-name: Earthline Cross-Browser Refinement A-B 17243
+name: Earthline Exact Clip Fast-Path A-B 17244
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
@@ -23,27 +23,59 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Apply isolated cross-browser refinement repair
+      - name: Apply exact boundary-clip fast path
         shell: bash
         run: |
           python3 - <<'PY'
           p='index.html'
           s=open(p,encoding='utf-8').read()
-          old="async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();return new Promise(r=>setTimeout(r,0));}"
-          new="async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();return Promise.resolve();}"
-          assert old in s
-          s=s.replace(old,new,1)
-          local_calls=[
-            "makeSwales(h16702,c16702,false,swaleJurisdictionGeometry16539,null)",
-            "makeSwales(h16730,c16730,false,swaleJurisdictionGeometry16539,null)",
-            "makeSwales(sub16839,c16839,false,swaleJurisdictionGeometry16539,null)",
-            "makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null)",
-            "makeSwales(h16731,c16731,false,swaleJurisdictionGeometry16539,null)",
-            "makeSwales(h16741,c16741,false,swaleJurisdictionGeometry16539,null)"
-          ]
-          for call in local_calls:
-            assert call in s, call
-            s=s.replace(call,call.replace("swaleJurisdictionGeometry16539","null"),1)
+          old_yield="async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();return new Promise(r=>setTimeout(r,0));}"
+          new_yield="async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();return Promise.resolve();}"
+          assert old_yield in s
+          s=s.replace(old_yield,new_yield,1)
+          start=s.index("  function earthlineClipLine16539(coords,g){")
+          end=s.index("  async function earthlineClipFeatureCollection16539",start)
+          old=s[start:end]
+          new=r'''  const earthlineBoundaryEdgeGrid17244=new WeakMap();
+  function earthlineBoundaryEdgeIndex17244(g){
+    const prepared=earthlinePrepareJurisdiction16539(g);if(!prepared)return null;
+    let idx=earthlineBoundaryEdgeGrid17244.get(prepared);if(idx)return idx;
+    const scale=8,cells=new Map();let edgeId=0;
+    const addRing=ring=>{
+      if(!Array.isArray(ring)||ring.length<2)return;
+      for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+        const a=ring[j],b=ring[i];if(!earthlineFinitePoint16539(a)||!earthlineFinitePoint16539(b))continue;
+        const minX=Math.min(Number(a[0]),Number(b[0])),maxX=Math.max(Number(a[0]),Number(b[0])),minY=Math.min(Number(a[1]),Number(b[1])),maxY=Math.max(Number(a[1]),Number(b[1]));
+        const edge={id:edgeId++,minX,maxX,minY,maxY};
+        const x0=Math.floor(minX*scale),x1=Math.floor(maxX*scale),y0=Math.floor(minY*scale),y1=Math.floor(maxY*scale);
+        for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const k=x+','+y;let list=cells.get(k);if(!list)cells.set(k,list=[]);list.push(edge);}
+      }
+    };
+    for(const poly of prepared.polygons||[]){addRing(poly.outer);for(const h of poly.holes||[])addRing(h.ring);}
+    idx={scale,cells};earthlineBoundaryEdgeGrid17244.set(prepared,idx);return idx;
+  }
+  function earthlineLineMayTouchBoundary17244(raw,g){
+    const idx=earthlineBoundaryEdgeIndex17244(g);if(!idx)return true;
+    for(let i=1;i<raw.length;i++){
+      const a=raw[i-1],b=raw[i],minX=Math.min(Number(a[0]),Number(b[0])),maxX=Math.max(Number(a[0]),Number(b[0])),minY=Math.min(Number(a[1]),Number(b[1])),maxY=Math.max(Number(a[1]),Number(b[1]));
+      const x0=Math.floor(minX*idx.scale),x1=Math.floor(maxX*idx.scale),y0=Math.floor(minY*idx.scale),y1=Math.floor(maxY*idx.scale),seen=new Set();
+      for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)for(const edge of (idx.cells.get(x+','+y)||[])){
+        if(seen.has(edge.id))continue;seen.add(edge.id);
+        if(edge.maxX>=minX&&edge.minX<=maxX&&edge.maxY>=minY&&edge.minY<=maxY)return true;
+      }
+    }
+    return false;
+  }
+  function earthlineClipLine16539(coords,g){
+    const raw=(coords||[]).filter(earthlineFinitePoint16539);if(raw.length<2)return [];
+    const pts=[raw[0]];for(let i=1;i<raw.length;i++){const a=raw[i-1],b=raw[i],steps=Math.max(1,Math.ceil(Math.max(Math.abs(Number(b[0])-Number(a[0])),Math.abs(Number(b[1])-Number(a[1])))/.01));for(let k=1;k<=steps;k++)pts.push(earthlineInterpolate16539(a,b,k/steps));}
+    if(!earthlineLineMayTouchBoundary17244(raw,g))return earthlinePointInJurisdiction16539(raw[0],g)?[pts]:[];
+    const runs=[];let run=[];let prev=pts[0],prevIn=earthlinePointInJurisdiction16539(prev,g);if(prevIn)run=[prev];
+    for(let i=1;i<pts.length;i++){const cur=pts[i],curIn=earthlinePointInJurisdiction16539(cur,g);if(prevIn&&curIn){if(!run.length)run=[prev];run.push(cur)}else if(prevIn&&!curIn){const x=earthlineBoundaryPoint16539(prev,cur,g,true);if(!run.length)run=[prev];run.push(x);if(run.length>=2)runs.push(run);run=[]}else if(!prevIn&&curIn){const x=earthlineBoundaryPoint16539(prev,cur,g,false);run=[x,cur]}prev=cur;prevIn=curIn;}
+    if(run.length>=2)runs.push(run);return runs;
+  }
+'''
+          s=s[:start]+new+s[end:]
           open(p,'w',encoding='utf-8').write(s)
           PY
       - name: Install browser
@@ -68,7 +100,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: browser17243-${{ matrix.browser }}
+          name: clip17244-${{ matrix.browser }}
           path: artifacts/mantra46-16791-50state/
           if-no-files-found: warn
 
@@ -82,27 +114,59 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Apply isolated cross-browser refinement repair
+      - name: Apply exact boundary-clip fast path
         shell: bash
         run: |
           python3 - <<'PY'
           p='index.html'
           s=open(p,encoding='utf-8').read()
-          old="async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();return new Promise(r=>setTimeout(r,0));}"
-          new="async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();return Promise.resolve();}"
-          assert old in s
-          s=s.replace(old,new,1)
-          local_calls=[
-            "makeSwales(h16702,c16702,false,swaleJurisdictionGeometry16539,null)",
-            "makeSwales(h16730,c16730,false,swaleJurisdictionGeometry16539,null)",
-            "makeSwales(sub16839,c16839,false,swaleJurisdictionGeometry16539,null)",
-            "makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null)",
-            "makeSwales(h16731,c16731,false,swaleJurisdictionGeometry16539,null)",
-            "makeSwales(h16741,c16741,false,swaleJurisdictionGeometry16539,null)"
-          ]
-          for call in local_calls:
-            assert call in s, call
-            s=s.replace(call,call.replace("swaleJurisdictionGeometry16539","null"),1)
+          old_yield="async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();return new Promise(r=>setTimeout(r,0));}"
+          new_yield="async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();return Promise.resolve();}"
+          assert old_yield in s
+          s=s.replace(old_yield,new_yield,1)
+          start=s.index("  function earthlineClipLine16539(coords,g){")
+          end=s.index("  async function earthlineClipFeatureCollection16539",start)
+          old=s[start:end]
+          new=r'''  const earthlineBoundaryEdgeGrid17244=new WeakMap();
+  function earthlineBoundaryEdgeIndex17244(g){
+    const prepared=earthlinePrepareJurisdiction16539(g);if(!prepared)return null;
+    let idx=earthlineBoundaryEdgeGrid17244.get(prepared);if(idx)return idx;
+    const scale=8,cells=new Map();let edgeId=0;
+    const addRing=ring=>{
+      if(!Array.isArray(ring)||ring.length<2)return;
+      for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+        const a=ring[j],b=ring[i];if(!earthlineFinitePoint16539(a)||!earthlineFinitePoint16539(b))continue;
+        const minX=Math.min(Number(a[0]),Number(b[0])),maxX=Math.max(Number(a[0]),Number(b[0])),minY=Math.min(Number(a[1]),Number(b[1])),maxY=Math.max(Number(a[1]),Number(b[1]));
+        const edge={id:edgeId++,minX,maxX,minY,maxY};
+        const x0=Math.floor(minX*scale),x1=Math.floor(maxX*scale),y0=Math.floor(minY*scale),y1=Math.floor(maxY*scale);
+        for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const k=x+','+y;let list=cells.get(k);if(!list)cells.set(k,list=[]);list.push(edge);}
+      }
+    };
+    for(const poly of prepared.polygons||[]){addRing(poly.outer);for(const h of poly.holes||[])addRing(h.ring);}
+    idx={scale,cells};earthlineBoundaryEdgeGrid17244.set(prepared,idx);return idx;
+  }
+  function earthlineLineMayTouchBoundary17244(raw,g){
+    const idx=earthlineBoundaryEdgeIndex17244(g);if(!idx)return true;
+    for(let i=1;i<raw.length;i++){
+      const a=raw[i-1],b=raw[i],minX=Math.min(Number(a[0]),Number(b[0])),maxX=Math.max(Number(a[0]),Number(b[0])),minY=Math.min(Number(a[1]),Number(b[1])),maxY=Math.max(Number(a[1]),Number(b[1]));
+      const x0=Math.floor(minX*idx.scale),x1=Math.floor(maxX*idx.scale),y0=Math.floor(minY*idx.scale),y1=Math.floor(maxY*idx.scale),seen=new Set();
+      for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)for(const edge of (idx.cells.get(x+','+y)||[])){
+        if(seen.has(edge.id))continue;seen.add(edge.id);
+        if(edge.maxX>=minX&&edge.minX<=maxX&&edge.maxY>=minY&&edge.minY<=maxY)return true;
+      }
+    }
+    return false;
+  }
+  function earthlineClipLine16539(coords,g){
+    const raw=(coords||[]).filter(earthlineFinitePoint16539);if(raw.length<2)return [];
+    const pts=[raw[0]];for(let i=1;i<raw.length;i++){const a=raw[i-1],b=raw[i],steps=Math.max(1,Math.ceil(Math.max(Math.abs(Number(b[0])-Number(a[0])),Math.abs(Number(b[1])-Number(a[1])))/.01));for(let k=1;k<=steps;k++)pts.push(earthlineInterpolate16539(a,b,k/steps));}
+    if(!earthlineLineMayTouchBoundary17244(raw,g))return earthlinePointInJurisdiction16539(raw[0],g)?[pts]:[];
+    const runs=[];let run=[];let prev=pts[0],prevIn=earthlinePointInJurisdiction16539(prev,g);if(prevIn)run=[prev];
+    for(let i=1;i<pts.length;i++){const cur=pts[i],curIn=earthlinePointInJurisdiction16539(cur,g);if(prevIn&&curIn){if(!run.length)run=[prev];run.push(cur)}else if(prevIn&&!curIn){const x=earthlineBoundaryPoint16539(prev,cur,g,true);if(!run.length)run=[prev];run.push(x);if(run.length>=2)runs.push(run);run=[]}else if(!prevIn&&curIn){const x=earthlineBoundaryPoint16539(prev,cur,g,false);run=[x,cur]}prev=cur;prevIn=curIn;}
+    if(run.length>=2)runs.push(run);return runs;
+  }
+'''
+          s=s[:start]+new+s[end:]
           open(p,'w',encoding='utf-8').write(s)
           PY
       - name: Install WebKit
@@ -120,6 +184,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: browser17243-webkit
+          name: clip17244-webkit
           path: artifacts/mantra46-16791-50state/
           if-no-files-found: warn
