@@ -14,25 +14,26 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: repair/v1-property-coverage-17223
-      - name: Inspect 20-acre coverage owners
+      - name: Inspect Property grid, boundary, and prescription extent
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
           terms=[
-            'analysisBoundaryLngLat','authoritativeSafeSwales15815','parcelMask',
-            'propertyMask','earthlineLngLatToGrid','swale prescription',
-            '20-acre','20 acres','analysis boundary','propertyResultLock15815',
-            'safeSwales','corridor'
+            'M.inP','inP=new','inP = new','GW=','GH=','const GW','let GW',
+            'analysisBoundaryLngLat=','analysisBoundaryLngLat =',
+            'propertyBoundary','propertyGrid','gridW','gridH','cellM',
+            'seedCandidatesForLevel','prescribe','authoritativeSafeSwales15815=',
+            'safeSwales15815=','buildProperty','20*4046','4046.856','80937'
           ]
           for term in terms:
               print('\n===== '+term+' =====')
               start=0; shown=0
-              while shown<6:
-                  p=s.lower().find(term.lower(),start)
+              while shown<8:
+                  p=s.find(term,start)
                   if p<0: break
-                  block=s[max(0,p-1800):p+5200]
-                  print('\n--- hit',shown,'at',p,'---\n',block[:7000])
+                  block=s[max(0,p-2200):p+7200]
+                  print('\n--- hit',shown,'at',p,'---\n',block[:9400])
                   start=p+len(term); shown+=1
           PY
