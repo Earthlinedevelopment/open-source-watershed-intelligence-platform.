@@ -1,12 +1,20 @@
-import { chromium } from 'playwright';
+import { chromium, firefox, webkit } from 'playwright';
 import { writeFileSync, mkdirSync } from 'node:fs';
 
-const BASE='https://earthlinedevelopment.org/';
-const STATES=['Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut','Delaware','Florida','Georgia','Hawaii','Idaho','Illinois','Indiana','Iowa','Kansas','Kentucky','Louisiana','Maine','Maryland','Massachusetts','Michigan','Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada','New Hampshire','New Jersey','New Mexico','New York','North Carolina','North Dakota','Ohio','Oklahoma','Oregon','Pennsylvania','Rhode Island','South Carolina','South Dakota','Tennessee','Texas','Utah','Vermont','Virginia','Washington','West Virginia','Wisconsin','Wyoming'];
+const BASE=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
+const DEFAULT_STATES=['Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut','Delaware','Florida','Georgia','Hawaii','Idaho','Illinois','Indiana','Iowa','Kansas','Kentucky','Louisiana','Maine','Maryland','Massachusetts','Michigan','Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada','New Hampshire','New Jersey','New Mexico','New York','North Carolina','North Dakota','Ohio','Oklahoma','Oregon','Pennsylvania','Rhode Island','South Carolina','South Dakota','Tennessee','Texas','Utah','Vermont','Virginia','Washington','West Virginia','Wisconsin','Wyoming'];
+const STATES=(process.env.STATES||DEFAULT_STATES.join('|')).split('|').map(s=>s.trim()).filter(Boolean);
+const BROWSER=(process.env.BROWSER||'chromium').toLowerCase();
+const HEADLESS=!/^(0|false|no)$/i.test(String(process.env.HEADLESS||'true'));
+const WAIT_MS=Math.max(45000,Number(process.env.WAIT_MS||45000));
+const browserType=BROWSER==='firefox'?firefox:BROWSER==='webkit'?webkit:chromium;
+const launchOptions={headless:HEADLESS};
+if(BROWSER==='chrome')launchOptions.channel='chrome';
+if(BROWSER==='edge'||BROWSER==='msedge')launchOptions.channel='msedge';
 const VISUAL=new Set(['Iowa','Arkansas','Oklahoma','Nebraska','Vermont','Texas','Florida','Louisiana','California','New York','Maryland','Colorado','Alaska','Hawaii']);
 mkdirSync('artifacts/mantra46-16791-50state',{recursive:true});
 
-const browser=await chromium.launch({headless:true});
+const browser=await browserType.launch(launchOptions);
 const results=[];
 
 for(const query of STATES){
@@ -31,7 +39,7 @@ for(const query of STATES){
         const s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'');
         const root=window.EARTHLINE_STANDARD_ROOT_CAUSE_AUDIT_16784||null;
         return /screening published\./i.test(s)&&!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191&&!!root&&String(root.query||'').toLowerCase().includes(q.toLowerCase());
-      },query,{timeout:45000,polling:100});
+      },query,{timeout:WAIT_MS,polling:100});
     }catch(_){timedOut=true;}
     await page.waitForTimeout(250);
   }catch(e){loadError=String(e);}
@@ -63,7 +71,7 @@ for(const query of STATES){
   const hardRootFail=Array.isArray(a?.root?.rankedCauses)&&a.root.rankedCauses.some(r=>r.status==='critical'||r.status==='fail');
   const pass=!loadError&&!timedOut&&!a?.lastError&&!pageErrors.length&&Number(coreMs)<=15000&&Number(generated)===Number(visible)&&Number(unsafe)===0&&Number(outside?.swales||0)===0&&!hardRootFail;
   const row={
-    query,pass,loadError,timedOut,pageErrors,elapsedMs:Date.now()-started,coreMs,generated,visible,unsafe,
+    query,browser:BROWSER,headless:HEADLESS,pass,loadError,timedOut,pageErrors,elapsedMs:Date.now()-started,coreMs,perf:a?.perf||null,generated,visible,unsafe,
     outsideAfterClip:outside,rootPass:a?.root?.pass??null,firstFailedStage:a?.root?.firstFailedStage??null,
     hardRootFail,lineage:a?.root?.cellLineage??null,candidateCells:a?.spread?.candidateCells??null,
     selectedCells:a?.spread?.finalCells??null,targetCells:a?.spread?.targetCells??null,
@@ -84,5 +92,5 @@ const summary={
   generatedVisibleMismatch:results.filter(r=>Number(r.generated)!==Number(r.visible)).map(r=>({query:r.query,generated:r.generated,visible:r.visible}))
 };
 writeFileSync('artifacts/mantra46-16791-50state/results.json',JSON.stringify({summary,results},null,2));
-console.log('EARTHLINE_M46_50_SUMMARY '+JSON.stringify(summary));
+console.log('EARTHLINE_M46_50_SUMMARY '+JSON.stringify({browser:BROWSER,headless:HEADLESS,summary}));
 if(summary.fail)process.exitCode=1;
