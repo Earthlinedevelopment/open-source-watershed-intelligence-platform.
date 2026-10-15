@@ -1,11 +1,13 @@
-import { chromium } from 'playwright';
+import { chromium, firefox, webkit } from 'playwright';
 import fs from 'node:fs';
 
 const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
 const STATES=(process.env.STATES||'').split('|').map(s=>s.trim()).filter(Boolean);
 const OUT=process.env.OUT||'property50.json';
 if(!STATES.length)throw new Error('STATES required');
-const browser=await chromium.launch({headless:true});
+const BROWSER=(process.env.BROWSER||'chromium').toLowerCase();
+const browserType=BROWSER==='firefox'?firefox:BROWSER==='webkit'?webkit:chromium;
+const browser=await browserType.launch({headless:true});
 const rows=[];
 
 async function runRegional(page,stateName){
@@ -120,6 +122,6 @@ for(const stateName of STATES){
 }
 await browser.close();
 const failed=rows.filter(r=>!r.pass).map(r=>({state:r.state,failures:r.failures}));
-const out={at:new Date().toISOString(),url:URL,rows,failed,pass:failed.length===0};
+const out={at:new Date().toISOString(),url:URL,browser:BROWSER,rows,failed,pass:failed.length===0};
 fs.writeFileSync(OUT,JSON.stringify(out,null,2));console.log(JSON.stringify(out));
 if(failed.length)process.exitCode=1;
