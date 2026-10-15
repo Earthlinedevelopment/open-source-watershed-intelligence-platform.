@@ -1,4 +1,4 @@
-name: Earthline Property Coverage Diagnostic 17223
+name: Earthline Property Repeat Diagnostic 17238
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
@@ -13,15 +13,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: repair/v1-property-coverage-17223
-      - name: Extract flow-first and contour candidate loops
+          ref: pages-live
+      - name: Extract Property repeat and target ownership
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
-          for term in ['flowFirstAudit15836.primaryCandidates++','secondaryFillStarted=','for(let li=0;li<levels.length','acceptedAtLevel','seedCandidatesForLevel(']:
+          terms=[
+            'earthlineDeclarePropertyAtCrosshair16173',
+            'earthlineSetPropertyTarget16201',
+            'EARTHLINE_PROPERTY_TARGET_16201',
+            'earthlineDeclareProperty16169',
+            'EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347',
+            'EARTHLINE_PROPERTY_DISPLAY_RECLAIM_16727',
+            'EARTHLINE_LOCATION_INTEGRITY_15801',
+            'propertyRunState',
+            'earthline-property-ready-16188',
+            'crosshair',
+            'appliedSearchText',
+            'searchGenAtSettle'
+          ]
+          for term in terms:
               p=s.find(term)
               print('\n===== '+term+' @ '+str(p)+' =====\n')
-              print(s[max(0,p-6500):p+12000] if p>=0 else 'NOT FOUND')
+              print(s[max(0,p-9000):p+18000] if p>=0 else 'NOT FOUND')
           PY
