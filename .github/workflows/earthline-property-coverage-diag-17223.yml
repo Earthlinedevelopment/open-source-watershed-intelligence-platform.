@@ -14,19 +14,22 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: repair/v1-property-coverage-17223
-      - name: Extract coverage audit owner and ordering
+      - name: Inspect Property final ordering and repeat-state reset
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           s=Path('index.html').read_text(encoding='utf-8')
-          for term in ['coverageDiag15803=','COVERAGE_DIAGNOSTIC','coverageDiag15803','const ordered=','ordered=','swales.sort','sort((a,b)=>(b.score','sort((a,b)=>']:
-              print('\n===== '+term+' =====')
-              start=0;i=0
-              while True:
-                  p=s.find(term,start)
-                  if p<0: break
-                  print('\n---',i,'at',p,'---\n'+s[max(0,p-3000):p+8000])
-                  start=p+len(term);i+=1
-                  if i>=12: break
+          patterns=[
+            r'ordered',r'final-cap',r'candidateTermination15803',r'seedsVisited15803',
+            r'flowFirstAudit15836',r'claimMask',r'coverageDiag15803',r'M\.swales=\[\]',
+            r'M\.analysisBoundaryLngLat=',r'propertyRunState',r'duplicate-rerun'
+          ]
+          for pat in patterns:
+              print('\n===== '+pat+' =====')
+              hits=[m.start() for m in re.finditer(pat,s)]
+              print('count',len(hits),'positions',hits[:30])
+              for p in hits[:12]:
+                  print('\n---',p,'---\n'+s[max(0,p-2600):p+7200])
           PY
