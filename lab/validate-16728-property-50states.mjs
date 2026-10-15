@@ -111,7 +111,15 @@ async function snap(page){
       regionalPerf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,
       stallWatchdog:window.EARTHLINE_REGIONAL_STALL_WATCHDOG_16347||null,
       regionalTerminal:window.EARTHLINE_REGIONAL_TERMINAL_16539||null,
-      loadingAudit:window.EARTHLINE_LOADING_AUDIT_16167||null
+      loadingAudit:window.EARTHLINE_LOADING_AUDIT_16167||null,
+      refinementAudit:{
+        scale:window.EARTHLINE_SCALE_REFINED_INPUT_16702||null,
+        terrainGap:window.EARTHLINE_TERRAIN_GAP_REFINEMENT_16730||null,
+        statewide:window.EARTHLINE_STATEWIDE_SUPERTILE_16839||null,
+        fine:window.EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16781||null,
+        coverage:window.EARTHLINE_COVERAGE_GAP_REFINEMENT_16731||null,
+        late:window.EARTHLINE_LATE_GAP_REFINEMENT_16741||null
+      }
     };
   });
 }
