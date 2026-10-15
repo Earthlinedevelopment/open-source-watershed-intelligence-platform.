@@ -1,4 +1,4 @@
-name: Earthline Mapbox 3.32 Cross-Browser A-B 17241
+name: Earthline Cooperative Yield Cross-Browser A-B 17242
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
@@ -7,7 +7,6 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-
 jobs:
   ab:
     strategy:
@@ -23,47 +22,52 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Upgrade Mapbox GL JS in isolated workspace only
+      - name: Apply isolated shared cooperative-yield repair
         shell: bash
         run: |
           python3 - <<'PY'
           p='index.html'
           s=open(p,encoding='utf-8').read()
-          s=s.replace('mapbox-gl-js/v3.4.0','mapbox-gl-js/v3.32.0')
-          s=s.replace(r'mapbox-gl-js\/v3\.4\.0\/mapbox-gl\.js',r'mapbox-gl-js\/v3\.32\.0\/mapbox-gl\.js')
+          old="async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();return new Promise(r=>setTimeout(r,0));}"
+          new="""let earthlineYieldChannel17242=null,earthlineYieldQueue17242=[];
+  async function earthlineCooperativeYield16661(){
+    if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();
+    if(typeof MessageChannel==='function'){
+      if(!earthlineYieldChannel17242){
+        earthlineYieldChannel17242=new MessageChannel();
+        earthlineYieldChannel17242.port1.onmessage=()=>{const r=earthlineYieldQueue17242.shift();if(r)r();};
+      }
+      return new Promise(r=>{earthlineYieldQueue17242.push(r);earthlineYieldChannel17242.port2.postMessage(0);});
+    }
+    return Promise.resolve();
+  }"""
+          assert old in s, 'yield owner not found'
+          s=s.replace(old,new,1)
           open(p,'w',encoding='utf-8').write(s)
-          assert 'mapbox-gl-js/v3.32.0/mapbox-gl.js' in s
           PY
       - name: Install browser engine
         shell: bash
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install ${{ matrix.browser }}
+          if [ '${{ matrix.browser }}' = 'firefox' ]; then sudo apt-get update && sudo apt-get install -y xvfb; fi
       - name: Serve isolated candidate
         shell: bash
         run: |
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
-          for i in $(seq 1 30); do
-            curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0
-            sleep 1
-          done
-          cat /tmp/earthline-http.log || true
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
           exit 1
-      - name: Run Texas and Vermont diagnostic
+      - name: Run Texas and Vermont unchanged-science diagnostic
         shell: bash
         run: |
-          EXTRA=''
-          if [ '${{ matrix.browser }}' = 'firefox' ]; then EXTRA='xvfb-run -a'; fi
-          if [ '${{ matrix.browser }}' = 'webkit' ]; then
-            env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
-          elif [ '${{ matrix.browser }}' = 'firefox' ]; then
+          if [ '${{ matrix.browser }}' = 'firefox' ]; then
             xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
           else
-            env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='chromium' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
+            env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='${{ matrix.browser }}' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
           fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: mapbox332-${{ matrix.browser }}-17241
+          name: yield17242-${{ matrix.browser }}
           path: artifacts/mantra46-16791-50state/
           if-no-files-found: warn
