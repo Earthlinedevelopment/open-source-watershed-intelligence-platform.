@@ -46,6 +46,7 @@ const got=page.locator('#earthlineCrosshairMoveHint17093').getByRole('button',{n
 if(await got.count())await got.click();
 
 async function setCrosshair(lng,lat){
+  await page.evaluate(()=>{window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;});
   await page.evaluate(({lng,lat})=>new Promise((resolve,reject)=>{
     const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
     if(!m?.jumpTo)return reject(new Error('earthlineMap unavailable'));
