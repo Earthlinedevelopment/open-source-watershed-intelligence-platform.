@@ -14,13 +14,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: repair/v1-property-coverage-17223
-      - name: Extract exact candidate ordering and cap path
+      - name: Extract flow-first and contour candidate loops
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
-          for p in [1417974,1421389,1424847,1425375]:
-              print('\n===== POS',p,'=====\n')
-              print(s[max(0,p-5000):p+9000])
+          for term in ['flowFirstAudit15836.primaryCandidates++','secondaryFillStarted=','for(let li=0;li<levels.length','acceptedAtLevel','seedCandidatesForLevel(']:
+              p=s.find(term)
+              print('\n===== '+term+' @ '+str(p)+' =====\n')
+              print(s[max(0,p-6500):p+12000] if p>=0 else 'NOT FOUND')
           PY
