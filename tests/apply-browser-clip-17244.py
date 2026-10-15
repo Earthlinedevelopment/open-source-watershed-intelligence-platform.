@@ -3,11 +3,6 @@ from pathlib import Path
 p = Path("index.html")
 s = p.read_text(encoding="utf-8")
 
-old_yield = "async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();return new Promise(r=>setTimeout(r,0));}"
-new_yield = "async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();return Promise.resolve();}"
-assert old_yield in s, "yield owner missing"
-s = s.replace(old_yield, new_yield, 1)
-
 target = "  function earthlineClipLine16539(coords,g){"
 assert target in s, "clip owner missing"
 s = s.replace(target, "  function earthlineClipLineOriginal17244(coords,g){", 1)
