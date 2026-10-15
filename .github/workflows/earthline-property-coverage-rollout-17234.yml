@@ -1,4 +1,4 @@
-name: Earthline Property Coverage Rollout 17234
+name: Earthline Seven-State Rollout Coverage 17234
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
@@ -11,7 +11,7 @@ on:
 permissions:
   contents: read
 jobs:
-  rollout-nine:
+  rollout-seven:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -36,11 +36,11 @@ jobs:
           done
           cat /tmp/earthline-17234-http.log || true
           exit 1
-      - name: Run nine rollout-state Property regression
+      - name: Run accepted seven-state Property rollout regression
         shell: bash
         run: |
           set +e
-          EARTHLINE_URL='http://127.0.0.1:8787/'           STATES='Texas|Vermont|New York|Arkansas|Iowa|Oklahoma|Colorado|Maryland|California'           OUT='property-rollout-17234.json'           node lab/validate-16728-property-50states.mjs
+          EARTHLINE_URL='http://127.0.0.1:8787/'           STATES='Arizona|New Mexico|Colorado|Texas|California|Vermont|New York'           OUT='property-rollout-17234.json'           node lab/validate-16728-property-50states.mjs
           code=$?
           echo "$code" > property-rollout-17234.exit
           cat property-rollout-17234.json
