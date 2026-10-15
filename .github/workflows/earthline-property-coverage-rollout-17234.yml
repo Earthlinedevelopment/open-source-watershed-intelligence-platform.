@@ -1,19 +1,21 @@
-name: Earthline Seven-State Rollout Coverage 17234
+name: Earthline Seven-State Cross-Browser Gate 17236
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
     paths:
-      - 'index.html'
-      - 'earthline-launch-16872.js'
       - 'lab/validate-16728-property-50states.mjs'
       - '.github/workflows/earthline-property-coverage-rollout-17234.yml'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  rollout-seven:
+  browser-gate:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -21,41 +23,34 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install Chromium
+      - name: Install Playwright browser engines
         run: |
           npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
-      - name: Serve isolated repair branch
-        shell: bash
-        run: |
-          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-17234-http.log 2>&1 &
-          echo $! >/tmp/earthline-17234-http.pid
-          for i in $(seq 1 30); do
-            curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0
-            sleep 1
-          done
-          cat /tmp/earthline-17234-http.log || true
-          exit 1
-      - name: Run accepted seven-state Property rollout regression
+          npx playwright install --with-deps chromium firefox webkit
+      - name: Run seven rollout states in ${{ matrix.browser }}
         shell: bash
         run: |
           set +e
-          EARTHLINE_URL='http://127.0.0.1:8787/'           STATES='Arizona|New Mexico|Colorado|Texas|California|Vermont|New York'           OUT='property-rollout-17234.json'           node lab/validate-16728-property-50states.mjs
+          EARTHLINE_URL='https://earthlinedevelopment.org/' \
+          BROWSER='${{ matrix.browser }}' \
+          STATES='Arizona|New Mexico|Colorado|Texas|California|Vermont|New York' \
+          OUT='property-rollout-${{ matrix.browser }}-17236.json' \
+          node lab/validate-16728-property-50states.mjs
           code=$?
-          echo "$code" > property-rollout-17234.exit
-          cat property-rollout-17234.json
+          echo "$code" > 'property-rollout-${{ matrix.browser }}-17236.exit'
+          cat 'property-rollout-${{ matrix.browser }}-17236.json'
           exit 0
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: earthline-property-rollout-17234
+          name: earthline-seven-state-${{ matrix.browser }}-17236
           path: |
-            property-rollout-17234.json
-            property-rollout-17234.exit
+            property-rollout-${{ matrix.browser }}-17236.json
+            property-rollout-${{ matrix.browser }}-17236.exit
           if-no-files-found: error
-      - name: Enforce rollout gate
+      - name: Enforce browser gate
         if: always()
         shell: bash
         run: |
-          test -f property-rollout-17234.exit
-          test "$(cat property-rollout-17234.exit)" = "0"
+          test -f 'property-rollout-${{ matrix.browser }}-17236.exit'
+          test "$(cat 'property-rollout-${{ matrix.browser }}-17236.exit')" = "0"
