@@ -1,0 +1,29 @@
+name: Earthline Yield Diagnostic 17254
+on:
+  push:
+    branches: [repair/v1-browser-stability-17248]
+    paths:
+      - '.github/workflows/earthline-yield-diagnostic-17254.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Extract cooperative yield owners and call counts
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for term in ['function earthlineTaskYield16464','earthlineTaskYield16464=','async function earthlineCooperativeYield16661','earthlineCooperativeYield16661=']:
+              p=s.find(term)
+              print('\n###',term,'@',p)
+              if p>=0: print(s[max(0,p-6000):p+14000])
+          print('COUNT taskYield',s.count('earthlineTaskYield16464('))
+          print('COUNT cooperativeYield',s.count('earthlineCooperativeYield16661('))
+          PY
