@@ -30,7 +30,23 @@ jobs:
           old='const scale16722=4,bins16722=new Map();'
           new='const scale16722=64,bins16722=new Map(); /* EARTHLINE_BROWSER_STABILITY_17249 */'
           assert s.count(old)==1, s.count(old)
-          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          s=s.replace(old,new,1)
+          # EARTHLINE_BROWSER_STABILITY_17250 — local refinement candidates are
+          # screened by the final authoritative makeSwales call; avoid repeating
+          # identical jurisdiction clipping inside temporary refinement grids.
+          pairs=[
+            ("makeSwales(h16702,c16702,false,swaleJurisdictionGeometry16539,null)","makeSwales(h16702,c16702,false,null,null)"),
+            ("makeSwales(h16730,c16730,false,swaleJurisdictionGeometry16539,null)","makeSwales(h16730,c16730,false,null,null)"),
+            ("makeSwales(sub16839,c16839,false,swaleJurisdictionGeometry16539,null)","makeSwales(sub16839,c16839,false,null,null)"),
+            ("makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null)","makeSwales(h16780,c16780,false,null,null)")
+          ]
+          changed=0
+          for a,b in pairs:
+              if a in s:
+                  s=s.replace(a,b)
+                  changed+=1
+          assert changed>=3, changed
+          p.write_text(s,encoding='utf-8')
           PY
       - name: Install browser
         shell: bash
@@ -107,7 +123,23 @@ jobs:
           old='const scale16722=4,bins16722=new Map();'
           new='const scale16722=64,bins16722=new Map(); /* EARTHLINE_BROWSER_STABILITY_17249 */'
           assert s.count(old)==1, s.count(old)
-          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          s=s.replace(old,new,1)
+          # EARTHLINE_BROWSER_STABILITY_17250 — local refinement candidates are
+          # screened by the final authoritative makeSwales call; avoid repeating
+          # identical jurisdiction clipping inside temporary refinement grids.
+          pairs=[
+            ("makeSwales(h16702,c16702,false,swaleJurisdictionGeometry16539,null)","makeSwales(h16702,c16702,false,null,null)"),
+            ("makeSwales(h16730,c16730,false,swaleJurisdictionGeometry16539,null)","makeSwales(h16730,c16730,false,null,null)"),
+            ("makeSwales(sub16839,c16839,false,swaleJurisdictionGeometry16539,null)","makeSwales(sub16839,c16839,false,null,null)"),
+            ("makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null)","makeSwales(h16780,c16780,false,null,null)")
+          ]
+          changed=0
+          for a,b in pairs:
+              if a in s:
+                  s=s.replace(a,b)
+                  changed+=1
+          assert changed>=3, changed
+          p.write_text(s,encoding='utf-8')
           PY
       - name: Install WebKit
         run: |
