@@ -14,6 +14,30 @@ const rows=[];
 async function runRegional(page,stateName){
   await page.goto(URL+'?property50v16728='+encodeURIComponent(stateName)+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForSelector('#searchInput',{timeout:30000});
+  if(process.env.CROSS_BROWSER_PATCH==='1'){
+    await page.evaluate(()=>{
+      if(window.EARTHLINE_CB_PATCH_17240)return;
+      const original=window.earthlineSetMapView;
+      const proto=window.mapboxgl&&window.mapboxgl.Map&&window.mapboxgl.Map.prototype;
+      if(typeof original!=='function'||!proto||typeof proto.setProjection!=='function')return;
+      const nativeSetProjection=proto.setProjection;
+      let suppressNextGlobe=false;
+      proto.setProjection=function(p,...rest){
+        const name=(typeof p==='string')?p:(p&&p.name);
+        if(suppressNextGlobe&&name==='globe'){
+          suppressNextGlobe=false;
+          return this;
+        }
+        return nativeSetProjection.call(this,p,...rest);
+      };
+      window.earthlineSetMapView=function(loc){
+        suppressNextGlobe=true;
+        try{return original.call(this,loc);}
+        finally{suppressNextGlobe=false;}
+      };
+      window.EARTHLINE_CB_PATCH_17240={installed:true,scope:'search handoff projection only'};
+    });
+  }
   const started=Date.now();
   await page.evaluate(q=>{
     window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;
