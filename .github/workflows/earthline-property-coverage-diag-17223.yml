@@ -14,19 +14,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: repair/v1-property-coverage-17223
-      - name: Extract Property final-selection code
+      - name: Extract coverage audit owner and ordering
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
-          for term in ['M.swCount','maxFinal','finalSwales','final.length','accepted.length','spacingTarget','targetSwaleSpacingM']:
+          for term in ['coverageDiag15803=','COVERAGE_DIAGNOSTIC','coverageDiag15803','const ordered=','ordered=','swales.sort','sort((a,b)=>(b.score','sort((a,b)=>']:
               print('\n===== '+term+' =====')
               start=0;i=0
               while True:
                   p=s.find(term,start)
                   if p<0: break
-                  print('\n---',i,'at',p,'---\n'+s[max(0,p-2000):p+5000])
+                  print('\n---',i,'at',p,'---\n'+s[max(0,p-3000):p+8000])
                   start=p+len(term);i+=1
-                  if i>=20: break
+                  if i>=12: break
           PY
