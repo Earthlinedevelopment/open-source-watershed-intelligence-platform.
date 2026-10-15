@@ -31,21 +31,14 @@ jobs:
           new='const scale16722=64,bins16722=new Map(); /* EARTHLINE_BROWSER_STABILITY_17249 */'
           assert s.count(old)==1, s.count(old)
           s=s.replace(old,new,1)
-          # EARTHLINE_BROWSER_STABILITY_17250 — local refinement candidates are
-          # screened by the final authoritative makeSwales call; avoid repeating
-          # identical jurisdiction clipping inside temporary refinement grids.
-          pairs=[
-            ("makeSwales(h16702,c16702,false,swaleJurisdictionGeometry16539,null)","makeSwales(h16702,c16702,false,null,null)"),
-            ("makeSwales(h16730,c16730,false,swaleJurisdictionGeometry16539,null)","makeSwales(h16730,c16730,false,null,null)"),
-            ("makeSwales(sub16839,c16839,false,swaleJurisdictionGeometry16539,null)","makeSwales(sub16839,c16839,false,null,null)"),
-            ("makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null)","makeSwales(h16780,c16780,false,null,null)")
-          ]
-          changed=0
-          for a,b in pairs:
-              if a in s:
-                  s=s.replace(a,b)
-                  changed+=1
-          assert changed>=3, changed
+          # EARTHLINE_BROWSER_STABILITY_17251 — candidate-only refinement contours
+          # are consumed only as LineStrings by makeSwales. Suppress creation of
+          # contour-label Point features in those temporary calls; contour geometry,
+          # levels, ranking, clipping, safety and final publication are unchanged.
+          old_labels="if(labelable&&labelCount<84){"
+          new_labels="if(!candidateQuantile16609&&labelable&&labelCount<84){"
+          assert s.count(old_labels)==1, s.count(old_labels)
+          s=s.replace(old_labels,new_labels,1)
           p.write_text(s,encoding='utf-8')
           PY
       - name: Install browser
@@ -124,21 +117,14 @@ jobs:
           new='const scale16722=64,bins16722=new Map(); /* EARTHLINE_BROWSER_STABILITY_17249 */'
           assert s.count(old)==1, s.count(old)
           s=s.replace(old,new,1)
-          # EARTHLINE_BROWSER_STABILITY_17250 — local refinement candidates are
-          # screened by the final authoritative makeSwales call; avoid repeating
-          # identical jurisdiction clipping inside temporary refinement grids.
-          pairs=[
-            ("makeSwales(h16702,c16702,false,swaleJurisdictionGeometry16539,null)","makeSwales(h16702,c16702,false,null,null)"),
-            ("makeSwales(h16730,c16730,false,swaleJurisdictionGeometry16539,null)","makeSwales(h16730,c16730,false,null,null)"),
-            ("makeSwales(sub16839,c16839,false,swaleJurisdictionGeometry16539,null)","makeSwales(sub16839,c16839,false,null,null)"),
-            ("makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null)","makeSwales(h16780,c16780,false,null,null)")
-          ]
-          changed=0
-          for a,b in pairs:
-              if a in s:
-                  s=s.replace(a,b)
-                  changed+=1
-          assert changed>=3, changed
+          # EARTHLINE_BROWSER_STABILITY_17251 — candidate-only refinement contours
+          # are consumed only as LineStrings by makeSwales. Suppress creation of
+          # contour-label Point features in those temporary calls; contour geometry,
+          # levels, ranking, clipping, safety and final publication are unchanged.
+          old_labels="if(labelable&&labelCount<84){"
+          new_labels="if(!candidateQuantile16609&&labelable&&labelCount<84){"
+          assert s.count(old_labels)==1, s.count(old_labels)
+          s=s.replace(old_labels,new_labels,1)
           p.write_text(s,encoding='utf-8')
           PY
       - name: Install WebKit
