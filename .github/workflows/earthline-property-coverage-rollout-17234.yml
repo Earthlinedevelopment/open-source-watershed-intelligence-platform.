@@ -1,9 +1,9 @@
-name: Earthline Percentile Cross-Browser Profile 17248
+name: Earthline Browser-Neutral Yield Candidate 17252
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
     paths:
-      - 'tests/apply-percentile-profile-17248.py'
+      - 'tests/apply-fast-yield-17252.py'
       - '.github/workflows/earthline-property-coverage-rollout-17234.yml'
   workflow_dispatch:
 
@@ -25,31 +25,34 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Apply diagnostic profiler only
-        run: python3 tests/apply-percentile-profile-17248.py
+      - name: Apply shared scheduling repair candidate
+        run: python3 tests/apply-fast-yield-17252.py
       - name: Install browser
         shell: bash
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps ${{ matrix.browser }}
-      - name: Serve diagnostic candidate
+      - name: Serve candidate
         shell: bash
         run: |
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
           exit 1
-      - name: Run Texas and Vermont
+      - name: Run Texas and Vermont twice
         shell: bash
         run: |
-          if [ '${{ matrix.browser }}' = 'firefox' ]; then
-            xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
-          else
-            env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='chromium' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
-          fi
+          for rep in 1 2; do
+            rm -rf artifacts/mantra46-16791-50state
+            if [ '${{ matrix.browser }}' = 'firefox' ]; then
+              xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' WAIT_MS='120000' STATES='Texas|Vermont' OUT="yield17252-firefox-${rep}.json" node tests/mantra46-16791-50state-production.mjs
+            else
+              env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='chromium' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' OUT="yield17252-chromium-${rep}.json" node tests/mantra46-16791-50state-production.mjs
+            fi
+          done
 
   webkit-macos:
     runs-on: macos-14
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -57,17 +60,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Apply diagnostic profiler only
-        run: python3 tests/apply-percentile-profile-17248.py
+      - name: Apply shared scheduling repair candidate
+        run: python3 tests/apply-fast-yield-17252.py
       - name: Install WebKit
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install webkit
-      - name: Serve diagnostic candidate
+      - name: Serve candidate
         shell: bash
         run: |
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
           exit 1
-      - name: Run Texas and Vermont
-        run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
+      - name: Run Texas and Vermont twice
+        shell: bash
+        run: |
+          for rep in 1 2; do
+            rm -rf artifacts/mantra46-16791-50state
+            env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' OUT="yield17252-webkit-${rep}.json" node tests/mantra46-16791-50state-production.mjs
+          done
