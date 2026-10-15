@@ -13363,7 +13363,11 @@ var prescribeSwales;
     const flowTraceCache16320=new Map();
     const flowCacheAudit16320={build:"EARTHLINE 16320",traceHits:0,traceMisses:0,segmentReuseHits:0,deadlineInnerBreaks:0,cacheEntries:0};
     M.flowFirstPerformance16320=flowCacheAudit16320;
-    const primaryLimit15836=Math.min(work15771.maxCandidates,Math.max(1,canonicalPaths15836.length));
+    const contourReserve17233=isRegionalTile15769?0:Math.min(levels.length,Math.max(0,work15771.maxCandidates-1));
+    const primaryLimit15836=Math.min(
+      Math.max(0,work15771.maxCandidates-contourReserve17233),
+      Math.max(1,canonicalPaths15836.length)
+    ); /* EARTHLINE_PROPERTY_FULL_LEVEL_COVERAGE_17233 */
     let primarySlice15836=performance.now();
     for(const path15836 of canonicalPaths15836){
       if(earthlineIsStale(myGen)){if(M.prescriptionNoBuildRun15843)M.prescriptionNoBuildRun15843.active=false;return false;}
@@ -13495,6 +13499,11 @@ var prescribeSwales;
         earthlineSeedSelectionContext15841=null;
       }
       const seeds=selectedSeeds15841.slice(0,work15771.maxSeedsPerLevel);
+      const remainingLevels17233=Math.max(1,levels.length-li);
+      const remainingSlots17233=Math.max(0,work15771.maxCandidates-swales.length);
+      const levelCandidateBudget17233=isRegionalTile15769
+        ? work15771.perLevel
+        : Math.max(0,Math.min(work15771.perLevel,Math.ceil(remainingSlots17233/remainingLevels17233)));
       /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
       const seedRecords15803=seeds.map((sd,rank)=>earthlineCoverageRecordSeed15803(coverageDiag15803,sd,li,rank+1));
       let visitedAtLevel15803=0;
@@ -13627,9 +13636,9 @@ var prescribeSwales;
           M.swaleDiagnostics.stage.candidates++;
           acceptedAtLevel++;
           if(claimR)earthlineClaimPath(claimMask,seg,claimR);
-          if(acceptedAtLevel>=work15771.perLevel)break;
+          if(acceptedAtLevel>=levelCandidateBudget17233)break;
         }
-        if(acceptedAtLevel>=work15771.perLevel)break;
+        if(acceptedAtLevel>=levelCandidateBudget17233)break;
       }
       /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
       const unvisitedAtLevel15803=Math.max(0,seeds.length-visitedAtLevel15803);
