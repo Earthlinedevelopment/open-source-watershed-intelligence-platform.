@@ -3,6 +3,11 @@ from pathlib import Path
 p = Path("index.html")
 s = p.read_text(encoding="utf-8")
 
+old_ring_index = "const scale16722=4,bins16722=new Map();"
+new_ring_index = "const scale16722=16,bins16722=new Map();"
+assert old_ring_index in s, "ring index owner missing"
+s = s.replace(old_ring_index, new_ring_index, 1)
+
 target = "  function earthlineClipLine16539(coords,g){"
 assert target in s, "clip owner missing"
 s = s.replace(target, "  function earthlineClipLineOriginal17244(coords,g){", 1)
