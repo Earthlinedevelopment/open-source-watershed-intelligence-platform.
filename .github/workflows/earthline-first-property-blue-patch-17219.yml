@@ -1,0 +1,45 @@
+name: Earthline First Property Blue Patch 17219
+on:
+  push:
+    branches: [repair/v1-first-property-blue-17217]
+    paths:
+      - '.github/workflows/earthline-first-property-blue-patch-17219.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-first-property-blue-17217
+          fetch-depth: 0
+      - name: Keep indeterminate natural swales visibly blue
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          marker='EARTHLINE_NEUTRAL_SWALE_BLUE_17219'
+          old="paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}"
+          new="paint:{'line-color':'#25c8ff','line-opacity':.90,'line-width':18,'line-dasharray':[1.25,.55]} /* EARTHLINE_NEUTRAL_SWALE_BLUE_17219 */"
+          if marker not in s:
+              if s.count(old)!=1:
+                  raise SystemExit('Expected one neutral swale paint definition, found '+str(s.count(old)))
+              s=s.replace(old,new,1)
+          if s.count(marker)!=1:
+              raise SystemExit('17219 marker count invalid: '+str(s.count(marker)))
+          p.write_text(s,encoding='utf-8')
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+      - name: Commit isolated candidate
+        shell: bash
+        run: |
+          git config user.name "earthline-release-bot"
+          git config user.email "earthline-release-bot@users.noreply.github.com"
+          git add index.html
+          git commit -m "ui: keep indeterminate Property swales visibly blue 17219"
+          git pull --rebase origin repair/v1-first-property-blue-17217
+          git push origin HEAD:repair/v1-first-property-blue-17217
