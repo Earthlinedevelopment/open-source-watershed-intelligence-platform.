@@ -1,0 +1,40 @@
+name: Earthline Mexico Property Coverage 17241
+on:
+  push:
+    branches: [repair/v1-property-coverage-17223]
+    paths:
+      - 'tests/mexico-property-coverage-17241.mjs'
+      - '.github/workflows/earthline-mexico-property-coverage-17241.yml'
+      - 'index.html'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mexico:
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [live, candidate]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-coverage-17223
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run Mexico exact Property coverage
+        env:
+          MODE: ${{ matrix.mode }}
+        run: node tests/mexico-property-coverage-17241.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mexico-property-${{ matrix.mode }}-17241
+          path: artifacts/mexico-property-coverage-17241/${{ matrix.mode }}/
+          if-no-files-found: warn
