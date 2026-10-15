@@ -1,113 +1,21 @@
-name: Earthline Browser Regional Performance Diagnostic 17239
+name: Earthline Mapbox 3.32 Cross-Browser A-B 17241
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
     paths:
-      - 'tests/mantra46-16791-50state-production.mjs'
       - '.github/workflows/earthline-property-coverage-rollout-17234.yml'
   workflow_dispatch:
 permissions:
   contents: read
 
 jobs:
-  chromium:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 12
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: repair/v1-property-coverage-17223
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Chromium
-        run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
-      - name: Diagnose Texas and Vermont — Chromium
-        env:
-          EARTHLINE_URL: https://earthlinedevelopment.org/
-          BROWSER: chromium
-          HEADLESS: 'true'
-          WAIT_MS: '120000'
-          STATES: Texas|Vermont
-        run: node tests/mantra46-16791-50state-production.mjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: browser-diag-chromium-17239
-          path: artifacts/mantra46-16791-50state/
-          if-no-files-found: warn
-
-  firefox:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: repair/v1-property-coverage-17223
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Firefox and Xvfb
-        run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps firefox
-          sudo apt-get update
-          sudo apt-get install -y xvfb
-      - name: Diagnose Texas and Vermont — Firefox headed
-        shell: bash
-        run: |
-          xvfb-run -a env \
-          EARTHLINE_URL='https://earthlinedevelopment.org/' \
-          BROWSER='firefox' \
-          HEADLESS='false' \
-          WAIT_MS='120000' \
-          STATES='Texas|Vermont' \
-          node tests/mantra46-16791-50state-production.mjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: browser-diag-firefox-17239
-          path: artifacts/mantra46-16791-50state/
-          if-no-files-found: warn
-
-  safari-engine:
-    runs-on: macos-14
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: repair/v1-property-coverage-17223
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install WebKit
-        run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install webkit
-      - name: Diagnose Texas and Vermont — WebKit on macOS
-        env:
-          EARTHLINE_URL: https://earthlinedevelopment.org/
-          BROWSER: webkit
-          HEADLESS: 'true'
-          WAIT_MS: '120000'
-          STATES: Texas|Vermont
-        run: node tests/mantra46-16791-50state-production.mjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: browser-diag-webkit-macos-17239
-          path: artifacts/mantra46-16791-50state/
-          if-no-files-found: warn
-
-  branded-chromium:
+  ab:
     strategy:
       fail-fast: false
       matrix:
-        browser: [chrome, edge]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
+        browser: [chromium, firefox, webkit]
+    runs-on: ${{ matrix.browser == 'webkit' && 'macos-14' || 'ubuntu-24.04' }}
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -115,26 +23,47 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install branded browser
+      - name: Upgrade Mapbox GL JS in isolated workspace only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          p='index.html'
+          s=open(p,encoding='utf-8').read()
+          s=s.replace('mapbox-gl-js/v3.4.0','mapbox-gl-js/v3.32.0')
+          s=s.replace(r'mapbox-gl-js\/v3\.4\.0\/mapbox-gl\.js',r'mapbox-gl-js\/v3\.32\.0\/mapbox-gl\.js')
+          open(p,'w',encoding='utf-8').write(s)
+          assert 'mapbox-gl-js/v3.32.0/mapbox-gl.js' in s
+          PY
+      - name: Install browser engine
         shell: bash
         run: |
           npm install --no-save playwright@1.55.0
-          if [ '${{ matrix.browser }}' = 'edge' ]; then
-            npx playwright install --with-deps msedge
+          npx playwright install ${{ matrix.browser }}
+      - name: Serve isolated candidate
+        shell: bash
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/earthline-http.log || true
+          exit 1
+      - name: Run Texas and Vermont diagnostic
+        shell: bash
+        run: |
+          EXTRA=''
+          if [ '${{ matrix.browser }}' = 'firefox' ]; then EXTRA='xvfb-run -a'; fi
+          if [ '${{ matrix.browser }}' = 'webkit' ]; then
+            env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
+          elif [ '${{ matrix.browser }}' = 'firefox' ]; then
+            xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
           else
-            npx playwright install --with-deps chrome
+            env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='chromium' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
           fi
-      - name: Diagnose Texas and Vermont — ${{ matrix.browser }}
-        env:
-          EARTHLINE_URL: https://earthlinedevelopment.org/
-          BROWSER: ${{ matrix.browser }}
-          HEADLESS: 'true'
-          WAIT_MS: '120000'
-          STATES: Texas|Vermont
-        run: node tests/mantra46-16791-50state-production.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: browser-diag-${{ matrix.browser }}-17239
+          name: mapbox332-${{ matrix.browser }}-17241
           path: artifacts/mantra46-16791-50state/
           if-no-files-found: warn
