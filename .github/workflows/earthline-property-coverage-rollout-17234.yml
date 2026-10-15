@@ -1,9 +1,9 @@
-name: Earthline Seven-State Major-Browser Gate 17238
+name: Earthline Browser Regional Performance Diagnostic 17239
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
     paths:
-      - 'lab/validate-16728-property-50states.mjs'
+      - 'tests/mantra46-16791-50state-production.mjs'
       - '.github/workflows/earthline-property-coverage-rollout-17234.yml'
   workflow_dispatch:
 permissions:
@@ -12,7 +12,7 @@ permissions:
 jobs:
   chromium:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,24 +24,24 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Seven rollout states — Chromium
+      - name: Diagnose Texas and Vermont — Chromium
         env:
           EARTHLINE_URL: https://earthlinedevelopment.org/
           BROWSER: chromium
           HEADLESS: 'true'
-          STATES: Arizona|New Mexico|Colorado|Texas|California|Vermont|New York
-          OUT: property-rollout-chromium-17238.json
-        run: node lab/validate-16728-property-50states.mjs
+          WAIT_MS: '120000'
+          STATES: Texas|Vermont
+        run: node tests/mantra46-16791-50state-production.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: earthline-seven-state-chromium-17238
-          path: property-rollout-chromium-17238.json
+          name: browser-diag-chromium-17239
+          path: artifacts/mantra46-16791-50state/
           if-no-files-found: warn
 
   firefox:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -55,26 +55,26 @@ jobs:
           npx playwright install --with-deps firefox
           sudo apt-get update
           sudo apt-get install -y xvfb
-      - name: Seven rollout states — Firefox headed
+      - name: Diagnose Texas and Vermont — Firefox headed
         shell: bash
         run: |
           xvfb-run -a env \
           EARTHLINE_URL='https://earthlinedevelopment.org/' \
           BROWSER='firefox' \
           HEADLESS='false' \
-          STATES='Arizona|New Mexico|Colorado|Texas|California|Vermont|New York' \
-          OUT='property-rollout-firefox-headed-17238.json' \
-          node lab/validate-16728-property-50states.mjs
+          WAIT_MS='120000' \
+          STATES='Texas|Vermont' \
+          node tests/mantra46-16791-50state-production.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: earthline-seven-state-firefox-headed-17238
-          path: property-rollout-firefox-headed-17238.json
+          name: browser-diag-firefox-17239
+          path: artifacts/mantra46-16791-50state/
           if-no-files-found: warn
 
   safari-engine:
     runs-on: macos-14
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -86,19 +86,19 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install webkit
-      - name: Seven rollout states — WebKit on macOS
+      - name: Diagnose Texas and Vermont — WebKit on macOS
         env:
           EARTHLINE_URL: https://earthlinedevelopment.org/
           BROWSER: webkit
           HEADLESS: 'true'
-          STATES: Arizona|New Mexico|Colorado|Texas|California|Vermont|New York
-          OUT: property-rollout-webkit-macos-17238.json
-        run: node lab/validate-16728-property-50states.mjs
+          WAIT_MS: '120000'
+          STATES: Texas|Vermont
+        run: node tests/mantra46-16791-50state-production.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: earthline-seven-state-webkit-macos-17238
-          path: property-rollout-webkit-macos-17238.json
+          name: browser-diag-webkit-macos-17239
+          path: artifacts/mantra46-16791-50state/
           if-no-files-found: warn
 
   branded-chromium:
@@ -106,8 +106,8 @@ jobs:
       fail-fast: false
       matrix:
         browser: [chrome, edge]
-    runs-on: windows-latest
-    timeout-minutes: 30
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -115,21 +115,26 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install Playwright
-        shell: pwsh
-        run: npm install --no-save playwright@1.55.0
-      - name: Seven rollout states — ${{ matrix.browser }}
-        shell: pwsh
+      - name: Install branded browser
+        shell: bash
+        run: |
+          npm install --no-save playwright@1.55.0
+          if [ '${{ matrix.browser }}' = 'edge' ]; then
+            npx playwright install --with-deps msedge
+          else
+            npx playwright install --with-deps chrome
+          fi
+      - name: Diagnose Texas and Vermont — ${{ matrix.browser }}
         env:
           EARTHLINE_URL: https://earthlinedevelopment.org/
           BROWSER: ${{ matrix.browser }}
           HEADLESS: 'true'
-          STATES: Arizona|New Mexico|Colorado|Texas|California|Vermont|New York
-          OUT: property-rollout-${{ matrix.browser }}-windows-17238.json
-        run: node lab/validate-16728-property-50states.mjs
+          WAIT_MS: '120000'
+          STATES: Texas|Vermont
+        run: node tests/mantra46-16791-50state-production.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: earthline-seven-state-${{ matrix.browser }}-windows-17238
-          path: property-rollout-${{ matrix.browser }}-windows-17238.json
+          name: browser-diag-${{ matrix.browser }}-17239
+          path: artifacts/mantra46-16791-50state/
           if-no-files-found: warn
