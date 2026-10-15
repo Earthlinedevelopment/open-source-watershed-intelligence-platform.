@@ -1,0 +1,129 @@
+name: Earthline Browser Stability A-B 17248
+on:
+  push:
+    branches: [repair/v1-browser-stability-17248]
+    paths:
+      - '.github/workflows/earthline-browser-stability-17248.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply browser-neutral jurisdiction index optimization
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); s=p.read_text(encoding='utf-8')
+          old='const scale16722=4,bins16722=new Map();'
+          new='const scale16722=256,bins16722=new Map(); /* EARTHLINE_BROWSER_STABILITY_17248 */'
+          assert s.count(old)==1, s.count(old)
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          PY
+      - name: Install browser
+        shell: bash
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+          sudo apt-get update >/dev/null
+          sudo apt-get install -y xvfb >/dev/null
+      - name: Create browser gate
+        shell: bash
+        run: |
+          cat > /tmp/earthline-browser-17248.mjs <<'JS'
+          import { chromium, firefox } from 'playwright';
+          import { readFileSync,existsSync,statSync } from 'node:fs';
+          import { resolve,extname } from 'node:path';
+          const B=process.env.BROWSER||'chromium',ROOT=process.cwd(),BASE='https://earthlinedevelopment.org/';
+          const bt=B==='firefox'?firefox:chromium;
+          const browser=await bt.launch({headless:B!=='firefox'});
+          const states=['Texas','Vermont']; const rows=[];
+          for(const query of states){
+            const page=await browser.newPage({viewport:{width:1800,height:950}});
+            const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+            await page.route(BASE+'**',async route=>{
+              const u=new URL(route.request().url());let rel=decodeURIComponent(u.pathname.replace(/^\/+/,''))||'index.html';
+              if(rel.endsWith('/'))rel+='index.html';const local=resolve(ROOT,rel);
+              if(local.startsWith(ROOT)&&existsSync(local)&&statSync(local).isFile()){
+                const ext=extname(local).toLowerCase(),ct=ext==='.html'?'text/html; charset=utf-8':ext==='.js'?'text/javascript; charset=utf-8':ext==='.css'?'text/css; charset=utf-8':'application/octet-stream';
+                return route.fulfill({status:200,body:readFileSync(local),headers:{'content-type':ct,'cache-control':'no-store'}});
+              }
+              return route.continue();
+            });
+            let loadError=null,timedOut=false;const t0=Date.now();
+            try{
+              await page.goto(BASE+'?browser17248='+B+'-'+query+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#searchInput',{timeout:30000});
+              await page.evaluate(q=>{window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();},query);
+              try{await page.waitForFunction(q=>{const e=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970;if(e)return true;const p=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null;const s=String(document.getElementById('earthlineVermontStatus16147')?.textContent||'');return !!p&&String(p.query||'').toLowerCase().includes(q.toLowerCase())&&/screening published/i.test(s);},query,{timeout:90000,polling:100});}catch(_){timedOut=true;}
+            }catch(e){loadError=String(e);}
+            const a=loadError?{}:await page.evaluate(()=>({perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,pub:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,disp:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null,flow:window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null,boundary:window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||null,lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,supertile:window.EARTHLINE_STATEWIDE_SUPERTILE_16839||null,scale:window.EARTHLINE_SCALE_REFINED_INPUT_16702||null,fine:window.EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16781||null}));
+            const coreMs=Number(a?.perf?.totalMs||0),generated=Number(a?.pub?.generated||0),visible=Number(a?.disp?.swaleLines??a?.pub?.overlaySwaleLines??0),unsafe=Number(a?.flow?.unsafeSegments||0),outside=Number(a?.boundary?.outsideAfterClip?.swales||0);
+            const pass=!loadError&&!timedOut&&!a?.lastError&&!errors.length&&coreMs>0&&coreMs<=15000&&generated>0&&generated===visible&&unsafe===0&&outside===0;
+            const row={query,browser:B,pass,loadError,timedOut,errors,elapsedMs:Date.now()-t0,coreMs,generated,visible,unsafe,outside,phases:a?.perf?.phaseTotalsMs||null,supertileMs:a?.supertile?.elapsedMs??null,scaleMs:a?.scale?.elapsedMs??null,fineMs:a?.fine?.elapsedMs??null,lastError:a?.lastError||null};
+            console.log('EARTHLINE_BROWSER_17248 '+JSON.stringify(row));rows.push(row);await page.close();
+          }
+          await browser.close();
+          console.log('EARTHLINE_BROWSER_17248_SUMMARY '+JSON.stringify(rows));
+          if(rows.some(r=>!r.pass))process.exitCode=1;
+          JS
+      - name: Run browser gate
+        shell: bash
+        env:
+          BROWSER: ${{ matrix.browser }}
+        run: |
+          if [ "$BROWSER" = "firefox" ]; then
+            xvfb-run -a node /tmp/earthline-browser-17248.mjs
+          else
+            node /tmp/earthline-browser-17248.mjs
+          fi
+
+  webkit-macos:
+    runs-on: macos-14
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply browser-neutral jurisdiction index optimization
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); s=p.read_text(encoding='utf-8')
+          old='const scale16722=4,bins16722=new Map();'
+          new='const scale16722=256,bins16722=new Map(); /* EARTHLINE_BROWSER_STABILITY_17248 */'
+          assert s.count(old)==1, s.count(old)
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          PY
+      - name: Install WebKit
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - name: Create WebKit gate
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          p='/tmp/earthline-browser-17248.mjs'
+          src=open('.github/workflows/earthline-browser-stability-17248.yml',encoding='utf-8').read()
+          start=src.index("          import { chromium, firefox } from 'playwright';")
+          end=src.index("          JS",start)
+          js='\n'.join(line[10:] if line.startswith('          ') else line for line in src[start:end].splitlines())
+          js=js.replace("import { chromium, firefox } from 'playwright';","import { webkit } from 'playwright';").replace("const B=process.env.BROWSER||'chromium'","const B='webkit'").replace("const bt=B==='firefox'?firefox:chromium;","const bt=webkit;").replace("const browser=await bt.launch({headless:B!=='firefox'});","const browser=await bt.launch({headless:true});")
+          open(p,'w',encoding='utf-8').write(js)
+          PY
+      - name: Run WebKit gate
+        run: node /tmp/earthline-browser-17248.mjs
