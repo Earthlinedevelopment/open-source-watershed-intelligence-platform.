@@ -22,16 +22,20 @@ async function runRegional(page,stateName){
       if(typeof g.scheduler.yield!=='function'){
         const queue=[];
         const channel=new MessageChannel();
+        let calls=0;
         channel.port1.onmessage=()=>{
           const resolve=queue.shift();
           if(resolve)resolve();
         };
-        g.scheduler.yield=()=>new Promise(resolve=>{
-          queue.push(resolve);
-          channel.port2.postMessage(0);
-        });
-      }
-      window.EARTHLINE_CB_YIELD_17244={installed:true,native:false,method:'MessageChannel'};
+        g.scheduler.yield=()=>{
+          calls++;
+          if((calls%64)!==0)return Promise.resolve();
+          return new Promise(resolve=>{
+            queue.push(resolve);
+            channel.port2.postMessage(0);
+          });
+        };
+      window.EARTHLINE_CB_YIELD_17244={installed:true,native:false,method:'batched-microtask+MessageChannel',batch:64};
     });
   }
   const started=Date.now();
