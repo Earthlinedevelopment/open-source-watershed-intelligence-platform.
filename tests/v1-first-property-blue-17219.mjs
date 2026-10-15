@@ -73,7 +73,7 @@ async function runProperty(label,lng,lat){
   await btn.click();
   await page.waitForFunction(pre=>{
     const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
-    return Number(a.serial||0)>pre&&a.settled===true&&a.result===true;
+    return Number(a?.serial||0)>pre&&a?.settled===true&&a?.result===true;
   },pre,{timeout:60000,polling:150});
   const settledMs=Date.now()-t0;
   await page.waitForTimeout(2500);
