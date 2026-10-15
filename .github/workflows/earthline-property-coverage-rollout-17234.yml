@@ -1,4 +1,4 @@
-name: Earthline Cooperative Yield Cross-Browser A-B 17242
+name: Earthline Cross-Browser Refinement A-B 17243
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
@@ -23,16 +23,28 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Apply isolated shared cooperative-yield repair
+      - name: Apply isolated cross-browser refinement repair
         shell: bash
         run: |
           python3 - <<'PY'
           p='index.html'
           s=open(p,encoding='utf-8').read()
           old="async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();return new Promise(r=>setTimeout(r,0));}"
-          new="let earthlineYieldChannel17242=null,earthlineYieldQueue17242=[]; async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();if(typeof MessageChannel==='function'){if(!earthlineYieldChannel17242){earthlineYieldChannel17242=new MessageChannel();earthlineYieldChannel17242.port1.onmessage=()=>{const r=earthlineYieldQueue17242.shift();if(r)r();};}return new Promise(r=>{earthlineYieldQueue17242.push(r);earthlineYieldChannel17242.port2.postMessage(0);});}return Promise.resolve();}"
+          new="async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();return Promise.resolve();}"
           assert old in s
-          open(p,'w',encoding='utf-8').write(s.replace(old,new,1))
+          s=s.replace(old,new,1)
+          local_calls=[
+            "makeSwales(h16702,c16702,false,swaleJurisdictionGeometry16539,null)",
+            "makeSwales(h16730,c16730,false,swaleJurisdictionGeometry16539,null)",
+            "makeSwales(sub16839,c16839,false,swaleJurisdictionGeometry16539,null)",
+            "makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null)",
+            "makeSwales(h16731,c16731,false,swaleJurisdictionGeometry16539,null)",
+            "makeSwales(h16741,c16741,false,swaleJurisdictionGeometry16539,null)"
+          ]
+          for call in local_calls:
+            assert call in s, call
+            s=s.replace(call,call.replace("swaleJurisdictionGeometry16539","null"),1)
+          open(p,'w',encoding='utf-8').write(s)
           PY
       - name: Install browser
         shell: bash
@@ -56,7 +68,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: yield17242-${{ matrix.browser }}
+          name: browser17243-${{ matrix.browser }}
           path: artifacts/mantra46-16791-50state/
           if-no-files-found: warn
 
@@ -70,16 +82,28 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Apply isolated shared cooperative-yield repair
+      - name: Apply isolated cross-browser refinement repair
         shell: bash
         run: |
           python3 - <<'PY'
           p='index.html'
           s=open(p,encoding='utf-8').read()
           old="async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();return new Promise(r=>setTimeout(r,0));}"
-          new="let earthlineYieldChannel17242=null,earthlineYieldQueue17242=[]; async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();if(typeof MessageChannel==='function'){if(!earthlineYieldChannel17242){earthlineYieldChannel17242=new MessageChannel();earthlineYieldChannel17242.port1.onmessage=()=>{const r=earthlineYieldQueue17242.shift();if(r)r();};}return new Promise(r=>{earthlineYieldQueue17242.push(r);earthlineYieldChannel17242.port2.postMessage(0);});}return Promise.resolve();}"
+          new="async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();return Promise.resolve();}"
           assert old in s
-          open(p,'w',encoding='utf-8').write(s.replace(old,new,1))
+          s=s.replace(old,new,1)
+          local_calls=[
+            "makeSwales(h16702,c16702,false,swaleJurisdictionGeometry16539,null)",
+            "makeSwales(h16730,c16730,false,swaleJurisdictionGeometry16539,null)",
+            "makeSwales(sub16839,c16839,false,swaleJurisdictionGeometry16539,null)",
+            "makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null)",
+            "makeSwales(h16731,c16731,false,swaleJurisdictionGeometry16539,null)",
+            "makeSwales(h16741,c16741,false,swaleJurisdictionGeometry16539,null)"
+          ]
+          for call in local_calls:
+            assert call in s, call
+            s=s.replace(call,call.replace("swaleJurisdictionGeometry16539","null"),1)
+          open(p,'w',encoding='utf-8').write(s)
           PY
       - name: Install WebKit
         run: |
@@ -96,6 +120,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: yield17242-webkit
+          name: browser17243-webkit
           path: artifacts/mantra46-16791-50state/
           if-no-files-found: warn
