@@ -1951,7 +1951,8 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 #earthlineCrosshairMoveHint17093{
   position:fixed!important;
   left:50%!important;
-  top:calc(50% - 82px)!important;
+  top:auto!important;
+  bottom:24px!important;
   transform:translateX(-50%)!important;
   z-index:2147482900!important;
   display:flex!important;
@@ -1981,7 +1982,8 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 }
 @media(max-width:760px){
   #earthlineCrosshairMoveHint17093{
-    top:calc(50% - 72px)!important;
+    top:auto!important;
+    bottom:88px!important;
     max-width:min(320px,calc(100vw - 24px))!important;
     font-size:11px!important;
   }
