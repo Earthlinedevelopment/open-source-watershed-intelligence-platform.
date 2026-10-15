@@ -1,0 +1,47 @@
+name: Earthline Cross-Browser Hotfix 17240
+on:
+  push:
+    branches: [repair/v1-crossbrowser-projection-17239]
+    paths:
+      - 'lab/validate-16728-property-50states.mjs'
+      - '.github/workflows/earthline-crossbrowser-hotfix-17240.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  quick-gate:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit, chromium]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-crossbrowser-projection-17239
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browser engine
+        shell: bash
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+      - name: Test Arizona and Texas with isolated handoff repair
+        shell: bash
+        run: |
+          set +e
+          xvfb-run -a env \
+          EARTHLINE_URL='https://earthlinedevelopment.org/' \
+          BROWSER='${{ matrix.browser }}' \
+          HEADLESS='false' \
+          CROSS_BROWSER_PATCH='1' \
+          STATES='Arizona|Texas' \
+          OUT='cb-${{ matrix.browser }}-17240.json' \
+          node lab/validate-16728-property-50states.mjs
+          code=$?
+          cat 'cb-${{ matrix.browser }}-17240.json' || true
+          exit $code
