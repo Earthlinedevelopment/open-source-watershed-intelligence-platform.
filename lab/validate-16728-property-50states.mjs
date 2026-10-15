@@ -35,6 +35,7 @@ async function runRegional(page,stateName){
             channel.port2.postMessage(0);
           });
         };
+      }
       window.EARTHLINE_CB_YIELD_17244={installed:true,native:false,method:'batched-microtask+MessageChannel',batch:64};
     });
   }
