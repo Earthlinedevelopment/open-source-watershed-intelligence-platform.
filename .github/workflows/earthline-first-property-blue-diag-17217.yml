@@ -14,14 +14,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: repair/v1-first-property-blue-17217
-      - name: Inspect safe and neutral swale paint
+      - name: Inspect authoritative safe water paint
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
-          for term in ["const SAFE_LAYERS_16221={","id:LAYERS.neutral"]:
-              p=s.find(term)
-              print("\n===== "+term+" =====")
-              print(s[p:p+6000] if p>=0 else "NOT FOUND")
+          term="earthline-property-safe-water-16221"
+          start=0
+          for i in range(20):
+              p=s.find(term,start)
+              if p<0: break
+              block=s[max(0,p-1200):p+2200]
+              if 'addLayer' in block or "'line-color'" in block or 'setPaintProperty' in block:
+                  print("\n===== occurrence",i,"=====\n",block)
+              start=p+len(term)
           PY
