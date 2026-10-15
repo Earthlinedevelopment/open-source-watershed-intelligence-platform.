@@ -14,19 +14,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: repair/v1-first-property-blue-17217
-      - name: Inspect Property swale renderer handoff
+      - name: Inspect natural Property swale layer styles
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
           s=Path('index.html').read_text(encoding='utf-8')
-          a=s.find("const LAYERS={footprint:'earthline-property-swale-footprint-16174'")
-          b=s.find("<!-- EARTHLINE BUILD-CHECK-16172",a)
-          block=s[a:b if b>a else a+40000]
-          for raw in block.splitlines():
-              line=raw.strip()
-              if len(line)>900: line=line[:900]+'…'
-              if re.search(r'LAYERS\.|addLayer|line-color|line-pattern|line-opacity|line-width|paint:|layout:|safeOpacity|naturalRendered|visible\(',line,re.I):
-                  print(line)
+          a=s.find('async function ensureTextureLayers()')
+          b=s.find('function widthPx()',a)
+          block=s[a:b]
+          print(block[:14000])
           PY
