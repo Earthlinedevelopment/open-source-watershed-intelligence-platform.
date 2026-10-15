@@ -40,6 +40,22 @@ jobs:
           assert s.count('EARTHLINE_PROPERTY_FULL_LEVEL_COVERAGE_17233')==1
           assert s.count('acceptedAtLevel>=levelCandidateBudget17233')==2
           assert 'const remainingLevels17233=' in s
+          # EARTHLINE_CORRIDOR_TIP_PUBLICATION_BRIDGE_17238
+          # Restore the existing one-time Regional A4 onboarding owner's evidence gate
+          # to the current authoritative corridor publication audit. No new owner,
+          # listener, timer, renderer, hydrology rule, or browser-specific behavior.
+          old_tip="clickable=document.querySelectorAll('.earthline-swale-label-16149,.earthline-swale-hit-16070').length,regionalEvidence=clickable>0||Number(d?.derived?.swaleOpportunityLines||0)>0||Number(d?.corridorCount||0)>0"
+          new_tip="clickable=document.querySelectorAll('.earthline-swale-label-16149,.earthline-swale-hit-16070').length,publicationGenerated16248=Number(window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated||0),regionalEvidence=clickable>0||publicationGenerated16248>0||Number(d?.derived?.swaleOpportunityLines||0)>0||Number(d?.corridorCount||0)>0"
+          s=p.read_text(encoding='utf-8')
+          if 'EARTHLINE_CORRIDOR_TIP_PUBLICATION_BRIDGE_17238' not in s:
+              if s.count(old_tip)!=1: raise SystemExit('corridor tip evidence anchor count '+str(s.count(old_tip)))
+              s=s.replace(old_tip,new_tip,1)
+              banner="<!-- EARTHLINE_CORRIDOR_TIP_PUBLICATION_BRIDGE_17238 — Existing Regional A4 onboarding tip now recognizes the authoritative current corridor publication audit; preserves once-per-page-load acknowledgment behavior. -->\n"
+              s=banner+s
+              p.write_text(s,encoding='utf-8')
+          s=p.read_text(encoding='utf-8')
+          assert s.count('EARTHLINE_CORRIDOR_TIP_PUBLICATION_BRIDGE_17238')==1
+          assert 'publicationGenerated16248=Number(window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated||0)' in s
           PY
           git diff --check
           test "$(git diff --name-only)" = "index.html"
@@ -49,6 +65,6 @@ jobs:
           git config user.name "earthline-release-bot"
           git config user.email "earthline-release-bot@users.noreply.github.com"
           git add index.html
-          git commit -m "repair: preserve candidate opportunity across all Property contour levels 17233"
+          git commit -m "repair: restore Regional A4 onboarding evidence gate 17238"
           git pull --rebase origin repair/v1-property-coverage-17223
           git push origin HEAD:repair/v1-property-coverage-17223
