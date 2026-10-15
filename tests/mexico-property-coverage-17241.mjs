@@ -68,7 +68,17 @@ async function runOne(label,lng,lat){
     }
     const highSafeZoneEvidence=highSafeStarved.map(z=>{
       const idx=zones.indexOf(z),key='Z'+(idx+1);
-      return {zone:key,...z,preselection:preselectionByZone[key]||null,seedFate:seedFateByZone[key]||null};
+      const seedDetails=(diag?.spatial?.seeds||[]).filter(r=>String(r.zone||'')===key).map(r=>({
+        x:r.x,y:r.y,levelIndex:r.levelIndex,score:r.score,
+        traceResult:r.traceResult15840||null,segmentProduced:!!r.segmentProduced15840,
+        segmentCount:Number(r.segmentCount15840||0),
+        segmentTerminalCodes:Array.isArray(r.segmentTerminalCodes15840)?r.segmentTerminalCodes15840.slice():[],
+        terminalStage:r.terminalStage15840||null,terminalReason:r.terminalReasonCode15840||null,
+        candidateOutcomes:Array.isArray(r.candidateOutcomes15840)?r.candidateOutcomes15840.map(o=>({
+          status:o.status,reason:o.reason,accepted:!!o.accepted,reachedSpacingEvaluation:!!o.reachedSpacingEvaluation
+        })):[]
+      }));
+      return {zone:key,...z,preselection:preselectionByZone[key]||null,seedFate:seedFateByZone[key]||null,seedDetails};
     });
     return {
       label,lng,lat,out,error,elapsedMs:Math.round(performance.now()-started),
