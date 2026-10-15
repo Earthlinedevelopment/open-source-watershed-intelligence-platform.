@@ -53,6 +53,23 @@ async function runOne(label,lng,lat){
     const starved=zones.filter(z=>z.safeCells>0&&z.accepted===0);
     const highSafeStarved=zones.filter(z=>z.safeCells>=Math.max(4,Math.round(z.inParcelCells*.15))&&z.accepted===0);
     const sw=(m?.swales?.features||m?.swales||[]);
+    const zoneIndex=(x,y)=>Math.max(0,Math.min(15,Math.floor((Number(y)/Math.max(1,GH))*4)*4+Math.floor((Number(x)/Math.max(1,GW))*4)));
+    const preselectionByZone={};
+    for(const rec of (diag?.preselectionFate15841?.records||[])){
+      const zi=zoneIndex(rec.x,rec.y),key='Z'+(zi+1),reason=String(rec.terminalSelectionReason||'unknown');
+      const row=preselectionByZone[key]||(preselectionByZone[key]={records:0,selected:0,reasons:{}});
+      row.records++;if(rec.selected)row.selected++;row.reasons[reason]=(row.reasons[reason]||0)+1;
+    }
+    const seedFateByZone={};
+    for(const rec of (diag?.spatial?.seeds||[])){
+      const key=String(rec.zone||('Z'+(zoneIndex(rec.x,rec.y)+1))),reason=String(rec.terminalReasonCode15840||rec.terminalStage15840||rec.status||'unknown');
+      const row=seedFateByZone[key]||(seedFateByZone[key]={seeds:0,accepted:0,reasons:{}});
+      row.seeds++;if(rec.accepted15840)row.accepted++;row.reasons[reason]=(row.reasons[reason]||0)+1;
+    }
+    const highSafeZoneEvidence=highSafeStarved.map(z=>{
+      const idx=zones.indexOf(z),key='Z'+(idx+1);
+      return {zone:key,...z,preselection:preselectionByZone[key]||null,seedFate:seedFateByZone[key]||null};
+    });
     return {
       label,lng,lat,out,error,elapsedMs:Math.round(performance.now()-started),
       audit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
@@ -61,7 +78,7 @@ async function runOne(label,lng,lat){
       target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
       timing:m?.lastTiming||null,swaleCount:Array.isArray(sw)?sw.length:0,
       termination:diag?.termination||null,caps:diag?.caps||null,totals:diag?.totals||null,
-      zones,starvedCount:starved.length,highSafeStarvedCount:highSafeStarved.length,
+      zones,starvedCount:starved.length,highSafeStarvedCount:highSafeStarved.length,highSafeZoneEvidence,preselectionByZone,seedFateByZone,
       candidateTermination:m?.swaleDiagnostics?.candidateTermination||m?.swaleDiagnostics?.candidateTermination15803||null,
       swaleDiagnostics:m?.swaleDiagnostics||null
     };
