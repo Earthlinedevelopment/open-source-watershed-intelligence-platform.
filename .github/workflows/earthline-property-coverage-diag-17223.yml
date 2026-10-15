@@ -1,4 +1,4 @@
-name: Earthline Property Candidate Coverage Diagnostic 17244
+name: Earthline Percentile Hotpath Diagnostic 17246
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
@@ -13,32 +13,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: repair/v1-property-coverage-17223
-      - name: Extract Property candidate generation and zone audit
+          ref: pages-live
+      - name: Extract percentile owner and call sites
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
-          terms=[
-            'function seedCandidatesForLevel',
-            'seedCandidatesForLevel(',
-            'selectedSeeds15841',
-            'coverageDiagnostic15803',
-            'flowFirstAudit15836',
-            'contourGeneratedCandidates',
-            'finalSpacing',
-            'zoneOf',
-            'zoneIndex',
-            'acceptedAtLevel'
-          ]
-          for term in terms:
-              print('\n### '+term)
-              start=0
-              for n in range(4):
-                  p=s.find(term,start)
-                  if p<0: break
-                  print('\n===== @ '+str(p)+' =====\n')
-                  print(s[max(0,p-8000):p+24000])
-                  start=p+len(term)
+          for term in ['function percentile','const percentile','percentile=']:
+              p=s.find(term)
+              print('\n### '+term+' @ '+str(p))
+              if p>=0: print(s[max(0,p-5000):p+12000])
+          print('\nCOUNT percentile(',s.count('percentile('))
           PY
