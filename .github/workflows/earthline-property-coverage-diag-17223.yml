@@ -1,4 +1,4 @@
-name: Earthline Jurisdiction Geometry Diagnostic 17242
+name: Earthline Contour Swale Hotpath Diagnostic 17243
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
@@ -14,19 +14,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
-      - name: Extract jurisdiction geometry hot path
+      - name: Extract makeContours and makeSwales
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
-          for term in ['function earthlinePointInJurisdiction16539','function earthlinePrepareJurisdiction16539','const scale16722=4','function earthlineClipLine16539','earthlineRing','pointInRing']:
+          for term in ['async function makeContours','function makeContours','async function makeSwales','function makeSwales']:
               print('\n### '+term)
               start=0
-              for n in range(4):
+              for n in range(3):
                   p=s.find(term,start)
                   if p<0: break
                   print('\n===== @ '+str(p)+' =====\n')
-                  print(s[max(0,p-9000):p+18000])
+                  print(s[max(0,p-4000):p+42000])
                   start=p+len(term)
           PY
