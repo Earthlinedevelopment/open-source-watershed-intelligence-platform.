@@ -1,0 +1,44 @@
+name: Earthline Browser Refinement Source 17249
+on:
+  push:
+    branches: [repair/v1-property-coverage-17223]
+    paths:
+      - '.github/workflows/earthline-browser-refinement-source-17249.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-coverage-17223
+      - name: Extract refinement source
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for term in [
+            "EARTHLINE_STATEWIDE_SUPERTILE_16839",
+            "EARTHLINE_SCALE_REFINED_INPUT_16702",
+            "start16839=performance.now()",
+            "scale refinement",
+            "await new Promise",
+            "setTimeout(resolve",
+            "setTimeout(r"
+          ]:
+              print("\n===== "+term+" =====")
+              pos=0
+              hits=0
+              while True:
+                  i=s.find(term,pos)
+                  if i<0: break
+                  hits+=1
+                  print("\n--- HIT",hits,"@",i,"---")
+                  print(s[max(0,i-7000):i+16000])
+                  pos=i+len(term)
+                  if hits>=8: break
+              print("HITS",hits)
+          PY
