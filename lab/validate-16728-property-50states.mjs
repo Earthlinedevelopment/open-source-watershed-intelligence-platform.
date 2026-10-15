@@ -16,26 +16,22 @@ async function runRegional(page,stateName){
   await page.waitForSelector('#searchInput',{timeout:30000});
   if(process.env.CROSS_BROWSER_PATCH==='1'){
     await page.evaluate(()=>{
-      if(window.EARTHLINE_CB_PATCH_17240)return;
-      const original=window.earthlineSetMapView;
-      const proto=window.mapboxgl&&window.mapboxgl.Map&&window.mapboxgl.Map.prototype;
-      if(typeof original!=='function'||!proto||typeof proto.setProjection!=='function')return;
-      const nativeSetProjection=proto.setProjection;
-      let suppressNextGlobe=false;
-      proto.setProjection=function(p,...rest){
-        const name=(typeof p==='string')?p:(p&&p.name);
-        if(suppressNextGlobe&&name==='globe'){
-          suppressNextGlobe=false;
-          return this;
-        }
-        return nativeSetProjection.call(this,p,...rest);
-      };
-      window.earthlineSetMapView=function(loc){
-        suppressNextGlobe=true;
-        try{return original.call(this,loc);}
-        finally{suppressNextGlobe=false;}
-      };
-      window.EARTHLINE_CB_PATCH_17240={installed:true,scope:'search handoff projection only'};
+      if(window.EARTHLINE_CB_YIELD_17244)return;
+      const g=globalThis;
+      if(!g.scheduler)g.scheduler={};
+      if(typeof g.scheduler.yield!=='function'){
+        const queue=[];
+        const channel=new MessageChannel();
+        channel.port1.onmessage=()=>{
+          const resolve=queue.shift();
+          if(resolve)resolve();
+        };
+        g.scheduler.yield=()=>new Promise(resolve=>{
+          queue.push(resolve);
+          channel.port2.postMessage(0);
+        });
+      }
+      window.EARTHLINE_CB_YIELD_17244={installed:true,native:false,method:'MessageChannel'};
     });
   }
   const started=Date.now();
