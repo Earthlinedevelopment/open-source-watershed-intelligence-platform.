@@ -1,4 +1,4 @@
-name: Earthline Mexico Repeat Owner Diagnostic 17239
+name: Earthline Regional Refinement Owner Diagnostic 17241
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
@@ -14,31 +14,34 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
-      - name: Extract exact Property target and button owners
+      - name: Extract expensive Regional refinement owners
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
           s=Path('index.html').read_text(encoding='utf-8')
-          pats=[
-            r'function\s+earthlineSetPropertyTarget16201\s*\(',
-            r'earthlineSetPropertyTarget16201\s*=',
-            r'function\s+earthlineDeclarePropertyAtCrosshair16173\s*\(',
-            r'earthlineDeclarePropertyAtCrosshair16173\s*=',
-            r'earthlineDeclareProperty16169',
-            r'\.onclick\s*=',
-            r'EARTHLINE_PROPERTY_TARGET_16201\s*=',
-            r'EARTHLINE_COUNTRY_TARGET_LOCK_16845',
-            r'function\s+terminalPropertyRun\s*\(',
-            r'function\s+action\s*\('
+          terms=[
+            'EARTHLINE 16841',
+            'supertile',
+            'productsBeforeFlowMs',
+            'EARTHLINE 16782',
+            'coverageGap',
+            'scaleRefined',
+            'earthlineRefine',
+            'refinementTiming',
+            'targetCandidates'
           ]
-          for pat in pats:
-              print('\n### PATTERN',pat)
-              ms=list(re.finditer(pat,s))
-              print('COUNT',len(ms))
-              for j,m in enumerate(ms[-12:]):
-                  p=m.start()
-                  print('\n---',j,'@',p,'---')
-                  print(s[max(0,p-3500):p+9000])
+          seen=set()
+          for term in terms:
+              start=0
+              while True:
+                  p=s.find(term,start)
+                  if p<0: break
+                  key=(term,p)
+                  if key not in seen:
+                      seen.add(key)
+                      print('\n===== '+term+' @ '+str(p)+' =====\n')
+                      print(s[max(0,p-12000):p+26000])
+                  start=p+len(term)
+                  if len([x for x in seen if x[0]==term])>=5: break
           PY
