@@ -1,14 +1,13 @@
-name: Earthline Exact Jurisdiction Point Cache 17258
+name: Earthline Exact Numeric Ring Index 17260
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
     paths:
-      - 'tests/apply-point-cache-17258.py'
+      - 'tests/apply-fast-ring-index-17260.py'
       - '.github/workflows/earthline-property-coverage-rollout-17234.yml'
   workflow_dispatch:
 permissions:
   contents: read
-
 jobs:
   linux:
     strategy:
@@ -24,8 +23,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Apply exact point cache
-        run: python3 tests/apply-point-cache-17258.py
+      - name: Apply exact numeric ring index
+        run: python3 tests/apply-fast-ring-index-17260.py
       - name: Install browser
         shell: bash
         run: |
@@ -45,7 +44,6 @@ jobs:
           else
             env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='chromium' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
           fi
-
   webkit:
     runs-on: macos-14
     timeout-minutes: 25
@@ -56,8 +54,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Apply exact point cache
-        run: python3 tests/apply-point-cache-17258.py
+      - name: Apply exact numeric ring index
+        run: python3 tests/apply-fast-ring-index-17260.py
       - name: Install WebKit
         run: |
           npm install --no-save playwright@1.55.0
