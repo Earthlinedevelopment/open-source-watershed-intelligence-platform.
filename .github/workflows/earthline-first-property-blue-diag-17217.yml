@@ -1,10 +1,10 @@
 name: Earthline First Property Blue Diagnostic 17217
 on:
-  workflow_dispatch:
   push:
     branches: [repair/v1-first-property-blue-17217]
     paths:
       - '.github/workflows/earthline-first-property-blue-diag-17217.yml'
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -19,15 +19,14 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           s=Path('index.html').read_text(encoding='utf-8')
-          for term in [
-            "const LAYERS=",
-            "const SAFE_LAYERS_16221",
-            "natural swale renderer no longer owns",
-            "earthline-property-safe-water-16221",
-            "earthline-property-swale-natural"
-          ]:
-              p=s.find(term)
-              print("\n===== "+term+" =====")
-              print(s[max(0,p-2500):p+6500] if p>=0 else "NOT FOUND")
+          a=s.find("const LAYERS={footprint:'earthline-property-swale-footprint-16174'")
+          b=s.find("<!-- EARTHLINE BUILD-CHECK-16172",a)
+          block=s[a:b if b>a else a+40000]
+          for raw in block.splitlines():
+              line=raw.strip()
+              if len(line)>900: line=line[:900]+'…'
+              if re.search(r'LAYERS\.|addLayer|line-color|line-pattern|line-opacity|line-width|paint:|layout:|safeOpacity|naturalRendered|visible\(',line,re.I):
+                  print(line)
           PY
