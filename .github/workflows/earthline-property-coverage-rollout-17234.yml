@@ -1,12 +1,11 @@
-name: Earthline makeSwales Cross-Browser Profile 17257
+name: Earthline Exact Jurisdiction Point Cache 17258
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
     paths:
-      - 'tests/apply-makeswales-profile-17257.py'
+      - 'tests/apply-point-cache-17258.py'
       - '.github/workflows/earthline-property-coverage-rollout-17234.yml'
   workflow_dispatch:
-
 permissions:
   contents: read
 
@@ -25,37 +24,26 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Apply profiler and console forwarding
-        shell: bash
-        run: |
-          python3 tests/apply-makeswales-profile-17257.py
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('tests/mantra46-16791-50state-production.mjs')
-          s=p.read_text(encoding='utf-8')
-          old="  const page=await context.newPage();\n  const pageErrors=[];"
-          new="  const page=await context.newPage();\n  page.on('console',m=>{const t=m.text();if(t.includes('EARTHLINE_MAKESWALES_PROFILE_17257'))console.log(t)});\n  const pageErrors=[];"
-          if s.count(old)!=1: raise SystemExit('console anchor '+str(s.count(old)))
-          p.write_text(s.replace(old,new,1),encoding='utf-8')
-          PY
+      - name: Apply exact point cache
+        run: python3 tests/apply-point-cache-17258.py
       - name: Install browser
         shell: bash
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps ${{ matrix.browser }}
-      - name: Serve
+      - name: Serve candidate
         shell: bash
         run: |
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
           exit 1
-      - name: Profile Texas and Vermont
+      - name: Run Texas and Vermont
         shell: bash
         run: |
           if [ '${{ matrix.browser }}' = 'firefox' ]; then
-            xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs || true
+            xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
           else
-            env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='chromium' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs || true
+            env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='chromium' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
           fi
 
   webkit:
@@ -68,28 +56,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Apply profiler and console forwarding
-        shell: bash
-        run: |
-          python3 tests/apply-makeswales-profile-17257.py
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('tests/mantra46-16791-50state-production.mjs')
-          s=p.read_text(encoding='utf-8')
-          old="  const page=await context.newPage();\n  const pageErrors=[];"
-          new="  const page=await context.newPage();\n  page.on('console',m=>{const t=m.text();if(t.includes('EARTHLINE_MAKESWALES_PROFILE_17257'))console.log(t)});\n  const pageErrors=[];"
-          if s.count(old)!=1: raise SystemExit('console anchor '+str(s.count(old)))
-          p.write_text(s.replace(old,new,1),encoding='utf-8')
-          PY
+      - name: Apply exact point cache
+        run: python3 tests/apply-point-cache-17258.py
       - name: Install WebKit
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install webkit
-      - name: Serve
+      - name: Serve candidate
         shell: bash
         run: |
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
           exit 1
-      - name: Profile Texas and Vermont
-        run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs || true
+      - name: Run Texas and Vermont
+        run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
