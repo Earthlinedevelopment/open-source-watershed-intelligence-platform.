@@ -1,0 +1,41 @@
+name: Earthline Browser Mapbox Upgrade 17238
+on:
+  workflow_dispatch:
+  push:
+    branches: [repair/v1-browser-compat-17238]
+    paths:
+      - '.github/workflows/earthline-browser-mapbox-upgrade-17238.yml'
+permissions:
+  contents: write
+jobs:
+  upgrade:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-browser-compat-17238
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upgrade Mapbox GL JS only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          old='https://api.mapbox.com/mapbox-gl-js/v3.4.0/'
+          new='https://api.mapbox.com/mapbox-gl-js/v3.33.0/'
+          n=s.count(old)
+          if n != 2:
+              raise SystemExit(f'expected 2 Mapbox v3.4.0 refs, found {n}')
+          s=s.replace(old,new)
+          if s.count(new) < 2:
+              raise SystemExit('Mapbox v3.33.0 refs not written')
+          p.write_text(s)
+          PY
+      - name: Commit isolated dependency repair
+        run: |
+          git config user.name "earthline-ci"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git diff --cached --check
+          git commit -m "repair: update Mapbox GL JS cross-browser runtime 17238"
+          git push origin HEAD:repair/v1-browser-compat-17238
