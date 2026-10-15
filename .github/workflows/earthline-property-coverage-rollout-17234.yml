@@ -1,4 +1,4 @@
-name: Earthline Seven-State Cross-Browser Gate 17237
+name: Earthline Seven-State Major-Browser Gate 17238
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
@@ -8,6 +8,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+
 jobs:
   chromium:
     runs-on: ubuntu-24.04
@@ -23,37 +24,22 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Run seven rollout states in Chromium
-        shell: bash
-        run: |
-          set +e
-          EARTHLINE_URL='https://earthlinedevelopment.org/' \
-          BROWSER='chromium' \
-          HEADLESS='true' \
-          STATES='Arizona|New Mexico|Colorado|Texas|California|Vermont|New York' \
-          OUT='property-rollout-chromium-17237.json' \
-          node lab/validate-16728-property-50states.mjs
-          code=$?
-          echo "$code" > property-rollout-chromium-17237.exit
-          cat property-rollout-chromium-17237.json
-          exit 0
+      - name: Seven rollout states — Chromium
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          BROWSER: chromium
+          HEADLESS: 'true'
+          STATES: Arizona|New Mexico|Colorado|Texas|California|Vermont|New York
+          OUT: property-rollout-chromium-17238.json
+        run: node lab/validate-16728-property-50states.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: earthline-seven-state-chromium-17237
-          path: |
-            property-rollout-chromium-17237.json
-            property-rollout-chromium-17237.exit
-          if-no-files-found: error
-      - name: Enforce Chromium gate
-        if: always()
-        run: test "$(cat property-rollout-chromium-17237.exit)" = "0"
+          name: earthline-seven-state-chromium-17238
+          path: property-rollout-chromium-17238.json
+          if-no-files-found: warn
 
-  headed-engines:
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: [firefox, webkit]
+  firefox:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -63,37 +49,87 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install ${{ matrix.browser }} and Xvfb
-        shell: bash
+      - name: Install Firefox and Xvfb
         run: |
           npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps '${{ matrix.browser }}'
+          npx playwright install --with-deps firefox
           sudo apt-get update
           sudo apt-get install -y xvfb
-      - name: Run seven rollout states in headed ${{ matrix.browser }}
+      - name: Seven rollout states — Firefox headed
         shell: bash
         run: |
-          set +e
           xvfb-run -a env \
           EARTHLINE_URL='https://earthlinedevelopment.org/' \
-          BROWSER='${{ matrix.browser }}' \
+          BROWSER='firefox' \
           HEADLESS='false' \
           STATES='Arizona|New Mexico|Colorado|Texas|California|Vermont|New York' \
-          OUT='property-rollout-${{ matrix.browser }}-headed-17237.json' \
+          OUT='property-rollout-firefox-headed-17238.json' \
           node lab/validate-16728-property-50states.mjs
-          code=$?
-          echo "$code" > 'property-rollout-${{ matrix.browser }}-headed-17237.exit'
-          cat 'property-rollout-${{ matrix.browser }}-headed-17237.json'
-          exit 0
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: earthline-seven-state-${{ matrix.browser }}-headed-17237
-          path: |
-            property-rollout-${{ matrix.browser }}-headed-17237.json
-            property-rollout-${{ matrix.browser }}-headed-17237.exit
-          if-no-files-found: error
-      - name: Enforce headed browser gate
+          name: earthline-seven-state-firefox-headed-17238
+          path: property-rollout-firefox-headed-17238.json
+          if-no-files-found: warn
+
+  safari-engine:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-coverage-17223
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install WebKit
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - name: Seven rollout states — WebKit on macOS
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          BROWSER: webkit
+          HEADLESS: 'true'
+          STATES: Arizona|New Mexico|Colorado|Texas|California|Vermont|New York
+          OUT: property-rollout-webkit-macos-17238.json
+        run: node lab/validate-16728-property-50states.mjs
+      - uses: actions/upload-artifact@v4
         if: always()
-        shell: bash
-        run: test "$(cat 'property-rollout-${{ matrix.browser }}-headed-17237.exit')" = "0"
+        with:
+          name: earthline-seven-state-webkit-macos-17238
+          path: property-rollout-webkit-macos-17238.json
+          if-no-files-found: warn
+
+  branded-chromium:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, edge]
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-coverage-17223
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        shell: pwsh
+        run: npm install --no-save playwright@1.55.0
+      - name: Seven rollout states — ${{ matrix.browser }}
+        shell: pwsh
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          BROWSER: ${{ matrix.browser }}
+          HEADLESS: 'true'
+          STATES: Arizona|New Mexico|Colorado|Texas|California|Vermont|New York
+          OUT: property-rollout-${{ matrix.browser }}-windows-17238.json
+        run: node lab/validate-16728-property-50states.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-seven-state-${{ matrix.browser }}-windows-17238
+          path: property-rollout-${{ matrix.browser }}-windows-17238.json
+          if-no-files-found: warn
