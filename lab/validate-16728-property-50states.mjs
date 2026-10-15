@@ -6,8 +6,9 @@ const STATES=(process.env.STATES||'').split('|').map(s=>s.trim()).filter(Boolean
 const OUT=process.env.OUT||'property50.json';
 if(!STATES.length)throw new Error('STATES required');
 const BROWSER=(process.env.BROWSER||'chromium').toLowerCase();
+const HEADLESS=!/^(0|false|no)$/i.test(String(process.env.HEADLESS||'true'));
 const browserType=BROWSER==='firefox'?firefox:BROWSER==='webkit'?webkit:chromium;
-const browser=await browserType.launch({headless:true});
+const browser=await browserType.launch({headless:HEADLESS});
 const rows=[];
 
 async function runRegional(page,stateName){
@@ -122,6 +123,6 @@ for(const stateName of STATES){
 }
 await browser.close();
 const failed=rows.filter(r=>!r.pass).map(r=>({state:r.state,failures:r.failures}));
-const out={at:new Date().toISOString(),url:URL,browser:BROWSER,rows,failed,pass:failed.length===0};
+const out={at:new Date().toISOString(),url:URL,browser:BROWSER,headless:HEADLESS,rows,failed,pass:failed.length===0};
 fs.writeFileSync(OUT,JSON.stringify(out,null,2));console.log(JSON.stringify(out));
 if(failed.length)process.exitCode=1;
