@@ -1,4 +1,4 @@
-name: Earthline Regional Refinement Owner Diagnostic 17241
+name: Earthline Jurisdiction Geometry Diagnostic 17242
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
@@ -14,34 +14,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
-      - name: Extract expensive Regional refinement owners
+      - name: Extract jurisdiction geometry hot path
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
-          terms=[
-            'EARTHLINE 16841',
-            'supertile',
-            'productsBeforeFlowMs',
-            'EARTHLINE 16782',
-            'coverageGap',
-            'scaleRefined',
-            'earthlineRefine',
-            'refinementTiming',
-            'targetCandidates'
-          ]
-          seen=set()
-          for term in terms:
+          for term in ['function earthlinePointInJurisdiction16539','function earthlinePrepareJurisdiction16539','const scale16722=4','function earthlineClipLine16539','earthlineRing','pointInRing']:
+              print('\n### '+term)
               start=0
-              while True:
+              for n in range(4):
                   p=s.find(term,start)
                   if p<0: break
-                  key=(term,p)
-                  if key not in seen:
-                      seen.add(key)
-                      print('\n===== '+term+' @ '+str(p)+' =====\n')
-                      print(s[max(0,p-12000):p+26000])
+                  print('\n===== @ '+str(p)+' =====\n')
+                  print(s[max(0,p-9000):p+18000])
                   start=p+len(term)
-                  if len([x for x in seen if x[0]==term])>=5: break
           PY
