@@ -1,0 +1,38 @@
+name: Earthline Property Coverage Diagnostic 17223
+on:
+  push:
+    branches: [repair/v1-property-coverage-17223]
+    paths:
+      - '.github/workflows/earthline-property-coverage-diag-17223.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-coverage-17223
+      - name: Inspect 20-acre coverage owners
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          terms=[
+            'analysisBoundaryLngLat','authoritativeSafeSwales15815','parcelMask',
+            'propertyMask','earthlineLngLatToGrid','swale prescription',
+            '20-acre','20 acres','analysis boundary','propertyResultLock15815',
+            'safeSwales','corridor'
+          ]
+          for term in terms:
+              print('\n===== '+term+' =====')
+              start=0; shown=0
+              while shown<6:
+                  p=s.lower().find(term.lower(),start)
+                  if p<0: break
+                  block=s[max(0,p-1800):p+5200]
+                  print('\n--- hit',shown,'at',p,'---\n',block[:7000])
+                  start=p+len(term); shown+=1
+          PY
