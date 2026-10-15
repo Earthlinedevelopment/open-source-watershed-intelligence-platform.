@@ -1,0 +1,36 @@
+name: Earthline First Property Blue Gate 17219
+on:
+  push:
+    branches: [repair/v1-first-property-blue-17217]
+    paths:
+      - 'index.html'
+      - 'tests/v1-first-property-blue-17219.mjs'
+      - '.github/workflows/earthline-first-property-blue-gate-17219.yml'
+      - 'earthline-launch-16872.js'
+      - 'earthline-elder-worker-17129.js'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rendered-blue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-first-property-blue-17217
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run Australia first/second Property blue gate
+        run: node tests/v1-first-property-blue-17219.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-first-property-blue-17219
+          path: artifacts/v1-first-property-blue-17219/
+          if-no-files-found: warn
