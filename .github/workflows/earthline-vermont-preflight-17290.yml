@@ -1,0 +1,69 @@
+name: Earthline Vermont + Preflight Diagnostic 17290
+on:
+  push:
+    branches: [diag/browser-vermont-preflight-17290]
+    paths:
+      - 'tests/apply-stage-profile-17290.py'
+      - '.github/workflows/earthline-vermont-preflight-17290.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect-preflight:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: diag/browser-vermont-preflight-17290
+      - name: Extract regional preflight owner
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          needle='regional core preflight incomplete'
+          i=s.find(needle)
+          print('PREFLIGHT_INDEX',i)
+          if i>=0: print(s[max(0,i-9000):i+14000])
+          PY
+  firefox-vermont:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: diag/browser-vermont-preflight-17290
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          python3 tests/apply-exact-jurisdiction-fast-screen-17270.py
+          python3 tests/apply-consolidated-jurisdiction-screen-17262.py
+          python3 tests/apply-crosscall-jurisdiction-cache-17272.py
+          python3 tests/apply-grid-point-cache-17274.py
+          python3 tests/apply-terrain-hedge-17275.py
+          python3 tests/apply-percentile-cache-17279.py
+          python3 tests/apply-dem-sampling-17280.py
+          python3 tests/apply-hydrology-core-17278.py
+          python3 tests/apply-densify-fastpath-17285.py
+          python3 tests/apply-land-ring-index-17289.py
+          python3 tests/apply-stage-profile-17290.py
+      - name: Forward profiler
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tests/mantra46-16791-50state-production.mjs')
+          s=p.read_text(encoding='utf-8')
+          old="  const page=await context.newPage();\n  const pageErrors=[];"
+          new="  const page=await context.newPage();\n  page.on('console',m=>{const t=m.text();if(t.includes('EARTHLINE_STAGE_PROFILE_17290'))console.log(t)});\n  const pageErrors=[];"
+          if s.count(old)!=1: raise SystemExit('console anchor '+str(s.count(old)))
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          PY
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Profile Vermont
+        run: xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' WAIT_MS='120000' STATES='Vermont' node tests/mantra46-16791-50state-production.mjs || true
