@@ -30,6 +30,54 @@ jobs:
           python3 tests/apply-time-budget-yield-17292.py
           python3 tests/apply-terrain-integrity-17293.py
           python3 tests/apply-cancelled-terrain-hedge-17296.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess
+          out=subprocess.run(['git','diff','--check'],text=True,capture_output=True).stdout
+          nums=[]
+          for line in out.splitlines():
+              m=re.match(r'index\.html:(\d+): trailing whitespace\.
+      - name: Verify browser repair markers
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          markers=[
+            'EARTHLINE_EXACT_JURISDICTION_FAST_SCREEN_17270',
+            'EARTHLINE_CROSSCALL_JURISDICTION_SCREEN_CACHE_17272',
+            'EARTHLINE_GRID_POINT_JURISDICTION_CACHE_17274',
+            'EARTHLINE_PERCENTILE_CACHE_17279',
+            'EARTHLINE_DEM_SAMPLING_17280',
+            'EARTHLINE_HYDROLOGY_CORE_17278',
+            'EARTHLINE_DENSIFY_FASTPATH_17285',
+            'EARTHLINE_LAND_RING_INDEX_17289',
+            'EARTHLINE_TIME_BUDGET_YIELD_17292',
+            'EARTHLINE_TERRAIN_INTEGRITY_17293',
+            'EARTHLINE_CANCELLED_TERRAIN_HEDGE_17296'
+          ]
+          missing=[m for m in markers if m not in s]
+          if missing: raise SystemExit('missing browser repair markers: '+', '.join(missing))
+          print('browser candidate markers verified:',len(markers))
+          PY
+      - name: Commit candidate only
+        run: |
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'candidate: browser performance and stability repair 17299'
+          git push origin HEAD:candidate/browser-fix-17299
+,line)
+              if m: nums.append(int(m.group(1)))
+          if nums:
+              p=Path('index.html'); lines=p.read_text(encoding='utf-8').splitlines(True)
+              for n in nums:
+                  raw=lines[n-1]
+                  nl='\n' if raw.endswith('\n') else ''
+                  body=raw[:-1] if nl else raw
+                  lines[n-1]=body.rstrip()+nl
+              p.write_text(''.join(lines),encoding='utf-8')
+              print('cleaned changed-line trailing whitespace:',nums)
+          PY
           git diff --check
       - name: Verify browser repair markers
         run: |
