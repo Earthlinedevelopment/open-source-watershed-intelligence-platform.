@@ -19,7 +19,7 @@ const before=await page.evaluate(()=>{
   window.__EARTHLINE_CLICK_DIAG_BUTTON_17266=b;
   const rec=(phase,e)=>window.__EARTHLINE_CLICK_DIAG_17266.events.push({phase,type:e.type,targetId:e.target?.id||'',closestId:e.target?.closest?.('button')?.id||'',at:performance.now()});
   document.addEventListener('pointerdown',e=>{if(e.target?.closest?.('#earthlineDeclareProperty16169'))rec('document-capture',e)},true);
-  for(const type of ['pointerdown','pointerup','pointercancel','mousedown','mouseup','click']){
+  for(const type of ['pointerdown','pointerup','pointercancel','mousedown','mouseup','click','focus','blur','focusin','focusout']){
     document.addEventListener(type,e=>{if(e.target?.closest?.('#earthlineDeclareProperty16169'))rec('document-capture',e)},true);
     b?.addEventListener(type,e=>rec('button-capture',e),true);
     b?.addEventListener(type,e=>rec('button-bubble',e),false);
@@ -31,10 +31,33 @@ const before=await page.evaluate(()=>{
 const prop=page.locator('#earthlineDeclareProperty16169');
 const box=await prop.boundingBox();if(!box)throw new Error('Property button has no box');
 const x=box.x+box.width/2,y=box.y+box.height/2;
+const layoutSnap=async()=>await page.evaluate(({x,y})=>{
+ const rect=id=>{const e=document.getElementById(id),r=e?.getBoundingClientRect?.();return r?{x:r.x,y:r.y,width:r.width,height:r.height,top:r.top,bottom:r.bottom,left:r.left,right:r.right}:null};
+ const b=document.getElementById('earthlineDeclareProperty16169');
+ const pb=document.getElementById('earthlinePanelBody16188');
+ const sec=document.getElementById('earthlinePropertySection16188');
+ const top=document.elementFromPoint(x,y);
+ return {
+   button:rect('earthlineDeclareProperty16169'),
+   section:rect('earthlinePropertySection16188'),
+   panelBody:rect('earthlinePanelBody16188'),
+   panelScrollTop:Number(pb?.scrollTop||0),
+   panelScrollHeight:Number(pb?.scrollHeight||0),
+   panelClientHeight:Number(pb?.clientHeight||0),
+   pageScrollY:Number(window.scrollY||0),
+   docScrollTop:Number(document.scrollingElement?.scrollTop||0),
+   activeId:document.activeElement?.id||'',
+   topId:top?.id||'',
+   topClosest:top?.closest?.('button')?.id||'',
+   sameButton:b===window.__EARTHLINE_CLICK_DIAG_BUTTON_17266,
+   rootClass:document.documentElement.className
+ };
+},{x,y});
+const beforeDownLayout=await layoutSnap();
 await page.mouse.move(x,y);
 await page.mouse.down();
 await page.waitForTimeout(120);
-const afterDown=await page.evaluate(({x,y})=>{const b=document.getElementById('earthlineDeclareProperty16169'),e=document.elementFromPoint(x,y);return {disabled:!!b?.disabled,busy:b?.dataset?.busy||null,state:b?.dataset?.state||null,topId:e?.id||'',topClosest:e?.closest?.('button')?.id||'',sameButton:b===window.__EARTHLINE_CLICK_DIAG_BUTTON_17266,rect:b?.getBoundingClientRect?.().toJSON?.()||null}}, {x,y});
+const afterDown=await layoutSnap();
 await page.mouse.up();
 await page.waitForTimeout(1500);
 const snap=await page.evaluate(()=>({
@@ -60,7 +83,7 @@ const snap=await page.evaluate(()=>({
 }));
 const targetOk=Math.abs(Number(snap.target?.lng)-lng)<0.002&&Math.abs(Number(snap.target?.lat)-lat)<0.002;
 const launched=Number(snap.audit?.serial||0)>before;
-console.log('EARTHLINE_ONE_PRESS_LAUNCH_17266 '+JSON.stringify({before,afterDown,launched,targetOk,...snap}));
+console.log('EARTHLINE_ONE_PRESS_LAUNCH_17266 '+JSON.stringify({before,beforeDownLayout,afterDown,launched,targetOk,...snap}));
 await browser.close();
 if(!(launched&&targetOk))process.exitCode=1;
 
