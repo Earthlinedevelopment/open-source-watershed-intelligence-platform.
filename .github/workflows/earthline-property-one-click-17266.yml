@@ -1,0 +1,32 @@
+name: Earthline Property One Press 17266
+on:
+  push:
+    branches: [repair/property-one-click-17266]
+    paths:
+      - 'earthline-launch-16872.js'
+      - 'tests/property-one-click-17266.mjs'
+      - '.github/workflows/earthline-property-one-click-17266.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  chrome:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/property-one-click-17266
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chrome
+      - run: node tests/property-one-click-17266.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: property-one-click-17266
+          path: artifacts/property-one-click-17266/
+          if-no-files-found: warn
