@@ -1,0 +1,100 @@
+name: Earthline Cross-Call Jurisdiction Cache 17272
+on:
+  push:
+    branches: [repair/browser-crosscall-screen-cache-17272]
+    paths:
+      - 'tests/apply-crosscall-jurisdiction-cache-17272.py'
+      - '.github/workflows/earthline-browser-crosscall-cache-17272.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  firefox:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/browser-crosscall-screen-cache-17272
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          python3 tests/apply-exact-jurisdiction-fast-screen-17270.py
+          python3 tests/apply-consolidated-jurisdiction-screen-17262.py
+          python3 tests/apply-crosscall-jurisdiction-cache-17272.py
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run Texas and Vermont
+        run: xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: crosscall-cache-firefox-17272
+          path: artifacts/mantra46-16791-50state/
+          if-no-files-found: warn
+
+  webkit:
+    runs-on: macos-14
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/browser-crosscall-screen-cache-17272
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          python3 tests/apply-exact-jurisdiction-fast-screen-17270.py
+          python3 tests/apply-consolidated-jurisdiction-screen-17262.py
+          python3 tests/apply-crosscall-jurisdiction-cache-17272.py
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run Texas and Vermont
+        run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: crosscall-cache-webkit-17272
+          path: artifacts/mantra46-16791-50state/
+          if-no-files-found: warn
+
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/browser-crosscall-screen-cache-17272
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          python3 tests/apply-exact-jurisdiction-fast-screen-17270.py
+          python3 tests/apply-consolidated-jurisdiction-screen-17262.py
+          python3 tests/apply-crosscall-jurisdiction-cache-17272.py
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run Texas and Vermont
+        run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='chromium' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: crosscall-cache-chromium-17272
+          path: artifacts/mantra46-16791-50state/
+          if-no-files-found: warn
