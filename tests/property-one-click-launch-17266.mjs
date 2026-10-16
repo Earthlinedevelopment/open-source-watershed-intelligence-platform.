@@ -72,6 +72,13 @@ await page.waitForTimeout(150);
 const controlLayout=await layoutSnap();
 await page.mouse.move(x,y);
 await page.mouse.down();
+/* Deterministic stress: reproduce the live race that previously moved the
+   Property control away between down and up. Pointer capture must keep the
+   release/click owned by the original button without a second press. */
+await page.evaluate(()=>{
+  const sec=document.getElementById('earthlinePropertySection16188');
+  if(sec)sec.style.setProperty('transform','translateY(-20px)','important');
+});
 await page.waitForTimeout(120);
 const afterDown=await layoutSnap();
 await page.mouse.up();
