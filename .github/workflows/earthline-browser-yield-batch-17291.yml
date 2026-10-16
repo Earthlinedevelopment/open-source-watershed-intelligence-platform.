@@ -60,7 +60,7 @@ jobs:
           npm install --no-save playwright@1.55.0
           npx playwright install webkit
       - run: |
-          python3 -m http.server 8787 --bind 127.0.0.1:8787 >/tmp/earthline-http.log 2>&1 &
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
           exit 1
       - run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='true' WAIT_MS='90000' STATES='Texas|Vermont' node tests/browser-regional-ab-17269.mjs
