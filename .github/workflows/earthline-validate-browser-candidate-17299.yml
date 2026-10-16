@@ -1,0 +1,37 @@
+name: Earthline Validate Browser Candidate 17299
+on:
+  push:
+    branches: [candidate/browser-fix-17299]
+    paths:
+      - 'tests/browser-candidate-17299.mjs'
+      - '.github/workflows/earthline-validate-browser-candidate-17299.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit]
+    runs-on: ${{ matrix.browser == 'webkit' && 'macos-14' || 'ubuntu-24.04' }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/browser-fix-17299
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          if [ "${{ matrix.browser }}" = "webkit" ]; then npx playwright install webkit; else npx playwright install --with-deps firefox; fi
+      - name: Run materialized 7-state candidate gate
+        run: |
+          if [ "${{ matrix.browser }}" = "firefox" ]; then
+            python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+            for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+            xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' WAIT_MS='120000' STATES='Arizona|New Mexico|Colorado|Texas|California|Vermont|New York' node tests/mantra46-16791-50state-production.mjs
+          else
+            env BROWSER=webkit node tests/browser-candidate-17299.mjs
+          fi
