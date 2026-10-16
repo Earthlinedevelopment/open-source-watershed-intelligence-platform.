@@ -1,0 +1,22 @@
+name: Earthline Contour Swale Owner Extract 17290
+on:
+  push:
+    branches: [repair/browser-performance-live-17268]
+    paths:
+      - 'tests/extract-contour-swale-owner-17290.py'
+      - '.github/workflows/earthline-contour-swale-extract-17290.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-performance-live-17268}
+      - run: python3 tests/extract-contour-swale-owner-17290.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: contour-swale-owner-17290
+          path: contour-swale-owner-17290.txt
+          if-no-files-found: error
