@@ -1,4 +1,4 @@
-name: Earthline Percentile Hotpath Diagnostic 17246
+name: Earthline Property One-Click Diagnostic 17265
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
@@ -14,15 +14,35 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
-      - name: Extract percentile owner and call sites
+      - name: Extract exact 20-acre button and Property owners
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           s=Path('index.html').read_text(encoding='utf-8')
-          for term in ['function percentile','const percentile','percentile=']:
-              p=s.find(term)
-              print('\n### '+term+' @ '+str(p))
-              if p>=0: print(s[max(0,p-5000):p+12000])
-          print('\nCOUNT percentile(',s.count('percentile('))
+          terms=[
+            'earthlineDeclareProperty16169',
+            'earthlineDeclarePropertyAtCrosshair16173',
+            'EARTHLINE_PROPERTY_DECLARATION_16169',
+            'EARTHLINE_PROPERTY_TARGET_16201',
+            'propertyRunState',
+            '20-acre',
+            '20 acre',
+            'Property search',
+            'Property Search',
+            'declare property'
+          ]
+          for term in terms:
+              print('\n===== '+term+' =====')
+              pos=0;n=0
+              while True:
+                  i=s.find(term,pos)
+                  if i<0: break
+                  n+=1
+                  print('\n--- HIT',n,'@',i,'---')
+                  print(s[max(0,i-7000):i+18000])
+                  pos=i+len(term)
+                  if n>=12: break
+              print('COUNT',n)
           PY
