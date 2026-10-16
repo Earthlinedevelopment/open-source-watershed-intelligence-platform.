@@ -33,3 +33,5 @@ const launched=Number(snap.audit?.serial||0)>before;
 console.log('EARTHLINE_ONE_PRESS_LAUNCH_17266 '+JSON.stringify({before,launched,targetOk,...snap}));
 await browser.close();
 if(!(launched&&targetOk))process.exitCode=1;
+
+// rerun after deferred authoritative-owner bind
