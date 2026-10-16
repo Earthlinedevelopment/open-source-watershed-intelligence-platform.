@@ -1,0 +1,39 @@
+name: Earthline Browser Fast Screen Hits 17271
+on:
+  push:
+    branches: [diag/browser-fast-screen-hits-17271]
+    paths:
+      - 'tests/browser-fast-screen-hits-17271.mjs'
+      - '.github/workflows/earthline-browser-fast-screen-hits-17271.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  firefox:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: diag/browser-fast-screen-hits-17271
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          python3 tests/apply-exact-jurisdiction-fast-screen-17270.py
+          python3 tests/apply-consolidated-jurisdiction-screen-17262.py
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run Texas and Vermont with fast-screen audit
+        run: xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' WAIT_MS='120000' STATES='Texas|Vermont' node tests/browser-fast-screen-hits-17271.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-fast-screen-hits-17271
+          path: artifacts/mantra46-16791-50state/
+          if-no-files-found: warn
