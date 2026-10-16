@@ -1,0 +1,46 @@
+name: Earthline WebKit Production Origin 17295
+on:
+  push:
+    branches: [diag/webkit-production-origin-17295]
+    paths:
+      - 'tests/webkit-production-origin-17295.mjs'
+      - '.github/workflows/earthline-webkit-production-origin-17295.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  webkit:
+    runs-on: macos-14
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: diag/webkit-production-origin-17295
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build candidate from current live lineage
+        run: |
+          python3 tests/apply-exact-jurisdiction-fast-screen-17270.py
+          python3 tests/apply-consolidated-jurisdiction-screen-17262.py
+          python3 tests/apply-crosscall-jurisdiction-cache-17272.py
+          python3 tests/apply-grid-point-cache-17274.py
+          python3 tests/apply-terrain-hedge-17275.py
+          python3 tests/apply-percentile-cache-17279.py
+          python3 tests/apply-dem-sampling-17280.py
+          python3 tests/apply-hydrology-core-17278.py
+          python3 tests/apply-densify-fastpath-17285.py
+          python3 tests/apply-land-ring-index-17289.py
+          python3 tests/apply-time-budget-yield-17292.py
+          python3 tests/apply-terrain-integrity-17293.py
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - name: Run candidate under production origin
+        run: node tests/webkit-production-origin-17295.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: webkit-production-origin-17295
+          path: artifacts/webkit-production-origin-17295/
+          if-no-files-found: warn
