@@ -1,0 +1,51 @@
+name: Earthline Land Ring Index 17289
+on:
+  push:
+    branches: [repair/browser-land-ring-index-17289]
+    paths:
+      - 'tests/apply-land-ring-index-17289.py'
+      - '.github/workflows/earthline-browser-land-ring-index-17289.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    runs-on: ${{ matrix.browser == 'webkit' && 'macos-14' || 'ubuntu-24.04' }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/browser-land-ring-index-17289
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply exact browser candidate
+        run: |
+          python3 tests/apply-exact-jurisdiction-fast-screen-17270.py
+          python3 tests/apply-consolidated-jurisdiction-screen-17262.py
+          python3 tests/apply-crosscall-jurisdiction-cache-17272.py
+          python3 tests/apply-grid-point-cache-17274.py
+          python3 tests/apply-terrain-hedge-17275.py
+          python3 tests/apply-percentile-cache-17279.py
+          python3 tests/apply-dem-sampling-17280.py
+          python3 tests/apply-hydrology-core-17278.py
+          python3 tests/apply-densify-fastpath-17285.py
+          python3 tests/apply-land-ring-index-17289.py
+      - run: |
+          npm install --no-save playwright@1.55.0
+          if [ "${{ matrix.browser }}" = "webkit" ]; then npx playwright install webkit; else npx playwright install --with-deps ${{ matrix.browser }}; fi
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Run Texas and Vermont
+        run: |
+          if [ "${{ matrix.browser }}" = "firefox" ]; then
+            xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
+          else
+            env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='${{ matrix.browser }}' HEADLESS='true' WAIT_MS='120000' STATES='Texas|Vermont' node tests/mantra46-16791-50state-production.mjs
+          fi
