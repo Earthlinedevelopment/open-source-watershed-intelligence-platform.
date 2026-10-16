@@ -2050,7 +2050,16 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       try{refreshCurrentTarget17266()}catch(_){}
       return governed.call(this,ev);
     };
-    window.EARTHLINE_PROPERTY_ONE_PRESS_17266={state:'ready',refreshCurrentTarget17266,lastTarget:null,at:new Date().toISOString()};
+    const propertyButton17266=document.getElementById('earthlineDeclareProperty16169');
+    if(propertyButton17266){
+      /* Keep a mouse press from shifting focus/scroll between down and up.
+         Click and keyboard activation remain owned by the existing Property onclick. */
+      propertyButton17266.onmousedown=function earthlinePropertyMouseDownStable17266(ev){
+        ev?.preventDefault?.();
+        ev?.stopPropagation?.();
+      };
+    }
+    window.EARTHLINE_PROPERTY_ONE_PRESS_17266={state:'ready',refreshCurrentTarget17266,lastTarget:null,mouseDownStable:!!propertyButton17266,at:new Date().toISOString()};
     return true;
   }
   if(wrap17266())return;
