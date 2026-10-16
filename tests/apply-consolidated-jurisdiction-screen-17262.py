@@ -27,5 +27,25 @@ if hits<5:
 
 marker="/* EARTHLINE_CONSOLIDATED_JURISDICTION_SCREEN_17262 — local refinement candidate generation defers exact jurisdiction clipping to the existing authoritative consolidated makeSwales screen; science thresholds unchanged. */\n"
 s=marker+s
+
+
+# 17269 browser-performance hypothesis:
+# Chromium uses scheduler.yield(); Firefox/WebKit fall back to setTimeout(0).
+# Replace only that fallback with MessageChannel, preserving the same cooperative-yield semantics.
+old_yield="async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();return new Promise(r=>setTimeout(r,0));}"
+new_yield="""async function earthlineCooperativeYield16661(){
+  if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();
+  if(typeof MessageChannel==='function')return new Promise(resolve=>{
+    const ch=new MessageChannel();
+    ch.port1.onmessage=()=>{try{ch.port1.close();ch.port2.close()}catch(_){} resolve();};
+    ch.port2.postMessage(0);
+  });
+  return Promise.resolve();
+}"""
+if old_yield not in s:
+    raise SystemExit("yield anchor not found")
+s=s.replace(old_yield,new_yield,1)
+print("patched cooperative yield fallback")
+
 p.write_text(s,encoding="utf-8")
 print("replaced",hits)
