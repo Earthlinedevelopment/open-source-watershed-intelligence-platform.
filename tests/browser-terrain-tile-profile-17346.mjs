@@ -1,0 +1,11 @@
+import { webkit } from 'playwright';
+const browser=await webkit.launch({headless:false});
+const page=await browser.newPage({viewport:{width:1800,height:950}});
+const base=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
+await page.goto(base+'?tileprof17346='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+await page.waitForSelector('#searchInput',{timeout:30000});
+await page.evaluate(()=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='Texas';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
+await page.waitForFunction(()=>/screening published\./i.test(String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'')),{timeout:90000,polling:100});
+const out=await page.evaluate(()=>({perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,tiles:(window.EARTHLINE_TERRAIN_TILE_TIMINGS_17346||[]).slice().sort((a,b)=>b.ms-a.ms)}));
+console.log('EARTHLINE_TERRAIN_TILE_PROFILE_17346 '+JSON.stringify(out));
+await browser.close();
