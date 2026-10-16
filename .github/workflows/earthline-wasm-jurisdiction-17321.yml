@@ -1,0 +1,76 @@
+name: Earthline Full WASM Jurisdiction A-B 17321
+on:
+  push:
+    branches: [repair/browser-performance-live-17268]
+    paths:
+      - 'tests/apply-wasm-jurisdiction-kernel-17321.py'
+      - '.github/workflows/earthline-wasm-jurisdiction-17321.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-performance-live-17268}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          python3 tests/apply-browser-yield-fastpath-17295.py
+          python3 tests/apply-wasm-jurisdiction-kernel-17321.py
+          python3 tests/apply-certified-interior-supertile-17301.py
+          python3 tests/apply-skip-regional-preferred-screen-17305.py
+          python3 tests/apply-run-scoped-segment-clip-cache-17315.py
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - run: |
+          if [ '${{ matrix.browser }}' = 'firefox' ]; then
+            xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' WAIT_MS='90000' STATES='Texas|Vermont' node tests/browser-regional-ab-17269.mjs
+          else
+            env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='chromium' HEADLESS='true' WAIT_MS='90000' STATES='Texas|Vermont' node tests/browser-regional-ab-17269.mjs
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wasm-jurisdiction-${{ matrix.browser }}-17321
+          path: artifacts/browser-regional-17269/
+          if-no-files-found: warn
+  webkit:
+    runs-on: macos-14
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-performance-live-17268}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          python3 tests/apply-browser-yield-fastpath-17295.py
+          python3 tests/apply-wasm-jurisdiction-kernel-17321.py
+          python3 tests/apply-certified-interior-supertile-17301.py
+          python3 tests/apply-skip-regional-preferred-screen-17305.py
+          python3 tests/apply-run-scoped-segment-clip-cache-17315.py
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - run: |
+          python3 -m http.server 8787 --bind 0.0.0.0 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='true' WAIT_MS='90000' STATES='Texas|Vermont' node tests/browser-regional-ab-17269.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wasm-jurisdiction-webkit-17321
+          path: artifacts/browser-regional-17269/
+          if-no-files-found: warn
