@@ -2008,49 +2008,56 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
    Refresh the current crosshair target synchronously before the preserved
    governed Property owner reads it. No second click handler and no polling. */
 (function installEarthlinePropertyOnePress17266(){
-  if(window.EARTHLINE_PROPERTY_ONE_PRESS_17266)return;
-  const governed=window.earthlineDeclarePropertyAtCrosshair16173;
-  if(typeof governed!=='function'){
-    window.EARTHLINE_PROPERTY_ONE_PRESS_17266={state:'blocked-owner-unavailable',at:new Date().toISOString()};
-    return;
-  }
-  function currentMap17266(){
-    try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}
-  }
-  function refreshCurrentTarget17266(){
-    const m=currentMap17266(),c=m?.getCenter?.();
-    const lng=Number(c?.lng),lat=Number(c?.lat);
-    if(!Number.isFinite(lng)||!Number.isFinite(lat))return false;
-    window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;
-    const prior=window.EARTHLINE_PROPERTY_TARGET_16201||null;
-    let keepCode=false;
-    if(prior&&prior.code&&Number.isFinite(Number(prior.lng))&&Number.isFinite(Number(prior.lat))){
-      const lat0=Number(prior.lat),lng0=Number(prior.lng);
-      const dy=(lat-lat0)*111320;
-      const dx=(lng-lng0)*111320*Math.max(.05,Math.cos(lat0*Math.PI/180));
-      keepCode=Math.hypot(dx,dy)<=18;
+  function wrap17266(){
+    if(window.EARTHLINE_PROPERTY_ONE_PRESS_17266?.state==='ready')return true;
+    const governed=window.earthlineDeclarePropertyAtCrosshair16173;
+    if(typeof governed!=='function')return false;
+    function currentMap17266(){
+      try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}
     }
-    const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
-    const displayedTier=String(displayed&&(displayed.tier||displayed.mode)||'').toLowerCase();
-    const parentRunToken=displayedTier==='regional'
-      ? String(displayed?.runToken||prior?.parentRunToken||'')
-      : String(prior?.parentRunToken||'');
-    const target={
-      lng,lat,
-      source:keepCode?String(prior?.source||'corridor'):'crosshair',
-      code:keepCode?String(prior?.code||''):'',
-      score:keepCode?Number(prior?.score||0):0,
-      parentRunToken,
-      at:new Date().toISOString()
+    function refreshCurrentTarget17266(){
+      const m=currentMap17266(),c=m?.getCenter?.();
+      const lng=Number(c?.lng),lat=Number(c?.lat);
+      if(!Number.isFinite(lng)||!Number.isFinite(lat))return false;
+      window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;
+      const prior=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+      let keepCode=false;
+      if(prior&&prior.code&&Number.isFinite(Number(prior.lng))&&Number.isFinite(Number(prior.lat))){
+        const lat0=Number(prior.lat),lng0=Number(prior.lng);
+        const dy=(lat-lat0)*111320;
+        const dx=(lng-lng0)*111320*Math.max(.05,Math.cos(lat0*Math.PI/180));
+        keepCode=Math.hypot(dx,dy)<=18;
+      }
+      const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+      const displayedTier=String(displayed&&(displayed.tier||displayed.mode)||'').toLowerCase();
+      const parentRunToken=displayedTier==='regional'
+        ? String(displayed?.runToken||prior?.parentRunToken||'')
+        : String(prior?.parentRunToken||'');
+      const target={
+        lng,lat,
+        source:keepCode?String(prior?.source||'corridor'):'crosshair',
+        code:keepCode?String(prior?.code||''):'',
+        score:keepCode?Number(prior?.score||0):0,
+        parentRunToken,
+        at:new Date().toISOString()
+      };
+      if(typeof window.earthlineSetPropertyTarget16201==='function')window.earthlineSetPropertyTarget16201(target,{openPanel:false});
+      else window.EARTHLINE_PROPERTY_TARGET_16201=target;
+      window.EARTHLINE_PROPERTY_ONE_PRESS_17266.lastTarget={lng,lat,code:target.code||null,parentRunToken:target.parentRunToken||null,at:target.at};
+      return true;
+    }
+    window.earthlineDeclarePropertyAtCrosshair16173=function earthlineDeclarePropertyAtCrosshairOnePress17266(ev){
+      try{refreshCurrentTarget17266()}catch(_){}
+      return governed.call(this,ev);
     };
-    if(typeof window.earthlineSetPropertyTarget16201==='function')window.earthlineSetPropertyTarget16201(target,{openPanel:false});
-    else window.EARTHLINE_PROPERTY_TARGET_16201=target;
-    window.EARTHLINE_PROPERTY_ONE_PRESS_17266.lastTarget={lng,lat,code:target.code||null,parentRunToken:target.parentRunToken||null,at:target.at};
+    window.EARTHLINE_PROPERTY_ONE_PRESS_17266={state:'ready',refreshCurrentTarget17266,lastTarget:null,at:new Date().toISOString()};
     return true;
   }
-  window.earthlineDeclarePropertyAtCrosshair16173=function earthlineDeclarePropertyAtCrosshairOnePress17266(ev){
-    try{refreshCurrentTarget17266()}catch(_){}
-    return governed.call(this,ev);
-  };
-  window.EARTHLINE_PROPERTY_ONE_PRESS_17266={state:'ready',refreshCurrentTarget17266,lastTarget:null,at:new Date().toISOString()};
+  if(wrap17266())return;
+  window.EARTHLINE_PROPERTY_ONE_PRESS_17266={state:'waiting-for-owner',at:new Date().toISOString()};
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',()=>{wrap17266();},{once:true});
+  }else{
+    wrap17266();
+  }
 })();
