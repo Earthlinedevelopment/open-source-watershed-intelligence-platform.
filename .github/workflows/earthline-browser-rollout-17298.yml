@@ -41,10 +41,12 @@ jobs:
       - run: |
           npm install --no-save playwright@1.55.0
           if [ "${{ matrix.browser }}" = "webkit" ]; then npx playwright install webkit; else npx playwright install --with-deps firefox; fi
-      - name: Run 7-state production-origin gate
+      - name: Run 7-state browser gate
         run: |
           if [ "${{ matrix.browser }}" = "firefox" ]; then
-            xvfb-run -a env BROWSER=firefox node tests/browser-rollout-production-origin-17298.mjs
+            python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+            for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+            xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' WAIT_MS='120000' STATES='Arizona|New Mexico|Colorado|Texas|California|Vermont|New York' node tests/mantra46-16791-50state-production.mjs
           else
             env BROWSER=webkit node tests/browser-rollout-production-origin-17298.mjs
           fi
