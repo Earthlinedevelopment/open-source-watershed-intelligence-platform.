@@ -19,12 +19,12 @@ new="""        const fetchStart17350=performance.now();
 if s.count(old)!=1: raise SystemExit("17350 start anchor")
 s=s.replace(old,new,1)
 old2="""          elevs16702.sort((a,b)=>a-b);const levels16702=[],seen16702=new Set();if(elevs16702.length){for(const frac of [.05,.12,.22,.34,.47,.60]){const e=elevs16702[Math.min(elevs16702.length-1,Math.floor((elevs16702.length-1)*frac))],k=Math.round(e*2)/2;if(!seen16702.has(k)){seen16702.add(k);levels16702.push(k);}}}
-          const c16702=await makeContours(h16702,true,levels16702),s16702=await makeSwales(h16702,c16702,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16702;
+          const c16702=await makeContours(h16702,true,levels16702),s16702=await makeSwales(h16702,c16702,false,null,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16702;
 """
 new2="""          elevs16702.sort((a,b)=>a-b);const levels16702=[],seen16702=new Set();if(elevs16702.length){for(const frac of [.05,.12,.22,.34,.47,.60]){const e=elevs16702[Math.min(elevs16702.length-1,Math.floor((elevs16702.length-1)*frac))],k=Math.round(e*2)/2;if(!seen16702.has(k)){seen16702.add(k);levels16702.push(k);}}}
           const prepDone17350=performance.now();
           const c16702=await makeContours(h16702,true,levels16702),contourDone17350=performance.now();
-          const s16702=await makeSwales(h16702,c16702,false,swaleJurisdictionGeometry16539,null),swaleDone17350=performance.now();window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16702;
+          const s16702=await makeSwales(h16702,c16702,false,null,null),swaleDone17350=performance.now();window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16702;
 """
 if s.count(old2)!=1: raise SystemExit("17350 contour anchor")
 s=s.replace(old2,new2,1)
