@@ -35,11 +35,6 @@ s=marker+s
 old_yield="async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();return new Promise(r=>setTimeout(r,0));}"
 new_yield="""async function earthlineCooperativeYield16661(){
   if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();
-  if(typeof MessageChannel==='function')return new Promise(resolve=>{
-    const ch=new MessageChannel();
-    ch.port1.onmessage=()=>{try{ch.port1.close();ch.port2.close()}catch(_){} resolve();};
-    ch.port2.postMessage(0);
-  });
   return Promise.resolve();
 }"""
 if old_yield not in s:
