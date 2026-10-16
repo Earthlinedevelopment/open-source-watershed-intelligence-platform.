@@ -1,0 +1,26 @@
+name: Earthline DEM Loader Extract 17273
+on:
+  push:
+    branches: [diag/dem-loader-17273]
+    paths:
+      - '.github/workflows/earthline-dem-loader-extract-17273.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: diag/dem-loader-17273
+      - name: Extract DEM loader and scale refinement
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for needle,span in [('async function loadDEM',18000),('function loadDEM',18000),('EARTHLINE_SCALE_REFINEMENT_TRIGGER_16705',26000)]:
+              i=s.find(needle)
+              print('\n===== '+needle+' @ '+str(i)+' =====')
+              if i>=0: print(s[max(0,i-3000):i+span])
+          PY
