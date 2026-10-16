@@ -67,6 +67,8 @@ const layoutSnap=async()=>await page.evaluate(({x,y})=>{
  };
 },{x,y});
 const beforeDownLayout=await layoutSnap();
+await page.waitForTimeout(150);
+const controlLayout=await layoutSnap();
 await page.mouse.move(x,y);
 await page.mouse.down();
 await page.waitForTimeout(120);
@@ -96,7 +98,7 @@ const snap=await page.evaluate(()=>({
 }));
 const targetOk=Math.abs(Number(snap.target?.lng)-lng)<0.002&&Math.abs(Number(snap.target?.lat)-lat)<0.002;
 const launched=Number(snap.audit?.serial||0)>before;
-console.log('EARTHLINE_ONE_PRESS_LAUNCH_17266 '+JSON.stringify({before,beforeDownLayout,afterDown,launched,targetOk,...snap}));
+console.log('EARTHLINE_ONE_PRESS_LAUNCH_17266 '+JSON.stringify({before,beforeDownLayout,controlLayout,afterDown,launched,targetOk,...snap}));
 await browser.close();
 if(!(launched&&targetOk))process.exitCode=1;
 
