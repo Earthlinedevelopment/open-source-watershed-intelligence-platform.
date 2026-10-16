@@ -63,7 +63,8 @@ const layoutSnap=async()=>await page.evaluate(({x,y})=>{
    topId:top?.id||'',
    topClosest:top?.closest?.('button')?.id||'',
    sameButton:b===window.__EARTHLINE_CLICK_DIAG_BUTTON_17266,
-   rootClass:document.documentElement.className
+   rootClass:document.documentElement.className,
+   mapCenter:(()=>{try{const c=(window.earthlineMap||earthlineMap).getCenter();return {lng:Number(c.lng),lat:Number(c.lat)}}catch(_){return null}})()
  };
 },{x,y});
 const beforeDownLayout=await layoutSnap();
@@ -96,7 +97,8 @@ const snap=await page.evaluate(()=>({
  mapCenter:(()=>{try{const c=(window.earthlineMap||earthlineMap).getCenter();return {lng:Number(c.lng),lat:Number(c.lat)}}catch(_){return null}})(),
  clickDiag:window.__EARTHLINE_CLICK_DIAG_17266||null
 }));
-const targetOk=Math.abs(Number(snap.target?.lng)-lng)<0.002&&Math.abs(Number(snap.target?.lat)-lat)<0.002;
+const pressCenter=controlLayout?.mapCenter||beforeDownLayout?.mapCenter||null;
+const targetOk=!!pressCenter&&Math.abs(Number(snap.audit?.center?.lng)-Number(pressCenter.lng))<0.0002&&Math.abs(Number(snap.audit?.center?.lat)-Number(pressCenter.lat))<0.0002;
 const launched=Number(snap.audit?.serial||0)>before;
 console.log('EARTHLINE_ONE_PRESS_LAUNCH_17266 '+JSON.stringify({before,beforeDownLayout,controlLayout,afterDown,launched,targetOk,...snap}));
 await browser.close();
