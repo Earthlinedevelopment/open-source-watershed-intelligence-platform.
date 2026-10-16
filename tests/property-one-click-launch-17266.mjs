@@ -15,9 +15,21 @@ await page.evaluate(({lng,lat})=>new Promise((resolve,reject)=>{const m=window.e
 await page.waitForTimeout(250);
 const before=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
 await page.locator('#earthlineDeclareProperty16169').click();
-await page.waitForFunction(pre=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)>pre,before,{timeout:5000,polling:50});
-const snap=await page.evaluate(()=>({audit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,target:window.EARTHLINE_PROPERTY_TARGET_16201||null,repair:window.EARTHLINE_PROPERTY_ONE_PRESS_17266||null,runState:document.documentElement.dataset.earthlinePropertyRunState||''}));
-const targetOk=Math.abs(Number(snap.audit?.center?.lng)-lng)<0.002&&Math.abs(Number(snap.audit?.center?.lat)-lat)<0.002;
-console.log('EARTHLINE_ONE_PRESS_LAUNCH_17266 '+JSON.stringify({before,targetOk,...snap}));
+await page.waitForTimeout(1500);
+const snap=await page.evaluate(()=>({
+ audit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+ launchAudit:window.EARTHLINE_PROPERTY_LAUNCH_AUDIT_16322||null,
+ target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+ repair:window.EARTHLINE_PROPERTY_ONE_PRESS_17266||null,
+ runState:document.documentElement.dataset.earthlinePropertyRunState||'',
+ waterGate:window.EARTHLINE_PROPERTY_WATER_BODY_GATE_16529||null,
+ handoff:window.EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347||null,
+ displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,
+ status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||''),
+ button:{disabled:!!document.getElementById('earthlineDeclareProperty16169')?.disabled,busy:document.getElementById('earthlineDeclareProperty16169')?.dataset?.busy||null}
+}));
+const targetOk=Math.abs(Number(snap.target?.lng)-lng)<0.002&&Math.abs(Number(snap.target?.lat)-lat)<0.002;
+const launched=Number(snap.audit?.serial||0)>before;
+console.log('EARTHLINE_ONE_PRESS_LAUNCH_17266 '+JSON.stringify({before,launched,targetOk,...snap}));
 await browser.close();
-if(!(Number(snap.audit?.serial||0)>before&&targetOk))process.exitCode=1;
+if(!(launched&&targetOk))process.exitCode=1;
