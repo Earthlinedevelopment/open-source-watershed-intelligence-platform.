@@ -1,0 +1,35 @@
+name: Earthline Browser Yield Source 17250
+on:
+  push:
+    branches: [repair/v1-property-coverage-17223]
+    paths:
+      - '.github/workflows/earthline-browser-yield-source-17250.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-coverage-17223
+      - name: Extract cooperative yield owners
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for term in ['function earthlineYield','earthlineYield=','async function makeContours','async function makeSwales','await earthlineYield()']:
+              print('\n===== '+term+' =====')
+              p=0;n=0
+              while True:
+                  i=s.find(term,p)
+                  if i<0: break
+                  n+=1
+                  print('\n---',n,'@',i,'---')
+                  print(s[max(0,i-3500):i+10000])
+                  p=i+len(term)
+                  if n>=8: break
+              print('COUNT',n)
+          PY
