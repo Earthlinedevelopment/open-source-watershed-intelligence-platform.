@@ -70,7 +70,7 @@ wrapper=r'''
     }
 
 '''
-anchor="async function jurisdictionEligibleCandidates16539(pool16539){"
+anchor="const preferredEligibleCount16539=await jurisdictionEligibleCount16539(candidates);"
 n=s.count(anchor)
 print("wrapper anchor",n)
 if n!=1: raise SystemExit(f"wrapper anchor expected once, found {n}")
