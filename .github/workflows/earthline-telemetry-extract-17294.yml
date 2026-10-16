@@ -1,0 +1,35 @@
+name: Earthline Telemetry Extract 17294
+on:
+  push:
+    branches: [diag/telemetry-17294]
+    paths:
+      - '.github/workflows/earthline-telemetry-extract-17294.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: diag/telemetry-17294
+      - name: Extract telemetry owners
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          needles=['earthline-telemetry','ccucaqwbdsskcwxxbqiz','telemetry','supabase.co/functions/v1']
+          seen=set()
+          for needle in needles:
+              start=0
+              while True:
+                  i=s.lower().find(needle.lower(),start)
+                  if i<0: break
+                  k=(max(0,i-5000),min(len(s),i+10000))
+                  if k not in seen:
+                      seen.add(k)
+                      print('\n===== '+needle+' @ '+str(i)+' =====')
+                      print(s[k[0]:k[1]])
+                  start=i+len(needle)
+          PY
