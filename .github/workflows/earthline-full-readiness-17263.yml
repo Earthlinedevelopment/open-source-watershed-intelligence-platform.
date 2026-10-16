@@ -1,0 +1,205 @@
+name: Earthline Full Live Readiness 17263
+on:
+  push:
+    branches: [repair/v1-property-coverage-17223]
+    paths:
+      - 'tests/global-readiness-live-17263.mjs'
+      - '.github/workflows/earthline-full-readiness-17263.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  all-states-chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-coverage-17223
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run all 50 states live
+        run: env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='chromium' HEADLESS='true' WAIT_MS='90000' node tests/mantra46-16791-50state-production.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: all-50-states-chromium-17263
+          path: artifacts/mantra46-16791-50state/
+          if-no-files-found: warn
+
+  rollout-browser:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, firefox]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-coverage-17223
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - shell: bash
+        run: |
+          npm install --no-save playwright@1.55.0
+          if [ '${{ matrix.browser }}' = 'chrome' ]; then
+            npx playwright install --with-deps chrome
+          else
+            npx playwright install --with-deps firefox
+          fi
+      - name: Run seven rollout states
+        shell: bash
+        run: |
+          STATES='Arizona|New Mexico|Colorado|Texas|California|Vermont|New York'
+          if [ '${{ matrix.browser }}' = 'firefox' ]; then
+            xvfb-run -a env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='firefox' HEADLESS='false' WAIT_MS='120000' STATES="$STATES" node tests/mantra46-16791-50state-production.mjs
+          else
+            env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='chrome' HEADLESS='true' WAIT_MS='120000' STATES="$STATES" node tests/mantra46-16791-50state-production.mjs
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rollout-${{ matrix.browser }}-17263
+          path: artifacts/mantra46-16791-50state/
+          if-no-files-found: warn
+
+  rollout-webkit:
+    runs-on: macos-14
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-coverage-17223
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - name: Run seven rollout states in macOS WebKit
+        run: env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='webkit' HEADLESS='true' WAIT_MS='120000' STATES='Arizona|New Mexico|Colorado|Texas|California|Vermont|New York' node tests/mantra46-16791-50state-production.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rollout-webkit-17263
+          path: artifacts/mantra46-16791-50state/
+          if-no-files-found: warn
+
+  rollout-edge:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-coverage-17223
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - name: Run seven rollout states in Edge
+        shell: pwsh
+        run: |
+          $env:EARTHLINE_URL='https://earthlinedevelopment.org/'
+          $env:BROWSER='edge'
+          $env:HEADLESS='true'
+          $env:WAIT_MS='120000'
+          $env:STATES='Arizona|New Mexico|Colorado|Texas|California|Vermont|New York'
+          node tests/mantra46-16791-50state-production.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rollout-edge-17263
+          path: artifacts/mantra46-16791-50state/
+          if-no-files-found: warn
+
+  global-linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, firefox]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-coverage-17223
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - shell: bash
+        run: |
+          npm install --no-save playwright@1.55.0
+          if [ '${{ matrix.browser }}' = 'chrome' ]; then
+            npx playwright install --with-deps chrome
+          else
+            npx playwright install --with-deps firefox
+          fi
+      - name: Run Mexico Australia India and Africa controls
+        shell: bash
+        run: |
+          if [ '${{ matrix.browser }}' = 'firefox' ]; then
+            xvfb-run -a env BROWSER='firefox' HEADLESS='false' WAIT_MS='120000' node tests/global-readiness-live-17263.mjs
+          else
+            env BROWSER='chrome' HEADLESS='true' WAIT_MS='120000' node tests/global-readiness-live-17263.mjs
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: global-${{ matrix.browser }}-17263
+          path: artifacts/global-readiness-17263/
+          if-no-files-found: warn
+
+  global-webkit:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-coverage-17223
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - name: Run Mexico Australia India and Africa controls
+        run: env BROWSER='webkit' HEADLESS='true' WAIT_MS='120000' node tests/global-readiness-live-17263.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: global-webkit-17263
+          path: artifacts/global-readiness-17263/
+          if-no-files-found: warn
+
+  global-edge:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-coverage-17223
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - name: Run Mexico Australia India and Africa controls
+        shell: pwsh
+        run: |
+          $env:BROWSER='edge'
+          $env:HEADLESS='true'
+          $env:WAIT_MS='120000'
+          node tests/global-readiness-live-17263.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: global-edge-17263
+          path: artifacts/global-readiness-17263/
+          if-no-files-found: warn
