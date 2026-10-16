@@ -9,7 +9,8 @@ const states=(process.env.STATES||'Texas|Vermont').split('|').map(s=>s.trim()).f
 const timeout=Number(process.env.WAIT_MS||60000);
 mkdirSync('artifacts/browser-regional-17269',{recursive:true});
 
-const browser=await launchers[browserName].launch({headless:true});
+const headless=String(process.env.HEADLESS||'true').toLowerCase()!=='false';
+const browser=await launchers[browserName].launch({headless});
 const results=[];
 for(const query of states){
   const context=await browser.newContext({viewport:{width:1800,height:950}});
@@ -57,14 +58,14 @@ for(const query of states){
   const outside=a?.boundary?.outsideAfterClip??null;
   const hardRootFail=Array.isArray(a?.root?.rankedCauses)&&a.root.rankedCauses.some(r=>r.status==='critical'||r.status==='fail');
   const pass=!loadError&&!timedOut&&!a?.lastError&&!pageErrors.length&&Number(coreMs)<=15000&&Number(generated)===Number(visible)&&Number(unsafe)===0&&Number(outside?.swales||0)===0&&!hardRootFail;
-  const row={browser:browserName,query,pass,wallMs:Date.now()-wallStart,coreMs,generated,visible,unsafe,outsideAfterClip:outside,rootPass:a?.root?.pass??null,loadError,timedOut,pageErrors,lastError:a?.lastError||null,status:a?.status||''};
+  const row={browser:browserName,headless,query,pass,wallMs:Date.now()-wallStart,coreMs,generated,visible,unsafe,outsideAfterClip:outside,rootPass:a?.root?.pass??null,loadError,timedOut,pageErrors,lastError:a?.lastError||null,status:a?.status||''};
   results.push(row);
   console.log('EARTHLINE_BROWSER_AB '+JSON.stringify(row));
   await context.close();
 }
 await browser.close();
 
-const summary={browser:browserName,base:BASE,total:results.length,pass:results.filter(r=>r.pass).length,fail:results.filter(r=>!r.pass).length,results};
+const summary={browser:browserName,headless,base:BASE,total:results.length,pass:results.filter(r=>r.pass).length,fail:results.filter(r=>!r.pass).length,results};
 writeFileSync(`artifacts/browser-regional-17269/${browserName}.json`,JSON.stringify(summary,null,2));
 console.log('EARTHLINE_BROWSER_AB_SUMMARY '+JSON.stringify(summary));
 if(summary.fail) process.exitCode=1;
