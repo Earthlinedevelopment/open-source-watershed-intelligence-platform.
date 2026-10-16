@@ -2050,7 +2050,16 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       try{refreshCurrentTarget17266()}catch(_){}
       return governed.call(this,ev);
     };
-    window.EARTHLINE_PROPERTY_ONE_PRESS_17266={state:'ready',refreshCurrentTarget17266,lastTarget:null,at:new Date().toISOString()};
+    const propertyButton17266=document.getElementById('earthlineDeclareProperty16169');
+    if(propertyButton17266&&!propertyButton17266.dataset.earthlinePointerCapture17266){
+      propertyButton17266.dataset.earthlinePointerCapture17266='1';
+      propertyButton17266.addEventListener('pointerdown',function earthlineRetainPropertyPress17266(ev){
+        try{
+          if(Number.isFinite(Number(ev.pointerId))&&this.setPointerCapture)this.setPointerCapture(ev.pointerId);
+        }catch(_){}
+      },true);
+    }
+    window.EARTHLINE_PROPERTY_ONE_PRESS_17266={state:'ready',refreshCurrentTarget17266,lastTarget:null,pointerCapture:!!propertyButton17266,at:new Date().toISOString()};
     return true;
   }
   if(wrap17266())return;
