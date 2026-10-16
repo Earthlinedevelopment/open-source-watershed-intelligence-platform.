@@ -37,7 +37,20 @@ const layoutSnap=async()=>await page.evaluate(({x,y})=>{
  const pb=document.getElementById('earthlinePanelBody16188');
  const sec=document.getElementById('earthlinePropertySection16188');
  const top=document.elementFromPoint(x,y);
+ const ids=[
+   'earthlineBrandSection16188','earthlinePanelBrand16201',
+   'earthlineSearchSection16188','earthlineSearchSlot16188',
+   'runBtn','earthlinePropertySection16188','earthlinePropertySlot16188',
+   'earthlineDeclareProperty16169','earthlinePropertyContext16233'
+ ];
+ const geometry={};for(const id of ids)geometry[id]=rect(id);
+ const searchwrap=document.querySelector('#earthlineSearchSlot16188 .searchwrap');
+ const searchbox=document.querySelector('#earthlineSearchSlot16188 .searchbox.grow');
+ const css=e=>e?{display:getComputedStyle(e).display,height:getComputedStyle(e).height,paddingTop:getComputedStyle(e).paddingTop,paddingBottom:getComputedStyle(e).paddingBottom,marginTop:getComputedStyle(e).marginTop,marginBottom:getComputedStyle(e).marginBottom,borderTopWidth:getComputedStyle(e).borderTopWidth,borderBottomWidth:getComputedStyle(e).borderBottomWidth}:null;
  return {
+   geometry,
+   searchwrap:searchwrap?{rect:(()=>{const r=searchwrap.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,top:r.top,bottom:r.bottom}})(),css:css(searchwrap)}:null,
+   searchbox:searchbox?{rect:(()=>{const r=searchbox.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,top:r.top,bottom:r.bottom}})(),css:css(searchbox)}:null,
    button:rect('earthlineDeclareProperty16169'),
    section:rect('earthlinePropertySection16188'),
    panelBody:rect('earthlinePanelBody16188'),
