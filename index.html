@@ -1,3 +1,16 @@
+/* EARTHLINE_CANCELLED_TERRAIN_HEDGE_17296 — hedge alternate after 1.1s but abort losing fetch/decode path when either identical Terrarium source wins; terrain pixels/science unchanged. */
+/* EARTHLINE_TERRAIN_INTEGRITY_17293 — reject physically impossible blank Terrarium decodes before cache/publication; valid pixels unchanged. */
+/* EARTHLINE_TIME_BUDGET_YIELD_17292 — makeSwales jurisdiction loops yield after >=8ms of real CPU work, checked every 64 candidates, instead of timer-yielding every 12 candidates; ordering/science unchanged. */
+/* EARTHLINE_LAND_RING_INDEX_17289 — exact Natural Earth ring ray-crossing with latitude-band edge candidate index; final PIP formula unchanged. */
+/* EARTHLINE_DENSIFY_FASTPATH_17285 — reuse already <=0.01-degree candidate coordinates instead of allocating an identical densified copy; geometry values unchanged. */
+/* EARTHLINE_HYDROLOGY_CORE_17278 — exact neighbor order/priority retained; removes repeated iterator allocation and distance recomputation. */
+/* EARTHLINE_DEM_SAMPLING_17280 — exact Mercator/tile coordinate precompute by row/column; terrain pixels unchanged. */
+/* EARTHLINE_PERCENTILE_CACHE_17279 — immutable hydrology typed arrays sorted once per identity; percentile values/science unchanged. */
+/* EARTHLINE_TERRAIN_HEDGE_17275 — actual tile failures still start alternate immediately; speculative duplicate delayed from 1200ms to 2500ms to avoid redundant slow-browser decode work. Same Terrarium pixels/science. */
+/* EARTHLINE_GRID_POINT_JURISDICTION_CACHE_17274 — exact PIP results reused for repeated identical grid points; no geometry decision changed. */
+/* EARTHLINE_CROSSCALL_JURISDICTION_SCREEN_CACHE_17272 — exact screen result reuse within one Regional hydrology run; no science thresholds changed. */
+/* EARTHLINE_CONSOLIDATED_JURISDICTION_SCREEN_17262 — local refinement candidate generation defers exact jurisdiction clipping to the existing authoritative consolidated makeSwales screen; science thresholds unchanged. */
+/* EARTHLINE_EXACT_JURISDICTION_FAST_SCREEN_17270 — provably interior/exterior candidate bboxes bypass repeated exact clipping; all boundary-adjacent candidates retain frozen exact clip. */
 <!-- EARTHLINE_CORRIDOR_TIP_PUBLICATION_BRIDGE_17238 — Existing Regional A4 onboarding tip now recognizes the authoritative current corridor publication audit; preserves once-per-page-load acknowledgment behavior. -->
 <!-- EARTHLINE 16845 — GLOBAL COUNTRY ATOMIC JURISDICTION OWNER. DEV BRANCH ONLY. -->
 <!-- EARTHLINE 16864 — APPROVED LAUNCH REPAIRS: Vancouver Island regional resolution; mapped aquifer context in Bioswale Impact Report maps; consolidated final report sources; final-page How Bioswales sources; gauge/DATA copy lock. Preserves existing hydrology, swale geometry/style, exclusions, logo and Search Orb. CANDIDATE / NOT ACCEPTED. -->
@@ -29517,6 +29530,24 @@ body { overflow-x:hidden!important; }
     }
     const c=document.createElement('canvas');c.width=image.width||image.naturalWidth;c.height=image.height||image.naturalHeight;const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(image,0,0);let data;
     try{data=ctx.getImageData(0,0,c.width,c.height);}catch(_){throw new Error('terrain tile blocked by cross-origin policy');}
+    /* EARTHLINE 17293 — fail closed on impossible blank Terrarium decodes.
+       Terrarium encodes physical Earth elevation as R*256+G+B/256-32768.
+       A fully black/transparent decode maps to -32768 m, outside physical Earth
+       terrain. Sample the decoded tile; if no physically plausible pixel exists,
+       reject this decode so fetchTerrainTile can use its existing alternate source. */
+    let plausible17293=false,opaque17293=false;
+    const pxCount17293=Math.max(1,c.width*c.height),sampleStep17293=Math.max(1,Math.floor(pxCount17293/96));
+    for(let p17293=0;p17293<pxCount17293;p17293+=sampleStep17293){
+      const o17293=p17293*4,r17293=data.data[o17293],g17293=data.data[o17293+1],b17293=data.data[o17293+2],a17293=data.data[o17293+3];
+      if(a17293)opaque17293=true;
+      const v17293=r17293*256+g17293+b17293/256-32768;
+      if(Number.isFinite(v17293)&&v17293>=-15000&&v17293<=12000){plausible17293=true;if(opaque17293)break;}
+    }
+    if(!plausible17293||!opaque17293){
+      try{image.close&&image.close()}catch(_){}
+      if(revoke)setTimeout(()=>{try{URL.revokeObjectURL(revoke)}catch(_){}},800);
+      throw new Error('terrain tile decode failed integrity check');
+    }
     image.close&&image.close();if(revoke)setTimeout(()=>{try{URL.revokeObjectURL(revoke)}catch(_){}},800);return {width:c.width,height:c.height,data:data.data};
   }
   const EARTHLINE_REGIONAL_TERRAIN_CACHE_16297=new Map();
@@ -29544,26 +29575,38 @@ body { overflow-x:hidden!important; }
       const alternate=TERRARIUM_ALT.replace('{z}',z).replace('{x}',x).replace('{y}',y);
       return await new Promise((resolve,reject)=>{
         let settled=false,alternateStarted=false,failures=0,last=null,stagger=0;
-        const finishSuccess=img=>{
-          if(settled)return;
-          settled=true;
+        const primaryCtl17296=new AbortController(),alternateCtl17296=new AbortController();
+        const parentAbort17296=()=>{
+          const reason17296=signal?.reason instanceof Error?signal.reason:new Error('terrain tile aborted');
+          try{primaryCtl17296.abort(reason17296)}catch(_){}
+          try{alternateCtl17296.abort(reason17296)}catch(_){}
+        };
+        try{signal&&signal.addEventListener('abort',parentAbort17296,{once:true})}catch(_){}
+        const cleanup17296=()=>{
           if(stagger)clearTimeout(stagger);
+          try{signal&&signal.removeEventListener('abort',parentAbort17296)}catch(_){}
+        };
+        const finishSuccess=(img,source17296)=>{
+          if(settled)return;
+          settled=true;cleanup17296();
+          if(source17296==='primary'){try{alternateCtl17296.abort(new Error('alternate terrain hedge lost race'))}catch(_){}}
+          else{try{primaryCtl17296.abort(new Error('primary terrain hedge lost race'))}catch(_){}}
           resolve(rememberRegionalTerrain16297(key,img));
         };
         const finishFailure=error=>{
           if(settled)return;
           last=error;failures++;
-          if(signal&&signal.aborted){settled=true;if(stagger)clearTimeout(stagger);reject(error);return;}
+          if(signal&&signal.aborted){settled=true;cleanup17296();reject(error);return;}
           if(!alternateStarted)startAlternate();
-          else if(failures>=2){settled=true;if(stagger)clearTimeout(stagger);reject(last||new Error('open terrain tile unavailable'));}
+          else if(failures>=2){settled=true;cleanup17296();reject(last||new Error('open terrain tile unavailable'));}
         };
         const startAlternate=()=>{
           if(settled||alternateStarted)return;
           alternateStarted=true;
-          fetchImageData(alternate,signal).then(finishSuccess,finishFailure);
+          fetchImageData(alternate,alternateCtl17296.signal).then(img=>finishSuccess(img,'alternate'),finishFailure);
         };
-        fetchImageData(primary,signal).then(finishSuccess,finishFailure);
-        stagger=setTimeout(startAlternate,1200);
+        fetchImageData(primary,primaryCtl17296.signal).then(img=>finishSuccess(img,'primary'),finishFailure);
+        stagger=setTimeout(startAlternate,1100);
       });
     })().finally(()=>EARTHLINE_REGIONAL_TERRAIN_INFLIGHT_16297.delete(key));
     EARTHLINE_REGIONAL_TERRAIN_INFLIGHT_16297.set(key,promise);
@@ -29587,9 +29630,23 @@ body { overflow-x:hidden!important; }
       throw error;
     }finally{clearTimeout(timer);}
     const elev=new Float32Array(w*h);let min=Infinity,max=-Infinity;
+    /* EARTHLINE 17280 — exact DEM sample-coordinate precompute.
+       Longitude/tile-X depends only on gx and Mercator latitude/tile-Y only on gy.
+       Compute each once instead of repeating expensive transforms for every pixel. */
+    const mod17280=Math.pow(2,z),tx17280=new Float64Array(w),ix17280=new Int32Array(w),xx17280=new Int32Array(w);
+    const ty17280=new Float64Array(h),iy17280=new Int32Array(h);
+    for(let gx17280=0;gx17280<w;gx17280++){
+      const lon17280=b[0]+(b[2]-b[0])*(gx17280/(w-1)),txv17280=lon2x(lon17280,z),ixv17280=Math.floor(txv17280);
+      tx17280[gx17280]=txv17280;ix17280[gx17280]=ixv17280;xx17280[gx17280]=((ixv17280%mod17280)+mod17280)%mod17280;
+    }
+    for(let gy17280=0;gy17280<h;gy17280++){
+      const lat17280=b[3]-(b[3]-b[1])*(gy17280/(h-1)),tyv17280=lat2y(lat17280,z);
+      ty17280[gy17280]=tyv17280;iy17280[gy17280]=Math.floor(tyv17280);
+    }
     for(let gy=0;gy<h;gy++){
+      const ty=ty17280[gy],iy=iy17280[gy];
       for(let gx=0;gx<w;gx++){
-        const lon=b[0]+(b[2]-b[0])*(gx/(w-1)),lat=b[3]-(b[3]-b[1])*(gy/(h-1)),tx=lon2x(lon,z),ty=lat2y(lat,z),ix=Math.floor(tx),iy=Math.floor(ty),img=tiles.get((((ix%Math.pow(2,z))+Math.pow(2,z))%Math.pow(2,z))+','+iy);
+        const tx=tx17280[gx],ix=ix17280[gx],img=tiles.get(xx17280[gx]+','+iy);
         if(!img)throw new Error('terrain tile missing');const px=Math.max(0,Math.min(img.width-1,Math.floor((tx-ix)*img.width))),py=Math.max(0,Math.min(img.height-1,Math.floor((ty-iy)*img.height))),o=(py*img.width+px)*4;
         const v=img.data[o]*256+img.data[o+1]+img.data[o+2]/256-32768;elev[gy*w+gx]=v;if(v<min)min=v;if(v>max)max=v;
       }
@@ -29681,20 +29738,34 @@ body { overflow-x:hidden!important; }
     assertMapFallbackActive16353(signal,label);
     throw new Error('Mapbox terrain coverage incomplete ('+Math.round((best&&best.valid||0)/(w*h)*100)+'%)');
   }
-  class Heap{constructor(){this.a=[];}push(o){const a=this.a;a.push(o);let i=a.length-1;while(i){const p=(i-1)>>1;if(a[p].z<=o.z)break;a[i]=a[p];i=p;}a[i]=o;}pop(){const a=this.a;if(!a.length)return null;const root=a[0],last=a.pop();if(a.length){let i=0;while(true){let l=i*2+1,r=l+1;if(l>=a.length)break;let c=r<a.length&&a[r].z<a[l].z?r:l;if(a[c].z>=last.z)break;a[i]=a[c];i=c;}a[i]=last;}return root;}get length(){return this.a.length;}}
+  class Heap{
+    constructor(){this.i=[];this.z=[];this.out={i:0,z:0};}
+    push(o){
+      const ai=this.i,az=this.z,oi=o.i,oz=o.z;ai.push(oi);az.push(oz);let k=az.length-1;
+      while(k){const p=(k-1)>>1;if(az[p]<=oz)break;ai[k]=ai[p];az[k]=az[p];k=p;}
+      ai[k]=oi;az[k]=oz;
+    }
+    pop(){
+      const ai=this.i,az=this.z;if(!az.length)return null;
+      const rootI=ai[0],rootZ=az[0],lastI=ai.pop(),lastZ=az.pop();
+      if(az.length){let k=0;while(true){let l=k*2+1,r=l+1;if(l>=az.length)break;let c=r<az.length&&az[r]<az[l]?r:l;if(az[c]>=lastZ)break;ai[k]=ai[c];az[k]=az[c];k=c;}ai[k]=lastI;az[k]=lastZ;}
+      const out=this.out;out.i=rootI;out.z=rootZ;return out;
+    }
+    get length(){return this.z.length;}
+  }
   async function hydrology(dem,validityMask16584=null){
     const {elev,w,h,bounds:b}=dem,N=w*h;
     const valid16584=(validityMask16584&&validityMask16584.length===N)?validityMask16584:null;
     const terrainElev16584=new Float32Array(elev),filled=new Float32Array(elev),seen=new Uint8Array(N),heap=new Heap();
     if(valid16584)for(let i=0;i<N;i++)if(!valid16584[i]){terrainElev16584[i]=NaN;filled[i]=0;seen[i]=1;}
     function add(i){if(i<0||i>=N||seen[i]||(valid16584&&!valid16584[i]))return;seen[i]=1;heap.push({i,z:filled[i]});}
-    const dirs=[[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
+    const dx17278=new Int8Array([-1,0,1,-1,1,-1,0,1]),dy17278=new Int8Array([-1,-1,-1,0,0,1,1,1]);
     if(valid16584){
       for(let y=0;y<h;y++)for(let x=0;x<w;x++){
         const i=y*w+x;if(!valid16584[i])continue;
         let outlet=x===0||y===0||x===w-1||y===h-1;
-        if(!outlet)for(const [dx,dy] of dirs){
-          const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=w||yy>=h){outlet=true;break;}
+        if(!outlet)for(let d17278=0;d17278<8;d17278++){
+          const xx=x+dx17278[d17278],yy=y+dy17278[d17278];if(xx<0||yy<0||xx>=w||yy>=h){outlet=true;break;}
           if(!valid16584[yy*w+xx]){outlet=true;break;}
         }
         if(outlet)add(i);
@@ -29706,8 +29777,8 @@ body { overflow-x:hidden!important; }
     let heapSteps16245=0;
     while(heap.length){
       const p=heap.pop(),x=p.i%w,y=(p.i/w)|0;
-      for(const [dx,dy] of dirs){
-        const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=w||yy>=h)continue;
+      for(let d17278=0;d17278<8;d17278++){
+        const xx=x+dx17278[d17278],yy=y+dy17278[d17278];if(xx<0||yy<0||xx>=w||yy>=h)continue;
         const j=yy*w+xx;if(seen[j]||(valid16584&&!valid16584[j]))continue;
         seen[j]=1;if(filled[j]<=p.z)filled[j]=p.z+0.01;heap.push({i:j,z:filled[j]});
       }
@@ -29718,14 +29789,15 @@ body { overflow-x:hidden!important; }
     }
     const mid=(b[1]+b[3])/2,cellX=(b[2]-b[0])*111320*Math.cos(mid*Math.PI/180)/(w-1),
           cellY=(b[3]-b[1])*111320/(h-1),to=new Int32Array(N);to.fill(-1);
+    const diag17278=Math.hypot(cellX,cellY),dist17278=new Float64Array([diag17278,cellY,diag17278,cellX,cellX,diag17278,cellY,diag17278]);
     const slope=new Float32Array(N);if(valid16584)slope.fill(NaN);
     for(let y=1;y<h-1;y++){
       for(let x=1;x<w-1;x++){
         const i=y*w+x;if(valid16584&&!valid16584[i])continue;
         let best=-1,bestDrop=0;
-        for(const [dx,dy] of dirs){
-          const j=(y+dy)*w+(x+dx);if(valid16584&&!valid16584[j])continue;
-          const dist=Math.hypot(dx*cellX,dy*cellY),drop=(filled[i]-filled[j])/dist;
+        for(let d17278=0;d17278<8;d17278++){
+          const j=(y+dy17278[d17278])*w+(x+dx17278[d17278]);if(valid16584&&!valid16584[j])continue;
+          const drop=(filled[i]-filled[j])/dist17278[d17278];
           if(drop>bestDrop){bestDrop=drop;best=j;}
         }
         to[i]=best;slope[i]=bestDrop*100;
@@ -29765,7 +29837,17 @@ body { overflow-x:hidden!important; }
     if(!n)return null;
     return {score:Math.round(total/n*100),rainfallIn:precip,mode:'regional-model-fallback',components:{aquifer:45,soil:55,slope:Math.round(slopeComponent/n*100),flow:Math.round(flowComponent/n*100)},weights:{aquifer:.30,soil:.20,slope:.18,flow:.17,climate:.15},climate:{need:Number(need.toFixed(4)),multiplier:Number(mult.toFixed(4)),baseTerm:50},basis:'Existing Earthline recharge formula applied to the already-computed Regional slope/flow grid; aquifer permeability and soil infiltration remain model fallback at Regional screening scale.'};
   }
-  function percentile(arr,p){const v=[];for(let i=0;i<arr.length;i++)if(Number.isFinite(arr[i]))v.push(arr[i]);v.sort((a,b)=>a-b);return v[Math.max(0,Math.min(v.length-1,Math.floor((v.length-1)*p)))]||0;}
+  const earthlinePercentileSortedCache17279=new WeakMap();
+  function percentile(arr,p){
+    let v=null;
+    const cacheable17279=!!(arr&&typeof arr==='object'&&ArrayBuffer.isView(arr));
+    if(cacheable17279)v=earthlinePercentileSortedCache17279.get(arr)||null;
+    if(!v){
+      v=[];for(let i=0;i<arr.length;i++)if(Number.isFinite(arr[i]))v.push(arr[i]);v.sort((a,b)=>a-b);
+      if(cacheable17279)earthlinePercentileSortedCache17279.set(arr,v);
+    }
+    return v[Math.max(0,Math.min(v.length-1,Math.floor((v.length-1)*p)))]||0;
+  }
   function gridLL(hy,x,y){const b=hy.bounds;return [b[0]+(b[2]-b[0])*(x/(hy.w-1)),b[3]-(b[3]-b[1])*(y/(hy.h-1))];}
   function llGrid(hy,ll){
     const b=hy.bounds;return {x:Math.max(0,Math.min(hy.w-1,(ll[0]-b[0])/(b[2]-b[0])*(hy.w-1))),y:Math.max(0,Math.min(hy.h-1,(b[3]-ll[1])/(b[3]-b[1])*(hy.h-1)))};
@@ -30182,6 +30264,31 @@ body { overflow-x:hidden!important; }
     return {type:'FeatureCollection',features};
   }
   async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();return new Promise(r=>setTimeout(r,0));}
+
+  /* EARTHLINE 17272 — cross-call exact jurisdiction screen cache.
+     Scope is one hydrology object (one Regional run) plus one jurisdiction geometry.
+     Cache key contains the COMPLETE candidate segment and the exact display-length
+     threshold, so no science, clip, ranking, spacing or safety decision is relaxed. */
+  const earthlineCrossCallScreenCache17272=new WeakMap();
+  function earthlineScreenCacheMap17272(hy17272,g17272){
+    if(!hy17272||typeof hy17272!=='object'||!g17272||typeof g17272!=='object')return null;
+    let byGeometry17272=earthlineCrossCallScreenCache17272.get(hy17272);
+    if(!byGeometry17272){byGeometry17272=new WeakMap();earthlineCrossCallScreenCache17272.set(hy17272,byGeometry17272);}
+    let map17272=byGeometry17272.get(g17272);
+    if(!map17272){map17272=new Map();byGeometry17272.set(g17272,map17272);}
+    return map17272;
+  }
+  function earthlineScreenKey17272(candidate17272){
+    const seg17272=candidate17272&&candidate17272.segment;
+    if(!Array.isArray(seg17272)||seg17272.length<2)return null;
+    const min17272=candidate17272&&candidate17272.coverageGap16731?0.75:Math.max(4,Math.min(10,Number(candidate17272&&candidate17272.minLinePx16632)||10));
+    let key17272=String(min17272)+'|'+seg17272.length;
+    for(const p17272 of seg17272){
+      if(!Array.isArray(p17272)||p17272.length<2)return null;
+      key17272+='|'+String(Number(p17272[0]))+','+String(Number(p17272[1]));
+    }
+    return key17272;
+  }
   async function makeSwales(hy,contours,focusMode=false,jurisdictionGeometry16539=null,supplementalCandidates16702=null){
     const lines=(contours&&contours.features||[]).filter(f=>f&&f.properties&&f.properties.feature_type==='contour'&&f.geometry&&f.geometry.type==='LineString');
     const channel=percentile(hy.acc,.972),accLow=percentile(hy.acc,.22),accMid=percentile(hy.acc,.72),accHigh=percentile(hy.acc,.91),candidates=[];
@@ -30224,12 +30331,27 @@ body { overflow-x:hidden!important; }
        Hydrology and contours still span the full DEM envelope; this only prevents candidates
        that cannot be published in the selected jurisdiction from consuming selection slots. */
     const jurisdictionScreenCache16592=new WeakMap();
-    function screenJurisdictionCandidate16539(candidate16539){
+    function screenJurisdictionCandidate16539Uncached17272(candidate16539){
       if(focusMode||!jurisdictionGeometry16539)return candidate16539;
       if(candidate16539&&jurisdictionScreenCache16592.has(candidate16539))return jurisdictionScreenCache16592.get(candidate16539);
+      window.EARTHLINE_JURISDICTION_FAST_SCREEN_17270=window.EARTHLINE_JURISDICTION_FAST_SCREEN_17270||{inside:0,outside:0,uncertain:0,at:new Date().toISOString()};
+      const fastClass17270=earthlineCandidateJurisdictionClass17270(candidate16539,jurisdictionGeometry16539);
+      if(fastClass17270!==0){
+        const audit17270=window.EARTHLINE_JURISDICTION_FAST_SCREEN_17270;
+        if(fastClass17270<0){audit17270.outside++;if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
+        const segment17270=earthlineDensifyCandidate17270(candidate16539&&candidate16539.segment||[]);
+        const minimumScreenPx17270=candidate16539&&candidate16539.coverageGap16731?0.75:Math.max(4,Math.min(10,Number(candidate16539&&candidate16539.minLinePx16632)||10));
+        if(segment17270.length<2||lineLengthPixels(hy,segment17270)<minimumScreenPx17270){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
+        const mid17270=segment17270[Math.floor((segment17270.length-1)/2)],grid17270=llGrid(hy,mid17270);
+        if(!grid17270||!Number.isFinite(grid17270.x)||!Number.isFinite(grid17270.y)){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
+        const screened17270=Object.assign({},candidate16539,{segment:segment17270,x:Math.max(1,Math.min(hy.w-2,Math.round(grid17270.x))),y:Math.max(1,Math.min(hy.h-2,Math.round(grid17270.y))),jurisdiction_screened:true});
+        audit17270.inside++;if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,screened17270);return screened17270;
+      }
+      window.EARTHLINE_JURISDICTION_FAST_SCREEN_17270.uncertain++;
+      const preparedClip17270=earthlineBoundaryEdgeIndex17270(jurisdictionGeometry16539)?.prepared||jurisdictionGeometry16539;
       const runs16539=(jurisdictionGeometry16539&&jurisdictionGeometry16539.earthlineVermontExactClip16750===true&&typeof window.earthlineClipVermontLine16178==='function')
         ?window.earthlineClipVermontLine16178(candidate16539&&candidate16539.segment||[],jurisdictionGeometry16539.earthlineVermontGeometry16750)
-        :earthlineClipLine16539(candidate16539&&candidate16539.segment||[],jurisdictionGeometry16539);
+        :earthlineClipLine16539(candidate16539&&candidate16539.segment||[],preparedClip17270);
       if(!runs16539.length){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
       runs16539.sort((a16539,b16539)=>lineLengthPixels(hy,b16539)-lineLengthPixels(hy,a16539));
       const segment16539=runs16539[0];
@@ -30250,8 +30372,12 @@ body { overflow-x:hidden!important; }
     }
     async function jurisdictionEligibleCount16539(list16539){
       if(focusMode||!jurisdictionGeometry16539)return list16539.length;
-      let count16539=0,yieldCount16661=0;
-      for(const candidate16539 of list16539){if(screenJurisdictionCandidate16539(candidate16539))count16539++;if((++yieldCount16661%12)===0)await earthlineCooperativeYield16661();}
+      let count16539=0,yieldCount16661=0,lastYieldAt17292=performance.now();
+      for(const candidate16539 of list16539){
+        if(screenJurisdictionCandidate16539(candidate16539))count16539++;
+        yieldCount16661++;
+        if((yieldCount16661&63)===0&&performance.now()-lastYieldAt17292>=8){await earthlineCooperativeYield16661();lastYieldAt17292=performance.now();}
+      }
       return count16539;
     }
     const regionalAnchorAttempts16786=new Map();
@@ -30296,18 +30422,43 @@ body { overflow-x:hidden!important; }
       };
     }
     if(!focusMode&&Array.isArray(supplementalCandidates16702)&&supplementalCandidates16702.length)candidates.push(...supplementalCandidates16702);
-    const preferredEligibleCount16539=await jurisdictionEligibleCount16539(candidates);
+
+    function screenJurisdictionCandidate16539(candidate16539){
+      if(!jurisdictionGeometry16539)return candidate16539;
+      if(candidate16539&&jurisdictionScreenCache16592.has(candidate16539))return jurisdictionScreenCache16592.get(candidate16539);
+      const map17272=earthlineScreenCacheMap17272(hy,jurisdictionGeometry16539),key17272=earthlineScreenKey17272(candidate16539);
+      if(map17272&&key17272&&map17272.has(key17272)){
+        const hit17272=map17272.get(key17272);
+        window.EARTHLINE_JURISDICTION_CROSSCALL_CACHE_17272=window.EARTHLINE_JURISDICTION_CROSSCALL_CACHE_17272||{hits:0,misses:0,stored:0,at:new Date().toISOString()};
+        window.EARTHLINE_JURISDICTION_CROSSCALL_CACHE_17272.hits++;
+        if(hit17272===null){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
+        const screened17272=Object.assign({},candidate16539,{segment:hit17272.segment,x:hit17272.x,y:hit17272.y,jurisdiction_screened:true});
+        if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,screened17272);
+        return screened17272;
+      }
+      window.EARTHLINE_JURISDICTION_CROSSCALL_CACHE_17272=window.EARTHLINE_JURISDICTION_CROSSCALL_CACHE_17272||{hits:0,misses:0,stored:0,at:new Date().toISOString()};
+      window.EARTHLINE_JURISDICTION_CROSSCALL_CACHE_17272.misses++;
+      const screened17272=screenJurisdictionCandidate16539Uncached17272(candidate16539);
+      if(map17272&&key17272){
+        map17272.set(key17272,screened17272?{segment:screened17272.segment,x:screened17272.x,y:screened17272.y}:null);
+        window.EARTHLINE_JURISDICTION_CROSSCALL_CACHE_17272.stored++;
+      }
+      return screened17272;
+    }
+
+const preferredEligibleCount16539=await jurisdictionEligibleCount16539(candidates);
     if(!focusMode||preferredEligibleCount16539<36){
       for(const f of lines){const coords=f.geometry.coordinates;if(coords.length<12)continue;for(const frac of [.28,.56,.82]){const c=sampleSegment(coords,Math.max(3,Math.min(coords.length-4,Math.round((coords.length-1)*frac))),true);if(c)candidates.push(c);}}
     }
     const candidatesBeforeJurisdiction16539=candidates.length;
     let jurisdictionRejectedCandidates16539=0;
     if(!focusMode&&jurisdictionGeometry16539){
-      const eligible16539=[];let finalScreenYield16661=0;
+      const eligible16539=[];let finalScreenYield16661=0,lastFinalScreenYieldAt17292=performance.now();
       for(const candidate16539 of candidates){
         const screened16539=screenJurisdictionCandidate16539(candidate16539);
         if(screened16539)eligible16539.push(screened16539);else jurisdictionRejectedCandidates16539++;
-        if((++finalScreenYield16661%12)===0)await earthlineCooperativeYield16661();
+        finalScreenYield16661++;
+        if((finalScreenYield16661&63)===0&&performance.now()-lastFinalScreenYieldAt17292>=8){await earthlineCooperativeYield16661();lastFinalScreenYieldAt17292=performance.now();}
       }
       candidates.length=0;candidates.push(...eligible16539);
     }
@@ -31265,17 +31416,111 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     }
     return inside16722;
   }
+  const earthlinePreparedJurisdictionCache17270=new WeakMap();
   function earthlinePrepareJurisdiction16539(g){
     if(!g)return null;if(g.prepared16539===true)return g;
+    const cacheable17270=(typeof g==='object'&&g!==null);
+    if(cacheable17270){const cached17270=earthlinePreparedJurisdictionCache17270.get(g);if(cached17270)return cached17270;}
     const rawPolys=g.type==='Polygon'?[g.coordinates||[]]:g.type==='MultiPolygon'?(g.coordinates||[]):[];
     const polygons=[];for(const rings of rawPolys){if(!Array.isArray(rings)||!rings.length)continue;const outer=rings[0],bbox=earthlineRingBounds16539(outer);if(!bbox)continue;const holes=[];for(let i=1;i<rings.length;i++){const hb=earthlineRingBounds16539(rings[i]);if(hb)holes.push({ring:rings[i],bbox:hb});}polygons.push({outer,bbox,holes});}
-    return {prepared16539:true,polygons};
+    const prepared17270={prepared16539:true,polygons};
+    if(cacheable17270)earthlinePreparedJurisdictionCache17270.set(g,prepared17270);
+    return prepared17270;
   }
-  function earthlinePointInJurisdiction16539(p,g){
+  function earthlinePointInJurisdiction16539Uncached17274(p,g){
     if(!g)return false;
     const prepared=earthlinePrepareJurisdiction16539(g);if(!prepared)return false;
     for(const poly of prepared.polygons||[]){if(!earthlineBBoxContains16539(poly.bbox,p)||!earthlinePointInRingIndexed16722(p,poly.outer))continue;let inHole=false;for(const h of poly.holes||[]){if(earthlineBBoxContains16539(h.bbox,p)&&earthlinePointInRingIndexed16722(p,h.ring)){inHole=true;break;}}if(!inHole)return true;}
     return false;
+  }
+
+  const earthlineJurisdictionPointCache17274=new WeakMap();
+  function earthlinePointInJurisdiction16539(p,g){
+    if(!g)return false;
+    const cacheable17274=(typeof g==='object'&&g!==null&&earthlineFinitePoint16539(p));
+    let cache17274=null,key17274='';
+    if(cacheable17274){
+      cache17274=earthlineJurisdictionPointCache17274.get(g);
+      if(!cache17274){cache17274=new Map();earthlineJurisdictionPointCache17274.set(g,cache17274);}
+      key17274=String(Number(p[0]))+'|'+String(Number(p[1]));
+      if(cache17274.has(key17274)){
+        window.EARTHLINE_JURISDICTION_POINT_CACHE_17274=window.EARTHLINE_JURISDICTION_POINT_CACHE_17274||{hits:0,misses:0,at:new Date().toISOString()};
+        window.EARTHLINE_JURISDICTION_POINT_CACHE_17274.hits++;
+        return cache17274.get(key17274);
+      }
+    }
+    window.EARTHLINE_JURISDICTION_POINT_CACHE_17274=window.EARTHLINE_JURISDICTION_POINT_CACHE_17274||{hits:0,misses:0,at:new Date().toISOString()};
+    window.EARTHLINE_JURISDICTION_POINT_CACHE_17274.misses++;
+    const result17274=earthlinePointInJurisdiction16539Uncached17274(p,g);
+    if(cache17274){
+      if(cache17274.size>160000)cache17274.clear();
+      cache17274.set(key17274,result17274);
+    }
+    return result17274;
+  }
+
+  /* EARTHLINE 17270 — exact interior/exterior certification for candidate screening.
+     A candidate can bypass the expensive exact clip only when its entire bbox contains
+     no jurisdiction boundary edge. One exact point test then proves the connected
+     candidate bbox is wholly inside or wholly outside. Boundary-adjacent candidates
+     still use the frozen exact clip owner. */
+  const earthlineBoundaryEdgeIndexCache17270=new WeakMap();
+  function earthlineBoundaryEdgeIndex17270(g17270){
+    if(!g17270||typeof g17270!=='object')return null;
+    const cached17270=earthlineBoundaryEdgeIndexCache17270.get(g17270);if(cached17270)return cached17270;
+    const prepared17270=earthlinePrepareJurisdiction16539(g17270);if(!prepared17270)return null;
+    const scale17270=16,bins17270=new Map();let ambiguous17270=false,edgeCount17270=0;
+    const addRing17270=ring17270=>{
+      if(!Array.isArray(ring17270)||ring17270.length<2)return;
+      for(let i17270=0,j17270=ring17270.length-1;i17270<ring17270.length;j17270=i17270++){
+        const a17270=ring17270[j17270],b17270=ring17270[i17270];
+        if(!earthlineFinitePoint16539(a17270)||!earthlineFinitePoint16539(b17270))continue;
+        const x117270=Number(a17270[0]),y117270=Number(a17270[1]),x217270=Number(b17270[0]),y217270=Number(b17270[1]);
+        if(Math.abs(x217270-x117270)>180){ambiguous17270=true;continue;}
+        const edge17270={minX:Math.min(x117270,x217270),maxX:Math.max(x117270,x217270),minY:Math.min(y117270,y217270),maxY:Math.max(y117270,y217270)};
+        const lo17270=Math.floor(edge17270.minY*scale17270),hi17270=Math.floor(edge17270.maxY*scale17270);
+        if(hi17270-lo17270>512){ambiguous17270=true;continue;}
+        for(let k17270=lo17270;k17270<=hi17270;k17270++){let list17270=bins17270.get(k17270);if(!list17270)bins17270.set(k17270,list17270=[]);list17270.push(edge17270);}
+        edgeCount17270++;
+      }
+    };
+    for(const poly17270 of (prepared17270.polygons||[])){addRing17270(poly17270.outer);for(const h17270 of (poly17270.holes||[]))addRing17270(h17270.ring);}
+    const out17270={prepared:prepared17270,scale:scale17270,bins:bins17270,ambiguous:ambiguous17270,edges:edgeCount17270};
+    earthlineBoundaryEdgeIndexCache17270.set(g17270,out17270);return out17270;
+  }
+  function earthlineCandidateBBox17270(coords17270){
+    let w17270=Infinity,s17270=Infinity,e17270=-Infinity,n17270=-Infinity;
+    for(const p17270 of (coords17270||[])){if(!earthlineFinitePoint16539(p17270))continue;const x17270=Number(p17270[0]),y17270=Number(p17270[1]);if(x17270<w17270)w17270=x17270;if(x17270>e17270)e17270=x17270;if(y17270<s17270)s17270=y17270;if(y17270>n17270)n17270=y17270;}
+    return Number.isFinite(w17270)?[w17270,s17270,e17270,n17270]:null;
+  }
+  function earthlineBoundaryTouchesBBox17270(index17270,bbox17270){
+    if(!index17270||index17270.ambiguous||!bbox17270||bbox17270[2]-bbox17270[0]>180)return true;
+    const eps17270=1e-12,lo17270=Math.floor((bbox17270[1]-eps17270)*index17270.scale),hi17270=Math.floor((bbox17270[3]+eps17270)*index17270.scale);
+    for(let k17270=lo17270;k17270<=hi17270;k17270++)for(const edge17270 of (index17270.bins.get(k17270)||[])){
+      if(edge17270.maxX+eps17270>=bbox17270[0]&&edge17270.minX-eps17270<=bbox17270[2]&&edge17270.maxY+eps17270>=bbox17270[1]&&edge17270.minY-eps17270<=bbox17270[3])return true;
+    }
+    return false;
+  }
+  function earthlineCandidateJurisdictionClass17270(candidate17270,g17270){
+    const coords17270=candidate17270&&candidate17270.segment;
+    if(!Array.isArray(coords17270)||coords17270.length<2)return 0;
+    const index17270=earthlineBoundaryEdgeIndex17270(g17270),bbox17270=earthlineCandidateBBox17270(coords17270);
+    if(!index17270||!bbox17270||earthlineBoundaryTouchesBBox17270(index17270,bbox17270))return 0;
+    return earthlinePointInJurisdiction16539(coords17270[0],index17270.prepared)?1:-1;
+  }
+  function earthlineDensifyCandidate17270(coords17270){
+    const src17285=Array.isArray(coords17270)?coords17270:[];
+    let allFinite17285=true;for(const p17285 of src17285){if(!earthlineFinitePoint16539(p17285)){allFinite17285=false;break;}}
+    const raw17270=allFinite17285?src17285:src17285.filter(earthlineFinitePoint16539);if(raw17270.length<2)return [];
+    let needs17285=false;
+    for(let i17285=1;i17285<raw17270.length;i17285++){
+      const a17285=raw17270[i17285-1],b17285=raw17270[i17285];
+      if(Math.max(Math.abs(Number(b17285[0])-Number(a17285[0])),Math.abs(Number(b17285[1])-Number(a17285[1])))>.01){needs17285=true;break;}
+    }
+    if(!needs17285)return raw17270;
+    const pts17270=[raw17270[0]];
+    for(let i17270=1;i17270<raw17270.length;i17270++){const a17270=raw17270[i17270-1],b17270=raw17270[i17270],steps17270=Math.max(1,Math.ceil(Math.max(Math.abs(Number(b17270[0])-Number(a17270[0])),Math.abs(Number(b17270[1])-Number(a17270[1])))/.01));for(let k17270=1;k17270<=steps17270;k17270++)pts17270.push(earthlineInterpolate16539(a17270,b17270,k17270/steps17270));}
+    return pts17270;
   }
   function earthlineGeometryBounds16556(g){
     if(!g)return null;
@@ -31600,14 +31845,27 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     return [minX16584,minY16584,maxX16584,maxY16584].every(Number.isFinite)
       ?[minX16584,minY16584,maxX16584,maxY16584]:null;
   }
+  const earthlineLandRingYIndex17289=new WeakMap();
+  function earthlinePrepareLandRingYIndex17289(ring17289){
+    if(!Array.isArray(ring17289)||ring17289.length<3)return null;
+    const cached17289=earthlineLandRingYIndex17289.get(ring17289);if(cached17289)return cached17289;
+    const scale17289=16,bins17289=new Map();
+    for(let i17289=0,j17289=ring17289.length-1;i17289<ring17289.length;j17289=i17289++){
+      const a17289=ring17289[i17289],b17289=ring17289[j17289];if(!a17289||!b17289)continue;
+      const xi17289=Number(a17289[0]),yi17289=Number(a17289[1]),xj17289=Number(b17289[0]),yj17289=Number(b17289[1]);
+      if(![xi17289,yi17289,xj17289,yj17289].every(Number.isFinite))continue;
+      const edge17289={xi:xi17289,yi:yi17289,xj:xj17289,yj:yj17289};
+      const lo17289=Math.floor(Math.min(yi17289,yj17289)*scale17289),hi17289=Math.floor(Math.max(yi17289,yj17289)*scale17289);
+      for(let k17289=lo17289;k17289<=hi17289;k17289++){let list17289=bins17289.get(k17289);if(!list17289)bins17289.set(k17289,list17289=[]);list17289.push(edge17289);}
+    }
+    const prepared17289={scale:scale17289,bins:bins17289};earthlineLandRingYIndex17289.set(ring17289,prepared17289);return prepared17289;
+  }
   function earthlinePointInRing16584(x16584,y16584,ring16584){
-    if(!Array.isArray(ring16584)||ring16584.length<3)return false;
     let inside16584=false;
-    for(let i16584=0,j16584=ring16584.length-1;i16584<ring16584.length;j16584=i16584++){
-      const a16584=ring16584[i16584]||[],b16584=ring16584[j16584]||[];
-      const xi16584=Number(a16584[0]),yi16584=Number(a16584[1]),
-            xj16584=Number(b16584[0]),yj16584=Number(b16584[1]);
-      if(![xi16584,yi16584,xj16584,yj16584].every(Number.isFinite))continue;
+    const prepared17289=earthlinePrepareLandRingYIndex17289(ring16584);if(!prepared17289)return false;
+    const edges17289=prepared17289.bins.get(Math.floor(Number(y16584)*prepared17289.scale))||[];
+    for(const e17289 of edges17289){
+      const xi16584=e17289.xi,yi16584=e17289.yi,xj16584=e17289.xj,yj16584=e17289.yj;
       if(((yi16584>y16584)!==(yj16584>y16584))&&
          (x16584<(xj16584-xi16584)*(y16584-yi16584)/((yj16584-yi16584)||1e-15)+xi16584))
         inside16584=!inside16584;
@@ -32166,7 +32424,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
           const nearOut16702=(x,y,r=4)=>{for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){const xx=x+dx,yy=y+dy;if(xx<0||xx>=h16702.w||yy<0||yy>=h16702.h)continue;if(g16702.outsideLandMask16632[yy*h16702.w+xx])return true;}return false;};
           for(let y=1;y<h16702.h-1;y++)for(let x=1;x<h16702.w-1;x++){const i=y*h16702.w+x;if(g16702.mask[i]!==1||!nearOut16702(x,y,4))continue;const sp=Number(h16702.slope[i]),ac=Number(h16702.acc[i]),el=Number(h16702.elev[i]);if(Number.isFinite(sp)&&sp>=.20&&sp<=4&&Number.isFinite(ac)&&ac<channel16702&&Number.isFinite(el))elevs16702.push(el);}
           elevs16702.sort((a,b)=>a-b);const levels16702=[],seen16702=new Set();if(elevs16702.length){for(const frac of [.05,.12,.22,.34,.47,.60]){const e=elevs16702[Math.min(elevs16702.length-1,Math.floor((elevs16702.length-1)*frac))],k=Math.round(e*2)/2;if(!seen16702.has(k)){seen16702.add(k);levels16702.push(k);}}}
-          const c16702=await makeContours(h16702,true,levels16702),s16702=await makeSwales(h16702,c16702,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16702;
+          const c16702=await makeContours(h16702,true,levels16702),s16702=await makeSwales(h16702,c16702,false,null,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16702;
           const dist16702=ll=>{const gg=llGrid(h16702,ll);if(!gg||!Number.isFinite(gg.x)||!Number.isFinite(gg.y))return null;const cx=Math.max(0,Math.min(h16702.w-1,Math.round(gg.x))),cy=Math.max(0,Math.min(h16702.h-1,Math.round(gg.y)));for(let r=0;r<=30;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue;const xx=cx+dx,yy=cy+dy;if(xx<0||xx>=h16702.w||yy<0||yy>=h16702.h)continue;if(g16702.outsideLandMask16632[yy*h16702.w+xx])return r;}return null;};
           const rows=(s16702.features||[]).map(f=>{const seg=f.geometry&&f.geometry.coordinates||[],mid=seg[Math.floor((seg.length-1)/2)]||null,dd=mid?dist16702(mid):null,km=Number.isFinite(dd)?dd*Math.max(h16702.cellX,h16702.cellY)/1000:null,sp=Number(f.properties&&f.properties.slope_pct);return {f,seg,mid,km,sp};}).filter(r=>Number.isFinite(r.km)&&r.km<=20&&Number.isFinite(r.sp)&&r.sp>=.20&&r.sp<=4).sort((a,b)=>(b.f.properties?.score||0)-(a.f.properties?.score||0));
           const picked=[];for(const r of rows){if(picked.length>=12)break;if(picked.some(p=>Math.hypot(p.f.properties?.rank||0-r.f.properties?.rank||0,0)<0))continue;picked.push(r);}
@@ -32237,7 +32495,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
               if(!seen16730.has(k16730)){seen16730.add(k16730);levels16730.push(k16730);}
             }
             if(!levels16730.length)return [];
-            const c16730=await makeContours(h16730,true,levels16730),s16730=await makeSwales(h16730,c16730,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16730;
+            const c16730=await makeContours(h16730,true,levels16730),s16730=await makeSwales(h16730,c16730,false,null,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16730;
             return (s16730.features||[]).map(f16730=>{
               const seg16730=f16730.geometry&&f16730.geometry.coordinates||[],mid16730=seg16730[Math.floor((seg16730.length-1)/2)]||null,sp16730=Number(f16730.properties&&f16730.properties.slope_pct),score16730=Number(f16730.properties&&f16730.properties.score||0);
               if(!mid16730||!Number.isFinite(sp16730)||sp16730<.05||sp16730>4)return null;
@@ -32288,7 +32546,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
           allVals16839.sort((a16839,b16839)=>a16839-b16839);for(const f16839 of [.08,.2,.35,.5,.65,.8,.92])if(allVals16839.length)levelSet16839.add(Math.round(allVals16839[Math.min(allVals16839.length-1,Math.floor((allVals16839.length-1)*f16839))]*10)/10);
           const subElev16839=slice16839(hy.elev,sx016839,sx116839,sy016839,sy116839).filter(Number.isFinite).sort((a16839,b16839)=>a16839-b16839);if(subElev16839.length<8)continue;const min16839=subElev16839[0],max16839=subElev16839[subElev16839.length-1],levels16839=[...levelSet16839].filter(v16839=>v16839>min16839&&v16839<max16839);if(!levels16839.length)continue;
           const nw16839=gridLL(hy,sx016839,sy016839),se16839=gridLL(hy,sx116839,sy116839),sub16839={w:sx116839-sx016839+1,h:sy116839-sy016839+1,bounds:[nw16839[0],se16839[1],se16839[0],nw16839[1]],cellX:hy.cellX,cellY:hy.cellY,elev:slice16839(hy.elev,sx016839,sx116839,sy016839,sy116839),slope:slice16839(hy.slope,sx016839,sx116839,sy016839,sy116839),acc:slice16839(hy.acc,sx016839,sx116839,sy016839,sy116839),validityMask16584:slice16839(hy.validityMask16584,sx016839,sx116839,sy016839,sy116839),outsideLandMask16632:hy.outsideLandMask16632?slice16839(hy.outsideLandMask16632,sx016839,sx116839,sy016839,sy116839):null,inlandWaterMask16632:hy.inlandWaterMask16632?slice16839(hy.inlandWaterMask16632,sx016839,sx116839,sy016839,sy116839):null};
-          const savedGen16839=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167,c16839=await makeContours(sub16839,true,levels16839),s16839=await makeSwales(sub16839,c16839,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16839;
+          const savedGen16839=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167,c16839=await makeContours(sub16839,true,levels16839),s16839=await makeSwales(sub16839,c16839,false,null,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16839;
           const bestByFine16839=new Map();for(const f16839 of s16839.features||[]){const seg16839=f16839?.geometry?.coordinates||[],mid16839=seg16839[Math.floor((seg16839.length-1)/2)]||null,sp16839=Number(f16839?.properties?.slope_pct),score16839=Number(f16839?.properties?.score||0);if(!mid16839||!Number.isFinite(sp16839)||sp16839<.05||sp16839>4)continue;const mg16839=llGrid(hy,mid16839);if(!mg16839||!Number.isFinite(mg16839.x)||!Number.isFinite(mg16839.y))continue;const bx16839=Math.max(0,Math.min(N16839-1,Math.floor(Number(mg16839.x)*N16839/Math.max(1,hy.w)))),by16839=Math.max(0,Math.min(N16839-1,Math.floor(Number(mg16839.y)*N16839/Math.max(1,hy.h)))),fineKey16839=bx16839+','+by16839;if(!gapKeys16839.has(fineKey16839))continue;const px16839=Math.max(1,Math.min(hy.w-2,Math.round(mg16839.x))),py16839=Math.max(1,Math.min(hy.h-2,Math.round(mg16839.y))),cand16839={segment:seg16839,x:px16839,y:py16839,slope:sp16839,acc:0,maxAcc:0,score:Math.max(0,Math.min(1,score16839/100)),confidence:String(f16839?.properties?.confidence||'screening'),minLinePx16632:4,refined16702:true,statewideSupertile16839:true,tile16702:'statewide-super-'+key16839,fineCell16839:fineKey16839};let arr16839=bestByFine16839.get(fineKey16839);if(!arr16839)bestByFine16839.set(fineKey16839,arr16839=[]);arr16839.push(cand16839);}
           let groupAdded16839=0;for(const [fineKey16839,arr16839] of bestByFine16839){arr16839.sort((a16839,b16839)=>b16839.score-a16839.score);for(const cand16839 of arr16839.slice(0,2)){const k16839=cand16839.x+','+cand16839.y;if(occupied16839.has(k16839))continue;occupied16839.add(k16839);added16839.push(cand16839);groupAdded16839++;}}
           groupRows16839.push({key:key16839,gaps:gapsGroup16839.length,levels:levels16839.length,added:groupAdded16839});
@@ -32402,7 +32660,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
               if(!seen16780.has(k16780)){seen16780.add(k16780);levels16780.push(k16780);}
             }
             if(!levels16780.length)return [];
-            const c16780=await makeContours(h16780,true,levels16780),s16780=await makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16780;
+            const c16780=await makeContours(h16780,true,levels16780),s16780=await makeSwales(h16780,c16780,false,null,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16780;
             return (s16780.features||[]).map(f16780=>{
               const seg16780=f16780&&f16780.geometry&&f16780.geometry.coordinates||[],mid16780=seg16780[Math.floor((seg16780.length-1)/2)]||null;
               const sp16780=Number(f16780&&f16780.properties&&f16780.properties.slope_pct),score16780=Number(f16780&&f16780.properties&&f16780.properties.score||0);
@@ -32569,7 +32827,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
               if(!seen16731.has(k16731)){seen16731.add(k16731);levels16731.push(k16731);}
             }
             if(!levels16731.length)return [];
-            const c16731=await makeContours(h16731,true,levels16731),s16731=await makeSwales(h16731,c16731,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16731;
+            const c16731=await makeContours(h16731,true,levels16731),s16731=await makeSwales(h16731,c16731,false,null,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16731;
             return (s16731.features||[]).map(f16731=>{
               const seg16731=f16731&&f16731.geometry&&f16731.geometry.coordinates||[],mid16731=seg16731[Math.floor((seg16731.length-1)/2)]||null,sp16731=Number(f16731&&f16731.properties&&f16731.properties.slope_pct),score16731=Number(f16731&&f16731.properties&&f16731.properties.score||0);
               if(!mid16731||!Number.isFinite(sp16731)||sp16731<.05||sp16731>4)return null;
@@ -32638,7 +32896,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
               if(!seen16741.has(k16741)){seen16741.add(k16741);levels16741.push(k16741);}
             }
             if(!levels16741.length)return [];
-            const c16741=await makeContours(h16741,true,levels16741),s16741=await makeSwales(h16741,c16741,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16741;
+            const c16741=await makeContours(h16741,true,levels16741),s16741=await makeSwales(h16741,c16741,false,null,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16741;
             return (s16741.features||[]).map(f16741=>{
               const seg16741=f16741&&f16741.geometry&&f16741.geometry.coordinates||[],mid16741=seg16741[Math.floor((seg16741.length-1)/2)]||null,sp16741=Number(f16741&&f16741.properties&&f16741.properties.slope_pct),score16741=Number(f16741&&f16741.properties&&f16741.properties.score||0);
               if(!mid16741||!Number.isFinite(sp16741)||sp16741<.05||sp16741>4)return null;
