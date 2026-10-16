@@ -1,0 +1,22 @@
+name: Earthline Screen Candidate Snippet 17306
+on:
+  push:
+    branches: [repair/browser-performance-live-17268]
+    paths:
+      - '.github/workflows/earthline-screen-candidate-snippet-17306.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-performance-live-17268}
+      - run: |
+          python3 - <<'PY'
+          s=open('index.html',encoding='utf-8').read()
+          key='function screenJurisdictionCandidate16539'
+          i=s.index(key)
+          print(s[i-1000:i+5000])
+          PY
