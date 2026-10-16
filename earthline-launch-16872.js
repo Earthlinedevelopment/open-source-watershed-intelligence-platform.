@@ -2050,17 +2050,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       try{refreshCurrentTarget17266()}catch(_){}
       return governed.call(this,ev);
     };
-    const propertyButton17266=document.getElementById('earthlineDeclareProperty16169');
-    if(!window.EARTHLINE_PROPERTY_PRESS_STABILITY_BOUND_17266){
-      window.EARTHLINE_PROPERTY_PRESS_STABILITY_BOUND_17266=true;
-      /* The live panel can move a focused control between pointer-down and release.
-         Cancel only that native pointer-down default. The existing onclick remains
-         the single Property launch owner; this listener never starts analysis. */
-      document.addEventListener('pointerdown',function earthlinePropertyPressStable17266(ev){
-        if(ev?.target?.closest?.('#earthlineDeclareProperty16169'))ev.preventDefault();
-      },true);
-    }
-    window.EARTHLINE_PROPERTY_ONE_PRESS_17266={state:'ready',refreshCurrentTarget17266,lastTarget:null,pressStabilityBound:true,at:new Date().toISOString()};
+    window.EARTHLINE_PROPERTY_ONE_PRESS_17266={state:'ready',refreshCurrentTarget17266,lastTarget:null,at:new Date().toISOString()};
     return true;
   }
   if(wrap17266())return;
