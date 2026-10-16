@@ -1,0 +1,20 @@
+name: Earthline Selection Tail Extract 17323
+on:
+  push:
+    branches: [repair/browser-performance-live-17268]
+    paths:
+      - 'tests/extract-selection-tail-17323.py'
+      - '.github/workflows/earthline-selection-tail-17323.yml'
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-performance-live-17268}
+      - run: python3 tests/extract-selection-tail-17323.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: selection-tail-17323
+          path: selection-tail-17323.txt
