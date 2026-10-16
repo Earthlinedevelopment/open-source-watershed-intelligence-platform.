@@ -19,13 +19,23 @@ const before=await page.evaluate(()=>{
   window.__EARTHLINE_CLICK_DIAG_BUTTON_17266=b;
   const rec=(phase,e)=>window.__EARTHLINE_CLICK_DIAG_17266.events.push({phase,type:e.type,targetId:e.target?.id||'',closestId:e.target?.closest?.('button')?.id||'',at:performance.now()});
   document.addEventListener('pointerdown',e=>{if(e.target?.closest?.('#earthlineDeclareProperty16169'))rec('document-capture',e)},true);
-  document.addEventListener('click',e=>{if(e.target?.closest?.('#earthlineDeclareProperty16169'))rec('document-capture',e)},true);
-  b?.addEventListener('pointerdown',e=>rec('button-capture',e),true);
-  b?.addEventListener('click',e=>rec('button-capture',e),true);
-  b?.addEventListener('click',e=>rec('button-bubble',e),false);
+  for(const type of ['pointerdown','pointerup','pointercancel','mousedown','mouseup','click']){
+    document.addEventListener(type,e=>{if(e.target?.closest?.('#earthlineDeclareProperty16169'))rec('document-capture',e)},true);
+    b?.addEventListener(type,e=>rec('button-capture',e),true);
+    b?.addEventListener(type,e=>rec('button-bubble',e),false);
+  }
+  const mo=new MutationObserver(ms=>{for(const m of ms)window.__EARTHLINE_CLICK_DIAG_17266.events.push({phase:'mutation',type:m.attributeName||m.type,disabled:!!b?.disabled,busy:b?.dataset?.busy||null,at:performance.now()})});
+  if(b)mo.observe(b,{attributes:true,attributeFilter:['disabled','data-busy','data-state','style','class']});
   return Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0);
 });
-await page.locator('#earthlineDeclareProperty16169').click();
+const prop=page.locator('#earthlineDeclareProperty16169');
+const box=await prop.boundingBox();if(!box)throw new Error('Property button has no box');
+const x=box.x+box.width/2,y=box.y+box.height/2;
+await page.mouse.move(x,y);
+await page.mouse.down();
+await page.waitForTimeout(120);
+const afterDown=await page.evaluate(({x,y})=>{const b=document.getElementById('earthlineDeclareProperty16169'),e=document.elementFromPoint(x,y);return {disabled:!!b?.disabled,busy:b?.dataset?.busy||null,state:b?.dataset?.state||null,topId:e?.id||'',topClosest:e?.closest?.('button')?.id||'',sameButton:b===window.__EARTHLINE_CLICK_DIAG_BUTTON_17266,rect:b?.getBoundingClientRect?.().toJSON?.()||null}}, {x,y});
+await page.mouse.up();
 await page.waitForTimeout(1500);
 const snap=await page.evaluate(()=>({
  audit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
@@ -50,7 +60,7 @@ const snap=await page.evaluate(()=>({
 }));
 const targetOk=Math.abs(Number(snap.target?.lng)-lng)<0.002&&Math.abs(Number(snap.target?.lat)-lat)<0.002;
 const launched=Number(snap.audit?.serial||0)>before;
-console.log('EARTHLINE_ONE_PRESS_LAUNCH_17266 '+JSON.stringify({before,launched,targetOk,...snap}));
+console.log('EARTHLINE_ONE_PRESS_LAUNCH_17266 '+JSON.stringify({before,afterDown,launched,targetOk,...snap}));
 await browser.close();
 if(!(launched&&targetOk))process.exitCode=1;
 
