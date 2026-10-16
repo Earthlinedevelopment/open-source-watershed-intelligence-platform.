@@ -18,18 +18,18 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          s=Path('index.html').read_text(encoding='utf-8')
           needles=['earthline-telemetry','ccucaqwbdsskcwxxbqiz','telemetry','supabase.co/functions/v1']
-          seen=set()
-          for needle in needles:
-              start=0
-              while True:
-                  i=s.lower().find(needle.lower(),start)
-                  if i<0: break
-                  k=(max(0,i-5000),min(len(s),i+10000))
-                  if k not in seen:
-                      seen.add(k)
-                      print('\n===== '+needle+' @ '+str(i)+' =====')
-                      print(s[k[0]:k[1]])
-                  start=i+len(needle)
+          for p in Path('.').rglob('*'):
+              if not p.is_file() or '.git' in p.parts: continue
+              try: s=p.read_text(encoding='utf-8',errors='ignore')
+              except Exception: continue
+              low=s.lower()
+              for needle in needles:
+                  start=0
+                  while True:
+                      i=low.find(needle.lower(),start)
+                      if i<0: break
+                      print('\n===== '+str(p)+' :: '+needle+' @ '+str(i)+' =====')
+                      print(s[max(0,i-5000):i+10000])
+                      start=i+len(needle)
           PY
