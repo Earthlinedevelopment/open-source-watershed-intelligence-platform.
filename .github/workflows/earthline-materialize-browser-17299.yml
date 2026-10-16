@@ -1,0 +1,62 @@
+name: Earthline Materialize Browser Candidate 17299
+on:
+  push:
+    branches: [candidate/browser-fix-17299]
+    paths:
+      - '.github/workflows/earthline-materialize-browser-17299.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/browser-fix-17299
+          fetch-depth: 0
+      - name: Apply winning browser repair stack
+        run: |
+          python3 tests/apply-exact-jurisdiction-fast-screen-17270.py
+          python3 tests/apply-consolidated-jurisdiction-screen-17262.py
+          python3 tests/apply-crosscall-jurisdiction-cache-17272.py
+          python3 tests/apply-grid-point-cache-17274.py
+          python3 tests/apply-terrain-hedge-17275.py
+          python3 tests/apply-percentile-cache-17279.py
+          python3 tests/apply-dem-sampling-17280.py
+          python3 tests/apply-hydrology-core-17278.py
+          python3 tests/apply-densify-fastpath-17285.py
+          python3 tests/apply-land-ring-index-17289.py
+          python3 tests/apply-time-budget-yield-17292.py
+          python3 tests/apply-terrain-integrity-17293.py
+          python3 tests/apply-cancelled-terrain-hedge-17296.py
+          git diff --check
+      - name: Verify browser repair markers
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          markers=[
+            'EARTHLINE_EXACT_JURISDICTION_FAST_SCREEN_17270',
+            'EARTHLINE_CROSSCALL_JURISDICTION_SCREEN_CACHE_17272',
+            'EARTHLINE_GRID_POINT_JURISDICTION_CACHE_17274',
+            'EARTHLINE_PERCENTILE_CACHE_17279',
+            'EARTHLINE_DEM_SAMPLING_17280',
+            'EARTHLINE_HYDROLOGY_CORE_17278',
+            'EARTHLINE_DENSIFY_FASTPATH_17285',
+            'EARTHLINE_LAND_RING_INDEX_17289',
+            'EARTHLINE_TIME_BUDGET_YIELD_17292',
+            'EARTHLINE_TERRAIN_INTEGRITY_17293',
+            'EARTHLINE_CANCELLED_TERRAIN_HEDGE_17296'
+          ]
+          missing=[m for m in markers if m not in s]
+          if missing: raise SystemExit('missing browser repair markers: '+', '.join(missing))
+          print('browser candidate markers verified:',len(markers))
+          PY
+      - name: Commit candidate only
+        run: |
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'candidate: browser performance and stability repair 17299'
+          git push origin HEAD:candidate/browser-fix-17299
