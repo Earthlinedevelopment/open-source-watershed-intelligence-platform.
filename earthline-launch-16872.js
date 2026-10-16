@@ -1997,3 +1997,61 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   },{passive:true});
   window.EARTHLINE_CROSSHAIR_MOVE_HINT_17093={state:'ready',show,remove,showAfterEveryRegional:true};
 })();
+
+
+/* EARTHLINE_PROPERTY_FIRST_CLICK_17265
+   Single-click Property preflight only.
+   Before the existing authoritative Property button handler runs, release any stale
+   country-center target lock and bind the Property target to the CURRENT map crosshair.
+   This does not run Property itself and does not create a second analysis owner. */
+(function installEarthlinePropertyFirstClick17265(){
+  if(window.EARTHLINE_PROPERTY_FIRST_CLICK_17265)return;
+  function currentMap17265(){
+    try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}
+  }
+  function currentParent17265(){
+    try{
+      const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||null;
+      return String(d?.runToken||window.EARTHLINE_ACTIVE_RUN_TOKEN_16151||'');
+    }catch(_){return ''}
+  }
+  function bindCurrentCrosshair17265(){
+    try{
+      const m=currentMap17265(),c=m?.getCenter?.();
+      const lng=Number(c?.lng),lat=Number(c?.lat);
+      if(!Number.isFinite(lng)||!Number.isFinite(lat))return false;
+      window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;
+      window.EARTHLINE_COUNTRY_TARGET_USER_UNLOCKED_17240=true;
+      const prior=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+      const target={
+        ...(prior&&typeof prior==='object'?prior:{}),
+        lng,lat,source:'crosshair',
+        parentRunToken:currentParent17265()||String(prior?.parentRunToken||''),
+        at:new Date().toISOString()
+      };
+      if(typeof window.earthlineSetPropertyTarget16201==='function'){
+        window.earthlineSetPropertyTarget16201(target,{openPanel:false});
+      }else{
+        window.EARTHLINE_PROPERTY_TARGET_16201=target;
+      }
+      window.EARTHLINE_PROPERTY_FIRST_CLICK_17265.lastTarget={lng,lat,parentRunToken:target.parentRunToken,at:target.at};
+      return true;
+    }catch(_){return false}
+  }
+  document.addEventListener('pointerdown',ev=>{
+    try{
+      const base=document.getElementById('mapboxBase');
+      const surface=ev.target&&ev.target.closest?ev.target.closest('.mapboxgl-map,#mapboxBase'):null;
+      if(surface||(base&&(ev.target===base||base.contains(ev.target)))){
+        window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;
+        window.EARTHLINE_COUNTRY_TARGET_USER_UNLOCKED_17240=true;
+      }
+    }catch(_){}
+  },true);
+  document.addEventListener('click',ev=>{
+    const b=ev.target?.closest?.('#earthlineDeclareProperty16169');
+    if(!b)return;
+    bindCurrentCrosshair17265(); // capture phase: state is ready before existing button owner executes
+  },true);
+  window.EARTHLINE_PROPERTY_FIRST_CLICK_17265={state:'ready',bindCurrentCrosshair17265,lastTarget:null};
+})();
