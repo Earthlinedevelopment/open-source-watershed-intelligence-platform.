@@ -1,50 +1,92 @@
-name: Earthline Repeat Property Trees Diagnostic 17266
+name: Earthline Stability Hotfix Gate 17267
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
     paths:
+      - 'tests/apply-hotfix-stability-17267.py'
+      - 'tests/stability-hotfix-17267.mjs'
       - '.github/workflows/earthline-property-coverage-diag-17223.yml'
   workflow_dispatch:
 permissions:
   contents: read
+
 jobs:
-  inspect:
-    runs-on: ubuntu-latest
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: pages-live
-      - name: Extract Property repeat and Elder tree lifecycle owners
+          ref: repair/v1-property-coverage-17223
+      - name: Overlay exact live production files and apply candidate
         shell: bash
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          s=Path('index.html').read_text(encoding='utf-8')
-          js=Path('earthline-launch-16872.js').read_text(encoding='utf-8') if Path('earthline-launch-16872.js').exists() else ''
-          terms=[
-            'EARTHLINE_ELDER_TREES_V1_17097',
-            'startProperty',
-            'earthline-property',
-            'ELDER',
-            'elder',
-            'tree',
-            'searchGen',
-            'retirePriorPropertyPresentation16521',
-            'publishPropertyDisplay16220',
-            'EARTHLINE_PROPERTY_ELDER_EARLY_START_17166'
-          ]
-          for name,text in [('index.html',s),('earthline-launch-16872.js',js)]:
-              print('\n######## '+name+' ########')
-              for term in terms:
-                  print('\n===== '+term+' =====')
-                  pos=0;n=0
-                  while True:
-                      i=text.find(term,pos)
-                      if i<0: break
-                      n+=1
-                      print('\n--- HIT',n,'@',i,'---')
-                      print(text[max(0,i-5000):i+14000])
-                      pos=i+len(term)
-                      if n>=10: break
-                  print('COUNT',n)
-          PY
+          git fetch origin pages-live --depth=1
+          git checkout origin/pages-live -- index.html earthline-launch-16872.js earthline-elder-worker-17129.js
+          python3 tests/apply-hotfix-stability-17267.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browser
+        shell: bash
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Serve candidate
+        shell: bash
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-hotfix.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/earthline-hotfix.log
+          exit 1
+      - name: Run Mexico 3x one-click + trees + coverage
+        shell: bash
+        run: |
+          if [ '${{ matrix.browser }}' = 'firefox' ]; then
+            xvfb-run -a env BROWSER='firefox' HEADLESS='false' node tests/stability-hotfix-17267.mjs
+          else
+            env BROWSER='chromium' HEADLESS='true' node tests/stability-hotfix-17267.mjs
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stability-hotfix-${{ matrix.browser }}-17267
+          path: artifacts/stability-hotfix-17267/
+          if-no-files-found: warn
+
+  webkit:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-coverage-17223
+      - name: Overlay exact live production files and apply candidate
+        run: |
+          git fetch origin pages-live --depth=1
+          git checkout origin/pages-live -- index.html earthline-launch-16872.js earthline-elder-worker-17129.js
+          python3 tests/apply-hotfix-stability-17267.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - name: Serve candidate
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-hotfix.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/earthline-hotfix.log
+          exit 1
+      - name: Run Mexico 3x one-click + trees + coverage
+        run: env BROWSER='webkit' HEADLESS='true' node tests/stability-hotfix-17267.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stability-hotfix-webkit-17267
+          path: artifacts/stability-hotfix-17267/
+          if-no-files-found: warn
