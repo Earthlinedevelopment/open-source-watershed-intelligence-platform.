@@ -1,79 +1,50 @@
-name: Earthline Property One-Click Gate 17265
+name: Earthline Repeat Property Trees Diagnostic 17266
 on:
   push:
     branches: [repair/v1-property-coverage-17223]
     paths:
-      - 'tests/apply-property-one-click-17265.py'
-      - 'tests/property-one-click-17265.mjs'
       - '.github/workflows/earthline-property-coverage-diag-17223.yml'
   workflow_dispatch:
 permissions:
   contents: read
-
 jobs:
-  linux:
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: [chromium, firefox]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 25
+  inspect:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: repair/v1-property-coverage-17223
-      - name: Overlay exact live production index
+          ref: pages-live
+      - name: Extract Property repeat and Elder tree lifecycle owners
         shell: bash
         run: |
-          git fetch origin pages-live --depth=1
-          git checkout origin/pages-live -- index.html earthline-launch-16872.js
-          python3 tests/apply-property-one-click-17265.py
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install browser
-        shell: bash
-        run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps ${{ matrix.browser }}
-      - name: Run exact one-click Mexico repeat
-        shell: bash
-        run: |
-          if [ '${{ matrix.browser }}' = 'firefox' ]; then
-            xvfb-run -a env BROWSER='firefox' HEADLESS='false' node tests/property-one-click-17265.mjs
-          else
-            env BROWSER='chromium' HEADLESS='true' node tests/property-one-click-17265.mjs
-          fi
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: property-one-click-${{ matrix.browser }}-17265
-          path: artifacts/property-one-click-17265/
-          if-no-files-found: warn
-
-  webkit:
-    runs-on: macos-14
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: repair/v1-property-coverage-17223
-      - name: Overlay exact live production index
-        run: |
-          git fetch origin pages-live --depth=1
-          git checkout origin/pages-live -- index.html earthline-launch-16872.js
-          python3 tests/apply-property-one-click-17265.py
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install webkit
-      - name: Run exact one-click Mexico repeat
-        run: env BROWSER='webkit' HEADLESS='true' node tests/property-one-click-17265.mjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: property-one-click-webkit-17265
-          path: artifacts/property-one-click-17265/
-          if-no-files-found: warn
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          js=Path('earthline-launch-16872.js').read_text(encoding='utf-8') if Path('earthline-launch-16872.js').exists() else ''
+          terms=[
+            'EARTHLINE_ELDER_TREES_V1_17097',
+            'startProperty',
+            'earthline-property',
+            'ELDER',
+            'elder',
+            'tree',
+            'searchGen',
+            'retirePriorPropertyPresentation16521',
+            'publishPropertyDisplay16220',
+            'EARTHLINE_PROPERTY_ELDER_EARLY_START_17166'
+          ]
+          for name,text in [('index.html',s),('earthline-launch-16872.js',js)]:
+              print('\n######## '+name+' ########')
+              for term in terms:
+                  print('\n===== '+term+' =====')
+                  pos=0;n=0
+                  while True:
+                      i=text.find(term,pos)
+                      if i<0: break
+                      n+=1
+                      print('\n--- HIT',n,'@',i,'---')
+                      print(text[max(0,i-5000):i+14000])
+                      pos=i+len(term)
+                      if n>=10: break
+                  print('COUNT',n)
+          PY
