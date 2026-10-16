@@ -1,0 +1,22 @@
+name: Earthline Terrain Hotspot Extract 17281
+on:
+  push:
+    branches: [repair/browser-performance-live-17268]
+    paths:
+      - 'tests/extract-terrain-hotspots.py'
+      - '.github/workflows/earthline-terrain-hotspot-extract-17281.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-performance-live-17268}
+      - run: python3 tests/extract-terrain-hotspots.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: terrain-hotspots-17281
+          path: terrain-owner-hotspots.txt
+          if-no-files-found: error
