@@ -1,0 +1,52 @@
+name: Earthline Edge Live Readiness 17264
+on:
+  push:
+    branches: [repair/v1-property-coverage-17223]
+    paths:
+      - '.github/workflows/earthline-edge-readiness-17264.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  edge-rollout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-coverage-17223
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps msedge
+      - name: Run seven rollout states in exact Edge channel
+        run: env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='edge' HEADLESS='true' WAIT_MS='120000' STATES='Arizona|New Mexico|Colorado|Texas|California|Vermont|New York' node tests/mantra46-16791-50state-production.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rollout-edge-linux-17264
+          path: artifacts/mantra46-16791-50state/
+          if-no-files-found: warn
+  edge-global:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-property-coverage-17223
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps msedge
+      - name: Run global controls in exact Edge channel
+        run: env BROWSER='edge' HEADLESS='true' WAIT_MS='120000' node tests/global-readiness-live-17263.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: global-edge-linux-17264
+          path: artifacts/global-readiness-17263/
+          if-no-files-found: warn
