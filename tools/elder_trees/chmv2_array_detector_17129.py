@@ -288,15 +288,27 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
         if best is None:return None
         dist,neg_structural,x,y,h,emerg,area,openf=best
         lon,lat=mercator_to_lonlat(x,y)
-        return -neg_structural,lon,lat,h,emerg,area,openf
+        return -neg_structural,lon,lat,x,y,h,emerg,area,openf
 
     feats=[]
+    # EARTHLINE 17405 — exact 10 m dedupe with a conservative Web-Mercator
+    # neighbor index. The bucket only removes impossible comparisons; the
+    # authoritative rejection remains the unchanged hav(...) < 10 test.
+    max_abs_lat=max(abs(minlat),abs(maxlat))
+    dedupe_cell_m=10.0/max(.01,math.cos(math.radians(min(85.0,max_abs_lat))))
+    dedupe_grid={}
     for rank,(sc,r,c,cohort) in enumerate(ranked,1):
         ref=refine_candidate(r,c)
         if not ref:continue
-        structural,lon,lat,h,emerg,area,openf=ref
+        structural,lon,lat,x,y,h,emerg,area,openf=ref
         if not (minlon<=lon<=maxlon and minlat<=lat<=maxlat):continue
-        if any(hav((lon,lat),f["geometry"]["coordinates"])<10 for f in feats):continue
+        gx=int(math.floor(x/dedupe_cell_m));gy=int(math.floor(y/dedupe_cell_m))
+        nearby=[]
+        for ddy in (-1,0,1):
+            for ddx in (-1,0,1):
+                nearby.extend(dedupe_grid.get((gx+ddx,gy+ddy),()))
+        if any(hav((lon,lat),feats[i]["geometry"]["coordinates"])<10 for i in nearby):continue
+        feature_index=len(feats)
         feats.append({
           "type":"Feature","geometry":{"type":"Point","coordinates":[lon,lat]},
           "properties":{
@@ -319,6 +331,7 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
             "evidence_limit":"Candidate only; modeled canopy structure is not proof of age or mycorrhizal hub status."
           }
         })
+        dedupe_grid.setdefault((gx,gy),[]).append(feature_index)
         if len(feats)>=int(max_per_tile):break
 
     tile={
