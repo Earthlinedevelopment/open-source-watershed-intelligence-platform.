@@ -13,9 +13,10 @@ new1="""  function activeTier16168(){const d=window.EARTHLINE_DISPLAYED_RUN_1615
     const map17424=m(),pub17424=window.EARTHLINE_REGIONAL_PUBLICATION_VIEW_16337||null;
     const run17424=String(data&&data.runToken||'');
     const z17424=Number(map17424?.getZoom?.());
+    if(document.documentElement.classList.contains('earthline-regional-corridors-revealed-17424'))return true;
     if(pub17424&&run17424&&String(pub17424.runToken||'')===run17424&&Number.isFinite(Number(pub17424.zoom))&&Number.isFinite(z17424))
       return z17424>Number(pub17424.zoom)+0.05;
-    return document.documentElement.classList.contains('earthline-regional-corridors-revealed-17424');
+    return false;
   }
   function render(data){"""
 if s.count(old1)!=1: raise SystemExit(f"renderer helper anchor {s.count(old1)}")
@@ -90,6 +91,26 @@ old9="""regionalOriginalVisible:!focus&&!property,focusCrossSectionVisible:focus
 new9="""regionalOriginalVisible:regionalCorridors17424,regionalLabelsVisible:!property,regionalInitialWormsHidden17424:t==='regional'&&!regionalCorridors17424,focusCrossSectionVisible:focus"""
 if s.count(old9)!=1: raise SystemExit(f"render audit visibility anchor {s.count(old9)}")
 s=s.replace(old9,new9,1)
+
+# 4) Existing corridor detail "ZOOM TO THIS LOCATION" owner: explicit user
+# navigation reveals the already-computed corridor geometry before its existing jump.
+old10="""      panel.classList.remove('open');
+      try{map()?.stop?.();map()?.jumpTo?.({center:[lng,lat],zoom:Math.max(12.6,Math.min(14,Number(map()?.getZoom?.()||12.6))),bearing:0,pitch:0})}catch(_){}
+      return true"""
+new10="""      panel.classList.remove('open');
+      document.documentElement.classList.add('earthline-regional-corridors-revealed-17424');
+      window.EARTHLINE_REGIONAL_CORRIDOR_VISIBILITY_17424={
+        tier:'regional',geometryVisible:true,reason:'corridor-zoom-to-location',
+        labelsRemainVisible:true,waterAndAquiferPriority:true,at:new Date().toISOString()
+      };
+      try{
+        if(window.EARTHLINE_REGIONAL_VISUAL_DATA_16020&&typeof window.earthlineRenderRegionalOverlay16020==='function')
+          window.earthlineRenderRegionalOverlay16020(window.EARTHLINE_REGIONAL_VISUAL_DATA_16020);
+      }catch(_){}
+      try{map()?.stop?.();map()?.jumpTo?.({center:[lng,lat],zoom:Math.max(12.6,Math.min(14,Number(map()?.getZoom?.()||12.6))),bearing:0,pitch:0})}catch(_){}
+      return true"""
+if s.count(old10)!=1: raise SystemExit(f"corridor zoom action anchor {s.count(old10)}")
+s=s.replace(old10,new10,1)
 
 s="<!-- EARTHLINE_REGIONAL_CLEAN_PRESENTATION_17424: initial Regional keeps corridor tabs/data but suppresses worm geometry until user zooms in; water paths/aquifer context remain primary. -->\n"+s
 p.write_text(s,encoding="utf-8")
