@@ -81,7 +81,7 @@ old_panel="property.onclick=function(ev){const fn=window.earthlineDeclarePropert
 panel_count=s.count(old_panel)
 if panel_count<1:
     raise SystemExit("panel click overwrite anchor missing")
-new_panel="property.onclick=null;property.dataset.earthlinePropertyClickOwner16546='capture-route-17389'"
+new_panel="property.onclick=null;property.dataset.earthlinePropertyClickOwner16546='capture-route-17389';"
 s=s.replace(old_panel,new_panel)
 
 anchor="""  function addLayer(spec,before){const mp=map();try{if(!mp.getLayer(spec.id))mp.addLayer(spec,before);return !!mp.getLayer(spec.id)}catch(_){return false}}
