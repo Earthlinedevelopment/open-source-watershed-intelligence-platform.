@@ -29,18 +29,17 @@ const browser=await launcher.launch({headless});
 const a=await openPage(browser);
 await runVermontRegional(a.page);
 const pt={lng:-72.5778,lat:44.2601};
-await a.page.evaluate(async p=>{
-  if(typeof window.earthlineFocusRunEngine16158!=='function') throw new Error('focus owner unavailable');
-  await window.earthlineFocusRunEngine16158({center:{lng:p.lng,lat:p.lat},sizeM:3000,label:'Property click gate'});
-},pt);
-await a.page.waitForFunction(()=>String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{}).tier||'').toLowerCase()==='focus',null,{timeout:90000,polling:100});
 await a.page.evaluate(p=>new Promise(resolve=>{
   const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
   if(!m?.jumpTo)return resolve();
   let done=false;const f=()=>{if(done)return;done=true;resolve()};
   m.once?.('moveend',f);m.jumpTo({center:[p.lng,p.lat],zoom:16.8,bearing:0,pitch:0});setTimeout(f,1200);
 }),pt);
-await a.page.waitForFunction(()=>{const b=document.getElementById('earthlineDeclareProperty16169');return b&&getComputedStyle(b).display!=='none'&&!b.disabled},null,{timeout:15000,polling:100});
+await a.page.evaluate(()=>{try{window.earthlineSyncPropertyTargetFromMap16201?.()}catch(_){}});
+await a.page.waitForFunction(p=>{
+  const b=document.getElementById('earthlineDeclareProperty16169'),t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+  return b&&getComputedStyle(b).display!=='none'&&!b.disabled&&Math.abs(Number(t?.lng)-p.lng)<0.002&&Math.abs(Number(t?.lat)-p.lat)<0.002;
+},pt,{timeout:15000,polling:100});
 const before=await a.page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
 const propertyClickAt=Date.now();
 await a.page.locator('#earthlineDeclareProperty16169').click();
