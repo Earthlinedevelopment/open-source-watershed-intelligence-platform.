@@ -29,9 +29,9 @@ await page.waitForFunction(()=>{
 },null,{timeout:90000,polling:100});
 
 const seq=[
-  {name:'A1',lng:-95.74612,lat:16.68512},
-  {name:'B', lng:-95.75225,lat:16.68527},
-  {name:'A2',lng:-95.74612,lat:16.68512}
+  {name:'A1',lng:-72.57540,lat:44.26010},
+  {name:'B', lng:-72.56820,lat:44.26035},
+  {name:'A2',lng:-72.57540,lat:44.26010}
 ];
 const rows=[];
 
@@ -42,7 +42,7 @@ for(const pt of seq){
     const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
     if(m?.jumpTo)m.jumpTo({center:[p.lng,p.lat],zoom:16.8,bearing:0,pitch:0});
     if(typeof window.earthlineFocusRunEngine16158!=='function')throw new Error('focus engine unavailable');
-    await window.earthlineFocusRunEngine16158({center:{lng:p.lng,lat:p.lat},sizeM:3000,label:'Mexico '+p.name});
+    await window.earthlineFocusRunEngine16158({center:{lng:p.lng,lat:p.lat},sizeM:3000,label:'Vermont '+p.name});
   },pt);
   await page.waitForFunction(()=>String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{}).tier||'').toLowerCase()==='focus',null,{timeout:120000,polling:100});
   await page.evaluate(p=>new Promise(resolve=>{
@@ -116,7 +116,7 @@ for(const pt of seq){
     };
   },pt);
   rows.push({name:pt.name,elapsedMs:Date.now()-clickAt,started,...snap});
-  console.log('EARTHLINE_PROPERTY_CLEAN_17383_ROW '+JSON.stringify({browser:BROWSER,name:pt.name,elapsedMs:Date.now()-clickAt,started,gen:snap.gen,safeCount:snap.safeCount,textureCenters:snap.textureCenters,currentGenOnly:snap.currentGenOnly,outside:snap.outside,cleared:snap.clear?.sources||[],target:snap.target}));
+  console.log('EARTHLINE_PROPERTY_CLEAN_17388_ROW '+JSON.stringify({browser:BROWSER,name:pt.name,elapsedMs:Date.now()-clickAt,started,gen:snap.gen,safeCount:snap.safeCount,textureCenters:snap.textureCenters,currentGenOnly:snap.currentGenOnly,outside:snap.outside,cleared:snap.clear?.sources||[],target:snap.target}));
 }
 
 const a1=rows[0],b=rows[1],a2=rows[2];
@@ -131,6 +131,6 @@ const pass=oneClick&&targetOk&&currentOnly&&contained&&clearOk&&aRepeatSafe&&aRe
 const summary={browser:BROWSER,pass,oneClick,targetOk,currentOnly,contained,clearOk,aRepeatSafe,aRepeatTexture,
   hashes:{a1Safe:sha(a1.safeCanonical),a2Safe:sha(a2.safeCanonical),a1Texture:sha(a1.textureCanonical),a2Texture:sha(a2.textureCanonical)},
   rows:rows.map(r=>({name:r.name,elapsedMs:r.elapsedMs,gen:r.gen,safeCount:r.safeCount,textureCenters:r.textureCenters,currentGenOnly:r.currentGenOnly,outside:r.outside,cleared:r.clear?.sources||[],target:r.target})),errors};
-console.log('EARTHLINE_PROPERTY_CLEAN_17383 '+JSON.stringify(summary));
+console.log('EARTHLINE_PROPERTY_CLEAN_17388 '+JSON.stringify(summary));
 await browser.close();
 if(!pass)process.exitCode=1;
