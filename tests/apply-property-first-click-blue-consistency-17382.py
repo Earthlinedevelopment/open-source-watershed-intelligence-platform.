@@ -50,6 +50,14 @@ if s.count(old_click)!=1:
     raise SystemExit(f"declareProperty anchor count {s.count(old_click)}")
 s=s.replace(old_click,new_click,1)
 
+# 17386 — expose the authoritative handler as soon as the Property owner block
+# is evaluated, before any Navigation Box reconciliation can touch the button.
+old_expose="  function ensureDeclareButton(){"
+new_expose="  window.earthlinePropertyClickOwner16546=declareProperty;\\n  function ensureDeclareButton(){"
+if s.count(old_expose)!=1:
+    raise SystemExit(f"early Property click owner anchor count {s.count(old_expose)}")
+s=s.replace(old_expose,new_expose,1)
+
 # 17385 — one Property click owner only. The Navigation Box may move/reconcile
 # the button, but it must never replace the authoritative 16546 handler.
 old_owner="b.onclick=declareProperty;b.dataset.earthlinePropertyClickOwner16546='current';return b}"
