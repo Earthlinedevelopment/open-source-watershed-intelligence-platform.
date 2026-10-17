@@ -20,7 +20,7 @@ if (!TARGETS[STATE]) throw new Error('Unknown state ' + STATE);
 const OUT = 'artifacts/production-stability-20261017/' + BROWSER + '/' + STATE.toLowerCase().replace(/\s+/g,'-') + (MOBILE ? '-' + VIEW : '');
 mkdirSync(OUT,{recursive:true});
 const type = BROWSER === 'firefox' ? firefox : BROWSER === 'webkit' ? webkit : chromium;
-const launch = {headless:true};
+const launch = {headless:!/^(0|false|no)$/i.test(String(process.env.HEADLESS||'true'))};
 if (BROWSER === 'chrome') launch.channel = 'chrome';
 if (BROWSER === 'edge') launch.channel = 'msedge';
 const browser = await type.launch(launch);
