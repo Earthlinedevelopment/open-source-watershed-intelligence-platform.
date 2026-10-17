@@ -1,0 +1,54 @@
+name: Earthline Regional Clean Presentation 17434
+on:
+  push:
+    branches: [repair/regional-clean-presentation-17434]
+    paths:
+      - 'tests/apply-regional-clean-presentation-17434.py'
+      - 'tests/regional-clean-presentation-17434.mjs'
+      - '.github/workflows/earthline-regional-clean-17434.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/regional-clean-presentation-17434}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: python3 tests/apply-regional-clean-presentation-17434.py
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - run: |
+          if [ '${{ matrix.browser }}' = 'firefox' ]; then
+            xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' node tests/regional-clean-presentation-17434.mjs
+          else
+            env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='chromium' HEADLESS='true' node tests/regional-clean-presentation-17434.mjs
+          fi
+  webkit:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/regional-clean-presentation-17434}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: python3 tests/apply-regional-clean-presentation-17434.py
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - run: |
+          python3 -m http.server 8787 --bind 0.0.0.0 >/tmp/http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='false' node tests/regional-clean-presentation-17434.mjs
