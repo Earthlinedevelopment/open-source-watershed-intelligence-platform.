@@ -1,3 +1,5 @@
+<!-- EARTHLINE_ROOT_AUDIT_CLEAN_REGIONAL_17437: intentional initial corridor-geometry suppression is valid when data/source/tabs are complete. -->
+<!-- EARTHLINE_REGIONAL_CLEAN_PRESENTATION_17434: initial Regional shows water/aquifer context + corridor tabs; corridor worms render only after zoom-in. -->
 <!-- EARTHLINE_PROPERTY_BLUE_INVARIANT_17417: authoritative texture owner reasserts identical paint/filter recipe on every sync. -->
 <!-- EARTHLINE_FAST_PIP_GEOMETRY_CACHE_17379: one exact row-index build per jurisdiction geometry; containment math unchanged. -->
 <!-- EARTHLINE_FAST_PIP_ROW_INDEX_17378: finer exact numeric row index for no-boundary-contact candidate containment; authoritative boundary-touching clip unchanged. -->
@@ -32233,7 +32235,15 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     /* 7 — publication / render */
     if(pub){
       const generated=Number(pub.generated||0),visible=Number(disp&&disp.swaleLines||pub.overlaySwaleLines||0),source=Number(pub.sourceFeatures);
-      if(generated!==visible)set('publication-render','critical','Generated corridor count does not equal visible overlay corridor count',{generated,visible,sourceFeatures:Number.isFinite(source)?source:null});
+      const initialCorridorsSuppressed17437=!!(
+        disp&&disp.corridorGeometryVisible===false&&
+        Number(disp.generatedSwales||0)===generated&&
+        Number(disp.swaleGradeLabels||0)>0
+      );
+      if(initialCorridorsSuppressed17437){
+        if(Number.isFinite(source)&&source!==generated)set('publication-render','fail','Map source corridor count does not equal generated corridor count',{generated,visible,sourceFeatures:source,tabs:Number(disp.swaleGradeLabels||0),corridorGeometryVisible:false});
+        else set('publication-render','clear','Generated corridor data and corridor tabs are complete; corridor geometry is intentionally hidden at the initial Regional view',{generated,visible,sourceFeatures:Number.isFinite(source)?source:null,tabs:Number(disp.swaleGradeLabels||0),corridorGeometryVisible:false});
+      }else if(generated!==visible)set('publication-render','critical','Generated corridor count does not equal visible overlay corridor count',{generated,visible,sourceFeatures:Number.isFinite(source)?source:null});
       else if(Number.isFinite(source)&&source!==generated)set('publication-render','fail','Map source corridor count does not equal generated corridor count',{generated,visible,sourceFeatures:source});
       else set('publication-render','clear','Generated, source and visible corridor publication counts agree',{generated,visible,sourceFeatures:Number.isFinite(source)?source:null});
     }
@@ -33343,14 +33353,14 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     if(!focusMode&&swaleCount===0&&Number(generationAudit&&generationAudit.chosenBeforeTierGate||0)>0&&!boundaryExplainsZero16178){
       throw new Error('regional corridor publication blocked: terrain-derived candidates existed but zero corridors survived; a focus-only contour tolerance must not govern regional screening');
     }
-    if(swaleCount>0&&overlayAudit&&Number(overlayAudit.swaleLines||0)===0){
+    if(swaleCount>0&&overlayAudit&&Number(overlayAudit.swaleGradeLabels||0)===0){
       try{
         clearLive();
         window.EARTHLINE_REGIONAL_VISUAL_DATA_16020=null;
         document.getElementById('earthlineRegionalVectorOverlay16020')?.replaceChildren();
         document.getElementById('earthlineRegionalCorridorTabs16323')?.remove();
       }catch(_){}
-      throw new Error('corridor rendering incomplete: '+swaleCount+' corridors were generated but the visible overlay rendered zero');
+      throw new Error('corridor presentation incomplete: '+swaleCount+' corridors were generated but zero corridor tabs/labels rendered');
     }
     if(swaleCount>0&&!overlayAudit){
       try{
@@ -36042,10 +36052,20 @@ body{display:block!important}
     return {owner:'native-mapbox',ready,layers};
   }
   function activeTier16168(){const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null;return String(d&&((d.tier||d.mode))||'regional').toLowerCase();}
-  function render(data){lastData=data||lastData;if(!lastData)return false;const map=m(),el=overlay();if(!map||!el)return false;const resizeRunToken16020=String(lastData&&lastData.runToken||'');if(resizeRunToken16020&&resizeRunToken16020!==lastResizeRunToken16020){lastResizeRunToken16020=resizeRunToken16020;}const h=host(),w=Math.max(1,h.clientWidth||window.innerWidth),hh=Math.max(1,h.clientHeight||window.innerHeight);el.setAttribute('viewBox','0 0 '+w+' '+hh);el.replaceChildren();
+  function corridorGeometryVisible17434(map){
+    const tier=activeTier16168();
+    if(tier==='focus')return true;
+    if(tier==='property')return false;
+    const published=window.EARTHLINE_REGIONAL_PUBLICATION_VIEW_16337||null;
+    const publishedZoom=Number(published&&published.zoom),currentZoom=Number(map?.getZoom?.());
+    if(!Number.isFinite(currentZoom))return false;
+    if(!Number.isFinite(publishedZoom))return false;
+    return currentZoom>=publishedZoom+0.85;
+  }
+  function render(data){lastData=data||lastData;if(!lastData)return false;const map=m(),el=overlay();if(!map||!el)return false;const corridorGeometryVisible17434Now=corridorGeometryVisible17434(map);const resizeRunToken16020=String(lastData&&lastData.runToken||'');if(resizeRunToken16020&&resizeRunToken16020!==lastResizeRunToken16020){lastResizeRunToken16020=resizeRunToken16020;}const h=host(),w=Math.max(1,h.clientWidth||window.innerWidth),hh=Math.max(1,h.clientHeight||window.innerHeight);el.setAttribute('viewBox','0 0 '+w+' '+hh);el.replaceChildren();
     const defs=svgEl('defs');const glow=svgEl('filter',{id:'elGlow16020',x:'-30%',y:'-30%',width:'160%',height:'160%'});glow.appendChild(svgEl('feGaussianBlur',{stdDeviation:'1.6',result:'b'}));const merge=svgEl('feMerge');merge.appendChild(svgEl('feMergeNode',{in:'b'}));merge.appendChild(svgEl('feMergeNode',{in:'SourceGraphic'}));glow.appendChild(merge);defs.appendChild(glow);const jurisdictionClipD=jurisdictionClipD16020(),jurisdictionClipId='earthlineJurisdictionClip16020';if(jurisdictionClipD){const cp=svgEl('clipPath',{id:jurisdictionClipId,clipPathUnits:'userSpaceOnUse'});cp.appendChild(svgEl('path',{d:jurisdictionClipD,'fill-rule':'evenodd','clip-rule':'evenodd'}));defs.appendChild(cp);}el.appendChild(defs);
     const clipAttrs=jurisdictionClipD?{'clip-path':'url(#'+jurisdictionClipId+')'}:{},cg=svgEl('g',Object.assign({'data-layer':'numbered-elevation-contours'},clipAttrs)),sg=svgEl('g',Object.assign({'data-layer':'swale-opportunities'},clipAttrs)),lg=svgEl('g',Object.assign({'data-layer':'always-visible-labels'},clipAttrs));el.append(cg,sg,lg);
-    let contourLines=0,labels=0,waterPaths=0,arrows=0,swales=0;
+    let contourLines=0,labels=0,waterPaths=0,arrows=0,swales=0,visibleSwales17434=0;
     const allContourFeatures=(lastData.contours&&lastData.contours.features||[]),contours=allContourFeatures.filter(f=>f.geometry&&f.geometry.type==='LineString'&&f.properties&&f.properties.feature_type==='contour');
     const labelPoints=allContourFeatures.filter(f=>f.geometry&&f.geometry.type==='Point'&&f.properties&&f.properties.feature_type==='contour-label');
     const visibleLines=[];
@@ -36075,11 +36095,12 @@ body{display:block!important}
         addPath(sg,pts,{class:'earthline-swale-band-16168 earthline-swale-survey-16168',stroke:'rgba(235,244,229,.36)','stroke-width':'.85','stroke-linecap':'butt','stroke-linejoin':'round','stroke-dasharray':'1 12'});
         understory16174(sg,plantPts,-uphill,swales*83+rank*7,zoom);
         canopy16174(sg,plantPts,-uphill,swales*97+rank*13,zoom,grade);
-      }else{
+      }else if(corridorGeometryVisible17434Now){
         const regionalZoom=Number(map?.getZoom?.()||6),regionalScale=regionalZoom<7?0.46:(regionalZoom<8?0.62:(regionalZoom<9?0.78:1)),casing=(grade==='A'?15:grade==='B'?12:9)*regionalScale,core=(grade==='A'?9.2:grade==='B'?7.2:5.2)*regionalScale;
         addPath(sg,pts,{stroke:'rgba(8,18,13,.96)','stroke-width':String(casing),'stroke-linecap':'round','stroke-linejoin':'round'});
         addPath(sg,pts,{class:'earthline-swale-core-16168','data-swale-index':String(swales),stroke:main,'stroke-width':String(core),'stroke-linecap':'round','stroke-linejoin':'round',filter:'url(#elGlow16020)'});
         addPath(sg,pts,{stroke:light,'stroke-width':String((grade==='A'?1.8:1.2)*regionalScale),'stroke-linecap':'round','stroke-linejoin':'round','stroke-dasharray':grade==='C'?'6 9':'10 7'});
+        visibleSwales17434++;
       }
       gradeCounts[grade]=(gradeCounts[grade]||0)+1;
       const shouldLabel=grade==='A'||(grade==='B'&&gradeCounts.B<=8);
@@ -36115,7 +36136,7 @@ body{display:block!important}
     hideNative();
     const nativeWater=nativeWater16350();
     window.EARTHLINE_REGIONAL_WATER_OWNERSHIP_AUDIT_16350={build:'EARTHLINE 16350',owner:'native-mapbox',svgWaterRendered:false,nativeWater,waterPathFeatures:waterPaths,flowArrowFeatures:arrows,renderedAt:new Date().toISOString()};
-    window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16030=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020={build:'EARTHLINE-REGIONAL-FINAL-16050',contourLines,elevationLabels:labels,waterPaths,directionArrows:arrows,waterOwner:'native-mapbox',svgWaterRendered:false,nativeWaterReady:!!nativeWater.ready,swaleLines:swales,swaleGradeCounts:gradeCounts,swaleGradeLabels:gradeLabels.length,topSwaleGradeLabel:gradeLabels[0]||'',buttonText:(document.getElementById('earthlineMapRun16020')||{}).textContent||'',renderedAt:new Date().toISOString()};return labels>0&&waterPaths>0&&nativeWater.ready&&swales>0&&gradeCounts.A>0&&gradeLabels.length>0;
+    window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16030=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020={build:'EARTHLINE-REGIONAL-FINAL-16050',contourLines,elevationLabels:labels,waterPaths,directionArrows:arrows,waterOwner:'native-mapbox',svgWaterRendered:false,nativeWaterReady:!!nativeWater.ready,swaleLines:visibleSwales17434,generatedSwales:swales,corridorGeometryVisible:corridorGeometryVisible17434Now,swaleGradeCounts:gradeCounts,swaleGradeLabels:gradeLabels.length,topSwaleGradeLabel:gradeLabels[0]||'',buttonText:(document.getElementById('earthlineMapRun16020')||{}).textContent||'',renderedAt:new Date().toISOString()};return labels>0&&waterPaths>0&&nativeWater.ready&&swales>0&&gradeCounts.A>0&&gradeLabels.length>0;
   }
   function schedule(){
     if(activeTier16168()==="property")return;
