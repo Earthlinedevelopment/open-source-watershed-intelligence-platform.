@@ -38,8 +38,21 @@ await page.locator('#earthlineDeclareProperty16169').click();
 await page.waitForTimeout(1200);
 const afterButton=await snapshot();
 
-let directReturn='not-called';
+let domClickReturn='not-called',afterDom=afterButton;
 if(Number(afterButton.serial)===Number(before.serial)&&afterButton.state!=='running'&&afterButton.tier!=='property'){
+  domClickReturn=await page.evaluate(async()=>{
+    try{
+      const b=document.getElementById('earthlineDeclareProperty16169');
+      if(!b)return 'missing-button';
+      b.click();
+      return 'clicked';
+    }catch(e){return 'error:'+String(e)}
+  });
+  await page.waitForTimeout(800);
+  afterDom=await snapshot();
+}
+let directReturn='not-called';
+if(Number(afterDom.serial)===Number(before.serial)&&afterDom.state!=='running'&&afterDom.tier!=='property'){
   directReturn=await page.evaluate(async()=>{
     try{
       const fn=window.earthlineDeclarePropertyAtCrosshair16173;
@@ -51,8 +64,9 @@ if(Number(afterButton.serial)===Number(before.serial)&&afterButton.state!=='runn
 }
 await page.waitForTimeout(300);
 const afterDirect=await snapshot();
-console.log('EARTHLINE_PROPERTY_ROUTE_17423 '+JSON.stringify({before,afterButton,directReturn,afterDirect,errors}));
+console.log('EARTHLINE_PROPERTY_ROUTE_17423 '+JSON.stringify({before,afterButton,domClickReturn,afterDom,directReturn,afterDirect,errors}));
 await browser.close();
 const buttonStarted=afterButton.serial>before.serial||afterButton.state==='running'||afterButton.tier==='property';
-const directStarted=afterDirect.serial>afterButton.serial||afterDirect.state==='running'||afterDirect.tier==='property'||directReturn==='pending-after-2500'||directReturn===true;
-if(buttonStarted||directStarted)process.exitCode=0;else process.exitCode=1;
+const domStarted=afterDom.serial>afterButton.serial||afterDom.state==='running'||afterDom.tier==='property';
+const directStarted=afterDirect.serial>afterDom.serial||afterDirect.state==='running'||afterDirect.tier==='property'||directReturn==='pending-after-2500'||directReturn===true;
+if(buttonStarted||domStarted||directStarted)process.exitCode=0;else process.exitCode=1;
