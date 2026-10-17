@@ -1,0 +1,19 @@
+name: Earthline Regional Clean Owner Extract 17424
+on:
+  push:
+    branches: [repair/regional-clean-presentation-17424]
+    paths:
+      - 'tests/extract-regional-clean-owner-17424.py'
+      - '.github/workflows/earthline-regional-clean-owner-17424.yml'
+permissions: {contents: read}
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/regional-clean-presentation-17424}
+      - run: python3 tests/extract-regional-clean-owner-17424.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: regional-clean-owner-17424
+          path: regional-clean-owner-17424.txt
