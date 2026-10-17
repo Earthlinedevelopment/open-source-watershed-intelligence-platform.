@@ -1,6 +1,9 @@
-import { chromium } from 'playwright';
+import { chromium, firefox, webkit } from 'playwright';
 
-const browser=await chromium.launch({headless:true});
+const BROWSER=(process.env.BROWSER||'chromium').toLowerCase();
+const launcher={chromium,firefox,webkit}[BROWSER];
+const headless=String(process.env.HEADLESS||'true').toLowerCase()!=='false';
+const browser=await launcher.launch({headless});
 const page=await browser.newPage({viewport:{width:1800,height:950}});
 const BASE=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
 const errors=[];page.on('pageerror',e=>errors.push(String(e)));
@@ -82,9 +85,22 @@ const sameTarget=!!before.target&&!!afterStart.audit?.center&&
   Math.abs(Number(before.target.lng)-Number(afterStart.audit.center.lng))<0.0008&&
   Math.abs(Number(before.target.lat)-Number(afterStart.audit.center.lat))<0.0008;
 
+let elderCommitted=false,elderState=null,elderElapsedMs=null;
+try{
+  await page.waitForFunction(()=>{
+    const e=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+    return e?.state==='committed'||e?.state==='failed';
+  },null,{timeout:15000,polling:100});
+  const elder=await page.evaluate(()=>JSON.parse(JSON.stringify(window.EARTHLINE_ELDER_TREE_LAST_17097||null)));
+  elderState=elder?.state||null;
+  elderCommitted=elderState==='committed';
+  elderElapsedMs=Date.now()-clickAt;
+}catch(_){elderElapsedMs=Date.now()-clickAt;}
+
+const pass=started&&sameTarget&&elderCommitted&&elderElapsedMs<=15000;
 console.log('EARTHLINE_PROPERTY_USER_FLOW_17441 '+JSON.stringify({
-  pass:started&&sameTarget,started,sameTarget,startLatencyMs:Date.now()-clickAt,
-  before,afterStart,errors
+  browser:BROWSER,pass,started,sameTarget,startLatencyMs:afterStart.audit?.startedAt?Date.parse(afterStart.audit.startedAt)-clickAt:Date.now()-clickAt,
+  elderCommitted,elderState,elderElapsedMs,before,afterStart,errors
 }));
 await browser.close();
-if(!(started&&sameTarget))process.exitCode=1;
+if(!pass)process.exitCode=1;
