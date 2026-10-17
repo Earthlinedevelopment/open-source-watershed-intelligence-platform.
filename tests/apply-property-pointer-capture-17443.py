@@ -2,12 +2,12 @@ from pathlib import Path
 p=Path("index.html")
 s=p.read_text(encoding="utf-8")
 
-old_down="""  b.onpointerdown=function(e){
+old_down="""b.onpointerdown=function(e){
     e.stopPropagation();
     if(e.isPrimary===false||(e.pointerType==='mouse'&&Number(e.button)!==0))return;
     b.dataset.earthlinePropertyPointerArmed17441=String(e.pointerId??1);
   };"""
-new_down="""  b.onpointerdown=function(e){
+new_down="""b.onpointerdown=function(e){
     e.stopPropagation();
     if(e.isPrimary===false||(e.pointerType==='mouse'&&Number(e.button)!==0))return;
     b.dataset.earthlinePropertyPointerArmed17441=String(e.pointerId??1);
