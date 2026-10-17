@@ -1,0 +1,26 @@
+name: Earthline WebKit Stability 17446
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-webkit-stability-17446.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  webkit:
+    runs-on: macos-14
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17445
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - run: |
+          python3 -m http.server 8787 --bind 0.0.0.0 >/tmp/http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='false' WAIT_MS='90000' STATES='Vermont|New York|Iowa|Vermont|New York|Iowa' node tests/browser-regional-clean-17435.mjs
