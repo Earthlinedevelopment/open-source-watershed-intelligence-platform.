@@ -1,0 +1,19 @@
+name: Earthline Root Cause Owner Extract 17437
+on:
+  push:
+    branches: [repair/regional-clean-presentation-17434]
+    paths:
+      - 'tests/extract-root-cause-owner-17437.py'
+      - '.github/workflows/earthline-root-cause-owner-17437.yml'
+permissions: {contents: read}
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/regional-clean-presentation-17434}
+      - run: python3 tests/extract-root-cause-owner-17437.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: root-cause-owner-17437
+          path: root-cause-owner-17437.txt
