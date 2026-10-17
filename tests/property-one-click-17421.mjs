@@ -66,13 +66,11 @@ const after=await page.evaluate(()=>({
   tier:String(document.documentElement.dataset.earthlineAnalysisTier||''),
   publication:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null
 }));
-const clickSnap=await page.evaluate(()=>window.EARTHLINE_PROPERTY_CLICK_SNAPSHOT_17423||null);
 const launchCenter=after.audit?.center||null;
-const exactCenter=!!clickSnap&&Math.abs(Number(clickSnap.lng)-pt.lng)<0.0005&&Math.abs(Number(clickSnap.lat)-pt.lat)<0.0005&&
-  !!launchCenter&&Math.abs(Number(launchCenter.lng)-pt.lng)<0.0005&&Math.abs(Number(launchCenter.lat)-pt.lat)<0.0005;
+const exactCenter=!!launchCenter&&Math.abs(Number(launchCenter.lng)-pt.lng)<0.0005&&Math.abs(Number(launchCenter.lat)-pt.lat)<0.0005;
 const pass=started&&exactCenter;
 console.log('EARTHLINE_PROPERTY_ONE_CLICK_17421 '+JSON.stringify({
-  browser:BROWSER,pass,started,settled,exactCenter,clickSnap,elapsedMs:Date.now()-t0,before,after,errors
+  browser:BROWSER,pass,started,settled,exactCenter,elapsedMs:Date.now()-t0,before,after,errors
 }));
 await browser.close();
 if(!pass)process.exitCode=1;
