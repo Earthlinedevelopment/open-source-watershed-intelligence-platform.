@@ -1,0 +1,20 @@
+name: Earthline Jurisdiction Point Owner 17356
+on:
+  push:
+    branches: [repair/browser-performance-live-17268]
+    paths:
+      - 'tests/extract-jurisdiction-point-owner-17356.py'
+      - '.github/workflows/earthline-jurisdiction-point-owner-17356.yml'
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-performance-live-17268}
+      - run: python3 tests/extract-jurisdiction-point-owner-17356.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jurisdiction-point-owner-17356
+          path: jurisdiction-point-owner-17356.txt
