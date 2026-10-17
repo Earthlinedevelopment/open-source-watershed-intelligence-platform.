@@ -1,0 +1,26 @@
+name: Earthline Property User Flow 17441
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - 'tests/property-user-flow-17441.mjs'
+      - '.github/workflows/earthline-property-user-flow-17441.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/property-one-click-17441}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - run: env EARTHLINE_URL='http://127.0.0.1:8787/' node tests/property-user-flow-17441.mjs
