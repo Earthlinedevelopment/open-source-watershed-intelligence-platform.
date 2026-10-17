@@ -41,15 +41,14 @@ def _gaussian_filter(a,sigma):
     x=np.arange(-radius,radius+1,dtype=np.float32)
     k=np.exp(-(x*x)/(2.0*sigma*sigma)).astype(np.float32)
     k/=np.sum(k)
-    h,w=a.shape
+    # EARTHLINE 17404 — same symmetric padding and same separable kernel,
+    # executed as NumPy window reductions instead of per-tap Python dispatch.
     px=np.pad(a,((0,0),(radius,radius)),mode="symmetric")
-    tmp=np.zeros_like(a,dtype=np.float32)
-    for i,weight in enumerate(k):
-        tmp += weight*px[:,i:i+w]
+    wx=np.lib.stride_tricks.sliding_window_view(px,len(k),axis=1)
+    tmp=np.tensordot(wx,k,axes=([-1],[0])).astype(np.float32,copy=False)
     py=np.pad(tmp,((radius,radius),(0,0)),mode="symmetric")
-    out=np.zeros_like(a,dtype=np.float32)
-    for i,weight in enumerate(k):
-        out += weight*py[i:i+h,:]
+    wy=np.lib.stride_tricks.sliding_window_view(py,len(k),axis=0)
+    out=np.tensordot(wy,k,axes=([-1],[0])).astype(np.float32,copy=False)
     return out.astype(a.dtype,copy=False)
 
 def _components_4(mask):
@@ -61,6 +60,11 @@ def _components_4(mask):
     coords=np.argwhere(mask)
     n=int(coords.shape[0])
     if n==0:return []
+    # EARTHLINE 17409 — proof-only isolated-peak shortcut.
+    # If no True cell has an orthogonal True neighbor, every component is a
+    # singleton by definition; otherwise use the exact union path below.
+    if not np.any(mask[:,1:]&mask[:,:-1]) and not np.any(mask[1:,:]&mask[:-1,:]):
+        return [[(int(rc[0]),int(rc[1]))] for rc in coords]
     points=[(int(rc[0]),int(rc[1])) for rc in coords]
     index={p:i for i,p in enumerate(points)}
     parent=list(range(n))
@@ -93,6 +97,23 @@ def _component_size_4(mask,r,c):
     r=int(r);c=int(c)
     if r<0 or r>=h or c<0 or c>=w or not mask[r,c]:
         return 0
+    # EARTHLINE 17409 — proof-only connected-crown shortcut.
+    # A mask whose nonempty rows are contiguous, each row is one horizontal
+    # interval, and every adjacent interval overlaps is exactly one 4-connected
+    # component. If that proof fails, retain the authoritative flood below.
+    row_any=np.any(mask,axis=1)
+    active=np.flatnonzero(row_any)
+    if active.size:
+        a0=int(active[0]);a1=int(active[-1])
+        if active.size==(a1-a0+1):
+            sub=mask[a0:a1+1,:]
+            counts=np.sum(sub,axis=1)
+            first=np.argmax(sub,axis=1)
+            last=w-1-np.argmax(sub[:,::-1],axis=1)
+            one_interval=np.all(counts==(last-first+1))
+            overlaps=True if len(first)<=1 else bool(np.all(np.maximum(first[:-1],first[1:])<=np.minimum(last[:-1],last[1:])))
+            if one_interval and overlaps:
+                return int(np.sum(counts))
     cur=np.zeros((h,w),dtype=bool)
     cur[r,c]=True
     while True:
@@ -239,6 +260,19 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
     local_radius=max(5,int(round(18/max(pix,.01))))
     pixel_area_native=abs(resx*resy)
 
+    # EARTHLINE 17406 — exact dense-AOI shared-surface fastpath.
+    # The shared surface is used only when the nearest selected peak is closer
+    # than every pixel that could be influenced by the local-crop boundary.
+    # Otherwise refinement falls back to the approved per-candidate path.
+    gaussian_radius17406=max(1,int(4.0*refine_sigma+0.5))
+    peak_margin17406=gaussian_radius17406+(refine_sep//2)
+    shared_sm17406=None
+    shared_peak17406=None
+    if len(ranked)>=48:
+        native_zero17406=np.nan_to_num(native_clean,nan=0)
+        shared_sm17406=_gaussian_filter(native_zero17406,sigma=refine_sigma)
+        shared_peak17406=(shared_sm17406==_maximum_filter(shared_sm17406,size=refine_sep,mode="nearest"))&(shared_sm17406>=canopy_floor_m)
+
     def refine_candidate(r,c):
         full_col=screen_col0+(c+.5)*screen_ww/max(1,ow)
         full_row=screen_row0+(r+.5)*screen_wh/max(1,oh)
@@ -248,27 +282,68 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
         c0=max(0,ic-refine_radius);c1=min(nw,ic+refine_radius+1)
         a=native_clean[r0:r1,c0:c1]
         if not a.size:return None
-        zz=np.nan_to_num(a,nan=0)
-        sm=_gaussian_filter(zz,sigma=refine_sigma)
-        peak=(sm==_maximum_filter(sm,size=refine_sep,mode="nearest"))&(sm>=canopy_floor_m)
-        rows,cols=np.where(peak)
+        cx=origin_x+full_col*resx
+        cy=origin_y+full_row*resy
+        sm=None;rows=None;cols=None;fast17406=False;fast_nearest17408=None
+        if shared_peak17406 is not None:
+            ah,aw=a.shape
+            margin=peak_margin17406
+            if ah>2*margin and aw>2*margin:
+                core=shared_peak17406[r0:r1,c0:c1]
+                irs,ics=np.where(core[margin:ah-margin,margin:aw-margin])
+                if len(irs):
+                    irs=irs+margin;ics=ics+margin
+                    best_fast_dist=None
+                    nearest_fast=[]
+                    for lr,lc in zip(irs.tolist(),ics.tolist()):
+                        global_col=native_col0+c0+lc
+                        global_row=native_row0+r0+lr
+                        x=origin_x+(global_col+.5)*resx
+                        y=origin_y+(global_row+.5)*resy
+                        dist=((x-cx)**2+(y-cy)**2)**.5
+                        rec_fast=(dist,lr,lc,x,y)
+                        if best_fast_dist is None or dist<best_fast_dist:
+                            best_fast_dist=dist;nearest_fast=[rec_fast]
+                        elif dist==best_fast_dist:
+                            nearest_fast.append(rec_fast)
+                    cr=full_row-native_row0-r0-.5
+                    ccx=full_col-native_col0-c0-.5
+                    boundary_lb=min(
+                        (cr-(margin-1))*abs(resy),
+                        ((ah-margin)-cr)*abs(resy),
+                        (ccx-(margin-1))*abs(resx),
+                        ((aw-margin)-ccx)*abs(resx)
+                    )
+                    if best_fast_dist is not None and boundary_lb>best_fast_dist+1e-9:
+                        sm=shared_sm17406[r0:r1,c0:c1]
+                        rows,cols=irs,ics
+                        fast_nearest17408=nearest_fast
+                        fast17406=True
+        if not fast17406:
+            zz=np.nan_to_num(a,nan=0)
+            sm=_gaussian_filter(zz,sigma=refine_sigma)
+            peak=(sm==_maximum_filter(sm,size=refine_sep,mode="nearest"))&(sm>=canopy_floor_m)
+            rows,cols=np.where(peak)
         if not len(rows):return None
         # EARTHLINE 17401 — exact lexicographic shortcut.
         # The approved record key is (distance, -structural, x, y, ...), so
         # structural metrics cannot affect the winner unless distance ties.
-        cx=origin_x+full_col*resx
-        cy=origin_y+full_row*resy
-        distance_rows=[]
-        min_dist=None
-        for lr,lc in zip(rows.tolist(),cols.tolist()):
-            global_col=native_col0+c0+lc
-            global_row=native_row0+r0+lr
-            x=origin_x+(global_col+.5)*resx
-            y=origin_y+(global_row+.5)*resy
-            dist=((x-cx)**2+(y-cy)**2)**.5
-            distance_rows.append((dist,lr,lc,x,y))
-            if min_dist is None or dist<min_dist:min_dist=dist
-        nearest=[q for q in distance_rows if q[0]==min_dist]
+        if fast_nearest17408 is not None:
+            nearest=fast_nearest17408
+        else:
+            nearest=[]
+            min_dist=None
+            for lr,lc in zip(rows.tolist(),cols.tolist()):
+                global_col=native_col0+c0+lc
+                global_row=native_row0+r0+lr
+                x=origin_x+(global_col+.5)*resx
+                y=origin_y+(global_row+.5)*resy
+                dist=((x-cx)**2+(y-cy)**2)**.5
+                rec_near=(dist,lr,lc,x,y)
+                if min_dist is None or dist<min_dist:
+                    min_dist=dist;nearest=[rec_near]
+                elif dist==min_dist:
+                    nearest.append(rec_near)
         best=None
         for dist,lr,lc,x,y in nearest:
             h=float(a[lr,lc]) if np.isfinite(a[lr,lc]) else float(sm[lr,lc])
@@ -289,15 +364,27 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
         if best is None:return None
         dist,neg_structural,x,y,h,emerg,area,openf=best
         lon,lat=mercator_to_lonlat(x,y)
-        return -neg_structural,lon,lat,h,emerg,area,openf
+        return -neg_structural,lon,lat,x,y,h,emerg,area,openf
 
     feats=[]
+    # EARTHLINE 17405 — exact 10 m dedupe with a conservative Web-Mercator
+    # neighbor index. The bucket only removes impossible comparisons; the
+    # authoritative rejection remains the unchanged hav(...) < 10 test.
+    max_abs_lat=max(abs(minlat),abs(maxlat))
+    dedupe_cell_m=10.0/max(.01,math.cos(math.radians(min(85.0,max_abs_lat))))
+    dedupe_grid={}
     for rank,(sc,r,c,cohort) in enumerate(ranked,1):
         ref=refine_candidate(r,c)
         if not ref:continue
-        structural,lon,lat,h,emerg,area,openf=ref
+        structural,lon,lat,x,y,h,emerg,area,openf=ref
         if not (minlon<=lon<=maxlon and minlat<=lat<=maxlat):continue
-        if any(hav((lon,lat),f["geometry"]["coordinates"])<10 for f in feats):continue
+        gx=int(math.floor(x/dedupe_cell_m));gy=int(math.floor(y/dedupe_cell_m))
+        nearby=[]
+        for ddy in (-1,0,1):
+            for ddx in (-1,0,1):
+                nearby.extend(dedupe_grid.get((gx+ddx,gy+ddy),()))
+        if any(hav((lon,lat),feats[i]["geometry"]["coordinates"])<10 for i in nearby):continue
+        feature_index=len(feats)
         feats.append({
           "type":"Feature","geometry":{"type":"Point","coordinates":[lon,lat]},
           "properties":{
@@ -320,6 +407,7 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
             "evidence_limit":"Candidate only; modeled canopy structure is not proof of age or mycorrhizal hub status."
           }
         })
+        dedupe_grid.setdefault((gx,gy),[]).append(feature_index)
         if len(feats)>=int(max_per_tile):break
 
     tile={
