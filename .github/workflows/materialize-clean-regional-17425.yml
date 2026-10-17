@@ -1,0 +1,28 @@
+name: Materialize Clean Regional Candidate 17425
+on:
+  push:
+    branches: [repair/regional-clean-presentation-17424]
+    paths:
+      - '.github/workflows/materialize-clean-regional-17425.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/regional-clean-presentation-17424
+          fetch-depth: 0
+      - name: Apply clean Regional presentation
+        run: python3 tests/apply-regional-clean-presentation-17424.py
+      - name: Commit materialized candidate
+        run: |
+          git config user.name "Earthline CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git switch -C candidate/browser-elder-clean-regional-17425
+          git add index.html
+          git commit -m "candidate: clean Regional presentation over browser Elder baseline 17425"
+          git push -f origin candidate/browser-elder-clean-regional-17425
