@@ -54,6 +54,16 @@ s=s.replace(old_click,new_click,1)
 # is evaluated, before any Navigation Box reconciliation can touch the button.
 old_expose="  function ensureDeclareButton(){"
 new_expose="""  window.earthlinePropertyClickOwner16546=declareProperty;
+  if(!window.EARTHLINE_PROPERTY_CLICK_ROUTE_17389){
+    const earthlinePropertyClickRoute17389=function(ev){
+      const b=ev.target?.closest?.('#earthlineDeclareProperty16169');
+      if(!b||b.disabled)return;
+      ev.preventDefault?.();ev.stopPropagation?.();ev.stopImmediatePropagation?.();
+      void declareProperty(ev);
+    };
+    document.addEventListener('click',earthlinePropertyClickRoute17389,true);
+    window.EARTHLINE_PROPERTY_CLICK_ROUTE_17389={state:'ready',owner:'declareProperty',installedAt:new Date().toISOString()};
+  }
   function ensureDeclareButton(){"""
 if s.count(old_expose)!=1:
     raise SystemExit(f"early Property click owner anchor count {s.count(old_expose)}")
@@ -62,7 +72,7 @@ s=s.replace(old_expose,new_expose,1)
 # 17385 — one Property click owner only. The Navigation Box may move/reconcile
 # the button, but it must never replace the authoritative 16546 handler.
 old_owner="b.onclick=declareProperty;b.dataset.earthlinePropertyClickOwner16546='current';return b}"
-new_owner="b.onclick=declareProperty;window.earthlinePropertyClickOwner16546=declareProperty;b.dataset.earthlinePropertyClickOwner16546='current';return b}"
+new_owner="b.onclick=null;window.earthlinePropertyClickOwner16546=declareProperty;b.dataset.earthlinePropertyClickOwner16546='capture-route-17389';return b}"
 if s.count(old_owner)!=1:
     raise SystemExit(f"authoritative click exposure count {s.count(old_owner)}")
 s=s.replace(old_owner,new_owner,1)
@@ -71,7 +81,7 @@ old_panel="property.onclick=function(ev){const fn=window.earthlineDeclarePropert
 panel_count=s.count(old_panel)
 if panel_count<1:
     raise SystemExit("panel click overwrite anchor missing")
-new_panel="if(typeof window.earthlinePropertyClickOwner16546==='function'){property.onclick=window.earthlinePropertyClickOwner16546;property.dataset.earthlinePropertyClickOwner16546='current'}"
+new_panel="property.onclick=null;property.dataset.earthlinePropertyClickOwner16546='capture-route-17389'"
 s=s.replace(old_panel,new_panel)
 
 anchor="""  function addLayer(spec,before){const mp=map();try{if(!mp.getLayer(spec.id))mp.addLayer(spec,before);return !!mp.getLayer(spec.id)}catch(_){return false}}
