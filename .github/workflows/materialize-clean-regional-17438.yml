@@ -1,0 +1,28 @@
+name: Materialize Clean Regional Candidate 17438
+on:
+  push:
+    branches: [repair/regional-clean-presentation-17434]
+    paths:
+      - '.github/workflows/materialize-clean-regional-17438.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/regional-clean-presentation-17434
+          fetch-depth: 0
+      - run: |
+          python3 tests/apply-regional-clean-presentation-17434.py
+          python3 tests/apply-root-audit-clean-regional-17437.py
+      - run: |
+          git config user.name "Earthline CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git switch -C candidate/browser-elder-blue-clean-regional-17438
+          git add index.html
+          git commit -m "candidate: clean Regional presentation 17438" || true
+          git push -f origin candidate/browser-elder-blue-clean-regional-17438
