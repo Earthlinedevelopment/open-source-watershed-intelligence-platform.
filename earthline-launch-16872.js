@@ -1709,7 +1709,6 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   } /* EARTHLINE_ELDER_IO_ONLY_PREFETCH_17211 */
   async function startProperty17166(){
     try{
-      await load();
       const b=propertyBounds17166(),runIdentity=propertyRunIdentity17166(b);
       if(!b||!runIdentity)return null;
       state.active=[];state.lastSummary=null;
@@ -1721,7 +1720,10 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
         summary:null,featureCount:0,dynamicCandidatePoolCount:0,dynamicError:null,
         at:new Date().toISOString()
       };
-      const dynamic=await dynamicPropertyEvidence(true); /* EARTHLINE_ELDER_GOVERNED_COMPUTE_17211 */
+      const staticLoad17414=load().catch(()=>null);
+      const dynamicPromise17414=dynamicPropertyEvidence(true);
+      await staticLoad17414;
+      const dynamic=await dynamicPromise17414; /* EARTHLINE_ELDER_GOVERNED_COMPUTE_17211 */
       if(!dynamic||propertyRunIdentity17166(propertyBounds17166())!==runIdentity)return null;
       state.active=dynamic.features||[];
       const coverage={known:true,datasetIds:['dynamic-property-17130'],complete:false,dynamic:true,candidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0)};
@@ -1814,7 +1816,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       const nowB=propertyBounds17166();
       if(propertyRunIdentity17166(nowB)!==identity)return;
       void startProperty17166();
-    },1200);
+    },0); /* EARTHLINE_ELDER_ZERO_WAIT_FINAL_17414 */
     return true;
   } /* EARTHLINE_ELDER_STAGGERED_PROPERTY_PRIME_17216 */
   function install(){
@@ -1826,9 +1828,18 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     },true);
     document.addEventListener('click',click,false);
     window.addEventListener('hashchange',hash,false);
-    document.addEventListener('earthline:analysis-complete',()=>{wrapCorridor();refresh();},{passive:true});
-    prewarmDynamicWorker();
-    load().then(()=>{if(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970)refresh()}).catch(()=>{});
+    document.addEventListener('earthline:analysis-complete',e=>{
+      wrapCorridor();
+      void refresh();
+      const tier17414=String(e?.detail?.tier||e?.detail?.mode||'').toLowerCase();
+      if(!tier17414.includes('property'))void prewarmDynamicWorker();
+    },{passive:true});
+    /* EARTHLINE 17414 — avoid competing with the first Regional run.
+       Warm Elder runtime immediately after Regional publication. */
+    if(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970){
+      void load().then(()=>refresh()).catch(()=>{});
+      void prewarmDynamicWorker();
+    }
     if(location.hash==='#swales-explained')howParagraph();
     window.EARTHLINE_ELDER_TREES_V1_17097={
       state:'approved-v2-17118',manifest:MANIFEST,source:SOURCE,layer:LAYER,scienceBaseline:'17118',
