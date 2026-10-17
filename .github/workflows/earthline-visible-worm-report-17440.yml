@@ -1,0 +1,19 @@
+name: Earthline Visible Worm + Report Owner Extract 17440
+on:
+  push:
+    branches: [repair/report-final-17439]
+    paths:
+      - 'tests/extract-visible-worm-report-owner-17440.py'
+      - '.github/workflows/earthline-visible-worm-report-17440.yml'
+permissions: {contents: read}
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/report-final-17439}
+      - run: python3 tests/extract-visible-worm-report-owner-17440.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: visible-worm-report-owner-17440
+          path: visible-worm-report-owner-17440.txt
