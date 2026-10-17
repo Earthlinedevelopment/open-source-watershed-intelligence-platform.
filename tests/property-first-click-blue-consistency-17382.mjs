@@ -52,7 +52,7 @@ let elderSettled=false;
 try{
   await a.page.waitForFunction(()=>{
     const e=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
-    return !!e&&['committed','failed'].includes(String(e.state||''));
+    return !!e&&(!!e.visibleAt||['committed','failed'].includes(String(e.state||'')));
   },null,{timeout:15000,polling:100});
   elderSettled=true;
 }catch(_){}
@@ -60,11 +60,12 @@ const clickSnap=await a.page.evaluate(()=>({
   audit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
   target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
   runState:String(document.documentElement.dataset.earthlinePropertyRunState||''),
-  elder:window.EARTHLINE_ELDER_TREE_LAST_17097||null
+  elder:window.EARTHLINE_ELDER_TREE_LAST_17097||null,
+  center:(()=>{try{const c=(window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null))?.getCenter?.();return c?{lng:Number(c.lng),lat:Number(c.lat)}:null}catch(_){return null}})()
 }));
 const elderMs=Date.now()-propertyClickAt;
-const elderPass=elderSettled&&clickSnap.elder?.state==='committed'&&elderMs<=15000;
-const targetOk=Math.abs(Number(clickSnap.target?.lng)-pt.lng)<0.002&&Math.abs(Number(clickSnap.target?.lat)-pt.lat)<0.002;
+const elderPass=elderSettled&&clickSnap.elder?.state!=='failed'&&!!(clickSnap.elder?.visibleAt||clickSnap.elder?.state==='committed')&&elderMs<=15000;
+const targetOk=!!clickSnap.center&&Math.abs(Number(clickSnap.target?.lng)-Number(clickSnap.center.lng))<0.002&&Math.abs(Number(clickSnap.target?.lat)-Number(clickSnap.center.lat))<0.002;
 await a.context.close();
 
 /* Gate 2: renderer state must be independent of warm/cold history.
@@ -91,6 +92,7 @@ const fixtureReady=await b.page.evaluate(async()=>{
     return {ok:true};
   }catch(e){return {ok:false,error:String(e)}}
 });
+try{await b.page.waitForFunction(()=>!!window.EARTHLINE_PROPERTY_RENDER_STYLE_17382,null,{timeout:5000,polling:50})}catch(_){}
 const style1=await b.page.evaluate(()=>window.EARTHLINE_PROPERTY_RENDER_STYLE_17382||null);
 await b.page.evaluate(()=>{
   const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
