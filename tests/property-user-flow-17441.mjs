@@ -35,12 +35,20 @@ await page.waitForFunction(()=>{
 },null,{timeout:20000,polling:100});
 await page.waitForTimeout(250);
 
-const before=await page.evaluate(()=>({
-  target:JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_TARGET_16201||null)),
-  serial:Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0),
-  center:(()=>{try{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),c=m?.getCenter?.();return c?{lng:Number(c.lng),lat:Number(c.lat)}:null}catch(_){return null}})(),
-  state:String(document.documentElement.dataset.earthlinePropertyRunState||'')
-}));
+const before=await page.evaluate(()=>{
+  const b=document.getElementById('earthlineDeclareProperty16169');
+  return {
+    target:JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_TARGET_16201||null)),
+    serial:Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0),
+    center:(()=>{try{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),c=m?.getCenter?.();return c?{lng:Number(c.lng),lat:Number(c.lat)}:null}catch(_){return null}})(),
+    state:String(document.documentElement.dataset.earthlinePropertyRunState||''),
+    governedType:typeof window.earthlineDeclarePropertyAtCrosshair16173,
+    legacyType:typeof window.earthlineDeclarePropertyAtCrosshair16169,
+    onclickType:typeof b?.onclick,
+    clickOwner:b?.dataset?.earthlinePropertyClickOwner16546||null,
+    disabled:!!b?.disabled
+  };
+});
 
 const property=page.locator('#earthlineDeclareProperty16169');
 const clickAt=Date.now();
@@ -54,13 +62,21 @@ try{
   started=true;
 }catch(_){}
 
-const afterStart=await page.evaluate(()=>({
-  target:JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_TARGET_16201||null)),
-  audit:JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null)),
-  declaration:JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_DECLARATION_16169||null)),
-  center:(()=>{try{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),c=m?.getCenter?.();return c?{lng:Number(c.lng),lat:Number(c.lat)}:null}catch(_){return null}})(),
-  state:String(document.documentElement.dataset.earthlinePropertyRunState||'')
-}));
+const afterStart=await page.evaluate(()=>{
+  const b=document.getElementById('earthlineDeclareProperty16169');
+  return {
+    target:JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_TARGET_16201||null)),
+    audit:JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null)),
+    declaration:JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_DECLARATION_16169||null)),
+    center:(()=>{try{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),c=m?.getCenter?.();return c?{lng:Number(c.lng),lat:Number(c.lat)}:null}catch(_){return null}})(),
+    state:String(document.documentElement.dataset.earthlinePropertyRunState||''),
+    governedType:typeof window.earthlineDeclarePropertyAtCrosshair16173,
+    legacyType:typeof window.earthlineDeclarePropertyAtCrosshair16169,
+    onclickType:typeof b?.onclick,
+    clickOwner:b?.dataset?.earthlinePropertyClickOwner16546||null,
+    disabled:!!b?.disabled
+  };
+});
 
 const sameTarget=!!before.target&&!!afterStart.audit?.center&&
   Math.abs(Number(before.target.lng)-Number(afterStart.audit.center.lng))<0.0008&&
