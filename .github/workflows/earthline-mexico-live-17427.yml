@@ -1,0 +1,23 @@
+name: Earthline Mexico Connected Property Gate 17427
+on:
+  push:
+    branches: [repair/property-final-candidate-17421]
+    paths:
+      - 'tests/mexico-property-live-origin-17427.mjs'
+      - '.github/workflows/earthline-mexico-live-17427.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/property-final-candidate-17421}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: python3 tests/apply-property-target-dragonly-17424.py
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/mexico-property-live-origin-17427.mjs
