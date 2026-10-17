@@ -42,17 +42,29 @@ await a.page.evaluate(p=>new Promise(resolve=>{
 }),pt);
 await a.page.waitForFunction(()=>{const b=document.getElementById('earthlineDeclareProperty16169');return b&&getComputedStyle(b).display!=='none'&&!b.disabled},null,{timeout:15000,polling:100});
 const before=await a.page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
+const propertyClickAt=Date.now();
 await a.page.locator('#earthlineDeclareProperty16169').click();
 let oneClickStarted=false;
 try{
   await a.page.waitForFunction(pre=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)>pre||String(document.documentElement.dataset.earthlinePropertyRunState||'')==='running',before,{timeout:3000,polling:50});
   oneClickStarted=true;
 }catch(_){}
+let elderSettled=false;
+try{
+  await a.page.waitForFunction(()=>{
+    const e=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+    return !!e&&['committed','failed'].includes(String(e.state||''));
+  },null,{timeout:15000,polling:100});
+  elderSettled=true;
+}catch(_){}
 const clickSnap=await a.page.evaluate(()=>({
   audit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
   target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
-  runState:String(document.documentElement.dataset.earthlinePropertyRunState||'')
+  runState:String(document.documentElement.dataset.earthlinePropertyRunState||''),
+  elder:window.EARTHLINE_ELDER_TREE_LAST_17097||null
 }));
+const elderMs=Date.now()-propertyClickAt;
+const elderPass=elderSettled&&clickSnap.elder?.state==='committed'&&elderMs<=15000;
 const targetOk=Math.abs(Number(clickSnap.target?.lng)-pt.lng)<0.002&&Math.abs(Number(clickSnap.target?.lat)-pt.lat)<0.002;
 await a.context.close();
 
@@ -107,9 +119,9 @@ const canonical=s=>JSON.stringify({
   safeWaterOpacity:s?.safeWaterOpacity??null
 });
 const blueConsistent=!!style1&&!!style2&&canonical(style1)===canonical(style2);
-const pass=oneClickStarted&&targetOk&&fixtureReady.ok&&blueConsistent;
-console.log('EARTHLINE_PROPERTY_17383 '+JSON.stringify({
-  browser:BROWSER,pass,oneClickStarted,targetOk,fixtureReady,blueConsistent,
+const pass=oneClickStarted&&targetOk&&elderPass&&fixtureReady.ok&&blueConsistent;
+console.log('EARTHLINE_PROPERTY_17386 '+JSON.stringify({
+  browser:BROWSER,pass,oneClickStarted,targetOk,elderPass,elderMs,fixtureReady,blueConsistent,
   style1,style2,clickSnap,errors:[...a.errors,...b.errors]
 }));
 if(!pass)process.exitCode=1;
