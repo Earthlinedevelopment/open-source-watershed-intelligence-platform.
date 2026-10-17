@@ -95,6 +95,12 @@ if s.count(anchor)!=1:
     raise SystemExit(f"texture addLayer anchor count {s.count(anchor)}")
 s=s.replace(anchor,insert,1)
 
+old_cold="async function ensureTextureLayers(){const mp=map();if(!mp?.getStyle?.())return false;try{const style=mp.getStyle();"
+new_cold="async function ensureTextureLayers(){const mp=map();if(!mp||typeof mp.getStyle!='function')return false;try{if(typeof mp.isStyleLoaded==='function'&&!mp.isStyleLoaded())return false;const style=mp.getStyle();"
+if s.count(old_cold)!=1:
+    raise SystemExit(f"cold style anchor count {s.count(old_cold)}")
+s=s.replace(old_cold,new_cold,1)
+
 old_return="""if(!await ensureImages())return false;const before=mp.getLayer?.('earthline-swales-casing')?'earthline-swales-casing':undefined;"""
 new_return="""if(!await ensureImages())return false;const before=mp.getLayer?.('earthline-swales-casing')?'earthline-swales-casing':undefined;"""
 # Keep same anchor but normalize after layers are created below.
