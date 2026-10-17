@@ -2,42 +2,26 @@ from pathlib import Path
 p=Path("index.html")
 s=p.read_text(encoding="utf-8")
 
-old="""  async function declareProperty(e){
-    e?.preventDefault?.();e?.stopPropagation?.();e?.stopImmediatePropagation?.();
-    const governed=window.earthlineDeclarePropertyAtCrosshair16173;
-    if(typeof governed!=='function'){
-      try{if(typeof earthlineReady==='function')earthlineReady('PROPERTY ANALYSIS BLOCKED — governed property controller is unavailable.')}catch(_){}
-      return false;
-    }
-    const target=window.EARTHLINE_PROPERTY_TARGET_16201;
-"""
-new="""  async function declareProperty(e){
-    e?.preventDefault?.();e?.stopPropagation?.();e?.stopImmediatePropagation?.();
-    const governed=window.earthlineDeclarePropertyAtCrosshair16173;
-    if(typeof governed!=='function'){
-      try{if(typeof earthlineReady==='function')earthlineReady('PROPERTY ANALYSIS BLOCKED — governed property controller is unavailable.')}catch(_){}
-      return false;
-    }
-    /* EARTHLINE 17383 — authoritative one-click Property handoff.
-       The green CROSSHAIR · 20 ACRES control means the current map crosshair,
-       so bind that center synchronously in this same owner before the terminal run. */
-    try{
-      const mp17383=map(),c17383=mp17383?.getCenter?.();
-      const lng17383=Number(c17383?.lng),lat17383=Number(c17383?.lat);
-      if(Number.isFinite(lng17383)&&Number.isFinite(lat17383)){
-        window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;
-        window.EARTHLINE_COUNTRY_TARGET_USER_UNLOCKED_17240=true;
-        const prev17383=window.EARTHLINE_PROPERTY_TARGET_16201||{};
-        const next17383={...prev17383,lng:lng17383,lat:lat17383,source:'crosshair',code:'',at:new Date().toISOString()};
+# Fix the authoritative terminal Property owner itself: in CROSSHAIR mode,
+# the current map center wins synchronously on the same click.
+oldterminal="""    const mp=map(),m=model(),chosen=window.EARTHLINE_PROPERTY_TARGET_16201,c=(chosen&&Number.isFinite(Number(chosen.lng))&&Number.isFinite(Number(chosen.lat)))?{lng:Number(chosen.lng),lat:Number(chosen.lat)}:mp?.getCenter?.();"""
+newterminal="""    const mp=map(),m=model();
+    let chosen=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+    const liveCenter17383=mp?.getCenter?.(),chosenCode17383=clean(chosen&&chosen.code||'');
+    if(!chosenCode17383&&Number.isFinite(Number(liveCenter17383?.lng))&&Number.isFinite(Number(liveCenter17383?.lat))){
+      window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;
+      window.EARTHLINE_COUNTRY_TARGET_USER_UNLOCKED_17240=true;
+      const next17383={...(chosen&&typeof chosen==='object'?chosen:{}),lng:Number(liveCenter17383.lng),lat:Number(liveCenter17383.lat),source:'crosshair',code:'',at:new Date().toISOString()};
+      try{
         if(typeof window.earthlineSetPropertyTarget16201==='function')window.earthlineSetPropertyTarget16201(next17383,{openPanel:false});
         else window.EARTHLINE_PROPERTY_TARGET_16201=next17383;
-        window.EARTHLINE_PROPERTY_FIRST_CLICK_17383={lng:lng17383,lat:lat17383,at:next17383.at};
-      }
-    }catch(_){}
-    const target=window.EARTHLINE_PROPERTY_TARGET_16201;
-"""
-if s.count(old)!=1: raise SystemExit(f"declare anchor {s.count(old)}")
-s=s.replace(old,new,1)
+      }catch(_){window.EARTHLINE_PROPERTY_TARGET_16201=next17383}
+      chosen=window.EARTHLINE_PROPERTY_TARGET_16201||next17383;
+      window.EARTHLINE_PROPERTY_FIRST_CLICK_17383={lng:Number(next17383.lng),lat:Number(next17383.lat),at:next17383.at,owner:'terminalPropertyRun'};
+    }
+    const c=(chosen&&Number.isFinite(Number(chosen.lng))&&Number.isFinite(Number(chosen.lat)))?{lng:Number(chosen.lng),lat:Number(chosen.lat)}:mp?.getCenter?.();"""
+if s.count(oldterminal)!=1: raise SystemExit(f"terminal Property anchor {s.count(oldterminal)}")
+s=s.replace(oldterminal,newterminal,1)
 
 # Stamp current generation onto Property presentation features, without changing geometry/science.
 oldbase="""orientation=orientationForCoords16177(coords),base=Object.assign({},f.properties||{},{texture_flip:orientation.textureFlip,swale_width_m:9,"""
