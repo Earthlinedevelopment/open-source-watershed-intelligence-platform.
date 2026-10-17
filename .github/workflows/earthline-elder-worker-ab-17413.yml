@@ -1,0 +1,26 @@
+name: Earthline Elder Worker Equivalence 17413
+on:
+  push:
+    branches: [repair/browser-elder-blue-final-17413]
+    paths:
+      - 'earthline-elder-worker-17129.js'
+      - 'tests/elder-worker-ab-17413.mjs'
+      - '.github/workflows/earthline-elder-worker-ab-17413.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  worker-ab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/browser-elder-blue-final-17413
+          fetch-depth: 0
+      - run: git show b28f7c8178132833543cdd5a07d147f9f410f28e:earthline-elder-worker-17129.js > /tmp/elder-worker-pre17413.js
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/elder-worker-ab-17413.mjs
