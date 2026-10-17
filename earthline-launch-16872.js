@@ -1832,7 +1832,10 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       wrapCorridor();
       void refresh();
       const tier17414=String(e?.detail?.tier||e?.detail?.mode||'').toLowerCase();
-      if(!tier17414.includes('property'))void prewarmDynamicWorker();
+      if(!tier17414.includes('property')){
+        clearTimeout(window.__EARTHLINE_ELDER_POSTREGIONAL_WARM_17416);
+        window.__EARTHLINE_ELDER_POSTREGIONAL_WARM_17416=setTimeout(()=>{void prewarmDynamicWorker()},900);
+      }
     },{passive:true});
     /* EARTHLINE 17414 — avoid competing with the first Regional run.
        Warm Elder runtime immediately after Regional publication. */
