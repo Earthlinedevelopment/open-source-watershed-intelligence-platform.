@@ -9,7 +9,12 @@ async function openPage(browser){
   const page=await context.newPage();
   const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
   await page.goto(BASE+'?property17382='+Date.now()+Math.random(),{waitUntil:'domcontentloaded',timeout:90000});
-  await page.waitForSelector('#searchInput',{timeout:30000});
+  await page.waitForSelector('#searchInput',{state:'attached',timeout:30000});
+  if(!(await page.locator('#searchInput').isVisible())){
+    const rail=page.locator('#earthlineRailSearch16188');
+    if(await rail.count())await rail.click();
+  }
+  await page.waitForSelector('#searchInput',{state:'visible',timeout:15000});
   return {context,page,errors};
 }
 async function runVermontRegional(page){
