@@ -53,17 +53,11 @@ const snap=()=>page.evaluate(()=>{
 
 const initial=await snap();
 
-await page.evaluate(()=>new Promise(resolve=>{
-  const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
-  if(!mp)return resolve();
-  const z=Number(window.EARTHLINE_REGIONAL_PUBLICATION_VIEW_16337?.zoom);
-  const target=(Number.isFinite(z)?z:Number(mp.getZoom?.()||6))+1.5;
-  let done=false; const finish=()=>{if(done)return;done=true;setTimeout(resolve,300)};
-  mp.once?.('zoomend',finish);
-  mp.jumpTo({center:mp.getCenter(),zoom:target,bearing:mp.getBearing?.()||0,pitch:mp.getPitch?.()||0});
-  setTimeout(finish,1500);
-}));
+const zoomIn=page.locator('.mapboxgl-ctrl-zoom-in').first();
+await zoomIn.click();
 await page.waitForTimeout(350);
+await zoomIn.click();
+await page.waitForTimeout(650);
 const zoomed=await snap();
 
 const waterOk=initial.water.every(x=>!x.exists||x.visibility!=='none');
