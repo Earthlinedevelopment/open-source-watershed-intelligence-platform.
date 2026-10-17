@@ -1,0 +1,19 @@
+name: Earthline Selected Site Owner Extract 17430
+on:
+  push:
+    branches: [repair/property-final-candidate-17421]
+    paths:
+      - 'tests/extract-selected-site-owner-17430.py'
+      - '.github/workflows/earthline-selected-site-owner-17430.yml'
+permissions: {contents: read}
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/property-final-candidate-17421}
+      - run: python3 tests/extract-selected-site-owner-17430.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: selected-site-owner-17430
+          path: selected-site-owner-17430.txt
