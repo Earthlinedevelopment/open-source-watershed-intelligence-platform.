@@ -60,6 +60,13 @@ if s.count(old_panel)!=1:
 s=s.replace(old_panel,new_panel,1)
 
 
+
+old_pointer="""b.addEventListener('pointerdown',e=>e.stopPropagation(),true);"""
+new_pointer="""/* EARTHLINE 17426 — do not suppress Property pointerdown propagation. WebKit does not synthesize the trusted click when this target-capture blocker is present. Elder sidecar ordering is already protected by 17425. */"""
+if s.count(old_pointer)!=1:
+    raise SystemExit(f"Property pointer blocker anchor count {s.count(old_pointer)}")
+s=s.replace(old_pointer,new_pointer,1)
+
 s="<!-- EARTHLINE_PROPERTY_SINGLE_CLICK_OWNER_17423: panel reconciliation preserves the single authoritative Property wrapper onclick. -->\n"+s
 p.write_text(s,encoding="utf-8")
 print("installed single authoritative Property click owner 17423")
