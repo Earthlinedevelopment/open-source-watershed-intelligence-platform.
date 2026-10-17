@@ -1,0 +1,28 @@
+name: Earthline Property One-Click 17428
+on:
+  push:
+    branches: [repair/property-one-click-clean-regional-17428]
+    paths:
+      - 'tests/apply-property-one-click-17428.py'
+      - 'tests/property-one-click-17428.mjs'
+      - '.github/workflows/earthline-property-one-click-17428.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/property-one-click-clean-regional-17428}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: python3 tests/apply-property-one-click-17428.py
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='chromium' HEADLESS='true' node tests/property-one-click-17428.mjs
