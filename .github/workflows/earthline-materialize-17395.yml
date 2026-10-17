@@ -1,0 +1,46 @@
+name: Earthline Materialize Candidate 17395
+on:
+  push:
+    branches: [candidate/browser-property-elder-17395]
+    paths:
+      - '.github/workflows/earthline-materialize-17395.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/browser-property-elder-17395
+          fetch-depth: 0
+      - name: Apply tested repair stack
+        run: |
+          python3 tests/apply-browser-yield-fastpath-17295.py
+          python3 tests/apply-wasm-pip-kernel-17319.py
+          python3 tests/apply-certified-interior-supertile-17301.py
+          python3 tests/apply-skip-regional-preferred-screen-17305.py
+          python3 tests/apply-run-scoped-segment-clip-cache-17315.py
+          python3 tests/apply-consolidated-provisional-jurisdiction-17325.py
+          python3 tests/apply-land-validity-scanline-17352.py
+          python3 tests/apply-vermont-cors-first-17360.py
+          python3 tests/apply-regional-screen-reuse-17365.py
+          python3 tests/apply-telemetry-origin-guard-17368.py
+          python3 tests/apply-jurisdiction-edge-fastpath-17373.py
+          python3 tests/apply-fast-pip-row-index-17378.py
+          python3 tests/apply-fast-pip-geometry-cache-17379.py
+          python3 tests/apply-property-first-click-blue-consistency-17382.py
+          git diff --check
+      - name: Commit materialized candidate
+        run: |
+          git config user.name "Earthline Release Gate"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "No materialization changes"
+          else
+            git commit -m "candidate: materialize browser Property Elder repair 17395"
+            git push origin HEAD:candidate/browser-property-elder-17395
+          fi
