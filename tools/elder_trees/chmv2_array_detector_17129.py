@@ -256,8 +256,25 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
         sm=_gaussian_filter(zz,sigma=refine_sigma)
         peak=(sm==_maximum_filter(sm,size=refine_sep,mode="nearest"))&(sm>=canopy_floor_m)
         rows,cols=np.where(peak)
-        best=None
+        if not len(rows):return None
+        # EARTHLINE 17401 — exact lexicographic shortcut.
+        # The approved record key is (distance, -structural, x, y, ...), so
+        # structural metrics cannot affect the winner unless distance ties.
+        cx=origin_x+full_col*resx
+        cy=origin_y+full_row*resy
+        distance_rows=[]
+        min_dist=None
         for lr,lc in zip(rows.tolist(),cols.tolist()):
+            global_col=native_col0+c0+lc
+            global_row=native_row0+r0+lr
+            x=origin_x+(global_col+.5)*resx
+            y=origin_y+(global_row+.5)*resy
+            dist=((x-cx)**2+(y-cy)**2)**.5
+            distance_rows.append((dist,lr,lc,x,y))
+            if min_dist is None or dist<min_dist:min_dist=dist
+        nearest=[q for q in distance_rows if q[0]==min_dist]
+        best=None
+        for dist,lr,lc,x,y in nearest:
             h=float(a[lr,lc]) if np.isfinite(a[lr,lc]) else float(sm[lr,lc])
             ar0,ar1=max(0,lr-local_radius),min(a.shape[0],lr+local_radius+1)
             ac0,ac1=max(0,lc-local_radius),min(a.shape[1],lc+local_radius+1)
@@ -270,13 +287,6 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
             crown_mask=sub>=max(1.5,canopy_floor_m*.75,h*.45)
             crown_cells=_component_size_4(crown_mask,rr0,cc0)
             area=float(crown_cells*pixel_area_native)
-            global_col=native_col0+c0+lc
-            global_row=native_row0+r0+lr
-            x=origin_x+(global_col+.5)*resx
-            y=origin_y+(global_row+.5)*resy
-            cx=origin_x+full_col*resx
-            cy=origin_y+full_row*resy
-            dist=((x-cx)**2+(y-cy)**2)**.5
             structural=.45*h+.65*emerg+.025*min(area,800)+4*openf
             rec=(dist,-structural,x,y,h,emerg,area,openf)
             if best is None or rec<best:best=rec
