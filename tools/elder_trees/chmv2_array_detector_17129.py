@@ -60,6 +60,11 @@ def _components_4(mask):
     coords=np.argwhere(mask)
     n=int(coords.shape[0])
     if n==0:return []
+    # EARTHLINE 17409 — proof-only isolated-peak shortcut.
+    # If no True cell has an orthogonal True neighbor, every component is a
+    # singleton by definition; otherwise use the exact union path below.
+    if not np.any(mask[:,1:]&mask[:,:-1]) and not np.any(mask[1:,:]&mask[:-1,:]):
+        return [[(int(rc[0]),int(rc[1]))] for rc in coords]
     points=[(int(rc[0]),int(rc[1])) for rc in coords]
     index={p:i for i,p in enumerate(points)}
     parent=list(range(n))
@@ -92,6 +97,23 @@ def _component_size_4(mask,r,c):
     r=int(r);c=int(c)
     if r<0 or r>=h or c<0 or c>=w or not mask[r,c]:
         return 0
+    # EARTHLINE 17409 — proof-only connected-crown shortcut.
+    # A mask whose nonempty rows are contiguous, each row is one horizontal
+    # interval, and every adjacent interval overlaps is exactly one 4-connected
+    # component. If that proof fails, retain the authoritative flood below.
+    row_any=np.any(mask,axis=1)
+    active=np.flatnonzero(row_any)
+    if active.size:
+        a0=int(active[0]);a1=int(active[-1])
+        if active.size==(a1-a0+1):
+            sub=mask[a0:a1+1,:]
+            counts=np.sum(sub,axis=1)
+            first=np.argmax(sub,axis=1)
+            last=w-1-np.argmax(sub[:,::-1],axis=1)
+            one_interval=np.all(counts==(last-first+1))
+            overlaps=True if len(first)<=1 else bool(np.all(np.maximum(first[:-1],first[1:])<=np.minimum(last[:-1],last[1:])))
+            if one_interval and overlaps:
+                return int(np.sum(counts))
     cur=np.zeros((h,w),dtype=bool)
     cur[r,c]=True
     while True:
