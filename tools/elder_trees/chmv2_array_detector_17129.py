@@ -54,60 +54,59 @@ def _gaussian_filter(a,sigma):
         out += weight*py[i:i+h,:]
     return out.astype(a.dtype,copy=False)
 
-def _label(mask):
+def _components_4(mask):
+    """Exact 4-connected components over True cells, sparse.
+    Avoids scanning every raster cell and avoids one full-array np.where per label.
+    Component membership/order does not affect the approved per-component best-point rule.
+    """
     mask=np.asarray(mask,dtype=bool)
-    h,w=mask.shape
-    labels=np.zeros((h,w),dtype=np.int32)
-    lab=0
-    for r in range(h):
-        for c in range(w):
-            if not mask[r,c] or labels[r,c]:
-                continue
-            lab+=1
-            labels[r,c]=lab
-            stack=[(r,c)]
-            while stack:
-                rr,cc=stack.pop()
-                if rr>0 and mask[rr-1,cc] and not labels[rr-1,cc]:
-                    labels[rr-1,cc]=lab;stack.append((rr-1,cc))
-                if rr+1<h and mask[rr+1,cc] and not labels[rr+1,cc]:
-                    labels[rr+1,cc]=lab;stack.append((rr+1,cc))
-                if cc>0 and mask[rr,cc-1] and not labels[rr,cc-1]:
-                    labels[rr,cc-1]=lab;stack.append((rr,cc-1))
-                if cc+1<w and mask[rr,cc+1] and not labels[rr,cc+1]:
-                    labels[rr,cc+1]=lab;stack.append((rr,cc+1))
-    return labels,lab
+    coords=np.argwhere(mask)
+    n=int(coords.shape[0])
+    if n==0:return []
+    points=[(int(rc[0]),int(rc[1])) for rc in coords]
+    index={p:i for i,p in enumerate(points)}
+    parent=list(range(n))
+    rank=[0]*n
+    def find(i):
+        while parent[i]!=i:
+            parent[i]=parent[parent[i]]
+            i=parent[i]
+        return i
+    def union(a,b):
+        ra,rb=find(a),find(b)
+        if ra==rb:return
+        if rank[ra]<rank[rb]:ra,rb=rb,ra
+        parent[rb]=ra
+        if rank[ra]==rank[rb]:rank[ra]+=1
+    for i,(r,c) in enumerate(points):
+        j=index.get((r,c+1))
+        if j is not None:union(i,j)
+        j=index.get((r+1,c))
+        if j is not None:union(i,j)
+    groups={}
+    for i,p in enumerate(points):
+        groups.setdefault(find(i),[]).append(p)
+    return list(groups.values())
 
 def _component_size_4(mask,r,c):
-    """Exact size of the 4-connected component containing (r,c).
-    Equivalent to selecting that seed's label from _label(), without labeling
-    unrelated components in the same local crown window.
-    """
+    """Exact 4-connected seed-component size using vectorized propagation."""
     mask=np.asarray(mask,dtype=bool)
     h,w=mask.shape
     r=int(r);c=int(c)
     if r<0 or r>=h or c<0 or c>=w or not mask[r,c]:
         return 0
-    seen=np.zeros((h,w),dtype=np.uint8)
-    seen[r,c]=1
-    stack=[(r,c)]
-    count=0
-    while stack:
-        rr,cc=stack.pop()
-        count+=1
-        nr=rr-1
-        if nr>=0 and mask[nr,cc] and not seen[nr,cc]:
-            seen[nr,cc]=1;stack.append((nr,cc))
-        nr=rr+1
-        if nr<h and mask[nr,cc] and not seen[nr,cc]:
-            seen[nr,cc]=1;stack.append((nr,cc))
-        nc=cc-1
-        if nc>=0 and mask[rr,nc] and not seen[rr,nc]:
-            seen[rr,nc]=1;stack.append((rr,nc))
-        nc=cc+1
-        if nc<w and mask[rr,nc] and not seen[rr,nc]:
-            seen[rr,nc]=1;stack.append((rr,nc))
-    return count
+    cur=np.zeros((h,w),dtype=bool)
+    cur[r,c]=True
+    while True:
+        nxt=cur.copy()
+        nxt[1:,:] |= cur[:-1,:]
+        nxt[:-1,:] |= cur[1:,:]
+        nxt[:,1:] |= cur[:,:-1]
+        nxt[:,:-1] |= cur[:,1:]
+        nxt &= mask
+        if np.array_equal(nxt,cur):
+            return int(np.count_nonzero(cur))
+        cur=nxt
 
 def hav(a,b):
     lon1,lat1=a;lon2,lat2=b;R=6371008.8
@@ -197,18 +196,17 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
             eligible_cell=cm&(hs_cell>=.35)&((ps_cell>=.30)|(op_cell>=.45))
             if not np.any(eligible_cell):continue
             peak_cell=(sc_cell==_maximum_filter(sc_cell,size=nms_px,mode="nearest"))&eligible_cell
-            labels,nlab=_label(peak_cell)
+            components=_components_4(peak_cell)
             rr=[];cc=[];z_cell=z[r0:r1,c0:c1]
-            for lab_id in range(1,nlab+1):
-                pr,pc=np.where(labels==lab_id)
-                if not len(pr):continue
-                best=max(range(len(pr)),key=lambda k:(
-                    float(z_cell[pr[k],pc[k]]),
-                    float(ps_cell[pr[k],pc[k]]),
-                    float(sc_cell[pr[k],pc[k]]),
-                    -int(pr[k]),-int(pc[k])
+            for comp in components:
+                if not comp:continue
+                br,bc=max(comp,key=lambda q:(
+                    float(z_cell[q[0],q[1]]),
+                    float(ps_cell[q[0],q[1]]),
+                    float(sc_cell[q[0],q[1]]),
+                    -int(q[0]),-int(q[1])
                 ))
-                rr.append(int(pr[best]));cc.append(int(pc[best]))
+                rr.append(int(br));cc.append(int(bc))
             if not len(rr):continue
             forest_cells_with_candidate+=1
             ranked_cell=sorted([(float(sc_cell[r,c]),r0+r,c0+c) for r,c in zip(rr,cc)],reverse=True)
