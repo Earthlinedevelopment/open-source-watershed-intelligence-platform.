@@ -40,8 +40,8 @@ if s.count(old)!=1: raise SystemExit(f"declare anchor {s.count(old)}")
 s=s.replace(old,new,1)
 
 # Stamp current generation onto Property presentation features, without changing geometry/science.
-oldbase="""const orientation=orientationForCoords16177(coords),base=Object.assign({},f.properties||{},{texture_flip:orientation.textureFlip,swale_width_m:9,"""
-newbase="""const orientation=orientationForCoords16177(coords),base=Object.assign({},f.properties||{},{property_search_gen:Number(model()?.searchGen||0),texture_flip:orientation.textureFlip,swale_width_m:9,"""
+oldbase="""orientation=orientationForCoords16177(coords),base=Object.assign({},f.properties||{},{texture_flip:orientation.textureFlip,swale_width_m:9,"""
+newbase="""orientation=orientationForCoords16177(coords),base=Object.assign({},f.properties||{},{property_search_gen:Number(model()?.searchGen||0),texture_flip:orientation.textureFlip,swale_width_m:9,"""
 if s.count(oldbase)!=1: raise SystemExit(f"base anchor {s.count(oldbase)}")
 s=s.replace(oldbase,newbase,1)
 
