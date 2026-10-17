@@ -1,0 +1,15 @@
+name: Earthline Property Click Owner Extract 17422
+on:
+  push:
+    branches: [validation/property-post-browser-17421]
+    paths: ['tests/extract-property-click-owner-17422.py','.github/workflows/earthline-property-click-owner-17422.yml']
+permissions: {contents: read}
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: validation/property-post-browser-17421}
+      - run: python3 tests/extract-property-click-owner-17422.py
+      - uses: actions/upload-artifact@v4
+        with: {name: property-click-owner-17422, path: property-click-owner-17422.txt}
