@@ -66,7 +66,7 @@ const after=await page.evaluate(()=>({
   tier:String(document.documentElement.dataset.earthlineAnalysisTier||''),
   publication:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null
 }));
-const clickSnap=await page.evaluate(()=>window.EARTHLINE_PROPERTY_CLICK_SNAPSHOT_17422||null);
+const clickSnap=await page.evaluate(()=>window.EARTHLINE_PROPERTY_CLICK_SNAPSHOT_17423||null);
 const launchCenter=after.audit?.center||null;
 const exactCenter=!!clickSnap&&Math.abs(Number(clickSnap.lng)-pt.lng)<0.0005&&Math.abs(Number(clickSnap.lat)-pt.lat)<0.0005&&
   !!launchCenter&&Math.abs(Number(launchCenter.lng)-pt.lng)<0.0005&&Math.abs(Number(launchCenter.lat)-pt.lat)<0.0005;
