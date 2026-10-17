@@ -1,0 +1,28 @@
+name: Materialize Clean Regional + Report Candidate 17440
+on:
+  push:
+    branches: [repair/report-final-17439]
+    paths:
+      - '.github/workflows/materialize-clean-regional-report-17440.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/browser-elder-blue-clean-regional-report-17440
+          fetch-depth: 0
+      - run: |
+          git fetch origin repair/report-final-17439
+          git show origin/repair/report-final-17439:tests/apply-report-scroll-export-17439.py > /tmp/apply-report-scroll-export-17439.py
+          python3 /tmp/apply-report-scroll-export-17439.py
+      - run: |
+          git config user.name "Earthline CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "candidate: clean Regional + reliable Bioswale Report 17440" || true
+          git push origin HEAD:candidate/browser-elder-blue-clean-regional-report-17440
