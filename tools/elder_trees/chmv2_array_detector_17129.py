@@ -6,7 +6,7 @@ METHOD="earthline-elder-tree-aoi-chmv2-v0.7-high-recall-plateau-collapse"
 CURRENT_ELDER_TARGET_PER_HA=15.0
 FUTURE_ELDER_RATIO=2.5
 
-# EARTHLINE 17387 — NumPy-only equivalents of the exact scipy.ndimage operations
+# EARTHLINE 17400 — NumPy-only equivalents of the exact scipy.ndimage operations
 # used by the approved 17118 Elder algorithm. This removes the large SciPy cold
 # download from the browser worker without changing thresholds, kernels,
 # neighborhood modes, connectivity, ranking, quotas, or candidate semantics.
@@ -77,6 +77,37 @@ def _label(mask):
                 if cc+1<w and mask[rr,cc+1] and not labels[rr,cc+1]:
                     labels[rr,cc+1]=lab;stack.append((rr,cc+1))
     return labels,lab
+
+def _component_size_4(mask,r,c):
+    """Exact size of the 4-connected component containing (r,c).
+    Equivalent to selecting that seed's label from _label(), without labeling
+    unrelated components in the same local crown window.
+    """
+    mask=np.asarray(mask,dtype=bool)
+    h,w=mask.shape
+    r=int(r);c=int(c)
+    if r<0 or r>=h or c<0 or c>=w or not mask[r,c]:
+        return 0
+    seen=np.zeros((h,w),dtype=np.uint8)
+    seen[r,c]=1
+    stack=[(r,c)]
+    count=0
+    while stack:
+        rr,cc=stack.pop()
+        count+=1
+        nr=rr-1
+        if nr>=0 and mask[nr,cc] and not seen[nr,cc]:
+            seen[nr,cc]=1;stack.append((nr,cc))
+        nr=rr+1
+        if nr<h and mask[nr,cc] and not seen[nr,cc]:
+            seen[nr,cc]=1;stack.append((nr,cc))
+        nc=cc-1
+        if nc>=0 and mask[rr,nc] and not seen[rr,nc]:
+            seen[rr,nc]=1;stack.append((rr,nc))
+        nc=cc+1
+        if nc<w and mask[rr,nc] and not seen[rr,nc]:
+            seen[rr,nc]=1;stack.append((rr,nc))
+    return count
 
 def hav(a,b):
     lon1,lat1=a;lon2,lat2=b;R=6371008.8
@@ -204,37 +235,41 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
     native_clean=native.astype("float32",copy=True)
     native_clean[(~np.isfinite(native_clean))|(native_clean<0)|(native_clean>80)]=np.nan
 
+    # EARTHLINE 17400 — exact refinement invariants computed once per tile.
+    refine_radius=max(10,int(round(15.0/max(pix,.01))))
+    refine_sep=max(3,int(round(5/max(pix,.01))))
+    if refine_sep%2==0:refine_sep+=1
+    refine_sigma=max(.8,min(2.5,1/max(pix,.01)))
+    local_radius=max(5,int(round(18/max(pix,.01))))
+    pixel_area_native=abs(resx*resy)
+
     def refine_candidate(r,c):
         full_col=screen_col0+(c+.5)*screen_ww/max(1,ow)
         full_row=screen_row0+(r+.5)*screen_wh/max(1,oh)
         ic=int(full_col)-native_col0
         ir=int(full_row)-native_row0
-        rradius=max(10,int(round(15.0/max(pix,.01))))
-        r0=max(0,ir-rradius);r1=min(nh,ir+rradius+1)
-        c0=max(0,ic-rradius);c1=min(nw,ic+rradius+1)
+        r0=max(0,ir-refine_radius);r1=min(nh,ir+refine_radius+1)
+        c0=max(0,ic-refine_radius);c1=min(nw,ic+refine_radius+1)
         a=native_clean[r0:r1,c0:c1]
         if not a.size:return None
         zz=np.nan_to_num(a,nan=0)
-        sep=max(3,int(round(5/max(pix,.01))))
-        if sep%2==0:sep+=1
-        sm=_gaussian_filter(zz,sigma=max(.8,min(2.5,1/max(pix,.01))))
-        peak=(sm==_maximum_filter(sm,size=sep,mode="nearest"))&(sm>=canopy_floor_m)
+        sm=_gaussian_filter(zz,sigma=refine_sigma)
+        peak=(sm==_maximum_filter(sm,size=refine_sep,mode="nearest"))&(sm>=canopy_floor_m)
         rows,cols=np.where(peak)
         best=None
         for lr,lc in zip(rows.tolist(),cols.tolist()):
             h=float(a[lr,lc]) if np.isfinite(a[lr,lc]) else float(sm[lr,lc])
-            rad=max(5,int(round(18/max(pix,.01))))
-            ar0,ar1=max(0,lr-rad),min(a.shape[0],lr+rad+1)
-            ac0,ac1=max(0,lc-rad),min(a.shape[1],lc+rad+1)
+            ar0,ar1=max(0,lr-local_radius),min(a.shape[0],lr+local_radius+1)
+            ac0,ac1=max(0,lc-local_radius),min(a.shape[1],lc+local_radius+1)
             local=a[ar0:ar1,ac0:ac1];lv=local[np.isfinite(local)]
             medv=float(np.median(lv)) if lv.size else 0.0
             emerg=max(0.0,h-medv)
             openf=float(np.mean(np.nan_to_num(local,nan=0)<4))
             sub=np.nan_to_num(local,nan=0)
-            lab,_=_label(sub>=max(1.5,canopy_floor_m*.75,h*.45))
             rr0,cc0=lr-ar0,lc-ac0
-            lid=lab[rr0,cc0] if 0<=rr0<lab.shape[0] and 0<=cc0<lab.shape[1] else 0
-            area=float(np.sum(lab==lid)*abs(resx*resy)) if lid else 0.0
+            crown_mask=sub>=max(1.5,canopy_floor_m*.75,h*.45)
+            crown_cells=_component_size_4(crown_mask,rr0,cc0)
+            area=float(crown_cells*pixel_area_native)
             global_col=native_col0+c0+lc
             global_row=native_row0+r0+lr
             x=origin_x+(global_col+.5)*resx
