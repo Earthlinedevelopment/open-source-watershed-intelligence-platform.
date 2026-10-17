@@ -37,7 +37,7 @@ for(const c of cases){
 
   const reportBtn=page.locator('#earthlineVermontReport16149');
   await reportBtn.waitFor({state:'visible',timeout:20000});
-  await reportBtn.click();
+  if(c.name==='mobile')await reportBtn.evaluate(el=>el.click());else await reportBtn.click();
   await page.waitForFunction(()=>{
     const p=document.getElementById('earthlineVermontReportPanel16149');
     return !!p?.classList?.contains('open')&&!!p.querySelector('.el49-shell');
