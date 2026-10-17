@@ -1,0 +1,19 @@
+name: Earthline Corridor Zoom Owner Extract 17425
+on:
+  push:
+    branches: [repair/regional-clean-presentation-17424]
+    paths:
+      - 'tests/extract-corridor-zoom-owner-17425.py'
+      - '.github/workflows/earthline-corridor-zoom-owner-17425.yml'
+permissions: {contents: read}
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/regional-clean-presentation-17424}
+      - run: python3 tests/extract-corridor-zoom-owner-17425.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: corridor-zoom-owner-17425
+          path: corridor-zoom-owner-17425.txt
