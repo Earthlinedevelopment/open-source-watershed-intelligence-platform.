@@ -1709,7 +1709,6 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   } /* EARTHLINE_ELDER_IO_ONLY_PREFETCH_17211 */
   async function startProperty17166(){
     try{
-      await load();
       const b=propertyBounds17166(),runIdentity=propertyRunIdentity17166(b);
       if(!b||!runIdentity)return null;
       state.active=[];state.lastSummary=null;
@@ -1721,7 +1720,12 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
         summary:null,featureCount:0,dynamicCandidatePoolCount:0,dynamicError:null,
         at:new Date().toISOString()
       };
-      const dynamic=await dynamicPropertyEvidence(true); /* EARTHLINE_ELDER_GOVERNED_COMPUTE_17211 */
+      /* EARTHLINE 17384 — start bounded Property canopy work immediately.
+         Static Elder context loads in parallel; it does not gate the dynamic worker. */
+      const staticLoad17384=load().catch(()=>null);
+      const dynamicPromise17384=dynamicPropertyEvidence(true);
+      await staticLoad17384;
+      const dynamic=await dynamicPromise17384;
       if(!dynamic||propertyRunIdentity17166(propertyBounds17166())!==runIdentity)return null;
       state.active=dynamic.features||[];
       const coverage={known:true,datasetIds:['dynamic-property-17130'],complete:false,dynamic:true,candidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0)};
@@ -1814,7 +1818,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       const nowB=propertyBounds17166();
       if(propertyRunIdentity17166(nowB)!==identity)return;
       void startProperty17166();
-    },1200);
+    },0); /* EARTHLINE_ELDER_ZERO_WAIT_17384 */
     return true;
   } /* EARTHLINE_ELDER_STAGGERED_PROPERTY_PRIME_17216 */
   function install(){
