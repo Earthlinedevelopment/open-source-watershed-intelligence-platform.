@@ -1,0 +1,19 @@
+name: Earthline Report Owner Extract 17439
+on:
+  push:
+    branches: [repair/report-final-17439]
+    paths:
+      - 'tests/extract-report-owner-17439.py'
+      - '.github/workflows/earthline-report-owner-17439.yml'
+permissions: {contents: read}
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/report-final-17439}
+      - run: python3 tests/extract-report-owner-17439.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: report-owner-17439
+          path: report-owner-17439.txt
