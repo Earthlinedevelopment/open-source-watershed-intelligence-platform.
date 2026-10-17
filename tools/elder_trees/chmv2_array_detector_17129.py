@@ -30,12 +30,10 @@ def _uniform_filter(a,size,mode=None):
 def _maximum_filter(a,size,mode=None):
     size=int(size); pad=size//2
     p=np.pad(a,((pad,pad),(pad,pad)),mode="edge")
-    h,w=a.shape
-    out=np.full_like(a,-np.inf,dtype=np.float32)
-    for dr in range(size):
-        for dc in range(size):
-            np.maximum(out,p[dr:dr+h,dc:dc+w],out=out)
-    return out.astype(a.dtype,copy=False)
+    # EARTHLINE 17403 — exact same edge-padded neighborhood maximum,
+    # executed as one NumPy reduction instead of size*size Python dispatches.
+    w=np.lib.stride_tricks.sliding_window_view(p,(size,size))
+    return np.max(w,axis=(-2,-1)).astype(a.dtype,copy=False)
 
 def _gaussian_filter(a,sigma):
     sigma=float(sigma)
