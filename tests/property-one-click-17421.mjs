@@ -17,7 +17,7 @@ const rb=page.locator('#runBtn');
 if(await rb.isVisible())await rb.click();
 await page.waitForFunction(()=>/published\./i.test(String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'')),null,{timeout:90000,polling:100});
 await page.waitForFunction(()=>typeof window.earthlineFocusRunEngine16158==='function',null,{timeout:15000,polling:100});
-const pt={lng:-72.5778,lat:44.2601};
+const pt={lng:-72.9726,lat:43.6106};
 await page.evaluate(async p=>{
   const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
   if(mp?.jumpTo)mp.jumpTo({center:[p.lng,p.lat],zoom:16.8,bearing:0,pitch:0});
