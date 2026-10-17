@@ -1,0 +1,28 @@
+name: Earthline Elder Science Equivalence 17408
+on:
+  push:
+    branches: [repair/browser-elder-final-17392]
+    paths:
+      - 'tools/elder_trees/chmv2_array_detector_17129.py'
+      - 'tests/elder-science-ab-17408.mjs'
+      - '.github/workflows/earthline-elder-science-ab-17408.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  science-ab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/browser-elder-final-17392
+          fetch-depth: 0
+      - run: |
+          git fetch origin candidate/browser-elder-final-17404
+          git show origin/candidate/browser-elder-final-17404:tools/elder_trees/chmv2_array_detector_17129.py > /tmp/elder-baseline-17404.py
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/elder-science-ab-17408.mjs
