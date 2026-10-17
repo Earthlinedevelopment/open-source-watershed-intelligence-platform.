@@ -1,28 +1,53 @@
 import { chromium, firefox, webkit } from 'playwright';
+import { readFileSync } from 'node:fs';
 
 const BROWSER=(process.env.BROWSER||'chromium').toLowerCase();
 const launcher={chromium,firefox,webkit}[BROWSER];
 const headless=String(process.env.HEADLESS||'true').toLowerCase()!=='false';
-const BASE=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
+const BASE='https://earthlinedevelopment.org/';
 const TARGET={lng:-73.012909,lat:44.513845};
 const browser=await launcher.launch({headless});
-const page=await browser.newPage({viewport:{width:1600,height:950}});
+const context=await browser.newContext({viewport:{width:1600,height:950}});
+const patchedIndex=readFileSync('index.html');
+await context.route('https://earthlinedevelopment.org/?*',r=>r.fulfill({status:200,body:patchedIndex,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}}));
+const page=await context.newPage();
 const errors=[];page.on('pageerror',e=>errors.push(String(e)));
 
-await page.goto(BASE+'?blueInvariant17411='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
-await page.waitForFunction(()=>typeof window.applyLocation==='function'&&typeof window.earthlineSetPropertyTarget16201==='function'&&typeof window.earthlineDeclarePropertyAtCrosshair16169==='function',null,{timeout:45000,polling:100});
+await page.goto(BASE+'?blueInvariant17412='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+await page.waitForSelector('#searchInput',{timeout:30000});
+await page.locator('#searchInput').fill('Vermont');
+await page.waitForTimeout(900);
+const opts=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
+if(await opts.count())await opts.first().click();
+const runBtn=page.locator('#runBtn');
+if(await runBtn.isVisible()){
+  const busy=await runBtn.evaluate(b=>b.dataset.busy==='1'||b.disabled);
+  if(!busy)await runBtn.click();
+}
+await page.waitForFunction(()=>{
+  const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+  return String(d?.tier||d?.mode||'').toLowerCase()==='regional'&&/vermont/i.test(String(d?.query||''));
+},null,{timeout:120000,polling:100});
+await page.waitForFunction(()=>typeof window.earthlineFocusRunEngine16158==='function'&&typeof window.earthlineSetPropertyTarget16201==='function'&&typeof window.earthlineDeclarePropertyAtCrosshair16169==='function',null,{timeout:30000,polling:100});
+
+async function prepareFocus(){
+  await page.evaluate(async t=>{
+    await window.earthlineFocusRunEngine16158({center:{lng:t.lng,lat:t.lat},sizeM:3000,label:'Vermont blue invariant'});
+  },TARGET);
+  await page.waitForFunction(()=>String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{}).tier||'').toLowerCase()==='focus',null,{timeout:120000,polling:100});
+  await page.evaluate(t=>new Promise(resolve=>{
+    const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+    if(!mp?.jumpTo)return resolve();
+    let done=false;const finish=()=>{if(done)return;done=true;resolve()};
+    mp.once?.('moveend',finish);mp.jumpTo({center:[t.lng,t.lat],zoom:16.78,bearing:0,pitch:0});setTimeout(finish,1600);
+  }),TARGET);
+  await page.evaluate(t=>window.earthlineSetPropertyTarget16201({lng:t.lng,lat:t.lat,source:'blue-invariant-17412',code:'',score:0,at:new Date().toISOString()},{openPanel:false}),TARGET);
+  await page.waitForTimeout(250);
+}
 
 async function runProperty(label){
-  const prep=await page.evaluate(async t=>{
-    const m=(typeof M!=='undefined'&&M)||window.M||null;
-    const site=window.earthlineSelectedSiteFromCenter(m?.loc||null,t.lng,t.lat,20);
-    const ok=await window.applyLocation(site,null,Number(m?.searchGen||0),{analyzeNow:false,preserveMapView:false});
-    const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
-    if(mp?.jumpTo)mp.jumpTo({center:[t.lng,t.lat],zoom:16.78,bearing:0,pitch:0});
-    window.earthlineSetPropertyTarget16201({lng:t.lng,lat:t.lat,source:'blue-invariant-17411',code:'',score:0,at:new Date().toISOString()},{openPanel:false});
-    return {ok:!!ok,searchGen:Number(((typeof M!=='undefined'&&M)||window.M||{}).searchGen||0)};
-  },TARGET);
-  await page.waitForTimeout(1200);
+  await prepareFocus();
+  const prep=await page.evaluate(()=>({ok:true,searchGen:Number(((typeof M!=='undefined'&&M)||window.M||{}).searchGen||0)}));
   const before=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
   const started=Date.now();
   let callResult=null,callError=null;
@@ -76,6 +101,7 @@ async function runProperty(label){
 
 const first=await runProperty('first');
 const second=await runProperty('repeat');
+await context.close();
 await browser.close();
 
 const styleKey=v=>JSON.stringify(v);
