@@ -1,0 +1,35 @@
+name: Earthline WebKit Supertile Coarse Profile 17363
+on:
+  push:
+    branches: [repair/browser-performance-live-17268]
+    paths:
+      - 'tests/browser-supertile-coarse-17363.mjs'
+      - '.github/workflows/earthline-webkit-supertile-coarse-17363.yml'
+permissions: {contents: read}
+jobs:
+  webkit:
+    runs-on: macos-14
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-performance-live-17268}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          python3 tests/apply-browser-yield-fastpath-17295.py
+          python3 tests/apply-wasm-pip-kernel-17319.py
+          python3 tests/apply-certified-interior-supertile-17301.py
+          python3 tests/apply-skip-regional-preferred-screen-17305.py
+          python3 tests/apply-run-scoped-segment-clip-cache-17315.py
+          python3 tests/apply-consolidated-provisional-jurisdiction-17325.py
+          python3 tests/apply-land-validity-scanline-17352.py
+          python3 tests/apply-vermont-cors-first-17360.py
+          python3 tests/apply-supertile-coarse-phase-17363.py
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - run: |
+          python3 -m http.server 8787 --bind 0.0.0.0 >/tmp/http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - run: env EARTHLINE_URL='http://127.0.0.1:8787/' node tests/browser-supertile-coarse-17363.mjs
