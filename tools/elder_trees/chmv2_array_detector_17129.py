@@ -41,15 +41,14 @@ def _gaussian_filter(a,sigma):
     x=np.arange(-radius,radius+1,dtype=np.float32)
     k=np.exp(-(x*x)/(2.0*sigma*sigma)).astype(np.float32)
     k/=np.sum(k)
-    h,w=a.shape
+    # EARTHLINE 17404 — same symmetric padding and same separable kernel,
+    # executed as NumPy window reductions instead of per-tap Python dispatch.
     px=np.pad(a,((0,0),(radius,radius)),mode="symmetric")
-    tmp=np.zeros_like(a,dtype=np.float32)
-    for i,weight in enumerate(k):
-        tmp += weight*px[:,i:i+w]
+    wx=np.lib.stride_tricks.sliding_window_view(px,len(k),axis=1)
+    tmp=np.tensordot(wx,k,axes=([-1],[0])).astype(np.float32,copy=False)
     py=np.pad(tmp,((radius,radius),(0,0)),mode="symmetric")
-    out=np.zeros_like(a,dtype=np.float32)
-    for i,weight in enumerate(k):
-        out += weight*py[i:i+h,:]
+    wy=np.lib.stride_tricks.sliding_window_view(py,len(k),axis=0)
+    out=np.tensordot(wy,k,axes=([-1],[0])).astype(np.float32,copy=False)
     return out.astype(a.dtype,copy=False)
 
 def _components_4(mask):
