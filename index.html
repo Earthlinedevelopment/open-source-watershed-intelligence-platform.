@@ -1,3 +1,15 @@
+<!-- EARTHLINE_PROPERTY_BLUE_INVARIANT_17417: authoritative texture owner reasserts identical paint/filter recipe on every sync. -->
+<!-- EARTHLINE_FAST_PIP_GEOMETRY_CACHE_17379: one exact row-index build per jurisdiction geometry; containment math unchanged. -->
+<!-- EARTHLINE_FAST_PIP_ROW_INDEX_17378: finer exact numeric row index for no-boundary-contact candidate containment; authoritative boundary-touching clip unchanged. -->
+<!-- EARTHLINE_JURISDICTION_EDGE_FASTPATH_17373: exact no-boundary-crossing fast accept/reject before authoritative clip; ranking, spacing, capacity and boundary-crossing clip unchanged. -->
+<!-- EARTHLINE_REGIONAL_SCREEN_REUSE_17365: same-run exact reuse of already-screened Regional candidate groups; only newly appended supplemental candidates are jurisdiction-screened on statewide rerun. Ranking, spacing, capacity and final verdict unchanged. -->
+<!-- EARTHLINE_VERMONT_TRANSPORT_17360: live HTTP(S) uses CORS-first official VCGI transport; JSONP is fallback-only and late callbacks are safely retired. Authority, geometry, buffers and fail-closed exclusions unchanged. -->
+<!-- EARTHLINE_LAND_VALIDITY_SCANLINE_17352: exact ray-crossing scanline reuse; same Natural Earth land/lake validity rule, no science or threshold change. -->
+<!-- EARTHLINE_CONSOLIDATED_PROVISIONAL_JURISDICTION_17325: six provisional refinement makeSwales calls defer jurisdiction clipping to the existing final authoritative Regional publication screen; hydrology/ranking/spacing/capacity unchanged. -->
+<!-- EARTHLINE_RUN_SCOPED_SEGMENT_CLIP_CACHE_17315: exact jurisdiction clip reuse only for identical contour point objects within the same hydrology object + boundary; no cross-run cache or science change. -->
+<!-- EARTHLINE_REGIONAL_REDUNDANT_PREFERRED_SCREEN_17305: Regional already always enters relaxed generation; skip unused pre-screen. Focus/Property semantics unchanged. Final authoritative jurisdiction screen remains unchanged. -->
+<!-- EARTHLINE_WASM_PIP_KERNEL_17319: exact point-in-ring arithmetic moved to synchronous WASM with identical numeric edges/tolerances; JS fallback retained; no geometry/science change. -->
+<!-- EARTHLINE_BROWSER_YIELD_FASTPATH_17295: MessageChannel fallback + 256-item cooperative batches; identical science/output order. -->
 <!-- EARTHLINE 16845 — GLOBAL COUNTRY ATOMIC JURISDICTION OWNER. DEV BRANCH ONLY. -->
 <!-- EARTHLINE 16864 — APPROVED LAUNCH REPAIRS: Vancouver Island regional resolution; mapped aquifer context in Bioswale Impact Report maps; consolidated final report sources; final-page How Bioswales sources; gauge/DATA copy lock. Preserves existing hydrology, swale geometry/style, exclusions, logo and Search Orb. CANDIDATE / NOT ACCEPTED. -->
 <!-- EARTHLINE 16857 — PROPERTY BLUE PERSISTENCE ONLY. Existing Property ditch/water presentation changes from dark green to saturated blue at identical width, geometry and pattern so the blue does not disappear when Focus hands off to Property. No hydrology, science, geometry, spacing, Regional styling, Arizona logic, report, tabs, gauge, DATA, logo or Orb change. -->
@@ -11308,23 +11320,44 @@ async function directGeocode(q){
   function earthlineFetchJsonp15872(url,timeoutMs){
     return new Promise((resolve,reject)=>{
       const cb="__earthlineVtInfra16458_"+Date.now()+"_"+Math.random().toString(36).slice(2),script=document.createElement("script");
-      let done=false;
-      function cleanup(){try{script.remove()}catch(_){}try{delete window[cb]}catch(_){window[cb]=undefined}}
-      const timer=setTimeout(()=>{if(done)return;done=true;cleanup();reject(new Error("JSONP timeout"));},timeoutMs);
-      window[cb]=data=>{if(done)return;done=true;clearTimeout(timer);try{const fc=earthlineEsriJsonToGeoJSON16458(data);cleanup();resolve(fc);}catch(error){cleanup();reject(error);}};
-      script.onerror=()=>{if(done)return;done=true;clearTimeout(timer);cleanup();reject(new Error("JSONP failed"));};
+      let done=false,retired=false;
+      function retire(){
+        if(retired)return;retired=true;
+        try{script.remove()}catch(_){}
+        try{delete window[cb]}catch(_){window[cb]=undefined}
+      }
+      function parkLateCallback(){
+        /* A timed-out JSONP script can still finish downloading after its DOM node
+           is removed. Keep a harmless callback alive until load/error proves the
+           script can no longer call it; this prevents late global ReferenceErrors. */
+        try{window[cb]=()=>{}}catch(_){}
+      }
+      const timer=setTimeout(()=>{
+        if(done)return;done=true;parkLateCallback();
+        reject(new Error("JSONP timeout"));
+      },timeoutMs);
+      window[cb]=data=>{
+        if(done)return;
+        done=true;clearTimeout(timer);
+        try{const fc=earthlineEsriJsonToGeoJSON16458(data);retire();resolve(fc);}
+        catch(error){retire();reject(error);}
+      };
+      script.onload=()=>{if(done)retire();};
+      script.onerror=()=>{
+        if(done){retire();return;}
+        done=true;clearTimeout(timer);retire();reject(new Error("JSONP failed"));
+      };
       try{
         const u=new URL(url,location.href);u.searchParams.set("f","json");u.searchParams.set("callback",cb);
         script.async=true;script.src=u.toString();document.head.appendChild(script);
-      }catch(error){done=true;clearTimeout(timer);cleanup();reject(error);}
+      }catch(error){done=true;clearTimeout(timer);retire();reject(error);}
     });
   }
   async function earthlineFetchJson15872(url,timeoutMs){
-    /* EARTHLINE 16470 — restore the proven Vermont infrastructure transport race.
-       Historical downloaded-file runs completed these same official requests via
-       fetch/CORS in hundreds of milliseconds. Do not force file:// through JSONP;
-       race CORS and the existing JSONP fallback on every origin, first valid wins. */
-    const cors=(async()=>{
+    /* EARTHLINE 17360 — HTTPS/HTTP must not launch a duplicate JSONP request while
+       the same official VCGI request is already succeeding through CORS. Use the
+       same authority URL and timeout; JSONP remains a fallback transport only. */
+    const corsFetch17360=async()=>{
       const controller=typeof AbortController!=="undefined"?new AbortController():null;
       const timer=controller?setTimeout(()=>controller.abort(),timeoutMs):null;
       try{
@@ -11334,10 +11367,21 @@ async function directGeocode(q){
         if(!data||!Array.isArray(data.features))throw new Error("invalid-geojson-response");
         return data;
       }finally{if(timer)clearTimeout(timer);}
-    })();
-    const jsonp=earthlineFetchJsonp15872(url,timeoutMs);
+    };
+    const protocol17360=String(location&&location.protocol||"").toLowerCase();
+    if(protocol17360==="http:"||protocol17360==="https:"){
+      try{return await corsFetch17360();}
+      catch(corsError17360){
+        try{return await earthlineFetchJsonp15872(url,timeoutMs);}
+        catch(jsonpError17360){
+          if(typeof AggregateError==="function")throw new AggregateError([corsError17360,jsonpError17360],"official Vermont transport failed");
+          throw jsonpError17360;
+        }
+      }
+    }
+    const cors=corsFetch17360(),jsonp=earthlineFetchJsonp15872(url,timeoutMs);
     if(typeof Promise.any==="function")return await Promise.any([cors,jsonp]);
-    return await new Promise((resolve,reject)=>{let failed=0,lastError=null;for(const p of [cors,jsonp])Promise.resolve(p).then(resolve,error=>{lastError=error;if(++failed===2)reject(lastError);});});
+    return await new Promise((resolve,reject)=>{let failed=0,lastError=null;for(const q of [cors,jsonp])Promise.resolve(q).then(resolve,error=>{lastError=error;if(++failed===2)reject(lastError);});});
   }
   async function earthlineFetchFirstOfficial16481(urls,timeoutMs){
     const attempts=(urls||[]).filter(Boolean).map(url=>Promise.resolve().then(()=>earthlineFetchJson15872(url,timeoutMs)));
@@ -30171,7 +30215,16 @@ body { overflow-x:hidden!important; }
     }
     return {type:'FeatureCollection',features};
   }
-  async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();return new Promise(r=>setTimeout(r,0));}
+  async function earthlineCooperativeYield16661(){
+  if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();
+  if(typeof MessageChannel==='function')return new Promise(resolve=>{
+    const ch=new MessageChannel();
+    ch.port1.onmessage=()=>{try{ch.port1.close();ch.port2.close()}catch(_){} resolve();};
+    ch.port2.postMessage(0);
+  });
+  return Promise.resolve();
+}
+  const earthlineRegionalScreenReuse17365=new WeakMap();
   async function makeSwales(hy,contours,focusMode=false,jurisdictionGeometry16539=null,supplementalCandidates16702=null){
     const lines=(contours&&contours.features||[]).filter(f=>f&&f.properties&&f.properties.feature_type==='contour'&&f.geometry&&f.geometry.type==='LineString');
     const channel=percentile(hy.acc,.972),accLow=percentile(hy.acc,.22),accMid=percentile(hy.acc,.72),accHigh=percentile(hy.acc,.91),candidates=[];
@@ -30214,12 +30267,156 @@ body { overflow-x:hidden!important; }
        Hydrology and contours still span the full DEM envelope; this only prevents candidates
        that cannot be published in the selected jurisdiction from consuming selection slots. */
     const jurisdictionScreenCache16592=new WeakMap();
+    const jurisdictionFastGeometry17373=(!focusMode&&jurisdictionGeometry16539)
+      ?((jurisdictionGeometry16539.earthlineVermontExactClip16750===true&&jurisdictionGeometry16539.earthlineVermontGeometry16750)
+        ?jurisdictionGeometry16539.earthlineVermontGeometry16750:jurisdictionGeometry16539):null;
+    const jurisdictionFastPipCache17379=window.__EARTHLINE_FAST_PIP_CACHE_17379||(window.__EARTHLINE_FAST_PIP_CACHE_17379=new WeakMap());
+    const jurisdictionFastPipIndex17378=(()=>{
+      if(!jurisdictionFastGeometry17373)return null;
+      const cached17379=jurisdictionFastPipCache17379.get(jurisdictionFastGeometry17373);
+      if(cached17379)return cached17379;
+      const prepared17378=earthlinePrepareJurisdiction16539(jurisdictionFastGeometry17373);
+      if(!prepared17378||!Array.isArray(prepared17378.polygons))return null;
+      const scale17378=96;
+      const buildRing17378=(ring17378)=>{
+        const bins17378=new Map();
+        if(!Array.isArray(ring17378)||ring17378.length<3)return {bins:bins17378};
+        for(let i17378=0,j17378=ring17378.length-1;i17378<ring17378.length;j17378=i17378++){
+          const a17378=ring17378[j17378],b17378=ring17378[i17378];
+          if(!earthlineFinitePoint16539(a17378)||!earthlineFinitePoint16539(b17378))continue;
+          const x1=Number(a17378[0]),y1=Number(a17378[1]),x2=Number(b17378[0]),y2=Number(b17378[1]);
+          if(y1===y2)continue;
+          const lo17378=Math.floor(Math.min(y1,y2)*scale17378),hi17378=Math.floor(Math.max(y1,y2)*scale17378);
+          const edge17378=[x1,y1,x2,y2];
+          for(let bin17378=lo17378;bin17378<=hi17378;bin17378++){
+            let list17378=bins17378.get(bin17378);if(!list17378)bins17378.set(bin17378,list17378=[]);list17378.push(edge17378);
+          }
+        }
+        return {bins:bins17378};
+      };
+      const polygons17378=[];
+      for(const poly17378 of prepared17378.polygons){
+        polygons17378.push({
+          bbox:poly17378.bbox,
+          outer:buildRing17378(poly17378.outer),
+          holes:(poly17378.holes||[]).map(h17378=>({bbox:h17378.bbox,index:buildRing17378(h17378.ring)}))
+        });
+      }
+      const built17379={scale:scale17378,polygons:polygons17378};
+      jurisdictionFastPipCache17379.set(jurisdictionFastGeometry17373,built17379);
+      return built17379;
+    })();
+    function jurisdictionFastContains17378(p17378){
+      const idx17378=jurisdictionFastPipIndex17378;
+      if(!idx17378||!earthlineFinitePoint16539(p17378))return earthlinePointInJurisdiction16539(p17378,jurisdictionFastGeometry17373);
+      const x17378=Number(p17378[0]),y17378=Number(p17378[1]),bin17378=Math.floor(y17378*idx17378.scale);
+      const insideRing17378=(ringIdx17378)=>{
+        let inside17378=false;
+        for(const e17378 of (ringIdx17378.bins.get(bin17378)||[])){
+          const x1=e17378[0],y1=e17378[1],x2=e17378[2],y2=e17378[3];
+          if(((y2>y17378)!==(y1>y17378))&&(x17378<(x1-x2)*(y17378-y2)/((y1-y2)||1e-15)+x2))inside17378=!inside17378;
+        }
+        return inside17378;
+      };
+      for(const poly17378 of idx17378.polygons){
+        const b17378=poly17378.bbox;
+        if(!b17378||x17378<b17378[0]||x17378>b17378[2]||y17378<b17378[1]||y17378>b17378[3])continue;
+        if(!insideRing17378(poly17378.outer))continue;
+        let hole17378=false;
+        for(const h17378 of poly17378.holes){
+          const hb17378=h17378.bbox;
+          if(hb17378&&x17378>=hb17378[0]&&x17378<=hb17378[2]&&y17378>=hb17378[1]&&y17378<=hb17378[3]&&insideRing17378(h17378.index)){hole17378=true;break;}
+        }
+        if(!hole17378)return true;
+      }
+      return false;
+    }
+    const jurisdictionBoundaryIndex17373=(()=>{
+      if(!jurisdictionFastGeometry17373)return null;
+      const prepared17373=earthlinePrepareJurisdiction16539(jurisdictionFastGeometry17373);
+      if(!prepared17373||!Array.isArray(prepared17373.polygons))return null;
+      const scale17373=24,bins17373=new Map();let id17373=0;
+      const addRing17373=ring17373=>{
+        if(!Array.isArray(ring17373)||ring17373.length<2)return;
+        for(let i17373=0,j17373=ring17373.length-1;i17373<ring17373.length;j17373=i17373++){
+          const a17373=ring17373[j17373],b17373=ring17373[i17373];
+          if(!earthlineFinitePoint16539(a17373)||!earthlineFinitePoint16539(b17373))continue;
+          const x1=Number(a17373[0]),y1=Number(a17373[1]),x2=Number(b17373[0]),y2=Number(b17373[1]);
+          const e17373={id:id17373++,a:a17373,b:b17373,minx:Math.min(x1,x2),maxx:Math.max(x1,x2),miny:Math.min(y1,y2),maxy:Math.max(y1,y2)};
+          const cx0=Math.floor(e17373.minx*scale17373),cx1=Math.floor(e17373.maxx*scale17373),
+                cy0=Math.floor(e17373.miny*scale17373),cy1=Math.floor(e17373.maxy*scale17373);
+          for(let cx=cx0;cx<=cx1;cx++)for(let cy=cy0;cy<=cy1;cy++){
+            const k=cx+','+cy;let list=bins17373.get(k);if(!list)bins17373.set(k,list=[]);list.push(e17373);
+          }
+        }
+      };
+      for(const poly17373 of prepared17373.polygons){addRing17373(poly17373.outer);for(const h17373 of (poly17373.holes||[]))addRing17373(h17373.ring);}
+      return {prepared:prepared17373,scale:scale17373,bins:bins17373};
+    })();
+    function jurisdictionSegmentsTouchBoundary17373(segment17373){
+      const idx17373=jurisdictionBoundaryIndex17373;
+      if(!idx17373||!Array.isArray(segment17373)||segment17373.length<2)return true;
+      const cross17373=(ax,ay,bx,by)=>ax*by-ay*bx,eps17373=1e-12;
+      const intersects17373=(p1,p2,q1,q2)=>{
+        const ax=Number(p1[0]),ay=Number(p1[1]),bx=Number(p2[0]),by=Number(p2[1]),
+              cx=Number(q1[0]),cy=Number(q1[1]),dx=Number(q2[0]),dy=Number(q2[1]);
+        const rx=bx-ax,ry=by-ay,sx=dx-cx,sy=dy-cy,qx=cx-ax,qy=cy-ay,den=cross17373(rx,ry,sx,sy);
+        if(Math.abs(den)>eps17373){
+          const t=cross17373(qx,qy,sx,sy)/den,u=cross17373(qx,qy,rx,ry)/den;
+          return t>=-eps17373&&t<=1+eps17373&&u>=-eps17373&&u<=1+eps17373;
+        }
+        if(Math.abs(cross17373(qx,qy,rx,ry))>eps17373)return false;
+        const rr=rx*rx+ry*ry;if(rr<eps17373)return Math.hypot(ax-cx,ay-cy)<eps17373;
+        const t0=(qx*rx+qy*ry)/rr,t1=t0+(sx*rx+sy*ry)/rr;
+        return Math.min(t0,t1)<=1+eps17373&&Math.max(t0,t1)>=-eps17373;
+      };
+      for(let i17373=1;i17373<segment17373.length;i17373++){
+        const a17373=segment17373[i17373-1],b17373=segment17373[i17373];
+        if(!earthlineFinitePoint16539(a17373)||!earthlineFinitePoint16539(b17373))continue;
+        const minx=Math.min(Number(a17373[0]),Number(b17373[0])),maxx=Math.max(Number(a17373[0]),Number(b17373[0])),
+              miny=Math.min(Number(a17373[1]),Number(b17373[1])),maxy=Math.max(Number(a17373[1]),Number(b17373[1])),
+              cx0=Math.floor(minx*idx17373.scale),cx1=Math.floor(maxx*idx17373.scale),
+              cy0=Math.floor(miny*idx17373.scale),cy1=Math.floor(maxy*idx17373.scale),seen17373=new Set();
+        for(let cx=cx0;cx<=cx1;cx++)for(let cy=cy0;cy<=cy1;cy++)for(const e17373 of (idx17373.bins.get(cx+','+cy)||[])){
+          if(seen17373.has(e17373.id))continue;seen17373.add(e17373.id);
+          if(e17373.maxx<minx||e17373.minx>maxx||e17373.maxy<miny||e17373.miny>maxy)continue;
+          if(intersects17373(a17373,b17373,e17373.a,e17373.b))return true;
+        }
+      }
+      return false;
+    }
     function screenJurisdictionCandidate16539(candidate16539){
       if(focusMode||!jurisdictionGeometry16539)return candidate16539;
       if(candidate16539&&jurisdictionScreenCache16592.has(candidate16539))return jurisdictionScreenCache16592.get(candidate16539);
+      const sourceSegment17373=candidate16539&&candidate16539.segment||[];
+      if(jurisdictionBoundaryIndex17373&&sourceSegment17373.length>=2&&!jurisdictionSegmentsTouchBoundary17373(sourceSegment17373)){
+        const probe17373=sourceSegment17373[Math.floor((sourceSegment17373.length-1)/2)];
+        if(!jurisdictionFastContains17378(probe17373)){
+          if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;
+        }
+        const minimumScreenPx16737=candidate16539&&candidate16539.coverageGap16731
+          ?0.75
+          :Math.max(4,Math.min(10,Number(candidate16539&&candidate16539.minLinePx16632)||10));
+        if(lineLengthPixels(hy,sourceSegment17373)<minimumScreenPx16737){
+          if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;
+        }
+        const grid17373=llGrid(hy,probe17373);
+        if(!grid17373||!Number.isFinite(grid17373.x)||!Number.isFinite(grid17373.y)){
+          if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;
+        }
+        const accepted17373=Object.assign({},candidate16539,{
+          segment:sourceSegment17373,
+          x:Math.max(1,Math.min(hy.w-2,Math.round(grid17373.x))),
+          y:Math.max(1,Math.min(hy.h-2,Math.round(grid17373.y))),
+          jurisdiction_screened:true,
+          jurisdiction_fast_exact17373:true
+        });
+        if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,accepted17373);
+        return accepted17373;
+      }
       const runs16539=(jurisdictionGeometry16539&&jurisdictionGeometry16539.earthlineVermontExactClip16750===true&&typeof window.earthlineClipVermontLine16178==='function')
-        ?window.earthlineClipVermontLine16178(candidate16539&&candidate16539.segment||[],jurisdictionGeometry16539.earthlineVermontGeometry16750)
-        :earthlineClipLine16539(candidate16539&&candidate16539.segment||[],jurisdictionGeometry16539);
+        ?window.earthlineClipVermontLine16178(sourceSegment17373,jurisdictionGeometry16539.earthlineVermontGeometry16750)
+        :earthlineClipLine16539(sourceSegment17373,jurisdictionGeometry16539);
       if(!runs16539.length){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
       runs16539.sort((a16539,b16539)=>lineLengthPixels(hy,b16539)-lineLengthPixels(hy,a16539));
       const segment16539=runs16539[0];
@@ -30241,7 +30438,7 @@ body { overflow-x:hidden!important; }
     async function jurisdictionEligibleCount16539(list16539){
       if(focusMode||!jurisdictionGeometry16539)return list16539.length;
       let count16539=0,yieldCount16661=0;
-      for(const candidate16539 of list16539){if(screenJurisdictionCandidate16539(candidate16539))count16539++;if((++yieldCount16661%12)===0)await earthlineCooperativeYield16661();}
+      for(const candidate16539 of list16539){if(screenJurisdictionCandidate16539(candidate16539))count16539++;if((++yieldCount16661%256)===0)await earthlineCooperativeYield16661();}
       return count16539;
     }
     const regionalAnchorAttempts16786=new Map();
@@ -30285,19 +30482,78 @@ body { overflow-x:hidden!important; }
         at:new Date().toISOString()
       };
     }
+    const supplementalStart17365=candidates.length;
+    const supplementalCount17365=(!focusMode&&Array.isArray(supplementalCandidates16702))?supplementalCandidates16702.length:0;
     if(!focusMode&&Array.isArray(supplementalCandidates16702)&&supplementalCandidates16702.length)candidates.push(...supplementalCandidates16702);
-    const preferredEligibleCount16539=await jurisdictionEligibleCount16539(candidates);
+    const supplementalEnd17365=candidates.length;
+    const preferredEligibleCount16539=focusMode?await jurisdictionEligibleCount16539(candidates):null;
     if(!focusMode||preferredEligibleCount16539<36){
       for(const f of lines){const coords=f.geometry.coordinates;if(coords.length<12)continue;for(const frac of [.28,.56,.82]){const c=sampleSegment(coords,Math.max(3,Math.min(coords.length-4,Math.round((coords.length-1)*frac))),true);if(c)candidates.push(c);}}
     }
     const candidatesBeforeJurisdiction16539=candidates.length;
     let jurisdictionRejectedCandidates16539=0;
     if(!focusMode&&jurisdictionGeometry16539){
+      const relaxedRawCount17365=Math.max(0,candidates.length-supplementalEnd17365);
+      const prior17365=earthlineRegionalScreenReuse17365.get(hy)||null;
+      const canReuse17365=!!(prior17365&&
+        prior17365.contours===contours&&
+        prior17365.jurisdiction===jurisdictionGeometry16539&&
+        prior17365.supplementalSource===supplementalCandidates16702&&
+        supplementalCount17365>=prior17365.supplementalCount&&
+        supplementalStart17365===prior17365.supplementalStart&&
+        relaxedRawCount17365===prior17365.relaxedRawCount);
       const eligible16539=[];let finalScreenYield16661=0;
-      for(const candidate16539 of candidates){
-        const screened16539=screenJurisdictionCandidate16539(candidate16539);
-        if(screened16539)eligible16539.push(screened16539);else jurisdictionRejectedCandidates16539++;
-        if((++finalScreenYield16661%12)===0)await earthlineCooperativeYield16661();
+      if(canReuse17365){
+        eligible16539.push(...prior17365.preferred.map(c17365=>Object.assign({},c17365)));
+        eligible16539.push(...prior17365.screenedSupplemental.map(c17365=>Object.assign({},c17365)));
+        jurisdictionRejectedCandidates16539=
+          prior17365.preferredRejected+prior17365.supplementalRejected+prior17365.relaxedRejected;
+        const newSupplementalStart17365=supplementalStart17365+prior17365.supplementalCount;
+        for(let i17365=newSupplementalStart17365;i17365<supplementalEnd17365;i17365++){
+          const screened16539=screenJurisdictionCandidate16539(candidates[i17365]);
+          if(screened16539)eligible16539.push(screened16539);else jurisdictionRejectedCandidates16539++;
+          if((++finalScreenYield16661%256)===0)await earthlineCooperativeYield16661();
+        }
+        eligible16539.push(...prior17365.relaxed.map(c17365=>Object.assign({},c17365)));
+        window.EARTHLINE_REGIONAL_SCREEN_REUSE_17365={
+          build:'EARTHLINE 17365',reused:true,
+          cachedSupplemental:prior17365.supplementalCount,
+          currentSupplemental:supplementalCount17365,
+          newlyScreened:Math.max(0,supplementalCount17365-prior17365.supplementalCount),
+          at:new Date().toISOString()
+        };
+      }else{
+        const preferred17365=[],screenedSupplemental17365=[],relaxed17365=[];
+        let preferredRejected17365=0,supplementalRejected17365=0,relaxedRejected17365=0;
+        for(let i17365=0;i17365<candidates.length;i17365++){
+          const candidate16539=candidates[i17365],screened16539=screenJurisdictionCandidate16539(candidate16539);
+          const group17365=i17365<supplementalStart17365?'preferred':(i17365<supplementalEnd17365?'supplemental':'relaxed');
+          if(screened16539){
+            eligible16539.push(screened16539);
+            const snapshot17365=Object.assign({},screened16539);
+            if(group17365==='preferred')preferred17365.push(snapshot17365);
+            else if(group17365==='supplemental')screenedSupplemental17365.push(snapshot17365);
+            else relaxed17365.push(snapshot17365);
+          }else{
+            jurisdictionRejectedCandidates16539++;
+            if(group17365==='preferred')preferredRejected17365++;
+            else if(group17365==='supplemental')supplementalRejected17365++;
+            else relaxedRejected17365++;
+          }
+          if((++finalScreenYield16661%256)===0)await earthlineCooperativeYield16661();
+        }
+        if(Array.isArray(supplementalCandidates16702)){
+          earthlineRegionalScreenReuse17365.set(hy,{
+            contours:contours,jurisdiction:jurisdictionGeometry16539,supplementalSource:supplementalCandidates16702,
+            supplementalStart:supplementalStart17365,supplementalCount:supplementalCount17365,
+            relaxedRawCount:relaxedRawCount17365,
+            preferred:preferred17365,screenedSupplemental:screenedSupplemental17365,relaxed:relaxed17365,
+            preferredRejected:preferredRejected17365,supplementalRejected:supplementalRejected17365,relaxedRejected:relaxedRejected17365
+          });
+        }
+        window.EARTHLINE_REGIONAL_SCREEN_REUSE_17365={
+          build:'EARTHLINE 17365',reused:false,cachedSupplemental:supplementalCount17365,currentSupplemental:supplementalCount17365,newlyScreened:supplementalCount17365,at:new Date().toISOString()
+        };
       }
       candidates.length=0;candidates.push(...eligible16539);
     }
@@ -31228,6 +31484,27 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
   }
   function earthlineBBoxContains16539(b,p){return !!(b&&earthlineFinitePoint16539(p)&&Number(p[0])>=b[0]&&Number(p[0])<=b[2]&&Number(p[1])>=b[1]&&Number(p[1])<=b[3]);}
   const earthlineRingIndexCache16722=new WeakMap();
+  const earthlinePipWasm17319=(()=>{
+    try{
+      if(typeof WebAssembly!=='object'||typeof atob!=='function')return null;
+      const raw17319=atob('AGFzbQEAAAABCQFgBHx8f38BfwMCAQAEBQFwAQEBBQUBAQKACAYPAn8BQYCIBAt/AEGAiAQLBykDBm1lbW9yeQIADnBvaW50X2luX2VkZ2VzAAALX19oZWFwX2Jhc2UDAQq5AgG2AgIBfwp8QQAhBAJAIANBAUgNAANAIAAgAisDACIFoSEGIAEgAkEIaisDACIHoSEIIAJBGGorAwAhCSACQRBqKwMAIQoCQAJAIAJBMGorAwAiC0QjQpIMoZzHO2NFDQAgBiAGoiAIIAiioEQjQpIMoZzHO2NFDQFBAQ8LIAYgAkEoaisDACIMoiACQSBqKwMAIg0gCKKhIg6aIA4gDkQAAAAAAAAAAGMbRLu919nffNs9ZUUNACAGIA2iIAggDKKgIgZEAAAAAAAAAABmRQ0AIAYgC2VFDQBBAQ8LAkAgByABZCAJIAFkRg0AIAogBSAKoSABIAmhoiAHIAmhIglEFlbnnq8D0jwgCUQAAAAAAAAAAGIbo6AgAGRFDQAgBEUhBAsgAkE4aiECIANBf2oiAw0ACwsgBAsAQQRuYW1lABMSZWFydGhsaW5lX3BpcC53YXNtAREBAA5wb2ludF9pbl9lZGdlcwcSAQAPX19zdGFja19wb2ludGVyAH8JcHJvZHVjZXJzAQxwcm9jZXNzZWQtYnkBBWNsYW5nXzE3LjAuMCAoaHR0cHM6Ly9naXRodWIuY29tL3N3aWZ0bGFuZy9sbHZtLXByb2plY3QuZ2l0IDEwOTk5YjZkMDM0ZmUzMThmM2Q1NmM4M2JkZGI2NTcyNTkzYThiYjApAEkPdGFyZ2V0X2ZlYXR1cmVzBCsKbXVsdGl2YWx1ZSsPbXV0YWJsZS1nbG9iYWxzKw9yZWZlcmVuY2UtdHlwZXMrCHNpZ24tZXh0'),bytes17319=new Uint8Array(raw17319.length);
+      for(let i17319=0;i17319<raw17319.length;i17319++)bytes17319[i17319]=raw17319.charCodeAt(i17319);
+      const module17319=new WebAssembly.Module(bytes17319),instance17319=new WebAssembly.Instance(module17319,{}),
+            memory17319=instance17319.exports.memory,point17319=instance17319.exports.point_in_edges;
+      if(!memory17319||typeof point17319!=='function')return null;
+      const heapGlobal17319=instance17319.exports.__heap_base;
+      let next17319=((Number(heapGlobal17319&&heapGlobal17319.value!==undefined?heapGlobal17319.value:heapGlobal17319)||65536)+7)&~7;
+      function alloc17319(bytes17319){
+        const ptr17319=next17319;next17319=(next17319+bytes17319+7)&~7;
+        if(next17319>memory17319.buffer.byteLength){
+          const need17319=next17319-memory17319.buffer.byteLength,pages17319=Math.ceil(need17319/65536);
+          memory17319.grow(pages17319);
+        }
+        return ptr17319;
+      }
+      return {memory:memory17319,point:point17319,alloc:alloc17319};
+    }catch(_){return null;}
+  })();
   function earthlinePointInRingIndexed16722(p16722,ring16722){
     if(!earthlineFinitePoint16539(p16722)||!Array.isArray(ring16722)||ring16722.length<3)return false;
     let idx16722=earthlineRingIndexCache16722.get(ring16722);
@@ -31236,22 +31513,34 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
       for(let i16722=0,j16722=ring16722.length-1;i16722<ring16722.length;j16722=i16722++){
         const a16722=ring16722[j16722],b16722=ring16722[i16722];
         if(!earthlineFinitePoint16539(a16722)||!earthlineFinitePoint16539(b16722))continue;
-        const lo16722=Math.floor(Math.min(Number(a16722[1]),Number(b16722[1]))*scale16722);
-        const hi16722=Math.floor(Math.max(Number(a16722[1]),Number(b16722[1]))*scale16722);
-        const edge16722=[a16722,b16722];
+        const x116722=Number(a16722[0]),y116722=Number(a16722[1]),x216722=Number(b16722[0]),y216722=Number(b16722[1]),
+              dx16722=x216722-x116722,dy16722=y216722-y116722,len16722=dx16722*dx16722+dy16722*dy16722,
+              lo16722=Math.floor(Math.min(y116722,y216722)*scale16722),hi16722=Math.floor(Math.max(y116722,y216722)*scale16722),
+              edge16722=[x116722,y116722,x216722,y216722,dx16722,dy16722,len16722];
         for(let bin16722=lo16722;bin16722<=hi16722;bin16722++){
           let list16722=bins16722.get(bin16722);if(!list16722)bins16722.set(bin16722,list16722=[]);list16722.push(edge16722);
         }
       }
-      idx16722={scale:scale16722,bins:bins16722};earthlineRingIndexCache16722.set(ring16722,idx16722);
+      if(earthlinePipWasm17319){
+        for(const [bin16722,list16722] of bins16722){
+          const count16722=list16722.length,ptr16722=earthlinePipWasm17319.alloc(count16722*56),
+                flat16722=new Float64Array(earthlinePipWasm17319.memory.buffer,ptr16722,count16722*7);
+          let k16722=0;for(const edge16722 of list16722)for(let q16722=0;q16722<7;q16722++)flat16722[k16722++]=edge16722[q16722];
+          bins16722.set(bin16722,{ptr:ptr16722,count:count16722,edges:list16722});
+        }
+      }
+      idx16722={scale:scale16722,bins:bins16722,wasm:!!earthlinePipWasm17319};earthlineRingIndexCache16722.set(ring16722,idx16722);
     }
-    const x16722=Number(p16722[0]),y16722=Number(p16722[1]),edges16722=idx16722.bins.get(Math.floor(y16722*idx16722.scale))||[];
-    let inside16722=false;
+    const x16722=Number(p16722[0]),y16722=Number(p16722[1]),entry16722=idx16722.bins.get(Math.floor(y16722*idx16722.scale));
+    if(!entry16722)return false;
+    if(idx16722.wasm&&entry16722&&Number.isInteger(entry16722.ptr))return !!earthlinePipWasm17319.point(x16722,y16722,entry16722.ptr,entry16722.count);
+    const edges16722=entry16722.edges||entry16722,insideStart16722=false;
+    let inside16722=insideStart16722;
     for(const edge16722 of edges16722){
-      const a16722=edge16722[0],b16722=edge16722[1];
-      if(earthlinePointOnSegment16539(p16722,a16722,b16722))return true;
-      const xi16722=Number(b16722[0]),yi16722=Number(b16722[1]),xj16722=Number(a16722[0]),yj16722=Number(a16722[1]);
-      if(((yi16722>y16722)!==(yj16722>y16722))&&(x16722<(xj16722-xi16722)*(y16722-yi16722)/((yj16722-yi16722)||1e-15)+xi16722))inside16722=!inside16722;
+      const x116722=edge16722[0],y116722=edge16722[1],x216722=edge16722[2],y216722=edge16722[3],dx16722=edge16722[4],dy16722=edge16722[5],len16722=edge16722[6];
+      if(len16722<1e-20){if((x16722-x116722)*(x16722-x116722)+(y16722-y116722)*(y16722-y116722)<1e-20)return true;}
+      else{const cross16722=Math.abs((x16722-x116722)*dy16722-(y16722-y116722)*dx16722);if(cross16722<=1e-10){const dot16722=(x16722-x116722)*dx16722+(y16722-y116722)*dy16722;if(dot16722>=0&&dot16722<=len16722)return true;}}
+      if(((y216722>y16722)!==(y116722>y16722))&&(x16722<(x116722-x216722)*(y16722-y216722)/((y116722-y216722)||1e-15)+x216722))inside16722=!inside16722;
     }
     return inside16722;
   }
@@ -31458,11 +31747,40 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     jurisdictionBoundaryCache16539.set(key,out);if(jurisdictionBoundaryCache16539.size>12)jurisdictionBoundaryCache16539.delete(jurisdictionBoundaryCache16539.keys().next().value);
     return out;
   }
+  const earthlineBoundaryEdgeBoxes16850=new WeakMap();
+  function earthlineBoundaryBoxes16850(g){
+    if(!g||(typeof g!=='object'&&typeof g!=='function'))return null;
+    if(earthlineBoundaryEdgeBoxes16850.has(g))return earthlineBoundaryEdgeBoxes16850.get(g);
+    const prepared16850=earthlinePrepareJurisdiction16539(g);if(!prepared16850)return null;
+    const boxes16850=[];
+    for(const poly16850 of (prepared16850.polygons||[])){
+      const rings16850=[poly16850.outer,...(poly16850.holes||[]).map(h16850=>h16850.ring)];
+      for(const ring16850 of rings16850){
+        if(!Array.isArray(ring16850)||ring16850.length<2)continue;
+        for(let i16850=0,j16850=ring16850.length-1;i16850<ring16850.length;j16850=i16850++){
+          const a16850=ring16850[j16850],b16850=ring16850[i16850];
+          if(!earthlineFinitePoint16539(a16850)||!earthlineFinitePoint16539(b16850))continue;
+          boxes16850.push([Math.min(Number(a16850[0]),Number(b16850[0])),Math.min(Number(a16850[1]),Number(b16850[1])),Math.max(Number(a16850[0]),Number(b16850[0])),Math.max(Number(a16850[1]),Number(b16850[1]))]);
+        }
+      }
+    }
+    const out16850={prepared:prepared16850,boxes:boxes16850};earthlineBoundaryEdgeBoxes16850.set(g,out16850);return out16850;
+  }
+  function earthlineBBoxCertifiedInterior16850(bounds16850,g16850){
+    if(!Array.isArray(bounds16850)||bounds16850.length<4||!g16850)return false;
+    const w16850=Number(bounds16850[0]),s16850=Number(bounds16850[1]),e16850=Number(bounds16850[2]),n16850=Number(bounds16850[3]);
+    if(![w16850,s16850,e16850,n16850].every(Number.isFinite)||e16850<w16850||n16850<s16850)return false;
+    const idx16850=earthlineBoundaryBoxes16850(g16850);if(!idx16850)return false;
+    for(const b16850 of idx16850.boxes)if(b16850[2]>=w16850&&b16850[0]<=e16850&&b16850[3]>=s16850&&b16850[1]<=n16850)return false;
+    const probes16850=[[w16850,s16850],[e16850,s16850],[e16850,n16850],[w16850,n16850],[(w16850+e16850)/2,(s16850+n16850)/2]];
+    return probes16850.every(p16850=>earthlinePointInJurisdiction16539(p16850,idx16850.prepared));
+  }
   function earthlineInterpolate16539(a,b,t){return [Number(a[0])+(Number(b[0])-Number(a[0]))*t,Number(a[1])+(Number(b[1])-Number(a[1]))*t];}
   function earthlineBoundaryPoint16539(a,b,g,aInside){let insideT=aInside?0:1,outsideT=aInside?1:0;for(let i=0;i<26;i++){const mid=(insideT+outsideT)/2,v=earthlinePointInJurisdiction16539(earthlineInterpolate16539(a,b,mid),g);if(v)insideT=mid;else outsideT=mid;}return earthlineInterpolate16539(a,b,insideT);}
   function earthlineClipLine16539(coords,g){
     const raw=(coords||[]).filter(earthlineFinitePoint16539);if(raw.length<2)return [];
     const pts=[raw[0]];for(let i=1;i<raw.length;i++){const a=raw[i-1],b=raw[i],steps=Math.max(1,Math.ceil(Math.max(Math.abs(Number(b[0])-Number(a[0])),Math.abs(Number(b[1])-Number(a[1])))/.01));for(let k=1;k<=steps;k++)pts.push(earthlineInterpolate16539(a,b,k/steps));}
+    if(g&&g.earthlineCertifiedInterior16850===true)return [pts];
     const runs=[];let run=[];let prev=pts[0],prevIn=earthlinePointInJurisdiction16539(prev,g);if(prevIn)run=[prev];
     for(let i=1;i<pts.length;i++){const cur=pts[i],curIn=earthlinePointInJurisdiction16539(cur,g);if(prevIn&&curIn){if(!run.length)run=[prev];run.push(cur)}else if(prevIn&&!curIn){const x=earthlineBoundaryPoint16539(prev,cur,g,true);if(!run.length)run=[prev];run.push(x);if(run.length>=2)runs.push(run);run=[]}else if(!prevIn&&curIn){const x=earthlineBoundaryPoint16539(prev,cur,g,false);run=[x,cur]}prev=cur;prevIn=curIn;}
     if(run.length>=2)runs.push(run);return runs;
@@ -31479,7 +31797,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
           for(const line of lines)for(const run of earthlineClipLine16539(line,g)){const safe=run;if(safe.length>=2)out.push({type:'Feature',properties:Object.assign({},props,{jurisdiction_boundary_screened:true}),geometry:{type:'LineString',coordinates:safe}});}
         }
       }
-      if((++featureIndex16661%12)===0)await earthlineCooperativeYield16661();
+      if((++featureIndex16661%256)===0)await earthlineCooperativeYield16661();
     }
     return {type:'FeatureCollection',features:out};
   }
@@ -31491,7 +31809,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
         if(geom.type==='Point'){if(!earthlinePointInJurisdiction16539(geom.coordinates,g))outside++;}
         else{const lines=geom.type==='LineString'?[geom.coordinates]:geom.type==='MultiLineString'?(geom.coordinates||[]):[];for(const line of lines)for(const p of (line||[]))if(earthlineFinitePoint16539(p)&&!earthlinePointInJurisdiction16539(p,g))outside++;}
       }
-      if((++featureIndex16661%16)===0)await earthlineCooperativeYield16661();
+      if((++featureIndex16661%256)===0)await earthlineCooperativeYield16661();
     }
     return outside;
   }
@@ -31689,6 +32007,53 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     return product16584;
   }
 
+  function earthlineRingScanCuts17352(y16584,ring16584){
+    const cuts16584=[];
+    if(!Array.isArray(ring16584)||ring16584.length<3)return cuts16584;
+    for(let i16584=0,j16584=ring16584.length-1;i16584<ring16584.length;j16584=i16584++){
+      const a16584=ring16584[i16584]||[],b16584=ring16584[j16584]||[];
+      const xi16584=Number(a16584[0]),yi16584=Number(a16584[1]),
+            xj16584=Number(b16584[0]),yj16584=Number(b16584[1]);
+      if(![xi16584,yi16584,xj16584,yj16584].every(Number.isFinite))continue;
+      if((yi16584>y16584)!==(yj16584>y16584))
+        cuts16584.push((xj16584-xi16584)*(y16584-yi16584)/((yj16584-yi16584)||1e-15)+xi16584);
+    }
+    cuts16584.sort((a16584,b16584)=>a16584-b16584);
+    return cuts16584;
+  }
+  function earthlineScanCutsContain17352(x16584,cuts16584){
+    let lo16584=0,hi16584=cuts16584.length;
+    while(lo16584<hi16584){
+      const mid16584=(lo16584+hi16584)>>1;
+      if(cuts16584[mid16584]<=x16584)lo16584=mid16584+1;else hi16584=mid16584;
+    }
+    return ((cuts16584.length-lo16584)&1)===1;
+  }
+  function earthlinePrepareScanlineParts17352(parts16584,y16584){
+    const out16584=[];
+    for(const part16584 of parts16584){
+      const bb16584=part16584&&part16584.bbox;
+      if(!bb16584||y16584<bb16584[1]||y16584>bb16584[3])continue;
+      const rings16584=Array.isArray(part16584.rings)?part16584.rings:[];
+      if(!rings16584.length)continue;
+      const outer16584=earthlineRingScanCuts17352(y16584,rings16584[0]);
+      if(!outer16584.length)continue;
+      const holes16584=[];
+      for(let r16584=1;r16584<rings16584.length;r16584++){
+        const c16584=earthlineRingScanCuts17352(y16584,rings16584[r16584]);
+        if(c16584.length)holes16584.push(c16584);
+      }
+      out16584.push({bbox:bb16584,outer:outer16584,holes:holes16584});
+    }
+    return out16584;
+  }
+  function earthlineScanlinePartContains17352(x16584,part16584){
+    if(x16584<part16584.bbox[0]||x16584>part16584.bbox[2]||
+       !earthlineScanCutsContain17352(x16584,part16584.outer))return false;
+    for(const hole16584 of part16584.holes)
+      if(earthlineScanCutsContain17352(x16584,hole16584))return false;
+    return true;
+  }
   function earthlineLandValidityMask16584(dem16584,product16584){
     const w16584=dem16584.w,h16584=dem16584.h,b16584=dem16584.bounds;
     const valid16584=new Uint8Array(w16584*h16584),outsideLandMask16632=new Uint8Array(w16584*h16584),inlandWaterMask16632=new Uint8Array(w16584*h16584);
@@ -31697,20 +32062,18 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     let outsideLand16584=0,inlandWater16584=0,validCount16584=0;
     for(let y16584=0;y16584<h16584;y16584++){
       const lat16584=b16584[3]-(b16584[3]-b16584[1])*(y16584/(h16584-1));
+      const landRow16584=earthlinePrepareScanlineParts17352(landParts16584,lat16584);
+      const waterRow16584=earthlinePrepareScanlineParts17352(waterParts16584,lat16584);
       for(let x16584=0;x16584<w16584;x16584++){
         const lng16584=b16584[0]+(b16584[2]-b16584[0])*(x16584/(w16584-1));
         let onLand16584=false;
-        for(const part16584 of landParts16584){
-          if(lng16584<part16584.bbox[0]||lng16584>part16584.bbox[2]||
-             lat16584<part16584.bbox[1]||lat16584>part16584.bbox[3])continue;
-          if(earthlinePointInPolygon16584(lng16584,lat16584,part16584.rings)){onLand16584=true;break;}
+        for(const part16584 of landRow16584){
+          if(earthlineScanlinePartContains17352(lng16584,part16584)){onLand16584=true;break;}
         }
         if(!onLand16584){outsideLand16584++;outsideLandMask16632[y16584*w16584+x16584]=1;continue;}
         let inWater16584=false;
-        for(const part16584 of waterParts16584){
-          if(lng16584<part16584.bbox[0]||lng16584>part16584.bbox[2]||
-             lat16584<part16584.bbox[1]||lat16584>part16584.bbox[3])continue;
-          if(earthlinePointInPolygon16584(lng16584,lat16584,part16584.rings)){inWater16584=true;break;}
+        for(const part16584 of waterRow16584){
+          if(earthlineScanlinePartContains17352(lng16584,part16584)){inWater16584=true;break;}
         }
         if(inWater16584){inlandWater16584++;inlandWaterMask16632[y16584*w16584+x16584]=1;continue;}
         valid16584[y16584*w16584+x16584]=1;validCount16584++;
@@ -32155,7 +32518,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
           const nearOut16702=(x,y,r=4)=>{for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){const xx=x+dx,yy=y+dy;if(xx<0||xx>=h16702.w||yy<0||yy>=h16702.h)continue;if(g16702.outsideLandMask16632[yy*h16702.w+xx])return true;}return false;};
           for(let y=1;y<h16702.h-1;y++)for(let x=1;x<h16702.w-1;x++){const i=y*h16702.w+x;if(g16702.mask[i]!==1||!nearOut16702(x,y,4))continue;const sp=Number(h16702.slope[i]),ac=Number(h16702.acc[i]),el=Number(h16702.elev[i]);if(Number.isFinite(sp)&&sp>=.20&&sp<=4&&Number.isFinite(ac)&&ac<channel16702&&Number.isFinite(el))elevs16702.push(el);}
           elevs16702.sort((a,b)=>a-b);const levels16702=[],seen16702=new Set();if(elevs16702.length){for(const frac of [.05,.12,.22,.34,.47,.60]){const e=elevs16702[Math.min(elevs16702.length-1,Math.floor((elevs16702.length-1)*frac))],k=Math.round(e*2)/2;if(!seen16702.has(k)){seen16702.add(k);levels16702.push(k);}}}
-          const c16702=await makeContours(h16702,true,levels16702),s16702=await makeSwales(h16702,c16702,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16702;
+          const c16702=await makeContours(h16702,true,levels16702),s16702=await makeSwales(h16702,c16702,false,null,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16702;
           const dist16702=ll=>{const gg=llGrid(h16702,ll);if(!gg||!Number.isFinite(gg.x)||!Number.isFinite(gg.y))return null;const cx=Math.max(0,Math.min(h16702.w-1,Math.round(gg.x))),cy=Math.max(0,Math.min(h16702.h-1,Math.round(gg.y)));for(let r=0;r<=30;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue;const xx=cx+dx,yy=cy+dy;if(xx<0||xx>=h16702.w||yy<0||yy>=h16702.h)continue;if(g16702.outsideLandMask16632[yy*h16702.w+xx])return r;}return null;};
           const rows=(s16702.features||[]).map(f=>{const seg=f.geometry&&f.geometry.coordinates||[],mid=seg[Math.floor((seg.length-1)/2)]||null,dd=mid?dist16702(mid):null,km=Number.isFinite(dd)?dd*Math.max(h16702.cellX,h16702.cellY)/1000:null,sp=Number(f.properties&&f.properties.slope_pct);return {f,seg,mid,km,sp};}).filter(r=>Number.isFinite(r.km)&&r.km<=20&&Number.isFinite(r.sp)&&r.sp>=.20&&r.sp<=4).sort((a,b)=>(b.f.properties?.score||0)-(a.f.properties?.score||0));
           const picked=[];for(const r of rows){if(picked.length>=12)break;if(picked.some(p=>Math.hypot(p.f.properties?.rank||0-r.f.properties?.rank||0,0)<0))continue;picked.push(r);}
@@ -32226,7 +32589,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
               if(!seen16730.has(k16730)){seen16730.add(k16730);levels16730.push(k16730);}
             }
             if(!levels16730.length)return [];
-            const c16730=await makeContours(h16730,true,levels16730),s16730=await makeSwales(h16730,c16730,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16730;
+            const c16730=await makeContours(h16730,true,levels16730),s16730=await makeSwales(h16730,c16730,false,null,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16730;
             return (s16730.features||[]).map(f16730=>{
               const seg16730=f16730.geometry&&f16730.geometry.coordinates||[],mid16730=seg16730[Math.floor((seg16730.length-1)/2)]||null,sp16730=Number(f16730.properties&&f16730.properties.slope_pct),score16730=Number(f16730.properties&&f16730.properties.score||0);
               if(!mid16730||!Number.isFinite(sp16730)||sp16730<.05||sp16730>4)return null;
@@ -32277,7 +32640,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
           allVals16839.sort((a16839,b16839)=>a16839-b16839);for(const f16839 of [.08,.2,.35,.5,.65,.8,.92])if(allVals16839.length)levelSet16839.add(Math.round(allVals16839[Math.min(allVals16839.length-1,Math.floor((allVals16839.length-1)*f16839))]*10)/10);
           const subElev16839=slice16839(hy.elev,sx016839,sx116839,sy016839,sy116839).filter(Number.isFinite).sort((a16839,b16839)=>a16839-b16839);if(subElev16839.length<8)continue;const min16839=subElev16839[0],max16839=subElev16839[subElev16839.length-1],levels16839=[...levelSet16839].filter(v16839=>v16839>min16839&&v16839<max16839);if(!levels16839.length)continue;
           const nw16839=gridLL(hy,sx016839,sy016839),se16839=gridLL(hy,sx116839,sy116839),sub16839={w:sx116839-sx016839+1,h:sy116839-sy016839+1,bounds:[nw16839[0],se16839[1],se16839[0],nw16839[1]],cellX:hy.cellX,cellY:hy.cellY,elev:slice16839(hy.elev,sx016839,sx116839,sy016839,sy116839),slope:slice16839(hy.slope,sx016839,sx116839,sy016839,sy116839),acc:slice16839(hy.acc,sx016839,sx116839,sy016839,sy116839),validityMask16584:slice16839(hy.validityMask16584,sx016839,sx116839,sy016839,sy116839),outsideLandMask16632:hy.outsideLandMask16632?slice16839(hy.outsideLandMask16632,sx016839,sx116839,sy016839,sy116839):null,inlandWaterMask16632:hy.inlandWaterMask16632?slice16839(hy.inlandWaterMask16632,sx016839,sx116839,sy016839,sy116839):null};
-          const savedGen16839=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167,c16839=await makeContours(sub16839,true,levels16839),s16839=await makeSwales(sub16839,c16839,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16839;
+          const savedGen16839=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167,c16839=await makeContours(sub16839,true,levels16839),jurisdiction16850=earthlineBBoxCertifiedInterior16850(sub16839.bounds,swaleJurisdictionGeometry16539)?{earthlineCertifiedInterior16850:true}:swaleJurisdictionGeometry16539,s16839=await makeSwales(sub16839,c16839,false,null,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16839;
           const bestByFine16839=new Map();for(const f16839 of s16839.features||[]){const seg16839=f16839?.geometry?.coordinates||[],mid16839=seg16839[Math.floor((seg16839.length-1)/2)]||null,sp16839=Number(f16839?.properties?.slope_pct),score16839=Number(f16839?.properties?.score||0);if(!mid16839||!Number.isFinite(sp16839)||sp16839<.05||sp16839>4)continue;const mg16839=llGrid(hy,mid16839);if(!mg16839||!Number.isFinite(mg16839.x)||!Number.isFinite(mg16839.y))continue;const bx16839=Math.max(0,Math.min(N16839-1,Math.floor(Number(mg16839.x)*N16839/Math.max(1,hy.w)))),by16839=Math.max(0,Math.min(N16839-1,Math.floor(Number(mg16839.y)*N16839/Math.max(1,hy.h)))),fineKey16839=bx16839+','+by16839;if(!gapKeys16839.has(fineKey16839))continue;const px16839=Math.max(1,Math.min(hy.w-2,Math.round(mg16839.x))),py16839=Math.max(1,Math.min(hy.h-2,Math.round(mg16839.y))),cand16839={segment:seg16839,x:px16839,y:py16839,slope:sp16839,acc:0,maxAcc:0,score:Math.max(0,Math.min(1,score16839/100)),confidence:String(f16839?.properties?.confidence||'screening'),minLinePx16632:4,refined16702:true,statewideSupertile16839:true,tile16702:'statewide-super-'+key16839,fineCell16839:fineKey16839};let arr16839=bestByFine16839.get(fineKey16839);if(!arr16839)bestByFine16839.set(fineKey16839,arr16839=[]);arr16839.push(cand16839);}
           let groupAdded16839=0;for(const [fineKey16839,arr16839] of bestByFine16839){arr16839.sort((a16839,b16839)=>b16839.score-a16839.score);for(const cand16839 of arr16839.slice(0,2)){const k16839=cand16839.x+','+cand16839.y;if(occupied16839.has(k16839))continue;occupied16839.add(k16839);added16839.push(cand16839);groupAdded16839++;}}
           groupRows16839.push({key:key16839,gaps:gapsGroup16839.length,levels:levels16839.length,added:groupAdded16839});
@@ -32391,7 +32754,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
               if(!seen16780.has(k16780)){seen16780.add(k16780);levels16780.push(k16780);}
             }
             if(!levels16780.length)return [];
-            const c16780=await makeContours(h16780,true,levels16780),s16780=await makeSwales(h16780,c16780,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16780;
+            const c16780=await makeContours(h16780,true,levels16780),s16780=await makeSwales(h16780,c16780,false,null,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16780;
             return (s16780.features||[]).map(f16780=>{
               const seg16780=f16780&&f16780.geometry&&f16780.geometry.coordinates||[],mid16780=seg16780[Math.floor((seg16780.length-1)/2)]||null;
               const sp16780=Number(f16780&&f16780.properties&&f16780.properties.slope_pct),score16780=Number(f16780&&f16780.properties&&f16780.properties.score||0);
@@ -32558,7 +32921,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
               if(!seen16731.has(k16731)){seen16731.add(k16731);levels16731.push(k16731);}
             }
             if(!levels16731.length)return [];
-            const c16731=await makeContours(h16731,true,levels16731),s16731=await makeSwales(h16731,c16731,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16731;
+            const c16731=await makeContours(h16731,true,levels16731),s16731=await makeSwales(h16731,c16731,false,null,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16731;
             return (s16731.features||[]).map(f16731=>{
               const seg16731=f16731&&f16731.geometry&&f16731.geometry.coordinates||[],mid16731=seg16731[Math.floor((seg16731.length-1)/2)]||null,sp16731=Number(f16731&&f16731.properties&&f16731.properties.slope_pct),score16731=Number(f16731&&f16731.properties&&f16731.properties.score||0);
               if(!mid16731||!Number.isFinite(sp16731)||sp16731<.05||sp16731>4)return null;
@@ -32627,7 +32990,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
               if(!seen16741.has(k16741)){seen16741.add(k16741);levels16741.push(k16741);}
             }
             if(!levels16741.length)return [];
-            const c16741=await makeContours(h16741,true,levels16741),s16741=await makeSwales(h16741,c16741,false,swaleJurisdictionGeometry16539,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16741;
+            const c16741=await makeContours(h16741,true,levels16741),s16741=await makeSwales(h16741,c16741,false,null,null);window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=savedGen16741;
             return (s16741.features||[]).map(f16741=>{
               const seg16741=f16741&&f16741.geometry&&f16741.geometry.coordinates||[],mid16741=seg16741[Math.floor((seg16741.length-1)/2)]||null,sp16741=Number(f16741&&f16741.properties&&f16741.properties.slope_pct),score16741=Number(f16741&&f16741.properties&&f16741.properties.score||0);
               if(!mid16741||!Number.isFinite(sp16741)||sp16741<.05||sp16741>4)return null;
@@ -33654,7 +34017,28 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
   function loadImage(name,uri){const mp=map();return new Promise(resolve=>{if(!mp)return resolve(false);try{if(mp.hasImage?.(name))return resolve(true)}catch(_){}const img=new Image();img.onload=()=>{try{if(!mp.hasImage?.(name))mp.addImage(name,img,{pixelRatio:2});resolve(true)}catch(_){resolve(false)}};img.onerror=()=>resolve(false);img.src=uri})}
   async function ensureImages(){const mp=map();if(imagesReady&&mp?.hasImage?.(IMG_UP)&&mp?.hasImage?.(IMG_FLIP))return true;imagesReady=false;const ok=await Promise.all([loadImage(IMG_UP,TILE_UP),loadImage(IMG_FLIP,TILE_FLIP)]);imagesReady=ok.every(Boolean);return imagesReady}
   function addLayer(spec,before){const mp=map();try{if(!mp.getLayer(spec.id))mp.addLayer(spec,before);return !!mp.getLayer(spec.id)}catch(_){return false}}
-  async function ensureTextureLayers(){const mp=map();if(!mp?.getStyle?.())return false;try{const style=mp.getStyle();if(!style||!style.sources)return false;if(!mp.getSource(SOURCE))mp.addSource(SOURCE,{type:'geojson',lineMetrics:true,data:EMPTY})}catch(_){return false}if(!await ensureImages())return false;const before=mp.getLayer?.('earthline-swales-casing')?'earthline-swales-casing':undefined;addLayer({id:LAYERS.footprint,type:'fill',source:SOURCE,filter:['==',['get','geometry_role'],'footprint'],paint:{'fill-color':'#5d4a31','fill-opacity':.065,'fill-outline-color':'#163020'}},before);addLayer({id:LAYERS.casing,type:'line',source:SOURCE,filter:['==',['get','geometry_role'],'centerline'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#102117','line-opacity':.64,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);try{mp.setFilter?.(LAYERS.neutral,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']]);mp.setFilter?.(LAYERS.up,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]]);mp.setFilter?.(LAYERS.flip,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]])}catch(_){}return Object.values(LAYERS).every(id=>!!mp.getLayer?.(id))}
+  function normalizeTextureStyle17417(mp){
+    try{
+      const paint={
+        footprint:{'fill-color':'#5d4a31','fill-opacity':.065,'fill-outline-color':'#163020'},
+        casing:{'line-color':'#102117','line-opacity':.64,'line-width':26},
+        neutral:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]},
+        up:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22},
+        flip:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}
+      };
+      for(const [k,id] of Object.entries(LAYERS)){
+        if(!mp?.getLayer?.(id))continue;
+        for(const [prop,val] of Object.entries(paint[k]||{}))mp.setPaintProperty(id,prop,val);
+      }
+      mp.setFilter?.(LAYERS.footprint,['==',['get','geometry_role'],'footprint']);
+      mp.setFilter?.(LAYERS.casing,['==',['get','geometry_role'],'centerline']);
+      mp.setFilter?.(LAYERS.neutral,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']]);
+      mp.setFilter?.(LAYERS.up,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]]);
+      mp.setFilter?.(LAYERS.flip,['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]]);
+      return true;
+    }catch(_){return false}
+  }
+  async function ensureTextureLayers(){const mp=map();if(!mp?.getStyle?.())return false;try{const style=mp.getStyle();if(!style||!style.sources)return false;if(!mp.getSource(SOURCE))mp.addSource(SOURCE,{type:'geojson',lineMetrics:true,data:EMPTY})}catch(_){return false}if(!await ensureImages())return false;const before=mp.getLayer?.('earthline-swales-casing')?'earthline-swales-casing':undefined;addLayer({id:LAYERS.footprint,type:'fill',source:SOURCE,filter:['==',['get','geometry_role'],'footprint'],paint:{'fill-color':'#5d4a31','fill-opacity':.065,'fill-outline-color':'#163020'}},before);addLayer({id:LAYERS.casing,type:'line',source:SOURCE,filter:['==',['get','geometry_role'],'centerline'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#102117','line-opacity':.64,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);normalizeTextureStyle17417(mp);return Object.values(LAYERS).every(id=>!!mp.getLayer?.(id))}
   function bilinear(m,x,y){const gw=Number(typeof GW!=='undefined'?GW:0),gh=Number(typeof GH!=='undefined'?GH:0),arr=m&&m.h;if(!arr||!gw||!gh)return NaN;const xx=clamp(x,0,gw-1),yy=clamp(y,0,gh-1),x0=Math.floor(xx),y0=Math.floor(yy),x1=Math.min(gw-1,x0+1),y1=Math.min(gh-1,y0+1),tx=xx-x0,ty=yy-y0;const at=(ix,iy)=>Number(arr[iy*gw+ix]);const a=at(x0,y0),b=at(x1,y0),c=at(x0,y1),d=at(x1,y1);if(![a,b,c,d].every(Number.isFinite))return NaN;return a*(1-tx)*(1-ty)+b*tx*(1-ty)+c*(1-tx)*ty+d*tx*ty}
   function median16177(values){const a=(values||[]).filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return NaN;const k=Math.floor(a.length/2);return a.length%2?a[k]:(a[k-1]+a[k])/2}
   function gridFromLngLat16177(ll){try{const p=earthlineLngLatToGrid(Number(ll?.[0]),Number(ll?.[1]));return Array.isArray(p)&&p.length>=2&&Number.isFinite(Number(p[0]))&&Number.isFinite(Number(p[1]))?[Number(p[0]),Number(p[1])]:null}catch(_){return null}}
@@ -33680,7 +34064,7 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
     regionalOverlay16336.style.removeProperty('opacity');
   }
   return false
-}const safeAudit17183=window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null;if(active&&Number(safeAudit17183?.count||0)>0&&safeAudit17183?.visible!==true)return false;/* EARTHLINE_NATURAL_AFTER_SAFE_17183 */if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline'),footprints=fc.features.filter(f=>f.properties?.geometry_role==='footprint'),directional=centers.filter(f=>f.properties?.orientation_status==='verified'),neutral=centers.filter(f=>f.properties?.orientation_status==='indeterminate'),sig=[model()?.searchGen,centers.length,centers.map(f=>String(f.properties?.rawIndex??f.id??'')).join(','),centers.map(f=>String(f.properties?.orientation_status)+'/'+String(f.properties?.texture_flip)).join('|')].join('|');const src=mp.getSource?.(SOURCE);if(src?.setData&&(sig!==lastSignature||reason.includes('force')||!src._data?.features?.length)){src.setData(fc);lastSignature=sig}try{if(typeof window.earthlineSyncNaturalSwalePlanting15806==='function')window.earthlineSyncNaturalSwalePlanting15806(authoritativeFC())}catch(_){}const show=centers.length>0&&footprints.length===centers.length&&directional.length+neutral.length===centers.length;for(const id of Object.values(LAYERS))visible(id,show);if(show){for(const id of OLD)visible(id,false);/* 17172: fail visibly. Keep the authoritative safe Property swales opaque until the natural-texture replacement is actually rendered, not merely source-ready. */let naturalRendered17172=0;try{const canvas17172=mp.getCanvas?.();const box17172=canvas17172&&[[0,0],[canvas17172.clientWidth||canvas17172.width,canvas17172.clientHeight||canvas17172.height]];const ids17172=[LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip].filter(id=>mp.getLayer?.(id));if(box17172&&ids17172.length)naturalRendered17172=(mp.queryRenderedFeatures?.(box17172,{layers:ids17172})||[]).length}catch(_){}const safeOpacity17172=naturalRendered17172>0?0:.98;for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',safeOpacity17172)}catch(_){}}try{for(const id of [LAYERS.footprint,LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(true);for(const id of ['earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property');if(mp.getLayer?.('earthline-property-swale-ditch-16166'))mp.moveLayer('earthline-property-swale-ditch-16166')}catch(_){}}else{/* If the natural renderer is unavailable, restore the verified authoritative safe-line fallback so Property output never disappears. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',.98)}catch(_){}}}const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');if(overlay)overlay.style.display=show?'none':'';const w=applyWidth();
+}const safeAudit17183=window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null;if(active&&Number(safeAudit17183?.count||0)>0&&safeAudit17183?.visible!==true)return false;/* EARTHLINE_NATURAL_AFTER_SAFE_17183 */if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline'),footprints=fc.features.filter(f=>f.properties?.geometry_role==='footprint'),directional=centers.filter(f=>f.properties?.orientation_status==='verified'),neutral=centers.filter(f=>f.properties?.orientation_status==='indeterminate'),sig=[model()?.searchGen,centers.length,centers.map(f=>String(f.properties?.rawIndex??f.id??'')).join(','),centers.map(f=>String(f.properties?.orientation_status)+'/'+String(f.properties?.texture_flip)).join('|')].join('|');const src=mp.getSource?.(SOURCE);if(src?.setData&&(sig!==lastSignature||reason.includes('force')||!src._data?.features?.length)){src.setData(fc);lastSignature=sig}try{if(typeof window.earthlineSyncNaturalSwalePlanting15806==='function')window.earthlineSyncNaturalSwalePlanting15806(authoritativeFC())}catch(_){}const show=centers.length>0&&footprints.length===centers.length&&directional.length+neutral.length===centers.length;for(const id of Object.values(LAYERS))visible(id,show);if(show){for(const id of OLD)visible(id,false);/* 17172: fail visibly. Keep the authoritative safe Property swales opaque until the natural-texture replacement is actually rendered, not merely source-ready. */let naturalRendered17172=0;try{const canvas17172=mp.getCanvas?.();const box17172=canvas17172&&[[0,0],[canvas17172.clientWidth||canvas17172.width,canvas17172.clientHeight||canvas17172.height]];const ids17172=[LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip].filter(id=>mp.getLayer?.(id));if(box17172&&ids17172.length)naturalRendered17172=(mp.queryRenderedFeatures?.(box17172,{layers:ids17172})||[]).length}catch(_){}const safeOpacity17172=0;for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',safeOpacity17172)}catch(_){}}try{for(const id of [LAYERS.footprint,LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(true);for(const id of ['earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property');if(mp.getLayer?.('earthline-property-swale-ditch-16166'))mp.moveLayer('earthline-property-swale-ditch-16166')}catch(_){}}else{/* If the natural renderer is unavailable, restore the verified authoritative safe-line fallback so Property output never disappears. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',.98)}catch(_){}}}const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');if(overlay)overlay.style.display=show?'none':'';const w=applyWidth();
 /* EARTHLINE 17064 — Property natural-presentation density only.
    Preserve authoritative corridor geometry, spacing, ranking, exclusions and safety.
    Reduce only the rendered ribbon/planting mass so adjacent valid contours remain visually distinct. */
@@ -33694,7 +34078,7 @@ try{
   if(mp.getLayer?.(plantShadow17064))mp.setPaintProperty(plantShadow17064,'circle-radius',['interpolate',['linear'],['zoom'],14,['*',['get','size'],.32],17,['*',['get','size'],.60],20,['*',['get','size'],.85]]);
   if(mp.getLayer?.(plant17064))mp.setPaintProperty(plant17064,'circle-radius',['interpolate',['linear'],['zoom'],14,['*',['get','size'],.25],17,['*',['get','size'],.50],20,['*',['get','size'],.70]]);
 }catch(_){}
-const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169={build:BUILD,reason,propertyActive:active,features:fc.features.length,centerlines:centers.length,footprints:footprints.length,directional:directional.length,neutral:neutral.length,normal:directional.filter(f=>f.properties.texture_flip===0).length,flipped:directional.filter(f=>f.properties.texture_flip===1).length,widthPx:Number(w.toFixed(2)),groundWidthM:9,waterSide:directional.length?'terrain-verified-uphill':(neutral.length?'not-shown-orientation-indeterminate':'none'),orientationRule:'published-geometry-cross-slope-multisample-16177',orientationComplete:directional.length+neutral.length===centers.length,orientationEvidence:window.EARTHLINE_PROPERTY_ORIENTATION_EVIDENCE_16177||null,sourceReady:!!src,imagesReady:registered.up&&registered.flip,registeredImages:registered,layers:Object.fromEntries(Object.entries(LAYERS).map(([k,id])=>[k,!!mp.getLayer?.(id)])),at:new Date().toISOString()};return show&&registered.up&&registered.flip}
+const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};window.EARTHLINE_PROPERTY_BLUE_STYLE_17417={upOpacity:mp.getPaintProperty?.(LAYERS.up,'line-opacity'),flipOpacity:mp.getPaintProperty?.(LAYERS.flip,'line-opacity'),upPattern:mp.getPaintProperty?.(LAYERS.up,'line-pattern'),flipPattern:mp.getPaintProperty?.(LAYERS.flip,'line-pattern'),casingOpacity:mp.getPaintProperty?.(LAYERS.casing,'line-opacity'),casingWidth:mp.getPaintProperty?.(LAYERS.casing,'line-width'),neutralOpacity:mp.getPaintProperty?.(LAYERS.neutral,'line-opacity'),neutralWidth:mp.getPaintProperty?.(LAYERS.neutral,'line-width'),safeWaterOpacity:mp.getLayer?.('earthline-property-safe-water-16221')?mp.getPaintProperty?.('earthline-property-safe-water-16221','line-opacity'):null,at:new Date().toISOString()};window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169={build:BUILD,reason,propertyActive:active,features:fc.features.length,centerlines:centers.length,footprints:footprints.length,directional:directional.length,neutral:neutral.length,normal:directional.filter(f=>f.properties.texture_flip===0).length,flipped:directional.filter(f=>f.properties.texture_flip===1).length,widthPx:Number(w.toFixed(2)),groundWidthM:9,waterSide:directional.length?'terrain-verified-uphill':(neutral.length?'not-shown-orientation-indeterminate':'none'),orientationRule:'published-geometry-cross-slope-multisample-16177',orientationComplete:directional.length+neutral.length===centers.length,orientationEvidence:window.EARTHLINE_PROPERTY_ORIENTATION_EVIDENCE_16177||null,sourceReady:!!src,imagesReady:registered.up&&registered.flip,registeredImages:registered,layers:Object.fromEntries(Object.entries(LAYERS).map(([k,id])=>[k,!!mp.getLayer?.(id)])),at:new Date().toISOString()};return show&&registered.up&&registered.flip}
   function scheduleSync(reason,delay=80){clearTimeout(syncQueued);syncQueued=setTimeout(()=>syncTexture(reason),delay)}
   function updateBuild(){/* Final visible build ownership belongs to the terminal 16171 startup controller. */}
   function audit(){const b=document.getElementById('earthlineDeclareProperty16169'),x=document.getElementById('earthlineMapOnlyExit16169'),mp=map(),src=mp?.getSource?.(SOURCE);return {build:BUILD,displayedTier:displayedTier(),propertyActive:propertyActive(),declareVisible:!!b&&getComputedStyle(b).display!=='none',mapOnly:mapOnlyOn(),exitPortalVisible:!!x&&getComputedStyle(x).display!=='none',restingCursor:getComputedStyle(mp?.getCanvasContainer?.()||document.body).cursor,inlineCursor:mp?.getCanvasContainer?.()?.style?.cursor||'',sourceFeatures:src&&src._data&&Array.isArray(src._data.features)?src._data.features.length:0,texture:window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null,declaration:window.EARTHLINE_PROPERTY_DECLARATION_16169||null}}
