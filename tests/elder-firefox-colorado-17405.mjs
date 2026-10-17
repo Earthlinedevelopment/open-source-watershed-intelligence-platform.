@@ -32,6 +32,7 @@ const result=await page.evaluate(async ({cases,browserName})=>{
     const transportOk=tiles.some(t=>t&&t.status!=='NO_TILE');
     rows.push({name,elapsedMs,ok:r?.ok===true,error:r?.error||null,featureCount:r?.result?.features?.length??null,
       candidatePool:r?.result?.earthline?.candidate_pool_count??null,workerTimings:r?.result?.earthline?.worker_timings_ms||null,
+      pythonProfiles:tiles.map(t=>t?.python_profile_ms||null),
       transportOk,pass:r?.ok===true&&transportOk&&elapsedMs<=15000});
   }
   w.terminate();
