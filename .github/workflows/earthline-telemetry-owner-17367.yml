@@ -1,0 +1,15 @@
+name: Earthline Telemetry Owner Extract 17367
+on:
+  push:
+    branches: [repair/browser-performance-live-17268]
+    paths: ['tests/extract-telemetry-owner-17367.py','.github/workflows/earthline-telemetry-owner-17367.yml']
+permissions: {contents: read}
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/browser-repair-17365}
+      - run: python3 tests/extract-telemetry-owner-17367.py
+      - uses: actions/upload-artifact@v4
+        with: {name: telemetry-owner-17367, path: telemetry-owner-17367.txt}
