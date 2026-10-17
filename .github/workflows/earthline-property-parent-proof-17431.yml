@@ -1,0 +1,22 @@
+name: Earthline Property Parent Proof 17431
+on:
+  push:
+    branches: [repair/property-final-candidate-17421]
+    paths:
+      - 'tests/mexico-property-parent-proof-17431.mjs'
+      - '.github/workflows/earthline-property-parent-proof-17431.yml'
+permissions: {contents: read}
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/property-final-candidate-17421}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: python3 tests/apply-property-target-dragonly-17424.py
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/mexico-property-parent-proof-17431.mjs
