@@ -2,7 +2,7 @@ name: Earthline Telemetry Owner Extract 17367
 on:
   push:
     branches: [repair/browser-performance-live-17268]
-    paths: ['tests/extract-telemetry-owner-17367.py','.github/workflows/earthline-telemetry-owner-17367.yml']
+    paths: ['.github/workflows/earthline-telemetry-owner-17367.yml']
 permissions: {contents: read}
 jobs:
   extract:
@@ -10,6 +10,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {ref: candidate/browser-repair-17365}
-      - run: python3 tests/extract-telemetry-owner-17367.py
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          needles=["earthline-telemetry","supabase.co/functions/v1/earthline-telemetry"]
+          out=[]
+          for needle in needles:
+              start=0
+              while True:
+                  i=s.find(needle,start)
+                  if i<0: break
+                  out.append(f"===== {needle} @ {i} =====\n"+s[max(0,i-5000):i+9000])
+                  start=i+1
+          Path("telemetry-owner-17367.txt").write_text("\n\n".join(out),encoding="utf-8")
+          print("hits",len(out))
+          PY
       - uses: actions/upload-artifact@v4
         with: {name: telemetry-owner-17367, path: telemetry-owner-17367.txt}
