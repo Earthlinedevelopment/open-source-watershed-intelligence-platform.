@@ -1,0 +1,20 @@
+name: Earthline Property Handler Extract 17381
+on:
+  push:
+    branches: [repair/property-first-click-browser-pass-17381]
+    paths:
+      - 'tests/extract-property-handler-17381.py'
+      - '.github/workflows/earthline-property-handler-17381.yml'
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/property-first-click-browser-pass-17381}
+      - run: python3 tests/extract-property-handler-17381.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: property-handler-17381
+          path: property-handler-17381.txt
