@@ -10,13 +10,13 @@ FUTURE_ELDER_RATIO=2.5
 # used by the approved 17118 Elder algorithm. This removes the large SciPy cold
 # download from the browser worker without changing thresholds, kernels,
 # neighborhood modes, connectivity, ranking, quotas, or candidate semantics.
-def _median_filter(a,size):
+def _median_filter(a,size,mode=None):
     size=int(size); pad=size//2
     p=np.pad(a,((pad,pad),(pad,pad)),mode="edge")
     w=np.lib.stride_tricks.sliding_window_view(p,(size,size))
     return np.median(w,axis=(-2,-1)).astype(a.dtype,copy=False)
 
-def _uniform_filter(a,size):
+def _uniform_filter(a,size,mode=None):
     size=int(size); pad=size//2
     p=np.pad(a,((pad,pad),(pad,pad)),mode="edge")
     h,w=a.shape
@@ -27,7 +27,7 @@ def _uniform_filter(a,size):
     out /= float(size*size)
     return out.astype(a.dtype,copy=False)
 
-def _maximum_filter(a,size):
+def _maximum_filter(a,size,mode=None):
     size=int(size); pad=size//2
     p=np.pad(a,((pad,pad),(pad,pad)),mode="edge")
     h,w=a.shape
