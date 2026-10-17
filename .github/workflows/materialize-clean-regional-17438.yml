@@ -14,15 +14,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: repair/regional-clean-presentation-17434
+          ref: candidate/browser-elder-blue-clean-regional-17438
           fetch-depth: 0
       - run: |
-          python3 tests/apply-regional-clean-presentation-17434.py
-          python3 tests/apply-root-audit-clean-regional-17437.py
+          git fetch origin repair/regional-clean-presentation-17434
+          git show origin/repair/regional-clean-presentation-17434:tests/apply-regional-clean-presentation-17434.py > /tmp/apply-regional-clean-presentation-17434.py
+          git show origin/repair/regional-clean-presentation-17434:tests/apply-root-audit-clean-regional-17437.py > /tmp/apply-root-audit-clean-regional-17437.py
+          python3 /tmp/apply-regional-clean-presentation-17434.py
+          python3 /tmp/apply-root-audit-clean-regional-17437.py
       - run: |
           git config user.name "Earthline CI"
           git config user.email "info@earthlinedevelopment.org"
-          git switch -C candidate/browser-elder-blue-clean-regional-17438
           git add index.html
           git commit -m "candidate: clean Regional presentation 17438" || true
-          git push -f origin candidate/browser-elder-blue-clean-regional-17438
+          git push origin HEAD:candidate/browser-elder-blue-clean-regional-17438
