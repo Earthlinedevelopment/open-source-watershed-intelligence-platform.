@@ -1,11 +1,82 @@
 from __future__ import annotations
 import json, math
 import numpy as np
-from scipy import ndimage
 
 METHOD="earthline-elder-tree-aoi-chmv2-v0.7-high-recall-plateau-collapse"
 CURRENT_ELDER_TARGET_PER_HA=15.0
 FUTURE_ELDER_RATIO=2.5
+
+# EARTHLINE 17387 — NumPy-only equivalents of the exact scipy.ndimage operations
+# used by the approved 17118 Elder algorithm. This removes the large SciPy cold
+# download from the browser worker without changing thresholds, kernels,
+# neighborhood modes, connectivity, ranking, quotas, or candidate semantics.
+def _median_filter(a,size):
+    size=int(size); pad=size//2
+    p=np.pad(a,((pad,pad),(pad,pad)),mode="edge")
+    w=np.lib.stride_tricks.sliding_window_view(p,(size,size))
+    return np.median(w,axis=(-2,-1)).astype(a.dtype,copy=False)
+
+def _uniform_filter(a,size):
+    size=int(size); pad=size//2
+    p=np.pad(a,((pad,pad),(pad,pad)),mode="edge")
+    h,w=a.shape
+    out=np.zeros_like(a,dtype=np.float32)
+    for dr in range(size):
+        for dc in range(size):
+            out += p[dr:dr+h,dc:dc+w]
+    out /= float(size*size)
+    return out.astype(a.dtype,copy=False)
+
+def _maximum_filter(a,size):
+    size=int(size); pad=size//2
+    p=np.pad(a,((pad,pad),(pad,pad)),mode="edge")
+    h,w=a.shape
+    out=np.full_like(a,-np.inf,dtype=np.float32)
+    for dr in range(size):
+        for dc in range(size):
+            np.maximum(out,p[dr:dr+h,dc:dc+w],out=out)
+    return out.astype(a.dtype,copy=False)
+
+def _gaussian_filter(a,sigma):
+    sigma=float(sigma)
+    radius=max(1,int(4.0*sigma+0.5))
+    x=np.arange(-radius,radius+1,dtype=np.float32)
+    k=np.exp(-(x*x)/(2.0*sigma*sigma)).astype(np.float32)
+    k/=np.sum(k)
+    h,w=a.shape
+    px=np.pad(a,((0,0),(radius,radius)),mode="symmetric")
+    tmp=np.zeros_like(a,dtype=np.float32)
+    for i,weight in enumerate(k):
+        tmp += weight*px[:,i:i+w]
+    py=np.pad(tmp,((radius,radius),(0,0)),mode="symmetric")
+    out=np.zeros_like(a,dtype=np.float32)
+    for i,weight in enumerate(k):
+        out += weight*py[i:i+h,:]
+    return out.astype(a.dtype,copy=False)
+
+def _label(mask):
+    mask=np.asarray(mask,dtype=bool)
+    h,w=mask.shape
+    labels=np.zeros((h,w),dtype=np.int32)
+    lab=0
+    for r in range(h):
+        for c in range(w):
+            if not mask[r,c] or labels[r,c]:
+                continue
+            lab+=1
+            labels[r,c]=lab
+            stack=[(r,c)]
+            while stack:
+                rr,cc=stack.pop()
+                if rr>0 and mask[rr-1,cc] and not labels[rr-1,cc]:
+                    labels[rr-1,cc]=lab;stack.append((rr-1,cc))
+                if rr+1<h and mask[rr+1,cc] and not labels[rr+1,cc]:
+                    labels[rr+1,cc]=lab;stack.append((rr+1,cc))
+                if cc>0 and mask[rr,cc-1] and not labels[rr,cc-1]:
+                    labels[rr,cc-1]=lab;stack.append((rr,cc-1))
+                if cc+1<w and mask[rr,cc+1] and not labels[rr,cc+1]:
+                    labels[rr,cc+1]=lab;stack.append((rr,cc+1))
+    return labels,lab
 
 def hav(a,b):
     lon1,lat1=a;lon2,lat2=b;R=6371008.8
@@ -53,7 +124,7 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
     if vals.size<8:
         return {"features":[],"tile":{"quadkey":q,"status":"NO_CANOPY","canopy_floor_m":round(canopy_floor_m,2)}}
 
-    med=ndimage.median_filter(z,size=9,mode="nearest")
+    med=_median_filter(z,size=9,mode="nearest")
     prom=np.maximum(0,z-med)
     pvals=prom[canopy]
     hs=np.sort(vals);ps=np.sort(pvals)
@@ -61,7 +132,7 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
     p_pct=np.zeros_like(z,dtype="float32")
     h_pct[canopy]=np.searchsorted(hs,z[canopy],side="right")/max(1,len(hs))
     p_pct[canopy]=np.searchsorted(ps,prom[canopy],side="right")/max(1,len(ps))
-    local_density=ndimage.uniform_filter(canopy.astype("float32"),size=9,mode="nearest")
+    local_density=_uniform_filter(canopy.astype("float32"),size=9,mode="nearest")
     open_context=np.clip(1.0-local_density,0.0,1.0)
     score=np.zeros_like(z,dtype="float32")
     score[canopy]=.40*h_pct[canopy]+.35*p_pct[canopy]+.25*open_context[canopy]
@@ -94,8 +165,8 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
             op_cell=open_context[r0:r1,c0:c1];sc_cell=score[r0:r1,c0:c1]
             eligible_cell=cm&(hs_cell>=.35)&((ps_cell>=.30)|(op_cell>=.45))
             if not np.any(eligible_cell):continue
-            peak_cell=(sc_cell==ndimage.maximum_filter(sc_cell,size=nms_px,mode="nearest"))&eligible_cell
-            labels,nlab=ndimage.label(peak_cell)
+            peak_cell=(sc_cell==_maximum_filter(sc_cell,size=nms_px,mode="nearest"))&eligible_cell
+            labels,nlab=_label(peak_cell)
             rr=[];cc=[];z_cell=z[r0:r1,c0:c1]
             for lab_id in range(1,nlab+1):
                 pr,pc=np.where(labels==lab_id)
@@ -146,8 +217,8 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
         zz=np.nan_to_num(a,nan=0)
         sep=max(3,int(round(5/max(pix,.01))))
         if sep%2==0:sep+=1
-        sm=ndimage.gaussian_filter(zz,sigma=max(.8,min(2.5,1/max(pix,.01))))
-        peak=(sm==ndimage.maximum_filter(sm,size=sep,mode="nearest"))&(sm>=canopy_floor_m)
+        sm=_gaussian_filter(zz,sigma=max(.8,min(2.5,1/max(pix,.01))))
+        peak=(sm==_maximum_filter(sm,size=sep,mode="nearest"))&(sm>=canopy_floor_m)
         rows,cols=np.where(peak)
         best=None
         for lr,lc in zip(rows.tolist(),cols.tolist()):
@@ -160,7 +231,7 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
             emerg=max(0.0,h-medv)
             openf=float(np.mean(np.nan_to_num(local,nan=0)<4))
             sub=np.nan_to_num(local,nan=0)
-            lab,_=ndimage.label(sub>=max(1.5,canopy_floor_m*.75,h*.45))
+            lab,_=_label(sub>=max(1.5,canopy_floor_m*.75,h*.45))
             rr0,cc0=lr-ar0,lc-ac0
             lid=lab[rr0,cc0] if 0<=rr0<lab.shape[0] and 0<=cc0<lab.shape[1] else 0
             area=float(np.sum(lab==lid)*abs(resx*resy)) if lid else 0.0
