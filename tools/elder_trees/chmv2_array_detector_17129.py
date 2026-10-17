@@ -238,6 +238,19 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
     local_radius=max(5,int(round(18/max(pix,.01))))
     pixel_area_native=abs(resx*resy)
 
+    # EARTHLINE 17406 — exact dense-AOI shared-surface fastpath.
+    # The shared surface is used only when the nearest selected peak is closer
+    # than every pixel that could be influenced by the local-crop boundary.
+    # Otherwise refinement falls back to the approved per-candidate path.
+    gaussian_radius17406=max(1,int(4.0*refine_sigma+0.5))
+    peak_margin17406=gaussian_radius17406+(refine_sep//2)
+    shared_sm17406=None
+    shared_peak17406=None
+    if len(ranked)>=48:
+        native_zero17406=np.nan_to_num(native_clean,nan=0)
+        shared_sm17406=_gaussian_filter(native_zero17406,sigma=refine_sigma)
+        shared_peak17406=(shared_sm17406==_maximum_filter(shared_sm17406,size=refine_sep,mode="nearest"))&(shared_sm17406>=canopy_floor_m)
+
     def refine_candidate(r,c):
         full_col=screen_col0+(c+.5)*screen_ww/max(1,ow)
         full_row=screen_row0+(r+.5)*screen_wh/max(1,oh)
@@ -247,16 +260,46 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
         c0=max(0,ic-refine_radius);c1=min(nw,ic+refine_radius+1)
         a=native_clean[r0:r1,c0:c1]
         if not a.size:return None
-        zz=np.nan_to_num(a,nan=0)
-        sm=_gaussian_filter(zz,sigma=refine_sigma)
-        peak=(sm==_maximum_filter(sm,size=refine_sep,mode="nearest"))&(sm>=canopy_floor_m)
-        rows,cols=np.where(peak)
+        cx=origin_x+full_col*resx
+        cy=origin_y+full_row*resy
+        sm=None;rows=None;cols=None;fast17406=False
+        if shared_peak17406 is not None:
+            ah,aw=a.shape
+            margin=peak_margin17406
+            if ah>2*margin and aw>2*margin:
+                core=shared_peak17406[r0:r1,c0:c1]
+                irs,ics=np.where(core[margin:ah-margin,margin:aw-margin])
+                if len(irs):
+                    irs=irs+margin;ics=ics+margin
+                    best_fast_dist=None
+                    for lr,lc in zip(irs.tolist(),ics.tolist()):
+                        global_col=native_col0+c0+lc
+                        global_row=native_row0+r0+lr
+                        x=origin_x+(global_col+.5)*resx
+                        y=origin_y+(global_row+.5)*resy
+                        dist=((x-cx)**2+(y-cy)**2)**.5
+                        if best_fast_dist is None or dist<best_fast_dist:best_fast_dist=dist
+                    cr=full_row-native_row0-r0-.5
+                    ccx=full_col-native_col0-c0-.5
+                    boundary_lb=min(
+                        (cr-(margin-1))*abs(resy),
+                        ((ah-margin)-cr)*abs(resy),
+                        (ccx-(margin-1))*abs(resx),
+                        ((aw-margin)-ccx)*abs(resx)
+                    )
+                    if best_fast_dist is not None and boundary_lb>best_fast_dist+1e-9:
+                        sm=shared_sm17406[r0:r1,c0:c1]
+                        rows,cols=irs,ics
+                        fast17406=True
+        if not fast17406:
+            zz=np.nan_to_num(a,nan=0)
+            sm=_gaussian_filter(zz,sigma=refine_sigma)
+            peak=(sm==_maximum_filter(sm,size=refine_sep,mode="nearest"))&(sm>=canopy_floor_m)
+            rows,cols=np.where(peak)
         if not len(rows):return None
         # EARTHLINE 17401 — exact lexicographic shortcut.
         # The approved record key is (distance, -structural, x, y, ...), so
         # structural metrics cannot affect the winner unless distance ties.
-        cx=origin_x+full_col*resx
-        cy=origin_y+full_row*resy
         distance_rows=[]
         min_dist=None
         for lr,lc in zip(rows.tolist(),cols.tolist()):
