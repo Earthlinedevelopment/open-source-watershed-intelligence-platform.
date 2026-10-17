@@ -59,6 +59,13 @@ if s.count(old_panel)!=1:
     raise SystemExit(f"panel overwrite anchor count {s.count(old_panel)}")
 s=s.replace(old_panel,new_panel,1)
 
+
+old_pointer="""b.addEventListener('pointerdown',e=>e.stopPropagation(),true);"""
+new_pointer="""/* EARTHLINE 17424 — Property lives in the panel; do not suppress its physical pointer sequence. */"""
+if s.count(old_pointer)!=1:
+    raise SystemExit(f"Property pointer blocker anchor count {s.count(old_pointer)}")
+s=s.replace(old_pointer,new_pointer,1)
+
 s="<!-- EARTHLINE_PROPERTY_SINGLE_CLICK_OWNER_17423: panel reconciliation preserves the single authoritative Property wrapper onclick. -->\n"+s
 p.write_text(s,encoding="utf-8")
 print("installed single authoritative Property click owner 17423")
