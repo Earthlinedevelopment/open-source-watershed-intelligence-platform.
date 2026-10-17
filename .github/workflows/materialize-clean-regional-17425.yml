@@ -16,13 +16,16 @@ jobs:
         with:
           ref: repair/regional-clean-presentation-17424
           fetch-depth: 0
-      - name: Apply clean Regional presentation
-        run: python3 tests/apply-regional-clean-presentation-17424.py
+      - name: Apply only index.html to clean candidate history
+        run: |
+          cp tests/apply-regional-clean-presentation-17424.py /tmp/apply-regional-clean-presentation-17424.py
+          git fetch origin candidate/browser-elder-clean-regional-17425
+          git switch -C candidate/browser-elder-clean-regional-17425 origin/candidate/browser-elder-clean-regional-17425
+          python3 /tmp/apply-regional-clean-presentation-17424.py
       - name: Commit materialized candidate
         run: |
           git config user.name "Earthline CI"
           git config user.email "info@earthlinedevelopment.org"
-          git switch -C candidate/browser-elder-clean-regional-17425
           git add index.html
           git commit -m "candidate: clean Regional presentation over browser Elder baseline 17425"
-          git push -f origin candidate/browser-elder-clean-regional-17425
+          git push origin candidate/browser-elder-clean-regional-17425
