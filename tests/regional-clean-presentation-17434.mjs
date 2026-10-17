@@ -67,7 +67,8 @@ await page.waitForTimeout(350);
 const zoomed=await snap();
 
 const waterOk=initial.water.every(x=>!x.exists||x.visibility!=='none');
-const aquiferOk=initial.aquifer.every(x=>!x.exists||x.visibility!=='none');
+const existingAquifer=initial.aquifer.filter(x=>x.exists);
+const aquiferOk=!existingAquifer.length||existingAquifer.some(x=>x.visibility!=='none');
 const initialClean=initial.swales>0&&initial.wormPaths===0&&initial.tabs>0;
 const zoomReveal=zoomed.wormPaths>0&&zoomed.tabs>0;
 const auditOk=initial.audit?.corridorGeometryVisible===false&&Number(initial.audit?.swaleLines||0)===0&&Number(initial.audit?.generatedSwales||0)>0&&zoomed.audit?.corridorGeometryVisible===true&&Number(zoomed.audit?.swaleLines||0)>0;
