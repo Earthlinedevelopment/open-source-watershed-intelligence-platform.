@@ -1,0 +1,21 @@
+name: Earthline Firefox Elder Overlap 17420
+on:
+  push:
+    branches: [repair/browser-elder-final-17392]
+    paths:
+      - 'tests/elder-firefox-overlap-live-17420.mjs'
+      - '.github/workflows/earthline-firefox-elder-overlap-17420.yml'
+permissions: {contents: read}
+jobs:
+  firefox:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-elder-final-17392}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - run: xvfb-run -a node tests/elder-firefox-overlap-live-17420.mjs
