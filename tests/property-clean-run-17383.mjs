@@ -13,16 +13,7 @@ function sha(v){return createHash('sha256').update(String(v)).digest('hex')}
 
 await page.goto(BASE+'?propertyClean17383='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
 await page.waitForSelector('#searchInput',{timeout:30000});
-await page.locator('#searchInput').fill('mexico country');
-await page.waitForTimeout(900);
-const opts=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
-if(await opts.count())await opts.first().click();
-const run=page.locator('#runBtn');
-if(await run.isVisible()){
-  const busy=await run.evaluate(b=>b.dataset.busy==='1'||b.disabled);
-  if(!busy)await run.click();
-}
-await page.waitForFunction(()=>/published\./i.test(String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'')),null,{timeout:120000,polling:100});
+await page.waitForFunction(()=>typeof window.earthlineFocusRunEngine16158==='function',null,{timeout:30000,polling:100});
 
 const seq=[
   {name:'A1',lng:-95.74612,lat:16.68512},
