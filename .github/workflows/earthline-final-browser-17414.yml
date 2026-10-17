@@ -1,0 +1,86 @@
+name: Earthline Final 21-of-21 Browser Gate 17414
+on:
+  push:
+    branches: [repair/browser-elder-blue-final-17413]
+    paths:
+      - '.github/workflows/earthline-final-browser-17414.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-elder-blue-final-17413}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          python3 tests/apply-browser-yield-fastpath-17295.py
+          python3 tests/apply-wasm-pip-kernel-17319.py
+          python3 tests/apply-certified-interior-supertile-17301.py
+          python3 tests/apply-skip-regional-preferred-screen-17305.py
+          python3 tests/apply-run-scoped-segment-clip-cache-17315.py
+          python3 tests/apply-consolidated-provisional-jurisdiction-17325.py
+          python3 tests/apply-land-validity-scanline-17352.py
+          python3 tests/apply-vermont-cors-first-17360.py
+          python3 tests/apply-regional-screen-reuse-17365.py
+          python3 tests/apply-telemetry-origin-guard-17368.py
+          python3 tests/apply-jurisdiction-edge-fastpath-17373.py
+          python3 tests/apply-fast-pip-row-index-17378.py
+          python3 tests/apply-fast-pip-geometry-cache-17379.py
+          python3 tests/apply-elder-cold-start-17392.py
+          python3 tests/apply-elder-worker-numpy-only-17392.py
+          python3 tests/apply-elder-failclosed-status-17395.py
+          python3 tests/apply-property-blue-invariant-17408.py
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - run: |
+          if [ '${{ matrix.browser }}' = 'firefox' ]; then
+            xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' WAIT_MS='90000' STATES='Vermont|Texas|New York|Arkansas|Iowa|Colorado|California' node tests/browser-regional-ab-17269.mjs
+          else
+            env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='chromium' HEADLESS='true' WAIT_MS='90000' STATES='Vermont|Texas|New York|Arkansas|Iowa|Colorado|California' node tests/browser-regional-ab-17269.mjs
+          fi
+  webkit:
+    runs-on: macos-14
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-elder-blue-final-17413}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          python3 tests/apply-browser-yield-fastpath-17295.py
+          python3 tests/apply-wasm-pip-kernel-17319.py
+          python3 tests/apply-certified-interior-supertile-17301.py
+          python3 tests/apply-skip-regional-preferred-screen-17305.py
+          python3 tests/apply-run-scoped-segment-clip-cache-17315.py
+          python3 tests/apply-consolidated-provisional-jurisdiction-17325.py
+          python3 tests/apply-land-validity-scanline-17352.py
+          python3 tests/apply-vermont-cors-first-17360.py
+          python3 tests/apply-regional-screen-reuse-17365.py
+          python3 tests/apply-telemetry-origin-guard-17368.py
+          python3 tests/apply-jurisdiction-edge-fastpath-17373.py
+          python3 tests/apply-fast-pip-row-index-17378.py
+          python3 tests/apply-fast-pip-geometry-cache-17379.py
+          python3 tests/apply-elder-cold-start-17392.py
+          python3 tests/apply-elder-worker-numpy-only-17392.py
+          python3 tests/apply-elder-failclosed-status-17395.py
+          python3 tests/apply-property-blue-invariant-17408.py
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - run: |
+          python3 -m http.server 8787 --bind 0.0.0.0 >/tmp/http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='false' WAIT_MS='90000' STATES='Vermont|Texas|New York|Arkansas|Iowa|Colorado|California' node tests/browser-regional-ab-17269.mjs
