@@ -58,11 +58,11 @@ new_expose="""  window.earthlinePropertyClickOwner16546=declareProperty;
     const earthlinePropertyClickRoute17389=function(ev){
       const b=ev.target?.closest?.('#earthlineDeclareProperty16169');
       if(!b||b.disabled)return;
-      ev.preventDefault?.();ev.stopPropagation?.();ev.stopImmediatePropagation?.();
-      void declareProperty(ev);
+      if(ev.button!=null&&ev.button!==0)return;
+      void declareProperty(null);
     };
-    document.addEventListener('click',earthlinePropertyClickRoute17389,true);
-    window.EARTHLINE_PROPERTY_CLICK_ROUTE_17389={state:'ready',owner:'declareProperty',installedAt:new Date().toISOString()};
+    document.addEventListener('pointerdown',earthlinePropertyClickRoute17389,true);
+    window.EARTHLINE_PROPERTY_CLICK_ROUTE_17389={state:'ready',owner:'declareProperty',event:'pointerdown',installedAt:new Date().toISOString()};
   }
   function ensureDeclareButton(){"""
 if s.count(old_expose)!=1:
