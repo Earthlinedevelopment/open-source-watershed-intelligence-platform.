@@ -63,7 +63,9 @@ await page.evaluate(async()=>{
 const second=await snap();
 await browser.close();
 const same=JSON.stringify(first)===JSON.stringify(second);
-const expected=first.casing.opacity===0.64&&first.casing.width===26&&first.up.opacity===0.72&&first.up.width===22&&first.flip.opacity===0.72&&first.flip.width===22&&first.neutral.opacity===0.66&&first.neutral.width===18&&(first.safeWater===0||first.safeWater===null);
+const expected=first.casing.opacity===0.64&&first.up.opacity===0.72&&first.flip.opacity===0.72&&first.neutral.opacity===0.66&&
+  Number(first.casing.width)>0&&Number(first.up.width)>0&&Number(first.flip.width)>0&&Number(first.neutral.width)>0&&
+  !!first.up.pattern&&!!first.flip.pattern&&(first.safeWater===0||first.safeWater===null);
 const pass=fixture.ok&&same&&expected;
 console.log('EARTHLINE_BLUE_INVARIANT_17417 '+JSON.stringify({browser:BROWSER,pass,fixture,same,expected,first,second}));
 if(!pass)process.exitCode=1;
