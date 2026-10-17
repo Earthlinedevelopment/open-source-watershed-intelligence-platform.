@@ -1814,9 +1814,9 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       const nowB=propertyBounds17166();
       if(propertyRunIdentity17166(nowB)!==identity)return;
       void startProperty17166();
-    },1200);
+    },0);
     return true;
-  } /* EARTHLINE_ELDER_STAGGERED_PROPERTY_PRIME_17216 */
+  } /* EARTHLINE_ELDER_IMMEDIATE_PROPERTY_START_17386 */
   function install(){
     wrapCorridor();
     document.addEventListener('pointerdown',e=>{
