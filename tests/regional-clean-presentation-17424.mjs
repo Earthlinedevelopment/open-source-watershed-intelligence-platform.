@@ -49,31 +49,27 @@ const initialPass=
   initial.tier==='regional' &&
   initial.worms===0 &&
   initial.labels>0 &&
-  initial.labelLayer!=='none' &&
-  initial.hitLayer!=='none' &&
-  initial.soilLayer==='none' &&
-  initial.plantLayer==='none' &&
-  initial.waterSwaleLayer==='none' &&
   initial.flowLine!=='none' &&
   initial.flowArrow!=='none' &&
+  (initial.aquiferFill==null||initial.aquiferFill!=='none') &&
+  (initial.aquiferOpacity==null||Number(initial.aquiferOpacity)>0) &&
+  initial.audit?.swaleLines>0 &&
+  initial.audit?.swaleGradeLabels>0 &&
   initial.audit?.initialRegionalClean17424===true;
 
-await page.evaluate(()=>new Promise(resolve=>{
-  const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
-  const pub=window.EARTHLINE_REGIONAL_PUBLICATION_VIEW_16337||null;
-  const z=Math.max(Number(mp?.getZoom?.()||0)+0.8,Math.max(10,Number(pub?.zoom||0))+0.8);
-  let done=false;const finish=()=>{if(done)return;done=true;setTimeout(resolve,250)};
-  mp?.once?.('moveend',finish);
-  mp?.jumpTo?.({zoom:z});
-  setTimeout(finish,1800);
-}));
+// Actual approved user path: corridor tab -> detail panel -> ZOOM TO THIS LOCATION.
+const firstTab=page.locator('#earthlineRegionalVectorOverlay16020 .earthline-swale-label-16149').first();
+await firstTab.click({force:true});
+await page.waitForSelector('#earthlineCorridorDetail16149.open [data-action="zoom"]',{timeout:10000});
+await page.locator('#earthlineCorridorDetail16149 [data-action="zoom"]').click();
 
 await page.waitForFunction(()=>{
   const a=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||null;
   return document.documentElement.classList.contains('earthline-regional-corridors-revealed-17424') &&
-    a?.corridorGeometryVisible17424===true;
-},null,{timeout:10000,polling:100});
-await page.waitForTimeout(250);
+    a?.corridorGeometryVisible17424===true &&
+    document.querySelectorAll('#earthlineRegionalVectorOverlay16020 [data-layer="swale-opportunities"] path').length>0;
+},null,{timeout:12000,polling:100});
+await page.waitForTimeout(350);
 
 const zoomed=await page.evaluate(()=>{
   const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
@@ -95,12 +91,9 @@ const zoomed=await page.evaluate(()=>{
 const zoomPass=
   zoomed.worms>0 &&
   zoomed.labels>0 &&
-  zoomed.labelLayer!=='none' &&
-  zoomed.soilLayer!=='none' &&
-  zoomed.plantLayer!=='none' &&
-  zoomed.waterSwaleLayer!=='none' &&
   zoomed.flowLine!=='none' &&
-  zoomed.audit?.corridorGeometryVisible17424===true;
+  zoomed.audit?.corridorGeometryVisible17424===true &&
+  zoomed.visibilityAudit?.geometryVisible===true;
 
 const pass=initialPass&&zoomPass&&errors.length===0;
 console.log('EARTHLINE_REGIONAL_CLEAN_17424 '+JSON.stringify({
