@@ -18,11 +18,19 @@ await page.goto(BASE+'?mexicoRepeat17421='+Date.now(),{waitUntil:'domcontentload
 await page.waitForSelector('#searchInput',{timeout:30000});
 await page.locator('#searchInput').fill('Mexico');
 await page.waitForTimeout(900);
-const opts=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
-if(await opts.count()) await opts.first().click();
-const rb=page.locator('#runBtn');
-if(await rb.isVisible() && !await rb.isDisabled()) await rb.click();
-await page.waitForFunction(()=>/published\./i.test(String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'')),null,{timeout:120000,polling:100});
+const countryOpt=page.locator('#earthlineSearchSuggestions15970 [data-query="Mexico country"]:visible');
+if(await countryOpt.count()){
+  await countryOpt.first().click();
+}else{
+  await page.locator('#searchInput').fill('Mexico country');
+  await page.locator('#searchInput').press('Enter');
+}
+await page.waitForFunction(()=>{
+  const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||null;
+  const tier=String(d?.tier||d?.mode||'').toLowerCase();
+  const q=String(d?.query||window.EARTHLINE_CHOSEN_LOCATION_16189?.query||'').toLowerCase();
+  return tier==='regional'&&q.includes('mexico')&&String(document.documentElement.dataset.earthlineRunState||'').toLowerCase()==='published';
+},null,{timeout:120000,polling:100});
 
 const seq=[
   {name:'A1',lng:-95.74612,lat:16.68512},
