@@ -120,10 +120,19 @@ async function processTile(py,q,bbox,maxPerTile=240){
   }else if(aspect>=1){ow=1024;oh=Math.max(1,Math.round(1024/aspect))}
   else{oh=1024;ow=Math.max(1,Math.round(1024*aspect))}
   /* EARTHLINE_ELDER_NO_SCREEN_UPSAMPLE_17215 */
-  const screenRaw=await image.readRasters({
+  /* EARTHLINE 17413 — exact raw-window fastpath.
+     When the requested screening size already equals the source window, do not
+     invoke GeoTIFF's resampler. Returned pixels are the same source samples. */
+  const screenOptions17413={
     window:[w.col0,w.row0,w.col0+w.ww,w.row0+w.wh],
-    samples:[0],interleave:true,width:ow,height:oh,resampleMethod:"nearest"
-  });
+    samples:[0],interleave:true
+  };
+  if(ow!==w.ww||oh!==w.wh){
+    screenOptions17413.width=ow;
+    screenOptions17413.height=oh;
+    screenOptions17413.resampleMethod="nearest";
+  }
+  const screenRaw=await image.readRasters(screenOptions17413);
   const tScreen=performance.now();
   const pix=Math.max(Math.abs(w.rx),Math.abs(w.ry));
   const pad=Math.max(64,Math.ceil(60/Math.max(.01,pix)));
