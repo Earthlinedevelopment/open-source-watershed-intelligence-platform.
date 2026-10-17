@@ -1,5 +1,8 @@
-import { chromium } from 'playwright';
-const browser=await chromium.launch({headless:true});
+import { chromium, webkit } from 'playwright';
+const BROWSER=(process.env.BROWSER||'chromium').toLowerCase();
+const launcher={chromium,webkit}[BROWSER];
+const headless=String(process.env.HEADLESS||'true').toLowerCase()!=='false';
+const browser=await launcher.launch({headless});
 const page=await browser.newPage({viewport:{width:1800,height:950}});
 const BASE=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
 const errors=[];page.on('pageerror',e=>errors.push(String(e)));
