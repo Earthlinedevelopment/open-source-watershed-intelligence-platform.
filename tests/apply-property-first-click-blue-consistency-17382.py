@@ -147,6 +147,21 @@ if s.count(old_filters)!=1:
     raise SystemExit(f"texture filters anchor count {s.count(old_filters)}")
 s=s.replace(old_filters,new_filters,1)
 
+# Cold first-run texture publication: if Mapbox style is not ready, wait once for
+# style.load and then run the same authoritative texture owner. No polling.
+old_texture_ready="if(!await ensureTextureLayers())return false;"
+new_texture_ready="""if(!await ensureTextureLayers()){
+  if(!window.EARTHLINE_PROPERTY_TEXTURE_STYLE_WAIT_17389){
+    window.EARTHLINE_PROPERTY_TEXTURE_STYLE_WAIT_17389=true;
+    try{mp.once?.('style.load',()=>{window.EARTHLINE_PROPERTY_TEXTURE_STYLE_WAIT_17389=false;void syncTexture('style-load-force')})}
+    catch(_){window.EARTHLINE_PROPERTY_TEXTURE_STYLE_WAIT_17389=false}
+  }
+  return false;
+}"""
+if s.count(old_texture_ready)!=1:
+    raise SystemExit(f"texture ready anchor count {s.count(old_texture_ready)}")
+s=s.replace(old_texture_ready,new_texture_ready,1)
+
 # Reset texture state from the same authoritative click owner before starting the run.
 old_start="""    const target=window.EARTHLINE_PROPERTY_TARGET_16201;
     const hasTarget=!!(target&&Number.isFinite(Number(target.lng))&&Number.isFinite(Number(target.lat)));"""
