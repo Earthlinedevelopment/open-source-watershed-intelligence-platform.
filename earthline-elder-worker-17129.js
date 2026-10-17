@@ -46,7 +46,7 @@ async function ensurePy(){
   if(pyReady)return pyReady;
   pyReady=(async()=>{
     const py=await loadPyodide({indexURL:"https://cdn.jsdelivr.net/pyodide/v0.29.5/full/"});
-    await py.loadPackage(["numpy","scipy"]);
+    await py.loadPackage(["numpy"]); /* EARTHLINE_ELDER_NUMPY_ONLY_17387 */
     const src=await fetch("tools/elder_trees/chmv2_array_detector_17129.py",{cache:"no-store"});
     if(!src.ok)throw new Error("array detector "+src.status);
     await py.runPythonAsync(await src.text());
