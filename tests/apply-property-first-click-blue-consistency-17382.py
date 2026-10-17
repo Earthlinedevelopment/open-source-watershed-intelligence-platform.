@@ -119,7 +119,7 @@ s=s.replace(old_start,new_start,1)
 
 # Make final renderer choice deterministic once source/images/layers are ready.
 old_safe="""const safeOpacity17172=naturalRendered17172>0?0:.98;for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',safeOpacity17172)}catch(_){}}"""
-new_safe="""const safeOpacity17172=0;for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',safeOpacity17172)}catch(_){}}"""
+new_safe="""const safeOpacity17172=naturalRendered17172>0?0:.98;for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',safeOpacity17172)}catch(_){}}if(!naturalRendered17172&&show&&!String(reason).includes('natural-settle-force'))setTimeout(()=>syncTexture('natural-settle-force'),260);"""
 if s.count(old_safe)!=1:
     raise SystemExit(f"safeOpacity anchor count {s.count(old_safe)}")
 s=s.replace(old_safe,new_safe,1)
