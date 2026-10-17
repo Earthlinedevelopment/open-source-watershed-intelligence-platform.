@@ -63,8 +63,8 @@ insert=r'''    const jurisdictionFastPipIndex17378=(()=>{
     }
 '''
 s=s.replace(anchor,insert+anchor,1)
-old="const inside17377=earthlinePointInJurisdiction16539(probe17373,jurisdictionFastGeometry17373);"
-new="const inside17377=jurisdictionFastContains17378(probe17373);"
+old="if(!earthlinePointInJurisdiction16539(probe17373,jurisdictionFastGeometry17373)){"
+new="if(!jurisdictionFastContains17378(probe17373)){"
 if s.count(old)!=1: raise SystemExit("fast PIP call anchor missing")
 s=s.replace(old,new,1)
 s="<!-- EARTHLINE_FAST_PIP_ROW_INDEX_17378: finer exact numeric row index for no-boundary-contact candidate containment; authoritative boundary-touching clip unchanged. -->\n"+s
