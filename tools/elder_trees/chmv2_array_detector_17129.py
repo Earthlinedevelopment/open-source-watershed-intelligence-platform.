@@ -262,7 +262,7 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
         if not a.size:return None
         cx=origin_x+full_col*resx
         cy=origin_y+full_row*resy
-        sm=None;rows=None;cols=None;fast17406=False
+        sm=None;rows=None;cols=None;fast17406=False;fast_nearest17408=None
         if shared_peak17406 is not None:
             ah,aw=a.shape
             margin=peak_margin17406
@@ -272,13 +272,18 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
                 if len(irs):
                     irs=irs+margin;ics=ics+margin
                     best_fast_dist=None
+                    nearest_fast=[]
                     for lr,lc in zip(irs.tolist(),ics.tolist()):
                         global_col=native_col0+c0+lc
                         global_row=native_row0+r0+lr
                         x=origin_x+(global_col+.5)*resx
                         y=origin_y+(global_row+.5)*resy
                         dist=((x-cx)**2+(y-cy)**2)**.5
-                        if best_fast_dist is None or dist<best_fast_dist:best_fast_dist=dist
+                        rec_fast=(dist,lr,lc,x,y)
+                        if best_fast_dist is None or dist<best_fast_dist:
+                            best_fast_dist=dist;nearest_fast=[rec_fast]
+                        elif dist==best_fast_dist:
+                            nearest_fast.append(rec_fast)
                     cr=full_row-native_row0-r0-.5
                     ccx=full_col-native_col0-c0-.5
                     boundary_lb=min(
@@ -290,6 +295,7 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
                     if best_fast_dist is not None and boundary_lb>best_fast_dist+1e-9:
                         sm=shared_sm17406[r0:r1,c0:c1]
                         rows,cols=irs,ics
+                        fast_nearest17408=nearest_fast
                         fast17406=True
         if not fast17406:
             zz=np.nan_to_num(a,nan=0)
@@ -300,17 +306,22 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
         # EARTHLINE 17401 — exact lexicographic shortcut.
         # The approved record key is (distance, -structural, x, y, ...), so
         # structural metrics cannot affect the winner unless distance ties.
-        distance_rows=[]
-        min_dist=None
-        for lr,lc in zip(rows.tolist(),cols.tolist()):
-            global_col=native_col0+c0+lc
-            global_row=native_row0+r0+lr
-            x=origin_x+(global_col+.5)*resx
-            y=origin_y+(global_row+.5)*resy
-            dist=((x-cx)**2+(y-cy)**2)**.5
-            distance_rows.append((dist,lr,lc,x,y))
-            if min_dist is None or dist<min_dist:min_dist=dist
-        nearest=[q for q in distance_rows if q[0]==min_dist]
+        if fast_nearest17408 is not None:
+            nearest=fast_nearest17408
+        else:
+            nearest=[]
+            min_dist=None
+            for lr,lc in zip(rows.tolist(),cols.tolist()):
+                global_col=native_col0+c0+lc
+                global_row=native_row0+r0+lr
+                x=origin_x+(global_col+.5)*resx
+                y=origin_y+(global_row+.5)*resy
+                dist=((x-cx)**2+(y-cy)**2)**.5
+                rec_near=(dist,lr,lc,x,y)
+                if min_dist is None or dist<min_dist:
+                    min_dist=dist;nearest=[rec_near]
+                elif dist==min_dist:
+                    nearest.append(rec_near)
         best=None
         for dist,lr,lc,x,y in nearest:
             h=float(a[lr,lc]) if np.isfinite(a[lr,lc]) else float(sm[lr,lc])
