@@ -16,19 +16,13 @@ new="""    const supplementalStart17365=candidates.length;
 if s.count(old)!=1: raise SystemExit(f"supplemental anchor count {s.count(old)}")
 s=s.replace(old,new,1)
 
-old="""    const candidatesBeforeJurisdiction16539=candidates.length;
-    let jurisdictionRejectedCandidates16539=0;
-    if(!focusMode&&jurisdictionGeometry16539){
-      const eligible16539=[];let finalScreenYield16661=0;
-      for(const candidate16539 of candidates){
-        const screened16539=screenJurisdictionCandidate16539(candidate16539);
-        if(screened16539)eligible16539.push(screened16539);else jurisdictionRejectedCandidates16539++;
-        if((++finalScreenYield16661%12)===0)await earthlineCooperativeYield16661();
-      }
-      candidates.length=0;candidates.push(...eligible16539);
-    }
-    const jurisdictionEligibleCandidates16539=candidates.length;"""
-new="""    const candidatesBeforeJurisdiction16539=candidates.length;
+screen_start17365="    const candidatesBeforeJurisdiction16539=candidates.length;"
+screen_end17365="    const jurisdictionEligibleCandidates16539=candidates.length;"
+screen_i17365=s.find(screen_start17365)
+screen_j17365=s.find(screen_end17365,screen_i17365)
+if screen_i17365<0 or screen_j17365<0: raise SystemExit("final screen structural anchors missing")
+screen_j17365+=len(screen_end17365)
+new_screen17365="""    const candidatesBeforeJurisdiction16539=candidates.length;
     let jurisdictionRejectedCandidates16539=0;
     if(!focusMode&&jurisdictionGeometry16539){
       const relaxedRawCount17365=Math.max(0,candidates.length-supplementalEnd17365);
@@ -36,21 +30,21 @@ new="""    const candidatesBeforeJurisdiction16539=candidates.length;
       const canReuse17365=!!(prior17365&&
         prior17365.contours===contours&&
         prior17365.jurisdiction===jurisdictionGeometry16539&&
-        prior17365.supplemental===supplementalCandidates16702&&
+        prior17365.supplementalSource===supplementalCandidates16702&&
         supplementalCount17365>=prior17365.supplementalCount&&
         supplementalStart17365===prior17365.supplementalStart&&
         relaxedRawCount17365===prior17365.relaxedRawCount);
       const eligible16539=[];let finalScreenYield16661=0;
       if(canReuse17365){
         eligible16539.push(...prior17365.preferred.map(c17365=>Object.assign({},c17365)));
-        eligible16539.push(...prior17365.supplemental.map(c17365=>Object.assign({},c17365)));
+        eligible16539.push(...prior17365.screenedSupplemental.map(c17365=>Object.assign({},c17365)));
         jurisdictionRejectedCandidates16539=
           prior17365.preferredRejected+prior17365.supplementalRejected+prior17365.relaxedRejected;
         const newSupplementalStart17365=supplementalStart17365+prior17365.supplementalCount;
         for(let i17365=newSupplementalStart17365;i17365<supplementalEnd17365;i17365++){
           const screened16539=screenJurisdictionCandidate16539(candidates[i17365]);
           if(screened16539)eligible16539.push(screened16539);else jurisdictionRejectedCandidates16539++;
-          if((++finalScreenYield16661%12)===0)await earthlineCooperativeYield16661();
+          if((++finalScreenYield16661%256)===0)await earthlineCooperativeYield16661();
         }
         eligible16539.push(...prior17365.relaxed.map(c17365=>Object.assign({},c17365)));
         window.EARTHLINE_REGIONAL_SCREEN_REUSE_17365={
@@ -61,7 +55,7 @@ new="""    const candidatesBeforeJurisdiction16539=candidates.length;
           at:new Date().toISOString()
         };
       }else{
-        const preferred17365=[],supplemental17365=[],relaxed17365=[];
+        const preferred17365=[],screenedSupplemental17365=[],relaxed17365=[];
         let preferredRejected17365=0,supplementalRejected17365=0,relaxedRejected17365=0;
         for(let i17365=0;i17365<candidates.length;i17365++){
           const candidate16539=candidates[i17365],screened16539=screenJurisdictionCandidate16539(candidate16539);
@@ -70,7 +64,7 @@ new="""    const candidatesBeforeJurisdiction16539=candidates.length;
             eligible16539.push(screened16539);
             const snapshot17365=Object.assign({},screened16539);
             if(group17365==='preferred')preferred17365.push(snapshot17365);
-            else if(group17365==='supplemental')supplemental17365.push(snapshot17365);
+            else if(group17365==='supplemental')screenedSupplemental17365.push(snapshot17365);
             else relaxed17365.push(snapshot17365);
           }else{
             jurisdictionRejectedCandidates16539++;
@@ -78,14 +72,14 @@ new="""    const candidatesBeforeJurisdiction16539=candidates.length;
             else if(group17365==='supplemental')supplementalRejected17365++;
             else relaxedRejected17365++;
           }
-          if((++finalScreenYield16661%12)===0)await earthlineCooperativeYield16661();
+          if((++finalScreenYield16661%256)===0)await earthlineCooperativeYield16661();
         }
         if(Array.isArray(supplementalCandidates16702)){
           earthlineRegionalScreenReuse17365.set(hy,{
-            contours:contours,jurisdiction:jurisdictionGeometry16539,supplemental:supplementalCandidates16702,
+            contours:contours,jurisdiction:jurisdictionGeometry16539,supplementalSource:supplementalCandidates16702,
             supplementalStart:supplementalStart17365,supplementalCount:supplementalCount17365,
             relaxedRawCount:relaxedRawCount17365,
-            preferred:preferred17365,supplemental:supplemental17365,relaxed:relaxed17365,
+            preferred:preferred17365,screenedSupplemental:screenedSupplemental17365,relaxed:relaxed17365,
             preferredRejected:preferredRejected17365,supplementalRejected:supplementalRejected17365,relaxedRejected:relaxedRejected17365
           });
         }
@@ -96,8 +90,7 @@ new="""    const candidatesBeforeJurisdiction16539=candidates.length;
       candidates.length=0;candidates.push(...eligible16539);
     }
     const jurisdictionEligibleCandidates16539=candidates.length;"""
-if s.count(old)!=1: raise SystemExit(f"final screen anchor count {s.count(old)}")
-s=s.replace(old,new,1)
+s=s[:screen_i17365]+new_screen17365+s[screen_j17365:]
 
 s="<!-- EARTHLINE_REGIONAL_SCREEN_REUSE_17365: same-run exact reuse of already-screened Regional candidate groups; only newly appended supplemental candidates are jurisdiction-screened on statewide rerun. Ranking, spacing, capacity and final verdict unchanged. -->\n"+s
 p.write_text(s,encoding="utf-8")
