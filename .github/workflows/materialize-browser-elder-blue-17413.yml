@@ -1,0 +1,46 @@
+name: Materialize Browser Elder Blue Candidate 17413
+on:
+  push:
+    branches: [repair/browser-elder-blue-final-17413]
+    paths:
+      - '.github/workflows/materialize-browser-elder-blue-17413.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/browser-elder-blue-final-17413
+          fetch-depth: 0
+      - name: Apply final tested production patch stack
+        run: |
+          python3 tests/apply-browser-yield-fastpath-17295.py
+          python3 tests/apply-wasm-pip-kernel-17319.py
+          python3 tests/apply-certified-interior-supertile-17301.py
+          python3 tests/apply-skip-regional-preferred-screen-17305.py
+          python3 tests/apply-run-scoped-segment-clip-cache-17315.py
+          python3 tests/apply-consolidated-provisional-jurisdiction-17325.py
+          python3 tests/apply-land-validity-scanline-17352.py
+          python3 tests/apply-vermont-cors-first-17360.py
+          python3 tests/apply-regional-screen-reuse-17365.py
+          python3 tests/apply-telemetry-origin-guard-17368.py
+          python3 tests/apply-jurisdiction-edge-fastpath-17373.py
+          python3 tests/apply-fast-pip-row-index-17378.py
+          python3 tests/apply-fast-pip-geometry-cache-17379.py
+          python3 tests/apply-elder-cold-start-17392.py
+          python3 tests/apply-elder-worker-numpy-only-17392.py
+          python3 tests/apply-elder-postregional-prewarm-17393.py
+          python3 tests/apply-elder-failclosed-status-17395.py
+          python3 tests/apply-property-blue-invariant-17408.py
+      - name: Commit materialized candidate
+        run: |
+          git config user.name "Earthline CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git switch -C candidate/browser-elder-blue-final-17413
+          git add index.html earthline-launch-16872.js earthline-elder-worker-17129.js tools/elder_trees/chmv2_array_detector_17129.py
+          git commit -m "candidate: materialize browser Elder blue final 17413" || true
+          git push -f origin candidate/browser-elder-blue-final-17413
