@@ -1,0 +1,56 @@
+from pathlib import Path
+p=Path("index.html")
+s=p.read_text(encoding="utf-8")
+
+old_button="""document.body.appendChild(b)}/* EARTHLINE 16546 — the existing single Property control always owns exactly one current click handler, even if another panel owner created or moved the button before this installer runs. Assignment replaces any stale onclick owner rather than stacking a listener. */b.onclick=declareProperty;b.dataset.earthlinePropertyClickOwner16546='current';return b}"""
+new_button="""document.body.appendChild(b)}
+  /* EARTHLINE 17423 — the existing Property control snapshots its committed
+     target on the physical press. This is the same button owner, not a second
+     run listener, and prevents camera/moveend reconciliation between pointerdown
+     and click from changing which 20-acre frame the user requested. */
+  b.onpointerdown=function(e){
+    e.stopPropagation();
+    const t=window.EARTHLINE_PROPERTY_TARGET_16201;
+    if(t&&Number.isFinite(Number(t.lng))&&Number.isFinite(Number(t.lat))){
+      window.EARTHLINE_PROPERTY_POINTER_SNAPSHOT_17423={
+        lng:Number(t.lng),lat:Number(t.lat),source:String(t.source||'crosshair'),
+        code:t.code?String(t.code):'',score:Number(t.score||0),
+        parentRunToken:t.parentRunToken?String(t.parentRunToken):'',
+        pressedAt:Date.now(),at:new Date().toISOString()
+      };
+    }
+  };
+  /* EARTHLINE 16546 — the existing single Property control always owns exactly one current click handler, even if another panel owner created or moved the button before this installer runs. Assignment replaces any stale onclick owner rather than stacking a listener. */
+  b.onclick=declareProperty;b.dataset.earthlinePropertyClickOwner16546='current';return b}"""
+if s.count(old_button)!=1: raise SystemExit(f"button owner anchor count {s.count(old_button)}")
+s=s.replace(old_button,new_button,1)
+
+old_terminal="""    const mp=map(),m=model(),chosen=window.EARTHLINE_PROPERTY_TARGET_16201,c=(chosen&&Number.isFinite(Number(chosen.lng))&&Number.isFinite(Number(chosen.lat)))?{lng:Number(chosen.lng),lat:Number(chosen.lat)}:mp?.getCenter?.();
+    if(!mp||!m||!c||!Number.isFinite(Number(c.lng))||!Number.isFinite(Number(c.lat))){status('PROPERTY ANALYSIS BLOCKED — map-crosshair coordinates are unavailable.','failed');return false}
+"""
+new_terminal="""    const mp=map(),m=model(),chosen=window.EARTHLINE_PROPERTY_TARGET_16201,pointer17423=window.EARTHLINE_PROPERTY_POINTER_SNAPSHOT_17423||null;
+    const pointerValid17423=!!(pointer17423&&Number.isFinite(Number(pointer17423.lng))&&Number.isFinite(Number(pointer17423.lat))&&Date.now()-Number(pointer17423.pressedAt||0)<10000);
+    const launchTarget17423=pointerValid17423?pointer17423:chosen;
+    const c=(launchTarget17423&&Number.isFinite(Number(launchTarget17423.lng))&&Number.isFinite(Number(launchTarget17423.lat)))
+      ?{lng:Number(launchTarget17423.lng),lat:Number(launchTarget17423.lat)}
+      :mp?.getCenter?.();
+    if(!mp||!m||!c||!Number.isFinite(Number(c.lng))||!Number.isFinite(Number(c.lat))){status('PROPERTY ANALYSIS BLOCKED — map-crosshair coordinates are unavailable.','failed');return false}
+    if(pointerValid17423){
+      window.EARTHLINE_PROPERTY_TARGET_16201=Object.assign({},chosen||{},pointer17423,{at:new Date().toISOString()});
+      window.EARTHLINE_PROPERTY_CLICK_SNAPSHOT_17423={
+        lng:Number(c.lng),lat:Number(c.lat),source:String(pointer17423.source||'crosshair'),
+        code:pointer17423.code?String(pointer17423.code):'',at:new Date().toISOString()
+      };
+    }
+"""
+if s.count(old_terminal)!=1: raise SystemExit(f"terminal target anchor count {s.count(old_terminal)}")
+s=s.replace(old_terminal,new_terminal,1)
+
+old_sync="""function syncPropertyTargetFromMap16201(){const m=panelMap16188();if(!m||typeof m.getCenter!=='function')return false;const c=m.getCenter();"""
+new_sync="""function syncPropertyTargetFromMap16201(){if(String(document.documentElement.dataset.earthlinePropertyRunState||'')==='running')return true;const m=panelMap16188();if(!m||typeof m.getCenter!=='function')return false;const c=m.getCenter();"""
+if s.count(old_sync)!=1: raise SystemExit(f"target sync anchor count {s.count(old_sync)}")
+s=s.replace(old_sync,new_sync,1)
+
+s="<!-- EARTHLINE_PROPERTY_POINTER_SNAPSHOT_17423: same physical press owns immutable Property target through terminal run. -->\n"+s
+p.write_text(s,encoding="utf-8")
+print("patched authoritative Property pointer snapshot/freeze 17423")
