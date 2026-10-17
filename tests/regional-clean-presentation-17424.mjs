@@ -61,7 +61,7 @@ const initialPass=
 await page.evaluate(()=>new Promise(resolve=>{
   const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
   const pub=window.EARTHLINE_REGIONAL_PUBLICATION_VIEW_16337||null;
-  const z=Math.max(Number(mp?.getZoom?.()||0)+0.8,Number(pub?.zoom||0)+0.8);
+  const z=Math.max(Number(mp?.getZoom?.()||0)+0.8,Math.max(10,Number(pub?.zoom||0))+0.8);
   let done=false;const finish=()=>{if(done)return;done=true;setTimeout(resolve,250)};
   mp?.once?.('moveend',finish);
   mp?.jumpTo?.({zoom:z});
