@@ -11,8 +11,14 @@ async function openPage(browser){
   await page.goto(BASE+'?property17382='+Date.now()+Math.random(),{waitUntil:'domcontentloaded',timeout:90000});
   await page.waitForSelector('#searchInput',{state:'attached',timeout:30000});
   if(!(await page.locator('#searchInput').isVisible())){
-    const rail=page.locator('#earthlineRailSearch16188');
-    if(await rail.count())await rail.click();
+    await page.evaluate(()=>{
+      try{
+        document.documentElement.classList.add('earthline-panel-open-16188');
+        window.earthlineReconcilePanel16188?.();
+        document.getElementById('earthlineRailSearch16188')?.click?.();
+        window.earthlineReconcilePanel16188?.();
+      }catch(_){}
+    });
   }
   await page.waitForSelector('#searchInput',{state:'visible',timeout:15000});
   return {context,page,errors};
