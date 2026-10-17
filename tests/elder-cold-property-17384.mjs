@@ -8,6 +8,19 @@ const BASE=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
 const errors=[];page.on('pageerror',e=>errors.push(String(e)));
 await page.goto(BASE+'?elderCold17384='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
 await page.waitForFunction(()=>typeof window.earthlineFocusRunEngine16158==='function',null,{timeout:30000,polling:100});
+await page.locator('#searchInput').fill('Vermont');
+await page.waitForTimeout(700);
+const initOpts=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
+if(await initOpts.count())await initOpts.first().click();
+const initRun=page.locator('#runBtn');
+if(await initRun.isVisible()){
+  const initBusy=await initRun.evaluate(b=>b.dataset.busy==='1'||b.disabled);
+  if(!initBusy)await initRun.click();
+}
+await page.waitForFunction(()=>{
+  const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+  return String(d?.tier||d?.mode||'').toLowerCase()==='regional'&&/vermont/i.test(String(d?.query||''));
+},null,{timeout:90000,polling:100});
 
 const pt={lng:-72.5754,lat:44.2601};
 await page.evaluate(async p=>{
