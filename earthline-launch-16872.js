@@ -1839,9 +1839,12 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     },{passive:true});
     /* EARTHLINE 17414 — avoid competing with the first Regional run.
        Warm Elder runtime immediately after Regional publication. */
+    /* EARTHLINE 17418 — begin the lightweight NumPy-only Elder runtime warm at
+       page startup so its cold cost overlaps normal location/Regional interaction.
+       The post-Regional 900 ms call above remains an idempotent fallback only. */
+    void prewarmDynamicWorker();
     if(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970){
       void load().then(()=>refresh()).catch(()=>{});
-      void prewarmDynamicWorker();
     }
     if(location.hash==='#swales-explained')howParagraph();
     window.EARTHLINE_ELDER_TREES_V1_17097={
