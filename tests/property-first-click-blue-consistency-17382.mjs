@@ -60,7 +60,7 @@ await a.context.close();
    Use verified fixture geometry only to exercise presentation ownership; this does
    not alter or substitute Earthline science and is never published to users. */
 const b=await openPage(browser);
-await b.page.waitForFunction(()=>!!(window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null))&&typeof window.earthlineSyncPropertyTexture16169==='function',null,{timeout:30000,polling:100});
+await b.page.waitForFunction(()=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);return !!m&&typeof window.earthlineSyncPropertyTexture16169==='function'&&(!m.isStyleLoaded||m.isStyleLoaded());},null,{timeout:30000,polling:100});
 const fixtureReady=await b.page.evaluate(async()=>{
   try{
     const m=(typeof M!=='undefined'?M:null),s=window.earthlineRegional15778||(window.earthlineRegional15778={});
