@@ -1,0 +1,23 @@
+name: Earthline Elder Sequence Diagnostic 17498
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-elder-sequence-17498.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17497, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/elder-sequence-17498.mjs > tests/elder-sequence-17498.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/elder-sequence-17498.mjs
