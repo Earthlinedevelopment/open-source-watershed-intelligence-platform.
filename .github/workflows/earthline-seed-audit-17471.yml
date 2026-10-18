@@ -1,0 +1,50 @@
+name: Earthline Seed Audit + Extract 17471
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-seed-audit-17471.yml'
+  workflow_dispatch:
+permissions: {contents: write}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17454, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/seed-audit-17471.mjs > tests/seed-audit-17471.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          terms=['seedCandidatesForLevel','earthlineBuildSeedLevelIndex16460','earthlineSeedSelectionContext15841']
+          out=[]
+          for t in terms:
+              start=0
+              while True:
+                  i=s.find(t,start)
+                  if i<0: break
+                  out.append(f'===== {t} @ {i} =====\n'+s[max(0,i-14000):i+26000])
+                  start=i+1
+          Path('/tmp/seed-owner-17471.txt').write_text('\n\n'.join(out),encoding='utf-8')
+          PY
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/seed-audit-17471.mjs | tee /tmp/seed-audit-17471.log
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          rm -rf /tmp/gate
+          git worktree add /tmp/gate origin/repair/property-one-click-17441
+          mkdir -p /tmp/gate/test-results
+          cp /tmp/seed-owner-17471.txt /tmp/gate/test-results/seed-owner-17471.txt
+          cp /tmp/seed-audit-17471.log /tmp/gate/test-results/seed-audit-17471.log
+          cd /tmp/gate
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add test-results/seed-owner-17471.txt test-results/seed-audit-17471.log
+          git commit -m "test: persist seed audit 17471" || true
+          git push origin HEAD:repair/property-one-click-17441
