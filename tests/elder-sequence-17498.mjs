@@ -29,7 +29,6 @@ await page.locator('#earthlineDeclareProperty16169').click();
 await page.waitForFunction(s=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;return Number(a?.serial||0)>s&&a?.settled===true},before,{timeout:120000,polling:100});
 try{await page.waitForFunction(()=>window.EARTHLINE_ELDER_TREE_LAST_17097?.state==='committed',null,{timeout:25000,polling:100})}catch(_){}
 const out=await page.evaluate(({label,q,clickPerf})=>({label,q,clickPerf,now:performance.now(),events:window.__elderDiag17498.events.slice(-30),elder:window.EARTHLINE_ELDER_TREE_LAST_17097||null,audit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null}),{label,q,clickPerf});
-window;
 console.log('EARTHLINE_ELDER_SEQUENCE_17498 '+JSON.stringify(out));}
 await page.goto('https://earthlinedevelopment.org/?diag17498='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});await page.waitForSelector('#searchInput',{timeout:30000});
 await one('Essex Junction, Vermont','first');await one('Rutland, Vermont','second');await context.close();await browser.close();
