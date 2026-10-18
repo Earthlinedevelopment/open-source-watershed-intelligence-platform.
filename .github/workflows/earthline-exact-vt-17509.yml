@@ -1,0 +1,28 @@
+name: Earthline Exact Vermont Gate 17509
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-exact-vt-17509.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17509, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/interaction-probe-17494.mjs > tests/interaction-probe-17494.mjs
+          git show origin/repair/property-one-click-17441:tests/elder-sequence-17498.mjs > tests/elder-sequence-17498.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: One-press + Elder ceiling
+        run: node tests/interaction-probe-17494.mjs
+      - name: Elder sequence trace
+        if: always()
+        run: node tests/elder-sequence-17498.mjs
