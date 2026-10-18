@@ -1,0 +1,26 @@
+name: Earthline Property Seed Coverage Live-Origin 17472
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - 'tests/property-seed-coverage-live-17472.mjs'
+      - '.github/workflows/earthline-seed-coverage-17472.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17454, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/apply-property-seed-coverage-17471.py > /tmp/apply.py
+          git show origin/repair/property-one-click-17441:tests/property-seed-coverage-live-17472.mjs > tests/property-seed-coverage-live-17472.mjs
+          python3 /tmp/apply.py
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/property-seed-coverage-live-17472.mjs
