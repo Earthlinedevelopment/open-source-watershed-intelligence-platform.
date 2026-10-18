@@ -1,0 +1,33 @@
+name: Earthline Terminal Elder Start Audit 17506
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-terminal-elder-audit-17506.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17505, fetch-depth: 0}
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          lines=s.splitlines()
+          needles=['terminalPropertyRun','EARTHLINE_PROPERTY_ELDER_EARLY_START_17166','startProperty','earthlineGovernedPropertyRun16202','earthlineDeclarePropertyAtCrosshair16173']
+          seen=set()
+          for n in needles:
+              print('NEEDLE',n)
+              for i,line in enumerate(lines):
+                  if n in line:
+                      a=max(0,i-35); b=min(len(lines),i+55)
+                      key=(a,b)
+                      if key in seen: continue
+                      seen.add(key)
+                      print(f'===== {n} line {i+1} =====')
+                      for j in range(a,b): print(f'{j+1}: {lines[j]}')
+          PY
