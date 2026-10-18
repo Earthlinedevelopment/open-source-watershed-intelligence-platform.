@@ -1,3 +1,4 @@
+<!-- EARTHLINE_ELDER_EXACT_FRAME_INLINE_PRIME_17508: compute prime starts at authoritative Property frame install, no UI timer. -->
 <!-- EARTHLINE_ELDER_NO_MAPMOVE_PREFETCH_17504: target reconciliation no longer queues stale warmBbox work. -->
 <!-- EARTHLINE_ELDER_SINGLE_LIFECYCLE_OWNER_17503: retired legacy early start; terminalPropertyRun solely starts/publishes Elder. -->
 <!-- EARTHLINE_ELDER_PRIME_AFTER_PROPERTY_FRAME_17501: compute-only Elder prime follows governed frame install. -->
@@ -34777,7 +34778,11 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
     }
     try{mp.stop?.();mp.jumpTo?.({center:[Number(c.lng),Number(c.lat)],zoom:Math.max(17,Number(mp.getZoom?.()||17))});}catch(_){}
     window.EARTHLINE_PROPERTY_DECLARATION_16169={build:BUILD,center:{lng:site.lng,lat:site.lat},acres:20,boundaryPoints:m.analysisBoundaryLngLat.length,selectedCode:selectedCode||null,declaredAt:new Date().toISOString(),route:'window.earthlineGovernedPropertyRun16202'};
-    /* EARTHLINE 17503 — retired duplicate early Elder start; terminalPropertyRun is sole lifecycle owner. */
+    /* EARTHLINE 17508 — exact Property frame is now installed. Prime dynamic
+       Elder compute here, synchronously from the authoritative terminal owner,
+       before the governed terrain/swale runner yields. This is compute-only:
+       terminalPropertyRun remains sole Elder lifecycle/publication owner. */
+    try{void window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.()}catch(_){}
     /* EARTHLINE 16341 — a new governed Property run must clear terminal fields from
        the previous run before the panel Orb owner can observe them. */
     setAudit({build:BUILD,serial,startedAt:new Date().toISOString(),deadlineMs:null,observerOnly:true,panelCanTimeout:false,panelCanCancel:false,panelCanIncrementSearchGen:false,route:'window.earthlineGovernedPropertyRun16202',directGovernedPropertyOwnerUsed:true,center:{lng:site.lng,lat:site.lat},selectedCode:selectedCode||null,input:site.fullName,stage:'starting',settled:false,result:null,error:null,scientificSettled:false,scientificResult:false,scientificSettledAt:null,settledAt:null});
@@ -38505,9 +38510,6 @@ function syncPropertyTargetFromMap16201(){const m=panelMap16188();if(!m||typeof 
         document.documentElement.classList.remove('earthline-property-orb-latched-16244');
       }
       return false;
-    }
-    if(out17499!==false){
-      setTimeout(()=>{try{void window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.()}catch(_){}},0);
     }
     Promise.resolve(out17499).then(v17499=>{
       if(v17499===false&&Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17494){
