@@ -1,0 +1,29 @@
+name: Materialize Mantra 67 Launch Repairs 17458
+on:
+  push:
+    branches: [repair/mantra67-launch-final-17454]
+    paths:
+      - 'tests/apply-property-repeat-queue-17457.py'
+      - 'tests/apply-state-history-17458.py'
+      - '.github/workflows/materialize-mantra67-17458.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/mantra67-launch-final-17454
+          fetch-depth: 0
+      - run: |
+          python3 tests/apply-property-repeat-queue-17457.py
+          python3 tests/apply-state-history-17458.py
+      - run: |
+          git config user.name "Earthline CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "repair: repeat Property queue and state history identity 17458" || true
+          git push origin HEAD:repair/mantra67-launch-final-17454
