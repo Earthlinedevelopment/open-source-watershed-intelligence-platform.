@@ -25,6 +25,7 @@ jobs:
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
           exit 1
       - name: Baseline exact Vermont sites
+        continue-on-error: true
         run: env EARTHLINE_URL='http://127.0.0.1:8787/' VARIANT='baseline' OUTDIR='/tmp/property17451' node tests/property-prescriber-exact-vt-17451.mjs
       - name: Apply prescriber repair
         run: python3 tests/apply-property-prescriber-distribution-17451.py
