@@ -1,0 +1,27 @@
+name: Earthline Property Science Gate 17448
+on:
+  push:
+    branches: [repair/property-science-selector-17448]
+    paths:
+      - 'tests/apply-property-spatial-selector-17448.py'
+      - 'tests/property-science-diagnostic-17448.mjs'
+      - '.github/workflows/earthline-property-science-17448.yml'
+permissions: {contents: read}
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/property-science-selector-17448}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: python3 tests/apply-property-spatial-selector-17448.py
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - run: env EARTHLINE_URL='http://127.0.0.1:8787/' node tests/property-science-diagnostic-17448.mjs
