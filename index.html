@@ -1,3 +1,4 @@
+<!-- EARTHLINE_PROPERTY_MAJOR_CHANNEL_CIRCULAR_BUFFER_17483: Property-run exact 4 m Euclidean channel buffer; Regional unchanged. -->
 <!-- EARTHLINE_PROPERTY_ONE_PRESS_OWNER_17444: pointer-up physical activation + click keyboard fallback, deduped. -->
 <!-- EARTHLINE_BIOSWALE_REPORT_SCROLL_EXPORT_17439: canonical report owns reliable scroll surface and toolbar actions at open. -->
 <!-- EARTHLINE_ROOT_AUDIT_CLEAN_REGIONAL_17437: intentional initial corridor-geometry suppression is valid when data/source/tabs are complete. -->
@@ -6025,7 +6026,11 @@ function earthlineMajorChannelUnsafeAt16288(cx,cy){
       for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
         if(M.acc[idx(x,y)]<threshold)continue;
         for(let oy=-radius;oy<=radius;oy++)for(let ox=-radius;ox<=radius;ox++){
-          const nx=x+ox,ny=y+oy;if(nx<0||ny<0||nx>=GW||ny>=GH)continue;unsafe[idx(nx,ny)]=1;
+          const nx=x+ox,ny=y+oy;if(nx<0||ny<0||nx>=GW||ny>=GH)continue;
+          const propertyExact17483=String(document.documentElement.dataset.earthlinePropertyRunState||'')==='running'||
+            !!(M&&M.loc&&M.loc.userSelectedSite===true&&Number(M.loc.acres||0)>0&&Number(M.loc.acres||0)<=50);
+          if(propertyExact17483&&Math.hypot(ox,oy)*Math.max(0.5,Number(M.cellM||1))>4.000001)continue;
+          unsafe[idx(nx,ny)]=1;
         }
       }
     }
@@ -9636,6 +9641,9 @@ function earthlinePathPointUsable(px,py,maxS){
   for(let oy=-radius;oy<=radius;oy++)for(let ox=-radius;ox<=radius;ox++){
     const x=gx+ox,y=gy+oy;
     if(x<0||y<0||x>=GW||y>=GH)continue;
+    const propertyExact17483=String(document.documentElement.dataset.earthlinePropertyRunState||'')==='running'||
+      !!(M&&M.loc&&M.loc.userSelectedSite===true&&Number(M.loc.acres||0)>0&&Number(M.loc.acres||0)<=50);
+    if(propertyExact17483&&Math.hypot(ox,oy)*Math.max(0.5,Number(M.cellM||1))>4.000001)continue;
     if(M.acc&&M.acc[idx(x,y)]>=channelThreshold)return false;
   }
   return true;

@@ -1779,7 +1779,11 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     const wrapped=function(f,index){
       const out=prior.apply(this,arguments);
       corridorBlock(f);
-      try{void prefetchProperty17174()}catch(_){} /* EARTHLINE_ELDER_CORRIDOR_PREFETCH_17195 */
+      try{void prefetchProperty17174()}catch(_){}
+      /* EARTHLINE 17468 — begin the approved Elder computation after corridor
+         selection, off the click path. Same detector, same target identity,
+         same published evidence; Property later reuses the exact cached result. */
+      setTimeout(()=>{try{void dynamicPropertyEvidence(true)}catch(_){}},0);
       return out;
     };
     wrapped.__earthlineElder17097=true;wrapped.__earthlineElder17097Original=prior;
@@ -1832,8 +1836,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
          and click. The governed terminal Property owner already starts Elder work
          immediately after the click is accepted. Keep only the already-idempotent
          runtime warm here so the physical click cannot be displaced by DOM work. */
-      try{void prewarmDynamicWorker()}catch(_){}
-      try{void prefetchProperty17174()}catch(_){} /* EARTHLINE_ELDER_CURRENT_TARGET_PREFETCH_17452 */
+      try{void prewarmDynamicWorker()}catch(_){} /* EARTHLINE 17466 — keep Property pointer path free of target I/O */
     },true);
     document.addEventListener('click',click,false);
     window.addEventListener('hashchange',hash,false);
