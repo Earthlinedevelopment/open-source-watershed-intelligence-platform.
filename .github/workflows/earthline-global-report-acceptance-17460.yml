@@ -1,0 +1,81 @@
+name: Earthline Global Report Acceptance 17460
+on:
+  push:
+    branches: [repair/mantra67-launch-final-17454]
+    paths:
+      - 'tests/global-report-acceptance-17460.mjs'
+      - '.github/workflows/earthline-global-report-acceptance-17460.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix: {browser: [chromium, firefox]}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - id: test
+        continue-on-error: true
+        run: |
+          if [ '${{ matrix.browser }}' = 'firefox' ]; then
+            xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' node tests/global-report-acceptance-17460.mjs
+          else
+            env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='chromium' HEADLESS='true' node tests/global-report-acceptance-17460.mjs
+          fi
+      - name: Persist
+        if: always()
+        run: |
+          mkdir -p test-results/global-report-17460
+          cp artifacts/global-report-17460/*.json test-results/global-report-17460/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add test-results/global-report-17460
+          git commit -m "test: persist global report ${{ matrix.browser }} 17460" || true
+          git pull --rebase origin repair/mantra67-launch-final-17454 || true
+          git push origin HEAD:repair/mantra67-launch-final-17454 || true
+      - name: Enforce
+        if: steps.test.outcome != 'success'
+        run: exit 1
+  webkit:
+    runs-on: macos-14
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - run: |
+          python3 -m http.server 8787 --bind 0.0.0.0 >/tmp/http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - id: test
+        continue-on-error: true
+        run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='false' node tests/global-report-acceptance-17460.mjs
+      - name: Persist
+        if: always()
+        run: |
+          mkdir -p test-results/global-report-17460
+          cp artifacts/global-report-17460/*.json test-results/global-report-17460/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add test-results/global-report-17460
+          git commit -m "test: persist global report webkit 17460" || true
+          git pull --rebase origin repair/mantra67-launch-final-17454 || true
+          git push origin HEAD:repair/mantra67-launch-final-17454 || true
+      - name: Enforce
+        if: steps.test.outcome != 'success'
+        run: exit 1
