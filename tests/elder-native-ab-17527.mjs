@@ -1,10 +1,27 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 const browser=await chromium.launch({headless:true});
-const page=await browser.newPage();
+const context=await browser.newContext();
+const index=fs.readFileSync('index.html','utf8');
+const pyWorker=fs.readFileSync('earthline-elder-worker-17129.js','utf8');
+const jsWorker=fs.readFileSync('earthline-elder-worker-js-17527.js','utf8');
+const detector=fs.readFileSync('tools/elder_trees/chmv2_array_detector_17129.py','utf8');
+await context.route('**/*',async r=>{
+  const u=new URL(r.request().url());
+  if(r.request().resourceType()==='document'&&/^(?:www\\.)?earthlinedevelopment\\.org$/i.test(u.hostname)&&u.pathname==='/')
+    return r.fulfill({status:200,body:index,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
+  if(/^(?:www\\.)?earthlinedevelopment\\.org$/i.test(u.hostname)&&u.pathname.endsWith('/earthline-elder-worker-17129.js'))
+    return r.fulfill({status:200,body:pyWorker,headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}});
+  if(/^(?:www\\.)?earthlinedevelopment\\.org$/i.test(u.hostname)&&u.pathname.endsWith('/earthline-elder-worker-js-17527.js'))
+    return r.fulfill({status:200,body:jsWorker,headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}});
+  if(/^(?:www\\.)?earthlinedevelopment\\.org$/i.test(u.hostname)&&u.pathname.endsWith('/tools/elder_trees/chmv2_array_detector_17129.py'))
+    return r.fulfill({status:200,body:detector,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}});
+  return r.continue();
+});
+const page=await context.newPage();
 const sites=[{name:'Essex',lng:-72.6916312414004,lat:42.9317591024477},{name:'Rutland',lng:-73.1,lat:43.60831190199366}];
 function bbox(s){const area=20*4046.8564224,w=Math.sqrt(area*1.15),h=area/w,dLat=h/(2*111320),dLng=w/(2*111320*Math.max(.05,Math.cos(s.lat*Math.PI/180)));return [s.lng-dLng,s.lat-dLat,s.lng+dLng,s.lat+dLat]}
-await page.goto('http://127.0.0.1:8787/?ab17527='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+await page.goto('https://earthlinedevelopment.org/?ab17527='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
 const rows=await page.evaluate(async ({sites,bboxes})=>{
   const hav=(a,b)=>{const R=6371008.8,p1=a[1]*Math.PI/180,p2=b[1]*Math.PI/180,dp=(b[1]-a[1])*Math.PI/180,dl=(b[0]-a[0])*Math.PI/180,q=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(q)))};
   const make=url=>new Worker(url,{type:'module'});
@@ -30,9 +47,9 @@ const rows=await page.evaluate(async ({sites,bboxes})=>{
     out.push({site:sites[k],bbox:bb,pythonPool:pf.length,jsPool:jf.length,pythonDisplay:a.result?.features?.length||0,jsDisplay:b.result?.features?.length||0,
       matchedWithin3m:matched,matchRate:pf.length?matched/pf.length:1,meanMatchedDistanceM:matched?sumD/matched:null,maxMatchedDistanceM:matched?maxD:null,
       meanConfidenceDiff:matched?confDiff/matched:null,cohortMatchRate:matched?cohortMatch/matched:null,pythonCohorts:pc,jsCohorts:jc,
-      pythonMs:a.result?.earthline?.worker_timings_ms||null,jsMs:b.result?.earthline?.worker_timings_ms||null});
+      pythonMs:a.result?.earthline?.worker_timings_ms||null,jsMs:b.result?.earthline?.worker_timings_ms||null,pythonTiles:a.result?.earthline?.tile_results||null,jsTiles:b.result?.earthline?.tile_results||null});
   }
   py.terminate();js.terminate();return out;
 },{sites,bboxes:sites.map(bbox)});
 console.log('EARTHLINE_ELDER_AB_17527 '+JSON.stringify(rows));
-await browser.close();
+await context.close();await browser.close();
