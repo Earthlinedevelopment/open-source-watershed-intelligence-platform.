@@ -1,0 +1,29 @@
+name: Earthline Elder Owner Audit 17502
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-elder-owner-audit-17502.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17501, fetch-depth: 0}
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          needles=['startProperty','prefetchPropertyTarget','primePropertyEvidence','schedulePropertyPrime17212','dynamicPropertyEvidence(true)','earthline:analysis-complete']
+          for path in [Path('index.html'),Path('earthline-launch-16872.js')]:
+              s=path.read_text(encoding='utf-8')
+              lines=s.splitlines()
+              print('FILE',path)
+              for n in needles:
+                  print('NEEDLE',n)
+                  for i,line in enumerate(lines):
+                      if n in line:
+                          print(f'{i+1}: {line[:1000]}')
+          PY
