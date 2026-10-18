@@ -1,0 +1,51 @@
+name: Earthline Live Repeat Parallel 17461
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-live-repeat-17461.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17454, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/alabama-repeat-property-17449.mjs > tests/alabama-repeat-property-17449.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='chromium' HEADLESS='true' node tests/alabama-repeat-property-17449.mjs
+  firefox:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17454, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/alabama-repeat-property-17449.mjs > tests/alabama-repeat-property-17449.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - run: xvfb-run -a env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='firefox' HEADLESS='false' node tests/alabama-repeat-property-17449.mjs
+  webkit:
+    runs-on: macos-14
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17454, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/alabama-repeat-property-17449.mjs > tests/alabama-repeat-property-17449.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - run: env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='webkit' HEADLESS='false' node tests/alabama-repeat-property-17449.mjs
