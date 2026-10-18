@@ -1,0 +1,23 @@
+name: Earthline Segment Owner Extract 17475
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - 'tests/extract-segment-owner-17475.py'
+      - '.github/workflows/earthline-segment-owner-17475.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17454}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/extract-segment-owner-17475.py > /tmp/e.py
+          python3 /tmp/e.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: segment-owner-17475
+          path: segment-owner-17475.txt
