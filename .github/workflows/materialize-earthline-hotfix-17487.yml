@@ -1,0 +1,28 @@
+name: Materialize Earthline Hotfix 17487
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/materialize-earthline-hotfix-17487.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17487
+          fetch-depth: 0
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/apply-property-visual-accept-17487.py > /tmp/apply.py
+          python3 /tmp/apply.py
+      - run: |
+          git config user.name "Earthline CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "candidate: first+repeat Property visual acceptance + parallel Elder 17487" || true
+          git push origin HEAD:candidate/earthline-launch-17487
