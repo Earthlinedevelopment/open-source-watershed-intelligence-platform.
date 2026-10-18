@@ -1,0 +1,38 @@
+name: Earthline Property Prescriber A-B 17451
+on:
+  push:
+    branches: [repair/property-prescriber-final-17451]
+    paths:
+      - 'tests/apply-property-prescriber-distribution-17451.py'
+      - 'tests/property-prescriber-exact-vt-17451.mjs'
+      - '.github/workflows/earthline-property-prescriber-ab-17451.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/property-prescriber-final-17451}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Baseline exact Vermont sites
+        run: env EARTHLINE_URL='http://127.0.0.1:8787/' VARIANT='baseline' OUTDIR='/tmp/property17451' node tests/property-prescriber-exact-vt-17451.mjs
+      - name: Apply prescriber repair
+        run: python3 tests/apply-property-prescriber-distribution-17451.py
+      - name: Repaired exact Vermont sites
+        run: env EARTHLINE_URL='http://127.0.0.1:8787/' VARIANT='repaired' OUTDIR='/tmp/property17451' node tests/property-prescriber-exact-vt-17451.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: property-prescriber-ab-17451
+          path: /tmp/property17451
+          if-no-files-found: warn
