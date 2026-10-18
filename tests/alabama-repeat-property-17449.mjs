@@ -57,9 +57,8 @@ try{
   await page.waitForFunction(()=>window.EARTHLINE_ELDER_TREE_LAST_17097?.state==='committed',null,{timeout:30000,polling:100});
   firstElderMs=Date.now()-click1;
 }catch(_){firstElderMs=Date.now()-click1}
-await page.waitForFunction(()=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;return a?.settled===true&&a?.result===true},null,{timeout:120000,polling:100}).catch(()=>{});
-await page.waitForFunction(()=>{const b=document.getElementById('earthlineDeclareProperty16169');return !!b&&!b.disabled},null,{timeout:15000,polling:100}).catch(()=>{});
-await sleep(500);
+await page.waitForFunction(()=>{const b=document.getElementById('earthlineDeclareProperty16169');const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;return Number(a?.serial||0)>=1&&!!b&&!b.disabled&&String(document.documentElement.dataset.earthlinePropertyRunState||'')==='idle'},null,{timeout:30000,polling:100});
+await sleep(250);
 const after1=await snapshot('after1');
 
 // Move the governed crosshair target before the second Property run.
