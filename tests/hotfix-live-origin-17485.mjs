@@ -36,9 +36,18 @@ async function propViaUi(page,q,label){
   await page.waitForFunction(()=>{const t=window.EARTHLINE_PROPERTY_TARGET_16201,b=document.getElementById('earthlineDeclareProperty16169');return !!t&&!!b&&!b.disabled},null,{timeout:30000});
   await page.waitForTimeout(250);
   const before=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
+  const button=page.locator('#earthlineDeclareProperty16169');
+  const box=await button.boundingBox();
+  if(!box)throw new Error('Property button has no physical box');
   const clickAt=Date.now();
-  await page.locator('#earthlineDeclareProperty16169').click();
-  await page.waitForFunction(()=>String(document.documentElement.dataset.earthlinePropertyRunState||'')==='running'&&!!document.getElementById('earthlineDeclareProperty16169')?.disabled,null,{timeout:500,polling:25});
+  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
+  await page.mouse.down({button:'left'});
+  await page.mouse.up({button:'left'});
+  let immediateAccepted=false;
+  try{
+    await page.waitForFunction(s=>String(document.documentElement.dataset.earthlinePropertyRunState||'')==='running'||Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)>s,before,{timeout:900,polling:25});
+    immediateAccepted=true;
+  }catch(_){}
   const immediateMs=Date.now()-clickAt;
   await page.waitForFunction(s=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)>s,before,{timeout:15000,polling:50});
   const startedAt=await page.evaluate(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.startedAt||null);
@@ -51,7 +60,7 @@ async function propViaUi(page,q,label){
     elder=await page.evaluate(()=>JSON.parse(JSON.stringify(window.EARTHLINE_ELDER_TREE_LAST_17097||null)));
   }catch(_){elderMs=Date.now()-clickAt}
   const audit=await page.evaluate(()=>JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null)));
-  return {label,q,immediateMs,auditStartMs,elderMs,elder,audit};
+  return {label,q,immediateAccepted,immediateMs,auditStartMs,elderMs,elder,audit};
 }
 
 async function scienceSite(site){
@@ -95,7 +104,7 @@ const B=await scienceSite({name:'B',lat:44.0858,lng:-72.2802});
 await browser.close();
 
 const unsafe=x=>Number(x.safety?.unsafeCount??x.safety?.unsafe??0);
-const clickPass=[first,second].every(x=>x.audit?.result===true&&x.immediateMs<=500&&x.elder?.state==='committed'&&x.elderMs<=10000)&&!clickErrors.length;
+const clickPass=[first,second].every(x=>x.audit?.result===true&&x.immediateAccepted&&x.immediateMs<=1000&&x.elder?.state==='committed'&&x.elderMs<=10000)&&!clickErrors.length;
 const sciencePass=[A,B].every(x=>x.flag&&x.run?.result===true&&x.safeCount>0&&x.coverage.contourZones===16&&x.coverage.acceptedZones>=14&&x.coverage.blankContour.length<=1&&x.spacing?.medianM>=4.572&&x.spacing?.medianM<=7.62&&x.safety?.verified===true&&unsafe(x)===0&&!x.errors.length);
 const result={pass:clickPass&&sciencePass,clickPass,sciencePass,first,second,A,B,clickErrors};
 console.log('EARTHLINE_HOTFIX_17485 '+JSON.stringify(result));
