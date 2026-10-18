@@ -1,3 +1,5 @@
+<!-- EARTHLINE_STATE_HISTORY_IDENTITY_17458: exact U.S. state searches cannot persist/resurface as country history. -->
+<!-- EARTHLINE_PROPERTY_REPEAT_QUEUE_17457: one moved repeat Property press queues behind current governed settle; no overlapping runs. -->
 <!-- EARTHLINE_PROPERTY_ONE_PRESS_OWNER_17444: pointer-up physical activation + click keyboard fallback, deduped. -->
 <!-- EARTHLINE_BIOSWALE_REPORT_SCROLL_EXPORT_17439: canonical report owns reliable scroll surface and toolbar actions at open. -->
 <!-- EARTHLINE_ROOT_AUDIT_CLEAN_REGIONAL_17437: intentional initial corridor-geometry suppression is valid when data/source/tabs are complete. -->
@@ -8841,6 +8843,43 @@ let RECENTS=[];
 function earthlineHistoryNormalize15774(value){
   return String(value||"").trim().toLowerCase().replace(/\s+/g," ");
 }
+/* EARTHLINE 17458 — U.S. state history identity.
+   Search history is presentation/navigation state only. Exact U.S. state searches
+   must never be persisted or resurfaced as a country identity. Georgia remains
+   conservative unless the resolved object explicitly says U.S./state because the
+   country Georgia is a legitimate search target. */
+const EARTHLINE_US_STATES_17458=Object.freeze({
+  "alabama":"Alabama","alaska":"Alaska","arizona":"Arizona","arkansas":"Arkansas","california":"California",
+  "colorado":"Colorado","connecticut":"Connecticut","delaware":"Delaware","florida":"Florida","georgia":"Georgia",
+  "hawaii":"Hawaii","idaho":"Idaho","illinois":"Illinois","indiana":"Indiana","iowa":"Iowa","kansas":"Kansas",
+  "kentucky":"Kentucky","louisiana":"Louisiana","maine":"Maine","maryland":"Maryland","massachusetts":"Massachusetts",
+  "michigan":"Michigan","minnesota":"Minnesota","mississippi":"Mississippi","missouri":"Missouri","montana":"Montana",
+  "nebraska":"Nebraska","nevada":"Nevada","new hampshire":"New Hampshire","new jersey":"New Jersey",
+  "new mexico":"New Mexico","new york":"New York","north carolina":"North Carolina","north dakota":"North Dakota",
+  "ohio":"Ohio","oklahoma":"Oklahoma","oregon":"Oregon","pennsylvania":"Pennsylvania","rhode island":"Rhode Island",
+  "south carolina":"South Carolina","south dakota":"South Dakota","tennessee":"Tennessee","texas":"Texas","utah":"Utah",
+  "vermont":"Vermont","virginia":"Virginia","washington":"Washington","west virginia":"West Virginia",
+  "wisconsin":"Wisconsin","wyoming":"Wyoming","district of columbia":"District of Columbia"
+});
+function earthlineHistoryCanonicalState17458(query,label,loc=null){
+  const q=earthlineHistoryNormalize15774(query).replace(/^state of /,"").replace(/,\s*(?:usa|u\.?s\.?a\.?|united states(?: of america)?)$/,"").trim();
+  const l=earthlineHistoryNormalize15774(label);
+  const state=EARTHLINE_US_STATES_17458[q]||null;
+  if(!state)return null;
+  const country=earthlineHistoryNormalize15774(loc?.countryCode||loc?.country_code||loc?.country||"");
+  const stateCode=String(loc?.stateCode||loc?.state_code||"").trim();
+  const placeType=earthlineHistoryNormalize15774(loc?.placeType||loc?.place_type||loc?.type||loc?.kind||"");
+  const explicitUS=country==="us"||country==="usa"||country==="united states"||country==="united states of america"||!!stateCode||/state|region|administrative|jurisdiction/.test(placeType)||/,\s*(?:usa|united states(?: of america)?)\b/.test(l);
+  const badCountryLabel=/\bcountry\b/.test(l);
+  if(state==="Georgia"&&!explicitUS)return null;
+  return (explicitUS||badCountryLabel)?state:null;
+}
+function earthlineHistoryClean17458(item,loc=null){
+  const query=String(item&&item.query||item&&item.label||"").trim();
+  const label=String(item&&item.label||query).trim();
+  const state=earthlineHistoryCanonicalState17458(query,label,loc);
+  return state?{query:state,label:state,at:Number(item&&item.at||0)}:{query:query||label,label:label||query,at:Number(item&&item.at||0)};
+}
 function earthlineHistoryEscape15774(value){
   return String(value||"")
     .replace(/&/g,"&amp;")
@@ -8853,7 +8892,7 @@ function earthlineLoadSearchHistory15774(){
   try{
     const raw=localStorage.getItem(EARTHLINE_SEARCH_HISTORY_KEY_15774);
     const parsed=raw?JSON.parse(raw):[];
-    if(Array.isArray(parsed))saved=parsed;
+    if(Array.isArray(parsed))saved=parsed.map(item=>earthlineHistoryClean17458(item));
   }catch(e){
     console.warn("[Earthline] Search history storage unavailable.",e);
   }
@@ -8875,6 +8914,7 @@ function earthlineLoadSearchHistory15774(){
   }
   RECENTS.sort((a,b)=>Number(b.at||0)-Number(a.at||0));
   RECENTS=RECENTS.slice(0,EARTHLINE_SEARCH_HISTORY_LIMIT_15774);
+  try{localStorage.setItem(EARTHLINE_SEARCH_HISTORY_KEY_15774,JSON.stringify(RECENTS))}catch(_){}
 }
 function earthlineSaveSearchHistory15774(){
   try{
@@ -8887,11 +8927,13 @@ function earthlineSaveSearchHistory15774(){
   }
 }
 function addRecentSearch(loc,queryText=""){
-  const label=loc&&(
+  const rawLabel=loc&&(
     loc.fullName||
     ((loc.name||"")+(loc.sub?", "+loc.sub:""))
   );
-  const query=String(queryText||label||"").trim();
+  const rawQuery=String(queryText||rawLabel||"").trim();
+  const cleaned17458=earthlineHistoryClean17458({query:rawQuery,label:String(rawLabel||rawQuery),at:Date.now()},loc);
+  const label=cleaned17458.label,query=cleaned17458.query;
   if(!query&&!label)return;
 
   const key=earthlineHistoryNormalize15774(query||label);
@@ -34114,6 +34156,7 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
   'use strict';
   const BUILD='EARTHLINE 16236';
   let running=false,stageTimer=0,runSerial=0;
+  let queuedRepeatProperty17457=null; /* EARTHLINE 17457 — one moved repeat request may wait for current terminal settle. */
   const STAGES={
     dem:'loading elevation',terrain:'loading elevation',imagery:'preparing imagery',
     hydrology:'verifying exclusions and routing water',swales:'deriving property bioswales',
@@ -34659,7 +34702,37 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
       runningBefore:!!running,
       eventType:String(ev&&ev.type||"")
     });
-    if(running)return false;
+    if(running){
+      /* EARTHLINE 17457 — a user may move the crosshair after the first Property
+         result is already visible while the terminal owner is still finishing its
+         bounded settle. Do not drop that physical press. Queue exactly one moved
+         target and launch it only after the current governed run reaches finally.
+         Same-target repeat presses remain ignored, so no duplicate analysis is
+         created and scientific runs never overlap. */
+      try{
+        const target17457=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+        const current17457=window.EARTHLINE_PROPERTY_DECLARATION_16169?.center||null;
+        const lng17457=Number(target17457?.lng),lat17457=Number(target17457?.lat);
+        const oldLng17457=Number(current17457?.lng),oldLat17457=Number(current17457?.lat);
+        const moved17457=[lng17457,lat17457,oldLng17457,oldLat17457].every(Number.isFinite)&&
+          (Math.abs(lng17457-oldLng17457)>1e-7||Math.abs(lat17457-oldLat17457)>1e-7);
+        if(moved17457){
+          queuedRepeatProperty17457={
+            target:JSON.parse(JSON.stringify(target17457)),
+            queuedAt:new Date().toISOString()
+          };
+          window.EARTHLINE_PROPERTY_REPEAT_QUEUE_17457={
+            build:'EARTHLINE 17457',state:'queued',
+            target:{lng:lng17457,lat:lat17457},
+            current:{lng:oldLng17457,lat:oldLat17457},
+            at:queuedRepeatProperty17457.queuedAt
+          };
+          status('Current Property analysis is finishing — the moved 20-acre location is queued and will start automatically.','pending');
+          return true;
+        }
+      }catch(_){}
+      return false;
+    }
     /* EARTHLINE 16531 — Property transition uses the existing corridor-tip button so its private dismissal owner records acknowledgment and cannot reopen over Property. */
     try{const tip=document.getElementById('earthlineCorridorTip16248');if(tip){const close=tip.querySelector('button');if(close)close.click();else tip.classList.remove('open')}}catch(_){ }
     earthlineHideWaterBodyMessage16529();
@@ -34895,7 +34968,25 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
       earthlinePropertyTrace16319("terminalPropertyRun","exit",{result:true,corridors:count,renderVerified});
       setAudit({stage:'published',stageLabel:'published',settled:true,result:true,timedOut:false,corridors:count,renderVerified,renderMode:texture.ok?'natural-texture':(safeFallback.ok?'authoritative-safe-lines':'verified-zero'),sourceEvidence:propertyEvidenceSnapshot16206(),publicationAudit:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,safeFallback,texture,stageTimings:Object.assign({},m.lastTiming||{}),elapsedSeconds:Math.round((performance.now()-started)/1000),settledAt:new Date().toISOString()});try{window.EARTHLINE_ELDER_TREES_V1_17097?.refresh?.()}catch(_){} /* EARTHLINE_CANONICAL_PROPERTY_ELDER_REFRESH_17153 */return true;
     }catch(err){const reason=String(err?.message||err||'unknown property error');earthlinePropertyTerminalStage16319('failed','Property analysis failed.');earthlinePropertyTrace16319("terminalPropertyRun","exit",{result:false,error:reason});setTierNotice('focus','');status('PROPERTY ANALYSIS FAILED — '+reason+'. No unverified property output was published.','failed');setAudit({stage:'failed',stageLabel:'failed',settled:true,result:false,timedOut:false,error:reason,sourceEvidence:propertyEvidenceSnapshot16206(),stageTimings:Object.assign({},m.lastTiming||{}),elapsedSeconds:Math.round((performance.now()-started)/1000),settledAt:new Date().toISOString()});return false;}
-    finally{if(serial===runSerial){running=false;document.documentElement.dataset.earthlinePropertyRunState='idle';document.documentElement.classList.remove('earthline-property-running-16233');clearTimers();setButton(false);clearAllBusy();restoreGrab();try{window.getSelection?.()?.removeAllRanges?.();button()?.blur?.()}catch(_){}updateBuild();earthlinePropertyTrace16319("terminal finally","mark",{runState:'idle'});window.EARTHLINE_PROPERTY_TRACE_ACTIVE_16319=false}}
+    finally{if(serial===runSerial){
+      running=false;document.documentElement.dataset.earthlinePropertyRunState='idle';document.documentElement.classList.remove('earthline-property-running-16233');clearTimers();setButton(false);clearAllBusy();restoreGrab();try{window.getSelection?.()?.removeAllRanges?.();button()?.blur?.()}catch(_){}updateBuild();earthlinePropertyTrace16319("terminal finally","mark",{runState:'idle'});window.EARTHLINE_PROPERTY_TRACE_ACTIVE_16319=false;
+      const queued17457=queuedRepeatProperty17457;
+      queuedRepeatProperty17457=null;
+      if(queued17457?.target){
+        window.EARTHLINE_PROPERTY_TARGET_16201=Object.assign({},queued17457.target,{at:new Date().toISOString(),source:String(queued17457.target.source||'crosshair-repeat-17457')});
+        window.EARTHLINE_PROPERTY_REPEAT_QUEUE_17457={
+          build:'EARTHLINE 17457',state:'launching',
+          target:{lng:Number(queued17457.target.lng),lat:Number(queued17457.target.lat)},
+          queuedAt:queued17457.queuedAt,at:new Date().toISOString()
+        };
+        setTimeout(()=>{
+          if(running)return;
+          const q17457=window.EARTHLINE_PROPERTY_REPEAT_QUEUE_17457;
+          if(q17457)q17457.state='started';
+          void terminalPropertyRun();
+        },0);
+      }
+    }}
   }
   function install(){
     updateBuild();ensureTierNotice();setTierNotice('focus','FOCUS PREVIEW · SELECT PROPERTY ANALYSIS · 20 ACRES FOR NATURAL SWALE FOOTPRINTS');
