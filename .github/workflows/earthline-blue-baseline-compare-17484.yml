@@ -1,0 +1,36 @@
+name: Earthline Firefox Blue Baseline Compare 17484
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-blue-baseline-compare-17484.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  compare:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: baseline-17454
+            ref: candidate/earthline-launch-17454
+          - label: candidate-17483
+            ref: candidate/earthline-launch-17483
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/browser-elder-final-17392
+          git show origin/repair/browser-elder-final-17392:tests/property-blue-invariant-17417.mjs > tests/property-blue-invariant-17417.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' node tests/property-blue-invariant-17417.mjs
