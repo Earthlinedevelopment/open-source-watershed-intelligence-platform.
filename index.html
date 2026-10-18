@@ -1,3 +1,4 @@
+<!-- EARTHLINE_PROPERTY_VISUAL_ACCEPT_AND_PARALLEL_ELDER_17487: immediate button acknowledgement, governed run-state untouched. -->
 <!-- EARTHLINE_PROPERTY_IMMEDIATE_ACCEPT_17485: first accepted pointer-up immediately owns run state and starts existing Elder owner. -->
 <!-- EARTHLINE_PROPERTY_CHANNEL_RUN_SCOPE_17485: authoritative prescriber scale flag owns Property-only exact 4 m channel buffer. -->
 <!-- EARTHLINE_PROPERTY_MAJOR_CHANNEL_CIRCULAR_BUFFER_17483: Property-run exact 4 m Euclidean channel buffer; Regional unchanged. -->
@@ -35043,33 +35044,29 @@ window.EARTHLINE_GAUGE_DATA_SYNC_16864={build:'16864',scoreScale:'0-100',measure
       b.dataset.earthlinePointerLaunch17444=String(now);
       const fn=window.earthlineDeclarePropertyAtCrosshair16173;
       if(typeof fn!=='function')return false;
-      const serialBefore17485=Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0);
+      const serialBefore17487=Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0);
       b.disabled=true;b.setAttribute('disabled','');
-      document.documentElement.dataset.earthlinePropertyRunState='running';
-      let out17485;
-      try{out17485=fn(ev)}catch(err17485){
-        b.disabled=false;b.removeAttribute('disabled');
-        document.documentElement.dataset.earthlinePropertyRunState='idle';
-        throw err17485;
-      }
-      if(out17485===false){
-        b.disabled=false;b.removeAttribute('disabled');
-        document.documentElement.dataset.earthlinePropertyRunState='idle';
-        return false;
-      }
+      b.dataset.earthlinePressAccepted17487='1';
       setTimeout(()=>{try{void window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()}catch(_){}},0);
-      Promise.resolve(out17485).then(v17485=>{
-        if(v17485===false&&Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17485){
-          b.disabled=false;b.removeAttribute('disabled');
-          document.documentElement.dataset.earthlinePropertyRunState='idle';
+      setTimeout(()=>{
+        let out17487;
+        try{out17487=fn()}catch(_){
+          if(Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17487){
+            b.disabled=false;b.removeAttribute('disabled');
+          }
+          return;
         }
-      }).catch(()=>{
-        if(Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17485){
-          b.disabled=false;b.removeAttribute('disabled');
-          document.documentElement.dataset.earthlinePropertyRunState='idle';
-        }
-      });
-      return out17485;
+        Promise.resolve(out17487).then(v17487=>{
+          if(v17487===false&&Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17487){
+            b.disabled=false;b.removeAttribute('disabled');
+          }
+        }).catch(()=>{
+          if(Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17487){
+            b.disabled=false;b.removeAttribute('disabled');
+          }
+        });
+      },0);
+      return false;
     };
     b.onclick=function(ev){
       const now=Date.now(),last=Number(b.dataset.earthlinePointerLaunch17444||0);
@@ -38511,7 +38508,30 @@ function syncPropertyTargetFromMap16201(){const m=panelMap16188();if(!m||typeof 
     if(now-last<900)return false;
     property.dataset.earthlinePointerLaunch17444=String(now);
     const fn=window.earthlineDeclarePropertyAtCrosshair16173;
-    return typeof fn==='function'?fn(ev):false;
+    if(typeof fn!=='function')return false;
+    const serialBefore17487=Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0);
+    property.disabled=true;property.setAttribute('disabled','');
+    property.dataset.earthlinePressAccepted17487='1';
+    setTimeout(()=>{try{void window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()}catch(_){}},0);
+    setTimeout(()=>{
+      let out17487;
+      try{out17487=fn()}catch(_){
+        if(Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17487){
+          property.disabled=false;property.removeAttribute('disabled');
+        }
+        return;
+      }
+      Promise.resolve(out17487).then(v17487=>{
+        if(v17487===false&&Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17487){
+          property.disabled=false;property.removeAttribute('disabled');
+        }
+      }).catch(()=>{
+        if(Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17487){
+          property.disabled=false;property.removeAttribute('disabled');
+        }
+      });
+    },0);
+    return false;
   };
   property.onclick=function(ev){
     const now=Date.now(),last=Number(property.dataset.earthlinePointerLaunch17444||0);
