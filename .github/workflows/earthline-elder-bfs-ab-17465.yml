@@ -1,0 +1,45 @@
+name: Earthline Elder Exact Flood A-B 17465
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - 'tests/apply-elder-component-bfs-17465.py'
+      - 'tests/elder-bfs-perf-17465.mjs'
+      - '.github/workflows/earthline-elder-bfs-ab-17465.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  science:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17454, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          cp tools/elder_trees/chmv2_array_detector_17129.py /tmp/elder-baseline-17404.py
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/apply-elder-component-bfs-17465.py > /tmp/apply.py
+          git show origin/repair/browser-elder-final-17392:tests/elder-science-ab-17408.mjs > tests/elder-science-ab-17408.mjs
+          python3 /tmp/apply.py
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/elder-science-ab-17408.mjs
+  firefox-perf:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17454, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          cp tools/elder_trees/chmv2_array_detector_17129.py /tmp/elder-baseline-17454.py
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/apply-elder-component-bfs-17465.py > /tmp/apply.py
+          git show origin/repair/property-one-click-17441:tests/elder-bfs-perf-17465.mjs > tests/elder-bfs-perf-17465.mjs
+          python3 /tmp/apply.py
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - run: xvfb-run -a node tests/elder-bfs-perf-17465.mjs
