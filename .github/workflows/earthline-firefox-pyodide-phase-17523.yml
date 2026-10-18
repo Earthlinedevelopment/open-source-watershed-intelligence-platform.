@@ -12,11 +12,12 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with: {ref: repair/property-one-click-17441, fetch-depth: 0}
       - uses: actions/setup-node@v4
         with: {node-version: '20'}
       - run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps firefox
-      - run: |
-          git show origin/repair/property-one-click-17441:tests/firefox-pyodide-phase-17523.mjs > /tmp/test.mjs || cp tests/firefox-pyodide-phase-17523.mjs /tmp/test.mjs
-          xvfb-run -a node /tmp/test.mjs
+      - run: xvfb-run -a node tests/firefox-pyodide-phase-17523.mjs
+
+# rerun from repo for node_modules resolution
