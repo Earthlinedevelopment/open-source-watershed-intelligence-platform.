@@ -1,0 +1,35 @@
+name: Earthline Property Science Owner Extract 17447
+on:
+  push:
+    branches: [repair/property-science-final-17447]
+    paths:
+      - '.github/workflows/earthline-property-science-owner-17447.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/property-science-final-17447, fetch-depth: 0}
+      - run: |
+          python3 tests/extract-makeswales-candidate-owner-17364.py
+          cp makeswales-candidate-owner-17364.txt current-makeswales-17447.txt
+          git show 128a435294e022e80bdd1997005d7526930ac1c3:index.html > /tmp/accepted17047.html
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/accepted17047.html').read_text(encoding='utf-8')
+          a=s.find('async function makeSwales(')
+          if a<0:a=s.find('  async function makeSwales(')
+          b=s.find('    candidates.sort((a,b)=>b.score-a.score);',a)
+          if a<0 or b<0: raise SystemExit('accepted makeSwales anchors missing')
+          Path('accepted-makeswales-17047.txt').write_text(s[a:b+len('    candidates.sort((a,b)=>b.score-a.score);')],encoding='utf-8')
+          PY
+          diff -u accepted-makeswales-17047.txt current-makeswales-17447.txt > makeswales-diff-17447.txt || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: property-science-owner-17447
+          path: |
+            current-makeswales-17447.txt
+            accepted-makeswales-17047.txt
+            makeswales-diff-17447.txt
