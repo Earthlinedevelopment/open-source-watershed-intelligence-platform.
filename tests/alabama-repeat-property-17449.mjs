@@ -1,7 +1,11 @@
-import { chromium } from 'playwright';
+import { chromium, firefox, webkit } from 'playwright';
 import { writeFileSync, mkdirSync } from 'node:fs';
 
-const browser=await chromium.launch({headless:true});
+const BROWSER=(process.env.BROWSER||'chromium').toLowerCase();
+const launcher={chromium,firefox,webkit}[BROWSER];
+if(!launcher)throw new Error('unsupported browser '+BROWSER);
+const headless=String(process.env.HEADLESS||'true').toLowerCase()!=='false';
+const browser=await launcher.launch({headless});
 const page=await browser.newPage({viewport:{width:1800,height:950}});
 const BASE=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
 const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
@@ -79,7 +83,7 @@ if(secondStarted){
   }catch(_){secondElderMs=Date.now()-click2}
 }
 const final=await snapshot('final');
-const result={firstStarted,secondStarted,firstElderMs,secondElderMs,before1,after1,before2,afterSecondPress,final,errors};
+const result={browser:BROWSER,firstStarted,secondStarted,firstElderMs,secondElderMs,before1,after1,before2,afterSecondPress,final,errors};
 mkdirSync('artifacts',{recursive:true});
 writeFileSync('artifacts/alabama-repeat-property-17449.json',JSON.stringify(result,null,2));
 console.log('EARTHLINE_ALABAMA_REPEAT_17449 '+JSON.stringify(result));
