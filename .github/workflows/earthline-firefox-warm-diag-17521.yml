@@ -1,0 +1,23 @@
+name: Earthline Firefox Warm Diagnostic 17521
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-firefox-warm-diag-17521.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  firefox:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: 889a8ece9c89baed45ca51002d3b13c6760242a3, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/firefox-warm-diag-17521.mjs > tests/firefox-warm-diag-17521.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - run: xvfb-run -a node tests/firefox-warm-diag-17521.mjs
