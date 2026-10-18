@@ -6,11 +6,11 @@ on:
       - '.github/workflows/earthline-hotfix-17485.yml'
       - 'tests/hotfix-live-origin-17485.mjs'
   workflow_dispatch:
-permissions: {contents: write}
+permissions: {contents: read}
 jobs:
-  build-test:
+  live-origin:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with: {ref: candidate/earthline-launch-17485, fetch-depth: 0}
@@ -18,18 +18,7 @@ jobs:
         with: {node-version: '20'}
       - run: |
           git fetch origin repair/property-one-click-17441
-          git show origin/repair/property-one-click-17441:tests/apply-property-channel-run-scope-17485.py > /tmp/science.py
-          git show origin/repair/property-one-click-17441:tests/apply-property-immediate-accept-17485.py > /tmp/interaction.py
           git show origin/repair/property-one-click-17441:tests/hotfix-live-origin-17485.mjs > tests/hotfix-live-origin-17485.mjs
-          python3 /tmp/science.py
-          python3 /tmp/interaction.py
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
       - run: node tests/hotfix-live-origin-17485.mjs
-      - name: Materialize passing candidate
-        run: |
-          git config user.name "Earthline CI"
-          git config user.email "info@earthlinedevelopment.org"
-          git add index.html
-          git commit -m "candidate: Property science + immediate one-press/Elder hotfix 17485"
-          git push origin HEAD:candidate/earthline-launch-17485
