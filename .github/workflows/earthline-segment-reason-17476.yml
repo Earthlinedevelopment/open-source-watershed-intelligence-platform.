@@ -1,27 +1,23 @@
-name: Earthline Segment Reason Live 17476
+name: Earthline Segment Reason Live Fast 17477
 on:
   push:
     branches: [repair/property-one-click-17441]
     paths:
-      - 'tests/apply-segment-reason-diagnostic-17476.py'
-      - 'tests/property-segment-reason-live-17476.mjs'
       - '.github/workflows/earthline-segment-reason-17476.yml'
   workflow_dispatch:
 permissions: {contents: read}
 jobs:
   chromium:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with: {ref: candidate/earthline-launch-17454, fetch-depth: 0}
+        with: {ref: repair/property-one-click-17441}
       - uses: actions/setup-node@v4
         with: {node-version: '20'}
       - run: |
-          git fetch origin repair/property-one-click-17441
-          git show origin/repair/property-one-click-17441:tests/apply-segment-reason-diagnostic-17476.py > /tmp/a.py
-          git show origin/repair/property-one-click-17441:tests/property-segment-reason-live-17476.mjs > tests/property-segment-reason-live-17476.mjs
-          python3 /tmp/a.py
+          curl -fsSL 'https://raw.githubusercontent.com/Earthlinedevelopment/open-source-watershed-intelligence-platform./356bd592ebe563b7bcafed0c1fa75556c2610240/index.html' -o index.html
+          python3 tests/apply-segment-reason-diagnostic-17476.py
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
       - run: node tests/property-segment-reason-live-17476.mjs
