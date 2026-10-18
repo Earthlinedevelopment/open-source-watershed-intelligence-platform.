@@ -1833,6 +1833,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
          immediately after the click is accepted. Keep only the already-idempotent
          runtime warm here so the physical click cannot be displaced by DOM work. */
       try{void prewarmDynamicWorker()}catch(_){}
+      try{void prefetchProperty17174()}catch(_){} /* EARTHLINE_ELDER_CURRENT_TARGET_PREFETCH_17452 */
     },true);
     document.addEventListener('click',click,false);
     window.addEventListener('hashchange',hash,false);
