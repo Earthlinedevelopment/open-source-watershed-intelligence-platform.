@@ -3,7 +3,8 @@ on:
   push:
     branches: [repair/property-one-click-17441]
     paths:
-      - '.github/workflows/materialize-earthline-hotfix-17486.yml'
+      - '.github/workflows/materialize-earthline-hotfix-17485.yml'
+      - 'tests/apply-property-deferred-launch-17486.py'
   workflow_dispatch:
 permissions:
   contents: write
@@ -18,13 +19,11 @@ jobs:
           fetch-depth: 0
       - run: |
           git fetch origin repair/property-one-click-17441
-          git show origin/repair/property-one-click-17441:tests/apply-property-channel-run-scope-17486.py > /tmp/science.py
           git show origin/repair/property-one-click-17441:tests/apply-property-deferred-launch-17486.py > /tmp/interaction.py
-          python3 /tmp/science.py
           python3 /tmp/interaction.py
       - run: |
           git config user.name "Earthline CI"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m "candidate: Property science + immediate one-press/Elder hotfix 17486" || true
+          git commit -m "candidate: deferred one-press Property + earlier Elder 17486" || true
           git push origin HEAD:candidate/earthline-launch-17486
