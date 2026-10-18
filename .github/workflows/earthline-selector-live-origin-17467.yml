@@ -1,0 +1,27 @@
+name: Earthline Live-Origin Selector A-B 17467
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - 'tests/property-selector-live-origin-17467.mjs'
+      - '.github/workflows/earthline-selector-live-origin-17467.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  repaired:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17454, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-science-selector-17448
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-science-selector-17448:tests/apply-property-spatial-selector-17448.py > /tmp/apply.py
+          git show origin/repair/property-one-click-17441:tests/property-selector-live-origin-17467.mjs > tests/property-selector-live-origin-17467.mjs
+          python3 /tmp/apply.py
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/property-selector-live-origin-17467.mjs
