@@ -1,0 +1,51 @@
+name: Earthline Alabama Repeat Property Diagnostic 17449
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - 'tests/alabama-repeat-property-17449.mjs'
+      - '.github/workflows/earthline-alabama-repeat-property-17449.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17445
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/alabama-repeat-property-17449.mjs > tests/alabama-repeat-property-17449.mjs
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - id: diag
+        continue-on-error: true
+        run: env EARTHLINE_URL='http://127.0.0.1:8787/' node tests/alabama-repeat-property-17449.mjs
+      - name: Persist diagnostic
+        if: always()
+        run: |
+          git fetch origin repair/property-one-click-17441
+          rm -rf /tmp/earthline-diag
+          git worktree add /tmp/earthline-diag origin/repair/property-one-click-17441
+          mkdir -p /tmp/earthline-diag/test-results
+          cp artifacts/alabama-repeat-property-17449.json /tmp/earthline-diag/test-results/alabama-repeat-property-17449.json
+          cd /tmp/earthline-diag
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add test-results/alabama-repeat-property-17449.json
+          git commit -m "test: persist Alabama repeat Property diagnostic 17449" || true
+          git push origin HEAD:repair/property-one-click-17441
+      - name: Enforce diagnostic
+        if: steps.diag.outcome != 'success'
+        run: exit 1
