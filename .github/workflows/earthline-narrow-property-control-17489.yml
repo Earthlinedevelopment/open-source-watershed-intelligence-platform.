@@ -1,0 +1,44 @@
+name: Earthline Narrow Property Control Owner 17489
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-narrow-property-control-17489.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17487
+          fetch-depth: 0
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          lines=s.splitlines()
+          needles=['earthlineDeclareProperty16169','earthlinePointerLaunch17444','earthlinePropertyClickOwner16546','onpointerup=function','onclick=function','restoreControls']
+          hits=[]
+          for i,line in enumerate(lines):
+              if any(n in line for n in needles):
+                  a=max(0,i-35);b=min(len(lines),i+55)
+                  hits.append(f'===== line {i+1} =====\n'+'\n'.join(f'{j+1}: {lines[j]}' for j in range(a,b)))
+          Path('/tmp/property-control-narrow-17489.txt').write_text('\n\n'.join(hits),encoding='utf-8')
+          print('hits',len(hits),'bytes',Path('/tmp/property-control-narrow-17489.txt').stat().st_size)
+          PY
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          rm -rf /tmp/gate
+          git worktree add /tmp/gate origin/repair/property-one-click-17441
+          mkdir -p /tmp/gate/test-results
+          cp /tmp/property-control-narrow-17489.txt /tmp/gate/test-results/property-control-narrow-17489.txt
+          cd /tmp/gate
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add test-results/property-control-narrow-17489.txt
+          git commit -m "test: persist narrow Property control owner 17489" || true
+          git push origin HEAD:repair/property-one-click-17441
