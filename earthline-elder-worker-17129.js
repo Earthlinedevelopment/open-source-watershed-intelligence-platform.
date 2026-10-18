@@ -45,11 +45,24 @@ function hav(a,b){
 async function ensurePy(){
   if(pyReady)return pyReady;
   pyReady=(async()=>{
+    const t0=performance.now();
     const py=await loadPyodide({indexURL:"https://cdn.jsdelivr.net/pyodide/v0.29.5/full/"});
+    const t1=performance.now();
     await py.loadPackage(["numpy"]); /* EARTHLINE_ELDER_NUMPY_ONLY_FINAL_17414 */
+    const t2=performance.now();
     const src=await fetch("tools/elder_trees/chmv2_array_detector_17129.py",{cache:"no-store"});
     if(!src.ok)throw new Error("array detector "+src.status);
-    await py.runPythonAsync(await src.text());
+    const txt=await src.text();
+    const t3=performance.now();
+    await py.runPythonAsync(txt);
+    const t4=performance.now();
+    self.__EARTHLINE_PY_PHASES_17525={
+      loadPyodide:Number((t1-t0).toFixed(1)),
+      numpy:Number((t2-t1).toFixed(1)),
+      fetchDetector:Number((t3-t2).toFixed(1)),
+      runDetector:Number((t4-t3).toFixed(1)),
+      total:Number((t4-t0).toFixed(1))
+    };
     return py;
   })();
   return pyReady;
@@ -283,7 +296,7 @@ self.onmessage=async(e)=>{
     if(e.data?.warm===true){
       const t0=performance.now();
       await ensurePy();
-      self.postMessage({id,ok:true,warm:true,elapsedMs:performance.now()-t0});
+      self.postMessage({id,ok:true,warm:true,elapsedMs:performance.now()-t0,phases:self.__EARTHLINE_PY_PHASES_17525||null});
       return;
     }
     if(e.data?.warmBbox===true){
