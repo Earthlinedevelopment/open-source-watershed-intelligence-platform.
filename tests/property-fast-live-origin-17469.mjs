@@ -3,7 +3,7 @@ import fs from 'node:fs';
 const patchedJS=fs.readFileSync('earthline-launch-16872.js','utf8');
 const browser=await chromium.launch({headless:true});
 const context=await browser.newContext();
-await context.route('https://earthlinedevelopment.org/earthline-launch-16872.js*',r=>r.fulfill({status:200,body:patchedJS,headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}}));
+await context.route('**/earthline-launch-16872.js*',r=>r.fulfill({status:200,body:patchedJS,headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}}));
 const page=await context.newPage({viewport:{width:1800,height:950}});
 const errors=[];page.on('pageerror',e=>errors.push(String(e)));
 
