@@ -1,0 +1,26 @@
+name: Materialize Earthline Hotfix 17492
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/materialize-earthline-hotfix-17492.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17492, fetch-depth: 0}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/apply-property-single-owner-17492.py > /tmp/apply.py
+          python3 /tmp/apply.py
+      - run: |
+          git config user.name "Earthline CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "candidate: single Property control owner + immediate Elder 17492"
+          git push origin HEAD:candidate/earthline-launch-17492
