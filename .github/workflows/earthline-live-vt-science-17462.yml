@@ -1,0 +1,24 @@
+name: Earthline Live Vermont Property Science Audit 17462
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-live-vt-science-17462.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17454, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-prescriber-final-17451
+          git show origin/repair/property-prescriber-final-17451:tests/property-prescriber-exact-vt-17451.mjs > tests/property-prescriber-exact-vt-17451.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          env EARTHLINE_URL='https://earthlinedevelopment.org/' VARIANT='live-17454' OUTDIR='/tmp/property17462' node tests/property-prescriber-exact-vt-17451.mjs
