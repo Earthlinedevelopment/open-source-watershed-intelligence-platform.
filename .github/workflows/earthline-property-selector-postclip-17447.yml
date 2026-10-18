@@ -1,0 +1,19 @@
+name: Earthline Property Selector Postclip Extract 17447
+on:
+  push:
+    branches: [repair/property-science-final-17447]
+    paths:
+      - 'tests/extract-property-selector-postclip-17447.py'
+      - '.github/workflows/earthline-property-selector-postclip-17447.yml'
+permissions: {contents: read}
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/property-science-final-17447}
+      - run: python3 tests/extract-property-selector-postclip-17447.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: property-selector-postclip-17447
+          path: property-selector-postclip-17447.txt
