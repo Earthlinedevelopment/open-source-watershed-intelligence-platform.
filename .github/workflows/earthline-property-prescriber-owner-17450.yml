@@ -1,0 +1,19 @@
+name: Earthline Property Prescriber Owner 17450
+on:
+  push:
+    branches: [repair/property-science-final-17447]
+    paths:
+      - 'tests/extract-property-prescriber-owner-17450.py'
+      - '.github/workflows/earthline-property-prescriber-owner-17450.yml'
+permissions: {contents: read}
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/property-science-final-17447}
+      - run: python3 tests/extract-property-prescriber-owner-17450.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: property-prescriber-owner-17450
+          path: property-prescriber-owner-17450.txt
