@@ -1,0 +1,153 @@
+name: Earthline Live Acceptance 17458
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-live-acceptance-17458.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  regional-linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17454
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/regional-clean-presentation-17434
+          git show origin/repair/regional-clean-presentation-17434:tests/browser-regional-clean-17435.mjs > tests/browser-regional-clean-17435.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - run: |
+          if [ '${{ matrix.browser }}' = 'firefox' ]; then
+            xvfb-run -a env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='firefox' HEADLESS='false' WAIT_MS='90000' STATES='Vermont|Texas|New York|Arkansas|Iowa|Colorado|California' node tests/browser-regional-clean-17435.mjs
+          else
+            env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='chromium' HEADLESS='true' WAIT_MS='90000' STATES='Vermont|Texas|New York|Arkansas|Iowa|Colorado|California' node tests/browser-regional-clean-17435.mjs
+          fi
+
+  regional-webkit:
+    runs-on: macos-14
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17454
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/regional-clean-presentation-17434
+          git show origin/repair/regional-clean-presentation-17434:tests/browser-regional-clean-17435.mjs > tests/browser-regional-clean-17435.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - run: env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='webkit' HEADLESS='false' WAIT_MS='90000' STATES='Vermont|Texas|New York|Arkansas|Iowa|Colorado|California' node tests/browser-regional-clean-17435.mjs
+
+  property-repeat-linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17454
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/property-user-flow-17441.mjs > tests/property-user-flow-17441.mjs
+          git show origin/repair/property-one-click-17441:tests/alabama-repeat-property-17449.mjs > tests/alabama-repeat-property-17449.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - run: |
+          if [ '${{ matrix.browser }}' = 'firefox' ]; then
+            xvfb-run -a env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='firefox' HEADLESS='false' node tests/property-user-flow-17441.mjs
+            xvfb-run -a env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='firefox' HEADLESS='false' node tests/alabama-repeat-property-17449.mjs
+          else
+            env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='chromium' HEADLESS='true' node tests/property-user-flow-17441.mjs
+            env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='chromium' HEADLESS='true' node tests/alabama-repeat-property-17449.mjs
+          fi
+
+  property-repeat-webkit:
+    runs-on: macos-14
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17454
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/property-user-flow-17441.mjs > tests/property-user-flow-17441.mjs
+          git show origin/repair/property-one-click-17441:tests/alabama-repeat-property-17449.mjs > tests/alabama-repeat-property-17449.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - run: |
+          env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='webkit' HEADLESS='false' node tests/property-user-flow-17441.mjs
+          env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='webkit' HEADLESS='false' node tests/alabama-repeat-property-17449.mjs
+
+  report-blue-linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17454
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/report-final-17439
+          git fetch origin repair/browser-elder-final-17392
+          git show origin/repair/report-final-17439:tests/report-scroll-export-17439.mjs > tests/report-scroll-export-17439.mjs
+          git show origin/repair/browser-elder-final-17392:tests/property-blue-invariant-17417.mjs > tests/property-blue-invariant-17417.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - run: |
+          if [ '${{ matrix.browser }}' = 'firefox' ]; then
+            xvfb-run -a env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='firefox' HEADLESS='false' node tests/report-scroll-export-17439.mjs
+            xvfb-run -a env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='firefox' HEADLESS='false' node tests/property-blue-invariant-17417.mjs
+          else
+            env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='chromium' HEADLESS='true' node tests/report-scroll-export-17439.mjs
+            env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='chromium' HEADLESS='true' node tests/property-blue-invariant-17417.mjs
+          fi
+
+  report-blue-webkit:
+    runs-on: macos-14
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17454
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/report-final-17439
+          git fetch origin repair/browser-elder-final-17392
+          git show origin/repair/report-final-17439:tests/report-scroll-export-17439.mjs > tests/report-scroll-export-17439.mjs
+          git show origin/repair/browser-elder-final-17392:tests/property-blue-invariant-17417.mjs > tests/property-blue-invariant-17417.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - run: |
+          env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='webkit' HEADLESS='false' node tests/report-scroll-export-17439.mjs
+          env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='webkit' HEADLESS='false' node tests/property-blue-invariant-17417.mjs
