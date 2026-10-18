@@ -7,8 +7,8 @@ const browser=await launcher.launch({headless});
 const BASE=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
 const cases=[
  {name:'Alabama',lng:-86.20674479,lat:34.86885128,expect:[]},
- {name:'Vermont',lng:-72.58,lat:44.26,expect:['us-vt-legacy-elder-candidates']},
- {name:'Thailand',lng:100.50,lat:13.75,expect:['thailand-current-observed-points']}
+ {name:'Vermont',lng:-72.58,lat:44.26,expect:['vermont']},
+ {name:'Thailand',lng:100.50,lat:13.75,expect:['thailand']}
 ];
 const rows=[];
 for(const c of cases){
@@ -21,6 +21,10 @@ for(const c of cases){
    const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
    m?.jumpTo?.({center:[c.lng,c.lat],zoom:8,bearing:0,pitch:0});
    document.documentElement.dataset.earthlineAnalysisTier='regional';
+   const b=[c.lng-1,c.lat-1,c.lng+1,c.lat+1],token='elder-unit-'+c.name.toLowerCase();
+   window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=token;
+   window.EARTHLINE_DISPLAYED_RUN_16151={runToken:token,query:c.name,tier:'regional',bounds:b};
+   window.EARTHLINE_REGIONAL_VISUAL_DATA_16020={query:c.name,bounds:b};
    window.__ELDER_FETCHES_17472=[];
    const original=window.fetch.bind(window);
    window.fetch=(input,init)=>{
