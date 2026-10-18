@@ -1779,11 +1779,9 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     const wrapped=function(f,index){
       const out=prior.apply(this,arguments);
       corridorBlock(f);
-      try{void prefetchProperty17174()}catch(_){}
-      /* EARTHLINE 17468 — begin the approved Elder computation after corridor
-         selection, off the click path. Same detector, same target identity,
-         same published evidence; Property later reuses the exact cached result. */
-      setTimeout(()=>{try{void dynamicPropertyEvidence(true)}catch(_){}},0);
+      /* EARTHLINE 17499 — corridor selection is presentation only for Elder.
+         Do not prefetch or compute Property Elder evidence here; the governed
+         terminalPropertyRun starts the exact-frame Elder owner once. */
       return out;
     };
     wrapped.__earthlineElder17097=true;wrapped.__earthlineElder17097Original=prior;
