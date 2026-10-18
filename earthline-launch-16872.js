@@ -1859,7 +1859,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     if(location.hash==='#swales-explained')howParagraph();
     window.EARTHLINE_ELDER_TREES_V1_17097={
       state:'approved-v2-17118',manifest:MANIFEST,source:SOURCE,layer:LAYER,scienceBaseline:'17118',
-      refresh,startProperty:startProperty17166,prefetchPropertyTarget:prefetchProperty17174,summary:()=>state.lastSummary||summarize(state.active),
+      refresh,startProperty:startProperty17166,prefetchPropertyTarget:prefetchProperty17174,primePropertyEvidence:()=>dynamicPropertyEvidence(true),summary:()=>state.lastSummary||summarize(state.active),
       features:()=>state.active.slice(),
       confidenceRule:'Elder Tree Confidence = local structural-evidence percentile within the analyzed source area; not age probability',
       rechargeWeight:0
