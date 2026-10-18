@@ -1,17 +1,16 @@
-name: Earthline Alabama Repeat Property Fast Cross Browser 17457
+name: Earthline Live Repeat Property True Cross Browser 17460
 on:
   push:
     branches: [repair/property-one-click-17441]
     paths:
       - '.github/workflows/earthline-alabama-repeat-property-repair-17453.yml'
-      - 'tests/alabama-repeat-property-17449.mjs'
   workflow_dispatch:
 permissions:
   contents: write
 jobs:
-  three-browser:
+  three-browser-live:
     runs-on: macos-14
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,37 +21,35 @@ jobs:
       - run: |
           git fetch origin repair/property-one-click-17441
           git show origin/repair/property-one-click-17441:tests/alabama-repeat-property-17449.mjs > tests/alabama-repeat-property-17449.mjs
-      - run: |
           npm install --no-save playwright@1.55.0
           npx playwright install chromium firefox webkit
       - run: |
-          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
-          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
-          mkdir -p /tmp/earthline-results
+          mkdir -p /tmp/earthline-live-repeat
           rc=0
           for b in chromium firefox webkit; do
-            if env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER="$b" HEADLESS='true' node tests/alabama-repeat-property-17449.mjs; then
-              cp artifacts/alabama-repeat-property-17449.json "/tmp/earthline-results/alabama-repeat-$b-17457.json"
+            if env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER="$b" HEADLESS='true' node tests/alabama-repeat-property-17449.mjs; then
+              cp artifacts/alabama-repeat-property-17449.json "/tmp/earthline-live-repeat/$b.json"
             else
-              cp artifacts/alabama-repeat-property-17449.json "/tmp/earthline-results/alabama-repeat-$b-17457.json" || true
+              cp artifacts/alabama-repeat-property-17449.json "/tmp/earthline-live-repeat/$b.json" || true
               rc=1
             fi
           done
-          echo "$rc" > /tmp/earthline-results/rc.txt
-      - name: Persist all three results atomically
+          echo "$rc" > /tmp/earthline-live-repeat/rc.txt
+      - name: Persist live repeat results
         if: always()
         run: |
           git fetch origin repair/property-one-click-17441
           rm -rf /tmp/gate
           git worktree add /tmp/gate origin/repair/property-one-click-17441
           mkdir -p /tmp/gate/test-results
-          cp /tmp/earthline-results/alabama-repeat-*-17457.json /tmp/gate/test-results/
+          cp /tmp/earthline-live-repeat/chromium.json /tmp/gate/test-results/live-repeat-chromium-17460.json || true
+          cp /tmp/earthline-live-repeat/firefox.json /tmp/gate/test-results/live-repeat-firefox-17460.json || true
+          cp /tmp/earthline-live-repeat/webkit.json /tmp/gate/test-results/live-repeat-webkit-17460.json || true
           cd /tmp/gate
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add test-results/alabama-repeat-*-17457.json
-          git commit -m "test: persist Alabama three-browser repeat gate 17457" || true
+          git add test-results/live-repeat-*-17460.json
+          git commit -m "test: persist live repeat cross-browser 17460" || true
           git push origin HEAD:repair/property-one-click-17441
       - name: Enforce all three
-        run: |
-          test "$(cat /tmp/earthline-results/rc.txt)" = "0"
+        run: test "$(cat /tmp/earthline-live-repeat/rc.txt)" = "0"
