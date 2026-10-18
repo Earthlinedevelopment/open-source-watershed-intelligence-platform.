@@ -7,8 +7,8 @@ const browser=await launcher.launch({headless});
 const BASE=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
 const cases=[
  {name:'Alabama',lng:-86.20674479,lat:34.86885128,expect:[]},
- {name:'Vermont',lng:-72.58,lat:44.26,expect:['vermont']},
- {name:'Thailand',lng:100.50,lat:13.75,expect:['thailand']}
+ {name:'Vermont',lng:-73.195,lat:44.4825,expect:['vermont']},
+ {name:'Thailand',lng:101.43,lat:14.3475,expect:['thailand']}
 ];
 const rows=[];
 for(const c of cases){
@@ -45,9 +45,12 @@ for(const c of cases){
  const ids=snap.last?.summary?.coverageDatasetIds||[];
  const datasetFetches=snap.fetches.filter(u=>/\.geojson(?:\?|$)/.test(u));
  const expectedOk=c.expect.every(id=>ids.includes(id));
+ const exactCoverage=ids.length===c.expect.length&&ids.every(id=>c.expect.includes(id));
+ const expectedFiles=c.expect.map(id=>'data/elder-trees/v2/'+id+'.geojson');
+ const exactFetches=datasetFetches.length===expectedFiles.length&&datasetFetches.every(u=>expectedFiles.some(f=>u.endsWith(f)));
  const alabamaNoStatic=c.name!=='Alabama'||datasetFetches.length===0;
- const pass=!thrown&&elapsedMs<=3000&&expectedOk&&alabamaNoStatic&&!errors.length;
- const row={browser:BROWSER,name:c.name,pass,elapsedMs,expectedOk,alabamaNoStatic,ids,datasetFetches,fetches:snap.fetches,last:snap.last,errors,thrown};
+ const pass=!thrown&&elapsedMs<=3000&&expectedOk&&exactCoverage&&exactFetches&&alabamaNoStatic&&!errors.length;
+ const row={browser:BROWSER,name:c.name,pass,elapsedMs,expectedOk,exactCoverage,exactFetches,alabamaNoStatic,ids,datasetFetches,fetches:snap.fetches,last:snap.last,errors,thrown};
  rows.push(row);console.log('EARTHLINE_ELDER_UNIT_17475 '+JSON.stringify(row));
  await context.close();
 }
