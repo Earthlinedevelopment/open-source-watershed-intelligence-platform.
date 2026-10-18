@@ -1,0 +1,21 @@
+name: Earthline Firefox Pyodide Network 17524
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-firefox-pyodide-network-17524.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  firefox:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/property-one-click-17441, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - run: xvfb-run -a node tests/firefox-pyodide-network-17524.mjs
