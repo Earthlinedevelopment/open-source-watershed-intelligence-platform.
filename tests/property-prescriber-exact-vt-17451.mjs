@@ -21,9 +21,7 @@ for(const site of sites){
   await page.waitForTimeout(700);
   const options=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
   if(await options.count())await options.first().click();
-  const runBtn=page.locator('#runBtn');
-  if(await runBtn.isVisible()&&!await runBtn.isDisabled())await runBtn.click();
-  await page.waitForFunction(()=>/published\\./i.test(String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'')),null,{timeout:120000,polling:100});
+  await page.waitForTimeout(700);
   await page.waitForFunction(()=>typeof window.earthlineSelectedSiteFromCenter==='function'&&typeof window.applyLocation==='function'&&typeof window.earthlineDeclarePropertyAtCrosshair16169==='function',null,{timeout:30000,polling:100});
   const started=Date.now();
   const prep=await page.evaluate(async s=>{
