@@ -1,0 +1,23 @@
+name: Earthline Firefox Warm Phases 17522
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-firefox-warm-phases-17522.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  firefox:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: 889a8ece9c89baed45ca51002d3b13c6760242a3, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/firefox-warm-phases-17522.mjs > tests/firefox-warm-phases-17522.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - run: xvfb-run -a node tests/firefox-warm-phases-17522.mjs
