@@ -1,0 +1,22 @@
+name: Earthline Terminal Slice 17507
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-terminal-slice-17507.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  slice:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17505, fetch-depth: 0}
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          L=Path('index.html').read_text(encoding='utf-8').splitlines()
+          for j in range(34730-1,34830):
+              print(f'{j+1}: {L[j]}')
+          PY
