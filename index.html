@@ -1,3 +1,4 @@
+<!-- EARTHLINE_PROPERTY_IMMEDIATE_EXECUTION_17497: no rAF/timer between accepted press and governed Property/Elder launch. -->
 <!-- EARTHLINE_PROPERTY_SHARED_ACTIVATION_17494: ensureDeclareButton + reconcilePanel share one activation owner. -->
 <!-- EARTHLINE_PROPERTY_SINGLE_CONTROL_OWNER_17492: reconcilePanel16188 solely owns first+repeat Property activation; 17451 delegates. -->
 <!-- EARTHLINE_PROPERTY_VISUAL_ACCEPT_AND_PARALLEL_ELDER_17487: immediate button acknowledgement, governed run-state untouched. -->
@@ -38488,33 +38489,30 @@ function syncPropertyTargetFromMap16201(){const m=panelMap16188();if(!m||typeof 
     b.dataset.earthlinePressAccepted17494='1';
     document.documentElement.classList.add('earthline-property-orb-latched-16244');
 
-    /* I/O-only warm at the exact current target; no presentation/state mutation. */
-    try{void window.EARTHLINE_ELDER_TREES_V1_17097?.prefetchPropertyTarget?.()}catch(_){}
-
-    const launch17494=()=>{
-      try{void window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()}catch(_){}
-      let out17494;
-      try{out17494=fn()}catch(_){
-        if(Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17494){
-          b.dataset.earthlinePressAccepted17494='';
-          document.documentElement.classList.remove('earthline-property-orb-latched-16244');
-        }
-        return;
+    /* EARTHLINE 17497 — launch the governed Property owner and the existing
+       Elder owner immediately on the accepted physical press. Do not route core
+       execution through requestAnimationFrame; background-tab throttling can delay
+       rAF by many seconds. The synthesized click remains deduped above. */
+    try{void window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()}catch(_){}
+    let out17497;
+    try{out17497=fn()}catch(_){
+      if(Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17494){
+        b.dataset.earthlinePressAccepted17494='';
+        document.documentElement.classList.remove('earthline-property-orb-latched-16244');
       }
-      Promise.resolve(out17494).then(v17494=>{
-        if(v17494===false&&Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17494){
-          b.dataset.earthlinePressAccepted17494='';
-          document.documentElement.classList.remove('earthline-property-orb-latched-16244');
-        }
-      }).catch(()=>{
-        if(Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17494){
-          b.dataset.earthlinePressAccepted17494='';
-          document.documentElement.classList.remove('earthline-property-orb-latched-16244');
-        }
-      });
-    };
-    if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(launch17494,0));
-    else setTimeout(launch17494,0);
+      return false;
+    }
+    Promise.resolve(out17497).then(v17497=>{
+      if(v17497===false&&Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17494){
+        b.dataset.earthlinePressAccepted17494='';
+        document.documentElement.classList.remove('earthline-property-orb-latched-16244');
+      }
+    }).catch(()=>{
+      if(Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17494){
+        b.dataset.earthlinePressAccepted17494='';
+        document.documentElement.classList.remove('earthline-property-orb-latched-16244');
+      }
+    });
     return false;
   };
   property.onpointerup=function(ev){
