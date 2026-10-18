@@ -1,0 +1,25 @@
+name: Earthline Circular Channel Buffer A-B 17478
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - 'tests/apply-circular-channel-buffer-17478.py'
+      - 'tests/property-channel-buffer-live-17478.mjs'
+      - '.github/workflows/earthline-channel-buffer-17478.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/property-one-click-17441}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          curl -fsSL 'https://raw.githubusercontent.com/Earthlinedevelopment/open-source-watershed-intelligence-platform./356bd592ebe563b7bcafed0c1fa75556c2610240/index.html' -o index.html
+          python3 tests/apply-circular-channel-buffer-17478.py
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/property-channel-buffer-live-17478.mjs
