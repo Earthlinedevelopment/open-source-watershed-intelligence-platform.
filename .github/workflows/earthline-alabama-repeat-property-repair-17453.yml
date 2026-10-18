@@ -1,16 +1,16 @@
-name: Earthline Alabama Repeat Property Cross Browser 17456
+name: Earthline Alabama Repeat Property Fast Cross Browser 17457
 on:
   push:
     branches: [repair/property-one-click-17441]
     paths:
-      - '.github/workflows/earthline-alabama-repeat-property-repair-17453.yml'
+      - '.github/workflows/earthline-alabama-repeat-property-repair-17453.yml'\n      - 'tests/alabama-repeat-property-17449.mjs'
   workflow_dispatch:
 permissions:
   contents: write
 jobs:
   three-browser:
     runs-on: macos-14
-    timeout-minutes: 55
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,9 +31,9 @@ jobs:
           rc=0
           for b in chromium firefox webkit; do
             if env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER="$b" HEADLESS='true' node tests/alabama-repeat-property-17449.mjs; then
-              cp artifacts/alabama-repeat-property-17449.json "/tmp/earthline-results/alabama-repeat-$b-17456.json"
+              cp artifacts/alabama-repeat-property-17449.json "/tmp/earthline-results/alabama-repeat-$b-17457.json"
             else
-              cp artifacts/alabama-repeat-property-17449.json "/tmp/earthline-results/alabama-repeat-$b-17456.json" || true
+              cp artifacts/alabama-repeat-property-17449.json "/tmp/earthline-results/alabama-repeat-$b-17457.json" || true
               rc=1
             fi
           done
@@ -45,12 +45,12 @@ jobs:
           rm -rf /tmp/gate
           git worktree add /tmp/gate origin/repair/property-one-click-17441
           mkdir -p /tmp/gate/test-results
-          cp /tmp/earthline-results/alabama-repeat-*-17456.json /tmp/gate/test-results/
+          cp /tmp/earthline-results/alabama-repeat-*-17457.json /tmp/gate/test-results/
           cd /tmp/gate
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add test-results/alabama-repeat-*-17456.json
-          git commit -m "test: persist Alabama three-browser repeat gate 17456" || true
+          git add test-results/alabama-repeat-*-17457.json
+          git commit -m "test: persist Alabama three-browser repeat gate 17457" || true
           git push origin HEAD:repair/property-one-click-17441
       - name: Enforce all three
         run: |
