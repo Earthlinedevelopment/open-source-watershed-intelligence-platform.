@@ -1366,6 +1366,21 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
         }
       }catch(_){}
     }
+    /* EARTHLINE 17474 — Regional Elder evidence is owned by the published
+       analysis extent, not by transient camera bounds. During navigation the map
+       can briefly show a world-scale camera; using that camera caused unrelated
+       Elder datasets to load. Prefer canonical displayed/visual bounds and fall
+       back to camera bounds only when no published extent exists. */
+    try{
+      const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+      const visual=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020||null;
+      for(const candidate of [displayed?.bounds,visual?.bounds]){
+        if(Array.isArray(candidate)&&candidate.length>=4){
+          const b=candidate.slice(0,4).map(Number);
+          if(b.every(Number.isFinite))return b;
+        }
+      }
+    }catch(_){}
     return bounds();
   }
   function activeCoverage(){
@@ -1420,7 +1435,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     };
   }
   function activeFeatures(){
-    const b=bounds(),t=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
+    const b=coverageQueryBounds(),t=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
     if(t==='property'){
       let boundary=[],center=null;
       try{
