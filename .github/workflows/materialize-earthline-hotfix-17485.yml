@@ -1,0 +1,30 @@
+name: Materialize Earthline Hotfix 17485
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/materialize-earthline-hotfix-17485.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17485
+          fetch-depth: 0
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/apply-property-channel-run-scope-17485.py > /tmp/science.py
+          git show origin/repair/property-one-click-17441:tests/apply-property-immediate-accept-17485.py > /tmp/interaction.py
+          python3 /tmp/science.py
+          python3 /tmp/interaction.py
+      - run: |
+          git config user.name "Earthline CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "candidate: Property science + immediate one-press/Elder hotfix 17485" || true
+          git push origin HEAD:candidate/earthline-launch-17485
