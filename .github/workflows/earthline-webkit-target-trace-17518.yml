@@ -1,0 +1,23 @@
+name: Earthline WebKit Target Trace 17518
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-webkit-target-trace-17518.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  webkit:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: 38709671bbb1695a7bb274a12d10d4f916329590, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/webkit-target-trace-17518.mjs > tests/webkit-target-trace-17518.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - run: node tests/webkit-target-trace-17518.mjs
