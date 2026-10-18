@@ -34,3 +34,5 @@ s=s.replace(old,new,1)
 s="<!-- EARTHLINE_US_STATE_INTENT_FILTER_17461: registered U.S. states do not generate fake Country/City intent rows; Georgia country preserved. -->\n"+s
 p.write_text(s,encoding="utf-8")
 print("patched U.S. state intent filter 17461")
+
+# RETRIGGER 17463
