@@ -7,7 +7,7 @@ const sites=[{name:'A',lat:44.06957,lng:-72.27369},{name:'B',lat:44.0858,lng:-72
 const rows=[];
 for(const site of sites){
   const context=await browser.newContext();
-  await context.route(/^https:\/\/earthlinedevelopment\.org\/?(?:\?.*)?$/,r=>r.fulfill({status:200,body:index,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}}));
+  await context.route('**/*',async r=>{const u=new URL(r.request().url());if(r.request().resourceType()==='document'&&/^(?:www\\.)?earthlinedevelopment\\.org$/i.test(u.hostname)&&u.pathname==='/')return r.fulfill({status:200,body:index,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});return r.continue();});
   const page=await context.newPage();
   const errors=[];page.on('pageerror',e=>errors.push(String(e)));
   await page.goto('https://earthlinedevelopment.org/?selectorLive17467='+site.name+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
