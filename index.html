@@ -1,3 +1,5 @@
+<!-- EARTHLINE_PROPERTY_IMMEDIATE_ACCEPT_17485: first accepted pointer-up immediately owns run state and starts existing Elder owner. -->
+<!-- EARTHLINE_PROPERTY_CHANNEL_RUN_SCOPE_17485: authoritative prescriber scale flag owns Property-only exact 4 m channel buffer. -->
 <!-- EARTHLINE_PROPERTY_MAJOR_CHANNEL_CIRCULAR_BUFFER_17483: Property-run exact 4 m Euclidean channel buffer; Regional unchanged. -->
 <!-- EARTHLINE_PROPERTY_ONE_PRESS_OWNER_17444: pointer-up physical activation + click keyboard fallback, deduped. -->
 <!-- EARTHLINE_BIOSWALE_REPORT_SCROLL_EXPORT_17439: canonical report owns reliable scroll surface and toolbar actions at open. -->
@@ -6027,9 +6029,8 @@ function earthlineMajorChannelUnsafeAt16288(cx,cy){
         if(M.acc[idx(x,y)]<threshold)continue;
         for(let oy=-radius;oy<=radius;oy++)for(let ox=-radius;ox<=radius;ox++){
           const nx=x+ox,ny=y+oy;if(nx<0||ny<0||nx>=GW||ny>=GH)continue;
-          const propertyExact17483=String(document.documentElement.dataset.earthlinePropertyRunState||'')==='running'||
-            !!(M&&M.loc&&M.loc.userSelectedSite===true&&Number(M.loc.acres||0)>0&&Number(M.loc.acres||0)<=50);
-          if(propertyExact17483&&Math.hypot(ox,oy)*Math.max(0.5,Number(M.cellM||1))>4.000001)continue;
+          const propertyExact17485=!!(M&&M.earthlinePropertyChannelBuffer17485===true);
+          if(propertyExact17485&&Math.hypot(ox,oy)*Math.max(0.5,Number(M.cellM||1))>4.000001)continue;
           unsafe[idx(nx,ny)]=1;
         }
       }
@@ -9641,9 +9642,8 @@ function earthlinePathPointUsable(px,py,maxS){
   for(let oy=-radius;oy<=radius;oy++)for(let ox=-radius;ox<=radius;ox++){
     const x=gx+ox,y=gy+oy;
     if(x<0||y<0||x>=GW||y>=GH)continue;
-    const propertyExact17483=String(document.documentElement.dataset.earthlinePropertyRunState||'')==='running'||
-      !!(M&&M.loc&&M.loc.userSelectedSite===true&&Number(M.loc.acres||0)>0&&Number(M.loc.acres||0)<=50);
-    if(propertyExact17483&&Math.hypot(ox,oy)*Math.max(0.5,Number(M.cellM||1))>4.000001)continue;
+    const propertyExact17485=!!(M&&M.earthlinePropertyChannelBuffer17485===true);
+    if(propertyExact17485&&Math.hypot(ox,oy)*Math.max(0.5,Number(M.cellM||1))>4.000001)continue;
     if(M.acc&&M.acc[idx(x,y)]>=channelThreshold)return false;
   }
   return true;
@@ -13146,6 +13146,10 @@ var prescribeSwales;
         (Array.isArray(M.loc.zones)&&M.loc.zones.includes("Regional Tile"))
       )
     );
+    /* EARTHLINE 17485 — authoritative run-scoped scale owner for channel buffer.
+       The prescriber itself owns Property vs Regional truth; downstream channel
+       geometry reads this flag instead of UI/lifecycle heuristics. */
+    M.earthlinePropertyChannelBuffer17485=!isRegionalTile15769;
     const work15771=isRegionalTile15769
       ? {maxLevels:14,maxSeedsPerLevel:4,maxCandidates:10,maxFinal:6,perLevel:1,maxMs:2000}
       : {maxLevels:72,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200,perLevel:16,maxMs:120000};
@@ -35038,7 +35042,34 @@ window.EARTHLINE_GAUGE_DATA_SYNC_16864={build:'16864',scoreScale:'0-100',measure
       if(now-last<900)return false;
       b.dataset.earthlinePointerLaunch17444=String(now);
       const fn=window.earthlineDeclarePropertyAtCrosshair16173;
-      return typeof fn==='function'?fn(ev):false;
+      if(typeof fn!=='function')return false;
+      const serialBefore17485=Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0);
+      b.disabled=true;b.setAttribute('disabled','');
+      document.documentElement.dataset.earthlinePropertyRunState='running';
+      let out17485;
+      try{out17485=fn(ev)}catch(err17485){
+        b.disabled=false;b.removeAttribute('disabled');
+        document.documentElement.dataset.earthlinePropertyRunState='idle';
+        throw err17485;
+      }
+      if(out17485===false){
+        b.disabled=false;b.removeAttribute('disabled');
+        document.documentElement.dataset.earthlinePropertyRunState='idle';
+        return false;
+      }
+      setTimeout(()=>{try{void window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()}catch(_){}},0);
+      Promise.resolve(out17485).then(v17485=>{
+        if(v17485===false&&Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17485){
+          b.disabled=false;b.removeAttribute('disabled');
+          document.documentElement.dataset.earthlinePropertyRunState='idle';
+        }
+      }).catch(()=>{
+        if(Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17485){
+          b.disabled=false;b.removeAttribute('disabled');
+          document.documentElement.dataset.earthlinePropertyRunState='idle';
+        }
+      });
+      return out17485;
     };
     b.onclick=function(ev){
       const now=Date.now(),last=Number(b.dataset.earthlinePointerLaunch17444||0);
