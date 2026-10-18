@@ -1,0 +1,27 @@
+name: Earthline Firefox Cold Elder 17526
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-firefox-cold-elder-17526.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  firefox-cold:
+    strategy:
+      fail-fast: false
+      matrix:
+        attempt: [1, 2, 3]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17526, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/firefox-cold-elder-17520.mjs > tests/firefox-cold-elder-17520.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - run: xvfb-run -a env ATTEMPT='${{ matrix.attempt }}' node tests/firefox-cold-elder-17520.mjs
