@@ -1,0 +1,29 @@
+name: Earthline Print Property Parent Rebind 17496
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-print-parent-rebind-17496.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  print:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17494, fetch-depth: 0}
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          for path in ['index.html','earthline-launch-16872.js']:
+              s=Path(path).read_text(encoding='utf-8')
+              for t in ['EARTHLINE_REGIONAL_PROPERTY_PARENT_REBIND_17016','window.earthlineDeclarePropertyAtCrosshair16173=function','terminalPropertyRun']:
+                  start=0
+                  while True:
+                      i=s.find(t,start)
+                      if i<0: break
+                      print(f'===== {path} {t} @ {i} =====')
+                      print(s[max(0,i-3500):i+8500])
+                      start=i+1
+          PY
