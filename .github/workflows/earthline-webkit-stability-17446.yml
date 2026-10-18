@@ -5,7 +5,8 @@ on:
     paths:
       - '.github/workflows/earthline-webkit-stability-17446.yml'
   workflow_dispatch:
-permissions: {contents: read}
+permissions:
+  contents: write
 jobs:
   webkit:
     runs-on: macos-14
@@ -27,4 +28,23 @@ jobs:
           python3 -m http.server 8787 --bind 0.0.0.0 >/tmp/http.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
           exit 1
-      - run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='false' WAIT_MS='90000' STATES='Vermont|New York|Iowa|Vermont|New York|Iowa' node tests/browser-regional-clean-17435.mjs
+      - id: webkit_test
+        continue-on-error: true
+        run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='false' WAIT_MS='90000' STATES='Vermont|New York|Iowa|Vermont|New York|Iowa' node tests/browser-regional-clean-17435.mjs
+      - name: Persist structured WebKit result
+        if: always()
+        run: |
+          git fetch origin repair/property-one-click-17441
+          rm -rf /tmp/earthline-results
+          git worktree add /tmp/earthline-results origin/repair/property-one-click-17441
+          mkdir -p /tmp/earthline-results/test-results
+          cp artifacts/browser-regional-clean-17435/webkit.json /tmp/earthline-results/test-results/webkit-stability-17448.json
+          cd /tmp/earthline-results
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add test-results/webkit-stability-17448.json
+          git commit -m "test: persist WebKit stability result 17448" || true
+          git push origin HEAD:repair/property-one-click-17441
+      - name: Enforce test result
+        if: steps.webkit_test.outcome != 'success'
+        run: exit 1
