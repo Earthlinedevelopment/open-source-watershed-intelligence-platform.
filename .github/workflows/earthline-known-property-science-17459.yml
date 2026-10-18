@@ -1,0 +1,45 @@
+name: Earthline Known Property Science Controls 17459
+on:
+  push:
+    branches: [repair/mantra67-launch-final-17454]
+    paths:
+      - '.github/workflows/earthline-known-property-science-17459.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  control:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-prescriber-final-17451
+          git show origin/repair/property-prescriber-final-17451:tests/property-prescriber-exact-vt-17451.mjs > tests/property-prescriber-exact-vt-17451.mjs
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - id: test
+        continue-on-error: true
+        run: env EARTHLINE_URL='http://127.0.0.1:8787/' VARIANT='control' OUTDIR='/tmp/property17459' node tests/property-prescriber-exact-vt-17451.mjs
+      - name: Persist result
+        if: always()
+        run: |
+          mkdir -p test-results
+          cp /tmp/property17459/control.json test-results/property-science-controls-17459.json || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add test-results/property-science-controls-17459.json || true
+          git commit -m "test: persist known Property science controls 17459" || true
+          git pull --rebase origin repair/mantra67-launch-final-17454 || true
+          git push origin HEAD:repair/mantra67-launch-final-17454 || true
+      - name: Enforce
+        if: steps.test.outcome != 'success'
+        run: exit 1
