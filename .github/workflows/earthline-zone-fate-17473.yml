@@ -1,0 +1,24 @@
+name: Earthline Vermont Zone Fate 17473
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - 'tests/property-zone-fate-17473.mjs'
+      - '.github/workflows/earthline-zone-fate-17473.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17454, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/property-zone-fate-17473.mjs > tests/property-zone-fate-17473.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/property-zone-fate-17473.mjs
