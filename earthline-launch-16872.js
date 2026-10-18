@@ -1239,7 +1239,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   const MANIFEST='data/elder-trees/v2/manifest.json';
   const SOURCE='earthline-elder-trees-17097';
   const LAYER='earthline-elder-tree-points-17097';
-  const state={loaded:false,loading:null,manifest:null,all:[],active:[],lastSummary:null,dynamic:{worker:null,seq:0,pending:new Map(),key:'',result:null,promise:null,error:null,warmPromise:null,warmed:false,tileWarmKey:'',tileWarmPromise:null}};
+  const state={loaded:false,loading:null,manifest:null,loadedDatasetIds:new Set(),datasetLoads:new Map(),all:[],active:[],lastSummary:null,dynamic:{worker:null,seq:0,pending:new Map(),key:'',result:null,promise:null,error:null,warmPromise:null,warmed:false,tileWarmKey:'',tileWarmPromise:null}};
 
   function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
@@ -1290,32 +1290,49 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     }
     return inside;
   }
-  async function load(){
-    if(state.loaded)return state;
+  async function ensureManifest17454(){
+    if(state.manifest)return state.manifest;
     if(state.loading)return state.loading;
-    state.loading=(async()=>{
-      const manifest=await fetch(MANIFEST,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('Elder Tree manifest '+r.status);return r.json()});
-      const all=[];
-      for(const d of (manifest.datasets||[])){
-        try{
-          const fc=await fetch(d.path,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(String(r.status));return r.json()});
-          for(const f of (fc.features||[])){
-            if(f?.geometry?.type!=='Point')continue;
-            const copy={type:'Feature',geometry:f.geometry,properties:Object.assign({},f.properties||{},{
-              elder_dataset_id:d.id||'',
-              elder_dataset_label:d.label||d.id||'',
-              elder_coverage_complete:d.coverage_complete===true
-            })};
-            all.push(copy);
-          }
-        }catch(err){
-          (manifest.load_errors||(manifest.load_errors=[])).push({dataset:d.id||d.path,error:String(err&&err.message||err)});
-        }
-      }
-      state.manifest=manifest;state.all=all;state.loaded=true;
-      return state;
-    })().finally(()=>{state.loading=null});
+    state.loading=fetch(MANIFEST,{cache:'no-store'})
+      .then(r=>{if(!r.ok)throw new Error('Elder Tree manifest '+r.status);return r.json()})
+      .then(manifest=>{state.manifest=manifest;state.loaded=true;return manifest})
+      .finally(()=>{state.loading=null});
     return state.loading;
+  }
+  async function loadDataset17454(d){
+    const id=String(d?.id||d?.path||'');
+    if(!id)return null;
+    if(state.loadedDatasetIds.has(id))return true;
+    if(state.datasetLoads.has(id))return state.datasetLoads.get(id);
+    const promise=(async()=>{
+      try{
+        const fc=await fetch(d.path,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(String(r.status));return r.json()});
+        for(const f of (fc.features||[])){
+          if(f?.geometry?.type!=='Point')continue;
+          state.all.push({type:'Feature',geometry:f.geometry,properties:Object.assign({},f.properties||{},{
+            elder_dataset_id:d.id||'',
+            elder_dataset_label:d.label||d.id||'',
+            elder_coverage_complete:d.coverage_complete===true
+          })});
+        }
+        state.loadedDatasetIds.add(id);
+        return true;
+      }catch(err){
+        const manifest=state.manifest||{};
+        (manifest.load_errors||(manifest.load_errors=[])).push({dataset:d.id||d.path,error:String(err&&err.message||err)});
+        return false;
+      }
+    })().finally(()=>state.datasetLoads.delete(id));
+    state.datasetLoads.set(id,promise);
+    return promise;
+  }
+  async function load(){
+    const manifest=await ensureManifest17454();
+    const b=coverageQueryBounds();
+    const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
+    const targets=(manifest.datasets||[]).filter(d=>!(tier==='property'&&d?.property_eligible===false)&&datasetCoversBounds(d,b));
+    await Promise.all(targets.map(loadDataset17454));
+    return state;
   }
   function datasetCoversBounds(d,b){
     const q=d?.bbox;
@@ -1851,6 +1868,10 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
        page startup so its cold cost overlaps normal location/Regional interaction.
        The post-Regional 900 ms call above remains an idempotent fallback only. */
     void prewarmDynamicWorker();
+    /* EARTHLINE 17454 — warm only the tiny Elder manifest at startup. Dataset
+       GeoJSON remains bbox-lazy so unrelated locations never pay the global
+       static-evidence load cost. */
+    void ensureManifest17454().catch(()=>{});
     if(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970){
       void load().then(()=>refresh()).catch(()=>{});
     }
