@@ -1,0 +1,30 @@
+name: Materialize Live Worm + Report Candidate 17447
+on:
+  push:
+    branches: [repair/live-worm-report-17447]
+    paths:
+      - '.github/workflows/materialize-live-worm-report-17447.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - run: |
+          git fetch origin repair/live-worm-report-17447
+          git show origin/repair/live-worm-report-17447:tests/apply-regional-clean-presentation-17434.py > /tmp/apply-regional-clean-presentation-17434.py
+          git show origin/repair/live-worm-report-17447:tests/apply-report-scroll-export-17439.py > /tmp/apply-report-scroll-export-17439.py
+          python3 /tmp/apply-regional-clean-presentation-17434.py
+          python3 /tmp/apply-report-scroll-export-17439.py
+      - run: |
+          git config user.name "Earthline CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "live candidate: remove initial Regional worms and fix Bioswale Report 17447" || true
+          git push --force origin HEAD:candidate/live-worm-report-17447
