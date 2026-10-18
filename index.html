@@ -1,3 +1,4 @@
+<!-- EARTHLINE_PROPERTY_SINGLE_CONTROL_OWNER_17492: reconcilePanel16188 solely owns first+repeat Property activation; 17451 delegates. -->
 <!-- EARTHLINE_PROPERTY_VISUAL_ACCEPT_AND_PARALLEL_ELDER_17487: immediate button acknowledgement, governed run-state untouched. -->
 <!-- EARTHLINE_PROPERTY_IMMEDIATE_ACCEPT_17485: first accepted pointer-up immediately owns run state and starts existing Elder owner. -->
 <!-- EARTHLINE_PROPERTY_CHANNEL_RUN_SCOPE_17485: authoritative prescriber scale flag owns Property-only exact 4 m channel buffer. -->
@@ -35035,56 +35036,13 @@ window.EARTHLINE_GAUGE_DATA_SYNC_16864={build:'16864',scoreScale:'0-100',measure
 (function installEarthlinePropertyRepeatOnePress17451(){
   if(window.EARTHLINE_PROPERTY_REPEAT_ONE_PRESS_17451)return;
   function bind(){
-    const b=document.getElementById('earthlineDeclareProperty16169');
-    if(!b)return false;
-    b.onpointerup=function(ev){
-      if(ev&&Number.isFinite(Number(ev.button))&&Number(ev.button)!==0)return false;
-      const now=Date.now(),last=Number(b.dataset.earthlinePointerLaunch17444||0);
-      if(now-last<900)return false;
-      b.dataset.earthlinePointerLaunch17444=String(now);
-      const fn=window.earthlineDeclarePropertyAtCrosshair16173;
-      if(typeof fn!=='function')return false;
-      const serialBefore17487=Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0);
-      b.disabled=true;b.setAttribute('disabled','');
-      b.dataset.earthlinePressAccepted17487='1';
-      setTimeout(()=>{try{void window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()}catch(_){}},0);
-      setTimeout(()=>{
-        let out17487;
-        try{out17487=fn()}catch(_){
-          if(Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17487){
-            b.disabled=false;b.removeAttribute('disabled');
-          }
-          return;
-        }
-        Promise.resolve(out17487).then(v17487=>{
-          if(v17487===false&&Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17487){
-            b.disabled=false;b.removeAttribute('disabled');
-          }
-        }).catch(()=>{
-          if(Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17487){
-            b.disabled=false;b.removeAttribute('disabled');
-          }
-        });
-      },0);
-      return false;
-    };
-    b.onclick=function(ev){
-      const now=Date.now(),last=Number(b.dataset.earthlinePointerLaunch17444||0);
-      if(ev&&Number(ev.detail||0)!==0&&now-last<1200){
-        ev.preventDefault?.();ev.stopPropagation?.();return false;
+    try{
+      if(typeof window.earthlineReconcilePanel16188==='function'){
+        window.earthlineReconcilePanel16188();
+        return true;
       }
-      b.dataset.earthlinePointerLaunch17444=String(now);
-      const fn=window.earthlineDeclarePropertyAtCrosshair16173;
-      return typeof fn==='function'?fn(ev):false;
-    };
-    const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
-    if(a?.settled===true&&a?.result===true){
-      b.disabled=false;
-      b.removeAttribute('disabled');
-      document.documentElement.dataset.earthlinePropertyRunState='idle';
-    }
-    b.dataset.earthlinePropertyClickOwner16546='current';
-    return true;
+    }catch(_){}
+    return false;
   }
   document.addEventListener('earthline:analysis-complete',e=>{
     const tier=String(e?.detail?.tier||e?.detail?.mode||'').toLowerCase();
@@ -38502,45 +38460,51 @@ function syncPropertyTargetFromMap16201(){const m=panelMap16188();if(!m||typeof 
      WebKit can lose the synthesized click when this control is reconciled during
      map/UI work. Pointer-up is the primary physical activation; click remains the
      keyboard/fallback activation and is deduped against the pointer launch. */
-  property.onpointerup=function(ev){
-    if(ev&&Number.isFinite(Number(ev.button))&&Number(ev.button)!==0)return false;
+  property.__earthlineLaunch17492=function(ev){
     const now=Date.now(),last=Number(property.dataset.earthlinePointerLaunch17444||0);
-    if(now-last<900)return false;
+    if(ev&&Number(ev.detail||0)!==0&&now-last<1200)return false;
     property.dataset.earthlinePointerLaunch17444=String(now);
     const fn=window.earthlineDeclarePropertyAtCrosshair16173;
     if(typeof fn!=='function')return false;
-    const serialBefore17487=Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0);
-    property.disabled=true;property.setAttribute('disabled','');
-    property.dataset.earthlinePressAccepted17487='1';
-    setTimeout(()=>{try{void window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()}catch(_){}},0);
-    setTimeout(()=>{
-      let out17487;
-      try{out17487=fn()}catch(_){
-        if(Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17487){
-          property.disabled=false;property.removeAttribute('disabled');
+    const serialBefore17492=Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0);
+    property.dataset.earthlinePressAccepted17492='1';
+    document.documentElement.classList.add('earthline-property-orb-latched-16244');
+    const launch17492=()=>{
+      try{void window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()}catch(_){}
+      let out17492;
+      try{out17492=fn()}catch(_){
+        if(Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17492){
+          property.dataset.earthlinePressAccepted17492='';
+          document.documentElement.classList.remove('earthline-property-orb-latched-16244');
         }
         return;
       }
-      Promise.resolve(out17487).then(v17487=>{
-        if(v17487===false&&Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17487){
-          property.disabled=false;property.removeAttribute('disabled');
+      Promise.resolve(out17492).then(v17492=>{
+        if(v17492===false&&Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17492){
+          property.dataset.earthlinePressAccepted17492='';
+          document.documentElement.classList.remove('earthline-property-orb-latched-16244');
         }
       }).catch(()=>{
-        if(Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17487){
-          property.disabled=false;property.removeAttribute('disabled');
+        if(Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17492){
+          property.dataset.earthlinePressAccepted17492='';
+          document.documentElement.classList.remove('earthline-property-orb-latched-16244');
         }
       });
-    },0);
+    };
+    if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(launch17492,0));
+    else setTimeout(launch17492,0);
     return false;
+  };
+  property.onpointerup=function(ev){
+    if(ev&&Number.isFinite(Number(ev.button))&&Number(ev.button)!==0)return false;
+    return property.__earthlineLaunch17492(ev);
   };
   property.onclick=function(ev){
     const now=Date.now(),last=Number(property.dataset.earthlinePointerLaunch17444||0);
     if(ev&&Number(ev.detail||0)!==0&&now-last<1200){
       ev.preventDefault?.();ev.stopPropagation?.();return false;
     }
-    property.dataset.earthlinePointerLaunch17444=String(now);
-    const fn=window.earthlineDeclarePropertyAtCrosshair16173;
-    return typeof fn==='function'?fn(ev):false;
+    return property.__earthlineLaunch17492(ev);
   };property.querySelector('.el69-dot')?.remove();ensureOrb16233('earthlineDeclareProperty16169');let span=property.querySelector('span:last-child');if(!span){span=document.createElement('span');property.appendChild(span)}span.dataset.crosshair16247=window.EARTHLINE_PROPERTY_TARGET_16201?.code?'0':'1';if(property.dataset.busy!=='1')span.innerHTML=propertyTargetMarkup16871(window.EARTHLINE_PROPERTY_TARGET_16201);const ready=!!(window.EARTHLINE_PROPERTY_TARGET_16201||window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147);document.documentElement.classList.toggle('earthline-property-ready-16188',ready);property.disabled=!ready&&property.dataset.busy!=='1';property.setAttribute('aria-disabled',property.disabled?'true':'false')}document.getElementById('earthlinePropertySelection16201')?.remove();const report=document.getElementById('earthlineVermontReport16149');if(report&&report.parentElement!==reportSlot)reportSlot.appendChild(report);for(const id of ['earthlineVermontStatus16147','earthlineTierNotice16173']){const el=document.getElementById(id);if(el&&el.parentElement!==statusSlot)statusSlot.appendChild(el)}{const el=document.getElementById('earthlineTierBreadcrumb16156');if(el&&el.parentElement!==resultsSlot)resultsSlot.appendChild(el)}document.getElementById('earthlineRegionalCorridorTabs16323')?.remove();portalCorridorDetail16248();wrapCorridorDetail16233();syncRegionalOrb16233()}
   window.earthlineReconcilePanel16188=reconcilePanel16188;
   function installPanel16188(){if(panelInstalled16188)return;panelInstalled16188=true;const rail=makeNode16188('aside','earthlineRail16188','',null),search=makeControl16188('earthlineRailSearch16188','Open or close Earthline panel','⌕'),menuButton=makeControl16188('earthlineRailMenu16188','Open Earthline menu','☰');rail.append(search,menuButton);const menu=makeNode16188('div','earthlineHamburgerMenu16233','',null);menu.innerHTML='<a href="#swales-explained"><i class="earthline-orb-shell-16244" aria-hidden="true"></i><span>Swales Explained</span></a><a class="earthline-process-link-16265" href="#earthline-process"><span class="earthline-process-logo-16400" aria-hidden="true"></span><span>The Earthline Process</span></a>';try{const src=document.querySelector('img[alt="Earthline"]')?.getAttribute('src'),holder=menu.querySelector('.earthline-process-logo-16400');if(src&&holder){const im=document.createElement('img');im.src=src;im.alt='';holder.replaceChildren(im)}}catch(_){}const panel=makeNode16188('aside','earthlinePanel16188','',null),head=makeNode16188('div','earthlinePanelHeader16188','',null),close=makeNode16188('div','earthlinePanelClose16188','','×'),body=makeNode16188('div','earthlinePanelBody16188','',null);close.setAttribute('role','button');close.setAttribute('tabindex','0');close.setAttribute('aria-label','Close Earthline panel');head.append(close);panel.append(head,body);const sections=[['brand',''],['search','Search'],['property','Property Modelling'],['report','Bioswale Impact Report'],['status','Status'],['results','Results']];for(const [key,label] of sections){const sec=makeNode16188('section','earthline'+key[0].toUpperCase()+key.slice(1)+'Section16188','el-panel-section-16188',null);if(label)sec.appendChild(makeNode16188('div','','el-panel-label-16188',label));const slot=makeNode16188('div','earthline'+key[0].toUpperCase()+key.slice(1)+'Slot16188','',null);sec.appendChild(slot);body.appendChild(sec)}const ctx=makeNode16188('div','earthlinePropertyContext16233','',null);document.getElementById('earthlinePropertySlot16188')?.appendChild(ctx);document.body.append(rail,menu,panel);const brandSlot=document.getElementById('earthlineBrandSlot16188');if(brandSlot){brandSlot.id='earthlinePanelBrand16201';const brand=document.querySelector('.brand'),mantra=document.querySelector('.earthline-mantra-header');if(brand)brandSlot.appendChild(brand);if(mantra)brandSlot.appendChild(mantra);const primary=brandSlot.querySelector('.mantra-primary');if(primary)primary.innerHTML='Slow it. <span class="sink">Sink it.</span> Spread it.'}activate16188(search,()=>setPanel16188(!document.documentElement.classList.contains('earthline-panel-open-16188')));activate16188(close,()=>setPanel16188(false));activate16188(menuButton,()=>menu.classList.toggle('open'));menu.addEventListener('click',()=>menu.classList.remove('open'));document.addEventListener('pointerdown',e=>{if(e.target.closest('#earthlineHamburgerMenu16233,#earthlineRailMenu16188'))return;menu.classList.remove('open')},true);/* EARTHLINE 16346 — Regional Orb launch belongs only to runRegional(). UI events may close suggestions but cannot arm/re-arm the Orb. */document.addEventListener('click',e=>{if(e.target.closest('#runBtn'))closeSuggestions16233()},true);document.addEventListener('earthline:analysis-complete',ev=>{const mode=String(ev?.detail?.tier||ev?.detail?.mode||'').toLowerCase(),d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||null,shown=String(d&&(d.tier||d.mode)||'').toLowerCase();/* 16346: core publication is not the Regional Orb terminal; reconcileOrbTerminal16243 owns same-token context/failure terminal. */if(mode==='regional'||shown==='regional')corridorTipRegionalReady16252=true;setTimeout(syncRegionalOrb16233,50);setTimeout(reconcilePanel16188,80);for(const delay of [250,650,1200,2200,4000])setTimeout(maybeShowCorridorTip16248,delay)},{passive:true});let panelMutationRaf16188=0;const bodyObserver=new MutationObserver(()=>{if(panelMutationRaf16188)return;panelMutationRaf16188=requestAnimationFrame(()=>{panelMutationRaf16188=0;reconcilePanel16188()})});bodyObserver.observe(document.body,{childList:true,subtree:true});function bindPropertyTargetMove16201(){if(propertyTargetMoveBound16201)return true;const m=panelMap16188();if(!m||typeof m.on!=='function')return false;propertyTargetMoveBound16201=true;for(const ev of ['load','style.load'])m.on(ev,()=>setTimeout(initRealGlobe16233,0));m.on('dragend',()=>{const t=window.EARTHLINE_PROPERTY_TARGET_16201,c=m.getCenter?.();if(!t||!c||!Number.isFinite(Number(c.lng))||!Number.isFinite(Number(c.lat)))return;if(t.code||t.source==='country-center')setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair-user-drag-16414'},{openPanel:false});else setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair'},{openPanel:false})});m.on('moveend',()=>{syncPropertyTargetFromMap16201();positionSuggestions16233()});m.on('resize',positionSuggestions16233);return true}bindPropertyTargetMove16201();setPanel16188(true);reconcilePanel16188();for(const delay of [100,500,1400])setTimeout(()=>{reconcilePanel16188();bindPropertyTargetMove16201();initRealGlobe16233()},delay);setInterval(()=>{syncRegionalOrb16233();const p=document.getElementById('earthlineDeclareProperty16169');if(p)ensureOrb16233('earthlineDeclareProperty16169');reconcileOrbTerminal16243();const now16270=Date.now();if(now16270-lastCorridorTipCheck16270>=500){lastCorridorTipCheck16270=now16270;maybeShowCorridorTip16248()}},120);window.earthlineSetPropertyTarget16201=setPropertyTarget16201;window.earthlineSyncPropertyTargetFromMap16201=syncPropertyTargetFromMap16201;window.earthlinePanelAudit16188=()=>({build:'EARTHLINE 16256',open:document.documentElement.classList.contains('earthline-panel-open-16188'),motto:document.querySelector('#earthlinePanelBrand16201 .mantra-primary')?.textContent?.trim()||'',locationBoxAbsent:!document.getElementById('earthlineLocationSection16188'),suggestionsOpen:document.getElementById('earthlineSearchSuggestions15970')?.classList.contains('open')||false,regionalOrb:document.documentElement.classList.contains('earthline-regional-running-16233'),propertyOrb:document.documentElement.classList.contains('earthline-property-running-16233'),singlePropertyAction:document.querySelectorAll('#earthlinePropertySlot16188 #earthlineDeclareProperty16169').length===1,scriptBlocks:document.scripts.length-1,at:new Date().toISOString()})}
