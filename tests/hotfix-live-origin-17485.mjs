@@ -104,7 +104,7 @@ const B=await scienceSite({name:'B',lat:44.0858,lng:-72.2802});
 await browser.close();
 
 const unsafe=x=>Number(x.safety?.unsafeCount??x.safety?.unsafe??0);
-const clickPass=[first,second].every(x=>x.audit?.result===true&&x.immediateAccepted&&x.immediateMs<=1000&&x.elder?.state==='committed'&&x.elderMs<=10000)&&!clickErrors.length;
+const clickPass=[first,second].every(x=>x.audit?.result===true&&x.immediateAccepted&&x.auditStartMs!=null&&x.auditStartMs<=1000&&x.elder?.state==='committed'&&x.elderMs<=10000)&&!clickErrors.length;
 const sciencePass=[A,B].every(x=>x.flag&&x.run?.result===true&&x.safeCount>0&&x.coverage.contourZones===16&&x.coverage.acceptedZones>=14&&x.coverage.blankContour.length<=1&&x.spacing?.medianM>=4.572&&x.spacing?.medianM<=7.62&&x.safety?.verified===true&&unsafe(x)===0&&!x.errors.length);
 const result={pass:clickPass&&sciencePass,clickPass,sciencePass,first,second,A,B,clickErrors};
 console.log('EARTHLINE_HOTFIX_17485 '+JSON.stringify(result));
