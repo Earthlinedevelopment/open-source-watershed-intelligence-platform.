@@ -1,0 +1,28 @@
+import { chromium } from 'playwright';
+const browser=await chromium.launch({headless:true});
+const page=await browser.newPage({viewport:{width:1800,height:950}});
+const BASE=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
+const site={name:'B',lat:44.08580,lng:-72.28020};
+await page.goto(BASE+'?quickB17448='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+await page.waitForSelector('#searchInput',{timeout:30000});
+await page.locator('#searchInput').fill('Vermont');await page.waitForTimeout(700);
+const opts=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');if(await opts.count())await opts.first().click();
+const rb=page.locator('#runBtn');if(await rb.isVisible()&&!await rb.isDisabled())await rb.click();
+await page.waitForFunction(()=>/published\./i.test(String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'')),null,{timeout:120000,polling:100});
+await page.evaluate(async s=>{await window.earthlineFocusRunEngine16158({center:{lng:s.lng,lat:s.lat},sizeM:3000,label:'Quick B'});},site);
+await page.waitForFunction(()=>String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{}).tier||'').toLowerCase()==='focus',null,{timeout:120000,polling:100});
+await page.evaluate(s=>new Promise(resolve=>{const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);if(!mp?.jumpTo)return resolve();let done=false;const f=()=>{if(done)return;done=true;resolve()};mp.once?.('moveend',f);mp.jumpTo({center:[s.lng,s.lat],zoom:16.4,bearing:0,pitch:0});setTimeout(f,1200)}),site);
+await page.evaluate(s=>window.earthlineSetPropertyTarget16201({lng:s.lng,lat:s.lat,source:'quick-b-17448',code:'',score:0,at:new Date().toISOString()},{openPanel:false}),site);
+await page.waitForFunction(()=>{const b=document.getElementById('earthlineDeclareProperty16169');return !!b&&!b.disabled&&getComputedStyle(b).display!=='none'},null,{timeout:20000,polling:100});
+const before=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
+await page.locator('#earthlineDeclareProperty16169').click();
+await page.waitForFunction(pre=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)>pre,before,{timeout:5000,polling:50});
+await page.waitForFunction(pre=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;return Number(a?.serial||0)>pre&&a?.settled===true},before,{timeout:120000,polling:100});
+await page.waitForTimeout(700);
+const out=await page.evaluate(()=>{
+ const m=(typeof M!=='undefined'?M:null),safe=m?.authoritativeSafeSwales15815?.features||[],raw=Array.isArray(m?.swales)?m.swales:[];
+ return {rawCount:raw.length,safeCount:safe.length,selector:window.EARTHLINE_PROPERTY_SPATIAL_SELECTION_17448||null,spacingStats:m?.spacingStats||null,audit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null};
+});
+console.log('EARTHLINE_PROPERTY_QUICK_B_17448 '+JSON.stringify(out));
+await browser.close();
+if(!(out.audit?.result===true&&out.safeCount>0))process.exitCode=1;
