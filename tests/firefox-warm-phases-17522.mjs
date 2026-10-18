@@ -13,9 +13,9 @@ await context.route('**/*',async r=>{
   const u=new URL(r.request().url());
   if(r.request().resourceType()==='document'&&/^(?:www\\.)?earthlinedevelopment\\.org$/i.test(u.hostname)&&u.pathname==='/')
     return r.fulfill({status:200,body:index,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
-  if(/^(?:www\\.)?earthlinedevelopment\\.org$/i.test(u.hostname)&&/\\/earthline-launch-16872\\.js$/.test(u.pathname))
+  if(/^(?:www\\.)?earthlinedevelopment\\.org$/i.test(u.hostname)&&u.pathname.endsWith('/earthline-launch-16872.js'))
     return r.fulfill({status:200,body:launch,headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}});
-  if(/^(?:www\\.)?earthlinedevelopment\\.org$/i.test(u.hostname)&&/\\/earthline-elder-worker-17129\\.js$/.test(u.pathname))
+  if(/^(?:www\\.)?earthlinedevelopment\\.org$/i.test(u.hostname)&&u.pathname.endsWith('/earthline-elder-worker-17129.js'))
     return r.fulfill({status:200,body:worker,headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}});
   return r.continue();
 });
