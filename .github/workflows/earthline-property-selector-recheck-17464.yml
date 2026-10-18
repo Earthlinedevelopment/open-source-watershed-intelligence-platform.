@@ -1,0 +1,28 @@
+name: Earthline Property Spatial Selector Recheck 17464
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-property-selector-recheck-17464.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  repaired:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17454, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-science-selector-17448
+          git show origin/repair/property-science-selector-17448:tests/apply-property-spatial-selector-17448.py > /tmp/apply.py
+          git show origin/repair/property-science-selector-17448:tests/property-science-diagnostic-17448.mjs > tests/property-science-diagnostic-17448.mjs
+          python3 /tmp/apply.py
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          env EARTHLINE_URL='http://127.0.0.1:8787/' VARIANT='repaired-current-17454' node tests/property-science-diagnostic-17448.mjs
