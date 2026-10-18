@@ -1,0 +1,24 @@
+name: Materialize U.S. State Intent Filter 17461
+on:
+  push:
+    branches: [repair/mantra67-launch-final-17454]
+    paths:
+      - 'tests/apply-state-intent-17461.py'
+      - '.github/workflows/materialize-state-intent-17461.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/mantra67-launch-final-17454, fetch-depth: 0}
+      - run: python3 tests/apply-state-intent-17461.py
+      - run: |
+          git config user.name "Earthline CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "repair: suppress fake country/city intents for U.S. states 17461" || true
+          git push origin HEAD:repair/mantra67-launch-final-17454
