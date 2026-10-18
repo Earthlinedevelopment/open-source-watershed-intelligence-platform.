@@ -1,0 +1,23 @@
+name: Earthline Real Firefox Phase 17525
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-real-firefox-phase-17525.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  firefox:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: diag/elder-firefox-phases-17525, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/real-firefox-phase-17525.mjs > tests/real-firefox-phase-17525.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - run: xvfb-run -a node tests/real-firefox-phase-17525.mjs
