@@ -1,0 +1,70 @@
+name: Earthline Final Regional Cross-Browser 17476
+on:
+  push:
+    branches: [repair/mantra67-launch-final-17454]
+    paths:
+      - '.github/workflows/earthline-final-regional-17476.yml'
+  workflow_dispatch:
+permissions: {contents: write}
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/regional-clean-presentation-17434
+          git show origin/repair/regional-clean-presentation-17434:tests/browser-regional-clean-17435.mjs > tests/browser-regional-clean-17435.mjs
+      - run: npm install --no-save playwright@1.55.0 && npx playwright install --with-deps chromium firefox
+      - run: python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/http.log 2>&1 & sleep 2
+      - id: c
+        continue-on-error: true
+        run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='chromium' HEADLESS='true' WAIT_MS='90000' STATES='Vermont|Alabama|New York|Iowa' node tests/browser-regional-clean-17435.mjs
+      - id: f
+        continue-on-error: true
+        run: xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' WAIT_MS='90000' STATES='Vermont|Alabama|New York|Iowa' node tests/browser-regional-clean-17435.mjs
+      - name: Persist
+        if: always()
+        run: |
+          mkdir -p test-results/regional-final-17476
+          cp artifacts/browser-regional-clean-17435/*.json test-results/regional-final-17476/ || true
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add test-results/regional-final-17476
+          git commit -m "test: persist final Regional linux 17476" || true
+          git pull --rebase origin repair/mantra67-launch-final-17454 || true
+          git push origin HEAD:repair/mantra67-launch-final-17454 || true
+      - name: Enforce
+        if: steps.c.outcome != 'success' || steps.f.outcome != 'success'
+        run: exit 1
+  webkit:
+    runs-on: macos-14
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/regional-clean-presentation-17434
+          git show origin/repair/regional-clean-presentation-17434:tests/browser-regional-clean-17435.mjs > tests/browser-regional-clean-17435.mjs
+      - run: npm install --no-save playwright@1.55.0 && npx playwright install webkit
+      - run: python3 -m http.server 8787 --bind 0.0.0.0 >/tmp/http.log 2>&1 & sleep 2
+      - id: w
+        continue-on-error: true
+        run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='false' WAIT_MS='90000' STATES='Vermont|Alabama|New York|Iowa' node tests/browser-regional-clean-17435.mjs
+      - name: Persist
+        if: always()
+        run: |
+          mkdir -p test-results/regional-final-17476
+          cp artifacts/browser-regional-clean-17435/*.json test-results/regional-final-17476/ || true
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add test-results/regional-final-17476
+          git commit -m "test: persist final Regional webkit 17476" || true
+          git pull --rebase origin repair/mantra67-launch-final-17454 || true
+          git push origin HEAD:repair/mantra67-launch-final-17454 || true
+      - name: Enforce
+        if: steps.w.outcome != 'success'
+        run: exit 1
