@@ -1,0 +1,26 @@
+name: Materialize Earthline Hotfix 17509
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/materialize-earthline-hotfix-17509.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17509, fetch-depth: 0}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/apply-elder-target-prime-17509.py > /tmp/apply.py
+          python3 /tmp/apply.py
+      - run: |
+          git config user.name "Earthline CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "candidate: exact-target early Elder compute prime 17509"
+          git push origin HEAD:candidate/earthline-launch-17509
