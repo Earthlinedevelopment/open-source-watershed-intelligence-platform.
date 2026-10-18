@@ -1597,7 +1597,16 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   function dynamicKey(b){return Array.isArray(b)?b.map(v=>Number(v).toFixed(6)).join(','):''}
   function dynamicWorker(){
     if(state.dynamic.worker)return state.dynamic.worker;
-    const w=new Worker('earthline-elder-worker-17129.js',{type:'module'});
+    /* EARTHLINE 17520 — reuse the one parser-started Elder worker when healthy.
+       No second worker owner is added; fallback creates the same existing worker. */
+    let w=null;
+    try{
+      const early=window.__EARTHLINE_ELDER_EARLY_WORKER_17520||null;
+      if(early&&window.__EARTHLINE_ELDER_EARLY_WORKER_FAILED_17520!==true)w=early;
+      else if(early)try{early.terminate()}catch(_){}
+      window.__EARTHLINE_ELDER_EARLY_WORKER_17520=null;
+    }catch(_){}
+    if(!w)w=new Worker('earthline-elder-worker-17129.js',{type:'module'});
     w.onmessage=e=>{
       const id=e.data?.id,p=state.dynamic.pending.get(id);
       if(!p)return;
