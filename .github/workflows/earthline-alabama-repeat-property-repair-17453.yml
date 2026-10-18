@@ -1,4 +1,4 @@
-name: Earthline Alabama Repeat Property Cross Browser 17455
+name: Earthline Alabama Repeat Property Cross Browser 17456
 on:
   push:
     branches: [repair/property-one-click-17441]
@@ -8,13 +8,9 @@ on:
 permissions:
   contents: write
 jobs:
-  linux:
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: [chromium, firefox]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 40
+  three-browser:
+    runs-on: macos-14
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,73 +23,35 @@ jobs:
           git show origin/repair/property-one-click-17441:tests/alabama-repeat-property-17449.mjs > tests/alabama-repeat-property-17449.mjs
       - run: |
           npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps ${{ matrix.browser }}
+          npx playwright install chromium firefox webkit
       - run: |
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
-          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
-          exit 1
-      - id: gate
-        continue-on-error: true
-        run: |
-          if [ '${{ matrix.browser }}' = 'firefox' ]; then
-            xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' node tests/alabama-repeat-property-17449.mjs
-          else
-            env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='chromium' node tests/alabama-repeat-property-17449.mjs
-          fi
-      - name: Persist result
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          mkdir -p /tmp/earthline-results
+          rc=0
+          for b in chromium firefox webkit; do
+            if env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER="$b" HEADLESS='true' node tests/alabama-repeat-property-17449.mjs; then
+              cp artifacts/alabama-repeat-property-17449.json "/tmp/earthline-results/alabama-repeat-$b-17456.json"
+            else
+              cp artifacts/alabama-repeat-property-17449.json "/tmp/earthline-results/alabama-repeat-$b-17456.json" || true
+              rc=1
+            fi
+          done
+          echo "$rc" > /tmp/earthline-results/rc.txt
+      - name: Persist all three results atomically
         if: always()
         run: |
           git fetch origin repair/property-one-click-17441
           rm -rf /tmp/gate
           git worktree add /tmp/gate origin/repair/property-one-click-17441
           mkdir -p /tmp/gate/test-results
-          cp artifacts/alabama-repeat-property-17449.json /tmp/gate/test-results/alabama-repeat-${{ matrix.browser }}-17455.json
+          cp /tmp/earthline-results/alabama-repeat-*-17456.json /tmp/gate/test-results/
           cd /tmp/gate
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add test-results/alabama-repeat-${{ matrix.browser }}-17455.json
-          git commit -m "test: persist Alabama repeat ${{ matrix.browser }} 17455" || true
+          git add test-results/alabama-repeat-*-17456.json
+          git commit -m "test: persist Alabama three-browser repeat gate 17456" || true
           git push origin HEAD:repair/property-one-click-17441
-      - name: Enforce
-        if: steps.gate.outcome != 'success'
-        run: exit 1
-  webkit:
-    runs-on: macos-14
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: candidate/earthline-launch-17454
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with: {node-version: '20'}
-      - run: |
-          git fetch origin repair/property-one-click-17441
-          git show origin/repair/property-one-click-17441:tests/alabama-repeat-property-17449.mjs > tests/alabama-repeat-property-17449.mjs
-      - run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install webkit
-      - run: |
-          python3 -m http.server 8787 --bind 0.0.0.0 >/tmp/http.log 2>&1 &
-          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
-          exit 1
-      - id: gate
-        continue-on-error: true
-        run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='false' node tests/alabama-repeat-property-17449.mjs
-      - name: Persist result
-        if: always()
+      - name: Enforce all three
         run: |
-          git fetch origin repair/property-one-click-17441
-          rm -rf /tmp/gate
-          git worktree add /tmp/gate origin/repair/property-one-click-17441
-          mkdir -p /tmp/gate/test-results
-          cp artifacts/alabama-repeat-property-17449.json /tmp/gate/test-results/alabama-repeat-webkit-17455.json
-          cd /tmp/gate
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add test-results/alabama-repeat-webkit-17455.json
-          git commit -m "test: persist Alabama repeat webkit 17455" || true
-          git push origin HEAD:repair/property-one-click-17441
-      - name: Enforce
-        if: steps.gate.outcome != 'success'
-        run: exit 1
+          test "$(cat /tmp/earthline-results/rc.txt)" = "0"
