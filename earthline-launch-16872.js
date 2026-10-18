@@ -1724,10 +1724,11 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
         summary:null,featureCount:0,dynamicCandidatePoolCount:0,dynamicError:null,
         at:new Date().toISOString()
       };
-      const staticLoad17414=load().catch(()=>null);
-      const dynamicPromise17414=dynamicPropertyEvidence(true);
-      await staticLoad17414;
-      const dynamic=await dynamicPromise17414; /* EARTHLINE_ELDER_GOVERNED_COMPUTE_17211 */
+      /* EARTHLINE 17505 — static Elder registry loading is nonblocking for
+         Property. Property publication is driven exclusively by the dynamic
+         exact-frame detector below; keep registry loading in the background. */
+      void load().catch(()=>null);
+      const dynamic=await dynamicPropertyEvidence(true); /* EARTHLINE_ELDER_GOVERNED_COMPUTE_17211 */
       if(!dynamic||propertyRunIdentity17166(propertyBounds17166())!==runIdentity)return null;
       state.active=dynamic.features||[];
       const coverage={known:true,datasetIds:['dynamic-property-17130'],complete:false,dynamic:true,candidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0)};
