@@ -1,0 +1,33 @@
+name: Earthline Print Property Control Owner 17490
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-print-property-control-17490.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  print:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17487
+          fetch-depth: 0
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          lines=s.splitlines()
+          needles=['earthlineDeclareProperty16169','earthlinePointerLaunch17444','earthlinePropertyClickOwner16546','restoreControls']
+          seen=set()
+          for i,line in enumerate(lines):
+              if any(n in line for n in needles):
+                  a=max(0,i-18);b=min(len(lines),i+28)
+                  key=(a,b)
+                  if key in seen: continue
+                  seen.add(key)
+                  print(f'===== line {i+1} =====')
+                  for j in range(a,b): print(f'{j+1}: {lines[j]}')
+          PY
