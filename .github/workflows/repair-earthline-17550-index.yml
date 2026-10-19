@@ -1,0 +1,42 @@
+name: Repair Earthline 17550 Index
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/repair-earthline-17550-index.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17550
+          fetch-depth: 0
+      - run: |
+          git fetch origin candidate/earthline-launch-17540
+          git show origin/candidate/earthline-launch-17540:index.html > index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old='earthline-elder-worker-17129.js'
+          new='earthline-elder-worker-js-17527.js'
+          n=s.count(old)
+          if n != 1:
+              raise SystemExit(f'expected exactly one early-worker reference, found {n}')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          print('index bytes',p.stat().st_size)
+          if p.stat().st_size < 5_000_000:
+              raise SystemExit('index unexpectedly small')
+          PY
+      - run: |
+          git config user.name "Earthline CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "candidate: restore 17540 index and route native Elder 17550"
+          git push origin HEAD:candidate/earthline-launch-17550
