@@ -1,16 +1,16 @@
-name: Earthline Patch 17544 ArcGIS
+name: Earthline Patch 17545 ArcGIS
 on:
   push:
     branches: [repair/property-one-click-17441]
     paths:
-      - '.github/workflows/earthline-patch-17544.yml'
+      - '.github/workflows/earthline-patch-17545.yml'
   workflow_dispatch:
 permissions:
   contents: write
   statuses: write
 env:
-  EXPECTED_SHA: 58d81e625279f10af9488645a44e02e16c3a1a41
-  TARGET_BRANCH: candidate/earthline-launch-17544
+  EXPECTED_SHA: 1e38d5f79b0eb4566dfb7e0b05bacf816065b4af
+  TARGET_BRANCH: candidate/earthline-launch-17545
 jobs:
   patch:
     runs-on: ubuntu-24.04
@@ -21,7 +21,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          curl -fsSL -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/${{ github.repository }}/statuses/$EXPECTED_SHA" -d "{\"state\":\"pending\",\"context\":\"earthline/patch-17544\",\"description\":\"ArcGIS callback guard patch running\",\"target_url\":\"$RUN_URL\"}"
+          curl -fsSL -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/${{ github.repository }}/statuses/$EXPECTED_SHA" -d "{\"state\":\"pending\",\"context\":\"earthline/patch-17545\",\"description\":\"ArcGIS callback guard patch running\",\"target_url\":\"$RUN_URL\"}"
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.TARGET_BRANCH }}
@@ -35,7 +35,7 @@ jobs:
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
           old='const finish=(err,val)=>{if(done)return;done=true;clearTimeout(timer);try{delete window[cb];}catch(_){window[cb]=undefined;}try{script.remove();}catch(_){}if(err)reject(err);else resolve(val);};'
-          new='const finish=(err,val)=>{if(done)return;done=true;clearTimeout(timer);try{window[cb]=()=>{};}catch(_){}try{script.remove();}catch(_){}setTimeout(()=>{try{delete window[cb];}catch(_){window[cb]=undefined;}},60000);if(err)reject(err);else resolve(val);}; /* EARTHLINE 17544 — keep a temporary no-op JSONP callback after timeout/error so a late ArcGIS script cannot raise a global ReferenceError. */'
+          new='const finish=(err,val)=>{if(done)return;done=true;clearTimeout(timer);try{window[cb]=()=>{};}catch(_){}try{script.remove();}catch(_){}setTimeout(()=>{try{delete window[cb];}catch(_){window[cb]=undefined;}},60000);if(err)reject(err);else resolve(val);}; /* EARTHLINE 17545 — keep a temporary no-op JSONP callback after timeout/error so a late ArcGIS script cannot raise a global ReferenceError. */'
           n=s.count(old)
           if n != 1:
               raise SystemExit(f"expected exactly one ArcGIS finish owner, found {n}")
@@ -48,7 +48,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git commit -m "candidate: guard late ArcGIS JSONP callbacks 17544"
+          git commit -m "candidate: guard late ArcGIS JSONP callbacks 17545"
           git push origin HEAD:"$TARGET_BRANCH"
           echo "NEW_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
       - name: Publish successful patch status
@@ -56,4 +56,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          curl -fsSL -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/${{ github.repository }}/statuses/$NEW_SHA" -d "{\"state\":\"success\",\"context\":\"earthline/patch-17544\",\"description\":\"ArcGIS callback guard committed\",\"target_url\":\"$RUN_URL\"}"
+          curl -fsSL -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/${{ github.repository }}/statuses/$NEW_SHA" -d "{\"state\":\"success\",\"context\":\"earthline/patch-17545\",\"description\":\"ArcGIS callback guard committed\",\"target_url\":\"$RUN_URL\"}"
