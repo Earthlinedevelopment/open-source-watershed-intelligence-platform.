@@ -48,13 +48,25 @@ async function waitApp(){
   await page.waitForFunction(()=>!!document.getElementById('earthlineDeclareProperty16169'),{timeout:120000});
 }
 async function prepTarget(){
+  /* Test-only target setup: let the app's existing moveend owner settle first.
+     Then install the exact Vermont target LAST so map synchronization cannot
+     overwrite it with a stale/default camera center before the physical press. */
+  await page.evaluate(({lng,lat})=>{
+    try{
+      window.earthlineMap?.stop?.();
+      window.earthlineMap?.jumpTo?.({center:[lng,lat],zoom:17.5});
+    }catch(_){}
+  },TARGET);
+  await page.waitForTimeout(1200);
   await page.evaluate(({lng,lat})=>{
     const t={lng,lat,source:'exact-source-gate-17540',code:'',score:0,query:'Exact source Vermont gate',at:new Date().toISOString()};
     if(typeof window.earthlineSetPropertyTarget16201==='function') window.earthlineSetPropertyTarget16201(t,{openPanel:false});
     else window.EARTHLINE_PROPERTY_TARGET_16201=t;
-    try{ window.earthlineMap?.jumpTo?.({center:[lng,lat],zoom:17.5}); }catch(_){}
   },TARGET);
-  await page.waitForTimeout(1200);
+  const actual=await page.evaluate(()=>window.EARTHLINE_PROPERTY_TARGET_16201||null);
+  if(!actual || Math.abs(Number(actual.lng)-TARGET.lng)>1e-7 || Math.abs(Number(actual.lat)-TARGET.lat)>1e-7){
+    throw new Error('exact Vermont Property target did not lock: '+JSON.stringify(actual));
+  }
 }
 async function snapshot(){
   return await page.evaluate(()=>({
