@@ -1,0 +1,39 @@
+name: Earthline Apply ArcGIS 17541
+
+on:
+  push:
+    branches:
+      - candidate/earthline-launch-17540
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17540
+      - name: Apply narrow ArcGIS late-callback repair
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          old='const finish=(err,val)=>{if(done)return;done=true;clearTimeout(timer);try{delete window[cb];}catch(_){window[cb]=undefined;}try{script.remove();}catch(_){}if(err)reject(err);else resolve(val);};'
+          new='const finish=(err,val)=>{if(done)return;done=true;clearTimeout(timer);/* EARTHLINE 17541 — a faster CORS transport may win while this JSONP script is already in flight. Keep a harmless callback installed so a late response cannot throw a global ReferenceError after the losing transport has settled. */try{window[cb]=()=>{};}catch(_){}try{script.remove();}catch(_){}if(err)reject(err);else resolve(val);};'
+          if "EARTHLINE 17541" in s:
+              raise SystemExit(0)
+          if s.count(old) != 1:
+              raise SystemExit(f"expected one ArcGIS finish target, found {s.count(old)}")
+          p.write_text(s.replace(old,new),encoding="utf-8")
+          PY
+      - name: Commit repair
+        run: |
+          if git diff --quiet -- index.html; then exit 0; fi
+          git config user.name "Earthline CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "candidate: suppress late losing ArcGIS JSONP callback errors 17541"
+          git push origin HEAD:candidate/earthline-launch-17540
