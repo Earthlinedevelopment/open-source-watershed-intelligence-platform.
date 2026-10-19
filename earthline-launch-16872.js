@@ -1757,12 +1757,15 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   }
   async function refresh(){
     try{
+      const propertyIdentity17532=()=>propertyRunIdentity17166(propertyBounds17166());
       const pending17166=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
-      if(pending17166?.state==='property-pending'&&state.dynamic.promise)return pending17166.summary||null;
+      if(pending17166?.state==='property-pending')return pending17166.summary||null;
+      if(pending17166?.state==='committed'&&pending17166?.propertyRunIdentity&&pending17166.propertyRunIdentity===propertyIdentity17532())return pending17166.summary||state.lastSummary||null;
       await load();
       const pendingAfterLoad17166=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
-      if(pendingAfterLoad17166?.state==='property-pending'&&state.dynamic.promise)return pendingAfterLoad17166.summary||null;
-      let coverage=activeCoverage(); /* EARTHLINE_ELDER_PROPERTY_PENDING_REFRESH_GUARD_17203 */
+      if(pendingAfterLoad17166?.state==='property-pending')return pendingAfterLoad17166.summary||null;
+      if(pendingAfterLoad17166?.state==='committed'&&pendingAfterLoad17166?.propertyRunIdentity&&pendingAfterLoad17166.propertyRunIdentity===propertyIdentity17532())return pendingAfterLoad17166.summary||state.lastSummary||null;
+      let coverage=activeCoverage(); /* EARTHLINE 17532 — generic refresh is non-owning during Property lifecycle. */
       const dynamic=await dynamicPropertyEvidence(false);
       if(dynamic){
         state.active=dynamic.features||[];
