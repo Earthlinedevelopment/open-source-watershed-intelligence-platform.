@@ -168,7 +168,16 @@ async function runOnce(label){
     throw error;
   }
   const propertyAt=Date.now();
-  await page.waitForFunction(()=>window.EARTHLINE_ELDER_TREE_LAST_17097?.state==='committed',null,{timeout:12000});
+  try{
+    await page.waitForFunction(()=>window.EARTHLINE_ELDER_TREE_LAST_17097?.state==='committed',null,{timeout:12000});
+  }catch(error){
+    console.log('EARTHLINE_ELDER_TIMEOUT_12S',JSON.stringify({label,browser:browserName,elapsedMs:Date.now()-clickAt,snapshot:await snapshot()}));
+    try{
+      await page.waitForFunction(()=>['committed','failed'].includes(window.EARTHLINE_ELDER_TREE_LAST_17097?.state),null,{timeout:12000});
+      console.log('EARTHLINE_ELDER_LATE_RESULT',JSON.stringify({label,browser:browserName,elapsedMs:Date.now()-clickAt,snapshot:await snapshot()}));
+    }catch(_){}
+    throw error;
+  }
   const elderAt=Date.now();
   const after=await snapshot();
   const result={
