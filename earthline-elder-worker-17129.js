@@ -45,8 +45,10 @@ function hav(a,b){
 async function ensurePy(){
   if(pyReady)return pyReady;
   pyReady=(async()=>{
-    const py=await loadPyodide({indexURL:"https://cdn.jsdelivr.net/pyodide/v0.29.5/full/"});
-    await py.loadPackage(["numpy"]); /* EARTHLINE_ELDER_NUMPY_ONLY_FINAL_17414 */
+    const py=await loadPyodide({
+      indexURL:"https://cdn.jsdelivr.net/pyodide/v0.29.5/full/",
+      packages:["numpy"]
+    }); /* EARTHLINE 17528 — overlap approved NumPy load with Pyodide bootstrap; detector equations unchanged. */
     const src=await fetch("tools/elder_trees/chmv2_array_detector_17129.py",{cache:"no-store"});
     if(!src.ok)throw new Error("array detector "+src.status);
     await py.runPythonAsync(await src.text());
