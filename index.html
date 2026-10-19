@@ -6923,7 +6923,7 @@ function earthlineArcGISJsonp16399(base,bb,outFields,timeoutMs=12000){
     });
     const url=base+"?"+params.toString(),script=document.createElement("script");
     let done=false;
-    const finish=(err,val)=>{if(done)return;done=true;clearTimeout(timer);try{delete window[cb];}catch(_){window[cb]=undefined;}try{script.remove();}catch(_){}if(err)reject(err);else resolve(val);};
+    const finish=(err,val)=>{if(done)return;done=true;clearTimeout(timer);/* EARTHLINE 17541 — a faster CORS transport may win while this JSONP script is already in flight. Keep a harmless callback installed so a late response cannot throw a global ReferenceError after the losing transport has settled. */try{window[cb]=()=>{};}catch(_){}try{script.remove();}catch(_){}if(err)reject(err);else resolve(val);};
     const timer=setTimeout(()=>finish(new Error("ArcGIS JSONP timeout")),timeoutMs);
     window[cb]=j=>{
       if(j&&j.error){finish(new Error(j.error.message||"ArcGIS JSONP service error"));return;}
