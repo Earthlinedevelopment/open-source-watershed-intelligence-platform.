@@ -48,16 +48,24 @@ async function waitApp(){
   await page.waitForFunction(()=>!!document.getElementById('earthlineDeclareProperty16169'),{timeout:120000});
 }
 async function prepTarget(){
-  /* Test-only target setup: let the app's existing moveend owner settle first.
-     Then install the exact Vermont target LAST so map synchronization cannot
-     overwrite it with a stale/default camera center before the physical press. */
+  /* Test-only target setup: settle the real map camera before setting Property.
+     Slow Firefox/WebKit can emit a late moveend after jumpTo; that event is an
+     existing app owner and legitimately rewrites the crosshair target. */
   await page.evaluate(({lng,lat})=>{
     try{
       window.earthlineMap?.stop?.();
       window.earthlineMap?.jumpTo?.({center:[lng,lat],zoom:17.5});
     }catch(_){}
   },TARGET);
-  await page.waitForTimeout(1200);
+  await page.waitForFunction(({lng,lat})=>{
+    const c=window.earthlineMap?.getCenter?.();
+    return !!c && Math.abs(Number(c.lng)-lng)<1e-6 && Math.abs(Number(c.lat)-lat)<1e-6;
+  },TARGET,{timeout:10000});
+  await page.waitForTimeout(500);
+  await page.waitForFunction(({lng,lat})=>{
+    const c=window.earthlineMap?.getCenter?.();
+    return !!c && Math.abs(Number(c.lng)-lng)<1e-6 && Math.abs(Number(c.lat)-lat)<1e-6;
+  },TARGET,{timeout:3000});
   await page.evaluate(({lng,lat})=>{
     const t={lng,lat,source:'exact-source-gate-17540',code:'',score:0,query:'Exact source Vermont gate',at:new Date().toISOString()};
     if(typeof window.earthlineSetPropertyTarget16201==='function') window.earthlineSetPropertyTarget16201(t,{openPanel:false});
