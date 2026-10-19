@@ -1,0 +1,61 @@
+name: Earthline Final Exact Cross-Browser 17541
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-final-exact-cross-browser-17541.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17541
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/final-cross-browser-17541.mjs > tests/final-cross-browser-17541.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: xvfb-run -a env BROWSER='chromium' HEADLESS='false' node tests/final-cross-browser-17541.mjs
+  firefox:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17541
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/final-cross-browser-17541.mjs > tests/final-cross-browser-17541.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - run: xvfb-run -a env BROWSER='firefox' HEADLESS='false' node tests/final-cross-browser-17541.mjs
+  webkit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17541
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/final-cross-browser-17541.mjs > tests/final-cross-browser-17541.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps webkit
+      - run: xvfb-run -a env BROWSER='webkit' HEADLESS='false' node tests/final-cross-browser-17541.mjs
