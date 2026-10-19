@@ -4,7 +4,7 @@ const browser=await firefox.launch({headless:true});
 const context=await browser.newContext();
 const index=fs.readFileSync('index.html','utf8');
 const pyWorker=fs.readFileSync('earthline-elder-worker-17129.js','utf8');
-const jsWorker=fs.readFileSync('earthline-elder-worker-js-17542.js','utf8');
+const jsWorker=fs.readFileSync('earthline-elder-worker-js-17527.js','utf8');
 const detector=fs.readFileSync('tools/elder_trees/chmv2_array_detector_17129.py','utf8');
 await context.route('**/*',async r=>{
   const u=new URL(r.request().url());
@@ -12,7 +12,7 @@ await context.route('**/*',async r=>{
     return r.fulfill({status:200,body:index,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
   if(/^(?:www\\.)?earthlinedevelopment\\.org$/i.test(u.hostname)&&u.pathname.endsWith('/earthline-elder-worker-17129.js'))
     return r.fulfill({status:200,body:pyWorker,headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}});
-  if(/^(?:www\\.)?earthlinedevelopment\\.org$/i.test(u.hostname)&&u.pathname.endsWith('/earthline-elder-worker-js-17542.js'))
+  if(/^(?:www\\.)?earthlinedevelopment\\.org$/i.test(u.hostname)&&u.pathname.endsWith('/earthline-elder-worker-js-17527.js'))
     return r.fulfill({status:200,body:jsWorker,headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}});
   if(/^(?:www\\.)?earthlinedevelopment\\.org$/i.test(u.hostname)&&u.pathname.endsWith('/tools/elder_trees/chmv2_array_detector_17129.py'))
     return r.fulfill({status:200,body:detector,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}});
@@ -26,7 +26,7 @@ const rows=await page.evaluate(async ({sites,bboxes})=>{
   const hav=(a,b)=>{const R=6371008.8,p1=a[1]*Math.PI/180,p2=b[1]*Math.PI/180,dp=(b[1]-a[1])*Math.PI/180,dl=(b[0]-a[0])*Math.PI/180,q=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(q)))};
   const make=url=>new Worker(url,{type:'module'});
   const ask=(w,msg,timeout=120000)=>new Promise((resolve,reject)=>{const id=msg.id,t=setTimeout(()=>reject(new Error('timeout '+id)),timeout);const fn=e=>{if(e.data?.id!==id)return;clearTimeout(t);w.removeEventListener('message',fn);e.data?.ok?resolve(e.data):reject(new Error(e.data?.error||'worker failed'))};w.addEventListener('message',fn);w.postMessage(msg)});
-  const py=make('earthline-elder-worker-17129.js'),js=make('earthline-elder-worker-js-17542.js');
+  const py=make('earthline-elder-worker-17129.js'),js=make('earthline-elder-worker-js-17527.js');
   await ask(py,{id:'warm',warm:true},60000);
   const out=[];
   for(let k=0;k<sites.length;k++){
