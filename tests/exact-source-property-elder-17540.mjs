@@ -93,12 +93,37 @@ async function snapshot(){
   }));
 }
 async function runOnce(label){
+  const button=page.locator('#earthlineDeclareProperty16169');
+  /* Position the control BEFORE locking the scientific target. Locator.click()
+     may auto-scroll/reflow and provoke the app's legitimate map moveend target
+     synchronization on slower engines. Use a real mouse press afterward. */
+  await button.scrollIntoViewIfNeeded({timeout:15000});
   await prepTarget();
+  const box=await button.boundingBox();
+  if(!box) throw new Error(label+': Property button has no clickable box');
+  await page.evaluate(()=>{
+    const b=document.getElementById('earthlineDeclareProperty16169');
+    window.__EARTHLINE_EXACT_PRESS_17540=null;
+    if(!b)return;
+    b.addEventListener('pointerdown',()=>{
+      let m=null;try{m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap||null}catch(_){}
+      const c=m?.getCenter?.();
+      window.__EARTHLINE_EXACT_PRESS_17540={
+        at:performance.now(),
+        target:window.EARTHLINE_PROPERTY_TARGET_16201?JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_TARGET_16201)):null,
+        mapCenter:c?{lng:Number(c.lng),lat:Number(c.lat)}:null
+      };
+    },{capture:true,once:true});
+  });
   const before=await snapshot();
   const beforeSerial=Number(before.audit?.serial||0);
-  const button=page.locator('#earthlineDeclareProperty16169');
   const clickAt=Date.now();
-  await button.click({force:true,timeout:15000});
+  await page.mouse.click(box.x+box.width/2,box.y+box.height/2);
+  const press=await page.evaluate(()=>window.__EARTHLINE_EXACT_PRESS_17540||null);
+  console.log('EARTHLINE_PRESS',JSON.stringify({label,browser:browserName,press}));
+  if(!press?.target || Math.abs(Number(press.target.lng)-TARGET.lng)>1e-6 || Math.abs(Number(press.target.lat)-TARGET.lat)>1e-6){
+    throw new Error(label+': physical press target drifted before activation: '+JSON.stringify(press));
+  }
   await page.waitForFunction(({beforeSerial})=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)===beforeSerial+1,{beforeSerial},{timeout:5000});
   const serialAt=Date.now();
   try{
