@@ -1,0 +1,41 @@
+name: Earthline Final Swale Elder Cross-Browser 17531
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-final-cross-browser-17531.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: 16e762413c249ec0b33104dee176bc254b5a3e1b, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/final-cross-browser-17531.mjs > tests/final-cross-browser-17531.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - run: xvfb-run -a env BROWSER='${{ matrix.browser }}' HEADLESS='false' node tests/final-cross-browser-17531.mjs
+  webkit:
+    runs-on: macos-14
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: 16e762413c249ec0b33104dee176bc254b5a3e1b, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/final-cross-browser-17531.mjs > tests/final-cross-browser-17531.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - run: env BROWSER='webkit' HEADLESS='false' node tests/final-cross-browser-17531.mjs
