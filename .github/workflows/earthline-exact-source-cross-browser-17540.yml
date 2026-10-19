@@ -1,0 +1,52 @@
+name: Earthline Exact-Source Cross-Browser 17540
+on:
+  push:
+    branches: [test/earthline-cross-browser-17540]
+    paths:
+      - '.github/workflows/earthline-exact-source-cross-browser-17540.yml'
+      - 'tests/final-cross-browser-17540.mjs'
+  workflow_dispatch:
+permissions: {contents: read}
+env:
+  CANDIDATE_SHA: b13eaf36dc0bdbc218df89ad1c35f247c080347d
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: b13eaf36dc0bdbc218df89ad1c35f247c080347d, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - name: Bind exact candidate and test
+        run: |
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          git fetch origin test/earthline-cross-browser-17540
+          git show origin/test/earthline-cross-browser-17540:tests/final-cross-browser-17540.mjs > tests/final-cross-browser-17540.mjs
+          sha256sum index.html earthline-launch-16872.js earthline-elder-worker-17129.js tools/elder_trees/chmv2_array_detector_17129.py
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Run exact-source gate
+        run: xvfb-run -a env BROWSER='${{ matrix.browser }}' HEADLESS='false' CANDIDATE_SHA="$CANDIDATE_SHA" node tests/final-cross-browser-17540.mjs
+  webkit:
+    runs-on: macos-14
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: b13eaf36dc0bdbc218df89ad1c35f247c080347d, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - name: Bind exact candidate and test
+        run: |
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          git fetch origin test/earthline-cross-browser-17540
+          git show origin/test/earthline-cross-browser-17540:tests/final-cross-browser-17540.mjs > tests/final-cross-browser-17540.mjs
+          shasum -a 256 index.html earthline-launch-16872.js earthline-elder-worker-17129.js tools/elder_trees/chmv2_array_detector_17129.py
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - name: Run exact-source gate
+        run: env BROWSER='webkit' HEADLESS='false' CANDIDATE_SHA="$CANDIDATE_SHA" node tests/final-cross-browser-17540.mjs
