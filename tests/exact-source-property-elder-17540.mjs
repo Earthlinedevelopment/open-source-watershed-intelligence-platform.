@@ -51,6 +51,33 @@ async function waitApp(){
   await page.waitForTimeout(1800);
 }
 async function prepTarget(){
+  /* Mirror the real Property precondition: a location has already been chosen.
+     This prevents the app's startup-only globe reset (load/style.load) from
+     treating the page as idle while the Property gate is active. */
+  await page.evaluate(({lng,lat})=>{
+    const loc={
+      q:'Exact source Vermont gate',
+      label:'Exact source Vermont gate',
+      name:'Exact source Vermont gate',
+      fullName:'Exact source Vermont gate · Vermont, USA',
+      sub:'Vermont, USA',
+      countryCode:'us',
+      placeType:'address',
+      userSelectedSite:true,
+      lat,lng,zoomHint:17.5,acres:20
+    };
+    try{
+      if(typeof window.earthlineSetChosenLocation16189==='function') window.earthlineSetChosenLocation16189(loc.q,loc);
+      else window.EARTHLINE_CHOSEN_LOCATION_16189=loc;
+    }catch(_){window.EARTHLINE_CHOSEN_LOCATION_16189=loc}
+    try{
+      if(typeof M!=='undefined'&&M){
+        M.loc=Object.assign({},loc);
+        M.centerLng=lng;M.centerLat=lat;
+        M.appliedSearchText=loc.q;
+      }
+    }catch(_){}
+  },TARGET);
   /* Test-only target setup. Wait for the authoritative Mapbox owner, then force
      the exact Vermont camera synchronously. Re-apply if a browser finishes a
      prior camera lifecycle late; performance timing begins only at pointerdown. */
