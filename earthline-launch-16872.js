@@ -1606,7 +1606,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       else if(early)try{early.terminate()}catch(_){}
       window.__EARTHLINE_ELDER_EARLY_WORKER_17520=null;
     }catch(_){}
-    if(!w)w=new Worker('earthline-elder-worker-17129.js',{type:'module'});
+    if(!w)w=new Worker('earthline-elder-worker-js-17527.js',{type:'module'});
     w.onmessage=e=>{
       const id=e.data?.id,p=state.dynamic.pending.get(id);
       if(!p)return;
