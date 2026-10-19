@@ -1,17 +1,46 @@
 import { chromium, firefox, webkit } from 'playwright';
+import fs from 'node:fs';
+import crypto from 'node:crypto';
 
 const browserName=process.env.BROWSER||'chromium';
 const headless=process.env.HEADLESS!=='false';
-const URL=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
+const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
 const TARGET={lng:-72.691631,lat:42.931759};
 const browserType={chromium,firefox,webkit}[browserName];
 if(!browserType) throw new Error('unknown browser '+browserName);
+
+const files={
+  index:'index.html',
+  launch:'earthline-launch-16872.js',
+  worker:'earthline-elder-worker-17129.js',
+  detector:'tools/elder_trees/chmv2_array_detector_17129.py'
+};
+const bytes=Object.fromEntries(Object.entries(files).map(([k,p])=>[k,fs.readFileSync(p)]));
+const provenance=Object.fromEntries(Object.entries(bytes).map(([k,b])=>[k,crypto.createHash('sha256').update(b).digest('hex')]));
+console.log('EARTHLINE_PROVENANCE',JSON.stringify(provenance));
 
 const browser=await browserType.launch({headless});
 const page=await browser.newPage({viewport:{width:1440,height:1000}});
 const pageErrors=[];
 page.on('pageerror',e=>pageErrors.push(String(e)));
-page.on('console',m=>{ if(m.type()==='error') console.log('CONSOLE_ERROR',m.text()); });
+
+await page.route('**/*',async route=>{
+  const req=route.request();
+  const u=new URL(req.url());
+  if(req.isNavigationRequest() && u.hostname==='earthlinedevelopment.org' && (u.pathname==='/'||u.pathname==='/index.html')){
+    return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:bytes.index});
+  }
+  if(u.hostname==='earthlinedevelopment.org' && u.pathname.endsWith('/earthline-launch-16872.js')){
+    return route.fulfill({status:200,contentType:'application/javascript; charset=utf-8',body:bytes.launch});
+  }
+  if(u.hostname==='earthlinedevelopment.org' && u.pathname.endsWith('/earthline-elder-worker-17129.js')){
+    return route.fulfill({status:200,contentType:'application/javascript; charset=utf-8',body:bytes.worker});
+  }
+  if(u.hostname==='earthlinedevelopment.org' && u.pathname.endsWith('/tools/elder_trees/chmv2_array_detector_17129.py')){
+    return route.fulfill({status:200,contentType:'text/plain; charset=utf-8',body:bytes.detector});
+  }
+  return route.continue();
+});
 
 async function waitApp(){
   await page.goto(URL,{waitUntil:'domcontentloaded',timeout:120000});
@@ -25,7 +54,7 @@ async function prepTarget(){
     else window.EARTHLINE_PROPERTY_TARGET_16201=t;
     try{ window.earthlineMap?.jumpTo?.({center:[lng,lat],zoom:17.5}); }catch(_){}
   },TARGET);
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(1200);
 }
 async function snapshot(){
   return await page.evaluate(()=>({
@@ -78,7 +107,7 @@ try{
   await page.waitForTimeout(500);
   const second=await runOnce('second');
   if(pageErrors.length) throw new Error('page errors: '+JSON.stringify(pageErrors));
-  console.log('EARTHLINE_PASS',JSON.stringify({browser:browserName,first,second,pageErrors}));
+  console.log('EARTHLINE_PASS',JSON.stringify({browser:browserName,provenance,first,second,pageErrors}));
 }finally{
   await browser.close();
 }
