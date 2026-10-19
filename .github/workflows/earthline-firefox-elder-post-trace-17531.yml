@@ -1,0 +1,23 @@
+name: Earthline Firefox Elder Post Trace 17531
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-firefox-elder-post-trace-17531.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  firefox:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: 16e762413c249ec0b33104dee176bc254b5a3e1b, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/elder-post-trace-17531.mjs > tests/elder-post-trace-17531.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - run: xvfb-run -a node tests/elder-post-trace-17531.mjs
