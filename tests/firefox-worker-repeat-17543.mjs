@@ -1,0 +1,24 @@
+import { firefox } from 'playwright';
+import fs from 'node:fs';
+const worker=fs.readFileSync('earthline-elder-worker-17129.js','utf8');
+const detector=fs.readFileSync('tools/elder_trees/chmv2_array_detector_17129.py','utf8');
+const browser=await firefox.launch({headless:true});
+const context=await browser.newContext();
+await context.route('**/*',async r=>{const u=new URL(r.request().url());
+ if(r.request().resourceType()==='document'&&/^(?:www\.)?earthlinedevelopment\.org$/i.test(u.hostname)&&u.pathname==='/')return r.fulfill({status:200,body:'<!doctype html><meta charset=utf-8>',headers:{'content-type':'text/html'}});
+ if(/^(?:www\.)?earthlinedevelopment\.org$/i.test(u.hostname)&&u.pathname.endsWith('/earthline-elder-worker-17129.js'))return r.fulfill({status:200,body:worker,headers:{'content-type':'text/javascript; charset=utf-8'}});
+ if(/^(?:www\.)?earthlinedevelopment\.org$/i.test(u.hostname)&&u.pathname.endsWith('/tools/elder_trees/chmv2_array_detector_17129.py'))return r.fulfill({status:200,body:detector,headers:{'content-type':'text/plain; charset=utf-8'}});
+ return r.continue();});
+const page=await context.newPage();
+await page.goto('https://earthlinedevelopment.org/?elder43='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+const site={lng:-72.27369,lat:44.06957};const area=20*4046.8564224,w=Math.sqrt(area*1.15),h=area/w,dLat=h/(2*111320),dLng=w/(2*111320*Math.max(.05,Math.cos(site.lat*Math.PI/180))),bbox=[site.lng-dLng,site.lat-dLat,site.lng+dLng,site.lat+dLat];
+const out=await page.evaluate(async bbox=>{
+ const w=new Worker('earthline-elder-worker-17129.js',{type:'module'});
+ const ask=(msg,timeout=120000)=>new Promise((res,rej)=>{const t=setTimeout(()=>rej(new Error('timeout '+msg.id)),timeout);const fn=e=>{if(e.data?.id!==msg.id)return;clearTimeout(t);w.removeEventListener('message',fn);e.data?.ok?res(e.data):rej(new Error(e.data?.error||'worker failed'))};w.addEventListener('message',fn);w.postMessage(msg)});
+ const t0=performance.now();const warm=await ask({id:'warm',warm:true},60000);const t1=performance.now();
+ const a=await ask({id:'a',bbox,options:{displayPerTile:24,maxPerTile:240}},120000);const t2=performance.now();
+ const b=await ask({id:'b',bbox,options:{displayPerTile:24,maxPerTile:240}},120000);const t3=performance.now();
+ w.terminate();return {warmMs:t1-t0,firstMs:t2-t1,secondMs:t3-t2,first:a.result?.earthline||null,second:b.result?.earthline||null};
+},bbox);
+console.log('EARTHLINE_FIREFOX_WORKER_REPEAT_17543 '+JSON.stringify(out));
+await context.close();await browser.close();
