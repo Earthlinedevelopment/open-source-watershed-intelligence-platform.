@@ -1,0 +1,27 @@
+name: Materialize Earthline Hotfix 17531
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/materialize-earthline-hotfix-17531.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate/earthline-launch-17531, fetch-depth: 0}
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/apply-firefox-kernel-single-read-17531.py > /tmp/apply.py
+          python3 /tmp/apply.py
+          node --check earthline-elder-worker-17129.js
+      - run: |
+          git config user.name "Earthline CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git add earthline-elder-worker-17129.js
+          git commit -m "candidate: corrected Firefox Elder single-read warm 17531"
+          git push origin HEAD:candidate/earthline-launch-17531
