@@ -17,6 +17,8 @@ async function newPage(){
       return r.fulfill({status:200,body:index,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
     if(/^(?:www\.)?earthlinedevelopment\.org$/i.test(u.hostname)&&/\/earthline-launch-16872\.js$/.test(u.pathname))
       return r.fulfill({status:200,body:launch,headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}});
+    if(/^(?:www\.)?earthlinedevelopment\.org$/i.test(u.hostname)&&/\/earthline-elder-worker-17129\.js$/.test(u.pathname))
+      return r.fulfill({status:200,body:elderWorker,headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}});
     return r.continue();
   });
   const page=await context.newPage();
