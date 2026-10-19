@@ -110,12 +110,10 @@ async function elderFlow(){
     const buttonBefore=await page.evaluate(()=>{const b=document.getElementById('earthlineDeclareProperty16169'),r=b?.getBoundingClientRect?.();return b?{connected:b.isConnected,disabled:b.disabled,busy:b.dataset.busy||'',display:getComputedStyle(b).display,pointerEvents:getComputedStyle(b).pointerEvents,rect:r?{x:r.x,y:r.y,width:r.width,height:r.height}:null,html:b.outerHTML.slice(0,900)}:null});
     let clickError=null;
     try{await page.locator('#earthlineDeclareProperty16169').click();}catch(e){clickError=String(e);}
-    let activationObserved=true;
-    try{await page.waitForFunction(from=>window.__earthlineFinal17540.events.slice(from).some(x=>x.kind==='actual-pointerup'||x.kind==='actual-click'),before.eventCount,{timeout:3000,polling:20});}
-    catch(_){activationObserved=false;}
+    const activationDiag=await page.evaluate(from=>{const b=document.getElementById('earthlineDeclareProperty16169'),r=b?.getBoundingClientRect?.(),ev=window.__earthlineFinal17540.events.slice(from),a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,t=window.EARTHLINE_PROPERTY_TARGET_16201||null;return {events:ev,serial:Number(a?.serial||0),audit:a,target:t,button:b?{connected:b.isConnected,disabled:b.disabled,busy:b.dataset.busy||'',display:getComputedStyle(b).display,pointerEvents:getComputedStyle(b).pointerEvents,rect:r?{x:r.x,y:r.y,width:r.width,height:r.height}:null}:null};},before.eventCount);
+    const activationObserved=activationDiag.events.some(x=>x.kind==='actual-pointerup'||x.kind==='actual-click');
     if(!activationObserved){
-      const diag=await page.evaluate(from=>{const b=document.getElementById('earthlineDeclareProperty16169'),r=b?.getBoundingClientRect?.(),ev=window.__earthlineFinal17540.events.slice(from),a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,t=window.EARTHLINE_PROPERTY_TARGET_16201||null;return {events:ev,serial:Number(a?.serial||0),audit:a,target:t,button:b?{connected:b.isConnected,disabled:b.disabled,busy:b.dataset.busy||'',display:getComputedStyle(b).display,pointerEvents:getComputedStyle(b).pointerEvents,rect:r?{x:r.x,y:r.y,width:r.width,height:r.height}:null,html:b.outerHTML.slice(0,900)}:null};},before.eventCount);
-      console.log('EARTHLINE_ACTIVATION_DIAG_17554 '+JSON.stringify({browser:BROWSER,label,q,clickError,buttonBefore,diag}));
+      console.log('EARTHLINE_ACTIVATION_DIAG_17555 '+JSON.stringify({browser:BROWSER,label,q,clickError,buttonBefore,diag:activationDiag}));
       throw new Error('physical activation not observed '+label);
     }
     const activation=await page.evaluate(from=>{
