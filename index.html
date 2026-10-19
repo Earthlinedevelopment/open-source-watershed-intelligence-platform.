@@ -6923,7 +6923,7 @@ function earthlineArcGISJsonp16399(base,bb,outFields,timeoutMs=12000){
     });
     const url=base+"?"+params.toString(),script=document.createElement("script");
     let done=false;
-    const finish=(err,val)=>{if(done)return;done=true;clearTimeout(timer);try{delete window[cb];}catch(_){window[cb]=undefined;}try{script.remove();}catch(_){}if(err)reject(err);else resolve(val);};
+    const finish=(err,val)=>{if(done)return;done=true;clearTimeout(timer);try{window[cb]=()=>{};}catch(_){}try{script.remove();}catch(_){}setTimeout(()=>{try{delete window[cb];}catch(_){window[cb]=undefined;}},60000);if(err)reject(err);else resolve(val);}; /* EARTHLINE 17545 — keep a temporary no-op JSONP callback after timeout/error so a late ArcGIS script cannot raise a global ReferenceError. */
     const timer=setTimeout(()=>finish(new Error("ArcGIS JSONP timeout")),timeoutMs);
     window[cb]=j=>{
       if(j&&j.error){finish(new Error(j.error.message||"ArcGIS JSONP service error"));return;}
