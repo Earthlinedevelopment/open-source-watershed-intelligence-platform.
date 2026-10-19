@@ -1,4 +1,4 @@
-name: Earthline Apply ArcGIS 17541
+name: Earthline Apply Narrow Index Repairs 17542
 
 on:
   push:
@@ -15,25 +15,38 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: candidate/earthline-launch-17540
-      - name: Apply narrow ArcGIS late-callback repair
+      - name: Apply narrow index repairs
         run: |
           python - <<'PY'
           from pathlib import Path
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
-          old='const finish=(err,val)=>{if(done)return;done=true;clearTimeout(timer);try{delete window[cb];}catch(_){window[cb]=undefined;}try{script.remove();}catch(_){}if(err)reject(err);else resolve(val);};'
-          new='const finish=(err,val)=>{if(done)return;done=true;clearTimeout(timer);/* EARTHLINE 17541 — a faster CORS transport may win while this JSONP script is already in flight. Keep a harmless callback installed so a late response cannot throw a global ReferenceError after the losing transport has settled. */try{window[cb]=()=>{};}catch(_){}try{script.remove();}catch(_){}if(err)reject(err);else resolve(val);};'
-          if "EARTHLINE 17541" in s:
-              raise SystemExit(0)
-          if s.count(old) != 1:
-              raise SystemExit(f"expected one ArcGIS finish target, found {s.count(old)}")
-          p.write_text(s.replace(old,new),encoding="utf-8")
+
+          # 17541: late losing ArcGIS JSONP callbacks must remain harmless.
+          old_arc='const finish=(err,val)=>{if(done)return;done=true;clearTimeout(timer);try{delete window[cb];}catch(_){window[cb]=undefined;}try{script.remove();}catch(_){}if(err)reject(err);else resolve(val);};'
+          new_arc='const finish=(err,val)=>{if(done)return;done=true;clearTimeout(timer);/* EARTHLINE 17541 — a faster CORS transport may win while this JSONP script is already in flight. Keep a harmless callback installed so a late response cannot throw a global ReferenceError after the losing transport has settled. */try{window[cb]=()=>{};}catch(_){}try{script.remove();}catch(_){}if(err)reject(err);else resolve(val);};'
+          if "EARTHLINE 17541" not in s:
+              if s.count(old_arc) != 1:
+                  raise SystemExit(f"expected one ArcGIS finish target, found {s.count(old_arc)}")
+              s=s.replace(old_arc,new_arc)
+
+          # 17542: use the existing single Elder worker's existing tile-prefetch API
+          # only for explicit target selection. moveend uses openPanel:false, so the
+          # retired map-move prefetch flood remains retired.
+          old_pref="document.documentElement.classList.add('earthline-property-ready-16188');if(options.openPanel!==false)setPanel16188(true);"
+          new_pref="document.documentElement.classList.add('earthline-property-ready-16188');if(options.openPanel!==false){/* EARTHLINE 17542 — performance only: explicit Property target selection warms CHMv2 tile I/O through the existing single Elder worker. Map moveend calls pass openPanel:false and remain excluded. */try{void window.EARTHLINE_ELDER_TREES_V1_17097?.prefetchPropertyTarget?.()}catch(_){}}if(options.openPanel!==false)setPanel16188(true);"
+          if "EARTHLINE 17542" not in s:
+              if s.count(old_pref) != 1:
+                  raise SystemExit(f"expected one explicit Property-ready target, found {s.count(old_pref)}")
+              s=s.replace(old_pref,new_pref)
+
+          p.write_text(s,encoding="utf-8")
           PY
-      - name: Commit repair
+      - name: Commit repairs
         run: |
           if git diff --quiet -- index.html; then exit 0; fi
           git config user.name "Earthline CI"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m "candidate: suppress late losing ArcGIS JSONP callback errors 17541"
+          git commit -m "candidate: prefetch Elder tile for explicit Property targets 17542"
           git push origin HEAD:candidate/earthline-launch-17540
