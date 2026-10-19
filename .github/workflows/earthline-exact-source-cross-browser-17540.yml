@@ -6,7 +6,9 @@ on:
       - '.github/workflows/earthline-exact-source-cross-browser-17540.yml'
       - 'tests/final-cross-browser-17540.mjs'
   workflow_dispatch:
-permissions: {contents: read}
+permissions:
+  contents: read
+  statuses: write
 env:
   CANDIDATE_SHA: b13eaf36dc0bdbc218df89ad1c35f247c080347d
 jobs:
@@ -31,7 +33,35 @@ jobs:
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps ${{ matrix.browser }}
       - name: Run exact-source gate
+        id: gate
+        continue-on-error: true
         run: xvfb-run -a env BROWSER='${{ matrix.browser }}' HEADLESS='false' CANDIDATE_SHA="$CANDIDATE_SHA" node tests/final-cross-browser-17540.mjs
+      - name: Publish candidate gate status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OUTCOME: ${{ steps.gate.outcome }}
+          BROWSER_NAME: ${{ matrix.browser }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          state=failure
+          [ "$OUTCOME" = "success" ] && state=success
+          python - <<'PY'
+          import json, os
+          body={
+            "state": os.environ["STATE"],
+            "context": "earthline/exact-source-17540/"+os.environ["BROWSER_NAME"],
+            "description": "17540 exact-source gate "+os.environ["OUTCOME"],
+            "target_url": os.environ["RUN_URL"],
+          }
+          open("/tmp/status.json","w").write(json.dumps(body))
+          PY
+          curl -fsSL -X POST             -H "Authorization: Bearer $GH_TOKEN"             -H "Accept: application/vnd.github+json"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/${{ github.repository }}/statuses/$CANDIDATE_SHA"             -d @/tmp/status.json
+        env:
+          STATE: ${{ steps.gate.outcome == 'success' && 'success' || 'failure' }}
+      - name: Enforce gate result
+        if: steps.gate.outcome != 'success'
+        run: exit 1
   webkit:
     runs-on: macos-14
     timeout-minutes: 55
@@ -49,4 +79,29 @@ jobs:
           npm install --no-save playwright@1.55.0
           npx playwright install webkit
       - name: Run exact-source gate
+        id: gate
+        continue-on-error: true
         run: env BROWSER='webkit' HEADLESS='false' CANDIDATE_SHA="$CANDIDATE_SHA" node tests/final-cross-browser-17540.mjs
+      - name: Publish candidate gate status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OUTCOME: ${{ steps.gate.outcome }}
+          BROWSER_NAME: webkit
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          STATE: ${{ steps.gate.outcome == 'success' && 'success' || 'failure' }}
+        run: |
+          python - <<'PY'
+          import json, os
+          body={
+            "state": os.environ["STATE"],
+            "context": "earthline/exact-source-17540/"+os.environ["BROWSER_NAME"],
+            "description": "17540 exact-source gate "+os.environ["OUTCOME"],
+            "target_url": os.environ["RUN_URL"],
+          }
+          open("/tmp/status.json","w").write(json.dumps(body))
+          PY
+          curl -fsSL -X POST             -H "Authorization: Bearer $GH_TOKEN"             -H "Accept: application/vnd.github+json"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/${{ github.repository }}/statuses/$CANDIDATE_SHA"             -d @/tmp/status.json
+      - name: Enforce gate result
+        if: steps.gate.outcome != 'success'
+        run: exit 1
