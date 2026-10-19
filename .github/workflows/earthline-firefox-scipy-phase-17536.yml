@@ -1,0 +1,23 @@
+name: Earthline Firefox SciPy Phase 17536
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-firefox-scipy-phase-17536.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  firefox:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          git show HEAD:tests/firefox-scipy-phase-17536.mjs > tests/firefox-scipy-phase-17536.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - run: node tests/firefox-scipy-phase-17536.mjs
