@@ -1,0 +1,56 @@
+name: Earthline Firefox Elder Extended 17545
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-firefox-elder-extended-17545.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  statuses: write
+env:
+  CANDIDATE_SHA: dbe1813565d2691cfe58807e9f173d1377399363
+jobs:
+  firefox:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: dbe1813565d2691cfe58807e9f173d1377399363, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - name: Publish pending diagnostic status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          curl -fsSL -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/${{ github.repository }}/statuses/$CANDIDATE_SHA" -d "{\"state\":\"pending\",\"context\":\"earthline/firefox-elder-extended-17545\",\"description\":\"Firefox Elder 25s diagnostic running\",\"target_url\":\"$RUN_URL\"}"
+      - name: Bind exact candidate and diagnostic
+        run: |
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/firefox-elder-extended-17545.mjs > tests/firefox-elder-extended-17545.mjs
+          sha256sum index.html earthline-launch-16872.js earthline-elder-worker-17129.js tools/elder_trees/chmv2_array_detector_17129.py
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - name: Run extended Firefox diagnostic
+        id: diag
+        continue-on-error: true
+        run: xvfb-run -a env BROWSER='firefox' HEADLESS='false' CANDIDATE_SHA="$CANDIDATE_SHA" node tests/firefox-elder-extended-17545.mjs
+      - name: Publish diagnostic result
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OUTCOME: ${{ steps.diag.outcome }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          STATE: ${{ steps.diag.outcome == 'success' && 'success' || 'failure' }}
+        run: |
+          python - <<'PY'
+          import json,os
+          body={"state":os.environ["STATE"],"context":"earthline/firefox-elder-extended-17545","description":"Firefox Elder 25s diagnostic "+os.environ["OUTCOME"],"target_url":os.environ["RUN_URL"]}
+          open("/tmp/status.json","w").write(json.dumps(body))
+          PY
+          curl -fsSL -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/${{ github.repository }}/statuses/$CANDIDATE_SHA" -d @/tmp/status.json
+      - name: Enforce diagnostic completion
+        if: steps.diag.outcome != 'success'
+        run: exit 1
