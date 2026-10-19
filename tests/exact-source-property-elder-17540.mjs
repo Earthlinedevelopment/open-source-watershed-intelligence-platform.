@@ -75,7 +75,12 @@ async function runOnce(label){
   await button.click({force:true,timeout:15000});
   await page.waitForFunction(({beforeSerial})=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)===beforeSerial+1,{beforeSerial},{timeout:5000});
   const serialAt=Date.now();
-  await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.scientificResult===true || window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.result===true,null,{timeout:15000});
+  try{
+    await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.scientificResult===true || window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.result===true,null,{timeout:15000});
+  }catch(error){
+    console.log('EARTHLINE_PROPERTY_TIMEOUT_SNAPSHOT',JSON.stringify({label,browser:browserName,elapsedMs:Date.now()-clickAt,snapshot:await snapshot()}));
+    throw error;
+  }
   const propertyAt=Date.now();
   await page.waitForFunction(()=>window.EARTHLINE_ELDER_TREE_LAST_17097?.state==='committed',null,{timeout:12000});
   const elderAt=Date.now();
