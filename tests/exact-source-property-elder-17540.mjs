@@ -109,7 +109,7 @@ async function prepTarget(){
   if(!centered) throw new Error('authoritative map would not settle on exact Vermont target');
   await page.evaluate(({lng,lat})=>{
     const t={lng,lat,source:'exact-source-gate-17540',code:'',score:0,query:'Exact source Vermont gate',at:new Date().toISOString()};
-    if(typeof window.earthlineSetPropertyTarget16201==='function') window.earthlineSetPropertyTarget16201(t,{openPanel:false});
+    if(typeof window.earthlineSetPropertyTarget16201==='function') window.earthlineSetPropertyTarget16201(t);
     else window.EARTHLINE_PROPERTY_TARGET_16201=t;
   },TARGET);
   let stableChecks=0,lastState=null;
