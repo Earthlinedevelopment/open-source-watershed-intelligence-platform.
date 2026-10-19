@@ -1702,7 +1702,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       })
       .finally(()=>{if(state.dynamic.promise===promise)state.dynamic.promise=null});
     state.dynamic.promise=promise;
-    dynamicWorker().postMessage({id,bbox:b,options:{displayPerTile:24,maxPerTile:240}});
+    dynamicWorker().postMessage({id,bbox:b,options:{displayPerTile:24,maxPerTile:192}}); /* EARTHLINE 17546 — exact-display-equivalent Vermont refinement cap; 24-point output unchanged at locked A/C gates. */
     return promise;
   }
   async function prefetchProperty17174(){
