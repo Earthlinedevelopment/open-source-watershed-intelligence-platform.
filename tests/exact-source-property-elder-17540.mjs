@@ -46,6 +46,9 @@ async function waitApp(){
   await page.goto(SITE_URL,{waitUntil:'domcontentloaded',timeout:120000});
   await page.waitForFunction(()=>typeof window.earthlineDeclarePropertyAtCrosshair16173==='function',{timeout:120000});
   await page.waitForFunction(()=>!!document.getElementById('earthlineDeclareProperty16169'),{timeout:120000});
+  /* The existing panel owner schedules idle-globe normalization at 100/500/1400 ms.
+     Property testing begins only after that startup-only sequence has expired. */
+  await page.waitForTimeout(1800);
 }
 async function prepTarget(){
   /* Test-only target setup: settle the real map camera before setting Property.
