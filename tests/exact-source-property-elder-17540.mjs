@@ -112,10 +112,29 @@ async function prepTarget(){
     if(typeof window.earthlineSetPropertyTarget16201==='function') window.earthlineSetPropertyTarget16201(t,{openPanel:false});
     else window.EARTHLINE_PROPERTY_TARGET_16201=t;
   },TARGET);
-  const actual=await page.evaluate(()=>window.EARTHLINE_PROPERTY_TARGET_16201||null);
-  if(!actual || Math.abs(Number(actual.lng)-TARGET.lng)>1e-7 || Math.abs(Number(actual.lat)-TARGET.lat)>1e-7){
-    throw new Error('exact Vermont Property target did not lock: '+JSON.stringify(actual));
+  let stableChecks=0,lastState=null;
+  for(let attempt=0;attempt<12&&stableChecks<3;attempt++){
+    await page.waitForTimeout(400);
+    lastState=await page.evaluate(()=>{
+      let m=null;try{m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap||null}catch(_){}
+      const c=m?.getCenter?.(),t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+      return {target:t?JSON.parse(JSON.stringify(t)):null,mapCenter:c?{lng:Number(c.lng),lat:Number(c.lat)}:null};
+    });
+    const targetOk=!!lastState?.target&&Math.abs(Number(lastState.target.lng)-TARGET.lng)<1e-7&&Math.abs(Number(lastState.target.lat)-TARGET.lat)<1e-7;
+    const mapOk=!!lastState?.mapCenter&&Math.abs(Number(lastState.mapCenter.lng)-TARGET.lng)<1e-6&&Math.abs(Number(lastState.mapCenter.lat)-TARGET.lat)<1e-6;
+    if(targetOk&&mapOk){stableChecks++;continue}
+    stableChecks=0;
+    await page.evaluate(({lng,lat})=>{
+      try{
+        const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap||null;
+        m?.stop?.();m?.jumpTo?.({center:[lng,lat],zoom:17.5,bearing:0,pitch:0});
+      }catch(_){}
+      const t={lng,lat,source:'exact-source-gate-17540',code:'',score:0,query:'Exact source Vermont gate',at:new Date().toISOString()};
+      if(typeof window.earthlineSetPropertyTarget16201==='function') window.earthlineSetPropertyTarget16201(t,{openPanel:false});
+      else window.EARTHLINE_PROPERTY_TARGET_16201=t;
+    },TARGET);
   }
+  if(stableChecks<3) throw new Error('exact Vermont Property target/camera did not remain stable before press: '+JSON.stringify(lastState));
 }
 async function snapshot(){
   return await page.evaluate(()=>({
