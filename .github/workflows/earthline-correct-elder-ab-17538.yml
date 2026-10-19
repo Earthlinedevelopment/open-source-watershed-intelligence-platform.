@@ -1,0 +1,44 @@
+name: Earthline Correct Elder AB 17538
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-correct-elder-ab-17538.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  single_read_17534:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17534
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/elder-correct-source-17538.mjs > tests/elder-correct-source-17538.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - run: xvfb-run -a node tests/elder-correct-source-17538.mjs
+  full_warm_17535:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17535
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/elder-correct-source-17538.mjs > tests/elder-correct-source-17538.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - run: xvfb-run -a node tests/elder-correct-source-17538.mjs
