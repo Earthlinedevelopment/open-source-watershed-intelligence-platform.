@@ -57,7 +57,7 @@ async function ensurePy(){
     try{
       const ua=String(self.navigator&&self.navigator.userAgent||"");
       if(/Firefox\//i.test(ua)){
-        await py.runPythonAsync(\`
+        await py.runPythonAsync(`
 import numpy as np
 _elw=np.arange(4096,dtype=np.float32).reshape((64,64))%31
 _median_filter(_elw,9)
@@ -68,7 +68,7 @@ _elm=_elw>20
 _components_4(_elm)
 _component_size_4(_elm,32,32)
 del _elw,_elm
-\`);
+`);
       }
     }catch(_){}
     return py;

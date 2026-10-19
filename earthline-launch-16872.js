@@ -1239,7 +1239,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   const MANIFEST='data/elder-trees/v2/manifest.json';
   const SOURCE='earthline-elder-trees-17097';
   const LAYER='earthline-elder-tree-points-17097';
-  const state={loaded:false,loading:null,manifest:null,all:[],active:[],lastSummary:null,dynamic:{worker:null,seq:0,pending:new Map(),key:'',result:null,promise:null,error:null,warmPromise:null,warmed:false,tileWarmKey:'',tileWarmPromise:null}};
+  const state={loaded:false,loading:null,manifest:null,all:[],active:[],lastSummary:null,dynamic:{worker:null,seq:0,pending:new Map(),key:'',result:null,promise:null,error:null,warmPromise:null,warmed:false,tileWarmKey:'',tileWarmPromise:null,completedOnce:false}};
 
   function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
@@ -1693,7 +1693,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
           })
         }));
         const normalized=Object.assign({},result,{features});
-        state.dynamic.result=normalized;state.dynamic.error=null;
+        state.dynamic.result=normalized;state.dynamic.error=null;state.dynamic.completedOnce=true;
         return normalized;
       })
       .catch(err=>{
@@ -1758,10 +1758,10 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   async function refresh(){
     try{
       const pending17166=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
-      if(pending17166?.state==='property-pending'&&state.dynamic.promise)return pending17166.summary||null;
+      if(pending17166?.state==='property-pending'&&state.dynamic.promise&&state.dynamic.completedOnce)return pending17166.summary||null;
       await load();
       const pendingAfterLoad17166=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
-      if(pendingAfterLoad17166?.state==='property-pending'&&state.dynamic.promise)return pendingAfterLoad17166.summary||null;
+      if(pendingAfterLoad17166?.state==='property-pending'&&state.dynamic.promise&&state.dynamic.completedOnce)return pendingAfterLoad17166.summary||null;
       let coverage=activeCoverage(); /* EARTHLINE_ELDER_PROPERTY_PENDING_REFRESH_GUARD_17203 */
       const dynamic=await dynamicPropertyEvidence(false);
       if(dynamic){
