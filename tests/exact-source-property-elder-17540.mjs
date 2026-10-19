@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 
 const browserName=process.env.BROWSER||'chromium';
 const headless=process.env.HEADLESS!=='false';
-const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
+const SITE_URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
 const TARGET={lng:-72.691631,lat:42.931759};
 const browserType={chromium,firefox,webkit}[browserName];
 if(!browserType) throw new Error('unknown browser '+browserName);
@@ -43,7 +43,7 @@ await page.route('**/*',async route=>{
 });
 
 async function waitApp(){
-  await page.goto(URL,{waitUntil:'domcontentloaded',timeout:120000});
+  await page.goto(SITE_URL,{waitUntil:'domcontentloaded',timeout:120000});
   await page.waitForFunction(()=>typeof window.earthlineDeclarePropertyAtCrosshair16173==='function',{timeout:120000});
   await page.waitForFunction(()=>!!document.getElementById('earthlineDeclareProperty16169'),{timeout:120000});
 }
