@@ -1,0 +1,54 @@
+name: Earthline 50-State Exact Gate 17550
+on:
+  push:
+    branches: [repair/property-one-click-17441]
+    paths:
+      - '.github/workflows/earthline-50-state-exact-17550.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rollout:
+    name: rollout / ${{ matrix.state }}
+    strategy:
+      fail-fast: false
+      matrix:
+        state: ["Vermont", "Maryland", "New York", "Massachusetts", "Arizona", "Colorado", "New Mexico", "Nevada", "Utah", "Oklahoma", "California", "Nebraska", "North Carolina", "Texas"]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 229b6e94dad0cf7902b0072eb574685cfca11a23
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/world-gate-17550.mjs > tests/world-gate-17550.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: env MODE='state' QUERY='${{ matrix.state }}' node tests/world-gate-17550.mjs
+  rest:
+    name: rest / ${{ matrix.state }}
+    strategy:
+      fail-fast: false
+      matrix:
+        state: ["Alabama", "Alaska", "Arkansas", "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "New Hampshire", "New Jersey", "North Dakota", "Ohio", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 229b6e94dad0cf7902b0072eb574685cfca11a23
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          git fetch origin repair/property-one-click-17441
+          git show origin/repair/property-one-click-17441:tests/world-gate-17550.mjs > tests/world-gate-17550.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: env MODE='state' QUERY='${{ matrix.state }}' node tests/world-gate-17550.mjs
