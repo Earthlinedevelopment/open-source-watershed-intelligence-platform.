@@ -53,17 +53,20 @@ async function prepTarget(){
      existing app owner and legitimately rewrites the crosshair target. */
   await page.evaluate(({lng,lat})=>{
     try{
-      window.earthlineMap?.stop?.();
-      window.earthlineMap?.jumpTo?.({center:[lng,lat],zoom:17.5});
+      const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap||null;
+      m?.stop?.();
+      m?.jumpTo?.({center:[lng,lat],zoom:17.5});
     }catch(_){}
   },TARGET);
   await page.waitForFunction(({lng,lat})=>{
-    const c=window.earthlineMap?.getCenter?.();
+    const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap||null;
+    const c=m?.getCenter?.();
     return !!c && Math.abs(Number(c.lng)-lng)<1e-6 && Math.abs(Number(c.lat)-lat)<1e-6;
   },TARGET,{timeout:10000});
   await page.waitForTimeout(500);
   await page.waitForFunction(({lng,lat})=>{
-    const c=window.earthlineMap?.getCenter?.();
+    const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap||null;
+    const c=m?.getCenter?.();
     return !!c && Math.abs(Number(c.lng)-lng)<1e-6 && Math.abs(Number(c.lat)-lat)<1e-6;
   },TARGET,{timeout:3000});
   await page.evaluate(({lng,lat})=>{
