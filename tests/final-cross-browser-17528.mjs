@@ -6,7 +6,8 @@ const HEADLESS=String(process.env.HEADLESS||'true').toLowerCase()!=='false';
 const engines={chromium,firefox,webkit};
 if(!engines[BROWSER])throw new Error('unsupported browser '+BROWSER);
 const index=fs.readFileSync('index.html','utf8');
-const launch=fs.readFileSync('earthline-launch-16872.js','utf8');\nconst elderWorker=fs.readFileSync('earthline-elder-worker-17129.js','utf8');
+const launch=fs.readFileSync('earthline-launch-16872.js','utf8');
+const elderWorker=fs.readFileSync('earthline-elder-worker-17129.js','utf8');
 const browser=await engines[BROWSER].launch({headless:HEADLESS});
 
 async function newPage(){
