@@ -52,6 +52,25 @@ async function ensurePy(){
     const src=await fetch("tools/elder_trees/chmv2_array_detector_17129.py",{cache:"no-store"});
     if(!src.ok)throw new Error("array detector "+src.status);
     await py.runPythonAsync(await src.text());
+    /* EARTHLINE 17530 — Firefox cold-kernel warm only. Same approved NumPy
+       operations, exercised on tiny synthetic arrays before first Property use. */
+    try{
+      const ua=String(self.navigator&&self.navigator.userAgent||"");
+      if(/Firefox\//i.test(ua)){
+        await py.runPythonAsync("""
+import numpy as np
+_elw=np.arange(4096,dtype=np.float32).reshape((64,64))%31
+_median_filter(_elw,9)
+_uniform_filter((_elw>5).astype(np.float32),9)
+_maximum_filter(_elw,7)
+_gaussian_filter(_elw,1.2)
+_elm=_elw>20
+_components_4(_elm)
+_component_size_4(_elm,32,32)
+del _elw,_elm
+""");
+      }
+    }catch(_){}
     return py;
   })();
   return pyReady;
@@ -134,17 +153,38 @@ async function processTile(py,q,bbox,maxPerTile=240){
     screenOptions17413.height=oh;
     screenOptions17413.resampleMethod="nearest";
   }
-  const screenRaw=await image.readRasters(screenOptions17413);
-  const tScreen=performance.now();
   const pix=Math.max(Math.abs(w.rx),Math.abs(w.ry));
   const pad=Math.max(64,Math.ceil(60/Math.max(.01,pix)));
   const ncol0=Math.max(0,w.col0-pad),nrow0=Math.max(0,w.row0-pad);
   const ncol1=Math.min(image.getWidth(),w.col0+w.ww+pad),nrow1=Math.min(image.getHeight(),w.row0+w.wh+pad);
-  const nativeRaw=await image.readRasters({
-    window:[ncol0,nrow0,ncol1,nrow1],samples:[0],interleave:true
-  });
-  const tNative=performance.now();
-  const screen=f32(screenRaw),native=f32(nativeRaw);
+  let screen,native,tScreen,tNative;
+  if(ow===w.ww&&oh===w.wh){
+    /* EARTHLINE 17530 — exact Property raw-window single-read path.
+       The screening window is an exact subset of the padded native window, so
+       derive it from those same source samples instead of issuing a duplicate
+       GeoTIFF read. No resampling, thresholds, or detector inputs change. */
+    const nativeRaw=await image.readRasters({
+      window:[ncol0,nrow0,ncol1,nrow1],samples:[0],interleave:true
+    });
+    native=f32(nativeRaw);
+    const nw=ncol1-ncol0,offR=w.row0-nrow0,offC=w.col0-ncol0;
+    screen=new Float32Array(ow*oh);
+    for(let r=0;r<oh;r++){
+      const a=(offR+r)*nw+offC;
+      screen.set(native.subarray(a,a+ow),r*ow);
+    }
+    tScreen=performance.now();
+    tNative=tScreen;
+  }else{
+    const screenRaw=await image.readRasters(screenOptions17413);
+    tScreen=performance.now();
+    screen=f32(screenRaw);
+    const nativeRaw=await image.readRasters({
+      window:[ncol0,nrow0,ncol1,nrow1],samples:[0],interleave:true
+    });
+    tNative=performance.now();
+    native=f32(nativeRaw);
+  }
   const sid="screen_"+q+".bin",nid="native_"+q+".bin";
   py.FS.writeFile("/tmp/"+sid,new Uint8Array(screen.buffer,screen.byteOffset,screen.byteLength));
   py.FS.writeFile("/tmp/"+nid,new Uint8Array(native.buffer,native.byteOffset,native.byteLength));
