@@ -51,27 +51,35 @@ async function waitApp(){
   await page.waitForTimeout(1800);
 }
 async function prepTarget(){
-  /* Test-only target setup: settle the real map camera before setting Property.
-     Slow Firefox/WebKit can emit a late moveend after jumpTo; that event is an
-     existing app owner and legitimately rewrites the crosshair target. */
-  await page.evaluate(({lng,lat})=>{
+  /* Test-only target setup. Wait for the authoritative Mapbox owner, then force
+     the exact Vermont camera synchronously. Re-apply if a browser finishes a
+     prior camera lifecycle late; performance timing begins only at pointerdown. */
+  await page.waitForFunction(()=>{
     try{
       const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap||null;
-      m?.stop?.();
-      m?.jumpTo?.({center:[lng,lat],zoom:17.5});
-    }catch(_){}
-  },TARGET);
-  await page.waitForFunction(({lng,lat})=>{
-    const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap||null;
-    const c=m?.getCenter?.();
-    return !!c && Math.abs(Number(c.lng)-lng)<1e-6 && Math.abs(Number(c.lat)-lat)<1e-6;
-  },TARGET,{timeout:10000});
-  await page.waitForTimeout(500);
-  await page.waitForFunction(({lng,lat})=>{
-    const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap||null;
-    const c=m?.getCenter?.();
-    return !!c && Math.abs(Number(c.lng)-lng)<1e-6 && Math.abs(Number(c.lat)-lat)<1e-6;
-  },TARGET,{timeout:3000});
+      return !!m && typeof m.jumpTo==='function' && typeof m.getCenter==='function';
+    }catch(_){return false}
+  },{timeout:15000});
+  let centered=false;
+  for(let attempt=0;attempt<5&&!centered;attempt++){
+    await page.evaluate(({lng,lat})=>{
+      try{
+        const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap||null;
+        m?.stop?.();
+        m?.jumpTo?.({center:[lng,lat],zoom:17.5,bearing:0,pitch:0});
+      }catch(_){}
+    },TARGET);
+    await page.waitForTimeout(180);
+    const c=await page.evaluate(()=>{
+      try{
+        const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap||null;
+        const x=m?.getCenter?.();
+        return x?{lng:Number(x.lng),lat:Number(x.lat)}:null;
+      }catch(_){return null}
+    });
+    centered=!!c && Math.abs(c.lng-TARGET.lng)<1e-6 && Math.abs(c.lat-TARGET.lat)<1e-6;
+  }
+  if(!centered) throw new Error('authoritative map would not settle on exact Vermont target');
   await page.evaluate(({lng,lat})=>{
     const t={lng,lat,source:'exact-source-gate-17540',code:'',score:0,query:'Exact source Vermont gate',at:new Date().toISOString()};
     if(typeof window.earthlineSetPropertyTarget16201==='function') window.earthlineSetPropertyTarget16201(t,{openPanel:false});
