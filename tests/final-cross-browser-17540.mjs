@@ -9,7 +9,6 @@ const index=fs.readFileSync('index.html','utf8');
 const launch=fs.readFileSync('earthline-launch-16872.js','utf8');
 const worker=fs.readFileSync('earthline-elder-worker-17129.js','utf8');
 const detector=fs.readFileSync('tools/elder_trees/chmv2_array_detector_17129.py','utf8');
-const language=fs.readFileSync('earthline-language-hotfix-16890.js','utf8');
 const browser=await engines[BROWSER].launch({headless:HEADLESS});
 
 async function newPage(){
@@ -24,8 +23,6 @@ async function newPage(){
       return r.fulfill({status:200,body:worker,headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}});
     if(/^(?:www\.)?earthlinedevelopment\.org$/i.test(u.hostname)&&/\/tools\/elder_trees\/chmv2_array_detector_17129\.py$/.test(u.pathname))
       return r.fulfill({status:200,body:detector,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}});
-    if(/^(?:www\.)?earthlinedevelopment\.org$/i.test(u.hostname)&&/\/earthline-language-hotfix-16890\.js$/.test(u.pathname))
-      return r.fulfill({status:200,body:language,headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}});
     return r.continue();
   });
   const page=await context.newPage();
@@ -49,7 +46,7 @@ async function elderFlow(){
   const {context,page}=await newPage();
   const errors=[];page.on('pageerror',e=>errors.push(String(e)));
   await page.addInitScript(()=>{
-    window.__earthlineFinal17540={events:[],lastCommitSig:''};
+    window.__earthlineFinal17540={events:[],lastCommitSig:'',lastSerial:Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)};
     const activationSnap=(kind,e)=>{
       if(!e.target?.closest?.('#earthlineDeclareProperty16169'))return;
       try{
@@ -72,6 +69,9 @@ async function elderFlow(){
     };
     const watch=()=>{
       try{
+        const audit=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+        const serial=Number(audit?.serial||0);
+        if(serial!==window.__earthlineFinal17540.lastSerial){window.__earthlineFinal17540.lastSerial=serial;window.__earthlineFinal17540.events.push({kind:'property-serial',serial,t:performance.now()});}
         const e=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
         if(e?.state==='committed'){
           const sig=String(e.propertyRunIdentity||'')+'|'+String(e.at||'');
@@ -101,7 +101,7 @@ async function elderFlow(){
       eventCount:window.__earthlineFinal17540.events.length
     }));
     await page.locator('#earthlineDeclareProperty16169').click();
-    await page.waitForFunction(from=>window.__earthlineFinal17540.events.slice(from).some(x=>x.kind==='actual-pointerup'||x.kind==='actual-click'),before.eventCount,{timeout:8000,polling:20});
+    await page.waitForFunction(from=>window.__earthlineFinal17540.events.slice(from).some(x=>x.kind==='actual-pointerup'||x.kind==='actual-click'),before.eventCount,{timeout:3000,polling:20});
     const activation=await page.evaluate(from=>{
       const ev=window.__earthlineFinal17540.events.slice(from);
       return ev.find(x=>x.kind==='actual-pointerup')||ev.find(x=>x.kind==='actual-click')||null;
@@ -120,15 +120,18 @@ async function elderFlow(){
     const out=await page.evaluate(({before,expected,label,q,activation})=>{
       const ev=window.__earthlineFinal17540.events.slice(before.eventCount);
       const commit=ev.find(x=>x.kind==='elder-commit'&&String(x.identity||'').startsWith(expected))||null;
+      const serialEvents=ev.filter(x=>x.kind==='property-serial'&&Number(x.serial)===before.serial+1);
+      const serialEvent=serialEvents[0]||null;
       const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,e=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
       const sameTarget=!!activation?.target&&!!a?.center&&Math.abs(Number(activation.target.lng)-Number(a.center.lng))<0.0008&&Math.abs(Number(activation.target.lat)-Number(a.center.lat))<0.0008;
       return {label,q,activationKind:activation?.kind||null,activationT:activation?.t??null,activationTarget:activation?.target||null,
         elderCommitT:commit?.t??null,elderMs:activation&&commit?commit.t-activation.t:null,
+        serialTransitionT:serialEvent?.t??null,serialMs:activation&&serialEvent?serialEvent.t-activation.t:null,serialTransitions:serialEvents.length,
         serialBefore:before.serial,serialAfter:Number(a?.serial||0),propertySettled:a?.settled===true,propertyResult:a?.result===true,
         sameTarget,elderState:e?.state||null,elderIdentity:e?.propertyRunIdentity||null,workerTimings:e?.workerTimings||null,events:ev};
     },{before,expected,label,q,activation});
     out.elderWithin12=elderWithin12;out.propertySettledObserved=propertySettled;
-    out.pass=out.activationT!=null&&out.serialAfter===out.serialBefore+1&&out.propertySettled&&out.propertyResult&&out.sameTarget&&out.elderState==='committed'&&out.elderIdentity?.startsWith(expected)&&elderWithin12&&out.elderMs!=null&&out.elderMs<=12000;
+    out.pass=out.activationT!=null&&out.serialAfter===out.serialBefore+1&&out.serialTransitions===1&&out.serialMs!=null&&out.serialMs<=2000&&out.propertySettled&&out.propertyResult&&out.sameTarget&&out.elderState==='committed'&&out.elderIdentity?.startsWith(expected)&&elderWithin12&&out.elderMs!=null&&out.elderMs<=12000;
     rows.push(out);
     console.log('EARTHLINE_ELDER_FLOW_17540 '+JSON.stringify({browser:BROWSER,...out}));
   }
@@ -181,6 +184,6 @@ for(const s of [
   {name:'C',lat:44.07102,lng:-72.27681,maxNearest:15,minWithin40:5,minCount:120,maxQuadrantShare:.36}
 ]) swales.push(await swaleSite(s));
 const pass=elder.pass&&swales.every(r=>r.pass);
-console.log('EARTHLINE_FINAL_CROSS_BROWSER_17540 '+JSON.stringify({browser:BROWSER,pass,elder,swales}));
+console.log('EARTHLINE_FINAL_CROSS_BROWSER_17540 '+JSON.stringify({browser:BROWSER,candidateSha:process.env.CANDIDATE_SHA||null,pass,elder,swales}));
 await browser.close();
 if(!pass)process.exitCode=1;
