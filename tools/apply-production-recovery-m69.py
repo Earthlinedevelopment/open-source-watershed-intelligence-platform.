@@ -12,6 +12,26 @@ def replace_exact(text, old, new, label, expected=1):
         raise SystemExit(f"{label}: expected {expected} occurrence(s), found {count}")
     return text.replace(old, new, expected)
 
+# D6 — keep verified Vermont authority independent of map-style readiness.
+# The 16550 owner explicitly says Vermont authority is independent, but its previous
+# conditional used map-style evidence whenever the style happened to be ready. That
+# made identical repeat runs browser/timing dependent. Once BOTH official Vermont
+# authority queries are verified, always take the same authority-only branch.
+d6_old = '''      if(vermontVerified16469){
+        readiness=(styleSettled16469&&styleReadiness16469&&styleReadiness16469.ready)
+          ?styleReadiness16469
+          :{ready:false,status:"vermont-authority-ready",waitedMs:0};
+      }else{'''
+d6_new = '''      if(vermontVerified16469){
+        /* EARTHLINE M69 D6 — verified Vermont authority is the sole exclusion
+           owner for this frame; map-style readiness must not change repeat science. */
+        readiness={ready:false,status:"vermont-authority-ready",waitedMs:0};
+      }else{'''
+if d6_old in s:
+    s = replace_exact(s, d6_old, d6_new, "D6 Vermont authority independence")
+elif d6_new not in s:
+    raise SystemExit("D6 owner pattern not found")
+
 # If the main M69 patch is already present, preserve the pre-existing report-only
 # evidence styling without restoring the unapproved live Property status box.
 if "retained-current-property-water-m69" in s:
