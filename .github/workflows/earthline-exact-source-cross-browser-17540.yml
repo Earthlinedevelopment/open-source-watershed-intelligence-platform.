@@ -1,4 +1,4 @@
-name: Earthline Exact-Source Cross-Browser 17540 # candidate-17561
+name: Earthline Exact-Source Cross-Browser 17540 # candidate-17564
 on:
   push:
     branches: [test/earthline-cross-browser-17540]
@@ -10,7 +10,7 @@ permissions:
   contents: read
   statuses: write
 env:
-  CANDIDATE_SHA: 7c23ec522c34a3bcf27e46d9715d4923281812b2
+  CANDIDATE_SHA: fdd4d45368850fe0a36ba497bd9cd934759f595e
 jobs:
   linux:
     strategy:
@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
-        with: {ref: 7c23ec522c34a3bcf27e46d9715d4923281812b2, fetch-depth: 0}
+        with: {ref: fdd4d45368850fe0a36ba497bd9cd934759f595e, fetch-depth: 0}
       - uses: actions/setup-node@v4
         with: {node-version: '20'}
       - name: Publish pending candidate gate status
@@ -32,7 +32,7 @@ jobs:
         run: |
           python - <<'PY'
           import json, os
-          body={"state":"pending","context":"earthline/exact-source-17540/"+os.environ["BROWSER_NAME"],"description":"17561 exact-source gate running","target_url":os.environ["RUN_URL"]}
+          body={"state":"pending","context":"earthline/exact-source-17540/"+os.environ["BROWSER_NAME"],"description":"17564 exact-source gate running","target_url":os.environ["RUN_URL"]}
           open("/tmp/status-pending.json","w").write(json.dumps(body))
           PY
           curl -fsSL -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/${{ github.repository }}/statuses/$CANDIDATE_SHA" -d @/tmp/status-pending.json
@@ -64,7 +64,7 @@ jobs:
           body={
             "state": os.environ["STATE"],
             "context": "earthline/exact-source-17540/"+os.environ["BROWSER_NAME"],
-            "description": "17561 exact-source gate "+os.environ["OUTCOME"],
+            "description": "17564 exact-source gate "+os.environ["OUTCOME"],
             "target_url": os.environ["RUN_URL"],
           }
           open("/tmp/status.json","w").write(json.dumps(body))
@@ -78,7 +78,7 @@ jobs:
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
-        with: {ref: 7c23ec522c34a3bcf27e46d9715d4923281812b2, fetch-depth: 0}
+        with: {ref: fdd4d45368850fe0a36ba497bd9cd934759f595e, fetch-depth: 0}
       - uses: actions/setup-node@v4
         with: {node-version: '20'}
       - name: Publish pending candidate gate status
@@ -89,7 +89,7 @@ jobs:
         run: |
           python - <<'PY'
           import json, os
-          body={"state":"pending","context":"earthline/exact-source-17540/"+os.environ["BROWSER_NAME"],"description":"17561 exact-source gate running","target_url":os.environ["RUN_URL"]}
+          body={"state":"pending","context":"earthline/exact-source-17540/"+os.environ["BROWSER_NAME"],"description":"17564 exact-source gate running","target_url":os.environ["RUN_URL"]}
           open("/tmp/status-pending.json","w").write(json.dumps(body))
           PY
           curl -fsSL -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/${{ github.repository }}/statuses/$CANDIDATE_SHA" -d @/tmp/status-pending.json
@@ -119,7 +119,7 @@ jobs:
           body={
             "state": os.environ["STATE"],
             "context": "earthline/exact-source-17540/"+os.environ["BROWSER_NAME"],
-            "description": "17561 exact-source gate "+os.environ["OUTCOME"],
+            "description": "17564 exact-source gate "+os.environ["OUTCOME"],
             "target_url": os.environ["RUN_URL"],
           }
           open("/tmp/status.json","w").write(json.dumps(body))
