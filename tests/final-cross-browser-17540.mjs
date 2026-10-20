@@ -1,6 +1,14 @@
 import { chromium, firefox, webkit } from 'playwright';
 import fs from 'node:fs';
 
+function havMeters17570(a,b){
+  const R=6371008.8,p1=Number(a?.lat)*Math.PI/180,p2=Number(b?.lat)*Math.PI/180;
+  const dp=(Number(b?.lat)-Number(a?.lat))*Math.PI/180,dl=(Number(b?.lng)-Number(a?.lng))*Math.PI/180;
+  if(![p1,p2,dp,dl].every(Number.isFinite))return Infinity;
+  const q=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(q)));
+}
+
 const BROWSER=(process.env.BROWSER||'chromium').toLowerCase();
 const HEADLESS=String(process.env.HEADLESS||'true').toLowerCase()!=='false';
 const engines={chromium,firefox,webkit};
@@ -175,12 +183,20 @@ async function swaleSite(site){
   await opts.first().click();await page.waitForTimeout(250);
   const rb=page.locator('#runBtn');if(await rb.isVisible()&&!await rb.isDisabled())await rb.click();
   await waitRegional(page);
-  await page.evaluate(async s=>{
+  const setup=await page.evaluate(async s=>{
     const o=window.earthlineSelectedSiteFromCenter(M?.loc||null,s.lng,s.lat,20);
     if(!await window.applyLocation(o,null,M.searchGen,{analyzeNow:false,preserveMapView:false}))throw new Error('applyLocation rejected');
     await new Promise(r=>setTimeout(r,500));
     window.earthlineSetPropertyTarget16201({lng:s.lng,lat:s.lat,source:'final-17540',code:'',score:0,at:new Date().toISOString()},{openPanel:false});
+    const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+    const map=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),c=map?.getCenter?.()||null;
+    return {target:t?{lng:+t.lng,lat:+t.lat}:null,mapCenter:c?{lng:+c.lng,lat:+c.lat}:null};
   },site);
+  const targetDriftM=havMeters17570(site,setup.target),mapCenterDriftM=havMeters17570(site,setup.mapCenter);
+  if(targetDriftM>5||mapCenterDriftM>500){
+    console.log('EARTHLINE_FRAME_SETUP_DRIFT_17570 '+JSON.stringify({browser:BROWSER,site,setup,targetDriftM,mapCenterDriftM}));
+    throw new Error('frozen frame setup drift '+site.name+' target='+targetDriftM.toFixed(1)+'m map='+mapCenterDriftM.toFixed(1)+'m');
+  }
   const pre=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
   await page.evaluate(async()=>await window.earthlineDeclarePropertyAtCrosshair16169());
   await page.waitForFunction(p=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;return Number(a?.serial||0)>p&&a?.settled===true},pre,{timeout:120000,polling:50});
@@ -192,12 +208,16 @@ async function swaleSite(site){
     let nearest=Infinity,within40=0;const quadrants={NW:0,NE:0,SW:0,SE:0};
     for(const f of safe){const cs=f?.geometry?.coordinates||[];let fd=Infinity;for(let i=1;i<cs.length;i++)fd=Math.min(fd,pointSeg([site.lng,site.lat],cs[i-1],cs[i]));nearest=Math.min(nearest,fd);if(fd<=40)within40++;const c=centroid(f);if(c)quadrants[(c[1]>=site.lat?'N':'S')+(c[0]>=site.lng?'E':'W')]++}
     const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+    const boundary=(Array.isArray(M?.analysisBoundaryLngLat)?M.analysisBoundaryLngLat:[]).filter(p=>Array.isArray(p)&&Number.isFinite(+p[0])&&Number.isFinite(+p[1]));
+    const boundaryCenter=boundary.length?{lng:boundary.reduce((v,p)=>v+(+p[0]),0)/boundary.length,lat:boundary.reduce((v,p)=>v+(+p[1]),0)/boundary.length}:null;
     return {safeCount:safe.length,nearestSwaleM:nearest,within40,quadrants,spacing:M?.spacingStats||null,
+      auditCenter:a?.center&&Number.isFinite(+a.center.lng)&&Number.isFinite(+a.center.lat)?{lng:+a.center.lng,lat:+a.center.lat}:null,boundaryCenter,
       runResult:a?.result===true,publicationAllowed:a?.sourceEvidence?.publicationAllowed===true,authorityIntersections:Number(a?.sourceEvidence?.authorityIntersectionCount||0)};
   },site);
   const maxQ=Math.max(...Object.values(out.quadrants))/(out.safeCount||1);
-  const pass=out.runResult&&out.publicationAllowed&&out.authorityIntersections===0&&out.safeCount>=site.minCount&&out.nearestSwaleM<=site.maxNearest&&out.within40>=site.minWithin40&&maxQ<=site.maxQuadrantShare;
-  const row={site,out,maxQuadrantShare:maxQ,pass,errors};
+  const auditCenterDriftM=havMeters17570(site,out.auditCenter),boundaryCenterDriftM=havMeters17570(site,out.boundaryCenter);
+  const pass=out.runResult&&out.publicationAllowed&&out.authorityIntersections===0&&auditCenterDriftM<=5&&boundaryCenterDriftM<=20&&out.safeCount>=site.minCount&&out.nearestSwaleM<=site.maxNearest&&out.within40>=site.minWithin40&&maxQ<=site.maxQuadrantShare;
+  const row={site,setup,targetDriftM,mapCenterDriftM,out,auditCenterDriftM,boundaryCenterDriftM,maxQuadrantShare:maxQ,pass,errors};
   console.log('EARTHLINE_SWALE_FRAME_17540 '+JSON.stringify({browser:BROWSER,...row}));
   await context.close();
   return row;
