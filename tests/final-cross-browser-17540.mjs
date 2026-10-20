@@ -155,7 +155,17 @@ async function elderFlow(){
     }));
     const buttonBefore=await page.evaluate(()=>{const b=document.getElementById('earthlineDeclareProperty16169'),r=b?.getBoundingClientRect?.();return b?{connected:b.isConnected,disabled:b.disabled,busy:b.dataset.busy||'',display:getComputedStyle(b).display,pointerEvents:getComputedStyle(b).pointerEvents,rect:r?{x:r.x,y:r.y,width:r.width,height:r.height}:null,html:b.outerHTML.slice(0,900)}:null});
     let clickError=null;
-    try{await page.locator('#earthlineDeclareProperty16169').click();}catch(e){clickError=String(e);}
+    try{
+      const r=buttonBefore?.rect,vp=page.viewportSize();
+      if(!r||!(r.width>0)||!(r.height>0))throw new Error('Property button has no visible click rect');
+      const x=r.x+r.width/2,y=r.y+r.height/2;
+      if(!vp||x<0||y<0||x>vp.width||y>vp.height)throw new Error('Property button center is outside viewport: '+JSON.stringify({x,y,vp,r}));
+      /* 17575: use a physical mouse click at the already-visible control.
+         locator.click() scrolls elements into view as part of actionability and in
+         Firefox/WebKit that synthetic scroll can move the Mapbox camera before
+         pointerdown, invalidating the exact frame being tested. */
+      await page.mouse.click(x,y);
+    }catch(e){clickError=String(e);}
     const activationDiag=await page.evaluate(from=>{const b=document.getElementById('earthlineDeclareProperty16169'),r=b?.getBoundingClientRect?.(),ev=window.__earthlineFinal17540.events.slice(from),a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,t=window.EARTHLINE_PROPERTY_TARGET_16201||null;return {events:ev,serial:Number(a?.serial||0),audit:a,target:t,button:b?{connected:b.isConnected,disabled:b.disabled,busy:b.dataset.busy||'',display:getComputedStyle(b).display,pointerEvents:getComputedStyle(b).pointerEvents,rect:r?{x:r.x,y:r.y,width:r.width,height:r.height}:null}:null};},before.eventCount);
     const activationObserved=activationDiag.events.some(x=>x.kind==='actual-pointerup'||x.kind==='actual-click');
     if(!activationObserved){
