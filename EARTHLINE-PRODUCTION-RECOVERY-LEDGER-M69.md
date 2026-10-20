@@ -33,3 +33,5 @@ Production policy: no pages-live edit until recovery branch passes the governed 
 - Protected 17563 exact 20-acre water clip: present.
 - Protected vector exclusion owner: present.
 - Production branch `pages-live`: not modified by this recovery work.
+
+| D6 | Repeating the same Property run can collapse a previously valid swale set while the Property target remains fixed (observed: Essex 102→3/0; Rutland 135/78→0 across production-origin browser runs). | Under investigation: repeated Property acquisition changes authoritative infrastructure/source-state fingerprint and feature counts between serial 1 and serial 2. | Trace exact authority acquisition/cache/publication sequence. Repair the source-state instability, not the swale equations; preserve fail-closed exclusions. | Same target + same authoritative source inputs must produce the same safe swale result on repeat; 0 authority intersections; exactly +1 serial; water remains visible. |
