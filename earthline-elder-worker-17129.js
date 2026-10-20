@@ -105,7 +105,28 @@ async function getTile(q){
   }
   try{return await cached}catch(err){tileCache.delete(q);throw err}
 }
-async function warmTiles(bbox){const qs=bboxTiles(bbox);await Promise.all(qs.map(getTile));return {warmBbox:true,requested_tiles:qs}}
+async function warmTileRaster17565(q,bbox){
+  const {image}=await getTile(q),w=projectedWindow(image,bbox);
+  if(!w)return false;
+  const aspect=w.ww/Math.max(1,w.wh);let ow,oh;
+  if(Math.max(w.ww,w.wh)<=1024){ow=w.ww;oh=w.wh}
+  else if(aspect>=1){ow=1024;oh=Math.max(1,Math.round(1024/aspect))}
+  else{oh=1024;ow=Math.max(1,Math.round(1024*aspect))}
+  const opts={window:[w.col0,w.row0,w.col0+w.ww,w.row0+w.wh],samples:[0],interleave:true};
+  if(ow!==w.ww||oh!==w.wh){opts.width=ow;opts.height=oh;opts.resampleMethod="nearest"}
+  const pix=Math.max(Math.abs(w.rx),Math.abs(w.ry)),pad=Math.max(64,Math.ceil(60/Math.max(.01,pix))),
+    ncol0=Math.max(0,w.col0-pad),nrow0=Math.max(0,w.row0-pad),
+    ncol1=Math.min(image.getWidth(),w.col0+w.ww+pad),nrow1=Math.min(image.getHeight(),w.row0+w.wh+pad);
+  const nativeOpts={window:[ncol0,nrow0,ncol1,nrow1],samples:[0],interleave:true};
+  if(ow===w.ww&&oh===w.wh)await image.readRasters(nativeOpts);
+  else await Promise.all([image.readRasters(opts),image.readRasters(nativeOpts)]);
+  return true;
+}
+async function warmTiles(bbox){
+  const qs=bboxTiles(bbox);
+  await Promise.all(qs.map(q=>warmTileRaster17565(q,bbox)));
+  return {warmBbox:true,requested_tiles:qs,exactRasterWindows:true};
+}
 function compareBestTuple(a,b){
   // a,b = [dist,-structural,x,y,h,emerg,area,openf]
   for(let i=0;i<a.length;i++){if(a[i]<b[i])return -1;if(a[i]>b[i])return 1}return 0;
