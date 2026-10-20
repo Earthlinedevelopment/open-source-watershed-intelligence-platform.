@@ -114,6 +114,9 @@ async function elderFlow(){
   });
   await page.goto('https://earthlinedevelopment.org/?final17540='+BROWSER+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
   await page.waitForSelector('#searchInput',{timeout:30000});
+  /* 17573: let the existing 100/500/1400 ms startup-globe timers retire before
+     deterministic Property injection. This changes test setup only, not Earthline. */
+  await page.waitForTimeout(1800);
   const rows=[];
   for(const site of [
     {label:'first',q:'Essex exact Property',lng:-73.11125100000007,lat:44.53397998171303},
@@ -134,6 +137,15 @@ async function elderFlow(){
     if(targetDriftM>5||mapCenterDriftM>500)throw new Error('exact Property setup drift '+label+' target='+targetDriftM.toFixed(1)+'m map='+mapCenterDriftM.toFixed(1)+'m');
     await page.waitForFunction(()=>{const t=window.EARTHLINE_PROPERTY_TARGET_16201,b=document.getElementById('earthlineDeclareProperty16169');return !!t&&!!b&&!b.disabled},null,{timeout:30000});
     await page.waitForTimeout(250);
+    const preActivationFrame=await page.evaluate(()=>{
+      const t=window.EARTHLINE_PROPERTY_TARGET_16201||null,m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),c=m?.getCenter?.()||null;
+      return {target:t?{lng:+t.lng,lat:+t.lat}:null,mapCenter:c?{lng:+c.lng,lat:+c.lat}:null};
+    });
+    const preTargetDriftM=havMeters17570(site,preActivationFrame.target),preMapCenterDriftM=havMeters17570(site,preActivationFrame.mapCenter);
+    if(preTargetDriftM>5||preMapCenterDriftM>500){
+      console.log('EARTHLINE_PRE_ACTIVATION_DRIFT_17573 '+JSON.stringify({browser:BROWSER,site,preActivationFrame,preTargetDriftM,preMapCenterDriftM}));
+      throw new Error('pre-activation Property drift '+label+' target='+preTargetDriftM.toFixed(1)+'m map='+preMapCenterDriftM.toFixed(1)+'m');
+    }
     const before=await page.evaluate(()=>({
       serial:Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0),
       eventCount:window.__earthlineFinal17540.events.length
@@ -176,8 +188,9 @@ async function elderFlow(){
         sameTarget,elderState:e?.state||null,elderIdentity:e?.propertyRunIdentity||null,workerTimings:e?.workerTimings||null,events:ev};
     },{before,expected,label,q,activation});
     out.setup=setup;out.targetDriftM=targetDriftM;out.mapCenterDriftM=mapCenterDriftM;
+    out.preActivationFrame=preActivationFrame;out.preTargetDriftM=preTargetDriftM;out.preMapCenterDriftM=preMapCenterDriftM;
     out.elderWithin12=elderWithin12;out.propertySettledObserved=propertySettled;
-    out.pass=targetDriftM<=5&&mapCenterDriftM<=500&&out.activationT!=null&&out.serialAfter===out.serialBefore+1&&out.serialTransitions===1&&out.serialMs!=null&&out.serialMs<=2000&&out.propertySettled&&out.propertyResult&&out.sameTarget&&out.elderState==='committed'&&out.elderIdentity?.startsWith(expected)&&elderWithin12&&out.elderMs!=null&&out.elderMs<=12000;
+    out.pass=targetDriftM<=5&&mapCenterDriftM<=500&&preTargetDriftM<=5&&preMapCenterDriftM<=500&&out.activationT!=null&&out.serialAfter===out.serialBefore+1&&out.serialTransitions===1&&out.serialMs!=null&&out.serialMs<=2000&&out.propertySettled&&out.propertyResult&&out.sameTarget&&out.elderState==='committed'&&out.elderIdentity?.startsWith(expected)&&elderWithin12&&out.elderMs!=null&&out.elderMs<=12000;
     rows.push(out);
     console.log('EARTHLINE_ELDER_FLOW_17540 '+JSON.stringify({browser:BROWSER,...out}));
   }
@@ -191,6 +204,8 @@ async function swaleSite(site){
   await page.goto('https://earthlinedevelopment.org/?swale17540='+BROWSER+'-'+site.name+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
   await page.waitForSelector('#searchInput',{timeout:30000});
   await page.waitForFunction(()=>typeof window.earthlineSetPropertyTarget16201==='function'&&typeof window.earthlineDeclarePropertyAtCrosshair16169==='function',null,{timeout:30000});
+  /* 17573: isolate the frozen frame from the page's intentional startup globe. */
+  await page.waitForTimeout(1800);
   const setup=await page.evaluate(s=>{
     const map=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
     try{map?.stop?.();map?.jumpTo?.({center:[s.lng,s.lat],zoom:17,bearing:0,pitch:0})}catch(_){}
@@ -203,6 +218,15 @@ async function swaleSite(site){
   if(targetDriftM>5||mapCenterDriftM>500){
     console.log('EARTHLINE_FRAME_SETUP_DRIFT_17570 '+JSON.stringify({browser:BROWSER,site,setup,targetDriftM,mapCenterDriftM}));
     throw new Error('frozen frame setup drift '+site.name+' target='+targetDriftM.toFixed(1)+'m map='+mapCenterDriftM.toFixed(1)+'m');
+  }
+  const preFrame=await page.evaluate(()=>{
+    const t=window.EARTHLINE_PROPERTY_TARGET_16201||null,m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),c=m?.getCenter?.()||null;
+    return {target:t?{lng:+t.lng,lat:+t.lat}:null,mapCenter:c?{lng:+c.lng,lat:+c.lat}:null};
+  });
+  const preTargetDriftM=havMeters17570(site,preFrame.target),preMapCenterDriftM=havMeters17570(site,preFrame.mapCenter);
+  if(preTargetDriftM>5||preMapCenterDriftM>500){
+    console.log('EARTHLINE_PRE_SWALE_DRIFT_17573 '+JSON.stringify({browser:BROWSER,site,preFrame,preTargetDriftM,preMapCenterDriftM}));
+    throw new Error('pre-run frozen frame drift '+site.name+' target='+preTargetDriftM.toFixed(1)+'m map='+preMapCenterDriftM.toFixed(1)+'m');
   }
   const pre=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
   await page.evaluate(async()=>await window.earthlineDeclarePropertyAtCrosshair16169());
@@ -224,7 +248,7 @@ async function swaleSite(site){
   const maxQ=Math.max(...Object.values(out.quadrants))/(out.safeCount||1);
   const auditCenterDriftM=havMeters17570(site,out.auditCenter),boundaryCenterDriftM=havMeters17570(site,out.boundaryCenter);
   const pass=out.runResult&&out.publicationAllowed&&out.authorityIntersections===0&&auditCenterDriftM<=5&&boundaryCenterDriftM<=20&&out.safeCount>=site.minCount&&out.nearestSwaleM<=site.maxNearest&&out.within40>=site.minWithin40&&maxQ<=site.maxQuadrantShare;
-  const row={site,setup,targetDriftM,mapCenterDriftM,out,auditCenterDriftM,boundaryCenterDriftM,maxQuadrantShare:maxQ,pass,errors};
+  const row={site,setup,targetDriftM,mapCenterDriftM,preFrame,preTargetDriftM,preMapCenterDriftM,out,auditCenterDriftM,boundaryCenterDriftM,maxQuadrantShare:maxQ,pass,errors};
   console.log('EARTHLINE_SWALE_FRAME_17540 '+JSON.stringify({browser:BROWSER,...row}));
   await context.close();
   return row;
