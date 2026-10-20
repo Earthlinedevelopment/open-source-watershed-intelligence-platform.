@@ -7,17 +7,48 @@ on:
       - 'tests/elder-parity-17569.mjs'
       - 'tests/earthline-elder-worker-python-17569.js'
   workflow_dispatch:
+permissions:
+  contents: read
+  statuses: write
 env:
   CANDIDATE_SHA: fdd4d45368850fe0a36ba497bd9cd934759f595e
+  TEST_SHA: 42935d985e92a489500e29dd708109ef4bc683bc
 jobs:
   firefox:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+        with: {ref: fdd4d45368850fe0a36ba497bd9cd934759f595e, fetch-depth: 0}
       - uses: actions/setup-node@v4
         with: {node-version: '20'}
-      - run: npm install --no-save playwright@1.55.0
-      - run: npx playwright install --with-deps firefox
-      - run: echo "Parity target $CANDIDATE_SHA"
-      - run: xvfb-run -a node tests/elder-parity-17569.mjs
+      - name: Bind exact candidate and parity test
+        run: |
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          git fetch origin "$TEST_SHA"
+          git show "$TEST_SHA":tests/elder-parity-17569.mjs > tests/elder-parity-17569.mjs
+          git show "$TEST_SHA":tests/earthline-elder-worker-python-17569.js > tests/earthline-elder-worker-python-17569.js
+          sha256sum earthline-elder-worker-17129.js tests/elder-parity-17569.mjs tests/earthline-elder-worker-python-17569.js
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - name: Run parity gate
+        id: parity
+        continue-on-error: true
+        run: xvfb-run -a node tests/elder-parity-17569.mjs
+      - name: Publish parity status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OUTCOME: ${{ steps.parity.outcome }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python - <<'PY'
+          import json, os
+          state="success" if os.environ["OUTCOME"]=="success" else "failure"
+          body={"state":state,"context":"earthline/elder-parity-17569","description":"native-JS/Python parity "+os.environ["OUTCOME"],"target_url":os.environ["RUN_URL"]}
+          open("/tmp/status.json","w").write(json.dumps(body))
+          PY
+          curl -fsSL -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/${{ github.repository }}/statuses/$CANDIDATE_SHA" -d @/tmp/status.json
+      - name: Enforce parity result
+        if: steps.parity.outcome != 'success'
+        run: exit 1
