@@ -1,15 +1,12 @@
-name: Earthline Apply First-Property Blue Repair 17562
-
+name: Earthline Apply First Property Blue Repair 17562
 on:
   push:
     branches:
       - test/apply-blue-17562
     paths:
       - '.github/workflows/earthline-apply-blue-first-property-17562.yml'
-
 permissions:
   contents: write
-
 jobs:
   patch:
     runs-on: ubuntu-latest
@@ -18,60 +15,57 @@ jobs:
         with:
           ref: candidate/earthline-launch-17562
           fetch-depth: 0
-      - name: Gate Property water to committed current frame
+      - name: Patch first Property water publication
         run: |
           python - <<'PY'
           from pathlib import Path
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
-
-          old_active='''  function propertyActive15824(){
-    return !!(
-      M&&M.analysisReady&&
-      state.mode==="property"&&!state.active
-    );
-  }'''
-          new_active='''  function propertyActive15824(){
-    const publication=M&&M.propertyPublication15816||null;
-    const currentGen=Number(M&&M.searchGen);
-    const publicationGen=Number(publication&&publication.searchGen);
-    const currentPublication=!!(
-      publication&&
-      publication.committed===true&&
-      publication.safetyVerified===true&&
-      (
-        !Number.isFinite(currentGen)||
-        !Number.isFinite(publicationGen)||
-        currentGen===publicationGen
-      )
-    );
-    return !!(
-      M&&M.analysisReady&&
-      state.mode==="property"&&!state.active&&
-      currentPublication
-    );
-  }'''
-
-          old_key='''    const key=[
-      Number(M&&M.searchGen||0),
-      String(M&&M.terrainStamp||""),
-      Number(M&&M.dir&&M.dir.length||0),
-      Number(M&&M.acc&&M.acc.length||0),
-      Number(M&&M.maxAcc||0)
-    ].join("|");'''
-          new_key='''    const frameKey=(Array.isArray(M&&M.analysisBoundaryLngLat)?M.analysisBoundaryLngLat:[])
-      .map(p=>Array.isArray(p)&&p.length>=2?Number(p[0]).toFixed(7)+","+Number(p[1]).toFixed(7):"")
-      .join(";");
-    const key=[
-      Number(M&&M.searchGen||0),
-      Number(M&&M.propertyPublication15816&&M.propertyPublication15816.searchGen||0),
-      String(M&&M.terrainStamp||""),
-      frameKey,
-      Number(M&&M.dir&&M.dir.length||0),
-      Number(M&&M.acc&&M.acc.length||0),
-      Number(M&&M.maxAcc||0)
-    ].join("|");'''
-
+          old_active="""  function propertyActive15824(){
+              return !!(
+                M&&M.analysisReady&&
+                state.mode==="property"&&!state.active
+              );
+            }"""
+          new_active="""  function propertyActive15824(){
+              const publication=M&&M.propertyPublication15816||null;
+              const currentGen=Number(M&&M.searchGen);
+              const publicationGen=Number(publication&&publication.searchGen);
+              const currentPublication=!!(
+                publication&&
+                publication.committed===true&&
+                publication.safetyVerified===true&&
+                (
+                  !Number.isFinite(currentGen)||
+                  !Number.isFinite(publicationGen)||
+                  currentGen===publicationGen
+                )
+              );
+              return !!(
+                M&&M.analysisReady&&
+                state.mode==="property"&&!state.active&&
+                currentPublication
+              );
+            }"""
+          old_key="""    const key=[
+                Number(M&&M.searchGen||0),
+                String(M&&M.terrainStamp||""),
+                Number(M&&M.dir&&M.dir.length||0),
+                Number(M&&M.acc&&M.acc.length||0),
+                Number(M&&M.maxAcc||0)
+              ].join("|");"""
+          new_key="""    const frameKey=(Array.isArray(M&&M.analysisBoundaryLngLat)?M.analysisBoundaryLngLat:[])
+                .map(p=>Array.isArray(p)&&p.length>=2?Number(p[0]).toFixed(7)+","+Number(p[1]).toFixed(7):"")
+                .join(";");
+              const key=[
+                Number(M&&M.searchGen||0),
+                Number(M&&M.propertyPublication15816&&M.propertyPublication15816.searchGen||0),
+                String(M&&M.terrainStamp||""),
+                frameKey,
+                Number(M&&M.dir&&M.dir.length||0),
+                Number(M&&M.acc&&M.acc.length||0),
+                Number(M&&M.maxAcc||0)
+              ].join("|");"""
           marker="EARTHLINE_FIRST_PROPERTY_WATER_COMMIT_GATE_17562"
           if marker not in s:
               if s.count(old_active)!=1:
