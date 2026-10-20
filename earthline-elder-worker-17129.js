@@ -122,14 +122,15 @@ async function prepareTileInput17549(q,bbox){
   if(ow!==w.ww||oh!==w.wh){
     screenOptions17413.width=ow;screenOptions17413.height=oh;screenOptions17413.resampleMethod="nearest";
   }
-  const screenRaw=await image.readRasters(screenOptions17413);
-  const tScreen=performance.now();
   const pix=Math.max(Math.abs(w.rx),Math.abs(w.ry));
   const pad=Math.max(64,Math.ceil(60/Math.max(.01,pix)));
   const ncol0=Math.max(0,w.col0-pad),nrow0=Math.max(0,w.row0-pad);
   const ncol1=Math.min(image.getWidth(),w.col0+w.ww+pad),nrow1=Math.min(image.getHeight(),w.row0+w.wh+pad);
-  const nativeRaw=await image.readRasters({window:[ncol0,nrow0,ncol1,nrow1],samples:[0],interleave:true});
-  const tNative=performance.now();
+  const tReads=performance.now();
+  let tScreen=tReads,tNative=tReads;
+  const screenPromise=image.readRasters(screenOptions17413).then(v=>{tScreen=performance.now();return v});
+  const nativePromise=image.readRasters({window:[ncol0,nrow0,ncol1,nrow1],samples:[0],interleave:true}).then(v=>{tNative=performance.now();return v});
+  const [screenRaw,nativeRaw]=await Promise.all([screenPromise,nativePromise]); /* EARTHLINE 17556 — same exact CHMv2 windows, independent reads overlap only. */
   return {
     q,bbox,url,w,ow,oh,ncol0,nrow0,ncol1,nrow1,
     screen:f32(screenRaw),native:f32(nativeRaw),
@@ -165,8 +166,8 @@ async function processPreparedTile17549(py,prep,maxPerTile=240){
   out.tile=Object.assign({},out.tile||{quadkey:q,status:"OK"},{
     worker_timings_ms:{
       open:Number((tOpen-tTile0).toFixed(1)),
-      screen:Number((tScreen-tOpen).toFixed(1)),
-      native:Number((tNative-tScreen).toFixed(1)),
+      screen:Number((tScreen-tReads).toFixed(1)),
+      native:Number((tNative-tReads).toFixed(1)),
       python:Number((tDone-tPythonStart).toFixed(1)),
       total:Number((tDone-tTile0).toFixed(1))
     }
