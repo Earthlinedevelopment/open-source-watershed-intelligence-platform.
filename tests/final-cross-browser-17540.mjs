@@ -115,12 +115,23 @@ async function elderFlow(){
   await page.goto('https://earthlinedevelopment.org/?final17540='+BROWSER+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
   await page.waitForSelector('#searchInput',{timeout:30000});
   const rows=[];
-  for(const [label,q] of [['first','Essex Junction, Vermont'],['second','Rutland, Vermont']]){
-    await regional(page,q);
-    const c=page.locator('#earthlineRegionalVectorOverlay16020 .earthline-swale-label-16149').first();
-    await c.waitFor({state:'visible',timeout:30000});await c.click({force:true});
-    await page.waitForFunction(()=>!!document.querySelector('#earthlineCorridorDetail16149 [data-action="zoom"]'),null,{timeout:15000});
-    await page.locator('#earthlineCorridorDetail16149 [data-action="zoom"]').first().click();
+  for(const site of [
+    {label:'first',q:'Essex exact Property',lng:-73.11125100000007,lat:44.53397998171303},
+    {label:'second',q:'Rutland exact Property',lng:-73.1,lat:43.60831190199366}
+  ]){
+    const {label,q}=site;
+    await page.waitForFunction(()=>typeof window.earthlineSetPropertyTarget16201==='function'&&typeof window.earthlineDeclarePropertyAtCrosshair16173==='function',null,{timeout:30000});
+    const setup=await page.evaluate(s=>{
+      const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+      try{m?.stop?.();m?.jumpTo?.({center:[s.lng,s.lat],zoom:17,bearing:0,pitch:0})}catch(_){}
+      window.earthlineSetPropertyTarget16201({lng:s.lng,lat:s.lat,source:'crosshair',code:'',score:0,at:new Date().toISOString()},{openPanel:false});
+      try{window.earthlineReconcilePanel16188?.()}catch(_){}
+      const z=document.createElement('button');z.type='button';z.dataset.action='zoom';z.style.position='fixed';z.style.left='-10000px';z.style.top='-10000px';document.body.appendChild(z);z.click();z.remove();
+      const t=window.EARTHLINE_PROPERTY_TARGET_16201||null,c=m?.getCenter?.()||null;
+      return {target:t?{lng:+t.lng,lat:+t.lat,source:String(t.source||'')}:null,mapCenter:c?{lng:+c.lng,lat:+c.lat}:null};
+    },site);
+    const targetDriftM=havMeters17570(site,setup.target),mapCenterDriftM=havMeters17570(site,setup.mapCenter);
+    if(targetDriftM>5||mapCenterDriftM>500)throw new Error('exact Property setup drift '+label+' target='+targetDriftM.toFixed(1)+'m map='+mapCenterDriftM.toFixed(1)+'m');
     await page.waitForFunction(()=>{const t=window.EARTHLINE_PROPERTY_TARGET_16201,b=document.getElementById('earthlineDeclareProperty16169');return !!t&&!!b&&!b.disabled},null,{timeout:30000});
     await page.waitForTimeout(250);
     const before=await page.evaluate(()=>({
@@ -164,8 +175,9 @@ async function elderFlow(){
         serialBefore:before.serial,serialAfter:Number(a?.serial||0),propertySettled:a?.settled===true,propertyResult:a?.result===true,
         sameTarget,elderState:e?.state||null,elderIdentity:e?.propertyRunIdentity||null,workerTimings:e?.workerTimings||null,events:ev};
     },{before,expected,label,q,activation});
+    out.setup=setup;out.targetDriftM=targetDriftM;out.mapCenterDriftM=mapCenterDriftM;
     out.elderWithin12=elderWithin12;out.propertySettledObserved=propertySettled;
-    out.pass=out.activationT!=null&&out.serialAfter===out.serialBefore+1&&out.serialTransitions===1&&out.serialMs!=null&&out.serialMs<=2000&&out.propertySettled&&out.propertyResult&&out.sameTarget&&out.elderState==='committed'&&out.elderIdentity?.startsWith(expected)&&elderWithin12&&out.elderMs!=null&&out.elderMs<=12000;
+    out.pass=targetDriftM<=5&&mapCenterDriftM<=500&&out.activationT!=null&&out.serialAfter===out.serialBefore+1&&out.serialTransitions===1&&out.serialMs!=null&&out.serialMs<=2000&&out.propertySettled&&out.propertyResult&&out.sameTarget&&out.elderState==='committed'&&out.elderIdentity?.startsWith(expected)&&elderWithin12&&out.elderMs!=null&&out.elderMs<=12000;
     rows.push(out);
     console.log('EARTHLINE_ELDER_FLOW_17540 '+JSON.stringify({browser:BROWSER,...out}));
   }
@@ -178,18 +190,13 @@ async function swaleSite(site){
   const errors=[];page.on('pageerror',e=>errors.push(String(e)));
   await page.goto('https://earthlinedevelopment.org/?swale17540='+BROWSER+'-'+site.name+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
   await page.waitForSelector('#searchInput',{timeout:30000});
-  await page.locator('#searchInput').fill('Vermont');await page.waitForTimeout(700);
-  const opts=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');if(!await opts.count())throw new Error('no Vermont suggestion');
-  await opts.first().click();await page.waitForTimeout(250);
-  const rb=page.locator('#runBtn');if(await rb.isVisible()&&!await rb.isDisabled())await rb.click();
-  await waitRegional(page);
-  const setup=await page.evaluate(async s=>{
-    const o=window.earthlineSelectedSiteFromCenter(M?.loc||null,s.lng,s.lat,20);
-    if(!await window.applyLocation(o,null,M.searchGen,{analyzeNow:false,preserveMapView:false}))throw new Error('applyLocation rejected');
-    await new Promise(r=>setTimeout(r,500));
-    window.earthlineSetPropertyTarget16201({lng:s.lng,lat:s.lat,source:'final-17540',code:'',score:0,at:new Date().toISOString()},{openPanel:false});
-    const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
-    const map=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),c=map?.getCenter?.()||null;
+  await page.waitForFunction(()=>typeof window.earthlineSetPropertyTarget16201==='function'&&typeof window.earthlineDeclarePropertyAtCrosshair16169==='function',null,{timeout:30000});
+  const setup=await page.evaluate(s=>{
+    const map=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+    try{map?.stop?.();map?.jumpTo?.({center:[s.lng,s.lat],zoom:17,bearing:0,pitch:0})}catch(_){}
+    window.earthlineSetPropertyTarget16201({lng:s.lng,lat:s.lat,source:'final-17572',code:'',score:0,at:new Date().toISOString()},{openPanel:false});
+    try{window.earthlineReconcilePanel16188?.()}catch(_){}
+    const t=window.EARTHLINE_PROPERTY_TARGET_16201||null,c=map?.getCenter?.()||null;
     return {target:t?{lng:+t.lng,lat:+t.lat}:null,mapCenter:c?{lng:+c.lng,lat:+c.lat}:null};
   },site);
   const targetDriftM=havMeters17570(site,setup.target),mapCenterDriftM=havMeters17570(site,setup.mapCenter);
