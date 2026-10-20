@@ -1,0 +1,33 @@
+name: Earthline Live Priority States 17569
+on:
+  push:
+    branches: [test/live-priority-states-17569]
+    paths:
+      - '.github/workflows/earthline-live-priority-states-17569.yml'
+  workflow_dispatch:
+jobs:
+  property:
+    strategy:
+      fail-fast: false
+      matrix:
+        state: [Arkansas, Iowa, Oklahoma, Vermont, New York, Texas, Colorado]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run one live state
+        shell: bash
+        run: |
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='${{ matrix.state }}' OUT='priority-${{ matrix.state }}.json' node lab/validate-16728-property-50states.mjs
+          cat 'priority-${{ matrix.state }}.json'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: priority-${{ matrix.state }}
+          path: priority-${{ matrix.state }}.json
+          if-no-files-found: warn
