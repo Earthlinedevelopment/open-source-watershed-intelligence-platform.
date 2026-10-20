@@ -83,6 +83,28 @@ async function snap(page){
         return (fc&&typeof window.earthlineFrozenPropertyClearanceAudit16255==='function')
           ?window.earthlineFrozenPropertyClearanceAudit16255(fc):null;
       }catch(e){return {error:String(e&&e.message||e)}}})(),
+      frozenMaskHitDetails:(()=>{try{
+        const fc=M&&M.blockedPropertyRawSwales16176,mask=M&&M.noBuildMask,prov=M&&M.noBuildProvenance15843;
+        const width=Number(prov?.grid?.width||0),height=Number(prov?.grid?.height||0),cellM=Math.max(.25,Number(prov?.cellM||M?.cellM||1));
+        const stepM=Math.max(.30,Math.min(1.0,cellM*.45)),hits=[];
+        const grid=c=>{const g=typeof earthlineLngLatToGrid==='function'?earthlineLngLatToGrid(Number(c[0]),Number(c[1])):lngLatToGrid(Number(c[0]),Number(c[1]));return [Number(g[0]),Number(g[1])]};
+        const dist=(a,b)=>{const lat=(Number(a[1])+Number(b[1]))*.5*Math.PI/180;return Math.hypot((Number(b[0])-Number(a[0]))*111320*Math.max(.05,Math.cos(lat)),(Number(b[1])-Number(a[1]))*111320)};
+        for(let fi=0;fi<(fc?.features||[]).length&&hits.length<12;fi++){
+          const feature=fc.features[fi],cs=feature?.geometry?.coordinates||[];
+          for(let i=1;i<cs.length&&hits.length<12;i++){
+            const a=cs[i-1],b=cs[i],steps=Math.max(1,Math.ceil(dist(a,b)/stepM));
+            for(let k=(i===1?0:1);k<=steps&&hits.length<12;k++){
+              const t=k/steps,c=[Number(a[0])+(Number(b[0])-Number(a[0]))*t,Number(a[1])+(Number(b[1])-Number(a[1]))*t],g=grid(c),x=Math.round(g[0]),y=Math.round(g[1]);
+              if(x>=0&&y>=0&&x<width&&y<height&&mask?.[y*width+x]){
+                const rawIndex=Number(feature?.properties?.rawIndex),engine=M?.blockedPropertyEngineSwales16176?.[rawIndex]||null;
+                hits.push({featureIndex:fi,rawIndex,id:feature?.properties?.id||null,segmentIndex:i-1,k,steps,t,coord:c,grid:g,cell:[x,y],
+                  segmentGridA:grid(a),segmentGridB:grid(b),enginePointCount:engine?.pts?.length||0});
+              }
+            }
+          }
+        }
+        return hits;
+      }catch(e){return [{error:String(e&&e.message||e)}]}})(),
       maskAudit:M&&M.prescriptionMaskAudit15870||null,
       noBuildProvenance:M&&M.noBuildProvenance15843||null,
       handoff:window.EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347||null,
