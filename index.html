@@ -6162,7 +6162,7 @@ function earthlineSafeCleanPath17576(pts,maxS){
   for(const p of cleaned){
     if(!earthlinePathPointUsable(p[0],p[1],maxS))return raw;
     if(prev){
-      const steps=Math.max(1,Math.ceil(Math.hypot(p[0]-prev[0],p[1]-prev[1])*2));
+      const steps=Math.max(1,Math.ceil(Math.hypot(p[0]-prev[0],p[1]-prev[1])*2.5));
       for(let k=1;k<steps;k++){
         const t=k/steps;
         if(!earthlinePathPointUsable(prev[0]+(p[0]-prev[0])*t,prev[1]+(p[1]-prev[1])*t,maxS))return raw;
@@ -6219,7 +6219,7 @@ function earthlineSplitUsableSegments(pts,maxS){
     // swale from visually crossing a narrow driveway/roof between sampled points.
     let ok=earthlinePathPointUsable(p[0],p[1],maxS);
     if(ok&&prev){
-      const steps=Math.max(1,Math.ceil(Math.hypot(p[0]-prev[0],p[1]-prev[1])*2));
+      const steps=Math.max(1,Math.ceil(Math.hypot(p[0]-prev[0],p[1]-prev[1])*2.5));
       for(let k=1;k<steps;k++){
         const t=k/steps;
         if(!earthlinePathPointUsable(prev[0]+(p[0]-prev[0])*t,prev[1]+(p[1]-prev[1])*t,maxS)){ok=false;break;}
