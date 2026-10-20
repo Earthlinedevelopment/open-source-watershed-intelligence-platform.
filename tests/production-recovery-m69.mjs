@@ -119,8 +119,8 @@ for(const c of cases){
   if(!(await corridor.count()))throw new Error(c.name+' no visible Regional corridor control');
   await corridor.click({timeout:15000});
   await page.waitForTimeout(250);
-  let zoom=page.getByRole('button',{name:/zoom to location/i}).first();
-  if(!(await zoom.count()))zoom=page.locator('button').filter({hasText:/zoom to location/i}).first();
+  let zoom=page.getByRole('button',{name:/zoom to (?:this )?location/i}).first();
+  if(!(await zoom.count()))zoom=page.locator('button').filter({hasText:/zoom to (?:this )?location/i}).first();
   if(!(await zoom.count()))throw new Error(c.name+' no Zoom to Location control after corridor selection');
   await zoom.click({timeout:15000});
   await page.waitForTimeout(1200);
