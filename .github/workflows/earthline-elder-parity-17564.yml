@@ -1,0 +1,21 @@
+name: Earthline Elder Parity 17564
+on:
+  push:
+    branches: [test/elder-parity-17564]
+    paths:
+      - '.github/workflows/earthline-elder-parity-17564.yml'
+      - 'tests/elder-parity-17564.mjs'
+      - 'tests/earthline-elder-worker-python-17560.js'
+      - 'earthline-elder-worker-17129.js'
+  workflow_dispatch:
+jobs:
+  firefox:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: npm install --no-save playwright@1.55.0
+      - run: npx playwright install --with-deps firefox
+      - run: xvfb-run -a node tests/elder-parity-17564.mjs
