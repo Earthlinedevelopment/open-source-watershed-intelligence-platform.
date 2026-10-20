@@ -29,8 +29,13 @@ async function newPage(){
   return {context,page};
 }
 
-async function waitRegional(page){
-  await page.waitForFunction(()=>/published\./i.test(String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'')),null,{timeout:120000,polling:100});
+async function waitRegional(page,priorToken=''){
+  await page.waitForFunction(prior=>{
+    const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+    const token=String(d?.runToken||window.EARTHLINE_ACTIVE_RUN_TOKEN_16151||'');
+    const published=String(document.documentElement.dataset.earthlineRunState||'')==='published';
+    return !!token&&token!==String(prior||'')&&published;
+  },priorToken,{timeout:120000,polling:100});
 }
 
 async function regional(page,q){
@@ -42,8 +47,9 @@ async function regional(page,q){
   for(let n=0;n<count;n++){const txt=String(await o.nth(n).innerText()).replace(/\s+/g,' ').trim();labels.push(txt);if(pick<0&&txt.toLowerCase().includes(wanted))pick=n;}
   if(pick<0)throw new Error('no deterministic suggestion '+q+' options='+JSON.stringify(labels));
   await o.nth(pick).click();await page.waitForTimeout(250);
+  const priorToken=await page.evaluate(()=>String(window.EARTHLINE_ACTIVE_RUN_TOKEN_16151||''));
   const b=page.locator('#runBtn');if(await b.isVisible()&&!await b.isDisabled())await b.click();
-  await waitRegional(page);
+  await waitRegional(page,priorToken);
 }
 
 async function elderFlow(){
