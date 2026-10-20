@@ -6150,6 +6150,29 @@ function earthlineCleanPath(pts){
   return sm;
 }
 
+/* EARTHLINE 17576 — smoothing may not move a scientifically safe contour into
+   the frozen no-build mask. Validate the smoothed path with the same Property
+   usability owner; if smoothing creates any conflict, retain the already-verified
+   unsmoothed contour. Exclusion masks, buffers, thresholds and ranking are unchanged. */
+function earthlineSafeCleanPath17576(pts,maxS){
+  const raw=Array.isArray(pts)?pts.map(p=>[Number(p[0]),Number(p[1])]):[];
+  const cleaned=earthlineCleanPath(raw);
+  if(cleaned.length<2)return raw;
+  let prev=null;
+  for(const p of cleaned){
+    if(!earthlinePathPointUsable(p[0],p[1],maxS))return raw;
+    if(prev){
+      const steps=Math.max(1,Math.ceil(Math.hypot(p[0]-prev[0],p[1]-prev[1])*2));
+      for(let k=1;k<steps;k++){
+        const t=k/steps;
+        if(!earthlinePathPointUsable(prev[0]+(p[0]-prev[0])*t,prev[1]+(p[1]-prev[1])*t,maxS))return raw;
+      }
+    }
+    prev=p;
+  }
+  return cleaned;
+}
+
 
 // Engineering setback assumptions for screening only. These are intentionally conservative,
 // because an infiltration swale too close to a foundation, driveway, or road can create
@@ -6204,12 +6227,12 @@ function earthlineSplitUsableSegments(pts,maxS){
     }
     if(ok)cur.push(p);
     else{
-      if(earthlineSegmentLengthM(cur)>=minM)segs.push(earthlineCleanPath(cur));
+      if(earthlineSegmentLengthM(cur)>=minM)segs.push(earthlineSafeCleanPath17576(cur,maxS));
       cur=[];
     }
     prev=p;
   }
-  if(earthlineSegmentLengthM(cur)>=minM)segs.push(earthlineCleanPath(cur));
+  if(earthlineSegmentLengthM(cur)>=minM)segs.push(earthlineSafeCleanPath17576(cur,maxS));
   segs.sort((a,b)=>earthlineSegmentLengthM(b)-earthlineSegmentLengthM(a));
   return segs;
 }
@@ -6259,7 +6282,7 @@ function earthlineJoinPathsIfCompatible(a,b,maxS,maxGapM){
     for(let k=1;k<n;k++){
       const t=k/n;bridgePts.push([ae[0]+(bs[0]-ae[0])*t,ae[1]+(bs[1]-ae[1])*t]);
     }
-    const joined=earthlineCleanPath(pa.concat(bridgePts,pb));
+    const joined=earthlineSafeCleanPath17576(pa.concat(bridgePts,pb),maxS);
     const rank=gapM+(1-earthlineDot2(ta,tb))*2;
     if(!best||rank<best.rank)best={pts:joined,rank};
   }
