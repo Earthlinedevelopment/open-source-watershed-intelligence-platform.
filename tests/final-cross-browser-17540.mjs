@@ -186,7 +186,26 @@ async function elderFlow(){
       return Number(a?.serial||0)>s&&a?.settled===true;
     },before.serial,{timeout:120000,polling:50}).then(()=>true).catch(()=>false);
     const [elderWithin12,propertySettled]=await Promise.all([elderP,propertyP]);
-    await page.waitForTimeout(100);
+    /* 17578 live-production regression gate: the unapproved exclusion-evidence
+       card must stay absent, and committed Property blue water must become visible
+       and remain visible rather than flashing and disappearing. */
+    const presentationReady=await page.waitForFunction(()=>{
+      const card=document.getElementById('earthlineExclusionEvidence16516');
+      const svg=document.getElementById('earthlinePropertyWaterOverlay15824');
+      const water=!!svg&&getComputedStyle(svg).display!=='none'&&svg.querySelectorAll('path.water-core').length>0;
+      return !card&&water;
+    },null,{timeout:6000,polling:100}).then(()=>true).catch(()=>false);
+    await page.waitForTimeout(1500);
+    const presentation=await page.evaluate(()=>{
+      const card=document.getElementById('earthlineExclusionEvidence16516');
+      const svg=document.getElementById('earthlinePropertyWaterOverlay15824');
+      return {
+        evidenceCardPresent:!!card,
+        waterDisplay:svg?getComputedStyle(svg).display:null,
+        waterCorePaths:svg?svg.querySelectorAll('path.water-core').length:0,
+        waterVisible:!!svg&&getComputedStyle(svg).display!=='none'&&svg.querySelectorAll('path.water-core').length>0
+      };
+    });
     const out=await page.evaluate(({before,expected,label,q,activation})=>{
       const ev=window.__earthlineFinal17540.events.slice(before.eventCount);
       const commit=ev.find(x=>x.kind==='elder-commit'&&String(x.identity||'').startsWith(expected))||null;
@@ -203,7 +222,8 @@ async function elderFlow(){
     out.setup=setup;out.targetDriftM=targetDriftM;out.mapCenterDriftM=mapCenterDriftM;
     out.preActivationFrame=preActivationFrame;out.preTargetDriftM=preTargetDriftM;out.preMapCenterDriftM=preMapCenterDriftM;
     out.elderWithin12=elderWithin12;out.propertySettledObserved=propertySettled;
-    out.pass=targetDriftM<=5&&mapCenterDriftM<=500&&preTargetDriftM<=5&&preMapCenterDriftM<=500&&out.activationT!=null&&out.serialAfter===out.serialBefore+1&&out.serialTransitions===1&&out.serialMs!=null&&out.serialMs<=2000&&out.propertySettled&&out.propertyResult&&out.sameTarget&&out.elderState==='committed'&&out.elderIdentity?.startsWith(expected)&&elderWithin12&&out.elderMs!=null&&out.elderMs<=12000;
+    out.presentationReady=presentationReady;out.presentation=presentation;
+    out.pass=targetDriftM<=5&&mapCenterDriftM<=500&&preTargetDriftM<=5&&preMapCenterDriftM<=500&&out.activationT!=null&&out.serialAfter===out.serialBefore+1&&out.serialTransitions===1&&out.serialMs!=null&&out.serialMs<=2000&&out.propertySettled&&out.propertyResult&&out.sameTarget&&out.elderState==='committed'&&out.elderIdentity?.startsWith(expected)&&elderWithin12&&out.elderMs!=null&&out.elderMs<=12000&&presentationReady&&presentation.evidenceCardPresent===false&&presentation.waterVisible===true;
     rows.push(out);
     console.log('EARTHLINE_ELDER_FLOW_17540 '+JSON.stringify({browser:BROWSER,...out}));
   }
