@@ -25,7 +25,8 @@ async function runRegional(page,stateName){
     const exact=String(pkg?.identity?.name||'').toLowerCase()===String(expected).toLowerCase();
     const vt=String(expected).toLowerCase()==='vermont'&&String(pub?.runToken||'').toLowerCase().includes('vermont');
     const generated=Number(pub?.generated??0),visible=Number(disp?.swaleLines??0);
-    return (exact||vt)&& (!!err|| (!!audit&&generated>0&&visible===generated));
+    const intentionallySuppressed=!!(disp?.corridorGeometryVisible===false&&Number(disp?.generatedSwales||0)===generated&&Number(disp?.swaleGradeLabels||0)>0);
+    return (exact||vt)&& (!!err|| (!!audit&&generated>0&&(visible===generated||intentionallySuppressed)));
   },stateName,{timeout:60000,polling:100});
   const err=await page.evaluate(()=>window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null);
   if(err)throw new Error('regional '+JSON.stringify(err));
