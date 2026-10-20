@@ -1,0 +1,39 @@
+name: Earthline First Property Blue Gate 17562
+on:
+  push:
+    branches:
+      - test/first-property-blue-17562
+    paths:
+      - '.github/workflows/earthline-first-property-blue-17562.yml'
+permissions:
+  contents: read
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17562
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Bind exact test
+        run: |
+          git fetch origin test/first-property-blue-17562
+          git show origin/test/first-property-blue-17562:tests/first-property-blue-17562.mjs > /tmp/first-property-blue-17562.mjs
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Serve exact candidate
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          echo $! >/tmp/earthline-http.pid
+          for i in $(seq 1 40); do
+            curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0
+            sleep 0.25
+          done
+          cat /tmp/earthline-http.log
+          exit 1
+      - name: Run first Property blue gate
+        run: env BASE_URL='http://127.0.0.1:8787' node /tmp/first-property-blue-17562.mjs
