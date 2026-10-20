@@ -1812,8 +1812,8 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       clearTimeout(corridorPrimeTimer17558);
       corridorPrimeTimer17558=setTimeout(()=>{
         try{
-          const target=window.EARTHLINE_PROPERTY_TARGET_16201||null,m=map();
-          if(target&&!target.code&&String(target.source||'')==='crosshair'&&!m?.isMoving?.())void dynamicPropertyEvidence(true);
+          const target=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+          if(target&&!target.code&&String(target.source||'')==='crosshair')void dynamicPropertyEvidence(true);
         }catch(_){}
       },300); /* EARTHLINE 17558 — one bounded post-Zoom prime after existing moveend owner stabilizes target. */
     }
