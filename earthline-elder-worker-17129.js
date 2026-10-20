@@ -100,7 +100,7 @@ function projectedWindow(image,bbox){
 async function getTile(q){
   let cached=tileCache.get(q);
   if(!cached){
-    cached=(async()=>{const tif=await fromUrl(RANGE_PROXY+"?q="+encodeURIComponent(q),{cacheSize:96});const image=await tif.getImage();return {tif,image}})();
+    cached=(async()=>{const tif=await fromUrl(RANGE_PROXY+"?q="+encodeURIComponent(q),{blockSize:1048576,cacheSize:12});const image=await tif.getImage();return {tif,image}})();
     tileCache.set(q,cached);
   }
   try{return await cached}catch(err){tileCache.delete(q);throw err}
