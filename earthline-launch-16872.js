@@ -1798,6 +1798,24 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     window.earthlineOpenCorridorDetail16149=wrapped;
     return true;
   }
+  function wrapPropertyTargetPrefetch17565(){
+    const prior=window.earthlineSetPropertyTarget16201;
+    if(typeof prior!=='function'||prior.__earthlineElderPrefetch17565)return false;
+    const wrapped=function(target,options){
+      const out=prior.apply(this,arguments);
+      if(out){
+        try{
+          const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+          if(t&&t.code&&Number.isFinite(Number(t.lng))&&Number.isFinite(Number(t.lat)))void prefetchProperty17174();
+        }catch(_){}
+      }
+      return out;
+    };
+    wrapped.__earthlineElderPrefetch17565=true;
+    wrapped.__earthlineElderPrefetch17565Original=prior;
+    window.earthlineSetPropertyTarget16201=wrapped;
+    return true;
+  } /* EARTHLINE 17565 — reuse the canonical target-finalization owner to begin existing Elder I/O prefetch for a selected corridor; no new map/camera/render listener. */
   let corridorPrimeTimer17558=0;
   function click(e){
     const t=e.target?.closest?.('button,a,[role="button"],#earthlineRailData16488,#earthlineVermontReport16149');
@@ -1850,6 +1868,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   } /* EARTHLINE_ELDER_STAGGERED_PROPERTY_PRIME_17216 */
   function install(){
     wrapCorridor();
+    wrapPropertyTargetPrefetch17565();
     document.addEventListener('pointerdown',e=>{
       const b=e.target?.closest?.('#earthlineDeclareProperty16169');
       if(!b||b.disabled)return;
