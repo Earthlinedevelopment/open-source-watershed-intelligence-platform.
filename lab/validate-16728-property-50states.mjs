@@ -76,6 +76,13 @@ async function snap(page){
       stage:ra?.stage||null,settled:ra?.settled===true,result:ra?.result===true,timedOut:ra?.timedOut===true,renderVerified:ra?.renderVerified===true,
       runError:ra?.error||null,stageTimings:ra?.stageTimings||null,
       publicationBlock:window.EARTHLINE_PROPERTY_PUBLICATION_BLOCK_16176||null,
+      frozenClearanceDiagnostic:(()=>{try{
+        const fc=M&&M.blockedPropertyRawSwales16176;
+        return (fc&&typeof window.earthlineFrozenPropertyClearanceAudit16255==='function')
+          ?window.earthlineFrozenPropertyClearanceAudit16255(fc):null;
+      }catch(e){return {error:String(e&&e.message||e)}}})(),
+      maskAudit:M&&M.prescriptionMaskAudit15870||null,
+      noBuildProvenance:M&&M.noBuildProvenance15843||null,
       handoff:window.EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347||null,
       corridors:Number(ra?.corridors??pa?.publicationCount??0),
       safeVisible:sv?.visible===true,safeCount:Number(sv?.count||0),
