@@ -15,7 +15,7 @@ await page.addInitScript(()=>{
     try{
       const box=window.__EARTHLINE_BLUE_FIRST_PROPERTY_17562;
       const svg=document.getElementById('earthlinePropertyWaterOverlay15824');
-      const publication=window.M?.propertyPublication15816||null;
+      const m=(typeof M!=='undefined'?M:null);\n      const publication=m?.propertyPublication15816||null;
       const committed=publication?.committed===true;
       if(svg){
         const cs=getComputedStyle(svg);
@@ -25,7 +25,7 @@ await page.addInitScript(()=>{
             t:performance.now(),
             display:cs.display,
             children:svg.childElementCount,
-            searchGen:Number(window.M?.searchGen||0),
+            searchGen:Number(m?.searchGen||0),
             publication:publication?{committed:publication.committed===true,searchGen:Number(publication.searchGen||0),safetyVerified:publication.safetyVerified===true}:null
           });
         }
@@ -60,9 +60,9 @@ await page.waitForFunction(()=>{
 },null,{timeout:150000,polling:100});
 
 await page.evaluate(async site=>{
-  const o=window.earthlineSelectedSiteFromCenter(window.M?.loc||null,site.lng,site.lat,20);
+  const m=(typeof M!=='undefined'?M:null);\n  const o=window.earthlineSelectedSiteFromCenter(m?.loc||null,site.lng,site.lat,20);
   if(!o) throw new Error('selected site object unavailable');
-  const ok=await window.applyLocation(o,null,window.M.searchGen,{analyzeNow:false,preserveMapView:false});
+  const ok=await window.applyLocation(o,null,m.searchGen,{analyzeNow:false,preserveMapView:false});
   if(!ok) throw new Error('applyLocation rejected target');
   await new Promise(r=>setTimeout(r,500));
   if(typeof window.earthlineSetPropertyTarget16201!=='function') throw new Error('Property target owner unavailable');
@@ -82,7 +82,7 @@ await page.waitForTimeout(800);
 
 const out=await page.evaluate(site=>{
   const box=window.__EARTHLINE_BLUE_FIRST_PROPERTY_17562||{};
-  const m=window.M||{};
+  const m=(typeof M!=='undefined'?M:{});
   const pub=m.propertyPublication15816||null;
   const audit=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
   const water=m.authoritativeWaterPaths15824||{features:[]};
@@ -125,7 +125,7 @@ const out=await page.evaluate(site=>{
 const pass=
   out.precommitBlue.length===0&&
   out.publication?.committed===true&&
-  Number(out.publication?.searchGen)===Number(await page.evaluate(()=>window.M?.searchGen))&&
+  Number(out.publication?.searchGen)===Number(await page.evaluate(()=>{const m=(typeof M!=='undefined'?M:null);return m?.searchGen;}))&&
   out.propertyAudit?.settled===true&&
   out.propertyAudit?.result===true&&
   out.water.outsideCount===0;
