@@ -99,7 +99,7 @@ for(const stateName of STATES){
   const page=await browser.newPage({viewport:{width:1600,height:900}});
   if(LOCAL_INDEX_BODY){
     await page.route('**/*',async route=>{
-      const req=route.request(),u=new URL(req.url());
+      const req=route.request(),u=new globalThis.URL(req.url());
       if(req.resourceType()==='document'&&/^(?:www\.)?earthlinedevelopment\.org$/i.test(u.hostname)&&u.pathname==='/'){
         return route.fulfill({status:200,body:LOCAL_INDEX_BODY,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
       }
