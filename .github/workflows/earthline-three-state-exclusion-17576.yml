@@ -1,0 +1,27 @@
+name: Earthline Three-State Exclusion Diagnostic 17576
+on:
+  push:
+    branches: [test/exclusion-three-17576]
+    paths:
+      - '.github/workflows/earthline-three-state-exclusion-17576.yml'
+      - 'lab/validate-16728-property-50states.mjs'
+  workflow_dispatch:
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: test/exclusion-three-17576, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run Alaska Minnesota Mississippi
+        run: |
+          set +e
+          EARTHLINE_URL='https://earthlinedevelopment.org/' STATES='Alaska|Minnesota|Mississippi' OUT='property-three-17576.json' node lab/validate-16728-property-50states.mjs
+          code=$?
+          cat property-three-17576.json
+          exit $code
