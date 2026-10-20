@@ -1798,6 +1798,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     window.earthlineOpenCorridorDetail16149=wrapped;
     return true;
   }
+  let corridorPrimeTimer17558=0;
   function click(e){
     const t=e.target?.closest?.('button,a,[role="button"],#earthlineRailData16488,#earthlineVermontReport16149');
     if(!t)return;
@@ -1808,12 +1809,13 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
        before this document-bubble owner. Prime only the finalized crosshair target;
        no new click/camera listener and terminal Property remains sole publisher. */
     if(t.matches?.('[data-action="zoom"]')){
-      queueMicrotask(()=>{
+      clearTimeout(corridorPrimeTimer17558);
+      corridorPrimeTimer17558=setTimeout(()=>{
         try{
-          const target=window.EARTHLINE_PROPERTY_TARGET_16201||null;
-          if(target&&!target.code&&String(target.source||'')==='crosshair')void dynamicPropertyEvidence(true);
+          const target=window.EARTHLINE_PROPERTY_TARGET_16201||null,m=map();
+          if(target&&!target.code&&String(target.source||'')==='crosshair'&&!m?.isMoving?.())void dynamicPropertyEvidence(true);
         }catch(_){}
-      });
+      },300); /* EARTHLINE 17558 — one bounded post-Zoom prime after existing moveend owner stabilizes target. */
     }
     /* EARTHLINE 17133 — Elder is downstream of Property publication; Zoom no longer invokes Elder refresh. */
   }
