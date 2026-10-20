@@ -22,7 +22,7 @@ jobs:
       - name: Bind exact test
         run: |
           git fetch origin test/first-property-blue-17562
-          git show origin/test/first-property-blue-17562:tests/first-property-blue-17562.mjs > /tmp/first-property-blue-17562.mjs
+          git show origin/test/first-property-blue-17562:tests/first-property-blue-17562.mjs > tests/first-property-blue-17562.mjs
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
       - name: Serve exact candidate
@@ -36,4 +36,4 @@ jobs:
           cat /tmp/earthline-http.log
           exit 1
       - name: Run first Property blue gate
-        run: env BASE_URL='http://127.0.0.1:8787' node /tmp/first-property-blue-17562.mjs
+        run: env BASE_URL='http://127.0.0.1:8787' node tests/first-property-blue-17562.mjs
