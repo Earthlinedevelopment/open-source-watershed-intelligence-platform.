@@ -1804,6 +1804,17 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     if(t.id==='earthlineRailData16488')dataBlock(state.lastSummary||summarize(state.active));
     if(t.id==='earthlineVermontReport16149')reportBlock(state.lastSummary||summarize(state.active));
     const label=String(t.getAttribute?.('aria-label')||t.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+    /* EARTHLINE 17557 — the existing corridor Zoom click owner has already run
+       before this document-bubble owner. Prime only the finalized crosshair target;
+       no new click/camera listener and terminal Property remains sole publisher. */
+    if(t.matches?.('[data-action="zoom"]')){
+      queueMicrotask(()=>{
+        try{
+          const target=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+          if(target&&!target.code&&String(target.source||'')==='crosshair')void dynamicPropertyEvidence(true);
+        }catch(_){}
+      });
+    }
     /* EARTHLINE 17133 — Elder is downstream of Property publication; Zoom no longer invokes Elder refresh. */
   }
   function hash(){if(location.hash==='#swales-explained')howParagraph()}
