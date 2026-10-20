@@ -4,6 +4,8 @@ import fs from 'node:fs';
 const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
 const STATES=(process.env.STATES||'').split('|').map(s=>s.trim()).filter(Boolean);
 const OUT=process.env.OUT||'property50.json';
+const LOCAL_INDEX=process.env.LOCAL_INDEX||'';
+const LOCAL_INDEX_BODY=LOCAL_INDEX?fs.readFileSync(LOCAL_INDEX,'utf8'):null;
 if(!STATES.length)throw new Error('STATES required');
 const browser=await chromium.launch({headless:true});
 const rows=[];
@@ -95,6 +97,15 @@ async function snap(page){
 
 for(const stateName of STATES){
   const page=await browser.newPage({viewport:{width:1600,height:900}});
+  if(LOCAL_INDEX_BODY){
+    await page.route('**/*',async route=>{
+      const req=route.request(),u=new URL(req.url());
+      if(req.resourceType()==='document'&&/^(?:www\.)?earthlinedevelopment\.org$/i.test(u.hostname)&&u.pathname==='/'){
+        return route.fulfill({status:200,body:LOCAL_INDEX_BODY,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
+      }
+      return route.continue();
+    });
+  }
   const started=Date.now();let regionalMs=null,propertyMs=null,error=null,usedTarget=null;const attempts=[];
   try{
     regionalMs=await runRegional(page,stateName);
