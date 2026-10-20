@@ -1,1 +1,19 @@
-name: Earthline Regional Stall Diagnostic 17569\non:\n  push:\n    branches: [test/regional-stall-diag-17569]\n    paths:\n      - '.github/workflows/earthline-regional-stall-diag-17569.yml'\n      - 'tests/regional-stall-diag-17569.mjs'\njobs:\n  diag:\n    runs-on: ubuntu-24.04\n    timeout-minutes: 10\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with: {node-version: '20'}\n      - run: |\n          npm install --no-save playwright@1.55.0\n          npx playwright install --with-deps chromium\n      - run: STATES='Arkansas|New York' node tests/regional-stall-diag-17569.mjs
+name: Earthline Regional Stall Diagnostic 17569
+on:
+  push:
+    branches: [test/regional-stall-diag-17569]
+    paths:
+      - '.github/workflows/earthline-regional-stall-diag-17569.yml'
+      - 'tests/regional-stall-diag-17569.mjs'
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: STATES='Arkansas|New York' node tests/regional-stall-diag-17569.mjs
