@@ -15,7 +15,8 @@ await page.addInitScript(()=>{
     try{
       const box=window.__EARTHLINE_BLUE_FIRST_PROPERTY_17562;
       const svg=document.getElementById('earthlinePropertyWaterOverlay15824');
-      const m=(typeof M!=='undefined'?M:null);\n      const publication=m?.propertyPublication15816||null;
+      const m=(typeof M!=='undefined'?M:null);
+      const publication=m?.propertyPublication15816||null;
       const committed=publication?.committed===true;
       if(svg){
         const cs=getComputedStyle(svg);
@@ -60,7 +61,8 @@ await page.waitForFunction(()=>{
 },null,{timeout:150000,polling:100});
 
 await page.evaluate(async site=>{
-  const m=(typeof M!=='undefined'?M:null);\n  const o=window.earthlineSelectedSiteFromCenter(m?.loc||null,site.lng,site.lat,20);
+  const m=(typeof M!=='undefined'?M:null);
+  const o=window.earthlineSelectedSiteFromCenter(m?.loc||null,site.lng,site.lat,20);
   if(!o) throw new Error('selected site object unavailable');
   const ok=await window.applyLocation(o,null,m.searchGen,{analyzeNow:false,preserveMapView:false});
   if(!ok) throw new Error('applyLocation rejected target');
