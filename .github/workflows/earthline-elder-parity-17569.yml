@@ -7,6 +7,8 @@ on:
       - 'tests/elder-parity-17569.mjs'
       - 'tests/earthline-elder-worker-python-17569.js'
   workflow_dispatch:
+env:
+  CANDIDATE_SHA: fdd4d45368850fe0a36ba497bd9cd934759f595e
 jobs:
   firefox:
     runs-on: ubuntu-24.04
@@ -17,4 +19,5 @@ jobs:
         with: {node-version: '20'}
       - run: npm install --no-save playwright@1.55.0
       - run: npx playwright install --with-deps firefox
+      - run: echo "Parity target $CANDIDATE_SHA"
       - run: xvfb-run -a node tests/elder-parity-17569.mjs
