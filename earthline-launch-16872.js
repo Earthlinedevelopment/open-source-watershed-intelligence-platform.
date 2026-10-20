@@ -2071,11 +2071,11 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     'earthline-property-safe-water-16221'
   ];
   const NATURAL=[
-    'earthline-property-swale-footprint-16169',
-    'earthline-property-swale-casing-16169',
-    'earthline-property-swale-neutral-16169',
-    'earthline-property-swale-up-16169',
-    'earthline-property-swale-flip-16169'
+    'earthline-property-swale-footprint-16174',
+    'earthline-property-swale-natural-casing-16174',
+    'earthline-property-swale-neutral-16177',
+    'earthline-property-swale-natural-up-16174',
+    'earthline-property-swale-natural-flip-16174'
   ];
   function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return window.earthlineMap||null}}
   function removeEvidenceBox(){try{document.getElementById(EVIDENCE_ID)?.remove()}catch(_){}}
