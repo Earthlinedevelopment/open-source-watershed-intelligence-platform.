@@ -116,8 +116,28 @@ async function processTileJS(q,bbox,maxPerTile=240,preserveAllEligible=true){
   const tOpen=performance.now(),w=projectedWindow(image,bbox);if(!w)return {features:[],tile:{quadkey:q,status:"NO_INTERSECTION"}};
   const aspect=w.ww/Math.max(1,w.wh);let ow,oh;if(Math.max(w.ww,w.wh)<=1024){ow=w.ww;oh=w.wh}else if(aspect>=1){ow=1024;oh=Math.max(1,Math.round(1024/aspect))}else{oh=1024;ow=Math.max(1,Math.round(1024*aspect))}
   const opts={window:[w.col0,w.row0,w.col0+w.ww,w.row0+w.wh],samples:[0],interleave:true};if(ow!==w.ww||oh!==w.wh){opts.width=ow;opts.height=oh;opts.resampleMethod="nearest"}
-  const screen=f32(await image.readRasters(opts)),tScreen=performance.now(),pix=Math.max(Math.abs(w.rx),Math.abs(w.ry)),pad=Math.max(64,Math.ceil(60/Math.max(.01,pix))),ncol0=Math.max(0,w.col0-pad),nrow0=Math.max(0,w.row0-pad),ncol1=Math.min(image.getWidth(),w.col0+w.ww+pad),nrow1=Math.min(image.getHeight(),w.row0+w.wh+pad);
-  const native=f32(await image.readRasters({window:[ncol0,nrow0,ncol1,nrow1],samples:[0],interleave:true})),tNative=performance.now(),nh=nrow1-nrow0,nw=ncol1-ncol0;
+  const pix=Math.max(Math.abs(w.rx),Math.abs(w.ry)),pad=Math.max(64,Math.ceil(60/Math.max(.01,pix))),ncol0=Math.max(0,w.col0-pad),nrow0=Math.max(0,w.row0-pad),ncol1=Math.min(image.getWidth(),w.col0+w.ww+pad),nrow1=Math.min(image.getHeight(),w.row0+w.wh+pad),nh=nrow1-nrow0,nw=ncol1-ncol0;
+  /* EARTHLINE 17564 — I/O-only exact-window reuse. At native screen resolution,
+     the screen window is an exact subset of the already-required padded native
+     CHMv2 window. Read that source window once and slice the identical pixels
+     instead of issuing a second GeoTIFF range/decode pass. Resampled screens keep
+     the unchanged GeoTIFF read path. No thresholds, context radius, refinement,
+     ranking, dedupe, cohort prior, or display thinning change. */
+  let screen,native,tScreen,tNative;
+  if(ow===w.ww&&oh===w.wh){
+    native=f32(await image.readRasters({window:[ncol0,nrow0,ncol1,nrow1],samples:[0],interleave:true}));
+    tNative=performance.now();
+    screen=new Float32Array(w.ww*w.wh);
+    const ro=w.row0-nrow0,co=w.col0-ncol0;
+    for(let r=0;r<w.wh;r++)screen.set(native.subarray((ro+r)*nw+co,(ro+r)*nw+co+w.ww),r*w.ww);
+    tScreen=tNative;
+  }else{
+    const reads=await Promise.all([
+      image.readRasters(opts),
+      image.readRasters({window:[ncol0,nrow0,ncol1,nrow1],samples:[0],interleave:true})
+    ]);
+    screen=f32(reads[0]);native=f32(reads[1]);tScreen=performance.now();tNative=tScreen;
+  }
 
   const z=new Float32Array(screen.length),canopy=new Uint8Array(screen.length),woody=[];
   for(let i=0;i<screen.length;i++){let v=screen[i];if(!Number.isFinite(v)||v<0||v>80)v=0;z[i]=v;if(v>=1.5)woody.push(v)}
