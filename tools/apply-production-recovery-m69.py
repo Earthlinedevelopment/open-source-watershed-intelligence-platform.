@@ -12,6 +12,39 @@ def replace_exact(text, old, new, label, expected=1):
         raise SystemExit(f"{label}: expected {expected} occurrence(s), found {count}")
     return text.replace(old, new, expected)
 
+# If the main M69 patch is already present, preserve the pre-existing report-only
+# evidence styling without restoring the unapproved live Property status box.
+if "retained-current-property-water-m69" in s:
+    report_style = '''<style id="earthline-16516-report-evidence-css">
+.el16516-report-evidence{margin:14px 0 18px;padding:13px 15px;border:2px solid #8d9da4;border-left-width:7px;background:#f2f5f3;color:#17323d}
+.el16516-report-evidence strong{display:block;font-size:12px;letter-spacing:.055em;text-transform:uppercase}
+.el16516-report-evidence span{display:block;margin-top:5px;font-size:11px;line-height:1.45}
+.el16516-report-evidence.authoritative{border-color:#4f9b70;background:#edf7f1}.el16516-report-evidence.open-data{border-color:#4b9bb8;background:#edf6f9}.el16516-report-evidence.unavailable{border-color:#c9964d;background:#fff5e6}.el16516-report-evidence.failed{border-color:#cf665f;background:#fff0ef}
+</style>
+'''
+    report_anchor = '<script id="earthline-16516-evidence-grade-js">'
+    if 'id="earthline-16516-report-evidence-css"' not in s:
+        s = replace_exact(s, report_anchor, report_style + report_anchor, "D1 report-only style preservation")
+    if 'id="earthline-16516-evidence-grade-css"' in s:
+        raise SystemExit("D1 live-box CSS unexpectedly restored")
+    if "Support — Help & Documentation" in s or "Upgrade path to live data" in s:
+        raise SystemExit("D3/D4 obsolete Support path returned")
+    if "EARTHLINE_CROSSHAIR_MOVE_HINT_17093" in launch:
+        raise SystemExit("D5 hint owner returned")
+    for marker in (
+        "EARTHLINE_FIRST_PROPERTY_WATER_COMMIT_GATE_17562",
+        "EARTHLINE_PROPERTY_WATER_FRAME_CLIP_17563",
+        "function earthlineFinalizeVectorVerification16343",
+        "M.propertyPublication15816",
+        "authoritativeSafeSwales15815",
+    ):
+        if marker not in s:
+            raise SystemExit(f"Protected marker lost: {marker}")
+    INDEX.write_text(s, encoding="utf-8")
+    LAUNCH.write_text(launch, encoding="utf-8")
+    print("M69 report-style preservation complete")
+    raise SystemExit(0)
+
 # D3 / D4 — remove the unapproved Support surface and obsolete live-path copy.
 s = replace_exact(
     s,
