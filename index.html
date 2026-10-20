@@ -10694,7 +10694,7 @@ function traceLevelContour(sx,sy,L,maxS,dropH,deadline16320=Infinity){
   if(traceLevelContour.earthlineDeadlineHit16320&&Number.isFinite(Number(deadline16320))&&performance.now()>=Number(deadline16320))return [];
   const merged=a.slice().reverse().concat(b);
   if(merged.length<3)return [];
-  const cleaned=earthlineCleanPath(merged);
+  const cleaned=earthlineSafeCleanPath17576(merged,maxS);
   const preserved=earthlineLimitPath15683(cleaned,720);
   preserved.earthlineTermination15860={left:a.earthlineTermination15860||null,right:b.earthlineTermination15860||null};
   return preserved;
