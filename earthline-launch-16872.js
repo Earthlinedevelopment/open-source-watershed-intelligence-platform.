@@ -2051,3 +2051,80 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   },{passive:true});
   window.EARTHLINE_CROSSHAIR_MOVE_HINT_17093={state:'ready',show,remove,showAfterEveryRegional:true};
 })();
+
+
+/* EARTHLINE_LIVE_TWO_DEFECT_REPAIR_17578
+   Requested presentation-only repairs:
+   1) suppress/remove the unapproved exclusion-evidence Status box while retaining
+      the underlying exclusion evidence used by the governed Property safety gate;
+   2) keep the already-verified safe blue Property fallback visible until the
+      natural Property renderer has actually produced rendered features.
+   No swale geometry, hydrology, exclusions, ranking, scoring, camera or map
+   lifecycle owner is changed. */
+(function installEarthlineLiveTwoDefectRepair17578(){
+  'use strict';
+  const EVIDENCE_ID='earthlineExclusionEvidence16516';
+  const SAFE=[
+    'earthline-property-safe-casing-16221',
+    'earthline-property-safe-earth-16221',
+    'earthline-property-safe-life-16221',
+    'earthline-property-safe-water-16221'
+  ];
+  const NATURAL=[
+    'earthline-property-swale-footprint-16169',
+    'earthline-property-swale-casing-16169',
+    'earthline-property-swale-neutral-16169',
+    'earthline-property-swale-up-16169',
+    'earthline-property-swale-flip-16169'
+  ];
+  function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return window.earthlineMap||null}}
+  function removeEvidenceBox(){try{document.getElementById(EVIDENCE_ID)?.remove()}catch(_){}}
+  function suppressEvidenceBox(){
+    try{
+      let st=document.getElementById('earthlineEvidenceBoxSuppression17578');
+      if(!st){st=document.createElement('style');st.id='earthlineEvidenceBoxSuppression17578';st.textContent='#'+EVIDENCE_ID+'{display:none!important}';(document.head||document.documentElement).appendChild(st)}
+    }catch(_){}
+    removeEvidenceBox();
+  }
+  function naturalRendered(mp){
+    try{
+      const ids=NATURAL.filter(id=>mp?.getLayer?.(id));
+      const c=mp?.getCanvas?.();
+      if(!ids.length||!c)return 0;
+      const box=[[0,0],[c.clientWidth||c.width,c.clientHeight||c.height]];
+      return Number((mp.queryRenderedFeatures?.(box,{layers:ids})||[]).length||0);
+    }catch(_){return 0}
+  }
+  function preserveSafeBlueUntilNaturalRendered(){
+    const prior=window.earthlineApplyRendererOwnership15805;
+    if(typeof prior!=='function'||prior.__earthline17578)return false;
+    const wrapped=function(mode){
+      const out=prior.apply(this,arguments);
+      try{
+        if(String(mode||'').toLowerCase()==='property'){
+          const mp=map();
+          if(mp&&naturalRendered(mp)===0){
+            for(const id of SAFE)if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',.98);
+          }
+        }
+      }catch(_){}
+      return out;
+    };
+    wrapped.__earthline17578=true;
+    wrapped.__earthline17578Original=prior;
+    window.earthlineApplyRendererOwnership15805=wrapped;
+    return true;
+  }
+  function install(){
+    suppressEvidenceBox();
+    preserveSafeBlueUntilNaturalRendered();
+    window.EARTHLINE_LIVE_TWO_DEFECT_REPAIR_17578={
+      evidenceBoxSuppressed:true,
+      blueFallbackGuard:true,
+      at:new Date().toISOString()
+    };
+  }
+  suppressEvidenceBox();
+  window.addEventListener('load',install,{once:true});
+  document.addEventListener('earthline:analysis-complete',()=>setTimeout(()=>setTimeout(removeEvidenceBox,0),0),{passive:true});
+})();
