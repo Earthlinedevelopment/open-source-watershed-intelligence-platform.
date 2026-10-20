@@ -23427,17 +23427,15 @@ var prescribeSwales;
 
   function propertyActive15824(){
     const publication=M&&M.propertyPublication15816||null;
-    const currentGen=Number(M&&M.searchGen);
-    const publicationGen=Number(publication&&publication.searchGen);
+    /* EARTHLINE 17578 — live production presentation repair.
+       A committed, safety-verified Property publication owns its blue water display.
+       Do not turn that display off merely because searchGen changes after publication.
+       New Property runs already clear/replace propertyPublication15816, so stale-run
+       protection remains fail-closed without this redundant presentation veto. */
     const currentPublication=!!(
       publication&&
       publication.committed===true&&
-      publication.safetyVerified===true&&
-      (
-        !Number.isFinite(currentGen)||
-        !Number.isFinite(publicationGen)||
-        currentGen===publicationGen
-      )
+      publication.safetyVerified===true
     );
     return !!(
       M&&M.analysisReady&&
@@ -38846,15 +38844,14 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     return Object.freeze({build:BUILD,sourceTier,acquisitionResult,kind,label,detail,exclusionVerified:c.exclusionVerified===true,publicationAllowed:c.verified===true||c.publicationAllowed===true,sourceFeatureCount:Number(c.sourceFeatureCount||c.featureCount||0),processedFeatureCount:Number(c.processedFeatureCount||0)});
   }
   function render(){
-    const root=document.documentElement,tier=String(root.dataset.earthlineAnalysisTier||"").toLowerCase();
-    const slot=document.getElementById("earthlineStatusSlot16188")||document.getElementById("earthlineStatusSection16188");
-    let el=document.getElementById("earthlineExclusionEvidence16516");
-    if(tier!=="property"){if(el)el.remove();return null;}
-    const e=evidence();if(!e||!slot)return e;
-    if(!el){el=document.createElement("div");el.id="earthlineExclusionEvidence16516";el.setAttribute("role","status");slot.prepend(el);}
-    el.dataset.kind=e.kind;el.innerHTML='<div class="el16516-grade"></div><div class="el16516-detail"></div>';
-    el.querySelector(".el16516-grade").textContent=e.label;el.querySelector(".el16516-detail").textContent=e.detail;
-    window.EARTHLINE_EXCLUSION_EVIDENCE_16516=e;return e;
+    /* EARTHLINE 17578 — live production presentation repair.
+       Exclusion evidence remains active for safety/publication/report logic, but the
+       unapproved standalone Status card is never rendered on the public page. */
+    const el=document.getElementById("earthlineExclusionEvidence16516");
+    if(el)el.remove();
+    const e=evidence();
+    window.EARTHLINE_EXCLUSION_EVIDENCE_16516=e;
+    return e;
   }
   function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));}
   function reportHtml(e){if(!e)return "";return '<div class="el16516-report-evidence '+esc(e.kind)+'"><strong>'+esc(e.label)+'</strong><span>'+esc(e.detail)+'</span></div>';}
