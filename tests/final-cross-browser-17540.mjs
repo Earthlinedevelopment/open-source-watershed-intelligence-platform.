@@ -126,6 +126,9 @@ async function elderFlow(){
     await page.waitForFunction(()=>typeof window.earthlineSetPropertyTarget16201==='function'&&typeof window.earthlineDeclarePropertyAtCrosshair16173==='function',null,{timeout:30000});
     const setup=await page.evaluate(s=>{
       const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+      /* 17574: emulate the resolved-location state that a real search installs.
+         The globe owner explicitly yields whenever this authoritative identity exists. */
+      window.EARTHLINE_CHOSEN_LOCATION_16189={query:s.q,label:s.q,sub:'Exact Property test location',lat:+s.lat,lng:+s.lng,area:'20-acre protected frame'};
       try{m?.stop?.();m?.jumpTo?.({center:[s.lng,s.lat],zoom:17,bearing:0,pitch:0})}catch(_){}
       window.earthlineSetPropertyTarget16201({lng:s.lng,lat:s.lat,source:'crosshair',code:'',score:0,at:new Date().toISOString()},{openPanel:false});
       try{window.earthlineReconcilePanel16188?.()}catch(_){}
@@ -208,6 +211,7 @@ async function swaleSite(site){
   await page.waitForTimeout(1800);
   const setup=await page.evaluate(s=>{
     const map=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+    window.EARTHLINE_CHOSEN_LOCATION_16189={query:'Frozen '+s.name,label:'Frozen '+s.name,sub:'Exact swale test location',lat:+s.lat,lng:+s.lng,area:'20-acre protected frame'};
     try{map?.stop?.();map?.jumpTo?.({center:[s.lng,s.lat],zoom:17,bearing:0,pitch:0})}catch(_){}
     window.earthlineSetPropertyTarget16201({lng:s.lng,lat:s.lat,source:'final-17572',code:'',score:0,at:new Date().toISOString()},{openPanel:false});
     try{window.earthlineReconcilePanel16188?.()}catch(_){}
