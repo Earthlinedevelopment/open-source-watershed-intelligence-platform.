@@ -23402,6 +23402,7 @@ var prescribeSwales;
   );
 })();
 </script>
+<!-- EARTHLINE_FIRST_PROPERTY_WATER_COMMIT_GATE_17562: direct D8 water stays hidden until current Property publication commits; cache is exact-frame scoped. -->
 <script id="earthline-build-15824-direct-water-overlay">
 (function(){
   "use strict";
@@ -23425,9 +23426,23 @@ var prescribeSwales;
   let renderQueued=false;
 
   function propertyActive15824(){
+    const publication=M&&M.propertyPublication15816||null;
+    const currentGen=Number(M&&M.searchGen);
+    const publicationGen=Number(publication&&publication.searchGen);
+    const currentPublication=!!(
+      publication&&
+      publication.committed===true&&
+      publication.safetyVerified===true&&
+      (
+        !Number.isFinite(currentGen)||
+        !Number.isFinite(publicationGen)||
+        currentGen===publicationGen
+      )
+    );
     return !!(
       M&&M.analysisReady&&
-      state.mode==="property"&&!state.active
+      state.mode==="property"&&!state.active&&
+      currentPublication
     );
   }
 
@@ -23652,9 +23667,14 @@ var prescribeSwales;
   }
 
   function authoritativeFlow15824(force=false){
+    const frameKey=(Array.isArray(M&&M.analysisBoundaryLngLat)?M.analysisBoundaryLngLat:[])
+      .map(p=>Array.isArray(p)&&p.length>=2?Number(p[0]).toFixed(7)+","+Number(p[1]).toFixed(7):"")
+      .join(";");
     const key=[
       Number(M&&M.searchGen||0),
+      Number(M&&M.propertyPublication15816&&M.propertyPublication15816.searchGen||0),
       String(M&&M.terrainStamp||""),
+      frameKey,
       Number(M&&M.dir&&M.dir.length||0),
       Number(M&&M.acc&&M.acc.length||0),
       Number(M&&M.maxAcc||0)
