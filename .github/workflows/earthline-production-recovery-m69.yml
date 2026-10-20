@@ -1,0 +1,140 @@
+name: Earthline Production Recovery M69
+on:
+  pull_request:
+    branches: [pages-live]
+    paths:
+      - 'tools/apply-production-recovery-m69.py'
+      - '.github/workflows/earthline-production-recovery-m69.yml'
+      - 'index.html'
+      - 'earthline-launch-16872.js'
+      - 'tests/production-recovery-m69.mjs'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-validate:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Apply exact recovery patch
+        shell: bash
+        run: |
+          python3 tools/apply-production-recovery-m69.py
+
+      - name: Static source gates
+        shell: bash
+        run: |
+          git diff --check
+          grep -q 'EARTHLINE_FIRST_PROPERTY_WATER_COMMIT_GATE_17562' index.html
+          grep -q 'EARTHLINE_PROPERTY_WATER_FRAME_CLIP_17563' index.html
+          grep -q 'function earthlineFinalizeVectorVerification16343' index.html
+          grep -q 'retained-current-property-water-m69' index.html
+          ! grep -q 'Support — Help & Documentation' index.html
+          ! grep -q 'Upgrade path to live data' index.html
+          ! grep -q 'data-act="support"' index.html
+          ! grep -q 'EARTHLINE_CROSSHAIR_MOVE_HINT_17093' earthline-launch-16872.js
+          ! grep -q 'Place hand cursor over bare land to move map.' earthline-launch-16872.js
+          node --check earthline-launch-16872.js
+
+      - name: Parse every inline JavaScript block
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import re, subprocess, tempfile
+          from pathlib import Path
+          html=Path('index.html').read_text(encoding='utf-8')
+          blocks=[]
+          for m in re.finditer(r'<script\b([^>]*)>(.*?)</script>',html,re.I|re.S):
+              attrs=m.group(1)
+              body=m.group(2)
+              if re.search(r'\bsrc\s*=',attrs,re.I):
+                  continue
+              tm=re.search(r'\btype\s*=\s*["\']([^"\']+)["\']',attrs,re.I)
+              if tm and tm.group(1).lower() not in ('text/javascript','application/javascript','module'):
+                  continue
+              blocks.append(body)
+          with tempfile.TemporaryDirectory() as d:
+              for i,body in enumerate(blocks):
+                  p=Path(d)/f'inline-{i:03d}.js'
+                  p.write_text(body,encoding='utf-8')
+                  r=subprocess.run(['node','--check',str(p)],capture_output=True,text=True)
+                  if r.returncode:
+                      print(f'INLINE SCRIPT {i} FAILED')
+                      print(r.stderr)
+                      raise SystemExit(r.returncode)
+          print(f'inline scripts parsed: {len(blocks)}')
+          PY
+
+      - name: Commit recovery source change to PR branch
+        shell: bash
+        run: |
+          if git diff --quiet -- index.html earthline-launch-16872.js; then
+            echo 'No source diff to commit.'
+            exit 0
+          fi
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html earthline-launch-16872.js
+          git commit -m "fix: stabilize production recovery D1-D5"
+          git push origin HEAD:${GITHUB_HEAD_REF}
+
+
+  browser-linux:
+    needs: apply-and-validate
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - run: |
+          if [ '${{ matrix.browser }}' = 'firefox' ]; then
+            xvfb-run -a env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='firefox' HEADLESS='false' node tests/production-recovery-m69.mjs
+          else
+            env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='chromium' HEADLESS='true' node tests/production-recovery-m69.mjs
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-recovery-m69-${{ matrix.browser }}
+          path: artifacts/production-recovery-m69
+          if-no-files-found: ignore
+
+  browser-webkit:
+    needs: apply-and-validate
+    runs-on: macos-14
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - run: env EARTHLINE_URL='https://earthlinedevelopment.org/' BROWSER='webkit' HEADLESS='true' node tests/production-recovery-m69.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-recovery-m69-webkit
+          path: artifacts/production-recovery-m69
+          if-no-files-found: ignore
