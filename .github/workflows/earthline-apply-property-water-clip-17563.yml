@@ -1,0 +1,140 @@
+name: Earthline Apply Property Water Frame Clip 17563
+on:
+  push:
+    branches:
+      - test/apply-property-water-clip-17563
+    paths:
+      - '.github/workflows/earthline-apply-property-water-clip-17563.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17563
+          fetch-depth: 0
+      - name: Clip Property water to authoritative frame
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          
+          anchor='''  function validFC15824(value){
+              return !!(
+                value&&value.type==="FeatureCollection"&&
+                Array.isArray(value.features)
+              );
+            }
+          
+            function directD8Flow15824(){'''
+          
+          insert='''  function validFC15824(value){
+              return !!(
+                value&&value.type==="FeatureCollection"&&
+                Array.isArray(value.features)
+              );
+            }
+          
+            /* EARTHLINE_PROPERTY_WATER_FRAME_CLIP_17563
+               Presentation boundary only. Preserve the existing D8/smoothed hydrology,
+               but clip every visible Property-water segment to the authoritative 20-acre
+               analysis frame so smoothing cannot leak endpoints outside the Property AOI. */
+            function propertyFrameBounds15824(){
+              const pts=(Array.isArray(M&&M.analysisBoundaryLngLat)?M.analysisBoundaryLngLat:[])
+                .filter(p=>Array.isArray(p)&&p.length>=2&&Number.isFinite(Number(p[0]))&&Number.isFinite(Number(p[1])));
+              if(pts.length<3)return null;
+              return [
+                Math.min(...pts.map(p=>Number(p[0]))),
+                Math.min(...pts.map(p=>Number(p[1]))),
+                Math.max(...pts.map(p=>Number(p[0]))),
+                Math.max(...pts.map(p=>Number(p[1])))
+              ];
+            }
+            function clipSegmentToBounds15824(a,b,bounds){
+              let x0=Number(a?.[0]),y0=Number(a?.[1]),x1=Number(b?.[0]),y1=Number(b?.[1]);
+              if(![x0,y0,x1,y1].every(Number.isFinite)||!Array.isArray(bounds)||bounds.length!==4)return null;
+              const [west,south,east,north]=bounds,dx=x1-x0,dy=y1-y0;
+              let t0=0,t1=1;
+              const tests=[[-dx,x0-west],[dx,east-x0],[-dy,y0-south],[dy,north-y0]];
+              for(const [p,q] of tests){
+                if(Math.abs(p)<1e-15){if(q<0)return null;continue}
+                const r=q/p;
+                if(p<0){if(r>t1)return null;if(r>t0)t0=r}
+                else{if(r<t0)return null;if(r<t1)t1=r}
+              }
+              if(t1<t0)return null;
+              return [[x0+t0*dx,y0+t0*dy],[x0+t1*dx,y0+t1*dy]];
+            }
+            function clipFlowToPropertyFrame15824(fc){
+              const bounds=propertyFrameBounds15824();
+              if(!bounds||!validFC15824(fc))return emptyFC15824();
+              const out=[];
+              const same=(a,b)=>Math.abs(Number(a?.[0])-Number(b?.[0]))<1e-12&&Math.abs(Number(a?.[1])-Number(b?.[1]))<1e-12;
+              for(const feature of fc.features||[]){
+                const coords=feature?.geometry?.type==="LineString"?feature.geometry.coordinates:[];
+                if(coords.length<2)continue;
+                let current=[];
+                const flush=()=>{
+                  if(current.length>=2){
+                    out.push({
+                      type:"Feature",
+                      properties:Object.assign({},feature.properties||{},{property_frame_clipped_17563:true}),
+                      geometry:{type:"LineString",coordinates:current}
+                    });
+                  }
+                  current=[];
+                };
+                for(let i=1;i<coords.length;i++){
+                  const seg=clipSegmentToBounds15824(coords[i-1],coords[i],bounds);
+                  if(!seg){flush();continue}
+                  if(!current.length)current=[seg[0],seg[1]];
+                  else if(same(current[current.length-1],seg[0])){
+                    if(!same(current[current.length-1],seg[1]))current.push(seg[1]);
+                  }else{
+                    flush();current=[seg[0],seg[1]];
+                  }
+                }
+                flush();
+              }
+              return {type:"FeatureCollection",features:out};
+            }
+          
+            function directD8Flow15824(){'''
+          
+          old_flow='''    const direct=primary.features.length?emptyFC15824():directD8Flow15824();
+              const flow=primary.features.length
+                ?primary
+                :(validFC15824(direct)?direct:emptyFC15824());
+          
+              cachedKey=key;'''
+          
+          new_flow='''    const direct=primary.features.length?emptyFC15824():directD8Flow15824();
+              const rawFlow=primary.features.length
+                ?primary
+                :(validFC15824(direct)?direct:emptyFC15824());
+              const flow=clipFlowToPropertyFrame15824(rawFlow);
+          
+              cachedKey=key;'''
+          
+          marker="EARTHLINE_PROPERTY_WATER_FRAME_CLIP_17563"
+          if marker not in s:
+              if s.count(anchor)!=1:
+                  raise SystemExit(f"expected one direct-water function anchor, found {s.count(anchor)}")
+              if s.count(old_flow)!=1:
+                  raise SystemExit(f"expected one Property water flow selection block, found {s.count(old_flow)}")
+              s=s.replace(anchor,insert,1)
+              s=s.replace(old_flow,new_flow,1)
+              p.write_text(s,encoding="utf-8")
+          
+          PY
+      - name: Commit repair
+        run: |
+          if git diff --quiet -- index.html; then exit 0; fi
+          git config user.name "Earthline CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: clip Property water to exact 20-acre frame 17563"
+          git push origin HEAD:candidate/earthline-launch-17563
