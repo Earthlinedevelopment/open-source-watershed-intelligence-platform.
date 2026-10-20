@@ -41,6 +41,8 @@ await page.addInitScript(()=>{
 await page.goto(BASE+'/?blue17562='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
 const deployedHtml=await page.content();
 if(!deployedHtml.includes('EARTHLINE_FIRST_PROPERTY_WATER_COMMIT_GATE_17562')) throw new Error('live domain is not serving candidate 17562 blue repair');
+const deployedWorker=await page.evaluate(async()=>await (await fetch('/earthline-elder-worker-17129.js?live17564='+Date.now(),{cache:'no-store'})).text());
+if(!deployedWorker.includes('blockSize:1048576')||!deployedWorker.includes('native-js-equivalent-17560')) throw new Error('live domain is not serving candidate 17564 Elder transport worker');
 await page.waitForSelector('#searchInput',{timeout:30000});
 await page.locator('#searchInput').fill('Oklahoma');
 await page.waitForTimeout(900);
