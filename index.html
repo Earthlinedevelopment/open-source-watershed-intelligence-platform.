@@ -3042,7 +3042,6 @@ Projects footer, and Support footer. Core Earthline analysis remains.
 <button class="fitem" data-act="guide"><svg viewbox="0 0 24 24"><path d="M3 5a2 2 0 0 1 2-2h5v18H5a2 2 0 0 1-2-2zM21 5a2 2 0 0 0-2-2h-5v18h5a2 2 0 0 0 2-2z"></path></svg><span class="t"><b>SWALE DESIGN GUIDE</b><span>Design, build, and maintain</span></span></button>
 <button class="fitem" data-act="education"><svg viewbox="0 0 24 24"><path d="m12 4 10 5-10 5L2 9z"></path><path d="M6 11.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-4.5"></path></svg><span class="t"><b>EDUCATION CENTER</b><span>Learn with Earthline Academy</span></span></button>
 <button class="fitem" data-act="projects"><svg viewbox="0 0 24 24"><rect height="16" rx="2" width="18" x="3" y="4"></rect><path d="M3 9h18M9 9v11"></path></svg><span class="t"><b>PROJECTS</b><span>Manage and collaborate</span></span></button>
-<button class="fitem" data-act="support"><svg viewbox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M9.2 9.2a2.8 2.8 0 1 1 4 3.9c-.8.7-1.2 1.1-1.2 2.1"></path><circle cx="12" cy="17.6" fill="currentColor" r=".6"></circle></svg><span class="t"><b>SUPPORT</b><span>Help &amp; Documentation</span></span></button>
 <span aria-label="Earthline build" id="earthlineFooterBuild15784">BUILD-CHECK-15791</span>
 </footer></div>
 <!-- ================= MODAL ================= -->
@@ -9586,9 +9585,6 @@ function reportsHTML(){
 function impactHTML(){
   return "<p>Global impact figures in the top strip summarize verified Earthline activity worldwide: <b>14.2&nbsp;billion gallons</b> identified for recharge potential across <b>1.8&nbsp;million acres</b> analyzed, <b>32,400</b> bioswale opportunities identified, <b>2,350</b> bioswales implemented, <b>$187&nbsp;million</b> in funding opportunities, and <b>892</b> verified projects.</p><div class='callout b'>In this offline build these figures are illustrative platform copy. The live dashboard aggregates them from the project database.</div>";
 }
-function supportHTML(){
-  return "<h5>About this build</h5><p>Earthline Hydrology Platform — final approved design with a real flow engine. Each property runs: seeded heightfield → priority-flood pit fill → D8 flow directions → flow accumulation → rain tributaries with direction arrows → on-contour bioswale prescriptions ranked by intercepted runoff. Fully offline; no tokens or dependencies.</p><h5>Upgrade path to live data</h5><ul><li>Mapbox/MapTiler satellite + terrain tiles (API token)</li><li>Geocoding for any-address search</li><li>USGS 3DEP / LiDAR DEM in place of generated terrain</li><li>Aquifer GIS polygons, NRCS soils, FEMA flood zones</li></ul><h5>Workflow</h5><p>Search → choose storm scenario → follow arrows and tributaries → review ranked corridors → field checklist. Nothing on screen is a construction document until field verification is complete.</p>";
-}
 function handleAction(act){
   if(act==="projects")openModal("Corridor Table — "+M.loc.name,corridorTableHTML());
   else if(act==="reports"){openModal("Earthline Report Generator",reportsHTML());wireReportButtons();}
@@ -9599,7 +9595,6 @@ function handleAction(act){
   else if(act==="guide")openModal("Swale Design Guide — Potential Bioswale Installation",installGuideHTML());
   else if(act==="education")openModal("Earthline Academy — Field Checklist",fieldChecklistHTML());
   else if(act==="network"){openModal("Permaculture Network — Local Implementation Search",networkHTML());wireNetworkButtons();}
-  else if(act==="support")openModal("Support — Help & Documentation",supportHTML());
 }
 function wireReportButtons(){
   const d=document.getElementById("dlReport"),c=document.getElementById("cpReport"),p=document.getElementById("prReport");
@@ -9617,7 +9612,6 @@ function wireNetworkButtons(){
   }));
 }
 document.querySelectorAll("[data-act]").forEach(b=>b.addEventListener("click",()=>handleAction(b.dataset.act)));
-document.getElementById("brandHome").addEventListener("click",()=>handleAction("support"));
 
 /* ---------------- init ---------------- */
 function styleToolButtons(){
@@ -23863,6 +23857,23 @@ var prescribeSwales;
 
     const active=propertyActive15824()&&viewAllowsWater15824();
     if(!active){
+      const retainPublishedPropertyWaterM69=!!(
+        state.mode==="property"&&
+        svg.childElementCount>0&&
+        lastRender&&lastRender.visible===true&&
+        Number(lastRender.visiblePaths||0)>0
+      );
+      if(retainPublishedPropertyWaterM69){
+        svg.style.setProperty("display","block","important");
+        lastRender=Object.assign({},lastRender,{
+          visible:true,
+          reason:"retained-current-property-water-m69",
+          retainedAt:Date.now()
+        });
+        M.directWaterRenderer15824=lastRender;
+        updateStatus15824();
+        return true;
+      }
       svg.style.display="none";
       svg.replaceChildren();
       lastRender={
@@ -38801,23 +38812,6 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </script>
 
 
-<style id="earthline-16516-evidence-grade-css">
-#earthlineExclusionEvidence16516{margin:8px 0 4px;padding:10px 12px;border:1px solid #506777;border-left-width:5px;border-radius:9px;background:#13202a;color:#e7eef7;font-family:"Noto Sans","Segoe UI",Arial,sans-serif}
-#earthlineExclusionEvidence16516 .el16516-grade{font-size:10px;font-weight:900;letter-spacing:.055em;text-transform:uppercase}
-#earthlineExclusionEvidence16516 .el16516-detail{margin-top:4px;font-size:10px;line-height:1.38;color:#bfd0da}
-#earthlineExclusionEvidence16516[data-kind="authoritative"]{border-color:#4f9b70;background:#10251b}
-#earthlineExclusionEvidence16516[data-kind="authoritative"] .el16516-grade{color:#7bd59b}
-#earthlineExclusionEvidence16516[data-kind="open-data"]{border-color:#4b9bb8;background:#10222b}
-#earthlineExclusionEvidence16516[data-kind="open-data"] .el16516-grade{color:#79ccea}
-#earthlineExclusionEvidence16516[data-kind="unavailable"]{border-color:#c9964d;background:#2a2114}
-#earthlineExclusionEvidence16516[data-kind="unavailable"] .el16516-grade{color:#ffd083}
-#earthlineExclusionEvidence16516[data-kind="failed"]{border-color:#cf665f;background:#2b1717}
-#earthlineExclusionEvidence16516[data-kind="failed"] .el16516-grade{color:#ff9e98}
-.el16516-report-evidence{margin:14px 0 18px;padding:13px 15px;border:2px solid #8d9da4;border-left-width:7px;background:#f2f5f3;color:#17323d}
-.el16516-report-evidence strong{display:block;font-size:12px;letter-spacing:.055em;text-transform:uppercase}
-.el16516-report-evidence span{display:block;margin-top:5px;font-size:11px;line-height:1.45}
-.el16516-report-evidence.authoritative{border-color:#4f9b70;background:#edf7f1}.el16516-report-evidence.open-data{border-color:#4b9bb8;background:#edf6f9}.el16516-report-evidence.unavailable{border-color:#c9964d;background:#fff5e6}.el16516-report-evidence.failed{border-color:#cf665f;background:#fff0ef}
-</style>
 <script id="earthline-16516-evidence-grade-js">
 (function(){
   "use strict";
@@ -38846,15 +38840,11 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     return Object.freeze({build:BUILD,sourceTier,acquisitionResult,kind,label,detail,exclusionVerified:c.exclusionVerified===true,publicationAllowed:c.verified===true||c.publicationAllowed===true,sourceFeatureCount:Number(c.sourceFeatureCount||c.featureCount||0),processedFeatureCount:Number(c.processedFeatureCount||0)});
   }
   function render(){
-    const root=document.documentElement,tier=String(root.dataset.earthlineAnalysisTier||"").toLowerCase();
-    const slot=document.getElementById("earthlineStatusSlot16188")||document.getElementById("earthlineStatusSection16188");
-    let el=document.getElementById("earthlineExclusionEvidence16516");
-    if(tier!=="property"){if(el)el.remove();return null;}
-    const e=evidence();if(!e||!slot)return e;
-    if(!el){el=document.createElement("div");el.id="earthlineExclusionEvidence16516";el.setAttribute("role","status");slot.prepend(el);}
-    el.dataset.kind=e.kind;el.innerHTML='<div class="el16516-grade"></div><div class="el16516-detail"></div>';
-    el.querySelector(".el16516-grade").textContent=e.label;el.querySelector(".el16516-detail").textContent=e.detail;
-    window.EARTHLINE_EXCLUSION_EVIDENCE_16516=e;return e;
+    const e=evidence();
+    const el=document.getElementById("earthlineExclusionEvidence16516");
+    if(el)el.remove();
+    window.EARTHLINE_EXCLUSION_EVIDENCE_16516=e;
+    return e;
   }
   function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));}
   function reportHtml(e){if(!e)return "";return '<div class="el16516-report-evidence '+esc(e.kind)+'"><strong>'+esc(e.label)+'</strong><span>'+esc(e.detail)+'</span></div>';}
