@@ -7,6 +7,7 @@ on:
       - '.github/workflows/earthline-production-recovery-m69.yml'
       - 'index.html'
       - 'earthline-launch-16872.js'
+      - 'tests/production-recovery-m69.mjs'
 
 permissions:
   contents: write
@@ -83,3 +84,60 @@ jobs:
           git add index.html earthline-launch-16872.js
           git commit -m "fix: stabilize production recovery D1-D5"
           git push origin HEAD:${GITHUB_HEAD_REF}
+
+
+  browser-linux:
+    needs: apply-and-validate
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-m69-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='${{ matrix.browser }}' HEADLESS='true' node tests/production-recovery-m69.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-recovery-m69-${{ matrix.browser }}
+          path: artifacts/production-recovery-m69
+          if-no-files-found: ignore
+
+  browser-webkit:
+    needs: apply-and-validate
+    runs-on: macos-14
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install webkit
+      - run: |
+          python3 -m http.server 8787 --bind 0.0.0.0 >/tmp/earthline-m69-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='webkit' HEADLESS='true' node tests/production-recovery-m69.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-recovery-m69-webkit
+          path: artifacts/production-recovery-m69
+          if-no-files-found: ignore
