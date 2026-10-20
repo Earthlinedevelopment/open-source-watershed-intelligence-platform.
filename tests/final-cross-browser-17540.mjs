@@ -42,10 +42,16 @@ async function regional(page,q){
   const i=page.locator('#searchInput');await i.fill('');await i.fill(q);await page.waitForTimeout(700);
   const o=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
   const count=await o.count();if(!count)throw new Error('no suggestion '+q);
-  const wanted=q.split(',')[0].trim().toLowerCase();
+  const parts=q.split(',').map(x=>x.trim().toLowerCase()).filter(Boolean),wanted=parts[0]||'',region=parts[1]||'';
   let pick=-1,labels=[];
-  for(let n=0;n<count;n++){const txt=String(await o.nth(n).innerText()).replace(/\s+/g,' ').trim();labels.push(txt);if(pick<0&&txt.toLowerCase().includes(wanted))pick=n;}
-  if(pick<0)throw new Error('no deterministic suggestion '+q+' options='+JSON.stringify(labels));
+  for(let n=0;n<count;n++){
+    const txt=String(await o.nth(n).innerText()).replace(/\s+/g,' ').trim(),low=txt.toLowerCase();
+    labels.push(txt);
+    const cityOk=!!wanted&&low.includes(wanted);
+    const regionOk=!region||(region==='vermont'?/(^|[\s,])(vermont|vt)([\s,]|$)/i.test(txt):low.includes(region));
+    if(pick<0&&cityOk&&regionOk)pick=n;
+  }
+  if(pick<0)throw new Error('no deterministic city+region suggestion '+q+' options='+JSON.stringify(labels));
   await o.nth(pick).click();await page.waitForTimeout(250);
   const priorToken=await page.evaluate(()=>String(window.EARTHLINE_ACTIVE_RUN_TOKEN_16151||''));
   const b=page.locator('#runBtn');if(await b.isVisible()&&!await b.isDisabled())await b.click();
