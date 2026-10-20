@@ -1,11 +1,13 @@
 import { chromium, firefox, webkit } from 'playwright';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 
 const BROWSER=(process.env.BROWSER||'chromium').toLowerCase();
 const launcher={chromium,firefox,webkit}[BROWSER];
 if(!launcher)throw new Error('Unsupported browser '+BROWSER);
 const headless=String(process.env.HEADLESS||'true').toLowerCase()!=='false';
-const BASE=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
+const BASE=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
+const recoveryHtml=readFileSync('index.html','utf8');
+const recoveryLaunch=readFileSync('earthline-launch-16872.js','utf8');
 const browser=await launcher.launch({headless});
 const ART='artifacts/production-recovery-m69';
 mkdirSync(ART,{recursive:true});
@@ -82,6 +84,22 @@ function propertySnapshotPass(s){
 const results=[];
 for(const c of cases){
   const context=await browser.newContext({viewport:{width:1700,height:950}});
+  // Test the recovery source on the real production origin without modifying pages-live.
+  // This preserves the exact Origin header required by Terrain/CHMv2/CORS while
+  // substituting only the two recovery-modified public files.
+  await context.route('https://earthlinedevelopment.org/**',async route=>{
+    const req=route.request();
+    const u=new URL(req.url());
+    if(req.resourceType()==='document'&&u.origin==='https://earthlinedevelopment.org'&&u.pathname==='/'){
+      await route.fulfill({status:200,body:recoveryHtml,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
+      return;
+    }
+    if(u.origin==='https://earthlinedevelopment.org'&&u.pathname==='/earthline-launch-16872.js'){
+      await route.fulfill({status:200,body:recoveryLaunch,headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}});
+      return;
+    }
+    await route.continue();
+  });
   const page=await context.newPage();
   const pageErrors=[];
   await page.addInitScript(()=>{window.__M69_PAGE_ERRORS=[]});
