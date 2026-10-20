@@ -1,0 +1,81 @@
+name: Earthline Apply Safe Smoothing 17576
+on:
+  push:
+    branches: [test/exclusion-three-17576]
+    paths:
+      - '.github/workflows/earthline-apply-safe-smoothing-17576.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/earthline-launch-17576
+          fetch-depth: 0
+      - name: Patch safe smoothing only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          anchor='''function earthlineCleanPath(pts){
+            if(!pts||pts.length<3)return pts||[];
+            const out=[];
+            let last=null;
+            for(const p of pts){
+              if(!last||Math.hypot(p[0]-last[0],p[1]-last[1])>0.08){out.push(p);last=p;}
+            }
+            if(out.length<3)return out;
+            const sm=[out[0]];
+            for(let i=1;i<out.length-1;i++){
+              const p0=out[i-1],p=out[i],p1=out[i+1];
+              sm.push([(p0[0]+2*p[0]+p1[0])/4,(p0[1]+2*p[1]+p1[1])/4]);
+            }
+            sm.push(out[out.length-1]);
+            return sm;
+          }
+          '''
+          helper=anchor+'''
+          /* EARTHLINE 17576 — smoothing may not move a scientifically safe contour into
+             the frozen no-build mask. Validate the smoothed path with the same Property
+             usability owner; if smoothing creates any conflict, retain the already-verified
+             unsmoothed contour. Exclusion masks, buffers, thresholds and ranking are unchanged. */
+          function earthlineSafeCleanPath17576(pts,maxS){
+            const raw=Array.isArray(pts)?pts.map(p=>[Number(p[0]),Number(p[1])]):[];
+            const cleaned=earthlineCleanPath(raw);
+            if(cleaned.length<2)return raw;
+            let prev=null;
+            for(const p of cleaned){
+              if(!earthlinePathPointUsable(p[0],p[1],maxS))return raw;
+              if(prev){
+                const steps=Math.max(1,Math.ceil(Math.hypot(p[0]-prev[0],p[1]-prev[1])*2));
+                for(let k=1;k<steps;k++){
+                  const t=k/steps;
+                  if(!earthlinePathPointUsable(prev[0]+(p[0]-prev[0])*t,prev[1]+(p[1]-prev[1])*t,maxS))return raw;
+                }
+              }
+              prev=p;
+            }
+            return cleaned;
+          }
+          '''
+          if anchor not in s: raise SystemExit('clean path anchor missing')
+          s=s.replace(anchor,helper,1)
+          old='segs.push(earthlineCleanPath(cur))'
+          if s.count(old)!=2: raise SystemExit(f'unexpected split replacements {s.count(old)}')
+          s=s.replace(old,'segs.push(earthlineSafeCleanPath17576(cur,maxS))')
+          oldj='const joined=earthlineCleanPath(pa.concat(bridgePts,pb));'
+          if s.count(oldj)!=1: raise SystemExit(f'unexpected join replacements {s.count(oldj)}')
+          s=s.replace(oldj,'const joined=earthlineSafeCleanPath17576(pa.concat(bridgePts,pb),maxS);')
+          p.write_text(s)
+          PY
+          git diff --check
+          git diff -- index.html | head -200
+          git config user.name "Earthline CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: keep swale smoothing inside frozen no-build mask 17576"
+          git push origin HEAD:candidate/earthline-launch-17576
