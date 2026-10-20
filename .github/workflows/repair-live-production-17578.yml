@@ -1,0 +1,111 @@
+name: Earthline Live Production Repair 17578
+
+on:
+  push:
+    branches: [repair/live-production-17578]
+    paths:
+      - '.github/workflows/repair-live-production-17578.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/live-production-17578
+          fetch-depth: 0
+
+      - name: Apply two production presentation repairs
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+
+          old_render='''  function render(){
+    const root=document.documentElement,tier=String(root.dataset.earthlineAnalysisTier||"").toLowerCase();
+    const slot=document.getElementById("earthlineStatusSlot16188")||document.getElementById("earthlineStatusSection16188");
+    let el=document.getElementById("earthlineExclusionEvidence16516");
+    if(tier!=="property"){if(el)el.remove();return null;}
+    const e=evidence();if(!e||!slot)return e;
+    if(!el){el=document.createElement("div");el.id="earthlineExclusionEvidence16516";el.setAttribute("role","status");slot.prepend(el);}
+    el.dataset.kind=e.kind;el.innerHTML='<div class="el16516-grade"></div><div class="el16516-detail"></div>';
+    el.querySelector(".el16516-grade").textContent=e.label;el.querySelector(".el16516-detail").textContent=e.detail;
+    window.EARTHLINE_EXCLUSION_EVIDENCE_16516=e;return e;
+  }'''
+          new_render='''  function render(){
+    /* EARTHLINE 17578 — live production presentation repair.
+       Exclusion evidence remains active for safety/publication/report logic, but the
+       unapproved standalone Status card is never rendered on the public page. */
+    const el=document.getElementById("earthlineExclusionEvidence16516");
+    if(el)el.remove();
+    const e=evidence();
+    window.EARTHLINE_EXCLUSION_EVIDENCE_16516=e;
+    return e;
+  }'''
+
+          old_active='''  function propertyActive15824(){
+    const publication=M&&M.propertyPublication15816||null;
+    const currentGen=Number(M&&M.searchGen);
+    const publicationGen=Number(publication&&publication.searchGen);
+    const currentPublication=!!(
+      publication&&
+      publication.committed===true&&
+      publication.safetyVerified===true&&
+      (
+        !Number.isFinite(currentGen)||
+        !Number.isFinite(publicationGen)||
+        currentGen===publicationGen
+      )
+    );
+    return !!(
+      M&&M.analysisReady&&
+      state.mode==="property"&&!state.active&&
+      currentPublication
+    );
+  }'''
+          new_active='''  function propertyActive15824(){
+    const publication=M&&M.propertyPublication15816||null;
+    /* EARTHLINE 17578 — live production presentation repair.
+       A committed, safety-verified Property publication owns its blue water display.
+       Do not turn that display off merely because searchGen changes after publication.
+       New Property runs already clear/replace propertyPublication15816, so stale-run
+       protection remains fail-closed without this redundant presentation veto. */
+    const currentPublication=!!(
+      publication&&
+      publication.committed===true&&
+      publication.safetyVerified===true
+    );
+    return !!(
+      M&&M.analysisReady&&
+      state.mode==="property"&&!state.active&&
+      currentPublication
+    );
+  }'''
+
+          assert s.count(old_render)==1, f"render owner count {s.count(old_render)}"
+          assert s.count(old_active)==1, f"water owner count {s.count(old_active)}"
+          s=s.replace(old_render,new_render).replace(old_active,new_active)
+          p.write_text(s,encoding="utf-8")
+
+          check=p.read_text(encoding="utf-8")
+          assert 'slot.prepend(el)' not in check[check.index('<script id="earthline-16516-evidence-grade-js">'):check.index('</script>',check.index('<script id="earthline-16516-evidence-grade-js">'))]
+          block=check[check.index('function propertyActive15824()'):check.index('function viewAllowsWater15824()')]
+          assert 'currentGen' not in block and 'publicationGen' not in block
+          print("EARTHLINE_17578_PATCH_OK")
+          PY
+
+      - name: Commit repair branch
+        shell: bash
+        run: |
+          git config user.name "Earthline Production Repair"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git diff --cached --check
+          git commit -m "fix: remove unapproved status card and persist committed Property water 17578"
+          git push origin HEAD:repair/live-production-17578
