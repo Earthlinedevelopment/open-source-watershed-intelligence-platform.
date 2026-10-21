@@ -83,8 +83,33 @@ function translateVisibleText(){const dict=UI[lang()]||UI.en,rev=reverseText();t
 function scheduleTranslation(){for(const ms of [0,80,260,700,1400])setTimeout(translateVisibleText,ms)}
 function showToast(msg){let e=document.getElementById('earthlineToast16872');if(!e){e=document.createElement('div');e.id='earthlineToast16872';document.body.appendChild(e)}e.textContent=msg;e.classList.add('show');clearTimeout(e._tm);e._tm=setTimeout(()=>e.classList.remove('show'),3600)}
 function modal(){let m=document.getElementById('earthlineAccountModal16872');if(m)return m;m=document.createElement('div');m.id='earthlineAccountModal16872';m.innerHTML='<div class="earthline-launch-card-16872"><button class="earthline-launch-close-16872" aria-label="Close">×</button><h2></h2><div class="earthline-account-state-16872"></div><div class="earthline-account-tabs-16872"><button data-mode="login"></button><button data-mode="create"></button></div><form class="earthline-account-form-16872"><label class="earthline-email-row-16872"><span class="e"></span><input name="email" type="email" autocomplete="email" required></label><label class="earthline-user-row-16872"><span class="u"></span><input name="username" autocomplete="username"></label><label><span class="p"></span><input name="password" type="password" autocomplete="current-password" required></label><button type="submit" class="earthline-account-submit-16872"></button></form><button class="earthline-signout-16872" hidden></button><div class="earthline-quota-16872"></div><div class="earthline-account-message-16872"></div></div>';document.body.appendChild(m);m.querySelector('.earthline-launch-close-16872').onclick=()=>m.classList.remove('open');m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')});m.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{m.dataset.mode=b.dataset.mode;renderAccount()});m.querySelector('.earthline-signout-16872').onclick=async()=>{await signOut();showToast(t().logout)};m.querySelector('form').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget),mode=m.dataset.mode||'login',msg=m.querySelector('.earthline-account-message-16872'),d=t();try{msg.textContent='';if(mode==='create'){const out=await createAccount(f.get('username'),f.get('email'),f.get('password'));msg.textContent=out.session?d.signed:d.created}else{await signIn(f.get('email'),f.get('password'));msg.textContent=d.signed}}catch(err){msg.textContent=err.message||String(err)}};return m}
-function renderAccount(){const m=modal(),d=t(),q=quota(),create=(m.dataset.mode||'login')==='create';m.querySelector('h2').textContent=d.title;m.querySelector('[data-mode="login"]').textContent=d.in;m.querySelector('[data-mode="create"]').textContent=d.get;m.querySelector('.u').textContent=d.user;m.querySelector('.e').textContent=d.email;m.querySelector('.p').textContent=d.pass;m.querySelector('.earthline-user-row-16872').hidden=!create;m.querySelector('[name="username"]').required=create;m.querySelector('.earthline-account-submit-16872').textContent=create?d.get:d.in;m.querySelector('.earthline-signout-16872').textContent=d.logout;m.querySelector('.earthline-signout-16872').hidden=!q.signed;m.querySelector('.earthline-account-state-16872').textContent=q.signed?(d.in+': '+(q.user||d.email)):d.guest;m.querySelector('.earthline-quota-16872').textContent=d.allow+': '+q.remaining+' of '+q.daily+' remaining today';const L=document.getElementById('earthlineLaunchLogin16872'),D=document.getElementById('earthlineLaunchDonate16872'),M=document.getElementById('earthlineLaunchMerch16872');if(L){L.textContent=d.login;L.setAttribute('aria-label',d.login)}if(D){D.textContent=d.donate;D.setAttribute('aria-label',d.donate)}if(M){M.textContent=d.merch;M.setAttribute('aria-label',d.merch)}scheduleTranslation()}
-function syncLanguageFromTarget(target){const el=target?.closest?.('#earthlineLanguage16488,[data-earthline-language-control="1"],[data-earthline-language-choice="1"]')||null;if(!el)return;let raw='';try{raw=[el.value,el.getAttribute?.('data-lang'),el.getAttribute?.('data-language'),el.selectedOptions?.[0]?.value,el.selectedOptions?.[0]?.textContent].filter(Boolean).join(' ')}catch(_){}const code=detectLang(raw);if(!code)return;launchLangOverride=code;try{localStorage.setItem('earthlineLanguage16488',code)}catch(_){}if(document.documentElement.lang!==code)document.documentElement.lang=code;track('language_change',{language:code});renderAccount();scheduleTranslation()}
+function renderAccount(){
+  const d=t(),q=quota();
+  const L=document.getElementById('earthlineLaunchLogin16872');
+  const D=document.getElementById('earthlineLaunchDonate16872');
+  const M=document.getElementById('earthlineLaunchMerch16872');
+  if(L){L.textContent=d.login;L.setAttribute('aria-label',d.login)}
+  if(D){D.textContent=d.donate;D.setAttribute('aria-label',d.donate)}
+  if(M){M.textContent=d.merch;M.setAttribute('aria-label',d.merch)}
+  const m=document.getElementById('earthlineAccountModal16872');
+  if(!m)return;
+  const create=(m.dataset.mode||'login')==='create';
+  m.querySelector('h2').textContent=d.title;
+  m.querySelector('[data-mode="login"]').textContent=d.in;
+  m.querySelector('[data-mode="create"]').textContent=d.get;
+  m.querySelector('.u').textContent=d.user;
+  m.querySelector('.e').textContent=d.email;
+  m.querySelector('.p').textContent=d.pass;
+  m.querySelector('.earthline-user-row-16872').hidden=!create;
+  m.querySelector('[name="username"]').required=create;
+  m.querySelector('.earthline-account-submit-16872').textContent=create?d.get:d.in;
+  m.querySelector('.earthline-signout-16872').textContent=d.logout;
+  m.querySelector('.earthline-signout-16872').hidden=!q.signed;
+  m.querySelector('.earthline-account-state-16872').textContent=q.signed?(d.in+': '+(q.user||d.email)):d.guest;
+  m.querySelector('.earthline-quota-16872').textContent=d.allow+': '+q.remaining+' of '+q.daily+' remaining today';
+  scheduleTranslation();
+}
+function syncLanguageFromTargetfunction syncLanguageFromTarget(target){const el=target?.closest?.('#earthlineLanguage16488,[data-earthline-language-control="1"],[data-earthline-language-choice="1"]')||null;if(!el)return;let raw='';try{raw=[el.value,el.getAttribute?.('data-lang'),el.getAttribute?.('data-language'),el.selectedOptions?.[0]?.value,el.selectedOptions?.[0]?.textContent].filter(Boolean).join(' ')}catch(_){}const code=detectLang(raw);if(!code)return;launchLangOverride=code;try{localStorage.setItem('earthlineLanguage16488',code)}catch(_){}if(document.documentElement.lang!==code)document.documentElement.lang=code;track('language_change',{language:code});renderAccount();scheduleTranslation()}
 function updateQuotaText(){if(document.getElementById('earthlineAccountModal16872'))renderAccount()}
 function openAccount(mode='login'){const m=modal();m.dataset.mode=mode;m.classList.add('open');track(mode==='create'?'account_create_open':'login_open');renderAccount();setTimeout(()=>m.querySelector('input:not([hidden])')?.focus(),40)}
 function donateTarget(){try{return String(window.EARTHLINE_DONATE_URL_16872||localStorage.getItem('earthlineDonateUrl16872')||'https://www.zeffy.com/en-US/donation-form/donate-to-change-lives-25645')}catch(_){return String(window.EARTHLINE_DONATE_URL_16872||'https://www.zeffy.com/en-US/donation-form/donate-to-change-lives-25645')}}
@@ -135,100 +160,34 @@ async function flushTelemetry(keepalive=false){
 function track(event_name,properties={}){if(!/^[a-z0-9_]{2,64}$/.test(String(event_name||'')))return;const e={event_name:String(event_name),occurred_at:new Date().toISOString(),session_key:telemetrySessionKey,page_path:location.pathname,build:BUILD,language:lang(),properties:cleanProps(properties)};for(const k of ['mode','success','duration_ms','metric_name','metric_value','error_class','jurisdiction','country_code','state_code'])if(Object.prototype.hasOwnProperty.call(properties,k))e[k]=properties[k];tq.push(e);if(tq.length>=10)flushTelemetry(false);else if(!tt)tt=setTimeout(()=>{tt=null;flushTelemetry(false)},5000)}
 function installTelemetry(){track('session_start');track('page_view');document.addEventListener('click',e=>{const el=e.target?.closest?.('a,button,[role="button"]');if(!el)return;const id=String(el.id||'');const label=normalizeText(el.getAttribute?.('aria-label')||el.textContent||'').toLowerCase();if(id==='earthlineRailSearch16188')track('search_panel_click');else if(id==='earthlineRailMenu16188')track('menu_click');else if(id==='earthlineRailContact16512'||/^mailto:/i.test(el.getAttribute?.('href')||''))track('contact_click');else if(id==='earthlineVermontReport16149'||label.includes('bioswale impact report')||label.includes('informe de impacto')||label.includes('báo cáo tác động')||label.includes('รายงานผลกระทบ'))track('report_open');else if(label==='data'||label==='datos'||label==='dữ liệu'||label==='ข้อมูล')track('data_open');else if(label.includes('swales explained')||label.includes('bioswales explicados')||label.includes('rãnh sinh học')||label.includes('ร่องชีวภาพ'))track('swales_explained_open');else if(label.includes('earthline process')||label.includes('proceso earthline')||label.includes('quy trình earthline')||label.includes('กระบวนการ earthline'))track('process_open');if(['runBtn','runBtnSide','earthlineMapRun15970','earthlineMapRun16020','earthlineDeclareProperty16169'].includes(id)){analysisStarted=performance.now();track(id==='earthlineDeclareProperty16169'?'property_analysis_start':'regional_analysis_start',{mode:id==='earthlineDeclareProperty16169'?'property':'regional'})}},{capture:true,passive:true});document.addEventListener('earthline:analysis-complete',e=>{const raw=String(e?.detail?.tier||e?.detail?.mode||'regional').toLowerCase();const mode=raw.includes('property')?'property':'regional';track(mode+'_analysis_success',{mode,success:true,duration_ms:analysisStarted?performance.now()-analysisStarted:null});analysisStarted=0},{passive:true});window.addEventListener('error',e=>track('js_error',{error_class:String(e?.error?.name||'Error').slice(0,80)}));window.addEventListener('unhandledrejection',e=>track('unhandled_rejection',{error_class:String(e?.reason?.name||'PromiseRejection').slice(0,80)}));try{const nav=performance.getEntriesByType('navigation')[0];if(nav){track('web_vital',{metric_name:'TTFB',metric_value:Math.max(0,nav.responseStart-nav.requestStart)});track('navigation_timing',{duration_ms:nav.duration})}}catch(_){}try{new PerformanceObserver(list=>{for(const e of list.getEntries())if(e.name==='first-contentful-paint')track('web_vital',{metric_name:'FCP',metric_value:e.startTime})}).observe({type:'paint',buffered:true})}catch(_){}try{new PerformanceObserver(list=>{const a=list.getEntries(),e=a[a.length-1];if(e)track('web_vital',{metric_name:'LCP',metric_value:e.startTime})}).observe({type:'largest-contentful-paint',buffered:true})}catch(_){}let cls=0;try{new PerformanceObserver(list=>{for(const e of list.getEntries())if(!e.hadRecentInput)cls+=e.value}).observe({type:'layout-shift',buffered:true})}catch(_){}window.addEventListener('pagehide',()=>{track('web_vital',{metric_name:'CLS',metric_value:cls});track('session_end',{duration_ms:performance.now()-sessionStarted});flushTelemetry(true)},{once:true});document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushTelemetry(true)})}
 function earthlineNzOverlayHitPass16914(){
-  try{
-    const pkg=window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845||null;
-    const code=String(pkg?.countryCode||pkg?.location?.countryCode||'').toLowerCase();
-    const name=String(pkg?.location?.name||pkg?.name||'').trim().toLowerCase();
-    const query=String(window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970?.query||'').trim().toLowerCase();
-    const nz=(code==='nz'||code==='nzl'||name==='new zealand'||query==='new zealand');
-    let style=document.getElementById('earthlineNzOverlayHitPass16914');
-    const hits=document.querySelectorAll('#earthlineRegionalVectorOverlay16020 .earthline-swale-hit-16070');
-    if(nz){
-      if(!style){
-        style=document.createElement('style');
-        style.id='earthlineNzOverlayHitPass16914';
-        style.textContent='#earthlineRegionalVectorOverlay16020{pointer-events:none!important;}';
-        (document.head||document.documentElement).appendChild(style);
-      }
-      hits.forEach(el=>{
-        if(!el.dataset.earthlinePrevPointer16914)el.dataset.earthlinePrevPointer16914=el.style.pointerEvents||'__empty__';
-        el.style.setProperty('pointer-events','none','important');
-      });
-      window.EARTHLINE_NZ_OVERLAY_HIT_PASS_16914=true;
-    }else{
-      if(style)style.remove();
-      hits.forEach(el=>{
-        const prev=el.dataset.earthlinePrevPointer16914;
-        if(prev){
-          if(prev==='__empty__')el.style.removeProperty('pointer-events');
-          else el.style.pointerEvents=prev;
-          delete el.dataset.earthlinePrevPointer16914;
-        }
-      });
-      window.EARTHLINE_NZ_OVERLAY_HIT_PASS_16914=false;
-    }
-  }catch(_){}
+  /* EARTHLINE 17621 — retired jurisdiction-specific presentation patch.
+     Regional interaction is owned by the shared Regional renderer. */
+  window.EARTHLINE_NZ_OVERLAY_HIT_PASS_16914='retired-to-shared-owner';
 }
 function earthlineVancouverVisibleContext16916(){
+  /* EARTHLINE 17621 — retired jurisdiction-specific layer restyling/reordering.
+     Shared aquifer and water renderers own visibility and z-order globally. */
+  window.EARTHLINE_VANCOUVER_VISIBLE_CONTEXT_16916='retired-to-shared-owner';
+}
+function install(){
   try{
-    const q=String(window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970?.query||'').trim().toLowerCase();
-    const active=/vancouver\s+island/.test(q);
-    let style=document.getElementById('earthlineVancouverVisibleContext16916');
-    if(active){
-      if(!style){
-        style=document.createElement('style');
-        style.id='earthlineVancouverVisibleContext16916';
-        style.textContent=`
-#earthlineRegionalVectorOverlay16020 [data-layer="directional-water-paths"] > path[stroke^="rgba(0,18,29"]{
-  stroke-width:5px!important;opacity:.92!important
+    const saved=detectLang(localStorage.getItem('earthlineLanguage16488'));
+    launchLangOverride=saved||'en';
+    if(!saved)localStorage.setItem('earthlineLanguage16488','en');
+    document.documentElement.lang=launchLangOverride;
+  }catch(_){
+    launchLangOverride='en';
+    document.documentElement.lang='en';
+  }
+  installRail();
+  refreshSessionIfNeeded();
+  document.addEventListener('change',e=>syncLanguageFromTarget(e.target),true);
+  document.addEventListener('click',e=>syncLanguageFromTarget(e.target),true);
+  loadConfig();
+  scheduleTranslation();
+  installTelemetry();
+  document.documentElement.dataset.earthlineLaunch16872='ready';
 }
-#earthlineRegionalVectorOverlay16020 [data-layer="directional-water-paths"] > path[stroke^="rgba(37,200,255"]{
-  stroke-width:3px!important;opacity:1!important
-}
-#earthlineRegionalVectorOverlay16020 [data-layer="directional-water-paths"] > g{
-  opacity:1!important
-}
-`;
-        (document.head||document.documentElement).appendChild(style);
-      }
-      const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||null;
-      if(m){
-        const apply=()=>{
-          try{
-            if(m.getLayer('el-live-aquifer-fill-15970')){
-              m.setLayoutProperty('el-live-aquifer-fill-15970','visibility','visible');
-              m.setPaintProperty('el-live-aquifer-fill-15970','fill-color','#ff8c20');
-              m.setPaintProperty('el-live-aquifer-fill-15970','fill-opacity',0.42);
-              m.moveLayer('el-live-aquifer-fill-15970');
-            }
-            if(m.getLayer('el-live-aquifer-line-15970')){
-              m.setLayoutProperty('el-live-aquifer-line-15970','visibility','visible');
-              m.setPaintProperty('el-live-aquifer-line-15970','line-color','#ff9c21');
-              m.setPaintProperty('el-live-aquifer-line-15970','line-width',4.2);
-              m.setPaintProperty('el-live-aquifer-line-15970','line-opacity',1);
-              m.moveLayer('el-live-aquifer-line-15970');
-            }
-            if(m.getLayer('el-live-flow-casing-15970')){m.setLayoutProperty('el-live-flow-casing-15970','visibility','visible');m.moveLayer('el-live-flow-casing-15970');}
-            if(m.getLayer('el-live-flow-line-15970')){
-              m.setLayoutProperty('el-live-flow-line-15970','visibility','visible');
-              m.setPaintProperty('el-live-flow-line-15970','line-color','#25c8ff');
-              m.setPaintProperty('el-live-flow-line-15970','line-width',['interpolate',['linear'],['zoom'],4,4.5,7,6,10,8]);
-              m.setPaintProperty('el-live-flow-line-15970','line-opacity',1);
-              m.moveLayer('el-live-flow-line-15970');
-            }
-            if(m.getLayer('el-live-flow-arrow-15970')){m.setLayoutProperty('el-live-flow-arrow-15970','visibility','visible');m.moveLayer('el-live-flow-arrow-15970');}
-          }catch(_){}
-        };
-        apply();setTimeout(apply,300);setTimeout(apply,1200);setTimeout(apply,3000);
-      }
-      window.EARTHLINE_VANCOUVER_VISIBLE_CONTEXT_16916=true;
-    }else{
-      if(style)style.remove();
-      window.EARTHLINE_VANCOUVER_VISIBLE_CONTEXT_16916=false;
-    }
-  }catch(_){}
-}
-function install(){try{const saved=detectLang(localStorage.getItem('earthlineLanguage16488'));launchLangOverride=saved||'en';if(!saved)localStorage.setItem('earthlineLanguage16488','en');document.documentElement.lang=launchLangOverride}catch(_){launchLangOverride='en';document.documentElement.lang='en'}installRail();modal();renderAccount();refreshSessionIfNeeded();earthlineVancouverVisibleContext16916();earthlineNzOverlayHitPass16914();document.addEventListener('change',e=>{syncLanguageFromTarget(e.target);earthlineNzOverlayHitPass16914()},true);document.addEventListener('click',e=>{syncLanguageFromTarget(e.target);earthlineNzOverlayHitPass16914()},true);document.addEventListener('pointerover',e=>{try{if(e.target?.closest?.('#earthlineRegionalVectorOverlay16020'))earthlineNzOverlayHitPass16914()}catch(_){}},true);document.addEventListener('earthline:analysis-complete',()=>{earthlineNzOverlayHitPass16914();setTimeout(earthlineNzOverlayHitPass16914,250)},{passive:true});document.addEventListener('earthline:analysis-complete',()=>{earthlineVancouverVisibleContext16916();setTimeout(earthlineVancouverVisibleContext16916,300);setTimeout(earthlineVancouverVisibleContext16916,1500)},{passive:true});loadConfig();scheduleTranslation();installTelemetry();document.documentElement.dataset.earthlineLaunch16872='ready'}
 window.EARTHLINE_LAUNCH_16872={build:BUILD,quota,consumePaidSearch,createAccount,signIn,signOut,openAccount,donateTarget,limits:()=>({...config}),isConfiguredDonation:()=>!!donateTarget(),translateVisibleText,centralClaim,track,refreshSessionIfNeeded};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 
