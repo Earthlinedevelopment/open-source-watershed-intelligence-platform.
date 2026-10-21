@@ -16,13 +16,14 @@ def remove_script(script_id):
 remove_script("earthline-build-15828-boundary-watchdog")
 remove_script("earthline-build-15829-reference-audit")
 
-for old in [
-    '      earthlineMap.on("idle",()=>{}); // 16487 neutralized settle repaint.\n',
-    '    setInterval(()=>{},850); // 16487: legacy periodic renderer retained structurally but neutralized.\n'
+for pattern,label in [
+    (r'^[ \\t]*earthlineMap\\.on\\("idle",\\(\\)=>\\{\\}\\);[^\\n]*\\n','neutralized idle listener'),
+    (r'^[ \\t]*setInterval\\(\\(\\)=>\\{\\},850\\);[^\\n]*\\n','neutralized periodic renderer')
 ]:
-    if s.count(old)!=1:
-        raise RuntimeError("legacy no-op owner occurrence mismatch: "+old.strip())
-    s=s.replace(old,'',1)
+    s2,n=re.subn(pattern,'',s,count=1,flags=re.M)
+    if n>1:
+        raise RuntimeError(f"{label}: found {n}")
+    s=s2
 
 # Final public rule: legacy status remains available to code/audits but never renders a floating box.
 marker='</head>'
