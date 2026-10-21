@@ -19,23 +19,11 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
-          old='''  function propertyActive15824(){
-            const publication=M&&M.propertyPublication15816||null;
-            const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
-            const displayedTier=String(displayed&&(displayed.tier||displayed.mode)||"").toLowerCase();
-            /* EARTHLINE 17566 — canonical committed Property display owns direct blue water; legacy mode/search-generation bookkeeping may not erase it. */
-            return !!(
-              M&&M.analysisReady&&
-              publication&&
-              publication.committed===true&&
-              publication.safetyVerified===true&&
-              displayed&&
-              displayedTier==="property"
-            );
-          }'''
-          new='''  function propertyActive15824(){
+          pattern=r'''  function propertyActive15824\(\)\{[\s\S]*?\n  \}\n\n  function viewAllowsWater15824\(\)\{'''
+          replacement='''  function propertyActive15824(){
             const publication=M&&M.propertyPublication15816||null;
             /* EARTHLINE 17568 — the committed Property publication generation is the sole
                lifetime owner of direct blue water. Legacy analysisReady/display-tier state
@@ -49,13 +37,16 @@ jobs:
               publication.safetyVerified===true&&
               Number(publication.searchGen)===Number(M.searchGen)
             );
-          }'''
-          assert s.count(old)==1, s.count(old)
-          assert "EARTHLINE 17568" not in s
-          s=s.replace(old,new)
-          assert s.count("function propertyActive15824()")==1
-          assert s.count("EARTHLINE 17568")==1
-          p.write_text(s,encoding="utf-8")
+          }
+
+          function viewAllowsWater15824(){'''
+          if "EARTHLINE 17568" in s:
+              raise SystemExit("17568 already present")
+          s2,n=re.subn(pattern,replacement,s,count=1)
+          assert n==1,n
+          assert s2.count("function propertyActive15824()")==1
+          assert s2.count("EARTHLINE 17568")==1
+          p.write_text(s2,encoding="utf-8")
           PY
       - name: Validate scripts and ownership
         shell: bash
@@ -64,10 +55,13 @@ jobs:
           const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
           if((s.match(/EARTHLINE 17568/g)||[]).length!==1) throw Error('17568 marker');
           if((s.match(/function propertyActive15824\(\)/g)||[]).length!==1) throw Error('15824 owner count');
-          const owner=s.match(/function propertyActive15824\(\)\{[\s\S]*?\n  \}/);
-          if(!owner) throw Error('owner block');
-          if(owner[0].includes('M&&M.analysisReady')) throw Error('legacy analysisReady owner gate');
-          if(!owner[0].includes('Number(publication.searchGen)===Number(M.searchGen)')) throw Error('generation ownership missing');
+          const start=s.indexOf('function propertyActive15824()');
+          const end=s.indexOf('function viewAllowsWater15824()',start);
+          if(start<0||end<0) throw Error('owner block');
+          const owner=s.slice(start,end);
+          if(owner.includes('M&&M.analysisReady')) throw Error('legacy analysisReady owner gate');
+          if(owner.includes('EARTHLINE_DISPLAYED_RUN_16151')) throw Error('display-tier owner gate');
+          if(!owner.includes('Number(publication.searchGen)===Number(M.searchGen)')) throw Error('generation ownership missing');
           for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
             if(!m[1].trim()) continue;
             try{new Function(m[1])}catch(e){throw Error('script '+i+' '+e.message)}
