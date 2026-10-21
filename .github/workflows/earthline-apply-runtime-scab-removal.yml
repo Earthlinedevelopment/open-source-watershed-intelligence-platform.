@@ -1,0 +1,45 @@
+name: Earthline Apply Runtime Scab Removal
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['tools/mantra74-remove-runtime-scabs.py']
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+          fetch-depth: 0
+      - run: python3 tools/mantra74-remove-runtime-scabs.py
+      - name: Validate page
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let n=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);n++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          for(const bad of ['earthline-build-15828-boundary-watchdog','earthline-build-15829-reference-audit','BOUNDARY CONTROLLER NOT INITIALIZED','setInterval(()=>{},850)']){
+            if(s.includes(bad))throw Error('legacy runtime scab remains: '+bad);
+          }
+          if(!s.includes('#earthlineVermontStatus16147{display:none!important}'))throw Error('legacy floating status not retired');
+          console.log('EARTHLINE_17631_INLINE_SCRIPTS_OK',n);
+          NODE
+          git diff --check
+      - name: Commit cleanup and remove patch machinery
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Stability Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git rm -f tools/mantra74-remove-runtime-scabs.py .github/workflows/earthline-apply-runtime-scab-removal.yml
+          git add index.html
+          git commit -m "stability: remove legacy public watchdogs and floating status"
+          git push origin HEAD:recovery/mantra74-stability
