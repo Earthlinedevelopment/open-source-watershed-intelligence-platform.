@@ -28,7 +28,7 @@ for pattern,label in [
 # Final public rule: legacy status remains available to code/audits but never renders a floating box.
 style='''\n<style id="earthline-stability-public-status-retire-17631">\n#earthlineVermontStatus16147{display:none!important}\n</style>\n'''
 if style not in s:
-    s=s.rstrip()+style+"\n"
+    s=s.rstrip()+"\n"+style.strip()+"\n"
 
 # No public watchdog failure copy may remain.
 for bad in [
@@ -48,3 +48,5 @@ print("EARTHLINE_17631_RUNTIME_SCAB_REMOVAL",len(before),len(s),len(before)-len(
 # trigger-v2
 
 # trigger-v3
+
+# trigger-v4
