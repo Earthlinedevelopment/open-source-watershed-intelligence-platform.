@@ -21,21 +21,8 @@
 /* EARTHLINE 16913 — NZ real-canvas crosshair release only.
    The authoritative country-center lock is released on actual Mapbox pointer input;
    existing crosshair/Property target owners remain unchanged. */
-(function installNzRealCanvasRelease16913(){
-  if(window.EARTHLINE_NZ_REAL_CANVAS_RELEASE_16913)return;
-  window.EARTHLINE_NZ_REAL_CANVAS_RELEASE_16913=true;
-  document.addEventListener('pointerdown',function(ev){
-    try{
-      const pkg=window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845||null;
-      const code=String(pkg?.countryCode||pkg?.location?.countryCode||'').toLowerCase();
-      const name=String(pkg?.location?.name||pkg?.name||'').trim().toLowerCase();
-      if(!(code==='nz'||code==='nzl'||name==='new zealand'))return;
-      const base=document.getElementById('mapboxBase');
-      const surface=ev.target&&ev.target.closest?ev.target.closest('.mapboxgl-map,#mapboxBase'):null;
-      if(surface||(base&&(ev.target===base||base.contains(ev.target))))window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;
-    }catch(_){}
-  },true);
-})();
+/* EARTHLINE 17622 — jurisdiction-specific canvas release retired.
+   Shared map interaction owns pointer input in every location. */
 
 const BUILD='EARTHLINE 16877';
 const CONFIG_URL='earthline-cost-control-16872.json';
