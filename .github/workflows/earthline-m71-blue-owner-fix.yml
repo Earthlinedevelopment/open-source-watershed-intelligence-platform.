@@ -1,0 +1,62 @@
+name: Earthline Mantra 71 First Property Blue Owner Fix
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-m71-blue-owner-fix.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Remove fragile displayed-tier dependency from authoritative Property water gate
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old='''    /* EARTHLINE 17564 — committed Property publication owns direct blue water; stale legacy Regional active state may not erase it. */
+    return !!(
+      M&&M.analysisReady&&
+      currentPublication&&
+      state.mode==="property"&&
+      String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{}).tier||(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{}).mode||document.documentElement.dataset.earthlineAnalysisTier||"").toLowerCase()==="property"
+    );'''
+          new='''    /* EARTHLINE 17565 — committed, safety-verified Property publication is the water authority.
+       Do not let transient displayed-tier UI state erase valid first-Property blue water.
+       Regional/search supersession still closes this gate through state.mode and searchGen. */
+    return !!(
+      M&&M.analysisReady&&
+      currentPublication&&
+      state.mode==="property"
+    );'''
+          c=s.count(old)
+          if c!=1:
+              raise SystemExit(f'expected one 17564 water gate, found {c}')
+          s=s.replace(old,new)
+          p.write_text(s,encoding='utf-8')
+          PY
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          if((s.match(/EARTHLINE 17565/g)||[]).length!==1) throw Error('17565 marker');
+          if((s.match(/function propertyActive15824\(\)/g)||[]).length!==1) throw Error('propertyActive owner count');
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim()) continue;
+            try{new Function(m[1])}catch(e){throw Error('script '+i+' '+e.message)}
+          }
+          NODE
+      - name: Publish repair and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "Earthline Production Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git rm .github/workflows/earthline-m71-blue-owner-fix.yml
+          git add index.html
+          git commit -m "fix: keep committed first Property water independent of transient UI tier"
+          git push origin HEAD:pages-live
