@@ -1,0 +1,57 @@
+name: Earthline Apply Runtime Science Cleanup
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['tools/mantra74-runtime-science-cleanup.py']
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+          fetch-depth: 0
+      - run: python3 tools/mantra74-runtime-science-cleanup.py
+      - name: Validate runtime and science locks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          const bad=[
+            'EARTHLINE_ELDER_EARLY_WORKER_17520',
+            'earthline-build-15857-early-runtime-diagnosis',
+            'earthline-build-15861b-runtime-self-diagnosis',
+            'earthline-build-15821-frame-status',
+            'earthline-build-15826-driveway-opportunity-audit',
+            'M.demSource="fast preliminary terrain screen"',
+            'Fast preliminary analysis complete',
+            'function earthlineGenerateScreeningFallbackSwales',
+            'generated screening fallback (survey verification required)'
+          ];
+          for(const x of bad)if(s.includes(x))throw Error('retired path remains: '+x);
+          for(const x of ['function run15786(ev)','async function runProperty15778(parent,anchor)','const ok=await rebuildModel(true,gen);','No fallback swales were substituted.']){
+            if(!s.includes(x))throw Error('governed real-data owner missing: '+x);
+          }
+          console.log('EARTHLINE_17650_INLINE_SCRIPTS_OK',parsed);
+          NODE
+          git diff --check
+      - name: Commit cleanup and remove patch machinery
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Stability Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git rm -f tools/mantra74-runtime-science-cleanup.py
+          git rm -f .github/workflows/earthline-runtime-science-cleanup.yml
+          git add index.html
+          git commit -m "stability: retire diagnostics and synthetic swale paths"
+          git push origin HEAD:recovery/mantra74-stability
