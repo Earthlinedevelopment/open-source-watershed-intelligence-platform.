@@ -1107,8 +1107,13 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   }
   window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011={state:'ready',enforce,textureVerified};
   document.addEventListener('earthline:analysis-complete',()=>{
-    if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property')
+    if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property'){
+      try{
+        if(typeof window.earthlineRenderDirectWater15824==='function')
+          window.earthlineRenderDirectWater15824(true);
+      }catch(_){}
       afterPublication('analysis-complete');
+    }
   },{passive:true});
 })();
 
