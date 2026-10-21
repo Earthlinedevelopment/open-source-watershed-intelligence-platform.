@@ -1,4 +1,4 @@
-name: Earthline M73 Regional Corridor Audit
+name: Earthline M73 Production Cache Audit
 on:
   push:
     branches: [pages-live]
@@ -12,18 +12,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {ref: pages-live}
-      - name: Find exact Regional corridor interaction owner
+      - name: Compare normal and cache-busted production HTML
         shell: bash
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          lines=Path('index.html').read_text(encoding='utf-8').splitlines()
-          terms=['earthlineRegionalVectorOverlay16020','Zoom to location','zoom to location','data-corridor','regional corridor','earthlineOpportunityNav15782']
-          for term in terms:
-              print('TERM',term)
-              hits=[i for i,l in enumerate(lines) if term.lower() in l.lower()]
-              print('HITS',[i+1 for i in hits])
-              for i in hits:
-                  print('---',i+1,'---')
-                  for j in range(max(0,i-18),min(len(lines),i+35)): print(f'{j+1}: {lines[j]}')
-          PY
+          set -euo pipefail
+          curl -L -sS -D normal.headers -o normal.html https://earthlinedevelopment.org/
+          curl -L -sS -D bust.headers -o bust.html "https://earthlinedevelopment.org/?m73cache=$(date +%s)"
+          echo EARTHLINE_M73_CACHE_AUDIT
+          echo "repo_sha=$(sha256sum index.html | cut -d' ' -f1)"
+          echo "normal_sha=$(sha256sum normal.html | cut -d' ' -f1)"
+          echo "bust_sha=$(sha256sum bust.html | cut -d' ' -f1)"
+          echo "normal_bytes=$(wc -c < normal.html)"
+          echo "bust_bytes=$(wc -c < bust.html)"
+          echo "normal_17600=$(grep -c 'EARTHLINE 17600' normal.html || true)"
+          echo "bust_17600=$(grep -c 'EARTHLINE 17600' bust.html || true)"
+          echo "normal_17567=$(grep -c 'EARTHLINE 17567' normal.html || true)"
+          echo "bust_17567=$(grep -c 'EARTHLINE 17567' bust.html || true)"
+          echo NORMAL_HEADERS
+          grep -iE '^(cache-control|age|etag|last-modified|cf-cache-status|x-cache|via|server|content-length):' normal.headers || true
+          echo BUST_HEADERS
+          grep -iE '^(cache-control|age|etag|last-modified|cf-cache-status|x-cache|via|server|content-length):' bust.headers || true
