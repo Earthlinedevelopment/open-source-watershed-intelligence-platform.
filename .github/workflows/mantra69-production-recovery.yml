@@ -1,0 +1,201 @@
+name: Mantra 69 production recovery
+
+on:
+  push:
+    branches:
+      - production-recovery-mantra69-2026-10-20
+    paths:
+      - .github/workflows/mantra69-production-recovery.yml
+
+permissions:
+  contents: write
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact live branch
+        uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+
+      - name: Verify live lease
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED="df9b7d3ef3edae1c2578eeea12d0ac06185d3f10"
+          ACTUAL="$(git rev-parse HEAD)"
+          echo "Expected pages-live: $EXPECTED"
+          echo "Actual pages-live:   $ACTUAL"
+          test "$ACTUAL" = "$EXPECTED"
+
+      - name: Apply one coherent production recovery
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          original=s
+
+          def replace_once(old,new,label):
+              global s
+              n=s.count(old)
+              if n != 1:
+                  raise SystemExit(f"{label}: expected 1 match, found {n}")
+              s=s.replace(old,new,1)
+
+          # D3/D4: retire unapproved Support/Help public owner and obsolete internal copy.
+          replace_once(
+              '<button class="fitem" data-act="support"><svg viewbox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M9.2 9.2a2.8 2.8 0 1 1 4 3.9c-.8.7-1.2 1.1-1.2 2.1"></path><circle cx="12" cy="17.6" fill="currentColor" r=".6"></circle></svg><span class="t"><b>SUPPORT</b><span>Help &amp; Documentation</span></span></button>\n',
+              '',
+              'Support footer button'
+          )
+          replace_once(
+              'function supportHTML(){\n  return "<h5>About this build</h5><p>Earthline Hydrology Platform — final approved design with a real flow engine. Each property runs: seeded heightfield → priority-flood pit fill → D8 flow directions → flow accumulation → rain tributaries with direction arrows → on-contour bioswale prescriptions ranked by intercepted runoff. Fully offline; no tokens or dependencies.</p><h5>Upgrade path to live data</h5><ul><li>Mapbox/MapTiler satellite + terrain tiles (API token)</li><li>Geocoding for any-address search</li><li>USGS 3DEP / LiDAR DEM in place of generated terrain</li><li>Aquifer GIS polygons, NRCS soils, FEMA flood zones</li></ul><h5>Workflow</h5><p>Search → choose storm scenario → follow arrows and tributaries → review ranked corridors → field checklist. Nothing on screen is a construction document until field verification is complete.</p>";\n}\n',
+              '',
+              'Support HTML owner'
+          )
+          replace_once(
+              '  else if(act==="support")openModal("Support — Help & Documentation",supportHTML());\n',
+              '',
+              'Support action'
+          )
+          replace_once(
+              'document.getElementById("brandHome").addEventListener("click",()=>handleAction("support"));\n',
+              '',
+              'brand Support trigger'
+          )
+
+          # D1: preserve the scientific evidence model/report APIs; retire only its unapproved public status box.
+          old_render='''  function render(){
+            const root=document.documentElement,tier=String(root.dataset.earthlineAnalysisTier||"").toLowerCase();
+            const slot=document.getElementById("earthlineStatusSlot16188")||document.getElementById("earthlineStatusSection16188");
+            let el=document.getElementById("earthlineExclusionEvidence16516");
+            if(tier!=="property"){if(el)el.remove();return null;}
+            const e=evidence();if(!e||!slot)return e;
+            if(!el){el=document.createElement("div");el.id="earthlineExclusionEvidence16516";el.setAttribute("role","status");slot.prepend(el);}
+            el.dataset.kind=e.kind;el.innerHTML='<div class="el16516-grade"></div><div class="el16516-detail"></div>';
+            el.querySelector(".el16516-grade").textContent=e.label;el.querySelector(".el16516-detail").textContent=e.detail;
+            window.EARTHLINE_EXCLUSION_EVIDENCE_16516=e;return e;
+          }'''
+          new_render='''  function render(){
+            const el=document.getElementById("earthlineExclusionEvidence16516");
+            if(el)el.remove();
+            const e=evidence();
+            window.EARTHLINE_EXCLUSION_EVIDENCE_16516=e;
+            return e;
+          }'''
+          replace_once(old_render,new_render,'16516 public evidence renderer')
+
+          # D5: retire legacy WHY NOT HERE diagnostic presentation, preserving underlying diagnostic data/functions.
+          ui_start=s.find('  function earthlineInstallCoverageUI15803(){')
+          ui_end=s.find('  window.earthlineRenderCoverageDiagnostic15803=earthlineRenderCoverageDiagnostic15803;',ui_start)
+          if ui_start < 0 or ui_end < 0:
+              raise SystemExit('15803 diagnostic UI boundaries not found')
+          s=s[:ui_start]+'''  function earthlineInstallCoverageUI15803(){
+            const box=document.getElementById("earthlineWhyNotHere15803");
+            if(box)box.remove();
+            return false;
+          }
+          '''+s[ui_end:]
+
+          cross_start=s.find('<script id="earthline-build-15858-why-not-crosshair">')
+          cross_end=s.find('</script>',cross_start)
+          if cross_start < 0 or cross_end < 0:
+              raise SystemExit('15858 diagnostic crosshair boundaries not found')
+          replacement='''<script id="earthline-build-15858-why-not-crosshair">
+          (function(){
+            'use strict';
+            function retire(){
+              document.getElementById('earthlineWhyNotCrosshair15858')?.remove();
+              document.getElementById('earthlineWhyNotCrosshairLabel15858')?.remove();
+            }
+            if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',retire,{once:true});
+            else retire();
+          })();
+          </script>'''
+          s=s[:cross_start]+replacement+s[cross_end+9:]
+
+          if s == original:
+              raise SystemExit('no production changes generated')
+
+          # Acceptance assertions.
+          required_absent=[
+              'Support — Help & Documentation',
+              'Upgrade path to live data',
+              'data-act="support"',
+              'handleAction("support")',
+              "label.textContent='WHY NOT HERE TARGET'",
+              'box.id="earthlineWhyNotHere15803"',
+              'el=document.createElement("div");el.id="earthlineExclusionEvidence16516"'
+          ]
+          for needle in required_absent:
+              if needle in s:
+                  raise SystemExit(f'public regression owner remains: {needle}')
+
+          required_present=[
+              'c.evidenceGrade="AUTHORITATIVE LOCAL DATA"',
+              'window.earthlineGetExclusionEvidence16516=evidence',
+              'window.EARTHLINE_PROPERTY_TARGET_16201',
+              'CONTACT'
+          ]
+          for needle in required_present:
+              if needle not in s:
+                  raise SystemExit(f'protected content missing: {needle}')
+
+          p.write_text(s,encoding="utf-8")
+
+      - name: Verify first-run water and swale recovery remains present
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'window.earthlineRenderDirectWater15824(true);' earthline-launch-16872.js
+          grep -F 'Object.values(x.layers).every(Boolean) && rendered>0' earthline-launch-16872.js
+
+      - name: Syntax-check inline JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          out=Path("/tmp/earthline-inline")
+          out.mkdir(exist_ok=True)
+          scripts=[]
+          for i,m in enumerate(re.finditer(r'<script([^>]*)>(.*?)</script>',s,re.I|re.S)):
+              attrs=m.group(1)
+              body=m.group(2)
+              if 'src=' in attrs.lower():
+                  continue
+              t=re.search(r'type=["\']([^"\']+)["\']',attrs,re.I)
+              if t and t.group(1).lower() not in ('text/javascript','application/javascript','module'):
+                  continue
+              f=out/f"{i:03d}.js"
+              f.write_text(body,encoding="utf-8")
+              scripts.append(f)
+          print(f"inline scripts: {len(scripts)}")
+          Path("/tmp/earthline-inline-list").write_text("\n".join(map(str,scripts)),encoding="utf-8")
+          PY
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            node --check "$f"
+          done < /tmp/earthline-inline-list
+
+      - name: Commit and move pages-live once
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED="df9b7d3ef3edae1c2578eeea12d0ac06185d3f10"
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name "Earthline Production Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "recovery: retire unapproved production UI owners"
+          NEW_SHA="$(git rev-parse HEAD)"
+          git push --force-with-lease=refs/heads/pages-live:$EXPECTED origin HEAD:pages-live
+          echo "RECOVERY_SHA=$NEW_SHA" >> "$GITHUB_ENV"
+          echo "Production recovery commit: $NEW_SHA"
