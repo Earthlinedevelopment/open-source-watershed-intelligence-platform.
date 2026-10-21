@@ -75,7 +75,7 @@ s=s[:a]+'''  function propertyLivingMapVisible16262(count){
 
 # Replace six-delay post-terminal settlement with one deterministic observation.
 start="  function settlePropertyMapVisibility16260(count,texture,serial){"
-end="  function earthlinePropertyLaunchAudit16322"
+end="  /* EARTHLINE 16529 — pre-analysis mapped-open-water gate."
 a=s.find(start); b=s.find(end,a)
 if a<0 or b<0: raise RuntimeError("post-terminal settle markers missing")
 s=s[:a]+'''  function settlePropertyMapVisibility16260(count,texture,serial){
@@ -138,3 +138,5 @@ p.write_text(s.rstrip()+"\n",encoding="utf-8")
 print("EARTHLINE_17670_PROPERTY_PRESENTATION_SINGLE_COMMIT",len(before),len(s),len(before)-len(s))
 
 # trigger
+
+# trigger-rerun
