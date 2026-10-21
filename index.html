@@ -23308,20 +23308,17 @@ var prescribeSwales;
   }
 
   function schedule(reason="property-result"){
-    for(const timer of timers)clearTimeout(timer);
-    timers.clear();
-    for(const delay of [0,80,220,520,1100,2200,4200]){
-      const timer=setTimeout(()=>{
-        timers.delete(timer);
-        if(!propertyActive())return;
-        const visible=publish(reason+"-"+delay);
-        if(visible){
-          for(const pending of timers)clearTimeout(pending);
-          timers.clear();
-        }
-      },delay);
-      timers.add(timer);
-    }
+    /* EARTHLINE 17600 — compatibility shim only. The inherited retry ladder no
+       longer owns Property-water lifecycle. */
+    M.propertyFlowDelivery15823={
+      build:BUILD,reason:String(reason||"property-result"),
+      legacySchedulerRetired17600:true,attemptedAt:Date.now()
+    };
+    try{
+      if(typeof window.earthlineRenderDirectWater15824==="function")
+        return !!window.earthlineRenderDirectWater15824(false);
+    }catch(_){}
+    return false;
   }
 
   window.earthlinePublishPropertyWater15823=publish;
@@ -23336,24 +23333,8 @@ var prescribeSwales;
     viewportTest:M&&M.viewportInvarianceReport15822||null
   });
 
-  try{
-    earthlineMap.on("load",()=>schedule("map-load"));
-    earthlineMap.on("style.load",()=>schedule("style-load"));
-    earthlineMap.on("idle",()=>{
-      const renderer=M&&M.propertyFlowRenderer15792||null;
-      if(propertyActive()&&!(renderer&&renderer.visible)){
-        schedule("map-idle");
-      }
-    });
-    earthlineMap.on("moveend",()=>{
-      if(propertyActive())publish("moveend");
-    });
-    earthlineMap.on("zoomend",()=>{
-      if(propertyActive())publish("zoomend");
-    });
-  }catch(e){}
-
-  setInterval(renderStatus,700);
+  /* EARTHLINE 17600 — 15824 is the sole automatic Property-water renderer.
+     Retire inherited 15823 load/style/idle/move/zoom listeners and polling. */
   renderStatus();
 
   const stamp=document.getElementById("earthlineFooterBuild15784");
@@ -23384,24 +23365,33 @@ var prescribeSwales;
   let statusPanel=null;
   let cachedKey="";
   let cachedFlow={type:"FeatureCollection",features:[]};
+  let committedOwnerGeneration15824=null;
+  let committedFlowGeneration15824=null;
   let lastRender=null;
   let renderQueued=false;
 
   function propertyActive15824(){
-  const publication=M&&M.propertyPublication15816||null;
-  /* EARTHLINE 17568 — the committed Property publication generation is the sole
-     lifetime owner of direct blue water. Legacy analysisReady/display-tier state
-     may repaint or settle independently but may not erase a still-current,
-     safety-verified Property publication. A newer Property/Regional search
-     supersedes ownership by advancing M.searchGen. */
-  return !!(
-    M&&
-    publication&&
-    publication.committed===true&&
-    publication.safetyVerified===true&&
-    Number(publication.searchGen)===Number(M.searchGen)
-  );
-}
+    const publication=M&&M.propertyPublication15816||null;
+    const currentGen=Number(M&&M.searchGen);
+    const currentPublication=!!(
+      M&&publication&&
+      publication.committed===true&&
+      publication.safetyVerified===true&&
+      Number(publication.searchGen)===currentGen
+    );
+    /* EARTHLINE 17600 — one committed Property generation owns direct blue water
+       until a newer real search advances M.searchGen. Same-generation cleanup,
+       UI settlement, or legacy publication bookkeeping cannot revoke that owner. */
+    if(currentPublication){
+      committedOwnerGeneration15824=currentGen;
+      return true;
+    }
+    return !!(
+      M&&Number.isFinite(currentGen)&&
+      Number.isFinite(committedOwnerGeneration15824)&&
+      committedOwnerGeneration15824===currentGen
+    );
+  }
 
 function viewAllowsWater15824(){
     /* EARTHLINE 16326 — water is mandatory Property evidence. Legacy analytical
@@ -23688,6 +23678,16 @@ function viewAllowsWater15824(){
   }
 
   function authoritativeFlow15824(force=false){
+    const currentGen=Number(M&&M.searchGen||0);
+    /* EARTHLINE 17600 — committed geographic water geometry is immutable for the
+       generation. Camera/style changes reproject it; they never regenerate it
+       from mutable post-publication model state. */
+    if(
+      Number.isFinite(committedFlowGeneration15824)&&
+      committedFlowGeneration15824===currentGen&&
+      validFC15824(cachedFlow)
+    )return cachedFlow;
+
     const frameKey=(Array.isArray(M&&M.analysisBoundaryLngLat)?M.analysisBoundaryLngLat:[])
       .map(p=>Array.isArray(p)&&p.length>=2?Number(p[0]).toFixed(7)+","+Number(p[1]).toFixed(7):"")
       .join(";");
@@ -23725,6 +23725,7 @@ function viewAllowsWater15824(){
 
     cachedKey=key;
     cachedFlow=validFC15824(flow)?flow:emptyFC15824();
+    if(propertyActive15824())committedFlowGeneration15824=currentGen;
     M.authoritativeWaterPaths15824=cachedFlow;
     M.waterPathGeneration15824={
       build:"EARTHLINE 16508",
@@ -24085,10 +24086,7 @@ function viewAllowsWater15824(){
       earthlineMap.on("resize",()=>queueRender15824(false));
     }catch(e){}
 
-    setInterval(()=>{
-      // 16487: retain lightweight status maintenance, not continuous Mapbox/SVG enforcement.
-      updateStatus15824();
-    },650);
+    /* EARTHLINE 17600 — no polling owner; status updates only on canonical renders. */
 
     const stamp=document.getElementById(
       "earthlineFooterBuild15784"
@@ -34459,35 +34457,27 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
   }
 
   function settleCurrentPropertyPresentation16521(serial,searchGen,count){
-    (async()=>{
-      let last=null;
-      for(const delay of [0,90,260,620,1300,2200]){
-        if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
-        const md=model()||{};
-        const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
-        const tier=String(displayed&&(displayed.tier||displayed.mode)||'').toLowerCase();
-        if(serial!==runSerial||Number(md.searchGen||0)!==Number(searchGen)||tier==='regional')return;
-        let safeOk=count===0;
-        try{const safe=syncSafePropertyFallback16221('bounded-postpublish-16521-'+delay);safeOk=count===0||!!(safe&&safe.ok);last=Object.assign({},last||{},{safe})}catch(_){ }
-        if(count>0&&!safeOk)continue; /* EARTHLINE_SAFE_FIRST_PRESENTATION_17181 */
-        try{if(typeof window.earthlineSchedulePropertyWater15823==='function')window.earthlineSchedulePropertyWater15823('bounded-postpublish-16521-'+delay)}catch(_){ }
-        try{if(typeof window.earthlineRenderDirectWater15824==='function')window.earthlineRenderDirectWater15824(true)}catch(_){ }
-        try{if(typeof window.earthlineSyncAquiferLayer==='function')window.earthlineSyncAquiferLayer()}catch(_){ }
-        try{if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')}catch(_){ }
-        try{if(typeof window.earthlineQueueAnalysisBoundary15827==='function')window.earthlineQueueAnalysisBoundary15827()}catch(_){ }
-        const r=(model()||{}).directWaterRenderer15824||null;
-        const generated=Number(r&&r.generatedPaths),visible=Number(r&&r.visiblePaths||0);
-        const waterOk=!!(r&&Number.isFinite(generated)&&(generated===0||(r.visible===true&&visible>0)));
-        const boundary=document.getElementById('earthlineAnalysisBoundaryOverlay15827');
-        const expectedKey=boundaryKey16521(md.analysisBoundaryLngLat);
-        let renderedKey='';
-        try{const a=typeof window.earthlineBuild15827Audit==='function'?window.earthlineBuild15827Audit():null;renderedKey=boundaryKey16521(a&&a.frame&&a.frame.boundary)}catch(_){ }
-        const boundaryOk=!!(boundary&&boundary.style.display!=='none'&&boundary.childElementCount>0&&expectedKey&&renderedKey===expectedKey);
-        last=Object.assign({},last||{},{water:{generatedPaths:Number.isFinite(generated)?generated:null,visiblePaths:visible,ok:waterOk},boundary:{ok:boundaryOk,children:boundary?boundary.childElementCount:0,display:boundary?boundary.style.display:null,expectedKey,renderedKey}});
-        if(safeOk&&waterOk&&boundaryOk){window.EARTHLINE_PROPERTY_PRESENTATION_SETTLE_AUDIT_16521={build:'EARTHLINE 16521',ok:true,searchGen:Number(searchGen),corridors:Number(count||0),delay,last,at:new Date().toISOString()};return}
-      }
-      window.EARTHLINE_PROPERTY_PRESENTATION_SETTLE_AUDIT_16521={build:'EARTHLINE 16521',ok:false,searchGen:Number(searchGen),corridors:Number(count||0),last,at:new Date().toISOString()};
-    })().catch(error=>{window.EARTHLINE_PROPERTY_PRESENTATION_SETTLE_AUDIT_16521={build:'EARTHLINE 16521',ok:false,error:String(error&&error.message||error),at:new Date().toISOString()}});
+    /* EARTHLINE 17600 — one atomic post-publication presentation commit. */
+    const md=model()||{};
+    const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+    const tier=String(displayed&&(displayed.tier||displayed.mode)||'').toLowerCase();
+    if(serial!==runSerial||Number(md.searchGen||0)!==Number(searchGen)||tier==='regional')return false;
+    let safe=null,safeOk=count===0;
+    try{safe=syncSafePropertyFallback16221('atomic-postpublish-17600');safeOk=count===0||!!(safe&&safe.ok)}catch(_){ }
+    try{if(typeof window.earthlineRenderDirectWater15824==='function')window.earthlineRenderDirectWater15824(true)}catch(_){ }
+    try{if(typeof window.earthlineSyncAquiferLayer==='function')window.earthlineSyncAquiferLayer()}catch(_){ }
+    try{if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')}catch(_){ }
+    try{if(typeof window.earthlineQueueAnalysisBoundary15827==='function')window.earthlineQueueAnalysisBoundary15827()}catch(_){ }
+    const r=(model()||{}).directWaterRenderer15824||null;
+    const generated=Number(r&&r.generatedPaths),visible=Number(r&&r.visiblePaths||0);
+    const waterOk=!!(r&&Number.isFinite(generated)&&(generated===0||(r.visible===true&&visible>0)));
+    window.EARTHLINE_PROPERTY_PRESENTATION_SETTLE_AUDIT_16521={
+      build:'EARTHLINE 17600',ok:!!(safeOk&&waterOk),searchGen:Number(searchGen),
+      corridors:Number(count||0),atomic:true,safe,
+      water:{generatedPaths:Number.isFinite(generated)?generated:null,visiblePaths:visible,ok:waterOk},
+      at:new Date().toISOString()
+    };
+    return !!(safeOk&&waterOk);
   }
 
   function clearSafePropertyFallback16221(reason='clear'){
@@ -34925,22 +34915,6 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
         return true;
       }
 
-      try{
-        if(typeof window.earthlineSchedulePropertyWater15823!=='function')
-          throw new Error('Property water scheduler unavailable');
-        window.earthlineSchedulePropertyWater15823('property-published-16332');
-        setTimeout(()=>{
-          try{
-            if(typeof window.earthlineRenderDirectWater15824==='function')
-              window.earthlineRenderDirectWater15824(true);
-          }catch(error){
-            console.error('[Earthline 16332] Dense Property water enhancement failed',error);
-          }
-        },0);
-      }catch(error){
-        console.error('[Earthline 16332] Property water scheduling failed',error);
-      }
-
       window.EARTHLINE_PROPERTY_POSTPUBLISH_EVIDENCE_RETRY_16410={
         build:"EARTHLINE 16410",
         suppressed:true,
@@ -34978,7 +34952,7 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
     window.earthlineSyncSafePropertyFallback16221=syncSafePropertyFallback16221;
     window.earthlinePropertySafeVisibilityAudit16221=()=>JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||{build:BUILD,visible:false,count:0}));
     window.earthlinePropertyRunAudit16173=()=>JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{build:BUILD,settled:false}));
-    const mp=map();if(mp?.on)for(const ev of ['load','style.load','idle','zoomend','moveend'])mp.on(ev,()=>scheduleSafePropertyFallback16221('map-'+ev));
+    const mp=map();if(mp?.on)for(const ev of ['load','style.load','zoomend','moveend'])mp.on(ev,()=>scheduleSafePropertyFallback16221('map-'+ev));
     document.addEventListener('earthline:analysis-complete',()=>scheduleSafePropertyFallback16221('analysis-complete'),{passive:true});
     scheduleSafePropertyFallback16221('install');
     window.EARTHLINE_ARTIFACT_MANIFEST_16173={build:BUILD,required:[...new Set([...(window.EARTHLINE_ARTIFACT_MANIFEST_16172?.required||[]),'20-acre declaration calls the preserved governed Property owner directly; panel state is observer-only','property analysis exposes active stage and elapsed time while running','a committed exclusion-verified Property result replaces stale Regional display identity before renderer synchronization','Property corridor counts come only from the committed safe FeatureCollection, never a prior Regional displayed-run snapshot','the panel observes the preserved Property promise without any UI deadline','the panel never increments the Property generation token, cancels the run, or rejects a late valid publication','selected property search text is a concise coordinate identity rather than a duplicated placeholder','the Focus-to-Property control explicitly says PROPERTY ANALYSIS · 20 ACRES','a property success message requires verified natural texture source, registered images, buffered footprints, layers and width','property mode auto-frames the declared 20-acre boundary and announces the active 9 m natural footprint','property-tier centerlines are paired one-to-one with true 9 m buffered footprint polygons while the longitudinal texture follows the line','focus bioswales render uphill water pockets, downhill berms, irregular tree crowns and understory in the authoritative SVG owner','property bioswale texture is transparent so the actual satellite landscape remains visible through the installation','a committed exclusion-verified Property FeatureCollection always receives an independent visible green-brown-blue layer owner','the independent Property visibility owner draws only M.authoritativeSafeSwales15815 and never substitutes geometry'])]};
