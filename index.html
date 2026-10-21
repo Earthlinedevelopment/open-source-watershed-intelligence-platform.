@@ -29007,7 +29007,6 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
     water:'earthline-property-safe-water-16221'
   };
   const SAFE_EMPTY_16221={type:'FeatureCollection',features:[]};
-  const safeLayerTimers16221=new Set();
   function model(){try{return M||null}catch(_){return null}}
   function map(){try{return window.earthlineMap||earthlineMap||null}catch(_){return window.earthlineMap||null}}
   function button(){return document.getElementById('earthlineDeclareProperty16169')}
@@ -29143,7 +29142,7 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
       setButton(true,'PROPERTY · '+st.label.toUpperCase()+' · '+elapsed+'s');
       status('Property analysis — '+st.label+'… '+elapsed+' seconds elapsed. No result will publish unless terrain and exclusions complete.','pending');
       setAudit({stage:st.raw||'starting',stageLabel:st.label,elapsedSeconds:elapsed,updatedAt:new Date().toISOString()});
-    },250);
+    },1000);
   }
   function declaredSite(center){
   const m=model(),parent=m?.loc||{},helper=typeof earthlineSelectedSiteFromCenter==='function'?earthlineSelectedSiteFromCenter:null;
@@ -29381,32 +29380,16 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
     return {ok,count,visible:ok,active,audit};
   }
   function scheduleSafePropertyFallback16221(reason='scheduled'){
-    for(const timer of safeLayerTimers16221)clearTimeout(timer);safeLayerTimers16221.clear();
-    for(const delay of [0,90,260,620,1300,2600]){
-      const timer=setTimeout(()=>{safeLayerTimers16221.delete(timer);const result=syncSafePropertyFallback16221(reason+'-'+delay);if(result.ok){for(const pending of safeLayerTimers16221)clearTimeout(pending);safeLayerTimers16221.clear()}},delay);
-      safeLayerTimers16221.add(timer);
-    }
+    /* EARTHLINE 17670 — deterministic presentation. No retry ladder. */
+    return syncSafePropertyFallback16221(reason);
   }
   async function verifySafePropertyFallback16221(count){
     if(!(count>0))return {ok:true,count:0,visible:false,required:false,pending:false};
-    /* EARTHLINE 16260 — presentation verification is non-blocking.
-       The scientific Property result has already committed before this point.
-       One immediate visibility check is allowed inside the governed promise;
-       if Mapbox is still settling, the exact existing safe-layer owner retries
-       after terminal state instead of holding the Property Orb/run open. */
-    const first=syncSafePropertyFallback16221('terminal-immediate-16260');
-    if(first.ok)return {...first,required:true,pending:false};
-    scheduleSafePropertyFallback16221('terminal-background-16260');
-    return {...first,ok:false,count,visible:false,required:true,pending:true};
+    const first=syncSafePropertyFallback16221('terminal-atomic-17670');
+    return {...first,required:true,pending:false};
   }
 
   function propertyLivingMapVisible16262(count){
-    try{
-      const audit=typeof window.earthlineDisplayAudit15882==="function"?window.earthlineDisplayAudit15882():null;
-      if(audit&&Number(audit.mapSourceFeatures||0)>0&&Number(audit.layersVisible||0)>=4&&audit.renderer&&audit.renderer.visible===true&&Number(audit.renderer.uniqueCorridors||0)>0){
-        return {ok:true,mode:'living-swales-15792',count:Number(audit.renderer.uniqueCorridors||0),audit};
-      }
-    }catch(_){ }
     try{
       const m=model()||{},renderer=m.livingSwaleRenderer15792||null;
       if(renderer&&renderer.visible===true&&renderer.sourceReady===true&&Number(renderer.features||0)>0){
@@ -29417,45 +29400,26 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
   }
 
   function settlePropertyMapVisibility16260(count,texture,serial){
-    if(!(count>0)||texture?.ok)return;
-    (async()=>{
-      let last=null;
-      for(const delay of [120,280,520,900,1300,1800]){
-        await new Promise(r=>setTimeout(r,delay));
-        if(serial!==runSerial)return;
-        const living16262=propertyLivingMapVisible16262(count);
-        if(living16262.ok){
-          const current=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
-          const authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();
-          status(authoritative16516?('Property detail published — '+count+' exclusion-verified bioswale corridor'+(count===1?' is':'s are')+' visible on the Property map.'):('Property detail published — '+count+' screened bioswale corridor'+(count===1?' is':'s are')+' visible on the Property map. Field verification required.'),'published');
-          setTierNotice('property',authoritative16516?('PROPERTY DETAIL · '+count+' VERIFIED SAFE CORRIDORS VISIBLE'):('PROPERTY DETAIL · '+count+' SCREENED CORRIDORS · FIELD VERIFY'));
-          setAudit({settled:true,result:true,corridors:count,renderVerified:true,renderPending:false,renderMode:living16262.mode,mapEvidence:living16262,texture,currentScientificResultPreserved:true,mapVerificationSettledAt:new Date().toISOString(),settledAt:current.settledAt||new Date().toISOString()});
-          return;
-        }
-        last=syncSafePropertyFallback16221('post-terminal-16260-'+delay);
-        if(last?.ok){
-          const current=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
-          const authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();
-          status(authoritative16516?('Property detail published — '+count+' exclusion-verified bioswale corridor'+(count===1?' is':'s are')+' visible from the authoritative safe Property geometry.'):('Property detail published — '+count+' screened bioswale corridor'+(count===1?' is':'s are')+' visible from the current Property geometry. Field verification required.'),'published');
-          setTierNotice('property',authoritative16516?('PROPERTY DETAIL · '+count+' VERIFIED SAFE CORRIDORS VISIBLE'):('PROPERTY DETAIL · '+count+' SCREENED CORRIDORS · FIELD VERIFY'));
-          setAudit({settled:true,result:true,corridors:count,renderVerified:true,renderPending:false,renderMode:'authoritative-safe-lines',safeFallback:last,texture,currentScientificResultPreserved:true,mapVerificationSettledAt:new Date().toISOString(),settledAt:current.settledAt||new Date().toISOString()});
-          return;
-        }
-      }
-      const current=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
-      const livingFinal16262=propertyLivingMapVisible16262(count);
-      if(livingFinal16262.ok){
-        const authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();
-        status(authoritative16516?('Property detail published — '+count+' exclusion-verified bioswale corridor'+(count===1?' is':'s are')+' visible on the Property map.'):('Property detail published — '+count+' screened bioswale corridor'+(count===1?' is':'s are')+' visible on the Property map. Field verification required.'),'published');
-        setTierNotice('property',authoritative16516?('PROPERTY DETAIL · '+count+' VERIFIED SAFE CORRIDORS VISIBLE'):('PROPERTY DETAIL · '+count+' SCREENED CORRIDORS · FIELD VERIFY'));
-        setAudit({settled:true,result:true,corridors:count,renderVerified:true,renderPending:false,renderMode:livingFinal16262.mode,mapEvidence:livingFinal16262,texture,currentScientificResultPreserved:true,mapVerificationSettledAt:new Date().toISOString(),settledAt:current.settledAt||new Date().toISOString()});
-        return;
-      }
-      const reason=last?.error||'the authoritative safe Property map layer did not become visible after the bounded post-terminal retries';
-      status('PROPERTY RESULT VERIFIED — '+count+' safe corridor'+(count===1?' was':'s were')+' found, but the map presentation did not verify ('+reason+'). The analytical result remains preserved and no substitute geometry was drawn.','failed');
-      setTierNotice('warning','PROPERTY DETAIL · ANALYSIS VERIFIED · MAP LAYER NOT VERIFIED');
-      setAudit({settled:true,result:true,corridors:count,renderVerified:false,renderPending:false,renderMode:'none',safeFallback:last||null,texture,currentScientificResultPreserved:true,mapVerificationSettledAt:new Date().toISOString(),settledAt:current.settledAt||new Date().toISOString()});
-    })().catch(error=>console.error('[Earthline 16260] post-terminal map verification failed',error));
+    if(!(count>0)||texture?.ok)return true;
+    if(serial!==runSerial)return false;
+    const living=propertyLivingMapVisible16262(count);
+    const safe=syncSafePropertyFallback16221('post-terminal-atomic-17670');
+    const ok=!!(living.ok||safe?.ok);
+    const current=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
+    setAudit({
+      settled:true,result:true,corridors:count,
+      renderVerified:ok,renderPending:false,
+      renderMode:living.ok?living.mode:(safe?.ok?'authoritative-safe-lines':'presentation-unavailable'),
+      mapEvidence:living.ok?living:null,safeFallback:safe||null,texture,
+      currentScientificResultPreserved:true,
+      mapVerificationSettledAt:new Date().toISOString(),
+      settledAt:current.settledAt||new Date().toISOString()
+    });
+    if(!ok){
+      status('PROPERTY RESULT PRESERVED — '+count+' corridor'+(count===1?' was':'s were')+' found, but the map presentation did not verify. No substitute geometry was drawn.','failed');
+      setTierNotice('warning','PROPERTY DETAIL · ANALYSIS PRESERVED · MAP PRESENTATION UNAVAILABLE');
+    }
+    return ok;
   }
 
   /* EARTHLINE 16529 — pre-analysis mapped-open-water gate. This is intentionally
@@ -29791,11 +29755,8 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
     window.earthlineSyncSafePropertyFallback16221=syncSafePropertyFallback16221;
     window.earthlinePropertySafeVisibilityAudit16221=()=>JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||{build:BUILD,visible:false,count:0}));
     window.earthlinePropertyRunAudit16173=()=>JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{build:BUILD,settled:false}));
-    const mp=map();if(mp?.on)for(const ev of ['load','style.load','zoomend','moveend'])mp.on(ev,()=>scheduleSafePropertyFallback16221('map-'+ev));
-    document.addEventListener('earthline:analysis-complete',()=>scheduleSafePropertyFallback16221('analysis-complete'),{passive:true});
-    scheduleSafePropertyFallback16221('install');
     window.EARTHLINE_ARTIFACT_MANIFEST_16173={build:BUILD,required:[...new Set([...(window.EARTHLINE_ARTIFACT_MANIFEST_16172?.required||[]),'20-acre declaration calls the preserved governed Property owner directly; panel state is observer-only','property analysis exposes active stage and elapsed time while running','a committed exclusion-verified Property result replaces stale Regional display identity before renderer synchronization','Property corridor counts come only from the committed safe FeatureCollection, never a prior Regional displayed-run snapshot','the panel observes the preserved Property promise without any UI deadline','the panel never increments the Property generation token, cancels the run, or rejects a late valid publication','selected property search text is a concise coordinate identity rather than a duplicated placeholder','the Focus-to-Property control explicitly says PROPERTY ANALYSIS · 20 ACRES','a property success message requires verified natural texture source, registered images, buffered footprints, layers and width','property mode auto-frames the declared 20-acre boundary and announces the active 9 m natural footprint','property-tier centerlines are paired one-to-one with true 9 m buffered footprint polygons while the longitudinal texture follows the line','focus bioswales render uphill water pockets, downhill berms, irregular tree crowns and understory in the authoritative SVG owner','property bioswale texture is transparent so the actual satellite landscape remains visible through the installation','a committed exclusion-verified Property FeatureCollection always receives an independent visible green-brown-blue layer owner','the independent Property visibility owner draws only M.authoritativeSafeSwales15815 and never substitutes geometry'])]};
-    setInterval(updateBuild,1000);
+    updateBuild();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
