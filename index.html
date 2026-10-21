@@ -9829,11 +9829,9 @@ async function rebuildModel(analyze=false,myGen=M.searchGen){
   /* EARTHLINE 16297 — overlap required raw network I/O with the unchanged boundary gate.
      These prewarms mutate no scientific arrays, masks, tokens, or publication state.
      The existing owners below still await/verify the same data before using it. */
-  let vermontAuthorityPrefetch16263=null;
-  try{
-    if(typeof window.earthlinePrefetchVermontAuthority16263==="function")
-      vermontAuthorityPrefetch16263=Promise.resolve(window.earthlinePrefetchVermontAuthority16263(M.analysisBoundaryLngLat,myGen));
-  }catch(_){vermontAuthorityPrefetch16263=null;}
+  /* EARTHLINE 17630 — no jurisdiction-specific exclusion prefetch.
+     Property uses one shared evidence cascade; local authority is an optional
+     source capability discovered below, never a separate analysis mode. */
   /* EARTHLINE 16459 — performance only. Map-style exclusion readiness does not
      depend on the DEM grid, so begin the unchanged bounded readiness owner here
      beside the existing Vermont authority and DEM prewarms. The exclusion owner
@@ -9848,25 +9846,40 @@ async function rebuildModel(analyze=false,myGen=M.searchGen){
     };
   }catch(_){M._mappedExclusionStylePrefetch16459=null;}
   try{void earthlinePrewarmPropertyDem16297(M.centerLat,M.centerLng);}catch(_){ }
-  if(typeof window.earthlineValidateVermontBoundary16178==='function'){
-    earthlineProgress("terrain","verifying the declared project area is inside Vermont…");
-    const vermontGate=await window.earthlineValidateVermontBoundary16178(M.analysisBoundaryLngLat,{requireAll:true,context:"property"});
-    const portableOutside16516=!!(vermontGate&&vermontGate.reason==="outside-vermont");
-    if(!vermontGate||(vermontGate.ok!==true&&!portableOutside16516)){
-      M.swales=[];M.analysisReady=false;earthlineSyncSwaleLayer();
-      const reason=String(vermontGate&&vermontGate.message||"Vermont state boundary could not be verified.");
-      window.EARTHLINE_PROPERTY_BOUNDARY_AUDIT_16178=Object.assign({},vermontGate||{},{blocked:true,portable:false,at:new Date().toISOString()});
-      throw new Error(reason);
+  /* EARTHLINE 17630 — source availability, not jurisdiction mode.
+     Every Property run uses the same terrain/hydrology/exclusion pipeline.
+     A local authority may enrich exclusions when positively available, but
+     its absence never changes the engine or blocks use of other valid evidence. */
+  const jurisdictionBoundaryKey17630=(M.analysisBoundaryLngLat||[])
+    .map(p=>Number(p[0]).toFixed(7)+","+Number(p[1]).toFixed(7)).join("|");
+  let localGate17630=null;
+  try{
+    if(typeof window.earthlineValidateVermontBoundary16178==='function'){
+      localGate17630=await window.earthlineValidateVermontBoundary16178(
+        M.analysisBoundaryLngLat,{requireAll:true,context:"source-capability"}
+      );
     }
-    const jurisdictionBoundaryKey16516=(M.analysisBoundaryLngLat||[]).map(p=>Number(p[0]).toFixed(7)+","+Number(p[1]).toFixed(7)).join("|");
-    if(portableOutside16516){
-      M.propertyJurisdiction16516={mode:"portable-non-vermont",insideVermont:false,sourceTier:"pending",acquisitionResult:"pending",boundaryReason:vermontGate.reason,boundaryKey:jurisdictionBoundaryKey16516,at:new Date().toISOString()};
-      window.EARTHLINE_PROPERTY_BOUNDARY_AUDIT_16178=Object.assign({},vermontGate,{blocked:false,portable:true,boundaryKey:jurisdictionBoundaryKey16516,at:new Date().toISOString()});
-    }else{
-      M.propertyJurisdiction16516={mode:"vermont-authoritative",insideVermont:true,sourceTier:"authoritative-local",acquisitionResult:"pending",boundaryKey:jurisdictionBoundaryKey16516,at:new Date().toISOString()};
-      window.EARTHLINE_PROPERTY_BOUNDARY_AUDIT_16178=Object.assign({},vermontGate,{blocked:false,portable:false,boundaryKey:jurisdictionBoundaryKey16516,at:new Date().toISOString()});
-    }
+  }catch(error17630){
+    localGate17630={ok:false,reason:"local-authority-capability-error",message:String(error17630&&error17630.message||error17630)};
   }
+  const insideVermont17630=!!(localGate17630&&localGate17630.ok===true);
+  M.propertyJurisdiction16516={
+    mode:"shared-evidence",
+    insideVermont:insideVermont17630,
+    localAuthority:insideVermont17630?"vermont-vcgi-e911":null,
+    sourceTier:"pending",
+    acquisitionResult:"pending",
+    boundaryReason:String(localGate17630&&localGate17630.reason||"no-local-authority"),
+    boundaryKey:jurisdictionBoundaryKey17630,
+    at:new Date().toISOString()
+  };
+  window.EARTHLINE_PROPERTY_BOUNDARY_AUDIT_16178=Object.assign({},localGate17630||{},{
+    blocked:false,
+    portable:!insideVermont17630,
+    capabilityOnly:true,
+    boundaryKey:jurisdictionBoundaryKey17630,
+    at:new Date().toISOString()
+  });
   /* EARTHLINE 16550 — portable Property latency. Do not start the remote Overpass
      fallback before the existing map-style exclusion evidence has been evaluated.
      The single vectorNoBuild15778 verdict owner below now uses loaded style/source
@@ -11303,7 +11316,9 @@ async function directGeocode(q){
        Vermont bounding-box heuristic. */
     if(!Array.isArray(boundary)||boundary.length<3)return false;
     const boundaryKey16516=boundary.map(p=>Number(p[0]).toFixed(7)+","+Number(p[1]).toFixed(7)).join("|");
-    if(M&&M.propertyJurisdiction16516&&M.propertyJurisdiction16516.insideVermont===false&&M.propertyJurisdiction16516.boundaryKey===boundaryKey16516)return false;
+    if(M&&M.propertyJurisdiction16516&&M.propertyJurisdiction16516.boundaryKey===boundaryKey16516){
+      return M.propertyJurisdiction16516.insideVermont===true;
+    }
     const lngs=boundary.map(p=>Number(p[0])).filter(Number.isFinite);
     const lats=boundary.map(p=>Number(p[1])).filter(Number.isFinite);
     if(!lngs.length||!lats.length)return false;
@@ -12061,22 +12076,20 @@ async function directGeocode(q){
        `verified` keeps its historical authoritative meaning. `publicationAllowed`
        separately decides whether terrain-derived planning may publish. */
     c.sourceTier=null;c.acquisitionResult=null;c.exclusionVerified=false;c.publicationAllowed=false;c.evidenceGrade=null;
-    if(v.applicable===true){
+    if(v.applicable===true&&vermontVerified){
       c.sourceTier="authoritative-local";
       if(n>0&&(styleEvidence||externalEvidence)){
         c.acquisitionResult="features-found";c.exclusionVerified=true;c.publicationAllowed=true;c.evidenceGrade="AUTHORITATIVE LOCAL DATA";
         return earthlineSetVectorVerification16343(c,"verified-with-features",null);
       }
-      if(n===0&&vermontVerified){
-        c.acquisitionResult="clear";c.exclusionVerified=true;c.publicationAllowed=true;c.evidenceGrade="AUTHORITATIVE LOCAL DATA";
-        return earthlineSetVectorVerification16343(c,"verified-clear",null);
-      }
-      c.acquisitionResult="failed";c.evidenceGrade="EXCLUSION DATA QUERY FAILED · OUTPUT BLOCKED";
-      let reason="exclusion-verification-evidence-insufficient";
-      if(v.attempted!==true)reason="vermont-authoritative-query-not-attempted";
-      else if(v.ok!==true||v.queryVerified!==true||v.drivewayQueryVerified!==true||v.buildingQueryVerified!==true)
-        reason="vermont-authoritative-query-unverified"+(v.error?": "+String(v.error):"");
-      earthlineSetVectorVerification16343(c,"unverified",reason);return false;
+      c.acquisitionResult="clear";c.exclusionVerified=true;c.publicationAllowed=true;c.evidenceGrade="AUTHORITATIVE LOCAL DATA";
+      return earthlineSetVectorVerification16343(c,"verified-clear",null);
+    }
+    if(v.applicable===true&&!vermontVerified){
+      /* Local authority is one optional source adapter. If it is unavailable,
+         continue through the same open-data evidence contract used everywhere. */
+      c.localAuthorityAvailable=true;
+      c.localAuthorityStatus="unavailable-or-unverified";
     }
 
     const op=external.overpass||{};
@@ -12139,51 +12152,29 @@ async function directGeocode(q){
       verificationRule:"source tier + acquisition result own public evidence truth; legacy verified remains authoritative-only"
     };
     earthlineSetVectorVerification16343(M.vectorNoBuildCoverage,"unverified","verification-not-complete");
-    /* EARTHLINE 16550 — one exclusion owner, local loaded evidence first.
-       Portable Property no longer blocks behind the 14-second Overpass fallback when
-       the current Mapbox style/source is already queryable for roads, structures,
-       parking and mapped water. Infrastructure acquisition is lazy and is invoked
-       only when style evidence cannot resolve the screened open-data verdict. */
-    const portableStyleFirst16550=!!(M.propertyJurisdiction16516&&M.propertyJurisdiction16516.mode==="portable-non-vermont");
-    const portablePrefetch16549=M&&M._portableInfrastructurePrefetch16549||null;
+    /* EARTHLINE 17630 — one exclusion path everywhere.
+       Query the already-loaded shared map evidence first. If that source cannot
+       answer, use the shared infrastructure adapter. A local authoritative adapter
+       may enrich the same result when available; it never creates another mode. */
+    const localAuthorityAvailable17630=!!(
+      M.propertyJurisdiction16516&&M.propertyJurisdiction16516.localAuthority
+    );
     let infrastructurePromise15862P=null;
     const infrastructure16550=()=>{
       if(!infrastructurePromise15862P){
-        infrastructurePromise15862P=(portablePrefetch16549&&Number(portablePrefetch16549.searchGen)===Number(myGen)&&portablePrefetch16549.promise)
-          ?portablePrefetch16549.promise
-          :Promise.resolve(earthlineCollectParcelInfrastructure15862P(myGen));
+        infrastructurePromise15862P=Promise.resolve(earthlineCollectParcelInfrastructure15862P(myGen));
       }
       return infrastructurePromise15862P;
     };
-    if(!portableStyleFirst16550)infrastructure16550();
     const stylePrefetch16459=M&&M._mappedExclusionStylePrefetch16459||null;
     const rawStyleReadiness16469=(stylePrefetch16459&&Number(stylePrefetch16459.searchGen)===Number(myGen)&&stylePrefetch16459.promise)
       ?stylePrefetch16459.promise
       :(typeof earthlineWaitForMappedExclusionStyle15862B==="function"
         ?earthlineWaitForMappedExclusionStyle15862B(myGen,5000)
         :Promise.resolve({ready:mapReady(),status:mapReady()?"fallback-ready":"fallback-not-ready",waitedMs:0}));
-    let styleSettled16469=false,styleReadiness16469=null;
-    const styleReadinessPromise16469=Promise.resolve(rawStyleReadiness16469).then(value=>{
-      styleSettled16469=true;styleReadiness16469=value;return value;
-    },error=>{
-      styleSettled16469=true;styleReadiness16469={ready:false,status:"readiness-error",waitedMs:0};return styleReadiness16469;
-    });
-    /* EARTHLINE 16550 — preserve Vermont authority independence while letting
-       portable jurisdictions evaluate loaded map evidence before remote fallback. */
-    let infrastructureFirst16469=null,vermontVerified16469=false,readiness;
-    if(portableStyleFirst16550){
-      readiness=styleSettled16469?styleReadiness16469:await styleReadinessPromise16469;
-    }else{
-      infrastructureFirst16469=await infrastructure16550();
-      vermontVerified16469=earthlineVermontAuthorityVerified16343(infrastructureFirst16469);
-      if(vermontVerified16469){
-        readiness=(styleSettled16469&&styleReadiness16469&&styleReadiness16469.ready)
-          ?styleReadiness16469
-          :{ready:false,status:"vermont-authority-ready",waitedMs:0};
-      }else{
-        readiness=styleSettled16469?styleReadiness16469:await styleReadinessPromise16469;
-      }
-    }
+    const readiness=await Promise.resolve(rawStyleReadiness16469).catch(()=>({
+      ready:false,status:"readiness-error",waitedMs:0
+    }));
     M.vectorNoBuildCoverage.readinessWait=readiness;
     if(!readiness.ready){
       const infrastructure15862P=infrastructureFirst16469||await infrastructure16550();
@@ -12264,18 +12255,30 @@ async function directGeocode(q){
         count+=earthlineProcessMappedFeature(roadMask,buildingMask,bounded[i]);
         if((i&31)===31){earthlineProgress("hydrology","mapping roads and structures…");await earthlineTaskYield16464();}
       }
-      let infrastructure15862P=null;
-      if(portableStyleFirst16550&&styleQuerySuccess16516){
-        /* A successful loaded-style/source query is already an open-data screening
-           response under the existing evidence contract. Use exactly those mapped
-           road/building/parking/water features now; do not wait for a second open-data
-           source before a screened (never verified-clear) result can publish. */
-        infrastructure15862P=earthlineInfraResult15862P();
-        infrastructure15862P.status="map-style-screening-sufficient-16550";
+      let infrastructure15862P=earthlineInfraResult15862P();
+      if(styleQuerySuccess16516){
+        infrastructure15862P.status="loaded-map-style-screening";
         infrastructure15862P.source="loaded-map-style-open-data";
-        M.vectorNoBuildCoverage.portableEvidencePath16550="loaded-style-first";
+        M.vectorNoBuildCoverage.evidencePath17630="shared-style-first";
+        if(localAuthorityAvailable17630){
+          earthlineProgress("hydrology","adding available local exclusion evidence…");
+          const localEvidence17630=await infrastructure16550();
+          if(earthlineIsStale(myGen)){
+            earthlineSetVectorVerification16343(M.vectorNoBuildCoverage,"unverified","analysis-stale-after-local-evidence");
+            return false;
+          }
+          if(localEvidence17630&&localEvidence17630.vermont&&localEvidence17630.vermont.ok===true){
+            infrastructure15862P=localEvidence17630;
+            earthlineMergeInfraMasks15862P(roadMask,buildingMask,infrastructure15862P);
+            count+=Number(infrastructure15862P.processedGeometryCount||0);
+            M.vectorNoBuildCoverage.sourceFeatureCount+=Number(infrastructure15862P.overpass&&infrastructure15862P.overpass.rawElementCount||0);
+            M.vectorNoBuildCoverage.evidencePath17630="shared-style-plus-local-authority";
+          }else{
+            M.vectorNoBuildCoverage.localAuthorityFallback17630="open-data-style";
+          }
+        }
       }else{
-        earthlineProgress("hydrology","mapping parcel buildings, driveways and roads…");
+        earthlineProgress("hydrology","mapping available parcel exclusions…");
         infrastructure15862P=await infrastructure16550();
         if(earthlineIsStale(myGen)){
           earthlineSetVectorVerification16343(M.vectorNoBuildCoverage,"unverified","analysis-stale-after-infrastructure-retrieval");
@@ -12284,7 +12287,7 @@ async function directGeocode(q){
         earthlineMergeInfraMasks15862P(roadMask,buildingMask,infrastructure15862P);
         count+=Number(infrastructure15862P&&infrastructure15862P.processedGeometryCount||0);
         M.vectorNoBuildCoverage.sourceFeatureCount+=Number(infrastructure15862P&&infrastructure15862P.overpass&&infrastructure15862P.overpass.rawElementCount||0);
-        M.vectorNoBuildCoverage.portableEvidencePath16550=portableStyleFirst16550?"remote-open-data-fallback":"authority-or-existing-path";
+        M.vectorNoBuildCoverage.evidencePath17630="shared-infrastructure-fallback";
       }
       M.vectorNoBuildCoverage.infrastructure15862P=earthlineInfraCoverageRecord15862P(infrastructure15862P);
       roadMask=earthlineDilateMask(roadMask,Math.max(1,2.5/Math.max(.2,M.cellM||1)));
