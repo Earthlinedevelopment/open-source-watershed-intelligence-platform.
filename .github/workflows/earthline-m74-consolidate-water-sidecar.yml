@@ -399,36 +399,37 @@ jobs:
           s=must_replace(s,'    queueRender15824(true);','    queueRender15824(false);','install no force build')
 
           # G. Canonical Property publication is the one water handoff.
-          old='''    try{
-              if(m.layers&&m.layers.swales)m.layers.swales.on=true;'''
-          new='''    try{
-              const waterCommitted16220=!!(
-                typeof window.earthlineCommitPropertyWater15824==='function'&&
-                window.earthlineCommitPropertyWater15824('property-canonical-display-16220')
-              );
-              if(!waterCommitted16220){
-                const waterPublication16220=m.authoritativeWaterPublication15824||null;
-                window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220={
-                  build:BUILD,published:false,
-                  reason:'property-water-sidecar-unverified',
-                  canonicalTierBefore:String(before?.tier||before?.mode||''),
-                  generationMatches:counts.generationMatches,
-                  currentGen:counts.currentGen,publicationGen:counts.publicationGen,lockGen:counts.lockGen,
-                  engineCount:counts.engineCount,safeCount:counts.safeCount,publicationCount:counts.publicationCount,
-                  waterPublication:waterPublication16220,
-                  at:new Date().toISOString()
-                };
-                return {ok:false,counts,waterPublication:waterPublication16220};
-              }
-              if(m.layers&&m.layers.swales)m.layers.swales.on=true;'''
-          s=must_replace(s,old,new,'canonical water commit')
+          marker="      if(m.layers&&m.layers.swales)m.layers.swales.on=true;"
+          if s.count(marker)!=1:
+              raise RuntimeError('canonical swale publication marker count '+str(s.count(marker)))
+          water_block='''      const waterCommitted16220=!!(
+        typeof window.earthlineCommitPropertyWater15824==='function'&&
+        window.earthlineCommitPropertyWater15824('property-canonical-display-16220')
+      );
+      if(!waterCommitted16220){
+        const waterPublication16220=m.authoritativeWaterPublication15824||null;
+        window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220={
+          build:BUILD,published:false,
+          reason:'property-water-sidecar-unverified',
+          canonicalTierBefore:String(before?.tier||before?.mode||''),
+          generationMatches:counts.generationMatches,
+          currentGen:counts.currentGen,publicationGen:counts.publicationGen,lockGen:counts.lockGen,
+          engineCount:counts.engineCount,safeCount:counts.safeCount,publicationCount:counts.publicationCount,
+          waterPublication:waterPublication16220,
+          at:new Date().toISOString()
+        };
+        return {ok:false,counts,waterPublication:waterPublication16220};
+      }
+'''
+          at=s.find(marker)
+          s=s[:at]+water_block+s[at:]
 
-          old='''      if(typeof window.earthlineSyncLivingSwales15792==='function')window.earthlineSyncLivingSwales15792(counts.safe,true);
-              window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220='''
-          new='''      if(typeof window.earthlineSyncLivingSwales15792==='function')window.earthlineSyncLivingSwales15792(counts.safe,true);
-              if(typeof window.earthlineRenderDirectWater15824==='function')window.earthlineRenderDirectWater15824(false);
-              window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220='''
-          s=must_replace(s,old,new,'canonical committed render')
+          marker="      if(typeof window.earthlineSyncLivingSwales15792==='function')window.earthlineSyncLivingSwales15792(counts.safe,true);"
+          if s.count(marker)!=1:
+              raise RuntimeError('canonical swale sync marker count '+str(s.count(marker)))
+          render_line="\n      if(typeof window.earthlineRenderDirectWater15824==='function')window.earthlineRenderDirectWater15824(false);"
+          at=s.find(marker)+len(marker)
+          s=s[:at]+render_line+s[at:]
 
           # H. Presentation settlement does not own water.
           old="    try{if(typeof window.earthlineRenderDirectWater15824==='function')window.earthlineRenderDirectWater15824(true)}catch(_){ }"
