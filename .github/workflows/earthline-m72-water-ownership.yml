@@ -1,0 +1,61 @@
+name: Earthline Mantra 72 Water Ownership Fix
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-m72-water-ownership.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Remove external blue-water SVG mutations
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          old1="""      const direct16334=document.getElementById('earthlinePropertyWaterOverlay15824');
+      if(direct16334){direct16334.replaceChildren();direct16334.style.display='none';}
+"""
+          new1="""      /* EARTHLINE 17567 — 15824 is the sole owner of its blue-water SVG. Regional transition cleanup may not empty or hide that authoritative overlay directly. */
+"""
+          old2="""      const water=document.getElementById('earthlinePropertyWaterOverlay15824');
+      if(water){water.replaceChildren();water.style.display='none'}
+"""
+          new2="""      /* EARTHLINE 17567 — retirement may hide legacy Mapbox water layers, but only earthlineRenderDirectWater15824 may mutate the authoritative blue-water SVG. */
+"""
+          assert s.count(old1)==1, s.count(old1)
+          assert s.count(old2)==1, s.count(old2)
+          s=s.replace(old1,new1).replace(old2,new2)
+          assert "direct16334.replaceChildren()" not in s
+          assert "if(water){water.replaceChildren();water.style.display='none'}" not in s
+          p.write_text(s,encoding="utf-8")
+          PY
+      - name: Validate scripts and ownership
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          if((s.match(/EARTHLINE 17567/g)||[]).length!==2) throw Error('17567 markers');
+          if((s.match(/function propertyActive15824\(\)/g)||[]).length!==1) throw Error('15824 owner count');
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim()) continue;
+            try{new Function(m[1])}catch(e){throw Error('script '+i+' '+e.message)}
+          }
+          NODE
+      - name: Publish and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "Earthline Production Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git rm .github/workflows/earthline-m72-water-ownership.yml
+          git add index.html
+          git commit -m "fix: enforce sole ownership of Property blue water overlay"
+          git push origin HEAD:pages-live
