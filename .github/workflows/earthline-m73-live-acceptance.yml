@@ -22,83 +22,156 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Verify committed Property presentation lifecycle
+      - name: Verify Regional to Property blue lifecycle
         run: |
           node --input-type=module <<'NODE'
           import { chromium } from 'playwright';
           const browser=await chromium.launch({headless:true});
           const page=await browser.newPage({viewport:{width:1600,height:900}});
-          await page.goto('https://earthlinedevelopment.org/?m73accept='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          const pageErrors=[];
+          page.on('pageerror',e=>pageErrors.push(String(e)));
+          page.on('console',m=>{if(m.type()==='error')pageErrors.push('console:'+m.text())});
+          const diag=async(label)=>page.evaluate(({label,pageErrors})=>{
+            const m=typeof M!=='undefined'?M:null;
+            const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+            const r=window.earthlineRegional15778||null;
+            const p=m&&m.propertyPublication15816||null;
+            const wa=m&&m.directWaterRenderer15824||null;
+            const svg=document.getElementById('earthlinePropertyWaterOverlay15824');
+            const btn=document.getElementById('earthlineDeclareProperty16169');
+            return {
+              label,
+              searchGen:Number(m&&m.searchGen||0),
+              loc:m&&m.loc?{name:m.loc.name,fullName:m.loc.fullName,lat:m.loc.lat,lng:m.loc.lng,placeType:m.loc.placeType}:null,
+              appliedSearchText:String(m&&m.appliedSearchText||''),
+              analysisReady:!!(m&&m.analysisReady),
+              swales:Number(m&&m.swales&&m.swales.length||0),
+              publication:p?JSON.parse(JSON.stringify(p)):null,
+              propertyAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+              publicationAudit:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,
+              displayed:d?JSON.parse(JSON.stringify(d)):null,
+              regional:r?{active:!!r.active,running:!!r.running,mode:String(r.mode||''),summary:r.summary||null}:null,
+              rootState:String(document.documentElement.dataset.earthlineRunState||''),
+              propertyState:String(document.documentElement.dataset.earthlinePropertyRunState||''),
+              analysisTier:String(document.documentElement.dataset.earthlineAnalysisTier||''),
+              propertyTarget:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+              propertyButton:btn?{disabled:!!btn.disabled,text:String(btn.innerText||''),busy:btn.dataset.busy||'',ariaBusy:btn.getAttribute('aria-busy')}:null,
+              water:wa?JSON.parse(JSON.stringify(wa)):null,
+              waterSvg:svg?{display:getComputedStyle(svg).display,children:svg.childElementCount,connected:svg.isConnected}:null,
+              status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||''),
+              tierNotice:String(document.getElementById('earthlineTierNotice16173')?.textContent||''),
+              ledger:(window.EARTHLINE_RUN_LEDGER_16147||[]).slice(-25),
+              pageErrors
+            };
+          },{label,pageErrors});
+          const fail=async(msg,label)=>{const d=await diag(label);console.log('EARTHLINE_M73_DIAG '+JSON.stringify(d));throw new Error(msg+' '+JSON.stringify(d))};
+
+          await page.goto('https://earthlinedevelopment.org/?m73accept2='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
           await page.waitForSelector('#searchInput',{timeout:30000});
           await page.waitForFunction(()=>window.earthlineMap||(typeof earthlineMap!=='undefined'&&earthlineMap),null,{timeout:30000,polling:100});
-          const q='61 Sleepy Hollow Rd, Essex, Vermont, USA';
-          await page.evaluate(q=>{
-            const i=document.getElementById('searchInput');
-            i.value=q;
-            i.dispatchEvent(new Event('input',{bubbles:true}));
-            i.dispatchEvent(new Event('change',{bubbles:true}));
-          },q);
-          await page.waitForTimeout(500);
+
+          await page.evaluate(()=>{
+            const i=document.getElementById('searchInput');i.value='California';
+            i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));
+          });
+          await page.waitForTimeout(700);
           await page.evaluate(()=>{
             const opts=[...document.querySelectorAll('#earthlineSearchSuggestions15970 [role="option"]')];
-            const opt=opts.find(el=>String(el.dataset.query||el.textContent||'').toLowerCase().includes('61 sleepy hollow'));
+            const opt=opts.find(el=>String(el.dataset.query||el.textContent||'').toLowerCase().includes('california'));
             if(opt)opt.click();
+            document.getElementById('runBtn')?.click();
           });
+
+          try{
+            await page.waitForFunction(()=>{
+              const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+              const tier=String(d&&(d.tier||d.mode)||'').toLowerCase();
+              const hits=document.querySelectorAll('#earthlineRegionalVectorOverlay16020 .earthline-swale-hit-16070').length;
+              const busy=document.getElementById('runBtn')?.getAttribute('aria-busy')==='true';
+              return tier==='regional'&&!busy&&hits>0;
+            },null,{timeout:60000,polling:150});
+          }catch{await fail('Regional publication/corridors failed','regional-timeout')}
+
+          const hit=page.locator('#earthlineRegionalVectorOverlay16020 .earthline-swale-hit-16070').first();
+          if(!(await hit.count()))await fail('No Regional corridor hit','regional-no-hit');
+          await hit.click({force:true});
           await page.waitForTimeout(250);
+          const zoom=page.getByRole('button',{name:/zoom to (this )?location/i}).first();
+          if(!(await zoom.count()))await fail('Zoom to location missing','no-zoom');
+          await zoom.click();
+
+          try{
+            await page.waitForFunction(()=>{
+              const b=document.getElementById('earthlineDeclareProperty16169');
+              return !!b&&!b.disabled&&/^CROSSHAIR\b/i.test(String(b.innerText||''));
+            },null,{timeout:10000,polling:100});
+          }catch{await fail('Crosshair Property handoff failed','crosshair-timeout')}
+
+          const preSerial=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
           await page.evaluate(()=>{
-            const b=document.getElementById('runBtn');
-            if(!b)throw new Error('Run Analysis missing');
-            b.click();
+            const b=document.getElementById('earthlineDeclareProperty16169');
+            if(!b)throw new Error('Property button missing');b.click();
           });
-          await page.waitForFunction(()=>{
-            const m=typeof M!=='undefined'?M:null,p=m&&m.propertyPublication15816;
-            return !!(p&&p.committed===true&&p.safetyVerified===true&&Number(p.searchGen)===Number(m.searchGen));
-          },null,{timeout:70000,polling:100});
-          await page.waitForFunction(()=>{
-            const svg=document.getElementById('earthlinePropertyWaterOverlay15824');
-            const r=(typeof M!=='undefined'&&M.directWaterRenderer15824)||null;
-            return !!(svg&&getComputedStyle(svg).display!=='none'&&svg.childElementCount>0&&r&&r.visible===true&&Number(r.visiblePaths)>0);
-          },null,{timeout:15000,polling:100});
-          const snap=()=>page.evaluate(()=>{
-            const svg=document.getElementById('earthlinePropertyWaterOverlay15824');
-            const p=M.propertyPublication15816||null,r=M.directWaterRenderer15824||null;
-            return {
-              gen:Number(M.searchGen),pubGen:Number(p&&p.searchGen),
-              committed:!!(p&&p.committed),safety:!!(p&&p.safetyVerified),
-              display:svg?getComputedStyle(svg).display:null,
-              children:svg?svg.childElementCount:0,
-              visible:!!(r&&r.visible),paths:Number(r&&r.visiblePaths||0),
-              mode:String((window.earthlineRegional15778||{}).mode||''),
-              tier:String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{}).tier||'')
-            };
-          });
-          const first=await snap();
+
+          try{
+            await page.waitForFunction(pre=>{
+              const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+              return !!(a&&Number(a.serial||0)>Number(pre||0)&&a.scientificSettled===true&&a.scientificResult===true);
+            },preSerial,{timeout:65000,polling:100});
+          }catch{await fail('Property science did not settle','property-science-timeout')}
+
+          try{
+            await page.waitForFunction(()=>{
+              const m=typeof M!=='undefined'?M:null,p=m&&m.propertyPublication15816;
+              const svg=document.getElementById('earthlinePropertyWaterOverlay15824');
+              const w=m&&m.directWaterRenderer15824;
+              return !!(
+                p&&p.committed===true&&p.safetyVerified===true&&
+                Number(p.searchGen)===Number(m.searchGen)&&
+                svg&&getComputedStyle(svg).display!=='none'&&svg.childElementCount>0&&
+                w&&w.visible===true&&Number(w.visiblePaths)>0
+              );
+            },null,{timeout:12000,polling:100});
+          }catch{await fail('Committed Property did not publish visible blue water','blue-timeout')}
+
+          const first=await diag('first-blue');
           const samples=[];
-          for(let i=0;i<40;i++){await page.waitForTimeout(250);samples.push(await snap())}
-          const stable=samples.every(x=>x.gen===first.gen&&x.pubGen===first.pubGen&&x.committed&&x.safety&&x.display!=='none'&&x.children>0&&x.visible&&x.paths>0);
+          for(let i=0;i<40;i++){await page.waitForTimeout(250);samples.push(await diag('stable-'+i))}
+          const stable=samples.every(x=>
+            x.searchGen===first.searchGen&&
+            x.publication&&Number(x.publication.searchGen)===first.searchGen&&
+            x.publication.committed===true&&x.publication.safetyVerified===true&&
+            x.waterSvg&&x.waterSvg.display!=='none'&&x.waterSvg.children>0&&
+            x.water&&x.water.visible===true&&Number(x.water.visiblePaths)>0
+          );
           if(!stable)throw new Error('Blue persistence failed '+JSON.stringify({first,samples}));
+
           await page.evaluate(()=>new Promise(resolve=>{
             const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
             if(!m?.panBy)return resolve(false);
             let done=false;const finish=()=>{if(done)return;done=true;resolve(true)};
             m.once?.('moveend',finish);m.panBy([60,0],{duration:0});setTimeout(finish,1200);
           }));
-          await page.waitForTimeout(300);
-          const moved=await snap();
-          if(moved.gen!==first.gen||moved.pubGen!==first.pubGen||moved.display==='none'||moved.children<=0||!moved.visible||moved.paths<=0)
-            throw new Error('Blue failed after map move '+JSON.stringify({first,moved}));
+          await page.waitForTimeout(350);
+          const moved=await diag('after-map-move');
+          if(
+            moved.searchGen!==first.searchGen||
+            !moved.waterSvg||moved.waterSvg.display==='none'||moved.waterSvg.children<=0||
+            !moved.water||!moved.water.visible||Number(moved.water.visiblePaths)<=0
+          )throw new Error('Blue failed after map move '+JSON.stringify({first,moved}));
+
           await page.evaluate(()=>{
             const i=document.getElementById('searchInput');i.value='Vermont';
             i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));
           });
-          await page.waitForTimeout(250);
+          await page.waitForTimeout(300);
           await page.evaluate(()=>document.getElementById('runBtn')?.click());
-          await page.waitForFunction(g=>Number(M.searchGen)>Number(g),first.gen,{timeout:15000,polling:100});
+          await page.waitForFunction(g=>Number(M.searchGen)>Number(g),first.searchGen,{timeout:15000,polling:100});
           await page.waitForFunction(()=>{
             const svg=document.getElementById('earthlinePropertyWaterOverlay15824');
             return !svg||getComputedStyle(svg).display==='none'||svg.childElementCount===0;
           },null,{timeout:10000,polling:100});
-          const superseded=await snap();
-          console.log('EARTHLINE_M73_LIVE_ACCEPTANCE '+JSON.stringify({first,stable,moved,superseded,sampleCount:samples.length}));
+          const superseded=await diag('after-new-search');
+          console.log('EARTHLINE_M73_LIVE_ACCEPTANCE '+JSON.stringify({stable,first,moved,superseded,sampleCount:samples.length,pageErrors}));
           await browser.close();
           NODE
