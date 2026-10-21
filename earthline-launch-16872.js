@@ -1068,9 +1068,17 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     try{
       const a=typeof window.earthlinePropertyTextureAudit16169==='function'?window.earthlinePropertyTextureAudit16169():null;
       const x=a?.texture||null;
+      const m=map();
+      let rendered=0;
+      try{
+        const canvas=m?.getCanvas?.();
+        const box=canvas&&[[0,0],[canvas.clientWidth||canvas.width,canvas.clientHeight||canvas.height]];
+        const ids=['earthline-property-natural-casing-16174','earthline-property-natural-neutral-16174','earthline-property-natural-uphill-16174','earthline-property-natural-uphill-flipped-16174'].filter(id=>m?.getLayer?.(id));
+        if(box&&ids.length)rendered=(m.queryRenderedFeatures?.(box,{layers:ids})||[]).length;
+      }catch(_){}
       return !!(x && Number(a?.sourceFeatures||0)>0 && x.imagesReady===true &&
         x.orientationComplete===true && x.layers &&
-        Object.values(x.layers).every(Boolean));
+        Object.values(x.layers).every(Boolean) && rendered>0);
     }catch(_){return false}
   }
   function enforce(reason='check'){
