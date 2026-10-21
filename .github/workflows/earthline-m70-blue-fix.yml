@@ -1,0 +1,98 @@
+name: Earthline Mantra 70 First Property Blue Fix
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-m70-blue-fix.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Patch authoritative first-Property water gate
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old='''  function propertyActive15824(){
+    const publication=M&&M.propertyPublication15816||null;
+    const currentGen=Number(M&&M.searchGen);
+    const publicationGen=Number(publication&&publication.searchGen);
+    const currentPublication=!!(
+      publication&&
+      publication.committed===true&&
+      publication.safetyVerified===true&&
+      (
+        !Number.isFinite(currentGen)||
+        !Number.isFinite(publicationGen)||
+        currentGen===publicationGen
+      )
+    );
+    return !!(
+      M&&M.analysisReady&&
+      state.mode==="property"&&!state.active&&
+      currentPublication
+    );
+  }'''
+          new='''  function propertyActive15824(){
+    const publication=M&&M.propertyPublication15816||null;
+    const currentGen=Number(M&&M.searchGen);
+    const publicationGen=Number(publication&&publication.searchGen);
+    const currentPublication=!!(
+      publication&&
+      publication.committed===true&&
+      publication.safetyVerified===true&&
+      (
+        !Number.isFinite(currentGen)||
+        !Number.isFinite(publicationGen)||
+        currentGen===publicationGen
+      )
+    );
+    /* EARTHLINE 17564 — authoritative Property publication owns direct blue water.
+       A stale legacy Regional active flag must not erase the committed first
+       Property result. Genuine Regional/search supersession changes displayed tier
+       and/or search generation, which still closes this gate fail-closed. */
+    const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||
+      window.EARTHLINE_DISPLAYED_RUN_16147||null;
+    const displayedTier=String(
+      displayed&&(displayed.tier||displayed.mode)||
+      document.documentElement.dataset.earthlineAnalysisTier||""
+    ).toLowerCase();
+    return !!(
+      M&&M.analysisReady&&
+      currentPublication&&
+      state.mode==="property"&&
+      displayedTier==="property"
+    );
+  }'''
+          count=s.count(old)
+          if count != 1:
+              raise SystemExit(f'expected one 15824 gate, found {count}')
+          p.write_text(s.replace(old,new),encoding='utf-8')
+          PY
+          node - <<'NODE'
+          const fs=require('fs');
+          const s=fs.readFileSync('index.html','utf8');
+          if((s.match(/EARTHLINE 17564 — authoritative Property publication owns direct blue water/g)||[]).length!==1) throw new Error('17564 marker count');
+          if((s.match(/function propertyActive15824\(\)/g)||[]).length!==1) throw new Error('15824 owner count changed');
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim()) continue;
+            try{new Function(m[1]);}catch(e){throw new Error('script '+i+' syntax: '+e.message);}
+          }
+          NODE
+      - name: Publish patch and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "Earthline Production Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git rm .github/workflows/earthline-m70-blue-fix.yml
+          git add index.html
+          git commit -m "fix: bind first Property blue water to committed Property owner"
+          git push origin HEAD:pages-live
