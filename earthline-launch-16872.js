@@ -1114,6 +1114,13 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011={state:'ready',enforce,textureVerified};
   document.addEventListener('earthline:analysis-complete',()=>{
     if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property'){
+      try{
+        const publication=window.M&&window.M.propertyPublication15816||null;
+        if(publication&&publication.committed===true&&publication.safetyVerified===true){
+          const legacy=window.earthlineRegional15778||null;
+          if(legacy){legacy.mode='property';legacy.active=false;}
+        }
+      }catch(_){}
       afterPublication('analysis-complete');
     }
   },{passive:true});
