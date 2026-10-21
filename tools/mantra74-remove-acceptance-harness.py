@@ -56,7 +56,7 @@ required=[
   'id="earthline-build-15827-visible-analysis-boundary"',
   'function run15786(ev)',
   'async function runProperty15778(parent,anchor)',
-  'function earthlineRecoveryPreflight15870()',
+  'window.earthlineRecoveryPreflight15870=function(){',
   'window.earthlineApplyRendererOwnership15805=',
   'window.earthlineSyncLivingSwales15792=syncLivingSwales15792;',
 ]
