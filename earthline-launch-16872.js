@@ -228,7 +228,7 @@ function earthlineVancouverVisibleContext16916(){
     }
   }catch(_){}
 }
-function install(){try{const saved=detectLang(localStorage.getItem('earthlineLanguage16488'));launchLangOverride=saved||'en';if(!saved)localStorage.setItem('earthlineLanguage16488','en');document.documentElement.lang=launchLangOverride}catch(_){launchLangOverride='en';document.documentElement.lang='en'}installRail();modal();renderAccount();refreshSessionIfNeeded();earthlineVancouverVisibleContext16916();earthlineNzOverlayHitPass16914();document.addEventListener('change',e=>{syncLanguageFromTarget(e.target);earthlineNzOverlayHitPass16914()},true);document.addEventListener('click',e=>{syncLanguageFromTarget(e.target);earthlineNzOverlayHitPass16914()},true);document.addEventListener('pointerover',e=>{try{if(e.target?.closest?.('#earthlineRegionalVectorOverlay16020'))earthlineNzOverlayHitPass16914()}catch(_){}},true);document.addEventListener('earthline:analysis-complete',()=>{earthlineNzOverlayHitPass16914();setTimeout(earthlineNzOverlayHitPass16914,250)},{passive:true});document.addEventListener('earthline:analysis-complete',()=>{earthlineVancouverVisibleContext16916();setTimeout(earthlineVancouverVisibleContext16916,300);setTimeout(earthlineVancouverVisibleContext16916,1500)},{passive:true});new MutationObserver(()=>{const wanted=launchLangOverride||'en',current=detectLang(document.documentElement.lang);if(current!==wanted)document.documentElement.lang=wanted}).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});loadConfig();scheduleTranslation();installTelemetry();document.documentElement.dataset.earthlineLaunch16872='ready'}
+function install(){try{const saved=detectLang(localStorage.getItem('earthlineLanguage16488'));launchLangOverride=saved||'en';if(!saved)localStorage.setItem('earthlineLanguage16488','en');document.documentElement.lang=launchLangOverride}catch(_){launchLangOverride='en';document.documentElement.lang='en'}installRail();modal();renderAccount();refreshSessionIfNeeded();earthlineVancouverVisibleContext16916();earthlineNzOverlayHitPass16914();document.addEventListener('change',e=>{syncLanguageFromTarget(e.target);earthlineNzOverlayHitPass16914()},true);document.addEventListener('click',e=>{syncLanguageFromTarget(e.target);earthlineNzOverlayHitPass16914()},true);document.addEventListener('pointerover',e=>{try{if(e.target?.closest?.('#earthlineRegionalVectorOverlay16020'))earthlineNzOverlayHitPass16914()}catch(_){}},true);document.addEventListener('earthline:analysis-complete',()=>{earthlineNzOverlayHitPass16914();setTimeout(earthlineNzOverlayHitPass16914,250)},{passive:true});document.addEventListener('earthline:analysis-complete',()=>{earthlineVancouverVisibleContext16916();setTimeout(earthlineVancouverVisibleContext16916,300);setTimeout(earthlineVancouverVisibleContext16916,1500)},{passive:true});loadConfig();scheduleTranslation();installTelemetry();document.documentElement.dataset.earthlineLaunch16872='ready'}
 window.EARTHLINE_LAUNCH_16872={build:BUILD,quota,consumePaidSearch,createAccount,signIn,signOut,openAccount,donateTarget,limits:()=>({...config}),isConfiguredDonation:()=>!!donateTarget(),translateVisibleText,centralClaim,track,refreshSessionIfNeeded};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 
@@ -1030,12 +1030,11 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   }
 
   window.EARTHLINE_BIOSWALE_REPORT_TOOLBAR_RESTORE_17008={state:'installing',ensure,openTab,downloadHtml};
-  const schedule=()=>{for(const ms of [0,40,140,400])setTimeout(ensure,ms)};
+  const schedule=()=>requestAnimationFrame(()=>ensure());
   document.addEventListener('click',e=>{
     if(e.target?.closest?.('#earthlineVermontReport16149'))schedule();
   },true);
-  const obs=new MutationObserver(()=>{const p=reportPanel();if(p?.classList?.contains('open'))ensure()});
-  const boot=()=>{obs.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});schedule()};
+  const boot=()=>ensure();
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
 

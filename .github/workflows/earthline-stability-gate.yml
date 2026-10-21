@@ -1,0 +1,38 @@
+name: Earthline Stability Gate
+on:
+  push:
+    branches:
+      - recovery/mantra74-stability
+permissions:
+  contents: read
+jobs:
+  stability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate stable ownership surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check earthline-language-hotfix-16890.js
+          node --check earthline-launch-16872.js
+          ! grep -q 'MutationObserver' earthline-language-hotfix-16890.js
+          ! grep -q 'setTimeout(' earthline-language-hotfix-16890.js
+          ! grep -q 'document.documentElement.lang=' earthline-language-hotfix-16890.js
+          grep -q "presentation-only language option list" earthline-language-hotfix-16890.js
+          grep -q "const schedule=()=>requestAnimationFrame(()=>ensure())" earthline-launch-16872.js
+          ! grep -q "const obs=new MutationObserver(()=>{const p=reportPanel()" earthline-launch-16872.js
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('EARTHLINE_STABILITY_INLINE_SCRIPTS_OK',parsed);
+          NODE
+          echo EARTHLINE_STABILITY_OWNERSHIP_GATE_OK
