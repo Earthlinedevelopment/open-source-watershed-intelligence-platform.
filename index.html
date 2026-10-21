@@ -23401,10 +23401,12 @@ var prescribeSwales;
         currentGen===publicationGen
       )
     );
+    /* EARTHLINE 17564 — committed Property publication owns direct blue water; stale legacy Regional active state may not erase it. */
     return !!(
       M&&M.analysisReady&&
-      state.mode==="property"&&!state.active&&
-      currentPublication
+      currentPublication&&
+      state.mode==="property"&&
+      String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{}).tier||(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{}).mode||document.documentElement.dataset.earthlineAnalysisTier||"").toLowerCase()==="property"
     );
   }
 
