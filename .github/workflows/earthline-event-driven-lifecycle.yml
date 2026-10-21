@@ -1,0 +1,46 @@
+name: Earthline Event Driven Lifecycle
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['tools/mantra74-event-driven-lifecycle.py']
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+          fetch-depth: 0
+      - run: python3 tools/mantra74-event-driven-lifecycle.py
+      - name: Validate lifecycle ownership
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          function body(id){const r=new RegExp('<script\\\\b[^>]*\\\\bid=["\\\\\\']'+id+'["\\\\\\'][^>]*>([\\\\s\\\\S]*?)<\\\\/script>','i').exec(s);if(!r)throw Error('missing '+id);return r[1]}
+          for(const id of ['earthline-build-16178-state-identity-boundary-timeout','earthline-progressive-focus-16158-js','earthline-build-16169-js']){
+            if(body(id).includes('setInterval('))throw Error('polling interval remains in '+id);
+          }
+          if(!s.includes('runStateObserver17680.observe(document.documentElement'))throw Error('run-state observer missing');
+          console.log('EARTHLINE_17680_INLINE_SCRIPTS_OK',parsed);
+          NODE
+          git diff --check
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Stability Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git rm -f tools/mantra74-event-driven-lifecycle.py .github/workflows/earthline-event-driven-lifecycle.yml
+          git add index.html
+          git commit -m "stability: replace UI polling loops with event-driven owners"
+          git push origin HEAD:recovery/mantra74-stability
