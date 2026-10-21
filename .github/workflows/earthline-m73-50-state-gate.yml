@@ -1,0 +1,105 @@
+name: Earthline M73 50-State Stability Gate
+on:
+  push:
+    branches: [verify/m73-live-4ece]
+    paths:
+      - '.github/workflows/earthline-m73-50-state-gate.yml'
+permissions: {contents: read}
+jobs:
+  states:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0,1,2,3,4]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run 50-state shared-core gate
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          const ALL=['Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut','Delaware','Florida','Georgia','Hawaii','Idaho','Illinois','Indiana','Iowa','Kansas','Kentucky','Louisiana','Maine','Maryland','Massachusetts','Michigan','Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada','New Hampshire','New Jersey','New Mexico','New York','North Carolina','North Dakota','Ohio','Oklahoma','Oregon','Pennsylvania','Rhode Island','South Carolina','South Dakota','Tennessee','Texas','Utah','Vermont','Virginia','Washington','West Virginia','Wisconsin','Wyoming'];
+          const shard=Number(process.env.SHARD||0),states=ALL.filter((_,i)=>i%5===shard);
+          const browser=await chromium.launch({headless:true});
+          const context=await browser.newContext({viewport:{width:1440,height:900}});
+          const rows=[];
+          for(const state of states){
+            const page=await context.newPage();
+            const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+            const row={state};
+            try{
+              await page.goto('https://earthlinedevelopment.org/?m73all='+encodeURIComponent(state)+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+              await page.waitForSelector('#searchInput',{timeout:30000});
+              await page.waitForFunction(()=>window.earthlineMap||(typeof earthlineMap!=='undefined'&&earthlineMap),null,{timeout:30000,polling:100});
+              await page.evaluate(state=>{
+                const i=document.getElementById('searchInput');i.value=state;
+                i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));
+              },state);
+              await page.waitForTimeout(650);
+              await page.evaluate(state=>{
+                const key=state.toLowerCase(),opts=[...document.querySelectorAll('#earthlineSearchSuggestions15970 [role="option"]')];
+                const opt=opts.find(el=>String(el.dataset.query||el.textContent||'').toLowerCase().includes(key));
+                if(opt)opt.click();
+                document.getElementById('runBtn')?.click();
+              },state);
+              const r0=Date.now();
+              await page.waitForFunction(()=>{
+                const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,b=document.getElementById('earthlineDeclareProperty16169');
+                return String(d&&(d.tier||d.mode)||'').toLowerCase()==='regional'&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true'&&!!b&&!b.disabled&&/^CROSSHAIR\b/i.test(String(b.innerText||''));
+              },null,{timeout:65000,polling:150});
+              row.regional=await page.evaluate(elapsedMs=>{
+                const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{};
+                return {elapsedMs,swales:Number(d?.derived?.swaleOpportunityLines||0),waterPaths:Number(d?.derived?.waterPaths||0)};
+              },Date.now()-r0);
+              const pre=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
+              const p0=Date.now();
+              await page.evaluate(()=>document.getElementById('earthlineDeclareProperty16169')?.click());
+              await page.waitForFunction(pre=>{
+                const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+                return !!(a&&Number(a.serial||0)>Number(pre||0)&&a.scientificSettled===true);
+              },pre,{timeout:65000,polling:100});
+              const audit=await page.evaluate(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null);
+              if(audit?.scientificResult!==true)throw new Error('scientificResult false');
+              await page.waitForFunction(()=>{
+                const p=M?.propertyPublication15816,svg=document.getElementById('earthlinePropertyWaterOverlay15824'),w=M?.directWaterRenderer15824;
+                return !!(p&&p.committed===true&&p.safetyVerified===true&&Number(p.searchGen)===Number(M.searchGen)&&svg&&getComputedStyle(svg).display!=='none'&&svg.childElementCount>0&&w&&w.visible===true&&Number(w.visiblePaths)>0);
+              },null,{timeout:12000,polling:100});
+              const propertyElapsedMs=Date.now()-p0;
+              const samples=[];
+              for(let i=0;i<4;i++){
+                await page.waitForTimeout(250);
+                samples.push(await page.evaluate(()=>{
+                  const p=M.propertyPublication15816||{},svg=document.getElementById('earthlinePropertyWaterOverlay15824'),w=M.directWaterRenderer15824||{};
+                  return {gen:Number(M.searchGen),pubGen:Number(p.searchGen),display:svg?getComputedStyle(svg).display:null,children:svg?.childElementCount||0,visible:!!w.visible,paths:Number(w.visiblePaths||0),arrows:Number(w.arrows||0),committed:!!p.committed,safety:!!p.safetyVerified};
+                }));
+              }
+              const x=samples[0],stable=samples.every(v=>v.gen===x.gen&&v.pubGen===x.pubGen&&v.display!=='none'&&v.children>0&&v.visible&&v.paths>0&&v.committed&&v.safety);
+              if(!stable)throw new Error('blue unstable');
+              row.property=await page.evaluate(({propertyElapsedMs,stable})=>{
+                const p=M.propertyPublication15816||{},w=M.directWaterRenderer15824||{},a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
+                return {elapsedMs:propertyElapsedMs,stable,corridors:Number(p.safeSegments||0),generatedPaths:Number(w.generatedPaths||0),visiblePaths:Number(w.visiblePaths||0),arrows:Number(w.arrows||0),renderVerified:!!a.renderVerified};
+              },{propertyElapsedMs,stable});
+              if(propertyElapsedMs>15000)throw new Error('property ceiling '+propertyElapsedMs);
+              if(errors.length)throw new Error('page errors '+JSON.stringify(errors));
+              row.pass=true;
+            }catch(e){
+              row.pass=false;row.failure=String(e);
+              row.diag=await page.evaluate(()=>{
+                const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+                return {searchGen:Number((typeof M!=='undefined'&&M.searchGen)||0),displayedTier:String(d&&(d.tier||d.mode)||''),publication:(typeof M!=='undefined'&&M.propertyPublication15816)||null,propertyAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||''),water:(typeof M!=='undefined'&&M.directWaterRenderer15824)||null};
+              }).catch(()=>null);
+            }
+            rows.push(row);console.log('EARTHLINE_M73_50_STATE_ROW '+JSON.stringify(row));await page.close();
+          }
+          const pass=rows.every(r=>r.pass===true);
+          console.log('EARTHLINE_M73_50_STATE_SHARD '+JSON.stringify({shard,pass,rows}));
+          await browser.close();if(!pass)process.exitCode=1;
+          NODE
