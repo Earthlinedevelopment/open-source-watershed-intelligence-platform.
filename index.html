@@ -23388,21 +23388,22 @@ var prescribeSwales;
   let renderQueued=false;
 
   function propertyActive15824(){
-    const publication=M&&M.propertyPublication15816||null;
-    const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
-    const displayedTier=String(displayed&&(displayed.tier||displayed.mode)||"").toLowerCase();
-    /* EARTHLINE 17566 — canonical committed Property display owns direct blue water; legacy mode/search-generation bookkeeping may not erase it. */
-    return !!(
-      M&&M.analysisReady&&
-      publication&&
-      publication.committed===true&&
-      publication.safetyVerified===true&&
-      displayed&&
-      displayedTier==="property"
-    );
-  }
+  const publication=M&&M.propertyPublication15816||null;
+  /* EARTHLINE 17568 — the committed Property publication generation is the sole
+     lifetime owner of direct blue water. Legacy analysisReady/display-tier state
+     may repaint or settle independently but may not erase a still-current,
+     safety-verified Property publication. A newer Property/Regional search
+     supersedes ownership by advancing M.searchGen. */
+  return !!(
+    M&&
+    publication&&
+    publication.committed===true&&
+    publication.safetyVerified===true&&
+    Number(publication.searchGen)===Number(M.searchGen)
+  );
+}
 
-  function viewAllowsWater15824(){
+function viewAllowsWater15824(){
     /* EARTHLINE 16326 — water is mandatory Property evidence. Legacy analytical
        layer/view toggles may not suppress the D8 runoff network after science is ready. */
     return propertyActive15824();
