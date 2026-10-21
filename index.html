@@ -16746,6 +16746,10 @@ var prescribeSwales;
     M.propertyPublicationBlock16176=block;
     window.EARTHLINE_PROPERTY_PUBLICATION_BLOCK_16176=block;
     try{
+      if(typeof window.earthlineRetirePropertyWater15824==='function')
+        window.earthlineRetirePropertyWater15824('property-publication-blocked');
+    }catch(_){}
+    try{
       state.active=false;
       state.running=false;
       state.mode="focus";
@@ -23254,10 +23258,13 @@ var prescribeSwales;
 
   function propertyActive15824(){
     const publication=M&&M.authoritativeWaterPublication15824||null;
-    const currentGen=Number(M&&M.searchGen);
+    /* EARTHLINE 17611 — governed publication ownership.
+       M.searchGen is a cooperative analysis-cancellation token; legacy watchdogs,
+       camera/UI settlement, and Regional bookkeeping may not revoke an already
+       committed Water Sidecar publication. Retirement is explicit and belongs
+       only to this 15824 owner at a canonical run transition or fail-closed block. */
     return !!(
       M&&publication&&publication.committed===true&&publication.verified===true&&
-      Number(publication.searchGen)===currentGen&&
       validFC15824(M.authoritativeWaterPaths15824)&&
       M.authoritativeWaterPaths15824.features.length>0
     );
@@ -23611,7 +23618,6 @@ function viewAllowsWater15824(){
 
     if(
       existing&&existing.committed===true&&existing.verified===true&&
-      Number(existing.searchGen)===currentGen&&
       validFC15824(M&&M.authoritativeWaterPaths15824)&&
       M.authoritativeWaterPaths15824.features.length>0
     )return true;
@@ -23677,6 +23683,43 @@ function viewAllowsWater15824(){
       framePoints:Number(Array.isArray(M&&M.analysisBoundaryLngLat)?M.analysisBoundaryLngLat.length:0),
       at:new Date().toISOString()
     });
+    return true;
+  }
+
+
+  function retirePropertyWater15824(reason="canonical-run-transition"){
+    if(!M)return false;
+    const prior=M.authoritativeWaterPublication15824||null;
+    M.authoritativeWaterPaths15824=emptyFC15824();
+    committedWaterGeneration15824=null;
+    M.authoritativeWaterPublication15824=Object.freeze({
+      build:"EARTHLINE 17611",
+      committed:false,
+      verified:false,
+      retired:true,
+      priorSearchGen:prior&&Number.isFinite(Number(prior.searchGen))?Number(prior.searchGen):null,
+      searchGen:Number(M.searchGen),
+      featureCount:0,
+      reason:String(reason||"canonical-run-transition"),
+      at:new Date().toISOString()
+    });
+    const svg=ensureOverlay15824();
+    if(svg){
+      svg.style.display="none";
+      svg.replaceChildren();
+    }
+    lastRender={
+      build:"EARTHLINE 17611",
+      generatedPaths:0,
+      visiblePaths:0,
+      arrows:0,
+      visible:false,
+      reason:"water-publication-retired",
+      retiredBy:String(reason||"canonical-run-transition"),
+      renderedAt:Date.now()
+    };
+    M.directWaterRenderer15824=lastRender;
+    updateStatus15824();
     return true;
   }
 
@@ -23997,6 +24040,8 @@ function viewAllowsWater15824(){
 
   window.earthlineCommitPropertyWater15824=
     commitPropertyWater15824;
+  window.earthlineRetirePropertyWater15824=
+    retirePropertyWater15824;
   window.earthlineRenderDirectWater15824=
     renderOverlay15824;
   window.earthlineBuild15824Audit=()=>({
@@ -29239,6 +29284,10 @@ body { overflow-x:hidden!important; }
   }
   function clearForSubmission(token,q){
     const m=map();
+    try{
+      if(typeof window.earthlineRetirePropertyWater15824==='function')
+        window.earthlineRetirePropertyWater15824('new-regional-search');
+    }catch(_){}
     earthlineSupersedePropertyForNewSearch16327(token,q);
     window.EARTHLINE_REGIONAL_VISUAL_DATA_16020=null;
     try{
@@ -34721,6 +34770,10 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
        the published tier still looks Regional it can reassert the focus workflow
        before Property starts. Mark the real Property run first, seed its exact
        20-acre frame, then let this same terminal owner move the camera. */
+    try{
+      if(typeof window.earthlineRetirePropertyWater15824==='function')
+        window.earthlineRetirePropertyWater15824('new-property-run');
+    }catch(_){}
     running=true;document.documentElement.dataset.earthlinePropertyRunState='running';document.documentElement.classList.add('earthline-property-running-16233');const serial=++runSerial,started=performance.now();
     try{if(typeof window.earthlineMarkPropertyRequested16243==='function')window.earthlineMarkPropertyRequested16243()}catch(_){}
     window.EARTHLINE_PROPERTY_PHASE_TRACE_16319=[];
