@@ -23389,23 +23389,16 @@ var prescribeSwales;
 
   function propertyActive15824(){
     const publication=M&&M.propertyPublication15816||null;
-    const currentGen=Number(M&&M.searchGen);
-    const publicationGen=Number(publication&&publication.searchGen);
-    const currentPublication=!!(
+    const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+    const displayedTier=String(displayed&&(displayed.tier||displayed.mode)||"").toLowerCase();
+    /* EARTHLINE 17566 — canonical committed Property display owns direct blue water; legacy mode/search-generation bookkeeping may not erase it. */
+    return !!(
+      M&&M.analysisReady&&
       publication&&
       publication.committed===true&&
       publication.safetyVerified===true&&
-      (
-        !Number.isFinite(currentGen)||
-        !Number.isFinite(publicationGen)||
-        currentGen===publicationGen
-      )
-    );
-    /* EARTHLINE 17565 — committed safety-verified Property publication owns blue water; transient displayed-tier UI state may not erase it. */
-    return !!(
-      M&&M.analysisReady&&
-      currentPublication&&
-      state.mode==="property"
+      displayed&&
+      displayedTier==="property"
     );
   }
 
