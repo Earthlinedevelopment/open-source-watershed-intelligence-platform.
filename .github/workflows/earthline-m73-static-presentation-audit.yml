@@ -1,4 +1,4 @@
-name: Earthline M73 Corridor Interaction Range
+name: Earthline M73 Water Owner Repair Validation
 on:
   push:
     branches: [pages-live]
@@ -7,17 +7,19 @@ on:
 permissions:
   contents: read
 jobs:
-  audit:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with: {ref: pages-live}
-      - name: Print corridor interaction range
+      - name: Validate external water owner retirement
         shell: bash
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          lines=Path('index.html').read_text(encoding='utf-8').splitlines()
-          for n in range(37220,37425):
-              print(f'{n}: {lines[n-1]}')
-          PY
+          set -euo pipefail
+          node --check earthline-launch-16872.js
+          echo EARTHLINE_M73_REPAIR_VALIDATION
+          echo "external_direct_water_true_calls=$(grep -o 'earthlineRenderDirectWater15824(true)' earthline-launch-16872.js | wc -l)"
+          echo "marker_17601=$(grep -c 'EARTHLINE 17601' earthline-launch-16872.js)"
+          echo "index_sidecar_refs:"
+          grep -n -o 'earthline-launch-16872\.js[^"'"'"' <]*' index.html | tail -10 || true
+          echo "sidecar_sha=$(sha256sum earthline-launch-16872.js | cut -d' ' -f1)"
