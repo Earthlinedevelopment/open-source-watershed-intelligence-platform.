@@ -69,25 +69,19 @@ jobs:
           )
 
           # D1: preserve the scientific evidence model/report APIs; retire only its unapproved public status box.
-          old_render='''  function render(){
-            const root=document.documentElement,tier=String(root.dataset.earthlineAnalysisTier||"").toLowerCase();
-            const slot=document.getElementById("earthlineStatusSlot16188")||document.getElementById("earthlineStatusSection16188");
-            let el=document.getElementById("earthlineExclusionEvidence16516");
-            if(tier!=="property"){if(el)el.remove();return null;}
-            const e=evidence();if(!e||!slot)return e;
-            if(!el){el=document.createElement("div");el.id="earthlineExclusionEvidence16516";el.setAttribute("role","status");slot.prepend(el);}
-            el.dataset.kind=e.kind;el.innerHTML='<div class="el16516-grade"></div><div class="el16516-detail"></div>';
-            el.querySelector(".el16516-grade").textContent=e.label;el.querySelector(".el16516-detail").textContent=e.detail;
-            window.EARTHLINE_EXCLUSION_EVIDENCE_16516=e;return e;
-          }'''
-          new_render='''  function render(){
+          ev_script=s.find('<script id="earthline-16516-evidence-grade-js">')
+          render_start=s.find('  function render(){',ev_script)
+          render_end=s.find('  function esc(v){',render_start)
+          if ev_script < 0 or render_start < 0 or render_end < 0:
+              raise SystemExit('16516 public evidence renderer boundaries not found')
+          s=s[:render_start]+'''  function render(){
             const el=document.getElementById("earthlineExclusionEvidence16516");
             if(el)el.remove();
             const e=evidence();
             window.EARTHLINE_EXCLUSION_EVIDENCE_16516=e;
             return e;
-          }'''
-          replace_once(old_render,new_render,'16516 public evidence renderer')
+          }
+          '''+s[render_end:]
 
           # D5: retire legacy WHY NOT HERE diagnostic presentation, preserving underlying diagnostic data/functions.
           ui_start=s.find('  function earthlineInstallCoverageUI15803(){')
