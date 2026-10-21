@@ -1,0 +1,519 @@
+name: Earthline M74 Consolidate Water Sidecar
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-m74-consolidate-water-sidecar.yml'
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Consolidate Property water sidecar
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp index.html /tmp/index.before.html
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          original=s
+
+          def count(needle):
+              return s.count(needle)
+
+          def function_bounds(src,name,start_at=0):
+              marker='function '+name
+              start=src.find(marker,start_at)
+              if start<0:
+                  raise RuntimeError('missing '+marker)
+              brace=src.find('{',start)
+              if brace<0:
+                  raise RuntimeError('missing opening brace '+name)
+              i=brace
+              depth=0
+              quote=None
+              line_comment=False
+              block_comment=False
+              escape=False
+              while i<len(src):
+                  ch=src[i]
+                  nx=src[i+1] if i+1<len(src) else ''
+                  if line_comment:
+                      if ch=='\n': line_comment=False
+                      i+=1; continue
+                  if block_comment:
+                      if ch=='*' and nx=='/':
+                          block_comment=False; i+=2; continue
+                      i+=1; continue
+                  if quote:
+                      if escape:
+                          escape=False; i+=1; continue
+                      if ch=='\\':
+                          escape=True; i+=1; continue
+                      if ch==quote:
+                          quote=None; i+=1; continue
+                      i+=1; continue
+                  if ch=='/' and nx=='/':
+                      line_comment=True; i+=2; continue
+                  if ch=='/' and nx=='*':
+                      block_comment=True; i+=2; continue
+                  if ch in ('"', "'", '`'):
+                      quote=ch; i+=1; continue
+                  if ch=='{':
+                      depth+=1
+                  elif ch=='}':
+                      depth-=1
+                      if depth==0:
+                          return start,i+1
+                  i+=1
+              raise RuntimeError('unterminated '+name)
+
+          def replace_function(src,name,new_text,start_at=0):
+              a,b=function_bounds(src,name,start_at)
+              return src[:a]+new_text+src[b:]
+
+          def must_replace(src,old,new,label):
+              n=src.count(old)
+              if n!=1:
+                  raise RuntimeError(f'{label}: expected 1 occurrence, found {n}')
+              return src.replace(old,new,1)
+
+          # A. Retire old 15792 Mapbox water presentation; preserve hydrology generator.
+          start=s.find('function syncPropertyFlow15792(force=false)')
+          if start<0: raise RuntimeError('missing syncPropertyFlow15792')
+          s=replace_function(s,'syncPropertyFlow15792',r'''function syncPropertyFlow15792(force=false){
+              /* EARTHLINE 17610 — compatibility only.
+                 The old 15792 Mapbox water presentation no longer owns Property-water
+                 generation, delivery, retries, or visibility. The governed 15824 sidecar
+                 commits one immutable water result per Property generation. */
+              if(mapReady()){
+                for(const id of [FLOW_CASING,FLOW_LINE,FLOW_PULSE,FLOW_ARROWS])layerVisible(id,false);
+              }
+              const publication=M&&M.authoritativeWaterPublication15824||null;
+              const featureCount=Number(publication&&publication.featureCount||0);
+              M.propertyFlowRenderer15792={
+                build:"EARTHLINE 17610",
+                generatedFeatures:featureCount,
+                sourceFeatures:0,
+                features:featureCount,
+                visible:false,
+                arrowsVisible:false,
+                source:FLOW_SOURCE,
+                sourceReady:false,
+                retired:true,
+                authoritativeCommitted:!!(
+                  publication&&publication.committed===true&&publication.verified===true&&
+                  Number(publication.searchGen)===Number(M&&M.searchGen)
+                ),
+                reason:"retired-to-governed-water-sidecar-17610"
+              };
+              return false;
+            }''',start)
+
+          # B. Existing swale delivery remains; water is no longer part of its retry owner.
+          start=s.find('function earthlineDeliverPropertyResult15817')
+          if start<0: raise RuntimeError('missing earthlineDeliverPropertyResult15817')
+          s=replace_function(s,'earthlineDeliverPropertyResult15817',r'''function earthlineDeliverPropertyResult15817(
+              reason="property-complete",
+              scheduleRetries=true
+            ){
+              const runGen=Number(M&&M.searchGen||0);
+              const safetyVerified=!!(
+                M&&M.propertyResultLock15815&&
+                M.propertyResultLock15815.safetyVerified===true&&
+                M.safetyAudit15806&&M.safetyAudit15806.verified===true
+              );
+              const fc=(
+                safetyVerified&&
+                M.authoritativeSafeSwales15815&&
+                M.authoritativeSafeSwales15815.type==="FeatureCollection"&&
+                Array.isArray(M.authoritativeSafeSwales15815.features)
+              )
+                ?M.authoritativeSafeSwales15815
+                :{type:"FeatureCollection",features:[]};
+              if(!safetyVerified){
+                earthlineClearPropertyMapSources16176();
+                return false;
+              }
+
+              const attempt=(delayMs)=>{
+                if(Number(M&&M.searchGen||0)!==runGen)return false;
+                let visible=false;
+                let error=null;
+                try{
+                  if(typeof window.earthlineSyncLivingSwales15792==="function"){
+                    visible=!!window.earthlineSyncLivingSwales15792(fc,true);
+                  }else if(
+                    typeof window.earthlineRefreshPropertyRenderer15792==="function"
+                  ){
+                    visible=!!window.earthlineRefreshPropertyRenderer15792(true);
+                  }
+                  if(typeof window.earthlineApplyRendererOwnership15805==="function"){
+                    window.earthlineApplyRendererOwnership15805("property");
+                  }
+                  if(typeof window.earthlineRenderSafetyPanel15806==="function"){
+                    window.earthlineRenderSafetyPanel15806();
+                  }
+                }catch(e){
+                  error={
+                    name:String(e&&e.name||"Error"),
+                    message:String(e&&e.message||"renderer delivery failed"),
+                    stack:String(e&&e.stack||"")
+                  };
+                }
+
+                const renderer=M&&M.livingSwaleRenderer15792||null;
+                const displayed=Number(renderer&&renderer.features||0);
+                M.propertyRendererDelivery15817={
+                  build:"EARTHLINE 17610",
+                  reason,
+                  delayMs,
+                  searchGen:runGen,
+                  committedFeatures:fc.features.length,
+                  displayedFeatures:displayed,
+                  visible:!!(renderer&&renderer.visible),
+                  sourceReady:!!(renderer&&renderer.sourceReady),
+                  waterOwner:"earthlineCommitPropertyWater15824",
+                  waterPublication:M&&M.authoritativeWaterPublication15824||null,
+                  error,
+                  delivered:fc.features.length===0?displayed===0:displayed>0,
+                  attemptedAt:Date.now()
+                };
+                return fc.features.length===0?displayed===0:displayed>0;
+              };
+
+              const immediate=attempt(0);
+              if(scheduleRetries){
+                for(const timer of earthlineDeliveryTimers15817)clearTimeout(timer);
+                earthlineDeliveryTimers15817.clear();
+                for(const delay of [60,180,480,1100,2200]){
+                  const timer=setTimeout(()=>{
+                    earthlineDeliveryTimers15817.delete(timer);
+                    const delivered=attempt(delay);
+                    if(delivered){
+                      for(const pending of earthlineDeliveryTimers15817)clearTimeout(pending);
+                      earthlineDeliveryTimers15817.clear();
+                    }
+                  },delay);
+                  earthlineDeliveryTimers15817.add(timer);
+                }
+              }
+              return immediate;
+            }''',start)
+
+          # C. Retire 15823 publication/scheduler as water lifecycle owners.
+          export_anchor=s.find('window.earthlinePublishPropertyWater15823=publish;')
+          if export_anchor<0: raise RuntimeError('missing 15823 export')
+          publish_start=s.rfind('function publish(',0,export_anchor)
+          schedule_start=s.rfind('function schedule(',0,export_anchor)
+          if publish_start<0 or schedule_start<publish_start:
+              raise RuntimeError('missing 15823 publish/schedule')
+          s=replace_function(s,'publish',r'''function publish(reason="manual"){
+              /* EARTHLINE 17610 — compatibility shim only. Water lifecycle ownership is
+                 consolidated into the governed 15824 commit + render contract. */
+              const publication=M&&M.authoritativeWaterPublication15824||null;
+              const committed=!!(
+                publication&&publication.committed===true&&publication.verified===true&&
+                Number(publication.searchGen)===Number(M&&M.searchGen)
+              );
+              M.propertyFlowDelivery15823={
+                build:"EARTHLINE 17610",
+                reason:String(reason||"manual"),
+                legacyPublisherRetired17610:true,
+                committed,
+                authoritativeWaterPublication15824:publication,
+                attemptedAt:Date.now()
+              };
+              renderStatus();
+              return committed;
+            }''',publish_start)
+
+          export_anchor=s.find('window.earthlinePublishPropertyWater15823=publish;')
+          schedule_start=s.rfind('function schedule(',0,export_anchor)
+          s=replace_function(s,'schedule',r'''function schedule(reason="property-result"){
+              const publication=M&&M.authoritativeWaterPublication15824||null;
+              const committed=!!(
+                publication&&publication.committed===true&&publication.verified===true&&
+                Number(publication.searchGen)===Number(M&&M.searchGen)
+              );
+              M.propertyFlowDelivery15823={
+                build:"EARTHLINE 17610",
+                reason:String(reason||"property-result"),
+                legacySchedulerRetired17610:true,
+                committed,
+                authoritativeWaterPublication15824:publication,
+                attemptedAt:Date.now()
+              };
+              return committed;
+            }''',schedule_start)
+
+          # D. One committed generation owns the sidecar result.
+          s=must_replace(
+              s,
+              '  let committedOwnerGeneration15824=null;\n  let committedFlowGeneration15824=null;',
+              '  let committedWaterGeneration15824=null;',
+              '15824 generation vars'
+          )
+          start=s.find('function propertyActive15824()')
+          s=replace_function(s,'propertyActive15824',r'''function propertyActive15824(){
+              const publication=M&&M.authoritativeWaterPublication15824||null;
+              const currentGen=Number(M&&M.searchGen);
+              return !!(
+                M&&publication&&
+                publication.committed===true&&
+                publication.verified===true&&
+                Number(publication.searchGen)===currentGen&&
+                validFC15824(M.authoritativeWaterPaths15824)&&
+                M.authoritativeWaterPaths15824.features.length>0
+              );
+            }''',start)
+
+          s=must_replace(
+              s,
+              '''    /* EARTHLINE 17600 — committed geographic water geometry is immutable for the
+                 generation. Camera/style changes reproject it; they never regenerate it
+                 from mutable post-publication model state. */
+              if(
+                Number.isFinite(committedFlowGeneration15824)&&
+                committedFlowGeneration15824===currentGen&&
+                validFC15824(cachedFlow)
+              )return cachedFlow;
+
+          ''',
+              '''    /* EARTHLINE 17610 — this function is a pure sidecar builder. It may run only
+                 during the governed Property publication handoff. Render events never call
+                 it; they only reproject the committed immutable FeatureCollection. */
+
+          ''',
+              'remove committed regeneration guard'
+          )
+          s=must_replace(
+              s,
+              '''    if(propertyActive15824())committedFlowGeneration15824=currentGen;
+              M.authoritativeWaterPaths15824=cachedFlow;
+          ''',
+              '',
+              'remove authoritative write from builder'
+          )
+
+          # E. Add the governed sidecar commit contract immediately after the builder.
+          af=s.find('function authoritativeFlow15824(force=false)')
+          a,b=function_bounds(s,'authoritativeFlow15824',af)
+          commit=r'''
+
+            function commitPropertyWater15824(reason="property-publication"){
+              const currentGen=Number(M&&M.searchGen);
+              const propertyPublication=M&&M.propertyPublication15816||null;
+              const existing=M&&M.authoritativeWaterPublication15824||null;
+              if(
+                existing&&existing.committed===true&&existing.verified===true&&
+                Number(existing.searchGen)===currentGen&&
+                validFC15824(M&&M.authoritativeWaterPaths15824)&&
+                M.authoritativeWaterPaths15824.features.length>0
+              )return true;
+
+              const publicationReady=!!(
+                M&&M.analysisReady&&
+                Number.isFinite(currentGen)&&
+                propertyPublication&&
+                propertyPublication.committed===true&&
+                propertyPublication.safetyVerified===true&&
+                Number(propertyPublication.searchGen)===currentGen
+              );
+              if(!publicationReady){
+                M.authoritativeWaterPaths15824=emptyFC15824();
+                M.authoritativeWaterPublication15824=Object.freeze({
+                  build:"EARTHLINE 17610",
+                  committed:false,verified:false,searchGen:currentGen,
+                  featureCount:0,reason:"property-publication-not-verified",
+                  requestedBy:String(reason||"property-publication"),
+                  at:new Date().toISOString()
+                });
+                return false;
+              }
+
+              const built=authoritativeFlow15824(true);
+              const verified=!!(
+                validFC15824(built)&&
+                Array.isArray(built.features)&&
+                built.features.length>0
+              );
+              if(!verified){
+                M.authoritativeWaterPaths15824=emptyFC15824();
+                M.authoritativeWaterPublication15824=Object.freeze({
+                  build:"EARTHLINE 17610",
+                  committed:false,verified:false,searchGen:currentGen,
+                  featureCount:0,reason:"authoritative-water-paths-empty",
+                  requestedBy:String(reason||"property-publication"),
+                  hydrologySource:"existing M.dir + M.acc",
+                  at:new Date().toISOString()
+                });
+                return false;
+              }
+
+              const committed=JSON.parse(JSON.stringify(built));
+              M.authoritativeWaterPaths15824=committed;
+              committedWaterGeneration15824=currentGen;
+              M.authoritativeWaterPublication15824=Object.freeze({
+                build:"EARTHLINE 17610",
+                committed:true,verified:true,searchGen:currentGen,
+                featureCount:committed.features.length,
+                requestedBy:String(reason||"property-publication"),
+                hydrologySource:"existing M.dir + M.acc",
+                generationMethod:String(M&&M.waterPathGeneration15824&&M.waterPathGeneration15824.method||""),
+                terrainStamp:String(M&&M.terrainStamp||""),
+                framePoints:Number(Array.isArray(M&&M.analysisBoundaryLngLat)?M.analysisBoundaryLngLat.length:0),
+                at:new Date().toISOString()
+              });
+              return true;
+            }
+          '''
+          s=s[:b]+commit+s[b:]
+
+          # F. Renderer only projects the committed immutable sidecar result.
+          s=must_replace(
+              s,
+              '    const flow=authoritativeFlow15824(forceData);',
+              '    const flow=validFC15824(M&&M.authoritativeWaterPaths15824)?M.authoritativeWaterPaths15824:emptyFC15824();',
+              'renderer committed flow read'
+          )
+          s=must_replace(
+              s,
+              '''  window.earthlineRenderDirectWater15824=
+              renderOverlay15824;''',
+              '''  window.earthlineCommitPropertyWater15824=
+              commitPropertyWater15824;
+            window.earthlineRenderDirectWater15824=
+              renderOverlay15824;''',
+              'commit export'
+          )
+          s=must_replace(s,'    queueRender15824(true);','    queueRender15824(false);','install no force build')
+
+          # G. Canonical Property publication is the one water handoff.
+          old='''    try{
+              if(m.layers&&m.layers.swales)m.layers.swales.on=true;'''
+          new='''    try{
+              const waterCommitted16220=!!(
+                typeof window.earthlineCommitPropertyWater15824==='function'&&
+                window.earthlineCommitPropertyWater15824('property-canonical-display-16220')
+              );
+              if(!waterCommitted16220){
+                const waterPublication16220=m.authoritativeWaterPublication15824||null;
+                window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220={
+                  build:BUILD,published:false,
+                  reason:'property-water-sidecar-unverified',
+                  canonicalTierBefore:String(before?.tier||before?.mode||''),
+                  generationMatches:counts.generationMatches,
+                  currentGen:counts.currentGen,publicationGen:counts.publicationGen,lockGen:counts.lockGen,
+                  engineCount:counts.engineCount,safeCount:counts.safeCount,publicationCount:counts.publicationCount,
+                  waterPublication:waterPublication16220,
+                  at:new Date().toISOString()
+                };
+                return {ok:false,counts,waterPublication:waterPublication16220};
+              }
+              if(m.layers&&m.layers.swales)m.layers.swales.on=true;'''
+          s=must_replace(s,old,new,'canonical water commit')
+
+          old='''      if(typeof window.earthlineSyncLivingSwales15792==='function')window.earthlineSyncLivingSwales15792(counts.safe,true);
+              window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220='''
+          new='''      if(typeof window.earthlineSyncLivingSwales15792==='function')window.earthlineSyncLivingSwales15792(counts.safe,true);
+              if(typeof window.earthlineRenderDirectWater15824==='function')window.earthlineRenderDirectWater15824(false);
+              window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220='''
+          s=must_replace(s,old,new,'canonical committed render')
+
+          # H. Presentation settlement does not own water.
+          old="    try{if(typeof window.earthlineRenderDirectWater15824==='function')window.earthlineRenderDirectWater15824(true)}catch(_){ }"
+          if s.count(old)!=1: raise RuntimeError('settle water call count '+str(s.count(old)))
+          s=s.replace(old,'''    /* EARTHLINE 17610 — Property presentation settlement does not own water.
+                 The canonical publication handoff committed and rendered it already. */''',1)
+
+          old="if(!propertyDisplay16220.ok){const reason='the governed Property result did not have a committed, exclusion-verified safety lock';"
+          new="if(!propertyDisplay16220.ok){const reason=String(window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220?.reason||'the governed Property result did not have a committed, exclusion-verified safety lock');"
+          s=must_replace(s,old,new,'publication failure reason')
+
+          s=must_replace(
+              s,
+              '    source:M&&M.authoritativeWaterPaths15824||null,',
+              '    source:M&&M.authoritativeWaterPaths15824||null,\n    publication:M&&M.authoritativeWaterPublication15824||null,\n    committedGeneration:committedWaterGeneration15824,',
+              '15824 audit publication'
+          )
+
+          # Architecture invariants: no new listener/polling fan-out.
+          before_listener=original.count('earthlineMap.on(')
+          after_listener=s.count('earthlineMap.on(')
+          before_interval=original.count('setInterval(')
+          after_interval=s.count('setInterval(')
+          if after_listener>before_listener:
+              raise RuntimeError(f'new map listener owner added {before_listener}->{after_listener}')
+          if after_interval>before_interval:
+              raise RuntimeError(f'new polling owner added {before_interval}->{after_interval}')
+          checks={
+              'commitFn':s.count('function commitPropertyWater15824('),
+              'forcedDirectRender':s.count('earthlineRenderDirectWater15824(true)'),
+              'oldDeliveryWaterSync':s.count('earthlineSyncPropertyFlow15792(true)'),
+              'retired15792':s.count('retired-to-governed-water-sidecar-17610'),
+              'sidecarFailClosed':s.count('property-water-sidecar-unverified'),
+              'listenersBefore':before_listener,'listenersAfter':after_listener,
+              'intervalsBefore':before_interval,'intervalsAfter':after_interval
+          }
+          if checks['commitFn']!=1: raise RuntimeError(str(checks))
+          if checks['forcedDirectRender']!=0: raise RuntimeError(str(checks))
+          if checks['oldDeliveryWaterSync']!=0: raise RuntimeError(str(checks))
+          if checks['retired15792']<1 or checks['sidecarFailClosed']<1: raise RuntimeError(str(checks))
+
+          p.write_text(s,encoding='utf-8')
+          print('EARTHLINE_M74_PATCH',checks)
+          print('EARTHLINE_M74_SIZE',len(original),len(s))
+          PY
+
+      - name: Validate consolidated architecture
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs');
+          const s=fs.readFileSync('index.html','utf8');
+          let n=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);n++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          const req=[
+            ['function commitPropertyWater15824(',1],
+            ['earthlineRenderDirectWater15824(true)',0],
+            ['earthlineSyncPropertyFlow15792(true)',0],
+            ['property-water-sidecar-unverified',1],
+            ['retired-to-governed-water-sidecar-17610',1]
+          ];
+          for(const [needle,want] of req){
+            const got=s.split(needle).length-1;
+            if(got!==want)throw Error(needle+' count '+got+' expected '+want);
+          }
+          console.log('EARTHLINE_M74_INLINE_SCRIPTS_OK '+n);
+          console.log('EARTHLINE_M74_SINGLE_WATER_OWNER_OK');
+          NODE
+          git diff --check
+          git diff --stat
+          git diff -- index.html | grep -E '17610|earthlineCommitPropertyWater15824|property-water-sidecar-unverified|retired-to-governed-water-sidecar-17610' | head -80
+
+      - name: Publish consolidated sidecar
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Production Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git rm -f .github/workflows/earthline-m74-consolidate-water-sidecar.yml
+          git rm -f .github/workflows/earthline-m73-essex-locked-blue-trace.yml || true
+          git rm -f .github/workflows/earthline-m73-essex-search-identity.yml || true
+          git add index.html
+          git commit -m "fix: govern Property water sidecar as single publication"
+          git push origin HEAD:pages-live
