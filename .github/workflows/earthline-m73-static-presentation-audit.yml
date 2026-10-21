@@ -1,0 +1,49 @@
+name: Earthline M73 Static Presentation Audit
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-m73-static-presentation-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - name: Extract presentation ownership code
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          lines=s.splitlines()
+          terms=[
+            'earthlineApplyRendererOwnership15805',
+            'ensurePlanting15806',
+            'syncPlanting15806',
+            'function syncTexture',
+            'const syncTexture',
+            'earthlinePropertyWaterOverlay15824',
+            'directWaterRenderer15824',
+            'earthlineRenderDirectWater15824'
+          ]
+          print('EARTHLINE_M73_STATIC_OCCURRENCES')
+          for term in terms:
+              print('\n### TERM',term)
+              hits=[i for i,l in enumerate(lines) if term in l]
+              print('hits', [i+1 for i in hits])
+              for i in hits[:20]:
+                  a=max(0,i-4); b=min(len(lines),i+7)
+                  print(f'--- {term} @ {i+1} ---')
+                  for j in range(a,b): print(f'{j+1}: {lines[j]}')
+          print('\nEARTHLINE_M73_OWNER_BLOCK')
+          hit=next((i for i,l in enumerate(lines) if 'window.earthlineApplyRendererOwnership15805' in l and '=' in l),None)
+          if hit is not None:
+              for j in range(max(0,hit-20),min(len(lines),hit+180)): print(f'{j+1}: {lines[j]}')
+          print('\nEARTHLINE_M73_WATER_CSS')
+          for i,l in enumerate(lines):
+              if 'earthlinePropertyWaterOverlay15824' in l and ('#earthlinePropertyWaterOverlay15824' in l or 'style.' in l or 'zIndex' in l or 'appendChild' in l):
+                  for j in range(max(0,i-8),min(len(lines),i+12)): print(f'{j+1}: {lines[j]}')
+          PY
