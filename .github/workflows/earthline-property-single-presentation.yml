@@ -1,0 +1,57 @@
+name: Earthline Property Single Presentation Commit
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['tools/mantra74-property-single-presentation.py']
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+          fetch-depth: 0
+      - run: python3 tools/mantra74-property-single-presentation.py
+      - name: Validate deterministic Property presentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          for(const bad of [
+            'safeLayerTimers16221',
+            '[0,90,260,620,1300,2600]',
+            'for(const delay of [120,280,520,900,1300,1800])',
+            'earthlineDisplayAudit15882',
+            "mp.on(ev,()=>scheduleSafePropertyFallback16221",
+            "analysis-complete',()=>scheduleSafePropertyFallback16221",
+            'setInterval(updateBuild,1000)'
+          ])if(s.includes(bad))throw Error('late Property mutation remains: '+bad);
+          for(const good of [
+            'function settleCurrentPropertyPresentation16521',
+            'function syncSafePropertyFallback16221',
+            'function propertyLivingMapVisible16262',
+            'function settlePropertyMapVisibility16260',
+            'window.earthlineDeclarePropertyAtCrosshair16173=terminalPropertyRun;'
+          ])if(!s.includes(good))throw Error('Property owner missing: '+good);
+          console.log('EARTHLINE_17670_INLINE_SCRIPTS_OK',parsed);
+          NODE
+          git diff --check
+      - name: Commit and remove temporary patch machinery
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Stability Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git rm -f tools/mantra74-property-single-presentation.py .github/workflows/earthline-property-single-presentation.yml
+          git add index.html
+          git commit -m "stability: collapse Property presentation to one commit"
+          git push origin HEAD:recovery/mantra74-stability
