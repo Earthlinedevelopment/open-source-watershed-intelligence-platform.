@@ -17249,13 +17249,8 @@ var prescribeSwales;
       try{
         if(typeof window.earthlineSyncLivingSwales15792==="function"){
           visible=!!window.earthlineSyncLivingSwales15792(fc,true);
-        }else if(
-          typeof window.earthlineRefreshPropertyRenderer15792==="function"
-        ){
+        }else if(typeof window.earthlineRefreshPropertyRenderer15792==="function"){
           visible=!!window.earthlineRefreshPropertyRenderer15792(true);
-        }
-        if(typeof window.earthlineSyncPropertyFlow15792==="function"){
-          window.earthlineSyncPropertyFlow15792(true);
         }
         if(typeof window.earthlineApplyRendererOwnership15805==="function"){
           window.earthlineApplyRendererOwnership15805("property");
@@ -17272,17 +17267,9 @@ var prescribeSwales;
       }
 
       const renderer=M&&M.livingSwaleRenderer15792||null;
-      const water=M&&M.propertyFlowRenderer15792||null;
       const displayed=Number(renderer&&renderer.features||0);
-      const waterDisplayed=Number(
-        water&&(
-          water.sourceFeatures!=null
-            ?water.sourceFeatures
-            :water.features
-        )||0
-      );
       M.propertyRendererDelivery15817={
-        build:"EARTHLINE 16176",
+        build:"EARTHLINE 17610",
         reason,
         delayMs,
         searchGen:runGen,
@@ -17290,20 +17277,13 @@ var prescribeSwales;
         displayedFeatures:displayed,
         visible:!!(renderer&&renderer.visible),
         sourceReady:!!(renderer&&renderer.sourceReady),
-        waterGenerated:Number(water&&water.generatedFeatures||0),
-        waterSourceFeatures:waterDisplayed,
-        waterVisible:!!(water&&water.visible),
-        waterArrowsVisible:!!(water&&water.arrowsVisible),
-        waterReason:water&&water.reason||null,
+        waterOwner:"earthlineCommitPropertyWater15824",
+        waterPublication:M&&M.authoritativeWaterPublication15824||null,
         error,
-        delivered:fc.features.length===0
-          ?displayed===0&&waterDisplayed===0
-          :displayed>0&&waterDisplayed>0,
+        delivered:fc.features.length===0?displayed===0:displayed>0,
         attemptedAt:Date.now()
       };
-      return fc.features.length===0
-        ?displayed===0&&waterDisplayed===0
-        :displayed>0&&waterDisplayed>0;
+      return fc.features.length===0?displayed===0:displayed>0;
     };
 
     const immediate=attempt(0);
@@ -17315,9 +17295,7 @@ var prescribeSwales;
           earthlineDeliveryTimers15817.delete(timer);
           const delivered=attempt(delay);
           if(delivered){
-            for(const pending of earthlineDeliveryTimers15817){
-              clearTimeout(pending);
-            }
+            for(const pending of earthlineDeliveryTimers15817)clearTimeout(pending);
             earthlineDeliveryTimers15817.clear();
           }
         },delay);
@@ -20930,114 +20908,32 @@ var prescribeSwales;
   }
 
   function syncPropertyFlow15792(force=false){
-    /* EARTHLINE 16326 — Property D8 water is mandatory evidence. */
-    const flowToggle=true;
-    const showMode=activeProperty();
-
-    if(!showMode){
-      if(mapReady()){
-        for(const id of [
-          FLOW_CASING,FLOW_LINE,FLOW_PULSE,FLOW_ARROWS
-        ])layerVisible(id,false);
-      }
-      M.propertyFlowRenderer15792={
-        build:"BUILD-CHECK-15823",
-        generatedFeatures:0,
-        sourceFeatures:0,
-        features:0,
-        visible:false,
-        arrowsVisible:false,
-        source:FLOW_SOURCE,
-        sourceReady:false,
-        reason:activeProperty()
-          ?"flow-layer-disabled":"property-analysis-not-ready"
-      };
-      return false;
+    /* EARTHLINE 17610 — compatibility only.
+       The old 15792 Mapbox water presentation no longer owns Property-water
+       generation, delivery, retries, or visibility. The governed 15824 sidecar
+       commits one immutable water result per Property generation. */
+    if(mapReady()){
+      for(const id of [FLOW_CASING,FLOW_LINE,FLOW_PULSE,FLOW_ARROWS])layerVisible(id,false);
     }
-
-    if(!ensureLayers15792()){
-      M.propertyFlowRenderer15792={
-        build:"BUILD-CHECK-15823",
-        generatedFeatures:lastFlowData.features.length,
-        sourceFeatures:0,
-        features:lastFlowData.features.length,
-        visible:false,
-        arrowsVisible:false,
-        source:FLOW_SOURCE,
-        sourceReady:false,
-        reason:"map-style-not-ready"
-      };
-      return false;
-    }
-
-    const signature=[
-      M.searchGen,GW,GH,
-      M.dir&&M.dir.length,
-      M.acc&&M.acc.length,
-      M.maxAcc,M.analysisReady
-    ].join("|");
-    const src=earthlineMap.getSource(FLOW_SOURCE);
-    const sourceChanged=!!src&&src!==lastFlowSource15799;
-    if(sourceChanged)lastFlowSource15799=src;
-
-    if(
-      force||sourceChanged||
-      signature!==lastFlowSignature||
-      !lastFlowData.features.length
-    ){
-      lastFlowSignature=signature;
-      lastFlowData=earthlineAuthoritativeFlowGeoJSON15823();
-      if(src&&src.setData)src.setData(lastFlowData);
-    }
-
-    let sourceFeatures=0;
-    try{
-      let sourceData=src&&src._data;
-      if(typeof sourceData==="string")sourceData=JSON.parse(sourceData);
-      sourceFeatures=(
-        sourceData&&Array.isArray(sourceData.features)
-      )?sourceData.features.length:0;
-    }catch(e){}
-
-    const generated=lastFlowData.features.length;
-    const show=generated>0;
-    for(const id of [
-      FLOW_CASING,FLOW_LINE,FLOW_PULSE
-    ])layerVisible(id,show);
-
-    const arrowsRequested=!!(
-      M.layers&&M.layers.arrows&&M.layers.arrows.on
-    );
-    layerVisible(FLOW_ARROWS,show&&arrowsRequested);
-
-    const lineVisible=!!(
-      show&&earthlineMap.getLayer(FLOW_LINE)&&
-      earthlineMap.getLayoutProperty(FLOW_LINE,"visibility")!=="none"
-    );
-    const arrowsVisible=!!(
-      show&&arrowsRequested&&earthlineMap.getLayer(FLOW_ARROWS)&&
-      earthlineMap.getLayoutProperty(FLOW_ARROWS,"visibility")!=="none"
-    );
-
+    const publication=M&&M.authoritativeWaterPublication15824||null;
+    const featureCount=Number(publication&&publication.featureCount||0);
     M.propertyFlowRenderer15792={
-      build:"BUILD-CHECK-15823",
-      generatedFeatures:generated,
-      sourceFeatures,
-      features:generated,
-      visible:lineVisible,
-      arrowsVisible,
+      build:"EARTHLINE 17610",
+      generatedFeatures:featureCount,
+      sourceFeatures:0,
+      features:featureCount,
+      visible:false,
+      arrowsVisible:false,
       source:FLOW_SOURCE,
-      sourceReady:!!src,
-      threshold:typeof streamThreshold==="function"
-        ?streamThreshold():null,
-      method:M.propertyFlowGeneration15823&&
-        M.propertyFlowGeneration15823.method||null,
-      reason:generated
-        ?(lineVisible?"published-visible":"published-awaiting-visibility")
-        :"no-D8-path-features",
-      deliveredAt:Date.now()
+      sourceReady:false,
+      retired:true,
+      authoritativeCommitted:!!(
+        publication&&publication.committed===true&&publication.verified===true&&
+        Number(publication.searchGen)===Number(M&&M.searchGen)
+      ),
+      reason:"retired-to-governed-water-sidecar-17610"
     };
-    return lineVisible;
+    return false;
   }
 
   // The analytical canvas no longer owns property flow lines. It can still draw
@@ -23274,51 +23170,38 @@ var prescribeSwales;
   }
 
   function publish(reason="manual"){
-    if(!propertyActive())return false;
-    let visible=false;
-    try{
-      if(typeof window.earthlineSyncPropertyFlow15792==="function"){
-        visible=!!window.earthlineSyncPropertyFlow15792(true);
-      }
-      if(typeof window.earthlineApplyRendererOwnership15805==="function"){
-        window.earthlineApplyRendererOwnership15805("property");
-      }
-    }catch(error){
-      M.propertyFlowRenderer15792={
-        build:BUILD,
-        generatedFeatures:0,
-        sourceFeatures:0,
-        features:0,
-        visible:false,
-        arrowsVisible:false,
-        source:"earthline-property-flow-15792",
-        sourceReady:false,
-        reason:"renderer-error: "+String(error&&error.message||error)
-      };
-    }
+    const publication=M&&M.authoritativeWaterPublication15824||null;
+    const committed=!!(
+      publication&&publication.committed===true&&publication.verified===true&&
+      Number(publication.searchGen)===Number(M&&M.searchGen)
+    );
     M.propertyFlowDelivery15823={
-      build:BUILD,
-      reason,
-      visible,
-      renderer:M&&M.propertyFlowRenderer15792||null,
+      build:"EARTHLINE 17610",
+      reason:String(reason||"manual"),
+      legacyPublisherRetired17610:true,
+      committed,
+      authoritativeWaterPublication15824:publication,
       attemptedAt:Date.now()
     };
     renderStatus();
-    return visible;
+    return committed;
   }
 
   function schedule(reason="property-result"){
-    /* EARTHLINE 17600 — compatibility shim only. The inherited retry ladder no
-       longer owns Property-water lifecycle. */
+    const publication=M&&M.authoritativeWaterPublication15824||null;
+    const committed=!!(
+      publication&&publication.committed===true&&publication.verified===true&&
+      Number(publication.searchGen)===Number(M&&M.searchGen)
+    );
     M.propertyFlowDelivery15823={
-      build:BUILD,reason:String(reason||"property-result"),
-      legacySchedulerRetired17600:true,attemptedAt:Date.now()
+      build:"EARTHLINE 17610",
+      reason:String(reason||"property-result"),
+      legacySchedulerRetired17610:true,
+      committed,
+      authoritativeWaterPublication15824:publication,
+      attemptedAt:Date.now()
     };
-    try{
-      if(typeof window.earthlineRenderDirectWater15824==="function")
-        return !!window.earthlineRenderDirectWater15824(false);
-    }catch(_){}
-    return false;
+    return committed;
   }
 
   window.earthlinePublishPropertyWater15823=publish;
@@ -23365,31 +23248,18 @@ var prescribeSwales;
   let statusPanel=null;
   let cachedKey="";
   let cachedFlow={type:"FeatureCollection",features:[]};
-  let committedOwnerGeneration15824=null;
-  let committedFlowGeneration15824=null;
+  let committedWaterGeneration15824=null;
   let lastRender=null;
   let renderQueued=false;
 
   function propertyActive15824(){
-    const publication=M&&M.propertyPublication15816||null;
+    const publication=M&&M.authoritativeWaterPublication15824||null;
     const currentGen=Number(M&&M.searchGen);
-    const currentPublication=!!(
-      M&&publication&&
-      publication.committed===true&&
-      publication.safetyVerified===true&&
-      Number(publication.searchGen)===currentGen
-    );
-    /* EARTHLINE 17600 — one committed Property generation owns direct blue water
-       until a newer real search advances M.searchGen. Same-generation cleanup,
-       UI settlement, or legacy publication bookkeeping cannot revoke that owner. */
-    if(currentPublication){
-      committedOwnerGeneration15824=currentGen;
-      return true;
-    }
     return !!(
-      M&&Number.isFinite(currentGen)&&
-      Number.isFinite(committedOwnerGeneration15824)&&
-      committedOwnerGeneration15824===currentGen
+      M&&publication&&publication.committed===true&&publication.verified===true&&
+      Number(publication.searchGen)===currentGen&&
+      validFC15824(M.authoritativeWaterPaths15824)&&
+      M.authoritativeWaterPaths15824.features.length>0
     );
   }
 
@@ -23679,14 +23549,8 @@ function viewAllowsWater15824(){
 
   function authoritativeFlow15824(force=false){
     const currentGen=Number(M&&M.searchGen||0);
-    /* EARTHLINE 17600 — committed geographic water geometry is immutable for the
-       generation. Camera/style changes reproject it; they never regenerate it
-       from mutable post-publication model state. */
-    if(
-      Number.isFinite(committedFlowGeneration15824)&&
-      committedFlowGeneration15824===currentGen&&
-      validFC15824(cachedFlow)
-    )return cachedFlow;
+    /* EARTHLINE 17610 — pure sidecar builder. It runs only during the governed
+       Property publication handoff. Render events only reproject committed data. */
 
     const frameKey=(Array.isArray(M&&M.analysisBoundaryLngLat)?M.analysisBoundaryLngLat:[])
       .map(p=>Array.isArray(p)&&p.length>=2?Number(p[0]).toFixed(7)+","+Number(p[1]).toFixed(7):"")
@@ -23725,8 +23589,6 @@ function viewAllowsWater15824(){
 
     cachedKey=key;
     cachedFlow=validFC15824(flow)?flow:emptyFC15824();
-    if(propertyActive15824())committedFlowGeneration15824=currentGen;
-    M.authoritativeWaterPaths15824=cachedFlow;
     M.waterPathGeneration15824={
       build:"EARTHLINE 16508",
       primaryFeatures:Number(primary.features.length||0),
@@ -23741,6 +23603,83 @@ function viewAllowsWater15824(){
     };
     return cachedFlow;
   }
+
+  function commitPropertyWater15824(reason="property-publication"){
+    const currentGen=Number(M&&M.searchGen);
+    const propertyPublication=M&&M.propertyPublication15816||null;
+    const existing=M&&M.authoritativeWaterPublication15824||null;
+
+    if(
+      existing&&existing.committed===true&&existing.verified===true&&
+      Number(existing.searchGen)===currentGen&&
+      validFC15824(M&&M.authoritativeWaterPaths15824)&&
+      M.authoritativeWaterPaths15824.features.length>0
+    )return true;
+
+    const publicationReady=!!(
+      M&&M.analysisReady&&Number.isFinite(currentGen)&&
+      propertyPublication&&propertyPublication.committed===true&&
+      propertyPublication.safetyVerified===true&&
+      Number(propertyPublication.searchGen)===currentGen
+    );
+
+    if(!publicationReady){
+      M.authoritativeWaterPaths15824=emptyFC15824();
+      M.authoritativeWaterPublication15824=Object.freeze({
+        build:"EARTHLINE 17610",
+        committed:false,
+        verified:false,
+        searchGen:currentGen,
+        featureCount:0,
+        reason:"property-publication-not-verified",
+        requestedBy:String(reason||"property-publication"),
+        at:new Date().toISOString()
+      });
+      return false;
+    }
+
+    const built=authoritativeFlow15824(true);
+    const verified=!!(
+      validFC15824(built)&&
+      Array.isArray(built.features)&&
+      built.features.length>0
+    );
+
+    if(!verified){
+      M.authoritativeWaterPaths15824=emptyFC15824();
+      M.authoritativeWaterPublication15824=Object.freeze({
+        build:"EARTHLINE 17610",
+        committed:false,
+        verified:false,
+        searchGen:currentGen,
+        featureCount:0,
+        reason:"authoritative-water-paths-empty",
+        requestedBy:String(reason||"property-publication"),
+        hydrologySource:"existing M.dir + M.acc",
+        at:new Date().toISOString()
+      });
+      return false;
+    }
+
+    const committed=JSON.parse(JSON.stringify(built));
+    M.authoritativeWaterPaths15824=committed;
+    committedWaterGeneration15824=currentGen;
+    M.authoritativeWaterPublication15824=Object.freeze({
+      build:"EARTHLINE 17610",
+      committed:true,
+      verified:true,
+      searchGen:currentGen,
+      featureCount:committed.features.length,
+      requestedBy:String(reason||"property-publication"),
+      hydrologySource:"existing M.dir + M.acc",
+      generationMethod:String(M&&M.waterPathGeneration15824&&M.waterPathGeneration15824.method||""),
+      terrainStamp:String(M&&M.terrainStamp||""),
+      framePoints:Number(Array.isArray(M&&M.analysisBoundaryLngLat)?M.analysisBoundaryLngLat.length:0),
+      at:new Date().toISOString()
+    });
+    return true;
+  }
+
 
   function svgElement15824(name,attributes){
     const element=document.createElementNS(SVG_NS,name);
@@ -23838,7 +23777,7 @@ function viewAllowsWater15824(){
       return false;
     }
 
-    const flow=authoritativeFlow15824(forceData);
+    const flow=validFC15824(M&&M.authoritativeWaterPaths15824)?M.authoritativeWaterPaths15824:emptyFC15824();
     const container=svg.parentElement;
     const width=Math.max(1,container&&container.clientWidth||1);
     const height=Math.max(1,container&&container.clientHeight||1);
@@ -24056,6 +23995,8 @@ function viewAllowsWater15824(){
       "</div>";
   }
 
+  window.earthlineCommitPropertyWater15824=
+    commitPropertyWater15824;
   window.earthlineRenderDirectWater15824=
     renderOverlay15824;
   window.earthlineBuild15824Audit=()=>({
@@ -24064,6 +24005,8 @@ function viewAllowsWater15824(){
     generation:M&&M.waterPathGeneration15824||null,
     renderer:M&&M.directWaterRenderer15824||null,
     source:M&&M.authoritativeWaterPaths15824||null,
+    publication:M&&M.authoritativeWaterPublication15824||null,
+    committedGeneration:committedWaterGeneration15824,
     oldMapboxWaterLayersSuppressed:OLD_FLOW_LAYERS.every(id=>{
       try{
         return !earthlineMap.getLayer(id)||
@@ -24075,7 +24018,7 @@ function viewAllowsWater15824(){
   const install15824=()=>{
     ensureOverlay15824();
     ensureStatus15824();
-    queueRender15824(true);
+    queueRender15824(false);
 
     try{
       earthlineMap.on("load",()=>queueRender15824(true));
@@ -34389,6 +34332,24 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
       evidence
     };
     try{
+      const waterCommitted16220=!!(
+        typeof window.earthlineCommitPropertyWater15824==='function'&&
+        window.earthlineCommitPropertyWater15824('property-canonical-display-16220')
+      );
+      if(!waterCommitted16220){
+        const waterPublication16220=m.authoritativeWaterPublication15824||null;
+        window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220={
+          build:BUILD,published:false,
+          reason:'property-water-sidecar-unverified',
+          canonicalTierBefore:String(before?.tier||before?.mode||''),
+          generationMatches:counts.generationMatches,
+          currentGen:counts.currentGen,publicationGen:counts.publicationGen,lockGen:counts.lockGen,
+          engineCount:counts.engineCount,safeCount:counts.safeCount,publicationCount:counts.publicationCount,
+          waterPublication:waterPublication16220,
+          at:new Date().toISOString()
+        };
+        return {ok:false,counts,waterPublication:waterPublication16220};
+      }
       if(m.layers&&m.layers.swales)m.layers.swales.on=true;
       if(typeof window.earthlinePublishDisplayedRun16151==='function')window.earthlinePublishDisplayedRun16151(snapshot);
       else{
@@ -34399,6 +34360,7 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
       }
       if(typeof window.earthlineDeliverPropertyResult15817==='function')window.earthlineDeliverPropertyResult15817('property-canonical-display-16220',true);
       if(typeof window.earthlineSyncLivingSwales15792==='function')window.earthlineSyncLivingSwales15792(counts.safe,true);
+      if(typeof window.earthlineRenderDirectWater15824==='function')window.earthlineRenderDirectWater15824(false);
       window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220={build:BUILD,published:true,runToken,canonicalTierBefore:String(before?.tier||before?.mode||''),canonicalTierAfter:String(window.EARTHLINE_DISPLAYED_RUN_16151?.tier||''),engineCount:counts.engineCount,safeCount:counts.safeCount,publicationCount:counts.publicationCount,sourceStateFingerprint:evidence.sourceStateFingerprint||null,scientificInputFingerprint:evidence.scientificInputFingerprint||null,noBuildMaskHash:evidence.noBuildMaskHash||null,drivewayFeatureCount:evidence.drivewayFeatureCount,buildingFeatureCount:evidence.buildingFeatureCount,authorityIntersectionCount:evidence.authorityIntersectionCount,at:new Date().toISOString()};
       try{earthlineStandardAudit16784({tier:'property',runToken,query:snapshot.query,stage:'property-published'});}catch(_){ }
       return {ok:true,counts,snapshot};
@@ -34464,7 +34426,8 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
     if(serial!==runSerial||Number(md.searchGen||0)!==Number(searchGen)||tier==='regional')return false;
     let safe=null,safeOk=count===0;
     try{safe=syncSafePropertyFallback16221('atomic-postpublish-17600');safeOk=count===0||!!(safe&&safe.ok)}catch(_){ }
-    try{if(typeof window.earthlineRenderDirectWater15824==='function')window.earthlineRenderDirectWater15824(true)}catch(_){ }
+    /* EARTHLINE 17610 — presentation settlement does not own water.
+       Canonical Property publication committed and rendered it already. */
     try{if(typeof window.earthlineSyncAquiferLayer==='function')window.earthlineSyncAquiferLayer()}catch(_){ }
     try{if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')}catch(_){ }
     try{if(typeof window.earthlineQueueAnalysisBoundary15827==='function')window.earthlineQueueAnalysisBoundary15827()}catch(_){ }
@@ -34840,7 +34803,7 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
       earthlinePropertyTrace16319("publishPropertyDisplay16220","enter");
       const propertyDisplay16220=publishPropertyDisplay16220(site,selectedCode);
       earthlinePropertyTrace16319("publishPropertyDisplay16220","exit",{ok:!!propertyDisplay16220&&propertyDisplay16220.ok===true});
-      if(!propertyDisplay16220.ok){const reason='the governed Property result did not have a committed, exclusion-verified safety lock';status('PROPERTY ANALYSIS STOPPED SAFELY — '+reason+'.','failed');setTierNotice('focus','');setAudit({settled:true,result:false,timedOut:false,error:reason,sourceEvidence:propertyEvidenceSnapshot16206(),publicationAudit:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,stageTimings:Object.assign({},m.lastTiming||{}),elapsedSeconds:Math.round((performance.now()-started)/1000),settledAt:new Date().toISOString()});return false;}
+      if(!propertyDisplay16220.ok){const reason=String(window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220?.reason||'the governed Property result did not have a committed, exclusion-verified safety lock');status('PROPERTY ANALYSIS STOPPED SAFELY — '+reason+'.','failed');setTierNotice('focus','');setAudit({settled:true,result:false,timedOut:false,error:reason,sourceEvidence:propertyEvidenceSnapshot16206(),publicationAudit:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,stageTimings:Object.assign({},m.lastTiming||{}),elapsedSeconds:Math.round((performance.now()-started)/1000),settledAt:new Date().toISOString()});return false;}
       const count=Number(propertyDisplay16220.counts.safeCount||0);
       /* EARTHLINE 16261 — the governed science is terminal once the committed,
          exclusion-verified Property FeatureCollection and its safe corridor count
