@@ -1,0 +1,154 @@
+name: Earthline M73 Essex Locked Blue Trace
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-m73-essex-locked-blue-trace.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Trace Essex Junction first Property blue visibility
+        shell: bash
+        run: |
+          cat > m73-essex-locked.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1600,height:1000}});
+          const errors=[];
+          page.on('pageerror',e=>errors.push('pageerror:'+String(e)));
+          page.on('console',m=>{if(m.type()==='error')errors.push('console:'+m.text())});
+          await page.goto('https://earthlinedevelopment.org/?m73essexlocked='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.waitForFunction(()=>window.earthlineMap||(typeof earthlineMap!=='undefined'&&earthlineMap),null,{timeout:30000,polling:100});
+          const input=page.locator('#searchInput');
+          await input.fill('Essex Junction, Vermont');
+          await page.waitForTimeout(900);
+          const opts=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
+          if(await opts.count()) await opts.first().click({force:true});
+          await page.keyboard.press('Escape').catch(()=>{});
+          await page.locator('#runBtn').click({force:true});
+          await page.waitForFunction(()=> {
+            const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+            return String(d&&(d.tier||d.mode)||'').toLowerCase()==='regional' &&
+              document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';
+          },null,{timeout:90000,polling:150});
+
+          // Lock map to actual Essex Junction center before choosing a corridor.
+          await page.evaluate(()=> {
+            const m=window.earthlineMap||earthlineMap;
+            m.jumpTo({center:[-73.11096,44.49060],zoom:12.8});
+          });
+          await page.waitForTimeout(1000);
+
+          const chosen=await page.evaluate(()=> {
+            const target={lng:-73.11096,lat:44.49060};
+            const labels=[...document.querySelectorAll('.earthline-swale-label-16149')];
+            const state=window.earthlineRegional15778||{};
+            const feats=state.swales?.features||[];
+            const rad=Math.PI/180;
+            const dist=(lng,lat)=>Math.hypot((lng-target.lng)*111320*Math.cos(target.lat*rad),(lat-target.lat)*111320);
+            let best=null;
+            for(const el of labels){
+              const idx=Number(el.dataset?.swaleIndex??el.getAttribute('data-swale-index'));
+              const f=el.__earthlineFeature||(Number.isInteger(idx)?feats[idx]:null);
+              const g=f?.geometry; let pts=[];
+              if(g?.type==='LineString')pts=g.coordinates||[];
+              else if(g?.type==='MultiLineString')pts=(g.coordinates||[]).flat();
+              const good=pts.filter(p=>Array.isArray(p)&&Number.isFinite(+p[0])&&Number.isFinite(+p[1]));
+              if(!good.length)continue;
+              const mid=good[Math.floor(good.length/2)];
+              const d=dist(+mid[0],+mid[1]);
+              if(!best||d<best.distanceM)best={index:idx,lng:+mid[0],lat:+mid[1],distanceM:d,code:String(f?.properties?.display_code||el.textContent||'')};
+            }
+            return best;
+          });
+          console.log('EARTHLINE_M73_ESSEX_LOCKED_CORRIDOR '+JSON.stringify(chosen));
+          if(!chosen||chosen.distanceM>20000) throw new Error('No Essex-near corridor: '+JSON.stringify(chosen));
+
+          const corridor=page.locator('.earthline-swale-label-16149[data-swale-index="'+chosen.index+'"]:visible').first();
+          if(!(await corridor.count())) throw new Error('Chosen corridor label not visible');
+          await corridor.click({force:true});
+          await page.waitForFunction(()=>!!document.getElementById('earthlineCorridorDetail16149')?.classList?.contains('open'),null,{timeout:10000,polling:100});
+          const zoom=page.getByRole('button',{name:/zoom to (this )?location/i}).first();
+          await zoom.click({force:true});
+          await page.waitForFunction(()=> {
+            const b=document.getElementById('earthlineDeclareProperty16169');
+            return !!b&&!b.disabled;
+          },null,{timeout:20000,polling:100});
+
+          const pre=await page.evaluate(()=>({
+            target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+            chosen:window.EARTHLINE_CHOSEN_LOCATION_16189||null,
+            center:(()=>{const m=window.earthlineMap||earthlineMap,c=m?.getCenter?.();return c?{lng:c.lng,lat:c.lat}:null})()
+          }));
+          console.log('EARTHLINE_M73_ESSEX_LOCKED_TARGET '+JSON.stringify(pre));
+
+          await page.evaluate(()=> {
+            window.__M73L={events:[],samples:[],started:performance.now()};
+            const snap=(label)=> {
+              const M0=typeof M!=='undefined'?M:null;
+              const svg=document.getElementById('earthlinePropertyWaterOverlay15824');
+              const cs=svg?getComputedStyle(svg):null;
+              const pub=M0?.propertyPublication15816||null;
+              const r=M0?.directWaterRenderer15824||null;
+              const row={t:+(performance.now()-window.__M73L.started).toFixed(1),label,
+                searchGen:+(M0?.searchGen||0),pubGen:pub?+pub.searchGen:null,
+                committed:!!pub?.committed,safety:!!pub?.safetyVerified,
+                display:svg?cs.display:'',visibility:svg?cs.visibility:'',opacity:svg?cs.opacity:'',
+                zIndex:svg?cs.zIndex:'',children:svg?svg.childElementCount:0,
+                rect:svg?(()=>{const b=svg.getBoundingClientRect();return{x:b.x,y:b.y,w:b.width,h:b.height}})():null,
+                renderer:r?JSON.parse(JSON.stringify(r)):null};
+              window.__M73L.samples.push(row); return row;
+            };
+            window.__M73L.snap=snap;
+            const rp=Element.prototype.replaceChildren;
+            Element.prototype.replaceChildren=function(...args){
+              const hit=this?.id==='earthlinePropertyWaterOverlay15824';
+              if(hit)window.__M73L.events.push({type:'replace-before',snap:snap('replace-before'),stack:String(new Error().stack||'')});
+              const out=rp.apply(this,args);
+              if(hit)window.__M73L.events.push({type:'replace-after',snap:snap('replace-after')});
+              return out;
+            };
+            const mo=new MutationObserver(ms=>{for(const mu of ms){
+              const svg=document.getElementById('earthlinePropertyWaterOverlay15824');
+              if(mu.target===svg)window.__M73L.events.push({type:'mutation:'+mu.type,attr:mu.attributeName||null,snap:snap('mutation')});
+            }});
+            mo.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['style','class']});
+          });
+
+          await page.locator('#earthlineDeclareProperty16169').click({force:true});
+          let firstVisibleAt=null,firstOffAt=null,firstPixelLossAt=null;
+          for(let i=0;i<700;i++){
+            const row=await page.evaluate(()=>window.__M73L.snap('poll'));
+            const visible=row.display!=='none'&&row.visibility!=='hidden'&&row.opacity!=='0'&&row.children>0&&row.renderer?.visible===true;
+            if(firstVisibleAt===null&&visible)firstVisibleAt=row.t;
+            if(firstVisibleAt!==null&&firstOffAt===null&&!visible&&row.t>firstVisibleAt+120)firstOffAt=row.t;
+            if(firstVisibleAt!==null&&row.t>firstVisibleAt+60000)break;
+            await page.waitForTimeout(100);
+          }
+          const result=await page.evaluate(({firstVisibleAt,firstOffAt,errors})=>({
+            firstVisibleAt,firstOffAt,final:window.__M73L.snap('final'),
+            events:(window.__M73L.events||[]).slice(-250),
+            samples:(window.__M73L.samples||[]).slice(-250),
+            propertyAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+            publicationAudit:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,
+            settleAudit:window.EARTHLINE_PROPERTY_PRESENTATION_SETTLE_AUDIT_16521||null,
+            errors
+          }),{firstVisibleAt,firstOffAt,errors});
+          console.log('EARTHLINE_M73_ESSEX_LOCKED_RESULT '+JSON.stringify(result));
+          await browser.close();
+          if(firstVisibleAt===null)process.exitCode=2;
+          else if(firstOffAt!==null)process.exitCode=3;
+          EOF
+          node ./m73-essex-locked.mjs
