@@ -1,0 +1,93 @@
+name: Earthline M73 Essex Search Identity Trace
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-m73-essex-search-identity.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Trace exact Essex search identity into Regional geometry
+        shell: bash
+        run: |
+          cat > m73-search.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          async function run(query){
+            const page=await browser.newPage({viewport:{width:1600,height:1000}});
+            const errors=[];
+            page.on('pageerror',e=>errors.push('pageerror:'+String(e)));
+            page.on('console',m=>{if(m.type()==='error')errors.push('console:'+m.text())});
+            await page.goto('https://earthlinedevelopment.org/?m73search='+Date.now()+Math.random(),{waitUntil:'domcontentloaded',timeout:90000});
+            await page.waitForSelector('#searchInput',{timeout:30000});
+            await page.waitForFunction(()=>window.earthlineMap||(typeof earthlineMap!=='undefined'&&earthlineMap),null,{timeout:30000,polling:100});
+            const before=await page.evaluate(()=>({
+              active:window.EARTHLINE_ACTIVE_RUN_TOKEN_16151||window.EARTHLINE_ACTIVE_RUN_TOKEN_16147||null,
+              displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,
+              last:window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||null
+            }));
+            const input=page.locator('#searchInput');
+            await input.fill(query);
+            await page.keyboard.press('Escape').catch(()=>{});
+            await page.locator('#runBtn').click({force:true});
+            await page.waitForFunction(({query,beforeToken})=>{
+              const last=window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||null;
+              const token=window.EARTHLINE_ACTIVE_RUN_TOKEN_16151||window.EARTHLINE_ACTIVE_RUN_TOKEN_16147||null;
+              const q=String(last&&last.query||'').trim().toLowerCase();
+              return last && token && token!==beforeToken && q===String(query).trim().toLowerCase() &&
+                document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';
+            },{query,beforeToken:before.active},{timeout:120000,polling:150});
+            const result=await page.evaluate(({query,errors})=>{
+              const M0=typeof M!=='undefined'?M:null;
+              const st=window.earthlineRegional15778||null;
+              const last=window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||null;
+              const disp=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+              const m=window.earthlineMap||earthlineMap;
+              const fc=(window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.swales)||st?.swales||null;
+              const feats=fc?.features||[];
+              let minLng=Infinity,minLat=Infinity,maxLng=-Infinity,maxLat=-Infinity,count=0;
+              for(const f of feats){
+                const g=f?.geometry; let pts=[];
+                if(g?.type==='LineString')pts=g.coordinates||[];
+                else if(g?.type==='MultiLineString')pts=(g.coordinates||[]).flat();
+                for(const p of pts){
+                  if(!Array.isArray(p)||!Number.isFinite(+p[0])||!Number.isFinite(+p[1]))continue;
+                  minLng=Math.min(minLng,+p[0]);maxLng=Math.max(maxLng,+p[0]);minLat=Math.min(minLat,+p[1]);maxLat=Math.max(maxLat,+p[1]);count++;
+                }
+              }
+              const c=m.getCenter(),b=m.getBounds();
+              return {
+                query,input:document.getElementById('searchInput')?.value||'',
+                active:window.EARTHLINE_ACTIVE_RUN_TOKEN_16151||window.EARTHLINE_ACTIVE_RUN_TOKEN_16147||null,
+                Mloc:M0?.loc||null,applied:M0?.appliedSearchText||null,
+                centerLng:M0?.centerLng??null,centerLat:M0?.centerLat??null,viewZoom:M0?.viewZoom??null,
+                stateLoc:st?.loc||null,stateMode:st?.mode||null,stateActive:!!st?.active,
+                lastQuery:last?.query||null,lastTier:last?.tier||last?.mode||null,lastLocation:last?.location||null,lastBounds:last?.bounds||last?.analysisBounds||null,
+                displayedQuery:disp?.query||null,displayedTier:disp?.tier||disp?.mode||null,
+                map:{center:{lng:c.lng,lat:c.lat},zoom:m.getZoom(),bounds:[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()]},
+                swales:{features:feats.length,points:count,bbox:count?[minLng,minLat,maxLng,maxLat]:null},
+                labelCount:document.querySelectorAll('.earthline-swale-label-16149').length,
+                firstLabels:[...document.querySelectorAll('.earthline-swale-label-16149')].slice(0,5).map(el=>({text:el.textContent,index:el.dataset?.swaleIndex||null})),
+                errors
+              };
+            },{query,errors});
+            console.log('EARTHLINE_M73_SEARCH_IDENTITY '+JSON.stringify(result));
+            await page.close();
+            return result;
+          }
+          await run('Essex Junction, Vermont');
+          await run('Essex, Vermont');
+          await browser.close();
+          EOF
+          node ./m73-search.mjs
