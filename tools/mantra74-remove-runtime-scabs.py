@@ -26,15 +26,9 @@ for pattern,label in [
     s=s2
 
 # Final public rule: legacy status remains available to code/audits but never renders a floating box.
-marker='</head>'
-style='''<style id="earthline-stability-public-status-retire-17631">
-#earthlineVermontStatus16147{display:none!important}
-</style>
-'''
+style='''\n<style id="earthline-stability-public-status-retire-17631">\n#earthlineVermontStatus16147{display:none!important}\n</style>\n'''
 if style not in s:
-    if s.count(marker)!=1:
-        raise RuntimeError("head marker mismatch")
-    s=s.replace(marker,style+marker,1)
+    s=s.rstrip()+style+"\n"
 
 # No public watchdog failure copy may remain.
 for bad in [
@@ -52,3 +46,5 @@ print("EARTHLINE_17631_RUNTIME_SCAB_REMOVAL",len(before),len(s),len(before)-len(
 # trigger
 
 # trigger-v2
+
+# trigger-v3
