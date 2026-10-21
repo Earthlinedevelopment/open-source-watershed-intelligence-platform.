@@ -1,0 +1,51 @@
+name: Earthline Apply Shared Property Evidence
+on:
+  push:
+    branches:
+      - recovery/mantra74-stability
+    paths:
+      - 'tools/mantra74-simplify-property.py'
+permissions:
+  contents: write
+jobs:
+  simplify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+          fetch-depth: 0
+      - name: Apply one Property evidence cascade
+        run: python3 tools/mantra74-simplify-property.py
+      - name: Validate JavaScript and simplification invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          for(const bad of ['mode:"portable-non-vermont"','mode:"vermont-authoritative"','const portableStyleFirst16550=','verifying the declared project area is inside Vermont']){
+            if(s.includes(bad))throw Error('legacy jurisdiction mode remains: '+bad);
+          }
+          for(const good of ['mode:"shared-evidence"','evidencePath17630="shared-style-first"','shared-infrastructure-fallback','capabilityOnly:true']){
+            if(!s.includes(good))throw Error('shared rule missing: '+good);
+          }
+          console.log('EARTHLINE_17630_INLINE_SCRIPTS_OK',parsed);
+          NODE
+          git diff --check
+      - name: Commit and remove temporary patch machinery
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Stability Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git rm -f tools/mantra74-simplify-property.py
+          git rm -f .github/workflows/earthline-apply-shared-property-evidence.yml
+          git add index.html
+          git commit -m "stability: use one Property evidence cascade everywhere"
+          git push origin HEAD:recovery/mantra74-stability
