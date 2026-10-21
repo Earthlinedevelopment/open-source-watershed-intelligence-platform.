@@ -1103,11 +1103,10 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     return changed>0;
   }
   function afterPublication(reason){
+    /* EARTHLINE 17601 — this fallback owner may enforce verified safe-swale
+       visibility after publication, but it may not redraw the authoritative
+       direct-water SVG. Water presentation remains owned only by 15824. */
     for(const ms of [0,120,450,1100])setTimeout(()=>{
-      try{
-        if(typeof window.earthlineRenderDirectWater15824==='function')
-          window.earthlineRenderDirectWater15824(true);
-      }catch(_){}
       enforce(reason+'-'+ms);
     },ms);
   }
