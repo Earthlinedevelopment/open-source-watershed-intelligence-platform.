@@ -67,7 +67,7 @@ const BASE_TEXT=Object.keys(UI.en);const t=()=>TXT[lang()]||TXT.en;
 function normalizeText(s){return String(s||'').replace(/\s+/g,' ').trim()}
 function reverseText(){const r=new Map();for(const base of BASE_TEXT){r.set(normalizeText(base).toLowerCase(),base);for(const d of Object.values(UI))r.set(normalizeText(d[base]||'').toLowerCase(),base)}return r}
 function translateVisibleText(){const dict=UI[lang()]||UI.en,rev=reverseText();try{const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;while((n=walker.nextNode())){const raw=n.nodeValue||'',norm=normalizeText(raw);if(!norm)continue;const base=rev.get(norm.toLowerCase());if(!base||!dict[base]||norm===dict[base])continue;const lead=(raw.match(/^\s*/)||[''])[0],trail=(raw.match(/\s*$/)||[''])[0];n.nodeValue=lead+dict[base]+trail}}catch(_){}for(const el of document.querySelectorAll('input[placeholder],textarea[placeholder]')){const norm=normalizeText(el.getAttribute('placeholder'));const base=rev.get(norm.toLowerCase());if(base&&dict[base])el.setAttribute('placeholder',dict[base])}}
-function scheduleTranslation(){for(const ms of [0,80,260,700,1400])setTimeout(translateVisibleText,ms)}
+function scheduleTranslation(){requestAnimationFrame(()=>translateVisibleText())}
 function showToast(msg){let e=document.getElementById('earthlineToast16872');if(!e){e=document.createElement('div');e.id='earthlineToast16872';document.body.appendChild(e)}e.textContent=msg;e.classList.add('show');clearTimeout(e._tm);e._tm=setTimeout(()=>e.classList.remove('show'),3600)}
 function modal(){let m=document.getElementById('earthlineAccountModal16872');if(m)return m;m=document.createElement('div');m.id='earthlineAccountModal16872';m.innerHTML='<div class="earthline-launch-card-16872"><button class="earthline-launch-close-16872" aria-label="Close">×</button><h2></h2><div class="earthline-account-state-16872"></div><div class="earthline-account-tabs-16872"><button data-mode="login"></button><button data-mode="create"></button></div><form class="earthline-account-form-16872"><label class="earthline-email-row-16872"><span class="e"></span><input name="email" type="email" autocomplete="email" required></label><label class="earthline-user-row-16872"><span class="u"></span><input name="username" autocomplete="username"></label><label><span class="p"></span><input name="password" type="password" autocomplete="current-password" required></label><button type="submit" class="earthline-account-submit-16872"></button></form><button class="earthline-signout-16872" hidden></button><div class="earthline-quota-16872"></div><div class="earthline-account-message-16872"></div></div>';document.body.appendChild(m);m.querySelector('.earthline-launch-close-16872').onclick=()=>m.classList.remove('open');m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')});m.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{m.dataset.mode=b.dataset.mode;renderAccount()});m.querySelector('.earthline-signout-16872').onclick=async()=>{await signOut();showToast(t().logout)};m.querySelector('form').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget),mode=m.dataset.mode||'login',msg=m.querySelector('.earthline-account-message-16872'),d=t();try{msg.textContent='';if(mode==='create'){const out=await createAccount(f.get('username'),f.get('email'),f.get('password'));msg.textContent=out.session?d.signed:d.created}else{await signIn(f.get('email'),f.get('password'));msg.textContent=d.signed}}catch(err){msg.textContent=err.message||String(err)}};return m}
 function renderAccount(){
@@ -146,16 +146,6 @@ async function flushTelemetry(keepalive=false){
   if(tf||!tq.length||!rawFetch)return;tf=true;const batch=tq.splice(0,Math.min(30,tq.length));try{const r=await rawFetch(TELEMETRY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_key:telemetrySessionKey,events:batch}),cache:'no-store',credentials:'omit',keepalive:!!keepalive});if(!r.ok&&r.status>=500&&tq.length<60)tq.unshift(...batch)}catch(_){if(tq.length<60)tq.unshift(...batch)}finally{tf=false;if(tq.length&&!tt)tt=setTimeout(()=>{tt=null;flushTelemetry(false)},5000)}}
 function track(event_name,properties={}){if(!/^[a-z0-9_]{2,64}$/.test(String(event_name||'')))return;const e={event_name:String(event_name),occurred_at:new Date().toISOString(),session_key:telemetrySessionKey,page_path:location.pathname,build:BUILD,language:lang(),properties:cleanProps(properties)};for(const k of ['mode','success','duration_ms','metric_name','metric_value','error_class','jurisdiction','country_code','state_code'])if(Object.prototype.hasOwnProperty.call(properties,k))e[k]=properties[k];tq.push(e);if(tq.length>=10)flushTelemetry(false);else if(!tt)tt=setTimeout(()=>{tt=null;flushTelemetry(false)},5000)}
 function installTelemetry(){track('session_start');track('page_view');document.addEventListener('click',e=>{const el=e.target?.closest?.('a,button,[role="button"]');if(!el)return;const id=String(el.id||'');const label=normalizeText(el.getAttribute?.('aria-label')||el.textContent||'').toLowerCase();if(id==='earthlineRailSearch16188')track('search_panel_click');else if(id==='earthlineRailMenu16188')track('menu_click');else if(id==='earthlineRailContact16512'||/^mailto:/i.test(el.getAttribute?.('href')||''))track('contact_click');else if(id==='earthlineVermontReport16149'||label.includes('bioswale impact report')||label.includes('informe de impacto')||label.includes('báo cáo tác động')||label.includes('รายงานผลกระทบ'))track('report_open');else if(label==='data'||label==='datos'||label==='dữ liệu'||label==='ข้อมูล')track('data_open');else if(label.includes('swales explained')||label.includes('bioswales explicados')||label.includes('rãnh sinh học')||label.includes('ร่องชีวภาพ'))track('swales_explained_open');else if(label.includes('earthline process')||label.includes('proceso earthline')||label.includes('quy trình earthline')||label.includes('กระบวนการ earthline'))track('process_open');if(['runBtn','runBtnSide','earthlineMapRun15970','earthlineMapRun16020','earthlineDeclareProperty16169'].includes(id)){analysisStarted=performance.now();track(id==='earthlineDeclareProperty16169'?'property_analysis_start':'regional_analysis_start',{mode:id==='earthlineDeclareProperty16169'?'property':'regional'})}},{capture:true,passive:true});document.addEventListener('earthline:analysis-complete',e=>{const raw=String(e?.detail?.tier||e?.detail?.mode||'regional').toLowerCase();const mode=raw.includes('property')?'property':'regional';track(mode+'_analysis_success',{mode,success:true,duration_ms:analysisStarted?performance.now()-analysisStarted:null});analysisStarted=0},{passive:true});window.addEventListener('error',e=>track('js_error',{error_class:String(e?.error?.name||'Error').slice(0,80)}));window.addEventListener('unhandledrejection',e=>track('unhandled_rejection',{error_class:String(e?.reason?.name||'PromiseRejection').slice(0,80)}));try{const nav=performance.getEntriesByType('navigation')[0];if(nav){track('web_vital',{metric_name:'TTFB',metric_value:Math.max(0,nav.responseStart-nav.requestStart)});track('navigation_timing',{duration_ms:nav.duration})}}catch(_){}try{new PerformanceObserver(list=>{for(const e of list.getEntries())if(e.name==='first-contentful-paint')track('web_vital',{metric_name:'FCP',metric_value:e.startTime})}).observe({type:'paint',buffered:true})}catch(_){}try{new PerformanceObserver(list=>{const a=list.getEntries(),e=a[a.length-1];if(e)track('web_vital',{metric_name:'LCP',metric_value:e.startTime})}).observe({type:'largest-contentful-paint',buffered:true})}catch(_){}let cls=0;try{new PerformanceObserver(list=>{for(const e of list.getEntries())if(!e.hadRecentInput)cls+=e.value}).observe({type:'layout-shift',buffered:true})}catch(_){}window.addEventListener('pagehide',()=>{track('web_vital',{metric_name:'CLS',metric_value:cls});track('session_end',{duration_ms:performance.now()-sessionStarted});flushTelemetry(true)},{once:true});document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushTelemetry(true)})}
-function earthlineNzOverlayHitPass16914(){
-  /* EARTHLINE 17621 — retired jurisdiction-specific presentation patch.
-     Regional interaction is owned by the shared Regional renderer. */
-  window.EARTHLINE_NZ_OVERLAY_HIT_PASS_16914='retired-to-shared-owner';
-}
-function earthlineVancouverVisibleContext16916(){
-  /* EARTHLINE 17621 — retired jurisdiction-specific layer restyling/reordering.
-     Shared aquifer and water renderers own visibility and z-order globally. */
-  window.EARTHLINE_VANCOUVER_VISIBLE_CONTEXT_16916='retired-to-shared-owner';
-}
 function install(){
   try{
     const saved=detectLang(localStorage.getItem('earthlineLanguage16488'));
@@ -169,7 +159,6 @@ function install(){
   installRail();
   refreshSessionIfNeeded();
   document.addEventListener('change',e=>syncLanguageFromTarget(e.target),true);
-  document.addEventListener('click',e=>syncLanguageFromTarget(e.target),true);
   loadConfig();
   scheduleTranslation();
   installTelemetry();
@@ -765,29 +754,6 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 })();
 
 
-/* EARTHLINE_RETIRE_PUBLIC_COVERAGE_UI_17005
-   Production cleanup for the historical BUILD-CHECK-15803 diagnostic UI.
-   Internal coverage diagnostics remain available; the public WHY NOT HERE
-   black map box is retired at its runtime owner. */
-(function retirePublicCoverageUI17005(){
-  function retire(){
-    try{
-      window.earthlineInstallCoverageUI15803=function(){
-        try{document.getElementById('earthlineWhyNotHere15803')?.remove();}catch(_){}
-      };
-      document.getElementById('earthlineWhyNotHere15803')?.remove();
-      window.EARTHLINE_PUBLIC_COVERAGE_UI_17005='retired';
-    }catch(_){}
-  }
-  retire();
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',()=>setTimeout(retire,0),{once:true});
-  }else{
-    setTimeout(retire,0);
-  }
-})();
-
-
 /* EARTHLINE_MOBILE_SEARCH_TOUCH_17007
    Mobile presentation/input repair only.
    The existing autocomplete owner remains authoritative; this enforces its
@@ -1100,52 +1066,6 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     if(/how\s+bioswales\s+work/i.test(label))setTimeout(apply,0);
   },true);};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
-})();
-
-
-/* EARTHLINE_ALASKA_DATELINE_LABEL_PROJECTION_17015
-   Alaska-only presentation repair.
-   Normalizes longitudes to the current Mapbox world copy before custom overlay
-   projection so Regional A1-A30 labels/hit geometry cannot jump across the
-   antimeridian. No hydrology, ranking, geometry generation, or other state changes. */
-(function installEarthlineAlaskaProjection17015(){
-  if(window.EARTHLINE_ALASKA_DATELINE_LABEL_PROJECTION_17015)return;
-  function isAlaska(){
-    try{
-      const q=String(window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.query||'');
-      if(/\balaska\b/i.test(q))return true;
-      const p=window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556||window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||null;
-      return /\balaska\b/i.test(String(p?.identity?.name||p?.location?.name||''));
-    }catch(_){return false}
-  }
-  function install(){
-    let m=null;try{m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){}
-    if(!m||typeof m.project!=='function')return false;
-    if(m.project.__earthlineAlaska17015)return true;
-    const original=m.project.bind(m);
-    const wrapped=function(input){
-      if(!isAlaska())return original(input);
-      try{
-        const center=Number(m.getCenter?.().lng);
-        if(!Number.isFinite(center))return original(input);
-        let lng,lat,kind='object';
-        if(Array.isArray(input)){lng=Number(input[0]);lat=Number(input[1]);kind='array'}
-        else{lng=Number(input?.lng);lat=Number(input?.lat)}
-        if(!Number.isFinite(lng)||!Number.isFinite(lat))return original(input);
-        while(lng-center>180)lng-=360;
-        while(lng-center<-180)lng+=360;
-        return original(kind==='array'?[lng,lat]:{lng,lat});
-      }catch(_){return original(input)}
-    };
-    wrapped.__earthlineAlaska17015=true;
-    wrapped.__earthlineAlaska17015Original=original;
-    m.project=wrapped;
-    return true;
-  }
-  window.EARTHLINE_ALASKA_DATELINE_LABEL_PROJECTION_17015={state:'ready',install,isAlaska};
-  const boot=()=>{if(install())return;for(const ms of [50,180,500,1200,2500])setTimeout(install,ms)};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
-  document.addEventListener('earthline:analysis-complete',()=>{install();},{passive:true});
 })();
 
 
