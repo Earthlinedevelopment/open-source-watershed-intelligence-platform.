@@ -1,25 +1,51 @@
-name: Earthline M73 Water Owner Repair Validation
+name: Earthline M73 Publish Water Owner Repair
 on:
   push:
     branches: [pages-live]
     paths:
       - '.github/workflows/earthline-m73-static-presentation-audit.yml'
 permissions:
-  contents: read
+  contents: write
 jobs:
-  validate:
+  publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: {ref: pages-live}
-      - name: Validate external water owner retirement
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Force-refresh repaired sidecar and clean diagnostics
         shell: bash
         run: |
           set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old='earthline-launch-16872.js?v=17014'
+          new='earthline-launch-16872.js?v=17601'
+          assert s.count(old)==1, s.count(old)
+          assert new not in s
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          PY
           node --check earthline-launch-16872.js
-          echo EARTHLINE_M73_REPAIR_VALIDATION
-          echo "external_direct_water_true_calls=$(grep -o 'earthlineRenderDirectWater15824(true)' earthline-launch-16872.js | wc -l)"
-          echo "marker_17601=$(grep -c 'EARTHLINE 17601' earthline-launch-16872.js)"
-          echo "index_sidecar_refs:"
-          grep -n -o 'earthline-launch-16872\.js[^"'"'"' <]*' index.html | tail -10 || true
-          echo "sidecar_sha=$(sha256sum earthline-launch-16872.js | cut -d' ' -f1)"
+          test "$(grep -o 'earthlineRenderDirectWater15824(true)' earthline-launch-16872.js | wc -l)" -eq 0
+          test "$(grep -c 'EARTHLINE 17601' earthline-launch-16872.js)" -eq 1
+          grep -q 'earthline-launch-16872.js?v=17601' index.html
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1])}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          NODE
+          git rm -f .github/workflows/earthline-m73-static-presentation-audit.yml
+          git rm -f .github/workflows/earthline-m73-exact-blink-trace.yml || true
+      - name: Publish
+        shell: bash
+        run: |
+          git config user.name "Earthline Production Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html earthline-launch-16872.js
+          git commit -m "ops: force refresh single Property water owner repair"
+          git push origin HEAD:pages-live
