@@ -1,0 +1,46 @@
+name: Earthline M74 Govern Water Sidecar
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-m74-run-water-consolidation.yml'
+permissions:
+  contents: write
+jobs:
+  consolidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Apply governed water sidecar patch
+        run: python3 tools/m74-consolidate-property-water-sidecar.py
+      - name: Validate architecture and JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e 'const fs=require("fs"),s=fs.readFileSync("index.html","utf8");let n=0;for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){if(!m[1].trim())continue;try{new Function(m[1]);n++}catch(e){throw Error("inline script "+i+": "+e.message)}};console.log("EARTHLINE_M74_INLINE_SCRIPTS_OK",n)'
+          test "$(grep -F -o 'function commitPropertyWater15824(' index.html | wc -l)" -eq 1
+          test "$(grep -F -o 'earthlineRenderDirectWater15824(true)' index.html | wc -l)" -eq 0
+          test "$(grep -F -o 'earthlineSyncPropertyFlow15792(true)' index.html | wc -l)" -eq 0
+          test "$(grep -F -o 'property-water-sidecar-unverified' index.html | wc -l)" -eq 1
+          test "$(grep -F -o 'retired-to-governed-water-sidecar-17610' index.html | wc -l)" -eq 1
+          git diff --check
+          git diff --stat
+          echo EARTHLINE_M74_SINGLE_WATER_OWNER_OK
+      - name: Publish governed water sidecar
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Production Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git rm -f tools/m74-consolidate-property-water-sidecar.py
+          git rm -f .github/workflows/earthline-m74-run-water-consolidation.yml
+          git rm -f .github/workflows/earthline-m74-consolidate-water-sidecar.yml || true
+          git rm -f .github/workflows/earthline-m73-essex-locked-blue-trace.yml || true
+          git rm -f .github/workflows/earthline-m73-essex-search-identity.yml || true
+          git add index.html
+          git commit -m "fix: govern Property water sidecar as single publication"
+          git push origin HEAD:pages-live
