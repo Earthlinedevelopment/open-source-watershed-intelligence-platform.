@@ -1,0 +1,244 @@
+name: Earthline M74 Explicit Owner Lifecycle
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-m74-explicit-owner-lifecycle.yml'
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+
+      - name: Correct governed owner lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp index.html /tmp/index.before.html
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          original=s
+
+          def must_replace(old,new,label):
+              global s
+              n=s.count(old)
+              if n!=1:
+                  raise RuntimeError(f'{label}: expected 1 occurrence, found {n}')
+              s=s.replace(old,new,1)
+
+          def insert_before(anchor,text,label):
+              global s
+              n=s.count(anchor)
+              if n!=1:
+                  raise RuntimeError(f'{label}: anchor count {n}')
+              i=s.index(anchor)
+              s=s[:i]+text+s[i:]
+
+          must_replace(
+          '''  function propertyActive15824(){
+              const publication=M&&M.authoritativeWaterPublication15824||null;
+              const currentGen=Number(M&&M.searchGen);
+              return !!(
+                M&&publication&&publication.committed===true&&publication.verified===true&&
+                Number(publication.searchGen)===currentGen&&
+                validFC15824(M.authoritativeWaterPaths15824)&&
+                M.authoritativeWaterPaths15824.features.length>0
+              );
+            }''',
+          '''  function propertyActive15824(){
+              const publication=M&&M.authoritativeWaterPublication15824||null;
+              /* EARTHLINE 17611 — governed publication ownership.
+                 M.searchGen is a cooperative analysis-cancellation token; legacy watchdogs,
+                 camera/UI settlement, and Regional bookkeeping may not revoke an already
+                 committed Water Sidecar publication. Retirement is explicit and belongs
+                 only to this 15824 owner at a canonical run transition or fail-closed block. */
+              return !!(
+                M&&publication&&publication.committed===true&&publication.verified===true&&
+                validFC15824(M.authoritativeWaterPaths15824)&&
+                M.authoritativeWaterPaths15824.features.length>0
+              );
+            }''',
+          'propertyActive explicit ownership'
+          )
+
+          must_replace(
+          '''    if(
+                existing&&existing.committed===true&&existing.verified===true&&
+                Number(existing.searchGen)===currentGen&&
+                validFC15824(M&&M.authoritativeWaterPaths15824)&&
+                M.authoritativeWaterPaths15824.features.length>0
+              )return true;''',
+          '''    if(
+                existing&&existing.committed===true&&existing.verified===true&&
+                validFC15824(M&&M.authoritativeWaterPaths15824)&&
+                M.authoritativeWaterPaths15824.features.length>0
+              )return true;''',
+          'commit idempotence independent of legacy searchGen'
+          )
+
+          insert_before(
+          '''  function svgElement15824(name,attributes){''',
+          '''  function retirePropertyWater15824(reason="canonical-run-transition"){
+              if(!M)return false;
+              const prior=M.authoritativeWaterPublication15824||null;
+              M.authoritativeWaterPaths15824=emptyFC15824();
+              committedWaterGeneration15824=null;
+              M.authoritativeWaterPublication15824=Object.freeze({
+                build:"EARTHLINE 17611",
+                committed:false,
+                verified:false,
+                retired:true,
+                priorSearchGen:prior&&Number.isFinite(Number(prior.searchGen))?Number(prior.searchGen):null,
+                searchGen:Number(M.searchGen),
+                featureCount:0,
+                reason:String(reason||"canonical-run-transition"),
+                at:new Date().toISOString()
+              });
+              const svg=ensureOverlay15824();
+              if(svg){
+                svg.style.display="none";
+                svg.replaceChildren();
+              }
+              lastRender={
+                build:"EARTHLINE 17611",
+                generatedPaths:0,
+                visiblePaths:0,
+                arrows:0,
+                visible:false,
+                reason:"water-publication-retired",
+                retiredBy:String(reason||"canonical-run-transition"),
+                renderedAt:Date.now()
+              };
+              M.directWaterRenderer15824=lastRender;
+              updateStatus15824();
+              return true;
+            }
+
+
+          ''',
+          'authoritative retirement'
+          )
+
+          must_replace(
+          '''  window.earthlineCommitPropertyWater15824=
+              commitPropertyWater15824;
+            window.earthlineRenderDirectWater15824=
+              renderOverlay15824;''',
+          '''  window.earthlineCommitPropertyWater15824=
+              commitPropertyWater15824;
+            window.earthlineRetirePropertyWater15824=
+              retirePropertyWater15824;
+            window.earthlineRenderDirectWater15824=
+              renderOverlay15824;''',
+          'retire export'
+          )
+
+          must_replace(
+          '''  function clearForSubmission(token,q){
+              const m=map();
+              earthlineSupersedePropertyForNewSearch16327(token,q);''',
+          '''  function clearForSubmission(token,q){
+              const m=map();
+              try{
+                if(typeof window.earthlineRetirePropertyWater15824==='function')
+                  window.earthlineRetirePropertyWater15824('new-regional-search');
+              }catch(_){}
+              earthlineSupersedePropertyForNewSearch16327(token,q);''',
+          'regional transition retirement'
+          )
+
+          must_replace(
+          '''    running=true;document.documentElement.dataset.earthlinePropertyRunState='running';document.documentElement.classList.add('earthline-property-running-16233');const serial=++runSerial,started=performance.now();''',
+          '''    try{
+                if(typeof window.earthlineRetirePropertyWater15824==='function')
+                  window.earthlineRetirePropertyWater15824('new-property-run');
+              }catch(_){}
+              running=true;document.documentElement.dataset.earthlinePropertyRunState='running';document.documentElement.classList.add('earthline-property-running-16233');const serial=++runSerial,started=performance.now();''',
+          'property transition retirement'
+          )
+
+          must_replace(
+          '''    M.propertyPublicationBlock16176=block;
+              window.EARTHLINE_PROPERTY_PUBLICATION_BLOCK_16176=block;''',
+          '''    M.propertyPublicationBlock16176=block;
+              window.EARTHLINE_PROPERTY_PUBLICATION_BLOCK_16176=block;
+              try{
+                if(typeof window.earthlineRetirePropertyWater15824==='function')
+                  window.earthlineRetirePropertyWater15824('property-publication-blocked');
+              }catch(_){}''',
+          'fail-closed retirement'
+          )
+
+          checks={
+              'commitFn':s.count('function commitPropertyWater15824('),
+              'retireFn':s.count('function retirePropertyWater15824('),
+              'retireExport':s.count('window.earthlineRetirePropertyWater15824=\n    retirePropertyWater15824;'),
+              'forcedDirectRender':s.count('earthlineRenderDirectWater15824(true)'),
+              'mapListenersBefore':original.count('earthlineMap.on('),
+              'mapListenersAfter':s.count('earthlineMap.on('),
+              'intervalsBefore':original.count('setInterval('),
+              'intervalsAfter':s.count('setInterval('),
+              'timeoutsBefore':original.count('setTimeout('),
+              'timeoutsAfter':s.count('setTimeout(')
+          }
+          if checks['commitFn']!=1 or checks['retireFn']!=1 or checks['retireExport']!=1:
+              raise RuntimeError(str(checks))
+          if checks['forcedDirectRender']!=0:
+              raise RuntimeError(str(checks))
+          if checks['mapListenersAfter']!=checks['mapListenersBefore']:
+              raise RuntimeError(str(checks))
+          if checks['intervalsAfter']!=checks['intervalsBefore']:
+              raise RuntimeError(str(checks))
+          if checks['timeoutsAfter']!=checks['timeoutsBefore']:
+              raise RuntimeError(str(checks))
+
+          p.write_text(s,encoding='utf-8')
+          print('EARTHLINE_M74_EXPLICIT_OWNER_LIFECYCLE',checks)
+          PY
+
+      - name: Validate architecture and JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let n=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);n++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          const req=[
+            ['function commitPropertyWater15824(',1],
+            ['function retirePropertyWater15824(',1],
+            ['earthlineRenderDirectWater15824(true)',0],
+            ['EARTHLINE 17611',3]
+          ];
+          for(const [needle,want] of req){
+            const got=s.split(needle).length-1;
+            if(got!==want)throw Error(needle+' count '+got+' expected '+want);
+          }
+          console.log('EARTHLINE_M74_INLINE_SCRIPTS_OK '+n);
+          console.log('EARTHLINE_M74_GOVERNED_OWNER_TRANSITIONS_OK');
+          NODE
+          git diff --check
+          git diff --stat
+
+      - name: Publish correction and remove workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Production Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git rm -f .github/workflows/earthline-m74-explicit-owner-lifecycle.yml
+          git add index.html
+          git commit -m "fix: make governed owner state explicit across Property transitions"
+          git push origin HEAD:pages-live
