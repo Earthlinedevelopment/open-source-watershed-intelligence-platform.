@@ -200,3 +200,5 @@ for required in [
 
 p.write_text(s,encoding="utf-8")
 print("EARTHLINE_17630_SHARED_PROPERTY_EVIDENCE",len(original),len(s))
+
+# trigger shared-evidence application
