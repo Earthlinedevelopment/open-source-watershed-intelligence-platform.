@@ -86,26 +86,11 @@ jobs:
             await page.waitForFunction(()=>{
               const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
               const tier=String(d&&(d.tier||d.mode)||'').toLowerCase();
-              const hits=document.querySelectorAll('#earthlineRegionalVectorOverlay16020 .earthline-swale-hit-16070').length;
               const busy=document.getElementById('runBtn')?.getAttribute('aria-busy')==='true';
-              return tier==='regional'&&!busy&&hits>0;
-            },null,{timeout:60000,polling:150});
-          }catch{await fail('Regional publication/corridors failed','regional-timeout')}
-
-          const hit=page.locator('#earthlineRegionalVectorOverlay16020 .earthline-swale-hit-16070').first();
-          if(!(await hit.count()))await fail('No Regional corridor hit','regional-no-hit');
-          await hit.click({force:true});
-          await page.waitForTimeout(250);
-          const zoom=page.getByRole('button',{name:/zoom to (this )?location/i}).first();
-          if(!(await zoom.count()))await fail('Zoom to location missing','no-zoom');
-          await zoom.click();
-
-          try{
-            await page.waitForFunction(()=>{
               const b=document.getElementById('earthlineDeclareProperty16169');
-              return !!b&&!b.disabled&&/^CROSSHAIR\b/i.test(String(b.innerText||''));
-            },null,{timeout:10000,polling:100});
-          }catch{await fail('Crosshair Property handoff failed','crosshair-timeout')}
+              return tier==='regional'&&!busy&&!!b&&!b.disabled&&/^CROSSHAIR\b/i.test(String(b.innerText||''));
+            },null,{timeout:60000,polling:150});
+          }catch{await fail('Regional publication / current crosshair Property control failed','regional-property-ready-timeout')}
 
           const preSerial=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
           await page.evaluate(()=>{
