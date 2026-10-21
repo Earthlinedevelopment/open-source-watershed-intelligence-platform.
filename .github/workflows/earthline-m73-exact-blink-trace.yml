@@ -1,4 +1,4 @@
-name: Earthline M73 Visual Water Stack Trace
+name: Earthline M73 Essex Junction Exact Corridor Trace
 on:
   push:
     branches: [pages-live]
@@ -18,10 +18,10 @@ jobs:
       - run: |
           npm install --no-save playwright@1.55.0 pngjs@7.0.0
           npx playwright install --with-deps chromium
-      - name: Trace effective visual stack for first Property water
+      - name: Trace genuine corridor to first Property
         shell: bash
         run: |
-          cat > m73-visual.mjs <<'EOF'
+          cat > m73-essex.mjs <<'EOF'
           import { chromium } from 'playwright';
           import { PNG } from 'pngjs';
           const browser=await chromium.launch({headless:true});
@@ -29,12 +29,12 @@ jobs:
           const errors=[];
           page.on('pageerror',e=>errors.push('pageerror:'+String(e)));
           page.on('console',m=>{if(m.type()==='error')errors.push('console:'+m.text())});
-          await page.goto('https://earthlinedevelopment.org/?m73visual='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await page.goto('https://earthlinedevelopment.org/?m73essex='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
           await page.waitForSelector('#searchInput',{timeout:30000});
           await page.waitForFunction(()=>window.earthlineMap||(typeof earthlineMap!=='undefined'&&earthlineMap),null,{timeout:30000,polling:100});
           const input=page.locator('#searchInput');
-          await input.fill('Essex, Vermont');
-          await page.waitForTimeout(900);
+          await input.fill('Essex Junction, Vermont');
+          await page.waitForTimeout(1000);
           const opts=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
           if(await opts.count()) await opts.first().click({force:true});
           await page.keyboard.press('Escape').catch(()=>{});
@@ -44,81 +44,95 @@ jobs:
             return String(d&&(d.tier||d.mode)||'').toLowerCase()==='regional' &&
               document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';
           },null,{timeout:90000,polling:150});
-          let clicked=false;
-          for(const sel of [
-            '#earthlineRegionalVectorOverlay16020 .earthline-swale-hit-16070:visible',
-            '#earthlineRegionalVectorOverlay16020 [data-corridor]:visible',
-            '#earthlineRegionalVectorOverlay16020 [data-index]:visible',
-            '#earthlineRegionalVectorOverlay16020 path:visible',
-            '#earthlineRegionalVectorOverlay16020 polyline:visible'
-          ]){
-            const loc=page.locator(sel);
-            for(let i=0;i<await loc.count();i++){
-              const box=await loc.nth(i).boundingBox().catch(()=>null);
-              if(!box||box.width<1||box.height<1)continue;
-              await loc.nth(i).click({force:true}).catch(()=>{});
-              await page.waitForTimeout(200);
-              if(await page.getByRole('button',{name:/zoom to (this )?location/i}).count()){
-                clicked=true; console.log('EARTHLINE_M73_VISUAL_CORRIDOR '+sel+' index='+i); break;
-              }
-            }
-            if(clicked)break;
-          }
-          if(!clicked)throw new Error('No clickable Regional corridor found');
-          await page.getByRole('button',{name:/zoom to (this )?location/i}).first().click({force:true});
+          await page.waitForFunction(()=>
+            document.querySelectorAll('.earthline-swale-label-16149,.earthline-swale-hit-16070').length>0,
+            null,{timeout:20000,polling:100});
+          const regional=await page.evaluate(()=>{
+            const m=window.earthlineMap||earthlineMap;
+            const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+            return {
+              center:m?.getCenter?.()?{lng:m.getCenter().lng,lat:m.getCenter().lat}:null,
+              zoom:m?.getZoom?.()||null,
+              query:d?.query||null,
+              labels:document.querySelectorAll('.earthline-swale-label-16149').length,
+              hits:document.querySelectorAll('.earthline-swale-hit-16070').length,
+              corridorAudit:window.earthlineCorridorInteractionAudit16152?.()||null
+            };
+          });
+          console.log('EARTHLINE_M73_ESSEX_REGIONAL '+JSON.stringify(regional));
+          let corridor=page.locator('.earthline-swale-label-16149:visible').first();
+          if(!(await corridor.count())) corridor=page.locator('.earthline-swale-hit-16070:visible').first();
+          if(!(await corridor.count())) throw new Error('No genuine visible Earthline corridor target');
+          const corridorInfo=await corridor.evaluate(el=>({
+            cls:el.getAttribute('class')||'',
+            index:el.dataset?.swaleIndex||el.getAttribute('data-swale-index')||null,
+            text:el.textContent||'',
+            html:(el.outerHTML||'').slice(0,500)
+          }));
+          await corridor.click({force:true});
+          await page.waitForFunction(()=>!!document.getElementById('earthlineCorridorDetail16149')?.classList?.contains('open'),null,{timeout:10000,polling:100});
+          const zoom=page.getByRole('button',{name:/zoom to (this )?location/i}).first();
+          if(!(await zoom.count())) throw new Error('Corridor detail has no Zoom to location');
+          await zoom.click({force:true});
           await page.waitForFunction(()=>{
             const b=document.getElementById('earthlineDeclareProperty16169');
             return !!b&&!b.disabled;
           },null,{timeout:20000,polling:100});
-          await page.locator('#earthlineDeclareProperty16169').click({force:true});
-          await page.waitForFunction(()=>{
-            const svg=document.getElementById('earthlinePropertyWaterOverlay15824');
-            const r=(typeof M!=='undefined'&&M.directWaterRenderer15824)||null;
-            return !!(svg&&svg.isConnected&&svg.childElementCount>0&&getComputedStyle(svg).display!=='none'&&r&&r.visible===true&&Number(r.visiblePaths)>0);
-          },null,{timeout:60000,polling:100});
-          const layout=()=>page.evaluate(()=>{
-            const svg=document.getElementById('earthlinePropertyWaterOverlay15824');
-            const rec=(el)=>{
-              const cs=getComputedStyle(el),r=el.getBoundingClientRect();
-              return {tag:el.tagName,id:el.id||'',cls:el.getAttribute?.('class')||'',display:cs.display,visibility:cs.visibility,opacity:cs.opacity,zIndex:cs.zIndex,position:cs.position,overflow:cs.overflow,transform:cs.transform,pointerEvents:cs.pointerEvents,background:cs.backgroundColor,rect:{x:+r.x.toFixed(1),y:+r.y.toFixed(1),w:+r.width.toFixed(1),h:+r.height.toFixed(1)}};
+          const target=await page.evaluate(()=>({
+            propertyTarget:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+            chosen:window.EARTHLINE_CHOSEN_LOCATION_16189||null,
+            center:(()=>{const m=window.earthlineMap||earthlineMap,c=m?.getCenter?.();return c?{lng:c.lng,lat:c.lat}:null})()
+          }));
+          console.log('EARTHLINE_M73_ESSEX_TARGET '+JSON.stringify({corridorInfo,target}));
+
+          await page.evaluate(()=>{
+            window.__M73E={samples:[],events:[],started:performance.now()};
+            const snap=(label)=>{
+              const m=typeof M!=='undefined'?M:null;
+              const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+              const pub=m&&m.propertyPublication15816||null;
+              const svg=document.getElementById('earthlinePropertyWaterOverlay15824');
+              const cs=svg?getComputedStyle(svg):null;
+              const row={t:+(performance.now()-window.__M73E.started).toFixed(1),label,
+                searchGen:Number(m&&m.searchGen||0),pubGen:pub?Number(pub.searchGen):null,
+                committed:!!(pub&&pub.committed===true),safety:!!(pub&&pub.safetyVerified===true),
+                displayedTier:String(d&&(d.tier||d.mode)||'').toLowerCase(),
+                analysisTier:String(document.documentElement.dataset.earthlineAnalysisTier||''),
+                display:svg?String(cs?.display||''):'',visibility:svg?String(cs?.visibility||''):'',
+                opacity:svg?String(cs?.opacity||''):'',children:svg?svg.childElementCount:0,
+                connected:!!(svg&&svg.isConnected),renderer:m&&m.directWaterRenderer15824?JSON.parse(JSON.stringify(m.directWaterRenderer15824)):null};
+              window.__M73E.samples.push(row);if(window.__M73E.samples.length>900)window.__M73E.samples.shift();return row;
             };
-            const ancestors=[]; for(let el=svg;el&&ancestors.length<10;el=el.parentElement)ancestors.push(rec(el));
-            const siblings=svg&&svg.parentElement?[...svg.parentElement.children].map((el,i)=>({i,...rec(el)})):[];
-            const paths=svg?[...svg.querySelectorAll('path')].slice(0,80).map((p,i)=>{
-              try{
-                const len=p.getTotalLength(); if(!(len>0))return null;
-                const pt=p.getPointAtLength(len*0.5),ctm=p.getScreenCTM(); if(!ctm)return null;
-                const q=new DOMPoint(pt.x,pt.y).matrixTransform(ctm),cs=getComputedStyle(p);
-                return {i,x:+q.x.toFixed(1),y:+q.y.toFixed(1),stroke:cs.stroke,strokeWidth:cs.strokeWidth,opacity:cs.opacity};
-              }catch(_){return null}
-            }).filter(Boolean):[];
-            const m=typeof M!=='undefined'?M:null;
-            return {ancestors,siblings,paths,renderer:m&&m.directWaterRenderer15824||null,searchGen:m&&m.searchGen||null,pub:m&&m.propertyPublication15816||null};
+            window.__M73E.snap=snap;
+            const ev=(type,extra={})=>{window.__M73E.events.push({type,...extra,snap:snap(type),stack:String(new Error().stack||'')});if(window.__M73E.events.length>400)window.__M73E.events.shift();};
+            const rp=Element.prototype.replaceChildren;
+            Element.prototype.replaceChildren=function(...args){const hit=this&&this.id==='earthlinePropertyWaterOverlay15824';if(hit)ev('replace-before',{args:args.length});const out=rp.apply(this,args);if(hit)ev('replace-after',{args:args.length});return out;};
+            const mo=new MutationObserver(ms=>{for(const mu of ms){const svg=document.getElementById('earthlinePropertyWaterOverlay15824');if(mu.target===svg)window.__M73E.events.push({type:'mutation:'+mu.type,attr:mu.attributeName||null,snap:snap('mutation')});}});
+            mo.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['style','class']});
           });
-          const initial=await layout();
-          const parseRgb=(s)=>{const m=String(s||'').match(/rgba?\((\d+(?:\.\d+)?)[, ]+(\d+(?:\.\d+)?)[, ]+(\d+(?:\.\d+)?)/);return m?[+m[1],+m[2],+m[3]]:null;};
-          const samples=initial.paths.map(p=>({...p,rgb:parseRgb(p.stroke)})).filter(p=>p.rgb&&p.x>=0&&p.y>=0&&p.x<1600&&p.y<1000).slice(0,40);
-          const visual=[];
-          for(let k=0;k<24;k++){
-            const png=PNG.sync.read(await page.screenshot({type:'png'}));
-            let hits=0,valid=0; const details=[];
-            for(const p of samples){
-              const x=Math.round(p.x),y=Math.round(p.y); let best=999;
-              for(let dy=-3;dy<=3;dy++)for(let dx=-3;dx<=3;dx++){
-                const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=png.width||yy>=png.height)continue;
-                const idx=(yy*png.width+xx)*4,d=Math.hypot(png.data[idx]-p.rgb[0],png.data[idx+1]-p.rgb[1],png.data[idx+2]-p.rgb[2]);if(d<best)best=d;
-              }
-              valid++;if(best<85)hits++;if(details.length<8)details.push({x,y,stroke:p.stroke,best:+best.toFixed(1)});
-            }
-            const state=await page.evaluate(()=>{
-              const svg=document.getElementById('earthlinePropertyWaterOverlay15824'),cs=svg?getComputedStyle(svg):null,r=svg?svg.getBoundingClientRect():null,m=typeof M!=='undefined'?M:null;
-              return {display:svg&&cs?cs.display:null,visibility:svg&&cs?cs.visibility:null,opacity:svg&&cs?cs.opacity:null,children:svg?svg.childElementCount:0,rect:r?{w:+r.width.toFixed(1),h:+r.height.toFixed(1)}:null,renderer:m&&m.directWaterRenderer15824||null};
-            });
-            visual.push({k,hits,valid,ratio:valid?+(hits/valid).toFixed(3):null,state,details});
-            await page.waitForTimeout(700);
+
+          await page.locator('#earthlineDeclareProperty16169').click({force:true});
+          let firstVisibleAt=null,firstOffAt=null;
+          for(let i=0;i<700;i++){
+            const row=await page.evaluate(()=>window.__M73E.snap('poll'));
+            const visible=row.connected&&row.display!=='none'&&row.visibility!=='hidden'&&row.opacity!=='0'&&row.children>0;
+            if(firstVisibleAt===null&&visible)firstVisibleAt=row.t;
+            if(firstVisibleAt!==null&&firstOffAt===null&&!visible&&row.t>firstVisibleAt+120){firstOffAt=row.t;break;}
+            if(firstVisibleAt!==null&&row.t>firstVisibleAt+60000)break;
+            await page.waitForTimeout(100);
           }
-          const final=await layout();
-          console.log('EARTHLINE_M73_VISUAL '+JSON.stringify({initial:{ancestors:initial.ancestors,siblings:initial.siblings,renderer:initial.renderer,searchGen:initial.searchGen,pub:initial.pub},sampleCount:samples.length,visual,final:{ancestors:final.ancestors,siblings:final.siblings,renderer:final.renderer,searchGen:final.searchGen,pub:final.pub},errors}));
+          const result=await page.evaluate(({firstVisibleAt,firstOffAt,errors})=>({
+            firstVisibleAt,firstOffAt,final:window.__M73E.snap('final'),
+            events:(window.__M73E.events||[]).slice(-250),
+            samples:(window.__M73E.samples||[]).slice(-300),
+            propertyAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+            publicationAudit:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,
+            settleAudit:window.EARTHLINE_PROPERTY_PRESENTATION_SETTLE_AUDIT_16521||null,
+            errors
+          }),{firstVisibleAt,firstOffAt,errors});
+          console.log('EARTHLINE_M73_ESSEX_EXACT '+JSON.stringify(result));
           await browser.close();
+          if(firstVisibleAt===null)process.exitCode=2;
+          else if(firstOffAt!==null)process.exitCode=3;
           EOF
-          node ./m73-visual.mjs
+          node ./m73-essex.mjs
