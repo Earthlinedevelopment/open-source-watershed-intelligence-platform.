@@ -96,3 +96,36 @@ jobs:
             await b.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
+
+
+  production-origin-control:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Probe production Mapbox origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const b=await chromium.launch({headless:true});
+            const p=await b.newPage({viewport:{width:1400,height:900}});
+            const net=[];
+            const clean=u=>{try{const x=new URL(u);return x.origin+x.pathname}catch{return String(u).split('?')[0]}};
+            p.on('response',r=>{const u=r.url();if(/api\.mapbox\.com\/v4|terrain-rgb|mapbox-terrain/i.test(u))net.push({status:r.status(),url:clean(u)})});
+            await p.goto('https://earthlinedevelopment.org/?originprobe='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+            await p.waitForTimeout(8000);
+            console.log('EARTHLINE_PRODUCTION_MAPBOX_ORIGIN '+JSON.stringify(net));
+            const bad=net.filter(x=>x.status===401||x.status===403);
+            if(bad.length)process.exitCode=1;
+            await b.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
