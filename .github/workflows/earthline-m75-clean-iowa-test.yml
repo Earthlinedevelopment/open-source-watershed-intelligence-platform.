@@ -1,0 +1,36 @@
+name: Earthline M75 Clean Iowa Test
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths:
+      - .github/workflows/earthline-m75-clean-iowa-test.yml
+permissions:
+  contents: read
+jobs:
+  test-clean-iowa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-iowa-clean
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run exact Iowa crosshair
+        shell: bash
+        run: |
+          git fetch origin recovery/mantra74-stability
+          git show origin/recovery/mantra74-stability:tests/iowa-live-diagnostic.mjs > /tmp/iowa-live-diagnostic.mjs
+          python3 -m http.server 8787 >/tmp/earthline-m75-clean-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in {1..30}; do
+            curl -fsS http://127.0.0.1:8787/ >/dev/null && break
+            sleep 1
+          done
+          EARTHLINE_URL=http://127.0.0.1:8787/ node /tmp/iowa-live-diagnostic.mjs
