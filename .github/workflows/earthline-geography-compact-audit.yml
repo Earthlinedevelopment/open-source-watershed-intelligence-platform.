@@ -1,0 +1,23 @@
+name: Earthline Geography Compact Audit
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.earthline-geography-compact-trigger']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - shell: bash
+        run: |
+          set -euo pipefail
+          echo 'ALASKA_CALLS'
+          grep -n "fullAlaskaExtent16905\|jurisdictionProfileId16556.*us-ak" index.html || true
+          echo 'CHIANG_CALLS'
+          grep -n "function isChiang\|isChiang(\|const CHIANG" index.html || true
+          echo 'VANCOUVER_BEHAVIOR_CALLS'
+          grep -n "capability.*ca-cgndb-vancouver-island\|boundary16912.*capability" index.html || true
