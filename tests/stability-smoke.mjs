@@ -38,7 +38,7 @@ for(const [name,engine] of engines){
     assert(language.html==='en'&&language.selected==='en',name+': language did not lock to English');
 
     const input=page.locator('#searchInput');
-    await input.fill('Essex Junction, Vermont');
+    await input.fill('Vermont');
     await page.waitForTimeout(900);
     const options=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
     if(await options.count())await options.first().click({force:true});
