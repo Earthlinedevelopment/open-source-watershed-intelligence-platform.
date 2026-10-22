@@ -952,15 +952,18 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     return changed>0;
   }
   function afterPublication(reason){
-    /* EARTHLINE 17698 — one bounded post-paint settlement only.
-       The scientific Property result is already terminal here. Wait exactly two
-       animation frames for Mapbox to paint the committed safe source, then ask
-       the existing authoritative safe-visibility owner to verify that same
-       geometry. No polling, timeout ladder, replacement renderer, or science. */
+    /* EARTHLINE 17700 — bounded two-stage Mapbox paint settlement.
+       Stage 1 republishes the exact committed safe source once. Because setData()
+       schedules a paint, Stage 2 waits exactly two more animation frames before
+       asking the same authoritative owner to verify rendered truth. No polling,
+       timeout ladder, substitute geometry, renderer, or science change. */
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      enforce(reason+'-post-paint');
-      try{window.earthlineSyncSafePropertyFallback16221?.('launch-post-paint-17698')}catch(_){}
-      try{Promise.resolve(window.earthlineSyncPropertyTexture16169?.('launch-post-paint-17698')).catch(()=>{})}catch(_){}
+      enforce(reason+'-paint-prime-17700');
+      try{window.earthlineSyncSafePropertyFallback16221?.('launch-paint-prime-17700')}catch(_){}
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        try{window.earthlineSyncSafePropertyFallback16221?.('launch-paint-verify-17700')}catch(_){}
+        try{Promise.resolve(window.earthlineSyncPropertyTexture16169?.('launch-paint-verify-17700')).catch(()=>{})}catch(_){}
+      }));
     }));
   }
   window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011={state:'ready',enforce,textureVerified};
