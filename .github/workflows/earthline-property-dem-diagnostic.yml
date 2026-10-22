@@ -1,4 +1,4 @@
-name: Earthline Regional Cleaner Audit
+name: Earthline Legacy Control Creator Audit
 on:
   push:
     branches: [recovery/mantra74-stability]
@@ -15,13 +15,7 @@ jobs:
       - shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          lines=Path('index.html').read_text(encoding='utf-8').splitlines()
-          hits=[i for i,l in enumerate(lines) if 'setInterval(clean,350)' in l]
-          print('HITS', [i+1 for i in hits])
-          for i in hits:
-            a=max(0,i-150); b=min(len(lines),i+35)
-            for n in range(a,b):
-              print(f'{n+1}: {lines[n]}')
-          PY
+          for id in earthline15857strip earthline15861strip earthlineMapRun15970 earthlineMapRun16020 runBtnSide; do
+            echo "=== $id ==="
+            grep -n -F "$id" index.html || true
+          done
