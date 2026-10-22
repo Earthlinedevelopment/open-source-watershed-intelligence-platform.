@@ -1016,7 +1016,16 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       existingParent:target&&target.parentRunToken?String(target.parentRunToken):null,
       at:new Date().toISOString()
     };
-    return prior.apply(this,arguments);
+    const result17016=prior.apply(this,arguments);
+    /* EARTHLINE 17699 — settle presentation only after the governed Property
+       promise itself resolves. This is the authoritative lifecycle boundary;
+       one bounded two-frame paint handoff then rechecks the exact committed
+       safe geometry and existing natural presentation. */
+    Promise.resolve(result17016).then(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      try{window.earthlineSyncSafePropertyFallback16221?.('property-promise-post-paint-17699')}catch(_){}
+      try{Promise.resolve(window.earthlineSyncPropertyTexture16169?.('property-promise-post-paint-17699')).catch(()=>{})}catch(_){}
+    }))).catch(()=>{});
+    return result17016;
   };
   window.EARTHLINE_REGIONAL_PROPERTY_PARENT_REBIND_17016={
     state:'ready',
