@@ -11,3 +11,5 @@ if old in s:
     raise SystemExit("premature Property enable remains")
 p.write_text(s,encoding="utf-8")
 print("EARTHLINE_PROPERTY_OWNER_READY_GATE_OK")
+
+# run
