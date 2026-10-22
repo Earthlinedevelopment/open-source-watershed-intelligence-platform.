@@ -18,45 +18,57 @@ jobs:
       - name: Add temporary safety snapshot
         shell: bash
         run: |
+          set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
-          a='''    const rawModel=Array.isArray(M&&M.swales)
-      ?JSON.parse(JSON.stringify(M.swales)):[];
-    let filtered=null;'''
-          b='''    const rawModel=Array.isArray(M&&M.swales)
-      ?JSON.parse(JSON.stringify(M.swales)):[];
-    window.EARTHLINE_SAFETY_LOCK_DIAG_17695={
-      stage:"entry",
-      vectorCoverage:M&&M.vectorNoBuildCoverage?JSON.parse(JSON.stringify(M.vectorNoBuildCoverage)):null,
-      finalMaskAvailable:!!(M&&M.noBuildMask&&Number(M.noBuildMask.length)>0),
-      finalMaskLength:Number(M&&M.noBuildMask&&M.noBuildMask.length||0),
-      rawFeatures:Number(raw&&raw.features&&raw.features.length||0)
-    };
-    let filtered=null;'''
-          if s.count(a)!=1: raise SystemExit("entry-anchor")
+          a="\n".join([
+              "    const rawModel=Array.isArray(M&&M.swales)",
+              "      ?JSON.parse(JSON.stringify(M.swales)):[];",
+              "    let filtered=null;"
+          ])
+          b="\n".join([
+              "    const rawModel=Array.isArray(M&&M.swales)",
+              "      ?JSON.parse(JSON.stringify(M.swales)):[];",
+              "    window.EARTHLINE_SAFETY_LOCK_DIAG_17695={",
+              "      stage:\"entry\",",
+              "      vectorCoverage:M&&M.vectorNoBuildCoverage?JSON.parse(JSON.stringify(M.vectorNoBuildCoverage)):null,",
+              "      finalMaskAvailable:!!(M&&M.noBuildMask&&Number(M.noBuildMask.length)>0),",
+              "      finalMaskLength:Number(M&&M.noBuildMask&&M.noBuildMask.length||0),",
+              "      rawFeatures:Number(raw&&raw.features&&raw.features.length||0)",
+              "    };",
+              "    let filtered=null;"
+          ])
+          if s.count(a)!=1:
+              raise SystemExit("entry-anchor-"+str(s.count(a)))
           s=s.replace(a,b,1)
-          a='''      const frozenClearance16255=(candidate&&vectorVerified&&finalMaskAvailable&&(!filterIndexAvailable||portableEvidence16544))
-        ?earthlineFrozenPropertyClearanceAudit16255(candidate):null;
-      const frozenClearanceVerified16255=!!(frozenClearance16255&&frozenClearance16255.verified===true);'''
-          b='''      window.EARTHLINE_SAFETY_LOCK_DIAG_17695=Object.assign({},window.EARTHLINE_SAFETY_LOCK_DIAG_17695||{},{
-        stage:"before-frozen",candidate:!!candidate,candidateCount:Number(candidate&&candidate.features&&candidate.features.length||0),
-        filterIndexAvailable,vectorVerified,finalMaskAvailable,portableEvidence16544,
-        vectorCoverageNow:M&&M.vectorNoBuildCoverage?JSON.parse(JSON.stringify(M.vectorNoBuildCoverage)):null,
-        auditVerified,acceptedIntersections:Number.isFinite(acceptedIntersections)?acceptedIntersections:null
-      });
-      const frozenClearance16255=(candidate&&vectorVerified&&finalMaskAvailable&&(!filterIndexAvailable||portableEvidence16544))
-        ?earthlineFrozenPropertyClearanceAudit16255(candidate):null;
-      const frozenClearanceVerified16255=!!(frozenClearance16255&&frozenClearance16255.verified===true);
-      window.EARTHLINE_SAFETY_LOCK_DIAG_17695=Object.assign({},window.EARTHLINE_SAFETY_LOCK_DIAG_17695||{},{
-        stage:"after-frozen",frozenCalled:!!frozenClearance16255,
-        frozenClearance:frozenClearance16255?JSON.parse(JSON.stringify(frozenClearance16255)):null,
-        frozenClearanceVerified16255
-      });'''
-          if s.count(a)!=1: raise SystemExit("frozen-anchor")
+          a="\n".join([
+              "      const frozenClearance16255=(candidate&&vectorVerified&&finalMaskAvailable&&(!filterIndexAvailable||portableEvidence16544))",
+              "        ?earthlineFrozenPropertyClearanceAudit16255(candidate):null;",
+              "      const frozenClearanceVerified16255=!!(frozenClearance16255&&frozenClearance16255.verified===true);"
+          ])
+          b="\n".join([
+              "      window.EARTHLINE_SAFETY_LOCK_DIAG_17695=Object.assign({},window.EARTHLINE_SAFETY_LOCK_DIAG_17695||{},{",
+              "        stage:\"before-frozen\",candidate:!!candidate,candidateCount:Number(candidate&&candidate.features&&candidate.features.length||0),",
+              "        filterIndexAvailable,vectorVerified,finalMaskAvailable,portableEvidence16544,",
+              "        vectorCoverageNow:M&&M.vectorNoBuildCoverage?JSON.parse(JSON.stringify(M.vectorNoBuildCoverage)):null,",
+              "        auditVerified,acceptedIntersections:Number.isFinite(acceptedIntersections)?acceptedIntersections:null",
+              "      });",
+              "      const frozenClearance16255=(candidate&&vectorVerified&&finalMaskAvailable&&(!filterIndexAvailable||portableEvidence16544))",
+              "        ?earthlineFrozenPropertyClearanceAudit16255(candidate):null;",
+              "      const frozenClearanceVerified16255=!!(frozenClearance16255&&frozenClearance16255.verified===true);",
+              "      window.EARTHLINE_SAFETY_LOCK_DIAG_17695=Object.assign({},window.EARTHLINE_SAFETY_LOCK_DIAG_17695||{},{",
+              "        stage:\"after-frozen\",frozenCalled:!!frozenClearance16255,",
+              "        frozenClearance:frozenClearance16255?JSON.parse(JSON.stringify(frozenClearance16255)):null,",
+              "        frozenClearanceVerified16255",
+              "      });"
+          ])
+          if s.count(a)!=1:
+              raise SystemExit("frozen-anchor-"+str(s.count(a)))
           p.write_text(s.replace(a,b,1),encoding="utf-8")
           PY
+          git diff --check
       - name: Commit snapshot
         shell: bash
         run: |
