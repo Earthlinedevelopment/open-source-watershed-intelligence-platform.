@@ -1,0 +1,98 @@
+name: Earthline Property DEM Diagnostic
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.earthline-dem-diag-trigger']
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Extract DEM owner
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          needles=[
+            'Mapbox GL Terrain-DEM fallback did not reach usable coverage',
+            'Terrain-RGB direct DEM',
+            'earthlinePrewarmPropertyDem16297',
+            'async function buildTerrain',
+            'function buildTerrain',
+            'fetchRealTerrain'
+          ]
+          for n in needles:
+            print('\n===',n,'===')
+            start=0
+            while True:
+              i=s.find(n,start)
+              if i<0: break
+              a=max(0,i-5000); b=min(len(s),i+9000)
+              print(s[a:b])
+              start=i+len(n)
+          PY
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run network diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          node - <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const b=await chromium.launch({headless:true});
+            const p=await b.newPage({viewport:{width:1600,height:900}});
+            const net=[];
+            const clean=u=>{try{const x=new URL(u);return x.origin+x.pathname}catch{return String(u).split('?')[0]}};
+            p.on('response',r=>{const u=r.url();if(/mapbox|terrain|terrarium|elevation/i.test(u))net.push({type:'response',status:r.status(),url:clean(u)})});
+            p.on('requestfailed',r=>{const u=r.url();if(/mapbox|terrain|terrarium|elevation/i.test(u))net.push({type:'failed',error:r.failure()?.errorText||'',url:clean(u)})});
+            const errs=[];p.on('pageerror',e=>errs.push(String(e)));
+            await p.goto('http://127.0.0.1:8787/?demdiag='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+            await p.waitForSelector('#searchInput',{timeout:30000});
+            await p.locator('#searchInput').fill('Essex Junction, Vermont');
+            await p.waitForTimeout(900);
+            const opts=p.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
+            if(await opts.count())await opts.first().click({force:true});
+            else await p.locator('#searchInput').press('Enter').catch(()=>{});
+            await p.locator('#runBtn').click({force:true});
+            await p.waitForFunction(()=>{
+              const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+              return String(d&&(d.tier||d.mode)||'').toLowerCase()==='regional';
+            },null,{timeout:90000,polling:150});
+            await p.waitForFunction(()=>document.querySelectorAll('.earthline-swale-label-16149,.earthline-swale-hit-16070').length>0,null,{timeout:20000,polling:100});
+            const c=p.locator('.earthline-swale-label-16149:visible').first(); await c.click({force:true});
+            await p.waitForFunction(()=>!!document.getElementById('earthlineCorridorDetail16149')?.classList?.contains('open'),null,{timeout:10000});
+            const z=p.getByRole('button',{name:/zoom to (this )?location/i}).first(); if(await z.count())await z.click({force:true});
+            await p.waitForFunction(()=>{const x=document.getElementById('earthlineDeclareProperty16169');return !!x&&!x.disabled},null,{timeout:20000});
+            await p.locator('#earthlineDeclareProperty16169').click({force:true});
+            await p.waitForFunction(()=>{
+              const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+              return a?.settled===true;
+            },null,{timeout:45000,polling:100});
+            const state=await p.evaluate(()=>({
+              run:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+              demPrewarm:window.EARTHLINE_PROPERTY_DEM_PREWARM_16297||window.EARTHLINE_PROPERTY_DEM_PREWARM_AUDIT_16297||null,
+              terrain:typeof M!=='undefined'?{demReady:M.demReady,demSource:M.demSource,terrainStamp:M.terrainStamp,requestedCellM:M.requestedCellM,centerLat:M.centerLat,centerLng:M.centerLng}:null
+            }));
+            console.log('EARTHLINE_DEM_DIAG_STATE '+JSON.stringify(state));
+            console.log('EARTHLINE_DEM_DIAG_NET '+JSON.stringify(net.slice(-120)));
+            console.log('EARTHLINE_DEM_DIAG_ERRORS '+JSON.stringify(errs));
+            await b.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
