@@ -15,6 +15,16 @@ jobs:
       - shell: bash
         run: |
           set -euo pipefail
-          grep -n -C 14 "earthlineVermontReport16149" index.html | head -320
-          echo '--- PANEL ---'
-          grep -n -C 12 "earthlineVermontReportPanel16149" index.html | head -260
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8').splitlines()
+          keys=['earthlineVermontReport16149','openReport','reportPanel','buildReport','el49-close']
+          for i,line in enumerate(s,1):
+            low=line.lower()
+            if ('report16149' in low or 'reportpanel16149' in low) and ('addeventlistener' in low or 'onclick' in low or 'classlist.add' in low or 'classlist.toggle' in low or 'disabled=' in low):
+              print(f'{i}: {line}')
+          print('--- FUNCTIONS ---')
+          for i,line in enumerate(s,1):
+            if any(k.lower() in low for k in keys for low in [line.lower()]) and ('function ' in line or '=>' in line):
+              print(f'{i}: {line}')
+          PY
