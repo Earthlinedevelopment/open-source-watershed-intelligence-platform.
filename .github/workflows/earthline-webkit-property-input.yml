@@ -1,0 +1,42 @@
+name: Earthline WebKit Property Input Repair
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['tools/mantra74-webkit-property-input.py']
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+          fetch-depth: 0
+      - run: python3 tools/mantra74-webkit-property-input.py
+      - name: Validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          if(s.includes("property.onpointerup=function"))throw Error('old pointerup owner remains');
+          if(!s.includes("property.onpointerdown=function"))throw Error('pointerdown owner missing');
+          if(!s.includes("const pointerSource=source==='pointerdown';"))throw Error('pointerdown guard missing');
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue; new Function(m[1]);
+          }
+          console.log('EARTHLINE_WEBKIT_PROPERTY_INPUT_17692_VALIDATE_OK');
+          NODE
+          git diff --check
+      - name: Commit repair and retire installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Stability Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git rm -f tools/mantra74-webkit-property-input.py .github/workflows/earthline-webkit-property-input.yml
+          git add index.html
+          git commit -m "stability: launch Property on first physical press"
+          git push origin HEAD:recovery/mantra74-stability
