@@ -1,7 +1,6 @@
 from pathlib import Path
 p=Path("index.html")
 s=p.read_text(encoding="utf-8")
-before=s
 
 def one(old,new,label):
     global s
@@ -11,38 +10,30 @@ def one(old,new,label):
     s=s.replace(old,new,1)
 
 one(
-"const vermontRequest=typeof window.earthlineIsVermontRequest16178==='function'&&window.earthlineIsVermontRequest16178(q,loc);",
-"const vermontRequest=false; /* EARTHLINE 17690 — shared US-state boundary owner handles Vermont exactly like every other state. */",
-"disable separate Vermont Regional branch"
+"sourceRule:authoritative16516?'Vermont E911/VCGI first; exclusions fail closed; Overpass disabled':(evidence16516&&evidence16516.label?evidence16516.label:'Exclusion evidence not recorded')",
+"sourceRule:(evidence16516&&evidence16516.label?evidence16516.label:(authoritative16516?'Authoritative local exclusion evidence; exclusions fail closed':'Exclusion evidence not recorded'))",
+"provenance copy"
 )
 
 one(
-"if(typeof window.earthlineValidateVermontBoundary16178==='function'){\n      localGate17630=await window.earthlineValidateVermontBoundary16178(",
-"const localSourceQuery17630=String(window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970?.query||'').toLowerCase();\n    if(/\\bvermont\\b|\\bvt\\b/.test(localSourceQuery17630)&&typeof window.earthlineValidateVermontBoundary16178==='function'){\n      localGate17630=await window.earthlineValidateVermontBoundary16178(",
-"scope Vermont authority to Vermont source availability"
+"<button type=\"button\" class=\"region\" data-action=\"region\">Vermont</button><span class=\"sep\">›</span><span class=\"current\">Focus location</span><button type=\"button\" class=\"back\" data-action=\"region\">BACK TO VERMONT</button>",
+"<button type=\"button\" class=\"region\" data-action=\"region\">Regional</button><span class=\"sep\">›</span><span class=\"current\">Focus location</span><button type=\"button\" class=\"back\" data-action=\"region\">BACK TO REGIONAL</button>",
+"breadcrumb fallback"
 )
 
-one(
-"try{void ensureBoundary().catch(()=>{});}catch(_){ }",
-"/* EARTHLINE 17690 — no unconditional Vermont boundary preload; local authority is lazy and source-driven. */",
-"remove unconditional Vermont preload"
-)
+one("REGIONAL RESTORE UNAVAILABLE — run Vermont screening first.","REGIONAL RESTORE UNAVAILABLE — run Regional screening first.","restore message")
+one("Use Back to Vermont to restore the cached regional result.","Use Back to Regional to restore the cached regional result.","focus restore copy")
+one("return to Vermont to test another location.","return to the Regional view to test another location.","focus no-result copy")
 
-one(
-"function install(){stamp();installPanel16188();ensureBoundary().catch(error=>{lastError=error;console.error('[Earthline 16233] Vermont boundary unavailable',error)});setTimeout(stamp,1200);",
-"function install(){stamp();installPanel16188();setTimeout(stamp,1200);",
-"remove Vermont startup fetch"
-)
-
-# Architecture checks
-if "const vermontRequest=false;" not in s:
-    raise RuntimeError("shared Vermont routing missing")
-if "installPanel16188();ensureBoundary()" in s:
-    raise RuntimeError("Vermont startup fetch remains")
-if "try{void ensureBoundary().catch(()=>{});" in s:
-    raise RuntimeError("Vermont preload remains")
+for bad in [
+    "BACK TO VERMONT",
+    "run Vermont screening first.",
+    "Use Back to Vermont",
+    "return to Vermont to test another location.",
+    "sourceRule:authoritative16516?'Vermont E911/VCGI first; exclusions fail closed; Overpass disabled'"
+]:
+    if bad in s:
+        raise RuntimeError(f"global Vermont wording remains: {bad}")
 
 p.write_text(s,encoding="utf-8")
-print("EARTHLINE_17690_UNIVERSAL_ENGINE",len(before),len(s),len(before)-len(s))
-
-# trigger
+print("EARTHLINE_UNIVERSAL_COPY_CLEANUP_OK")
