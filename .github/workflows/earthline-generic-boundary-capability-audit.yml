@@ -1,0 +1,19 @@
+name: Earthline Generic Boundary Capability Audit
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.github/workflows/earthline-generic-boundary-capability-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - shell: bash
+        run: |
+          set -euo pipefail
+          grep -n -A90 -B20 "function earthlineAdministrativeCapability16539" index.html || true
+          grep -n -A40 -B10 "us-vt" index.html || true
