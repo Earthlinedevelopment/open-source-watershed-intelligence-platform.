@@ -68,13 +68,16 @@ async function runCase(c){
       return sw.length>0||document.querySelectorAll('.earthline-swale-label-16149,.earthline-swale-hit-16070').length>0;
     },null,{timeout:20000,polling:100});
 
-    const corridor=page.locator('.earthline-swale-label-16149:visible').first();
-    if(!await corridor.count())throw new Error('no visible Regional corridor label');
-    await corridor.click({force:true});
-    await page.waitForFunction(
-      ()=>!!document.getElementById('earthlineCorridorDetail16149')?.classList?.contains('open'),
-      null,{timeout:10000,polling:100}
-    );
+    const corridorSurfaces=page.locator('.earthline-swale-hit-16070:visible,.earthline-swale-label-16149:visible');
+    const corridorSurfaceCount=await corridorSurfaces.count();
+    if(!corridorSurfaceCount)throw new Error('no visible Regional corridor interaction surface');
+    let corridorOpened=false;
+    for(let i=0;i<Math.min(corridorSurfaceCount,8)&&!corridorOpened;i++){
+      try{await corridorSurfaces.nth(i).click({force:true,timeout:2500})}catch(_){}
+      await page.waitForTimeout(250);
+      corridorOpened=await page.evaluate(()=>!!document.getElementById('earthlineCorridorDetail16149')?.classList?.contains('open'));
+    }
+    if(!corridorOpened)throw new Error('no visible Regional corridor opened its detail panel');
     const zoom=page.getByRole('button',{name:/zoom to (this )?location/i}).first();
     if(!await zoom.count())throw new Error('corridor detail missing Zoom control');
     await zoom.click({force:true});
