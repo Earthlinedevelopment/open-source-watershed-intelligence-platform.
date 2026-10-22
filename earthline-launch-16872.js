@@ -671,7 +671,6 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   document.addEventListener('earthline:analysis-complete',()=>{
     if(!isMobile())return;
     hideBusy();
-    closeSheet();
   },{passive:true});
 
   function audit(){
