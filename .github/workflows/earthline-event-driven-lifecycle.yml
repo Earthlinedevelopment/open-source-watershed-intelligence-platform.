@@ -26,7 +26,7 @@ jobs:
             if(!m[1].trim())continue;
             try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
           }
-          function body(id){const r=new RegExp('<script\\\\b[^>]*\\\\bid=["\\\\\\']'+id+'["\\\\\\'][^>]*>([\\\\s\\\\S]*?)<\\\\/script>','i').exec(s);if(!r)throw Error('missing '+id);return r[1]}
+          function body(id){const marker='id="'+id+'"';const start=s.indexOf(marker);if(start<0)throw Error('missing '+id);const bodyStart=s.indexOf('>',start)+1;const end=s.indexOf('</script>',bodyStart);if(bodyStart<=0||end<0)throw Error('bad script '+id);return s.slice(bodyStart,end)}
           for(const id of ['earthline-build-16178-state-identity-boundary-timeout','earthline-progressive-focus-16158-js','earthline-build-16169-js']){
             if(body(id).includes('setInterval('))throw Error('polling interval remains in '+id);
           }
