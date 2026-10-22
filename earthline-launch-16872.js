@@ -1046,9 +1046,9 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
    this must not imply Earthline originated the concept. */
 (function(){
   if(window.EARTHLINE_SWALE_PRINCIPLE_COPY_17013)return;
-  const FROM1='Earthline’s three-word principle describes the sequence:';
-  const FROM2="Earthline's three-word principle describes the sequence:";
-  const TO='Earthline follows this three-word principle:';
+  const FROM1='This Three-word principle describes the sequence:';
+  const FROM2="This Three-word principle describes the sequence:";
+  const TO='This Three-word principle describes the sequence:';
   function apply(){
     const page=document.getElementById('earthlineSwalesPage16125');
     if(!page)return false;
