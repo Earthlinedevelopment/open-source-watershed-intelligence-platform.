@@ -3,9 +3,16 @@ import re
 p=Path("index.html")
 s=p.read_text(errors="strict")
 
-start=s.index("function settlePropertyMapVisibility16260(count,texture,serial){")
-end=s.index("/* EARTHLINE 16529",start)
-seg=s[start:end]
+starts=[m.start() for m in re.finditer(r"function settlePropertyMapVisibility16260\(count,texture,serial\)\{",s)]
+matches=[]
+for st in starts:
+    chunk=s[st:st+14000]
+    if "presentation-unavailable" in chunk and "renderVerified:ok" in chunk:
+        matches.append((st,chunk))
+if len(matches)!=1:
+    raise SystemExit(f"active settlement blocks {len(matches)}, expected 1")
+st,chunk=matches[0]
+seg=chunk
 patterns=[
     (r"settled\s*:\s*true\s*,\s*result\s*:\s*true\s*,\s*corridors\s*:\s*count","settled:ok,result:true,corridors:count"),
     (r"renderVerified\s*:\s*ok\s*,\s*renderPending\s*:\s*false","renderVerified:ok,renderPending:!ok"),
@@ -18,11 +25,17 @@ for pat,repl in patterns:
     changed+=n
 if changed!=4:
     raise SystemExit(f"settlement replacement count {changed}, expected 4")
-s=s[:start]+seg+s[end:]
+s=s[:st]+seg+s[st+len(chunk):]
 
-ostart=s.index("const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');")
-oend=s.index("const w=applyWidth();",ostart)
-oseg=s[ostart:oend]
+overlay_targets=[m.start() for m in re.finditer(r"const regionalOverlay16336=document\.getElementById\('earthlineRegionalVectorOverlay16020'\);",s)]
+overlay_matches=[]
+for ost in overlay_targets:
+    ochunk=s[ost:ost+5000]
+    if "safeAudit17183" in ochunk and "return false" in ochunk:
+        overlay_matches.append((ost,ochunk))
+if len(overlay_matches)!=1:
+    raise SystemExit(f"active overlay blocks {len(overlay_matches)}, expected 1")
+ost,oseg=overlay_matches[0]
 oseg2=oseg.replace(
     "if(regionalOverlay16336){regionalOverlay16336.style.removeProperty('display');regionalOverlay16336.style.removeProperty('visibility');regionalOverlay16336.style.removeProperty('opacity');}",
     "if(regionalOverlay16336){if(active)regionalOverlay16336.style.setProperty('display','none','important');else{regionalOverlay16336.style.removeProperty('display');regionalOverlay16336.style.removeProperty('visibility');regionalOverlay16336.style.removeProperty('opacity');}}",
@@ -35,7 +48,7 @@ oseg2=oseg2.replace(
 )
 if oseg2==oseg:
     raise SystemExit("regional overlay replacements not applied")
-s=s[:ostart]+oseg2+s[oend:]
+s=s[:ost]+oseg2+s[ost+len(oseg):]
 
 p.write_text(s)
 print("EARTHLINE_IOWA_PRESENTATION_REPAIR_OK")
