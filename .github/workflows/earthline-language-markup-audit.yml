@@ -1,0 +1,28 @@
+name: Earthline Language Markup Audit
+on:
+  push:
+    branches:
+      - recovery/mantra74-stability
+    paths:
+      - .earthline-language-markup-trigger
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          for file in ['index.html','earthline-launch-16872.js']:
+            s=Path(file).read_text(encoding='utf-8').splitlines()
+            print('\nFILE',file)
+            for i,line in enumerate(s,1):
+              if any(k in line.lower() for k in ['language','español','spanish','vietnamese','tiếng việt','thai','ภาษาไทย','lao','ລາວ']):
+                print(f'{i}: {line[:1600]}')
+          PY
