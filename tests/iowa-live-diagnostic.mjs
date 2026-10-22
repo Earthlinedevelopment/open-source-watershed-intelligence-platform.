@@ -44,6 +44,7 @@ const pre=await page.evaluate(()=>({
   hasDeclare:typeof window.earthlineDeclarePropertyAtCrosshair16173==='function'
 }));
 
+const propertyStarted=Date.now();
 const serialBefore=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
 if(!pre.disabled && pre.button){
   await page.locator('#earthlineDeclareProperty16169').click({force:true});
@@ -65,7 +66,7 @@ try{
 
 await page.waitForTimeout(1500);
 
-const diag=await page.evaluate(({target,serialBefore,pre,started,settled})=>{
+const diag=await page.evaluate(({target,serialBefore,pre,started,propertyStarted,settled})=>{
   const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
   const style=mp?.getStyle?.()||{};
   const layers=(style.layers||[]).filter(l=>/swale|contour|safe/i.test(String(l.id||''))).map(l=>({
@@ -113,6 +114,57 @@ const diag=await page.evaluate(({target,serialBefore,pre,started,settled})=>{
     }
     if(lines.length>=40)break;
   }
+  const contourAudit={swaleDiagnostics:null,swaleMeta:null,rawCount:0,rows:[],summary:null};
+  try{
+    if(typeof M!=='undefined'&&M){
+      contourAudit.swaleDiagnostics=M.swaleDiagnostics?JSON.parse(JSON.stringify(M.swaleDiagnostics)):null;
+      contourAudit.swaleMeta=M.swaleMeta?JSON.parse(JSON.stringify(M.swaleMeta)):null;
+      const fc=M.authoritativeSafeSwales15815||M.authoritativeSafeSwales15806||null;
+      const features=Array.isArray(fc?.features)?fc.features:[];
+      contourAudit.rawCount=features.length;
+      const sampleH=(lng,lat)=>{
+        if(typeof earthlineLngLatToGrid!=='function'||!M.h)return null;
+        const g=earthlineLngLatToGrid(Number(lng),Number(lat)),x=g[0],y=g[1];
+        if(!Number.isFinite(x)||!Number.isFinite(y))return null;
+        const x0=Math.max(0,Math.min(GW-1,Math.floor(x))),y0=Math.max(0,Math.min(GH-1,Math.floor(y)));
+        const x1=Math.max(0,Math.min(GW-1,x0+1)),y1=Math.max(0,Math.min(GH-1,y0+1));
+        const tx=Math.max(0,Math.min(1,x-x0)),ty=Math.max(0,Math.min(1,y-y0));
+        const q=[M.h[idx(x0,y0)],M.h[idx(x1,y0)],M.h[idx(x0,y1)],M.h[idx(x1,y1)]].map(Number);
+        if(!q.every(Number.isFinite))return null;
+        return q[0]*(1-tx)*(1-ty)+q[1]*tx*(1-ty)+q[2]*(1-tx)*ty+q[3]*tx*ty;
+      };
+      const geoms=[];
+      for(const f of features){
+        const g=f?.geometry;
+        const groups=g?.type==='LineString'?[g.coordinates]:(g?.type==='MultiLineString'?g.coordinates:[]);
+        for(const coords of groups||[]){
+          if(!Array.isArray(coords)||coords.length<2)continue;
+          const zs=coords.map(p=>sampleH(p[0],p[1])).filter(Number.isFinite);
+          if(zs.length<2)continue;
+          const range=Math.max(...zs)-Math.min(...zs);
+          const endDelta=Math.abs(zs[zs.length-1]-zs[0]);
+          geoms.push({id:f?.properties?.id||f?.id||null,score:Number(f?.properties?.score)||null,points:coords.length,elevationRangeM:range,endpointDeltaM:endDelta});
+        }
+      }
+      contourAudit.rows=geoms;
+      const ranges=geoms.map(x=>x.elevationRangeM).filter(Number.isFinite).sort((a,b)=>a-b);
+      const ends=geoms.map(x=>x.endpointDeltaM).filter(Number.isFinite).sort((a,b)=>a-b);
+      const pct=(a,p)=>a.length?a[Math.min(a.length-1,Math.floor((a.length-1)*p))]:null;
+      contourAudit.summary={
+        lines:geoms.length,
+        medianElevationRangeM:pct(ranges,.5),
+        p90ElevationRangeM:pct(ranges,.9),
+        maxElevationRangeM:ranges.length?ranges[ranges.length-1]:null,
+        medianEndpointDeltaM:pct(ends,.5),
+        p90EndpointDeltaM:pct(ends,.9),
+        maxEndpointDeltaM:ends.length?ends[ends.length-1]:null,
+        over025m:ranges.filter(v=>v>.25).length,
+        over050m:ranges.filter(v=>v>.50).length,
+        over100m:ranges.filter(v=>v>1).length
+      };
+    }
+  }catch(e){contourAudit.error=String(e?.message||e)}
+
   const mSummary={};
   try{
     if(typeof M!=='undefined'&&M){
@@ -127,7 +179,7 @@ const diag=await page.evaluate(({target,serialBefore,pre,started,settled})=>{
   return {
     target,pre,serialBefore,
     serialAfter:Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0),
-    elapsedMs:Date.now()-started,settled,
+    elapsedMs:Date.now()-started,propertyElapsedMs:Date.now()-propertyStarted,settled,
     runState:document.documentElement.dataset.earthlinePropertyRunState||'',
     runAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
     phaseTrace:window.EARTHLINE_PROPERTY_PHASE_TRACE_16319||null,
@@ -135,9 +187,17 @@ const diag=await page.evaluate(({target,serialBefore,pre,started,settled})=>{
     safetyDiag:window.EARTHLINE_SAFETY_LOCK_DIAG_17695||null,
     clearance:window.EARTHLINE_PROPERTY_CLEARANCE_AUDIT_17696||null,
     layers,safeLayerIds,featureCount:feats.length,uniqueLines:lines,
+    contourAudit,
+    uiState:{
+      htmlRunning:document.documentElement.classList.contains('earthline-property-running-16233'),
+      runState:document.documentElement.dataset.earthlinePropertyRunState||'',
+      declareBusy:document.getElementById('earthlineDeclareProperty16169')?.getAttribute('aria-busy')||null,
+      declareTerminalRunning:document.getElementById('earthlineDeclareProperty16169')?.getAttribute('data-terminal-running')||null,
+      statusText:document.getElementById('status')?.textContent||document.querySelector('[data-earthline-status]')?.textContent||''
+    },
     modelSummary:mSummary
   };
-},{target:TARGET,serialBefore,pre,started,settled});
+},{target:TARGET,serialBefore,pre,started,propertyStarted,settled});
 
 diag.pageErrors=errors;
 fs.writeFileSync('iowa-live-diagnostic.json',JSON.stringify(diag,null,2));
