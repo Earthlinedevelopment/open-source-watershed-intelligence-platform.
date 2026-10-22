@@ -6,7 +6,7 @@ const engines=[['chromium',chromium],['webkit',webkit]];
 function assert(ok,msg){if(!ok)throw new Error(msg)}
 
 for(const [name,engine] of engines){
-  const browser=await engine.launch({headless:true});
+  const browser=await engine.launch(name==='chromium'?{headless:true,channel:'chrome'}:{headless:true});
   const page=await browser.newPage({
     viewport:name==='webkit'?{width:390,height:844}:{width:1440,height:960},
     hasTouch:name==='webkit',
