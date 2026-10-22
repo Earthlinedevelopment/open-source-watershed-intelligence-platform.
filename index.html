@@ -24796,8 +24796,8 @@ body { overflow-x:hidden!important; }
       else if(g16584.type==='MultiPolygon')for(const p16584 of (g16584.coordinates||[]))addPart16584(p16584);
     };
     const worldCopies16584=(()=>{try{return !!(mp16584.getRenderWorldCopies&&mp16584.getRenderWorldCopies())}catch(_){return false}})();
-    /* EARTHLINE 16911 — WRAPPED-WORLD WATER CLIP SAFETY.
-       When world copies are enabled (needed for New Zealand dateline navigation),
+    /* EARTHLINE 16911 / 17692 — WRAPPED-WORLD WATER CLIP SAFETY.
+       When a selected boundary crosses the antimeridian and world copies are enabled,
        rendered/source vector water geometry may be duplicated/wrapped across the seam.
        Do not let that presentation geometry override the deterministic Regional land-validity
        grid and Natural Earth water parts. The same final flow-safety checks remain active. */
@@ -27219,11 +27219,21 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
         window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556=countryPackage16845;
         window.EARTHLINE_ACTIVE_COUNTRY_PACKAGE_16845=countryPackage16845;
         try{
-          const code16845=String(countryPackage16845.countryCode||countryPackage16845.location&&countryPackage16845.location.countryCode||'').toLowerCase();
-          const name16845=String(q||countryPackage16845.location&&countryPackage16845.location.name||'').trim().toLowerCase();
-          const nzDateline16845=(code16845==='nz'||code16845==='nzl'||name16845==='new zealand');
-          if(earthlineMap&&typeof earthlineMap.setRenderWorldCopies==='function')earthlineMap.setRenderWorldCopies(nzDateline16845);
-          window.EARTHLINE_NZ_DATELINE_NAV_16845={enabled:nzDateline16845,code:code16845,name:name16845,at:new Date().toISOString()};
+          const geometry17692=countryPackage16845&&countryPackage16845.boundary&&countryPackage16845.boundary.geometry||null;
+          const bbox17692=geometry17692?earthlineGeometryBounds16556(geometry17692):null;
+          const crossesDateline17692=!!(
+            Array.isArray(bbox17692)&&bbox17692.length>=4&&
+            Number.isFinite(Number(bbox17692[0]))&&Number.isFinite(Number(bbox17692[2]))&&
+            Math.abs(Number(bbox17692[2])-Number(bbox17692[0]))>180
+          );
+          if(earthlineMap&&typeof earthlineMap.setRenderWorldCopies==='function')
+            earthlineMap.setRenderWorldCopies(crossesDateline17692);
+          window.EARTHLINE_DATELINE_NAV_17692={
+            enabled:crossesDateline17692,
+            bbox:Array.isArray(bbox17692)?bbox17692.slice():null,
+            rule:'world copies follow selected boundary geometry, never a jurisdiction name',
+            at:new Date().toISOString()
+          };
         }catch(_){}
         try{
           {
