@@ -200,7 +200,24 @@ const diag=await page.evaluate(({target,serialBefore,pre,started,propertyStarted
       declareTerminalRunning:document.getElementById('earthlineDeclareProperty16169')?.getAttribute('data-terminal-running')||null,
       statusText:document.getElementById('status')?.textContent||document.querySelector('[data-earthline-status]')?.textContent||''
     },
-    modelSummary:mSummary
+    modelSummary:mSummary,
+    swaleDiagnosticsFull:(typeof M!=='undefined'&&M?.swaleDiagnostics)?JSON.parse(JSON.stringify(M.swaleDiagnostics)):null,
+    swaleMetaFull:(typeof M!=='undefined'&&M?.swaleMeta)?JSON.parse(JSON.stringify(M.swaleMeta)):null,
+    terrainHandoffFull:(typeof M!=='undefined'&&M?.terrainHandoff15791)?JSON.parse(JSON.stringify(M.terrainHandoff15791)):null,
+    demShape:(()=>{try{
+      if(typeof M==='undefined'||!M)return null;
+      const candidates={};
+      for(const k of Object.keys(M).filter(k=>/dem|elev|terrain/i.test(k))){
+        const v=M[k];
+        if(Array.isArray(v)){
+          candidates[k]={length:v.length,nested:Array.isArray(v[0])?v[0].length:null,
+            min:(()=>{try{const a=(Array.isArray(v[0])?v.flat(2):v).filter(Number.isFinite);return a.length?Math.min(...a.slice(0,200000)):null}catch(_){return null}})(),
+            max:(()=>{try{const a=(Array.isArray(v[0])?v.flat(2):v).filter(Number.isFinite);return a.length?Math.max(...a.slice(0,200000)):null}catch(_){return null}})()
+          };
+        }
+      }
+      return candidates;
+    }catch(_){return null}})()
   };
 },{target:TARGET,serialBefore,pre,started,propertyStarted,settled});
 
