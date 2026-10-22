@@ -30,8 +30,16 @@ async function runCase(c){
       await page.waitForTimeout(150);
     }
 
+    if(c.loc){
+      await page.evaluate(({query,loc})=>{
+        if(typeof M==='undefined'||!M)throw new Error('Earthline model unavailable for deterministic location seed');
+        M.loc=Object.assign({},loc,{query});
+        M.centerLat=Number(loc.lat); M.centerLng=Number(loc.lng);
+        M.appliedSearchText=query;
+      },{query:c.query,loc:c.loc});
+    }
     await page.locator('#searchInput').fill(c.query);
-    await page.waitForTimeout(700);
+    await page.waitForTimeout(c.loc?100:700);
     const opts=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
     if(await opts.count())await opts.first().click({force:true});
     await page.locator('#runBtn').click({force:true});
