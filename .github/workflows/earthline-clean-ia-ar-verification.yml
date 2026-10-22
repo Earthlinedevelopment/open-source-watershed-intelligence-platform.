@@ -1,0 +1,25 @@
+name: Earthline Clean IA AR Verification
+on:
+  push:
+    branches:
+      - recovery/mantra75-live-engine-clean
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+          path: harness
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix harness --no-save playwright@1.55.0
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-clean-ia-ar.log 2>&1 &
+          sleep 2
+          node harness/tests/ia-ar-regional-visible-17704.mjs
