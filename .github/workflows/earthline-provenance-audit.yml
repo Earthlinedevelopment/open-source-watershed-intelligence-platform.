@@ -1,0 +1,39 @@
+name: Earthline Provenance Audit
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.earthline-provenance-audit-trigger']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          needles=[
+            'function sourceRows16492',
+            'function evidence(){',
+            'vectorNoBuildCoverage',
+            'sourceTier="authoritative-local"',
+            'sourceTier:\"authoritative-local\"',
+            'Vermont E911 / VCGI',
+            'VT ANR Well Driller Reports',
+            'Vermont ANR mapped aquifer'
+          ]
+          for n in needles:
+            print('\n===',n,'===')
+            start=0
+            while True:
+              i=s.find(n,start)
+              if i<0: break
+              print(s[max(0,i-2600):min(len(s),i+6200)])
+              start=i+len(n)
+          PY
