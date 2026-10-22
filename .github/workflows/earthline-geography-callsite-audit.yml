@@ -1,0 +1,23 @@
+name: Earthline Geography Callsite Audit
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.earthline-geography-callsite-trigger']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== ALASKA ==='
+          grep -n -C 8 "fullAlaskaExtent16905\|us-ak" index.html | head -120 || true
+          echo '=== CHIANG ==='
+          grep -n -C 8 "isChiang\|const CHIANG" index.html | head -160 || true
+          echo '=== VANCOUVER ADAPTER ==='
+          grep -n -C 10 "ca-cgndb-vancouver-island\|vancouverAquiferGeo16912" index.html | head -240 || true
