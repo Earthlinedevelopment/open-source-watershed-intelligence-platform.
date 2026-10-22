@@ -1,0 +1,37 @@
+name: Earthline Language Control Contract
+on:
+  push:
+    branches:
+      - recovery/mantra74-stability
+    paths:
+      - .earthline-language-contract-trigger
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for needle in [
+            '<select id="earthlineLanguage16488"',
+            'EARTHLINE_LANGUAGE_16488',
+            'window.EARTHLINE_LANGUAGE_16488',
+            'language16488',
+            'data-earthline-language-choice'
+          ]:
+            print('\n===',needle,'===')
+            start=0
+            for _ in range(20):
+              i=s.find(needle,start)
+              if i<0: break
+              print(s[max(0,i-1800):min(len(s),i+5200)])
+              start=i+len(needle)
+          PY
