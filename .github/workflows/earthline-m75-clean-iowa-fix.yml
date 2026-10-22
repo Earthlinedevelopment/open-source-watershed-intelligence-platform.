@@ -1,0 +1,101 @@
+name: Earthline M75 Clean Iowa Fix
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths:
+      - .github/workflows/earthline-m75-clean-iowa-fix.yml
+permissions:
+  contents: write
+jobs:
+  build-clean-candidate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-iowa-clean
+          fetch-depth: 0
+      - name: Apply Property presentation fix only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(errors="strict")
+          pairs=[
+          (
+          """try{const src=mp.getSource(SAFE_SOURCE_16221);if(!src?.setData)throw new Error('safe source setData unavailable');src.setData(fc)}catch(error){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,error:String(error?.message||error),at:new Date().toISOString()};return {ok:false,count,visible:false,active,error:String(error?.message||error)}}""",
+          """try{const src=mp.getSource(SAFE_SOURCE_16221);if(!src?.setData)throw new Error('safe source setData unavailable');const sig16221=String(runSerial)+'|'+String(count);if(src.__earthlineSafeRunSignature16221!==sig16221){src.setData(fc);src.__earthlineSafeRunSignature16221=sig16221}}catch(error){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,error:String(error?.message||error),at:new Date().toISOString()};return {ok:false,count,visible:false,active,error:String(error?.message||error)}}"""
+          ),
+          (
+          """    return {...first,required:true,pending:false};""",
+          """    if(first&&first.ok===true)return {...first,required:true,pending:false};
+              /* EARTHLINE 17697 — one bounded handoff through the existing Property
+                 basemap-settlement cadence before authoritative rendered-feature truth. */
+              await new Promise(resolve=>setTimeout(resolve,1800));
+              await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+              const second=syncSafePropertyFallback16221('terminal-after-basemap-1800-17697');
+              return {...second,required:true,pending:!(second&&second.ok===true)};"""
+          ),
+          (
+          """      settled:true,result:true,corridors:count,
+                renderVerified:ok,renderPending:false,
+                renderMode:living.ok?living.mode:(safe?.ok?'authoritative-safe-lines':'presentation-unavailable'),
+                mapEvidence:living.ok?living:null,safeFallback:safe||null,texture,
+                currentScientificResultPreserved:true,
+                mapVerificationSettledAt:new Date().toISOString(),
+                settledAt:current.settledAt||new Date().toISOString()""",
+          """      settled:ok,result:true,corridors:count,
+                renderVerified:ok,renderPending:!ok,
+                renderMode:living.ok?living.mode:(safe?.ok?'authoritative-safe-lines':'pending-authoritative-safe-lines'),
+                mapEvidence:living.ok?living:null,safeFallback:safe||null,texture,
+                currentScientificResultPreserved:true,
+                mapVerificationSettledAt:ok?new Date().toISOString():null,
+                settledAt:ok?(current.settledAt||new Date().toISOString()):null"""
+          ),
+          (
+          """      status('PROPERTY RESULT PRESERVED — '+count+' corridor'+(count===1?' was':'s were')+' found, but the map presentation did not verify. No substitute geometry was drawn.','failed');
+                setTierNotice('warning','PROPERTY DETAIL · ANALYSIS PRESERVED · MAP PRESENTATION UNAVAILABLE');""",
+          """      status('PROPERTY RESULT PRESERVED — '+count+' corridor'+(count===1?' was':'s were')+' found, but the authoritative Property map layer is not yet verified. Regional geometry is not a valid substitute.','failed');
+                setTierNotice('warning','PROPERTY DETAIL · ANALYSIS PRESERVED · PROPERTY MAP NOT VERIFIED');"""
+          ),
+          (
+          """      /* EARTHLINE 16334 — verified science is the interactive terminal. Optional
+                 presentation verification continues, but the Property control is released now. */
+              running=false;
+              document.documentElement.dataset.earthlinePropertyRunState='idle';
+              document.documentElement.classList.remove('earthline-property-running-16233');
+              clearTimers();setButton(false);clearAllBusy();restoreGrab();
+              try{window.getSelection?.()?.removeAllRanges?.();button()?.blur?.()}catch(_){}""",
+          """      /* EARTHLINE 17698 — science may be terminal, but Property is not visually
+                 terminal until the authoritative Property layer completes its first bounded
+                 presentation verification. The single governed owner remains active here;
+                 final cleanup still occurs in terminalPropertyRun's existing finally block. */"""
+          )
+          ]
+          for i,(old,new) in enumerate(pairs,1):
+              n=s.count(old)
+              if n!=1: raise SystemExit(f"patch {i} target count {n}, expected 1")
+              s=s.replace(old,new,1)
+          p.write_text(s)
+          print("EARTHLINE_M75_CLEAN_IOWA_FIX_APPLIED")
+          PY
+      - name: Parse-check page
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('EARTHLINE_M75_INLINE_SCRIPTS_OK',parsed);
+          NODE
+      - name: Commit clean candidate
+        shell: bash
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: verify Property swales before settling presentation"
+          git push origin HEAD:recovery/mantra75-iowa-clean
