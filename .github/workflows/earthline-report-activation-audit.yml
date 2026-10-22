@@ -1,0 +1,20 @@
+name: Earthline Report Activation Audit
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.earthline-report-activation-trigger']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - shell: bash
+        run: |
+          set -euo pipefail
+          grep -n -C 14 "earthlineVermontReport16149" index.html | head -320
+          echo '--- PANEL ---'
+          grep -n -C 12 "earthlineVermontReportPanel16149" index.html | head -260
