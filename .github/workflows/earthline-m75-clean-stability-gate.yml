@@ -1,0 +1,71 @@
+name: Earthline M75 Clean Stability Gate
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths:
+      - .github/workflows/earthline-m75-clean-stability-gate.yml
+permissions:
+  contents: read
+jobs:
+  stability:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fa5521899fb8d13598274bed8c5a45c23d0d55c8
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+          path: harness
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate stable ownership surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check earthline-launch-16872.js
+          ! grep -q "function ensureLanguage(){" index.html
+          ! grep -q "function applyLanguage(" index.html
+          ! grep -q "function earthlineApplyUiLanguage16871(" index.html
+          ! grep -q "earthline-language-hotfix-16890.js" index.html
+          grep -q "function lang(){return'en'}" earthline-launch-16872.js
+          grep -q "launchLangOverride='en'" earthline-launch-16872.js
+          grep -q "document.documentElement.lang='en'" earthline-launch-16872.js
+          grep -q "languageControl.innerHTML='<option value=\"en\">English</option>'" earthline-launch-16872.js
+          grep -q "languageControl.disabled=true" earthline-launch-16872.js
+          ! grep -q "languageControl.value=launchLangOverride" earthline-launch-16872.js
+          grep -q "const schedule=()=>requestAnimationFrame(()=>ensure())" earthline-launch-16872.js
+          ! grep -q "const obs=new MutationObserver(()=>{const p=reportPanel()" earthline-launch-16872.js
+          ! grep -q "vermontRequest" index.html
+          ! grep -q "earthlineClipVermontProducts16178({contours" index.html
+          grep -q "EARTHLINE 17690 — universal jurisdiction path" index.html
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('EARTHLINE_M75_STABILITY_INLINE_SCRIPTS_OK',parsed);
+          NODE
+      - name: Install rendered test runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd harness
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium webkit
+      - name: Run rendered stability path
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 8787 >/tmp/earthline-m75-stability-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in {1..30}; do
+            curl -fsS http://127.0.0.1:8787/ >/dev/null && break
+            sleep 1
+          done
+          node harness/tests/stability-smoke.mjs
