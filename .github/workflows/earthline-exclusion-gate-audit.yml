@@ -4,22 +4,127 @@ on:
     branches: [recovery/mantra74-stability]
     paths: ['.earthline-exclusion-gate-trigger']
 permissions:
-  contents: read
+  contents: write
 jobs:
-  audit:
+  alaska-safety:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
           ref: recovery/mantra74-stability
-      - shell: bash
+          fetch-depth: 0
+      - name: Instrument lock
+        shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          s=Path('index.html').read_text(encoding='utf-8')
-          for n in ['function filterCorridors15788','function exclusionIndex15788','function auditCorridors15806']:
-            i=s.find(n)
-            print('\n###',n,'AT',i)
-            if i>=0: print(s[i:i+12000])
+          p=Path('index.html'); s=p.read_text(encoding='utf-8')
+          old='''    const rawModel=Array.isArray(M&&M.swales)
+      ?JSON.parse(JSON.stringify(M.swales)):[];
+    let filtered=null;'''
+          new='''    const rawModel=Array.isArray(M&&M.swales)
+      ?JSON.parse(JSON.stringify(M.swales)):[];
+    window.EARTHLINE_SAFETY_LOCK_DIAG_17695={
+      stage:"entry",searchGen:Number(M&&M.searchGen||0),
+      vectorCoverage:M&&M.vectorNoBuildCoverage?JSON.parse(JSON.stringify(M.vectorNoBuildCoverage)):null,
+      finalMaskAvailable:!!(M&&M.noBuildMask&&Number(M.noBuildMask.length)>0),
+      finalMaskLength:Number(M&&M.noBuildMask&&M.noBuildMask.length||0),
+      rawFeatures:Number(raw&&raw.features&&raw.features.length||0)
+    };
+    let filtered=null;'''
+          assert s.count(old)==1, s.count(old)
+          s=s.replace(old,new,1)
+          old2='''      const frozenClearance16255=(candidate&&vectorVerified&&finalMaskAvailable&&(!filterIndexAvailable||portableEvidence16544))
+        ?earthlineFrozenPropertyClearanceAudit16255(candidate):null;
+      const frozenClearanceVerified16255=!!(frozenClearance16255&&frozenClearance16255.verified===true);'''
+          new2='''      window.EARTHLINE_SAFETY_LOCK_DIAG_17695=Object.assign({},window.EARTHLINE_SAFETY_LOCK_DIAG_17695||{},{
+        stage:"before-frozen",candidate:!!candidate,candidateCount:Number(candidate&&candidate.features&&candidate.features.length||0),
+        filterIndexAvailable,vectorVerified,finalMaskAvailable,portableEvidence16544,
+        vectorCoverageNow:M&&M.vectorNoBuildCoverage?JSON.parse(JSON.stringify(M.vectorNoBuildCoverage)):null,
+        auditVerified,acceptedIntersections:Number.isFinite(acceptedIntersections)?acceptedIntersections:null
+      });
+      const frozenClearance16255=(candidate&&vectorVerified&&finalMaskAvailable&&(!filterIndexAvailable||portableEvidence16544))
+        ?earthlineFrozenPropertyClearanceAudit16255(candidate):null;
+      const frozenClearanceVerified16255=!!(frozenClearance16255&&frozenClearance16255.verified===true);
+      window.EARTHLINE_SAFETY_LOCK_DIAG_17695=Object.assign({},window.EARTHLINE_SAFETY_LOCK_DIAG_17695||{},{
+        stage:"after-frozen",frozenCalled:!!frozenClearance16255,
+        frozenClearance:frozenClearance16255?JSON.parse(JSON.stringify(frozenClearance16255)):null,
+        frozenClearanceVerified16255
+      });'''
+          assert s.count(old2)==1, s.count(old2)
+          s=s.replace(old2,new2,1)
+          p.write_text(s,encoding='utf-8')
           PY
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){if(m[1].trim())new Function(m[1])}
+          NODE
+          git diff --check
+          git config user.name "Earthline Stability Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "diag: snapshot portable Property safety lock inputs"
+          git push origin HEAD:recovery/mantra74-stability
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run Alaska
+        shell: bash
+        run: |
+          set -euo pipefail
+          git pull --ff-only origin recovery/mantra74-stability
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          P=$!
+          trap 'kill $P || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          node - <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const b=await chromium.launch({headless:true});
+            const p=await b.newPage({viewport:{width:1600,height:900}});
+            await p.route('https://api.mapbox.com/**',async route=>{
+              const h={...route.request().headers(),referer:'https://earthlinedevelopment.org/',origin:'https://earthlinedevelopment.org'};
+              await route.continue({headers:h});
+            });
+            await p.goto('http://127.0.0.1:8787/?alaska='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+            await p.waitForSelector('#searchInput',{timeout:30000});
+            await p.waitForFunction(()=>window.earthlineMap||(typeof earthlineMap!=='undefined'&&earthlineMap),null,{timeout:30000});
+            await p.locator('#searchInput').fill('Alaska'); await p.waitForTimeout(700);
+            const opts=p.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
+            if(await opts.count())await opts.first().click({force:true});else await p.locator('#searchInput').press('Enter').catch(()=>{});
+            await p.waitForTimeout(120); await p.locator('#runBtn').click({force:true});
+            await p.waitForFunction(()=>{
+              const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+              return String(d&&(d.tier||d.mode)||'').toLowerCase()==='regional'&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';
+            },null,{timeout:90000,polling:150});
+            await p.waitForFunction(()=>((window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.swales?.features||[]).length>0),null,{timeout:20000});
+            const target=await p.evaluate(()=>{
+              const sw=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020.swales.features;
+              const f=sw.filter(x=>x?.geometry?.type==='LineString'&&x.geometry.coordinates?.length).sort((a,b)=>Number(a.properties?.rank||999)-Number(b.properties?.rank||999))[0];
+              const q=f.geometry.coordinates[Math.floor((f.geometry.coordinates.length-1)/2)];
+              return {lng:Number(q[0]),lat:Number(q[1]),source:'diag',query:'Alaska',parentRunToken:String(window.EARTHLINE_DISPLAYED_RUN_16151?.runToken||window.EARTHLINE_DISPLAYED_RUN_16147?.runToken||''),at:new Date().toISOString()};
+            });
+            await p.evaluate(t=>{window.EARTHLINE_PROPERTY_TARGET_16201=t;window.earthlineSetPropertyTarget16201?.(t)},target);
+            await p.locator('#earthlineDeclareProperty16169').click({force:true});
+            await p.waitForFunction(()=>{
+              const s=String(document.documentElement.dataset.earthlinePropertyRunState||'').toLowerCase();
+              const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+              return s!=='running'&&a?.settled===true;
+            },null,{timeout:50000,polling:100});
+            const out=await p.evaluate(()=>({
+              diag:window.EARTHLINE_SAFETY_LOCK_DIAG_17695||null,
+              audit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+              block:window.EARTHLINE_PROPERTY_PUBLICATION_BLOCK_16176||null,
+              coverage:typeof M!=='undefined'?M.vectorNoBuildCoverage:null,
+              maskLength:typeof M!=='undefined'&&M.noBuildMask?M.noBuildMask.length:0
+            }));
+            console.log('EARTHLINE_ALASKA_SAFETY_DIAG '+JSON.stringify(out));
+            await b.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
