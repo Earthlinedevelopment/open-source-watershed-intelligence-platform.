@@ -238,6 +238,7 @@ const diag=await page.evaluate(({target,serialBefore,pre,started,propertyStarted
     swaleDiagnosticsFull:(typeof M!=='undefined'&&M?.swaleDiagnostics)?JSON.parse(JSON.stringify(M.swaleDiagnostics)):null,
     swaleMetaFull:(typeof M!=='undefined'&&M?.swaleMeta)?JSON.parse(JSON.stringify(M.swaleMeta)):null,
     flowFirstPlacementFull:(typeof M!=='undefined'&&M?.flowFirstPlacement15836)?JSON.parse(JSON.stringify(M.flowFirstPlacement15836)):null,
+    flowFirstPlacementFull:(typeof M!=='undefined'&&M?.flowFirstPlacement15836)?JSON.parse(JSON.stringify(M.flowFirstPlacement15836)):null,
     terrainHandoffFull:(typeof M!=='undefined'&&M?.terrainHandoff15791)?JSON.parse(JSON.stringify(M.terrainHandoff15791)):null,
     demShape:(()=>{try{
       if(typeof M==='undefined'||!M)return null;
