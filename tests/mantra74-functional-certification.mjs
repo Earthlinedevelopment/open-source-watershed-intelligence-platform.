@@ -42,6 +42,8 @@ async function runCase(c){
     await page.waitForTimeout(c.loc?100:700);
     const opts=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
     if(await opts.count())await opts.first().click({force:true});
+    else await page.locator('#searchInput').press('Enter').catch(()=>{});
+    await page.waitForTimeout(120);
     await page.locator('#runBtn').click({force:true});
 
     await page.waitForFunction(()=>{
