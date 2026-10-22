@@ -16,8 +16,12 @@ jobs:
         with:
           ref: recovery/mantra75-engine-core
           fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+          path: harness
       - name: Apply repair
-        run: python3 ../open-source-watershed-intelligence-platform./tools/repair-m75-engine-core.py
+        run: python3 harness/tools/repair-m75-engine-core.py
       - name: Parse page
         run: node --check earthline-launch-16872.js
       - name: Commit repair
