@@ -104,7 +104,8 @@ async function runCase(c){
       displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,
       audit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
       handoff:window.EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347||null,
-      block:window.EARTHLINE_PROPERTY_PUBLICATION_BLOCK_16176||null
+      block:window.EARTHLINE_PROPERTY_PUBLICATION_BLOCK_16176||null,
+      safetyDiag:window.EARTHLINE_SAFETY_LOCK_DIAG_17695||null
     }));
     const propertyTier=String(propertyOutcome.displayed&&(propertyOutcome.displayed.tier||propertyOutcome.displayed.mode)||'').toLowerCase();
     if(propertyTier!=='property')throw new Error('Property handoff failed '+JSON.stringify(propertyOutcome));
