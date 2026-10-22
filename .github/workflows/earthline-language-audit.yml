@@ -1,0 +1,34 @@
+name: Earthline Language Audit
+on:
+  push:
+    branches:
+      - recovery/mantra74-stability
+    paths:
+      - .earthline-language-audit-trigger
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          for file in ['index.html','earthline-launch-16872.js']:
+              s=Path(file).read_text(encoding='utf-8')
+              print('\n########',file,'########')
+              for n in ['earthlineLanguage16488','function lang(','function detectLang','syncLanguageFromTarget','translateVisibleText','scheduleTranslation','addEventListener(\'change\'','localStorage.setItem(\'earthlineLanguage16488\'','document.documentElement.lang','EARTHLINE_LANGUAGE']:
+                  print('\n===',n,'===')
+                  start=0; hits=0
+                  while True:
+                      i=s.find(n,start)
+                      if i<0: break
+                      print(s[max(0,i-3500):min(len(s),i+9000)])
+                      start=i+len(n); hits+=1
+                      if hits>=10: break
+          PY
