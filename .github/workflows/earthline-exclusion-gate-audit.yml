@@ -18,13 +18,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
-          for n in ['exclusion-index-unavailable','clearance-audit-unverified','publicationAllowed','screened-clear','vectorNoBuildCoverage']:
-            print('\n===',n,'===')
-            start=0;hits=0
-            while True:
-              i=s.find(n,start)
-              if i<0:break
-              print(s[max(0,i-3500):min(len(s),i+7000)])
-              start=i+len(n);hits+=1
-              if hits>=8:break
+          n='const filterIndexAvailable'
+          i=s.find(n)
+          print(s[max(0,i-2200):min(len(s),i+9000)] if i>=0 else 'NOT FOUND')
           PY
