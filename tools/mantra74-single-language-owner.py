@@ -89,3 +89,5 @@ if "languageControl.value=launchLangOverride" not in j:
 idx.write_text(s,encoding="utf-8")
 launch.write_text(j,encoding="utf-8")
 print("EARTHLINE_17700_SINGLE_LANGUAGE_OWNER",len(s),len(j))
+
+# trigger
