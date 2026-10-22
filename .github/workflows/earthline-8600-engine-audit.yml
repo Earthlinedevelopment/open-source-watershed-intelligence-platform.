@@ -1,0 +1,20 @@
+name: Earthline 8600 Engine Audit
+on:
+  push:
+    branches:
+      - recovery/mantra74-stability
+    paths:
+      - tools/audit-8600-engine.py
+      - .github/workflows/earthline-8600-engine-audit.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: 8600b6e797f53f61dcff33d967a0000a3f58ac57
+          path: baseline
+      - run: python3 tools/audit-8600-engine.py
