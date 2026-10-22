@@ -13,6 +13,12 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function runCase(c){
   const context=await browser.newContext({viewport:{width:1600,height:900}});
   const page=await context.newPage();
+  /* EARTHLINE_PRODUCTION_ORIGIN_HEADERS_17691 — local CI candidate, deployed
+     Mapbox token origin. This changes test transport only, never Earthline science. */
+  await page.route('https://api.mapbox.com/**',async route=>{
+    const headers={...route.request().headers(),referer:'https://earthlinedevelopment.org/',origin:'https://earthlinedevelopment.org'};
+    await route.continue({headers});
+  });
   const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
   const started=Date.now(); let fatal=null;
   try{
