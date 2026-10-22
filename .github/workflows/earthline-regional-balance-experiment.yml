@@ -1,0 +1,41 @@
+name: Earthline Regional Balance Experiment
+on:
+  push:
+    branches: [diagnostic/ia-ar-38ded]
+    paths:
+      - tests/regional-balance-experiment.mjs
+      - .github/workflows/earthline-regional-balance-experiment.yml
+permissions:
+  contents: read
+jobs:
+  experiment:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply nonpersistent 3-per-sector balance
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); s=p.read_text(encoding='utf-8')
+          old='const reserveBudget16775=Math.min(regionalCapacity16755,totalSubs16775);'
+          new='const reserveBudget16775=Math.min(regionalCapacity16755,totalSubs16775,coverageGroups16736.size*3);'
+          if s.count(old)!=1: raise SystemExit(f'anchor count {s.count(old)}')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          print('EARTHLINE_BALANCE_PATCH_APPLIED')
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-balance-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          node tests/regional-balance-experiment.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: regional-balance-screens
+          path: regional-*.png
