@@ -136,3 +136,5 @@ if "EARTHLINE 17690 — universal jurisdiction path" not in s:
 
 p.write_text(s,encoding="utf-8")
 print("EARTHLINE_17690_UNIVERSAL_STATE_BOUNDARY",len(before),len(s),len(before)-len(s))
+
+# trigger
