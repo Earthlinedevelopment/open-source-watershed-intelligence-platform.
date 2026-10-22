@@ -2,35 +2,42 @@ from pathlib import Path
 p=Path("index.html")
 s=p.read_text(encoding="utf-8")
 
-def one(old,new,label):
+def replace_all(old,new,label,minimum=1):
     global s
     n=s.count(old)
-    if n!=1:
-        raise RuntimeError(f"{label}: expected 1, found {n}")
-    s=s.replace(old,new,1)
+    if n < minimum:
+        raise RuntimeError(f"{label}: expected at least {minimum}, found {n}")
+    s=s.replace(old,new)
+    print(label,n)
 
-one(
-"sourceRule:authoritative16516?'Vermont E911/VCGI first; exclusions fail closed; Overpass disabled':(evidence16516&&evidence16516.label?evidence16516.label:'Exclusion evidence not recorded')",
-"sourceRule:(evidence16516&&evidence16516.label?evidence16516.label:(authoritative16516?'Authoritative local exclusion evidence; exclusions fail closed':'Exclusion evidence not recorded'))",
-"provenance copy"
+# User-facing navigation must be geography-neutral. Historical comments may change too;
+# authoritative Vermont source names remain untouched.
+replace_all("BACK TO VERMONT","BACK TO REGIONAL","back label")
+replace_all("Back to Vermont","Back to Regional","back sentence")
+replace_all("run Vermont screening first.","run Regional screening first.","restore message")
+replace_all("return to Vermont to test another location.","return to the Regional view to test another location.","focus no-result copy")
+
+# Neutral fallback label in the legacy breadcrumb; live reconciliation may overwrite it.
+replace_all(
+    '<button type="button" class="region" data-action="region">Vermont</button>',
+    '<button type="button" class="region" data-action="region">Regional</button>',
+    "breadcrumb fallback"
 )
 
-one(
-"<button type=\"button\" class=\"region\" data-action=\"region\">Vermont</button><span class=\"sep\">›</span><span class=\"current\">Focus location</span><button type=\"button\" class=\"back\" data-action=\"region\">BACK TO VERMONT</button>",
-"<button type=\"button\" class=\"region\" data-action=\"region\">Regional</button><span class=\"sep\">›</span><span class=\"current\">Focus location</span><button type=\"button\" class=\"back\" data-action=\"region\">BACK TO REGIONAL</button>",
-"breadcrumb fallback"
-)
-
-one("REGIONAL RESTORE UNAVAILABLE — run Vermont screening first.","REGIONAL RESTORE UNAVAILABLE — run Regional screening first.","restore message")
-one("Use Back to Vermont to restore the cached regional result.","Use Back to Regional to restore the cached regional result.","focus restore copy")
-one("return to Vermont to test another location.","return to the Regional view to test another location.","focus no-result copy")
+# Provenance must describe the evidence actually returned, not infer Vermont from
+# the generic authoritative-local tier.
+old="sourceRule:authoritative16516?'Vermont E911/VCGI first; exclusions fail closed; Overpass disabled':(evidence16516&&evidence16516.label?evidence16516.label:'Exclusion evidence not recorded')"
+new="sourceRule:(evidence16516&&evidence16516.label?evidence16516.label:(authoritative16516?'Authoritative local exclusion evidence; exclusions fail closed':'Exclusion evidence not recorded'))"
+if s.count(old)!=1:
+    raise RuntimeError(f"provenance rule: expected 1, found {s.count(old)}")
+s=s.replace(old,new,1)
 
 for bad in [
     "BACK TO VERMONT",
+    "Back to Vermont",
     "run Vermont screening first.",
-    "Use Back to Vermont",
     "return to Vermont to test another location.",
-    "sourceRule:authoritative16516?'Vermont E911/VCGI first; exclusions fail closed; Overpass disabled'"
+    old
 ]:
     if bad in s:
         raise RuntimeError(f"global Vermont wording remains: {bad}")
