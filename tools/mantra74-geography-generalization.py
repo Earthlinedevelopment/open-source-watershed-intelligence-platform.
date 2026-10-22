@@ -46,3 +46,5 @@ for bad in ["fullAlaskaExtent16905","const CHIANG=","function isChiang","prepare
 
 p.write_text(s,encoding="utf-8")
 print("EARTHLINE_GEOGRAPHY_GENERALIZATION",len(before)-len(s))
+
+# trigger
