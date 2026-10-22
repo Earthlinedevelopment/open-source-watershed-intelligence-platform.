@@ -1,0 +1,40 @@
+name: Earthline Property Renderer Contract Audit
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.earthline-renderer-contract-trigger']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          needles=[
+            'EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221',
+            'directSwale',
+            'propertySwale',
+            'safeSegments',
+            'renderVerified',
+            'publicationCount',
+            'earthline-ranked-swale',
+            'earthlineProperty'
+          ]
+          for n in needles:
+            print('\n===',n,'===')
+            start=0; hits=0
+            while True:
+              i=s.find(n,start)
+              if i<0: break
+              print(s[max(0,i-2200):min(len(s),i+5200)])
+              start=i+len(n); hits+=1
+              if hits>=12: break
+          PY
