@@ -1,0 +1,110 @@
+name: Earthline M75 Clean Live Engine Repair
+on:
+  push:
+    branches:
+      - recovery/mantra74-stability
+    paths:
+      - .github/workflows/earthline-m75-clean-live-engine-repair.yml
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-live-engine-clean
+          fetch-depth: 0
+      - name: Apply shared engine fixes only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(errors='strict')
+
+          old_kept="const kept=[],keptBBox16204=[];"
+          new_kept="""const kept=[],keptBBox16204=[];
+    const exactGeometrySeen16205=new Set();
+    function earthlineExactSwaleKey16205(sw){
+      const pts=Array.isArray(sw&&sw.pts)?sw.pts:[];
+      if(pts.length<2)return "";
+      const encode=p=>Number(p[0]).toFixed(5)+","+Number(p[1]).toFixed(5);
+      const forward=pts.map(encode).join(";");
+      const reverse=pts.slice().reverse().map(encode).join(";");
+      return forward<reverse?forward:reverse;
+    }"""
+          if s.count(old_kept)!=1: raise SystemExit(f'dedupe anchor count {s.count(old_kept)}')
+          s=s.replace(old_kept,new_kept,1)
+
+          old_loop="""    for(const sw of ordered){
+      /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */"""
+          new_loop="""    for(const sw of ordered){
+      const exactKey16205=earthlineExactSwaleKey16205(sw);
+      if(exactKey16205&&exactGeometrySeen16205.has(exactKey16205)){
+        M.swaleDiagnostics.stage.rejectFinalSpacing++;
+        const duplicateRec16205=candidateRecord15803.get(sw)||null;
+        if(duplicateRec16205){
+          duplicateRec16205.status="rejected-exact-duplicate";
+          duplicateRec16205.reason="exact-duplicate-geometry";
+          duplicateRec16205.reachedSpacingEvaluation15840=true;
+          duplicateRec16205.reachedFinalCapEvaluation15840=true;
+        }
+        continue;
+      }
+      /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */"""
+          if s.count(old_loop)!=1: raise SystemExit(f'dedupe loop count {s.count(old_loop)}')
+          s=s.replace(old_loop,new_loop,1)
+
+          old_accept="kept.push(sw);keptBBox16204.push(swBBox16204);spacingIndexAdd16456(kept.length-1,swBBox16204);"
+          new_accept="if(exactKey16205)exactGeometrySeen16205.add(exactKey16205);kept.push(sw);keptBBox16204.push(swBBox16204);spacingIndexAdd16456(kept.length-1,swBBox16204);"
+          if s.count(old_accept)!=1: raise SystemExit(f'dedupe accept count {s.count(old_accept)}')
+          s=s.replace(old_accept,new_accept,1)
+
+          old_balance="const reserveBudget16775=Math.min(regionalCapacity16755,totalSubs16775);"
+          new_balance="const reserveBudget16775=Math.min(regionalCapacity16755,totalSubs16775,coverageGroups16736.size*3);"
+          if s.count(old_balance)!=1: raise SystemExit(f'balance anchor count {s.count(old_balance)}')
+          s=s.replace(old_balance,new_balance,1)
+
+          old_vis="""  function corridorGeometryVisible17434(map){
+    const tier=activeTier16168();
+    if(tier==='focus')return true;
+    if(tier==='property')return false;
+    const published=window.EARTHLINE_REGIONAL_PUBLICATION_VIEW_16337||null;
+    const publishedZoom=Number(published&&published.zoom),currentZoom=Number(map?.getZoom?.());
+    if(!Number.isFinite(currentZoom))return false;
+    if(!Number.isFinite(publishedZoom))return false;
+    return currentZoom>=publishedZoom+0.85;
+  }"""
+          new_vis="""  function corridorGeometryVisible17434(map){
+    const tier=activeTier16168();
+    if(tier==='focus'||tier==='regional')return true;
+    if(tier==='property')return false;
+    return false;
+  }"""
+          if s.count(old_vis)!=1: raise SystemExit(f'visibility anchor count {s.count(old_vis)}')
+          s=s.replace(old_vis,new_vis,1)
+
+          p.write_text(s)
+          print('EARTHLINE_M75_CLEAN_LIVE_ENGINE_APPLIED')
+          PY
+      - name: Parse-check
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('EARTHLINE_M75_CLEAN_ENGINE_PARSE_OK',parsed);
+          NODE
+      - name: Commit clean engine repair
+        shell: bash
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: restore Regional balance visibility and exact swale dedupe"
+          git push origin HEAD:recovery/mantra75-live-engine-clean
