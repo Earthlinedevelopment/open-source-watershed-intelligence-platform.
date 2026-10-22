@@ -1,4 +1,4 @@
-name: Earthline Universal Engine Cleanup
+name: Earthline Universal Copy Cleanup
 on:
   push:
     branches: [recovery/mantra74-stability]
@@ -7,8 +7,8 @@ permissions:
   contents: write
 jobs:
   cleanup:
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,13 +24,14 @@ jobs:
           for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
             if(!m[1].trim())continue; new Function(m[1]);
           }
-          if(!s.includes("const vermontRequest=false;"))throw Error('shared Vermont routing absent');
-          if(s.includes("installPanel16188();ensureBoundary()"))throw Error('Vermont startup fetch remains');
-          if(s.includes("try{void ensureBoundary().catch(()=>{});"))throw Error('Vermont preload remains');
-          console.log('EARTHLINE_17690_VALIDATE_OK');
+          for(const bad of ['BACK TO VERMONT','run Vermont screening first.','Use Back to Vermont','return to Vermont to test another location.']){
+            if(s.includes(bad))throw Error('global Vermont wording remains: '+bad);
+          }
+          if(s.includes("sourceRule:authoritative16516?'Vermont E911/VCGI first; exclusions fail closed; Overpass disabled'"))throw Error('hardcoded Vermont provenance remains');
+          console.log('EARTHLINE_UNIVERSAL_COPY_VALIDATE_OK');
           NODE
           git diff --check
-      - name: Commit
+      - name: Commit and retire installer
         shell: bash
         run: |
           set -euo pipefail
@@ -38,5 +39,5 @@ jobs:
           git config user.email "info@earthlinedevelopment.org"
           git rm -f tools/mantra74-universal-engine.py .github/workflows/earthline-universal-engine-cleanup.yml
           git add index.html
-          git commit -m "stability: route Vermont through shared universal engine"
+          git commit -m "stability: make navigation and provenance location-neutral"
           git push origin HEAD:recovery/mantra74-stability
