@@ -29865,7 +29865,7 @@ html.earthline-map-only-16169 #earthlineTierNotice16173{right:18px;bottom:18px}
 window.EARTHLINE_GAUGE_DATA_SYNC_16864={build:'16864',scoreScale:'0-100',measuredInfiltration:false,contract:'Aquifer Recharge Potential and DATA describe the same modeled weighted composite; no measured infiltration-rate claim.',at:new Date().toISOString()};
 </script>
 <script>window.EARTHLINE_LAUNCH_CANDIDATE_16866={build:'16866',scope:'approved launch repairs only',at:new Date().toISOString()};</script><script>window.EARTHLINE_LAUNCH_LIST_16867={build:'16867',at:new Date().toISOString()};</script><script src="earthline-launch-16872.js?v=17601"></script>
-<script src="earthline-language-hotfix-16890.js"></script>
+
 
 <!-- EARTHLINE_PROPERTY_REPEAT_ONE_PRESS_17451: settled repeat Property control rebind. -->
 <script>
@@ -32773,8 +32773,28 @@ function regionalSummary(){try{return window.earthlineRegional15778&&window.eart
 function currentScore(){const m=model(),rs=regionalSummary(),d=displayed(),t=tier(),regional=/^(regional|region|statewide)$/.test(t);let v=NaN;if(regional&&d&&d.recharge&&Number.isFinite(Number(d.recharge.score)))v=Number(d.recharge.score);else if(regional&&rs&&Number.isFinite(Number(rs.rechargeScore)))v=Number(rs.rechargeScore);else if(!regional&&m&&m.rechargeStats)v=Number(m.rechargeStats.modeledPotentialPct);return clamp(v)}
 function currentRain(){const m=model(),rs=regionalSummary(),d=displayed(),t=tier(),regional=/^(regional|region|statewide)$/.test(t);const v=Number(regional&&d&&d.recharge&&Number.isFinite(Number(d.recharge.rainfallIn))?d.recharge.rainfallIn:(regional&&rs&&Number.isFinite(Number(rs.precipIn))?rs.precipIn:(m&&m.loc&&m.loc.precipIn)));return Number.isFinite(v)&&v>0?v:null}
 function band(v){if(v==null)return 'Not calculated';if(v>=85)return 'Very high';if(v>=55)return 'High';if(v>=35)return 'Moderate';return 'Low'}
-function ensureLanguage(){const wrap=document.getElementById('earthlineLanguageWrap16488');if(wrap)wrap.remove();return null}
-function earthlineApplyUiLanguage16871(next){const D={en:{search:'Search',property:'Property Modelling',report:'Bioswale Impact Report',status:'Status',results:'Results',swales:'Swales Explained',process:'The Earthline Process',contact:'CONTACT',placeholder:'Search a location'},es:{search:'Buscar',property:'Modelado de propiedad',report:'Informe de impacto de bioswales',status:'Estado',results:'Resultados',swales:'Bioswales explicados',process:'El proceso Earthline',contact:'CONTACTO',placeholder:'Buscar una ubicación'},vi:{search:'Tìm kiếm',property:'Mô hình hóa khu đất',report:'Báo cáo tác động rãnh sinh học',status:'Trạng thái',results:'Kết quả',swales:'Giải thích rãnh sinh học',process:'Quy trình Earthline',contact:'LIÊN HỆ',placeholder:'Tìm kiếm địa điểm'},th:{search:'ค้นหา',property:'การจำลองพื้นที่',report:'รายงานผลกระทบร่องชีวภาพ',status:'สถานะ',results:'ผลลัพธ์',swales:'อธิบายร่องชีวภาพ',process:'กระบวนการ Earthline',contact:'ติดต่อ',placeholder:'ค้นหาสถานที่'}};const d=D[next]||D.en;const set=(q,v)=>{const e=document.querySelector(q);if(e)e.textContent=v};set('#earthlineSearchSection16188 .el-panel-label-16188',d.search);set('#earthlinePropertySection16188 .el-panel-label-16188',d.property);set('#earthlineReportSection16188 .el-panel-label-16188',d.report);set('#earthlineStatusSection16188 .el-panel-label-16188',d.status);set('#earthlineResultsSection16188 .el-panel-label-16188',d.results);const links=document.querySelectorAll('#earthlineHamburgerMenu16233 a');if(links[0]){const s=links[0].querySelector('span:last-child');if(s)s.textContent=d.swales}if(links[1]){const s=links[1].querySelector('span:last-child');if(s)s.textContent=d.process}set('#earthlineRailContact16512 .earthline-contact-label-16512',d.contact);const input=document.getElementById('searchInput');if(input)input.placeholder=d.placeholder;const b=document.getElementById('earthlineDeclareProperty16169'),span=b&&b.querySelector('span:last-child');if(span&&b.dataset.busy!=='1'&&typeof window.earthlinePropertyTargetMarkup16871==='function')span.innerHTML=window.earthlinePropertyTargetMarkup16871(window.EARTHLINE_PROPERTY_TARGET_16201);document.documentElement.dataset.earthlineLanguageApplied16871=next}function applyLanguage(value){const next=['en','th','vi','es'].includes(value)?value:'en';document.documentElement.lang=next;const label=document.getElementById('earthlineLanguageLabel16488');if(label)label.textContent=next==='th'?'ภาษา':next==='vi'?'Ngôn ngữ':next==='es'?'Idioma':'Language';window.EARTHLINE_LANGUAGE_16488=next;earthlineApplyUiLanguage16871(next)}
+function ensureLanguage(){
+  const rail=document.getElementById('earthlineRail16188');
+  if(!rail)return null;
+  let wrap=document.getElementById('earthlineLanguageWrap16488');
+  if(wrap)return wrap;
+  wrap=document.createElement('div');
+  wrap.id='earthlineLanguageWrap16488';
+  wrap.className='el-rail-control-16188';
+  wrap.setAttribute('aria-label','Language');
+  const select=document.createElement('select');
+  select.id='earthlineLanguage16488';
+  select.setAttribute('aria-label','Language');
+  for(const [value,label] of [['en','Eng'],['th','Thai'],['vi','Vietnamese'],['lo','Laotian']]){
+    const option=document.createElement('option');
+    option.value=value;
+    option.textContent=label;
+    select.appendChild(option);
+  }
+  wrap.appendChild(select);
+  rail.appendChild(wrap);
+  return wrap;
+}
 function ensureGauge(){const host=document.getElementById('earthlinePanelBrand16201'),mantra=host&&host.querySelector('.earthline-mantra-header'),p=mantra&&mantra.querySelector('.mantra-primary');if(!p)return null;if(p.dataset.earthlineGauge16488!=='1'){p.dataset.earthlineGauge16488='1';p.className='mantra-primary earthline-recharge-header-16488';p.innerHTML='<div class="earthline-engine-copy-16488"><div class="earthline-engine-sentence-16488">Earthline analyzes slope and water paths to identify optimum aquifer recharge locations — in any location.</div><div class="earthline-professional-note-16488">All sites need to be verified by a professional landscape expert.</div></div><div class="earthline-recharge-gauge-wrap-16488"><div class="earthline-recharge-nautical-rim-16488"><div class="earthline-recharge-gauge-ring-16488" style="--earthline-recharge-pct:0;--earthline-recharge-fill:0" role="img" aria-label="Recharge Potential not yet calculated"><span id="earthlineRechargePotentialValue16488">—%</span></div></div><div class="earthline-recharge-gauge-label-16488">Recharge Potential</div><div class="earthline-rainfall-label-16488">Average yearly rainfall:</div><div class="earthline-rainfall-value-16488" id="earthlineAverageRainfall16488">—</div></div>'}syncGauge();return p}
 function syncGauge(){const p=document.querySelector('#earthlinePanelBrand16201 .mantra-primary[data-earthline-gauge16488="1"]')||document.querySelector('#earthlinePanelBrand16201 .mantra-primary[data-earthline-gauge16488]');if(!p)return false;const score=currentScore(),q=score==null?null:Math.round(score),rain=currentRain(),value=p.querySelector('#earthlineRechargePotentialValue16488'),ring=p.querySelector('.earthline-recharge-gauge-ring-16488'),rainEl=p.querySelector('#earthlineAverageRainfall16488');if(value)value.textContent=q==null?'—%':q+'%';if(ring){ring.style.setProperty('--earthline-recharge-pct',q==null?0:q);ring.style.setProperty('--earthline-recharge-fill',(q==null?0:q)*0.75);ring.setAttribute('aria-label',q==null?'Recharge Potential not yet calculated':'Recharge Potential '+q+' percent')}if(rainEl)rainEl.textContent=rain==null?'—':(Math.round(rain*10)/10)+' in';return true}
 function groundwaterAudit16492(){const m=model(),a=m&&m.usgsAquiferAudit&&m.usgsAquiferAudit.summary||{};return {mappedMaterial:Number(a.mappedAquiferMaterialRings||0),nearbyWells:Number(a.nearbyWells||0),bedrock:Number(a.bedrockEvidenceWells||0),gravel:Number(a.sandGravelEvidenceWells||0)}}

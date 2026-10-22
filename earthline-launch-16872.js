@@ -152,9 +152,13 @@ function install(){
     launchLangOverride=saved||'en';
     if(!saved)localStorage.setItem('earthlineLanguage16488','en');
     document.documentElement.lang=launchLangOverride;
+    const languageControl=document.getElementById('earthlineLanguage16488');
+    if(languageControl)languageControl.value=launchLangOverride;
   }catch(_){
     launchLangOverride='en';
     document.documentElement.lang='en';
+    const languageControl=document.getElementById('earthlineLanguage16488');
+    if(languageControl)languageControl.value='en';
   }
   installRail();
   refreshSessionIfNeeded();
