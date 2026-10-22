@@ -1,0 +1,41 @@
+name: Earthline Inert Lifecycle Cleanup
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['tools/mantra74-inert-lifecycle.py']
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+          fetch-depth: 0
+      - run: python3 tools/mantra74-inert-lifecycle.py
+      - name: Validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue; new Function(m[1]);
+          }
+          for(const bad of ['earthlineMap.on("styledata",()=>{});','earthlineMap.on("idle",()=>{});',"map.on('styledata',()=>{});",'setInterval(()=>{},850);']){
+            if(s.includes(bad))throw Error('inert lifecycle residue: '+bad);
+          }
+          console.log('EARTHLINE_INERT_LIFECYCLE_VALIDATE_OK');
+          NODE
+          git diff --check
+      - name: Commit and retire cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Stability Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git rm -f tools/mantra74-inert-lifecycle.py .github/workflows/earthline-inert-lifecycle-cleanup.yml
+          git commit -m "stability: remove inert lifecycle attachments"
+          git push origin HEAD:recovery/mantra74-stability
