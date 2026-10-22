@@ -1,0 +1,106 @@
+name: Earthline M75 Regional Engine Repair
+on:
+  push:
+    branches: [recovery/mantra75-regional-engine]
+    paths:
+      - .github/workflows/earthline-m75-regional-engine-repair.yml
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-regional-engine
+          fetch-depth: 0
+      - name: Repair Regional coverage and exact duplicate acceptance
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(errors='strict')
+
+          old_budget="""const work15771=isRegionalTile15769
+      ? {maxLevels:14,maxSeedsPerLevel:4,maxCandidates:10,maxFinal:6,perLevel:1,maxMs:2000}
+      : {maxLevels:72,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200,perLevel:16,maxMs:120000};"""
+          new_budget="""const work15771=isRegionalTile15769
+      ? {maxLevels:36,maxSeedsPerLevel:8,maxCandidates:48,maxFinal:24,perLevel:4,maxMs:10000}
+      : {maxLevels:72,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200,perLevel:16,maxMs:120000};"""
+          if s.count(old_budget)!=1:
+              raise SystemExit(f'regional budget target count {s.count(old_budget)}, expected 1')
+          s=s.replace(old_budget,new_budget,1)
+
+          old_seed="const effectiveSeedBudget15841=isRegionalTile15769?2:work15771.maxSeedsPerLevel;"
+          new_seed="const effectiveSeedBudget15841=isRegionalTile15769?6:work15771.maxSeedsPerLevel;"
+          if s.count(old_seed)!=1:
+              raise SystemExit(f'seed budget target count {s.count(old_seed)}, expected 1')
+          s=s.replace(old_seed,new_seed,1)
+
+          old_decl="const kept=[],keptBBox16204=[];"
+          new_decl="""const kept=[],keptBBox16204=[];
+    const exactGeometrySeen17699=new Set();
+    function earthlineExactGeometrySignature17699(sw){
+      const pts=Array.isArray(sw&&sw.pts)?sw.pts:[];
+      if(!pts.length)return '';
+      const norm=pts.map(p=>[
+        Math.round(Number(p[0]||0)*1000)/1000,
+        Math.round(Number(p[1]||0)*1000)/1000
+      ]);
+      const f=JSON.stringify(norm),r=JSON.stringify(norm.slice().reverse());
+      return f<r?f:r;
+    }"""
+          if s.count(old_decl)!=1:
+              raise SystemExit(f'dedupe declaration target count {s.count(old_decl)}, expected 1')
+          s=s.replace(old_decl,new_decl,1)
+
+          old_loop="""      let tooClose=false;const swBBox16204=earthlineSwaleGridBBox16204(sw);
+      const spacingCandidates16456=spacingIndexCandidates16456(swBBox16204);"""
+          new_loop="""      const exactSig17699=earthlineExactGeometrySignature17699(sw);
+      if(exactSig17699&&exactGeometrySeen17699.has(exactSig17699)){
+        if(finalRec15803){
+          finalRec15803.status="rejected-final-spacing";
+          finalRec15803.reason="exact-duplicate";
+          earthlineCoverageZone15803(coverageDiag15803,finalRec15803.x,finalRec15803.y).rejections.finalSpacing++;
+        }
+        M.swaleDiagnostics.stage.rejectFinalSpacing++;
+        continue;
+      }
+      let tooClose=false;const swBBox16204=earthlineSwaleGridBBox16204(sw);
+      const spacingCandidates16456=spacingIndexCandidates16456(swBBox16204);"""
+          if s.count(old_loop)!=1:
+              raise SystemExit(f'dedupe loop target count {s.count(old_loop)}, expected 1')
+          s=s.replace(old_loop,new_loop,1)
+
+          old_accept="kept.push(sw);keptBBox16204.push(swBBox16204);spacingIndexAdd16456(kept.length-1,swBBox16204);"
+          new_accept="""kept.push(sw);keptBBox16204.push(swBBox16204);
+      if(exactSig17699)exactGeometrySeen17699.add(exactSig17699);
+      spacingIndexAdd16456(kept.length-1,swBBox16204);"""
+          if s.count(old_accept)!=1:
+              raise SystemExit(f'dedupe accept target count {s.count(old_accept)}, expected 1')
+          s=s.replace(old_accept,new_accept,1)
+
+          p.write_text(s)
+          print('EARTHLINE_M75_REGIONAL_ENGINE_REPAIR_OK')
+          PY
+      - name: Parse-check
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('EARTHLINE_M75_REGIONAL_ENGINE_PARSE_OK',parsed);
+          NODE
+      - name: Commit repair
+        shell: bash
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: remove Regional truncation and exact duplicate swales"
+          git push origin HEAD:recovery/mantra75-regional-engine
