@@ -90,3 +90,5 @@ p.write_text(s.rstrip()+"\n",encoding="utf-8")
 print("EARTHLINE_17680_EVENT_DRIVEN_LIFECYCLE",len(before),len(s),len(before)-len(s))
 
 # trigger
+
+# rerun after validator fix
