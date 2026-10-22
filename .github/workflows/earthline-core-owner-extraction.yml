@@ -1,0 +1,58 @@
+name: Earthline Core Owner Extraction
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: [.github/workflows/earthline-core-owner-extraction.yml]
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='strict')
+          funcs=['buildPlan','swaleDataForTile','earthlineBuildCanopyField15791','syncLayers15778','runRegional15780']
+          out=[]
+          for name in funcs:
+            needles=[f'function {name}(',f'async function {name}(']
+            starts=[s.rfind(n) for n in needles]
+            start=max(starts)
+            if start<0:
+              out.append(f'### {name} NOT FOUND')
+              continue
+            brace=s.find('{',start)
+            depth=0;quote=None;esc=False;line=False;block=False;end=None;i=brace
+            while i<len(s):
+              c=s[i];n=s[i+1] if i+1<len(s) else ''
+              if line:
+                if c=='\n': line=False
+                i+=1;continue
+              if block:
+                if c=='*' and n=='/': block=False;i+=2;continue
+                i+=1;continue
+              if quote:
+                if esc: esc=False
+                elif c=='\\': esc=True
+                elif c==quote: quote=None
+                i+=1;continue
+              if c=='/' and n=='/': line=True;i+=2;continue
+              if c=='/' and n=='*': block=True;i+=2;continue
+              if c in ['\"',"'",'`']: quote=c;i+=1;continue
+              if c=='{': depth+=1
+              elif c=='}':
+                depth-=1
+                if depth==0: end=i+1;break
+              i+=1
+            out.append(f'### {name}\n'+s[start:end if end else start+30000])
+          Path('earthline-core-owners.txt').write_text('\n\n'.join(out))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: earthline-core-owners
+          path: earthline-core-owners.txt
