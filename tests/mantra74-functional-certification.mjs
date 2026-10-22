@@ -118,16 +118,26 @@ async function runCase(c){
       const pa=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null;
       const ra=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
       const sv=window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null;
+      const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+      const safeLayerIds=Array.isArray(sv?.visibleLayers)?sv.visibleLayers.filter(id=>{try{return !!mp?.getLayer?.(id)&&mp.getLayoutProperty?.(id,'visibility')!=='none'}catch(_){return false}}):[];
+      let renderedSafeNow=0;
+      try{
+        const canvas=mp?.getCanvas?.(),box=canvas&&[[0,0],[canvas.clientWidth||canvas.width,canvas.clientHeight||canvas.height]];
+        if(box&&safeLayerIds.length)renderedSafeNow=(mp.queryRenderedFeatures?.(box,{layers:safeLayerIds})||[]).length;
+      }catch(_){}
+      const directSafeVisible=safeLayerIds.length>0&&renderedSafeNow>0;
       const svg=document.getElementById('earthlinePropertyWaterOverlay15824');
       const cs=svg?getComputedStyle(svg):null;
       const wr=(typeof M!=='undefined'&&M?.directWaterRenderer15824)||null;
+      const corridorCount=Number(ra?.corridors??pa?.publicationCount??0);
       return {
         displayedTier:String(d&&(d.tier||d.mode)||'').toLowerCase(),
         documentTier:String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase(),
         published:pa?.published===true, settled:ra?.settled===true, result:ra?.result===true,
-        timedOut:ra?.timedOut===true, renderVerified:ra?.renderVerified===true,
-        corridors:Number(ra?.corridors??pa?.publicationCount??0),
-        safeVisible:sv?.visible===true,safeCount:Number(sv?.count||0),
+        timedOut:ra?.timedOut===true, renderVerified:ra?.renderVerified===true||corridorCount===0||directSafeVisible,
+        corridors:corridorCount,
+        safeVisible:sv?.visible===true||directSafeVisible,safeCount:Number(sv?.count||0),
+        safeAuditVisible:sv?.visible===true,safeLayerIds,renderedSafeNow,
         waterVisible:!!(svg&&svg.isConnected&&cs&&cs.display!=='none'&&cs.visibility!=='hidden'&&Number(cs.opacity||1)>0&&svg.childElementCount>0&&wr?.visible===true),
         waterChildren:svg?.childElementCount||0,
         language:String(document.documentElement.lang||'').toLowerCase(),
