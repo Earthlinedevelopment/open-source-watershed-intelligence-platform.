@@ -69,7 +69,21 @@ try{
   settled=true;
 }catch(_){}
 
-await page.waitForTimeout(1500);
+const renderReadyProbeStarted=Date.now();
+let firstRenderedPropertyMs=null;
+for(let i=0;i<80;i++){
+  const n=await page.evaluate(()=>{
+    const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+    const ids=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'];
+    try{
+      const cv=mp?.getCanvas?.(),box=cv&&[[0,0],[cv.clientWidth||cv.width,cv.clientHeight||cv.height]];
+      return box?(mp.queryRenderedFeatures?.(box,{layers:ids.filter(id=>{try{return !!mp.getLayer(id)}catch(_){return false}})})||[]).length:0;
+    }catch(_){return 0}
+  });
+  if(n>0){firstRenderedPropertyMs=Date.now()-renderReadyProbeStarted;break}
+  await page.waitForTimeout(50);
+}
+await page.waitForTimeout(100);
 
 const diag=await page.evaluate(({target,serialBefore,pre,started,propertyStarted,settled})=>{
   const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
@@ -241,6 +255,7 @@ const diag=await page.evaluate(({target,serialBefore,pre,started,propertyStarted
   };
 },{target:TARGET,serialBefore,pre,started,propertyStarted,settled});
 
+diag.firstRenderedPropertyMs=firstRenderedPropertyMs;
 diag.pageErrors=errors;
 fs.writeFileSync('iowa-live-diagnostic.json',JSON.stringify(diag,null,2));
 console.log('EARTHLINE_IOWA_DIAGNOSTIC '+JSON.stringify(diag));
