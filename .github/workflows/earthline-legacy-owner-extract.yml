@@ -1,0 +1,25 @@
+name: Earthline Legacy Owner Extract
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.earthline-legacy-owner-extract-trigger']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          lines=Path('index.html').read_text(encoding='utf-8').splitlines()
+          for a,b in [(31390,31515),(31770,32010),(32520,32690),(10520,10560)]:
+            print(f'\n=== {a}-{b} ===')
+            for i in range(a-1,min(b,len(lines))):
+              print(f'{i+1}: {lines[i]}')
+          PY
