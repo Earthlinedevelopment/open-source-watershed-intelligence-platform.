@@ -1,18 +1,68 @@
-name: Earthline Property Input Owner Audit
+name: Earthline Property Input Owner Repair
 on:
   push:
     branches: [recovery/mantra74-stability]
-    paths: ['.github/workflows/earthline-generic-boundary-capability-audit.yml']
+    paths: ['.earthline-property-input-trigger']
 permissions:
-  contents: read
+  contents: write
 jobs:
-  audit:
+  repair:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
           ref: recovery/mantra74-stability
-      - shell: bash
+          fetch-depth: 0
+      - name: Repair single Property activation owner
+        shell: bash
         run: |
           set -euo pipefail
-          sed -n '32585,32648p' index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          pairs=[
+            ("Pointer-up is the primary physical activation; click remains the",
+             "Pointer-down is the primary physical activation; click remains the"),
+            ("const pointerSource=source==='pointerup';",
+             "const pointerSource=source==='pointerdown';"),
+            ("property.onpointerup=function(ev){\n    return window.earthlineActivateProperty17494(ev,property,'pointerup');\n  };",
+             "property.onpointerdown=function(ev){\n    return window.earthlineActivateProperty17494(ev,property,'pointerdown');\n  };")
+          ]
+          for old,new in pairs:
+            n=s.count(old)
+            if n!=1:
+              raise SystemExit(f'expected one Property input fragment, found {n}: {old[:60]}')
+            s=s.replace(old,new,1)
+          if "property.onpointerup=function" in s:
+            raise SystemExit('old pointer-up Property owner remains')
+          if s.count("property.onpointerdown=function")!=1:
+            raise SystemExit('single pointer-down Property owner not established')
+          p.write_text(s,encoding='utf-8')
+          print('EARTHLINE_PROPERTY_INPUT_OWNER_POINTERDOWN_OK')
+          PY
+      - name: Validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue; new Function(m[1]);
+          }
+          if(!s.includes("const pointerSource=source==='pointerdown';"))throw Error('pointer-down dedupe missing');
+          if(!s.includes("property.onclick=function"))throw Error('keyboard/click fallback missing');
+          if(s.includes("property.onpointerup=function"))throw Error('pointer-up owner remains');
+          console.log('EARTHLINE_PROPERTY_INPUT_OWNER_VALIDATE_OK');
+          NODE
+          git diff --check
+      - name: Commit and retire temporary input audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Stability Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git rm -f .github/workflows/earthline-generic-boundary-capability-audit.yml .earthline-property-input-trigger
+          git commit -m "stability: make Property activation cross-browser deterministic"
+          git push origin HEAD:recovery/mantra74-stability
