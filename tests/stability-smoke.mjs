@@ -10,6 +10,13 @@ for(const [name,engine] of engines){
   const page=await browser.newPage({
     viewport:name==='webkit'?{width:390,height:844}:{width:1440,height:960}
   });
+  /* EARTHLINE_PRODUCTION_ORIGIN_HEADERS_17691 — CI serves the candidate locally,
+     but the secured public Mapbox token permits the production origin. Preserve
+     product code unchanged and emulate only the deployed request origin. */
+  await page.route('https://api.mapbox.com/**',async route=>{
+    const headers={...route.request().headers(),referer:'https://earthlinedevelopment.org/',origin:'https://earthlinedevelopment.org'};
+    await route.continue({headers});
+  });
   const pageErrors=[];
   page.on('pageerror',e=>pageErrors.push(String(e)));
 
