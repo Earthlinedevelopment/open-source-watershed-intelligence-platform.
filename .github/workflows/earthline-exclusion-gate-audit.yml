@@ -18,9 +18,23 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
-          for n in ['function earthlineFrozenPropertyClearanceAudit16255','earthlineFrozenPropertyClearanceAudit16255=','FROZEN_PROPERTY_CLEARANCE']:
-            i=s.find(n)
-            if i>=0:
-              print('\n===',n,'===\n')
-              print(s[max(0,i-2200):min(len(s),i+9000)])
+          needles=[
+            'earthlineLockPropertyResult15815(',
+            'vectorNoBuildCoverage=',
+            'vectorNoBuildCoverage =',
+            'publicationAllowed:',
+            'publicationAllowed=',
+            'earthlineLoadVectorNoBuild',
+            'mapped roads/buildings',
+            'earthlineCollectParcelInfrastructure15862P'
+          ]
+          for n in needles:
+            print('\n===',n,'===')
+            start=0; hits=0
+            while True:
+              i=s.find(n,start)
+              if i<0: break
+              print(s[max(0,i-2600):min(len(s),i+6500)])
+              start=i+len(n); hits+=1
+              if hits>=15: break
           PY
