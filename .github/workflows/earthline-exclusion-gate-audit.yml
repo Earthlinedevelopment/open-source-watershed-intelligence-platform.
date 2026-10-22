@@ -17,12 +17,9 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          lines=Path('index.html').read_text(encoding='utf-8').splitlines()
-          for n in ['function earthlinePublishRawPropertyResult15816','earthlinePublishRawPropertyResult15816=','M.vectorNoBuildCoverage=','M.vectorNoBuildCoverage =']:
-            print('\n###',n)
-            for i,line in enumerate(lines,1):
-              if n in line:
-                a=max(1,i-20); b=min(len(lines),i+70)
-                print(f'-- {i} --')
-                for k in range(a,b+1): print(f'{k}: {lines[k-1]}')
+          s=Path('index.html').read_text(encoding='utf-8')
+          n='function earthlinePublishRawPropertyResult15816'
+          i=s.find(n)
+          print('FUNCTION_AT',i)
+          print(s[i:i+9000] if i>=0 else 'NOT FOUND')
           PY
