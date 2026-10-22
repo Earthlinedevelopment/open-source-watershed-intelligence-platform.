@@ -1,0 +1,37 @@
+name: Earthline Property Owner Readiness Repair
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['tools/mantra74-property-owner-ready.py']
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+          fetch-depth: 0
+      - run: python3 tools/mantra74-property-owner-ready.py
+      - name: Validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          if(!s.includes("const activationReady17494=b.dataset.earthlinePropertyClickOwner16546==='shared-17494';"))throw Error('owner readiness gate missing');
+          for(const m of s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi))if(m[1].trim())new Function(m[1]);
+          console.log('EARTHLINE_PROPERTY_OWNER_READY_VALIDATE_OK');
+          NODE
+          git diff --check
+      - name: Commit and retire repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Stability Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git rm -f tools/mantra74-property-owner-ready.py .github/workflows/earthline-property-owner-ready.yml
+          git commit -m "stability: bind Property owner before enabling action"
+          git push origin HEAD:recovery/mantra74-stability
