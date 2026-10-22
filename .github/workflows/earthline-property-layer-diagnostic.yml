@@ -1,0 +1,81 @@
+name: Earthline Property Layer Diagnostic
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.earthline-property-layer-trigger']
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/el-http.log 2>&1 &
+          PID=$!
+          trap 'kill $PID || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          CASES='[{"name":"Vermont","query":"Vermont"}]' OUT=/tmp/vt.json node tests/mantra74-functional-certification.mjs || true
+          node - <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const b=await chromium.launch({headless:true});
+            const p=await b.newPage({viewport:{width:1440,height:960}});
+            await p.route('https://api.mapbox.com/**',async route=>{
+              const h={...route.request().headers(),referer:'https://earthlinedevelopment.org/',origin:'https://earthlinedevelopment.org'};
+              await route.continue({headers:h});
+            });
+            await p.goto('http://127.0.0.1:8787/?layerdiag='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+            await p.waitForSelector('#searchInput',{timeout:30000});
+            const input=p.locator('#searchInput'); await input.fill('Vermont'); await p.waitForTimeout(900);
+            const opts=p.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
+            if(await opts.count())await opts.first().click({force:true}); else await input.press('Enter').catch(()=>{});
+            await p.locator('#runBtn').click({force:true});
+            await p.waitForFunction(()=>String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147)?.tier||'').toLowerCase()==='regional',null,{timeout:90000,polling:150});
+            await p.waitForFunction(()=>document.querySelectorAll('.earthline-swale-label-16149,.earthline-swale-hit-16070').length>0,null,{timeout:20000,polling:100});
+            const c=p.locator('.earthline-swale-label-16149:visible').first(); await c.click({force:true});
+            await p.waitForFunction(()=>document.getElementById('earthlineCorridorDetail16149')?.classList?.contains('open'),null,{timeout:10000});
+            const z=p.getByRole('button',{name:/zoom to (this )?location/i}).first(); await z.click({force:true});
+            await p.waitForFunction(()=>{const x=document.getElementById('earthlineDeclareProperty16169');return !!x&&!x.disabled},null,{timeout:20000});
+            await p.locator('#earthlineDeclareProperty16169').click({force:true});
+            await p.waitForFunction(()=>String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147)?.tier||'').toLowerCase()==='property',null,{timeout:45000,polling:150});
+            await p.waitForTimeout(8000);
+            const out=await p.evaluate(()=>{
+              const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+              const style=mp?.getStyle?.()||{};
+              const canvas=mp?.getCanvas?.(),box=canvas&&[[0,0],[canvas.clientWidth||canvas.width,canvas.clientHeight||canvas.height]];
+              const rows=[];
+              for(const l of style.layers||[]){
+                if(!/swale|property/i.test(String(l.id||'')))continue;
+                let rendered=0,visibility=null,opacity=null,source=l.source||null;
+                try{visibility=mp.getLayoutProperty(l.id,'visibility')}catch(_){}
+                for(const prop of ['line-opacity','fill-opacity','circle-opacity','icon-opacity','text-opacity']){
+                  try{const v=mp.getPaintProperty(l.id,prop);if(v!=null){opacity={prop,value:v};break}}catch(_){}
+                }
+                try{if(box)rendered=(mp.queryRenderedFeatures(box,{layers:[l.id]})||[]).length}catch(_){}
+                rows.push({id:l.id,type:l.type,source,visibility,opacity,rendered});
+              }
+              return {
+                displayed:window.EARTHLINE_DISPLAYED_RUN_16151||null,
+                runAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+                pubAudit:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,
+                safeAudit:window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null,
+                naturalAudit:window.EARTHLINE_PROPERTY_BLUE_STYLE_17417||null,
+                layers:rows
+              };
+            });
+            console.log('EARTHLINE_PROPERTY_LAYER_DIAG '+JSON.stringify(out));
+            await b.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
