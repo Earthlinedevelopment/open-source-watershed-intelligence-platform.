@@ -1,0 +1,62 @@
+name: Earthline Iowa Render Handoff Repair
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths:
+      - tools/repair-iowa-render-handoff.py
+      - .github/workflows/earthline-iowa-render-handoff-repair.yml
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Patch exact Property presentation handoff
+        run: python3 tools/repair-iowa-render-handoff.py
+      - name: Static syntax and contract check
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          if(!s.includes('EARTHLINE 17697')||!s.includes('EARTHLINE 17698'))throw Error('repair markers missing');
+          console.log('EARTHLINE_IOWA_RENDER_HANDOFF_INLINE_OK',parsed);
+          NODE
+      - name: Install diagnostic browser
+        run: |
+          npm install --no-save playwright@1.55.0
+      - name: Run exact Iowa crosshair diagnostic
+        run: |
+          python3 -m http.server 8787 >/tmp/earthline-iowa-repair-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          EARTHLINE_URL=http://127.0.0.1:8787/ node tests/iowa-live-diagnostic.mjs
+          node - <<'NODE'
+          const d=require('./iowa-live-diagnostic.json');
+          const a=d.runAudit||{};
+          if(a.settled!==true)throw Error('Property did not settle');
+          if(a.result!==true)throw Error('Property result failed');
+          if(a.renderVerified!==true)throw Error('Property presentation not render-verified: '+JSON.stringify({renderMode:a.renderMode,renderPending:a.renderPending,safeFallback:a.safeFallback}));
+          if(String(a.renderMode||'')==='presentation-unavailable')throw Error('presentation-unavailable persisted');
+          if(d.runState!=='idle')throw Error('Property run did not return idle');
+          console.log('EARTHLINE_IOWA_RENDER_HANDOFF_DIAGNOSTIC_OK',JSON.stringify({elapsedMs:d.elapsedMs,corridors:a.corridors,renderMode:a.renderMode,renderVerified:a.renderVerified}));
+          NODE
+      - name: Commit repaired candidate
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git diff --cached --quiet && { echo "No repair diff"; exit 1; }
+          git commit -m "fix: keep Property active until safe swales render"
+          git push origin HEAD:recovery/mantra74-stability
