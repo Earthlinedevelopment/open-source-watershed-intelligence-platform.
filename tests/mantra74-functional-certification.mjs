@@ -68,21 +68,20 @@ async function runCase(c){
       return sw.length>0||document.querySelectorAll('.earthline-swale-label-16149,.earthline-swale-hit-16070').length>0;
     },null,{timeout:20000,polling:100});
 
-    const target=await page.evaluate(q=>{
-      const sw=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.swales?.features||[];
-      const parent=String(window.EARTHLINE_DISPLAYED_RUN_16151?.runToken||window.EARTHLINE_DISPLAYED_RUN_16147?.runToken||'');
-      const f=sw.filter(x=>x?.geometry?.type==='LineString'&&x.geometry.coordinates?.length)
-        .sort((a,b)=>Number(a.properties?.rank||999)-Number(b.properties?.rank||999))[0];
-      if(!f)return null;
-      const p=f.geometry.coordinates[Math.floor((f.geometry.coordinates.length-1)/2)];
-      return {lng:Number(p[0]),lat:Number(p[1]),source:'m74-cert',code:String(f.properties?.display_code||f.properties?.grade||''),score:Number(f.properties?.score||0),query:q,parentRunToken:parent,at:new Date().toISOString()};
-    },c.query);
-    if(!target)throw new Error('no Regional corridor target');
-
-    await page.evaluate(t=>{
-      window.EARTHLINE_PROPERTY_TARGET_16201=t;
-      if(typeof window.earthlineSetPropertyTarget16201==='function')window.earthlineSetPropertyTarget16201(t);
-    },target);
+    const corridor=page.locator('.earthline-swale-label-16149:visible').first();
+    if(!await corridor.count())throw new Error('no visible Regional corridor label');
+    await corridor.click({force:true});
+    await page.waitForFunction(
+      ()=>!!document.getElementById('earthlineCorridorDetail16149')?.classList?.contains('open'),
+      null,{timeout:10000,polling:100}
+    );
+    const zoom=page.getByRole('button',{name:/zoom to (this )?location/i}).first();
+    if(!await zoom.count())throw new Error('corridor detail missing Zoom control');
+    await zoom.click({force:true});
+    await page.waitForFunction(()=>{
+      const b=document.getElementById('earthlineDeclareProperty16169');
+      return !!b&&!b.disabled;
+    },null,{timeout:20000,polling:100});
 
     const serialBefore=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
     const prop=page.locator('#earthlineDeclareProperty16169');
