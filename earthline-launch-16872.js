@@ -908,7 +908,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
     const p=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||a?.publicationAudit||null;
     return String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property' &&
-      a?.settled===true && a?.result===true && p?.published===true && Number(p?.safeCount||p?.publicationCount||0)>0;
+      a?.result===true && p?.published===true && Number(p?.safeCount||p?.publicationCount||0)>0;
   }
   function textureVerified(){
     const run=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
