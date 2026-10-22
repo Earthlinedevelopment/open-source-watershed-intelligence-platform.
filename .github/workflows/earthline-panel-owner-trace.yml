@@ -17,9 +17,8 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          for p in [Path('index.html'),Path('earthline-launch-16872.js')]:
-            print('FILE',p)
-            for i,line in enumerate(p.read_text(encoding='utf-8').splitlines(),1):
-              if 'setPanel16188(' in line or "earthline-panel-open-16188" in line and ('classList.add' in line or 'classList.toggle' in line):
-                print(f'{i}: {line}')
+          s=Path('index.html').read_text(encoding='utf-8').splitlines()
+          for i,line in enumerate(s,1):
+            if 'setPropertyTarget16201(' in line:
+              print(f'{i}: {line}')
           PY
