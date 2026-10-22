@@ -1,0 +1,31 @@
+name: Earthline Minnesota Mississippi Certification
+on:
+  push:
+    branches:
+      - recovery/mantra74-stability
+    paths:
+      - .earthline-minn-ms-trigger
+permissions:
+  contents: read
+jobs:
+  pair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
+          PID=$!
+          trap 'kill $PID || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          CASES='[{"name":"Minnesota","query":"Minnesota"},{"name":"Mississippi","query":"Mississippi"}]' OUT=pair.json node tests/mantra74-functional-certification.mjs
