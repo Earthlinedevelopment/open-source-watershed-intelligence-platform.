@@ -1,0 +1,29 @@
+name: Earthline M75 Engine Candidate Test 2
+on:
+  push:
+    branches:
+      - recovery/mantra75-engine-repair
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - run: python3 tools/normalize-iowa-test.py
+      - run: |
+          python3 -m http.server 8787 >/tmp/earthline.log 2>&1 &
+          sleep 2
+          EARTHLINE_URL=http://127.0.0.1:8787/ node tests/iowa-live-diagnostic.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iowa-engine-candidate-2
+          path: |
+            iowa-live-diagnostic.json
+            iowa-engine-candidate.png
