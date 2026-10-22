@@ -952,19 +952,26 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     return changed>0;
   }
   function afterPublication(reason){
-    /* EARTHLINE 17700 — bounded two-stage Mapbox paint settlement.
-       Stage 1 republishes the exact committed safe source once. Because setData()
-       schedules a paint, Stage 2 waits exactly two more animation frames before
-       asking the same authoritative owner to verify rendered truth. No polling,
-       timeout ladder, substitute geometry, renderer, or science change. */
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      enforce(reason+'-paint-prime-17700');
-      try{window.earthlineSyncSafePropertyFallback16221?.('launch-paint-prime-17700')}catch(_){}
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{
-        try{window.earthlineSyncSafePropertyFallback16221?.('launch-paint-verify-17700')}catch(_){}
-        try{Promise.resolve(window.earthlineSyncPropertyTexture16169?.('launch-paint-verify-17700')).catch(()=>{})}catch(_){}
-      }));
-    }));
+    /* EARTHLINE 17701 — render-event Property settlement.
+       Prime the exact committed safe source once, then verify on the next actual
+       Mapbox render event caused by that setData/repaint. This is one bounded
+       event handoff: no polling, timeout ladder, observer, substitute geometry,
+       renderer, or science change. */
+    requestAnimationFrame(()=>{
+      const m=map();
+      let verified=false;
+      const verify=()=>{
+        if(verified)return;verified=true;
+        requestAnimationFrame(()=>{
+          try{window.earthlineSyncSafePropertyFallback16221?.('launch-render-verify-17701')}catch(_){}
+          try{Promise.resolve(window.earthlineSyncPropertyTexture16169?.('launch-render-verify-17701')).catch(()=>{})}catch(_){}
+        });
+      };
+      try{m?.once?.('render',verify)}catch(_){}
+      enforce(reason+'-render-prime-17701');
+      try{window.earthlineSyncSafePropertyFallback16221?.('launch-render-prime-17701')}catch(_){}
+      if(!m?.once)requestAnimationFrame(()=>requestAnimationFrame(verify));
+    });
   }
   window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011={state:'ready',enforce,textureVerified};
   document.addEventListener('earthline:analysis-complete',()=>{
