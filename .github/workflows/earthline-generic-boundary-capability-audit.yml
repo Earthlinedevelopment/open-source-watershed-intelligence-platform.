@@ -1,4 +1,4 @@
-name: Earthline Final Architecture Audit
+name: Earthline Property Input Owner Audit
 on:
   push:
     branches: [recovery/mantra74-stability]
@@ -15,31 +15,5 @@ jobs:
       - shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          files=[Path('index.html'),Path('earthline-launch-16872.js')]
-          patterns={
-            'vermont_behavior':['vermontRequest','earthlineClipVermontProducts','earthlineValidateVermontBoundary','insideVermont','vermont-vcgi-e911'],
-            'vermont_copy':['VT ANR','Vermont ANR','Vermont E911','BACK TO VERMONT','run Vermont screening','fallback||\'Vermont\''],
-            'nz_behavior':["code16845==='nz'","name16845==='new zealand'","EARTHLINE_NZ_",'installNz','New Zealand'],
-            'alaska_behavior':['us-ak','earthline-alaska'],
-            'vancouver_behavior':['Vancouver','vancouver'],
-            'language_owner':['earthlineLanguage16488','document.documentElement.lang','localStorage','MutationObserver'],
-            'timers':['setInterval(','setTimeout('],
-            'map_lifecycle':[".on('idle'",'.on("idle"',".on('styledata'",'.on("styledata"',".on('render'",'.on("render"'],
-            'principle_ownership':["Earthline’s three-word principle","Earthline's three-word principle","Earthline follows this three-word principle","Our three-word principle"]
-          }
-          for p in files:
-            if not p.exists(): continue
-            lines=p.read_text(encoding='utf-8').splitlines()
-            print(f'=== FILE {p} lines={len(lines)} ===')
-            for group,needles in patterns.items():
-              hits=[]
-              for i,line in enumerate(lines,1):
-                low=line.lower()
-                if any((n.lower() in low) for n in needles):
-                  hits.append((i,line))
-              print(f'--- {group} count={len(hits)} ---')
-              for i,line in hits[:120]:
-                print(f'{p}:{i}: {line}')
-          PY
+          grep -n -A80 -B35 "earthlineActivateProperty17494" index.html || true
+          grep -n -A35 -B20 "earthlineDeclareProperty16169" index.html | grep -E "onpointer|onclick|ActivateProperty|DeclareProperty|addEventListener" || true
