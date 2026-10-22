@@ -302,49 +302,6 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   .main,.center,.map-area,#mapboxBase{
     top:0!important;bottom:0!important;height:100dvh!important;min-height:100dvh!important;
   }
-  #earthlineRail16188{
-    position:fixed!important;
-    left:0!important;right:auto!important;top:0!important;bottom:auto!important;
-    width:var(--el-rail-16188)!important;min-width:var(--el-rail-16188)!important;max-width:var(--el-rail-16188)!important;
-    height:100dvh!important;max-height:100dvh!important;
-    transform:none!important;margin:0!important;
-    align-items:center!important;box-sizing:border-box!important;
-    gap:8px!important;
-    padding-left:4px!important;padding-right:4px!important;
-    padding-top:max(10px,env(safe-area-inset-top))!important;
-    padding-bottom:max(10px,env(safe-area-inset-bottom))!important;
-  }
-  #earthlineRail16188 > *,
-  #earthlineLaunchLogin16872,
-  #earthlineLaunchDonate16872,
-  #earthlineLaunchMerch16872{
-    margin-left:auto!important;margin-right:auto!important;
-    transform:none!important;align-self:center!important;
-    max-width:46px!important;
-  }
-  html.earthline-panel-open-16188 #earthlineLaunchLogin16872,
-  html.earthline-panel-open-16188 #earthlineLaunchDonate16872,
-  html.earthline-panel-open-16188 #earthlineLaunchMerch16872{
-    visibility:visible!important;opacity:1!important;pointer-events:auto!important;
-  }
-  #earthlinePanel16188{
-    position:fixed!important;
-    left:var(--el-rail-16188)!important;right:0!important;
-    top:auto!important;bottom:0!important;
-    width:calc(100vw - var(--el-rail-16188))!important;
-    height:min(56dvh,520px)!important;max-height:min(56dvh,520px)!important;
-    border-radius:16px 16px 0 0!important;
-    box-shadow:0 -12px 36px rgba(0,0,0,.38)!important;
-    transform:translateY(calc(100% + 10px))!important;
-  }
-  html.earthline-panel-open-16188 #earthlinePanel16188{
-    transform:translateY(0)!important;
-  }
-  #earthlinePanelBody16188{
-    min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;
-    -webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important;
-    padding-bottom:calc(26px + env(safe-area-inset-bottom))!important;
-  }
   #earthlinePanelClose16188{
     width:44px!important;height:44px!important;
     top:max(6px,env(safe-area-inset-top))!important;right:8px!important;
@@ -392,22 +349,6 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       (document.head||document.documentElement).appendChild(style);
     }
   }catch(_){}
-
-  function returnToMap(){
-    if(!isMobile())return;
-    try{
-      document.documentElement.classList.remove('earthline-panel-open-16188');
-      document.getElementById('earthlineRailSearch16188')?.classList.remove('active');
-    }catch(_){}
-    setTimeout(()=>{
-      try{
-        const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
-        if(m&&typeof m.resize==='function')m.resize();
-      }catch(_){}
-    },220);
-  }
-
-  document.addEventListener('earthline:analysis-complete',returnToMap,{passive:true});
 
   function mobileZoomFeedback(){
     if(!isMobile())return null;
