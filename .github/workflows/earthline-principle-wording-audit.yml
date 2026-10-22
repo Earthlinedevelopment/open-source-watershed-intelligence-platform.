@@ -1,0 +1,27 @@
+name: Earthline Principle Wording Audit
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.earthline-principle-audit-trigger']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          files=[Path('index.html'),Path('earthline-launch-16872.js')]
+          for p in files:
+            if not p.exists(): continue
+            lines=p.read_text(encoding='utf-8').splitlines()
+            for i,line in enumerate(lines,1):
+              if 'principle' in line.lower() or 'slow it' in line.lower():
+                print(f'{p}:{i}: {line}')
+          PY
