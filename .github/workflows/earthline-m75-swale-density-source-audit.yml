@@ -1,0 +1,30 @@
+name: Earthline M75 Swale Density Source Audit
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths:
+      - .github/workflows/earthline-m75-swale-density-source-audit.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fa5521899fb8d13598274bed8c5a45c23d0d55c8
+      - name: Extract active swale spacing source
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import re, pathlib
+          s=pathlib.Path("index.html").read_text(errors="ignore")
+          terms=["targetSwaleSpacingM","acceptedSpacingM","levelStepRaw","levelStepM","prescribeSwales15778","spacingMethod","measuredMedianSpacingM","maxFinal","targetSpacingM"]
+          for term in terms:
+              hits=list(re.finditer(re.escape(term),s))
+              print("\n###",term,"COUNT",len(hits))
+              for i,m in enumerate(hits[-6:]):
+                  a=max(0,m.start()-2200); b=min(len(s),m.start()+5200)
+                  print("\n--- HIT",i,"AT",m.start(),"---\n")
+                  print(s[a:b])
+          PY
