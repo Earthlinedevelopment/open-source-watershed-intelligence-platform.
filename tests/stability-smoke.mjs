@@ -91,6 +91,16 @@ for(const [name,engine] of engines){
     });
     console.log('EARTHLINE_PROPERTY_REACHABILITY '+JSON.stringify({engine:name,audit:propertyReachability}));
     await page.waitForTimeout(80);
+    const propertyLayoutAudit=await page.locator('#earthlineDeclareProperty16169').evaluate(el=>{
+      const chain=[]; let n=el;
+      while(n&&n!==document.documentElement){
+        const r=n.getBoundingClientRect(),cs=getComputedStyle(n);
+        chain.push({id:n.id||'',tag:n.tagName,top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:r.height,position:cs.position,display:cs.display,overflowY:cs.overflowY,transform:cs.transform,marginTop:cs.marginTop,marginBottom:cs.marginBottom,clientHeight:n.clientHeight,scrollHeight:n.scrollHeight,scrollTop:n.scrollTop,offsetParent:n.offsetParent?.id||n.offsetParent?.tagName||''});
+        n=n.parentElement;
+      }
+      return chain;
+    });
+    console.log('EARTHLINE_PROPERTY_LAYOUT_AUDIT '+JSON.stringify({engine:name,chain:propertyLayoutAudit}));
     const propertyPoint=await page.locator('#earthlineDeclareProperty16169').evaluate(el=>{
       const r=el.getBoundingClientRect(),top=Math.max(0,r.top),bottom=Math.min(innerHeight,r.bottom);
       if(bottom-top<20)throw new Error('Property control has less than 20px visible touch height');
