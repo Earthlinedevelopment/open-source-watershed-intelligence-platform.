@@ -10541,7 +10541,6 @@ window.earthlineNearestNeighborSpacing15760=earthlineNearestNeighborSpacing15760
   };
   side.addEventListener("pointerdown",e=>e.stopPropagation());
   side.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();earthlineRunAnalysis();});
-  new MutationObserver(sync).observe(main,{attributes:true,attributeFilter:["data-busy"]});
   sync();
 })();
 console.log("[Earthline] BUILD-CHECK-15760 initialized — safe delayed overlay repaint; native map behavior retained.");
@@ -31971,12 +31970,9 @@ html.earthline-map-expanded-16166 #earthlineCorridorDetail16149{display:none!imp
     window.EARTHLINE_BUILD=BUILD;document.documentElement.dataset.earthlineVermontBuild='16168';
     const stamp=document.getElementById('earthlineBuildStamp16154');if(stamp)stamp.textContent='EARTHLINE 16168';
     restoreControls();restoreGrab();
-    const m=map();if(m?.on){for(const ev of ['zoomend','moveend','rotateend','pitchend','idle'])m.on(ev,()=>{restoreGrab();restoreControls();if(tier()==='focus')refreshRender()})}
-    document.addEventListener('keydown',e=>{if(e.key==='Escape'){setTimeout(()=>{restoreControls();restoreGrab()},0)}},true);
-    let controlsMutationRaf16168=0;
-    const obs=new MutationObserver(()=>{if(controlsMutationRaf16168)return;controlsMutationRaf16168=requestAnimationFrame(()=>{controlsMutationRaf16168=0;restoreControls()})});obs.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
-    setTimeout(()=>{restoreControls();restoreGrab();refreshRender()},0);
-    setTimeout(()=>{restoreControls();restoreGrab();refreshRender()},800);
+    const m=map();if(m?.on){for(const ev of ['zoomend','moveend','rotateend','pitchend'])m.on(ev,()=>{restoreGrab();restoreControls();if(tier()==='focus')refreshRender()})}
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'){requestAnimationFrame(()=>{restoreControls();restoreGrab()})}},true);
+    requestAnimationFrame(()=>{restoreControls();restoreGrab();refreshRender()});
     window.earthlineMapOnlyAudit16168=audit;
     window.earthlineRestoreGrabCursor16168=restoreGrab;
     window.EARTHLINE_ARTIFACT_MANIFEST_16168={build:BUILD,required:[...new Set([...(window.EARTHLINE_ARTIFACT_MANIFEST_16167?.required||[]),'one visible MAP ONLY control using the existing fullscreen owner','Escape and Exit Full Screen restore all chrome','standard Mapbox grab/grabbing cursor restored after completed motion','authoritative live SVG focus swales physically contain casing, berm, ditch, crown and survey paths','corridor hit targets bind to explicit core paths independent of visual band count'])]};
