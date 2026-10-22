@@ -91,8 +91,13 @@ for(const [name,engine] of engines){
     });
     console.log('EARTHLINE_PROPERTY_REACHABILITY '+JSON.stringify({engine:name,audit:propertyReachability}));
     await page.waitForTimeout(80);
+    const propertyPoint=await page.locator('#earthlineDeclareProperty16169').evaluate(el=>{
+      const r=el.getBoundingClientRect(),top=Math.max(0,r.top),bottom=Math.min(innerHeight,r.bottom);
+      if(bottom-top<20)throw new Error('Property control has less than 20px visible touch height');
+      return {x:(r.left+r.right)/2,y:(top+bottom)/2,visibleHeight:bottom-top};
+    });
     const serialBefore=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
-    await page.locator('#earthlineDeclareProperty16169').click({force:true});
+    await page.mouse.click(propertyPoint.x,propertyPoint.y);
 
     let propertyWaitTimedOut=false;
     try{
