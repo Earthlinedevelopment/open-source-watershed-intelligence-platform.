@@ -1,0 +1,120 @@
+name: Earthline Final Owner Cleanup
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.earthline-final-owner-cleanup-trigger']
+permissions:
+  contents: write
+jobs:
+  clean:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+          fetch-depth: 0
+      - shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          before=s
+          reps=[
+            (
+              "for(const ev of ['zoom','move','styledata','idle'])m.on(ev,()=>{});setInterval(()=>{updateScale();ensureReportButton()},1500);schedule()",
+              "schedule()",
+              "remove no-op map listeners and 1.5s report/scale poll"
+            ),
+            (
+              "const reportReadinessObserver16151=new MutationObserver(()=>ensureReportButton());\n  reportReadinessObserver16151.observe(document.documentElement,{childList:true,subtree:true});",
+              "",
+              "remove report readiness observer"
+            ),
+            (
+              "if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',stamp,{once:true});else stamp();setTimeout(stamp,250);setTimeout(stamp,1100);setTimeout(stamp,2800);setInterval(()=>{removeMapButtons();ensureTopRun();ensureReportButton()},900);",
+              "if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',stamp,{once:true});else stamp();",
+              "remove stamp retry ladder and 900ms control poll"
+            ),
+            (
+              "let moRaf16158=0;const mo=new MutationObserver(()=>{if(moRaf16158)return;moRaf16158=requestAnimationFrame(()=>{moRaf16158=0;ensureBlueBrand();ensureBuildStamp();wrapCorridorDetail()})});mo.observe(document.documentElement,{childList:true,subtree:true});",
+              "",
+              "remove full-document tier navigation observer"
+            ),
+            (
+              "const c=document.querySelector('.center');if(c)new MutationObserver(()=>{syncFullscreen();setTimeout(()=>map()?.resize?.(),0)}).observe(c,{attributes:true,attributeFilter:['class']});",
+              "const c=document.querySelector('.center');",
+              "remove fullscreen class observer"
+            ),
+            (
+              "const obs=new MutationObserver(()=>{if(controlsMutationRaf16168)return;controlsMutationRaf16168=requestAnimationFrame(()=>{controlsMutationRaf16168=0;restoreControls()})});obs.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});",
+              "",
+              "remove full-document control restore observer"
+            ),
+            (
+              "let panelMutationRaf16188=0;const bodyObserver=new MutationObserver(()=>{if(panelMutationRaf16188)return;panelMutationRaf16188=requestAnimationFrame(()=>{panelMutationRaf16188=0;reconcilePanel16188()})});bodyObserver.observe(document.body,{childList:true,subtree:true});",
+              "",
+              "remove panel body observer"
+            ),
+            (
+              "const runStateObserver17680=new MutationObserver(()=>{syncRegionalOrb16233();const p=document.getElementById('earthlineDeclareProperty16169');if(p)ensureOrb16233('earthlineDeclareProperty16169');reconcileOrbTerminal16243()});runStateObserver17680.observe(document.documentElement,{attributes:true,attributeFilter:['data-earthline-run-state','data-earthline-property-run-state']});",
+              "",
+              "remove run-state mutation observer"
+            ),
+            (
+              "function install(){stamp();installPanel16188();ensureBoundary().catch(error=>{lastError=error;console.error('[Earthline 16233] Vermont boundary unavailable',error)});setTimeout(stamp,1200);",
+              "function install(){stamp();installPanel16188();",
+              "remove Vermont boundary startup preload"
+            )
+          ]
+          for old,new,label in reps:
+            n=s.count(old)
+            if n==1:
+              s=s.replace(old,new,1)
+              print('REMOVED',label)
+            elif n==0:
+              print('ALREADY_ABSENT',label)
+            else:
+              raise SystemExit(f'{label}: expected <=1, found {n}')
+          # obsolete side Run Analysis control observer: side control is already hidden by final UI
+          old='new MutationObserver(sync).observe(main,{attributes:true,attributeFilter:["data-busy"]});'
+          if s.count(old)==1:
+            s=s.replace(old,'',1); print('REMOVED duplicate Run Analysis busy observer')
+          # final invariants
+          bad=[
+            "setInterval(()=>{updateScale();ensureReportButton()},1500)",
+            "setInterval(()=>{removeMapButtons();ensureTopRun();ensureReportButton()},900)",
+            "reportReadinessObserver16151=new MutationObserver",
+            "bodyObserver=new MutationObserver",
+            "runStateObserver17680=new MutationObserver",
+            "installPanel16188();ensureBoundary()",
+            "for(const ev of ['zoom','move','styledata','idle'])m.on(ev,()=>{})"
+          ]
+          for b in bad:
+            if b in s: raise SystemExit('cleanup invariant failed: '+b)
+          p.write_text(s,encoding='utf-8')
+          print('EARTHLINE_FINAL_OWNER_CLEANUP',len(before),len(s),len(before)-len(s))
+          PY
+      - name: Validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1])}catch(e){throw new Error('inline script '+i+': '+e.message)}
+          }
+          console.log('EARTHLINE_FINAL_OWNER_PARSE_OK');
+          NODE
+          git diff --check
+      - name: Commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Stability Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "stability: retire redundant main-page lifecycle owners"
+          git push origin HEAD:recovery/mantra74-stability
