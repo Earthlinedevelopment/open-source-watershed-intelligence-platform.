@@ -1,0 +1,25 @@
+name: Earthline 17704 Apply Regional Corridor Visibility
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.earthline-17704-trigger']
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+          fetch-depth: 0
+      - run: python3 scripts/apply-17704-regional-corridor-visibility.py
+      - name: Commit exact presentation repair
+        run: |
+          set -euo pipefail
+          git diff --check
+          git config user.name "Earthline"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "repair: show generated Regional corridor geometry at initial view"
+          git push origin HEAD:recovery/mantra74-stability
