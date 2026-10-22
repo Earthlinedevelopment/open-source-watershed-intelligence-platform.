@@ -1,0 +1,19 @@
+name: Earthline Iowa Swale Source Audit
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths:
+      - tools/iowa-swale-source-audit.py
+      - .github/workflows/earthline-iowa-swale-source-audit.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/iowa-swale-source-audit.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: iowa-swale-source-audit
+          path: iowa-swale-source-audit.txt
