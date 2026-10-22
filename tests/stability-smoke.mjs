@@ -141,7 +141,9 @@ for(const [name,engine] of engines){
       const body=document.getElementById('earthlinePanelBody16188');
       const report=document.getElementById('earthlineVermontReport16149');
       if(!body||!report)throw new Error('panel/report missing for reachability test');
-      body.scrollTop=Math.max(0,report.offsetTop-(body.clientHeight-report.offsetHeight)/2);
+      const br=body.getBoundingClientRect(),rr=report.getBoundingClientRect();
+      const targetTop=br.top+Math.max(8,(body.clientHeight-report.offsetHeight)/2);
+      body.scrollTop=Math.max(0,body.scrollTop+(rr.top-targetTop));
     });
     await page.waitForTimeout(120);
     const reportGeometryAfter=await report.evaluate(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,vw:innerWidth,vh:innerHeight}});
