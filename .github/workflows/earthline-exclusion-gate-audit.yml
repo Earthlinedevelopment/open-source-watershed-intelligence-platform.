@@ -17,24 +17,19 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          s=Path('index.html').read_text(encoding='utf-8')
+          lines=Path('index.html').read_text(encoding='utf-8').splitlines()
           needles=[
             'earthlineLockPropertyResult15815(',
-            'vectorNoBuildCoverage=',
-            'vectorNoBuildCoverage =',
-            'publicationAllowed:',
-            'publicationAllowed=',
-            'earthlineLoadVectorNoBuild',
-            'mapped roads/buildings',
-            'earthlineCollectParcelInfrastructure15862P'
+            'await vectorNoBuild15778',
+            'vectorNoBuild15778(',
+            'earthlineFinalizeVectorVerification16343(',
+            'M.vectorNoBuildCoverage.publicationAllowed'
           ]
           for n in needles:
-            print('\n===',n,'===')
-            start=0; hits=0
-            while True:
-              i=s.find(n,start)
-              if i<0: break
-              print(s[max(0,i-2600):min(len(s),i+6500)])
-              start=i+len(n); hits+=1
-              if hits>=15: break
+            print('\n###',n)
+            for i,line in enumerate(lines,1):
+              if n in line:
+                a=max(1,i-8); b=min(len(lines),i+12)
+                print(f'-- hit {i} --')
+                for k in range(a,b+1): print(f'{k}: {lines[k-1]}')
           PY
