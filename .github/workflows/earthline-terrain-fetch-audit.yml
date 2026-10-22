@@ -1,0 +1,26 @@
+name: Earthline Terrain Fetch Audit
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: [.github/workflows/earthline-terrain-fetch-audit.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(errors='ignore')
+          for term in ['async function fetchRealTerrain','function fetchRealTerrain','fetchRealTerrain(','Terrain-RGB','earthlineTerrainStamp','terrainStamp']:
+            hits=[m.start() for m in re.finditer(re.escape(term),s)]
+            print('\n###',term,'COUNT',len(hits))
+            for pos in hits[-6:]:
+              print(s[max(0,pos-5000):min(len(s),pos+18000)])
+          PY
