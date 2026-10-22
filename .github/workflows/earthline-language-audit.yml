@@ -17,11 +17,13 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          for name in ['index.html','earthline-launch-16872.js']:
-            p=Path(name)
-            s=p.read_text(encoding='utf-8').splitlines()
-            print('\nFILE',name)
-            for i,line in enumerate(s,1):
-              if any(k in line for k in ['earthlineLanguage16488','function ensureLanguage','<option','scheduleTranslation','analysis-complete']):
-                print(f'{i}: {line}')
+          s=Path('index.html').read_text(encoding='utf-8')
+          for n in ['function ensureLanguage','earthlineLanguage16488','data-earthline-language-choice']:
+            print('\n===',n,'===')
+            start=0
+            while True:
+              i=s.find(n,start)
+              if i<0: break
+              print(s[max(0,i-1800):min(len(s),i+5000)])
+              start=i+len(n)
           PY
