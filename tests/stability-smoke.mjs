@@ -137,7 +137,12 @@ for(const [name,engine] of engines){
     const report=page.locator('#earthlineVermontReport16149');
     assert(await report.count(),name+': Bioswale Report control missing');
     const reportGeometryBefore=await report.evaluate(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,vw:innerWidth,vh:innerHeight}});
-    await report.evaluate(el=>el.scrollIntoView({block:'center',inline:'nearest'}));
+    await page.evaluate(()=>{
+      const body=document.getElementById('earthlinePanelBody16188');
+      const report=document.getElementById('earthlineVermontReport16149');
+      if(!body||!report)throw new Error('panel/report missing for reachability test');
+      body.scrollTop=Math.max(0,report.offsetTop-(body.clientHeight-report.offsetHeight)/2);
+    });
     await page.waitForTimeout(120);
     const reportGeometryAfter=await report.evaluate(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,vw:innerWidth,vh:innerHeight}});
     console.log('EARTHLINE_REPORT_REACHABILITY '+JSON.stringify({engine:name,before:reportGeometryBefore,after:reportGeometryAfter}));
