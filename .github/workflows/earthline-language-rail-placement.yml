@@ -1,0 +1,38 @@
+name: Earthline Language Rail Placement
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['tools/mantra74-language-rail-placement.py']
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+          fetch-depth: 0
+      - run: python3 tools/mantra74-language-rail-placement.py
+      - name: Validate
+        run: |
+          set -euo pipefail
+          grep -q "rail.insertBefore(wrap,menu.nextSibling)" index.html
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1])}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          NODE
+          git diff --check
+      - name: Commit
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Stability Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git rm -f tools/mantra74-language-rail-placement.py .github/workflows/earthline-language-rail-placement.yml
+          git add index.html
+          git commit -m "stability: keep language control visible on rail"
+          git push origin HEAD:recovery/mantra74-stability
