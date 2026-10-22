@@ -43,10 +43,14 @@ one(
 )
 
 # Remove Vancouver-only presentation hierarchy; shared renderer owns styling/stacking.
-pattern=re.compile(r"""        try{s*/* EARTHLINE 16915 — Vancouver Island display hierarchy.[sS]*?window.EARTHLINE_VANCOUVER_DISPLAY_AUDIT_16915={[sS]*?};s*}catch(_){}s*""")
-s,n=pattern.subn("",s,count=1)
-if n!=1:
-    raise RuntimeError(f"remove Vancouver display hierarchy: expected 1, found {n}")
+start=s.find("        try{\n          /* EARTHLINE 16915 — Vancouver Island display hierarchy.")
+if start<0:
+    raise RuntimeError("Vancouver display hierarchy start not found")
+end=s.find("        }catch(_){}",start)
+if end<0:
+    raise RuntimeError("Vancouver display hierarchy end not found")
+end+=len("        }catch(_){}")
+s=s[:start]+s[end:]
 
 # No query/name-gated Vancouver runtime behavior should remain.
 for bad in [
@@ -61,3 +65,5 @@ p.write_text(s,encoding="utf-8")
 print("EARTHLINE_VANCOUVER_ADAPTER_GENERALIZED",len(before)-len(s))
 
 # trigger
+
+# retry trigger
