@@ -60,6 +60,7 @@ async function runCase(c){
       return tier==='regional'&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';
     },null,{timeout:90000,polling:150});
 
+    const regionalSettledAt=Date.now();
     const regionalErr=await page.evaluate(()=>window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null);
     if(regionalErr)throw new Error('regional '+JSON.stringify(regionalErr));
 
@@ -172,7 +173,7 @@ async function runCase(c){
     if(snap.weirdBox)failures.push('retired diagnostic message box visible');
     if(!(reportState.present&&reportState.open&&reportState.print&&reportState.newtab&&reportState.download&&reportState.close))failures.push('Bioswale Report unavailable/incomplete');
     if(errors.length)failures.push('page errors: '+errors.join(' | '));
-    return {name:c.name,query:c.query,pass:failures.length===0,failures,snap,reportState,errors,elapsedMs:Date.now()-started};
+    return {name:c.name,query:c.query,pass:failures.length===0,failures,snap,reportState,errors,regionalElapsedMs:regionalSettledAt-started,elapsedMs:Date.now()-started};
   }catch(e){
     fatal=String(e&&e.message||e);
     return {name:c.name,query:c.query,pass:false,failures:[fatal],errors,elapsedMs:Date.now()-started};
