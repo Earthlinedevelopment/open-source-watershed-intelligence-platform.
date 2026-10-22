@@ -1,21 +1,52 @@
-name: Earthline Legacy Control Creator Audit
+name: Earthline Regional Polling Cleanup
 on:
   push:
     branches: [recovery/mantra74-stability]
     paths: ['.earthline-dem-diag-trigger']
 permissions:
-  contents: read
+  contents: write
 jobs:
-  audit:
+  cleanup:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
           ref: recovery/mantra74-stability
-      - shell: bash
+          fetch-depth: 0
+      - name: Remove legacy polling
+        shell: bash
         run: |
           set -euo pipefail
-          for id in earthline15857strip earthline15861strip earthlineMapRun15970 earthlineMapRun16020 runBtnSide; do
-            echo "=== $id ==="
-            grep -n -F "$id" index.html || true
-          done
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old='setInterval(clean,350);'
+          if s.count(old)!=1:
+            raise SystemExit(f'expected one Regional polling cleaner, found {s.count(old)}')
+          s=s.replace(old,'',1)
+          p.write_text(s,encoding='utf-8')
+          print('EARTHLINE_REGIONAL_POLLING_REMOVED')
+          PY
+      - name: Validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          if(s.includes('setInterval(clean,350);'))throw Error('Regional polling remains');
+          if(!s.includes("function clean(){for(const id of ['earthline15857strip'"))throw Error('deterministic install cleanup missing');
+          for(const m of s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi))if(m[1].trim())new Function(m[1]);
+          console.log('EARTHLINE_REGIONAL_POLLING_VALIDATE_OK');
+          NODE
+          git diff --check
+      - name: Commit and retire diagnostic tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Stability Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git rm -f .github/workflows/earthline-property-dem-diagnostic.yml .earthline-dem-diag-trigger
+          git commit -m "stability: remove legacy Regional polling"
+          git push origin HEAD:recovery/mantra74-stability
