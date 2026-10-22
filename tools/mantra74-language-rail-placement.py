@@ -15,3 +15,5 @@ if s.count(old)!=1: raise RuntimeError("language placement count "+str(s.count(o
 s=s.replace(old,new,1)
 p.write_text(s,encoding="utf-8")
 print("EARTHLINE_17701_LANGUAGE_RAIL_PLACEMENT")
+
+# trigger
