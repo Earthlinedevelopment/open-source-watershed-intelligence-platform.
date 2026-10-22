@@ -13176,7 +13176,7 @@ var prescribeSwales;
        geometry reads this flag instead of UI/lifecycle heuristics. */
     M.earthlinePropertyChannelBuffer17485=!isRegionalTile15769;
     const work15771=isRegionalTile15769
-      ? {maxLevels:14,maxSeedsPerLevel:4,maxCandidates:10,maxFinal:6,perLevel:1,maxMs:2000}
+      ? {maxLevels:36,maxSeedsPerLevel:8,maxCandidates:48,maxFinal:24,perLevel:4,maxMs:10000}
       : {maxLevels:72,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200,perLevel:16,maxMs:120000};
 
     // Property mode keeps the real 15–25 ft construction target.
@@ -13190,7 +13190,7 @@ var prescribeSwales;
     const deadline15771=started+work15771.maxMs;
 
     /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
-    const effectiveSeedBudget15841=isRegionalTile15769?2:work15771.maxSeedsPerLevel;
+    const effectiveSeedBudget15841=isRegionalTile15769?6:work15771.maxSeedsPerLevel;
     const coverageDiag15803=earthlineCreateCoverageDiagnostic15803(
       work15771,isRegionalTile15769,effectiveSeedBudget15841
     );
@@ -13791,6 +13791,14 @@ var prescribeSwales;
       if(!a||!b)return true;return !(a.maxX<b.minX-pad||a.minX>b.maxX+pad||a.maxY<b.minY-pad||a.minY>b.maxY+pad);
     }
     const kept=[],keptBBox16204=[];
+    const exactGeometrySeen17699=new Set();
+    function earthlineExactGeometrySignature17699(sw){
+      const pts=Array.isArray(sw&&sw.pts)?sw.pts:[];
+      if(!pts.length)return '';
+      const norm=pts.map(p=>[Math.round(Number(p[0]||0)*1000)/1000,Math.round(Number(p[1]||0)*1000)/1000]);
+      const f=JSON.stringify(norm),r=JSON.stringify(norm.slice().reverse());
+      return f<r?f:r;
+    }
     const spacingPadCells16204=Math.max(0,Number(minSpacingM15771||0)/Math.max(.05,Number(M.cellM||1)));
     const verticalWindowM=Math.max(levelStep*2.2,minSpacingM15771*(maxS/100)+levelStep);
     /* EARTHLINE 16456 — exact performance repair only. Final spacing previously
@@ -13839,6 +13847,16 @@ var prescribeSwales;
         finalRec15803.reachedFinalCapEvaluation15840=true;
       }
       /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+      const exactSig17699=earthlineExactGeometrySignature17699(sw);
+      if(exactSig17699&&exactGeometrySeen17699.has(exactSig17699)){
+        if(finalRec15803){
+          finalRec15803.status="rejected-final-spacing";
+          finalRec15803.reason="exact-duplicate";
+          earthlineCoverageZone15803(coverageDiag15803,finalRec15803.x,finalRec15803.y).rejections.finalSpacing++;
+        }
+        M.swaleDiagnostics.stage.rejectFinalSpacing++;
+        continue;
+      }
       let tooClose=false;const swBBox16204=earthlineSwaleGridBBox16204(sw);
       const spacingCandidates16456=spacingIndexCandidates16456(swBBox16204);
       bboxSkippedFinalPairs16204+=Math.max(0,kept.length-spacingCandidates16456.length);
@@ -13867,7 +13885,9 @@ var prescribeSwales;
         earthlineCoverageZone15803(coverageDiag15803,finalRec15803.x,finalRec15803.y).accepted++;
       }
       /* BUILD-CHECK-15803-DIAGNOSTIC-END */
-      kept.push(sw);keptBBox16204.push(swBBox16204);spacingIndexAdd16456(kept.length-1,swBBox16204);
+      kept.push(sw);keptBBox16204.push(swBBox16204);
+      if(exactSig17699)exactGeometrySeen17699.add(exactSig17699);
+      spacingIndexAdd16456(kept.length-1,swBBox16204);
       dedupeChecked15769++;
       /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
       if(kept.length>=work15771.maxFinal){
