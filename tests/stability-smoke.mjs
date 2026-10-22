@@ -79,6 +79,18 @@ for(const [name,engine] of engines){
       return !!b&&!b.disabled;
     },null,{timeout:20000,polling:100});
 
+    const propertyReachability=await page.evaluate(()=>{
+      const body=document.getElementById('earthlinePanelBody16188');
+      const button=document.getElementById('earthlineDeclareProperty16169');
+      if(!body||!button)throw new Error('panel/property control missing');
+      const before={bodyScrollTop:body.scrollTop,bodyClientHeight:body.clientHeight,bodyScrollHeight:body.scrollHeight,buttonTop:button.getBoundingClientRect().top,buttonBottom:button.getBoundingClientRect().bottom,vh:innerHeight};
+      const br=body.getBoundingClientRect(),rr=button.getBoundingClientRect();
+      body.scrollTop=Math.max(0,Math.min(body.scrollHeight-body.clientHeight,body.scrollTop+(rr.top-br.top)-Math.max(8,(body.clientHeight-button.offsetHeight)/2)));
+      const ar=button.getBoundingClientRect();
+      return {before,after:{bodyScrollTop:body.scrollTop,buttonTop:ar.top,buttonBottom:ar.bottom}};
+    });
+    console.log('EARTHLINE_PROPERTY_REACHABILITY '+JSON.stringify({engine:name,audit:propertyReachability}));
+    await page.waitForTimeout(80);
     const serialBefore=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
     await page.locator('#earthlineDeclareProperty16169').click({force:true});
 
