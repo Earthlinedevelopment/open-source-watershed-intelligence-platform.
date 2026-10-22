@@ -136,6 +136,13 @@ for(const [name,engine] of engines){
 
     const report=page.locator('#earthlineVermontReport16149');
     assert(await report.count(),name+': Bioswale Report control missing');
+    const reportGeometryBefore=await report.evaluate(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,vw:innerWidth,vh:innerHeight}});
+    await report.evaluate(el=>el.scrollIntoView({block:'center',inline:'nearest'}));
+    await page.waitForTimeout(120);
+    const reportGeometryAfter=await report.evaluate(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,vw:innerWidth,vh:innerHeight}});
+    console.log('EARTHLINE_REPORT_REACHABILITY '+JSON.stringify({engine:name,before:reportGeometryBefore,after:reportGeometryAfter}));
+    assert(reportGeometryAfter.bottom>0&&reportGeometryAfter.top<reportGeometryAfter.vh,
+      name+': Bioswale Report control cannot be scrolled into the viewport '+JSON.stringify(reportGeometryAfter));
     await report.click({force:true});
     await page.waitForFunction(
       ()=>!!document.getElementById('earthlineVermontReportPanel16149')?.classList?.contains('open'),
