@@ -57,13 +57,16 @@ async function runCase(c){
       if(err)return true;
       const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
       const tier=String(d&&(d.tier||d.mode)||'').toLowerCase();
-      const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null;
-      const disp=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null;
-      return tier==='regional'&&Number(pub?.generated||0)>0&&Number(disp?.swaleLines||0)>0;
+      return tier==='regional'&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';
     },null,{timeout:90000,polling:150});
 
     const regionalErr=await page.evaluate(()=>window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null);
     if(regionalErr)throw new Error('regional '+JSON.stringify(regionalErr));
+
+    await page.waitForFunction(()=>{
+      const sw=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.swales?.features||[];
+      return sw.length>0||document.querySelectorAll('.earthline-swale-label-16149,.earthline-swale-hit-16070').length>0;
+    },null,{timeout:20000,polling:100});
 
     const target=await page.evaluate(q=>{
       const sw=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.swales?.features||[];
@@ -89,8 +92,22 @@ async function runCase(c){
     await page.waitForFunction(()=>{
       const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
       const tier=String(d&&(d.tier||d.mode)||'').toLowerCase();
-      return tier==='property'&&String(document.documentElement.dataset.earthlinePropertyRunState||'')!=='running';
-    },null,{timeout:90000,polling:150});
+      const runState=String(document.documentElement.dataset.earthlinePropertyRunState||'').toLowerCase();
+      const audit=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+      const handoff=window.EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347||null;
+      return (tier==='property'&&runState!=='running')||
+        (runState!=='running'&&audit?.settled===true)||
+        handoff?.validParent===false;
+    },null,{timeout:45000,polling:150});
+
+    const propertyOutcome=await page.evaluate(()=>({
+      displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,
+      audit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+      handoff:window.EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347||null,
+      block:window.EARTHLINE_PROPERTY_PUBLICATION_BLOCK_16176||null
+    }));
+    const propertyTier=String(propertyOutcome.displayed&&(propertyOutcome.displayed.tier||propertyOutcome.displayed.mode)||'').toLowerCase();
+    if(propertyTier!=='property')throw new Error('Property handoff failed '+JSON.stringify(propertyOutcome));
 
     const serialAfter=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
     if(serialAfter!==serialBefore+1)throw new Error('Property click serial '+serialBefore+'→'+serialAfter);
