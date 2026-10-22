@@ -58,24 +58,20 @@ jobs:
           """      status('PROPERTY RESULT PRESERVED — '+count+' corridor'+(count===1?' was':'s were')+' found, but the authoritative Property map layer is not yet verified. Regional geometry is not a valid substitute.','failed');
                 setTierNotice('warning','PROPERTY DETAIL · ANALYSIS PRESERVED · PROPERTY MAP NOT VERIFIED');"""
           ),
-          (
-          """      /* EARTHLINE 16334 — verified science is the interactive terminal. Optional
-                 presentation verification continues, but the Property control is released now. */
-              running=false;
-              document.documentElement.dataset.earthlinePropertyRunState='idle';
-              document.documentElement.classList.remove('earthline-property-running-16233');
-              clearTimers();setButton(false);clearAllBusy();restoreGrab();
-              try{window.getSelection?.()?.removeAllRanges?.();button()?.blur?.()}catch(_){}""",
-          """      /* EARTHLINE 17698 — science may be terminal, but Property is not visually
-                 terminal until the authoritative Property layer completes its first bounded
-                 presentation verification. The single governed owner remains active here;
-                 final cleanup still occurs in terminalPropertyRun's existing finally block. */"""
-          )
           ]
+          import re
+          release_pat=re.compile(r"/\* EARTHLINE 16334 — verified science is the interactive terminal\. Optional.*?try\{window\.getSelection.*?catch\(_\)\{\}",re.S)
+          release_repl="""/* EARTHLINE 17698 — science may be terminal, but Property is not visually
+             terminal until the authoritative Property layer completes its first bounded
+             presentation verification. The single governed owner remains active here;
+             final cleanup still occurs in terminalPropertyRun's existing finally block. */"""
+
           for i,(old,new) in enumerate(pairs,1):
               n=s.count(old)
               if n!=1: raise SystemExit(f"patch {i} target count {n}, expected 1")
               s=s.replace(old,new,1)
+          s,n=release_pat.subn(release_repl,s,count=1)
+          if n!=1: raise SystemExit(f"release-owner target count {n}, expected 1")
           p.write_text(s)
           print("EARTHLINE_M75_CLEAN_IOWA_FIX_APPLIED")
           PY
