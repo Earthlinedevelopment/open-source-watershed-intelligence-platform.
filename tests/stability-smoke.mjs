@@ -70,7 +70,20 @@ for(const [name,engine] of engines){
       if(r.width<2||r.height<2)throw new Error('Regional corridor label has no physical pointer area');
       return {x:(r.left+r.right)/2,y:(r.top+r.bottom)/2,rect:{left:r.left,top:r.top,right:r.right,bottom:r.bottom}};
     });
-    console.log('EARTHLINE_CORRIDOR_POINTER '+JSON.stringify({engine:name,point:corridorPoint}));
+    const corridorHitAudit=await page.evaluate(({x,y})=>{
+      const stack=document.elementsFromPoint(x,y).map(el=>{
+        const cs=getComputedStyle(el),r=el.getBoundingClientRect();
+        return {tag:el.tagName,id:el.id||'',class:String(el.className?.baseVal||el.className||''),pointerEvents:cs.pointerEvents,zIndex:cs.zIndex,position:cs.position,display:cs.display,visibility:cs.visibility,opacity:cs.opacity,left:r.left,top:r.top,right:r.right,bottom:r.bottom};
+      }).slice(0,16);
+      const panel=document.getElementById('earthlinePanel16188'),pr=panel?.getBoundingClientRect(),pcs=panel?getComputedStyle(panel):null;
+      const overlay=document.getElementById('earthlineRegionalVectorOverlay16020'),or=overlay?.getBoundingClientRect(),ocs=overlay?getComputedStyle(overlay):null;
+      return {
+        x,y,stack,
+        panel:panel?{open:document.documentElement.classList.contains('earthline-panel-open-16188'),left:pr.left,top:pr.top,right:pr.right,bottom:pr.bottom,transform:pcs.transform,pointerEvents:pcs.pointerEvents,visibility:pcs.visibility}:null,
+        overlay:overlay?{left:or.left,top:or.top,right:or.right,bottom:or.bottom,pointerEvents:ocs.pointerEvents,zIndex:ocs.zIndex}:null
+      };
+    },corridorPoint);
+    console.log('EARTHLINE_CORRIDOR_POINTER '+JSON.stringify({engine:name,point:corridorPoint,hitAudit:corridorHitAudit}));
     await page.mouse.click(corridorPoint.x,corridorPoint.y);
     await page.waitForFunction(
       ()=>!!document.getElementById('earthlineCorridorDetail16149')?.classList?.contains('open'),
