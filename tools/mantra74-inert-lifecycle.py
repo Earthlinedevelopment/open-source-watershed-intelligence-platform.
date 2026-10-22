@@ -19,3 +19,5 @@ for pat in patterns:
         raise SystemExit('inert lifecycle attachment remains: '+pat)
 p.write_text(s,encoding='utf-8')
 print('EARTHLINE_INERT_LIFECYCLE_REMOVAL',counts)
+
+# run
