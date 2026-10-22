@@ -232,6 +232,11 @@ for(const [name,engine] of engines){
       if(bottom-top<20)throw new Error('Bioswale Report control has less than 20px visible touch height');
       return {x:(r.left+r.right)/2,y:(top+bottom)/2};
     });
+    const reportHitAudit=await page.evaluate(({x,y})=>document.elementsFromPoint(x,y).slice(0,14).map(el=>{
+      const cs=getComputedStyle(el),r=el.getBoundingClientRect();
+      return {tag:el.tagName,id:el.id||'',class:String(el.className?.baseVal||el.className||''),pointerEvents:cs.pointerEvents,zIndex:cs.zIndex,position:cs.position,display:cs.display,visibility:cs.visibility,opacity:cs.opacity,left:r.left,top:r.top,right:r.right,bottom:r.bottom};
+    }),reportPoint);
+    console.log('EARTHLINE_REPORT_POINTER '+JSON.stringify({engine:name,point:reportPoint,stack:reportHitAudit}));
     await page.mouse.click(reportPoint.x,reportPoint.y);
     await page.waitForFunction(
       ()=>!!document.getElementById('earthlineVermontReportPanel16149')?.classList?.contains('open'),
