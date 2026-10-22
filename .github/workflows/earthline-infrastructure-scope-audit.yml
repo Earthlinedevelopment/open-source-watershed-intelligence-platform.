@@ -1,0 +1,30 @@
+name: Earthline Infrastructure Scope Audit
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.earthline-infra-scope-trigger']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== OCCURRENCES ==="
+          grep -n -F "infrastructureFirst16469" index.html || true
+          echo "=== CONTEXT ==="
+          python3 - <<'PY'
+          from pathlib import Path
+          lines=Path('index.html').read_text(encoding='utf-8').splitlines()
+          hits=[i for i,l in enumerate(lines) if 'infrastructureFirst16469' in l]
+          for i in hits:
+              a=max(0,i-45); b=min(len(lines),i+70)
+              print(f'--- lines {a+1}-{b} ---')
+              for n in range(a,b):
+                  print(f'{n+1}: {lines[n]}')
+          PY
