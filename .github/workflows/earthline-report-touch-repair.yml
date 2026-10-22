@@ -1,0 +1,56 @@
+name: Earthline Mobile Report Activation Repair
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.earthline-report-touch-trigger']
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+          fetch-depth: 0
+      - shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old='b.onclick=openReport;'
+          new="""let touchReportAt16151=0;b.onclick=()=>{if(Date.now()-touchReportAt16151<700)return;openReport()};b.addEventListener('pointerup',e=>{if(e.pointerType==='touch'){touchReportAt16151=Date.now();openReport()}},{passive:true});"""
+          if s.count(old)!=1:
+              raise SystemExit(f'report onclick owner expected 1, found {s.count(old)}')
+          s=s.replace(old,new,1)
+          oldmsg='REPORT WITHHELD — run or re-run the displayed Vermont analysis first.'
+          if oldmsg in s:
+              s=s.replace(oldmsg,'REPORT WITHHELD — run or re-run the displayed analysis first.')
+          p.write_text(s,encoding='utf-8')
+          print('EARTHLINE_MOBILE_REPORT_ACTIVATION_REPAIRED')
+          PY
+      - name: Validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue; new Function(m[1]);
+          }
+          if(!s.includes("touchReportAt16151"))throw Error('touch report activation missing');
+          console.log('EARTHLINE_REPORT_TOUCH_PARSE_OK');
+          NODE
+          git diff --check
+      - name: Commit and remove scaffold
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Stability Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git rm -f .github/workflows/earthline-report-touch-repair.yml .earthline-report-touch-trigger
+          git add index.html
+          git commit -m "stability: make Bioswale Report touch-activatable"
+          git push origin HEAD:recovery/mantra74-stability
