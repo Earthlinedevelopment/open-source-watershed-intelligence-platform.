@@ -79,6 +79,16 @@ for(const [name,engine] of engines){
       return !!b&&!b.disabled;
     },null,{timeout:20000,polling:100});
 
+    if(name==='webkit'){
+      const open=await page.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'));
+      if(!open){
+        const rail=page.locator('#earthlineRailSearch16188');
+        assert(await rail.count(),name+': mobile rail search control missing');
+        await rail.click({force:true});
+        await page.waitForFunction(()=>document.documentElement.classList.contains('earthline-panel-open-16188'),null,{timeout:5000,polling:50});
+      }
+    }
+
     const propertyReachability=await page.evaluate(()=>{
       const body=document.getElementById('earthlinePanelBody16188');
       const button=document.getElementById('earthlineDeclareProperty16169');
@@ -161,6 +171,15 @@ for(const [name,engine] of engines){
     await page.waitForTimeout(8000);
     assert(await visibleWater(),name+': Property water blinked off after publication');
 
+    if(name==='webkit'){
+      const open=await page.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'));
+      if(!open){
+        const rail=page.locator('#earthlineRailSearch16188');
+        assert(await rail.count(),name+': mobile rail search control missing before report');
+        await rail.click({force:true});
+        await page.waitForFunction(()=>document.documentElement.classList.contains('earthline-panel-open-16188'),null,{timeout:5000,polling:50});
+      }
+    }
     const report=page.locator('#earthlineVermontReport16149');
     assert(await report.count(),name+': Bioswale Report control missing');
     const reportGeometryBefore=await report.evaluate(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,vw:innerWidth,vh:innerHeight}});
