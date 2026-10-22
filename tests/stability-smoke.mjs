@@ -206,7 +206,14 @@ for(const [name,engine] of engines){
     console.log('EARTHLINE_REPORT_REACHABILITY '+JSON.stringify({engine:name,before:reportGeometryBefore,after:reportGeometryAfter}));
     assert(reportGeometryAfter.bottom>0&&reportGeometryAfter.top<reportGeometryAfter.vh,
       name+': Bioswale Report control cannot be scrolled into the viewport '+JSON.stringify(reportGeometryAfter));
-    await report.click({force:true});
+    const reportAuditBefore=await page.evaluate(()=>window.earthlineReportReachabilityAudit16151?.()||null);
+    console.log('EARTHLINE_REPORT_IDENTITY_BEFORE '+JSON.stringify({engine:name,audit:reportAuditBefore}));
+    const reportPoint=await report.evaluate(el=>{
+      const r=el.getBoundingClientRect(),top=Math.max(0,r.top),bottom=Math.min(innerHeight,r.bottom);
+      if(bottom-top<20)throw new Error('Bioswale Report control has less than 20px visible touch height');
+      return {x:(r.left+r.right)/2,y:(top+bottom)/2};
+    });
+    await page.mouse.click(reportPoint.x,reportPoint.y);
     await page.waitForFunction(
       ()=>!!document.getElementById('earthlineVermontReportPanel16149')?.classList?.contains('open'),
       null,{timeout:10000,polling:100}
