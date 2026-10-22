@@ -24,8 +24,12 @@ for(const [name,engine] of engines){
     );
 
     await page.waitForSelector('#earthlineLanguage16488',{state:'attached',timeout:15000});
-    await page.selectOption('#earthlineLanguage16488','en');
-    await page.locator('#earthlineLanguage16488').dispatchEvent('change');
+    await page.evaluate(()=>{
+      const sel=document.getElementById('earthlineLanguage16488');
+      if(!sel)throw new Error('language control missing');
+      sel.value='en';
+      sel.dispatchEvent(new Event('change',{bubbles:true}));
+    });
     await page.waitForTimeout(300);
     let language=await page.evaluate(()=>({
       html:String(document.documentElement.lang||'').toLowerCase(),
