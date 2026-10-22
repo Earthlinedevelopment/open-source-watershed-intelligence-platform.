@@ -1,0 +1,81 @@
+name: Earthline WebKit Property Diagnostic
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.earthline-webkit-diag-trigger']
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps webkit
+      - shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          node - <<'NODE'
+          const {webkit}=require('playwright');
+          (async()=>{
+            const b=await webkit.launch({headless:true});
+            const p=await b.newPage({viewport:{width:390,height:844}});
+            const errors=[],net=[];
+            p.on('pageerror',e=>errors.push(String(e)));
+            p.on('response',r=>{const u=r.url();if(/terrain-rgb|mapbox-terrain|terrarium/i.test(u))net.push({status:r.status(),url:u.split('?')[0]})});
+            p.on('requestfailed',r=>{const u=r.url();if(/terrain-rgb|mapbox-terrain|terrarium/i.test(u))net.push({failed:r.failure()?.errorText||'',url:u.split('?')[0]})});
+            await p.route('https://api.mapbox.com/**',async route=>{
+              const headers={...route.request().headers(),referer:'https://earthlinedevelopment.org/',origin:'https://earthlinedevelopment.org'};
+              await route.continue({headers});
+            });
+            await p.goto('http://127.0.0.1:8787/?webkitdiag='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+            await p.waitForSelector('#searchInput',{timeout:30000});
+            await p.locator('#searchInput').fill('Vermont');
+            await p.waitForTimeout(900);
+            const opts=p.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
+            if(await opts.count())await opts.first().click({force:true}); else await p.locator('#searchInput').press('Enter').catch(()=>{});
+            await p.waitForTimeout(120);
+            await p.locator('#runBtn').click({force:true});
+            await p.waitForFunction(()=>{
+              const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+              return String(d&&(d.tier||d.mode)||'').toLowerCase()==='regional';
+            },null,{timeout:90000,polling:150});
+            await p.waitForFunction(()=>document.querySelectorAll('.earthline-swale-label-16149,.earthline-swale-hit-16070').length>0,null,{timeout:20000,polling:100});
+            await p.locator('.earthline-swale-label-16149:visible').first().click({force:true});
+            await p.waitForFunction(()=>!!document.getElementById('earthlineCorridorDetail16149')?.classList?.contains('open'),null,{timeout:10000,polling:100});
+            const z=p.getByRole('button',{name:/zoom to (this )?location/i}).first(); await z.click({force:true});
+            await p.waitForFunction(()=>{const x=document.getElementById('earthlineDeclareProperty16169');return !!x&&!x.disabled},null,{timeout:20000,polling:100});
+            await p.locator('#earthlineDeclareProperty16169').click({force:true});
+            const snap=()=>p.evaluate(()=>({
+              tier:String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147)?.tier||''),
+              runState:String(document.documentElement.dataset.earthlinePropertyRunState||''),
+              audit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+              handoff:window.EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347||null,
+              block:window.EARTHLINE_PROPERTY_PUBLICATION_BLOCK_16176||null,
+              coreFailure:typeof M!=='undefined'?M.propertyCoreFailure16548||null:null,
+              dem:typeof M!=='undefined'?{demReady:M.demReady,demSource:M.demSource,analysisReady:M.analysisReady,terrainStamp:M.terrainStamp}:null,
+              pub:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,
+              safe:window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null
+            }));
+            for(let t=5;t<=45;t+=5){
+              await p.waitForTimeout(5000);
+              const s=await snap();
+              console.log('EARTHLINE_WEBKIT_PROPERTY_T'+t+' '+JSON.stringify(s));
+              if(s.audit?.settled===true)break;
+            }
+            console.log('EARTHLINE_WEBKIT_NET '+JSON.stringify(net.slice(-80)));
+            console.log('EARTHLINE_WEBKIT_ERRORS '+JSON.stringify(errors));
+            await b.close();
+          })().catch(e=>{console.error('EARTHLINE_WEBKIT_DIAG_FATAL',e);process.exit(1)});
+          NODE
