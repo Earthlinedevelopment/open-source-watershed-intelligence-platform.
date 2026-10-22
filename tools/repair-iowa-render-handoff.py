@@ -12,22 +12,15 @@ new_verify="""  async function verifySafePropertyFallback16221(count){
     if(!(count>0))return {ok:true,count:0,visible:false,required:false,pending:false};
     const first=syncSafePropertyFallback16221('terminal-atomic-17670');
     if(first&&first.ok===true)return {...first,required:true,pending:false};
-    /* EARTHLINE 17697 — bounded source-readiness handoff, not polling.
-       The safe GeoJSON is already committed. If Mapbox is still processing that
-       source, wait once for its own sourcedata signal (or the bounded fallback),
-       then allow two paint frames before the rendered-feature truth check. */
-    const mp=map();
-    if(mp&&typeof mp.isSourceLoaded==='function'&&!mp.isSourceLoaded(SAFE_SOURCE_16221)){
-      await new Promise(resolve=>{
-        let done=false;
-        const finish=()=>{if(done)return;done=true;try{mp.off?.('sourcedata',onSource)}catch(_){};resolve()};
-        const onSource=e=>{if(String(e&&e.sourceId||'')===SAFE_SOURCE_16221&&e?.isSourceLoaded===true)finish()};
-        try{mp.on?.('sourcedata',onSource)}catch(_){}
-        setTimeout(finish,1200);
-      });
-    }
+    /* EARTHLINE 17697 — use the existing bounded Property basemap-settlement
+       cadence as the presentation dependency. The established 16348 owner samples
+       at 80/220/520/1000/1800/3200 ms; Iowa's first safe rendered feature was
+       measured at ~1542 ms. Wait once through the 1800-ms checkpoint, then allow
+       two paint frames before the authoritative rendered-feature truth check.
+       This is a single bounded handoff, not a polling or camera-motion owner. */
+    await new Promise(resolve=>setTimeout(resolve,1800));
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-    const second=syncSafePropertyFallback16221('terminal-after-source-ready-17697');
+    const second=syncSafePropertyFallback16221('terminal-after-basemap-1800-17697');
     return {...second,required:true,pending:!(second&&second.ok===true)};
   }"""
 
