@@ -952,12 +952,16 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     return changed>0;
   }
   function afterPublication(reason){
-    /* EARTHLINE 17601 — this fallback owner may enforce verified safe-swale
-       visibility after publication, but it may not redraw the authoritative
-       direct-water SVG. Water presentation remains owned only by 15824. */
-    for(const ms of [0,120,450,1100])setTimeout(()=>{
-      enforce(reason+'-'+ms);
-    },ms);
+    /* EARTHLINE 17698 — one bounded post-paint settlement only.
+       The scientific Property result is already terminal here. Wait exactly two
+       animation frames for Mapbox to paint the committed safe source, then ask
+       the existing authoritative safe-visibility owner to verify that same
+       geometry. No polling, timeout ladder, replacement renderer, or science. */
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      enforce(reason+'-post-paint');
+      try{window.earthlineSyncSafePropertyFallback16221?.('launch-post-paint-17698')}catch(_){}
+      try{Promise.resolve(window.earthlineSyncPropertyTexture16169?.('launch-post-paint-17698')).catch(()=>{})}catch(_){}
+    }));
   }
   window.EARTHLINE_PROPERTY_FALLBACK_FAIL_VISIBLE_17011={state:'ready',enforce,textureVerified};
   document.addEventListener('earthline:analysis-complete',()=>{
