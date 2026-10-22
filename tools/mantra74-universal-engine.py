@@ -44,3 +44,5 @@ if "try{void ensureBoundary().catch(()=>{});" in s:
 
 p.write_text(s,encoding="utf-8")
 print("EARTHLINE_17690_UNIVERSAL_ENGINE",len(before),len(s),len(before)-len(s))
+
+# trigger
