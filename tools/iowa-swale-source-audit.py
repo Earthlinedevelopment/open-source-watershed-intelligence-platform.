@@ -1,6 +1,6 @@
 import re, pathlib
 s=pathlib.Path("index.html").read_text(errors="ignore")
-terms=["function prescribeSwales15778","prescribeSwales15778","swaleDiagnostics","levelGenerator","levelStepM","targetSwaleSpacingM","forestPenalty","medianTerrainSlope","acceptedSpacingM"]
+terms=["presentation-unavailable","renderVerified","EARTHLINE_RENDER_TRUTH_SETTLEMENT_17188","safe fallback + texture verify","earthlineVerifyPropertyTexture","property-safe-water-16221","authoritativeSafeSwales15815","renderPending"]
 out=[]
 for term in terms:
     for m in list(re.finditer(re.escape(term),s))[:8]:
