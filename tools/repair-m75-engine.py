@@ -1,0 +1,58 @@
+from pathlib import Path
+p=Path("index.html")
+s=p.read_text(errors="strict")
+
+old_budget="""    const work15771=isRegionalTile15769
+      ? {maxLevels:14,maxSeedsPerLevel:4,maxCandidates:10,maxFinal:6,perLevel:1,maxMs:2000}
+      : {maxLevels:72,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200,perLevel:16,maxMs:120000};"""
+new_budget="""    const work15771=isRegionalTile15769
+      ? {maxLevels:16,maxSeedsPerLevel:4,maxCandidates:16,maxFinal:10,perLevel:2,maxMs:2000}
+      : {maxLevels:72,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200,perLevel:16,maxMs:120000};"""
+if s.count(old_budget)!=1: raise SystemExit(f"budget target count {s.count(old_budget)}")
+s=s.replace(old_budget,new_budget,1)
+
+old_seed="const effectiveSeedBudget15841=isRegionalTile15769?2:work15771.maxSeedsPerLevel;"
+new_seed="const effectiveSeedBudget15841=work15771.maxSeedsPerLevel;"
+if s.count(old_seed)!=1: raise SystemExit(f"seed target count {s.count(old_seed)}")
+s=s.replace(old_seed,new_seed,1)
+
+old_kept="const kept=[],keptBBox16204=[];"
+new_kept="""const kept=[],keptBBox16204=[];
+    const exactGeometrySeen16205=new Set();
+    function earthlineExactSwaleKey16205(sw){
+      const pts=Array.isArray(sw&&sw.pts)?sw.pts:[];
+      if(pts.length<2)return "";
+      const encode=p=>Number(p[0]).toFixed(5)+","+Number(p[1]).toFixed(5);
+      const forward=pts.map(encode).join(";");
+      const reverse=pts.slice().reverse().map(encode).join(";");
+      return forward<reverse?forward:reverse;
+    }"""
+if s.count(old_kept)!=1: raise SystemExit(f"kept target count {s.count(old_kept)}")
+s=s.replace(old_kept,new_kept,1)
+
+old_loop="""    for(const sw of ordered){
+      /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */"""
+new_loop="""    for(const sw of ordered){
+      const exactKey16205=earthlineExactSwaleKey16205(sw);
+      if(exactKey16205&&exactGeometrySeen16205.has(exactKey16205)){
+        M.swaleDiagnostics.stage.rejectFinalSpacing++;
+        const duplicateRec16205=candidateRecord15803.get(sw)||null;
+        if(duplicateRec16205){
+          duplicateRec16205.status="rejected-exact-duplicate";
+          duplicateRec16205.reason="exact-duplicate-geometry";
+          duplicateRec16205.reachedSpacingEvaluation15840=true;
+          duplicateRec16205.reachedFinalCapEvaluation15840=true;
+        }
+        continue;
+      }
+      /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */"""
+if s.count(old_loop)!=1: raise SystemExit(f"loop target count {s.count(old_loop)}")
+s=s.replace(old_loop,new_loop,1)
+
+old_accept="kept.push(sw);keptBBox16204.push(swBBox16204);spacingIndexAdd16456(kept.length-1,swBBox16204);"
+new_accept="if(exactKey16205)exactGeometrySeen16205.add(exactKey16205);kept.push(sw);keptBBox16204.push(swBBox16204);spacingIndexAdd16456(kept.length-1,swBBox16204);"
+if s.count(old_accept)!=1: raise SystemExit(f"accept target count {s.count(old_accept)}")
+s=s.replace(old_accept,new_accept,1)
+
+p.write_text(s)
+print("EARTHLINE_M75_ENGINE_REPAIR_APPLIED")
