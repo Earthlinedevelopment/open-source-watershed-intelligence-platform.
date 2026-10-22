@@ -1,0 +1,47 @@
+name: Earthline Iowa Render Capture
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths:
+      - .github/workflows/earthline-iowa-render-capture.yml
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          path: live
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Capture exact Iowa rendered result
+        shell: bash
+        run: |
+          cp tests/iowa-live-diagnostic.mjs ./iowa-render-capture.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('iowa-render-capture.mjs')
+          s=p.read_text()
+          s=s.replace("await browser.close();","await page.screenshot({path:'iowa-render.png',fullPage:false});\nawait browser.close();")
+          p.write_text(s)
+          PY
+          python3 -m http.server 8787 --bind 127.0.0.1 --directory live >/tmp/iowa-render-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          EARTHLINE_URL='http://127.0.0.1:8787/' node ./iowa-render-capture.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iowa-render-capture
+          path: |
+            iowa-render.png
+            iowa-live-diagnostic.json
