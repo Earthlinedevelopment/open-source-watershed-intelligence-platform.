@@ -1,0 +1,39 @@
+name: Earthline M75 Regional Publication Controller
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths:
+      - tools/m75_regional_publication_selection.py
+      - .github/workflows/earthline-m75-regional-publication-controller.yml
+permissions:
+  contents: write
+jobs:
+  publish-select:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-regional-engine
+          fetch-depth: 0
+      - name: Fetch selector
+        run: |
+          git fetch origin recovery/mantra74-stability
+          git show origin/recovery/mantra74-stability:tools/m75_regional_publication_selection.py > /tmp/m75_regional_publication_selection.py
+      - name: Apply selector
+        run: python3 /tmp/m75_regional_publication_selection.py index.html
+      - name: Parse-check
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          NODE
+      - name: Commit
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: publish ranked Regional corridors instead of raw candidate pool"
+          git push origin HEAD:recovery/mantra75-regional-engine
