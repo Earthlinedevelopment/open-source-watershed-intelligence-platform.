@@ -443,9 +443,9 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     }
     el.classList.add('open');
     clearTimeout(el._earthlineTm17003);
-    const done=()=>{el.classList.remove('open');try{m?.off?.('moveend',done);m?.off?.('idle',done)}catch(_){}};
+    const done=()=>{el.classList.remove('open');try{m?.off?.('moveend',done)}catch(_){}};
     let m=null;try{m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){}
-    try{m?.once?.('moveend',done);m?.once?.('idle',done)}catch(_){}
+    try{m?.once?.('moveend',done)}catch(_){}
     el._earthlineTm17003=setTimeout(done,5000);
     return el;
   }
@@ -733,12 +733,6 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     closeSheet();
   },{passive:true});
 
-  const observer=new MutationObserver(()=>{
-    if(!isMobile())return;
-    ensurePropertyAction();
-    if(String(root.dataset.earthlineAnalysisTier||'').toLowerCase()==='property')hideBusy();
-  });
-
   function audit(){
     const box=id=>{const el=document.getElementById(id);if(!el)return null;const r=el.getBoundingClientRect(),s=getComputedStyle(el);return {x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height),display:s.display,visibility:s.visibility,opacity:s.opacity}};
     return {
@@ -752,7 +746,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   window.EARTHLINE_MOBILE_PANEL_STACK_17004={state:'ready',version:'map-first-2',closeSheet,showBusy,hideBusy,audit};
   const boot=()=>{
     if(isMobile()){ensurePropertyAction();ensureBusy();}
-    try{observer.observe(root,{attributes:true,attributeFilter:['class','data-earthline-analysis-tier']});observer.observe(document.body,{childList:true,subtree:true})}catch(_){}
+    window.addEventListener('resize',()=>{if(isMobile()){ensurePropertyAction();ensureBusy()}},{passive:true});
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
@@ -819,15 +813,14 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 `;
     (document.head||document.documentElement).appendChild(style);
   }catch(_){}
-  const observer=new MutationObserver(()=>enforce());
   const boot=()=>{
     enforce();
-    try{observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']})}catch(_){}
     document.addEventListener('input',e=>{if(e.target?.id==='searchInput')requestAnimationFrame(enforce)},true);
     document.addEventListener('focusin',e=>{if(e.target?.id==='searchInput')requestAnimationFrame(enforce)},true);
     document.addEventListener('touchstart',e=>{
       if(e.target?.closest?.('#earthlineSearchSuggestions15970'))enforce();
     },{capture:true,passive:true});
+    try{window.visualViewport?.addEventListener?.('resize',()=>requestAnimationFrame(enforce),{passive:true})}catch(_){}
   };
   window.EARTHLINE_MOBILE_SEARCH_TOUCH_17007={state:'ready',enforce};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
