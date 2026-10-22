@@ -1,0 +1,28 @@
+name: Earthline 16198 Handoff Audit
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: [.github/workflows/earthline-16198-handoff-audit.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(errors='ignore')
+          terms=['EARTHLINE 16198','coreTotalMs','terrainProductsAndPublishMs','runToken','EARTHLINE_DISPLAYED_RUN_16151','setBusy(false','Regional analysis complete','16198']
+          for term in terms:
+            hits=[m.start() for m in re.finditer(re.escape(term),s)]
+            print('\n###',term,'COUNT',len(hits))
+            for pos in hits[-10:]:
+              print('\n---',pos,'---')
+              print(s[max(0,pos-8000):min(len(s),pos+18000)])
+          PY
