@@ -16781,6 +16781,13 @@ var prescribeSwales;
 
     const rawModel=Array.isArray(M&&M.swales)
       ?JSON.parse(JSON.stringify(M.swales)):[];
+    window.EARTHLINE_SAFETY_LOCK_DIAG_17695={
+      stage:"entry",
+      vectorCoverage:M&&M.vectorNoBuildCoverage?JSON.parse(JSON.stringify(M.vectorNoBuildCoverage)):null,
+      finalMaskAvailable:!!(M&&M.noBuildMask&&Number(M.noBuildMask.length)>0),
+      finalMaskLength:Number(M&&M.noBuildMask&&M.noBuildMask.length||0),
+      rawFeatures:Number(raw&&raw.features&&raw.features.length||0)
+    };
     let filtered=null;
     let audit=null;
     let safetyError=null;
@@ -16832,9 +16839,20 @@ var prescribeSwales;
       const portableEvidence16544=!!(M&&M.vectorNoBuildCoverage&&
         M.vectorNoBuildCoverage.publicationAllowed===true&&
         M.vectorNoBuildCoverage.sourceTier!=="authoritative-local");
+      window.EARTHLINE_SAFETY_LOCK_DIAG_17695=Object.assign({},window.EARTHLINE_SAFETY_LOCK_DIAG_17695||{},{
+        stage:"before-frozen",candidate:!!candidate,candidateCount:Number(candidate&&candidate.features&&candidate.features.length||0),
+        filterIndexAvailable,vectorVerified,finalMaskAvailable,portableEvidence16544,
+        vectorCoverageNow:M&&M.vectorNoBuildCoverage?JSON.parse(JSON.stringify(M.vectorNoBuildCoverage)):null,
+        auditVerified,acceptedIntersections:Number.isFinite(acceptedIntersections)?acceptedIntersections:null
+      });
       const frozenClearance16255=(candidate&&vectorVerified&&finalMaskAvailable&&(!filterIndexAvailable||portableEvidence16544))
         ?earthlineFrozenPropertyClearanceAudit16255(candidate):null;
       const frozenClearanceVerified16255=!!(frozenClearance16255&&frozenClearance16255.verified===true);
+      window.EARTHLINE_SAFETY_LOCK_DIAG_17695=Object.assign({},window.EARTHLINE_SAFETY_LOCK_DIAG_17695||{},{
+        stage:"after-frozen",frozenCalled:!!frozenClearance16255,
+        frozenClearance:frozenClearance16255?JSON.parse(JSON.stringify(frozenClearance16255)):null,
+        frozenClearanceVerified16255
+      });
 
       /* The post-render 15788 index is useful when present, but it is not the
          scientific owner of the Property exclusions. If it is absent after a
