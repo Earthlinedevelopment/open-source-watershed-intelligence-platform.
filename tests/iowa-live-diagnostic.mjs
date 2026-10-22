@@ -200,6 +200,26 @@ const diag=await page.evaluate(({target,serialBefore,pre,started,propertyStarted
       declareTerminalRunning:document.getElementById('earthlineDeclareProperty16169')?.getAttribute('data-terminal-running')||null,
       statusText:document.getElementById('status')?.textContent||document.querySelector('[data-earthline-status]')?.textContent||''
     },
+    rendererOwnership:(()=>{try{
+      const mp2=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+      const style2=mp2?.getStyle?.()||{};
+      const regionalIds=(style2.layers||[]).map(l=>l.id).filter(id=>/regional|swale.*16020|corridor.*16149/i.test(String(id||'')));
+      const propertyIds=(style2.layers||[]).map(l=>l.id).filter(id=>/earthline-property-safe-|property.*swale|swale.*property/i.test(String(id||'')));
+      const vis=id=>{try{return mp2.getLayoutProperty(id,'visibility')||'visible'}catch(_){return null}};
+      const rendered=ids=>{try{const cv=mp2.getCanvas?.(),box=cv&&[[0,0],[cv.clientWidth||cv.width,cv.clientHeight||cv.height]];return box&&ids.length?(mp2.queryRenderedFeatures?.(box,{layers:ids.filter(id=>{try{return !!mp2.getLayer(id)}catch(_){return false}})})||[]).length:0}catch(_){return -1}};
+      const safeSrc=mp2?.getSource?.('earthline-property-safe-swales-16221')||null;
+      return {
+        documentTier:String(document.documentElement.dataset.earthlineAnalysisTier||''),
+        displayedTier:String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147)?.tier||(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147)?.mode||''),
+        mapMoving:!!mp2?.isMoving?.(),
+        regionalState:(window.earthlineRegional15778&&{active:window.earthlineRegional15778.active,mode:window.earthlineRegional15778.mode})||null,
+        regionalLayers:regionalIds.map(id=>({id,visibility:vis(id)})),
+        propertyLayers:propertyIds.map(id=>({id,visibility:vis(id)})),
+        renderedRegional:rendered(regionalIds),
+        renderedProperty:rendered(propertyIds),
+        safeSourceInternalFeatures:Array.isArray(safeSrc?._data?.features)?safeSrc._data.features.length:null
+      };
+    }catch(e){return {error:String(e)}}})(),
     modelSummary:mSummary,
     swaleDiagnosticsFull:(typeof M!=='undefined'&&M?.swaleDiagnostics)?JSON.parse(JSON.stringify(M.swaleDiagnostics)):null,
     swaleMetaFull:(typeof M!=='undefined'&&M?.swaleMeta)?JSON.parse(JSON.stringify(M.swaleMeta)):null,
