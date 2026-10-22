@@ -4,6 +4,7 @@ on:
     branches: [recovery/mantra74-stability]
     paths:
       - tests/iowa-live-diagnostic.mjs
+      - earthline-launch-16872.js
       - .github/workflows/earthline-iowa-live-diagnostic.yml
 permissions:
   contents: read
@@ -19,7 +20,15 @@ jobs:
       - run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - run: node tests/iowa-live-diagnostic.mjs
+      - run: |
+          python3 -m http.server 8787 >/tmp/earthline-iowa-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in {1..30}; do
+            curl -fsS http://127.0.0.1:8787/ >/dev/null && break
+            sleep 1
+          done
+          EARTHLINE_URL=http://127.0.0.1:8787/ node tests/iowa-live-diagnostic.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

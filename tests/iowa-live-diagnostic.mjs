@@ -1,10 +1,15 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
-const URL='https://earthlinedevelopment.org/?iowa-live-diagnostic='+Date.now();
+const BASE=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
+const URL=BASE+(BASE.includes('?')?'&':'?')+'iowa-live-diagnostic='+Date.now();
 const TARGET={lat:41.95715,lng:-93.38977};
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1800,height:1000}});
+await page.route('https://api.mapbox.com/**',async route=>{
+  const headers={...route.request().headers(),referer:'https://earthlinedevelopment.org/',origin:'https://earthlinedevelopment.org'};
+  await route.continue({headers});
+});
 const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
 const started=Date.now();
 
