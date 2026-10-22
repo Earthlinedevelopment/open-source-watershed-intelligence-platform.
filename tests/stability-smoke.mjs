@@ -82,16 +82,19 @@ for(const [name,engine] of engines){
     const serialBefore=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
     await page.locator('#earthlineDeclareProperty16169').click({force:true});
 
-    await page.waitForFunction(()=>{
-      const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
-      const tier=String(d&&(d.tier||d.mode)||'').toLowerCase();
-      const runState=String(document.documentElement.dataset.earthlinePropertyRunState||'').toLowerCase();
-      const audit=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
-      const handoff=window.EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347||null;
-      return (tier==='property'&&runState!=='running')||
-        (runState!=='running'&&audit?.settled===true)||
-        handoff?.validParent===false;
-    },null,{timeout:45000,polling:150});
+    let propertyWaitTimedOut=false;
+    try{
+      await page.waitForFunction(()=>{
+        const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+        const tier=String(d&&(d.tier||d.mode)||'').toLowerCase();
+        const runState=String(document.documentElement.dataset.earthlinePropertyRunState||'').toLowerCase();
+        const audit=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+        const handoff=window.EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347||null;
+        return (tier==='property'&&runState!=='running')||
+          (runState!=='running'&&audit?.settled===true)||
+          handoff?.validParent===false;
+      },null,{timeout:45000,polling:150});
+    }catch(_){propertyWaitTimedOut=true;}
 
     const propertyOutcome=await page.evaluate(()=>({
       displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,
@@ -104,6 +107,7 @@ for(const [name,engine] of engines){
       trace:window.EARTHLINE_PROPERTY_PHASE_TRACE_16319||null
     }));
     const propertyTier=String(propertyOutcome.displayed&&(propertyOutcome.displayed.tier||propertyOutcome.displayed.mode)||'').toLowerCase();
+    if(propertyWaitTimedOut)console.log('EARTHLINE_PROPERTY_WAIT_TIMEOUT '+JSON.stringify({engine:name,propertyOutcome}));
     assert(propertyTier==='property',name+': Property handoff failed '+JSON.stringify(propertyOutcome));
 
     const serialAfter=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
