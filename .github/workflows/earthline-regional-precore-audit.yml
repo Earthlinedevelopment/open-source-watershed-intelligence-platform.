@@ -1,0 +1,28 @@
+name: Earthline Regional Precore Audit
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: [.github/workflows/earthline-regional-precore-audit.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(errors='ignore')
+          terms=['await runRegional(','runRegional(q','earthlineResolveAtomicUSStatePackage16556','jurisdictionBoundaryPromise16539','setBusy(true','createRunToken(q)','async function run(','function run(']
+          for term in terms:
+            hits=[m.start() for m in re.finditer(re.escape(term),s)]
+            print('\n###',term,'COUNT',len(hits))
+            for pos in hits[-12:]:
+              print('\n---',pos,'---')
+              print(s[max(0,pos-10000):min(len(s),pos+22000)])
+          PY
