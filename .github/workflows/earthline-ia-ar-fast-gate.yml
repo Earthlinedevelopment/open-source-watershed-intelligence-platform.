@@ -1,0 +1,30 @@
+name: Earthline Iowa Arkansas Fast Gate
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.earthline-ia-ar-fast-trigger']
+permissions:
+  contents: read
+jobs:
+  fast:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-fast-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          CASES='[{"name":"Iowa","query":"Iowa"},{"name":"Arkansas","query":"Arkansas"}]' EARTHLINE_URL='http://127.0.0.1:8787/' OUT='ia-ar-fast.json' node tests/mantra74-functional-certification.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ia-ar-fast
+          path: ia-ar-fast.json
