@@ -32586,13 +32586,13 @@ function syncPropertyTargetFromMap16201(){const m=panelMap16188();if(!m||typeof 
   function reconcilePanel16188(){const searchSlot=document.getElementById('earthlineSearchSlot16188'),propertySlot=document.getElementById('earthlinePropertySlot16188'),reportSlot=document.getElementById('earthlineReportSlot16188'),statusSlot=document.getElementById('earthlineStatusSlot16188'),resultsSlot=document.getElementById('earthlineResultsSlot16188');const searchwrap=document.querySelector('.searchwrap');if(searchwrap&&searchwrap.parentElement!==searchSlot)searchSlot.appendChild(searchwrap);ensureOrb16233('runBtn');const property=document.getElementById('earthlineDeclareProperty16169');if(property&&property.parentElement!==propertySlot)propertySlot.appendChild(property);if(property){
   /* EARTHLINE 17444 — one physical press, one governed Property launch.
      WebKit can lose the synthesized click when this control is reconciled during
-     map/UI work. Pointer-up is the primary physical activation; click remains the
+     map/UI work. Pointer-down is the primary physical activation; click remains the
      keyboard/fallback activation and is deduped against the pointer launch. */
   window.earthlineActivateProperty17494=function(ev,b,source){
     b=b||document.getElementById('earthlineDeclareProperty16169');
     if(!b)return false;
     const now=Date.now(),last=Number(b.dataset.earthlinePointerLaunch17444||0);
-    const pointerSource=source==='pointerup';
+    const pointerSource=source==='pointerdown';
     if(pointerSource){
       if(ev&&Number.isFinite(Number(ev.button))&&Number(ev.button)!==0)return false;
       if(now-last<900)return false;
@@ -32638,8 +32638,8 @@ function syncPropertyTargetFromMap16201(){const m=panelMap16188();if(!m||typeof 
     });
     return false;
   };
-  property.onpointerup=function(ev){
-    return window.earthlineActivateProperty17494(ev,property,'pointerup');
+  property.onpointerdown=function(ev){
+    return window.earthlineActivateProperty17494(ev,property,'pointerdown');
   };
   property.onclick=function(ev){
     return window.earthlineActivateProperty17494(ev,property,'click');
