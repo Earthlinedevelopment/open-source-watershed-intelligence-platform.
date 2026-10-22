@@ -208,3 +208,5 @@ diag.pageErrors=errors;
 fs.writeFileSync('iowa-live-diagnostic.json',JSON.stringify(diag,null,2));
 console.log('EARTHLINE_IOWA_DIAGNOSTIC '+JSON.stringify(diag));
 await browser.close();
+
+// EARTHLINE 17702 exact-core diagnostic revalidation
