@@ -65,7 +65,13 @@ for(const [name,engine] of engines){
 
     const corridor=page.locator('.earthline-swale-label-16149:visible').first();
     assert(await corridor.count(),name+': no visible Regional corridor label');
-    await corridor.click({force:true});
+    const corridorPoint=await corridor.evaluate(el=>{
+      const r=el.getBoundingClientRect();
+      if(r.width<2||r.height<2)throw new Error('Regional corridor label has no physical pointer area');
+      return {x:(r.left+r.right)/2,y:(r.top+r.bottom)/2,rect:{left:r.left,top:r.top,right:r.right,bottom:r.bottom}};
+    });
+    console.log('EARTHLINE_CORRIDOR_POINTER '+JSON.stringify({engine:name,point:corridorPoint}));
+    await page.mouse.click(corridorPoint.x,corridorPoint.y);
     await page.waitForFunction(
       ()=>!!document.getElementById('earthlineCorridorDetail16149')?.classList?.contains('open'),
       null,{timeout:10000,polling:100}
