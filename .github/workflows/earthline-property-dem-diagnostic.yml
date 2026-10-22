@@ -58,6 +58,10 @@ jobs:
           (async()=>{
             const b=await chromium.launch({headless:true});
             const p=await b.newPage({viewport:{width:1600,height:900}});
+            await p.route('https://api.mapbox.com/**',async route=>{
+              const h={...route.request().headers(),referer:'https://earthlinedevelopment.org/',origin:'https://earthlinedevelopment.org'};
+              await route.continue({headers:h});
+            });
             const net=[];
             const clean=u=>{try{const x=new URL(u);return x.origin+x.pathname}catch{return String(u).split('?')[0]}};
             p.on('response',r=>{const u=r.url();if(/mapbox|terrain|terrarium|elevation/i.test(u))net.push({type:'response',status:r.status(),url:clean(u)})});
