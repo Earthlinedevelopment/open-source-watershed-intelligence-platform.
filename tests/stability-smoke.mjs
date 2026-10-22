@@ -78,8 +78,26 @@ for(const [name,engine] of engines){
     await page.waitForFunction(()=>{
       const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
       const tier=String(d&&(d.tier||d.mode)||'').toLowerCase();
-      return tier==='property'&&String(document.documentElement.dataset.earthlinePropertyRunState||'')!=='running';
-    },null,{timeout:90000,polling:150});
+      const runState=String(document.documentElement.dataset.earthlinePropertyRunState||'').toLowerCase();
+      const audit=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+      const handoff=window.EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347||null;
+      return (tier==='property'&&runState!=='running')||
+        (runState!=='running'&&audit?.settled===true)||
+        handoff?.validParent===false;
+    },null,{timeout:45000,polling:150});
+
+    const propertyOutcome=await page.evaluate(()=>({
+      displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,
+      runState:String(document.documentElement.dataset.earthlinePropertyRunState||''),
+      audit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+      handoff:window.EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347||null,
+      block:window.EARTHLINE_PROPERTY_PUBLICATION_BLOCK_16176||null,
+      waterGate:window.EARTHLINE_PROPERTY_WATER_BODY_GATE_16529||null,
+      launch:window.EARTHLINE_PROPERTY_LAUNCH_AUDIT_16322||null,
+      trace:window.EARTHLINE_PROPERTY_PHASE_TRACE_16319||null
+    }));
+    const propertyTier=String(propertyOutcome.displayed&&(propertyOutcome.displayed.tier||propertyOutcome.displayed.mode)||'').toLowerCase();
+    assert(propertyTier==='property',name+': Property handoff failed '+JSON.stringify(propertyOutcome));
 
     const serialAfter=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
     assert(serialAfter===serialBefore+1,name+': one Property click did not produce exactly one run');
