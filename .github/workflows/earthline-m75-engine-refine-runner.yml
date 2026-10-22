@@ -1,0 +1,21 @@
+name: Earthline M75 Engine Refine Runner
+on:
+  push:
+    branches:
+      - recovery/mantra75-engine-repair
+permissions:
+  contents: write
+jobs:
+  refine:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: python3 tools/refine-m75-engine.py
+      - run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: restore balanced visible Regional selection"
+          git push origin HEAD:recovery/mantra75-engine-repair
