@@ -1,0 +1,44 @@
+name: Earthline Panel Transform Trace
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.earthline-panel-transform-trace']
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          for fn in ['index.html','earthline-launch-16872.js']:
+            p=Path(fn)
+            if not p.exists(): continue
+            s=p.read_text(encoding='utf-8')
+            print('\nFILE',fn)
+            needles=[
+              'earthlinePanel16188',
+              '.style.transform',
+              'style.transform',
+              'translateY(',
+              'translate3d(',
+              'transform=',
+              'transform:',
+              'scrollTop'
+            ]
+            for n in needles:
+              print('\n===',n,'===')
+              start=0; hits=0
+              while True:
+                i=s.find(n,start)
+                if i<0: break
+                print(s[max(0,i-1800):min(len(s),i+3600)])
+                start=i+len(n);hits+=1
+                if hits>=20: break
+          PY
