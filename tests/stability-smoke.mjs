@@ -236,8 +236,18 @@ for(const [name,engine] of engines){
       const cs=getComputedStyle(el),r=el.getBoundingClientRect();
       return {tag:el.tagName,id:el.id||'',class:String(el.className?.baseVal||el.className||''),pointerEvents:cs.pointerEvents,zIndex:cs.zIndex,position:cs.position,display:cs.display,visibility:cs.visibility,opacity:cs.opacity,left:r.left,top:r.top,right:r.right,bottom:r.bottom};
     }),reportPoint);
-    console.log('EARTHLINE_REPORT_POINTER '+JSON.stringify({engine:name,point:reportPoint,stack:reportHitAudit}));
+    const reportActivationBefore=await page.evaluate(()=>{
+      const b=document.getElementById('earthlineVermontReport16149');
+      window.__earthlineReportPointerTrace={pointerdown:0,click:0,lastTarget:null};
+      b?.addEventListener('pointerdown',e=>{window.__earthlineReportPointerTrace.pointerdown++;window.__earthlineReportPointerTrace.lastTarget=e.target?.tagName||null},{once:true,capture:true});
+      b?.addEventListener('click',e=>{window.__earthlineReportPointerTrace.click++;window.__earthlineReportPointerTrace.lastTarget=e.target?.tagName||null},{once:true,capture:true});
+      return {onclickType:typeof b?.onclick,onclickName:b?.onclick?.name||'',onclickSource:String(b?.onclick||'').slice(0,180),disabled:!!b?.disabled};
+    });
+    console.log('EARTHLINE_REPORT_POINTER '+JSON.stringify({engine:name,point:reportPoint,stack:reportHitAudit,activationBefore:reportActivationBefore}));
     await page.mouse.click(reportPoint.x,reportPoint.y);
+    await page.waitForTimeout(350);
+    const reportActivationAfter=await page.evaluate(()=>({trace:window.__earthlineReportPointerTrace||null,audit:window.earthlineReportReachabilityAudit16151?.()||null,activeTag:document.activeElement?.tagName||null,activeId:document.activeElement?.id||''}));
+    console.log('EARTHLINE_REPORT_ACTIVATION_AFTER '+JSON.stringify({engine:name,state:reportActivationAfter}));
     await page.waitForFunction(
       ()=>!!document.getElementById('earthlineVermontReportPanel16149')?.classList?.contains('open'),
       null,{timeout:10000,polling:100}
