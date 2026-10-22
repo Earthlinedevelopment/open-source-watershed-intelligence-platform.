@@ -29408,7 +29408,7 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
     if(!mp||!active||count<1){clearSafePropertyFallback16221(reason+':inactive-or-empty');return {ok:count===0&&active,count,visible:false,active,error:!mp?'map unavailable':(!active?'property display inactive':'verified zero-corridor result')}}
     const ensured=ensureSafePropertyLayers16221();
     if(!ensured.ok){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,sourceReady:!!ensured.sourceReady,layersReady:!!ensured.layersReady,errors:ensured.errors||[],error:ensured.error||null,at:new Date().toISOString()};return {ok:false,count,visible:false,active,...ensured}}
-    try{const src=mp.getSource(SAFE_SOURCE_16221);if(!src?.setData)throw new Error('safe source setData unavailable');src.setData(fc)}catch(error){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,error:String(error?.message||error),at:new Date().toISOString()};return {ok:false,count,visible:false,active,error:String(error?.message||error)}}
+    try{const src=mp.getSource(SAFE_SOURCE_16221);if(!src?.setData)throw new Error('safe source setData unavailable');const sig16221=String(runSerial)+'|'+String(count);if(src.__earthlineSafeRunSignature16221!==sig16221){src.setData(fc);src.__earthlineSafeRunSignature16221=sig16221}}catch(error){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,error:String(error?.message||error),at:new Date().toISOString()};return {ok:false,count,visible:false,active,error:String(error?.message||error)}}
     setSafeLayerVisibility16221(true);
     const moved=[];
     for(const id of Object.values(SAFE_LAYERS_16221)){try{if(mp.getLayer?.(id)){mp.moveLayer?.(id);moved.push(id)}}catch(_){ }}
@@ -29444,7 +29444,13 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
   async function verifySafePropertyFallback16221(count){
     if(!(count>0))return {ok:true,count:0,visible:false,required:false,pending:false};
     const first=syncSafePropertyFallback16221('terminal-atomic-17670');
-    return {...first,required:true,pending:false};
+    if(first&&first.ok===true)return {...first,required:true,pending:false};
+    /* EARTHLINE 17697 — one bounded handoff through the existing Property
+       basemap-settlement cadence before authoritative rendered-feature truth. */
+    await new Promise(resolve=>setTimeout(resolve,1800));
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    const second=syncSafePropertyFallback16221('terminal-after-basemap-1800-17697');
+    return {...second,required:true,pending:!(second&&second.ok===true)};
   }
 
   function propertyLivingMapVisible16262(count){
@@ -29465,17 +29471,17 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
     const ok=!!(living.ok||safe?.ok);
     const current=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
     setAudit({
-      settled:true,result:true,corridors:count,
-      renderVerified:ok,renderPending:false,
-      renderMode:living.ok?living.mode:(safe?.ok?'authoritative-safe-lines':'presentation-unavailable'),
+      settled:ok,result:true,corridors:count,
+      renderVerified:ok,renderPending:!ok,
+      renderMode:living.ok?living.mode:(safe?.ok?'authoritative-safe-lines':'pending-authoritative-safe-lines'),
       mapEvidence:living.ok?living:null,safeFallback:safe||null,texture,
       currentScientificResultPreserved:true,
-      mapVerificationSettledAt:new Date().toISOString(),
-      settledAt:current.settledAt||new Date().toISOString()
+      mapVerificationSettledAt:ok?new Date().toISOString():null,
+      settledAt:ok?(current.settledAt||new Date().toISOString()):null
     });
     if(!ok){
-      status('PROPERTY RESULT PRESERVED — '+count+' corridor'+(count===1?' was':'s were')+' found, but the map presentation did not verify. No substitute geometry was drawn.','failed');
-      setTierNotice('warning','PROPERTY DETAIL · ANALYSIS PRESERVED · MAP PRESENTATION UNAVAILABLE');
+      status('PROPERTY RESULT PRESERVED — '+count+' corridor'+(count===1?' was':'s were')+' found, but the authoritative Property map layer is not yet verified. Regional geometry is not a valid substitute.','failed');
+      setTierNotice('warning','PROPERTY DETAIL · ANALYSIS PRESERVED · PROPERTY MAP NOT VERIFIED');
     }
     return ok;
   }
@@ -29712,13 +29718,10 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
       /* EARTHLINE 17514 — Elder publication already started from the authoritative
          Property frame before the hydrology runner; no second lifecycle owner here. */
 
-      /* EARTHLINE 16334 — verified science is the interactive terminal. Optional
-         presentation verification continues, but the Property control is released now. */
-      running=false;
-      document.documentElement.dataset.earthlinePropertyRunState='idle';
-      document.documentElement.classList.remove('earthline-property-running-16233');
-      clearTimers();setButton(false);clearAllBusy();restoreGrab();
-      try{window.getSelection?.()?.removeAllRanges?.();button()?.blur?.()}catch(_){}
+      /* EARTHLINE 17698 — science may be terminal, but Property is not visually
+   terminal until the authoritative Property layer completes its first bounded
+   presentation verification. The single governed owner remains active here;
+   final cleanup still occurs in terminalPropertyRun's existing finally block. */
 
       /* EARTHLINE 17187 — frame the already-selected Property before the first authoritative safe-swale visibility check. This reorders the existing frame owner only; geometry, hydrology, styles and lifecycle ownership are unchanged. */
       earthlinePropertyTrace16319("frameDeclaredProperty","enter");
