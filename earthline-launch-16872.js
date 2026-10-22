@@ -645,7 +645,6 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   document.addEventListener('click',e=>{
     if(!isMobile())return;
     if(e.target?.closest?.('#earthlineRailSearch16188'))root.classList.remove('earthline-mobile-zoom-active-17014');
-    if(e.target?.closest?.('#runBtn')){showBusy('RUNNING ANALYSIS…',10000);closeSheet();}
     if(targetIsCorridor(e.target)){
       setTimeout(closeSheet,0);
       return;
@@ -663,7 +662,9 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   },true);
 
   document.addEventListener('pointerdown',e=>{
-    if(!isMobile()||!panelOpen())return;
+    if(!isMobile())return;
+    if(e.target?.closest?.('#runBtn')){showBusy('RUNNING ANALYSIS…',10000);closeSheet();return;}
+    if(!panelOpen())return;
     const map=e.target?.closest?.('#mapboxBase,.mapboxgl-canvas-container,.mapboxgl-canvas');
     const control=e.target?.closest?.('.mapboxgl-control-container,.mapboxgl-ctrl,.mapboxgl-popup,#earthlineMobilePropertyAction17004,#earthlineMobileBusy17004');
     if(map&&!control)closeSheet();
