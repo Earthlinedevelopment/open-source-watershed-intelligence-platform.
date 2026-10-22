@@ -585,7 +585,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   }catch(err){}
 
   function panelOpen(){return root.classList.contains('earthline-panel-open-16188')}
-  let lastUserPanelIntent17004=0;
+  let preserveUserPanel17004=false;
   function closeSheet(){
     if(!isMobile())return;
     try{
@@ -645,7 +645,8 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 
   document.addEventListener('click',e=>{
     if(!isMobile())return;
-    if(e.target?.closest?.('#earthlineRailSearch16188')){lastUserPanelIntent17004=Date.now();root.classList.remove('earthline-mobile-zoom-active-17014');}
+    if(e.target?.closest?.('#earthlineRailSearch16188')){preserveUserPanel17004=true;root.classList.remove('earthline-mobile-zoom-active-17014');}
+    if(e.target?.closest?.('#runBtn'))preserveUserPanel17004=false;
     if(targetIsCorridor(e.target)){
       setTimeout(closeSheet,0);
       return;
@@ -669,10 +670,12 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     if(map&&!control)closeSheet();
   },true);
 
-  document.addEventListener('earthline:analysis-complete',()=>{
+  document.addEventListener('earthline:analysis-complete',ev=>{
     if(!isMobile())return;
     hideBusy();
-    if(Date.now()-lastUserPanelIntent17004>900)closeSheet();
+    const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+    const tier=String(ev?.detail?.tier||ev?.detail?.mode||d?.tier||d?.mode||'').toLowerCase();
+    if((tier==='regional'||tier==='region'||tier==='statewide')&&!preserveUserPanel17004)closeSheet();
   },{passive:true});
 
   function audit(){
