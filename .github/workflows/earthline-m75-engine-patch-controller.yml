@@ -1,0 +1,41 @@
+name: Earthline M75 Engine Patch Controller
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths:
+      - tools/m75_engine_patch.py
+      - .github/workflows/earthline-m75-engine-patch-controller.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-regional-engine
+          fetch-depth: 0
+      - name: Fetch patch
+        run: |
+          git fetch origin recovery/mantra74-stability
+          git show origin/recovery/mantra74-stability:tools/m75_engine_patch.py > /tmp/m75_engine_patch.py
+      - name: Apply engine patch
+        run: python3 /tmp/m75_engine_patch.py index.html
+      - name: Parse-check
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('EARTHLINE_M75_ENGINE_PARSE_OK',parsed);
+          NODE
+      - name: Commit repaired engine
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: expand Regional coverage and reject exact duplicate swales"
+          git push origin HEAD:recovery/mantra75-regional-engine
