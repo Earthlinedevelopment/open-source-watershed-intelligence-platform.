@@ -1,0 +1,30 @@
+name: Earthline Prescriber Extraction
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths:
+      - .github/workflows/earthline-prescriber-extraction.yml
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(errors='strict')
+          start=s.rfind('async function prescribeSwales15778(')
+          end=s.find('\n  prescribeSwales=prescribeSwales15778;',start)
+          if start<0 or end<0: raise SystemExit((start,end))
+          Path('prescribeSwales15778.js').write_text(s[start:end])
+          print('EXTRACTED',start,end,end-start)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: earthline-prescriber-source
+          path: prescribeSwales15778.js
