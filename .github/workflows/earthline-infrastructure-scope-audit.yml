@@ -1,30 +1,59 @@
-name: Earthline Infrastructure Scope Audit
+name: Earthline Infrastructure Scope Repair
 on:
   push:
     branches: [recovery/mantra74-stability]
     paths: ['.earthline-infra-scope-trigger']
 permissions:
-  contents: read
+  contents: write
 jobs:
-  audit:
+  repair:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
           ref: recovery/mantra74-stability
-      - shell: bash
+          fetch-depth: 0
+      - name: Remove orphaned shortcut
+        shell: bash
         run: |
           set -euo pipefail
-          echo "=== OCCURRENCES ==="
-          grep -n -F "infrastructureFirst16469" index.html || true
-          echo "=== CONTEXT ==="
           python3 - <<'PY'
           from pathlib import Path
-          lines=Path('index.html').read_text(encoding='utf-8').splitlines()
-          hits=[i for i,l in enumerate(lines) if 'infrastructureFirst16469' in l]
-          for i in hits:
-              a=max(0,i-45); b=min(len(lines),i+70)
-              print(f'--- lines {a+1}-{b} ---')
-              for n in range(a,b):
-                  print(f'{n+1}: {lines[n]}')
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old='const infrastructure15862P=infrastructureFirst16469||await infrastructure16550();'
+          new='const infrastructure15862P=await infrastructure16550();'
+          n=s.count(old)
+          if n!=1:
+              raise SystemExit(f'expected one orphan reference, found {n}')
+          s=s.replace(old,new,1)
+          if 'infrastructureFirst16469' in s:
+              raise SystemExit('orphan infrastructureFirst16469 still present')
+          p.write_text(s,encoding='utf-8')
+          print('EARTHLINE_INFRA_SCOPE_REPAIRED')
           PY
+      - name: Validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          if(s.includes('infrastructureFirst16469'))throw Error('orphan infrastructure variable remains');
+          if(!s.includes('const infrastructure15862P=await infrastructure16550();'))throw Error('shared infrastructure adapter call missing');
+          for(const m of s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)){
+            if(m[1].trim())new Function(m[1]);
+          }
+          console.log('EARTHLINE_INFRA_SCOPE_VALIDATE_OK');
+          NODE
+          git diff --check
+      - name: Commit repair and retire temporary audit/staged pointer patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Stability Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git rm -f .github/workflows/earthline-infrastructure-scope-audit.yml .earthline-infra-scope-trigger
+          git rm -f tools/mantra74-webkit-property-input.py .github/workflows/earthline-webkit-property-input.yml 2>/dev/null || true
+          git commit -m "stability: remove orphaned Property infrastructure shortcut"
+          git push origin HEAD:recovery/mantra74-stability
