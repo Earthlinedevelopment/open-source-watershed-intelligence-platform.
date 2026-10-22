@@ -1,0 +1,21 @@
+name: Earthline Vermont Owner Extract
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.github/workflows/earthline-vermont-owner-extract.yml']
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - shell: bash
+        run: |
+          set -euo pipefail
+          echo '---BOUNDARY OWNER---'
+          sed -n '32145,32660p' index.html
+          echo '---SOURCE/REPORT OWNER---'
+          sed -n '32765,32850p' index.html
