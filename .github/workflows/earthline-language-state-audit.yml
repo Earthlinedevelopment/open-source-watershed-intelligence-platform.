@@ -1,0 +1,33 @@
+name: Earthline Language State Audit
+on:
+  push:
+    branches:
+      - recovery/mantra74-stability
+    paths:
+      - .earthline-language-state-trigger
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          for file in ['index.html','earthline-launch-16872.js']:
+              s=Path(file).read_text(encoding='utf-8')
+              print('FILE',file)
+              for needle in ['EARTHLINE_LANGUAGE_16488=','EARTHLINE_LANGUAGE_16488 =','earthlineLanguage16488','data-earthline-language-choice']:
+                  print('\nNEEDLE',needle,'COUNT',s.count(needle))
+                  start=0
+                  for _ in range(12):
+                      i=s.find(needle,start)
+                      if i<0: break
+                      print(s[max(0,i-1000):min(len(s),i+2500)])
+                      start=i+len(needle)
+          PY
