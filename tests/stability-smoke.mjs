@@ -137,16 +137,26 @@ for(const [name,engine] of engines){
     const report=page.locator('#earthlineVermontReport16149');
     assert(await report.count(),name+': Bioswale Report control missing');
     const reportGeometryBefore=await report.evaluate(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,vw:innerWidth,vh:innerHeight}});
-    await page.evaluate(()=>{
-      const body=document.getElementById('earthlinePanelBody16188');
+    const reportScrollAudit=await page.evaluate(()=>{
       const report=document.getElementById('earthlineVermontReport16149');
-      if(!body||!report)throw new Error('panel/report missing for reachability test');
-      const br=body.getBoundingClientRect(),rr=report.getBoundingClientRect();
-      const targetTop=br.top+Math.max(8,(body.clientHeight-report.offsetHeight)/2);
-      body.scrollTop=Math.max(0,body.scrollTop+(rr.top-targetTop));
+      if(!report)throw new Error('report missing for reachability test');
+      const chain=[]; let el=report;
+      while(el&&el!==document.documentElement){
+        const cs=getComputedStyle(el),r=el.getBoundingClientRect();
+        chain.push({id:el.id||'',tag:el.tagName,top:r.top,bottom:r.bottom,clientHeight:el.clientHeight,scrollHeight:el.scrollHeight,scrollTop:el.scrollTop,overflowY:cs.overflowY});
+        el=el.parentElement;
+      }
+      const scroller=chain.find(x=>x.scrollHeight>x.clientHeight+2&&/auto|scroll/.test(x.overflowY));
+      const node=scroller?.id?document.getElementById(scroller.id):null;
+      if(node){
+        const nr=node.getBoundingClientRect(),rr=report.getBoundingClientRect();
+        node.scrollTop=Math.max(0,node.scrollTop+(rr.top-nr.top)-Math.max(8,(node.clientHeight-report.offsetHeight)/2));
+      }
+      return {chain,scroller:scroller||null};
     });
     await page.waitForTimeout(120);
     const reportGeometryAfter=await report.evaluate(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,vw:innerWidth,vh:innerHeight}});
+    console.log('EARTHLINE_REPORT_SCROLL_AUDIT '+JSON.stringify({engine:name,audit:reportScrollAudit}));
     console.log('EARTHLINE_REPORT_REACHABILITY '+JSON.stringify({engine:name,before:reportGeometryBefore,after:reportGeometryAfter}));
     assert(reportGeometryAfter.bottom>0&&reportGeometryAfter.top<reportGeometryAfter.vh,
       name+': Bioswale Report control cannot be scrolled into the viewport '+JSON.stringify(reportGeometryAfter));
