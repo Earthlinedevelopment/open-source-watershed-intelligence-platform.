@@ -18,18 +18,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
-          for n,size in [
-            ('function syncSafePropertyFallback16221',6500),
-            ('renderVerified',4500),
-            ('EARTHLINE_PROPERTY_RUN_AUDIT_16173',5500),
-            ('EARTHLINE_PROPERTY_PRESENTATION_SETTLE_AUDIT_16521',3500)
-          ]:
-            print('\n===',n,'===')
-            start=0;hits=0
-            while True:
-              i=s.find(n,start)
-              if i<0:break
-              print(s[max(0,i-1200):min(len(s),i+size)])
-              start=i+len(n);hits+=1
-              if hits>=8:break
+          n='function syncSafePropertyFallback16221'
+          i=s.find(n)
+          print(s[i:i+7200] if i>=0 else 'NOT FOUND')
           PY
