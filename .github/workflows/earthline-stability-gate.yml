@@ -18,12 +18,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --check earthline-language-hotfix-16890.js
           node --check earthline-launch-16872.js
-          ! grep -q 'MutationObserver' earthline-language-hotfix-16890.js
-          ! grep -q 'setTimeout(' earthline-language-hotfix-16890.js
-          ! grep -q 'document.documentElement.lang=' earthline-language-hotfix-16890.js
-          grep -q "presentation-only language option list" earthline-language-hotfix-16890.js
+          grep -q "function ensureLanguage(){" index.html
+          ! grep -q "function applyLanguage(" index.html
+          ! grep -q "function earthlineApplyUiLanguage16871(" index.html
+          ! grep -q "earthline-language-hotfix-16890.js" index.html
+          grep -q "languageControl.value=launchLangOverride" earthline-launch-16872.js
           grep -q "const schedule=()=>requestAnimationFrame(()=>ensure())" earthline-launch-16872.js
           ! grep -q "const obs=new MutationObserver(()=>{const p=reportPanel()" earthline-launch-16872.js
           ! grep -q "vermontRequest" index.html
