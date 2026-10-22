@@ -20,9 +20,14 @@ async function runCase(c){
     await page.waitForSelector('#searchInput',{timeout:30000});
     await page.waitForFunction(()=>window.earthlineMap||(typeof earthlineMap!=='undefined'&&earthlineMap),null,{timeout:30000,polling:100});
 
-    const lang=page.locator('#earthlineLanguage16488');
-    if(await lang.count()){
-      await lang.selectOption('en'); await lang.dispatchEvent('change'); await page.waitForTimeout(150);
+    if(await page.locator('#earthlineLanguage16488').count()){
+      await page.evaluate(()=>{
+        const sel=document.getElementById('earthlineLanguage16488');
+        if(!sel)return;
+        sel.value='en';
+        sel.dispatchEvent(new Event('change',{bubbles:true}));
+      });
+      await page.waitForTimeout(150);
     }
 
     await page.locator('#searchInput').fill(c.query);
