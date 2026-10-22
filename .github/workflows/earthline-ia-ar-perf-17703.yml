@@ -1,0 +1,25 @@
+name: Earthline IA AR Performance Probe
+on:
+  push:
+    branches: [diagnostic/ia-ar-perf-17703]
+    paths:
+      - tests/ia-ar-perf-17703.mjs
+      - .github/workflows/earthline-ia-ar-perf-17703.yml
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-perf-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          node tests/ia-ar-perf-17703.mjs
