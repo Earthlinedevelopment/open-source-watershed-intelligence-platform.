@@ -1,27 +1,80 @@
-name: Earthline Principle Wording Audit
+name: Earthline Principle Wording Correction
 on:
   push:
     branches: [recovery/mantra74-stability]
     paths: ['.earthline-principle-audit-trigger']
 permissions:
-  contents: read
+  contents: write
 jobs:
-  audit:
+  correct:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
           ref: recovery/mantra74-stability
+          fetch-depth: 0
       - shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          files=[Path('index.html'),Path('earthline-launch-16872.js')]
-          for p in files:
+          target='This Three-word principle describes the sequence:'
+          replacements={
+            'Earthline’s three-word principle describes the sequence:':target,
+            "Earthline's three-word principle describes the sequence:":target,
+            'Earthline follows this three-word principle:':target,
+            'Earthline follows this Three-word principle:':target,
+            'Our three-word principle describes the sequence:':target,
+            'Our Three-word principle describes the sequence:':target,
+            'our three-word principle describes the sequence:':target,
+          }
+          changed=[]
+          counts={}
+          for name in ['index.html','earthline-launch-16872.js']:
+            p=Path(name)
             if not p.exists(): continue
-            lines=p.read_text(encoding='utf-8').splitlines()
-            for i,line in enumerate(lines,1):
-              if 'principle' in line.lower() or 'slow it' in line.lower():
-                print(f'{p}:{i}: {line}')
+            s=p.read_text(encoding='utf-8')
+            before=s
+            for old,new in replacements.items():
+              n=s.count(old)
+              if n:
+                s=s.replace(old,new)
+                counts[f'{name} :: {old}']=n
+            if s!=before:
+              p.write_text(s,encoding='utf-8')
+              changed.append(name)
+          print('EARTHLINE_PRINCIPLE_REPLACEMENTS',counts)
+          print('EARTHLINE_PRINCIPLE_CHANGED',changed)
+          # User-facing ownership phrasing must be gone.
+          for name in ['index.html','earthline-launch-16872.js']:
+            p=Path(name)
+            if not p.exists(): continue
+            s=p.read_text(encoding='utf-8')
+            for bad in [
+              'Earthline’s three-word principle',
+              "Earthline's three-word principle",
+              'Earthline follows this three-word principle',
+              'Our three-word principle describes the sequence:',
+              'our three-word principle describes the sequence:',
+            ]:
+              if bad in s:
+                raise SystemExit(f'ownership wording remains in {name}: {bad}')
+          if not changed:
+            raise SystemExit('no user-facing principle wording changed')
           PY
+      - name: Validate scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check earthline-launch-16872.js
+          git diff --check
+          grep -n -F "This Three-word principle describes the sequence:" earthline-launch-16872.js index.html | head -20
+      - name: Commit correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Stability Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html earthline-launch-16872.js
+          git commit -m "copy: remove Earthline ownership from three-word principle"
+          git push origin HEAD:recovery/mantra74-stability
