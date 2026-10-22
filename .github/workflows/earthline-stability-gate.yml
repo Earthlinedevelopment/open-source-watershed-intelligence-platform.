@@ -8,7 +8,7 @@ permissions:
 jobs:
   stability:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,6 +26,9 @@ jobs:
           grep -q "presentation-only language option list" earthline-language-hotfix-16890.js
           grep -q "const schedule=()=>requestAnimationFrame(()=>ensure())" earthline-launch-16872.js
           ! grep -q "const obs=new MutationObserver(()=>{const p=reportPanel()" earthline-launch-16872.js
+          ! grep -q "vermontRequest" index.html
+          ! grep -q "earthlineClipVermontProducts16178({contours" index.html
+          grep -q "EARTHLINE 17690 — universal jurisdiction path" index.html
           node - <<'NODE'
           const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
           let parsed=0;
@@ -36,3 +39,21 @@ jobs:
           console.log('EARTHLINE_STABILITY_INLINE_SCRIPTS_OK',parsed);
           NODE
           echo EARTHLINE_STABILITY_OWNERSHIP_GATE_OK
+      - name: Install rendered test runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium webkit
+      - name: Run rendered stability path
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 8787 >/tmp/earthline-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in {1..30}; do
+            curl -fsS http://127.0.0.1:8787/ >/dev/null && break
+            sleep 1
+          done
+          node tests/stability-smoke.mjs
