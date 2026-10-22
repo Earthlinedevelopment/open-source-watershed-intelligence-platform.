@@ -1,0 +1,66 @@
+name: Earthline M75 Swale Visual Repair
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths:
+      - .github/workflows/earthline-m75-swale-visual-repair.yml
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-swale-visual
+          fetch-depth: 0
+      - name: Apply narrow two-strip bioswale rendering
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(errors='strict')
+          pairs=[
+          (
+          "{id:SAFE_LAYERS_16221.casing,type:'line',source:SAFE_SOURCE_16221,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#123d24','line-opacity':.98,'line-width':['interpolate',['linear'],['zoom'],14,10,17,20,20,30]}}",
+          "{id:SAFE_LAYERS_16221.casing,type:'line',source:SAFE_SOURCE_16221,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#163726','line-opacity':.96,'line-width':['interpolate',['linear'],['zoom'],14,6,17,9,20,14]}}"
+          ),
+          (
+          "{id:SAFE_LAYERS_16221.earth,type:'line',source:SAFE_SOURCE_16221,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7a5738','line-opacity':.98,'line-width':['interpolate',['linear'],['zoom'],14,7,17,15,20,23]}}",
+          "{id:SAFE_LAYERS_16221.earth,type:'line',source:SAFE_SOURCE_16221,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7a5738','line-opacity':.96,'line-width':['interpolate',['linear'],['zoom'],14,4.5,17,6.5,20,10]}}"
+          ),
+          (
+          "{id:SAFE_LAYERS_16221.life,type:'line',source:SAFE_SOURCE_16221,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#56a862','line-opacity':.98,'line-width':['interpolate',['linear'],['zoom'],14,4.5,17,9,20,14],'line-offset':['interpolate',['linear'],['zoom'],14,-1.5,17,-3.2,20,-4.8],'line-dasharray':[.7,.38]}}",
+          "{id:SAFE_LAYERS_16221.life,type:'line',source:SAFE_SOURCE_16221,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#4ec9ff','line-opacity':.98,'line-width':['interpolate',['linear'],['zoom'],14,1.5,17,2.2,20,3.2],'line-offset':['interpolate',['linear'],['zoom'],14,-1.25,17,-2.0,20,-2.8],'line-dasharray':[.9,.55]}}"
+          ),
+          (
+          "{id:SAFE_LAYERS_16221.water,type:'line',source:SAFE_SOURCE_16221,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#4ec9ff','line-opacity':.98,'line-width':['interpolate',['linear'],['zoom'],14,3.90625,17,8.203125,20,12.5],'line-offset':['interpolate',['linear'],['zoom'],14,1.2,17,2.5,20,3.8]}}",
+          "{id:SAFE_LAYERS_16221.water,type:'line',source:SAFE_SOURCE_16221,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#4ec9ff','line-opacity':.98,'line-width':['interpolate',['linear'],['zoom'],14,1.5,17,2.2,20,3.2],'line-offset':['interpolate',['linear'],['zoom'],14,1.25,17,2.0,20,2.8],'line-dasharray':[.9,.55]}}"
+          )
+          ]
+          for i,(old,new) in enumerate(pairs,1):
+              n=s.count(old)
+              if n!=1: raise SystemExit(f'visual patch {i} target count {n}, expected 1')
+              s=s.replace(old,new,1)
+          p.write_text(s)
+          print('EARTHLINE_M75_SWALE_VISUAL_REPAIR_OK')
+          PY
+      - name: Parse-check
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('EARTHLINE_M75_SWALE_VISUAL_PARSE_OK',parsed);
+          NODE
+      - name: Commit
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: render Property bioswales as narrow twin blue strips"
+          git push origin HEAD:recovery/mantra75-swale-visual
