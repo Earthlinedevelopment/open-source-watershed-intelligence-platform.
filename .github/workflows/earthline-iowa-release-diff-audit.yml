@@ -1,0 +1,19 @@
+name: Earthline Iowa Release Diff Audit
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths:
+      - .github/workflows/earthline-iowa-release-diff-audit.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          git fetch origin pages-live
+          echo "=== INDEX DIFF ==="
+          git diff --unified=5 origin/pages-live...HEAD -- index.html
