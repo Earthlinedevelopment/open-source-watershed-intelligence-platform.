@@ -8,8 +8,14 @@ function assert(ok,msg){if(!ok)throw new Error(msg)}
 for(const [name,engine] of engines){
   const browser=await engine.launch({headless:true});
   const page=await browser.newPage({
-    viewport:name==='webkit'?{width:390,height:844}:{width:1440,height:960}
+    viewport:name==='webkit'?{width:390,height:844}:{width:1440,height:960},
+    hasTouch:name==='webkit',
+    isMobile:name==='webkit'
   });
+  const physicalTap=async(x,y)=>{
+    if(name==='webkit')return page.touchscreen.tap(x,y);
+    return page.mouse.click(x,y);
+  };
   /* EARTHLINE_PRODUCTION_ORIGIN_HEADERS_17691 — CI serves the candidate locally,
      but the secured public Mapbox token permits the production origin. Preserve
      product code unchanged and emulate only the deployed request origin. */
@@ -84,7 +90,7 @@ for(const [name,engine] of engines){
       };
     },corridorPoint);
     console.log('EARTHLINE_CORRIDOR_POINTER '+JSON.stringify({engine:name,point:corridorPoint,hitAudit:corridorHitAudit}));
-    await page.mouse.click(corridorPoint.x,corridorPoint.y);
+    await physicalTap(corridorPoint.x,corridorPoint.y);
     await page.waitForFunction(
       ()=>!!document.getElementById('earthlineCorridorDetail16149')?.classList?.contains('open'),
       null,{timeout:10000,polling:100}
@@ -136,7 +142,7 @@ for(const [name,engine] of engines){
       return {x:(r.left+r.right)/2,y:(top+bottom)/2,visibleHeight:bottom-top};
     });
     const serialBefore=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
-    await page.mouse.click(propertyPoint.x,propertyPoint.y);
+    await physicalTap(propertyPoint.x,propertyPoint.y);
 
     let propertyWaitTimedOut=false;
     try{
@@ -244,7 +250,7 @@ for(const [name,engine] of engines){
       return {onclickType:typeof b?.onclick,onclickName:b?.onclick?.name||'',onclickSource:String(b?.onclick||'').slice(0,180),disabled:!!b?.disabled};
     });
     console.log('EARTHLINE_REPORT_POINTER '+JSON.stringify({engine:name,point:reportPoint,stack:reportHitAudit,activationBefore:reportActivationBefore}));
-    await page.mouse.click(reportPoint.x,reportPoint.y);
+    await physicalTap(reportPoint.x,reportPoint.y);
     await page.waitForTimeout(350);
     const reportActivationAfter=await page.evaluate(()=>({trace:window.__earthlineReportPointerTrace||null,audit:window.earthlineReportReachabilityAudit16151?.()||null,activeTag:document.activeElement?.tagName||null,activeId:document.activeElement?.id||''}));
     console.log('EARTHLINE_REPORT_ACTIVATION_AFTER '+JSON.stringify({engine:name,state:reportActivationAfter}));
