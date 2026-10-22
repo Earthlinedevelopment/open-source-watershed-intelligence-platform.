@@ -1,0 +1,247 @@
+name: Earthline M75 Clean Functional Certification
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.github/workflows/earthline-m75-clean-functional-certification.yml']
+permissions:
+  contents: read
+
+jobs:
+  rollout:
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - batch: r1
+            names: "Vermont|Maryland|New York|Massachusetts|Arizona|Colorado|New Mexico"
+          - batch: r2
+            names: "Nevada|Utah|Oklahoma|California|Nebraska|North Carolina|Texas"
+          - batch: r3
+            names: "Alabama|Alaska|Florida|Hawaii|Idaho|Missouri|Virginia"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - uses: actions/checkout@v4
+        with:
+          ref: fa5521899fb8d13598274bed8c5a45c23d0d55c8
+          path: candidate
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run rollout batch
+        shell: bash
+        env:
+          NAMES: ${{ matrix.names }}
+        run: |
+          set +e
+          python3 -m http.server 8787 --bind 127.0.0.1 --directory candidate >/tmp/earthline-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          CASES=$(python3 - <<'PY'
+          import json,os
+          print(json.dumps([{"name":x,"query":x} for x in os.environ["NAMES"].split("|") if x]))
+          PY
+          )
+          EARTHLINE_URL='http://127.0.0.1:8787/' CASES="$CASES" OUT='rollout-${{ matrix.batch }}.json' node tests/mantra74-functional-certification.mjs
+          code=$?
+          echo "$code" > 'rollout-${{ matrix.batch }}.exit'
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m75-clean-rollout-${{ matrix.batch }}
+          path: |
+            rollout-${{ matrix.batch }}.json
+            rollout-${{ matrix.batch }}.exit
+      - name: Enforce
+        run: test "$(cat 'rollout-${{ matrix.batch }}.exit')" = "0"
+
+  rollout-aggregate:
+    needs: rollout
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m75-clean-rollout-*
+          path: /tmp/results
+          merge-multiple: true
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,glob
+          rows=[]
+          for p in glob.glob('/tmp/results/rollout-*.json'):
+              rows += json.load(open(p)).get('rows',[])
+          failed=[{"name":r["name"],"failures":r["failures"]} for r in rows if not r.get("pass")]
+          print("EARTHLINE_M74_ROLLOUT",json.dumps({"total":len(rows),"passed":sum(r.get("pass",False) for r in rows),"failed":failed}))
+          if len(rows)!=21 or failed: raise SystemExit(1)
+          PY
+
+  all50:
+    needs: rollout-aggregate
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        include:
+          - batch: s1
+            names: "Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia"
+          - batch: s2
+            names: "Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland"
+          - batch: s3
+            names: "Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey"
+          - batch: s4
+            names: "New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina"
+          - batch: s5
+            names: "South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - uses: actions/checkout@v4
+        with:
+          ref: fa5521899fb8d13598274bed8c5a45c23d0d55c8
+          path: candidate
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - shell: bash
+        env:
+          NAMES: ${{ matrix.names }}
+        run: |
+          set +e
+          python3 -m http.server 8787 --bind 127.0.0.1 --directory candidate >/tmp/earthline-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          CASES=$(python3 - <<'PY'
+          import json,os
+          print(json.dumps([{"name":x,"query":x} for x in os.environ["NAMES"].split("|") if x]))
+          PY
+          )
+          EARTHLINE_URL='http://127.0.0.1:8787/' CASES="$CASES" OUT='all50-${{ matrix.batch }}.json' node tests/mantra74-functional-certification.mjs
+          code=$?
+          echo "$code" > 'all50-${{ matrix.batch }}.exit'
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m75-clean-all50-${{ matrix.batch }}
+          path: |
+            all50-${{ matrix.batch }}.json
+            all50-${{ matrix.batch }}.exit
+      - name: Enforce
+        run: test "$(cat 'all50-${{ matrix.batch }}.exit')" = "0"
+
+  all50-aggregate:
+    needs: all50
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m75-clean-all50-*
+          path: /tmp/results
+          merge-multiple: true
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,glob
+          rows=[]
+          for p in glob.glob('/tmp/results/all50-*.json'):
+              rows += json.load(open(p)).get('rows',[])
+          failed=[{"name":r["name"],"failures":r["failures"]} for r in rows if not r.get("pass")]
+          print("EARTHLINE_M74_ALL50",json.dumps({"total":len(rows),"passed":sum(r.get("pass",False) for r in rows),"failed":failed}))
+          if len(rows)!=50 or failed: raise SystemExit(1)
+          PY
+
+  global:
+    needs: all50-aggregate
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - batch: g1
+            cases: '[{"name":"India — Pune","query":"Pune, India","loc":{"name":"Pune","countryCode":"in","placeType":"city","lat":18.5204,"lng":73.8567}},{"name":"India — Bengaluru","query":"Bengaluru, India","loc":{"name":"Bengaluru","countryCode":"in","placeType":"city","lat":12.9716,"lng":77.5946}},{"name":"Thailand","query":"Chiang Mai, Thailand","loc":{"name":"Chiang Mai","countryCode":"th","placeType":"city","lat":18.7883,"lng":98.9853}},{"name":"Laos","query":"Vientiane, Laos","loc":{"name":"Vientiane","countryCode":"la","placeType":"city","lat":17.9757,"lng":102.6331}}]'
+          - batch: g2
+            cases: '[{"name":"Vietnam","query":"Can Tho, Vietnam","loc":{"name":"Can Tho","countryCode":"vn","placeType":"city","lat":10.0452,"lng":105.7469}},{"name":"Australia — Brisbane","query":"Brisbane, Australia","loc":{"name":"Brisbane","countryCode":"au","placeType":"city","lat":-27.4698,"lng":153.0251}},{"name":"Australia — Perth","query":"Perth, Australia","loc":{"name":"Perth","countryCode":"au","placeType":"city","lat":-31.9523,"lng":115.8613}},{"name":"New Zealand","query":"Auckland, New Zealand","loc":{"name":"Auckland","countryCode":"nz","placeType":"city","lat":-36.8509,"lng":174.7645}}]'
+          - batch: g3
+            cases: '[{"name":"Switzerland","query":"Zurich, Switzerland","loc":{"name":"Zurich","countryCode":"ch","placeType":"city","lat":47.3769,"lng":8.5417}},{"name":"Netherlands","query":"Utrecht, Netherlands","loc":{"name":"Utrecht","countryCode":"nl","placeType":"city","lat":52.0907,"lng":5.1214}},{"name":"Iceland","query":"Reykjavik, Iceland","loc":{"name":"Reykjavik","countryCode":"is","placeType":"city","lat":64.1466,"lng":-21.9426}},{"name":"Kenya","query":"Nairobi, Kenya","loc":{"name":"Nairobi","countryCode":"ke","placeType":"city","lat":-1.2921,"lng":36.8219}}]'
+          - batch: g4
+            cases: '[{"name":"South Africa","query":"Pretoria, South Africa","loc":{"name":"Pretoria","countryCode":"za","placeType":"city","lat":-25.7479,"lng":28.2293}},{"name":"Brazil","query":"Belo Horizonte, Brazil","loc":{"name":"Belo Horizonte","countryCode":"br","placeType":"city","lat":-19.9167,"lng":-43.9345}},{"name":"Mexico","query":"Guadalajara, Mexico","loc":{"name":"Guadalajara","countryCode":"mx","placeType":"city","lat":20.6597,"lng":-103.3496}},{"name":"Japan","query":"Nagano, Japan","loc":{"name":"Nagano","countryCode":"jp","placeType":"city","lat":36.6485,"lng":138.195}}]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - uses: actions/checkout@v4
+        with:
+          ref: fa5521899fb8d13598274bed8c5a45c23d0d55c8
+          path: candidate
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - shell: bash
+        env:
+          CASES_JSON: ${{ matrix.cases }}
+        run: |
+          set +e
+          python3 -m http.server 8787 --bind 127.0.0.1 --directory candidate >/tmp/earthline-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          EARTHLINE_URL='http://127.0.0.1:8787/' CASES="$CASES_JSON" OUT='global-${{ matrix.batch }}.json' node tests/mantra74-functional-certification.mjs
+          code=$?
+          echo "$code" > 'global-${{ matrix.batch }}.exit'
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m75-clean-global-${{ matrix.batch }}
+          path: |
+            global-${{ matrix.batch }}.json
+            global-${{ matrix.batch }}.exit
+      - name: Enforce
+        run: test "$(cat 'global-${{ matrix.batch }}.exit')" = "0"
+
+  global-aggregate:
+    needs: global
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m75-clean-global-*
+          path: /tmp/results
+          merge-multiple: true
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,glob
+          rows=[]
+          for p in glob.glob('/tmp/results/global-*.json'):
+              rows += json.load(open(p)).get('rows',[])
+          failed=[{"name":r["name"],"query":r["query"],"failures":r["failures"]} for r in rows if not r.get("pass")]
+          print("EARTHLINE_M74_GLOBAL",json.dumps({"total":len(rows),"passed":sum(r.get("pass",False) for r in rows),"failed":failed}))
+          if len(rows)!=16 or failed: raise SystemExit(1)
+          PY
