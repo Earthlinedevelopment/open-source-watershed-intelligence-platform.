@@ -1,0 +1,34 @@
+name: Earthline 16168 Owner Cleanup
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['tools/mantra74-16168-owner-cleanup.py']
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+          fetch-depth: 0
+      - run: python3 tools/mantra74-16168-owner-cleanup.py
+      - shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          for(const m of s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi))if(m[1].trim())new Function(m[1]);
+          for(const x of ['new MutationObserver(sync).observe(main','controlsMutationRaf16168',"['zoomend','moveend','rotateend','pitchend','idle']"])if(s.includes(x))throw Error(x);
+          NODE
+          git diff --check
+      - shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Stability Recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git rm -f tools/mantra74-16168-owner-cleanup.py .github/workflows/earthline-16168-owner-cleanup.yml
+          git add index.html
+          git commit -m "stability: retire legacy 16168 restore observers"
+          git push origin HEAD:recovery/mantra74-stability
