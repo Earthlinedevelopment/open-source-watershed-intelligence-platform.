@@ -1,0 +1,30 @@
+name: Earthline Frozen Clearance Audit
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths: ['.earthline-frozen-clearance-trigger']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+      - shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for n in ['function earthlineFrozenPropertyClearanceAudit16255','frozenClearance16255','published-corridor-intersects-frozen-no-build-mask','earthlineBlockPropertyPublication16176(']:
+            print('\n===',n,'===')
+            start=0; hits=0
+            while True:
+              i=s.find(n,start)
+              if i<0: break
+              print(s[max(0,i-5000):min(len(s),i+12000)])
+              start=i+len(n); hits+=1
+              if hits>=8: break
+          PY
