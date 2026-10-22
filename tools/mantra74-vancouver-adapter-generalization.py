@@ -59,3 +59,5 @@ for bad in [
 
 p.write_text(s,encoding="utf-8")
 print("EARTHLINE_VANCOUVER_ADAPTER_GENERALIZED",len(before)-len(s))
+
+# trigger
