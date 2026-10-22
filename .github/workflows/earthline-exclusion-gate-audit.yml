@@ -18,18 +18,12 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           lines=Path('index.html').read_text(encoding='utf-8').splitlines()
-          needles=[
-            'earthlineLockPropertyResult15815(',
-            'await vectorNoBuild15778',
-            'vectorNoBuild15778(',
-            'earthlineFinalizeVectorVerification16343(',
-            'M.vectorNoBuildCoverage.publicationAllowed'
-          ]
+          needles=['async function rebuildModel','function rebuildModel','earthlineBuildVectorNoBuildMask','vectorNoBuild15778','earthlineLockPropertyResult15815(true)']
           for n in needles:
             print('\n###',n)
             for i,line in enumerate(lines,1):
               if n in line:
-                a=max(1,i-8); b=min(len(lines),i+12)
-                print(f'-- hit {i} --')
+                a=max(1,i-18); b=min(len(lines),i+32)
+                print(f'-- {i} --')
                 for k in range(a,b+1): print(f'{k}: {lines[k-1]}')
           PY
