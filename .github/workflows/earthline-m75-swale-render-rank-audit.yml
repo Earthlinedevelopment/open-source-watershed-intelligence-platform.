@@ -1,0 +1,27 @@
+name: Earthline M75 Swale Render and Rank Audit
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths:
+      - .github/workflows/earthline-m75-swale-render-rank-audit.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          import re,pathlib
+          s=pathlib.Path('index.html').read_text(errors='ignore')
+          terms=['SAFE_LAYERS_16221','earthline-property-safe-water-16221','line-dasharray','flowFirst15836','primaryCandidates','contour-fill','sourceKind','bandKey','score:']
+          for term in terms:
+            hits=list(re.finditer(re.escape(term),s))
+            print('\n###',term,'COUNT',len(hits))
+            for m in hits[-5:]:
+              print('\n---',m.start(),'---\n',s[max(0,m.start()-1800):min(len(s),m.start()+4500)])
+          PY
