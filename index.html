@@ -20443,7 +20443,8 @@ var prescribeSwales;
   let lastAnimationPaint=0;
 
   function mapReady(){
-    return !!(typeof earthlineMap!=="undefined"&&earthlineMap&&earthlineMap.isStyleLoaded&&earthlineMap.isStyleLoaded());
+    if(!(typeof earthlineMap!=="undefined"&&earthlineMap))return false;
+    try{return typeof earthlineMap.getStyle==="function"&&!!earthlineMap.getStyle()}catch(_){return false}
   }
   function activeProperty(){
     const s=window.earthlineRegional15778||{};
