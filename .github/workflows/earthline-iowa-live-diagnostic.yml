@@ -1,21 +1,21 @@
-name: Earthline Iowa Regional Grid Verification
+name: Earthline Iowa Active Render Audit
 on:
   push:
     branches:
       - recovery/mantra74-stability
     paths:
-      - tests/iowa-regional-grid-test.mjs
+      - tests/iowa-active-render-audit.mjs
       - .github/workflows/earthline-iowa-live-diagnostic.yml
 permissions:
   contents: read
 jobs:
-  verify:
+  audit:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 7d85cfaad69a271f5e4f836081953a609f3751b3
+          ref: pages-live
           path: candidate
       - uses: actions/checkout@v4
         with:
@@ -28,18 +28,18 @@ jobs:
         run: |
           cd controller
           npm install --no-save playwright@1.55.0
-      - name: Run Iowa statewide Regional verification
+      - name: Run Iowa active render audit
         run: |
-          python3 -m http.server 8787 --bind 127.0.0.1 --directory candidate >/tmp/earthline-grid-http.log 2>&1 &
+          python3 -m http.server 8787 --bind 127.0.0.1 --directory candidate >/tmp/earthline-active-audit-http.log 2>&1 &
           SERVER_PID=$!
           trap 'kill $SERVER_PID || true' EXIT
           for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
           cd controller
-          EARTHLINE_URL=http://127.0.0.1:8787/ node tests/iowa-regional-grid-test.mjs
+          EARTHLINE_URL=http://127.0.0.1:8787/ node tests/iowa-active-render-audit.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: iowa-regional-grid-test
+          name: iowa-active-render-audit
           path: |
-            controller/iowa-regional-grid-test.json
-            controller/iowa-regional-grid-test.png
+            controller/iowa-active-render-audit.json
+            controller/iowa-active-render-audit.png
