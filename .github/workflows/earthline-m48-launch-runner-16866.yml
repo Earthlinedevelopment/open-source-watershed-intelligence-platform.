@@ -22,7 +22,6 @@ jobs:
       - name: Install browser
         run: |
           npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
       - name: Run Iowa Regional + Property + tree persistence
         shell: bash
         run: |
@@ -30,7 +29,7 @@ jobs:
           import { chromium } from 'playwright';
           import fs from 'fs';
 
-          const browser=await chromium.launch({headless:true});
+          const browser=await chromium.launch({headless:true,channel:'chrome'});
           const page=await browser.newPage({viewport:{width:1800,height:1000}});
           const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
           await page.route('https://api.mapbox.com/**',async route=>{
