@@ -57,3 +57,4 @@ fs.writeFileSync('iowa-regional-current.json',JSON.stringify(out,null,2));
 await page.screenshot({path:'iowa-regional-current.png',fullPage:false});
 console.log('EARTHLINE_IOWA_REGIONAL_CURRENT '+JSON.stringify(out));
 await browser.close();
+// trigger live regional audit
