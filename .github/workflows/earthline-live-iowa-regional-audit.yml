@@ -1,0 +1,29 @@
+name: Earthline Live Iowa Regional Audit
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths:
+      - tests/iowa-regional-current.mjs
+      - .github/workflows/earthline-live-iowa-regional-audit.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/iowa-regional-current.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iowa-regional-current
+          path: |
+            iowa-regional-current.json
+            iowa-regional-current.png
