@@ -1,0 +1,88 @@
+name: Earthline M75 Contour Fragment Merge Repair
+on:
+  push:
+    branches:
+      - recovery/mantra75-current-engine
+    paths:
+      - .github/workflows/earthline-m75-contour-merge-repair.yml
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-current-engine
+          fetch-depth: 0
+      - name: Merge safe same-band contour fragments
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(errors='strict')
+          old='''        if(rebuilt){
+          rebuilt.merged=true;
+          current=rebuilt;used[bestJ]=1;changed=true;
+        }'''
+          new='''        if(rebuilt){
+          rebuilt.merged=true;
+          rebuilt.bandKey=current.bandKey;
+          rebuilt.levelH=current.levelH;
+          rebuilt.targetSpacingM=current.targetSpacingM;
+          rebuilt.verifiedSpacingM=current.verifiedSpacingM;
+          rebuilt.primaryFlowFirst15836=false;
+          rebuilt.prescriptionFlowScore15833=Math.max(Number(current.prescriptionFlowScore15833||0),Number(other.prescriptionFlowScore15833||0));
+          rebuilt.seedFlowCrossing15833=Math.max(Number(current.seedFlowCrossing15833||0),Number(other.seedFlowCrossing15833||0));
+          current=rebuilt;used[bestJ]=1;changed=true;
+        }'''
+          if s.count(old)!=1: raise SystemExit(f'merge helper target {s.count(old)}')
+          s=s.replace(old,new,1)
+
+          marker='''    window.earthlineFilterAuthorityCorridors15874(kept);
+    kept.sort((a,b)=>(a.levelH-b.levelH)||((b.score||0)-(a.score||0)));'''
+          replacement='''    if(!isRegionalTile15769&&kept.length>1){
+      const primary17701=kept.filter(sw=>!!sw.primaryFlowFirst15836);
+      const contour17701=kept.filter(sw=>!sw.primaryFlowFirst15836);
+      const mergedContour17701=earthlineMergeCompatibleSwales(
+        contour17701,chanThr,maxS,levels.length,targetSpacingM15771
+      );
+      const before17701=kept.length;
+      kept.splice(0,kept.length,...primary17701,...mergedContour17701);
+      M.swaleDiagnostics.fragmentMerge17701={
+        before:before17701,
+        primaryUnchanged:primary17701.length,
+        contourBefore:contour17701.length,
+        contourAfter:mergedContour17701.length,
+        mergedCount:Math.max(0,contour17701.length-mergedContour17701.length),
+        rule:"same-contour only; safe aligned bridge required"
+      };
+    }
+    window.earthlineFilterAuthorityCorridors15874(kept);
+    kept.sort((a,b)=>(a.levelH-b.levelH)||((b.score||0)-(a.score||0)));'''
+          if s.count(marker)!=1: raise SystemExit(f'publication marker {s.count(marker)}')
+          s=s.replace(marker,replacement,1)
+          p.write_text(s)
+          print('EARTHLINE_CONTOUR_FRAGMENT_MERGE_OK')
+          PY
+      - name: Parse check
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('EARTHLINE_CONTOUR_FRAGMENT_MERGE_PARSE_OK',parsed);
+          NODE
+      - name: Commit repair
+        shell: bash
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: merge safe same-contour Property fragments"
+          git push origin HEAD:recovery/mantra75-current-engine
