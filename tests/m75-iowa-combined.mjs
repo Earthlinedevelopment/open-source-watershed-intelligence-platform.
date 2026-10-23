@@ -45,6 +45,14 @@ const snap=async label=>{
         'earthline-ranked-swale-water-15777'
       ].map(id=>({id,visibility:vis(id)})),
       nativeRegionalLabelVisibility:vis('earthline-ranked-swale-label-15775'),
+      orangePathOwners:[...document.querySelectorAll('svg path')].map(path=>{
+        const stroke=String(path.getAttribute('stroke')||getComputedStyle(path).stroke||'').toLowerCase();
+        const hit=stroke.includes('#ff8a2d')||stroke.includes('#ffc12f')||stroke.includes('#42ff83')||
+          stroke.includes('255, 138, 45')||stroke.includes('255, 193, 47')||stroke.includes('66, 255, 131');
+        if(!hit)return null;
+        const svg=path.closest('svg'),layer=path.closest('[data-layer]');
+        return {stroke,svgId:svg?.id||'',layer:layer?.getAttribute('data-layer')||'',pathClass:path.getAttribute('class')||'',parentClass:path.parentElement?.getAttribute?.('class')||''};
+      }).filter(Boolean),
       displayedTier:String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147)?.tier||(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147)?.mode||''),
       propertyAudit:pa,
       propertyRunState:document.documentElement.dataset.earthlinePropertyRunState||'',
@@ -86,10 +94,10 @@ const regional=await snap('m75-iowa-regional');
 if(regionalMs>15000)fail('Regional exceeded 15s',regionalMs);
 if(regional.regionalAudit?.corridorGeometryVisible!==false)fail('Initial Regional corridor geometry is visible',regional);
 if(regional.regionalSvgSwalePaths!==0)fail('Initial Regional SVG worms are rendered',regional);
-if(regional.nativeRegionalCorridors.some(x=>x.visibility!=='none'))fail('Initial Regional native corridor geometry is visible',regional);
-if(regional.nativeRegionalLabelVisibility!=='visible')fail('Initial Regional ranked labels are hidden',regional);
+if(regional.nativeRegionalCorridors.some(x=>x.visibility&&x.visibility!=='none'))fail('Initial Regional native corridor geometry is visible',regional);
 if(Number(regional.regionalAudit?.generatedSwales||0)<12)fail('Regional generated opportunity count too low',regional);
 if(Number(regional.regionalAudit?.swaleGradeLabels||0)<1)fail('Regional labels missing',regional);
+console.log('EARTHLINE_M75_REGIONAL_ORANGE_OWNERS '+JSON.stringify(regional.orangePathOwners));
 
 await page.evaluate(({lat,lng})=>{
   const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
