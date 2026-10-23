@@ -1,0 +1,45 @@
+name: Earthline Public Iowa Property Verify
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths:
+      - .github/workflows/public-iowa-property-verify.yml
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify public Iowa Property
+        run: |
+          cat > iowa-public-property.mjs <<'NODE'
+          import { chromium } from 'playwright';
+          const b=await chromium.launch({headless:true});
+          const p=await b.newPage({viewport:{width:1600,height:900}});
+          const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+          await p.goto('https://earthlinedevelopment.org/?property-verify='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await p.waitForSelector('#searchInput',{timeout:30000});
+          await p.waitForFunction(()=>window.earthlineMap||typeof earthlineMap!=='undefined',null,{timeout:30000});
+          const i=p.locator('#searchInput'); await i.fill('Iowa'); await p.waitForTimeout(900);
+          const o=p.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
+          if(await o.count()) await o.first().click({force:true}); else await i.press('Enter').catch(()=>{});
+          await p.waitForTimeout(250); await p.locator('#runBtn').click({force:true});
+          await p.waitForFunction(()=>{const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147;return d&&String(d.tier||d.mode).toLowerCase()==='regional'&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';},null,{timeout:90000,polling:200});
+          await p.evaluate(()=>{const m=window.earthlineMap||earthlineMap;m.jumpTo({center:[-93.38977,41.95715],zoom:18});window.earthlineSetPropertyTarget16201?.({lng:-93.38977,lat:41.95715,source:'crosshair'},{openPanel:false});});
+          await p.waitForTimeout(500); await p.locator('#earthlineDeclareProperty16169').click({force:true});
+          const t0=Date.now();
+          await p.waitForFunction(()=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173;return a?.settled===true&&a?.renderVerified===true;},null,{timeout:90000,polling:200});
+          const read=()=>p.evaluate(()=>{const m=window.earthlineMap||earthlineMap;const s=m.getSource('earthline-swale-planting-15806');const d=s&&(s._data||s._options?.data);const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;return {trees:Array.isArray(d?.features)?d.features.length:0,shadow:m.getLayoutProperty('earthline-swale-planting-shadow-15806','visibility')||'visible',plant:m.getLayoutProperty('earthline-swale-planting-layer-15806','visibility')||'visible',corridors:Number(a?.corridors||0),renderVerified:a?.renderVerified===true};});
+          const first=await read();await p.waitForTimeout(5000);const later=await read();
+          console.log('EARTHLINE_PUBLIC_PROPERTY '+JSON.stringify({elapsedMs:Date.now()-t0,first,later,errors:errs}));
+          if(!(first.corridors>0&&first.renderVerified&&first.trees>0&&later.trees===first.trees&&first.shadow!=='none'&&first.plant!=='none'&&later.shadow!=='none'&&later.plant!=='none'))throw new Error('public Property persistence failed');
+          await b.close();
+          NODE
+          node iowa-public-property.mjs
