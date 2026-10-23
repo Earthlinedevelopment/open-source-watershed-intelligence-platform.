@@ -1,0 +1,41 @@
+name: Earthline Public Iowa Regional Inline Verify
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths:
+      - .github/workflows/public-iowa-regional-inline.yml
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify public Iowa Regional
+        run: |
+          cat > /tmp/iowa-public.mjs <<'NODE'
+          import { chromium } from 'playwright';
+          const b=await chromium.launch({headless:true});
+          const p=await b.newPage({viewport:{width:1600,height:900}});
+          const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
+          await p.goto('https://earthlinedevelopment.org/?verify='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await p.waitForSelector('#searchInput',{timeout:30000});
+          await p.waitForFunction(()=>window.earthlineMap||typeof earthlineMap!=='undefined',null,{timeout:30000});
+          const i=p.locator('#searchInput'); await i.fill('Iowa'); await p.waitForTimeout(900);
+          const o=p.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
+          if(await o.count()) await o.first().click({force:true}); else await i.press('Enter').catch(()=>{});
+          await p.waitForTimeout(250);
+          const t0=Date.now(); await p.locator('#runBtn').click({force:true});
+          await p.waitForFunction(()=>{const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147;return d&&String(d.tier||d.mode).toLowerCase()==='regional'&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';},null,{timeout:90000,polling:200});
+          const out=await p.evaluate(()=>({d:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,pub:window.EARTHLINE_REGIONAL_PUBLICATION_SELECTION_17700||null}));
+          console.log('EARTHLINE_PUBLIC_IOWA '+JSON.stringify({elapsedMs:Date.now()-t0,swales:out.d?.derived?.swaleOpportunityLines||0,pub:out.pub,errors:errs}));
+          if(!(out.d?.derived?.swaleOpportunityLines>0)) throw new Error('public Iowa Regional published zero swales');
+          await b.close();
+          NODE
+          node /tmp/iowa-public.mjs
