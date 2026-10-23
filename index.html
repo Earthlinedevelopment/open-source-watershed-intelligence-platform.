@@ -6287,6 +6287,13 @@ function earthlineMergeCompatibleSwales(swales,chanThr,maxS,totalBands,targetM){
         const rebuilt=earthlineSwaleFromPts(bestPts,current.band,chanThr,current.isSite||other.isSite,maxS,totalBands);
         if(rebuilt){
           rebuilt.merged=true;
+          rebuilt.bandKey=current.bandKey;
+          rebuilt.levelH=current.levelH;
+          rebuilt.targetSpacingM=current.targetSpacingM;
+          rebuilt.verifiedSpacingM=current.verifiedSpacingM;
+          rebuilt.primaryFlowFirst15836=false;
+          rebuilt.prescriptionFlowScore15833=Math.max(Number(current.prescriptionFlowScore15833||0),Number(other.prescriptionFlowScore15833||0));
+          rebuilt.seedFlowCrossing15833=Math.max(Number(current.seedFlowCrossing15833||0),Number(other.seedFlowCrossing15833||0));
           current=rebuilt;used[bestJ]=1;changed=true;
         }
       }
@@ -13929,6 +13936,14 @@ var prescribeSwales;
         rec.reachedSpacingEvaluation15840=false;rec.reachedFinalCapEvaluation15840=false;
       }
     }else coverageDiag15803.termination.finalCapShadowMethod15839="not-needed-final-cap-not-reached";
+    if(!isRegionalTile15769&&kept.length>1){
+      const primary17701=kept.filter(sw=>!!sw.primaryFlowFirst15836);
+      const contour17701=kept.filter(sw=>!sw.primaryFlowFirst15836);
+      const mergedContour17701=earthlineMergeCompatibleSwales(contour17701,chanThr,maxS,levels.length,targetSpacingM15771);
+      const before17701=kept.length;
+      kept.splice(0,kept.length,...primary17701,...mergedContour17701);
+      M.swaleDiagnostics.fragmentMerge17701={before:before17701,primaryUnchanged:primary17701.length,contourBefore:contour17701.length,contourAfter:mergedContour17701.length,mergedCount:Math.max(0,contour17701.length-mergedContour17701.length),rule:"same-contour only; safe aligned bridge required"};
+    }
     window.earthlineFilterAuthorityCorridors15874(kept);
     kept.sort((a,b)=>(a.levelH-b.levelH)||((b.score||0)-(a.score||0)));
     kept.forEach((s,i)=>{
