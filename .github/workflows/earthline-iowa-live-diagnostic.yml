@@ -1,45 +1,42 @@
-name: Earthline Iowa Regional Render Candidate Audit
+name: Earthline Regional 16060 Render Repair Runner
 on:
   push:
     branches:
       - recovery/mantra74-stability
     paths:
-      - tests/iowa-active-render-audit.mjs
+      - tools/remove-regional-16060-width-override.py
       - .github/workflows/earthline-iowa-live-diagnostic.yml
 permissions:
-  contents: read
+  contents: write
 jobs:
-  audit:
+  repair:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           ref: recovery/mantra75-regional-render-clean
-          path: candidate
+          fetch-depth: 0
       - uses: actions/checkout@v4
         with:
           ref: recovery/mantra74-stability
           path: controller
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Playwright package
+      - name: Remove 16060 Regional width override
+        run: python3 controller/tools/remove-regional-16060-width-override.py
+      - name: Parse-check
         run: |
-          cd controller
-          npm install --no-save playwright@1.55.0
-      - name: Run Iowa render candidate audit
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim()) continue;
+            try{ new Function(m[1]); parsed++; } catch(e){ throw Error('inline script '+i+': '+e.message); }
+          }
+          console.log('EARTHLINE_REGIONAL_16060_PARSE_OK',parsed);
+          NODE
+      - name: Commit render repair
         run: |
-          python3 -m http.server 8787 --bind 127.0.0.1 --directory candidate >/tmp/earthline-render-candidate-http.log 2>&1 &
-          SERVER_PID=$!
-          trap 'kill $SERVER_PID || true' EXIT
-          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
-          cd controller
-          EARTHLINE_URL=http://127.0.0.1:8787/ node tests/iowa-active-render-audit.mjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: iowa-regional-render-candidate
-          path: |
-            controller/iowa-active-render-audit.json
-            controller/iowa-active-render-audit.png
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: retire legacy Regional worm width overrides"
+          git push origin HEAD:recovery/mantra75-regional-render-clean
