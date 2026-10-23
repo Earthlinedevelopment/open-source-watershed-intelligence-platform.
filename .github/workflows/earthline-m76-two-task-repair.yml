@@ -1,0 +1,118 @@
+name: Earthline M76 Two-Task Repair
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths: ['.earthline-m76-two-task-repair-trigger']
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra76-audit-restart
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply only approved scale and report-map repairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+
+          reps=[]
+
+          reps.append((
+          '''function updateScalebar(){
+            const m=150/view.s*M.cellM;''',
+          '''function updateScalebar(){
+            if(MB_ON()&&typeof window.earthlineUpdateScale16149==="function"){
+              try{if(window.earthlineUpdateScale16149())return;}catch(_){}
+            }
+            const m=150/view.s*M.cellM;'''
+          ))
+
+          reps.append((
+          '''function niceDistance(m){const values=[1,2,5],pow=Math.pow(10,Math.floor(Math.log10(Math.max(1,m)))),raw=m/pow;let n=values.find(v=>v>=raw)||10;return n*pow}''',
+          '''function niceDistance(m){const pow=Math.pow(10,Math.floor(Math.log10(Math.max(1,m)))),raw=m/pow,n=raw>=5?5:raw>=2?2:1;return n*pow}'''
+          ))
+
+          reps.append((
+          '''  if(state&&!propertyMode){
+              for(const ring of stateRings){
+                const dp=pathCoords(ring);if(dp)parts.push('<path d="'+dp+' Z" fill="#eef1ed" stroke="#4f6259" stroke-width="1.45" vector-effect="non-scaling-stroke"/>');
+              }
+            }''',
+          '''  if(state){
+              for(const ring of stateRings){
+                const dp=pathCoords(ring);if(dp)parts.push('<path d="'+dp+' Z" fill="'+(propertyMode?'none':'#f2f4f0')+'" stroke="#334a43" stroke-width="'+(propertyMode?'2.15':'1.75')+'" opacity=".96" vector-effect="non-scaling-stroke"/>');
+              }
+            }'''
+          ))
+
+          reps.append((
+          '''      parts.push('<path d="'+dp+'" fill="#e6a35e" fill-opacity=".23" fill-rule="evenodd" stroke="#b96d31" stroke-width=".72" stroke-opacity=".72" vector-effect="non-scaling-stroke"/>');''',
+          '''      parts.push('<path d="'+dp+'" fill="#e6a35e" fill-opacity=".11" fill-rule="evenodd" stroke="#b96d31" stroke-width=".46" stroke-opacity=".38" vector-effect="non-scaling-stroke"/>');'''
+          ))
+
+          reps.append((
+          '''    const dp=path(row.f);if(dp)parts.push('<path d="'+dp+'" fill="none" stroke="#72a7b9" stroke-width=".72" opacity=".43" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');''',
+          '''    const dp=path(row.f);if(dp)parts.push('<path d="'+dp+'" fill="none" stroke="#72a7b9" stroke-width=".62" opacity=".27" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');'''
+          ))
+
+          reps.append((
+          '''  const kmWide=Math.max(.001,xSpan*111.32*cosLat),mWide=kmWide*1000;''',
+          '''  const dLonRad=xSpan*Math.PI/180,latRad=midLat*Math.PI/180;
+            const scaleH=Math.min(1,Math.max(0,Math.cos(latRad)*Math.cos(latRad)*Math.sin(dLonRad/2)*Math.sin(dLonRad/2)));
+            const mWide=Math.max(1,2*6371008.8*Math.asin(Math.sqrt(scaleH))),kmWide=mWide/1000;'''
+          ))
+
+          for old,new in reps:
+              count=s.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected exactly one authoritative match, got {count}: {old[:80]}')
+              s=s.replace(old,new,1)
+
+          p.write_text(s,encoding='utf-8')
+          PY
+
+      - name: Validate repaired ownership and scale math
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'window.earthlineUpdateScale16149())return' index.html
+          grep -q 'raw>=5?5:raw>=2?2:1' index.html
+          ! grep -q 'if(state&&!propertyMode)' index.html
+          grep -q "propertyMode?'2.15':'1.75'" index.html
+          grep -q 'const dLonRad=xSpan\*Math.PI/180' index.html
+          grep -q 'fill-opacity=".11"' index.html
+          node - <<'NODE'
+          function niceDistance(m){const pow=Math.pow(10,Math.floor(Math.log10(Math.max(1,m)))),raw=m/pow,n=raw>=5?5:raw>=2?2:1;return n*pow}
+          for(const meters of [12,37,73,133,275,910,2400,8800]){
+            const nice=niceDistance(meters),px=150*nice/meters;
+            if(!(nice<=meters+1e-9))throw Error('scale label exceeds measured ground distance');
+            if(!(px>=70&&px<=151))throw Error('scale bar falls outside stable display range: '+meters+' -> '+px);
+          }
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('EARTHLINE_M76_TWO_TASK_INLINE_SCRIPTS_OK',parsed);
+          NODE
+      - name: Commit authoritative repair and self-clean
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/earthline-m76-two-task-repair.yml .earthline-m76-two-task-repair-trigger
+          git config user.name "Earthline Recovery"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html .github/workflows/earthline-m76-two-task-repair.yml .earthline-m76-two-task-repair-trigger
+          git commit -m "fix: accurate live scale and clear report state context"
+          git push origin HEAD:recovery/mantra76-audit-restart
