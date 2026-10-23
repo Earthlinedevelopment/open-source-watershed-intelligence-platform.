@@ -1,0 +1,42 @@
+name: Earthline M76 Swale Owner Inspect
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths: ['.github/workflows/earthline-m76-swale-inspect.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra76-audit-restart
+          fetch-depth: 0
+      - name: Print authoritative swale owner and renderer evidence
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(encoding='utf-8')
+          def around(label,needle,before=2200,after=9000,start=0):
+              i=s.find(needle,start)
+              print("\n===== "+label+" =====")
+              print("INDEX",i,"COUNT",s.count(needle))
+              if i>=0: print(s[max(0,i-before):min(len(s),i+after)])
+              return i
+          p=around("PRESCRIBER","async function prescribeSwales15778(",500,18000)
+          if p>=0:
+              e=s.find("\n  prescribeSwales=prescribeSwales15778;",p)
+              print("\n===== PRESCRIBER_TAIL =====")
+              print("END",e,"LEN",e-p if e>=0 else -1)
+              if e>=0: print(s[max(p,e-12000):min(len(s),e+900)])
+          around("SPATIAL_SELECTION","EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736",2500,16000)
+          for n in ["regionalScale=regionalZoom","const casing=grade","TILE_UP","swale","corridor","stroke-width"]:
+              print("\n===== MATCHES "+n+" =====")
+              hits=[m.start() for m in re.finditer(re.escape(n),s,re.I)]
+              print("COUNT",len(hits))
+              for j in hits[-12:]:
+                  print("\n---",j,"---\n",s[max(0,j-750):min(len(s),j+2200)])
+          PY
