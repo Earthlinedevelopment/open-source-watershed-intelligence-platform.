@@ -1,0 +1,51 @@
+name: Earthline M75 Property Candidate Cap Repair
+on:
+  push:
+    branches:
+      - recovery/mantra75-current-engine
+    paths:
+      - .github/workflows/earthline-m75-property-cap-repair.yml
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-current-engine
+          fetch-depth: 0
+      - name: Expand Property candidate budget
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(errors='strict')
+          old=': {maxLevels:72,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200,perLevel:16,maxMs:120000};'
+          new=': {maxLevels:72,maxSeedsPerLevel:16,maxCandidates:512,maxFinal:240,perLevel:16,maxMs:120000};'
+          if s.count(old)!=1: raise SystemExit(f'property cap target {s.count(old)}')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          print('EARTHLINE_PROPERTY_CAP_REPAIR_OK')
+          PY
+      - name: Parse check
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('EARTHLINE_PROPERTY_CAP_PARSE_OK',parsed);
+          NODE
+      - name: Commit repair
+        shell: bash
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: evaluate all Property contour levels before cap"
+          git push origin HEAD:recovery/mantra75-current-engine
