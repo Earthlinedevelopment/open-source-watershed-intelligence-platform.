@@ -33,6 +33,10 @@ const diag=await page.evaluate(()=>({
   swaleDiagnostics:(typeof M!=='undefined'&&M.swaleDiagnostics)||null,
   coverage:(typeof M!=='undefined'&&M.coverageDiagnostic15803)||null,
   regionalState:window.earthlineRegional15778||null,
+  performance:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,
+  loadingAudit:window.EARTHLINE_LOADING_AUDIT_16167||null,
+  nativePublication:window.EARTHLINE_REGIONAL_NATIVE_PUBLICATION_16920||null,
+  ledger:(window.EARTHLINE_RUN_LEDGER_16147||[]).slice(-40),
   busy:document.getElementById('runBtn')?.getAttribute('aria-busy')||null
 }));
 diag.settled=settled;diag.elapsedMs=Date.now()-started;
@@ -41,3 +45,5 @@ await page.screenshot({path:'iowa-regional-production.png',fullPage:false});
 console.log('EARTHLINE_IOWA_REGIONAL_PRODUCTION '+JSON.stringify(diag));
 await browser.close();
 // M75_ENGINE_RETEST_B6228F6B
+
+// M75_REGIONAL_PHASE_DIAGNOSTIC
