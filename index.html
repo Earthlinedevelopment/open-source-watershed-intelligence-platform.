@@ -13368,6 +13368,39 @@ var prescribeSwales;
       ? earthlineMinimumSwaleLengthM15768()
       : Math.max(24,earthlineMinimumSwaleLengthM15768());
 
+    function earthlineMergePropertyContourSegments17700(input,L17700){
+      const segs=(input||[]).filter(seg=>Array.isArray(seg)&&seg.length>=2);
+      if(isRegionalTile15769||segs.length<2)return segs;
+      const pool=segs.slice().sort((a,b)=>earthlineSegmentLengthM(b)-earthlineSegmentLengthM(a));
+      const used=new Uint8Array(pool.length),out=[];
+      const maxGapM17700=Math.min(12,Math.max(5,targetSpacingM15771*1.25));
+      for(let i=0;i<pool.length;i++){
+        if(used[i])continue;
+        used[i]=1;
+        let current=pool[i],changed=true,passes=0;
+        while(changed&&passes++<8){
+          changed=false;
+          let bestJ=-1,bestPts=null,bestLen=earthlineSegmentLengthM(current);
+          for(let j=0;j<pool.length;j++){
+            if(used[j])continue;
+            const joined=earthlineJoinPathsIfCompatible(current,pool[j],maxS,maxGapM17700);
+            if(!joined)continue;
+            if(!earthlineOnContourGuard15833(joined,L17700,levelStep))continue;
+            const len=earthlineSegmentLengthM(joined);
+            if(len>bestLen){bestLen=len;bestJ=j;bestPts=joined;}
+          }
+          if(bestJ>=0&&bestPts){
+            current=bestPts;
+            used[bestJ]=1;
+            changed=true;
+          }
+        }
+        out.push(current);
+      }
+      out.sort((a,b)=>earthlineSegmentLengthM(b)-earthlineSegmentLengthM(a));
+      return out;
+    }
+
 
     /* BUILD-CHECK-15837 — WATER-BUFFER FEASIBILITY TEST.
        Scientific change: waterRadius 12m -> 2.4m only.
@@ -13494,7 +13527,7 @@ var prescribeSwales;
             M.swaleDiagnostics.timeBudgetReached=true;break;
           }
           const baseSegs16320=(!pts16320||pts16320.length<3)?[]:
-            earthlineSplitUsableSegments(pts16320,maxS).filter(seg=>
+            earthlineMergePropertyContourSegments17700(earthlineSplitUsableSegments(pts16320,maxS),L15836).filter(seg=>
               seg&&seg.length>=3&&earthlineSegmentLengthM(seg)>=minSegmentM&&
               earthlineOnContourGuard15833(seg,L15836,levelStep)
             );
@@ -13634,7 +13667,7 @@ var prescribeSwales;
         coverageDiag15803.totals.traces++;
         /* BUILD-CHECK-15803-DIAGNOSTIC-END */
         M.swaleDiagnostics.stage.traces++;
-        const segs=earthlineSplitUsableSegments(pts,maxS).slice(0,3);
+        const segs=earthlineMergePropertyContourSegments17700(earthlineSplitUsableSegments(pts,maxS),L).slice(0,3);
         if(seedRec15803){
           seedRec15803.segmentCount15840=segs.length;
           seedRec15803.segmentProduced15840=segs.length>0;
