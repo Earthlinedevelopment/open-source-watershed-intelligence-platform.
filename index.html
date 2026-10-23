@@ -13863,7 +13863,7 @@ var prescribeSwales;
       bboxSkippedFinalPairs16204+=Math.max(0,kept.length-spacingCandidates16456.length);
       for(const exIndex16204 of spacingCandidates16456){
         const ex=kept[exIndex16204];
-        if(sw.bandKey===ex.bandKey)continue;
+        /* EARTHLINE 17710 — same-band corridors still obey the same physical minimum-spacing rule. */
         if(Math.abs(Number(sw.levelH||0)-Number(ex.levelH||0))>verticalWindowM)continue;
         if(!earthlineSwaleBBoxesWithin16204(swBBox16204,keptBBox16204[exIndex16204],spacingPadCells16204)){bboxSkippedFinalPairs16204++;continue;}
         exactFinalPairs16204++;
@@ -21937,6 +21937,7 @@ var prescribeSwales;
   const PLANT_SHADOW="earthline-swale-planting-shadow-15806";
   const PLANT_LAYER="earthline-swale-planting-layer-15806";
   const state=window.earthlineRegional15778||{};
+  const currentState15806=()=>window.earthlineRegional15778||window.earthlineRegional15761||state||{};
   let plantingVisible=true;
   let lastPlantingData15806=null;
 
@@ -22034,7 +22035,7 @@ var prescribeSwales;
          Hand final analytical z-order back to the existing 15805 owner so hydro
          evidence cannot be buried by a later planting refresh. */
       if(
-        M&&M.analysisReady&&state.mode==="property"&&!state.active&&
+        M&&M.analysisReady&&currentState15806().mode==="property"&&!currentState15806().active&&
         typeof window.earthlineApplyRendererOwnership15805==="function"
       )window.earthlineApplyRendererOwnership15805("property");
       return true;
@@ -22046,7 +22047,9 @@ var prescribeSwales;
     lastPlantingData15806=data;
     const src=earthlineMap.getSource(PLANT_SOURCE);
     if(src&&src.setData)src.setData(data);
-    setPlantingVisible15806(plantingVisible&&data.features.length>0);
+    const liveState15806=currentState15806();
+    const propertyOwnsPlanting15806=!!(M&&M.analysisReady&&liveState15806.mode==="property"&&!liveState15806.active);
+    setPlantingVisible15806(propertyOwnsPlanting15806&&data.features.length>0);
     M.naturalSwalePlanting15806={features:data.features.length,visible:plantingVisible,source:PLANT_SOURCE};
     return true
   }
@@ -22179,7 +22182,7 @@ var prescribeSwales;
         if(lastPlantingData15806&&Array.isArray(lastPlantingData15806.features)&&lastPlantingData15806.features.length){
           const src=earthlineMap.getSource(PLANT_SOURCE);
           if(src&&src.setData)src.setData(lastPlantingData15806);
-          const propertyOwnsPlanting=state.mode==="property"&&!state.active&&!!(M&&M.analysisReady&&M.layers&&M.layers.swales&&M.layers.swales.on);
+          const propertyOwnsPlanting=currentState15806().mode==="property"&&!currentState15806().active&&!!(M&&M.analysisReady&&M.layers&&M.layers.swales&&M.layers.swales.on);
           setPlantingVisible15806(propertyOwnsPlanting);
         }
       }catch(e){}
@@ -32723,7 +32726,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
         rows16839.push({bx:bx16839,by:by16839,x0:x016839,x1:x116839,y0:y016839,y1:y116839,valid:valid16839,opp:opp16839,pref:pref16839,swales:0});
       }
       for(const f16839 of swales.features||[]){const c16839=f16839?.geometry?.type==='LineString'?f16839.geometry.coordinates:null;if(!Array.isArray(c16839)||!c16839.length)continue;const m16839=c16839[Math.floor((c16839.length-1)/2)],g16839=llGrid(hy,m16839);if(!g16839||!Number.isFinite(g16839.x)||!Number.isFinite(g16839.y))continue;const bx16839=Math.max(0,Math.min(N16839-1,Math.floor(Number(g16839.x)*N16839/Math.max(1,hy.w)))),by16839=Math.max(0,Math.min(N16839-1,Math.floor(Number(g16839.y)*N16839/Math.max(1,hy.h))));const r16839=rows16839[by16839*N16839+bx16839];if(r16839)r16839.swales++;}
-      const gaps16839=rows16839.filter(r16839=>r16839.valid>=4&&r16839.opp>=3&&(r16839.opp/Math.max(1,r16839.valid))>=.45&&r16839.swales===0),groups16839=new Map();
+      const gaps16839=rows16839.filter(r16839=>r16839.valid>=4&&r16839.opp>=2&&((r16839.opp/Math.max(1,r16839.valid))>=.18||r16839.pref>=2)&&r16839.swales===0),groups16839=new Map();
       for(const r16839 of gaps16839){const key16839=Math.floor(r16839.bx/groupSize16839)+','+Math.floor(r16839.by/groupSize16839);let a16839=groups16839.get(key16839);if(!a16839)groups16839.set(key16839,a16839=[]);a16839.push(r16839);}
       const slice16839=(a16839,x016839,x116839,y016839,y116839)=>{const z16839=[];if(!a16839)return z16839;for(let y16839=y016839;y16839<=y116839;y16839++)for(let x16839=x016839;x16839<=x116839;x16839++)z16839.push(a16839[y16839*hy.w+x16839]);return z16839;};
       const added16839=[],groupRows16839=[],failed16839=[],occupied16839=new Set((supplementalCandidates16702||[]).map(c16839=>String(c16839.x)+','+String(c16839.y)));
