@@ -1,0 +1,40 @@
+name: Earthline M75 Clean Property Engine Patch
+on:
+  push:
+    branches:
+      - recovery/mantra75-engine-clean
+    paths:
+      - tools/patch-m75-property-engine.py
+      - .github/workflows/earthline-m75-clean-property-engine-patch.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-engine-clean
+          fetch-depth: 0
+      - name: Patch index
+        run: python3 tools/patch-m75-property-engine.py
+      - name: Parse check
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('EARTHLINE_M75_PROPERTY_ENGINE_PARSE_OK',parsed);
+          NODE
+      - name: Commit index
+        shell: bash
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: favor continuous buildable Property swales"
+          git push origin HEAD:recovery/mantra75-engine-clean
