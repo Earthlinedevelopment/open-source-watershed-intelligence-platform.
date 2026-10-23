@@ -1,0 +1,51 @@
+name: Earthline M76 Arizona Swale Visual Validation
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths: ['.github/workflows/earthline-m76-swale-visual-validation.yml']
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra76-audit-restart
+          fetch-depth: 0
+      - name: Prove exact product bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse 35d0d330ebdd2a9239b37e981412de4bbc31027e:index.html)" = "$(git rev-parse HEAD:index.html)"
+          echo EARTHLINE_M76_EXACT_PRODUCT_BYTES_OK
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run exact Arizona swale validation
+        shell: bash
+        run: |
+          set +e
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          node tests/mantra76-swale-visual-validation.mjs
+          code=$?
+          echo "$code" > m76-swale-validation.exit
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m76-arizona-swale-validation
+          path: |
+            m76-swale-validation.json
+            m76-swale-validation.exit
+            m76-arizona-*.png
+      - name: Enforce
+        run: test "$(cat m76-swale-validation.exit)" = "0"
