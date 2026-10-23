@@ -107,7 +107,9 @@ for(let ci=0;ci<CASES.length;ci++){
           if(!mp?.getLayer?.(id))return {id,exists:false};
           const spec=(mp.getStyle?.()?.layers||[]).find(x=>x.id===id)||{};
           const paint=spec.paint||{},layout=spec.layout||{};
-          return {id,exists:true,visibility:layout.visibility||'visible',
+          let runtimeVisibility='visible';
+          try{runtimeVisibility=mp.getLayoutProperty?.(id,'visibility')||'visible'}catch(_){}
+          return {id,exists:true,visibility:runtimeVisibility,styleVisibility:layout.visibility||'visible',
             lineColor:paint['line-color']??null,
             lineOpacity:paint['line-opacity']??null,
             lineWidth:paint['line-width']??null,
