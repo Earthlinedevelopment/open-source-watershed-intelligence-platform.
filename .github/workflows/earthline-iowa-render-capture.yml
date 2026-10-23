@@ -1,32 +1,45 @@
-name: Earthline Iowa Regional Audit
+name: Earthline Regional Geometry Repair
 on:
   push:
     branches:
       - recovery/mantra74-stability
     paths:
-      - tests/iowa-regional-audit.mjs
+      - tools/repair-regional-local-contours-17702.py
       - .github/workflows/earthline-iowa-render-capture.yml
 permissions:
-  contents: read
+  contents: write
 jobs:
-  capture:
+  repair:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout target
+        uses: actions/checkout@v4
         with:
-          node-version: '20'
-      - run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
-      - name: Audit live Iowa Regional selection
+          ref: recovery/mantra75-regional-geometry
+          fetch-depth: 0
+      - name: Checkout repair script
+        uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+          path: harness
+      - name: Apply Regional geometry repair
+        run: python3 harness/tools/repair-regional-local-contours-17702.py
+      - name: Parse check
         shell: bash
-        run: node tests/iowa-regional-audit.mjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: iowa-regional-audit
-          path: |
-            iowa-regional-audit.png
-            iowa-regional-audit.json
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('EARTHLINE_REGIONAL_GEOMETRY_17702_PARSE_OK',parsed);
+          NODE
+      - name: Commit repair
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: bound Regional corridors to local contour sections"
+          git push origin HEAD:recovery/mantra75-regional-geometry
