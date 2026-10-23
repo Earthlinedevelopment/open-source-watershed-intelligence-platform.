@@ -51,7 +51,7 @@ const diag=await page.evaluate(()=>{
    water:document.querySelectorAll('.earthline-swale-water-16174').length,
    understory:document.querySelectorAll('.earthline-swale-understory-16174').length
  };
- return {audit,safe,living,safeVisibility,natural,
+ return {audit,safe,living,safeVisibility,natural,vectorNoBuildCoverage:(typeof M!=='undefined'&&M.vectorNoBuildCoverage)?JSON.parse(JSON.stringify(M.vectorNoBuildCoverage)):null,propertyJurisdiction:(typeof M!=='undefined'&&M.propertyJurisdiction16516)||null,
    tier:String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147)?.tier||''),
    propertyState:document.documentElement.dataset.earthlinePropertyRunState||''};
 });
