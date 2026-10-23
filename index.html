@@ -34588,6 +34588,12 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
   function syncSafePropertyFallback16221(reason='sync'){
     const mp=map(),fc=authoritativeSafePropertyFC16221(),active=propertySafeDisplayActive16221(),count=Number(fc.features?.length||0);
     if(!mp||!active||count<1){clearSafePropertyFallback16221(reason+':inactive-or-empty');return {ok:count===0&&active,count,visible:false,active,error:!mp?'map unavailable':(!active?'property display inactive':'verified zero-corridor result')}}
+    const livingNow16291=propertyLivingMapVisible16262(count);
+    if(livingNow16291.ok){
+      setSafeLayerVisibility16221(false);
+      window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason:reason+':living-owner-active',active:true,verified:true,count,visible:false,delegatedTo:'living-swales-15792',living:livingNow16291,at:new Date().toISOString()};
+      return {ok:true,count,visible:false,active,delegatedToLiving:true,living:livingNow16291};
+    }
     const ensured=ensureSafePropertyLayers16221();
     if(!ensured.ok){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,sourceReady:!!ensured.sourceReady,layersReady:!!ensured.layersReady,errors:ensured.errors||[],error:ensured.error||null,at:new Date().toISOString()};return {ok:false,count,visible:false,active,...ensured}}
     try{const src=mp.getSource(SAFE_SOURCE_16221);if(!src?.setData)throw new Error('safe source setData unavailable');src.setData(fc)}catch(error){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,error:String(error?.message||error),at:new Date().toISOString()};return {ok:false,count,visible:false,active,error:String(error?.message||error)}}
@@ -34621,7 +34627,7 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
   }
   function scheduleSafePropertyFallback16221(reason='scheduled'){
     for(const timer of safeLayerTimers16221)clearTimeout(timer);safeLayerTimers16221.clear();
-    for(const delay of [0,90,260,620,1300,2600]){
+    for(const delay of [320,700,1400,2600]){
       const timer=setTimeout(()=>{safeLayerTimers16221.delete(timer);const result=syncSafePropertyFallback16221(reason+'-'+delay);if(result.ok){for(const pending of safeLayerTimers16221)clearTimeout(pending);safeLayerTimers16221.clear()}},delay);
       safeLayerTimers16221.add(timer);
     }
@@ -34633,9 +34639,20 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
        One immediate visibility check is allowed inside the governed promise;
        if Mapbox is still settling, the exact existing safe-layer owner retries
        after terminal state instead of holding the Property Orb/run open. */
-    const first=syncSafePropertyFallback16221('terminal-immediate-16260');
+    const livingImmediate16291=propertyLivingMapVisible16262(count);
+    if(livingImmediate16291.ok){
+      setSafeLayerVisibility16221(false);
+      return {ok:true,count,visible:false,required:true,pending:false,delegatedToLiving:true,living:livingImmediate16291};
+    }
+    await new Promise(resolve=>setTimeout(resolve,320));
+    const livingGrace16291=propertyLivingMapVisible16262(count);
+    if(livingGrace16291.ok){
+      setSafeLayerVisibility16221(false);
+      return {ok:true,count,visible:false,required:true,pending:false,delegatedToLiving:true,living:livingGrace16291};
+    }
+    const first=syncSafePropertyFallback16221('terminal-after-living-grace-16291');
     if(first.ok)return {...first,required:true,pending:false};
-    scheduleSafePropertyFallback16221('terminal-background-16260');
+    scheduleSafePropertyFallback16221('terminal-background-16291');
     return {...first,ok:false,count,visible:false,required:true,pending:true};
   }
 
