@@ -5,6 +5,10 @@ const BASE=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
 const TARGET={lat:41.95715,lng:-93.38977};
 const browser=await chromium.launch({headless:true,channel:'chrome'});
 const page=await browser.newPage({viewport:{width:1800,height:1000}});
+await page.route('https://api.mapbox.com/**',async route=>{
+  const headers={...route.request().headers(),referer:'https://earthlinedevelopment.org/',origin:'https://earthlinedevelopment.org'};
+  await route.continue({headers});
+});
 const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
 
 await page.goto(BASE+'?iowa-property-engine-audit='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
