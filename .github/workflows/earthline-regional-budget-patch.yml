@@ -1,0 +1,35 @@
+name: Earthline Regional Budget Patch
+on:
+  push:
+    branches:
+      - recovery/mantra75-regional-engine
+    paths:
+      - tools/apply-regional-budget-patch.py
+      - .github/workflows/earthline-regional-budget-patch.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-regional-engine
+          fetch-depth: 0
+      - run: python3 tools/apply-regional-budget-patch.py
+      - run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('EARTHLINE_REGIONAL_BUDGET_PARSE_OK',parsed);
+          NODE
+      - run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: expand Regional tile coverage budget"
+          git push origin HEAD:recovery/mantra75-regional-engine
