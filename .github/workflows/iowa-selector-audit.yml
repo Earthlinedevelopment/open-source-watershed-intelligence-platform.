@@ -1,0 +1,30 @@
+name: Earthline Iowa Selector Audit
+on:
+  push:
+    branches:
+      - recovery/mantra75-regional-coverage-clean
+    paths:
+      - tests/iowa-selector-audit.mjs
+      - .github/workflows/iowa-selector-audit.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-regional-coverage-clean
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/iowa-selector-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          node tests/iowa-selector-audit.mjs
