@@ -20,3 +20,5 @@ if len(ob)<40000:
 next_src=current[:cs]+ob+current[ce:]
 Path("index.html").write_text(next_src,encoding="utf-8")
 print("RESTORED_FULL_OWNER",len(cb),"->",len(ob))
+
+# trigger whole-owner recovery
