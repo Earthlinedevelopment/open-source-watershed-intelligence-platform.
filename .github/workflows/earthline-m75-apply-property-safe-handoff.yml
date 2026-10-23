@@ -1,0 +1,35 @@
+name: Earthline M75 Apply Property Safe Handoff
+on:
+  push:
+    branches:
+      - recovery/mantra75-current-clean
+    paths:
+      - .github/workflows/earthline-m75-apply-property-safe-handoff.yml
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-current-clean
+          fetch-depth: 0
+      - run: python3 tools/fix-property-safe-handoff-17702.py
+      - run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          if(!s.includes("const safeOpacity17172=naturalRendered17172>0?0:.98;"))throw Error("safe handoff repair missing");
+          console.log("EARTHLINE_PROPERTY_SAFE_HANDOFF_PARSE_OK",parsed);
+          NODE
+      - run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: keep verified Property swales visible through texture handoff"
+          git push origin HEAD:recovery/mantra75-current-clean
