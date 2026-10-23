@@ -8439,6 +8439,9 @@ function buildGuilds(){
   }).join("");
 }
 function updateScalebar(){
+  if(MB_ON()&&typeof window.earthlineUpdateScale16149==="function"){
+    try{if(window.earthlineUpdateScale16149())return;}catch(_){}
+  }
   const m=150/view.s*M.cellM;
   const lbl=m>=2000?(m/1000).toFixed(m>=20000?0:1)+" km":Math.round(m)+" m";
   const half=m>=2000?(m/2000).toFixed(m>=20000?0:1):Math.round(m/2);
@@ -31064,9 +31067,9 @@ function mapSvg(d,small=false){
   parts.push('<rect x="'+mainX+'" y="'+mainY+'" width="'+mainW+'" height="'+mainH+'" rx="4" fill="#f6f7f3" stroke="#9fa9a3" stroke-width=".85"/>');
   parts.push('<g clip-path="url(#'+clip+')">');
 
-  if(state&&!propertyMode){
+  if(state){
     for(const ring of stateRings){
-      const dp=pathCoords(ring);if(dp)parts.push('<path d="'+dp+' Z" fill="#eef1ed" stroke="#4f6259" stroke-width="1.45" vector-effect="non-scaling-stroke"/>');
+      const dp=pathCoords(ring);if(dp)parts.push('<path d="'+dp+' Z" fill="'+(propertyMode?'none':'#f2f4f0')+'" stroke="#334a43" stroke-width="'+(propertyMode?'2.15':'1.75')+'" opacity=".96" vector-effect="non-scaling-stroke"/>');
     }
   }
 
@@ -31083,12 +31086,12 @@ function mapSvg(d,small=false){
     for(const poly of polys){
       const rings=poly.filter(r=>Array.isArray(r)&&r.length>=3);if(!rings.length)continue;
       const dp=rings.map(r=>pathCoords(r)+' Z').join(' ');
-      parts.push('<path d="'+dp+'" fill="#e6a35e" fill-opacity=".23" fill-rule="evenodd" stroke="#b96d31" stroke-width=".72" stroke-opacity=".72" vector-effect="non-scaling-stroke"/>');
+      parts.push('<path d="'+dp+'" fill="#e6a35e" fill-opacity=".11" fill-rule="evenodd" stroke="#b96d31" stroke-width=".46" stroke-opacity=".38" vector-effect="non-scaling-stroke"/>');
     }
   }
 
   for(const row of secondary){
-    const dp=path(row.f);if(dp)parts.push('<path d="'+dp+'" fill="none" stroke="#72a7b9" stroke-width=".72" opacity=".43" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
+    const dp=path(row.f);if(dp)parts.push('<path d="'+dp+'" fill="none" stroke="#72a7b9" stroke-width=".62" opacity=".27" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>');
   }
   let fi=0;
   for(const row of major){
@@ -31102,7 +31105,9 @@ function mapSvg(d,small=false){
   parts.push('<rect x="'+ax.toFixed(1)+'" y="'+ay.toFixed(1)+'" width="'+Math.max(1,aw).toFixed(1)+'" height="'+Math.max(1,ah).toFixed(1)+'" fill="none" stroke="#273d37" stroke-width="1.65" stroke-dasharray="'+(propertyMode?'0':'5 3')+'" vector-effect="non-scaling-stroke"/>');
   parts.push('</g>');
 
-  const kmWide=Math.max(.001,xSpan*111.32*cosLat),mWide=kmWide*1000;
+  const dLonRad=xSpan*Math.PI/180,latRad=midLat*Math.PI/180;
+  const scaleH=Math.min(1,Math.max(0,Math.cos(latRad)*Math.cos(latRad)*Math.sin(dLonRad/2)*Math.sin(dLonRad/2)));
+  const mWide=Math.max(1,2*6371008.8*Math.asin(Math.sqrt(scaleH))),kmWide=mWide/1000;
   const candidates=[20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000];
   let niceM=candidates[0];for(const c of candidates){if(c<=mWide*.22)niceM=c;else break}
   const barPx=Math.max(48,Math.min(150,niceM/mWide*mainW)),barLabel=niceM>=1000?(niceM/1000)+' km':niceM+' m';
@@ -31463,7 +31468,7 @@ ${finalSourcesPage16864(data)}
   }
   window.earthlinePersistAquifer16149=persistVisualPolicy;
   function metersBetween(a,b){const r=Math.PI/180,lat1=a.lat*r,lat2=b.lat*r,dlat=(b.lat-a.lat)*r,dlng=(b.lng-a.lng)*r,q=Math.sin(dlat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dlng/2)**2;return 6371000*2*Math.atan2(Math.sqrt(q),Math.sqrt(Math.max(0,1-q)))}
-  function niceDistance(m){const values=[1,2,5],pow=Math.pow(10,Math.floor(Math.log10(Math.max(1,m)))),raw=m/pow;let n=values.find(v=>v>=raw)||10;return n*pow}
+  function niceDistance(m){const pow=Math.pow(10,Math.floor(Math.log10(Math.max(1,m)))),raw=m/pow,n=raw>=5?5:raw>=2?2:1;return n*pow}
   function updateScale(){const m=map(),lbl=document.getElementById('scaleLbl'),mid=document.getElementById('scaleMid'),end=document.getElementById('scaleEnd');if(!m||!lbl||!mid||!end||!m.unproject)return false;try{const canvas=m.getCanvas?.(),w=canvas?.clientWidth||800,h=canvas?.clientHeight||500,y=h-40,a=m.unproject([20,y]),b=m.unproject([170,y]),meters=metersBetween(a,b),nice=niceDistance(meters),px=150*nice/meters,bar=document.querySelector('.scalebar .bar'),ticks=document.querySelector('.scalebar .ticks'),text=nice>=1000?(nice/1000)+(nice>=10000?'':'')+' km':nice+' m';if(bar)bar.style.width=Math.max(70,Math.min(190,px))+'px';if(ticks)ticks.style.width=Math.max(70,Math.min(190,px))+'px';lbl.textContent='z'+Number(m.getZoom?.()||0).toFixed(2)+' · 0 — '+text;mid.textContent=nice>=1000?(nice/2000)+' km':nice/2;end.textContent=text;return true}catch(_){return false}}
   window.earthlineUpdateScale16149=updateScale;
   function installPolicies(){if(aquiferInstalled)return;const m=map();if(!m?.on)return;aquiferInstalled=true;let raf=0;const schedule=()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{persistVisualPolicy();updateScale();ensureReportButton()})};for(const ev of ['zoomend','moveend','style.load','resize'])m.on(ev,schedule);schedule()}
