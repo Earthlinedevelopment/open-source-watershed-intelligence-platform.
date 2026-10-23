@@ -1,0 +1,39 @@
+name: Earthline M75 Regional Coverage Patch
+on:
+  push:
+    branches:
+      - recovery/mantra75-regional-coverage-clean
+    paths:
+      - tools/m75-regional-coverage-patch.py
+      - .github/workflows/m75-regional-coverage-patch.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-regional-coverage-clean
+          fetch-depth: 0
+      - name: Apply Regional coverage selector patch
+        run: python3 tools/m75-regional-coverage-patch.py
+      - name: Parse-check
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim()) continue;
+            try{ new Function(m[1]); parsed++; }
+            catch(e){ throw Error('inline script '+i+': '+e.message); }
+          }
+          console.log('EARTHLINE_M75_REGIONAL_COVERAGE_PARSE_OK',parsed);
+          NODE
+      - name: Commit patched selector
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: expand Regional statewide corridor coverage"
+          git push origin HEAD:recovery/mantra75-regional-coverage-clean
