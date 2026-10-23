@@ -21703,7 +21703,8 @@ var prescribeSwales;
         "earthline-living-swales-glow-15792","earthline-living-swales-earth-15792",
         "earthline-living-swales-life-15792","earthline-living-swales-water-15792",
         "earthline-property-swale-ditch-16166","earthline-property-swale-canopy-16166",
-        "earthline-property-swale-survey-16166"]},
+        "earthline-property-swale-survey-16166","earthline-swale-planting-shadow-15806",
+        "earthline-swale-planting-layer-15806"]},
       recharge:{owner:"earthlineSyncRechargeLayer",source:"earthline-recharge-zones",layers:[
         "earthline-recharge-casing","earthline-recharge-fill","earthline-recharge-line",
         "earthline-recharge-highlight","earthline-recharge-label"]},
@@ -21937,6 +21938,7 @@ var prescribeSwales;
   const PLANT_LAYER="earthline-swale-planting-layer-15806";
   const state=window.earthlineRegional15778||{};
   let plantingVisible=true;
+  let lastPlantingData15806=null;
 
   const emptyFC=()=>({type:"FeatureCollection",features:[]});
   const finiteCoord=c=>Array.isArray(c)&&Number.isFinite(Number(c[0]))&&Number.isFinite(Number(c[1]));
@@ -22041,6 +22043,7 @@ var prescribeSwales;
   function syncPlanting15806(fc){
     if(!ensurePlanting15806())return false;
     const data=plantingPoints15806(fc&&fc.type==="FeatureCollection"?fc:emptyFC());
+    lastPlantingData15806=data;
     const src=earthlineMap.getSource(PLANT_SOURCE);
     if(src&&src.setData)src.setData(data);
     setPlantingVisible15806(plantingVisible&&data.features.length>0);
@@ -22170,7 +22173,18 @@ var prescribeSwales;
     coverage:M&&M.coverageEvidence15803||null
   });
   try{
-    earthlineMap.on("style.load",()=>{ensurePlanting15806();updateContoursButton15806()});
+    earthlineMap.on("style.load",()=>{
+      ensurePlanting15806();
+      try{
+        if(lastPlantingData15806&&Array.isArray(lastPlantingData15806.features)&&lastPlantingData15806.features.length){
+          const src=earthlineMap.getSource(PLANT_SOURCE);
+          if(src&&src.setData)src.setData(lastPlantingData15806);
+          const propertyOwnsPlanting=state.mode==="property"&&!state.active&&!!(M&&M.analysisReady&&M.layers&&M.layers.swales&&M.layers.swales.on);
+          setPlantingVisible15806(propertyOwnsPlanting);
+        }
+      }catch(e){}
+      updateContoursButton15806()
+    });
     earthlineMap.on("moveend",()=>updateContoursButton15806());
   }catch(e){}
   ensureContoursButton15806();
