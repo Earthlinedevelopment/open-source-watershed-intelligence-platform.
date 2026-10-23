@@ -21,7 +21,7 @@ jobs:
       - name: Run current Iowa Property engine
         shell: bash
         run: |
-          cat > /tmp/iowa.mjs <<'NODE'
+          cat > ./iowa.mjs <<'NODE'
           import { chromium } from 'playwright';
           const browser=await chromium.launch({headless:true});
           const page=await browser.newPage({viewport:{width:1800,height:1000}});
@@ -82,4 +82,4 @@ jobs:
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-current-iowa.log 2>&1 &
           PID=$!; trap 'kill $PID || true' EXIT
           for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
-          node /tmp/iowa.mjs
+          node ./iowa.mjs
