@@ -1,0 +1,42 @@
+name: Earthline M76 Prescriber Path Audit 2
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-prescriber-path-audit-2.yml'
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra76-audit-restart
+          fetch-depth: 0
+      - name: Audit every swale construction path in live prescriber
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin pages-live
+          git show FETCH_HEAD:index.html > /tmp/live.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('/tmp/live.html').read_text(encoding='utf-8')
+          a=s.index('async function prescribeSwales15778(')
+          b=s.index('\n  prescribeSwales=prescribeSwales15778;',a)
+          block=s[a:b]
+          out=[]
+          for needle in ['earthlineSwaleFromPts(','traceLevelContour(','earthlineSplitUsableSegments(','swales.push(','kept.push(']:
+              hits=[m.start() for m in re.finditer(re.escape(needle),block)]
+              out.append(f'===== {needle} COUNT {len(hits)} =====')
+              for i in hits:
+                  out.append(block[max(0,i-1800):min(len(block),i+3200)])
+          Path('M76-PRESCRIBER-PATH-AUDIT-2.txt').write_text('\n'.join(out),encoding='utf-8')
+          PY
+          git config user.name "Earthline Recovery"
+          git config user.email "actions@users.noreply.github.com"
+          git add M76-PRESCRIBER-PATH-AUDIT-2.txt
+          git commit -m "audit: enumerate all live swale construction paths" || true
+          git push origin HEAD:recovery/mantra76-audit-restart
