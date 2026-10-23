@@ -1,0 +1,84 @@
+name: Earthline M76 Safe Fallback Yield Repair
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths: ['.github/workflows/earthline-m76-safe-fallback-yield-repair.yml']
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra76-audit-restart
+          fetch-depth: 0
+      - name: Make fallback yield to rendered natural swales
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old="""    try{const src=mp.getSource(SAFE_SOURCE_16221);if(!src?.setData)throw new Error('safe source setData unavailable');src.setData(fc)}catch(error){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,error:String(error?.message||error),at:new Date().toISOString()};return {ok:false,count,visible:false,active,error:String(error?.message||error)}}
+    setSafeLayerVisibility16221(true);
+    const moved=[];"""
+          new="""    try{const src=mp.getSource(SAFE_SOURCE_16221);if(!src?.setData)throw new Error('safe source setData unavailable');src.setData(fc)}catch(error){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,error:String(error?.message||error),at:new Date().toISOString()};return {ok:false,count,visible:false,active,error:String(error?.message||error)}}
+    /* EARTHLINE M76 — this is a fallback, not a second final renderer.
+       Once the natural renderer has the same verified corridor count and is
+       actually rendered, the fallback must yield instead of repainting over it. */
+    const naturalAudit16221=window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null;
+    const naturalLayerIds16221=['earthline-property-swale-footprint-16174','earthline-property-swale-natural-casing-16174','earthline-property-swale-natural-up-16174','earthline-property-swale-natural-flip-16174','earthline-property-swale-neutral-16177'];
+    let naturalRendered16221=0;
+    const naturalReady16221=!!(naturalAudit16221&&naturalAudit16221.sourceReady===true&&naturalAudit16221.imagesReady===true&&Number(naturalAudit16221.centerlines||0)===count&&naturalAudit16221.layers?.casing===true);
+    if(naturalReady16221){
+      try{const canvas16221=mp.getCanvas?.(),box16221=canvas16221&&[[0,0],[canvas16221.clientWidth||canvas16221.width,canvas16221.clientHeight||canvas16221.height]],ids16221=naturalLayerIds16221.filter(id=>mp.getLayer?.(id)&&mp.getLayoutProperty?.(id,'visibility')!=='none');if(box16221&&ids16221.length)naturalRendered16221=(mp.queryRenderedFeatures?.(box16221,{layers:ids16221})||[]).length}catch(_){}
+    }
+    if(naturalReady16221&&naturalRendered16221>0){
+      setSafeLayerVisibility16221(false);
+      const audit={build:BUILD,reason,active,verified:true,count,sourceReady:true,layersReady:true,visible:false,delegatedToNatural:true,naturalRenderedFeatures:naturalRendered16221,geometrySource:'M.authoritativeSafeSwales15815',safetyGate:'propertyPublication15816 + propertyResultLock15815 + safetyAudit15806 + searchGen match',at:new Date().toISOString()};
+      window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221=audit;
+      return {ok:true,count,visible:false,active,delegatedToNatural:true,audit};
+    }
+    setSafeLayerVisibility16221(true);
+    const moved=[];"""
+          if s.count(old)!=1: raise SystemExit('safe fallback publication owner count != 1')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Validate fallback ownership and syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'this is a fallback, not a second final renderer' index.html
+          grep -q 'delegatedToNatural:true' index.html
+          grep -q 'naturalRendered16221>0' index.html
+          grep -q 'geometrySource:'"'"'M.authoritativeSafeSwales15815'"'"'' index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          assert s.count('EARTHLINE M76 — this is a fallback, not a second final renderer.')==1
+          assert s.count('function syncSafePropertyFallback16221(')==1
+          assert s.count('async function prescribeSwales15778(')==1
+          assert s.count('function earthlineSegmentTortuosityM76(')==1
+          PY
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('M76_SAFE_FALLBACK_YIELD_PARSE_OK',parsed);
+          NODE
+      - name: Commit repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/earthline-m76-safe-fallback-yield-repair.yml
+          git config user.name "Earthline Recovery"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html .github/workflows/earthline-m76-safe-fallback-yield-repair.yml
+          git commit -m "fix: make safe swale fallback yield to natural renderer"
+          git push origin HEAD:recovery/mantra76-audit-restart
