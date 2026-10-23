@@ -1,0 +1,30 @@
+name: Earthline Current Production Iowa Verify
+on:
+  push:
+    branches:
+      - recovery/mantra75-regional-engine
+    paths:
+      - tests/iowa-production-live.mjs
+      - .github/workflows/earthline-current-production-iowa-verify.yml
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-regional-engine
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - run: node tests/iowa-production-live.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iowa-production-live
+          path: |
+            iowa-production-live.json
+            iowa-production-live.png
