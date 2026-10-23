@@ -1,42 +1,46 @@
-name: Earthline Planting Parity Runner
+name: Earthline Iowa Regional Grid Verification
 on:
   push:
     branches:
       - recovery/mantra74-stability
     paths:
-      - tools/apply-property-planting-parity.py
+      - tests/iowa-regional-grid-test.mjs
       - .github/workflows/earthline-iowa-live-diagnostic.yml
 permissions:
-  contents: write
+  contents: read
 jobs:
-  repair:
+  verify:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: recovery/mantra75-regional-engine-clean2
-          fetch-depth: 0
+          ref: 7d85cfaad69a271f5e4f836081953a609f3751b3
+          path: candidate
       - uses: actions/checkout@v4
         with:
           ref: recovery/mantra74-stability
           path: controller
-      - name: Apply live planting parity
-        run: python3 controller/tools/apply-property-planting-parity.py
-      - name: Parse-check
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browser runtime
         run: |
-          node - <<'NODE'
-          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
-          let parsed=0;
-          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
-            if(!m[1].trim()) continue;
-            try{ new Function(m[1]); parsed++; } catch(e){ throw Error('inline script '+i+': '+e.message); }
-          }
-          console.log('EARTHLINE_PLANTING_PARITY_PARSE_OK',parsed);
-          NODE
-      - name: Commit parity
+          cd controller
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run Iowa statewide Regional verification
         run: |
-          git config user.name "Earthlinedevelopment"
-          git config user.email "info@earthlinedevelopment.org"
-          git add index.html
-          git commit -m "fix: preserve live Property planting on Regional repair candidate"
-          git push origin HEAD:recovery/mantra75-regional-engine-clean2
+          python3 -m http.server 8787 --bind 127.0.0.1 --directory candidate >/tmp/earthline-grid-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          cd controller
+          EARTHLINE_URL=http://127.0.0.1:8787/ node tests/iowa-regional-grid-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iowa-regional-grid-test
+          path: |
+            controller/iowa-regional-grid-test.json
+            controller/iowa-regional-grid-test.png
