@@ -1,0 +1,93 @@
+name: Earthline M75 Iowa Property Fast Diagnostic
+on:
+  push:
+    branches:
+      - recovery/mantra75-current-engine
+    paths:
+      - .github/workflows/earthline-m75-iowa-property-fast.yml
+permissions:
+  contents: read
+jobs:
+  property:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - name: Run repaired Iowa Property
+        shell: bash
+        run: |
+          cat > ./iowa-property-fast.mjs <<'NODE'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true,channel:'chrome'});
+          const page=await browser.newPage({viewport:{width:1800,height:1000}});
+          await page.route('https://api.mapbox.com/**',async route=>{
+            const h={...route.request().headers(),referer:'https://earthlinedevelopment.org/',origin:'https://earthlinedevelopment.org'};
+            await route.continue({headers:h});
+          });
+          const errs=[];page.on('pageerror',e=>errs.push(String(e)));
+          await page.goto('http://127.0.0.1:8787/?property='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.waitForFunction(()=>window.earthlineMap||(typeof earthlineMap!=='undefined'&&earthlineMap),null,{timeout:30000});
+          const input=page.locator('#searchInput');
+          await input.fill('Iowa');await page.waitForTimeout(900);
+          const opts=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
+          if(await opts.count())await opts.first().click({force:true});else await input.press('Enter').catch(()=>{});
+          await page.waitForTimeout(250);await page.locator('#runBtn').click({force:true});
+          await page.waitForFunction(()=>{
+            const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+            return String(d&&(d.tier||d.mode)||'').toLowerCase()==='regional'&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';
+          },null,{timeout:90000,polling:200});
+          await page.evaluate(()=>{
+            const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+            if(typeof M!=='undefined'&&M){
+              M.centerLat=41.95715;M.centerLng=-93.38977;
+              M.loc=Object.assign({},M.loc||{},{name:'Iowa diagnostic',countryCode:'us',lat:41.95715,lng:-93.38977});
+            }
+            try{mp?.jumpTo?.({center:[-93.38977,41.95715],zoom:13});}catch(_){}
+          });
+          await page.waitForTimeout(900);
+          const t0=Date.now();
+          const btn=page.locator('#earthlineDeclareProperty16169');
+          if(await btn.count())await btn.click({force:true});else await page.evaluate(()=>window.earthlineDeclarePropertyAtCrosshair16173?.());
+          await page.waitForFunction(()=>{
+            const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+            return a?.settled===true&&a?.renderVerified===true;
+          },null,{timeout:90000,polling:200});
+          await page.waitForTimeout(600);
+          const out=await page.evaluate(()=>{
+            const m=(typeof M!=='undefined'?M:null);
+            const flow=m?.flowFirstPlacement15836||null;
+            const cov=m?.coverageDiagnostic15803||null;
+            const zones=(cov?.zones||[]).map(z=>({id:z.id,safe:z.safeCells,candidates:z.candidates,accepted:z.accepted,within25:z.coverage?.within25ftPct,within50:z.coverage?.within50ftPct}));
+            const zeroZones=zones.filter(z=>z.safe>0&&z.accepted===0);
+            const sw=Array.isArray(m?.swales)?m.swales:[];
+            const lens=sw.map(x=>typeof earthlineSegmentLengthM==='function'?earthlineSegmentLengthM(x.pts||[]):0).filter(Number.isFinite);
+            return {
+              audit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+              stage:m?.swaleDiagnostics?.stage||null,
+              meta:m?.swaleMeta||null,
+              flow,
+              zones,zeroZones,
+              seedSpacingM:m?.coverageDiagnostic15803?.preselectionFate15841?.selectionSpacingM||null,
+              swaleCount:sw.length,
+              lengths:lens.length?{min:Math.min(...lens),max:Math.max(...lens),avg:lens.reduce((a,b)=>a+b,0)/lens.length}:null,
+              canopy:m?.terrainHandoff15791?.canopy||null
+            };
+          });
+          console.log('EARTHLINE_IOWA_PROPERTY_FAST '+JSON.stringify({elapsedMs:Date.now()-t0,errors:errs,...out}));
+          await page.screenshot({path:'iowa-property-fast.png',fullPage:false});
+          await browser.close();
+          NODE
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/iowa-property-fast.log 2>&1 &
+          PID=$!;trap 'kill $PID || true' EXIT
+          for i in {1..30};do curl -fsS http://127.0.0.1:8787/ >/dev/null&&break;sleep 1;done
+          node ./iowa-property-fast.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iowa-property-fast
+          path: iowa-property-fast.png
