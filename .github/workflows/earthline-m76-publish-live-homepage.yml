@@ -1,0 +1,28 @@
+name: Earthline M76 Publish Repaired Live Homepage
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-publish-live-homepage.yml'
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Publish repaired M76 geometry to actual live homepage
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin 3e2a0d694e5d17ff055cf3a89df66306a259b3ea
+          git show 3e2a0d694e5d17ff055cf3a89df66306a259b3ea:index.html > index.html
+          test "$(git hash-object index.html)" = "$(git rev-parse 3e2a0d694e5d17ff055cf3a89df66306a259b3ea:index.html)"
+          git config user.name "Earthline Recovery"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: publish repaired local-interception swales live" || true
+          git push origin HEAD:pages-live
