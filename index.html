@@ -13175,7 +13175,7 @@ var prescribeSwales;
     /* EARTHLINE 17485 — authoritative run-scoped scale owner for channel buffer.
        The prescriber itself owns Property vs Regional truth; downstream channel
        geometry reads this flag instead of UI/lifecycle heuristics. */
-    M.earthlinePropertyChannelBuffer17485=!isRegionalTile15769;
+    M.earthlinePropertyChannelBuffer17485=false;
     const work15771=isRegionalTile15769
       ? {maxLevels:36,maxSeedsPerLevel:8,maxCandidates:48,maxFinal:24,perLevel:4,maxMs:10000}
       : {maxLevels:72,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200,perLevel:16,maxMs:120000};
@@ -34672,8 +34672,6 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
       if(!mp||!mp.getCanvas?.())return {ok:false,count:Number(count||0),reason:'map-canvas-unavailable'};
       if(!propertyBasemapReady16262())return {ok:false,count:Number(count||0),reason:'basemap-tiles-pending'};
       const layerIds=[
-        'earthline-living-swales-glow-15792','earthline-living-swales-earth-15792',
-        'earthline-living-swales-life-15792','earthline-living-swales-water-15792',
         'earthline-property-swale-natural-casing-16174','earthline-property-swale-neutral-16177',
         'earthline-property-swale-natural-up-16174','earthline-property-swale-natural-flip-16174'
       ].filter(id=>mp.getLayer?.(id));
@@ -34689,6 +34687,27 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
     }catch(error){return {ok:false,count:Number(count||0),reason:String(error?.message||error)}}
   }
 
+  function earthlinePropertyRendererOwner17704(owner){
+    const mp=map();if(!mp)return false;
+    const safeIds=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'];
+    const legacyIds=['earthline-living-swales-glow-15792','earthline-living-swales-earth-15792','earthline-living-swales-life-15792','earthline-living-swales-water-15792'];
+    const naturalIds=['earthline-property-swale-footprint-16174','earthline-property-swale-natural-casing-16174','earthline-property-swale-neutral-16177','earthline-property-swale-natural-up-16174','earthline-property-swale-natural-flip-16174'];
+    const show=(id,on)=>{try{if(mp.getLayer?.(id))mp.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){}};
+    for(const id of legacyIds)show(id,false);
+    if(owner==='natural'){
+      setSafeLayerVisibility16221(false);
+      for(const id of naturalIds)show(id,true);
+      try{if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(true)}catch(_){}
+    }else if(owner==='safe'){
+      for(const id of naturalIds)show(id,false);
+      try{if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(false)}catch(_){}
+      setSafeLayerVisibility16221(true);
+    }
+    try{mp.triggerRepaint?.()}catch(_){}
+    window.EARTHLINE_PROPERTY_RENDER_OWNER_17704={owner,at:new Date().toISOString()};
+    return true;
+  }
+
   async function settlePropertyMapVisibility16260(count,texture,serial){
     if(!(count>0))return {ok:true,mode:'verified-zero'};
     let last=null;
@@ -34697,6 +34716,7 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
       if(serial!==runSerial)return {ok:false,superseded:true};
       const living16262=propertyLivingMapVisible16262(count);
       if(living16262.ok){
+        earthlinePropertyRendererOwner17704('natural');
         const current=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
         const authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();
         status(authoritative16516?('Property detail published — '+count+' exclusion-verified bioswale corridor'+(count===1?' is':'s are')+' visible on the Property map.'):('Property detail published — '+count+' screened bioswale corridor'+(count===1?' is':'s are')+' visible on the Property map. Field verification required.'),'published');
@@ -34706,6 +34726,7 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
       }
       last=syncSafePropertyFallback16221('post-terminal-17703-'+delay);
       if(propertyBasemapReady16262()&&last?.ok){
+        earthlinePropertyRendererOwner17704('safe');
         const current=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
         const authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();
         status(authoritative16516?('Property detail published — '+count+' exclusion-verified bioswale corridor'+(count===1?' is':'s are')+' visible from the authoritative safe Property geometry.'):('Property detail published — '+count+' screened bioswale corridor'+(count===1?' is':'s are')+' visible from the current Property geometry. Field verification required.'),'published');
@@ -35034,8 +35055,8 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
         /* EARTHLINE 17512 — Elder already published at verified scientific terminal. */
         return presentation17703&&presentation17703.ok===true;
       }
-      if(count>0&&liveNow16262.ok){const d=Number(texture.directional||0),n=Number(texture.neutral||0),authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();status(authoritative16516?('Property detail published — '+count+' verified bioswale'+(count===1?'':'s')+' in the selected 20-acre area. '+d+' terrain-oriented corridor'+(d===1?'':'s')+' show water uphill and berm downhill; '+n+' corridor'+(n===1?'':'s')+' use'+(n===1?'s':'')+' a neutral ribbon because orientation is indeterminate.'):('Property detail published — '+count+' modeled bioswale'+(count===1?'':'s')+' in the selected 20-acre area. '+d+' terrain-oriented corridor'+(d===1?'':'s')+' show water uphill and berm downhill; '+n+' corridor'+(n===1?'':'s')+' use'+(n===1?'s':'')+' a neutral ribbon because orientation is indeterminate. Exclusion evidence is not authoritative; field verification required.'),'published');setTierNotice('property',authoritative16516?(n>0?'PROPERTY DETAIL · '+d+' TERRAIN-ORIENTED · '+n+' NEUTRAL':'PROPERTY DETAIL · TERRAIN-VERIFIED UPHILL WATER ACTIVE'):(n>0?'PROPERTY DETAIL · '+d+' TERRAIN-ORIENTED · '+n+' NEUTRAL · FIELD VERIFY':'PROPERTY DETAIL · TERRAIN-ORIENTED · FIELD VERIFY'))}
-      else if(count>0&&safeFallback.ok){const authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();status(authoritative16516?('Property detail published — '+count+' exclusion-verified bioswale corridor'+(count===1?' is':'s are')+' visible from the authoritative safe Property geometry. The optional natural-texture enhancement did not verify, so Earthline retained the exact safe green, brown, and blue corridor layer instead of hiding the result.'):('Property detail published — '+count+' screened bioswale corridor'+(count===1?' is':'s are')+' visible from the current Property geometry. The optional natural-texture enhancement did not verify, so Earthline retained the green, brown, and blue corridor layer instead of hiding the result. Field verification required.'),'published');setTierNotice('property',authoritative16516?('PROPERTY DETAIL · '+count+' VERIFIED SAFE CORRIDORS VISIBLE'):('PROPERTY DETAIL · '+count+' SCREENED CORRIDORS · FIELD VERIFY'))}
+      if(count>0&&liveNow16262.ok){earthlinePropertyRendererOwner17704('natural');const d=Number(texture.directional||0),n=Number(texture.neutral||0),authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();status(authoritative16516?('Property detail published — '+count+' verified bioswale'+(count===1?'':'s')+' in the selected 20-acre area. '+d+' terrain-oriented corridor'+(d===1?'':'s')+' show water uphill and berm downhill; '+n+' corridor'+(n===1?'':'s')+' use'+(n===1?'s':'')+' a neutral ribbon because orientation is indeterminate.'):('Property detail published — '+count+' modeled bioswale'+(count===1?'':'s')+' in the selected 20-acre area. '+d+' terrain-oriented corridor'+(d===1?'':'s')+' show water uphill and berm downhill; '+n+' corridor'+(n===1?'':'s')+' use'+(n===1?'s':'')+' a neutral ribbon because orientation is indeterminate. Exclusion evidence is not authoritative; field verification required.'),'published');setTierNotice('property',authoritative16516?(n>0?'PROPERTY DETAIL · '+d+' TERRAIN-ORIENTED · '+n+' NEUTRAL':'PROPERTY DETAIL · TERRAIN-VERIFIED UPHILL WATER ACTIVE'):(n>0?'PROPERTY DETAIL · '+d+' TERRAIN-ORIENTED · '+n+' NEUTRAL · FIELD VERIFY':'PROPERTY DETAIL · TERRAIN-ORIENTED · FIELD VERIFY'))}
+      else if(count>0&&safeFallback.ok){earthlinePropertyRendererOwner17704('safe');const authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();status(authoritative16516?('Property detail published — '+count+' exclusion-verified bioswale corridor'+(count===1?' is':'s are')+' visible from the authoritative safe Property geometry. The optional natural-texture enhancement did not verify, so Earthline retained the exact safe green, brown, and blue corridor layer instead of hiding the result.'):('Property detail published — '+count+' screened bioswale corridor'+(count===1?' is':'s are')+' visible from the current Property geometry. The optional natural-texture enhancement did not verify, so Earthline retained the green, brown, and blue corridor layer instead of hiding the result. Field verification required.'),'published');setTierNotice('property',authoritative16516?('PROPERTY DETAIL · '+count+' VERIFIED SAFE CORRIDORS VISIBLE'):('PROPERTY DETAIL · '+count+' SCREENED CORRIDORS · FIELD VERIFY'))}
       else{const authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();status(authoritative16516?'Property detail published — no qualifying bioswale corridors were identified in the selected 20-acre area after terrain and exclusion verification.':'Property detail published — no qualifying bioswale corridors were identified in the selected 20-acre area after terrain screening and available exclusion checks. Exclusion evidence is not authoritative; field verification required.','published');setTierNotice('property',authoritative16516?'PROPERTY DETAIL · VERIFIED ZERO-CORRIDOR RESULT':'PROPERTY DETAIL · ZERO QUALIFYING CORRIDORS · FIELD VERIFY')}
       earthlinePropertyTerminalStage16319('published','Property detail published.');
       earthlinePropertyTrace16319("terminalPropertyRun","exit",{result:true,corridors:count,renderVerified});
