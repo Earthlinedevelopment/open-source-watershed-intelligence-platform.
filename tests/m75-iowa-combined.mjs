@@ -17,6 +17,11 @@ const snap=async label=>{
     const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
     const vis=id=>{try{return mp?.getLayer?.(id)?(mp.getLayoutProperty(id,'visibility')||'visible'):null}catch(_){return null}};
     const src=id=>{try{const s=mp?.getSource?.(id);return Array.isArray(s?._data?.features)?s._data.features.length:null}catch(_){return null}};
+    const rendered=ids=>{try{
+      const cv=mp?.getCanvas?.(),box=cv&&[[0,0],[cv.clientWidth||cv.width,cv.clientHeight||cv.height]];
+      const present=(ids||[]).filter(id=>{try{return !!mp?.getLayer?.(id)&&(mp.getLayoutProperty(id,'visibility')||'visible')!=='none'}catch(_){return false}});
+      return box&&present.length?(mp.queryRenderedFeatures?.(box,{layers:present})||[]).length:0;
+    }catch(_){return 0}};
     const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');
     const swaleGroup=overlay?.querySelector?.('[data-layer="swale-opportunities"]');
     const a=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||null;
@@ -60,8 +65,20 @@ const snap=async label=>{
         sourceFeatures:src('earthline-swale-planting-15806'),
         shadowVisibility:vis('earthline-swale-planting-shadow-15806'),
         layerVisibility:vis('earthline-swale-planting-layer-15806'),
+        renderedFeatures:rendered(['earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806']),
         model:(typeof M!=='undefined'?M.naturalSwalePlanting15806:null)
       },
+      renderedPropertySwales:rendered([
+        'earthline-living-swales-glow-15792','earthline-living-swales-earth-15792',
+        'earthline-living-swales-life-15792','earthline-living-swales-water-15792',
+        'earthline-property-safe-casing-16221','earthline-property-safe-earth-16221',
+        'earthline-property-safe-life-16221','earthline-property-safe-water-16221',
+        'earthline-property-swale-natural-casing-16174','earthline-property-swale-natural-up-16174',
+        'earthline-property-swale-natural-flip-16174','earthline-property-swale-neutral-16177'
+      ]),
+      renderedLivingSwales:rendered(['earthline-living-swales-glow-15792','earthline-living-swales-earth-15792','earthline-living-swales-life-15792','earthline-living-swales-water-15792']),
+      renderedSafeSwales:rendered(['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']),
+      renderedNaturalSwales:rendered(['earthline-property-swale-natural-casing-16174','earthline-property-swale-natural-up-16174','earthline-property-swale-natural-flip-16174','earthline-property-swale-neutral-16177']),
       propertySafeCount:features.length,
       exactDuplicateCount:dups.length,
       pageTier:document.documentElement.dataset.earthlineAnalysisTier||''
@@ -127,11 +144,14 @@ const propertyStable=await snap('m75-iowa-property-stable');
 if(propertyMs>15000)fail('Property exceeded 15s',propertyMs);
 if(!propertySettled.propertyAudit?.renderVerified)fail('Property render not verified',propertySettled);
 if(propertySettled.propertySafeCount<1)fail('No Property swales published',propertySettled);
+if(propertySettled.renderedPropertySwales<1)fail('No Property swales actually rendered',propertySettled);
 if(propertySettled.exactDuplicateCount!==0)fail('Exact duplicate Property swales remain',propertySettled);
 for(const [label,d] of [['settled',propertySettled],['stable',propertyStable]]){
   if(!(Number(d.planting.sourceFeatures)>0))fail('Planting source empty '+label,d);
   if(d.planting.layerVisibility!=='visible'||d.planting.shadowVisibility!=='visible')fail('Planting not visible '+label,d);
   if(d.planting.model?.visible!==true)fail('Planting model not visible '+label,d);
+  if(!(Number(d.planting.renderedFeatures)>0))fail('Planting has zero actually rendered features '+label,d);
+  if(!(Number(d.renderedPropertySwales)>0))fail('Property swales have zero actually rendered features '+label,d);
 }
 if(propertyStable.exactDuplicateCount!==0)fail('Duplicates appeared after persistence wait',propertyStable);
 
