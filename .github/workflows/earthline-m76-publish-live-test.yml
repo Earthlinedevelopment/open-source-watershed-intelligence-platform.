@@ -1,0 +1,36 @@
+name: Earthline M76 Publish Live Test
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths: ['.github/workflows/earthline-m76-publish-live-test.yml']
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra76-audit-restart
+          fetch-depth: 0
+      - name: Publish repaired index to pages-live only
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(git rev-parse HEAD)"
+          INDEX_BLOB="$(git rev-parse HEAD:index.html)"
+          git config user.name "Earthline Live Test"
+          git config user.email "actions@users.noreply.github.com"
+          git fetch origin pages-live
+          git worktree add /tmp/earthline-live origin/pages-live
+          cp index.html /tmp/earthline-live/index.html
+          cd /tmp/earthline-live
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "EARTHLINE_M76_LIVE_ALREADY_CURRENT source=$SOURCE_SHA index=$INDEX_BLOB"
+            exit 0
+          fi
+          git commit -m "test: publish M76 swale geometry and color candidate"
+          LIVE_SHA="$(git rev-parse HEAD)"
+          git push origin HEAD:pages-live
+          echo "EARTHLINE_M76_LIVE_PUBLISHED source=$SOURCE_SHA live=$LIVE_SHA index=$INDEX_BLOB"
