@@ -1,0 +1,85 @@
+name: Earthline M75 Current Iowa Engine Diagnostic
+on:
+  push:
+    branches: [recovery/mantra75-current-engine]
+    paths:
+      - .github/workflows/earthline-m75-current-iowa-engine-diagnostic.yml
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run current Iowa Property engine
+        shell: bash
+        run: |
+          cat > /tmp/iowa.mjs <<'NODE'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1800,height:1000}});
+          await page.route('https://api.mapbox.com/**',async route=>{
+            const h={...route.request().headers(),referer:'https://earthlinedevelopment.org/',origin:'https://earthlinedevelopment.org'};
+            await route.continue({headers:h});
+          });
+          await page.goto('http://127.0.0.1:8787/?diag='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.waitForFunction(()=>window.earthlineMap||(typeof earthlineMap!=='undefined'&&earthlineMap),null,{timeout:30000});
+          const input=page.locator('#searchInput');
+          await input.fill('Iowa'); await page.waitForTimeout(800);
+          const opts=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
+          if(await opts.count()) await opts.first().click({force:true}); else await input.press('Enter').catch(()=>{});
+          await page.waitForTimeout(200); await page.locator('#runBtn').click({force:true});
+          await page.waitForFunction(()=>{
+            const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+            return String(d&&(d.tier||d.mode)||'').toLowerCase()==='regional'&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';
+          },null,{timeout:120000,polling:200});
+          await page.evaluate(()=>{
+            const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+            if(typeof M!=='undefined'&&M){M.centerLat=41.95715;M.centerLng=-93.38977;M.loc=Object.assign({},M.loc||{},{name:'Iowa diagnostic',countryCode:'us',lat:41.95715,lng:-93.38977});}
+            try{mp?.jumpTo?.({center:[-93.38977,41.95715],zoom:13});}catch(_){}
+          });
+          await page.waitForTimeout(900);
+          const btn=page.locator('#earthlineDeclareProperty16169');
+          if(await btn.count()) await btn.click({force:true}); else await page.evaluate(()=>window.earthlineDeclarePropertyAtCrosshair16173?.());
+          await page.waitForFunction(()=>{
+            const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+            return a?.settled===true||String(document.documentElement.dataset.earthlinePropertyRunState||'')==='idle';
+          },null,{timeout:120000,polling:200}).catch(()=>{});
+          await page.waitForTimeout(1200);
+          const out=await page.evaluate(()=>{
+            const m=(typeof M!=='undefined'?M:null), mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+            const diag=m?.swaleDiagnostics?JSON.parse(JSON.stringify(m.swaleDiagnostics)):null;
+            const flow=m?.flowFirstAudit15836?JSON.parse(JSON.stringify(m.flowFirstAudit15836)):null;
+            const cov=m?.coverageDiagnostic15803?JSON.parse(JSON.stringify(m.coverageDiagnostic15803)):null;
+            const meta=m?.swaleMeta?JSON.parse(JSON.stringify(m.swaleMeta)):null;
+            const canopy=m?.terrainHandoff15791?.canopy?JSON.parse(JSON.stringify(m.terrainHandoff15791.canopy)):null;
+            const swales=Array.isArray(m?.swales)?m.swales:[];
+            const lens=swales.map(s=>Array.isArray(s?.pts)?s.pts.length:0);
+            const sources={};
+            for(const s of swales){const k=String(s?.sourceKind||s?.source||s?.placementMode15836||'unknown');sources[k]=(sources[k]||0)+1;}
+            const style=mp?.getStyle?.()||{};
+            const treeLayers=(style.layers||[]).filter(l=>/tree|forest|canopy/i.test(String(l.id||''))).map(l=>({id:l.id,visibility:(()=>{try{return mp.getLayoutProperty(l.id,'visibility')||'visible'}catch(_){return null}})()}));
+            return {
+              runAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+              diag,flow,cov,meta,canopy,
+              swaleCount:swales.length,
+              swalePointStats:lens.length?{min:Math.min(...lens),max:Math.max(...lens),avg:lens.reduce((a,b)=>a+b,0)/lens.length}:null,
+              sources,treeLayers,
+              optionalCanopyUnavailable:!!m?.optionalCanopyUnavailable15870
+            };
+          });
+          console.log('EARTHLINE_CURRENT_IOWA '+JSON.stringify(out));
+          await browser.close();
+          NODE
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-current-iowa.log 2>&1 &
+          PID=$!; trap 'kill $PID || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          node /tmp/iowa.mjs
