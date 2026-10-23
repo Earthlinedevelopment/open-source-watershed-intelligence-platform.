@@ -1,0 +1,51 @@
+name: Earthline M75 Iowa Combined Verification
+on:
+  push:
+    branches:
+      - recovery/mantra74-stability
+    paths:
+      - tests/m75-iowa-combined.mjs
+      - .github/workflows/earthline-m75-iowa-combined-verify.yml
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: controller
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-live-combined
+          path: candidate
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browser runtime
+        working-directory: controller
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run Iowa Regional + Property verification
+        shell: bash
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 --directory candidate >/tmp/m75-iowa-combined-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in {1..30}; do
+            curl -fsS http://127.0.0.1:8787/ >/dev/null && break
+            sleep 1
+          done
+          cd controller
+          EARTHLINE_URL='http://127.0.0.1:8787/' node tests/m75-iowa-combined.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m75-iowa-combined
+          path: |
+            controller/m75-iowa-combined.json
+            controller/m75-iowa-regional.png
+            controller/m75-iowa-property-settled.png
+            controller/m75-iowa-property-stable.png
