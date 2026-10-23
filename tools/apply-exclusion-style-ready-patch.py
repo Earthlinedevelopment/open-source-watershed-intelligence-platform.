@@ -14,7 +14,7 @@ new="""      if(!relevant.length)return false;
          not global source-settlement. Individual rendered/source queries below
          remain the evidence authority and still fail closed on real query failure. */
       return true;"""
-const n=s.count(old)
+n=s.count(old)
 if n!=1: raise SystemExit("STYLE_READY_COUNT="+str(n))
 s=s.replace(old,new,1)
 p.write_text(s)
