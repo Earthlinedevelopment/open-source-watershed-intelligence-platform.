@@ -1,0 +1,93 @@
+name: Earthline M76 Fix Secondary Worm Source Live
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-fix-secondary-worm-live.yml'
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Patch the actual live secondary contour-fill geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+
+          marker="/* BUILD-CHECK-15768"
+          if marker not in s:
+              raise SystemExit('minimum-length marker missing')
+
+          helper="""/* EARTHLINE M76D — local construction reach for contour-fill candidates.
+   The contour-fill pass may trace a long level contour for discovery, but only
+   the local reach around the selected seed may become a publishable swale. */
+function earthlineLocalSeedReachM76(seg,x,y){
+  if(!Array.isArray(seg)||seg.length<3)return seg;
+  let bestI=0,bestD=Infinity;
+  for(let i=0;i<seg.length;i++){
+    const p=seg[i],dx=p[0]-x,dy=p[1]-y,d=dx*dx+dy*dy;
+    if(d<bestD){bestD=d;bestI=i;}
+  }
+  const totalM=Math.max(30,Math.min(60,Number(M.cellM||1)*8));
+  const halfM=totalM/2;
+  let lo=bestI,hi=bestI,leftM=0,rightM=0;
+  while(lo>0&&leftM<halfM){
+    leftM+=Math.hypot(seg[lo][0]-seg[lo-1][0],seg[lo][1]-seg[lo-1][1])*M.cellM;
+    lo--;
+  }
+  while(hi<seg.length-1&&rightM<halfM){
+    rightM+=Math.hypot(seg[hi+1][0]-seg[hi][0],seg[hi+1][1]-seg[hi][1])*M.cellM;
+    hi++;
+  }
+  const out=earthlineCleanPath(seg.slice(lo,hi+1));
+  return out.length>=3?out:seg;
+}
+
+"""
+          if 'function earthlineLocalSeedReachM76(' not in s:
+              s=s.replace(marker,helper+marker,1)
+
+          old="const segs=earthlineSplitUsableSegments(pts,maxS).slice(0,3);"
+          new="""const rawSegsM76=earthlineSplitUsableSegments(pts,maxS).slice(0,3);
+        const segs=rawSegsM76.map(seg=>earthlineLocalSeedReachM76(seg,sd.x,sd.y));"""
+          if s.count(old)!=1:
+              raise SystemExit(f'secondary segment owner count {s.count(old)}')
+          s=s.replace(old,new,1)
+
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Validate the live swale geometry owner
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'function earthlineLocalSeedReachM76' index.html
+          grep -q 'const rawSegsM76=earthlineSplitUsableSegments(pts,maxS).slice(0,3);' index.html
+          grep -q 'earthlineLocalSeedReachM76(seg,sd.x,sd.y)' index.html
+          test "$(grep -c 'earthlineLocalSeedReachM76(seg,sd.x,sd.y)' index.html)" = "1"
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('M76D_LIVE_PARSE_OK',parsed);
+          NODE
+      - name: Publish live
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Recovery"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: trim secondary contour swales to local seed reach"
+          git push origin HEAD:pages-live
