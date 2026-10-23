@@ -120,21 +120,43 @@ jobs:
           const property=await snap('property');
           await page.screenshot({path:'iowa-owner-property.png',fullPage:false});
 
+          // Re-entry test: return from Property to Iowa Regional on the same page.
+          await input.fill('Iowa');
+          await page.waitForTimeout(900);
+          const opts2=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
+          if(await opts2.count()) await opts2.first().click({force:true}); else await input.press('Enter').catch(()=>{});
+          await page.waitForTimeout(200);
+          const regional2Start=Date.now();
+          await page.locator('#runBtn').click({force:true});
+          await page.waitForFunction(()=>{
+            const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+            return String(d&&(d.tier||d.mode)||'').toLowerCase()==='regional'&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';
+          },null,{timeout:90000,polling:200});
+          const regional2Ms=Date.now()-regional2Start;
+          await page.waitForTimeout(1000);
+          const regional2=await snap('regional2');
+          await page.screenshot({path:'iowa-owner-regional2.png',fullPage:false});
+
           const regionalGenerated=Number(regional.publication?.generated||regional.displayAudit?.swaleLines||0);
           const regionalVisible=Number(regional.displayAudit?.swaleLines||0);
           const propertyCorridors=Number(property.property?.corridors||0);
           const treeLayersRegional=regional.layers.filter(l=>/tree|forest|canopy/i.test(l.id)&&l.visibility!=='none').length;
           const treeLayersProperty=property.layers.filter(l=>/tree|forest|canopy/i.test(l.id)&&l.visibility!=='none').length;
 
-          const out={regionalMs,propertyMs,regionalGenerated,regionalVisible,propertyCorridors,treeLayersRegional,treeLayersProperty,regional,property,errors};
+          const regional2Generated=Number(regional2.publication?.generated||regional2.displayAudit?.swaleLines||0);
+          const regional2Visible=Number(regional2.displayAudit?.swaleLines||0);
+          const treeLayersRegional2=regional2.layers.filter(l=>/tree|forest|canopy/i.test(l.id)&&l.visibility!=='none').length;
+          const out={regionalMs,propertyMs,regional2Ms,regionalGenerated,regionalVisible,regional2Generated,regional2Visible,propertyCorridors,treeLayersRegional,treeLayersProperty,treeLayersRegional2,regional,property,regional2,errors};
           fs.writeFileSync('iowa-owner-validation.json',JSON.stringify(out,null,2));
-          console.log('EARTHLINE_OWNER_VALIDATION '+JSON.stringify({regionalMs,propertyMs,regionalGenerated,regionalVisible,propertyCorridors,treeLayersRegional,treeLayersProperty,errors}));
+          console.log('EARTHLINE_OWNER_VALIDATION '+JSON.stringify({regionalMs,propertyMs,regional2Ms,regionalGenerated,regionalVisible,regional2Generated,regional2Visible,propertyCorridors,treeLayersRegional,treeLayersProperty,treeLayersRegional2,errors}));
 
           if(errors.length) throw new Error(errors.join(' | '));
           if(!(regionalGenerated>0&&regionalVisible>0)) throw new Error('Regional produced no visible corridors');
           if(!(propertyCorridors>0)) throw new Error('Property produced no corridors');
+          if(!(regional2Generated>0&&regional2Visible>0)) throw new Error('Second Regional produced no visible corridors');
           if(regionalMs>30000) throw new Error('Regional too slow '+regionalMs);
           if(propertyMs>30000) throw new Error('Property too slow '+propertyMs);
+          if(regional2Ms>30000) throw new Error('Second Regional too slow '+regional2Ms);
 
           await browser.close();
           JS
@@ -151,3 +173,4 @@ jobs:
             iowa-owner-validation.json
             iowa-owner-regional.png
             iowa-owner-property.png
+            iowa-owner-regional2.png
