@@ -124,9 +124,35 @@ const property=await page.evaluate(()=>{
     state:(()=>{const x=window.earthlineRegional15778||window.earthlineRegional15761||null;return x?{mode:x.mode,active:x.active,running:x.running}:null})()
   };
 });
+const propertyRender=await page.evaluate(()=>{
+  const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+  const style=mp?.getStyle?.()||{};
+  const ids=(style.layers||[]).map(l=>l.id).filter(id=>/living-swales|property-swale|planting|property-safe/i.test(String(id||'')));
+  const cv=mp?.getCanvas?.(),box=cv&&[[0,0],[cv.clientWidth||cv.width,cv.clientHeight||cv.height]];
+  const rows=[];
+  for(const id of ids){
+    const layer=mp.getLayer?.(id);
+    let rendered=null,visibility=null,sourceCount=null;
+    try{visibility=mp.getLayoutProperty(id,'visibility')||'visible'}catch(_){}
+    try{rendered=box?(mp.queryRenderedFeatures(box,{layers:[id]})||[]).length:null}catch(_){}
+    try{
+      const src=layer?.source?mp.getSource?.(layer.source):null;
+      sourceCount=Array.isArray(src?._data?.features)?src._data.features.length:null;
+    }catch(_){}
+    rows.push({id,type:layer?.type||null,source:layer?.source||null,visibility,rendered,sourceCount});
+  }
+  return {
+    mapMoving:!!mp?.isMoving?.(),
+    styleLoaded:(()=>{try{return !!mp?.isStyleLoaded?.()}catch(_){return null}})(),
+    rows,
+    renderedLiving:rows.filter(r=>/living-swales/.test(r.id)).reduce((a,r)=>a+(Number(r.rendered)||0),0),
+    renderedPlanting:rows.filter(r=>/planting/.test(r.id)).reduce((a,r)=>a+(Number(r.rendered)||0),0),
+    renderedSafe:rows.filter(r=>/property-safe/.test(r.id)).reduce((a,r)=>a+(Number(r.rendered)||0),0)
+  };
+});
 await page.screenshot({path:'m75-iowa-property.png',fullPage:false});
 
-const result={regionalMs,regional,propertyMs,property,pageErrors};
+const result={regionalMs,regional,propertyMs,property,propertyRender,pageErrors};
 fs.writeFileSync('m75-engine-core-candidate.json',JSON.stringify(result,null,2));
 console.log('EARTHLINE_M75_ENGINE_CORE_RESULT '+JSON.stringify(result));
 
@@ -135,6 +161,8 @@ if(!(regional.coverageCells12>=30)) throw new Error('Regional 12x12 coverage too
 if(!(propertyMs<=15000)) throw new Error('Property exceeded 15s ceiling: '+propertyMs);
 if(property.exactDuplicates!==0) throw new Error('Property exact duplicates: '+property.exactDuplicates);
 if(!(property.plantingFeatures>0)) throw new Error('Property planting source empty');
+if(!(propertyRender.renderedLiving>0||propertyRender.renderedSafe>0)) throw new Error('No Property swales actually rendered');
+if(!(propertyRender.renderedPlanting>0)) throw new Error('No planting/trees actually rendered');
 if(property.plantLayers.some(x=>x.exists&&x.visibility==='none')) throw new Error('Property planting layer hidden');
 if(pageErrors.length) throw new Error('Page errors: '+pageErrors.join(' | '));
 
