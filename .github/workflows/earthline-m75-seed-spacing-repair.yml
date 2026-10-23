@@ -1,0 +1,74 @@
+name: Earthline M75 Seed Spacing Repair
+on:
+  push:
+    branches:
+      - recovery/mantra75-current-engine
+    paths:
+      - .github/workflows/earthline-m75-seed-spacing-repair.yml
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-current-engine
+          fetch-depth: 0
+      - name: Patch seed spacing
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(errors='strict')
+          marker='function seedCandidatesForLevel(L,maxS,chanThr,maxSeedsPerLevel){'
+          helper="""function earthlineSeedSpacingCells17699(regional){
+    const cell=Math.max(.25,Number(M.cellM||1));
+    const targetM=regional?Math.max(24,Math.min(60,cell*4)):TARGET_M;
+    return Math.max(2,Math.round(targetM/cell));
+  }
+
+  function seedCandidatesForLevel(L,maxS,chanThr,maxSeedsPerLevel){"""
+          if s.count(marker)!=1: raise SystemExit(f'marker count {s.count(marker)}')
+          s=s.replace(marker,helper,1)
+          old="""    const out=[];
+    for(const c of found){
+      if(out.every(s=>Math.hypot(c.x-s.x,c.y-s.y)>(regional?18:24)))out.push(c);
+      if(out.length>=maxSeeds)break;
+    }"""
+          new="""    const out=[];
+    const seedSpacingCells17699=earthlineSeedSpacingCells17699(regional);
+    for(const c of found){
+      if(out.every(s=>Math.hypot(c.x-s.x,c.y-s.y)>seedSpacingCells17699))out.push(c);
+      if(out.length>=maxSeeds)break;
+    }"""
+          if s.count(old)!=1: raise SystemExit(f'select count {s.count(old)}')
+          s=s.replace(old,new,1)
+          old_obs='    const spacingCells15841=params15841.regional?18:24;'
+          new_obs='    const spacingCells15841=earthlineSeedSpacingCells17699(!!params15841.regional);'
+          if s.count(old_obs)!=1: raise SystemExit(f'observer count {s.count(old_obs)}')
+          s=s.replace(old_obs,new_obs,1)
+          p.write_text(s)
+          print('EARTHLINE_SEED_SPACING_REPAIR_OK')
+          PY
+      - name: Parse check
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('EARTHLINE_SEED_SPACING_PARSE_OK',parsed);
+          NODE
+      - name: Commit repair
+        shell: bash
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: align seed spacing with physical swale spacing"
+          git push origin HEAD:recovery/mantra75-current-engine
