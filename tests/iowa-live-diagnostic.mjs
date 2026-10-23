@@ -30,6 +30,22 @@ await page.waitForFunction(()=>{
   return tier==='regional'&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';
 },null,{timeout:90000,polling:150});
 
+const regionalPipeline17702=await page.evaluate(()=>{
+  const visual=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020||null;
+  const group=document.querySelector('#earthlineRegionalVectorOverlay16020 [data-layer="swale-opportunities"]');
+  return {
+    publication:window.EARTHLINE_REGIONAL_PUBLICATION_SELECTION_17700||null,
+    capacity:window.EARTHLINE_SUPPORTED_CAPACITY_16843||null,
+    spread:window.EARTHLINE_FINAL_PUBLISHED_SPREAD_16783||null,
+    selection:window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||null,
+    generation:window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null,
+    visualSwales:Array.isArray(visual?.swales?.features)?visual.swales.features.length:null,
+    renderedPaths:group?group.querySelectorAll('path').length:null,
+    renderedHits:group?group.querySelectorAll('.earthline-swale-hit-16070').length:null,
+    status:document.getElementById('earthlineVermontStatus16147')?.textContent||''
+  };
+});
+
 await page.evaluate(({lat,lng})=>{
   const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
   if(typeof M!=='undefined'&&M){
@@ -284,7 +300,7 @@ await page.screenshot({path:'iowa-property-settlement.png',fullPage:false});
 await page.waitForTimeout(5000);
 diag.plantingAfter5s=await plantingSnapshot('after-5s');
 await page.screenshot({path:'iowa-property-after5s.png',fullPage:false});
-diag.firstRenderedPropertyMs=firstRenderedPropertyMs;
+diag.firstRenderedPropertyMs=firstRenderedPropertyMs;\ndiag.regionalPipeline17702=regionalPipeline17702;
 diag.pageErrors=errors;
 fs.writeFileSync('iowa-live-diagnostic.json',JSON.stringify(diag,null,2));
 console.log('EARTHLINE_IOWA_DIAGNOSTIC '+JSON.stringify(diag));
