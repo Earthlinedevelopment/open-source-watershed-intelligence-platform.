@@ -71,7 +71,24 @@ async function snapshot(label){
       runAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
       safeAudit:window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null,
       swaleCount:feats.length,duplicateGeometryCount:dups.length,
-      flowFirstAudit:(typeof M!=='undefined'&&M.flowFirstAudit15836)?JSON.parse(JSON.stringify(M.flowFirstAudit15836)):null,
+      flowFirstAudit:(typeof M!=='undefined'&&M.flowFirstPlacement15836)?JSON.parse(JSON.stringify(M.flowFirstPlacement15836)):null,
+      swaleOrigins:(()=>{try{
+        if(typeof M==='undefined'||!Array.isArray(M.swales))return null;
+        const rows=M.swales.map((sw,i)=>({
+          i,
+          mode:String(sw?.placementMode15836||'contour'),
+          primary:!!sw?.primaryFlowFirst15836,
+          bandKey:sw?.bandKey??null,
+          lenM:Number(sw?.lenM||0),
+          score:Number(sw?.score||0),
+          flowScore:Number(sw?.prescriptionFlowScore15833||0),
+          capCells:Number(sw?.capCells||0)
+        }));
+        const byMode=rows.reduce((a,r)=>(a[r.mode]=(a[r.mode]||0)+1,a),{});
+        const lengths=rows.map(r=>r.lenM).filter(Number.isFinite).sort((a,b)=>a-b);
+        const pct=p=>lengths.length?lengths[Math.min(lengths.length-1,Math.floor((lengths.length-1)*p))]:null;
+        return {byMode,rows,medianLenM:pct(.5),p25LenM:pct(.25),p75LenM:pct(.75),minLenM:lengths[0]??null,maxLenM:lengths[lengths.length-1]??null};
+      }catch(e){return {error:String(e)}}})(),
       swaleDiagnostics:(typeof M!=='undefined'&&M.swaleDiagnostics)?JSON.parse(JSON.stringify(M.swaleDiagnostics)):null,
       canopy:(typeof M!=='undefined'&&M.terrainHandoff15791?.canopy)?JSON.parse(JSON.stringify(M.terrainHandoff15791.canopy)):null
     };
@@ -99,3 +116,5 @@ const out={settled,propertyMs:Date.now()-p0,before,after,errors};
 fs.writeFileSync('iowa-property-engine.json',JSON.stringify(out,null,2));
 console.log('EARTHLINE_IOWA_PROPERTY_ENGINE '+JSON.stringify(out));
 await browser.close();
+
+// M75_FLOW_FIRST_ORIGIN_AUDIT
