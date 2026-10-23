@@ -257,6 +257,33 @@ const diag=await page.evaluate(({target,serialBefore,pre,started,propertyStarted
   };
 },{target:TARGET,serialBefore,pre,started,propertyStarted,settled});
 
+const plantingSnapshot=async(label)=>page.evaluate(({label})=>{
+  const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+  const ids=['earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'];
+  const src=mp?.getSource?.('earthline-swale-planting-15806')||null;
+  const layerState=ids.map(id=>({
+    id,
+    exists:!!mp?.getLayer?.(id),
+    visibility:(()=>{try{return mp.getLayoutProperty(id,'visibility')||'visible'}catch(_){return null}})(),
+    rendered:(()=>{try{
+      const cv=mp?.getCanvas?.(),box=cv&&[[0,0],[cv.clientWidth||cv.width,cv.clientHeight||cv.height]];
+      return box&&mp?.getLayer?.(id)?(mp.queryRenderedFeatures?.(box,{layers:[id]})||[]).length:0;
+    }catch(_){return -1}})()
+  }));
+  return {
+    label,
+    sourceFeatures:Array.isArray(src?._data?.features)?src._data.features.length:null,
+    naturalSwalePlanting:(typeof M!=='undefined'&&M?.naturalSwalePlanting15806)?JSON.parse(JSON.stringify(M.naturalSwalePlanting15806)):null,
+    rendererOwnership:window.earthlineRegional15778?.rendererOwnership15805||null,
+    layers:layerState
+  };
+},{label});
+
+diag.plantingAtSettlement=await plantingSnapshot('settlement');
+await page.screenshot({path:'iowa-property-settlement.png',fullPage:false});
+await page.waitForTimeout(5000);
+diag.plantingAfter5s=await plantingSnapshot('after-5s');
+await page.screenshot({path:'iowa-property-after5s.png',fullPage:false});
 diag.firstRenderedPropertyMs=firstRenderedPropertyMs;
 diag.pageErrors=errors;
 fs.writeFileSync('iowa-live-diagnostic.json',JSON.stringify(diag,null,2));
