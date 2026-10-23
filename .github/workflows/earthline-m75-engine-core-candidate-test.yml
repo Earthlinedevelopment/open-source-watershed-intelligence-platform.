@@ -1,0 +1,48 @@
+name: Earthline M75 Engine Core Candidate Test
+on:
+  push:
+    branches:
+      - recovery/mantra75-live-engine-core
+    paths:
+      - tests/m75-engine-core-candidate.mjs
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-live-engine-core
+          path: controller
+      - uses: actions/checkout@v4
+        with:
+          ref: 702c32216b97be687c944a641f17711fa3586d7c
+          path: candidate
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browser runtime
+        shell: bash
+        run: |
+          cd controller
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run Iowa engine-core candidate
+        shell: bash
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 --directory candidate >/tmp/m75-engine-core-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          cd controller
+          EARTHLINE_URL=http://127.0.0.1:8787/ node tests/m75-engine-core-candidate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m75-engine-core-candidate
+          path: |
+            controller/m75-engine-core-candidate.json
+            controller/m75-iowa-regional.png
+            controller/m75-iowa-property.png
