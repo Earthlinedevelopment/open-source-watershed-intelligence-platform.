@@ -70,10 +70,10 @@ const out=await page.evaluate(()=>{
     styleLayers,
     mapReady:(()=>{try{return !!mp?.getStyle?.()}catch(_){return false}})(),
     mapLoaded:(()=>{try{return !!mp?.loaded?.()}catch(_){return null}})(),
-    tilesLoaded:(()=>{try{return !!mp?.areTilesLoaded?.()}catch(_){return null}})(),
-    errors
+    tilesLoaded:(()=>{try{return !!mp?.areTilesLoaded?.()}catch(_){return null}})()
   };
 });
+out.errors=errors;
 fs.writeFileSync('iowa-production-exclusion.json',JSON.stringify(out,null,2));
 console.log('EARTHLINE_IOWA_PRODUCTION_EXCLUSION '+JSON.stringify(out));
 await browser.close();
