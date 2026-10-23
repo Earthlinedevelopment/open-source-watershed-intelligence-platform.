@@ -6,7 +6,7 @@ const CASES=[
   {name:'Arizona A',lat:33.52510,lng:-114.07282},
   {name:'Arizona B',lat:33.52488,lng:-114.07825}
 ];
-const PRODUCT_SHA='35d0d330ebdd2a9239b37e981412de4bbc31027e';
+const PRODUCT_SHA='abcdf674dc4061c47ef26e54ed5334b539361db3';
 const browser=await chromium.launch({headless:true});
 const rows=[];
 
