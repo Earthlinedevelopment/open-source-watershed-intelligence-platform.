@@ -1,0 +1,43 @@
+name: Earthline M76 Swale Owner Inspect 3
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths: ['.github/workflows/earthline-m76-swale-inspect-3.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra76-audit-restart
+          fetch-depth: 0
+      - name: Print geometry helpers and renderer ownership
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(encoding='utf-8')
+          markers=[
+            "function earthlineSwaleFromPts",
+            "function earthlineMinimumSwaleLengthM15768",
+            "function traceLevelContour",
+            "function earthlineSplitUsableSegments",
+            "function earthlineSegmentLengthM",
+            "earthlineApplyRendererOwnership15805",
+            "function earthlineApplyRendererOwnership15805",
+            "earthline-property-safe-water-16221",
+            "earthline-living-swales-water-15792",
+            "function widthPx"
+          ]
+          for marker in markers:
+              print("\n===== MARKER",marker,"=====")
+              hits=[m.start() for m in re.finditer(re.escape(marker),s,re.I)]
+              print("COUNT",len(hits),hits[-20:])
+              for i in hits[-8:]:
+                  block=s[max(0,i-3500):min(len(s),i+11000)]
+                  block=re.sub(r"(const TILE_(?:UP|FLIP)='data:image/[^']+)'",r"\1<BASE64-OMITTED>'",block)
+                  print(block)
+          PY
