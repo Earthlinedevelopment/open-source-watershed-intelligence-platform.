@@ -39,6 +39,12 @@ const snap=async label=>{
       regionalAudit:a,
       regionalSvgSwalePaths:swaleGroup?.querySelectorAll?.('path')?.length||0,
       regionalOverlayDisplay:overlay?getComputedStyle(overlay).display:null,
+      nativeRegionalCorridors:[
+        'earthline-ranked-swale-soil-15777',
+        'earthline-ranked-swale-plant-15777',
+        'earthline-ranked-swale-water-15777'
+      ].map(id=>({id,visibility:vis(id)})),
+      nativeRegionalLabelVisibility:vis('earthline-ranked-swale-label-15775'),
       displayedTier:String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147)?.tier||(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147)?.mode||''),
       propertyAudit:pa,
       propertyRunState:document.documentElement.dataset.earthlinePropertyRunState||'',
@@ -74,12 +80,14 @@ await page.waitForFunction(()=>{
   const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
   return String(d&&(d.tier||d.mode)||'').toLowerCase()==='regional'&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';
 },null,{timeout:60000,polling:150});
-await page.waitForTimeout(1200);
 const regionalMs=Date.now()-r0;
+await page.waitForTimeout(1200);
 const regional=await snap('m75-iowa-regional');
 if(regionalMs>15000)fail('Regional exceeded 15s',regionalMs);
 if(regional.regionalAudit?.corridorGeometryVisible!==false)fail('Initial Regional corridor geometry is visible',regional);
-if(regional.regionalSvgSwalePaths!==0)fail('Initial Regional worms are rendered',regional);
+if(regional.regionalSvgSwalePaths!==0)fail('Initial Regional SVG worms are rendered',regional);
+if(regional.nativeRegionalCorridors.some(x=>x.visibility!=='none'))fail('Initial Regional native corridor geometry is visible',regional);
+if(regional.nativeRegionalLabelVisibility!=='visible')fail('Initial Regional ranked labels are hidden',regional);
 if(Number(regional.regionalAudit?.generatedSwales||0)<12)fail('Regional generated opportunity count too low',regional);
 if(Number(regional.regionalAudit?.swaleGradeLabels||0)<1)fail('Regional labels missing',regional);
 
