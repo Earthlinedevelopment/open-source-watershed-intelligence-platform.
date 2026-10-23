@@ -68,3 +68,4 @@ fs.writeFileSync('iowa-regional-candidate.json',JSON.stringify(diag,null,2));
 await page.screenshot({path:'iowa-regional-candidate.png',fullPage:false});
 console.log('EARTHLINE_IOWA_REGIONAL_CANDIDATE '+JSON.stringify(diag));
 await browser.close();
+// M75 regional engine retest 1792721198971
