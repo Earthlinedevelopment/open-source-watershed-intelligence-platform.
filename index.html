@@ -6058,6 +6058,18 @@ function earthlineSegmentLengthM(pts){
   return d;
 }
 
+/* EARTHLINE M76 — construction-shape guard.
+   A level interception corridor may curve with the terrain, but it must not wrap
+   around a landform as a long serpentine contour. This is one geography-neutral
+   shape rule; it does not alter DEM, contour elevation, exclusions, hydrology,
+   spacing, or runoff-path ownership. */
+function earthlineSegmentTortuosityM76(pts){
+  if(!pts||pts.length<2)return Infinity;
+  const lenM=earthlineSegmentLengthM(pts),a=pts[0],b=pts[pts.length-1];
+  const chordM=Math.hypot(b[0]-a[0],b[1]-a[1])*M.cellM;
+  return lenM/Math.max(1,chordM);
+}
+
 /* BUILD-CHECK-15768
    Minimum corridor length is a physical screening threshold, not an uncapped
    multiple of regional raster-cell size. This keeps property and regional
@@ -6094,7 +6106,10 @@ function earthlineSplitUsableSegments(pts,maxS){
     prev=p;
   }
   if(earthlineSegmentLengthM(cur)>=minM)segs.push(earthlineCleanPath(cur));
-  segs.sort((a,b)=>earthlineSegmentLengthM(b)-earthlineSegmentLengthM(a));
+  segs.sort((a,b)=>
+    (earthlineSegmentTortuosityM76(a)-earthlineSegmentTortuosityM76(b))||
+    (earthlineSegmentLengthM(b)-earthlineSegmentLengthM(a))
+  );
   return segs;
 }
 
@@ -6187,9 +6202,11 @@ function earthlineSwaleGeometryAcceptable(pts,lenM){
   for(const p of pts){minX=Math.min(minX,p[0]);maxX=Math.max(maxX,p[0]);minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1]);}
   const diagM=Math.hypot(maxX-minX,maxY-minY)*M.cellM;
   const loopish=gapM<Math.max(8,lenM*0.12);
-  // Suppress small closed rings and compact bullseyes caused by neighborhood/DEM artifacts.
-  if(loopish&&(lenM<240||lenM/Math.max(1,diagM)>3.2))return false;
-  if(lenM/Math.max(1,diagM)>6)return false;
+  const tortuosityM76=earthlineSegmentTortuosityM76(pts);
+  // A swale is an interception earthwork, not a closed contour ring or a winding contour trace.
+  if(loopish)return false;
+  if(tortuosityM76>1.55)return false;
+  if(lenM/Math.max(1,diagM)>1.80)return false;
   return true;
 }
 
@@ -13296,7 +13313,13 @@ var prescribeSwales;
           segmentCrossesPath15836(seg,path15836.cells,1,path15836.pathMask16320)
         );
         if(!segs15836.length){lastReason15836="no-safe-contour-crossing";continue;}
-        segs15836.sort((a,b)=>earthlineSegmentLengthM(b)-earthlineSegmentLengthM(a));
+        // Prefer the least-winding safe contour crossing; length breaks ties only.
+        // This keeps the runoff interception but prevents an entire curling contour
+        // from winning merely because it is longest.
+        segs15836.sort((a,b)=>
+          (earthlineSegmentTortuosityM76(a)-earthlineSegmentTortuosityM76(b))||
+          (earthlineSegmentLengthM(b)-earthlineSegmentLengthM(a))
+        );
         for(const seg15836 of segs15836){
           if(claimR&&earthlinePathOverlap(claimMask,seg15836)>.18){lastReason15836="overlap-with-earlier-primary";continue;}
           const sw15836=earthlineSwaleFromPts(seg15836,-1,chanThr,false,maxS,levels.length);
@@ -28972,11 +28995,11 @@ b.dataset.earthlinePropertyClickOwner16546='shared-17494';return b}
   function normalizeTextureStyle17417(mp){
     try{
       const paint={
-        footprint:{'fill-color':'#5d4a31','fill-opacity':.065,'fill-outline-color':'#163020'},
-        casing:{'line-color':'#102117','line-opacity':.64,'line-width':26},
-        neutral:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]},
-        up:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22},
-        flip:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}
+        footprint:{'fill-color':'#6f5137','fill-opacity':.10,'fill-outline-color':'#244d32'},
+        casing:{'line-color':'#6b4d32','line-opacity':.88,'line-width':26},
+        neutral:{'line-color':'#5f985c','line-opacity':.86,'line-width':18,'line-dasharray':[1.25,.55]},
+        up:{'line-pattern':IMG_UP,'line-opacity':.90,'line-width':22},
+        flip:{'line-pattern':IMG_FLIP,'line-opacity':.90,'line-width':22}
       };
       for(const [k,id] of Object.entries(LAYERS)){
         if(!mp?.getLayer?.(id))continue;
@@ -28990,7 +29013,7 @@ b.dataset.earthlinePropertyClickOwner16546='shared-17494';return b}
       return true;
     }catch(_){return false}
   }
-  async function ensureTextureLayers(){const mp=map();if(!mp?.getStyle?.())return false;try{const style=mp.getStyle();if(!style||!style.sources)return false;if(!mp.getSource(SOURCE))mp.addSource(SOURCE,{type:'geojson',lineMetrics:true,data:EMPTY})}catch(_){return false}if(!await ensureImages())return false;const before=mp.getLayer?.('earthline-swales-casing')?'earthline-swales-casing':undefined;addLayer({id:LAYERS.footprint,type:'fill',source:SOURCE,filter:['==',['get','geometry_role'],'footprint'],paint:{'fill-color':'#5d4a31','fill-opacity':.065,'fill-outline-color':'#163020'}},before);addLayer({id:LAYERS.casing,type:'line',source:SOURCE,filter:['==',['get','geometry_role'],'centerline'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#102117','line-opacity':.64,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7f9568','line-opacity':.66,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.72,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.72,'line-width':22}},before);normalizeTextureStyle17417(mp);return Object.values(LAYERS).every(id=>!!mp.getLayer?.(id))}
+  async function ensureTextureLayers(){const mp=map();if(!mp?.getStyle?.())return false;try{const style=mp.getStyle();if(!style||!style.sources)return false;if(!mp.getSource(SOURCE))mp.addSource(SOURCE,{type:'geojson',lineMetrics:true,data:EMPTY})}catch(_){return false}if(!await ensureImages())return false;const before=mp.getLayer?.('earthline-swales-casing')?'earthline-swales-casing':undefined;addLayer({id:LAYERS.footprint,type:'fill',source:SOURCE,filter:['==',['get','geometry_role'],'footprint'],paint:{'fill-color':'#6f5137','fill-opacity':.10,'fill-outline-color':'#244d32'}},before);addLayer({id:LAYERS.casing,type:'line',source:SOURCE,filter:['==',['get','geometry_role'],'centerline'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#6b4d32','line-opacity':.88,'line-width':26}},before);addLayer({id:LAYERS.neutral,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'indeterminate']],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#5f985c','line-opacity':.86,'line-width':18,'line-dasharray':[1.25,.55]}},before);addLayer({id:LAYERS.up,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],0]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_UP,'line-opacity':.90,'line-width':22}},before);addLayer({id:LAYERS.flip,type:'line',source:SOURCE,filter:['all',['==',['get','geometry_role'],'centerline'],['==',['get','orientation_status'],'verified'],['==',['get','texture_flip'],1]],layout:{'line-cap':'butt','line-join':'round'},paint:{'line-pattern':IMG_FLIP,'line-opacity':.90,'line-width':22}},before);normalizeTextureStyle17417(mp);return Object.values(LAYERS).every(id=>!!mp.getLayer?.(id))}
   function bilinear(m,x,y){const gw=Number(typeof GW!=='undefined'?GW:0),gh=Number(typeof GH!=='undefined'?GH:0),arr=m&&m.h;if(!arr||!gw||!gh)return NaN;const xx=clamp(x,0,gw-1),yy=clamp(y,0,gh-1),x0=Math.floor(xx),y0=Math.floor(yy),x1=Math.min(gw-1,x0+1),y1=Math.min(gh-1,y0+1),tx=xx-x0,ty=yy-y0;const at=(ix,iy)=>Number(arr[iy*gw+ix]);const a=at(x0,y0),b=at(x1,y0),c=at(x0,y1),d=at(x1,y1);if(![a,b,c,d].every(Number.isFinite))return NaN;return a*(1-tx)*(1-ty)+b*tx*(1-ty)+c*(1-tx)*ty+d*tx*ty}
   function median16177(values){const a=(values||[]).filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return NaN;const k=Math.floor(a.length/2);return a.length%2?a[k]:(a[k-1]+a[k])/2}
   function gridFromLngLat16177(ll){try{const p=earthlineLngLatToGrid(Number(ll?.[0]),Number(ll?.[1]));return Array.isArray(p)&&p.length>=2&&Number.isFinite(Number(p[0]))&&Number.isFinite(Number(p[1]))?[Number(p[0]),Number(p[1])]:null}catch(_){return null}}
@@ -29016,7 +29039,7 @@ b.dataset.earthlinePropertyClickOwner16546='shared-17494';return b}
     regionalOverlay16336.style.removeProperty('opacity');
   }
   return false
-}const safeAudit17183=window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null;if(active&&Number(safeAudit17183?.count||0)>0&&safeAudit17183?.visible!==true)return false;/* EARTHLINE_NATURAL_AFTER_SAFE_17183 */if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline'),footprints=fc.features.filter(f=>f.properties?.geometry_role==='footprint'),directional=centers.filter(f=>f.properties?.orientation_status==='verified'),neutral=centers.filter(f=>f.properties?.orientation_status==='indeterminate'),sig=[model()?.searchGen,centers.length,centers.map(f=>String(f.properties?.rawIndex??f.id??'')).join(','),centers.map(f=>String(f.properties?.orientation_status)+'/'+String(f.properties?.texture_flip)).join('|')].join('|');const src=mp.getSource?.(SOURCE);if(src?.setData&&(sig!==lastSignature||reason.includes('force')||!src._data?.features?.length)){src.setData(fc);lastSignature=sig}try{if(typeof window.earthlineSyncNaturalSwalePlanting15806==='function')window.earthlineSyncNaturalSwalePlanting15806(authoritativeFC())}catch(_){}const show=centers.length>0&&footprints.length===centers.length&&directional.length+neutral.length===centers.length;for(const id of Object.values(LAYERS))visible(id,show);if(show){for(const id of OLD)visible(id,false);/* 17172: fail visibly. Keep the authoritative safe Property swales opaque until the natural-texture replacement is actually rendered, not merely source-ready. */let naturalRendered17172=0;try{const canvas17172=mp.getCanvas?.();const box17172=canvas17172&&[[0,0],[canvas17172.clientWidth||canvas17172.width,canvas17172.clientHeight||canvas17172.height]];const ids17172=[LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip].filter(id=>mp.getLayer?.(id));if(box17172&&ids17172.length)naturalRendered17172=(mp.queryRenderedFeatures?.(box17172,{layers:ids17172})||[]).length}catch(_){}const safeOpacity17172=0;for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',safeOpacity17172)}catch(_){}}try{for(const id of [LAYERS.footprint,LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(true);for(const id of ['earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property');if(mp.getLayer?.('earthline-property-swale-ditch-16166'))mp.moveLayer('earthline-property-swale-ditch-16166')}catch(_){}}else{/* If the natural renderer is unavailable, restore the verified authoritative safe-line fallback so Property output never disappears. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',.98)}catch(_){}}}const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');if(overlay)overlay.style.display=show?'none':'';const w=applyWidth();
+}const safeAudit17183=window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null;if(active&&Number(safeAudit17183?.count||0)>0&&safeAudit17183?.visible!==true)return false;/* EARTHLINE_NATURAL_AFTER_SAFE_17183 */if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline'),footprints=fc.features.filter(f=>f.properties?.geometry_role==='footprint'),directional=centers.filter(f=>f.properties?.orientation_status==='verified'),neutral=centers.filter(f=>f.properties?.orientation_status==='indeterminate'),sig=[model()?.searchGen,centers.length,centers.map(f=>String(f.properties?.rawIndex??f.id??'')).join(','),centers.map(f=>String(f.properties?.orientation_status)+'/'+String(f.properties?.texture_flip)).join('|')].join('|');const src=mp.getSource?.(SOURCE);if(src?.setData&&(sig!==lastSignature||reason.includes('force')||!src._data?.features?.length)){src.setData(fc);lastSignature=sig}try{if(typeof window.earthlineSyncNaturalSwalePlanting15806==='function')window.earthlineSyncNaturalSwalePlanting15806(authoritativeFC())}catch(_){}const show=centers.length>0&&footprints.length===centers.length&&directional.length+neutral.length===centers.length;for(const id of Object.values(LAYERS))visible(id,show);if(show){for(const id of OLD)visible(id,false);/* 17172: fail visibly. Keep the authoritative safe Property swales opaque until the natural-texture replacement is actually rendered, not merely source-ready. */let naturalRendered17172=0;try{const canvas17172=mp.getCanvas?.();const box17172=canvas17172&&[[0,0],[canvas17172.clientWidth||canvas17172.width,canvas17172.clientHeight||canvas17172.height]];const ids17172=[LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip].filter(id=>mp.getLayer?.(id));if(box17172&&ids17172.length)naturalRendered17172=(mp.queryRenderedFeatures?.(box17172,{layers:ids17172})||[]).length}catch(_){}const safeOpacity17172=0;for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',safeOpacity17172)}catch(_){}}try{for(const id of [LAYERS.footprint,LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(true);for(const id of ['earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property');/* EARTHLINE M76 — natural Property renderer remains the final swale presentation owner after the legacy ownership call. */for(const id of OLD)visible(id,false);for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',0)}catch(_){}}if(mp.getLayer?.('earthline-property-swale-ditch-16166'))mp.moveLayer('earthline-property-swale-ditch-16166')}catch(_){}}else{/* If the natural renderer is unavailable, restore the verified authoritative safe-line fallback so Property output never disappears. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',.98)}catch(_){}}}const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');if(overlay)overlay.style.display=show?'none':'';const w=applyWidth();
 /* EARTHLINE 17064 — Property natural-presentation density only.
    Preserve authoritative corridor geometry, spacing, ranking, exclusions and safety.
    Reduce only the rendered ribbon/planting mass so adjacent valid contours remain visually distinct. */
@@ -29025,7 +29048,7 @@ try{
   if(mp.getLayer?.(LAYERS.up))mp.setPaintProperty(LAYERS.up,'line-width',Math.max(2.8,w*.512));
   if(mp.getLayer?.(LAYERS.flip))mp.setPaintProperty(LAYERS.flip,'line-width',Math.max(2.8,w*.512));
   if(mp.getLayer?.(LAYERS.neutral))mp.setPaintProperty(LAYERS.neutral,'line-width',Math.max(2.6,w*.488));
-  if(mp.getLayer?.(LAYERS.footprint))mp.setPaintProperty(LAYERS.footprint,'fill-opacity',.025);
+  if(mp.getLayer?.(LAYERS.footprint))mp.setPaintProperty(LAYERS.footprint,'fill-opacity',.085);
   const plantShadow17064='earthline-swale-planting-shadow-15806',plant17064='earthline-swale-planting-layer-15806';
   if(mp.getLayer?.(plantShadow17064))mp.setPaintProperty(plantShadow17064,'circle-radius',['interpolate',['linear'],['zoom'],14,['*',['get','size'],.32],17,['*',['get','size'],.60],20,['*',['get','size'],.85]]);
   if(mp.getLayer?.(plant17064))mp.setPaintProperty(plant17064,'circle-radius',['interpolate',['linear'],['zoom'],14,['*',['get','size'],.25],17,['*',['get','size'],.50],20,['*',['get','size'],.70]]);
@@ -29397,7 +29420,7 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
       {id:SAFE_LAYERS_16221.casing,type:'line',source:SAFE_SOURCE_16221,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#123d24','line-opacity':.98,'line-width':['interpolate',['linear'],['zoom'],14,10,17,20,20,30]}},
       {id:SAFE_LAYERS_16221.earth,type:'line',source:SAFE_SOURCE_16221,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7a5738','line-opacity':.98,'line-width':['interpolate',['linear'],['zoom'],14,7,17,15,20,23]}},
       {id:SAFE_LAYERS_16221.life,type:'line',source:SAFE_SOURCE_16221,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#56a862','line-opacity':.98,'line-width':['interpolate',['linear'],['zoom'],14,4.5,17,9,20,14],'line-offset':['interpolate',['linear'],['zoom'],14,-1.5,17,-3.2,20,-4.8],'line-dasharray':[.7,.38]}},
-      {id:SAFE_LAYERS_16221.water,type:'line',source:SAFE_SOURCE_16221,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#4ec9ff','line-opacity':.98,'line-width':['interpolate',['linear'],['zoom'],14,3.90625,17,8.203125,20,12.5],'line-offset':['interpolate',['linear'],['zoom'],14,1.2,17,2.5,20,3.8]}}
+      {id:SAFE_LAYERS_16221.water,type:'line',source:SAFE_SOURCE_16221,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#3aaee8','line-opacity':.82,'line-width':['interpolate',['linear'],['zoom'],14,2.6,17,5.2,20,7.2],'line-offset':['interpolate',['linear'],['zoom'],14,1.2,17,2.2,20,3.2]}}
     ];
     const errors=[];
     for(const spec of specs){
