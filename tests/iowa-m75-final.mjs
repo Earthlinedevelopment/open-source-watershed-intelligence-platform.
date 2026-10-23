@@ -86,6 +86,33 @@ async function sample(label){
       }catch(_){rendered[id]=0;}
     }
     const safeRendered=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'].reduce((n,id)=>n+(rendered[id]||0),0);
+    const sourceCounts={};
+    for(const id of ['earthline-property-safe-16221','earthline-property-swale-texture-16174','earthline-living-swales-15792','earthline-property-flow-15792']){
+      try{
+        const src=mp?.getSource?.(id),d=src&&(src._data||src._options?.data);
+        sourceCounts[id]=d&&Array.isArray(d.features)?d.features.length:null;
+      }catch(_){sourceCounts[id]=null}
+    }
+    const styleLayers=(mp?.getStyle?.()?.layers||[]).filter(l=>/satellite|raster|imagery|mapbox-satellite|aerial/i.test(String(l.id||'')+' '+String(l.source||''))).map(l=>({
+      id:l.id,type:l.type,source:l.source,
+      visibility:(()=>{try{return mp.getLayoutProperty(l.id,'visibility')||'visible'}catch(_){return null}})(),
+      rasterOpacity:(()=>{try{return l.type==='raster'?mp.getPaintProperty(l.id,'raster-opacity'):null}catch(_){return null}})()
+    }));
+    const base=document.getElementById('mapboxBase'),cv=document.getElementById('map');
+    const surface={
+      mapLoaded:!!mp?.loaded?.(),tilesLoaded:typeof mp?.areTilesLoaded==='function'?!!mp.areTilesLoaded():null,
+      mapCanvasVisibility:mp?.getCanvas?.()?getComputedStyle(mp.getCanvas()).visibility:null,
+      mapCanvasOpacity:mp?.getCanvas?.()?getComputedStyle(mp.getCanvas()).opacity:null,
+      mapboxBaseVisibility:base?getComputedStyle(base).visibility:null,
+      mapboxBaseOpacity:base?getComputedStyle(base).opacity:null,
+      analysisCanvasVisibility:cv?getComputedStyle(cv).visibility:null,
+      analysisCanvasOpacity:cv?getComputedStyle(cv).opacity:null,
+      analysisCanvasZ:cv?getComputedStyle(cv).zIndex:null,
+      mapboxZ:base?getComputedStyle(base).zIndex:null,
+      analyticalValid:window.earthlineAnalyticalCanvasValid15783,
+      propertyCanvasValid:window.earthlinePropertyCanvasValid15782,
+      styleLayers
+    };
     const naturalRendered=['earthline-property-swale-natural-casing-16174','earthline-property-swale-neutral-16177','earthline-property-swale-natural-up-16174','earthline-property-swale-natural-flip-16174'].reduce((n,id)=>n+(rendered[id]||0),0);
     const plantingRendered=(rendered['earthline-swale-planting-layer-15806']||0)+(rendered['earthline-swale-planting-shadow-15806']||0);
     return {
@@ -94,6 +121,8 @@ async function sample(label){
       authoritativeCount:Number(m?.authoritativeSafeSwales15815?.features?.length||0),
       safeRendered,naturalRendered,plantingRendered,rendered,opacity,visible,
       textureAudit:window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null,
+      safeVisibilityAudit:window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null,
+      sourceCounts,surface,
       plantingAudit:window.EARTHLINE_NATURAL_SWALE_PLANTING_AUDIT_15806||window.EARTHLINE_NATURAL_SWALE_AUDIT_15806||null,
       tier:document.documentElement.dataset.earthlineAnalysisTier||null,
       runState:document.documentElement.dataset.earthlinePropertyRunState||null
@@ -106,14 +135,17 @@ await page.waitForTimeout(5000);
 const five=await sample('plus5s');
 await page.screenshot({path:'iowa-property-plus5s.png',fullPage:false});
 
+const out={regional,propertyElapsedMs:Date.now()-pStart,settle,five,errors};
+fs.writeFileSync('iowa-m75-final.json',JSON.stringify(out,null,2));
+console.log('EARTHLINE_M75_DIAG '+JSON.stringify({
+  settle:{authoritativeCount:settle.authoritativeCount,safeRendered:settle.safeRendered,naturalRendered:settle.naturalRendered,plantingRendered:settle.plantingRendered,sourceCounts:settle.sourceCounts,safeVisibilityAudit:settle.safeVisibilityAudit,surface:settle.surface,opacity:settle.opacity,visible:settle.visible},
+  five:{authoritativeCount:five.authoritativeCount,safeRendered:five.safeRendered,naturalRendered:five.naturalRendered,plantingRendered:five.plantingRendered,sourceCounts:five.sourceCounts,safeVisibilityAudit:five.safeVisibilityAudit,surface:five.surface,opacity:five.opacity,visible:five.visible}
+}));
 for(const s of [settle,five]){
   if(s.authoritativeCount<=0) throw new Error(s.label+' authoritative swales missing');
   if((s.safeRendered+s.naturalRendered)<=0) throw new Error(s.label+' no Property swale geometry rendered');
 }
 if(settle.plantingRendered>0 && five.plantingRendered===0) throw new Error('Property planting blinked out after settlement');
-
-const out={regional,propertyElapsedMs:Date.now()-pStart,settle,five,errors};
-fs.writeFileSync('iowa-m75-final.json',JSON.stringify(out,null,2));
 console.log('EARTHLINE_M75_FINAL '+JSON.stringify({
   regional:{elapsedMs:regional.elapsedMs,generatedSwales:regional.displayAudit.generatedSwales,swaleLines:regional.displayAudit.swaleLines,waterPaths:regional.displayAudit.waterPaths,corridorGeometryVisible:regional.displayAudit.corridorGeometryVisible},
   propertyElapsedMs:out.propertyElapsedMs,
