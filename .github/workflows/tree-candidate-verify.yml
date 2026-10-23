@@ -1,0 +1,53 @@
+name: Earthline Clean Tree Candidate Verify
+on:
+  push:
+    branches: [recovery/mantra74-stability]
+    paths:
+      - .github/workflows/tree-candidate-verify.yml
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-live-tree-clean
+          path: candidate
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify Iowa Property planting persistence
+        run: |
+          cat > /tmp/tree.mjs <<'NODE'
+          import { chromium } from 'playwright';
+          const b=await chromium.launch({headless:true});
+          const p=await b.newPage({viewport:{width:1600,height:900}});
+          await p.route('https://api.mapbox.com/**',async r=>r.continue({headers:{...r.request().headers(),referer:'https://earthlinedevelopment.org/',origin:'https://earthlinedevelopment.org'}}));
+          await p.goto('http://127.0.0.1:8787/?tree='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await p.waitForSelector('#searchInput',{timeout:30000});
+          await p.waitForFunction(()=>window.earthlineMap||typeof earthlineMap!=='undefined',null,{timeout:30000});
+          const i=p.locator('#searchInput'); await i.fill('Iowa'); await p.waitForTimeout(800);
+          const o=p.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
+          if(await o.count()) await o.first().click({force:true}); else await i.press('Enter').catch(()=>{});
+          await p.waitForTimeout(250); await p.locator('#runBtn').click({force:true});
+          await p.waitForFunction(()=>{const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147;return d&&String(d.tier||d.mode).toLowerCase()==='regional'&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';},null,{timeout:90000,polling:200});
+          await p.evaluate(()=>{const m=window.earthlineMap||earthlineMap; m.jumpTo({center:[-93.38977,41.95715],zoom:18}); window.earthlineSetPropertyTarget16201?.({lng:-93.38977,lat:41.95715,source:'crosshair'},{openPanel:false});});
+          await p.waitForTimeout(500);
+          const btn=p.locator('#earthlineDeclareProperty16169'); await btn.click({force:true});
+          await p.waitForFunction(()=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173;return a?.settled===true&&a?.renderVerified===true;},null,{timeout:90000,polling:200});
+          const read=()=>p.evaluate(()=>{const m=window.earthlineMap||earthlineMap; const s=m.getSource('earthline-swale-planting-15806'); const d=s&&(s._data||s._options?.data); return {n:Array.isArray(d?.features)?d.features.length:0,v1:m.getLayoutProperty('earthline-swale-planting-shadow-15806','visibility')||'visible',v2:m.getLayoutProperty('earthline-swale-planting-layer-15806','visibility')||'visible',natural:window.M?.naturalSwalePlanting15806||null};});
+          const a=await read(); await p.waitForTimeout(5000); const z=await read();
+          console.log('EARTHLINE_TREE_CANDIDATE '+JSON.stringify({settlement:a,after5s:z}));
+          if(!(a.n>0&&z.n===a.n&&a.v1!=='none'&&a.v2!=='none'&&z.v1!=='none'&&z.v2!=='none')) throw new Error('planting persistence failed');
+          await b.close();
+          NODE
+          python3 -m http.server 8787 --bind 127.0.0.1 --directory candidate >/tmp/tree-http.log 2>&1 &
+          PID=$!
+          trap 'kill $PID || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          node /tmp/tree.mjs
