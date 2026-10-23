@@ -3808,12 +3808,9 @@ async function earthlineWaitForMappedExclusionStyle15862B(myGen=M.searchGen,time
                (areaLike&&(transport||structure||genericParkingCarrier||mappedWater));
       });
       if(!relevant.length)return false;
-      if(typeof earthlineMap.isSourceLoaded==="function"){
-        const sources=[...new Set(relevant.map(l=>l.source).filter(Boolean))];
-        for(const sourceId of sources){
-          try{if(!earthlineMap.isSourceLoaded(sourceId))return false;}catch(_){return false;}
-        }
-      }
+      /* EARTHLINE 17700 — the exclusion owner needs queryable style structure,
+         not global source-settlement. Individual rendered/source queries below
+         remain the evidence authority and still fail closed on real query failure. */
       return true;
     }catch(e){return false;}
   };
