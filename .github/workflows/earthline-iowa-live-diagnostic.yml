@@ -1,10 +1,10 @@
-name: Earthline Regional Grid Repair Runner
+name: Earthline Planting Parity Runner
 on:
   push:
     branches:
       - recovery/mantra74-stability
     paths:
-      - tools/repair-regional-grid-17700.py
+      - tools/apply-property-planting-parity.py
       - .github/workflows/earthline-iowa-live-diagnostic.yml
 permissions:
   contents: write
@@ -14,14 +14,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: recovery/mantra75-regional-engine-live
+          ref: recovery/mantra75-regional-engine-clean2
           fetch-depth: 0
       - uses: actions/checkout@v4
         with:
           ref: recovery/mantra74-stability
           path: controller
-      - name: Apply Regional grid repair
-        run: python3 controller/tools/repair-regional-grid-17700.py
+      - name: Apply live planting parity
+        run: python3 controller/tools/apply-property-planting-parity.py
       - name: Parse-check
         run: |
           node - <<'NODE'
@@ -31,12 +31,12 @@ jobs:
             if(!m[1].trim()) continue;
             try{ new Function(m[1]); parsed++; } catch(e){ throw Error('inline script '+i+': '+e.message); }
           }
-          console.log('EARTHLINE_REGIONAL_GRID_PARSE_OK',parsed);
+          console.log('EARTHLINE_PLANTING_PARITY_PARSE_OK',parsed);
           NODE
-      - name: Commit repaired engine
+      - name: Commit parity
         run: |
           git config user.name "Earthlinedevelopment"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m "fix: spread statewide Regional terrain sampling across 3x3 grid"
-          git push origin HEAD:recovery/mantra75-regional-engine-live
+          git commit -m "fix: preserve live Property planting on Regional repair candidate"
+          git push origin HEAD:recovery/mantra75-regional-engine-clean2
