@@ -1,0 +1,44 @@
+name: Earthline M75 Live Combined Repair
+on:
+  push:
+    branches:
+      - recovery/mantra74-stability
+    paths:
+      - .github/workflows/earthline-m75-live-combined-repair.yml
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: controller
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-live-combined
+          path: candidate
+          fetch-depth: 0
+      - name: Apply worm and planting ownership repair
+        run: python3 controller/tools/m75_regional_worm_repair.py candidate/index.html
+      - name: Parse-check repaired page
+        working-directory: candidate
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('EARTHLINE_M75_LIVE_COMBINED_PARSE_OK',parsed);
+          NODE
+      - name: Commit clean repair
+        working-directory: candidate
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: suppress initial Regional worms and persist Property planting"
+          git push origin HEAD:recovery/mantra75-live-combined
