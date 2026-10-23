@@ -1,0 +1,58 @@
+name: Earthline M75 Iowa Property Side-by-Side
+on:
+  push:
+    branches:
+      - recovery/mantra74-stability
+    paths:
+      - tests/iowa-property-side-by-side.mjs
+      - .github/workflows/earthline-m75-iowa-property-side-by-side.yml
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra74-stability
+          path: harness
+      - uses: actions/checkout@v4
+        with:
+          ref: 6cc6b7c6012210d3804ec5e817f9caea703a58eb
+          path: good
+      - uses: actions/checkout@v4
+        with:
+          ref: 0ed2e3d2
+          path: current
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          cd harness
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run known-good property
+        shell: bash
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 --directory good >/tmp/good-http.log 2>&1 &
+          P=$!; trap 'kill $P || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
+          EARTHLINE_URL='http://127.0.0.1:8787/' EARTHLINE_PREFIX='iowa-good-17445' node harness/tests/iowa-property-side-by-side.mjs
+          kill $P || true; trap - EXIT
+      - name: Run current repaired property
+        shell: bash
+        run: |
+          python3 -m http.server 8788 --bind 127.0.0.1 --directory current >/tmp/current-http.log 2>&1 &
+          P=$!; trap 'kill $P || true' EXIT
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8788/ >/dev/null && break; sleep 1; done
+          EARTHLINE_URL='http://127.0.0.1:8788/' EARTHLINE_PREFIX='iowa-current' node harness/tests/iowa-property-side-by-side.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iowa-property-side-by-side
+          path: |
+            iowa-good-17445.json
+            iowa-good-17445.png
+            iowa-current.json
+            iowa-current.png
