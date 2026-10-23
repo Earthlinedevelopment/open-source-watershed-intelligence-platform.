@@ -29435,6 +29435,22 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
     const ensured=ensureSafePropertyLayers16221();
     if(!ensured.ok){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,sourceReady:!!ensured.sourceReady,layersReady:!!ensured.layersReady,errors:ensured.errors||[],error:ensured.error||null,at:new Date().toISOString()};return {ok:false,count,visible:false,active,...ensured}}
     try{const src=mp.getSource(SAFE_SOURCE_16221);if(!src?.setData)throw new Error('safe source setData unavailable');src.setData(fc)}catch(error){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,error:String(error?.message||error),at:new Date().toISOString()};return {ok:false,count,visible:false,active,error:String(error?.message||error)}}
+    /* EARTHLINE M76 — this is a fallback, not a second final renderer.
+       Once the natural renderer has the same verified corridor count and is
+       actually rendered, the fallback must yield instead of repainting over it. */
+    const naturalAudit16221=window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null;
+    const naturalLayerIds16221=['earthline-property-swale-footprint-16174','earthline-property-swale-natural-casing-16174','earthline-property-swale-natural-up-16174','earthline-property-swale-natural-flip-16174','earthline-property-swale-neutral-16177'];
+    let naturalRendered16221=0;
+    const naturalReady16221=!!(naturalAudit16221&&naturalAudit16221.sourceReady===true&&naturalAudit16221.imagesReady===true&&Number(naturalAudit16221.centerlines||0)===count&&naturalAudit16221.layers?.casing===true);
+    if(naturalReady16221){
+      try{const canvas16221=mp.getCanvas?.(),box16221=canvas16221&&[[0,0],[canvas16221.clientWidth||canvas16221.width,canvas16221.clientHeight||canvas16221.height]],ids16221=naturalLayerIds16221.filter(id=>mp.getLayer?.(id)&&mp.getLayoutProperty?.(id,'visibility')!=='none');if(box16221&&ids16221.length)naturalRendered16221=(mp.queryRenderedFeatures?.(box16221,{layers:ids16221})||[]).length}catch(_){}
+    }
+    if(naturalReady16221&&naturalRendered16221>0){
+      setSafeLayerVisibility16221(false);
+      const audit={build:BUILD,reason,active,verified:true,count,sourceReady:true,layersReady:true,visible:false,delegatedToNatural:true,naturalRenderedFeatures:naturalRendered16221,geometrySource:'M.authoritativeSafeSwales15815',safetyGate:'propertyPublication15816 + propertyResultLock15815 + safetyAudit15806 + searchGen match',at:new Date().toISOString()};
+      window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221=audit;
+      return {ok:true,count,visible:false,active,delegatedToNatural:true,audit};
+    }
     setSafeLayerVisibility16221(true);
     const moved=[];
     for(const id of Object.values(SAFE_LAYERS_16221)){try{if(mp.getLayer?.(id)){mp.moveLayer?.(id);moved.push(id)}}catch(_){ }}
