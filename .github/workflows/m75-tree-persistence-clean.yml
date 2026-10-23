@@ -1,0 +1,36 @@
+name: Earthline Tree Persistence Clean Patch
+on:
+  push:
+    branches: [recovery/mantra75-live-tree-clean]
+    paths:
+      - tools/m75-tree-persistence-clean.py
+      - .github/workflows/m75-tree-persistence-clean.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-live-tree-clean
+          fetch-depth: 0
+      - run: python3 tools/m75-tree-persistence-clean.py
+      - name: Parse-check
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim()) continue;
+            try{new Function(m[1]);parsed++;}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('EARTHLINE_TREE_PERSISTENCE_PARSE_OK',parsed);
+          NODE
+      - name: Commit
+        run: |
+          git config user.name Earthlinedevelopment
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git commit -m "fix: keep Property planting under authoritative swale ownership"
+          git push origin HEAD:recovery/mantra75-live-tree-clean
