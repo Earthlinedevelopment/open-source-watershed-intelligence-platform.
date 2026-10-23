@@ -6097,6 +6097,29 @@ function earthlineLocalContourReachM76(seg,path){
   return out.length>=3?out:seg;
 }
 
+/* EARTHLINE M76D — local construction reach for contour-fill candidates. */
+function earthlineLocalSeedReachM76(seg,x,y){
+  if(!Array.isArray(seg)||seg.length<3)return seg;
+  let bestI=0,bestD=Infinity;
+  for(let i=0;i<seg.length;i++){
+    const p=seg[i],dx=p[0]-x,dy=p[1]-y,d=dx*dx+dy*dy;
+    if(d<bestD){bestD=d;bestI=i;}
+  }
+  const totalM=Math.max(30,Math.min(60,Number(M.cellM||1)*8));
+  const halfM=totalM/2;
+  let lo=bestI,hi=bestI,leftM=0,rightM=0;
+  while(lo>0&&leftM<halfM){
+    leftM+=Math.hypot(seg[lo][0]-seg[lo-1][0],seg[lo][1]-seg[lo-1][1])*M.cellM;
+    lo--;
+  }
+  while(hi<seg.length-1&&rightM<halfM){
+    rightM+=Math.hypot(seg[hi+1][0]-seg[hi][0],seg[hi+1][1]-seg[hi][1])*M.cellM;
+    hi++;
+  }
+  const out=earthlineCleanPath(seg.slice(lo,hi+1));
+  return out.length>=3?out:seg;
+}
+
 /* BUILD-CHECK-15768
    Minimum corridor length is a physical screening threshold, not an uncapped
    multiple of regional raster-cell size. This keeps property and regional
@@ -13470,7 +13493,8 @@ var prescribeSwales;
         coverageDiag15803.totals.traces++;
         /* BUILD-CHECK-15803-DIAGNOSTIC-END */
         M.swaleDiagnostics.stage.traces++;
-        const segs=earthlineSplitUsableSegments(pts,maxS).slice(0,3);
+        const rawSegsM76=earthlineSplitUsableSegments(pts,maxS).slice(0,3);
+        const segs=rawSegsM76.map(seg=>earthlineLocalSeedReachM76(seg,sd.x,sd.y));
         if(seedRec15803){
           seedRec15803.segmentCount15840=segs.length;
           seedRec15803.segmentProduced15840=segs.length>0;
