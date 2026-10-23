@@ -19,7 +19,7 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Verify public Iowa Regional
         run: |
-          cat > /tmp/iowa-public.mjs <<'NODE'
+          cat > iowa-public.mjs <<'NODE'
           import { chromium } from 'playwright';
           const b=await chromium.launch({headless:true});
           const p=await b.newPage({viewport:{width:1600,height:900}});
@@ -38,4 +38,4 @@ jobs:
           if(!(out.d?.derived?.swaleOpportunityLines>0)) throw new Error('public Iowa Regional published zero swales');
           await b.close();
           NODE
-          node /tmp/iowa-public.mjs
+          node iowa-public.mjs
