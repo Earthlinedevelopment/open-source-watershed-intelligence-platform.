@@ -1,0 +1,742 @@
+===== earthlineSwaleFromPts( COUNT 2 =====
+Diagnostics.timeBudgetReached=true;break;
+          }
+          const baseSegs16320=(!pts16320||pts16320.length<3)?[]:
+            earthlineSplitUsableSegments(pts16320,maxS).filter(seg=>
+              seg&&seg.length>=3&&earthlineSegmentLengthM(seg)>=minSegmentM&&
+              earthlineOnContourGuard15833(seg,L15836,levelStep)
+            );
+          cachedFlow16320={pts:pts16320||[],baseSegs:baseSegs16320,L:L15836};
+          flowTraceCache16320.set(i15836,cachedFlow16320);
+          flowCacheAudit16320.cacheEntries=flowTraceCache16320.size;
+        }else{
+          flowCacheAudit16320.traceHits++;
+          if(cachedFlow16320.baseSegs&&cachedFlow16320.baseSegs.length)flowCacheAudit16320.segmentReuseHits++;
+        }
+        const pts15836=cachedFlow16320.pts;
+        if(!pts15836||pts15836.length<3){lastReason15836="no-contour-trace";continue;}
+        const segs15836=(cachedFlow16320.baseSegs||[]).filter(seg=>
+          segmentCrossesPath15836(seg,path15836.cells,1,path15836.pathMask16320)
+        );
+        if(!segs15836.length){lastReason15836="no-safe-contour-crossing";continue;}
+        // Prefer the least-winding safe contour crossing; length breaks ties only.
+        // This keeps the runoff interception but prevents an entire curling contour
+        // from winning merely because it is longest.
+        segs15836.sort((a,b)=>
+          (earthlineSegmentTortuosityM76(a)-earthlineSegmentTortuosityM76(b))||
+          (earthlineSegmentLengthM(b)-earthlineSegmentLengthM(a))
+        );
+        for(const rawSeg15836 of segs15836){
+                    const seg15836=earthlineLocalContourReachM76(rawSeg15836,path15836);
+          if(claimR&&earthlinePathOverlap(claimMask,seg15836)>.18){lastReason15836="overlap-with-earlier-primary";continue;}
+          const sw15836=earthlineSwaleFromPts(seg15836,-1,chanThr,false,maxS,levels.length);
+          if(!sw15836){lastReason15836="geometry-conversion";continue;}
+          const captureEvents15835=!!(coverageDiag15803&&coverageDiag15803.spatial&&Array.isArray(coverageDiag15803.spatial.candidates)&&coverageDiag15803.spatial.candidates.length===8);
+          const evidence15836=earthlineSegmentFlowEvidence15833(seg15836,chanThr,captureEvents15835);
+          sw15836.flowEvidence15833=evidence15836;
+          sw15836.prescriptionFlowScore15833=Number(evidence15836.score||0);
+          sw15836.seedFlowCrossing15833=1;
+          sw15836.seedCrossingGeometry15833=1;
+          sw15836.levelH=L15836;sw15836.bandKey=-(flowFirstAudit15836.pathsEvaluated);
+          sw15836.targetSpacingM=targetSpacingM15771;sw15836.verifiedSpacingM=null;
+          sw15836.placementMode15836="flow-first";
+          sw15836.primaryFlowFirst15836=true;
+          const rec15836=earthlineCoverageRecordCandidate15803(coverageDiag15803,seg15836,"candidate","flow-first-path-crossing",-1,{score:Number(sw15836.score||0),flowScore15833:sw15836.prescriptionFlowScore15833,crossingHits15833:evidence15836.crossingHits,crossingHitCellIds15834:(evidence15836.pathIds||[]).slice(),crossingHitEvents15835:(evidence15836.hitEvents15835||[]).map(e=>Object.assign({},e)),placementMode15836:"flow-first"});
+          candidateRecord15803.set(sw15836,rec15836);
+          sw15836.diagnosticCandidateId15843=rec15836&&rec15836.id||null;
+          sw15836.diagnosticSeedId15843=rec15836&&rec15836.seedId15840||null;
+          swales.push(sw15836);M.swaleDiagnostics.stage.candidates++;
+          if(claimR)earthlineClaimPath(claimMask,seg15836,claimR);
+          accepted15836=sw15836;servedPathSet15836.add(path15836.id);
+          flowFirstAudit15836.primaryCandidates++;
+          break;
+        }
+        if(accepted15836)break;
+      }
+      if(accepted15836){
+        flowFirstAudit15836.pathsServed++;
+        flowFirstAudit15836.pathSummaries.push({pathId:path15836.id,status:"served",peakAccumulation:path15836.peakAccumulation});
+      }else{
+        flowFirstAudit15836.unserved.push({pathId:path15836.id,reason:lastReason15836,peakAccumulation:path15836.peakAccumulation});
+        flowFirstAudit15836.pathSummaries.push({pathId:path15836.id,status:"unserved",reason:lastReason15836,peakAccumulation:path15836.peakAccumulation});
+      }
+      if(swales.length>=primaryLimit15836)break;
+      if((performance.now()-primarySlice15836)>=12){
+        earthlineProgress("swales",flowFirstAudit15836.pathsServed+" tributaries served · flow-first pass…");
+        await earthlineTaskYield16464();primarySlice15836=performance.now();
+      }
+    }
+    flowFirstAudit15836.servedPathIds=Array.from(servedPathSet15836).sort();
+    flowFirstAudit15836.secondaryFillStarted=swales.length<work15771.maxCandidates;
+
+    M.swaleSubstage16321={
+      build:"EARTHLINE 16321",stage:"contour-level-pass",
+      levelsTotal:levels.length,levelsChecked:0,
+      startedAt:performance.now(),updatedAt:new Date().toISOString()
+    };
+    let checked=0;
+    let sliceStarted15769=performance.now();
+    for(let li=0;li<levels.length;li++){
+      if(earthlineIsStal
+didateOrigin15840:"contour"});
+            earthlineCoverageZone15803(coverageDiag15803,rec15803.x,rec15803.y).rejections.short++;
+            /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+            M.swaleDiagnostics.stage.rejectShort++;
+            continue;
+          }
+          if(claimR&&earthlinePathOverlap(claimMask,seg)>.18){
+            /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+            const rec15803=earthlineCoverageRecordCandidate15803(coverageDiag15803,seg,"rejected-overlap","claim-overlap",li,{seedId15840:seedRec15803&&seedRec15803.id||null,candidateOrigin15840:"contour"});
+            earthlineCoverageZone15803(coverageDiag15803,rec15803.x,rec15803.y).rejections.overlap++;
+            /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+            M.swaleDiagnostics.stage.rejectOverlap++;
+            continue;
+          }
+
+          // Do not reject spacing twice. Candidate generation now preserves every
+          // physically valid contour; the single final dedupe below enforces the
+          // 15-ft minimum once, deterministically, across neighboring contour bands.
+          if(!earthlineOnContourGuard15833(seg,L,levelStep)){
+            /* Validity guard only: selection may not reward off-contour geometry. */
+            const rec15840=earthlineCoverageRecordCandidate15803(
+              coverageDiag15803,seg,"rejected-conversion","off-contour-guard",li,
+              {seedId15840:seedRec15803&&seedRec15803.id||null,candidateOrigin15840:"contour"}
+            );
+            earthlineCoverageZone15803(coverageDiag15803,rec15840.x,rec15840.y).rejections.conversion++;
+            if(seedRec15803)seedRec15803.segmentTerminalCodes15840.push("off-contour-guard");
+            M.swaleDiagnostics.stage.rejectConversion++;
+            continue;
+          }
+          const sw=earthlineSwaleFromPts(seg,li,chanThr,li===Math.floor(levels.length/2),maxS,levels.length);
+          if(!sw){
+            /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+            const rec15803=earthlineCoverageRecordCandidate15803(coverageDiag15803,seg,"rejected-conversion","geometry-conversion",li,{seedId15840:seedRec15803&&seedRec15803.id||null,candidateOrigin15840:"contour"});
+            earthlineCoverageZone15803(coverageDiag15803,rec15803.x,rec15803.y).rejections.conversion++;
+            /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+            M.swaleDiagnostics.stage.rejectConversion++;
+            continue;
+          }
+          const captureEvents15835=!!(coverageDiag15803&&coverageDiag15803.spatial&&Array.isArray(coverageDiag15803.spatial.candidates)&&coverageDiag15803.spatial.candidates.length===8);
+          const flowEvidence15833=earthlineSegmentFlowEvidence15833(seg,chanThr,captureEvents15835);
+          sw.flowEvidence15833=flowEvidence15833;
+          sw.prescriptionFlowScore15833=Number(flowEvidence15833.score||0);
+          sw.seedFlowCrossing15833=Number(sd&&sd.flowCrossingValue||0);
+          sw.seedCrossingGeometry15833=Number(sd&&sd.crossingGeometry||0);
+          M.flowCrossingScoring15833=M.flowCrossingScoring15833||{};
+          M.flowCrossingScoring15833.segmentCandidates=(M.flowCrossingScoring15833.segmentCandidates||0)+1;
+          if(sw.prescriptionFlowScore15833>0)M.flowCrossingScoring15833.segmentCrossingCandidates=(M.flowCrossingScoring15833.segmentCrossingCandidates||0)+1;
+          /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+          const candidateRec15803=earthlineCoverageRecordCandidate15803(coverageDiag15803,seg,"candidate","passed-generation",li,{score:Number(sw.score||0),flowScore15833:sw.prescriptionFlowScore15833,crossingHits15833:flowEvidence15833.crossingHits,crossingHitCellIds15834:(flowEvidence15833.pathIds||[]).slice(),crossingHitEvents15835:(flowEvidence15833.hitEvents15835||[]).map(e=>Object.assign({},e)),seedId15840:seedRec15803&&seedRec15803.id||null,candidateOrigin15840:"contour"});
+          if(candidateRec15803&&candidateRec15803.id==="C8")M.instrumentIntegrity15834={candidateId:"C8",scoringGeometry:seg.map(p=>[+p[0],+p[1]]),tracedGeometry:pts.map(p=>[+p[0],+p[1]]),clippedExcludedGeometry:seg.map(p=>[+p[0],+p[1]]),convertedGeometry:(sw.pts||[]).map(p=>[+p[0],+p[1]]),flowEvidence:{score:+(flowEvidence15833.score||0),crossingHits:+(flowEvidence15833.crossingHits||0),hitCellIds:(flowEvidence15833.pathIds||[]).slice(),hitEvents15835:(flowEvidence15833.hitEvents15835||[]).map(e=>Object.assign({},e))},stages:{generated:true,converted:true,accepted:false}};
+          candidateRecord15803.set(sw,candidateRec15803);
+          sw.diagnosticCandidateId15843=candidateRec15803&&candidateRec15803.id||null;
+          sw.diagnosticSeedId15843=candidateRec15803&&candidateRec15803.seedId15840||null;
+          earthlineCoverageZone15803(coverageDiag15803,candidateRec15803.x,candidateRec15803.y).candidates++;
+          coverageDiag15803.totals.candidates++;
+          /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+          sw.levelH=L;
+          sw.bandKey=li;
+          sw.targetSpacingM=targetSpacingM15771;
+          sw.veri
+===== traceLevelContour( COUNT 2 =====
+ved.push({pathId:path15836.id,reason:"time-budget"});
+        continue;
+      }
+      flowFirstAudit15836.pathsEvaluated++;
+      if((flowFirstAudit15836.pathsEvaluated&3)===0||flowFirstAudit15836.pathsEvaluated===1){
+        M.swaleSubstage16321=Object.assign({},M.swaleSubstage16321,{
+          stage:"flow-first",
+          pathsEvaluated:flowFirstAudit15836.pathsEvaluated,
+          pathsServed:flowFirstAudit15836.pathsServed,
+          elapsedMs:Math.round(performance.now()-Number(M.swaleSubstage16321.startedAt||performance.now())),
+          updatedAt:new Date().toISOString()
+        });
+      }
+      let accepted15836=null,lastReason15836="no-safe-contour-crossing";
+      const probeCells15836=path15836.probeCells16320||path15836.cells;
+      for(const cell15836 of probeCells15836){
+        if(performance.now()>=deadline15771){
+          lastReason15836="time-budget";
+          flowCacheAudit16320.deadlineInnerBreaks++;
+          M.swaleDiagnostics.timeBudgetReached=true;
+          break;
+        }
+        const x15836=cell15836%GW,y15836=Math.floor(cell15836/GW),i15836=cell15836;
+        if(!M.inP[i15836]){lastReason15836="outside-property";continue;}
+        if(M.pond[i15836]){lastReason15836="ponding";continue;}
+        if(M.noBuildMask&&M.noBuildMask[i15836]){lastReason15836="exclusion-conflict";continue;}
+        if(Number(M.acc[i15836]||0)>=chanThr){lastReason15836="protected-major-channel";continue;}
+        if(slopePct(x15836,y15836)>maxS){lastReason15836="slope-too-steep";continue;}
+        const L15836=Number(M.h[i15836]);if(!Number.isFinite(L15836)){lastReason15836="missing-elevation";continue;}
+        let cachedFlow16320=flowTraceCache16320.get(i15836);
+        if(!cachedFlow16320){
+          flowCacheAudit16320.traceMisses++;
+          const pts16320=traceLevelContour(x15836,y15836,L15836,maxS,levelStep,deadline15771);
+          if(performance.now()>=deadline15771||traceLevelContour.earthlineDeadlineHit16320){
+            lastReason15836="time-budget";flowCacheAudit16320.deadlineInnerBreaks++;
+            M.swaleDiagnostics.timeBudgetReached=true;break;
+          }
+          const baseSegs16320=(!pts16320||pts16320.length<3)?[]:
+            earthlineSplitUsableSegments(pts16320,maxS).filter(seg=>
+              seg&&seg.length>=3&&earthlineSegmentLengthM(seg)>=minSegmentM&&
+              earthlineOnContourGuard15833(seg,L15836,levelStep)
+            );
+          cachedFlow16320={pts:pts16320||[],baseSegs:baseSegs16320,L:L15836};
+          flowTraceCache16320.set(i15836,cachedFlow16320);
+          flowCacheAudit16320.cacheEntries=flowTraceCache16320.size;
+        }else{
+          flowCacheAudit16320.traceHits++;
+          if(cachedFlow16320.baseSegs&&cachedFlow16320.baseSegs.length)flowCacheAudit16320.segmentReuseHits++;
+        }
+        const pts15836=cachedFlow16320.pts;
+        if(!pts15836||pts15836.length<3){lastReason15836="no-contour-trace";continue;}
+        const segs15836=(cachedFlow16320.baseSegs||[]).filter(seg=>
+          segmentCrossesPath15836(seg,path15836.cells,1,path15836.pathMask16320)
+        );
+        if(!segs15836.length){lastReason15836="no-safe-contour-crossing";continue;}
+        // Prefer the least-winding safe contour crossing; length breaks ties only.
+        // This keeps the runoff interception but prevents an entire curling contour
+        // from winning merely because it is longest.
+        segs15836.sort((a,b)=>
+          (earthlineSegmentTortuosityM76(a)-earthlineSegmentTortuosityM76(b))||
+          (earthlineSegmentLengthM(b)-earthlineSegmentLengthM(a))
+        );
+        for(const rawSeg15836 of segs15836){
+                    const seg15836=earthlineLocalContourReachM76(rawSeg15836,path15836);
+          if(claimR&&earthlinePathOverlap(claimMask,seg15836)>.18){lastReason15836="overlap-with-earlier-primary";continue;}
+          const sw15836=earthlineSwaleFromPts(seg15836,-1,chanThr,false,maxS,levels.length);
+          if(!sw15836){lastReason15836="geometry-conversion";continue;}
+          const captureEvents15835=!!(coverageDiag15803&&coverageDiag15803.spatial&&Array.isArray(coverageDiag15803.spatial.candidates)&&coverageDiag15803.spatial.candidates.length===8);
+          const evidence15836=earthlineSegmentFlowEvidence15833(seg15836,chanThr,captureEvents15835);
+          sw15836.flowEvidence15833=evidence15836;
+          sw15836.prescriptionFlowScore15833=Number(evidence15836.score||0);
+          sw15836.seedFlowCrossing15833=1;
+          sw15836.seedCrossingGeometry15833=1;
+          sw15836.levelH=L15836;sw15836.bandKey=-(flowFirstAudit15836.pathsEvaluated);
+          sw15836.targetSpacingM=targetSpacingM15771;sw15836.verifiedSpacingM=null;
+          sw15836.placementMode15836="flow-first";
+          sw15836.primaryFlowFirst15836=true;
+          const rec15836=earthlineCoverageRecordCandidate15803(coverageDiag15803,seg15836,"candidate","flow-first-path-crossing",-1,{score:Number(sw15836.score||0),flowScore15833:sw15836.prescriptionFlowScore15833,cro
+M.swaleDiagnostics.timeBudgetReached=true;
+        break;
+      }
+      const L=levels[li];
+      earthlineSeedSelectionContext15841={
+        diag:coverageDiag15803,levelIndex:li,record:!isRegionalTile15769
+      };
+      let selectedSeeds15841;
+      try{
+        selectedSeeds15841=seedCandidatesForLevel(
+          L,maxS,chanThr,effectiveSeedBudget15841
+        );
+      }finally{
+        earthlineSeedSelectionContext15841=null;
+      }
+      const seeds=selectedSeeds15841.slice(0,work15771.maxSeedsPerLevel);
+      /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+      const seedRecords15803=seeds.map((sd,rank)=>earthlineCoverageRecordSeed15803(coverageDiag15803,sd,li,rank+1));
+      let visitedAtLevel15803=0;
+      /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+      M.swaleDiagnostics.stage.seeds+=seeds.length;
+      let acceptedAtLevel=0;
+      for(const sd of seeds){
+        /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+        const seedRec15803=seedRecords15803[visitedAtLevel15803]||null;
+        visitedAtLevel15803++;seedsVisited15803++;
+        coverageDiag15803.totals.seedsVisited=seedsVisited15803;
+        if(seedRec15803){
+          seedRec15803.status="visited";
+          seedRec15803.traceAttempted15840=true;
+          seedRec15803.traceResult15840="attempted";
+          seedRec15803.terminalStage15840="trace-attempted";
+          seedRec15803.terminalReasonCode15840="pending";
+          seedRec15803.segmentTerminalCodes15840=[];
+        }
+        /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+        if(performance.now()>=deadline15771){
+          /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+          candidateTermination15803="time-budget";
+          /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+          M.swaleDiagnostics.timeBudgetReached=true;
+          break;
+        }
+        const pts=traceLevelContour(sd.x,sd.y,L,maxS,levelStep,deadline15771);
+        if(performance.now()>=deadline15771||traceLevelContour.earthlineDeadlineHit16320){
+          candidateTermination15803="time-budget";
+          M.swaleDiagnostics.timeBudgetReached=true;
+          break;
+        }
+        /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+        if((!pts||pts.length<3)&&seedRec15803){
+          seedRec15803.status="no-trace";
+          seedRec15803.traceResult15840="no-trace";
+          seedRec15803.terminalStage15840="no-trace";
+          seedRec15803.terminalReasonCode15840="trace-returned-fewer-than-three-points";
+        }
+        /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+        if(!pts||pts.length<3)continue;
+        /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+        if(seedRec15803){
+          seedRec15803.status="traced";
+          seedRec15803.traceResult15840="traced";
+        }
+        earthlineCoverageZone15803(coverageDiag15803,sd.x,sd.y).traces++;
+        coverageDiag15803.totals.traces++;
+        /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+        M.swaleDiagnostics.stage.traces++;
+        const segs=earthlineSplitUsableSegments(pts,maxS).slice(0,3);
+        if(seedRec15803){
+          seedRec15803.segmentCount15840=segs.length;
+          seedRec15803.segmentProduced15840=segs.length>0;
+          if(!segs.length){
+            seedRec15803.terminalStage15840="trace-produced-no-segment";
+            seedRec15803.terminalReasonCode15840="no-usable-segments";
+          }
+        }
+        /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+        earthlineCoverageZone15803(coverageDiag15803,sd.x,sd.y).segments+=segs.length;
+        coverageDiag15803.totals.segments+=segs.length;
+        /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+        M.swaleDiagnostics.stage.segments+=segs.length;
+        for(const seg of segs){
+          if(!seg||seg.length<3||earthlineSegmentLengthM(seg)<minSegmentM){
+            /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+            const rec15803=earthlineCoverageRecordCandidate15803(coverageDiag15803,seg||[[sd.x,sd.y]],"rejected-short","minimum-length",li,{seedId15840:seedRec15803&&seedRec15803.id||null,candidateOrigin15840:"contour"});
+            earthlineCoverageZone15803(coverageDiag15803,rec15803.x,rec15803.y).rejections.short++;
+            /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+            M.swaleDiagnostics.stage.rejectShort++;
+            continue;
+          }
+          if(claimR&&earthlinePathOverlap(claimMask,seg)>.18){
+            /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+            const rec15803=earthlineCoverageRecordCandidate15803(coverageDiag15803,seg,"rejected-overlap","claim-overlap",li,{seedId15840:seedRec15803&&seedRec15803.id||null,candidateOrigin15840:"contour"});
+            earthlineCoverageZone15803(coverageDiag15803,rec15803.x,rec15803.y).rejections.overlap++;
+            /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+            M.swaleDiagnostics.stage.rejectOverlap++;
+            continue;
+          }
+
+          // Do not reject spacing twice. Candidate generation now preserves every
+          // physically valid contour; the single final dedupe below enforces the
+          // 15-ft minimum once, deterministically, acr
+===== earthlineSplitUsableSegments( COUNT 2 =====
+d:flowFirstAudit15836.pathsServed,
+          elapsedMs:Math.round(performance.now()-Number(M.swaleSubstage16321.startedAt||performance.now())),
+          updatedAt:new Date().toISOString()
+        });
+      }
+      let accepted15836=null,lastReason15836="no-safe-contour-crossing";
+      const probeCells15836=path15836.probeCells16320||path15836.cells;
+      for(const cell15836 of probeCells15836){
+        if(performance.now()>=deadline15771){
+          lastReason15836="time-budget";
+          flowCacheAudit16320.deadlineInnerBreaks++;
+          M.swaleDiagnostics.timeBudgetReached=true;
+          break;
+        }
+        const x15836=cell15836%GW,y15836=Math.floor(cell15836/GW),i15836=cell15836;
+        if(!M.inP[i15836]){lastReason15836="outside-property";continue;}
+        if(M.pond[i15836]){lastReason15836="ponding";continue;}
+        if(M.noBuildMask&&M.noBuildMask[i15836]){lastReason15836="exclusion-conflict";continue;}
+        if(Number(M.acc[i15836]||0)>=chanThr){lastReason15836="protected-major-channel";continue;}
+        if(slopePct(x15836,y15836)>maxS){lastReason15836="slope-too-steep";continue;}
+        const L15836=Number(M.h[i15836]);if(!Number.isFinite(L15836)){lastReason15836="missing-elevation";continue;}
+        let cachedFlow16320=flowTraceCache16320.get(i15836);
+        if(!cachedFlow16320){
+          flowCacheAudit16320.traceMisses++;
+          const pts16320=traceLevelContour(x15836,y15836,L15836,maxS,levelStep,deadline15771);
+          if(performance.now()>=deadline15771||traceLevelContour.earthlineDeadlineHit16320){
+            lastReason15836="time-budget";flowCacheAudit16320.deadlineInnerBreaks++;
+            M.swaleDiagnostics.timeBudgetReached=true;break;
+          }
+          const baseSegs16320=(!pts16320||pts16320.length<3)?[]:
+            earthlineSplitUsableSegments(pts16320,maxS).filter(seg=>
+              seg&&seg.length>=3&&earthlineSegmentLengthM(seg)>=minSegmentM&&
+              earthlineOnContourGuard15833(seg,L15836,levelStep)
+            );
+          cachedFlow16320={pts:pts16320||[],baseSegs:baseSegs16320,L:L15836};
+          flowTraceCache16320.set(i15836,cachedFlow16320);
+          flowCacheAudit16320.cacheEntries=flowTraceCache16320.size;
+        }else{
+          flowCacheAudit16320.traceHits++;
+          if(cachedFlow16320.baseSegs&&cachedFlow16320.baseSegs.length)flowCacheAudit16320.segmentReuseHits++;
+        }
+        const pts15836=cachedFlow16320.pts;
+        if(!pts15836||pts15836.length<3){lastReason15836="no-contour-trace";continue;}
+        const segs15836=(cachedFlow16320.baseSegs||[]).filter(seg=>
+          segmentCrossesPath15836(seg,path15836.cells,1,path15836.pathMask16320)
+        );
+        if(!segs15836.length){lastReason15836="no-safe-contour-crossing";continue;}
+        // Prefer the least-winding safe contour crossing; length breaks ties only.
+        // This keeps the runoff interception but prevents an entire curling contour
+        // from winning merely because it is longest.
+        segs15836.sort((a,b)=>
+          (earthlineSegmentTortuosityM76(a)-earthlineSegmentTortuosityM76(b))||
+          (earthlineSegmentLengthM(b)-earthlineSegmentLengthM(a))
+        );
+        for(const rawSeg15836 of segs15836){
+                    const seg15836=earthlineLocalContourReachM76(rawSeg15836,path15836);
+          if(claimR&&earthlinePathOverlap(claimMask,seg15836)>.18){lastReason15836="overlap-with-earlier-primary";continue;}
+          const sw15836=earthlineSwaleFromPts(seg15836,-1,chanThr,false,maxS,levels.length);
+          if(!sw15836){lastReason15836="geometry-conversion";continue;}
+          const captureEvents15835=!!(coverageDiag15803&&coverageDiag15803.spatial&&Array.isArray(coverageDiag15803.spatial.candidates)&&coverageDiag15803.spatial.candidates.length===8);
+          const evidence15836=earthlineSegmentFlowEvidence15833(seg15836,chanThr,captureEvents15835);
+          sw15836.flowEvidence15833=evidence15836;
+          sw15836.prescriptionFlowScore15833=Number(evidence15836.score||0);
+          sw15836.seedFlowCrossing15833=1;
+          sw15836.seedCrossingGeometry15833=1;
+          sw15836.levelH=L15836;sw15836.bandKey=-(flowFirstAudit15836.pathsEvaluated);
+          sw15836.targetSpacingM=targetSpacingM15771;sw15836.verifiedSpacingM=null;
+          sw15836.placementMode15836="flow-first";
+          sw15836.primaryFlowFirst15836=true;
+          const rec15836=earthlineCoverageRecordCandidate15803(coverageDiag15803,seg15836,"candidate","flow-first-path-crossing",-1,{score:Number(sw15836.score||0),flowScore15833:sw15836.prescriptionFlowScore15833,crossingHits15833:evidence15836.crossingHits,crossingHitCellIds15834:(evidence15836.pathIds||[]).slice(),crossingHitEvents15835:(evidence15836.hitEvents15835||[]).map(e=>Object.assign({},e)),placementMode15836:"flow-first"});
+          candidateRecord15803.set(sw15836,rec15836);
+          sw15836.diagnosticCandidateId15843=rec15836&&rec15836.id||null;
+          sw15836.diagnosticSeedId15843=rec1583
+if(seedRec15803){
+          seedRec15803.status="visited";
+          seedRec15803.traceAttempted15840=true;
+          seedRec15803.traceResult15840="attempted";
+          seedRec15803.terminalStage15840="trace-attempted";
+          seedRec15803.terminalReasonCode15840="pending";
+          seedRec15803.segmentTerminalCodes15840=[];
+        }
+        /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+        if(performance.now()>=deadline15771){
+          /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+          candidateTermination15803="time-budget";
+          /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+          M.swaleDiagnostics.timeBudgetReached=true;
+          break;
+        }
+        const pts=traceLevelContour(sd.x,sd.y,L,maxS,levelStep,deadline15771);
+        if(performance.now()>=deadline15771||traceLevelContour.earthlineDeadlineHit16320){
+          candidateTermination15803="time-budget";
+          M.swaleDiagnostics.timeBudgetReached=true;
+          break;
+        }
+        /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+        if((!pts||pts.length<3)&&seedRec15803){
+          seedRec15803.status="no-trace";
+          seedRec15803.traceResult15840="no-trace";
+          seedRec15803.terminalStage15840="no-trace";
+          seedRec15803.terminalReasonCode15840="trace-returned-fewer-than-three-points";
+        }
+        /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+        if(!pts||pts.length<3)continue;
+        /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+        if(seedRec15803){
+          seedRec15803.status="traced";
+          seedRec15803.traceResult15840="traced";
+        }
+        earthlineCoverageZone15803(coverageDiag15803,sd.x,sd.y).traces++;
+        coverageDiag15803.totals.traces++;
+        /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+        M.swaleDiagnostics.stage.traces++;
+        const segs=earthlineSplitUsableSegments(pts,maxS).slice(0,3);
+        if(seedRec15803){
+          seedRec15803.segmentCount15840=segs.length;
+          seedRec15803.segmentProduced15840=segs.length>0;
+          if(!segs.length){
+            seedRec15803.terminalStage15840="trace-produced-no-segment";
+            seedRec15803.terminalReasonCode15840="no-usable-segments";
+          }
+        }
+        /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+        earthlineCoverageZone15803(coverageDiag15803,sd.x,sd.y).segments+=segs.length;
+        coverageDiag15803.totals.segments+=segs.length;
+        /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+        M.swaleDiagnostics.stage.segments+=segs.length;
+        for(const seg of segs){
+          if(!seg||seg.length<3||earthlineSegmentLengthM(seg)<minSegmentM){
+            /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+            const rec15803=earthlineCoverageRecordCandidate15803(coverageDiag15803,seg||[[sd.x,sd.y]],"rejected-short","minimum-length",li,{seedId15840:seedRec15803&&seedRec15803.id||null,candidateOrigin15840:"contour"});
+            earthlineCoverageZone15803(coverageDiag15803,rec15803.x,rec15803.y).rejections.short++;
+            /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+            M.swaleDiagnostics.stage.rejectShort++;
+            continue;
+          }
+          if(claimR&&earthlinePathOverlap(claimMask,seg)>.18){
+            /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+            const rec15803=earthlineCoverageRecordCandidate15803(coverageDiag15803,seg,"rejected-overlap","claim-overlap",li,{seedId15840:seedRec15803&&seedRec15803.id||null,candidateOrigin15840:"contour"});
+            earthlineCoverageZone15803(coverageDiag15803,rec15803.x,rec15803.y).rejections.overlap++;
+            /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+            M.swaleDiagnostics.stage.rejectOverlap++;
+            continue;
+          }
+
+          // Do not reject spacing twice. Candidate generation now preserves every
+          // physically valid contour; the single final dedupe below enforces the
+          // 15-ft minimum once, deterministically, across neighboring contour bands.
+          if(!earthlineOnContourGuard15833(seg,L,levelStep)){
+            /* Validity guard only: selection may not reward off-contour geometry. */
+            const rec15840=earthlineCoverageRecordCandidate15803(
+              coverageDiag15803,seg,"rejected-conversion","off-contour-guard",li,
+              {seedId15840:seedRec15803&&seedRec15803.id||null,candidateOrigin15840:"contour"}
+            );
+            earthlineCoverageZone15803(coverageDiag15803,rec15840.x,rec15840.y).rejections.conversion++;
+            if(seedRec15803)seedRec15803.segmentTerminalCodes15840.push("off-contour-guard");
+            M.swaleDiagnostics.stage.rejectConversion++;
+            continue;
+          }
+          const sw=earthlineSwaleFromPts(seg,li,chanThr,li===Math.floor(levels.length/2),maxS,levels.length);
+          if(!sw){
+            /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+            const rec15803=earthlineCoverageRecordCandidate15803(coverageDiag15803,seg,"rejected-conversion","geometry-conversion",li,{seedId15840:seedRec15803&&seedRec15803.id||null,candidateOrigin15840:"c
+===== swales.push( COUNT 2 =====
+          const seg15836=earthlineLocalContourReachM76(rawSeg15836,path15836);
+          if(claimR&&earthlinePathOverlap(claimMask,seg15836)>.18){lastReason15836="overlap-with-earlier-primary";continue;}
+          const sw15836=earthlineSwaleFromPts(seg15836,-1,chanThr,false,maxS,levels.length);
+          if(!sw15836){lastReason15836="geometry-conversion";continue;}
+          const captureEvents15835=!!(coverageDiag15803&&coverageDiag15803.spatial&&Array.isArray(coverageDiag15803.spatial.candidates)&&coverageDiag15803.spatial.candidates.length===8);
+          const evidence15836=earthlineSegmentFlowEvidence15833(seg15836,chanThr,captureEvents15835);
+          sw15836.flowEvidence15833=evidence15836;
+          sw15836.prescriptionFlowScore15833=Number(evidence15836.score||0);
+          sw15836.seedFlowCrossing15833=1;
+          sw15836.seedCrossingGeometry15833=1;
+          sw15836.levelH=L15836;sw15836.bandKey=-(flowFirstAudit15836.pathsEvaluated);
+          sw15836.targetSpacingM=targetSpacingM15771;sw15836.verifiedSpacingM=null;
+          sw15836.placementMode15836="flow-first";
+          sw15836.primaryFlowFirst15836=true;
+          const rec15836=earthlineCoverageRecordCandidate15803(coverageDiag15803,seg15836,"candidate","flow-first-path-crossing",-1,{score:Number(sw15836.score||0),flowScore15833:sw15836.prescriptionFlowScore15833,crossingHits15833:evidence15836.crossingHits,crossingHitCellIds15834:(evidence15836.pathIds||[]).slice(),crossingHitEvents15835:(evidence15836.hitEvents15835||[]).map(e=>Object.assign({},e)),placementMode15836:"flow-first"});
+          candidateRecord15803.set(sw15836,rec15836);
+          sw15836.diagnosticCandidateId15843=rec15836&&rec15836.id||null;
+          sw15836.diagnosticSeedId15843=rec15836&&rec15836.seedId15840||null;
+          swales.push(sw15836);M.swaleDiagnostics.stage.candidates++;
+          if(claimR)earthlineClaimPath(claimMask,seg15836,claimR);
+          accepted15836=sw15836;servedPathSet15836.add(path15836.id);
+          flowFirstAudit15836.primaryCandidates++;
+          break;
+        }
+        if(accepted15836)break;
+      }
+      if(accepted15836){
+        flowFirstAudit15836.pathsServed++;
+        flowFirstAudit15836.pathSummaries.push({pathId:path15836.id,status:"served",peakAccumulation:path15836.peakAccumulation});
+      }else{
+        flowFirstAudit15836.unserved.push({pathId:path15836.id,reason:lastReason15836,peakAccumulation:path15836.peakAccumulation});
+        flowFirstAudit15836.pathSummaries.push({pathId:path15836.id,status:"unserved",reason:lastReason15836,peakAccumulation:path15836.peakAccumulation});
+      }
+      if(swales.length>=primaryLimit15836)break;
+      if((performance.now()-primarySlice15836)>=12){
+        earthlineProgress("swales",flowFirstAudit15836.pathsServed+" tributaries served · flow-first pass…");
+        await earthlineTaskYield16464();primarySlice15836=performance.now();
+      }
+    }
+    flowFirstAudit15836.servedPathIds=Array.from(servedPathSet15836).sort();
+    flowFirstAudit15836.secondaryFillStarted=swales.length<work15771.maxCandidates;
+
+    M.swaleSubstage16321={
+      build:"EARTHLINE 16321",stage:"contour-level-pass",
+      levelsTotal:levels.length,levelsChecked:0,
+      startedAt:performance.now(),updatedAt:new Date().toISOString()
+    };
+    let checked=0;
+    let sliceStarted15769=performance.now();
+    for(let li=0;li<levels.length;li++){
+      if(earthlineIsStale(myGen)){if(M.prescriptionNoBuildRun15843)M.prescriptionNoBuildRun15843.active=false;return false;}
+      if(performance.now()>=deadline15771){
+        /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+        candidateTermination15803="time-budget";
+        /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+        M.swaleDiagnostics.timeBudgetReached=true;
+        break;
+      }
+      const L=levels[li];
+      earthlineSeedSelectionContext15841={
+        diag:coverageDiag15803,levelIndex:li,record:!isRegionalTile15769
+      };
+      let selectedSeeds15841;
+      try{
+        selectedSeeds15841=seedCandidatesForLevel(
+          L,maxS,chanThr,effectiveSeedBudget15841
+        );
+      }finally{
+        earthlineSeedSelectionContext15841=null;
+      }
+      const seeds=selectedSeeds15841.slice(0,work15771.maxSeedsPerLevel);
+      /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+      const seedRecords15803=seeds.map((sd,rank)=>earthlineCoverageRecordSeed15803(coverageDiag15803,sd,li,rank+1));
+      let visitedAtLevel15803=0;
+      /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+      M.swaleDiagnostics.stage.seeds+=seeds.length;
+      let acceptedAtLevel=0;
+      for(const sd of seeds){
+        /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+        const seedRec15803=seedRecords15803[visitedAtLevel15803]||null;
+        visitedAtLevel15803++;seedsVisited15803++;
+        coverageDiag15803.totals.seedsVisited=seedsVisited15803;
+        if(seedRec15803){
+          seedRec15803.status="visited";
+          seedRec15803.traceAttempted15840=true;
+          seedRec15803.traceResult15840="attempted"
+ng15833.segmentCrossingCandidates=(M.flowCrossingScoring15833.segmentCrossingCandidates||0)+1;
+          /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+          const candidateRec15803=earthlineCoverageRecordCandidate15803(coverageDiag15803,seg,"candidate","passed-generation",li,{score:Number(sw.score||0),flowScore15833:sw.prescriptionFlowScore15833,crossingHits15833:flowEvidence15833.crossingHits,crossingHitCellIds15834:(flowEvidence15833.pathIds||[]).slice(),crossingHitEvents15835:(flowEvidence15833.hitEvents15835||[]).map(e=>Object.assign({},e)),seedId15840:seedRec15803&&seedRec15803.id||null,candidateOrigin15840:"contour"});
+          if(candidateRec15803&&candidateRec15803.id==="C8")M.instrumentIntegrity15834={candidateId:"C8",scoringGeometry:seg.map(p=>[+p[0],+p[1]]),tracedGeometry:pts.map(p=>[+p[0],+p[1]]),clippedExcludedGeometry:seg.map(p=>[+p[0],+p[1]]),convertedGeometry:(sw.pts||[]).map(p=>[+p[0],+p[1]]),flowEvidence:{score:+(flowEvidence15833.score||0),crossingHits:+(flowEvidence15833.crossingHits||0),hitCellIds:(flowEvidence15833.pathIds||[]).slice(),hitEvents15835:(flowEvidence15833.hitEvents15835||[]).map(e=>Object.assign({},e))},stages:{generated:true,converted:true,accepted:false}};
+          candidateRecord15803.set(sw,candidateRec15803);
+          sw.diagnosticCandidateId15843=candidateRec15803&&candidateRec15803.id||null;
+          sw.diagnosticSeedId15843=candidateRec15803&&candidateRec15803.seedId15840||null;
+          earthlineCoverageZone15803(coverageDiag15803,candidateRec15803.x,candidateRec15803.y).candidates++;
+          coverageDiag15803.totals.candidates++;
+          /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+          sw.levelH=L;
+          sw.bandKey=li;
+          sw.targetSpacingM=targetSpacingM15771;
+          sw.verifiedSpacingM=null;
+          swales.push(sw);
+          M.swaleDiagnostics.stage.candidates++;
+          acceptedAtLevel++;
+          if(claimR)earthlineClaimPath(claimMask,seg,claimR);
+          if(acceptedAtLevel>=work15771.perLevel)break;
+        }
+        if(acceptedAtLevel>=work15771.perLevel)break;
+      }
+      /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+      const unvisitedAtLevel15803=Math.max(0,seeds.length-visitedAtLevel15803);
+      seedsUnvisited15803+=unvisitedAtLevel15803;
+      coverageDiag15803.totals.seedsUnvisited=seedsUnvisited15803;
+      for(let ui15803=visitedAtLevel15803;ui15803<seedRecords15803.length;ui15803++){
+        seedRecords15803[ui15803].status="not-visited-per-level-cap";
+        seedRecords15803[ui15803].terminalStage15840="not-visited-per-level-cap";
+        seedRecords15803[ui15803].terminalReasonCode15840="per-level-cap";
+      }
+      /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+      checked++;
+      if((checked&3)===0||checked===1){
+        M.swaleSubstage16321=Object.assign({},M.swaleSubstage16321,{
+          stage:"contour-level-pass",levelsChecked:checked,
+          elapsedMs:Math.round(performance.now()-Number(M.swaleSubstage16321.startedAt||performance.now())),
+          updatedAt:new Date().toISOString()
+        });
+      }
+
+      // Stop candidate generation once enough physically valid contours exist.
+      /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+      if(swales.length>=work15771.maxCandidates){
+        candidateTermination15803="candidate-cap";
+        coverageDiag15803.termination.candidateCapReached=true;
+      }
+      /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+      if(swales.length>=work15771.maxCandidates)break;
+
+      // Yield to the browser by elapsed work time, not only by a fixed loop count.
+      // This keeps map controls, progress text, and repaint responsive.
+      if((performance.now()-sliceStarted15769)>=12 || li%4===3){
+        earthlineProgress(
+          "swales",
+          swales.length+" safe contours · "+checked+"/"+levels.length+" levels…"
+        );
+        await earthlineTaskYield16464();
+        sliceStarted15769=performance.now();
+      }
+    }
+
+    /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+    coverageDiag15803.termination.candidateStage=candidateTermination15803;
+    coverageDiag15803.termination.levelsProcessed=checked;
+    coverageDiag15803.termination.levelsUnprocessed=Math.max(0,levels.length-checked);
+    const remainingLevelCount16204=Math.max(0,levels.length-checked);
+    coverageDiag15803.termination.seedsUnprocessedAfterTermination=null;
+    coverageDiag15803.termination.unprocessedLevelCount16204=remainingLevelCount16204;
+    coverageDiag15803.termination.seedCountDiagnostic16204='deferred-production-diagnostic; accepted geometry unchanged';
+    /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+
+    // Enforce minimum spacing exactly once. Order by contour elevation so the
+    // final set remains dense across the whole hillside instead of selecting only
+    // isolated high-score bands. Same-band fragments separated by an exclusion remain valid.
+    M.swaleSubstage16321={
+      build:"EARTHLINE 16321",stage:"final-spacing",
+      candidates:swales.length,startedAt:performance.now(),updatedAt:new Date().to
+===== kept.push( COUNT 1 =====
+3.get(sw)||null;
+      if(finalRec15803){
+        finalRec15803.status="final-spacing-evaluation";
+        finalRec15803.reachedSpacingEvaluation15840=true;
+        finalRec15803.reachedFinalCapEvaluation15840=true;
+      }
+      /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+      let tooClose=false;const swBBox16204=earthlineSwaleGridBBox16204(sw);
+      const spacingCandidates16456=spacingIndexCandidates16456(swBBox16204);
+      bboxSkippedFinalPairs16204+=Math.max(0,kept.length-spacingCandidates16456.length);
+      for(const exIndex16204 of spacingCandidates16456){
+        const ex=kept[exIndex16204];
+        if(sw.bandKey===ex.bandKey)continue;
+        if(Math.abs(Number(sw.levelH||0)-Number(ex.levelH||0))>verticalWindowM)continue;
+        if(!earthlineSwaleBBoxesWithin16204(swBBox16204,keptBBox16204[exIndex16204],spacingPadCells16204)){bboxSkippedFinalPairs16204++;continue;}
+        exactFinalPairs16204++;
+        if(earthlinePathsCloserThan15770(sw,ex,minSpacingM15771)){tooClose=true;break;}
+      }
+      if(tooClose){
+        /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+        if(finalRec15803){
+          finalRec15803.status="rejected-final-spacing";
+          finalRec15803.reason="minimum-spacing";
+          earthlineCoverageZone15803(coverageDiag15803,finalRec15803.x,finalRec15803.y).rejections.finalSpacing++;
+        }
+        /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+        M.swaleDiagnostics.stage.rejectFinalSpacing++;
+        continue;
+      }
+      /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+      if(finalRec15803){
+        finalRec15803.status="accepted";finalRec15803.reason="accepted";finalRec15803.accepted=true;
+        earthlineCoverageZone15803(coverageDiag15803,finalRec15803.x,finalRec15803.y).accepted++;
+      }
+      /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+      kept.push(sw);keptBBox16204.push(swBBox16204);spacingIndexAdd16456(kept.length-1,swBBox16204);
+      dedupeChecked15769++;
+      /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
+      if(kept.length>=work15771.maxFinal){
+        finalTermination15803="final-cap";
+        coverageDiag15803.termination.finalCapReached=true;
+      }
+      /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+      if(kept.length>=work15771.maxFinal)break;
+      if((performance.now()-dedupeSlice15769)>=12 || dedupeChecked15769%12===0){
+        earthlineProgress(
+          "swales",
+          kept.length+" verified corridors · final spacing pass…"
+        );
+        await earthlineTaskYield16464();
+        dedupeSlice15769=performance.now();
+      }
+    }
+    /* EARTHLINE 16203 — production performance repair. The accepted `kept`
+       geometry is already frozen when maxFinal binds. The prior deterministic
+       shadow continuation re-ran final spacing against candidates that could
+       never publish and could consume most of the Property deadline. Preserve
+       the scientific result and record the deferred diagnostic without doing
+       non-publication O(n²) work on the user's run. */
+    coverageDiag15803.performance16204={bboxSkippedFinalPairs:bboxSkippedFinalPairs16204,exactFinalPairs:exactFinalPairs16204,remainingSeedDiagnosticDeferred:true,rule:'conservative grid-bbox prefilter before unchanged exact final-spacing test'};
+    coverageDiag15803.termination.finalStage=finalTermination15803;
+    if(finalTermination15803==="final-cap"){
+      const unevaluated15839=ordered.reduce((n,sw)=>{
+        const rec=candidateRecord15803.get(sw);return n+(rec&&rec.status==="candidate"?1:0);
+      },0);
+      coverageDiag15803.termination.finalCapDroppedCandidateCount15839=unevaluated15839;
+      coverageDiag15803.termination.finalCapAcceptedWorthyDropped15839=null;
+      coverageDiag15803.termination.finalCapSpacingRejectedAfterCap15839=null;
+      coverageDiag15803.termination.finalCapShadowMethod15839="deferred-production-diagnostic-16203; accepted geometry unchanged";
+      for(const sw of ordered){
+        const rec=candidateRecord15803.get(sw);if(!rec||rec.status!=="candidate")continue;
+        rec.status="not-evaluated-final-cap";rec.reason="final-cap";
+        rec.reachedSpacingEvaluation15840=false;rec.reachedFinalCapEvaluation15840=false;
+      }
+    }else coverageDiag15803.termination.finalCapShadowMethod15839="not-needed-final-cap-not-reached";
+    window.earthlineFilterAuthorityCorridors15874(kept);
+    kept.sort((a,b)=>(a.levelH-b.levelH)||((b.score||0)-(a.score||0)));
+    kept.forEach((s,i)=>{
+      s.id="B"+(i+1);
+      const record15843=candidateRecord15803.get(s)||null;
+      if(record15843){
+        record15843.finalCorridorId15843=s.id;
+        record15843.finalCorridorIndex15843=i;
+        s.diagnosticCandidateId15843=s.diagnosticCandidateId15843||record15843.id||null;
+        s.diagnosticSeedId15843=s.diagnosticSeedId15843||record15843.seedId15840||null;
+      }
+    });
+    {
+      const published15874=window.earthlineEvaluateAuthorityCorridors15874(kept,"published-final");
+      const prior15874=M&&M.directAuthorityGeometryAudit15874||{};
+      M.directAuthorityGeom
