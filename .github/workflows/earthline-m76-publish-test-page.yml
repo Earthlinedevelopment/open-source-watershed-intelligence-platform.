@@ -13,15 +13,80 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Publish exact M76 product candidate as additive test page
+      - name: Build and publish corrected M76 geometry test page
         shell: bash
         run: |
           set -euo pipefail
           git fetch origin 7884f28f3e65dcd1a67a3ec3f1fde39e413f8d59
           git show 7884f28f3e65dcd1a67a3ec3f1fde39e413f8d59:index.html > m76-swale-test.html
-          test "$(git hash-object m76-swale-test.html)" = "$(git rev-parse 7884f28f3e65dcd1a67a3ec3f1fde39e413f8d59:index.html)"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('m76-swale-test.html')
+          s=p.read_text(encoding='utf-8')
+          anchor="""function earthlineSegmentTortuosityM76(pts){
+  if(!pts||pts.length<2)return Infinity;
+  const lenM=earthlineSegmentLengthM(pts),a=pts[0],b=pts[pts.length-1];
+  const chordM=Math.hypot(b[0]-a[0],b[1]-a[1])*M.cellM;
+  return lenM/Math.max(1,chordM);
+}"""
+          helper=anchor+"""
+
+/* EARTHLINE M76C — local construction reach only.
+   A swale must intercept the runoff path locally; never publish an entire contour trace. */
+function earthlineLocalContourReachM76(seg,path){
+  if(!Array.isArray(seg)||seg.length<3||!Array.isArray(path)||!path.length)return seg;
+  let bestI=0,bestD=Infinity;
+  for(let i=0;i<seg.length;i++){
+    const a=seg[i];
+    for(let j=0;j<path.length;j++){
+      const b=path[j];
+      const d=(a[0]-b[0])*(a[0]-b[0])+(a[1]-b[1])*(a[1]-b[1]);
+      if(d<bestD){bestD=d;bestI=i;}
+    }
+  }
+  const totalM=Math.max(24,Math.min(60,Number(M.cellM||1)*8));
+  const halfM=totalM/2;
+  let lo=bestI,hi=bestI,leftM=0,rightM=0;
+  while(lo>0&&leftM<halfM){
+    leftM+=Math.hypot(seg[lo][0]-seg[lo-1][0],seg[lo][1]-seg[lo-1][1])*M.cellM;
+    lo--;
+  }
+  while(hi<seg.length-1&&rightM<halfM){
+    rightM+=Math.hypot(seg[hi+1][0]-seg[hi][0],seg[hi+1][1]-seg[hi][1])*M.cellM;
+    hi++;
+  }
+  const out=earthlineCleanPath(seg.slice(lo,hi+1));
+  return out.length>=3?out:seg;
+}"""
+          if s.count(anchor)!=1:
+              raise SystemExit(f'anchor count {s.count(anchor)}')
+          s=s.replace(anchor,helper,1)
+          old="for(const seg15836 of segs15836){"
+          new="""for(const rawSeg15836 of segs15836){
+                    const seg15836=earthlineLocalContourReachM76(rawSeg15836,path15836);"""
+          if s.count(old)!=1:
+              raise SystemExit(f'flow loop count {s.count(old)}')
+          s=s.replace(old,new,1)
+          if s.count("if(tortuosityM76>1.55)return false;")!=1:
+              raise SystemExit('tortuosity threshold owner mismatch')
+          if s.count("if(lenM/Math.max(1,diagM)>1.80)return false;")!=1:
+              raise SystemExit('compactness threshold owner mismatch')
+          s=s.replace("if(tortuosityM76>1.55)return false;","if(tortuosityM76>1.25)return false;",1)
+          s=s.replace("if(lenM/Math.max(1,diagM)>1.80)return false;","if(lenM/Math.max(1,diagM)>1.40)return false;",1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('m76-swale-test.html','utf8');
+          if(!s.includes('earthlineLocalContourReachM76'))throw Error('local reach missing');
+          if(!s.includes('tortuosityM76>1.25'))throw Error('tight tortuosity guard missing');
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1])}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('M76C_TEST_PAGE_PARSE_OK');
+          NODE
           git config user.name "Earthline Recovery"
           git config user.email "actions@users.noreply.github.com"
           git add m76-swale-test.html
-          git commit -m "test: publish isolated M76 swale candidate" || true
+          git commit -m "test: publish local-interception swale geometry" || true
           git push origin HEAD:pages-live
