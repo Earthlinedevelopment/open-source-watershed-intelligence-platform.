@@ -2,7 +2,7 @@ name: Earthline Stability Gate
 on:
   push:
     branches:
-      - recovery/mantra74-stability
+      - recovery/mantra76-audit-restart
     paths:
       - index.html
       - earthline-launch-16872.js
@@ -26,11 +26,14 @@ jobs:
         run: |
           set -euo pipefail
           node --check earthline-launch-16872.js
-          grep -q "function ensureLanguage(){" index.html
+          ! grep -q "function ensureLanguage(){" index.html
           ! grep -q "function applyLanguage(" index.html
           ! grep -q "function earthlineApplyUiLanguage16871(" index.html
           ! grep -q "earthline-language-hotfix-16890.js" index.html
-          grep -q "languageControl.value=launchLangOverride" earthline-launch-16872.js
+          grep -q "function lang(){return'en'}" earthline-launch-16872.js
+          grep -q "launchLangOverride='en'" earthline-launch-16872.js
+          grep -q "languageControl.innerHTML='<option value=\"en\">English</option>'" earthline-launch-16872.js
+          grep -q "languageControl.disabled=true" earthline-launch-16872.js
           grep -q "const schedule=()=>requestAnimationFrame(()=>ensure())" earthline-launch-16872.js
           ! grep -q "const obs=new MutationObserver(()=>{const p=reportPanel()" earthline-launch-16872.js
           ! grep -q "vermontRequest" index.html
