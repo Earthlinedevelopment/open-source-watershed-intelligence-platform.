@@ -1,31 +1,61 @@
-name: Earthline Iowa Regional Audit
+name: Earthline Regional Publication Repair
 on:
   push:
     branches: [recovery/mantra74-stability]
     paths:
-      - tests/iowa-regional-audit.mjs
       - .github/workflows/earthline-iowa-render-capture.yml
 permissions:
-  contents: read
+  contents: write
 jobs:
-  capture:
+  repair:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      - run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
-      - name: Audit live Iowa Regional selection
+          ref: recovery/mantra75-publication-fix
+          fetch-depth: 0
+      - name: Remove downstream 32-corridor publication cap
         shell: bash
-        run: node tests/iowa-regional-audit.mjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: iowa-regional-audit
-          path: |
-            iowa-regional-audit.png
-            iowa-regional-audit.json
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(errors='strict')
+          marker="    const publishedSwales17700=focusMode?swales:(()=>{"
+          start=s.find(marker)
+          end=s.find("    const visualData=",start)
+          if s.count(marker)!=1 or start<0 or end<=start:
+              raise SystemExit(f'PUBLICATION_BLOCK count={s.count(marker)} start={start} end={end}')
+          replacement="""    const publishedSwales17700=swales;
+    window.EARTHLINE_REGIONAL_PUBLICATION_SELECTION_17700={
+      build:'EARTHLINE 17701',runToken,
+      generatedCandidates:Array.isArray(swales&&swales.features)?swales.features.length:0,
+      publishedCorridors:Array.isArray(swales&&swales.features)?swales.features.length:0,
+      method:'publish full governed Regional selection; upstream terrain, jurisdiction, spacing, capacity and coverage owners already finalized this set',
+      at:new Date().toISOString()
+    };
+"""
+          s=s[:start]+replacement+s[end:]
+          p.write_text(s)
+          print('EARTHLINE_REGIONAL_PUBLICATION_17701_PATCH_OK')
+          PY
+      - name: Parse-check
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('EARTHLINE_REGIONAL_PUBLICATION_17701_PARSE_OK',parsed);
+          NODE
+      - name: Commit repair
+        shell: bash
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: publish full governed Regional corridor selection"
+          git push origin HEAD:recovery/mantra75-publication-fix
