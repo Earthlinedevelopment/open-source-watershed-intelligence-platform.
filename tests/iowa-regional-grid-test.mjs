@@ -2,7 +2,7 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 
 const base=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,channel:'chrome'});
 const page=await browser.newPage({viewport:{width:1800,height:1000}});
 const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
 
