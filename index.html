@@ -6070,6 +6070,33 @@ function earthlineSegmentTortuosityM76(pts){
   return lenM/Math.max(1,chordM);
 }
 
+/* EARTHLINE M76B — publish only the local contour reach that actually intercepts
+   the runoff path. Never publish the entire traced contour fragment. */
+function earthlineLocalContourReachM76(seg,path){
+  if(!Array.isArray(seg)||seg.length<3||!Array.isArray(path)||!path.length)return seg;
+  let bestI=0,bestD=Infinity;
+  for(let i=0;i<seg.length;i++){
+    const a=seg[i];
+    for(let j=0;j<path.length;j++){
+      const b=path[j],d=(a[0]-b[0])*(a[0]-b[0])+(a[1]-b[1])*(a[1]-b[1]);
+      if(d<bestD){bestD=d;bestI=i;}
+    }
+  }
+  const maxReachM=Math.max(36,Math.min(96,Number(M.cellM||1)*10));
+  const halfM=maxReachM/2;
+  let lo=bestI,hi=bestI,leftM=0,rightM=0;
+  while(lo>0&&leftM<halfM){
+    leftM+=Math.hypot(seg[lo][0]-seg[lo-1][0],seg[lo][1]-seg[lo-1][1])*M.cellM;
+    lo--;
+  }
+  while(hi<seg.length-1&&rightM<halfM){
+    rightM+=Math.hypot(seg[hi+1][0]-seg[hi][0],seg[hi+1][1]-seg[hi][1])*M.cellM;
+    hi++;
+  }
+  const out=earthlineCleanPath(seg.slice(lo,hi+1));
+  return out.length>=3?out:seg;
+}
+
 /* BUILD-CHECK-15768
    Minimum corridor length is a physical screening threshold, not an uncapped
    multiple of regional raster-cell size. This keeps property and regional
@@ -6205,8 +6232,8 @@ function earthlineSwaleGeometryAcceptable(pts,lenM){
   const tortuosityM76=earthlineSegmentTortuosityM76(pts);
   // A swale is an interception earthwork, not a closed contour ring or a winding contour trace.
   if(loopish)return false;
-  if(tortuosityM76>1.55)return false;
-  if(lenM/Math.max(1,diagM)>1.80)return false;
+  if(tortuosityM76>1.35)return false;
+  if(lenM/Math.max(1,diagM)>1.55)return false;
   return true;
 }
 
@@ -13320,7 +13347,8 @@ var prescribeSwales;
           (earthlineSegmentTortuosityM76(a)-earthlineSegmentTortuosityM76(b))||
           (earthlineSegmentLengthM(b)-earthlineSegmentLengthM(a))
         );
-        for(const seg15836 of segs15836){
+        for(const rawSeg15836 of segs15836){
+                    const seg15836=earthlineLocalContourReachM76(rawSeg15836,path15836);
           if(claimR&&earthlinePathOverlap(claimMask,seg15836)>.18){lastReason15836="overlap-with-earlier-primary";continue;}
           const sw15836=earthlineSwaleFromPts(seg15836,-1,chanThr,false,maxS,levels.length);
           if(!sw15836){lastReason15836="geometry-conversion";continue;}
