@@ -12567,7 +12567,7 @@ var prescribeSwales;
     const disk15841=earthlineSeedTargetDisk15841();
     const levelIndex15841=Number(ctx15841.levelIndex);
     const maxSeeds15841=Number(params15841.maxSeeds);
-    const spacingCells15841=params15841.regional?18:24;
+    const spacingCells15841=earthlineSeedSpacingCells17699(!!params15841.regional);
     const inside15841=(x15841,y15841)=>
       Math.hypot(Number(x15841)-disk15841.gx,Number(y15841)-disk15841.gy)<=disk15841.radiusCells;
     if(!diag15841.preselectionFate15841){
@@ -12747,6 +12747,12 @@ var prescribeSwales;
     return built;
   }
 
+  function earthlineSeedSpacingCells17699(regional){
+    const cell=Math.max(.25,Number(M.cellM||1));
+    const targetM=regional?Math.max(24,Math.min(60,cell*4)):TARGET_M;
+    return Math.max(2,Math.round(targetM/cell));
+  }
+
   function seedCandidatesForLevel(L,maxS,chanThr,maxSeedsPerLevel){
     const found=[];
     const maxAcc=Math.max(2,M.maxAcc||2);
@@ -12828,8 +12834,9 @@ var prescribeSwales;
       a.y-b.y||a.x-b.x
     );
     const out=[];
+    const seedSpacingCells17699=earthlineSeedSpacingCells17699(regional);
     for(const c of found){
-      if(out.every(s=>Math.hypot(c.x-s.x,c.y-s.y)>(regional?18:24)))out.push(c);
+      if(out.every(s=>Math.hypot(c.x-s.x,c.y-s.y)>seedSpacingCells17699))out.push(c);
       if(out.length>=maxSeeds)break;
     }
 
