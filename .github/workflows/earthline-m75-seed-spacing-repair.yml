@@ -23,26 +23,11 @@ jobs:
           p=Path('index.html')
           s=p.read_text(errors='strict')
           marker='function seedCandidatesForLevel(L,maxS,chanThr,maxSeedsPerLevel){'
-          helper="""function earthlineSeedSpacingCells17699(regional){
-    const cell=Math.max(.25,Number(M.cellM||1));
-    const targetM=regional?Math.max(24,Math.min(60,cell*4)):TARGET_M;
-    return Math.max(2,Math.round(targetM/cell));
-  }
-
-  function seedCandidatesForLevel(L,maxS,chanThr,maxSeedsPerLevel){"""
+          helper='function earthlineSeedSpacingCells17699(regional){\n    const cell=Math.max(.25,Number(M.cellM||1));\n    const targetM=regional?Math.max(24,Math.min(60,cell*4)):TARGET_M;\n    return Math.max(2,Math.round(targetM/cell));\n  }\n\n  function seedCandidatesForLevel(L,maxS,chanThr,maxSeedsPerLevel){'
           if s.count(marker)!=1: raise SystemExit(f'marker count {s.count(marker)}')
           s=s.replace(marker,helper,1)
-          old="""    const out=[];
-    for(const c of found){
-      if(out.every(s=>Math.hypot(c.x-s.x,c.y-s.y)>(regional?18:24)))out.push(c);
-      if(out.length>=maxSeeds)break;
-    }"""
-          new="""    const out=[];
-    const seedSpacingCells17699=earthlineSeedSpacingCells17699(regional);
-    for(const c of found){
-      if(out.every(s=>Math.hypot(c.x-s.x,c.y-s.y)>seedSpacingCells17699))out.push(c);
-      if(out.length>=maxSeeds)break;
-    }"""
+          old='    const out=[];\n    for(const c of found){\n      if(out.every(s=>Math.hypot(c.x-s.x,c.y-s.y)>(regional?18:24)))out.push(c);\n      if(out.length>=maxSeeds)break;\n    }'
+          new='    const out=[];\n    const seedSpacingCells17699=earthlineSeedSpacingCells17699(regional);\n    for(const c of found){\n      if(out.every(s=>Math.hypot(c.x-s.x,c.y-s.y)>seedSpacingCells17699))out.push(c);\n      if(out.length>=maxSeeds)break;\n    }'
           if s.count(old)!=1: raise SystemExit(f'select count {s.count(old)}')
           s=s.replace(old,new,1)
           old_obs='    const spacingCells15841=params15841.regional?18:24;'
@@ -55,6 +40,7 @@ jobs:
       - name: Parse check
         shell: bash
         run: |
+          node --check earthline-launch-16872.js
           node - <<'NODE'
           const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
           let parsed=0;
