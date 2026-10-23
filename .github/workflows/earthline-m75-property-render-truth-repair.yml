@@ -1,0 +1,45 @@
+name: Earthline M75 Property Render Truth Repair
+on:
+  push:
+    branches:
+      - recovery/mantra74-stability
+    paths:
+      - tools/m75_property_render_truth_repair.py
+      - .github/workflows/earthline-m75-property-render-truth-repair.yml
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: controller
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-live-combined
+          path: candidate
+          fetch-depth: 0
+      - name: Apply Property render-truth repair
+        run: python3 controller/tools/m75_property_render_truth_repair.py candidate/index.html
+      - name: Parse-check
+        working-directory: candidate
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('EARTHLINE_M75_PROPERTY_RENDER_TRUTH_PARSE_OK',parsed);
+          NODE
+      - name: Commit
+        working-directory: candidate
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: keep Property swales visible until replacement renders"
+          git push origin HEAD:recovery/mantra75-live-combined
