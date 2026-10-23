@@ -105,13 +105,17 @@ for(let ci=0;ci<CASES.length;ci++){
       const layer=(id)=>{
         try{
           if(!mp?.getLayer?.(id))return {id,exists:false};
-          return {id,exists:true,visibility:mp.getLayoutProperty?.(id,'visibility')||'visible',
-            lineColor:mp.getPaintProperty?.(id,'line-color')??null,
-            lineOpacity:mp.getPaintProperty?.(id,'line-opacity')??null,
-            lineWidth:mp.getPaintProperty?.(id,'line-width')??null,
-            fillColor:mp.getPaintProperty?.(id,'fill-color')??null,
-            fillOpacity:mp.getPaintProperty?.(id,'fill-opacity')??null,
-            linePattern:mp.getPaintProperty?.(id,'line-pattern')??null};
+          const spec=(mp.getStyle?.()?.layers||[]).find(x=>x.id===id)||{};
+          const paint=spec.paint||{},layout=spec.layout||{};
+          return {id,exists:true,visibility:layout.visibility||'visible',
+            lineColor:paint['line-color']??null,
+            lineOpacity:paint['line-opacity']??null,
+            lineWidth:paint['line-width']??null,
+            fillColor:paint['fill-color']??null,
+            fillOpacity:paint['fill-opacity']??null,
+            linePattern:paint['line-pattern']??null,
+            circleColor:paint['circle-color']??null,
+            circleOpacity:paint['circle-opacity']??null};
         }catch(e){return {id,exists:true,error:String(e?.message||e)}}
       };
       const canvas=mp?.getCanvas?.(),box=canvas&&[[0,0],[canvas.clientWidth||canvas.width,canvas.clientHeight||canvas.height]];
