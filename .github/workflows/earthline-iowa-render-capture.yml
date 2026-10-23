@@ -1,35 +1,32 @@
-name: Earthline Regional Publication Repair
+name: Earthline Iowa Regional Audit
 on:
   push:
     branches:
       - recovery/mantra74-stability
     paths:
-      - tools/repair-regional-publication-17701.py
+      - tests/iowa-regional-audit.mjs
       - .github/workflows/earthline-iowa-render-capture.yml
 permissions:
-  contents: write
+  contents: read
 jobs:
-  repair:
+  capture:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
-      - name: Checkout target
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          ref: recovery/mantra75-publication-fix
-          fetch-depth: 0
-      - name: Checkout repair script
-        uses: actions/checkout@v4
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Audit live Iowa Regional selection
+        shell: bash
+        run: node tests/iowa-regional-audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          ref: recovery/mantra74-stability
-          path: harness
-      - name: Apply repair
-        run: python3 harness/tools/repair-regional-publication-17701.py
-      - name: Parse check
-        run: node --check earthline-launch-16872.js
-      - name: Commit repair
-        run: |
-          git config user.name "Earthlinedevelopment"
-          git config user.email "info@earthlinedevelopment.org"
-          git add index.html
-          git commit -m "fix: publish full governed Regional corridor selection"
-          git push origin HEAD:recovery/mantra75-publication-fix
+          name: iowa-regional-audit
+          path: |
+            iowa-regional-audit.png
+            iowa-regional-audit.json
