@@ -42,12 +42,11 @@ new="""  const state=window.earthlineRegional15778||{};
 if seg.count(old)!=1: raise SystemExit(f"planting getter target {seg.count(old)}")
 seg=seg.replace(old,new,1)
 
-old="""        M&&M.analysisReady&&state.mode==="property"&&!state.active&&
-        typeof window.earthlineApplyRendererOwnership15805==="function" """
-new="""        M&&M.analysisReady&&currentState15806().mode==="property"&&!currentState15806().active&&
-        typeof window.earthlineApplyRendererOwnership15805==="function" """
-if seg.count(old)!=1: raise SystemExit(f"planting owner target {seg.count(old)}")
-seg=seg.replace(old,new,1)
+owner_token='state.mode==="property"&&!state.active'
+owner_count=seg.count(owner_token)
+if owner_count!=2: raise SystemExit(f"planting stale owner checks {owner_count}, expected 2")
+seg=seg.replace(owner_token,'currentState15806().mode==="property"&&!currentState15806().active')
+print("PATCH planting-live-owner-checks OK")
 
 old="""    setPlantingVisible15806(plantingVisible&&data.features.length>0);
     M.naturalSwalePlanting15806={features:data.features.length,visible:plantingVisible,source:PLANT_SOURCE};"""
@@ -58,13 +57,6 @@ new="""    const liveState15806=currentState15806();
 if seg.count(old)!=1: raise SystemExit(f"planting sync target {seg.count(old)}")
 seg=seg.replace(old,new,1)
 
-old="""          const propertyOwnsPlanting=state.mode==="property"&&!state.active&&!!(M&&M.analysisReady&&M.layers&&M.layers.swales&&M.layers.swales.on);
-          setPlantingVisible15806(propertyOwnsPlanting);"""
-new="""          const liveState15806=currentState15806();
-          const propertyOwnsPlanting=liveState15806.mode==="property"&&!liveState15806.active&&!!(M&&M.analysisReady&&M.layers&&M.layers.swales&&M.layers.swales.on);
-          setPlantingVisible15806(propertyOwnsPlanting);"""
-if seg.count(old)!=1: raise SystemExit(f"planting style target {seg.count(old)}")
-seg=seg.replace(old,new,1)
 
 s=s[:script_start]+seg+s[script_end:]
 p.write_text(s)
