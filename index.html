@@ -13484,9 +13484,10 @@ var prescribeSwales;
     const flowTraceCache16320=new Map();
     const flowCacheAudit16320={build:"EARTHLINE 16320",traceHits:0,traceMisses:0,segmentReuseHits:0,deadlineInnerBreaks:0,cacheEntries:0};
     M.flowFirstPerformance16320=flowCacheAudit16320;
-    const primaryLimit15836=Math.min(work15771.maxCandidates,Math.max(1,canonicalPaths15836.length));
+    const primaryLimit15836=isRegionalTile15769?Math.min(work15771.maxCandidates,Math.max(1,canonicalPaths15836.length)):0;
     let primarySlice15836=performance.now();
     for(const path15836 of canonicalPaths15836){
+      if(primaryLimit15836<=0)break;
       if(earthlineIsStale(myGen)){if(M.prescriptionNoBuildRun15843)M.prescriptionNoBuildRun15843.active=false;return false;}
       if(performance.now()>=deadline15771){
         flowFirstAudit15836.unserved.push({pathId:path15836.id,reason:"time-budget"});
