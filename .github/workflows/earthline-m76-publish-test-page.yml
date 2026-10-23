@@ -1,0 +1,27 @@
+name: Earthline M76 Publish Isolated Test Page
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths: ['.github/workflows/earthline-m76-publish-test-page.yml']
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Publish exact M76 product candidate as additive test page
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin 7884f28f3e65dcd1a67a3ec3f1fde39e413f8d59
+          git show 7884f28f3e65dcd1a67a3ec3f1fde39e413f8d59:index.html > m76-swale-test.html
+          test "$(git hash-object m76-swale-test.html)" = "$(git rev-parse 7884f28f3e65dcd1a67a3ec3f1fde39e413f8d59:index.html)"
+          git config user.name "Earthline Recovery"
+          git config user.email "actions@users.noreply.github.com"
+          git add m76-swale-test.html
+          git commit -m "test: publish isolated M76 swale candidate" || true
+          git push origin HEAD:pages-live
