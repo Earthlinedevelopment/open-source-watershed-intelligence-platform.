@@ -1,0 +1,29 @@
+name: Earthline M75 Regional Engine Patch
+on:
+  push:
+    branches:
+      - recovery/mantra75-regional-engine
+    paths:
+      - tools/patch-m75-regional-engine.py
+      - .github/workflows/earthline-m75-regional-engine-patch.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra75-regional-engine
+          fetch-depth: 0
+      - name: Patch index
+        run: python3 tools/patch-m75-regional-engine.py
+      - name: Parse check
+        run: node --check earthline-launch-16872.js
+      - name: Commit index
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: expand Regional coverage and reject duplicate swales"
+          git push origin HEAD:recovery/mantra75-regional-engine
