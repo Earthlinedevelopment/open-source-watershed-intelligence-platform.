@@ -24,11 +24,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install browser runtime
+      - name: Install Playwright package
         run: |
           cd controller
           npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
       - name: Run Iowa statewide Regional verification
         run: |
           python3 -m http.server 8787 --bind 127.0.0.1 --directory candidate >/tmp/earthline-grid-http.log 2>&1 &
