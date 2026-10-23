@@ -20,100 +20,43 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
           p=Path('index.html')
           s=p.read_text(errors='strict')
-          old="""function earthlineSeedSpacingCells17699(regional){
-    const cell=Math.max(.25,Number(M.cellM||1));
-    const targetM=regional?Math.max(24,Math.min(60,cell*4)):TARGET_M;
-    return Math.max(2,Math.round(targetM/cell));
-  }
-
-  function seedCandidatesForLevel(L,maxS,chanThr,maxSeedsPerLevel){"""
-          new="""function earthlineSeedSpacingCells17699(regional){
-    const cell=Math.max(.25,Number(M.cellM||1));
-    const targetM=regional?Math.max(24,Math.min(60,cell*4)):TARGET_M;
-    return Math.max(2,Math.round(targetM/cell));
-  }
-  function earthlineSeedZone17700(c){
-    const zx=Math.max(0,Math.min(3,Math.floor((Number(c.x||0)/Math.max(1,GW))*4)));
-    const zy=Math.max(0,Math.min(3,Math.floor((Number(c.y||0)/Math.max(1,GH))*4)));
-    return zy*4+zx;
-  }
-  function earthlineSelectSeedCandidates17700(found,maxSeeds,regional){
-    const spacing=earthlineSeedSpacingCells17699(regional);
-    const out=[],selected=new Set(),zones=new Set();
-    const canTake=c=>out.every(seed=>Math.hypot(c.x-seed.x,c.y-seed.y)>spacing);
-    for(const c of found){
-      if(out.length>=maxSeeds)break;
-      const z=earthlineSeedZone17700(c);
-      if(zones.has(z)||!canTake(c))continue;
-      out.push(c);selected.add(c);zones.add(z);
-    }
-    for(const c of found){
-      if(out.length>=maxSeeds)break;
-      if(selected.has(c)||!canTake(c))continue;
-      out.push(c);selected.add(c);
-    }
-    return out;
-  }
-
-  function seedCandidatesForLevel(L,maxS,chanThr,maxSeedsPerLevel){"""
+          old='function earthlineSeedSpacingCells17699(regional){\n    const cell=Math.max(.25,Number(M.cellM||1));\n    const targetM=regional?Math.max(24,Math.min(60,cell*4)):TARGET_M;\n    return Math.max(2,Math.round(targetM/cell));\n  }\n\n  function seedCandidatesForLevel(L,maxS,chanThr,maxSeedsPerLevel){'
+          new='function earthlineSeedSpacingCells17699(regional){\n    const cell=Math.max(.25,Number(M.cellM||1));\n    const targetM=regional?Math.max(24,Math.min(60,cell*4)):TARGET_M;\n    return Math.max(2,Math.round(targetM/cell));\n  }\n  function earthlineSeedZone17700(c){\n    const zx=Math.max(0,Math.min(3,Math.floor((Number(c.x||0)/Math.max(1,GW))*4)));\n    const zy=Math.max(0,Math.min(3,Math.floor((Number(c.y||0)/Math.max(1,GH))*4)));\n    return zy*4+zx;\n  }\n  function earthlineSelectSeedCandidates17700(found,maxSeeds,regional){\n    const spacing=earthlineSeedSpacingCells17699(regional);\n    const out=[],selected=new Set(),zones=new Set();\n    const canTake=c=>out.every(seed=>Math.hypot(c.x-seed.x,c.y-seed.y)>spacing);\n    for(const c of found){\n      if(out.length>=maxSeeds)break;\n      const z=earthlineSeedZone17700(c);\n      if(zones.has(z)||!canTake(c))continue;\n      out.push(c);selected.add(c);zones.add(z);\n    }\n    for(const c of found){\n      if(out.length>=maxSeeds)break;\n      if(selected.has(c)||!canTake(c))continue;\n      out.push(c);selected.add(c);\n    }\n    return out;\n  }\n\n  function seedCandidatesForLevel(L,maxS,chanThr,maxSeedsPerLevel){'
           if s.count(old)!=1: raise SystemExit(f'helper target {s.count(old)}')
           s=s.replace(old,new,1)
-
-          old_select="""    const out=[];
-    const seedSpacingCells17699=earthlineSeedSpacingCells17699(regional);
-    for(const c of found){
-      if(out.every(s=>Math.hypot(c.x-s.x,c.y-s.y)>seedSpacingCells17699))out.push(c);
-      if(out.length>=maxSeeds)break;
-    }"""
-          new_select="""    const out=earthlineSelectSeedCandidates17700(found,maxSeeds,regional);"""
+          old_select='    const out=[];\n    const seedSpacingCells17699=earthlineSeedSpacingCells17699(regional);\n    for(const c of found){\n      if(out.every(s=>Math.hypot(c.x-s.x,c.y-s.y)>seedSpacingCells17699))out.push(c);\n      if(out.length>=maxSeeds)break;\n    }'
+          new_select='    const out=earthlineSelectSeedCandidates17700(found,maxSeeds,regional);'
           if s.count(old_select)!=1: raise SystemExit(f'select target {s.count(old_select)}')
           s=s.replace(old_select,new_select,1)
-
           start=s.index('    const replay15841=[];')
           end=s.index('    let notSampledTargetCount15841=0;',start)
-          replacement="""    const replay15841=earthlineSelectSeedCandidates17700(found15841,maxSeeds15841,!!params15841.regional);
-    const replaySet15841=new Set(replay15841);
-    const idByCandidate15841=new Map();
-    found15841.forEach((candidate15841,index15841)=>{
-      idByCandidate15841.set(candidate15841,
-        "P15841-L"+levelIndex15841+"-R"+(index15841+1));
-    });
-    for(let index15841=0;index15841<found15841.length;index15841++){
-      const candidate15841=found15841[index15841];
-      const selected15841=replaySet15841.has(candidate15841);
-      const blocker15841=selected15841?null:(replay15841.find(seed15841=>
-        Math.hypot(candidate15841.x-seed15841.x,candidate15841.y-seed15841.y)<=spacingCells15841
-      )||null);
-      const reason15841=selected15841?"selected":(blocker15841?"blocked-by-seed-spacing":"below-seed-budget-cutoff");
-      if(inside15841(candidate15841.x,candidate15841.y)){
-        const record15841={
-          selectionCandidateId:idByCandidate15841.get(candidate15841),
-          levelIndex:levelIndex15841,
-          elevation:Number(params15841.L),
-          x:Number(candidate15841.x),y:Number(candidate15841.y),
-          sampled:true,
-          preselectionRank:index15841+1,
-          flowCrossingValue:Number(candidate15841.flowCrossingValue||0),
-          legacyQuality:Number(candidate15841.legacyQuality||0),
-          selected:selected15841,
-          terminalSelectionReason:reason15841
-        };
-        if(blocker15841){
-          const distanceCells15841=Math.hypot(candidate15841.x-blocker15841.x,candidate15841.y-blocker15841.y);
-          record15841.blockingSeedId=idByCandidate15841.get(blocker15841)||null;
-          record15841.blockingSeedX=Number(blocker15841.x);
-          record15841.blockingSeedY=Number(blocker15841.y);
-          record15841.blockingDistanceCells=distanceCells15841;
-          record15841.blockingDistanceM=distanceCells15841*Math.max(.001,Number(M.cellM||1));
-        }
-        fate15841.records.push(record15841);
-      }
-    }
-"""
-          s=s[:start]+replacement+s[end:]
+          lines=[
+            '    const replay15841=earthlineSelectSeedCandidates17700(found15841,maxSeeds15841,!!params15841.regional);',
+            '    const replaySet15841=new Set(replay15841);',
+            '    const idByCandidate15841=new Map();',
+            '    found15841.forEach((candidate15841,index15841)=>{',
+            '      idByCandidate15841.set(candidate15841,"P15841-L"+levelIndex15841+"-R"+(index15841+1));',
+            '    });',
+            '    for(let index15841=0;index15841<found15841.length;index15841++){',
+            '      const candidate15841=found15841[index15841];',
+            '      const selected15841=replaySet15841.has(candidate15841);',
+            '      const blocker15841=selected15841?null:(replay15841.find(seed15841=>Math.hypot(candidate15841.x-seed15841.x,candidate15841.y-seed15841.y)<=spacingCells15841)||null);',
+            '      const reason15841=selected15841?"selected":(blocker15841?"blocked-by-seed-spacing":"below-seed-budget-cutoff");',
+            '      if(inside15841(candidate15841.x,candidate15841.y)){',
+            '        const record15841={selectionCandidateId:idByCandidate15841.get(candidate15841),levelIndex:levelIndex15841,elevation:Number(params15841.L),x:Number(candidate15841.x),y:Number(candidate15841.y),sampled:true,preselectionRank:index15841+1,flowCrossingValue:Number(candidate15841.flowCrossingValue||0),legacyQuality:Number(candidate15841.legacyQuality||0),selected:selected15841,terminalSelectionReason:reason15841};',
+            '        if(blocker15841){',
+            '          const distanceCells15841=Math.hypot(candidate15841.x-blocker15841.x,candidate15841.y-blocker15841.y);',
+            '          record15841.blockingSeedId=idByCandidate15841.get(blocker15841)||null;',
+            '          record15841.blockingSeedX=Number(blocker15841.x);record15841.blockingSeedY=Number(blocker15841.y);',
+            '          record15841.blockingDistanceCells=distanceCells15841;record15841.blockingDistanceM=distanceCells15841*Math.max(.001,Number(M.cellM||1));',
+            '        }',
+            '        fate15841.records.push(record15841);',
+            '      }',
+            '    }'
+          ]
+          s=s[:start]+'\n'.join(lines)+'\n'+s[end:]
           p.write_text(s)
           print('EARTHLINE_SPATIAL_FILL_REPAIR_OK')
           PY
