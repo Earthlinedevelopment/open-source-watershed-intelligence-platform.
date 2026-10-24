@@ -72,7 +72,9 @@ for(const c of CASES){
        medianAlongSlope:align.length?+align[Math.floor(align.length/2)].toFixed(3):null,
        maxAlongSlope:align.length?+Math.max(...align).toFixed(3):null};
    });
-   return {run:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173,elder:window.EARTHLINE_ELDER_TREES_AUDIT_17097||window.EARTHLINE_ELDER_TREE_AUDIT_17097||null,rawGeometry:rawKept.map(s=>({primary:!!s.primaryFlowFirst15836,pts:(s.pts||[]).map(p=>[+p[0],+p[1]])})),
+   const hashArray=a=>{let h=2166136261>>>0;if(!a)return null;for(let i=0;i<a.length;i++){let v=Number(a[i]);if(!Number.isFinite(v))v=-999999;const q=Math.round(v*1000000);h^=q&255;h=Math.imul(h,16777619)>>>0;h^=(q>>>8)&255;h=Math.imul(h,16777619)>>>0;h^=(q>>>16)&255;h=Math.imul(h,16777619)>>>0;h^=(q>>>24)&255;h=Math.imul(h,16777619)>>>0;}return h.toString(16).padStart(8,'0')};
+   const inputFingerprint={GW,GH,cellM:Number(M?.cellM||0),terrainStamp:String(M?.terrainStamp||''),searchGen:Number(M?.searchGen||0),h:hashArray(M?.h),dir:hashArray(M?.dir),acc:hashArray(M?.acc),inP:hashArray(M?.inP),noBuild:hashArray(M?.noBuildMask),pond:hashArray(M?.pond),center:[Number(M?.centerLat||0),Number(M?.centerLng||0)],maskStamp:String(M?._noBuildStamp||'')};
+   return {run:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173,elder:window.EARTHLINE_ELDER_TREES_AUDIT_17097||window.EARTHLINE_ELDER_TREE_AUDIT_17097||null,inputFingerprint,rawGeometry:rawKept.map(s=>({primary:!!s.primaryFlowFirst15836,pts:(s.pts||[]).map(p=>[+p[0],+p[1]])})),
      count:rows.length,rows,diag:M?.swaleDiagnostics||null,flowFirst:M?.flowFirstAudit15836||M?.swaleFlowFirst15836||null,rawKeptCount:rawKept.length};
  });
  out.push({case:c,...snap});
