@@ -14,7 +14,7 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Restore Elder compute-only prime after Property frame
+      - name: Reject zero-runoff secondary Property swales
         shell: bash
         run: |
           set -euo pipefail
@@ -22,10 +22,18 @@ jobs:
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          old="/* M76 elder early start retired */"
-          new="try{void window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.()}catch(_){} /* M76 Elder compute-only prime; publication remains post-science. */"
+          old="""          if(!isRegionalTile15769&&Number(flowEvidence15833.crossingHits||0)<=0&&
+             Number(sw.seedFlowCrossing15833||0)<=0&&Number(sw.seedCrossingGeometry15833||0)<=0){
+            M.swaleDiagnostics.stage.rejectConversion++;
+            continue;
+          }"""
+          new="""          if(!isRegionalTile15769&&Number(flowEvidence15833.crossingHits||0)<=0&&
+             Number(sw.seedFlowCrossing15833||0)<=0){
+            M.swaleDiagnostics.stage.rejectConversion++;
+            continue;
+          }"""
           if s.count(old)!=1:
-              raise SystemExit(f'frame Elder marker count {s.count(old)}')
+              raise SystemExit(f'zero-runoff Property guard owner count {s.count(old)}')
           s=s.replace(old,new,1)
           p.write_text(s,encoding='utf-8')
           PY
@@ -33,11 +41,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(grep -Foc 'primePropertyEvidence?.()' index.html)" -ge "1"
-          test "$(grep -Foc 'startProperty?.()' index.html)" = "1"
-          grep -q 'elder-display-only-m76' index.html
+          grep -q 'Number(flowEvidence15833.crossingHits||0)<=0' index.html
+          ! grep -q 'Number(sw.seedCrossingGeometry15833||0)<=0' index.html
           grep -q 'earthlinePickContourExitM76(candidates,pts)' index.html
-          node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8');let n=0;for(const m of s.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)){if(!m[1].trim())continue;new Function(m[1]);n++}console.log('M76_ELDER_PRIME_OK',n)"
+          node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8');let n=0;for(const m of s.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)){if(!m[1].trim())continue;new Function(m[1]);n++}console.log('M76_ZERO_RUNOFF_FILTER_OK',n)"
       - name: Publish live
         shell: bash
         run: |
@@ -45,5 +52,5 @@ jobs:
           git config user.name "Earthline Recovery"
           git config user.email "actions@users.noreply.github.com"
           git add index.html
-          git commit -m "fix: restore Elder compute prime after Property frame"
+          git commit -m "fix: reject zero-runoff secondary Property swales"
           git push origin HEAD:pages-live
