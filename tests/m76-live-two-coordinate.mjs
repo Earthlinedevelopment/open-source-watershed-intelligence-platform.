@@ -49,10 +49,28 @@ for(const c of CASES){
      const chord=a&&b?(usingRaw?Math.hypot(b[0]-a[0],b[1]-a[1]):Math.hypot((b[0]-a[0])*111320*Math.cos(((a[1]+b[1])/2)*Math.PI/180),(b[1]-a[1])*111320)):0;
      const dx=a&&b?(b[0]-a[0]):0,dy=a&&b?(b[1]-a[1]):0;
      const heading=a&&b?(Math.atan2(dx,dy)*180/Math.PI+360)%180:null;
+     let elevMin=Infinity,elevMax=-Infinity,align=[];
+     if(usingRaw){
+       for(let j=0;j<co.length;j++){
+         const x=Math.max(1,Math.min(GW-2,Math.round(co[j][0]))),y=Math.max(1,Math.min(GH-2,Math.round(co[j][1])));
+         const h=Number(M.h[idx(x,y)]); if(Number.isFinite(h)){elevMin=Math.min(elevMin,h);elevMax=Math.max(elevMax,h);}
+         if(j>0){
+           const mx=(co[j][0]+co[j-1][0])/2,my=(co[j][1]+co[j-1][1])/2;
+           const gx=Math.max(1,Math.min(GW-2,Math.round(mx))),gy=Math.max(1,Math.min(GH-2,Math.round(my)));
+           const g=typeof gradAt==='function'?gradAt(gx,gy):[0,0],gm=Math.hypot(g[0],g[1]);
+           const tx=co[j][0]-co[j-1][0],ty=co[j][1]-co[j-1][1],tm=Math.hypot(tx,ty);
+           if(gm>1e-9&&tm>1e-9)align.push(Math.abs((tx*g[0]+ty*g[1])/(tm*gm)));
+         }
+       }
+     }
+     align.sort((a,b)=>a-b);
      return {i,id:p.id||f.id||null,placementMode:p.placementMode15836||null,primary:!!p.primaryFlowFirst15836,
        flowScore:Number(p.prescriptionFlowScore15833||0),flowHits:Number(p.flowEvidence15833?.crossingHits||0),seedFlow:Number(p.seedFlowCrossing15833||0),
        crossing:Number(p.seedCrossingGeometry15833||0),bandKey:p.bandKey??null,levelH:p.levelH??null,
-       pts:co.length,lenM:+len.toFixed(1),tortuosity:+(len/Math.max(1,chord)).toFixed(3),heading:heading==null?null:+heading.toFixed(1)};
+       pts:co.length,lenM:+len.toFixed(1),tortuosity:+(len/Math.max(1,chord)).toFixed(3),heading:heading==null?null:+heading.toFixed(1),
+       elevRangeM:Number.isFinite(elevMin)&&Number.isFinite(elevMax)?+(elevMax-elevMin).toFixed(3):null,
+       medianAlongSlope:align.length?+align[Math.floor(align.length/2)].toFixed(3):null,
+       maxAlongSlope:align.length?+Math.max(...align).toFixed(3):null};
    });
    return {run:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173,elder:window.EARTHLINE_ELDER_TREES_AUDIT_17097||window.EARTHLINE_ELDER_TREE_AUDIT_17097||null,rawGeometry:rawKept.map(s=>({primary:!!s.primaryFlowFirst15836,pts:(s.pts||[]).map(p=>[+p[0],+p[1]])})),
      count:rows.length,rows,diag:M?.swaleDiagnostics||null,flowFirst:M?.flowFirstAudit15836||M?.swaleFlowFirst15836||null,rawKeptCount:rawKept.length};
