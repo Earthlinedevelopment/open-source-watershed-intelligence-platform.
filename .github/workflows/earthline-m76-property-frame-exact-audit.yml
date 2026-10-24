@@ -1,0 +1,41 @@
+name: Earthline M76 Property Frame Exact Audit
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-property-frame-exact-audit.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Extract exact frame owners
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          needles=[
+            'function earthlineTerrainStamp',
+            'function buildBoundary',
+            'M.viewZoom=',
+            'viewZoom:',
+            'earthlineMap.getZoom()',
+            'getZoom?.()',
+            'function fetchRealTerrain',
+            'async function fetchRealTerrain',
+            'analysisBoundaryLngLat='
+          ]
+          for n in needles:
+            print('\n===== '+n+' =====')
+            start=0;hits=0
+            while hits<20:
+              i=s.find(n,start)
+              if i<0:break
+              print(s[max(0,i-1200):min(len(s),i+6500)])
+              hits+=1;start=i+len(n)
+            print('HITS',hits)
+          PY
