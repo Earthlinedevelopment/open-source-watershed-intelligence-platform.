@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
-const BASE='http://127.0.0.1:8787/live.html';
+const BASE='https://earthlinedevelopment.org/';
 const CASES=[
  {name:'GOOD',lat:34.21607,lng:-111.93178},
  {name:'BAD',lat:34.21605,lng:-111.93582}
