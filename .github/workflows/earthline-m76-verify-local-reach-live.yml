@@ -1,0 +1,26 @@
+name: Earthline M76 Verify Local Reach Live
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-verify-local-reach-live.yml'
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Check live flow-first local reach owner
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for n in ['function earthlineLocalContourReachM76','earthlineLocalContourReachM76(rawSeg15836,path15836)','for(const rawSeg15836 of segs15836)','for(const seg15836 of segs15836)']:
+              print(n, s.count(n))
+          PY
