@@ -1,0 +1,16 @@
+name: Earthline M76 Suggestion CSS Audit
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-suggestion-css-audit.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          grep -n -F '#earthlineSearchSuggestions15970' index.html | head -80 || true
+          grep -n -F 'earthlineSearchSuggestions15970' index.html | head -120 || true
