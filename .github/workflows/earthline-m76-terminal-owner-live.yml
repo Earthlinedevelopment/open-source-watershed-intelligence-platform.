@@ -20,16 +20,18 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          old="    if(terminal16537==='published'){\\n      try{window.earthlineRestoreUi16488&&window.earthlineRestoreUi16488.syncGauge&&window.earthlineRestoreUi16488.syncGauge()}catch(_){ }\\n    }\\n    return terminal16537;"
-          new="    if(terminal16537==='published'){\\n      try{window.earthlineRestoreUi16488&&window.earthlineRestoreUi16488.syncGauge&&window.earthlineRestoreUi16488.syncGauge()}catch(_){ }\\n    }\\n    try{setBusy(false,'RUN ANALYSIS')}catch(_){ }\\n    try{if(typeof window.earthlineStopRegionalOrb16244==='function')window.earthlineStopRegionalOrb16244()}catch(_){ }\\n    return terminal16537;"
-          assert s.count(old)==1, f'terminal owner count {s.count(old)}'
-          s=s.replace(old,new,1)
-          old2="  function stopRegionalOrb16244(){regionalOrbLatched16244=false;regionalRequested16233=false;regionalOrbToken16244='';regionalOrbPriorToken16244='';regionalOrbStartedAt16244=0;document.documentElement.classList.remove('earthline-regional-orb-latched-16244','earthline-regional-running-16233')}"
-          new2=old2+"\\n  window.earthlineStopRegionalOrb16244=stopRegionalOrb16244;"
-          assert s.count(old2)==1, f'orb stop owner count {s.count(old2)}'
-          s=s.replace(old2,new2,1)
+          if "window.earthlineStopRegionalOrb16244()" not in s:
+              pat=r"(function setRegionalTerminal16539\([\s\S]*?if\(terminal16537==='published'\)\{[\s\S]*?\n    \})(\n    return terminal16537;)"
+              repl=r"\1\n    try{setBusy(false,'RUN ANALYSIS')}catch(_){ }\n    try{if(typeof window.earthlineStopRegionalOrb16244==='function')window.earthlineStopRegionalOrb16244()}catch(_){ }\2"
+              s,n=re.subn(pat,repl,s,count=1)
+              assert n==1, f'terminal insertion count {n}'
+          if 'window.earthlineStopRegionalOrb16244=stopRegionalOrb16244;' not in s:
+              pat2=r"(function stopRegionalOrb16244\(\)\{[^\n]+\})"
+              s,n=re.subn(pat2,r"\1\n  window.earthlineStopRegionalOrb16244=stopRegionalOrb16244;",s,count=1)
+              assert n==1, f'orb export count {n}'
           p.write_text(s,encoding='utf-8')
           PY
       - name: Validate and publish
