@@ -1,5 +1,5 @@
 name: Earthline M76 Production Served-Bytes Audit
-# terminal-owner-production-check
+# search-position-production-check
 # frame-lock-production-check
 on:
   push:
@@ -34,6 +34,11 @@ jobs:
             'return out.length>=3?out:[];' \
             'earthlinePickContourExitM76(candidates,pts)' \
             'elder-display-only-m76'
+          do
+            if grep -Fq "$m" /tmp/prod.html; then echo "PROD_HAS $m"; else echo "PROD_MISSING $m"; fi
+            if grep -Fq "$m" index.html; then echo "BRANCH_HAS $m"; else echo "BRANCH_MISSING $m"; fi
+          done
+          for m in "menu.style.setProperty('right','auto','important')" "Math.max(r.bottom,rr&&Number.isFinite(rr.bottom)?rr.bottom:r.bottom)+7"
           do
             if grep -Fq "$m" /tmp/prod.html; then echo "PROD_HAS $m"; else echo "PROD_MISSING $m"; fi
             if grep -Fq "$m" index.html; then echo "BRANCH_HAS $m"; else echo "BRANCH_MISSING $m"; fi
