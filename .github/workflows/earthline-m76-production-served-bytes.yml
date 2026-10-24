@@ -1,0 +1,43 @@
+name: Earthline M76 Production Served-Bytes Audit
+on:
+  push:
+    branches:
+      - recovery/mantra76-audit-restart
+    paths:
+      - .github/workflows/earthline-m76-production-served-bytes.yml
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 1
+      - name: Compare production bytes to pages-live
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "BRANCH_SHA=$(git rev-parse HEAD)"
+          echo "BRANCH_INDEX_SHA=$(sha256sum index.html | awk '{print $1}')"
+          url="https://earthlinedevelopment.org/?m76served=$(date +%s)"
+          curl -fsSL --max-time 30 -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' -D /tmp/headers "$url" -o /tmp/prod.html
+          echo "PROD_INDEX_SHA=$(sha256sum /tmp/prod.html | awk '{print $1}')"
+          echo "PROD_BYTES=$(wc -c </tmp/prod.html)"
+          echo "BRANCH_BYTES=$(wc -c <index.html)"
+          echo "=== HEADERS ==="
+          cat /tmp/headers
+          echo "=== MARKERS ==="
+          for m in \
+            'EARTHLINE M76G — zero-runoff secondary Property swales are not publishable' \
+            'return out.length>=3?out:[];' \
+            'earthlinePickContourExitM76(candidates,pts)' \
+            'elder-display-only-m76'
+          do
+            if grep -Fq "$m" /tmp/prod.html; then echo "PROD_HAS $m"; else echo "PROD_MISSING $m"; fi
+            if grep -Fq "$m" index.html; then echo "BRANCH_HAS $m"; else echo "BRANCH_MISSING $m"; fi
+          done
+          if cmp -s /tmp/prod.html index.html; then
+            echo "PROD_EQUALS_BRANCH YES"
+          else
+            echo "PROD_EQUALS_BRANCH NO"
+          fi
