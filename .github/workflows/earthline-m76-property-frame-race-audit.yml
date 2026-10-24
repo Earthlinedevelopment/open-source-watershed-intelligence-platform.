@@ -1,0 +1,21 @@
+name: Earthline M76 Property Frame Race Audit
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-property-frame-race-audit.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Extract Property frame race blocks
+        run: |
+          echo '=== 17680-17820 ==='
+          sed -n '17680,17820p' index.html
+          echo '=== 18050-18230 ==='
+          sed -n '18050,18230p' index.html
+          echo '=== 29750-29830 ==='
+          sed -n '29750,29830p' index.html
