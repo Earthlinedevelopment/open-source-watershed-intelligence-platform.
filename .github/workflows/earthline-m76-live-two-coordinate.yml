@@ -1,0 +1,31 @@
+name: Earthline M76 Live Two Coordinate Regression
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-live-two-coordinate.yml'
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra76-audit-restart
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run exact live regression
+        run: node tests/m76-live-two-coordinate.mjs
+      - name: Save report
+        run: |
+          git config user.name "Earthline Recovery"
+          git config user.email "actions@users.noreply.github.com"
+          git add M76-LIVE-TWO-COORD-REPORT.json
+          git commit -m "test: capture exact Arizona two-coordinate swale regression" || true
+          git push origin HEAD:recovery/mantra76-audit-restart
