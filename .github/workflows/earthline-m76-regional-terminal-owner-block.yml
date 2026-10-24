@@ -1,0 +1,14 @@
+name: Earthline M76 Regional Terminal Owner Block
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-regional-terminal-owner-block.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: sed -n '24420,24510p' index.html
