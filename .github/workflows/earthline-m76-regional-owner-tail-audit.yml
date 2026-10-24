@@ -1,0 +1,15 @@
+name: Earthline M76 Regional Owner Tail Audit
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-regional-owner-tail-audit.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          sed -n '28280,28680p' index.html
