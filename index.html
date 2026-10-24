@@ -3174,7 +3174,7 @@ function earthlineFinishMapMotion(){
     earthlineMapMotionFrame=requestAnimationFrame(()=>{
       earthlineMapMotionFrame=0;
       if(!earthlineMapActive())return;
-      M.viewZoom=earthlineMap.getZoom();
+      if(!(String(document.documentElement.dataset.earthlinePropertyRunState||"")==="running"||String(window.earthlineRegional15778&&window.earthlineRegional15778.mode||"")==="property"))M.viewZoom=earthlineMap.getZoom();
       earthlineSyncOverlayScale();
       // First repaint only the layers needed to understand the analysis. Expensive support
       // layers (contours, soil, arrows, erosion and no-build texture) return after the user
@@ -3192,7 +3192,7 @@ function earthlineFinishMapMotion(){
           if(!earthlineMapActive()||!earthlineOverlayNeeded())return;
           requestAnimationFrame(()=>{
             if(!earthlineMapActive()||!earthlineOverlayNeeded())return;
-            M.viewZoom=earthlineMap.getZoom();
+            if(!(String(document.documentElement.dataset.earthlinePropertyRunState||"")==="running"||String(window.earthlineRegional15778&&window.earthlineRegional15778.mode||"")==="property"))M.viewZoom=earthlineMap.getZoom();
             earthlineSyncOverlayScale();
             render(false);
             earthlineUpdateRechargeSvg();
@@ -3365,7 +3365,7 @@ function earthlineInitMap(){
        Keep grab/drag, wheel or trackpad, native double-click and +/- zoom. During camera
        motion, do no hydrology projection work; repaint once after the camera settles. */
     ["movestart","zoomstart","pitchstart","rotatestart"].forEach(ev=>earthlineMap.on(ev,()=>earthlineSetOverlayMoving(true)));
-    earthlineMap.on("zoom",()=>{M.viewZoom=earthlineMap.getZoom();});
+    earthlineMap.on("zoom",()=>{const propertyScienceM76=String(document.documentElement.dataset.earthlinePropertyRunState||"")==="running"||String(window.earthlineRegional15778&&window.earthlineRegional15778.mode||"")==="property";if(!propertyScienceM76)M.viewZoom=earthlineMap.getZoom();});
     earthlineMap.on("moveend",()=>{
       earthlineUpdateGlobePresentation();
       earthlineFinishMapMotion();
@@ -16329,7 +16329,7 @@ if(!isRegionalTile15769&&Number(flowEvidence15833.crossingHits||0)<=0&&
     const pending=state.pendingAnalysisFrame15827||
       M.pendingAnalysisFrame15827||null;
 
-    if(pending&&String(pending.searchKey||"")===searchKey){
+    if(pending&&String(pending.searchKey||"")===searchKey&&pending.center&&context&&context.anchor&&Math.abs(Number(pending.center.lng)-Number(context.anchor.lng))<=0.00002&&Math.abs(Number(pending.center.lat)-Number(context.anchor.lat))<=0.00002){
       return Object.assign({
         reason:"explicit-current-view-pending"
       },pending);
@@ -16337,7 +16337,7 @@ if(!isRegionalTile15769&&Number(flowEvidence15833.crossingHits||0)<=0&&
 
     const frame=M.authoritativePropertyFrame15821||
       state.authoritativePropertyFrame15821||null;
-    if(frame&&earthlineFrameMatchesSearch15827(frame)){
+    if(frame&&earthlineFrameMatchesSearch15827(frame)&&frame.center&&context&&context.anchor&&Math.abs(Number(frame.center.lng)-Number(context.anchor.lng))<=0.00002&&Math.abs(Number(frame.center.lat)-Number(context.anchor.lat))<=0.00002){
       return{
         reason:"locked-scientific-frame",
         center:{
@@ -16379,7 +16379,7 @@ if(!isRegionalTile15769&&Number(flowEvidence15833.crossingHits||0)<=0&&
     let boundary=null;
     let source="fixed-property-analysis-extent";
 
-    if(pending&&String(pending.searchKey||"")===searchKey){
+    if(pending&&String(pending.searchKey||"")===searchKey&&pending.center&&Math.abs(Number(pending.center.lng)-Number(identity.center.lng))<=0.00002&&Math.abs(Number(pending.center.lat)-Number(identity.center.lat))<=0.00002){
       center={
         lng:Number(pending.center.lng),
         lat:Number(pending.center.lat)
@@ -16412,7 +16412,7 @@ if(!isRegionalTile15769&&Number(flowEvidence15833.crossingHits||0)<=0&&
           acres=Math.max(8,Math.min(80,measured));
         }
         source="explicit-drawn-analysis-boundary";
-      }else if(existing&&earthlineFrameMatchesSearch15827(existing)){
+      }else if(existing&&earthlineFrameMatchesSearch15827(existing)&&existing.center&&Math.abs(Number(existing.center.lng)-Number(identity.center.lng))<=0.00002&&Math.abs(Number(existing.center.lat)-Number(identity.center.lat))<=0.00002){
         return existing;
       }else{
         const explicitBoundary=(
