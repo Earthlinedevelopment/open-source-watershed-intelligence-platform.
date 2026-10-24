@@ -14,7 +14,7 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Put suggestions below Run Analysis
+      - name: Repair authoritative suggestion position owner
         shell: bash
         run: |
           set -euo pipefail
@@ -22,9 +22,9 @@ jobs:
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          old="function positionSuggestions16233(){const input=document.getElementById('searchInput'),menu=document.getElementById('earthlineSearchSuggestions15970');if(!input||!menu)return;const r=input.getBoundingClientRect();menu.style.left=Math.round(r.left)+'px';menu.style.top=Math.round(r.bottom+7)+'px';menu.style.width=Math.round(r.width)+'px'}"
-          new="function positionSuggestions16233(){const input=document.getElementById('searchInput'),menu=document.getElementById('earthlineSearchSuggestions15970');if(!input||!menu)return;const r=input.getBoundingClientRect(),run=document.getElementById('runBtn'),rr=run&&run.getBoundingClientRect?run.getBoundingClientRect():null,top=Math.max(r.bottom,rr&&Number.isFinite(rr.bottom)?rr.bottom:r.bottom)+7;menu.style.setProperty('left',Math.round(r.left)+'px','important');menu.style.setProperty('right','auto','important');menu.style.setProperty('top',Math.round(top)+'px','important');menu.style.setProperty('width',Math.round(r.width)+'px','important')}"
-          assert s.count(old)==1, f'position owner count {s.count(old)}'
+          old="function positionMenu16201(){const r=box.getBoundingClientRect(),w=Math.max(320,Math.min(620,window.innerWidth-r.left-18));menu.style.setProperty('left',r.left+'px','important');menu.style.setProperty('top',(r.bottom+8)+'px','important');menu.style.setProperty('width',w+'px','important');}"
+          new="function positionMenu16201(){const r=input.getBoundingClientRect(),run=document.getElementById('runBtn'),rr=run&&run.getBoundingClientRect?run.getBoundingClientRect():null,w=Math.max(320,Math.min(620,window.innerWidth-r.left-18)),top=Math.max(r.bottom,rr&&Number.isFinite(rr.bottom)?rr.bottom:r.bottom)+8;menu.style.setProperty('left',r.left+'px','important');menu.style.setProperty('right','auto','important');menu.style.setProperty('top',top+'px','important');menu.style.setProperty('width',w+'px','important');}"
+          assert s.count(old)==1, f'legacy position owner count {s.count(old)}'
           s=s.replace(old,new,1)
           p.write_text(s,encoding='utf-8')
           PY
@@ -32,11 +32,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq "Math.max(r.bottom,rr&&Number.isFinite(rr.bottom)?rr.bottom:r.bottom)+7" index.html
-          grep -Fq "menu.style.setProperty('right','auto','important')" index.html
+          grep -Fq "function positionMenu16201(){const r=input.getBoundingClientRect()" index.html
+          grep -Fq "Math.max(r.bottom,rr&&Number.isFinite(rr.bottom)?rr.bottom:r.bottom)+8" index.html
           node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8');for(const m of s.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)){if(m[1].trim())new Function(m[1])}"
           git config user.name "Earthline Recovery"
           git config user.email "actions@users.noreply.github.com"
           git add index.html
-          git commit -m "fix: move search suggestions below Run Analysis"
+          git commit -m "fix: keep authoritative search menu below Run Analysis"
           git push origin HEAD:pages-live
