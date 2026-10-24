@@ -50,7 +50,7 @@ for(const c of CASES){
      const dx=a&&b?(b[0]-a[0]):0,dy=a&&b?(b[1]-a[1]):0;
      const heading=a&&b?(Math.atan2(dx,dy)*180/Math.PI+360)%180:null;
      return {i,id:p.id||f.id||null,placementMode:p.placementMode15836||null,primary:!!p.primaryFlowFirst15836,
-       flowScore:Number(p.prescriptionFlowScore15833||0),seedFlow:Number(p.seedFlowCrossing15833||0),
+       flowScore:Number(p.prescriptionFlowScore15833||0),flowHits:Number(p.flowEvidence15833?.crossingHits||0),seedFlow:Number(p.seedFlowCrossing15833||0),
        crossing:Number(p.seedCrossingGeometry15833||0),bandKey:p.bandKey??null,levelH:p.levelH??null,
        pts:co.length,lenM:+len.toFixed(1),tortuosity:+(len/Math.max(1,chord)).toFixed(3),heading:heading==null?null:+heading.toFixed(1)};
    });
@@ -65,7 +65,7 @@ await browser.close();
 for(const r of out){
  const bad=r.rows.filter(x=>!Number.isFinite(x.tortuosity)||x.tortuosity>1.36);
  if(r.rawKeptCount<1)throw new Error(r.case.name+' no prescriber geometry captured');
- if(bad.length)throw new Error(r.case.name+' geometry guard failed '+JSON.stringify(bad.slice(0,5)));
+ if(bad.length)throw new Error(r.case.name+' geometry guard failed '+JSON.stringify(bad.slice(0,5))); const zeroRunoff=r.rows.filter(x=>!x.primary&&x.flowHits<=0&&x.seedFlow<=0); if(zeroRunoff.length)throw new Error(r.case.name+' zero-runoff secondary swales remain '+JSON.stringify(zeroRunoff.slice(0,5)));
 }
 fs.writeFileSync('M76-LIVE-TWO-COORD-REPORT.json',JSON.stringify(out,null,2));
 console.log(JSON.stringify(out.map(x=>({case:x.case.name,count:x.count,primary:x.rows.filter(r=>r.primary).length,secondary:x.rows.filter(r=>!r.primary).length,headings:x.rows.map(r=>r.heading)})),null,2));
