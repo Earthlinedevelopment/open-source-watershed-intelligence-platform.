@@ -54,7 +54,7 @@ for(const c of CASES){
        crossing:Number(p.seedCrossingGeometry15833||0),bandKey:p.bandKey??null,levelH:p.levelH??null,
        pts:co.length,lenM:+len.toFixed(1),tortuosity:+(len/Math.max(1,chord)).toFixed(3),heading:heading==null?null:+heading.toFixed(1)};
    });
-   return {run:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173,elder:window.EARTHLINE_ELDER_TREES_AUDIT_17097||window.EARTHLINE_ELDER_TREE_AUDIT_17097||null,
+   return {run:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173,elder:window.EARTHLINE_ELDER_TREES_AUDIT_17097||window.EARTHLINE_ELDER_TREE_AUDIT_17097||null,rawGeometry:rawKept.map(s=>({primary:!!s.primaryFlowFirst15836,pts:(s.pts||[]).map(p=>[+p[0],+p[1]])})),
      count:rows.length,rows,diag:M?.swaleDiagnostics||null,flowFirst:M?.flowFirstAudit15836||M?.swaleFlowFirst15836||null,rawKeptCount:rawKept.length};
  });
  out.push({case:c,...snap});
@@ -68,4 +68,15 @@ for(const r of out){
  if(bad.length)throw new Error(r.case.name+' geometry guard failed '+JSON.stringify(bad.slice(0,5))); const zeroRunoff=r.rows.filter(x=>!x.primary&&x.flowHits<=0&&x.seedFlow<=0); if(zeroRunoff.length)throw new Error(r.case.name+' zero-runoff secondary swales remain '+JSON.stringify(zeroRunoff.slice(0,5)));
 }
 fs.writeFileSync('M76-LIVE-TWO-COORD-REPORT.json',JSON.stringify(out,null,2));
+for(const r of out){
+  const gs=r.rawGeometry||[];
+  const all=gs.flatMap(g=>g.pts||[]);
+  const minX=Math.min(...all.map(p=>p[0])),maxX=Math.max(...all.map(p=>p[0]));
+  const minY=Math.min(...all.map(p=>p[1])),maxY=Math.max(...all.map(p=>p[1]));
+  const pad=10,W=900,H=650,sx=(W-2*pad)/Math.max(1,maxX-minX),sy=(H-2*pad)/Math.max(1,maxY-minY),sc=Math.min(sx,sy);
+  const tx=x=>pad+(x-minX)*sc,ty=y=>H-pad-(y-minY)*sc;
+  const paths=gs.map((g,i)=>'<polyline points="'+g.pts.map(p=>tx(p[0]).toFixed(1)+','+ty(p[1]).toFixed(1)).join(' ')+'" fill="none" stroke="'+(g.primary?'#1f77b4':'#2ca02c')+'" stroke-width="'+(g.primary?3:2)+'" stroke-linecap="round" stroke-linejoin="round"/>').join('\n');
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'"><rect width="100%" height="100%" fill="white"/><text x="20" y="28" font-family="Arial" font-size="20">'+r.case.name+' '+r.case.lat+','+r.case.lng+' — '+gs.length+' swales</text><g transform="translate(0,20)">'+paths+'</g></svg>';
+  fs.writeFileSync('M76-'+r.case.name+'-SWALES.svg',svg);
+}
 console.log(JSON.stringify(out.map(x=>({case:x.case.name,count:x.count,primary:x.rows.filter(r=>r.primary).length,secondary:x.rows.filter(r=>!r.primary).length,headings:x.rows.map(r=>r.heading)})),null,2));
