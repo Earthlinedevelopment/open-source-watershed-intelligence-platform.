@@ -14,37 +14,39 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Reject zero-runoff secondary Property swales
+      - name: Insert zero-runoff Property guard into current live prescriber
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          old="""          if(!isRegionalTile15769&&Number(flowEvidence15833.crossingHits||0)<=0&&
-             Number(sw.seedFlowCrossing15833||0)<=0&&Number(sw.seedCrossingGeometry15833||0)<=0){
-            M.swaleDiagnostics.stage.rejectConversion++;
-            continue;
-          }"""
-          new="""          if(!isRegionalTile15769&&Number(flowEvidence15833.crossingHits||0)<=0&&
+          marker='EARTHLINE M76G — zero-runoff secondary Property swales are not publishable'
+          if marker not in s:
+              pat=r'(sw\.seedCrossingGeometry15833=Number\(sd&&sd\.crossingGeometry\|\|0\);)'
+              repl=r'''\1
+          /* EARTHLINE M76G — zero-runoff secondary Property swales are not publishable. */
+          if(!isRegionalTile15769&&Number(flowEvidence15833.crossingHits||0)<=0&&
              Number(sw.seedFlowCrossing15833||0)<=0){
             M.swaleDiagnostics.stage.rejectConversion++;
             continue;
-          }"""
-          if s.count(old)!=1:
-              raise SystemExit(f'zero-runoff Property guard owner count {s.count(old)}')
-          s=s.replace(old,new,1)
+          }'''
+              s,n=re.subn(pat,repl,s,count=1)
+              if n!=1:
+                  raise SystemExit(f'flow-evidence insertion owner count {n}')
           p.write_text(s,encoding='utf-8')
           PY
       - name: Validate
         shell: bash
         run: |
           set -euo pipefail
+          test "$(grep -Foc 'EARTHLINE M76G — zero-runoff secondary Property swales are not publishable' index.html)" = "1"
           grep -q 'Number(flowEvidence15833.crossingHits||0)<=0' index.html
-          ! grep -q 'Number(sw.seedCrossingGeometry15833||0)<=0' index.html
+          grep -q 'Number(sw.seedFlowCrossing15833||0)<=0' index.html
           grep -q 'earthlinePickContourExitM76(candidates,pts)' index.html
-          node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8');let n=0;for(const m of s.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)){if(!m[1].trim())continue;new Function(m[1]);n++}console.log('M76_ZERO_RUNOFF_FILTER_OK',n)"
+          node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8');let n=0;for(const m of s.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)){if(!m[1].trim())continue;new Function(m[1]);n++}console.log('M76G_ZERO_RUNOFF_GUARD_OK',n)"
       - name: Publish live
         shell: bash
         run: |
@@ -52,5 +54,5 @@ jobs:
           git config user.name "Earthline Recovery"
           git config user.email "actions@users.noreply.github.com"
           git add index.html
-          git commit -m "fix: reject zero-runoff secondary Property swales"
+          git commit -m "fix: block zero-runoff secondary Property swales"
           git push origin HEAD:pages-live
