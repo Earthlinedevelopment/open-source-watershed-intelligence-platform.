@@ -14,7 +14,7 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Patch ambiguous contour tracing
+      - name: Restore Elder compute-only prime after Property frame
         shell: bash
         run: |
           set -euo pipefail
@@ -22,25 +22,22 @@ jobs:
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          marker="function traceLevelContour(sx,sy,L,maxS,dropH){"
-          helper="/* EARTHLINE M76F — deterministic contour continuity through ambiguous DEM cells. */\nfunction earthlinePickContourExitM76(candidates,pts){\n  if(!Array.isArray(candidates)||!candidates.length)return null;\n  if(candidates.length===1||!Array.isArray(pts)||pts.length<2)return candidates[0];\n  const entry=pts[pts.length-1],prior=pts[pts.length-2];\n  const ix=entry[0]-prior[0],iy=entry[1]-prior[1],im=Math.hypot(ix,iy);\n  if(!(im>1e-9))return candidates[0];\n  let best=candidates[0],bestScore=-Infinity;\n  for(const e of candidates){\n    const ox=Number(e[1])-entry[0],oy=Number(e[2])-entry[1],om=Math.hypot(ox,oy);\n    if(!(om>1e-9))continue;\n    const score=(ix*ox+iy*oy)/(im*om);\n    if(score>bestScore){bestScore=score;best=e;}\n  }\n  return best;\n}\n\n"
-          if 'function earthlinePickContourExitM76(' not in s:
-              if s.count(marker)!=1:
-                  raise SystemExit('trace owner mismatch')
-              s=s.replace(marker,helper+marker,1)
-          old="const pick=(step===0)?candidates[firstPick%candidates.length]:candidates[0];"
+          old="/* M76 elder early start retired */"
+          new="try{void window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.()}catch(_){} /* M76 Elder compute-only prime; publication remains post-science. */"
           if s.count(old)!=1:
-              raise SystemExit(f'arbitrary exit count {s.count(old)}')
-          s=s.replace(old,"const pick=(step===0)?candidates[firstPick%candidates.length]:earthlinePickContourExitM76(candidates,pts);",1)
+              raise SystemExit(f'frame Elder marker count {s.count(old)}')
+          s=s.replace(old,new,1)
           p.write_text(s,encoding='utf-8')
           PY
       - name: Validate
         shell: bash
         run: |
           set -euo pipefail
-          grep -q 'function earthlinePickContourExitM76' index.html
+          test "$(grep -Foc 'primePropertyEvidence?.()' index.html)" -ge "1"
+          test "$(grep -Foc 'startProperty?.()' index.html)" = "1"
+          grep -q 'elder-display-only-m76' index.html
           grep -q 'earthlinePickContourExitM76(candidates,pts)' index.html
-          node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8');let n=0;for(const m of s.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)){if(!m[1].trim())continue;new Function(m[1]);n++}console.log('M76F_PARSE_OK',n)"
+          node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8');let n=0;for(const m of s.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)){if(!m[1].trim())continue;new Function(m[1]);n++}console.log('M76_ELDER_PRIME_OK',n)"
       - name: Publish live
         shell: bash
         run: |
@@ -48,5 +45,5 @@ jobs:
           git config user.name "Earthline Recovery"
           git config user.email "actions@users.noreply.github.com"
           git add index.html
-          git commit -m "fix: resolve ambiguous contour exits by continuity"
+          git commit -m "fix: restore Elder compute prime after Property frame"
           git push origin HEAD:pages-live
