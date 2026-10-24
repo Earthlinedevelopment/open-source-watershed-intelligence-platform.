@@ -1,4 +1,4 @@
-name: Earthline M76 Search Interaction Repair
+name: Earthline M76 Property Terminal Repair
 on:
   push:
     branches: [recovery/mantra76-audit-restart]
@@ -14,7 +14,7 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Repair authoritative suggestion position owner
+      - name: Clear Property Orb on failed terminal
         shell: bash
         run: |
           set -euo pipefail
@@ -22,9 +22,9 @@ jobs:
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          old="function positionMenu16201(){const r=box.getBoundingClientRect(),w=Math.max(320,Math.min(620,window.innerWidth-r.left-18));menu.style.setProperty('left',r.left+'px','important');menu.style.setProperty('top',(r.bottom+8)+'px','important');menu.style.setProperty('width',w+'px','important');}"
-          new="function positionMenu16201(){const r=input.getBoundingClientRect(),run=document.getElementById('runBtn'),rr=run&&run.getBoundingClientRect?run.getBoundingClientRect():null,w=Math.max(320,Math.min(620,window.innerWidth-r.left-18)),top=Math.max(r.bottom,rr&&Number.isFinite(rr.bottom)?rr.bottom:r.bottom)+8;menu.style.setProperty('left',r.left+'px','important');menu.style.setProperty('right','auto','important');menu.style.setProperty('top',top+'px','important');menu.style.setProperty('width',w+'px','important');}"
-          assert s.count(old)==1, f'legacy position owner count {s.count(old)}'
+          old="if(a&&a.scientificSettled===true)stopPropertyOrb16244();\n      else if(propertyOrbSawRunning16244&&propertyState==='idle'&&a&&a.settled===true)stopPropertyOrb16244();"
+          new="if(a&&a.scientificSettled===true)stopPropertyOrb16244();\n      else if(a&&a.settled===true&&a.result===false)stopPropertyOrb16244();\n      else if(propertyOrbSawRunning16244&&propertyState==='idle'&&a&&a.settled===true)stopPropertyOrb16244();"
+          assert s.count(old)==1, f'property terminal owner count {s.count(old)}'
           s=s.replace(old,new,1)
           p.write_text(s,encoding='utf-8')
           PY
@@ -32,11 +32,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq "function positionMenu16201(){const r=input.getBoundingClientRect()" index.html
-          grep -Fq "Math.max(r.bottom,rr&&Number.isFinite(rr.bottom)?rr.bottom:r.bottom)+8" index.html
+          grep -Fq "a&&a.settled===true&&a.result===false" index.html
           node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8');for(const m of s.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)){if(m[1].trim())new Function(m[1])}"
           git config user.name "Earthline Recovery"
           git config user.email "actions@users.noreply.github.com"
           git add index.html
-          git commit -m "fix: keep authoritative search menu below Run Analysis"
+          git commit -m "fix: clear Property Orb on failed terminal"
           git push origin HEAD:pages-live
