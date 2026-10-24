@@ -1,0 +1,51 @@
+name: Earthline M76 Regional Orb Terminal Repair
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-regional-orb-terminal-repair.yml'
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Clear Regional Orb at published terminal
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+
+          old="if(mode==='regional'||shown==='regional')corridorTipRegionalReady16252=true;setTimeout(()=>{syncRegionalOrb16233();reconcileOrbTerminal16243();reconcilePanel16188();maybeShowCorridorTip16248()},100)"
+          new="if(mode==='regional'||shown==='regional'){corridorTipRegionalReady16252=true;stopRegionalOrb16244();}setTimeout(()=>{syncRegionalOrb16233();reconcileOrbTerminal16243();reconcilePanel16188();maybeShowCorridorTip16248()},100)"
+          if s.count(old)!=1:
+              raise SystemExit('analysis-complete Regional Orb owner mismatch '+str(s.count(old)))
+          s=s.replace(old,new,1)
+
+          old2="const root=document.documentElement,state=String(root.dataset.earthlineRunState||'');bindRegionalToken16244();"
+          new2="const root=document.documentElement,state=String(root.dataset.earthlineRunState||'');bindRegionalToken16244();const terminalDisplayed16244=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||null;const terminalTier16244=String(terminalDisplayed16244&&(terminalDisplayed16244.tier||terminalDisplayed16244.mode)||'').toLowerCase();if(regionalOrbLatched16244&&state==='published'&&terminalTier16244==='regional')stopRegionalOrb16244();"
+          if s.count(old2)!=1:
+              raise SystemExit('Regional reconcile owner mismatch '+str(s.count(old2)))
+          s=s.replace(old2,new2,1)
+
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Validate and publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq "corridorTipRegionalReady16252=true;stopRegionalOrb16244();" index.html
+          grep -Fq "state==='published'&&terminalTier16244==='regional'" index.html
+          node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8');for(const m of s.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)){if(m[1].trim())new Function(m[1])};console.log('REGIONAL_ORB_TERMINAL_OK')"
+          git config user.name "Earthline Recovery"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: stop Regional Orb when results publish"
+          git push origin HEAD:pages-live
