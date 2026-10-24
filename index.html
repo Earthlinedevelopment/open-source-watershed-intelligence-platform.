@@ -13555,6 +13555,12 @@ var prescribeSwales;
           sw.prescriptionFlowScore15833=Number(flowEvidence15833.score||0);
           sw.seedFlowCrossing15833=Number(sd&&sd.flowCrossingValue||0);
           sw.seedCrossingGeometry15833=Number(sd&&sd.crossingGeometry||0);
+/* EARTHLINE M76E — Property secondary-fill corridors must intercept modeled runoff. */
+if(!isRegionalTile15769&&Number(flowEvidence15833.crossingHits||0)<=0&&
+   Number(sw.seedFlowCrossing15833||0)<=0&&Number(sw.seedCrossingGeometry15833||0)<=0){
+  M.swaleDiagnostics.stage.rejectConversion++;
+  continue;
+}
           M.flowCrossingScoring15833=M.flowCrossingScoring15833||{};
           M.flowCrossingScoring15833.segmentCandidates=(M.flowCrossingScoring15833.segmentCandidates||0)+1;
           if(sw.prescriptionFlowScore15833>0)M.flowCrossingScoring15833.segmentCrossingCandidates=(M.flowCrossingScoring15833.segmentCrossingCandidates||0)+1;
@@ -29803,7 +29809,7 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
       const propertyPublicationGen16334=Number(m.searchGen||0);
       setAudit({scientificSettled:true,scientificResult:true,corridors:count,scientificSettledAt:new Date().toISOString()});
       earthlinePropertyTrace16319("scientific terminal","mark",{corridors:count});
-      try{const lockedSwalesM76=JSON.parse(JSON.stringify(m.authoritativeSafeSwales15815||{type:"FeatureCollection",features:[]}));void Promise.resolve(window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()).finally(()=>{try{m.authoritativeSafeSwales15815=lockedSwalesM76;if(typeof window.earthlineDeliverPropertyResult15817==="function")window.earthlineDeliverPropertyResult15817("elder-display-only-m76",false);else if(typeof window.earthlineRefreshPropertyRenderer15792==="function")window.earthlineRefreshPropertyRenderer15792(true)}catch(_){}})}catch(_){}
+      try{const lockedSwalesM76=JSON.parse(JSON.stringify(m.authoritativeSafeSwales15815||{type:"FeatureCollection",features:[]}));void Promise.resolve(window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.()).then(()=>window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()).finally(()=>{try{m.authoritativeSafeSwales15815=lockedSwalesM76;if(typeof window.earthlineDeliverPropertyResult15817==="function")window.earthlineDeliverPropertyResult15817("elder-display-only-m76",false);else if(typeof window.earthlineRefreshPropertyRenderer15792==="function")window.earthlineRefreshPropertyRenderer15792(true)}catch(_){}})}catch(_){}
       /* M76 elder post-science display-only */
 
       /* EARTHLINE 16334 — verified science is the interactive terminal. Optional
