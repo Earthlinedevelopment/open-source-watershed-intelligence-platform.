@@ -1,0 +1,28 @@
+name: Earthline M76 Live Subdomain Origin Audit
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-live-subdomain-origin-audit.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Identify live subdomain origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== DNS ==='
+          getent ahosts live.earthlinedevelopment.org || true
+          echo '=== HEADERS ==='
+          curl -sSIL https://live.earthlinedevelopment.org/ || true
+          echo '=== LIVE ==='
+          curl -sSL https://live.earthlinedevelopment.org/ -o /tmp/live.html
+          echo "LIVE_SHA=$(sha256sum /tmp/live.html | awk '{print $1}')"
+          echo "LIVE_BYTES=$(wc -c < /tmp/live.html)"
+          echo "BRANCH_SHA=$(sha256sum index.html | awk '{print $1}')"
+          echo "BRANCH_BYTES=$(wc -c < index.html)"
+          if cmp -s /tmp/live.html index.html; then echo 'EQUAL YES'; else echo 'EQUAL NO'; fi
