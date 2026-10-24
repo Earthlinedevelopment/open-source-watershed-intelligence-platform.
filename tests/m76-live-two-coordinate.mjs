@@ -36,17 +36,18 @@ for(const c of CASES){
  await page.waitForTimeout(2500);
  const snap=await page.evaluate(()=>{
    const fc=M?.authoritativeSafeSwales15815||{features:[]}; const rawKept=window.__M76_TEST_KEPT||[];
-   const sourceRows=(fc.features&&fc.features.length)?fc.features:rawKept.map((s,i)=>({id:s.id||i,properties:s,geometry:{coordinates:s.pts||[]}}));
+   const usingRaw=!(fc.features&&fc.features.length);
+   const sourceRows=usingRaw?rawKept.map((s,i)=>({id:s.id||i,properties:s,geometry:{coordinates:s.pts||[]}})):fc.features;
    const rows=sourceRows.map((f,i)=>{
      const p=f.properties||{},co=f.geometry?.coordinates||[];
      let len=0;
      for(let j=1;j<co.length;j++){
-       const lat=(co[j][1]+co[j-1][1])/2*Math.PI/180;
-       len+=Math.hypot((co[j][0]-co[j-1][0])*111320*Math.cos(lat),(co[j][1]-co[j-1][1])*111320);
+       if(usingRaw)len+=Math.hypot(co[j][0]-co[j-1][0],co[j][1]-co[j-1][1]);
+       else{const lat=(co[j][1]+co[j-1][1])/2*Math.PI/180;len+=Math.hypot((co[j][0]-co[j-1][0])*111320*Math.cos(lat),(co[j][1]-co[j-1][1])*111320);}
      }
      const a=co[0],b=co[co.length-1];
-     const chord=a&&b?Math.hypot((b[0]-a[0])*111320*Math.cos(((a[1]+b[1])/2)*Math.PI/180),(b[1]-a[1])*111320):0;
-     const dx=a&&b?(b[0]-a[0])*Math.cos(((a[1]+b[1])/2)*Math.PI/180):0,dy=a&&b?(b[1]-a[1]):0;
+     const chord=a&&b?(usingRaw?Math.hypot(b[0]-a[0],b[1]-a[1]):Math.hypot((b[0]-a[0])*111320*Math.cos(((a[1]+b[1])/2)*Math.PI/180),(b[1]-a[1])*111320)):0;
+     const dx=a&&b?(b[0]-a[0]):0,dy=a&&b?(b[1]-a[1]):0;
      const heading=a&&b?(Math.atan2(dx,dy)*180/Math.PI+360)%180:null;
      return {i,id:p.id||f.id||null,placementMode:p.placementMode15836||null,primary:!!p.primaryFlowFirst15836,
        flowScore:Number(p.prescriptionFlowScore15833||0),seedFlow:Number(p.seedFlowCrossing15833||0),
