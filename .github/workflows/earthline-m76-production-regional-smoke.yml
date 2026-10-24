@@ -19,7 +19,7 @@ jobs:
       - name: Test live Regional terminal
         shell: bash
         run: |
-          cat > /tmp/regional-smoke.mjs <<'JS'
+          cat > regional-smoke.mjs <<'JS'
           import { chromium } from 'playwright';
           const browser=await chromium.launch({headless:true});
           const page=await browser.newPage({viewport:{width:1440,height:1000}});
@@ -59,4 +59,4 @@ jobs:
           if(audit.busy==='1'||audit.ariaBusy==='true'||audit.disabled)throw Error('Run button still busy');
           await browser.close();
           JS
-          node /tmp/regional-smoke.mjs
+          node regional-smoke.mjs
