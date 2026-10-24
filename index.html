@@ -6349,6 +6349,23 @@ function earthlineSwaleFromPts(pts,bandIndex,chanThr,isSite,maxS,totalBands){
 }
 
 
+/* EARTHLINE M76F — deterministic contour continuity through ambiguous DEM cells. */
+function earthlinePickContourExitM76(candidates,pts){
+  if(!Array.isArray(candidates)||!candidates.length)return null;
+  if(candidates.length===1||!Array.isArray(pts)||pts.length<2)return candidates[0];
+  const entry=pts[pts.length-1],prior=pts[pts.length-2];
+  const ix=entry[0]-prior[0],iy=entry[1]-prior[1],im=Math.hypot(ix,iy);
+  if(!(im>1e-9))return candidates[0];
+  let best=candidates[0],bestScore=-Infinity;
+  for(const e of candidates){
+    const ox=Number(e[1])-entry[0],oy=Number(e[2])-entry[1],om=Math.hypot(ox,oy);
+    if(!(om>1e-9))continue;
+    const score=(ix*ox+iy*oy)/(im*om);
+    if(score>bestScore){bestScore=score;best=e;}
+  }
+  return best;
+}
+
 function traceLevelContour(sx,sy,L,maxS,dropH){
   const start=earthlineNearestContourCell(sx,sy,L,maxS);
   if(!start)return [];
@@ -6389,7 +6406,7 @@ function traceLevelContour(sx,sy,L,maxS,dropH){
       let candidates=prevEdge>=0?edges.filter(e=>e[0]!==prevEdge):edges;
       if(!candidates.length)candidates=edges;
 
-      const pick=(step===0)?candidates[firstPick%candidates.length]:candidates[0];
+      const pick=(step===0)?candidates[firstPick%candidates.length]:earthlinePickContourExitM76(candidates,pts);
       pts.push([pick[1],pick[2]]);
 
       let nx=cx,ny=cy,entered=-1;
