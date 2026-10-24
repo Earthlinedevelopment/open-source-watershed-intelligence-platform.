@@ -11,4 +11,5 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
-      - run: sed -n '28840,29030p' index.html
+      - run: |
+          grep -n -E 'const GAZ|let GAZ|GAZ=|knownPropertyPreset' index.html | head -80 || true
