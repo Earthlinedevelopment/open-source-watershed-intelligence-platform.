@@ -13572,6 +13572,12 @@ var prescribeSwales;
           sw.prescriptionFlowScore15833=Number(flowEvidence15833.score||0);
           sw.seedFlowCrossing15833=Number(sd&&sd.flowCrossingValue||0);
           sw.seedCrossingGeometry15833=Number(sd&&sd.crossingGeometry||0);
+/* EARTHLINE M76G — zero-runoff secondary Property swales are not publishable. */
+if(!isRegionalTile15769&&Number(flowEvidence15833.crossingHits||0)<=0&&
+   Number(sw.seedFlowCrossing15833||0)<=0){
+  M.swaleDiagnostics.stage.rejectConversion++;
+  continue;
+}
 /* EARTHLINE M76E — Property secondary-fill corridors must intercept modeled runoff. */
 if(!isRegionalTile15769&&Number(flowEvidence15833.crossingHits||0)<=0&&
    Number(sw.seedFlowCrossing15833||0)<=0&&Number(sw.seedCrossingGeometry15833||0)<=0){
