@@ -1,5 +1,5 @@
 name: Earthline M76 Production Regional Smoke
-# rerun-after-search-overlay-fix
+# rerun-direct-run-after-menu-fix
 on:
   push:
     branches: [recovery/mantra76-audit-restart]
@@ -34,10 +34,8 @@ jobs:
             return {input:rr(document.getElementById('searchInput')),run:rr(document.getElementById('runBtn')),menu:rr(document.getElementById('earthlineSearchSuggestions15970')),option:rr(document.querySelector('#earthlineSearchSuggestions15970 button'))};
           });
           console.log('BOXES',JSON.stringify(boxes));
-          await page.click('#earthlineSearchSuggestions15970 button');
-          await page.waitForTimeout(150);
-          const started=await page.evaluate(()=>['pending','running','published'].includes(String(document.documentElement.dataset.earthlineRunState||'')));
-          if(!started)await page.click('#runBtn');
+          if(boxes.menu&&boxes.run&&!(boxes.menu.t>=boxes.run.b||boxes.menu.b<=boxes.run.t||boxes.menu.l>=boxes.run.r||boxes.menu.r<=boxes.run.l))throw Error('suggestions overlap Run Analysis');
+          await page.click('#runBtn');
           await page.waitForFunction(()=>{
             const r=document.documentElement;
             const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||null;
