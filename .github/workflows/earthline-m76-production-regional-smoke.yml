@@ -1,0 +1,62 @@
+name: Earthline M76 Production Regional Smoke
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-production-regional-smoke.yml'
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra76-audit-restart
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - name: Test live Regional terminal
+        shell: bash
+        run: |
+          cat > /tmp/regional-smoke.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1000}});
+          page.on('console',m=>console.log('PAGE',m.type(),m.text()));
+          await page.goto('https://earthlinedevelopment.org/?m76regional='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.fill('#searchInput','Vermont');
+          await page.click('#runBtn');
+          await page.waitForFunction(()=>{
+            const r=document.documentElement;
+            const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||null;
+            const tier=String(d&&(d.tier||d.mode)||'').toLowerCase();
+            return r.dataset.earthlineRunState==='published'&&(tier==='regional'||tier==='focus');
+          },null,{timeout:60000});
+          await page.waitForTimeout(1500);
+          const audit=await page.evaluate(()=>{
+            const r=document.documentElement,b=document.getElementById('runBtn');
+            const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||null;
+            return {
+              runState:r.dataset.earthlineRunState||'',
+              analysisTier:r.dataset.earthlineAnalysisTier||'',
+              regionalClass:r.classList.contains('earthline-regional-running-16233'),
+              regionalLatchClass:r.classList.contains('earthline-regional-orb-latched-16244'),
+              busy:b?.dataset?.busy||'',
+              ariaBusy:b?.getAttribute('aria-busy')||'',
+              disabled:!!b?.disabled,
+              label:b?.innerText?.trim()||'',
+              displayedTier:String(d&&(d.tier||d.mode)||'').toLowerCase(),
+              terminal:window.EARTHLINE_REGIONAL_TERMINAL_16539||null,
+              perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null
+            };
+          });
+          console.log('AUDIT',JSON.stringify(audit));
+          if(audit.runState!=='published')throw Error('runState '+audit.runState);
+          if(audit.displayedTier!=='regional'&&audit.displayedTier!=='focus')throw Error('tier '+audit.displayedTier);
+          if(audit.regionalClass||audit.regionalLatchClass)throw Error('Regional Orb still latched');
+          if(audit.busy==='1'||audit.ariaBusy==='true'||audit.disabled)throw Error('Run button still busy');
+          await browser.close();
+          JS
+          node /tmp/regional-smoke.mjs
