@@ -1,0 +1,17 @@
+name: Earthline M76 Property Site Zoom Audit
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-property-site-zoom-audit.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          grep -n -F 'propertySite15778' index.html || true
+          grep -n -F 'zoomHint' index.html | grep -E '15778|property|site|anchor|parent' | head -80 || true
+          sed -n '15720,16020p' index.html
