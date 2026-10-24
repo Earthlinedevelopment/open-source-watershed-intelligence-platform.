@@ -6072,6 +6072,27 @@ function earthlineSegmentTortuosityM76(pts){
 
 /* EARTHLINE M76B — publish only the local contour reach that actually intercepts
    the runoff path. Never publish the entire traced contour fragment. */
+/* EARTHLINE M76H — Property swales must stay locally cross-slope. */
+function earthlineCrossSlopeLocalGuardM76(seg){
+  if(!Array.isArray(seg)||seg.length<3)return false;
+  const along=[];
+  for(let i=1;i<seg.length;i++){
+    const a=seg[i-1],b=seg[i];
+    const mx=(Number(a[0])+Number(b[0]))/2,my=(Number(a[1])+Number(b[1]))/2;
+    const x=Math.max(1,Math.min(GW-2,Math.round(mx))),y=Math.max(1,Math.min(GH-2,Math.round(my)));
+    const sp=Math.max(0,Number(slopePct(x,y)||0));
+    if(sp<1.0)continue;
+    const g=gradAt(x,y),gm=Math.hypot(Number(g[0]||0),Number(g[1]||0));
+    const tx=Number(b[0])-Number(a[0]),ty=Number(b[1])-Number(a[1]),tm=Math.hypot(tx,ty);
+    if(!(gm>1e-9&&tm>1e-9))continue;
+    along.push(Math.abs((tx*Number(g[0])+ty*Number(g[1]))/(tm*gm)));
+  }
+  if(!along.length)return true;
+  along.sort((a,b)=>a-b);
+  const p90=along[Math.min(along.length-1,Math.floor(along.length*.90))];
+  return along[along.length-1]<=0.65&&p90<=0.35;
+}
+
 function earthlineLocalContourReachM76(seg,path){
   if(!Array.isArray(seg)||seg.length<3||!Array.isArray(path)||!path.length)return seg;
   let bestI=0,bestD=Infinity;
@@ -13393,6 +13414,7 @@ var prescribeSwales;
         );
         for(const rawSeg15836 of segs15836){
                     const seg15836=earthlineLocalContourReachM76(rawSeg15836,path15836);
+          if(!isRegionalTile15769&&!earthlineCrossSlopeLocalGuardM76(seg15836)){lastReason15836="local-downslope-kink";continue;}
           if(claimR&&earthlinePathOverlap(claimMask,seg15836)>.18){lastReason15836="overlap-with-earlier-primary";continue;}
           const sw15836=earthlineSwaleFromPts(seg15836,-1,chanThr,false,maxS,levels.length);
           if(!sw15836){lastReason15836="geometry-conversion";continue;}
@@ -13515,7 +13537,7 @@ var prescribeSwales;
         /* BUILD-CHECK-15803-DIAGNOSTIC-END */
         M.swaleDiagnostics.stage.traces++;
         const rawSegsM76=earthlineSplitUsableSegments(pts,maxS).slice(0,3);
-        const segs=rawSegsM76.map(seg=>earthlineLocalSeedReachM76(seg,sd.x,sd.y));
+        const segs=rawSegsM76.map(seg=>earthlineLocalSeedReachM76(seg,sd.x,sd.y)).filter(seg=>isRegionalTile15769||earthlineCrossSlopeLocalGuardM76(seg));
         if(seedRec15803){
           seedRec15803.segmentCount15840=segs.length;
           seedRec15803.segmentProduced15840=segs.length>0;
