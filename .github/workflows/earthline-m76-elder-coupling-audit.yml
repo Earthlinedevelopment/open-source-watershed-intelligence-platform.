@@ -1,0 +1,42 @@
+name: Earthline M76 Elder Coupling Audit
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-elder-coupling-audit.yml'
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra76-audit-restart
+          fetch-depth: 0
+      - name: Trace elder code touching property swales
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin pages-live
+          git show origin/pages-live:index.html > /tmp/live.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('/tmp/live.html').read_text(encoding='utf-8')
+          pats=['elder','Elder','authoritativeSafeSwales15815','earthlineRefreshPropertyRenderer15792','earthlineDeliverPropertyResult15817']
+          out=[]
+          elder_hits=[m.start() for m in re.finditer('elder',s,re.I)]
+          out.append(f'ELDER_HITS {len(elder_hits)}')
+          for i in elder_hits:
+              block=s[max(0,i-1400):min(len(s),i+2600)]
+              if any(x in block for x in ['authoritativeSafeSwales15815','earthlineRefreshPropertyRenderer15792','earthlineDeliverPropertyResult15817','prescribeSwales15778','setData(']):
+                  out.append('===== COUPLED =====')
+                  out.append(block)
+          Path('M76-ELDER-COUPLING.txt').write_text('\n'.join(out),encoding='utf-8')
+          PY
+          git config user.name "Earthline Recovery"
+          git config user.email "actions@users.noreply.github.com"
+          git add M76-ELDER-COUPLING.txt
+          git commit -m "audit: trace elder swale coupling" || true
+          git push origin HEAD:recovery/mantra76-audit-restart
