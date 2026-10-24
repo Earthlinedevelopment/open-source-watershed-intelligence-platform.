@@ -14,39 +14,37 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Insert zero-runoff Property guard into current live prescriber
+      - name: Remove full-contour fallback from local reach cutters
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import re
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          marker='EARTHLINE M76G — zero-runoff secondary Property swales are not publishable'
-          if marker not in s:
-              pat=r'(sw\.seedCrossingGeometry15833=Number\(sd&&sd\.crossingGeometry\|\|0\);)'
-              repl=r'''\1
-          /* EARTHLINE M76G — zero-runoff secondary Property swales are not publishable. */
-          if(!isRegionalTile15769&&Number(flowEvidence15833.crossingHits||0)<=0&&
-             Number(sw.seedFlowCrossing15833||0)<=0){
-            M.swaleDiagnostics.stage.rejectConversion++;
-            continue;
-          }'''
-              s,n=re.subn(pat,repl,s,count=1)
-              if n!=1:
-                  raise SystemExit(f'flow-evidence insertion owner count {n}')
+          old="""  const out=earthlineCleanPath(seg.slice(lo,hi+1));
+  return out.length>=3?out:seg;
+}"""
+          new="""  while((hi-lo+1)<3&&lo>0)lo--;
+  while((hi-lo+1)<3&&hi<seg.length-1)hi++;
+  const out=earthlineCleanPath(seg.slice(lo,hi+1));
+  return out.length>=3?out:[];
+}"""
+          n=s.count(old)
+          if n!=2:
+              raise SystemExit(f'local reach fallback owner count {n}')
+          s=s.replace(old,new,2)
           p.write_text(s,encoding='utf-8')
           PY
       - name: Validate
         shell: bash
         run: |
           set -euo pipefail
-          test "$(grep -Foc 'EARTHLINE M76G — zero-runoff secondary Property swales are not publishable' index.html)" = "1"
-          grep -q 'Number(flowEvidence15833.crossingHits||0)<=0' index.html
-          grep -q 'Number(sw.seedFlowCrossing15833||0)<=0' index.html
+          test "$(grep -Foc 'return out.length>=3?out:[];' index.html)" = "2"
+          ! grep -Fq 'return out.length>=3?out:seg;' index.html
+          grep -q 'EARTHLINE M76G — zero-runoff secondary Property swales are not publishable' index.html
           grep -q 'earthlinePickContourExitM76(candidates,pts)' index.html
-          node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8');let n=0;for(const m of s.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)){if(!m[1].trim())continue;new Function(m[1]);n++}console.log('M76G_ZERO_RUNOFF_GUARD_OK',n)"
+          node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8');let n=0;for(const m of s.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)){if(!m[1].trim())continue;new Function(m[1]);n++}console.log('M76_LOCAL_REACH_FALLBACK_REMOVED',n)"
       - name: Publish live
         shell: bash
         run: |
@@ -54,5 +52,5 @@ jobs:
           git config user.name "Earthline Recovery"
           git config user.email "actions@users.noreply.github.com"
           git add index.html
-          git commit -m "fix: block zero-runoff secondary Property swales"
+          git commit -m "fix: never fall back to full contour from local reach"
           git push origin HEAD:pages-live
