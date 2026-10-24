@@ -1,0 +1,27 @@
+name: Earthline M76 Planting Renderer Audit
+on:
+  push:
+    branches:
+      - recovery/mantra76-audit-restart
+    paths:
+      - .github/workflows/earthline-m76-planting-renderer-audit.yml
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Trace planting renderer
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(encoding='utf-8')
+          needles=['function earthlineSyncNaturalSwalePlanting15806','earthlineSyncNaturalSwalePlanting15806=','earthline-swale-planting-layer-15806','earthline-swale-planting-shadow-15806','setData(fc)','setData(data)']
+          for n in needles:
+              print('\n===== '+n+' =====')
+              for m in list(re.finditer(re.escape(n),s))[:12]:
+                  i=m.start();print(s[max(0,i-1800):min(len(s),i+7000)])
+          PY
