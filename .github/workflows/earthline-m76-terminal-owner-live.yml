@@ -1,4 +1,4 @@
-name: Earthline M76 Regional Terminal Owner Live
+name: Earthline M76 Search Interaction Repair
 on:
   push:
     branches: [recovery/mantra76-audit-restart]
@@ -14,35 +14,29 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Patch authoritative Regional terminal owner
+      - name: Keep suggestions off Run Analysis
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import re
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          if "window.earthlineStopRegionalOrb16244()" not in s:
-              pat=r"(function setRegionalTerminal16539\([\s\S]*?if\(terminal16537==='published'\)\{[\s\S]*?\n    \})(\n    return terminal16537;)"
-              repl=r"\1\n    try{setBusy(false,'RUN ANALYSIS')}catch(_){ }\n    try{if(typeof window.earthlineStopRegionalOrb16244==='function')window.earthlineStopRegionalOrb16244()}catch(_){ }\2"
-              s,n=re.subn(pat,repl,s,count=1)
-              assert n==1, f'terminal insertion count {n}'
-          if 'window.earthlineStopRegionalOrb16244=stopRegionalOrb16244;' not in s:
-              pat2=r"(function stopRegionalOrb16244\(\)\{[^\n]+\})"
-              s,n=re.subn(pat2,r"\1\n  window.earthlineStopRegionalOrb16244=stopRegionalOrb16244;",s,count=1)
-              assert n==1, f'orb export count {n}'
+          old="const r=input.closest('.searchbox')?.getBoundingClientRect()||input.getBoundingClientRect();menu.style.left=Math.round(r.left)+'px';menu.style.top=Math.round(r.bottom+7)+'px';menu.style.width=Math.round(r.width)+'px'"
+          new="const r=input.getBoundingClientRect();menu.style.left=Math.round(r.left)+'px';menu.style.top=Math.round(r.bottom+7)+'px';menu.style.width=Math.round(r.width)+'px'"
+          assert s.count(old)==1, f'suggestion anchor count {s.count(old)}'
+          s=s.replace(old,new,1)
           p.write_text(s,encoding='utf-8')
           PY
       - name: Validate and publish
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq "window.earthlineStopRegionalOrb16244=stopRegionalOrb16244" index.html
-          grep -Fq "window.earthlineStopRegionalOrb16244()" index.html
+          grep -Fq "const r=input.getBoundingClientRect()" index.html
+          ! grep -Fq "input.closest('.searchbox')?.getBoundingClientRect()" index.html
           node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8');for(const m of s.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)){if(m[1].trim())new Function(m[1])}"
           git config user.name "Earthline Recovery"
           git config user.email "actions@users.noreply.github.com"
           git add index.html
-          git commit -m "fix: clear Regional Orb in authoritative terminal owner"
+          git commit -m "fix: keep search suggestions clear of Run Analysis"
           git push origin HEAD:pages-live
