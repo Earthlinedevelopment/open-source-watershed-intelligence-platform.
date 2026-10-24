@@ -1,5 +1,5 @@
 name: Earthline M76 Production Property Smoke
-# valid-camera-target
+# governed-known-property-ui
 on:
   push:
     branches: [recovery/mantra76-audit-restart]
@@ -25,12 +25,10 @@ jobs:
           const browser=await chromium.launch({headless:true});
           const page=await browser.newPage({viewport:{width:1440,height:1000}});
           await page.goto('https://earthlinedevelopment.org/?m76property='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-          await page.waitForFunction(()=>typeof window.earthlineSetPropertyTarget16201==='function'&&!!document.getElementById('earthlineDeclareProperty16169'),null,{timeout:30000});
-          await page.evaluate(()=>{
-            const m=window.earthlineMap||null;
-            if(!m||typeof m.jumpTo!=='function')throw new Error('map unavailable');
-            m.jumpTo({center:[-111.93582,34.21605],zoom:18,bearing:0,pitch:0});
-          });
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.fill('#searchInput','Poudre Foothills Parcel Colorado');
+          await page.waitForTimeout(250);
+          await page.click('#runBtn');
           await page.waitForFunction(()=>{
             const m=window.earthlineMap||null,c=m&&m.getCenter&&m.getCenter();
             return !!(c&&Math.abs(Number(c.lng)+111.93582)<0.00005&&Math.abs(Number(c.lat)-34.21605)<0.00005);
