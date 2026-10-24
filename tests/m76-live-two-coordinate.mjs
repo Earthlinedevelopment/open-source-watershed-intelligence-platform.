@@ -35,8 +35,9 @@ for(const c of CASES){
  await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true&&String(document.documentElement.dataset.earthlinePropertyRunState||'')!=='running',{timeout:90000,polling:200});
  await page.waitForTimeout(2500);
  const snap=await page.evaluate(()=>{
-   const fc=M?.authoritativeSafeSwales15815||{features:[]};
-   const rows=(fc.features||[]).map((f,i)=>{
+   const fc=M?.authoritativeSafeSwales15815||{features:[]}; const rawKept=window.__M76_TEST_KEPT||[];
+   const sourceRows=(fc.features&&fc.features.length)?fc.features:rawKept.map((s,i)=>({id:s.id||i,properties:s,geometry:{coordinates:s.pts||[]}}));
+   const rows=sourceRows.map((f,i)=>{
      const p=f.properties||{},co=f.geometry?.coordinates||[];
      let len=0;
      for(let j=1;j<co.length;j++){
@@ -53,12 +54,17 @@ for(const c of CASES){
        pts:co.length,lenM:+len.toFixed(1),tortuosity:+(len/Math.max(1,chord)).toFixed(3),heading:heading==null?null:+heading.toFixed(1)};
    });
    return {run:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173,elder:window.EARTHLINE_ELDER_TREES_AUDIT_17097||window.EARTHLINE_ELDER_TREE_AUDIT_17097||null,
-     count:rows.length,rows,diag:M?.swaleDiagnostics||null,flowFirst:M?.flowFirstAudit15836||M?.swaleFlowFirst15836||null};
+     count:rows.length,rows,diag:M?.swaleDiagnostics||null,flowFirst:M?.flowFirstAudit15836||M?.swaleFlowFirst15836||null,rawKeptCount:rawKept.length};
  });
  out.push({case:c,...snap});
  await page.screenshot({path:'m76-'+c.name.toLowerCase()+'.png'});
  await ctx.close();
 }
 await browser.close();
+for(const r of out){
+ const bad=r.rows.filter(x=>!Number.isFinite(x.tortuosity)||x.tortuosity>1.36);
+ if(r.rawKeptCount<1)throw new Error(r.case.name+' no prescriber geometry captured');
+ if(bad.length)throw new Error(r.case.name+' geometry guard failed '+JSON.stringify(bad.slice(0,5)));
+}
 fs.writeFileSync('M76-LIVE-TWO-COORD-REPORT.json',JSON.stringify(out,null,2));
 console.log(JSON.stringify(out.map(x=>({case:x.case.name,count:x.count,primary:x.rows.filter(r=>r.primary).length,secondary:x.rows.filter(r=>!r.primary).length,headings:x.rows.map(r=>r.heading)})),null,2));
