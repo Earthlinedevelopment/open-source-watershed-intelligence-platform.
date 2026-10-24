@@ -6093,8 +6093,10 @@ function earthlineLocalContourReachM76(seg,path){
     rightM+=Math.hypot(seg[hi+1][0]-seg[hi][0],seg[hi+1][1]-seg[hi][1])*M.cellM;
     hi++;
   }
+  while((hi-lo+1)<3&&lo>0)lo--;
+  while((hi-lo+1)<3&&hi<seg.length-1)hi++;
   const out=earthlineCleanPath(seg.slice(lo,hi+1));
-  return out.length>=3?out:seg;
+  return out.length>=3?out:[];
 }
 
 /* EARTHLINE M76D — local construction reach for contour-fill candidates. */
@@ -6116,8 +6118,10 @@ function earthlineLocalSeedReachM76(seg,x,y){
     rightM+=Math.hypot(seg[hi+1][0]-seg[hi][0],seg[hi+1][1]-seg[hi][1])*M.cellM;
     hi++;
   }
+  while((hi-lo+1)<3&&lo>0)lo--;
+  while((hi-lo+1)<3&&hi<seg.length-1)hi++;
   const out=earthlineCleanPath(seg.slice(lo,hi+1));
-  return out.length>=3?out:seg;
+  return out.length>=3?out:[];
 }
 
 /* BUILD-CHECK-15768
