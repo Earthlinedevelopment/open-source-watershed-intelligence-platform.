@@ -1,0 +1,67 @@
+name: Earthline M76 Compact Natural Source Audit
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-compact-natural-source-audit.yml'
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra76-audit-restart
+          fetch-depth: 0
+      - name: Extract compact renderer ownership
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin pages-live
+          git show origin/pages-live:index.html > /tmp/live.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('/tmp/live.html').read_text(encoding='utf-8')
+          def body_from(pos,maxlen=9000):
+              if pos<0:return 'NOT FOUND'
+              a=s.find('{',pos)
+              if a<0:return s[pos:pos+maxlen]
+              depth=0;quote=None;esc=False
+              for i in range(a,min(len(s),a+maxlen)):
+                  ch=s[i]
+                  if quote:
+                      if esc: esc=False
+                      elif ch=='\\': esc=True
+                      elif ch==quote: quote=None
+                      continue
+                  if ch in ("'",'"'): quote=ch;continue
+                  if ch=='{': depth+=1
+                  elif ch=='}':
+                      depth-=1
+                      if depth==0:return s[pos:i+1]
+              return s[pos:pos+maxlen]
+          out=[]
+          groups=[
+              ('AUTHORITATIVE_FC',['function authoritativeFC','const authoritativeFC','let authoritativeFC']),
+              ('ORIENTED_FC',['function orientedFC','const orientedFC','let orientedFC'])
+          ]
+          for label,patterns in groups:
+              pos=-1
+              for pat in patterns:
+                  pos=s.find(pat)
+                  if pos>=0:break
+              out.append('===== '+label+' =====\n'+body_from(pos))
+          for needle in ['earthline-property-swale-natural-casing-16174','earthline-property-swale-footprint-16174']:
+              hits=[m.start() for m in re.finditer(re.escape(needle),s)]
+              out.append('===== LAYER '+needle+' =====')
+              for i in hits[:6]:out.append(s[max(0,i-1800):min(len(s),i+3400)])
+          for needle in ['setData(orientedFC','setData(authoritativeFC','setData(fc)','setData(data)','orientedFC()','authoritativeFC()']:
+              hits=[m.start() for m in re.finditer(re.escape(needle),s)]
+              out.append('===== '+needle+' '+str(len(hits))+' =====')
+              for i in hits[:12]:out.append(s[max(0,i-700):min(len(s),i+1400)])
+          txt='\n'.join(out)
+          Path('M76-COMPACT-NATURAL-SOURCE.txt').write_text(txt[:100000],encoding='utf-8')
+          print(txt[:70000])
+          PY
