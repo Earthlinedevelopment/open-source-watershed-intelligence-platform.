@@ -20,39 +20,31 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
 
-          # Secondary Property contour-fill may only publish if it actually
-          # intercepts modeled runoff. Regional opportunity mode is unchanged.
-          anchor="""          sw.flowEvidence15833=flowEvidence15833;
-          sw.prescriptionFlowScore15833=Number(flowEvidence15833.score||0);
-          sw.seedFlowCrossing15833=Number(sd&&sd.flowCrossingValue||0);
-          sw.seedCrossingGeometry15833=Number(sd&&sd.crossingGeometry||0);"""
-          insert=anchor+"""
-          /* EARTHLINE M76E — Property secondary-fill corridors must intercept
-             modeled runoff; decorative/off-path contour fragments are not publishable. */
+          pat=r"(sw\.flowEvidence15833=flowEvidence15833;\s*sw\.prescriptionFlowScore15833=Number\(flowEvidence15833\.score\|\|0\);\s*sw\.seedFlowCrossing15833=Number\(sd&&sd\.flowCrossingValue\|\|0\);\s*sw\.seedCrossingGeometry15833=Number\(sd&&sd\.crossingGeometry\|\|0\);)"
+          guard=r"""\1
+          /* EARTHLINE M76E — Property secondary-fill corridors must intercept modeled runoff. */
           if(!isRegionalTile15769&&Number(flowEvidence15833.crossingHits||0)<=0&&
              Number(sw.seedFlowCrossing15833||0)<=0&&Number(sw.seedCrossingGeometry15833||0)<=0){
             M.swaleDiagnostics.stage.rejectConversion++;
             continue;
           }"""
-          if s.count(anchor)!=1:
-              raise SystemExit(f'secondary flow-evidence anchor count {s.count(anchor)}')
-          s=s.replace(anchor,insert,1)
+          s,n=re.subn(pat,guard,s,count=1)
+          if n!=1:
+              raise SystemExit(f'secondary flow-evidence regex matches {n}')
 
-          # Elder remains post-science/display-only, but prime its exact frame
-          # after swales are locked so the overlay can publish without racing them.
-          old="""void Promise.resolve(window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()).finally(()=>{"""
-          new="""void Promise.resolve(window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.())
-          .then(()=>window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()).finally(()=>{"""
+          old="void Promise.resolve(window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()).finally(()=>{"
+          new="void Promise.resolve(window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.()).then(()=>window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()).finally(()=>{"
           if s.count(old)!=1:
               raise SystemExit(f'post-science Elder start count {s.count(old)}')
           s=s.replace(old,new,1)
 
           p.write_text(s,encoding='utf-8')
           PY
-          node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8');if(!s.includes('Property secondary-fill corridors must intercept'))throw Error('interception guard missing');if(!s.includes('primePropertyEvidence?.())\n          .then(()=>window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.())'))throw Error('post-science Elder prime missing');let n=0;for(const m of s.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)){if(!m[1].trim())continue;new Function(m[1]);n++}console.log('M76E_PARSE_OK',n)"
+          node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8');if(!s.includes('Property secondary-fill corridors must intercept modeled runoff'))throw Error('interception guard missing');if(!s.includes('primePropertyEvidence?.()).then(()=>window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.())'))throw Error('Elder post-science prime missing');let n=0;for(const m of s.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)){if(!m[1].trim())continue;new Function(m[1]);n++}console.log('M76E_PARSE_OK',n)"
           git config user.name "Earthline Recovery"
           git config user.email "actions@users.noreply.github.com"
           git add index.html
