@@ -1,5 +1,4 @@
 name: Earthline M76 Production Property Smoke
-# governed-known-property-ui
 on:
   push:
     branches: [recovery/mantra76-audit-restart]
@@ -17,7 +16,7 @@ jobs:
           node-version: '22'
       - run: npm install playwright@1.55.0
       - run: npx playwright install --with-deps chromium
-      - name: Test live Property terminal
+      - name: Test governed known Property on production
         shell: bash
         run: |
           cat > property-smoke.mjs <<'JS'
@@ -30,28 +29,16 @@ jobs:
           await page.waitForTimeout(250);
           await page.click('#runBtn');
           await page.waitForFunction(()=>{
-            const m=window.earthlineMap||null,c=m&&m.getCenter&&m.getCenter();
-            return !!(c&&Math.abs(Number(c.lng)+111.93582)<0.00005&&Math.abs(Number(c.lat)-34.21605)<0.00005);
-          },null,{timeout:15000});
-          await page.waitForTimeout(300);
-          await page.evaluate(()=>{
-            if(typeof window.earthlineSyncPropertyTargetFromMap16201==='function')window.earthlineSyncPropertyTargetFromMap16201();
-            window.earthlineSetPropertyTarget16201({lng:-111.93582,lat:34.21605,source:'crosshair-smoke'},{openPanel:false});
-          });
-          await page.waitForFunction(()=>{const b=document.getElementById('earthlineDeclareProperty16169');return b&&!b.disabled&&b.getAttribute('aria-disabled')!=='true';},null,{timeout:15000});
-          await page.click('#earthlineDeclareProperty16169');
-          await page.waitForFunction(()=>{
             const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
             const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
-            return !!(a&&a.scientificSettled===true&&String(d&&(d.tier||d.mode)||'').toLowerCase()==='property');
-          },null,{timeout:60000}).catch(()=>null);
+            return !!(a&&a.settled===true&&String(d&&(d.tier||d.mode)||'').toLowerCase()==='property');
+          },null,{timeout:65000}).catch(()=>null);
           await page.waitForTimeout(500);
           const audit=await page.evaluate(()=>{
-            const root=document.documentElement,b=document.getElementById('earthlineDeclareProperty16169');
+            const root=document.documentElement;
             const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
             const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
-            const m=window.EARTHLINE_MODEL||window.M||null;
-            const fc=m?.authoritativeSafeSwales15815||null;
+            const b=document.getElementById('earthlineDeclareProperty16169');
             return {
               runState:root.dataset.earthlineRunState||'',
               propertyState:root.dataset.earthlinePropertyRunState||'',
@@ -59,22 +46,17 @@ jobs:
               propertyLatchClass:root.classList.contains('earthline-property-orb-latched-16244'),
               busy:b?.dataset?.busy||'',
               ariaBusy:b?.getAttribute('aria-busy')||'',
-              disabled:!!b?.disabled,
               tier:String(d&&(d.tier||d.mode)||'').toLowerCase(),
               audit:a,
               publication:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,
-              block:window.EARTHLINE_PROPERTY_PUBLICATION_BLOCK_16176||null,
-              timeout:window.EARTHLINE_PROPERTY_TIMEOUT_AUDIT_16178||null,
-              activeStage:window.EARTHLINE_PROPERTY_ACTIVE_STAGE_16178||null,
               target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
-              lastError:window.EARTHLINE_LAST_PROPERTY_ERROR||window.EARTHLINE_PROPERTY_LAST_ERROR||null,
-              modelStage:m?.currentStage||null,
-              modelTiming:m?.lastTiming||null,
-              swales:Array.isArray(fc)?fc.length:(fc?.features?.length??null)
+              timeout:window.EARTHLINE_PROPERTY_TIMEOUT_AUDIT_16178||null,
+              activeStage:window.EARTHLINE_PROPERTY_ACTIVE_STAGE_16178||null
             };
           });
           console.log('PROPERTY_AUDIT',JSON.stringify(audit));
           if(audit.tier!=='property')throw Error('Property did not publish');
+          if(!audit.audit||audit.audit.scientificSettled!==true||audit.audit.scientificResult!==true)throw Error('Property science did not settle true');
           if(audit.propertyClass||audit.propertyLatchClass)throw Error('Property Orb still latched');
           if(audit.busy==='1'||audit.ariaBusy==='true')throw Error('Property button still busy');
           await browser.close();
