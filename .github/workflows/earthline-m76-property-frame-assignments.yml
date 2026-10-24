@@ -1,0 +1,25 @@
+name: Earthline M76 Property Frame Assignments
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-property-frame-assignments.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Print frame assignments
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== VIEW ZOOM ASSIGNMENTS ==='
+          grep -n -E 'M\.viewZoom[[:space:]]*=' index.html || true
+          echo '=== BOUNDARY ASSIGNMENTS ==='
+          grep -n -E 'analysisBoundaryLngLat[[:space:]]*=' index.html || true
+          echo '=== REQUESTED CELL ==='
+          grep -n -E 'requestedCellM[[:space:]]*=' index.html || true
+          echo '=== PROPERTY TARGET ==='
+          grep -n -E 'PROPERTY_TARGET|DeclareProperty|declareProperty' index.html | head -120 || true
