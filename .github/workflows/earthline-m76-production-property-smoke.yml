@@ -1,5 +1,5 @@
 name: Earthline M76 Production Property Smoke
-# diagnostic-after-timeout
+# valid-camera-target
 on:
   push:
     branches: [recovery/mantra76-audit-restart]
@@ -27,6 +27,17 @@ jobs:
           await page.goto('https://earthlinedevelopment.org/?m76property='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
           await page.waitForFunction(()=>typeof window.earthlineSetPropertyTarget16201==='function'&&!!document.getElementById('earthlineDeclareProperty16169'),null,{timeout:30000});
           await page.evaluate(()=>{
+            const m=window.earthlineMap||null;
+            if(!m||typeof m.jumpTo!=='function')throw new Error('map unavailable');
+            m.jumpTo({center:[-111.93582,34.21605],zoom:18,bearing:0,pitch:0});
+          });
+          await page.waitForFunction(()=>{
+            const m=window.earthlineMap||null,c=m&&m.getCenter&&m.getCenter();
+            return !!(c&&Math.abs(Number(c.lng)+111.93582)<0.00005&&Math.abs(Number(c.lat)-34.21605)<0.00005);
+          },null,{timeout:15000});
+          await page.waitForTimeout(300);
+          await page.evaluate(()=>{
+            if(typeof window.earthlineSyncPropertyTargetFromMap16201==='function')window.earthlineSyncPropertyTargetFromMap16201();
             window.earthlineSetPropertyTarget16201({lng:-111.93582,lat:34.21605,source:'crosshair-smoke'},{openPanel:false});
           });
           await page.waitForFunction(()=>{const b=document.getElementById('earthlineDeclareProperty16169');return b&&!b.disabled&&b.getAttribute('aria-disabled')!=='true';},null,{timeout:15000});
