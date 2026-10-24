@@ -14,18 +14,29 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: recovery/mantra76-audit-restart
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
       - run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Run exact live regression
+      - name: Materialize exact live page
+        run: |
+          git fetch origin pages-live
+          git show origin/pages-live:index.html > live.html
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/m76-http.log 2>&1 &
+          echo $! > /tmp/m76-http.pid
+          for i in {1..20}; do curl -fsS http://127.0.0.1:8787/live.html >/dev/null && break; sleep 1; done
+      - name: Run exact live-byte regression
         run: node tests/m76-live-two-coordinate.mjs
       - name: Save report
+        if: always()
         run: |
-          git config user.name "Earthline Recovery"
-          git config user.email "actions@users.noreply.github.com"
-          git add M76-LIVE-TWO-COORD-REPORT.json
-          git commit -m "test: capture exact Arizona two-coordinate swale regression" || true
-          git push origin HEAD:recovery/mantra76-audit-restart
+          if [ -f M76-LIVE-TWO-COORD-REPORT.json ]; then
+            git config user.name "Earthline Recovery"
+            git config user.email "actions@users.noreply.github.com"
+            git add M76-LIVE-TWO-COORD-REPORT.json
+            git commit -m "test: capture exact Arizona two-coordinate swale regression" || true
+            git push origin HEAD:recovery/mantra76-audit-restart
+          fi
