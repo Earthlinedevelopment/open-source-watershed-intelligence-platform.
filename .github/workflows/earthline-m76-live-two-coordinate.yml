@@ -1,5 +1,5 @@
 name: Earthline M76 Live Two Coordinate Regression
-# rerun-contour-fix
+# rerun-contour-fix-final
 on:
   push:
     branches: [recovery/mantra76-audit-restart]
@@ -26,6 +26,14 @@ jobs:
         run: |
           git fetch origin pages-live
           git show origin/pages-live:index.html > live.html
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('live.html');s=p.read_text(encoding='utf-8')
+          old='window.earthlineFilterAuthorityCorridors15874(kept);'
+          new='window.__M76_TEST_KEPT=kept.map(s=>Object.assign({},s,{pts:(s.pts||[]).map(p=>[+p[0],+p[1]])}));window.earthlineFilterAuthorityCorridors15874(kept);'
+          if s.count(old)!=1: raise SystemExit(f'kept capture owner count {s.count(old)}')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          PY
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/m76-http.log 2>&1 &
           echo $! > /tmp/m76-http.pid
           for i in {1..20}; do curl -fsS http://127.0.0.1:8787/live.html >/dev/null && break; sleep 1; done
