@@ -1,0 +1,45 @@
+name: Earthline M76 Natural Renderer Source Audit
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-natural-source-audit.yml'
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra76-audit-restart
+          fetch-depth: 0
+      - name: Trace exact visible natural swale source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin pages-live
+          git show origin/pages-live:index.html > /tmp/live.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('/tmp/live.html').read_text(encoding='utf-8')
+          needles=[
+            'function authoritativeFC','const authoritativeFC','function orientedFC','const orientedFC',
+            'earthline-property-swale-natural-casing-16174','earthline-property-swale-footprint-16174',
+            'EARTHLINE_M76_NATURAL_FROM_VERIFIED_SAFE_GEOMETRY','authoritativeSafeSwales15815',
+            'setData(orientedFC','setData(authoritativeFC','SOURCE','orientedFC()','authoritativeFC()'
+          ]
+          out=[]
+          for n in needles:
+            hits=[m.start() for m in re.finditer(re.escape(n),s)]
+            out.append(f'===== {n} COUNT {len(hits)} =====')
+            for i in hits:
+              out.append(s[max(0,i-2200):min(len(s),i+5200)])
+          Path('M76-NATURAL-SOURCE-AUDIT.txt').write_text('\n'.join(out),encoding='utf-8')
+          PY
+          git config user.name "Earthline Recovery"
+          git config user.email "actions@users.noreply.github.com"
+          git add M76-NATURAL-SOURCE-AUDIT.txt
+          git commit -m "audit: trace visible natural swale source" || true
+          git push origin HEAD:recovery/mantra76-audit-restart
