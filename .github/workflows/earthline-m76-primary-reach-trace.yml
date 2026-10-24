@@ -24,28 +24,28 @@ jobs:
           s=p.read_text(encoding='utf-8')
           marker='function earthlineCrossSlopeLocalGuardM76(seg){'
           anchor='function earthlineLocalContourReachM76(seg,path){'
-          helper='''/* EARTHLINE M76H — Property swales must stay locally cross-slope. */
-function earthlineCrossSlopeLocalGuardM76(seg){
-  if(!Array.isArray(seg)||seg.length<3)return false;
-  const along=[];
-  for(let i=1;i<seg.length;i++){
-    const a=seg[i-1],b=seg[i];
-    const mx=(Number(a[0])+Number(b[0]))/2,my=(Number(a[1])+Number(b[1]))/2;
-    const x=Math.max(1,Math.min(GW-2,Math.round(mx))),y=Math.max(1,Math.min(GH-2,Math.round(my)));
-    const sp=Math.max(0,Number(slopePct(x,y)||0));
-    if(sp<1.0)continue;
-    const g=gradAt(x,y),gm=Math.hypot(Number(g[0]||0),Number(g[1]||0));
-    const tx=Number(b[0])-Number(a[0]),ty=Number(b[1])-Number(a[1]),tm=Math.hypot(tx,ty);
-    if(!(gm>1e-9&&tm>1e-9))continue;
-    along.push(Math.abs((tx*Number(g[0])+ty*Number(g[1]))/(tm*gm)));
-  }
-  if(!along.length)return true;
-  along.sort((a,b)=>a-b);
-  const p90=along[Math.min(along.length-1,Math.floor(along.length*.90))];
-  return along[along.length-1]<=0.65&&p90<=0.35;
-}
+          helper="""/* EARTHLINE M76H — Property swales must stay locally cross-slope. */
+          function earthlineCrossSlopeLocalGuardM76(seg){
+            if(!Array.isArray(seg)||seg.length<3)return false;
+            const along=[];
+            for(let i=1;i<seg.length;i++){
+              const a=seg[i-1],b=seg[i];
+              const mx=(Number(a[0])+Number(b[0]))/2,my=(Number(a[1])+Number(b[1]))/2;
+              const x=Math.max(1,Math.min(GW-2,Math.round(mx))),y=Math.max(1,Math.min(GH-2,Math.round(my)));
+              const sp=Math.max(0,Number(slopePct(x,y)||0));
+              if(sp<1.0)continue;
+              const g=gradAt(x,y),gm=Math.hypot(Number(g[0]||0),Number(g[1]||0));
+              const tx=Number(b[0])-Number(a[0]),ty=Number(b[1])-Number(a[1]),tm=Math.hypot(tx,ty);
+              if(!(gm>1e-9&&tm>1e-9))continue;
+              along.push(Math.abs((tx*Number(g[0])+ty*Number(g[1]))/(tm*gm)));
+            }
+            if(!along.length)return true;
+            along.sort((a,b)=>a-b);
+            const p90=along[Math.min(along.length-1,Math.floor(along.length*.90))];
+            return along[along.length-1]<=0.65&&p90<=0.35;
+          }
 
-'''
+          """
           if marker not in s:
               if s.count(anchor)!=1: raise SystemExit('helper anchor mismatch')
               s=s.replace(anchor,helper+anchor,1)
