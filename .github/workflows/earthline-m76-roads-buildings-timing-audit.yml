@@ -1,0 +1,17 @@
+name: Earthline M76 Roads Buildings Timing Audit
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-roads-buildings-timing-audit.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Trace roads/buildings stage
+        run: |
+          grep -n -F 'mapped roads/buildings' index.html || true
+          grep -n -E 'roads.*buildings|buildings.*roads|vector.*exclusion|Overpass|overpass' index.html | head -220 || true
