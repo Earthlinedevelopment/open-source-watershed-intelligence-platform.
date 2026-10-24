@@ -1,4 +1,5 @@
 name: Earthline M76 Production Property Smoke
+# diagnostic-after-timeout
 on:
   push:
     branches: [recovery/mantra76-audit-restart]
@@ -34,8 +35,8 @@ jobs:
             const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
             const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
             return !!(a&&a.scientificSettled===true&&String(d&&(d.tier||d.mode)||'').toLowerCase()==='property');
-          },null,{timeout:70000});
-          await page.waitForTimeout(1200);
+          },null,{timeout:60000}).catch(()=>null);
+          await page.waitForTimeout(500);
           const audit=await page.evaluate(()=>{
             const root=document.documentElement,b=document.getElementById('earthlineDeclareProperty16169');
             const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
@@ -52,6 +53,14 @@ jobs:
               disabled:!!b?.disabled,
               tier:String(d&&(d.tier||d.mode)||'').toLowerCase(),
               audit:a,
+              publication:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,
+              block:window.EARTHLINE_PROPERTY_PUBLICATION_BLOCK_16176||null,
+              timeout:window.EARTHLINE_PROPERTY_TIMEOUT_AUDIT_16178||null,
+              activeStage:window.EARTHLINE_PROPERTY_ACTIVE_STAGE_16178||null,
+              target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+              lastError:window.EARTHLINE_LAST_PROPERTY_ERROR||window.EARTHLINE_PROPERTY_LAST_ERROR||null,
+              modelStage:m?.currentStage||null,
+              modelTiming:m?.lastTiming||null,
               swales:Array.isArray(fc)?fc.length:(fc?.features?.length??null)
             };
           });
