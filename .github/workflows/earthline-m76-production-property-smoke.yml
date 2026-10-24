@@ -1,0 +1,64 @@
+name: Earthline M76 Production Property Smoke
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-production-property-smoke.yml'
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra76-audit-restart
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - name: Test live Property terminal
+        shell: bash
+        run: |
+          cat > property-smoke.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1000}});
+          await page.goto('https://earthlinedevelopment.org/?m76property='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForFunction(()=>typeof window.earthlineSetPropertyTarget16201==='function'&&!!document.getElementById('earthlineDeclareProperty16169'),null,{timeout:30000});
+          await page.evaluate(()=>{
+            window.earthlineSetPropertyTarget16201({lng:-111.93582,lat:34.21605,source:'crosshair-smoke'},{openPanel:false});
+          });
+          await page.waitForFunction(()=>{const b=document.getElementById('earthlineDeclareProperty16169');return b&&!b.disabled&&b.getAttribute('aria-disabled')!=='true';},null,{timeout:15000});
+          await page.click('#earthlineDeclareProperty16169');
+          await page.waitForFunction(()=>{
+            const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+            const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+            return !!(a&&a.scientificSettled===true&&String(d&&(d.tier||d.mode)||'').toLowerCase()==='property');
+          },null,{timeout:70000});
+          await page.waitForTimeout(1200);
+          const audit=await page.evaluate(()=>{
+            const root=document.documentElement,b=document.getElementById('earthlineDeclareProperty16169');
+            const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+            const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+            const m=window.EARTHLINE_MODEL||window.M||null;
+            const fc=m?.authoritativeSafeSwales15815||null;
+            return {
+              runState:root.dataset.earthlineRunState||'',
+              propertyState:root.dataset.earthlinePropertyRunState||'',
+              propertyClass:root.classList.contains('earthline-property-running-16233'),
+              propertyLatchClass:root.classList.contains('earthline-property-orb-latched-16244'),
+              busy:b?.dataset?.busy||'',
+              ariaBusy:b?.getAttribute('aria-busy')||'',
+              disabled:!!b?.disabled,
+              tier:String(d&&(d.tier||d.mode)||'').toLowerCase(),
+              audit:a,
+              swales:Array.isArray(fc)?fc.length:(fc?.features?.length??null)
+            };
+          });
+          console.log('PROPERTY_AUDIT',JSON.stringify(audit));
+          if(audit.tier!=='property')throw Error('Property did not publish');
+          if(audit.propertyClass||audit.propertyLatchClass)throw Error('Property Orb still latched');
+          if(audit.busy==='1'||audit.ariaBusy==='true')throw Error('Property button still busy');
+          await browser.close();
+          JS
+          node property-smoke.mjs
