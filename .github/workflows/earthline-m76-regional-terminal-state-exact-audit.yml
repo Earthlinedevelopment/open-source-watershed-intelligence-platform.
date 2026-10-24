@@ -1,0 +1,18 @@
+name: Earthline M76 Regional Terminal State Exact Audit
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-regional-terminal-state-exact-audit.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Print Regional owner terminal block
+        run: |
+          sed -n '27370,27490p' index.html
+          echo '=== TERMINAL FINALLY ==='
+          sed -n '28690,28850p' index.html
