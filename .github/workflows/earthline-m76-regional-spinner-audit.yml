@@ -1,0 +1,22 @@
+name: Earthline M76 Regional Spinner Audit
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-regional-spinner-audit.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Trace regional terminal spinner state
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -n -E 'regional.*(loading|spinner|running|settled|complete|done)|spinner.*regional|dataset.*regional|regionalRun|REGIONAL' index.html | head -320 || true
+          echo '=== RUNNING DATASET ==='
+          grep -n -F 'earthlineRegionalRunState' index.html || true
+          grep -n -F 'regionalRunState' index.html || true
+          grep -n -F 'spinner' index.html | head -220 || true
