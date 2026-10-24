@@ -1,4 +1,4 @@
-name: Earthline M76 Deterministic Property Repair
+name: Earthline M76 Property Frame Determinism Repair
 on:
   push:
     branches: [recovery/mantra76-audit-restart]
@@ -14,7 +14,7 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Remove wall-clock selection from Property
+      - name: Repair Property frame ownership
         shell: bash
         run: |
           set -euo pipefail
@@ -22,22 +22,66 @@ jobs:
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          old='const deadline15771=started+work15771.maxMs;'
-          new='const deadline15771=isRegionalTile15769?(started+work15771.maxMs):Number.POSITIVE_INFINITY;'
-          if s.count(old)!=1:
-              raise SystemExit('deadline owner count '+str(s.count(old)))
-          s=s.replace(old,new,1)
+
+          # 1) Camera zoom is presentation-only while Property owns the scientific frame.
+          old_zoom='earthlineMap.on("zoom",()=>{M.viewZoom=earthlineMap.getZoom();});'
+          new_zoom='earthlineMap.on("zoom",()=>{const propertyScienceM76=String(document.documentElement.dataset.earthlinePropertyRunState||"")==="running"||String(window.earthlineRegional15778&&window.earthlineRegional15778.mode||"")==="property";if(!propertyScienceM76)M.viewZoom=earthlineMap.getZoom();});'
+          if s.count(old_zoom)!=1:
+              raise SystemExit('zoom listener owner count '+str(s.count(old_zoom)))
+          s=s.replace(old_zoom,new_zoom,1)
+
+          # 2) Map-settle repaints must not overwrite the locked Property science zoom.
+          old_settle='      M.viewZoom=earthlineMap.getZoom();\n      earthlineSyncOverlayScale();'
+          new_settle='      if(!(String(document.documentElement.dataset.earthlinePropertyRunState||"")==="running"||String(window.earthlineRegional15778&&window.earthlineRegional15778.mode||"")==="property"))M.viewZoom=earthlineMap.getZoom();\n      earthlineSyncOverlayScale();'
+          if s.count(old_settle)!=1:
+              raise SystemExit('settle zoom owner count '+str(s.count(old_settle)))
+          s=s.replace(old_settle,new_settle,1)
+
+          old_deferred='            M.viewZoom=earthlineMap.getZoom();\n            earthlineSyncOverlayScale();'
+          new_deferred='            if(!(String(document.documentElement.dataset.earthlinePropertyRunState||"")==="running"||String(window.earthlineRegional15778&&window.earthlineRegional15778.mode||"")==="property"))M.viewZoom=earthlineMap.getZoom();\n            earthlineSyncOverlayScale();'
+          if s.count(old_deferred)!=1:
+              raise SystemExit('deferred zoom owner count '+str(s.count(old_deferred)))
+          s=s.replace(old_deferred,new_deferred,1)
+
+          # 3) Same search text is not enough to reuse a Property frame: center must match.
+          run_pending='if(pending&&String(pending.searchKey||"")===searchKey){'
+          run_pending_new='if(pending&&String(pending.searchKey||"")===searchKey&&pending.center&&context&&context.anchor&&Math.abs(Number(pending.center.lng)-Number(context.anchor.lng))<=0.00002&&Math.abs(Number(pending.center.lat)-Number(context.anchor.lat))<=0.00002){'
+          if s.count(run_pending)<2:
+              raise SystemExit('pending frame checks fewer than expected '+str(s.count(run_pending)))
+          # First occurrence belongs to runFrameDirective; second to resolver.
+          s=s.replace(run_pending,run_pending_new,1)
+
+          run_existing='if(frame&&earthlineFrameMatchesSearch15827(frame)){'
+          run_existing_new='if(frame&&earthlineFrameMatchesSearch15827(frame)&&frame.center&&context&&context.anchor&&Math.abs(Number(frame.center.lng)-Number(context.anchor.lng))<=0.00002&&Math.abs(Number(frame.center.lat)-Number(context.anchor.lat))<=0.00002){'
+          if s.count(run_existing)!=1:
+              raise SystemExit('run frame existing check count '+str(s.count(run_existing)))
+          s=s.replace(run_existing,run_existing_new,1)
+
+          # Resolver uses the current Property identity center.
+          resolver_pending='if(pending&&String(pending.searchKey||"")===searchKey){'
+          resolver_pending_new='if(pending&&String(pending.searchKey||"")===searchKey&&pending.center&&Math.abs(Number(pending.center.lng)-Number(identity.center.lng))<=0.00002&&Math.abs(Number(pending.center.lat)-Number(identity.center.lat))<=0.00002){'
+          if s.count(resolver_pending)!=1:
+              raise SystemExit('resolver pending check count '+str(s.count(resolver_pending)))
+          s=s.replace(resolver_pending,resolver_pending_new,1)
+
+          resolver_existing='}else if(existing&&earthlineFrameMatchesSearch15827(existing)){\n        return existing;'
+          resolver_existing_new='}else if(existing&&earthlineFrameMatchesSearch15827(existing)&&existing.center&&Math.abs(Number(existing.center.lng)-Number(identity.center.lng))<=0.00002&&Math.abs(Number(existing.center.lat)-Number(identity.center.lat))<=0.00002){\n        return existing;'
+          if s.count(resolver_existing)!=1:
+              raise SystemExit('resolver existing check count '+str(s.count(resolver_existing)))
+          s=s.replace(resolver_existing,resolver_existing_new,1)
+
           p.write_text(s,encoding='utf-8')
           PY
       - name: Validate and publish
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq 'const deadline15771=isRegionalTile15769?(started+work15771.maxMs):Number.POSITIVE_INFINITY;' index.html
-          grep -q 'function earthlineCrossSlopeLocalGuardM76' index.html
-          node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8');for(const m of s.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)){if(m[1].trim())new Function(m[1])};console.log('M76_DETERMINISTIC_PROPERTY_OK')"
+          grep -Fq 'const propertyScienceM76=' index.html
+          grep -Fq 'Math.abs(Number(existing.center.lng)-Number(identity.center.lng))<=0.00002' index.html
+          grep -Fq 'Math.abs(Number(pending.center.lng)-Number(context.anchor.lng))<=0.00002' index.html
+          node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8');for(const m of s.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)){if(m[1].trim())new Function(m[1])};console.log('M76_FRAME_DETERMINISM_OK')"
           git config user.name "Earthline Recovery"
           git config user.email "actions@users.noreply.github.com"
           git add index.html
-          git commit -m "fix: make Property swale selection deterministic"
+          git commit -m "fix: lock Property scientific frame against camera races"
           git push origin HEAD:pages-live
