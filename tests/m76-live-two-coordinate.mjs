@@ -16,7 +16,7 @@ for(const c of CASES){
    await route.continue({headers});
  });
  await page.goto(BASE+'?m76-live-regression='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
- await page.waitForFunction(()=>window.earthlineMap&&typeof M!=='undefined',{timeout:30000});
+ await page.waitForFunction(()=>((typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap)&&typeof M!=='undefined',{timeout:30000});
  await page.evaluate(({lat,lng})=>{
    const q=lat.toFixed(5)+', '+lng.toFixed(5);
    M.loc={name:'Arizona',fullName:q,query:q,sub:'M76 live regression',area:'20 acres',countryCode:'us',placeType:'point',lat,lng};
