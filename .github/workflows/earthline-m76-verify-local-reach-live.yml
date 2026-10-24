@@ -1,9 +1,10 @@
 name: Earthline M76 Verify Local Reach Live
 on:
   push:
-    branches: [recovery/mantra76-audit-restart]
+    branches:
+      - recovery/mantra76-audit-restart
     paths:
-      - '.github/workflows/earthline-m76-verify-local-reach-live.yml'
+      - .github/workflows/earthline-m76-verify-local-reach-live.yml
 permissions:
   contents: write
 jobs:
@@ -14,13 +15,26 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Check live flow-first local reach owner
+      - name: Patch local reach fallback
         shell: bash
         run: |
-          set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          s=Path('index.html').read_text(encoding='utf-8')
-          for n in ['function earthlineLocalContourReachM76','earthlineLocalContourReachM76(rawSeg15836,path15836)','for(const rawSeg15836 of segs15836)','for(const seg15836 of segs15836)']:
-              print(n, s.count(n))
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          old='  const out=earthlineCleanPath(seg.slice(lo,hi+1));\n  return out.length>=3?out:seg;\n}'
+          new='  while((hi-lo+1)<3&&lo>0)lo--;\n  while((hi-lo+1)<3&&hi<seg.length-1)hi++;\n  const out=earthlineCleanPath(seg.slice(lo,hi+1));\n  return out.length>=3?out:[];\n}'
+          n=s.count(old)
+          if n!=2:
+              raise SystemExit("fallback count "+str(n))
+          p.write_text(s.replace(old,new,2),encoding="utf-8")
           PY
+      - name: Validate and publish
+        shell: bash
+        run: |
+          node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8'); if((s.match(/return out\.length>=3\?out:\[\];/g)||[]).length!==2) throw Error('fallback patch missing'); for(const m of s.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)){if(m[1].trim())new Function(m[1])}"
+          git config user.name "Earthline Recovery"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: keep local swale reach local at contour endpoints"
+          git push origin HEAD:pages-live
