@@ -1,0 +1,17 @@
+name: Earthline M76 Camera Zoom Owner Audit
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-camera-zoom-owner-audit.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          sed -n '3125,3220p' index.html
+          echo '=== ZOOM LISTENER ==='
+          sed -n '3335,3385p' index.html
