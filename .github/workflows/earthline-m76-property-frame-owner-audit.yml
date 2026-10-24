@@ -1,0 +1,28 @@
+name: Earthline M76 Property Frame Owner Audit
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-property-frame-owner-audit.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Trace Property terrain frame ownership
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(encoding='utf-8')
+          for needle in ['terrainStamp','getZoom()','zoom:18','1.25','Fixed property-scale analysis extent','analysisBoundary','property-scale']:
+              print('\n===== '+needle+' =====')
+              hits=list(re.finditer(re.escape(needle),s))
+              print('COUNT',len(hits))
+              for m in hits[:40]:
+                  i=m.start(); print(s[max(0,i-1800):min(len(s),i+4200)])
+          PY
