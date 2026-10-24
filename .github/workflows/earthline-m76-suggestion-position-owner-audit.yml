@@ -1,0 +1,15 @@
+name: Earthline M76 Suggestion Position Owner Audit
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-suggestion-position-owner-audit.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          grep -n -E 'SearchSuggestions15970.*style\.(left|top|width|right)|menu\.style\.(left|top|width|right)|positionSuggestions15970|positionSuggestions16233' index.html | head -220 || true
