@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
-const BASE='https://live.earthlinedevelopment.org/';
+const BASE='http://127.0.0.1:8787/live.html';
 const CASES=[
  {name:'GOOD',lat:34.21607,lng:-111.93178},
  {name:'BAD',lat:34.21605,lng:-111.93582}
@@ -11,6 +11,10 @@ for(const c of CASES){
  const ctx=await browser.newContext({viewport:{width:1800,height:900}});
  const page=await ctx.newPage();
  page.on('pageerror',e=>console.log('PAGEERR',c.name,String(e)));
+ await page.route('https://api.mapbox.com/**',async route=>{
+   const headers={...route.request().headers(),referer:'https://earthlinedevelopment.org/',origin:'https://earthlinedevelopment.org'};
+   await route.continue({headers});
+ });
  await page.goto(BASE+'?m76-live-regression='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
  await page.waitForFunction(()=>window.earthlineMap&&typeof M!=='undefined',{timeout:30000});
  await page.evaluate(({lat,lng})=>{
