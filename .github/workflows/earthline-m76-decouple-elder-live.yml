@@ -1,0 +1,81 @@
+name: Earthline M76 Decouple Elder From Swales Live
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-decouple-elder-live.yml'
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Make Elder display-only after committed Property swales
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+
+          prime="try{void window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.()}catch(_){}"
+          prime_count=s.count(prime)
+          if prime_count<1:
+              raise SystemExit('no Elder prime calls found')
+          s=s.replace(prime,"/* EARTHLINE M76 ELDER DISPLAY-ONLY — early prime retired to prevent Property swale lifecycle overlap. */",prime_count)
+
+          early="try{void Promise.resolve(window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()).catch(()=>{})}catch(_){}"
+          if s.count(early)!=1:
+              raise SystemExit(f'early Elder start count {s.count(early)}')
+          s=s.replace(early,"/* EARTHLINE M76 ELDER DISPLAY-ONLY — Elder no longer starts before hydrology. */",1)
+
+          marker="""earthlinePropertyTrace16319("scientific terminal","mark",{corridors:count});
+      /* EARTHLINE 17514 — Elder publication already started from the authoritative
+         Property frame before the hydrology runner; no second lifecycle owner here. */"""
+          insert="""earthlinePropertyTrace16319("scientific terminal","mark",{corridors:count});
+      /* EARTHLINE M76 ELDER DISPLAY-ONLY — start Elder only after the authoritative
+         Property swale FeatureCollection is committed. Preserve and reassert that
+         exact collection after Elder publication so Elder can never alter swale geometry. */
+      try{
+        const lockedSwalesM76=JSON.parse(JSON.stringify(m.authoritativeSafeSwales15815||{type:'FeatureCollection',features:[]}));
+        void Promise.resolve(window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()).finally(()=>{
+          try{
+            m.authoritativeSafeSwales15815=lockedSwalesM76;
+            if(typeof window.earthlineDeliverPropertyResult15817==='function'){
+              window.earthlineDeliverPropertyResult15817('elder-display-only-m76',false);
+            }else if(typeof window.earthlineRefreshPropertyRenderer15792==='function'){
+              window.earthlineRefreshPropertyRenderer15792(true);
+            }
+          }catch(_){}
+        });
+      }catch(_){}
+      /* EARTHLINE M76 — Elder is now post-science display-only; no pre-hydrology lifecycle owner remains. */"""
+          if s.count(marker)!=1:
+              raise SystemExit(f'scientific terminal Elder marker count {s.count(marker)}')
+          s=s.replace(marker,insert,1)
+
+          p.write_text(s,encoding='utf-8')
+          print('retired prime calls',prime_count)
+          PY
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          if(s.includes('?.primePropertyEvidence?.()'))throw Error('early Elder prime remains');
+          if(s.includes('try{void Promise.resolve(window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()).catch(()=>{})}catch(_){}'))throw Error('early Elder start remains');
+          if(!s.includes("earthlineDeliverPropertyResult15817('elder-display-only-m76',false)"))throw Error('swale reassert missing');
+          let n=0;
+          for(const m of s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)){
+            if(!m[1].trim())continue;
+            new Function(m[1]);n++;
+          }
+          console.log('M76_ELDER_DECOUPLE_PARSE_OK',n);
+          NODE
+          git config user.name "Earthline Recovery"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: make Elder display-only after committed swales"
+          git push origin HEAD:pages-live
