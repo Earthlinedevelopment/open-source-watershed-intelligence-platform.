@@ -1,0 +1,25 @@
+name: Earthline M76 Regional Owner Audit
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-regional-owner-audit.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Trace Regional owner
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== runRegional ==='
+          grep -n -F 'runRegional' index.html | head -80 || true
+          echo '=== run state writes ==='
+          grep -n -F 'earthlineRunState' index.html | head -140 || true
+          echo '=== analysis-complete dispatch ==='
+          grep -n -F 'analysis-complete' index.html | head -120 || true
+          echo '=== display publish ==='
+          grep -n -F 'earthlinePublishDisplayedRun' index.html | head -120 || true
