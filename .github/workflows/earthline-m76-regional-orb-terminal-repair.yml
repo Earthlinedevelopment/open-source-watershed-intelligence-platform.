@@ -14,7 +14,7 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Clear Regional Orb at published terminal
+      - name: Move Regional Orb release into authoritative terminal owner
         shell: bash
         run: |
           set -euo pipefail
@@ -23,16 +23,24 @@ jobs:
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
 
-          old="if(mode==='regional'||shown==='regional')corridorTipRegionalReady16252=true;setTimeout(()=>{syncRegionalOrb16233();reconcileOrbTerminal16243();reconcilePanel16188();maybeShowCorridorTip16248()},100)"
-          new="if(mode==='regional'||shown==='regional'){corridorTipRegionalReady16252=true;stopRegionalOrb16244();}setTimeout(()=>{syncRegionalOrb16233();reconcileOrbTerminal16243();reconcilePanel16188();maybeShowCorridorTip16248()},100)"
+          old="""    if(terminal16537==='published'){
+      try{window.earthlineRestoreUi16488&&window.earthlineRestoreUi16488.syncGauge&&window.earthlineRestoreUi16488.syncGauge()}catch(_){ }
+    }
+    return terminal16537;"""
+          new="""    if(terminal16537==='published'){
+      try{window.earthlineRestoreUi16488&&window.earthlineRestoreUi16488.syncGauge&&window.earthlineRestoreUi16488.syncGauge()}catch(_){ }
+    }
+    try{setBusy(false,'RUN ANALYSIS')}catch(_){ }
+    try{if(typeof window.earthlineStopRegionalOrb16244==='function')window.earthlineStopRegionalOrb16244()}catch(_){ }
+    return terminal16537;"""
           if s.count(old)!=1:
-              raise SystemExit('analysis-complete Regional Orb owner mismatch '+str(s.count(old)))
+              raise SystemExit('Regional terminal owner count '+str(s.count(old)))
           s=s.replace(old,new,1)
 
-          old2="const root=document.documentElement,state=String(root.dataset.earthlineRunState||'');bindRegionalToken16244();"
-          new2="const root=document.documentElement,state=String(root.dataset.earthlineRunState||'');bindRegionalToken16244();const terminalDisplayed16244=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||null;const terminalTier16244=String(terminalDisplayed16244&&(terminalDisplayed16244.tier||terminalDisplayed16244.mode)||'').toLowerCase();if(regionalOrbLatched16244&&state==='published'&&terminalTier16244==='regional')stopRegionalOrb16244();"
+          old2="""  function stopRegionalOrb16244(){regionalOrbLatched16244=false;regionalRequested16233=false;regionalOrbToken16244='';regionalOrbPriorToken16244='';regionalOrbStartedAt16244=0;document.documentElement.classList.remove('earthline-regional-orb-latched-16244','earthline-regional-running-16233')}"""
+          new2=old2+"\n  window.earthlineStopRegionalOrb16244=stopRegionalOrb16244;"
           if s.count(old2)!=1:
-              raise SystemExit('Regional reconcile owner mismatch '+str(s.count(old2)))
+              raise SystemExit('Regional Orb stop owner count '+str(s.count(old2)))
           s=s.replace(old2,new2,1)
 
           p.write_text(s,encoding='utf-8')
@@ -41,11 +49,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq "corridorTipRegionalReady16252=true;stopRegionalOrb16244();" index.html
-          grep -Fq "state==='published'&&terminalTier16244==='regional'" index.html
-          node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8');for(const m of s.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)){if(m[1].trim())new Function(m[1])};console.log('REGIONAL_ORB_TERMINAL_OK')"
+          grep -Fq "setBusy(false,'RUN ANALYSIS')" index.html
+          grep -Fq "window.earthlineStopRegionalOrb16244=stopRegionalOrb16244" index.html
+          grep -Fq "if(typeof window.earthlineStopRegionalOrb16244==='function')window.earthlineStopRegionalOrb16244()" index.html
+          node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8');for(const m of s.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)){if(m[1].trim())new Function(m[1])};console.log('REGIONAL_TERMINAL_OWNER_OK')"
           git config user.name "Earthline Recovery"
           git config user.email "actions@users.noreply.github.com"
           git add index.html
-          git commit -m "fix: stop Regional Orb when results publish"
+          git commit -m "fix: clear Regional Orb in authoritative terminal owner"
           git push origin HEAD:pages-live
