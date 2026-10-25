@@ -1,0 +1,131 @@
+name: Earthline M77 Property Owner Live Repair
+
+on:
+  push:
+    branches:
+      - recovery/mantra76-audit-restart
+    paths:
+      - ".earthline-m77-trigger-20261025"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: earthline-m77-property-owner-live
+  cancel-in-progress: false
+
+jobs:
+  patch-pages-live:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact pages-live parent
+        uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+
+      - name: Verify lease and patch authoritative Property presentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED="247edbb163891e0d4069992b10d9909896d07872"
+          ACTUAL="$(git rev-parse HEAD)"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "pages-live moved: expected $EXPECTED got $ACTUAL"
+            exit 42
+          fi
+
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+
+          def once(old,new,label):
+              global s
+              n=s.count(old)
+              if n != 1:
+                  raise SystemExit(f"{label}: expected 1 occurrence, found {n}")
+              s=s.replace(old,new,1)
+
+          once(
+          "function propertyActive(){const s=state(),m=model();return !!(m&&m.analysisReady&&s.mode==='property'&&!s.active)}",
+          "function propertyActive(){const s=state(),m=model(),d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,tier=String(d&&(d.tier||d.mode)||'').toLowerCase(),pub=m&&m.propertyPublication15816||null,currentGen=Number(m&&m.searchGen),pubGen=Number(pub&&pub.searchGen),displayedGen=Number(d&&d.propertyPublication&&d.propertyPublication.searchGen);return !!(m&&m.analysisReady&&s.mode==='property'&&!s.active&&tier==='property'&&pub&&pub.committed===true&&pub.safetyVerified===true&&Number.isFinite(currentGen)&&Number.isFinite(pubGen)&&pubGen===currentGen&&(!Number.isFinite(displayedGen)||displayedGen===currentGen))}",
+          "same-run propertyActive"
+          )
+
+          once(
+          "async function syncTexture(reason='sync'){clearTimeout(syncQueued);const mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){",
+          "async function syncTexture(reason='sync'){clearTimeout(syncQueued);const startModelM77=model(),startGenM77=Number(startModelM77&&startModelM77.searchGen),startDisplayedM77=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,startTokenM77=String(startDisplayedM77&&startDisplayedM77.runToken||''),mp=map(),active=propertyActive();if(!mp)return false;updateDeclareButton();syncPortal();restoreGrab();if(!active){",
+          "capture texture run identity"
+          )
+
+          once(
+          "/* EARTHLINE_M76_NATURAL_FROM_VERIFIED_SAFE_GEOMETRY */if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=",
+          "/* EARTHLINE_M76_NATURAL_FROM_VERIFIED_SAFE_GEOMETRY */if(!await ensureTextureLayers())return false;/* EARTHLINE M77 — async texture preparation may finish after a tier/run transition. Re-check the exact published Property identity before any source write, layer visibility change, or renderer-ownership claim. */const currentModelM77=model(),currentDisplayedM77=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;if(!propertyActive()||Number(currentModelM77&&currentModelM77.searchGen)!==startGenM77||String(currentDisplayedM77&&currentDisplayedM77.runToken||'')!==startTokenM77)return false;const fc=orientedFC(),centers=",
+          "post-await run identity guard"
+          )
+
+          once(
+          "for(const ev of ['load','style.load','zoomend','moveend','rotateend','pitchend'])mp.on(ev,()=>{updateBuild();restoreGrab();syncPortal();updateDeclareButton();if(ev==='load'||ev==='style.load')ensureImages();scheduleSync(ev,ev==='style.load'?120:35)})",
+          "for(const ev of ['load','style.load'])mp.on(ev,()=>{updateBuild();restoreGrab();syncPortal();updateDeclareButton();ensureImages();void syncTexture(ev)});for(const ev of ['zoomend','moveend','rotateend','pitchend'])mp.on(ev,()=>{updateBuild();restoreGrab();syncPortal();updateDeclareButton()})",
+          "remove camera-motion texture republish"
+          )
+
+          once(
+          "document.addEventListener('earthline:analysis-complete',()=>scheduleSync('analysis-complete',100),{passive:true});",
+          "document.addEventListener('earthline:analysis-complete',()=>{void syncTexture('analysis-complete')},{passive:true});",
+          "analysis-complete guarded sync"
+          )
+
+          once(
+          "scheduleSync('install-force',0);",
+          "void syncTexture('install-force');",
+          "install guarded sync"
+          )
+
+          retry=re.compile(r"""const immediate=attempt\(0\);\s*if\(scheduleRetries\)\{\s*for\(const timer of earthlineDeliveryTimers15817\)clearTimeout\(timer\);\s*earthlineDeliveryTimers15817\.clear\(\);\s*for\(const delay of \[60,180,480,1100,2200\]\)\{\s*const timer=setTimeout\(\(\)=>\{\s*earthlineDeliveryTimers15817\.delete\(timer\);\s*const delivered=attempt\(delay\);\s*if\(delivered\)\{\s*for\(const pending of earthlineDeliveryTimers15817\)clearTimeout\(pending\);\s*earthlineDeliveryTimers15817\.clear\(\);\s*\}\s*\},delay\);\s*earthlineDeliveryTimers15817\.add\(timer\);\s*\}\s*\}\s*return immediate;""")
+          replacement="""/* EARTHLINE M77 — canonical Property publication gets one deterministic swale delivery. No delayed repaint owner may rewrite presentation after the terminal owner settles. */
+              for(const timer of earthlineDeliveryTimers15817)clearTimeout(timer);
+              earthlineDeliveryTimers15817.clear();
+              return attempt(0);"""
+          s,n=retry.subn(replacement,s,count=1)
+          if n != 1:
+              raise SystemExit(f"delivery retry ladder: expected 1 match, found {n}")
+
+          once(
+          "function scheduleSync(reason,delay=80){clearTimeout(syncQueued);syncQueued=setTimeout(()=>syncTexture(reason),delay)}",
+          "function scheduleSync(reason){return syncTexture(reason)}",
+          "retire texture timer compatibility"
+          )
+
+          invariants={
+              "old weak propertyActive": "function propertyActive(){const s=state(),m=model();return !!(m&&m.analysisReady&&s.mode==='property'&&!s.active)}" in s,
+              "delayed retry ladder": "[60,180,480,1100,2200]" in s,
+              "camera texture republish": "['load','style.load','zoomend','moveend','rotateend','pitchend']" in s,
+          }
+          if any(invariants.values()):
+              raise SystemExit("post-patch invariant failed: "+repr(invariants))
+          if s.count("function scheduleSync(reason){return syncTexture(reason)}") != 1:
+              raise SystemExit("scheduleSync compatibility owner count is not 1")
+          if s.count("EARTHLINE M77") < 2:
+              raise SystemExit("M77 markers missing")
+
+          p.write_text(s,encoding="utf-8")
+          print("M77 patch assertions passed")
+          PY
+
+          git diff --check
+          git diff --stat
+          git diff -- index.html | sed -n '1,260p'
+
+      - name: Commit pages-live repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "earthline-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: bind Property presentation to current published run"
+          git push origin HEAD:pages-live
