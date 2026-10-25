@@ -1,0 +1,31 @@
+name: Earthline M76 Live Subdomain Fingerprint
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-live-subdomain-fingerprint.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Compare live subdomain
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://live.earthlinedevelopment.org/ -o /tmp/live.html
+          echo "BRANCH_SHA=$(git rev-parse HEAD)"
+          echo "BRANCH_INDEX_SHA=$(sha256sum index.html | awk '{print $1}')"
+          echo "LIVE_SHA=$(sha256sum /tmp/live.html | awk '{print $1}')"
+          echo "BRANCH_BYTES=$(wc -c < index.html)"
+          echo "LIVE_BYTES=$(wc -c < /tmp/live.html)"
+          echo "=== HEADERS ==="
+          curl -sSI https://live.earthlinedevelopment.org/ | tr -d '\r'
+          echo "=== MARKERS ==="
+          for m in             "EARTHLINE M76G — zero-runoff secondary Property swales are not publishable"             "earthlinePickContourExitM76(candidates,pts)"             "elder-display-only-m76"             "a&&a.settled===true&&a.result===false"             "Math.max(r.bottom,rr&&Number.isFinite(rr.bottom)?rr.bottom:r.bottom)+7"
+          do
+            if grep -Fq "$m" /tmp/live.html; then echo "LIVE_HAS $m"; else echo "LIVE_MISSING $m"; fi
+          done
+          if cmp -s /tmp/live.html index.html; then echo "LIVE_EQUALS_BRANCH YES"; else echo "LIVE_EQUALS_BRANCH NO"; fi
