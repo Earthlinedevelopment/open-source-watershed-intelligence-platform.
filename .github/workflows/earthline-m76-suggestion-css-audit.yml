@@ -1,4 +1,4 @@
-name: Earthline M76 Suggestion CSS Audit
+name: Earthline M76 Science Owner Audit
 on:
   push:
     branches: [recovery/mantra76-audit-restart]
@@ -11,7 +11,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: pages-live
-      - run: |
-          sed -n '4510,4585p' index.html
-          echo '=== known property ==='
-          sed -n '26360,26445p' index.html
+      - name: Trace science owners
+        shell: bash
+        run: |
+          echo '=== SWALES ==='
+          grep -n -E 'authoritativeSafeSwales15815|swale prescription|safeSwales|earthlineCrossSlopeLocalGuardM76|earthlineLocal.*ReachM76' index.html | head -220 || true
+          echo '=== WATER ==='
+          grep -n -E 'water paths|waterPaths|directional-water-paths|authoritative.*water|flow accumulation|flow routing' index.html | head -220 || true
+          echo '=== ELDERS ==='
+          grep -n -E 'ELDER|Elder|elder|primePropertyEvidence|startProperty|thinned map subset' index.html | head -260 || true
+          echo '=== AQUIFERS ==='
+          grep -n -E 'aquifer|Aquifer|USGS.*aquifer|IGRACA|groundwater evidence' index.html | head -280 || true
+          echo '=== PUBLICATION ==='
+          grep -n -E 'PROPERTY_PUBLICATION|propertyPublication|publicationAudit|authoritative.*publish|DISPLAYED_RUN' index.html | head -240 || true
