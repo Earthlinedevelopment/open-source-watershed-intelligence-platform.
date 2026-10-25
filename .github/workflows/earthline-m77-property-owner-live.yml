@@ -139,7 +139,7 @@ jobs:
               const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
               const m=(typeof M!=='undefined'?M:null);
               const b=document.getElementById('earthlineDeclareProperty16169');
-              const mp=window.earthlineMap||null;
+              const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
               const nat=mp?.getSource?.('earthline-property-swale-texture-16174')?._data||null;
               const safe=m?.authoritativeSafeSwales15815||{type:'FeatureCollection',features:[]};
               const water=m?.authoritativeWaterPaths15824||{type:'FeatureCollection',features:[]};
@@ -195,7 +195,8 @@ jobs:
 
             // Camera motion must not republish or change the scientific run.
             await page.evaluate(async()=>{
-              const mp=window.earthlineMap;
+              const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+              if(!mp)throw new Error('Earthline map binding unavailable');
               const c=mp.getCenter();
               await new Promise(resolve=>{mp.once('moveend',resolve);mp.jumpTo({center:[c.lng+0.00008,c.lat+0.00004],zoom:mp.getZoom()+0.05})});
             });
