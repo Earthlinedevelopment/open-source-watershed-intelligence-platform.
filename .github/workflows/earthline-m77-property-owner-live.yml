@@ -1,4 +1,4 @@
-name: Earthline M77 Gate 1 Production Smoke
+name: Earthline M77 Gate 4 Repeatability
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  gate1-production:
+  repeatability:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -18,200 +18,272 @@ jobs:
           ref: pages-live
           fetch-depth: 0
 
-      - name: Verify exact production bytes
+      - name: Lock exact live build and production bytes
         shell: bash
         run: |
           set -euo pipefail
           EXPECTED="28c19b3f792d9a2ee3936bd19b26e413e9427115"
-          test "$(git rev-parse HEAD)" = "$EXPECTED"
-          BRANCH_SHA="$(sha256sum index.html | awk '{print $1}')"
-          echo "BRANCH_SHA=$BRANCH_SHA"
-          matched=0
-          for i in $(seq 1 20); do
-            url="https://earthlinedevelopment.org/?m77bytes=$(date +%s)-$i"
-            if curl -fsSL --max-time 30 -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' "$url" -o /tmp/prod.html; then
-              PROD_SHA="$(sha256sum /tmp/prod.html | awk '{print $1}')"
-              echo "attempt=$i PROD_SHA=$PROD_SHA bytes=$(wc -c </tmp/prod.html)"
-              if cmp -s /tmp/prod.html index.html; then matched=1; break; fi
-            fi
-            sleep 2
-          done
-          test "$matched" = "1"
-          grep -Fq "EARTHLINE M77 — canonical Property publication gets one deterministic swale delivery" /tmp/prod.html
-          grep -Fq "async texture preparation may finish after a tier/run transition" /tmp/prod.html
-          echo "M77_PRODUCTION_BYTES_MATCH"
+          ACTUAL="$(git rev-parse HEAD)"
+          echo "PAGES_LIVE=$ACTUAL"
+          test "$ACTUAL" = "$EXPECTED"
+          curl -fsSL --max-time 30 -H 'Cache-Control: no-cache' -H 'Pragma: no-cache'             "https://earthlinedevelopment.org/?m77repeatbytes=$(date +%s)" -o /tmp/prod.html
+          cmp -s /tmp/prod.html index.html
+          echo "M77_REPEATABILITY_PRODUCTION_BYTES_MATCH"
 
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-
       - run: npm install playwright@1.55.0
       - run: npx playwright install --with-deps chromium
 
-      - name: Reproduce Regional and Property live paths
+      - name: Five-run Poudre and alternating Arizona exact controls
         shell: bash
         run: |
-          cat > m77-gate1.mjs <<'JS'
+          cat > m77-repeatability.mjs <<'JS'
           import { chromium } from 'playwright';
 
           const browser=await chromium.launch({headless:true});
+          const assert=(ok,msg)=>{if(!ok)throw new Error(msg)};
 
-          function assert(ok,msg){if(!ok)throw new Error(msg)}
-          const fp=fc=>{
-            const parts=[];
-            for(const f of (fc?.features||[])){
-              const g=f?.geometry||{};
-              if(g.type==='LineString')parts.push(g.coordinates);
-              else if(g.type==='MultiLineString')for(const p of (g.coordinates||[]))parts.push(p);
-            }
-            const text=JSON.stringify(parts);
-            let h=2166136261>>>0;
-            for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619)>>>0}
-            return h.toString(16).padStart(8,'0');
-          };
-
-          // Exact human-style Regional path: type, leave suggestions open, click Run.
-          {
+          async function openRegional(query,label){
             const page=await browser.newPage({viewport:{width:1440,height:1000}});
-            page.on('console',m=>console.log('REGIONAL_PAGE',m.type(),m.text()));
-            await page.goto('https://earthlinedevelopment.org/?m77regional='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-            await page.waitForSelector('#searchInput',{timeout:30000});
-            await page.fill('#searchInput','Vermont');
-            await page.waitForSelector('#earthlineSearchSuggestions15970 button',{timeout:15000});
-            const boxes=await page.evaluate(()=>{
-              const rr=e=>{const r=e?.getBoundingClientRect();return r?{l:r.left,t:r.top,r:r.right,b:r.bottom}:null};
-              return {run:rr(document.getElementById('runBtn')),menu:rr(document.getElementById('earthlineSearchSuggestions15970'))};
+            page.on('console',m=>{
+              const t=m.text();
+              if(/error|failed|stale|M77/i.test(t))console.log(label+'_PAGE',m.type(),t);
             });
-            if(boxes.menu&&boxes.run){
-              const overlap=!(boxes.menu.t>=boxes.run.b||boxes.menu.b<=boxes.run.t||boxes.menu.l>=boxes.run.r||boxes.menu.r<=boxes.run.l);
-              assert(!overlap,'Regional suggestions overlap Run Analysis');
-            }
+            await page.goto('https://earthlinedevelopment.org/?m77repeat='+encodeURIComponent(label)+'-'+Date.now(),{
+              waitUntil:'domcontentloaded',timeout:60000
+            });
+            await page.waitForSelector('#searchInput',{timeout:30000});
+            await page.fill('#searchInput',query);
+            await page.waitForSelector('#earthlineSearchSuggestions15970 button',{timeout:15000});
             await page.click('#runBtn');
             await page.waitForFunction(()=>{
-              const r=document.documentElement;
-              const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||null;
+              const root=document.documentElement;
+              const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
               const tier=String(d&&(d.tier||d.mode)||'').toLowerCase();
-              return r.dataset.earthlineRunState==='published'&&(tier==='regional'||tier==='focus');
-            },null,{timeout:70000});
-            await page.waitForTimeout(750);
-            const a=await page.evaluate(()=>{
-              const root=document.documentElement,b=document.getElementById('runBtn');
-              const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||null;
-              return {
-                runState:root.dataset.earthlineRunState||'',
-                tier:String(d&&(d.tier||d.mode)||'').toLowerCase(),
-                runToken:String(d&&d.runToken||''),
-                regionalClass:root.classList.contains('earthline-regional-running-16233'),
-                regionalLatch:root.classList.contains('earthline-regional-orb-latched-16244'),
-                busy:b?.dataset?.busy||'', ariaBusy:b?.getAttribute('aria-busy')||'', disabled:!!b?.disabled,
-                terminal:window.EARTHLINE_REGIONAL_TERMINAL_16539||null,
-                publication:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null
-              };
-            });
-            console.log('M77_REGIONAL',JSON.stringify(a));
-            assert(a.runState==='published','Regional not published');
-            assert(a.tier==='regional'||a.tier==='focus','Regional wrong tier '+a.tier);
-            assert(!a.regionalClass&&!a.regionalLatch,'Regional Orb latched');
-            assert(a.busy!=='1'&&a.ariaBusy!=='true'&&!a.disabled,'Regional button busy');
-            assert(!!a.runToken,'Regional displayed run token missing');
-            await page.close();
+              return root.dataset.earthlineRunState==='published'&&(tier==='regional'||tier==='focus');
+            },null,{timeout:75000});
+            await page.waitForTimeout(400);
+            return page;
           }
 
-          // Existing governed live Property path, now with final source/run identity checks.
-          {
-            const page=await browser.newPage({viewport:{width:1440,height:1000}});
-            page.on('console',m=>console.log('PROPERTY_PAGE',m.type(),m.text()));
-            await page.goto('https://earthlinedevelopment.org/?m77property='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-            await page.waitForSelector('#searchInput',{timeout:30000});
-            await page.fill('#searchInput','Poudre Foothills Parcel Colorado');
-            await page.waitForTimeout(250);
-            await page.click('#runBtn');
-            await page.waitForFunction(()=>{
+          async function setTargetAndRun(page,target,ordinal){
+            const priorSerial=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
+            const set=await page.evaluate(({lat,lng})=>{
+              const fn=window.earthlineSetPropertyTarget16201;
+              if(typeof fn!=='function')return {ok:false,reason:'target-setter-missing'};
+              const ok=fn({lat:Number(lat),lng:Number(lng),source:'crosshair-m77-repeatability'},{openPanel:false});
+              const b=document.getElementById('earthlineDeclareProperty16169');
+              return {ok:!!ok,disabled:!!b?.disabled,owner:b?.dataset?.earthlinePropertyClickOwner16546||'',target:window.EARTHLINE_PROPERTY_TARGET_16201||null};
+            },target);
+            assert(set.ok,target.label+' target setter failed '+JSON.stringify(set));
+            assert(set.owner==='shared-17494',target.label+' Property click owner is '+set.owner);
+
+            await page.locator('#earthlineDeclareProperty16169').click({force:true});
+            await page.waitForFunction(prev=>{
               const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
               const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
-              return !!(a&&a.settled===true&&String(d&&(d.tier||d.mode)||'').toLowerCase()==='property');
-            },null,{timeout:70000});
+              return !!(a&&Number(a.serial)>Number(prev)&&a.settled===true&&
+                String(d&&(d.tier||d.mode)||'').toLowerCase()==='property');
+            },priorSerial,{timeout:80000});
+
+            // Aquifer owner must settle or explicitly end unavailable for this exact generation.
+            await page.waitForFunction(()=>{
+              const m=(typeof M!=='undefined'?M:null); if(!m)return false;
+              const owner=m.propertyAquiferOwner16393||null;
+              const current=!owner||Number(owner.searchGen)===Number(m.searchGen||0);
+              const settled=!m.usgsAquiferLoading&&(
+                !m.usgsAquiferRequestKey16388||
+                m.usgsAquiferCompletedKey16393===m.usgsAquiferRequestKey16388||
+                String(m.usgsAquiferStatus||'')==='coverage-unavailable'
+              );
+              return current&&settled;
+            },null,{timeout:12000}).catch(()=>null);
             await page.waitForTimeout(900);
 
-            const snap=async()=>page.evaluate(()=>{
-              const root=document.documentElement;
-              const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
-              const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+            const snap=await page.evaluate(({target,ordinal})=>{
               const m=(typeof M!=='undefined'?M:null);
-              const b=document.getElementById('earthlineDeclareProperty16169');
               const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
-              const nat=mp?.getSource?.('earthline-property-swale-texture-16174')?._data||null;
+              const root=document.documentElement;
+              const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+              const audit=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
               const safe=m?.authoritativeSafeSwales15815||{type:'FeatureCollection',features:[]};
               const water=m?.authoritativeWaterPaths15824||{type:'FeatureCollection',features:[]};
-              const centerFC={type:'FeatureCollection',features:(nat?.features||[]).filter(f=>f?.properties?.geometry_role==='centerline')};
-              const parts=fc=>{const out=[];for(const f of (fc?.features||[])){const g=f?.geometry||{};if(g.type==='LineString')out.push(g.coordinates);else if(g.type==='MultiLineString')for(const p of (g.coordinates||[]))out.push(p)}return out};
-              const hash=fc=>{const text=JSON.stringify(parts(fc));let h=2166136261>>>0;for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619)>>>0}return h.toString(16).padStart(8,'0')};
+              const nat=mp?.getSource?.('earthline-property-swale-texture-16174')?._data||{type:'FeatureCollection',features:[]};
+              const naturalCenters={type:'FeatureCollection',features:(nat.features||[]).filter(f=>f?.properties?.geometry_role==='centerline')};
+              const aq=mp?.getSource?.('earthline-aquifers')?._data||{type:'FeatureCollection',features:[]};
+
+              const geometryRows=fc=>{
+                const rows=[];
+                for(const f of (fc?.features||[])){
+                  const g=f?.geometry||{};
+                  if(g.type==='LineString')rows.push(g.coordinates);
+                  else if(g.type==='MultiLineString')for(const p of (g.coordinates||[]))rows.push(p);
+                }
+                return rows;
+              };
+              const fnv=text=>{let h=2166136261>>>0;for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619)>>>0}return h.toString(16).padStart(8,'0')};
+              const lineFp=fc=>fnv(JSON.stringify(geometryRows(fc)));
+              const featureFp=fc=>{
+                const rows=(fc?.features||[]).map(f=>JSON.stringify({
+                  g:f?.geometry||null,
+                  k:f?.properties?.featureKind||'',
+                  n:f?.properties?.name||'',
+                  a:f?.properties?.aquiferType||'',
+                  s:f?.properties?.source||''
+                })).sort();
+                return fnv(JSON.stringify(rows));
+              };
+
+              const style=mp?.getStyle?.()||{};
+              const elderSourceIds=Object.keys(style.sources||{}).filter(id=>/elder/i.test(id)).sort();
+              const elderSources=elderSourceIds.map(id=>{
+                const src=mp?.getSource?.(id),data=src?._data||src?._options?.data||null;
+                return {id,count:Number(data?.features?.length||0),fp:featureFp(data||{features:[]})};
+              });
+              const elderLayers=(style.layers||[]).filter(l=>/elder/i.test(String(l.id||''))).map(l=>({
+                id:l.id,visibility:String(mp?.getLayoutProperty?.(l.id,'visibility')||'visible')
+              })).sort((a,b)=>a.id.localeCompare(b.id));
+              const elderDom=[...document.querySelectorAll('[id*="elder" i],[class*="elder" i]')].map(el=>({
+                id:el.id||'',classes:String(el.className||''),hidden:!!el.hidden,
+                display:getComputedStyle(el).display,visibility:getComputedStyle(el).visibility
+              })).sort((a,b)=>(a.id+a.classes).localeCompare(b.id+b.classes));
+              const elderApi=window.EARTHLINE_ELDER_TREES_V1_17097||null;
+              const elderApiKeys=elderApi?Object.keys(elderApi).sort():[];
+              const elderSignature=fnv(JSON.stringify({elderSources,elderLayers,elderDom,elderApiKeys}));
+
+              const aqAudit=m?.usgsAquiferAudit||null;
+              const aqStatus=String(m?.usgsAquiferStatus||'');
+              const aqClass={
+                status:aqStatus,
+                polygonCount:Number(m?.usgsAquifers?.length||0),
+                wellCount:Number(m?.vtGroundwaterWells16398?.length||0),
+                summary:!!m?.vtGroundwaterSummaryPoint16398,
+                auditStatus:String(aqAudit?.status||''),
+                resolver:String(aqAudit?.resolver||''),
+                selectedTier:String(aqAudit?.selectedPolygonTier?.key||aqAudit?.selectedPolygonTier?.source||''),
+                sourceFeatures:Number(aq?.features?.length||0)
+              };
+              const aqFp=featureFp(aq);
+
+              const decl=window.EARTHLINE_PROPERTY_DECLARATION_16169||null;
+              const tgt=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+              const pub=m?.propertyPublication15816||null;
+              const wpub=m?.authoritativeWaterPublication15824||null;
+              const texture=window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null;
+              const b=document.getElementById('earthlineDeclareProperty16169');
+
               return {
-                propertyState:root.dataset.earthlinePropertyRunState||'',
+                label:target.label,ordinal,
+                runToken:String(d?.runToken||''),
+                tier:String(d&&(d.tier||d.mode)||'').toLowerCase(),
+                target:{lat:Number(tgt?.lat),lng:Number(tgt?.lng)},
+                declarationCenter:{lat:Number(decl?.center?.lat),lng:Number(decl?.center?.lng)},
+                terrainStamp:String(m?.terrainStamp||''),
+                modelSearchGen:Number(m?.searchGen),
+                publicationSearchGen:Number(pub?.searchGen),
+                publicationCommitted:pub?.committed===true,
+                publicationSafe:pub?.safetyVerified===true,
+                sourceStateFingerprint:String(audit?.sourceEvidence?.sourceStateFingerprint||''),
+                scientificInputFingerprint:String(audit?.sourceEvidence?.scientificInputFingerprint||''),
+                noBuildMaskHash:String(audit?.sourceEvidence?.noBuildMaskHash||''),
+                safeCount:Number(safe?.features?.length||0),
+                safeParts:geometryRows(safe).length,
+                swaleFp:lineFp(safe),
+                naturalCenterCount:Number(naturalCenters.features.length||0),
+                renderedSwaleFp:lineFp(naturalCenters),
+                waterCount:Number(water?.features?.length||0),
+                waterFp:lineFp(water),
+                waterCommitted:wpub?.committed===true,
+                waterVerified:wpub?.verified===true,
+                aquiferClass:aqClass,
+                aquiferFp:aqFp,
+                elderSignature,
+                elderSources,elderLayers,
+                elderDomCount:elderDom.length,elderApiKeys,
+                propertyState:String(root.dataset.earthlinePropertyRunState||''),
                 propertyClass:root.classList.contains('earthline-property-running-16233'),
                 propertyLatch:root.classList.contains('earthline-property-orb-latched-16244'),
-                busy:b?.dataset?.busy||'',ariaBusy:b?.getAttribute('aria-busy')||'',
-                tier:String(d&&(d.tier||d.mode)||'').toLowerCase(),
-                runToken:String(d&&d.runToken||''),
-                displayedSearchGen:Number(d?.propertyPublication?.searchGen),
-                modelSearchGen:Number(m?.searchGen),
-                publicationSearchGen:Number(m?.propertyPublication15816?.searchGen),
-                publicationCommitted:m?.propertyPublication15816?.committed===true,
-                publicationSafe:m?.propertyPublication15816?.safetyVerified===true,
-                terrainStamp:String(m?.terrainStamp||''),
-                safeCount:Number(safe?.features?.length||0),
-                safeParts:parts(safe).length,
-                swaleFp:hash(safe),
-                naturalCenterCount:Number(centerFC.features.length||0),
-                renderedSwaleFp:hash(centerFC),
-                waterCount:Number(water?.features?.length||0),
-                waterFp:hash(water),
-                waterPublication:m?.authoritativeWaterPublication15824||null,
-                waterRenderer:m?.directWaterRenderer15824||null,
-                textureAudit:window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null,
-                safeAudit:window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null,
-                audit:a
+                busy:String(b?.dataset?.busy||''),ariaBusy:String(b?.getAttribute('aria-busy')||''),
+                textureCenterlines:Number(texture?.centerlines||0),
+                textureSourceReady:texture?.sourceReady===true,
+                auditSettled:audit?.scientificSettled===true&&audit?.scientificResult===true
               };
-            });
+            },{target,ordinal});
 
-            const before=await snap();
-            console.log('M77_PROPERTY_BEFORE_MOVE',JSON.stringify(before));
-            assert(before.tier==='property','Property wrong tier');
-            assert(before.audit?.scientificSettled===true&&before.audit?.scientificResult===true,'Property science not settled true');
-            assert(!before.propertyClass&&!before.propertyLatch,'Property Orb latched');
-            assert(before.busy!=='1'&&before.ariaBusy!=='true','Property button busy');
-            assert(before.publicationCommitted&&before.publicationSafe,'Property publication not committed/safe');
-            assert(Number.isFinite(before.modelSearchGen)&&before.publicationSearchGen===before.modelSearchGen,'Property publication generation mismatch');
-            assert(!Number.isFinite(before.displayedSearchGen)||before.displayedSearchGen===before.modelSearchGen,'Displayed Property generation mismatch');
-            assert(before.safeCount>0,'No authoritative safe swales');
-            assert(before.waterCount>0,'No authoritative Property water');
-            assert(before.waterPublication?.committed===true&&before.waterPublication?.verified===true,'Water publication not verified');
-            if(before.naturalCenterCount>0){
-              assert(before.naturalCenterCount===before.safeParts,'Natural swale source part count mismatch');
-              assert(before.renderedSwaleFp===before.swaleFp,'Natural swale source geometry differs from authoritative safe geometry');
-            }else{
-              assert(before.safeAudit?.ok===true||before.safeAudit?.verified===true,'Neither natural nor safe fallback swale presentation verified');
-            }
+            console.log('M77_REPEAT',JSON.stringify(snap));
 
-            // Camera motion must not republish or change the scientific run.
-            await page.evaluate(async()=>{
-              const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
-              if(!mp)throw new Error('Earthline map binding unavailable');
-              const c=mp.getCenter();
-              await new Promise(resolve=>{mp.once('moveend',resolve);mp.jumpTo({center:[c.lng+0.00008,c.lat+0.00004],zoom:mp.getZoom()+0.05})});
+            const tol=1e-6;
+            assert(snap.tier==='property',target.label+' wrong tier');
+            assert(snap.auditSettled,target.label+' science not settled true');
+            assert(snap.publicationCommitted&&snap.publicationSafe,target.label+' publication not committed/safe');
+            assert(snap.publicationSearchGen===snap.modelSearchGen,target.label+' publication generation mismatch');
+            assert(Math.abs(snap.target.lat-target.lat)<tol&&Math.abs(snap.target.lng-target.lng)<tol,target.label+' target moved');
+            assert(Math.abs(snap.declarationCenter.lat-target.lat)<tol&&Math.abs(snap.declarationCenter.lng-target.lng)<tol,target.label+' declaration center mismatch');
+            assert(snap.terrainStamp.includes('|18|'),target.label+' scientific frame is not zoom 18: '+snap.terrainStamp);
+            assert(snap.safeCount>0&&snap.safeParts>0,target.label+' no authoritative safe swales');
+            assert(snap.naturalCenterCount===snap.safeParts,target.label+' rendered swale part count mismatch');
+            assert(snap.renderedSwaleFp===snap.swaleFp,target.label+' rendered swale geometry differs from authoritative safe geometry');
+            assert(snap.waterCommitted&&snap.waterVerified,target.label+' water publication not verified');
+            assert(!snap.propertyClass&&!snap.propertyLatch&&snap.busy!=='1'&&snap.ariaBusy!=='true',target.label+' Property Orb/busy state did not clear');
+            assert(snap.sourceStateFingerprint&&snap.scientificInputFingerprint&&snap.noBuildMaskHash,target.label+' missing science fingerprints');
+            return snap;
+          }
+
+          function normalized(s){
+            return JSON.stringify({
+              target:s.target,
+              declarationCenter:s.declarationCenter,
+              terrainStamp:s.terrainStamp,
+              sourceStateFingerprint:s.sourceStateFingerprint,
+              scientificInputFingerprint:s.scientificInputFingerprint,
+              noBuildMaskHash:s.noBuildMaskHash,
+              safeCount:s.safeCount,safeParts:s.safeParts,swaleFp:s.swaleFp,
+              naturalCenterCount:s.naturalCenterCount,renderedSwaleFp:s.renderedSwaleFp,
+              waterCount:s.waterCount,waterFp:s.waterFp,
+              aquiferClass:s.aquiferClass,aquiferFp:s.aquiferFp,
+              elderSignature:s.elderSignature,
+              elderSources:s.elderSources,elderLayers:s.elderLayers,elderDomCount:s.elderDomCount
             });
-            await page.waitForTimeout(450);
-            const after=await snap();
-            console.log('M77_PROPERTY_AFTER_MOVE',JSON.stringify(after));
-            assert(after.runToken===before.runToken,'Camera motion changed displayed Property run token');
-            assert(after.modelSearchGen===before.modelSearchGen,'Camera motion changed Property search generation');
-            assert(after.swaleFp===before.swaleFp,'Camera motion changed authoritative swales');
-            assert(after.waterFp===before.waterFp,'Camera motion changed authoritative water');
-            if(before.naturalCenterCount>0&&after.naturalCenterCount>0)assert(after.renderedSwaleFp===before.renderedSwaleFp,'Camera motion changed rendered swale source');
+          }
+
+          async function runPoudre(){
+            const page=await openRegional('Colorado','POUDRE');
+            const t={label:'POUDRE',lat:40.6412,lng:-105.2237};
+            const rows=[];
+            for(let i=1;i<=5;i++)rows.push(await setTargetAndRun(page,t,i));
+            const sigs=rows.map(normalized);
+            assert(new Set(sigs).size===1,'POUDRE repeatability mismatch\n'+rows.map((r,i)=>'run'+(i+1)+' '+normalized(r)).join('\n'));
+            console.log('M77_REPEAT_PASS',JSON.stringify({label:'POUDRE',runs:5,swaleFp:rows[0].swaleFp,waterFp:rows[0].waterFp,aquifer:rows[0].aquiferClass,elderSignature:rows[0].elderSignature}));
             await page.close();
           }
 
+          async function runArizonaAlternating(){
+            const page=await openRegional('Arizona','ARIZONA');
+            const good={label:'AZ_GOOD',lat:34.21607,lng:-111.93178};
+            const bad={label:'AZ_BAD',lat:34.21605,lng:-111.93582};
+            const groups={AZ_GOOD:[],AZ_BAD:[]};
+            for(let i=1;i<=10;i++){
+              const t=i%2?good:bad;
+              const r=await setTargetAndRun(page,t,Math.ceil(i/2));
+              groups[t.label].push(r);
+            }
+            for(const label of ['AZ_GOOD','AZ_BAD']){
+              const rows=groups[label],sigs=rows.map(normalized);
+              assert(rows.length===5,label+' did not run five times');
+              assert(new Set(sigs).size===1,label+' repeatability mismatch\n'+rows.map((r,i)=>'run'+(i+1)+' '+normalized(r)).join('\n'));
+              console.log('M77_REPEAT_PASS',JSON.stringify({label,runs:5,swaleFp:rows[0].swaleFp,waterFp:rows[0].waterFp,aquifer:rows[0].aquiferClass,elderSignature:rows[0].elderSignature}));
+            }
+            assert(groups.AZ_GOOD[0].terrainStamp!==groups.AZ_BAD[0].terrainStamp,'Arizona nearby controls reused the same terrain frame');
+            assert(groups.AZ_GOOD[0].swaleFp!==groups.AZ_BAD[0].swaleFp,'Arizona nearby controls incorrectly reused identical swale geometry');
+            await page.close();
+          }
+
+          await runPoudre();
+          await runArizonaAlternating();
           await browser.close();
-          console.log('M77_GATE1_PRODUCTION_SMOKE_OK');
+          console.log('M77_GATE4_REPEATABILITY_OK');
           JS
-          node m77-gate1.mjs
+
+          node m77-repeatability.mjs
