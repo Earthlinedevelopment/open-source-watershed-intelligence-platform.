@@ -1,0 +1,33 @@
+name: Earthline M76 Core Owner Census
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-core-owner-census.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Census core owners
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "LIVE_SHA=$(git rev-parse HEAD)"
+          echo "BYTES=$(wc -c < index.html)"
+          echo "SCRIPT_TAGS=$(grep -oi '<script' index.html | wc -l)"
+          for p in             'authoritativeSafeSwales15815'             'propertyPublication15816'             'earthline-property-swale-natural'             'earthline-property-water'             'water-path'             'primePropertyEvidence'             'startProperty'             'ELDER_TREES'             'loadAquifers'             'usgsAquifer'             'aquiferFill'             'setRegionalTerminal16539'             'earthlineRunState'             'positionMenu16201'             'positionSuggestions16233'
+          do
+            printf '%s=' "$p"
+            grep -F -c "$p" index.html || true
+          done
+          echo '=== SWALE OWNERS ==='
+          grep -n -E 'authoritativeSafeSwales15815|swale-natural|swale-neutral|swale.*renderer|renderer.*swale' index.html | head -120 || true
+          echo '=== WATER OWNERS ==='
+          grep -n -Ei 'property.*water|water.*property|water-path|flow.*renderer|renderer.*flow' index.html | head -160 || true
+          echo '=== ELDER OWNERS ==='
+          grep -n -E 'primePropertyEvidence|startProperty|ELDER_TREES|Elder' index.html | head -160 || true
+          echo '=== AQUIFER OWNERS ==='
+          grep -n -Ei 'loadAquifers|usgsAquifer|aquiferFill|aquifer.*renderer|renderer.*aquifer' index.html | head -180 || true
