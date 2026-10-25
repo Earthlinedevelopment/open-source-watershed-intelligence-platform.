@@ -1,0 +1,32 @@
+name: Earthline M76 Layer Ownership Audit
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-layer-ownership-audit.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Exact ownership
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== WATER ==='
+          grep -n -E 'BUILD-CHECK-15824|authoritative.*water|property.*water.*path|water.*renderer|flow.*renderer|EARTHLINE.*WATER|directional-water-paths' index.html | head -140 || true
+          echo '=== ELDERS ==='
+          grep -n -E 'EARTHLINE_ELDER_TREES|function .*startProperty|startProperty\(|primePropertyEvidence' index.html | head -120 || true
+          echo '=== AQUIFER LIFECYCLE ==='
+          grep -n -E 'function fetchUSGSAquifers|fetchUSGSAquifers\(|syncAquifer|EARTHLINE_AQUIFER_SOURCE|PROPERTY.*AQUIFER|AQUIFER.*AUDIT' index.html | head -180 || true
+          echo '=== EXACT LISTENERS ==='
+          grep -n -E "addEventListener\(['\"]earthline:analysis-complete|\.on\(['\"]styledata|\.on\(['\"]style.load|\.on\(['\"]idle|\.once\(['\"]idle" index.html | head -180 || true
+          echo '=== EXACT COUNTS ==='
+          printf 'analysis_complete_listeners='; grep -E "addEventListener\(['\"]earthline:analysis-complete" index.html | wc -l
+          printf 'styledata_on='; grep -E "\.on\(['\"]styledata" index.html | wc -l
+          printf 'styleload_on='; grep -E "\.on\(['\"]style.load" index.html | wc -l
+          printf 'idle_on='; grep -E "\.(on|once)\(['\"]idle" index.html | wc -l
+          printf 'elder_start_calls='; grep -o 'startProperty(' index.html | wc -l
+          printf 'fetchUSGSAquifers_calls='; grep -o 'fetchUSGSAquifers(' index.html | wc -l
