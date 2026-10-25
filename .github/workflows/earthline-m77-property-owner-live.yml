@@ -1,4 +1,4 @@
-name: Earthline M77 Property Owner Validation
+name: Earthline M77 Gate 1 Production Smoke
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  validate-pages-live:
+  gate1-production:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -18,43 +18,199 @@ jobs:
           ref: pages-live
           fetch-depth: 0
 
-      - name: Validate exact M77 live owner consolidation
+      - name: Verify exact production bytes
         shell: bash
         run: |
           set -euo pipefail
           EXPECTED="28c19b3f792d9a2ee3936bd19b26e413e9427115"
-          ACTUAL="$(git rev-parse HEAD)"
-          test "$ACTUAL" = "$EXPECTED"
+          test "$(git rev-parse HEAD)" = "$EXPECTED"
+          BRANCH_SHA="$(sha256sum index.html | awk '{print $1}')"
+          echo "BRANCH_SHA=$BRANCH_SHA"
+          matched=0
+          for i in $(seq 1 20); do
+            url="https://earthlinedevelopment.org/?m77bytes=$(date +%s)-$i"
+            if curl -fsSL --max-time 30 -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' "$url" -o /tmp/prod.html; then
+              PROD_SHA="$(sha256sum /tmp/prod.html | awk '{print $1}')"
+              echo "attempt=$i PROD_SHA=$PROD_SHA bytes=$(wc -c </tmp/prod.html)"
+              if cmp -s /tmp/prod.html index.html; then matched=1; break; fi
+            fi
+            sleep 2
+          done
+          test "$matched" = "1"
+          grep -Fq "EARTHLINE M77 — canonical Property publication gets one deterministic swale delivery" /tmp/prod.html
+          grep -Fq "async texture preparation may finish after a tier/run transition" /tmp/prod.html
+          echo "M77_PRODUCTION_BYTES_MATCH"
 
-          python3 <<'PY'
-          from pathlib import Path
-          s=Path("index.html").read_text(encoding="utf-8")
-          checks={
-            "M77 markers": s.count("EARTHLINE M77") == 2,
-            "strong same-run Property guard": s.count("pubGen===currentGen&&(!Number.isFinite(displayedGen)||displayedGen===currentGen)") == 1,
-            "old weak Property guard retired": "function propertyActive(){const s=state(),m=model();return !!(m&&m.analysisReady&&s.mode==='property'&&!s.active)}" not in s,
-            "delayed swale retry ladder retired": "[60,180,480,1100,2200]" not in s,
-            "camera-motion texture republish retired": "['load','style.load','zoomend','moveend','rotateend','pitchend']" not in s,
-            "post-await identity recheck": s.count("currentDisplayedM77") >= 2,
-            "analysis-complete guarded sync": "earthline:analysis-complete',()=>{void syncTexture('analysis-complete')" in s,
-            "single deterministic delivery": s.count("return attempt(0);") == 1,
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - run: npm install playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+
+      - name: Reproduce Regional and Property live paths
+        shell: bash
+        run: |
+          cat > m77-gate1.mjs <<'JS'
+          import { chromium } from 'playwright';
+
+          const browser=await chromium.launch({headless:true});
+
+          function assert(ok,msg){if(!ok)throw new Error(msg)}
+          const fp=fc=>{
+            const parts=[];
+            for(const f of (fc?.features||[])){
+              const g=f?.geometry||{};
+              if(g.type==='LineString')parts.push(g.coordinates);
+              else if(g.type==='MultiLineString')for(const p of (g.coordinates||[]))parts.push(p);
+            }
+            const text=JSON.stringify(parts);
+            let h=2166136261>>>0;
+            for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619)>>>0}
+            return h.toString(16).padStart(8,'0');
+          };
+
+          // Exact human-style Regional path: type, leave suggestions open, click Run.
+          {
+            const page=await browser.newPage({viewport:{width:1440,height:1000}});
+            page.on('console',m=>console.log('REGIONAL_PAGE',m.type(),m.text()));
+            await page.goto('https://earthlinedevelopment.org/?m77regional='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#searchInput',{timeout:30000});
+            await page.fill('#searchInput','Vermont');
+            await page.waitForSelector('#earthlineSearchSuggestions15970 button',{timeout:15000});
+            const boxes=await page.evaluate(()=>{
+              const rr=e=>{const r=e?.getBoundingClientRect();return r?{l:r.left,t:r.top,r:r.right,b:r.bottom}:null};
+              return {run:rr(document.getElementById('runBtn')),menu:rr(document.getElementById('earthlineSearchSuggestions15970'))};
+            });
+            if(boxes.menu&&boxes.run){
+              const overlap=!(boxes.menu.t>=boxes.run.b||boxes.menu.b<=boxes.run.t||boxes.menu.l>=boxes.run.r||boxes.menu.r<=boxes.run.l);
+              assert(!overlap,'Regional suggestions overlap Run Analysis');
+            }
+            await page.click('#runBtn');
+            await page.waitForFunction(()=>{
+              const r=document.documentElement;
+              const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||null;
+              const tier=String(d&&(d.tier||d.mode)||'').toLowerCase();
+              return r.dataset.earthlineRunState==='published'&&(tier==='regional'||tier==='focus');
+            },null,{timeout:70000});
+            await page.waitForTimeout(750);
+            const a=await page.evaluate(()=>{
+              const root=document.documentElement,b=document.getElementById('runBtn');
+              const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||null;
+              return {
+                runState:root.dataset.earthlineRunState||'',
+                tier:String(d&&(d.tier||d.mode)||'').toLowerCase(),
+                runToken:String(d&&d.runToken||''),
+                regionalClass:root.classList.contains('earthline-regional-running-16233'),
+                regionalLatch:root.classList.contains('earthline-regional-orb-latched-16244'),
+                busy:b?.dataset?.busy||'', ariaBusy:b?.getAttribute('aria-busy')||'', disabled:!!b?.disabled,
+                terminal:window.EARTHLINE_REGIONAL_TERMINAL_16539||null,
+                publication:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null
+              };
+            });
+            console.log('M77_REGIONAL',JSON.stringify(a));
+            assert(a.runState==='published','Regional not published');
+            assert(a.tier==='regional'||a.tier==='focus','Regional wrong tier '+a.tier);
+            assert(!a.regionalClass&&!a.regionalLatch,'Regional Orb latched');
+            assert(a.busy!=='1'&&a.ariaBusy!=='true'&&!a.disabled,'Regional button busy');
+            assert(!!a.runToken,'Regional displayed run token missing');
+            await page.close();
           }
-          bad=[k for k,v in checks.items() if not v]
-          print(checks)
-          if bad:
-              raise SystemExit("M77 validation failed: "+", ".join(bad))
-          PY
 
-          node - <<'NODE'
-          const fs=require('fs');
-          const s=fs.readFileSync('index.html','utf8');
-          let n=0;
-          for(const m of s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)){
-            if(!m[1].trim()) continue;
-            new Function(m[1]);
-            n++;
+          // Existing governed live Property path, now with final source/run identity checks.
+          {
+            const page=await browser.newPage({viewport:{width:1440,height:1000}});
+            page.on('console',m=>console.log('PROPERTY_PAGE',m.type(),m.text()));
+            await page.goto('https://earthlinedevelopment.org/?m77property='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#searchInput',{timeout:30000});
+            await page.fill('#searchInput','Poudre Foothills Parcel Colorado');
+            await page.waitForTimeout(250);
+            await page.click('#runBtn');
+            await page.waitForFunction(()=>{
+              const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+              const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+              return !!(a&&a.settled===true&&String(d&&(d.tier||d.mode)||'').toLowerCase()==='property');
+            },null,{timeout:70000});
+            await page.waitForTimeout(900);
+
+            const snap=async()=>page.evaluate(()=>{
+              const root=document.documentElement;
+              const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+              const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+              const m=(typeof M!=='undefined'?M:null);
+              const b=document.getElementById('earthlineDeclareProperty16169');
+              const mp=window.earthlineMap||null;
+              const nat=mp?.getSource?.('earthline-property-swale-texture-16174')?._data||null;
+              const safe=m?.authoritativeSafeSwales15815||{type:'FeatureCollection',features:[]};
+              const water=m?.authoritativeWaterPaths15824||{type:'FeatureCollection',features:[]};
+              const centerFC={type:'FeatureCollection',features:(nat?.features||[]).filter(f=>f?.properties?.geometry_role==='centerline')};
+              const parts=fc=>{const out=[];for(const f of (fc?.features||[])){const g=f?.geometry||{};if(g.type==='LineString')out.push(g.coordinates);else if(g.type==='MultiLineString')for(const p of (g.coordinates||[]))out.push(p)}return out};
+              const hash=fc=>{const text=JSON.stringify(parts(fc));let h=2166136261>>>0;for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619)>>>0}return h.toString(16).padStart(8,'0')};
+              return {
+                propertyState:root.dataset.earthlinePropertyRunState||'',
+                propertyClass:root.classList.contains('earthline-property-running-16233'),
+                propertyLatch:root.classList.contains('earthline-property-orb-latched-16244'),
+                busy:b?.dataset?.busy||'',ariaBusy:b?.getAttribute('aria-busy')||'',
+                tier:String(d&&(d.tier||d.mode)||'').toLowerCase(),
+                runToken:String(d&&d.runToken||''),
+                displayedSearchGen:Number(d?.propertyPublication?.searchGen),
+                modelSearchGen:Number(m?.searchGen),
+                publicationSearchGen:Number(m?.propertyPublication15816?.searchGen),
+                publicationCommitted:m?.propertyPublication15816?.committed===true,
+                publicationSafe:m?.propertyPublication15816?.safetyVerified===true,
+                terrainStamp:String(m?.terrainStamp||''),
+                safeCount:Number(safe?.features?.length||0),
+                safeParts:parts(safe).length,
+                swaleFp:hash(safe),
+                naturalCenterCount:Number(centerFC.features.length||0),
+                renderedSwaleFp:hash(centerFC),
+                waterCount:Number(water?.features?.length||0),
+                waterFp:hash(water),
+                waterPublication:m?.authoritativeWaterPublication15824||null,
+                waterRenderer:m?.directWaterRenderer15824||null,
+                textureAudit:window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null,
+                safeAudit:window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null,
+                audit:a
+              };
+            });
+
+            const before=await snap();
+            console.log('M77_PROPERTY_BEFORE_MOVE',JSON.stringify(before));
+            assert(before.tier==='property','Property wrong tier');
+            assert(before.audit?.scientificSettled===true&&before.audit?.scientificResult===true,'Property science not settled true');
+            assert(!before.propertyClass&&!before.propertyLatch,'Property Orb latched');
+            assert(before.busy!=='1'&&before.ariaBusy!=='true','Property button busy');
+            assert(before.publicationCommitted&&before.publicationSafe,'Property publication not committed/safe');
+            assert(Number.isFinite(before.modelSearchGen)&&before.publicationSearchGen===before.modelSearchGen,'Property publication generation mismatch');
+            assert(!Number.isFinite(before.displayedSearchGen)||before.displayedSearchGen===before.modelSearchGen,'Displayed Property generation mismatch');
+            assert(before.safeCount>0,'No authoritative safe swales');
+            assert(before.waterCount>0,'No authoritative Property water');
+            assert(before.waterPublication?.committed===true&&before.waterPublication?.verified===true,'Water publication not verified');
+            if(before.naturalCenterCount>0){
+              assert(before.naturalCenterCount===before.safeParts,'Natural swale source part count mismatch');
+              assert(before.renderedSwaleFp===before.swaleFp,'Natural swale source geometry differs from authoritative safe geometry');
+            }else{
+              assert(before.safeAudit?.ok===true||before.safeAudit?.verified===true,'Neither natural nor safe fallback swale presentation verified');
+            }
+
+            // Camera motion must not republish or change the scientific run.
+            await page.evaluate(async()=>{
+              const mp=window.earthlineMap;
+              const c=mp.getCenter();
+              await new Promise(resolve=>{mp.once('moveend',resolve);mp.jumpTo({center:[c.lng+0.00008,c.lat+0.00004],zoom:mp.getZoom()+0.05})});
+            });
+            await page.waitForTimeout(450);
+            const after=await snap();
+            console.log('M77_PROPERTY_AFTER_MOVE',JSON.stringify(after));
+            assert(after.runToken===before.runToken,'Camera motion changed displayed Property run token');
+            assert(after.modelSearchGen===before.modelSearchGen,'Camera motion changed Property search generation');
+            assert(after.swaleFp===before.swaleFp,'Camera motion changed authoritative swales');
+            assert(after.waterFp===before.waterFp,'Camera motion changed authoritative water');
+            if(before.naturalCenterCount>0&&after.naturalCenterCount>0)assert(after.renderedSwaleFp===before.renderedSwaleFp,'Camera motion changed rendered swale source');
+            await page.close();
           }
-          console.log('M77_INLINE_SCRIPT_PARSE_OK',n);
-          NODE
 
-          git diff --check
+          await browser.close();
+          console.log('M77_GATE1_PRODUCTION_SMOKE_OK');
+          JS
+          node m77-gate1.mjs
