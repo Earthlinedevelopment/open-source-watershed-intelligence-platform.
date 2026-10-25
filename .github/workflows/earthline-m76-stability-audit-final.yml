@@ -1,0 +1,37 @@
+name: Earthline M76 Stability Audit Final
+on:
+  push:
+    branches: [recovery/mantra76-audit-restart]
+    paths:
+      - '.github/workflows/earthline-m76-stability-audit-final.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Count authoritative owners and live layer contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== SWALE OWNERS ==='
+          grep -n -E 'authoritativeSafeSwales15815|authoritativeSwaleData15792|propertyResultLock15815|safetyAudit15806' index.html | head -180 || true
+          echo '=== WATER OWNERS ==='
+          grep -n -E 'water.?path|runoff|flow accumulation|directional-water-paths|earthline.*flow' index.html | head -220 || true
+          echo '=== ELDER OWNERS ==='
+          grep -n -E 'ELDER|Elder|elder' index.html | head -220 || true
+          echo '=== AQUIFER OWNERS ==='
+          grep -n -E 'aquifer|AQUIFER|groundwater evidence|nearby wells' index.html | head -260 || true
+          echo '=== PUBLICATION / TERMINAL OWNERS ==='
+          grep -n -E 'DISPLAYED_RUN|setRegionalTerminal16539|PROPERTY_RUN_AUDIT|propertyPublication|earthlineRunState|earthlinePropertyRunState' index.html | head -260 || true
+          echo '=== OWNER COUNTS ==='
+          printf 'authoritativeSafeSwales='; grep -o 'authoritativeSafeSwales15815' index.html | wc -l
+          printf 'propertyResultLock='; grep -o 'propertyResultLock15815' index.html | wc -l
+          printf 'safetyAudit='; grep -o 'safetyAudit15806' index.html | wc -l
+          printf 'regionalTerminal='; grep -o 'setRegionalTerminal16539' index.html | wc -l
+          printf 'analysisCompleteListeners='; grep -o "earthline:analysis-complete" index.html | wc -l
+          printf 'styledataListeners='; grep -o "styledata" index.html | wc -l
+          printf 'idleListeners='; grep -o "once('idle'\|on('idle'" index.html | wc -l
+          printf 'elderStartProperty='; grep -o 'startProperty' index.html | wc -l
+          printf 'aquiferLayerRefs='; grep -oi 'aquifer' index.html | wc -l
