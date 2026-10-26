@@ -9,10 +9,10 @@ const started=Date.now();let error=null,timeout=false;
 try{
  await page.goto('https://earthlinedevelopment.org/?m78_quick='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
  await page.waitForSelector('#searchInput',{timeout:30000});
- await page.waitForFunction(()=>!!(window.earthlineMap&&typeof window.earthlineMap.jumpTo==='function'&&typeof window.earthlineSyncPropertyTargetFromMap16201==='function'&&document.getElementById('runBtn')),{timeout:30000});
- await page.evaluate(({lng,lat})=>{const m=window.earthlineMap;m.jumpTo({center:[lng,lat],zoom:18,bearing:0,pitch:0});const i=document.getElementById('searchInput');if(i){i.value='';i.dispatchEvent(new Event('input',{bubbles:true}));}},c);
+ await page.waitForFunction(()=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);return !!(m&&typeof m.jumpTo==='function'&&typeof window.earthlineSyncPropertyTargetFromMap16201==='function'&&document.getElementById('runBtn'));},{timeout:30000});
+ await page.evaluate(({lng,lat})=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);m.jumpTo({center:[lng,lat],zoom:18,bearing:0,pitch:0});const i=document.getElementById('searchInput');if(i){i.value='';i.dispatchEvent(new Event('input',{bubbles:true}));}},c);
  await page.waitForTimeout(900);
- const prep=await page.evaluate(()=>({sync:window.earthlineSyncPropertyTargetFromMap16201(),target:window.EARTHLINE_PROPERTY_TARGET_16201||null,zoom:window.earthlineMap.getZoom(),center:window.earthlineMap.getCenter()}));
+ const prep=await page.evaluate(()=>({sync:window.earthlineSyncPropertyTargetFromMap16201(),target:window.EARTHLINE_PROPERTY_TARGET_16201||null,zoom:(window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)).getZoom(),center:(window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)).getCenter()}));
  console.log('M78_QUICK_PREP '+JSON.stringify(prep));
  await page.evaluate(()=>document.getElementById('runBtn')?.click());
  try{await page.waitForFunction(()=>{const r=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;return !!(r&&r.settled===true)||!!window.EARTHLINE_PROPERTY_PUBLICATION_BLOCK_16176;},{timeout:70000,polling:100});}catch(_){timeout=true;}
