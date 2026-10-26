@@ -54,39 +54,33 @@ jobs:
 
           # EARTHLINE M78.2 — external exclusion evidence may never consume
           # Earthline's own generated map layers from a prior Property run.
-          layer_anchor='''        const id=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();'''
-          layer_repl='''        const earthlineOwnedM782=/^earthline-/.test(String(l.id||"").toLowerCase())||/^earthline-/.test(String(l.source||"").toLowerCase());
-        if(earthlineOwnedM782)return false; /* EARTHLINE M78.2 — internal render products are not external exclusion evidence. */
-        const id=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();'''
+          layer_anchor='        const id=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();'
+          layer_repl=('        const earthlineOwnedM782=/^earthline-/.test(String(l.id||"").toLowerCase())||/^earthline-/.test(String(l.source||"").toLowerCase());\\n'
+                      '        if(earthlineOwnedM782)return false; /* EARTHLINE M78.2 — internal render products are not external exclusion evidence. */\\n'
+                      '        const id=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();')
           if "EARTHLINE M78.2 — internal render products are not external exclusion evidence." not in s:
               if s.count(layer_anchor)!=2:
                   raise SystemExit(f"external exclusion style anchor count={s.count(layer_anchor)}")
               s=s.replace(layer_anchor,layer_repl)
 
-          cls_anchor='''  const layerText=(layerId+" "+sourceLayer).trim();
-  const propText=propValues.join(" ");
-  const cls=(layerText+" "+propText).trim();
-
-  const railOrFerry='''
-          cls_repl='''  const layerText=(layerId+" "+sourceLayer).trim();
-  const propText=propValues.join(" ");
-  const cls=(layerText+" "+propText).trim();
-  const sourceId=String(f&&f.source||"").toLowerCase();
-  const earthlineOwnedM782=/^earthline-/.test(layerId)||/^earthline-/.test(sourceId); /* EARTHLINE M78.2 — fail closed against self-generated exclusions. */
-
-  const railOrFerry='''
+          cls_anchor=('  const layerText=(layerId+" "+sourceLayer).trim();\\n'
+                      '  const propText=propValues.join(" ");\\n'
+                      '  const cls=(layerText+" "+propText).trim();\\n\\n'
+                      '  const railOrFerry=')
+          cls_repl=('  const layerText=(layerId+" "+sourceLayer).trim();\\n'
+                    '  const propText=propValues.join(" ");\\n'
+                    '  const cls=(layerText+" "+propText).trim();\\n'
+                    '  const sourceId=String(f&&f.source||"").toLowerCase();\\n'
+                    '  const earthlineOwnedM782=/^earthline-/.test(layerId)||/^earthline-/.test(sourceId); /* EARTHLINE M78.2 — fail closed against self-generated exclusions. */\\n\\n'
+                    '  const railOrFerry=')
           if "fail closed against self-generated exclusions" not in s:
               if s.count(cls_anchor)!=1:
                   raise SystemExit(f"feature classifier anchor count={s.count(cls_anchor)}")
               s=s.replace(cls_anchor,cls_repl,1)
-              s=s.replace('''  const parking=/parking|parking_aisle/.test(cls);
-  const buildingLayer=''','''  const parking=!earthlineOwnedM782&&/parking|parking_aisle/.test(cls);
-  const buildingLayer=''',1)
-              s=s.replace('''  const road=!railOrFerry&&(roadLayer||roadProperty||parking);
-  const building=buildingLayer||buildingProperty;
-  const water=waterLayer||waterProperty;''','''  const road=!earthlineOwnedM782&&!railOrFerry&&(roadLayer||roadProperty||parking);
-  const building=!earthlineOwnedM782&&(buildingLayer||buildingProperty);
-  const water=!earthlineOwnedM782&&(waterLayer||waterProperty);''',1)
+              s=s.replace('  const parking=/parking|parking_aisle/.test(cls);\\n  const buildingLayer=',
+                            '  const parking=!earthlineOwnedM782&&/parking|parking_aisle/.test(cls);\\n  const buildingLayer=',1)
+              s=s.replace('  const road=!railOrFerry&&(roadLayer||roadProperty||parking);\\n  const building=buildingLayer||buildingProperty;\\n  const water=waterLayer||waterProperty;',
+                            '  const road=!earthlineOwnedM782&&!railOrFerry&&(roadLayer||roadProperty||parking);\\n  const building=!earthlineOwnedM782&&(buildingLayer||buildingProperty);\\n  const water=!earthlineOwnedM782&&(waterLayer||waterProperty);',1)
 
           if s.count("EARTHLINE M78.2 — internal render products are not external exclusion evidence.")!=2:
               raise SystemExit("M78.2 style-owner marker count wrong")
