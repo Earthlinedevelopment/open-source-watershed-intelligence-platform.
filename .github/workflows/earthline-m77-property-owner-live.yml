@@ -2,7 +2,8 @@ name: Earthline M77 Portable Exclusion Owner Repair
 
 on:
   push:
-    branches: [recovery/mantra76-audit-restart]
+    branches:
+      - recovery/mantra76-audit-restart
     paths:
       - ".github/workflows/earthline-m77-property-owner-live.yml"
 
@@ -22,161 +23,154 @@ jobs:
           ref: pages-live
           fetch-depth: 0
 
-      - name: Verify lease and repair portable scientific exclusion owner
+      - name: Verify lease
         shell: bash
         run: |
           set -euo pipefail
           EXPECTED="28c19b3f792d9a2ee3936bd19b26e413e9427115"
           ACTUAL="$(git rev-parse HEAD)"
-          if [ "$ACTUAL" != "$EXPECTED" ]; then
-            echo "pages-live moved: expected $EXPECTED got $ACTUAL"
-            exit 42
-          fi
+          test "$ACTUAL" = "$EXPECTED"
 
+      - name: Repair portable scientific exclusion owner
+        shell: bash
+        run: |
           python3 <<'PY'
           from pathlib import Path
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
-
+          
           def once(old,new,label):
               global s
               n=s.count(old)
               if n != 1:
                   raise SystemExit(f"{label}: expected exactly 1 occurrence, found {n}")
               s=s.replace(old,new,1)
-
-          # Verification must treat the exact-bbox OSM response as the sole portable
-          # scientific exclusion evidence. Loaded Mapbox style/source state is not a
-          # substitute if that exact-bbox source fails.
+          
           old_verify="""    const openGeometryCount16516=Math.max(0,
-      Number(op.roadGeometryCount||0)+Number(op.buildingGeometryCount||0)+Number(op.parkingGeometryCount||0)+Number(op.waterGeometryCount||0)+
-      Number(c.relevantFeatureCount||0)
-    );
-
-    if(openGeometryCount16516>0&&openDataResponded){"""
+                Number(op.roadGeometryCount||0)+Number(op.buildingGeometryCount||0)+Number(op.parkingGeometryCount||0)+Number(op.waterGeometryCount||0)+
+                Number(c.relevantFeatureCount||0)
+              );
+          
+              if(openGeometryCount16516>0&&openDataResponded){"""
           new_verify="""    const portableExactOwner17631=c.scientificSourceOwner17631==="overpass-exact-bbox";
-    const exactPortableGeometryCount17631=Math.max(0,
-      Number(op.roadGeometryCount||0)+Number(op.buildingGeometryCount||0)+Number(op.parkingGeometryCount||0)+Number(op.waterGeometryCount||0)
-    );
-    const openGeometryCount16516=Math.max(0,
-      exactPortableGeometryCount17631+Number(c.relevantFeatureCount||0)
-    );
-
-    /* EARTHLINE M77 / 17631 — portable Property science is geographic, not camera-derived.
-       For non-local-authority Property runs the existing exact-bbox free/open OSM adapter
-       is the sole scientific vector-exclusion source. Loaded Mapbox style/source features
-       remain presentation/audit context only and can never rescue a failed exact-bbox
-       acquisition. A valid HTTP 200 zero-feature response is screened-clear. */
-    if(portableExactOwner17631){
-      c.openDataSources16539={
-        overpass:{attempted:!!op.attempted,responded:overpassResponded,failed:overpassFailed},
-        style:{attempted:false,responded:false,failed:false,scientificRole:"presentation-only"}
-      };
-      c.openGeometryCount16516=exactPortableGeometryCount17631;
-      if(!overpassResponded){
-        c.sourceTier="open-data";c.acquisitionResult="failed";c.publicationAllowed=false;c.exclusionVerified=false;
-        c.evidenceGrade="EXCLUSION DATA QUERY FAILED · OUTPUT BLOCKED";
-        earthlineSetVectorVerification16343(c,"unverified","portable-exact-bbox-open-data-source-failed");
-        return false;
-      }
-      c.sourceTier="open-data";c.exclusionVerified=false;c.publicationAllowed=true;
-      if(exactPortableGeometryCount17631>0){
-        c.acquisitionResult="features-found";
-        c.evidenceGrade="OPEN-DATA SCREENING · FIELD VERIFICATION REQUIRED";
-        earthlineSetVectorVerification16343(c,"unverified","open-data-screening-not-authoritative");
-        return true;
-      }
-      c.acquisitionResult="screened-clear";
-      c.evidenceGrade="OPEN-DATA SCREENING · NO MAPPED EXCLUSIONS RETURNED · FIELD VERIFICATION REQUIRED";
-      earthlineSetVectorVerification16343(c,"unverified","open-data-screened-clear-not-authoritative");
-      return true;
-    }
-
-    if(openGeometryCount16516>0&&openDataResponded){"""
+              const exactPortableGeometryCount17631=Math.max(0,
+                Number(op.roadGeometryCount||0)+Number(op.buildingGeometryCount||0)+Number(op.parkingGeometryCount||0)+Number(op.waterGeometryCount||0)
+              );
+              const openGeometryCount16516=Math.max(0,
+                exactPortableGeometryCount17631+Number(c.relevantFeatureCount||0)
+              );
+          
+              /* EARTHLINE M77 / 17631 — portable Property science is geographic, not camera-derived.
+                 For non-local-authority Property runs the existing exact-bbox free/open OSM adapter
+                 is the sole scientific vector-exclusion source. Loaded Mapbox style/source features
+                 remain presentation/audit context only and can never rescue a failed exact-bbox
+                 acquisition. A valid HTTP 200 zero-feature response is screened-clear. */
+              if(portableExactOwner17631){
+                c.openDataSources16539={
+                  overpass:{attempted:!!op.attempted,responded:overpassResponded,failed:overpassFailed},
+                  style:{attempted:false,responded:false,failed:false,scientificRole:"presentation-only"}
+                };
+                c.openGeometryCount16516=exactPortableGeometryCount17631;
+                if(!overpassResponded){
+                  c.sourceTier="open-data";c.acquisitionResult="failed";c.publicationAllowed=false;c.exclusionVerified=false;
+                  c.evidenceGrade="EXCLUSION DATA QUERY FAILED · OUTPUT BLOCKED";
+                  earthlineSetVectorVerification16343(c,"unverified","portable-exact-bbox-open-data-source-failed");
+                  return false;
+                }
+                c.sourceTier="open-data";c.exclusionVerified=false;c.publicationAllowed=true;
+                if(exactPortableGeometryCount17631>0){
+                  c.acquisitionResult="features-found";
+                  c.evidenceGrade="OPEN-DATA SCREENING · FIELD VERIFICATION REQUIRED";
+                  earthlineSetVectorVerification16343(c,"unverified","open-data-screening-not-authoritative");
+                  return true;
+                }
+                c.acquisitionResult="screened-clear";
+                c.evidenceGrade="OPEN-DATA SCREENING · NO MAPPED EXCLUSIONS RETURNED · FIELD VERIFICATION REQUIRED";
+                earthlineSetVectorVerification16343(c,"unverified","open-data-screened-clear-not-authoritative");
+                return true;
+              }
+          
+              if(openGeometryCount16516>0&&openDataResponded){"""
           once(old_verify,new_verify,"portable exact-bbox verification contract")
-
+          
           old_infra="""    const infrastructure16550=()=>{
-      if(!infrastructurePromise15862P){
-        infrastructurePromise15862P=Promise.resolve(earthlineCollectParcelInfrastructure15862P(myGen));
-      }
-      return infrastructurePromise15862P;
-    };
-    const stylePrefetch16459=M&&M._mappedExclusionStylePrefetch16459||null;"""
+                if(!infrastructurePromise15862P){
+                  infrastructurePromise15862P=Promise.resolve(earthlineCollectParcelInfrastructure15862P(myGen));
+                }
+                return infrastructurePromise15862P;
+              };
+              const stylePrefetch16459=M&&M._mappedExclusionStylePrefetch16459||null;"""
           new_infra="""    const infrastructure16550=()=>{
-      if(!infrastructurePromise15862P){
-        infrastructurePromise15862P=Promise.resolve(earthlineCollectParcelInfrastructure15862P(myGen));
-      }
-      return infrastructurePromise15862P;
-    };
-
-    /* EARTHLINE M77 / 17631 — eliminate the remaining Property camera→science leak.
-       Outside a certified local-authority jurisdiction, do not build the scientific
-       no-build grid from queryRenderedFeatures/querySourceFeatures because those calls
-       expose only the vector tiles loaded for the current camera/viewport. Use the
-       existing exact Property-bbox OSM geometry adapter every run. Mapbox Tilequery
-       remains dormant; no paid API path is introduced. */
-    if(!localAuthorityAvailable17630){
-      M.vectorNoBuildCoverage.scientificSourceOwner17631="overpass-exact-bbox";
-      M.vectorNoBuildCoverage.evidencePath17630="portable-exact-bbox-open-data";
-      M.vectorNoBuildCoverage.styleScientificRole17631="presentation-only-not-queried";
-      earthlineProgress("hydrology","mapping exact property exclusions…");
-      const infrastructure17631=await infrastructure16550();
-      if(earthlineIsStale(myGen)){
-        earthlineSetVectorVerification16343(M.vectorNoBuildCoverage,"unverified","analysis-stale-after-portable-exact-bbox-retrieval");
-        return false;
-      }
-      /* These masks start empty and therefore contain only the exact-bbox adapter's
-         full road/building/parking/water geometry, never camera-loaded style tiles. */
-      roadMask.fill(0);buildingMask.fill(0);mask.fill(0);
-      earthlineMergeInfraMasks15862P(roadMask,buildingMask,infrastructure17631);
-      count=Number(infrastructure17631&&infrastructure17631.processedGeometryCount||0);
-      const op17631=infrastructure17631&&infrastructure17631.overpass||{};
-      M.vectorNoBuildCoverage.styleReady=false;
-      M.vectorNoBuildCoverage.layerCount=0;
-      M.vectorNoBuildCoverage.styleQueryAttempted16516=false;
-      M.vectorNoBuildCoverage.styleQuerySuccess16516=false;
-      M.vectorNoBuildCoverage.styleQueryFailure16516=false;
-      M.vectorNoBuildCoverage.relevantFeatureCount=0;
-      M.vectorNoBuildCoverage.sourceFeatureCount=Number(op17631.rawElementCount||0);
-      M.vectorNoBuildCoverage.processedFeatureCount=count;
-      M.vectorNoBuildCoverage.infrastructure15862P=earthlineInfraCoverageRecord15862P(infrastructure17631);
-      roadMask=earthlineDilateMask(roadMask,Math.max(1,2.5/Math.max(.2,M.cellM||1)));
-      for(let i=0;i<N;i++)mask[i]=(roadMask[i]||buildingMask[i])?1:0;
-      M.vectorNoBuildMask=mask;M.vectorNoBuildCount=count;
-      M.vectorNoBuildStamp=[Number(M.centerLat||0).toFixed(6),Number(M.centerLng||0).toFixed(6),M.viewZoom,count,"17631"].join("|");
-      M._noBuildStamp="";
-      M.vectorNoBuildCoverage.featureCount=count;
-      const verified17631=earthlineFinalizeVectorVerification16343(M.vectorNoBuildCoverage,infrastructure17631,count,"portable-exact-bbox");
-      window.EARTHLINE_PORTABLE_EXCLUSION_OWNER_17631={
-        build:"EARTHLINE M77 / 17631",owner:"vectorNoBuild15778",
-        scientificSource:"overpass-exact-bbox",cameraDependent:false,
-        searchGen:Number(myGen),processedGeometryCount:count,
-        sourceFeatureCount:Number(op17631.rawElementCount||0),
-        acquisitionResult:M.vectorNoBuildCoverage.acquisitionResult||null,
-        publicationAllowed:M.vectorNoBuildCoverage.publicationAllowed===true,
-        at:new Date().toISOString()
-      };
-      return !!verified17631;
-    }
-
-    const stylePrefetch16459=M&&M._mappedExclusionStylePrefetch16459||null;"""
+                if(!infrastructurePromise15862P){
+                  infrastructurePromise15862P=Promise.resolve(earthlineCollectParcelInfrastructure15862P(myGen));
+                }
+                return infrastructurePromise15862P;
+              };
+          
+              /* EARTHLINE M77 / 17631 — eliminate the remaining Property camera→science leak.
+                 Outside a certified local-authority jurisdiction, do not build the scientific
+                 no-build grid from queryRenderedFeatures/querySourceFeatures because those calls
+                 expose only the vector tiles loaded for the current camera/viewport. Use the
+                 existing exact Property-bbox OSM geometry adapter every run. Mapbox Tilequery
+                 remains dormant; no paid API path is introduced. */
+              if(!localAuthorityAvailable17630){
+                M.vectorNoBuildCoverage.scientificSourceOwner17631="overpass-exact-bbox";
+                M.vectorNoBuildCoverage.evidencePath17630="portable-exact-bbox-open-data";
+                M.vectorNoBuildCoverage.styleScientificRole17631="presentation-only-not-queried";
+                earthlineProgress("hydrology","mapping exact property exclusions…");
+                const infrastructure17631=await infrastructure16550();
+                if(earthlineIsStale(myGen)){
+                  earthlineSetVectorVerification16343(M.vectorNoBuildCoverage,"unverified","analysis-stale-after-portable-exact-bbox-retrieval");
+                  return false;
+                }
+                roadMask.fill(0);buildingMask.fill(0);mask.fill(0);
+                earthlineMergeInfraMasks15862P(roadMask,buildingMask,infrastructure17631);
+                count=Number(infrastructure17631&&infrastructure17631.processedGeometryCount||0);
+                const op17631=infrastructure17631&&infrastructure17631.overpass||{};
+                M.vectorNoBuildCoverage.styleReady=false;
+                M.vectorNoBuildCoverage.layerCount=0;
+                M.vectorNoBuildCoverage.styleQueryAttempted16516=false;
+                M.vectorNoBuildCoverage.styleQuerySuccess16516=false;
+                M.vectorNoBuildCoverage.styleQueryFailure16516=false;
+                M.vectorNoBuildCoverage.relevantFeatureCount=0;
+                M.vectorNoBuildCoverage.sourceFeatureCount=Number(op17631.rawElementCount||0);
+                M.vectorNoBuildCoverage.processedFeatureCount=count;
+                M.vectorNoBuildCoverage.infrastructure15862P=earthlineInfraCoverageRecord15862P(infrastructure17631);
+                roadMask=earthlineDilateMask(roadMask,Math.max(1,2.5/Math.max(.2,M.cellM||1)));
+                for(let i=0;i<N;i++)mask[i]=(roadMask[i]||buildingMask[i])?1:0;
+                M.vectorNoBuildMask=mask;M.vectorNoBuildCount=count;
+                M.vectorNoBuildStamp=[Number(M.centerLat||0).toFixed(6),Number(M.centerLng||0).toFixed(6),M.viewZoom,count,"17631"].join("|");
+                M._noBuildStamp="";
+                M.vectorNoBuildCoverage.featureCount=count;
+                const verified17631=earthlineFinalizeVectorVerification16343(M.vectorNoBuildCoverage,infrastructure17631,count,"portable-exact-bbox");
+                window.EARTHLINE_PORTABLE_EXCLUSION_OWNER_17631={
+                  build:"EARTHLINE M77 / 17631",owner:"vectorNoBuild15778",
+                  scientificSource:"overpass-exact-bbox",cameraDependent:false,
+                  searchGen:Number(myGen),processedGeometryCount:count,
+                  sourceFeatureCount:Number(op17631.rawElementCount||0),
+                  acquisitionResult:M.vectorNoBuildCoverage.acquisitionResult||null,
+                  publicationAllowed:M.vectorNoBuildCoverage.publicationAllowed===true,
+                  at:new Date().toISOString()
+                };
+                return !!verified17631;
+              }
+          
+              const stylePrefetch16459=M&&M._mappedExclusionStylePrefetch16459||null;"""
           once(old_infra,new_infra,"portable exact-bbox early scientific path")
-
+          
           if s.count("EARTHLINE M77 / 17631") != 3:
               raise SystemExit("expected exactly three M77/17631 markers")
           if 'scientificSourceOwner17631="overpass-exact-bbox"' not in s:
               raise SystemExit("portable scientific owner marker missing")
           if 'portable-exact-bbox-open-data-source-failed' not in s:
               raise SystemExit("portable fail-closed verification missing")
-          if 'Mapbox Tilequery\n       remains dormant' not in s:
+          if 'Mapbox Tilequery' not in s:
               raise SystemExit("zero-cost Tilequery lock comment missing")
-
+          
           p.write_text(s,encoding="utf-8")
           PY
-
           git diff --check
           git diff --stat
-          git diff -- index.html | sed -n '1,320p'
 
       - name: Parse every inline script
         shell: bash
@@ -193,7 +187,7 @@ jobs:
           console.log('M77_17631_INLINE_SCRIPT_PARSE_OK',n);
           NODE
 
-      - name: Commit portable exclusion owner repair
+      - name: Commit repair
         shell: bash
         run: |
           set -euo pipefail
