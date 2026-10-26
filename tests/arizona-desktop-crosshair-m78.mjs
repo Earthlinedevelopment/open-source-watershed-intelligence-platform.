@@ -7,7 +7,7 @@ const errs=[]; page.on('pageerror',e=>errs.push(String(e)));
 
 await page.goto('https://earthlinedevelopment.org/?m78_desktop_crosshair='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
 await page.waitForSelector('#searchInput',{timeout:25000});
-await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE M78.11 — one canonical owner per minor-flow cell')&&document.documentElement.innerHTML.includes('EARTHLINE M78.16 — resilient free global OSM transport with three current public instances')&&document.documentElement.innerHTML.includes('EARTHLINE M78.17 — clear prior Property presentation at authoritative run start')&&document.documentElement.innerHTML.includes('EARTHLINE M78.19 — loaded map evidence is the primary Property exclusion screen')&&document.documentElement.innerHTML.includes('EARTHLINE M78.22 — canonical five-decimal crosshair owns the Property analysis frame')&&document.documentElement.innerHTML.includes('earthline-launch-16872.js?v=17606'),{timeout:90000,polling:500});
+await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE M78.11 — one canonical owner per minor-flow cell')&&document.documentElement.innerHTML.includes('EARTHLINE M78.16 — resilient free global OSM transport with three current public instances')&&document.documentElement.innerHTML.includes('EARTHLINE M78.17 — clear prior Property presentation at authoritative run start')&&document.documentElement.innerHTML.includes('EARTHLINE M78.19 — loaded map evidence is the primary Property exclusion screen')&&document.documentElement.innerHTML.includes('EARTHLINE M78.22 — canonical five-decimal crosshair owns the Property analysis frame')&&document.documentElement.innerHTML.includes('earthline-launch-16872.js?v=17606'),undefined,{timeout:90000,polling:500});
 await page.waitForTimeout(1000);
 
 if(!await page.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'))){
@@ -173,3 +173,5 @@ if(!identityOk||!systemsOk||!routeDiffOk||!repeatOk)process.exitCode=1;
 // M78.21 exact desktop swale repeatability gate
 
 // M78.23 require canonical frame bytes before repeatability test
+
+// M78.24 correct production-identity wait timeout
