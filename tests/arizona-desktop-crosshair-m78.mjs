@@ -149,6 +149,7 @@ const first=await runHumanCrosshair(-111.93067,34.21568,'m78-desktop-first');
 const second=await runHumanCrosshair(-111.93347,34.21629,'m78-desktop-second');
 const firstRepeat=await runHumanCrosshair(-111.93067,34.21568,'m78-desktop-first-repeat');
 const secondRepeat=await runHumanCrosshair(-111.93347,34.21629,'m78-desktop-second-repeat');
+console.log('EARTHLINE_M78_PRESCRIBER_SOURCE '+await page.evaluate(()=>{try{return typeof prescribeSwales15778==='function'?String(prescribeSwales15778):'UNAVAILABLE'}catch(e){return 'ERROR '+String(e)}}));
 console.log('EARTHLINE_M78_DESKTOP_CROSSHAIR '+JSON.stringify({first,second,firstRepeat,secondRepeat,errs}));
 await browser.close();
 
@@ -221,3 +222,5 @@ if(!identityOk||!systemsOk||!routeDiffOk||!repeatOk)process.exitCode=1;
 // M78.20 diagnose unserved flow paths and rendered layer truth
 
 // M78.28 require deployed contour-start repair before diagnostics
+
+// M78.21 extract authoritative prescriber owner source
