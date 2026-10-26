@@ -5932,8 +5932,11 @@ function earthlineCellCrossesLevel(cx,cy,L){
   if(cx<0||cy<0||cx>=GW-1||cy>=GH-1)return false;
   const h00=M.h[idx(cx,cy)], h10=M.h[idx(cx+1,cy)],
         h01=M.h[idx(cx,cy+1)], h11=M.h[idx(cx+1,cy+1)];
-  const mn=Math.min(h00,h10,h01,h11), mx=Math.max(h00,h10,h01,h11);
-  return L>=mn && L<=mx && mx-mn>1e-7;
+  if(![h00,h10,h01,h11].every(Number.isFinite))return false;
+  const crosses=(a,b)=>(a<=L)!==(b<=L);
+  /* EARTHLINE M78.27 — contour start and marcher share one half-open crossing rule.
+     Do not accept a min/max-only cell that the marching tracer cannot actually exit. */
+  return crosses(h00,h10)||crosses(h10,h11)||crosses(h01,h11)||crosses(h00,h01);
 }
 
 let earthlineMajorChannelUnsafe16288=null,earthlineMajorChannelUnsafeKey16288="";
