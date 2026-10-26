@@ -1659,13 +1659,15 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   function propertyEvidenceCenter17543(){
     const target=window.EARTHLINE_PROPERTY_TARGET_16201||null;
     const declaration=window.EARTHLINE_PROPERTY_DECLARATION_16169||null;
-    const pending=String(window.EARTHLINE_ELDER_TREE_LAST_17097?.state||'')==='property-pending';
-    const running=String(document.documentElement.dataset.earthlinePropertyRunState||'')==='running';
+    const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
     const declaredLng=Number(declaration?.center?.lng),declaredLat=Number(declaration?.center?.lat);
-    if((pending||running)&&Number.isFinite(declaredLng)&&Number.isFinite(declaredLat))return {lng:declaredLng,lat:declaredLat,source:'property-declaration'};
+    /* EARTHLINE M78 — the accepted Property declaration owns Elder identity for
+       the entire Property lifecycle. Camera/target settle may move later; it may
+       never replace the declared 20-acre frame used by Elder computation. */
+    if(tier==='property'&&Number.isFinite(declaredLng)&&Number.isFinite(declaredLat))return {lng:declaredLng,lat:declaredLat,source:'property-declaration'};
     const lng=Number(target?.lng),lat=Number(target?.lat);
     return Number.isFinite(lng)&&Number.isFinite(lat)?{lng,lat,source:'property-target'}:null;
-  } /* EARTHLINE 17543 / M78 — pending Elder identity is anchored to the authoritative accepted Property declaration, not later map-settle target drift. EARTHLINE M78 — RESTORED FROZEN PROPERTY DECLARATION ELDER IDENTITY */
+  } /* EARTHLINE M78 — PROPERTY DECLARATION OWNS ELDER IDENTITY */
   function propertyBounds17166(){
     try{
       const center17543=propertyEvidenceCenter17543();
