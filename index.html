@@ -12001,8 +12001,12 @@ async function directGeocode(q){
     const openDataResponded=!!(overpassResponded||styleResponded);
     const openDataFailed=!!(overpassFailed||styleFailed);
     const zeroStyleFallbackRequiredM7812=c.evidencePath17630==="shared-style-zero-plus-infrastructure-fallback";
-    const effectiveOpenDataRespondedM7812=zeroStyleFallbackRequiredM7812?overpassResponded:openDataResponded;
-    const effectiveOpenDataFailedM7812=zeroStyleFallbackRequiredM7812?!overpassResponded:openDataFailed;
+    /* EARTHLINE M78.19 — loaded map evidence is the primary Property exclusion screen.
+       A successful loaded-style query is sufficient to publish as OPEN-DATA SCREENING
+       even when it returns zero relevant exclusions. External Overpass is enrichment,
+       never a publication dependency. */
+    const effectiveOpenDataRespondedM7812=!!(styleResponded||overpassResponded);
+    const effectiveOpenDataFailedM7812=!!(!effectiveOpenDataRespondedM7812&&(overpassFailed||styleFailed));
     const openGeometryCount16516=Math.max(0,
       Number(op.roadGeometryCount||0)+Number(op.buildingGeometryCount||0)+Number(op.parkingGeometryCount||0)+Number(op.waterGeometryCount||0)+
       Number(c.relevantFeatureCount||0)
