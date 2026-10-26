@@ -24,13 +24,8 @@ jobs:
           from pathlib import Path
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
-          old="""    if(naturalReady16221){
-      setSafeLayerVisibility16221(false);"""
-          new="""    /* EARTHLINE M78 — never hide authoritative safe swales merely because the
-       natural renderer's source/layers exist. Yield only after Mapbox confirms
-       that at least one natural swale feature is actually rendered. */
-    if(naturalReady16221 && naturalRendered16221>0){
-      setSafeLayerVisibility16221(false);"""
+          old="    if(naturalReady16221){\n      setSafeLayerVisibility16221(false);"
+          new="    /* EARTHLINE M78 — SAFE SWALE HANDOFF REQUIRES RENDERED NATURAL FEATURES */\n    if(naturalReady16221 && naturalRendered16221>0){\n      setSafeLayerVisibility16221(false);"
           if new not in s:
               if s.count(old)!=1:
                   raise SystemExit(f"safe swale handoff anchor count={s.count(old)}")
