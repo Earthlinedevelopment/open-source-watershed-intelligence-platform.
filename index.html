@@ -11775,9 +11775,10 @@ async function directGeocode(q){
       'way["water"]('+bbox+');relation["water"]('+bbox+');'+
       ');out geom;';
     const endpoints=[
+      {url:"https://overpass-api.de/api/interpreter",timeoutMs:6000,label:"fosssgis-main-global"},
       {url:"https://overpass.private.coffee/api/interpreter",timeoutMs:5000,label:"private-coffee-global"},
       {url:"https://maps.mail.ru/osm/tools/overpass/api/interpreter",timeoutMs:5000,label:"vk-maps-global"}
-    ]; /* EARTHLINE M78.12 — resilient free global OSM transport; source/query semantics unchanged. */
+    ]; /* EARTHLINE M78.16 — resilient free global OSM transport with three current public instances; source/query semantics unchanged. */
     for(const ep of endpoints){
       if(earthlineIsStale(myGen))return false;
       const controller=typeof AbortController!=="undefined"?new AbortController():null;
