@@ -273,9 +273,30 @@ const stageSummaryM78=exactM78.map(r=>({
   swaleStages:r.swaleStages
 }));
 console.log('EARTHLINE_M78_SWALE_STAGE_DISCRIMINATOR '+JSON.stringify(stageSummaryM78));
+const bindingSummaryM78=exactM78.map(r=>({
+  label:r.label,
+  elder:{state:r.elderState,features:r.elderFeatures,candidates:r.elderCandidates,identityOk:r.elderIdentityOk,error:r.elderError||null},
+  swales:{count:r.swales,visible:r.swalesVisible,fingerprint:r.swaleFingerprint,frameOk:r.swaleFrameOk,outsidePoints:r.outsidePoints},
+  water:{committed:r.systems?.waterCommitted,identityOk:r.systems?.waterIdentityOk,count:r.systems?.waterCount,fingerprint:r.systems?.waterFingerprint},
+  aquifer:{ownerOk:r.systems?.aquiferOwnerOk,status:r.systems?.aquiferStatus,polys:r.systems?.aquiferPolys,wells:r.systems?.aquiferWells,class:r.systems?.aquiferClass},
+  orbRunning:r.systems?.orbRunning,
+  scientific:r.publication?.scientificInputFingerprint||null,
+  noBuild:r.publication?.noBuildMaskHash||null
+}));
+console.log('EARTHLINE_M78_FOUR_SYSTEM_BINDING '+JSON.stringify(bindingSummaryM78));
 const repeatOk=exactM78.every(r=>
   String(r.publication?.scientificInputFingerprint||'')===String(exactM78[0].publication?.scientificInputFingerprint||'') &&
-  String(r.publication?.noBuildMaskHash||'')===String(exactM78[0].publication?.noBuildMaskHash||'')
+  String(r.publication?.noBuildMaskHash||'')===String(exactM78[0].publication?.noBuildMaskHash||'') &&
+  r.elderState==='committed' &&
+  r.elderIdentityOk===true &&
+  r.elderFeatures>0 &&
+  r.swales>0 &&
+  r.swalesVisible===true &&
+  r.swaleFrameOk===true &&
+  r.systems?.waterCommitted===true &&
+  r.systems?.waterIdentityOk===true &&
+  r.systems?.aquiferOwnerOk===true &&
+  r.systems?.orbRunning===false
 );
 const textureStackM78=await page.evaluate(async()=>{
   try{
@@ -328,3 +349,5 @@ if(!propClicked||!out.audit?.settled)process.exitCode=1;
 // M78.5 final-clearance repeat verification trigger
 
 // M78.5 post-deploy exact repeat gate
+
+// M78.6 strict four-system binding verification trigger
