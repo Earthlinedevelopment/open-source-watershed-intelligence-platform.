@@ -35,7 +35,11 @@ async function runHumanCrosshair(lng,lat,label){
     m.jumpTo({center:[lng,lat],zoom:16.59});
     try{m.fire?.('dragend')}catch(_){}
   },{lng,lat});
-  await page.waitForTimeout(500);
+  await page.waitForFunction(({lng,lat})=>{
+    const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+    return !!t&&Math.abs(Number(t.lng)-Number(lng))<=0.00008&&Math.abs(Number(t.lat)-Number(lat))<=0.00008;
+  },{lng,lat},{timeout:10000,polling:100});
+  await page.waitForTimeout(250);
   const pre=await page.evaluate(()=>({
     target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
     button:String(document.getElementById('earthlineDeclareProperty16169')?.textContent||'').replace(/\s+/g,' ').trim(),
@@ -177,13 +181,15 @@ for(const c of controls){
                  String(a.snap.water?.fingerprint||'')===String(b.snap.water?.fingerprint||'') &&
                  Number(a.snap.water?.count||0)===Number(b.snap.water?.count||0);
   results[c.id]={identityOk,functionalOk:functional(a)&&functional(b),repeatOk,
-    first:{swales:a.snap.swales?.count,swaleFp:a.snap.swales?.fingerprint,water:a.snap.water?.count,waterFp:a.snap.water?.fingerprint,
+    first:{preTarget:a.pre?.target,declaration:a.snap.declaration?.center,swales:a.snap.swales?.count,swaleFp:a.snap.swales?.fingerprint,water:a.snap.water?.count,waterFp:a.snap.water?.fingerprint,
       elders:a.snap.elder?.sourceFeatures,served:a.snap.flowFirst?.pathsServed,noContour:a.snap.flowFirst?.reasons?.['no-contour-trace']||0,
       medianM:a.snap.swales?.meta?.measuredMedianSpacingM,aquifer:a.snap.aquifer?.status},
-    second:{swales:b.snap.swales?.count,swaleFp:b.snap.swales?.fingerprint,water:b.snap.water?.count,waterFp:b.snap.water?.fingerprint,
+    second:{preTarget:b.pre?.target,declaration:b.snap.declaration?.center,swales:b.snap.swales?.count,swaleFp:b.snap.swales?.fingerprint,water:b.snap.water?.count,waterFp:b.snap.water?.fingerprint,
       elders:b.snap.elder?.sourceFeatures,served:b.snap.flowFirst?.pathsServed,noContour:b.snap.flowFirst?.reasons?.['no-contour-trace']||0,
       medianM:b.snap.swales?.meta?.measuredMedianSpacingM,aquifer:b.snap.aquifer?.status}};
 }
 console.log('EARTHLINE_SCIENCE_KERNEL_CONTROL_MATRIX '+JSON.stringify(results));
 await browser.close();
 if(Object.values(results).some(r=>!r.identityOk||!r.functionalOk||!r.repeatOk))process.exitCode=1;
+
+// Science Kernel control: wait for authoritative crosshair target before Property click
