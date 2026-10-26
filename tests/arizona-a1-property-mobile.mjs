@@ -66,19 +66,25 @@ const out=await page.evaluate(()=>({
        sourceFeatures:Array.isArray(data?.features)?data.features.length:null,
        textureAudit:(()=>{try{return typeof window.earthlinePropertyTextureAudit16169==='function'?window.earthlinePropertyTextureAudit16169():null}catch(e){return {error:String(e)}}})(),
        naturalSourceFeatures:Array.isArray(naturalData?.features)?naturalData.features.length:null,
-       naturalLayers:naturalIds.map(id=>({
-         id,exists:!!m?.getLayer?.(id),
-         visibility:m?.getLayoutProperty?.(id,'visibility')??null,
-         lineOpacity:m?.getPaintProperty?.(id,'line-opacity')??null,
-         fillOpacity:m?.getPaintProperty?.(id,'fill-opacity')??null,
-         width:m?.getPaintProperty?.(id,'line-width')??null
-       })),
-       layers:ids.map(id=>({
-         id,exists:!!m?.getLayer?.(id),
-         visibility:m?.getLayoutProperty?.(id,'visibility')??null,
-         opacity:m?.getPaintProperty?.(id,'line-opacity')??null,
-         width:m?.getPaintProperty?.(id,'line-width')??null
-       }))
+       naturalLayers:naturalIds.map(id=>{
+         const exists=!!m?.getLayer?.(id);
+         return {
+           id,exists,
+           visibility:exists?(m?.getLayoutProperty?.(id,'visibility')??null):null,
+           lineOpacity:exists?(m?.getPaintProperty?.(id,'line-opacity')??null):null,
+           fillOpacity:exists?(m?.getPaintProperty?.(id,'fill-opacity')??null):null,
+           width:exists?(m?.getPaintProperty?.(id,'line-width')??null):null
+         };
+       }),
+       layers:ids.map(id=>{
+         const exists=!!m?.getLayer?.(id);
+         return {
+           id,exists,
+           visibility:exists?(m?.getLayoutProperty?.(id,'visibility')??null):null,
+           opacity:exists?(m?.getPaintProperty?.(id,'line-opacity')??null):null,
+           width:exists?(m?.getPaintProperty?.(id,'line-width')??null):null
+         };
+       })
      };
    }catch(e){return {error:String(e)}}
  })(),
@@ -351,3 +357,5 @@ if(!propClicked||!out.audit?.settled)process.exitCode=1;
 // M78.5 post-deploy exact repeat gate
 
 // M78.6 strict four-system binding verification trigger
+
+// M78.7 guard diagnostic layer reads
