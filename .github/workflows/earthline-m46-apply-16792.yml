@@ -1,4 +1,4 @@
-name: Earthline M78 Property Elder Ownership Repair
+name: Earthline Apply Shared Regional Hydrology 16918-16919
 
 on:
   push:
@@ -11,82 +11,99 @@ permissions:
   contents: write
 
 jobs:
-  apply-m78-property-owner-repair:
+  apply-shared-hydrology:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Apply M78 stale Elder swale-owner repair
+      - name: Apply shared Regional hydrology owners
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
 
-          marker="EARTHLINE M78 — ELDER DISPLAY-ONLY RUN BINDING"
-          if marker not in s:
-              start_needle='      try{const lockedSwalesM76=JSON.parse(JSON.stringify(m.authoritativeSafeSwales15815||{type:"FeatureCollection",features:[]}));void Promise.resolve(window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.())'
-              end_marker='      /* M76 elder post-science display-only */'
-              start=s.find(start_needle)
-              if start < 0:
-                  raise SystemExit("M78 stale Elder/swale finalizer anchor missing")
-              end=s.find(end_marker,start)
-              if end < 0:
-                  raise SystemExit("M78 stale Elder finalizer end marker missing")
-              end += len(end_marker)
-              replacement='''      /* EARTHLINE M78 — ELDER DISPLAY-ONLY RUN BINDING.
-                 Elder may compute and publish Elder points for this Property generation,
-                 but it may never restore, replace, or republish Property swale science.
-                 A late Elder completion from an older run is discarded by searchGen. */
-              try{
-                const elderPropertyGenM78=propertyPublicationGen16334;
-                void Promise.resolve(window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.())
-                  .then(()=>{
-                    if(Number(m.searchGen||0)!==elderPropertyGenM78)return null;
-                    return window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.();
-                  })
-                  .catch(()=>{});
-              }catch(_){}
-              /* M78 Elder remains display-only; authoritativeSafeSwales15815 is untouched. */'''
-              s=s[:start]+replacement+s[end:]
+          old_profile="""    const relief16918=Math.max(0,percentile(hy.elev,0.98)-percentile(hy.elev,0.02));
+              const flowQuantile16918=relief16918>=900?0.72:relief16918>=450?0.76:relief16918>=180?0.80:0.84;
+              const primaryCap16918=relief16918>=900?340:relief16918>=450?300:relief16918>=180?260:230;
+              const fallbackFloor16918=relief16918>=900?120:relief16918>=450?90:relief16918>=180?70:55;
+              const fallbackCap16918=relief16918>=900?320:relief16918>=450?270:relief16918>=180?220:180;"""
+          new_profile="""    const relief16918=Math.max(0,percentile(hy.elev,0.98)-percentile(hy.elev,0.02));
+              const reliefFactor16918=Math.max(0,Math.min(1,relief16918/1000));
+              const flowQuantile16918=Math.max(0.66,Math.min(0.84,0.84-0.18*reliefFactor16918));
+              const primaryCap16918=Math.round(230+150*reliefFactor16918);
+              const fallbackFloor16918=Math.round(55+95*reliefFactor16918);
+              const fallbackCap16918=Math.round(180+180*reliefFactor16918);"""
+          if old_profile in s:
+              s=s.replace(old_profile,new_profile,1)
+          elif "shared continuous relief-adaptive Regional drainage density" not in s:
+              raise SystemExit("16918 production profile anchor missing")
 
-          old_src='<script src="earthline-launch-16872.js?v=17601"></script>'
-          new_src='<script src="earthline-launch-16872.js?v=17602"></script>'
-          if old_src in s:
-              if s.count(old_src) != 1:
-                  raise SystemExit("M78 launch cache-version anchor is not unique")
-              s=s.replace(old_src,new_src,1)
-          elif new_src not in s:
-              raise SystemExit("M78 launch cache-version anchor missing")
+          s=s.replace(
+              "rule:'shared relief-adaptive Regional drainage density'",
+              "rule:'shared continuous relief-adaptive Regional drainage density'",
+              1
+          )
 
-          if marker not in s:
-              raise SystemExit("M78 index marker missing after repair")
-          if "lockedSwalesM76" in s:
-              raise SystemExit("stale Elder swale restore remains")
-          if "elder-display-only-m76" in s:
-              raise SystemExit("stale Elder swale republish remains")
-          if new_src not in s:
-              raise SystemExit("M78 launch cache version missing")
+          old_cond="if(style16584&&Array.isArray(style16584.layers)&&!worldCopies16584){"
+          new_cond="""const deterministicGridReady16584=!!hy16584.validityMask16584;
+              /* EARTHLINE 16919 — deterministic land-validity precedence.
+                 Live style water is supplemental evidence only when the deterministic Regional
+                 grid is unavailable. This is jurisdiction-agnostic and applies to every region. */
+              if(style16584&&Array.isArray(style16584.layers)&&!worldCopies16584&&!deterministicGridReady16584){"""
+          if "EARTHLINE 16919 — deterministic land-validity precedence" not in s:
+              if old_cond not in s: raise SystemExit("16919 final-water condition anchor missing")
+              s=s.replace(old_cond,new_cond,1)
+
+          s=s.replace(
+              "const hasGrid16584=!!hy16584.validityMask16584;",
+              "const hasGrid16584=deterministicGridReady16584;",
+              1
+          )
+
+          old_style_block="""      const styleIndex16584=hy16584.styleWaterIndex16584,scale16584=Number(styleIndex16584&&styleIndex16584.scale)||4;
+                if(styleIndex16584&&styleIndex16584.bins){
+                  const candidates16584=styleIndex16584.bins[Math.floor(lng16584*scale16584)+':'+Math.floor(lat16584*scale16584)]||[];
+                  for(const part16584 of candidates16584){
+                    if(!part16584||!part16584.bbox||!part16584.rings)continue;
+                    if(lng16584<part16584.bbox[0]||lng16584>part16584.bbox[2]||lat16584<part16584.bbox[1]||lat16584>part16584.bbox[3])continue;
+                    if(earthlinePointInPolygon16584(lng16584,lat16584,part16584.rings))return false;
+                  }
+                }
+          """
+          if old_style_block in s:
+              s=s.replace(old_style_block,"",1)
+
+          s=s.replace(
+              "failClosedNoEvidence:!evidenceReady16584,worldCopiesSkippedStyleWater:worldCopies16584,at:new Date().toISOString()",
+              "failClosedNoEvidence:!evidenceReady16584,worldCopiesSkippedStyleWater:worldCopies16584,deterministicGridPrecedence:hasGrid16584,at:new Date().toISOString()",
+              1
+          )
+
+          if "vancouverFlowDensity16917" in s: raise SystemExit("local Vancouver flow exception detected")
+          if "vancouverIsland16584" in s: raise SystemExit("local Vancouver final-water exception detected")
+          if "shared continuous relief-adaptive Regional drainage density" not in s: raise SystemExit("16918 continuous owner missing")
+          if "EARTHLINE 16919 — deterministic land-validity precedence" not in s: raise SystemExit("16919 shared water owner missing")
+          if "earthline-language-hotfix-16890.js" not in s: raise SystemExit("language hotfix reference missing")
+
           p.write_text(s,encoding="utf-8")
           PY
-
-      - name: Verify M78 shared-owner scope
+      - name: Verify exact scope
         run: |
           git diff --check
           test "$(git diff --name-only | tr -d '\r')" = "index.html"
-          grep -q "EARTHLINE M78 — ELDER DISPLAY-ONLY RUN BINDING" index.html
-          grep -q "earthline-launch-16872.js?v=17602" index.html
-          ! grep -q "lockedSwalesM76" index.html
-          ! grep -q "elder-display-only-m76" index.html
-          grep -q "EARTHLINE M78 — PROPERTY ELDER SINGLE LIFECYCLE OWNER" earthline-launch-16872.js
-
-      - name: Commit production repair
+          grep -q "shared continuous relief-adaptive Regional drainage density" index.html
+          grep -q "EARTHLINE 16919 — deterministic land-validity precedence" index.html
+          ! grep -q "vancouverFlowDensity16917" index.html
+          ! grep -q "vancouverIsland16584" index.html
+          grep -q "earthline-language-hotfix-16890.js" index.html
+      - name: Commit production
         run: |
           if git diff --quiet -- index.html; then exit 0; fi
           git config user.name "Earthlinedevelopment"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m "fix: prevent stale Elder completion from republishing swales"
+          git commit -m "fix: promote shared Regional hydrology owners 16918 16919"
           git push origin HEAD:pages-live
