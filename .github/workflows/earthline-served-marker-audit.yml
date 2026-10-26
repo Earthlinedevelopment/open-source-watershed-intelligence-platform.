@@ -1,0 +1,21 @@
+name: Earthline Served Marker Audit
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-served-marker-audit.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Audit served production markers
+        run: |
+          set -e
+          curl -L --fail --max-time 30 -A 'Earthline-M78-audit' 'https://earthlinedevelopment.org/?served_audit='$(date +%s) -o /tmp/index.html
+          wc -c /tmp/index.html
+          for marker in             'EARTHLINE M78.30 — deterministic local DEM level-set fallback'             'Earthline-Science-Kernel-v1.0.0'             'EARTHLINE M78.32 — accepted crosshair atomically rebinds the Property declaration site'; do
+            if grep -Fq "$marker" /tmp/index.html; then echo "PRESENT: $marker"; else echo "MISSING: $marker"; fi
+          done
+          echo "SHA256: $(sha256sum /tmp/index.html | awk '{print $1}')"
