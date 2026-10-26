@@ -1,9 +1,24 @@
 import { chromium } from 'playwright';
+import { readFileSync } from 'node:fs';
 
 const browser=await chromium.launch({headless:true,channel:'chrome'});
 const context=await browser.newContext({viewport:{width:1798,height:831},deviceScaleFactor:1});
 const page=await context.newPage();
 const errs=[]; page.on('pageerror',e=>errs.push(String(e)));
+const injectedIndex=process.env.EARTHLINE_INJECT_INDEX==='1'?readFileSync('index.html','utf8'):null;
+if(injectedIndex){
+  await page.route('https://earthlinedevelopment.org/**',async route=>{
+    const req=route.request();
+    if(req.resourceType()==='document'&&new URL(req.url()).hostname==='earthlinedevelopment.org'){
+      const response=await route.fetch();
+      const headers={...response.headers()};
+      delete headers['content-length']; delete headers['content-encoding'];
+      await route.fulfill({status:response.status(),headers,body:injectedIndex});
+    }else{
+      await route.continue();
+    }
+  });
+}
 
 const BASE=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
 await page.goto(BASE+'?m78_desktop_crosshair='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
