@@ -1,5 +1,5 @@
 import { chromium } from 'playwright';
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,channel:'chrome'});
 const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
 const page=await context.newPage(); const errs=[]; page.on('pageerror',e=>errs.push(String(e)));
 await page.goto('https://earthlinedevelopment.org/?az_a1_property='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
@@ -208,3 +208,5 @@ if(!propClicked||!out.audit?.settled)process.exitCode=1;
 // M78.1 valid-workflow trigger
 
 // M78.1 post-production verification trigger
+
+// M78.2 exact self-exclusion verification trigger
