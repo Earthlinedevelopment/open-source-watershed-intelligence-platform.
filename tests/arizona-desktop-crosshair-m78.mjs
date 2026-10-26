@@ -5,9 +5,9 @@ const context=await browser.newContext({viewport:{width:1798,height:831},deviceS
 const page=await context.newPage();
 const errs=[]; page.on('pageerror',e=>errs.push(String(e)));
 
-await page.goto('https://earthlinedevelopment.org/?m78_desktop_crosshair='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+const BASE=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';\nawait page.goto(BASE+'?m78_desktop_crosshair='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
 await page.waitForSelector('#searchInput',{timeout:25000});
-await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE M78.11 — one canonical owner per minor-flow cell')&&document.documentElement.innerHTML.includes('EARTHLINE M78.16 — resilient free global OSM transport with three current public instances')&&document.documentElement.innerHTML.includes('EARTHLINE M78.17 — clear prior Property presentation at authoritative run start')&&document.documentElement.innerHTML.includes('EARTHLINE M78.19 — loaded map evidence is the primary Property exclusion screen')&&document.documentElement.innerHTML.includes('EARTHLINE M78.22 — canonical five-decimal crosshair owns the Property analysis frame')&&document.documentElement.innerHTML.includes('EARTHLINE M78.25 — sub-meter camera jitter cannot replace the accepted crosshair target')&&document.documentElement.innerHTML.includes('EARTHLINE M78.27 — contour start and marcher share one half-open crossing rule')&&document.documentElement.innerHTML.includes('earthline-launch-16872.js?v=17606')&&document.documentElement.innerHTML.includes('EARTHLINE M78.20 — realistic non-overlapping Property swale presentation'),undefined,{timeout:90000,polling:500});
+await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE M78.11 — one canonical owner per minor-flow cell')&&document.documentElement.innerHTML.includes('EARTHLINE M78.16 — resilient free global OSM transport with three current public instances')&&document.documentElement.innerHTML.includes('EARTHLINE M78.17 — clear prior Property presentation at authoritative run start')&&document.documentElement.innerHTML.includes('EARTHLINE M78.19 — loaded map evidence is the primary Property exclusion screen')&&document.documentElement.innerHTML.includes('EARTHLINE M78.22 — canonical five-decimal crosshair owns the Property analysis frame')&&document.documentElement.innerHTML.includes('EARTHLINE M78.25 — sub-meter camera jitter cannot replace the accepted crosshair target')&&document.documentElement.innerHTML.includes('EARTHLINE M78.27 — contour start and marcher share one half-open crossing rule')&&document.documentElement.innerHTML.includes('earthline-launch-16872.js?v=17606')&&document.documentElement.innerHTML.includes('EARTHLINE M78.30 — deterministic local DEM level-set fallback')&&document.documentElement.innerHTML.includes('EARTHLINE M78.20 — realistic non-overlapping Property swale presentation'),undefined,{timeout:90000,polling:500});
 await page.waitForTimeout(1000);
 
 if(!await page.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'))){
@@ -193,7 +193,15 @@ const repeatOk=
   Number(second.snap.swales?.count||0)===Number(secondRepeat.snap.swales?.count||0) &&
   String(second.snap.water?.fingerprint||'')===String(secondRepeat.snap.water?.fingerprint||'');
 console.log('EARTHLINE_M78_DESKTOP_STRICT '+JSON.stringify({identityOk,systemsOk,routeDiffOk,repeatOk,first:{elder:first.snap.elder,swales:first.snap.swales,water:first.snap.water,aquifer:first.snap.aquifer},second:{elder:second.snap.elder,swales:second.snap.swales,water:second.snap.water,aquifer:second.snap.aquifer},firstRepeat:{swales:firstRepeat.snap.swales,water:firstRepeat.snap.water},secondRepeat:{swales:secondRepeat.snap.swales,water:secondRepeat.snap.water}}));
-if(!identityOk||!systemsOk||!routeDiffOk||!repeatOk)process.exitCode=1;
+const levelSetOk=
+  Number(first.snap.flowFirst?.reasons?.['no-contour-trace']||0)<33 &&
+  Number(second.snap.flowFirst?.reasons?.['no-contour-trace']||0)<30 &&
+  Number(first.snap.swales?.count||0)>=97 &&
+  Number(second.snap.swales?.count||0)>=79 &&
+  String(first.snap.swales?.fingerprint||'')===String(firstRepeat.snap.swales?.fingerprint||'') &&
+  String(second.snap.swales?.fingerprint||'')===String(secondRepeat.snap.swales?.fingerprint||'');
+console.log('EARTHLINE_M78_LEVELSET_GATE '+JSON.stringify({levelSetOk,first:first.snap.flowFirst,second:second.snap.flowFirst,firstSwales:first.snap.swales,secondSwales:second.snap.swales,kernel:first.snap.publicationModel?.scienceKernelM78||null}));
+if(!identityOk||!systemsOk||!routeDiffOk||!repeatOk||!levelSetOk)process.exitCode=1;
 
 // M78.8 raw Elder tile verdict capture
 
@@ -224,3 +232,5 @@ if(!identityOk||!systemsOk||!routeDiffOk||!repeatOk)process.exitCode=1;
 // M78.28 require deployed contour-start repair before diagnostics
 
 // M78.21 extract authoritative prescriber owner source
+
+// M78.30 candidate local-level-set acceptance gate
