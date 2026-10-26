@@ -21,13 +21,21 @@ old_eps='''    const endpoints=[
       {url:"https://lz4.overpass-api.de/api/interpreter",timeoutMs:6200,label:"lz4-direct-fallback"}
     ];'''
 new_eps='''    const endpoints=[
+      {url:"https://overpass-api.de/api/interpreter",timeoutMs:6000,label:"fosssgis-main-global"},
+      {url:"https://overpass.private.coffee/api/interpreter",timeoutMs:5000,label:"private-coffee-global"},
+      {url:"https://maps.mail.ru/osm/tools/overpass/api/interpreter",timeoutMs:5000,label:"vk-maps-global"}
+    ]; /* EARTHLINE M78.16 — resilient free global OSM transport with three current public instances; source/query semantics unchanged. */'''
+current_eps='''    const endpoints=[
       {url:"https://overpass.private.coffee/api/interpreter",timeoutMs:5000,label:"private-coffee-global"},
       {url:"https://maps.mail.ru/osm/tools/overpass/api/interpreter",timeoutMs:5000,label:"vk-maps-global"}
     ]; /* EARTHLINE M78.12 — resilient free global OSM transport; source/query semantics unchanged. */'''
-if "EARTHLINE M78.12 — resilient free global OSM transport" not in s:
-    if s.count(old_eps)!=1:
-        raise SystemExit(f"M78.12 endpoint anchor count={s.count(old_eps)}")
-    s=s.replace(old_eps,new_eps,1)
+if "EARTHLINE M78.16 — resilient free global OSM transport with three current public instances" not in s:
+    if current_eps in s:
+        s=s.replace(current_eps,new_eps,1)
+    elif old_eps in s:
+        s=s.replace(old_eps,new_eps,1)
+    else:
+        raise SystemExit("M78.16 endpoint anchor missing")
 
 # M78.12 — a style-zero frame that required fallback may only be screened-clear
 # after the fallback itself actually responded.
@@ -56,7 +64,7 @@ if "effectiveOpenDataRespondedM7812" not in s:
 
 for marker in [
   "EARTHLINE M78.11 — one canonical owner per minor-flow cell",
-  "EARTHLINE M78.12 — resilient free global OSM transport",
+  "EARTHLINE M78.16 — resilient free global OSM transport with three current public instances",
   "effectiveOpenDataRespondedM7812"
 ]:
     if marker not in s:
