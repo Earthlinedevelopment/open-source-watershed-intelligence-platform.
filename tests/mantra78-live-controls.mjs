@@ -43,14 +43,18 @@ async function runOne(c,repeat){
   try{
     await page.goto(BASE+'?m78_control='+encodeURIComponent(c.id)+'_'+repeat+'_'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
     await page.waitForSelector('#searchInput',{state:'attached',timeout:30000});
-    await page.waitForFunction(()=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);return !!(m&&typeof m.jumpTo==='function'&&typeof window.earthlineSyncPropertyTargetFromMap16201==='function'&&document.getElementById('runBtn'));},{timeout:30000,polling:100});
+    await page.waitForFunction(()=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);return !!(m&&typeof m.jumpTo==='function'&&typeof window.earthlineSyncPropertyTargetFromMap16201==='function'&&document.getElementById('runBtn')&&(!m.isStyleLoaded||m.isStyleLoaded()));},{timeout:30000,polling:100});
+    /* M78 diagnostic only: let the startup globe/camera owners finish before simulating Jon's crosshair move. */
+    await page.waitForTimeout(1800);
+    await page.waitForFunction(()=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);return !!m&&(!m.isMoving||!m.isMoving());},{timeout:10000,polling:100}).catch(()=>{});
     await page.evaluate(({lng,lat})=>{
       const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
       const input=document.getElementById('searchInput');
       if(input){input.value='';input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));}
       m.jumpTo({center:[lng,lat],zoom:18,bearing:0,pitch:0});
     },c);
-    await page.waitForTimeout(1000);
+    await page.waitForFunction(({lng,lat})=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),c=m&&m.getCenter&&m.getCenter();return !!c&&Math.abs(Number(c.lng)-lng)<1e-5&&Math.abs(Number(c.lat)-lat)<1e-5&&Number(m.getZoom())>=17;},{lng:c.lng,lat:c.lat},{timeout:5000,polling:100});
+    await page.waitForTimeout(500);
     const targetPrep=await page.evaluate(({lng,lat})=>{
       const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),c=m.getCenter();
       const synced=window.earthlineSyncPropertyTargetFromMap16201();
