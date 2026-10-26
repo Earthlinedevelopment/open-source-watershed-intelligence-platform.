@@ -1,4 +1,5 @@
 name: Earthline Arizona A1 Property Mobile
+
 on:
   push:
     branches: [pages-live]
@@ -6,14 +7,76 @@ on:
       - 'tests/arizona-a1-property-mobile.mjs'
       - '.github/workflows/earthline-arizona-a1-property-mobile.yml'
   workflow_dispatch:
-permissions: {contents: read}
+
+permissions:
+  contents: write
+
 jobs:
+  repair-m78-1:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Apply exact Property Elder lifecycle owner repair
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          old_start="try{void window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.()}catch(_){} /* M76 Elder compute-only prime; publication remains post-science. */"
+          new_start="""/* EARTHLINE M78.1 — SINGLE PROPERTY ELDER LIFECYCLE OWNER.
+       The exact 20-acre declaration is authoritative now. Start Elder asynchronously
+       from this declaration immediately; startProperty owns pending -> committed and
+       rejects a stale identity internally. Elder remains display-only and never gates
+       Property hydrology or mutates authoritativeSafeSwales15815. */
+    try{void window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()}catch(_){}"""
+          if new_start not in s:
+              if s.count(old_start)!=1:
+                  raise SystemExit(f"exact Property Elder start anchor count={s.count(old_start)}")
+              s=s.replace(old_start,new_start,1)
+          block_start="      /* EARTHLINE M78 — ELDER DISPLAY-ONLY RUN BINDING."
+          block_end="    /* M78 Elder remains display-only; authoritativeSafeSwales15815 is untouched. */"
+          replacement="""      /* EARTHLINE M78.1 — Elder already started from the exact Property declaration.
+         Do not create a second post-science Elder lifecycle owner. */"""
+          if "elderPropertySerialM78" in s:
+              a=s.find(block_start)
+              b=s.find(block_end,a)
+              if a<0 or b<0:
+                  raise SystemExit("M78 delayed Elder owner block anchors missing")
+              s=s[:a]+replacement+s[b+len(block_end):]
+          if "elderPropertySerialM78" in s:
+              raise SystemExit("delayed Elder owner still present")
+          if s.count("SINGLE PROPERTY ELDER LIFECYCLE OWNER")!=1:
+              raise SystemExit("single Elder owner marker count wrong")
+          p.write_text(s,encoding="utf-8")
+          PY
+      - name: Verify repair scope
+        run: |
+          git diff --check
+          changed="$(git diff --name-only | tr -d '\r')"
+          test -z "$changed" -o "$changed" = "index.html"
+          grep -q "SINGLE PROPERTY ELDER LIFECYCLE OWNER" index.html
+          ! grep -q "elderPropertySerialM78" index.html
+      - name: Commit repaired index
+        run: |
+          if git diff --quiet -- index.html; then exit 0; fi
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: start Elder from exact Property declaration"
+          git push origin HEAD:pages-live
+
   test:
+    needs: repair-m78-1
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-        with: {ref: pages-live}
+        with:
+          ref: pages-live
       - uses: actions/setup-node@v4
         with: {node-version: '20'}
       - run: |
