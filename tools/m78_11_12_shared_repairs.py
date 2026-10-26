@@ -54,7 +54,7 @@ new_flags='''    const openDataAttempted=!!(op.attempted===true||styleAttempted)
     const effectiveOpenDataRespondedM7812=!!(styleResponded||overpassResponded);
     const effectiveOpenDataFailedM7812=!!(!effectiveOpenDataRespondedM7812&&(overpassFailed||styleFailed));
     const openGeometryCount16516=Math.max(0,'''
-if "effectiveOpenDataRespondedM7812","EARTHLINE M78.19 — loaded map evidence is the primary Property exclusion screen" not in s:
+if "EARTHLINE M78.19 — loaded map evidence is the primary Property exclusion screen" not in s:
     if s.count(old_flags)!=1:
         raise SystemExit(f"M78.12 verification flags anchor count={s.count(old_flags)}")
     s=s.replace(old_flags,new_flags,1)
