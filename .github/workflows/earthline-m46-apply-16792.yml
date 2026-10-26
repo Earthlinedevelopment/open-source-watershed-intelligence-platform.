@@ -1,4 +1,4 @@
-name: Earthline M78 Final Property Binding Repair
+name: Earthline M78.1 Exact Property Elder Owner Repair
 
 on:
   push:
@@ -11,55 +11,60 @@ permissions:
   contents: write
 
 jobs:
-  apply-m78-final-binding:
+  apply-m78-1-elder-owner:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Repair Elder run binding and safe swale visibility
+      - name: Enforce one exact Property Elder lifecycle owner
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
-          old_gate="      const elderPropertyGenM78=propertyPublicationGen16334;\n      void Promise.resolve(window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.())\n        .then(()=>{\n          if(Number(m.searchGen||0)!==elderPropertyGenM78)return null;\n          return window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.();\n        })\n        .catch(()=>{});"
-          new_gate="      const elderPropertySerialM78=serial;\n      const elderPropertyCenterM78={lng:Number(site.lng),lat:Number(site.lat)};\n      void Promise.resolve(window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.())\n        .then((elderPrimeM78)=>{\n          if(!elderPrimeM78||elderPropertySerialM78!==runSerial)return null;\n          const dM78=window.EARTHLINE_PROPERTY_DECLARATION_16169||null;\n          const dlngM78=Number(dM78?.center?.lng),dlatM78=Number(dM78?.center?.lat);\n          if(!Number.isFinite(dlngM78)||!Number.isFinite(dlatM78))return null;\n          if(Math.abs(dlngM78-elderPropertyCenterM78.lng)>1e-8||Math.abs(dlatM78-elderPropertyCenterM78.lat)>1e-8)return null;\n          return window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.();\n        })\n        .catch(()=>{});"
-          if new_gate not in s:
-              if s.count(old_gate)!=1:
-                  raise SystemExit(f"Elder M78 gate anchor count={s.count(old_gate)}")
-              s=s.replace(old_gate,new_gate,1)
-          old_ok="const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length&&renderedFeatures17181>0; /* EARTHLINE_SAFE_FIRST_PRESENTATION_17181 */"
-          new_ok="const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length; /* EARTHLINE M78 — safe source + all safe layers visible owns presentation; queryRenderedFeatures may be zero before next paint. */"
-          if new_ok not in s:
-              if s.count(old_ok)!=1:
-                  raise SystemExit(f"safe visibility anchor count={s.count(old_ok)}")
-              s=s.replace(old_ok,new_ok,1)
-          old_src='<script src="earthline-launch-16872.js?v=17604"></script>'
-          new_src='<script src="earthline-launch-16872.js?v=17605"></script>'
-          if old_src in s:
-              if s.count(old_src)!=1:
-                  raise SystemExit("launch version anchor not unique")
-              s=s.replace(old_src,new_src,1)
-          elif new_src not in s:
-              raise SystemExit("launch version anchor missing")
+          old_start="try{void window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.()}catch(_){} /* M76 Elder compute-only prime; publication remains post-science. */"
+          new_start="""/* EARTHLINE M78.1 — SINGLE PROPERTY ELDER LIFECYCLE OWNER.
+       The exact 20-acre declaration is authoritative now. Start Elder asynchronously
+       from this declaration immediately; startProperty owns pending -> committed and
+       rejects a stale identity internally. Elder remains display-only and never gates
+       Property hydrology or mutates authoritativeSafeSwales15815. */
+    try{void window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()}catch(_){}"""
+          if new_start not in s:
+              if s.count(old_start)!=1:
+                  raise SystemExit(f"exact Property Elder start anchor count={s.count(old_start)}")
+              s=s.replace(old_start,new_start,1)
+
+          block_start="      /* EARTHLINE M78 — ELDER DISPLAY-ONLY RUN BINDING."
+          block_end="    /* M78 Elder remains display-only; authoritativeSafeSwales15815 is untouched. */"
+          replacement="""      /* EARTHLINE M78.1 — Elder already started from the exact Property declaration.
+         Do not create a second post-science Elder lifecycle owner. */"""
+          if "elderPropertySerialM78" in s:
+              a=s.find(block_start)
+              b=s.find(block_end,a)
+              if a<0 or b<0:
+                  raise SystemExit("M78 delayed Elder owner block anchors missing")
+              s=s[:a]+replacement+s[b+len(block_end):]
+          if "elderPropertySerialM78" in s:
+              raise SystemExit("delayed Elder owner still present")
+          if s.count("SINGLE PROPERTY ELDER LIFECYCLE OWNER")!=1:
+              raise SystemExit("single Elder owner marker count wrong")
           p.write_text(s,encoding="utf-8")
           PY
-      - name: Verify final M78 production locks
+      - name: Verify exact scope
         run: |
           git diff --check
-          grep -q "elderPropertySerialM78=serial" index.html
-          grep -q "visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length;" index.html
-          grep -q 'earthline-launch-16872.js?v=17605' index.html
-          grep -q "EARTHLINE M78 — PROPERTY DECLARATION OWNS ELDER IDENTITY" earthline-launch-16872.js
-          grep -q "earthline-elder-worker-17129.js?v=17604" earthline-launch-16872.js
-          grep -q "from scipy import ndimage" tools/elder_trees/chmv2_array_detector_17129.py
-      - name: Commit
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+          grep -q "SINGLE PROPERTY ELDER LIFECYCLE OWNER" index.html
+          grep -q "startProperty?.()}catch" index.html
+          ! grep -q "elderPropertySerialM78" index.html
+          grep -q "M78.1 — Elder already started from the exact Property declaration" index.html
+      - name: Commit production repair
         run: |
           if git diff --quiet -- index.html; then exit 0; fi
           git config user.name "Earthlinedevelopment"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m "fix: bind Elder publication to Property serial and retain safe swales"
+          git commit -m "fix: start Elder from exact Property declaration"
           git push origin HEAD:pages-live
