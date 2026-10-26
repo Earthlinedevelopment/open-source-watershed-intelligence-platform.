@@ -28814,8 +28814,21 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
       setRunStatus('Preparing the declared property analysis for '+q+'…','pending');
       const out=await runPropertyDirect(q);if(!isCurrentRun(runToken))return false;
       if(out===false)throw new Error('property analysis did not publish. The address resolved, but the property engine returned no verified result; confirm the declared analysis boundary and exclusion data.');
-      const md=state(),evidence16516=(typeof window.earthlineGetExclusionEvidence16516==='function'?window.earthlineGetExclusionEvidence16516():null),authoritative16516=!!(evidence16516&&evidence16516.sourceTier==='authoritative-local'),propertySnapshot=Object.freeze({build:BUILD,runToken,query:q,tier:'property',mode:'property',publishedAt:new Date().toISOString(),derived:{swaleOpportunityLines:Array.isArray(md&&md.swales)?md.swales.length:0},exclusionEvidence:evidence16516,sourceRule:(evidence16516&&evidence16516.label?evidence16516.label:(authoritative16516?'Authoritative local exclusion evidence; exclusions fail closed':'Exclusion evidence not recorded'))});
-      publishDisplayedRun16151(propertySnapshot);recordRun('property_run_published',runToken,{query:q,swaleCount:propertySnapshot.derived.swaleOpportunityLines,exclusionEvidence:evidence16516});setRunStatus(authoritative16516?('Vermont property analysis published for '+q+' — verify bare-earth terrain, exclusions and field conditions before construction.'):('Property terrain analysis published for '+q+' — '+(evidence16516&&evidence16516.label?evidence16516.label:'verify local exclusions')+'.'),'published');if(typeof window.earthlineRenderExclusionEvidence16516==='function')window.earthlineRenderExclusionEvidence16516();notify('Property analysis complete.');return true;
+      /* EARTHLINE M77 — SINGLE PROPERTY DISPLAY OWNER.
+       terminalPropertyRun -> publishPropertyDisplay16220 is the sole canonical
+       Property publication owner. The outer Search/Run owner must never replace
+       that verified snapshot with a second run token or thinner evidence record. */
+      const md=state(),evidence16516=(typeof window.earthlineGetExclusionEvidence16516==='function'?window.earthlineGetExclusionEvidence16516():null),authoritative16516=!!(evidence16516&&evidence16516.sourceTier==='authoritative-local');
+      const propertySnapshot=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+      const propertyPublicationM77=md&&md.propertyPublication15816||null;
+      const propertyDisplayValidM77=!!(
+        propertySnapshot&&String(propertySnapshot.tier||propertySnapshot.mode||'').toLowerCase()==='property'&&
+        propertyPublicationM77&&propertyPublicationM77.committed===true&&
+        Number(propertyPublicationM77.searchGen)===Number(md&&md.searchGen)
+      );
+      if(!propertyDisplayValidM77)throw new Error('authoritative Property publication identity missing after governed Property terminal');
+      recordRun('property_run_published',runToken,{query:q,canonicalRunToken:String(propertySnapshot.runToken||''),swaleCount:Number(propertySnapshot.derived&&propertySnapshot.derived.propertySafeCorridors||propertySnapshot.derived&&propertySnapshot.derived.swaleOpportunityLines||0),exclusionEvidence:evidence16516,singleDisplayOwner:true});
+      setRunStatus(authoritative16516?('Vermont property analysis published for '+q+' — verify bare-earth terrain, exclusions and field conditions before construction.'):('Property terrain analysis published for '+q+' — '+(evidence16516&&evidence16516.label?evidence16516.label:'verify local exclusions')+'.'),'published');if(typeof window.earthlineRenderExclusionEvidence16516==='function')window.earthlineRenderExclusionEvidence16516();notify('Property analysis complete.');return true;
     }catch(err){
       if(!isCurrentRun(runToken)){recordRun('superseded_run_settled',runToken,{error:String(err&&err.message||err)});return false;}
       try{
