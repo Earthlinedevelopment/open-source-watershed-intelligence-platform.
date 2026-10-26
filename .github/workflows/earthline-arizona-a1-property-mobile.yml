@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 jobs:
-  repair-m78-1:
+  repair-m78-2:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -20,7 +20,7 @@ jobs:
         with:
           ref: pages-live
           fetch-depth: 0
-      - name: Apply exact Property Elder lifecycle owner repair
+      - name: Apply M78 Property owner repairs
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -51,26 +51,69 @@ jobs:
               raise SystemExit("delayed Elder owner still present")
           if s.count("SINGLE PROPERTY ELDER LIFECYCLE OWNER")!=1:
               raise SystemExit("single Elder owner marker count wrong")
+
+          # EARTHLINE M78.2 — external exclusion evidence may never consume
+          # Earthline's own generated map layers from a prior Property run.
+          layer_anchor='''        const id=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();'''
+          layer_repl='''        const earthlineOwnedM782=/^earthline-/.test(String(l.id||"").toLowerCase())||/^earthline-/.test(String(l.source||"").toLowerCase());
+        if(earthlineOwnedM782)return false; /* EARTHLINE M78.2 — internal render products are not external exclusion evidence. */
+        const id=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();'''
+          if "EARTHLINE M78.2 — internal render products are not external exclusion evidence." not in s:
+              if s.count(layer_anchor)!=2:
+                  raise SystemExit(f"external exclusion style anchor count={s.count(layer_anchor)}")
+              s=s.replace(layer_anchor,layer_repl)
+
+          cls_anchor='''  const layerText=(layerId+" "+sourceLayer).trim();
+  const propText=propValues.join(" ");
+  const cls=(layerText+" "+propText).trim();
+
+  const railOrFerry='''
+          cls_repl='''  const layerText=(layerId+" "+sourceLayer).trim();
+  const propText=propValues.join(" ");
+  const cls=(layerText+" "+propText).trim();
+  const sourceId=String(f&&f.source||"").toLowerCase();
+  const earthlineOwnedM782=/^earthline-/.test(layerId)||/^earthline-/.test(sourceId); /* EARTHLINE M78.2 — fail closed against self-generated exclusions. */
+
+  const railOrFerry='''
+          if "fail closed against self-generated exclusions" not in s:
+              if s.count(cls_anchor)!=1:
+                  raise SystemExit(f"feature classifier anchor count={s.count(cls_anchor)}")
+              s=s.replace(cls_anchor,cls_repl,1)
+              s=s.replace('''  const parking=/parking|parking_aisle/.test(cls);
+  const buildingLayer=''','''  const parking=!earthlineOwnedM782&&/parking|parking_aisle/.test(cls);
+  const buildingLayer=''',1)
+              s=s.replace('''  const road=!railOrFerry&&(roadLayer||roadProperty||parking);
+  const building=buildingLayer||buildingProperty;
+  const water=waterLayer||waterProperty;''','''  const road=!earthlineOwnedM782&&!railOrFerry&&(roadLayer||roadProperty||parking);
+  const building=!earthlineOwnedM782&&(buildingLayer||buildingProperty);
+  const water=!earthlineOwnedM782&&(waterLayer||waterProperty);''',1)
+
+          if s.count("EARTHLINE M78.2 — internal render products are not external exclusion evidence.")!=2:
+              raise SystemExit("M78.2 style-owner marker count wrong")
+          if s.count("fail closed against self-generated exclusions")!=1:
+              raise SystemExit("M78.2 classifier marker count wrong")
           p.write_text(s,encoding="utf-8")
           PY
-      - name: Verify repair scope
+      - name: Verify M78 repair scope
         run: |
           git diff --check
           changed="$(git diff --name-only | tr -d '\r')"
           test -z "$changed" -o "$changed" = "index.html"
           grep -q "SINGLE PROPERTY ELDER LIFECYCLE OWNER" index.html
           ! grep -q "elderPropertySerialM78" index.html
+          test "$(grep -c "internal render products are not external exclusion evidence" index.html)" = "2"
+          test "$(grep -c "fail closed against self-generated exclusions" index.html)" = "1"
       - name: Commit repaired index
         run: |
           if git diff --quiet -- index.html; then exit 0; fi
           git config user.name "Earthlinedevelopment"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m "fix: start Elder from exact Property declaration"
+          git commit -m "fix: exclude Earthline layers from Property evidence"
           git push origin HEAD:pages-live
 
   test:
-    needs: repair-m78-1
+    needs: repair-m78-2
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -81,5 +124,4 @@ jobs:
         with: {node-version: '20'}
       - run: |
           npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
       - run: node tests/arizona-a1-property-mobile.mjs
