@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { chromium } from 'playwright-core';
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
@@ -29,7 +29,7 @@ const httpIdentity={
 httpIdentity.pass=httpIdentity.ok&&httpIdentity.gitBlobSha===EXPECTED_BLOB&&httpIdentity.m77Marker===1&&httpIdentity.identityGate===1&&httpIdentity.oldDuplicateCall===0;
 console.log('EARTHLINE_M78_HTTP_IDENTITY '+JSON.stringify(httpIdentity));
 
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,executablePath:'/usr/bin/google-chrome'});
 const rows=[];
 
 async function runOne(c,repeat){
