@@ -209,11 +209,17 @@ const repeatOk=
   Number(second.snap.swales?.count||0)===Number(secondRepeat.snap.swales?.count||0) &&
   String(second.snap.water?.fingerprint||'')===String(secondRepeat.snap.water?.fingerprint||'');
 console.log('EARTHLINE_M78_DESKTOP_STRICT '+JSON.stringify({identityOk,systemsOk,routeDiffOk,repeatOk,first:{elder:first.snap.elder,swales:first.snap.swales,water:first.snap.water,aquifer:first.snap.aquifer},second:{elder:second.snap.elder,swales:second.snap.swales,water:second.snap.water,aquifer:second.snap.aquifer},firstRepeat:{swales:firstRepeat.snap.swales,water:firstRepeat.snap.water},secondRepeat:{swales:secondRepeat.snap.swales,water:secondRepeat.snap.water}}));
+const firstMedian=Number(first.snap.swales?.meta?.measuredMedianSpacingM||0);
+const secondMedian=Number(second.snap.swales?.meta?.measuredMedianSpacingM||0);
 const levelSetOk=
-  Number(first.snap.flowFirst?.reasons?.['no-contour-trace']||0)<33 &&
-  Number(second.snap.flowFirst?.reasons?.['no-contour-trace']||0)<30 &&
-  Number(first.snap.swales?.count||0)>=97 &&
-  Number(second.snap.swales?.count||0)>=79 &&
+  Number(first.snap.flowFirst?.reasons?.['no-contour-trace']||0)<10 &&
+  Number(second.snap.flowFirst?.reasons?.['no-contour-trace']||0)<10 &&
+  Number(first.snap.flowFirst?.pathsServed||0)>115 &&
+  Number(second.snap.flowFirst?.pathsServed||0)>59 &&
+  Number(first.snap.swales?.count||0)>0 &&
+  Number(second.snap.swales?.count||0)>0 &&
+  firstMedian>=4.572 && firstMedian<=7.62 &&
+  secondMedian>=4.572 && secondMedian<=7.62 &&
   String(first.snap.swales?.fingerprint||'')===String(firstRepeat.snap.swales?.fingerprint||'') &&
   String(second.snap.swales?.fingerprint||'')===String(secondRepeat.snap.swales?.fingerprint||'');
 console.log('EARTHLINE_M78_LEVELSET_GATE '+JSON.stringify({levelSetOk,first:first.snap.flowFirst,second:second.snap.flowFirst,firstSwales:first.snap.swales,secondSwales:second.snap.swales,kernel:first.snap.publicationModel?.scienceKernelM78||null}));
