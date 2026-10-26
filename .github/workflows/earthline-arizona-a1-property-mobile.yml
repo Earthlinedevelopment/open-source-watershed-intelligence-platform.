@@ -9,6 +9,7 @@ on:
       - '.github/workflows/earthline-arizona-a1-property-mobile.yml'
       - 'tools/m78_9_zero_style_fallback.py'
       - 'tools/m78_11_12_shared_repairs.py'
+      - 'tools/m78_30_local_levelset.py'
   workflow_dispatch:
 
 permissions:
@@ -134,6 +135,8 @@ jobs:
         run: python3 tools/m78_25_crosshair_jitter.py
       - name: Apply realistic Property swale width
         run: python3 tools/m78_20_realistic_swale_width.py
+      - name: Apply deterministic local DEM level-set fallback
+        run: python3 tools/m78_30_local_levelset.py
       - name: Apply contour-start consistency repair
         run: python3 tools/m78_27_contour_start_consistency.py
       - name: Verify M78 repair scope
@@ -157,6 +160,8 @@ jobs:
           grep -q "realistic non-overlapping Property swale presentation" index.html
           grep -q "contour start and marcher share one half-open crossing rule" index.html
           grep -q "groundWidthM:3" index.html
+          grep -q "EARTHLINE M78.30 — deterministic local DEM level-set fallback" index.html
+          grep -q "M78.30-local-level-set-fallback" index.html
           grep -q "effectiveOpenDataRespondedM7812" index.html
       - name: Commit repaired index
         run: |
