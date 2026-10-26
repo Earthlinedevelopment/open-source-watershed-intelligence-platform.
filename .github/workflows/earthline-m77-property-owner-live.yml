@@ -1,4 +1,4 @@
-name: Earthline M77 Gate 4 Repeatability
+name: Earthline M77 Portable Exclusion Owner Repair
 
 on:
   push:
@@ -7,10 +7,14 @@ on:
       - ".github/workflows/earthline-m77-property-owner-live.yml"
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: earthline-m77-portable-exclusion-owner
+  cancel-in-progress: false
 
 jobs:
-  repeatability:
+  patch-pages-live:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -18,272 +22,183 @@ jobs:
           ref: pages-live
           fetch-depth: 0
 
-      - name: Lock exact live build and production bytes
+      - name: Verify lease and repair portable scientific exclusion owner
         shell: bash
         run: |
           set -euo pipefail
           EXPECTED="28c19b3f792d9a2ee3936bd19b26e413e9427115"
           ACTUAL="$(git rev-parse HEAD)"
-          echo "PAGES_LIVE=$ACTUAL"
-          test "$ACTUAL" = "$EXPECTED"
-          curl -fsSL --max-time 30 -H 'Cache-Control: no-cache' -H 'Pragma: no-cache'             "https://earthlinedevelopment.org/?m77repeatbytes=$(date +%s)" -o /tmp/prod.html
-          cmp -s /tmp/prod.html index.html
-          echo "M77_REPEATABILITY_PRODUCTION_BYTES_MATCH"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "pages-live moved: expected $EXPECTED got $ACTUAL"
+            exit 42
+          fi
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - run: npm install playwright@1.55.0
-      - run: npx playwright install --with-deps chromium
+          python3 <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
 
-      - name: Five-run Poudre and alternating Arizona exact controls
+          def once(old,new,label):
+              global s
+              n=s.count(old)
+              if n != 1:
+                  raise SystemExit(f"{label}: expected exactly 1 occurrence, found {n}")
+              s=s.replace(old,new,1)
+
+          # Verification must treat the exact-bbox OSM response as the sole portable
+          # scientific exclusion evidence. Loaded Mapbox style/source state is not a
+          # substitute if that exact-bbox source fails.
+          old_verify="""    const openGeometryCount16516=Math.max(0,
+      Number(op.roadGeometryCount||0)+Number(op.buildingGeometryCount||0)+Number(op.parkingGeometryCount||0)+Number(op.waterGeometryCount||0)+
+      Number(c.relevantFeatureCount||0)
+    );
+
+    if(openGeometryCount16516>0&&openDataResponded){"""
+          new_verify="""    const portableExactOwner17631=c.scientificSourceOwner17631==="overpass-exact-bbox";
+    const exactPortableGeometryCount17631=Math.max(0,
+      Number(op.roadGeometryCount||0)+Number(op.buildingGeometryCount||0)+Number(op.parkingGeometryCount||0)+Number(op.waterGeometryCount||0)
+    );
+    const openGeometryCount16516=Math.max(0,
+      exactPortableGeometryCount17631+Number(c.relevantFeatureCount||0)
+    );
+
+    /* EARTHLINE M77 / 17631 — portable Property science is geographic, not camera-derived.
+       For non-local-authority Property runs the existing exact-bbox free/open OSM adapter
+       is the sole scientific vector-exclusion source. Loaded Mapbox style/source features
+       remain presentation/audit context only and can never rescue a failed exact-bbox
+       acquisition. A valid HTTP 200 zero-feature response is screened-clear. */
+    if(portableExactOwner17631){
+      c.openDataSources16539={
+        overpass:{attempted:!!op.attempted,responded:overpassResponded,failed:overpassFailed},
+        style:{attempted:false,responded:false,failed:false,scientificRole:"presentation-only"}
+      };
+      c.openGeometryCount16516=exactPortableGeometryCount17631;
+      if(!overpassResponded){
+        c.sourceTier="open-data";c.acquisitionResult="failed";c.publicationAllowed=false;c.exclusionVerified=false;
+        c.evidenceGrade="EXCLUSION DATA QUERY FAILED · OUTPUT BLOCKED";
+        earthlineSetVectorVerification16343(c,"unverified","portable-exact-bbox-open-data-source-failed");
+        return false;
+      }
+      c.sourceTier="open-data";c.exclusionVerified=false;c.publicationAllowed=true;
+      if(exactPortableGeometryCount17631>0){
+        c.acquisitionResult="features-found";
+        c.evidenceGrade="OPEN-DATA SCREENING · FIELD VERIFICATION REQUIRED";
+        earthlineSetVectorVerification16343(c,"unverified","open-data-screening-not-authoritative");
+        return true;
+      }
+      c.acquisitionResult="screened-clear";
+      c.evidenceGrade="OPEN-DATA SCREENING · NO MAPPED EXCLUSIONS RETURNED · FIELD VERIFICATION REQUIRED";
+      earthlineSetVectorVerification16343(c,"unverified","open-data-screened-clear-not-authoritative");
+      return true;
+    }
+
+    if(openGeometryCount16516>0&&openDataResponded){"""
+          once(old_verify,new_verify,"portable exact-bbox verification contract")
+
+          old_infra="""    const infrastructure16550=()=>{
+      if(!infrastructurePromise15862P){
+        infrastructurePromise15862P=Promise.resolve(earthlineCollectParcelInfrastructure15862P(myGen));
+      }
+      return infrastructurePromise15862P;
+    };
+    const stylePrefetch16459=M&&M._mappedExclusionStylePrefetch16459||null;"""
+          new_infra="""    const infrastructure16550=()=>{
+      if(!infrastructurePromise15862P){
+        infrastructurePromise15862P=Promise.resolve(earthlineCollectParcelInfrastructure15862P(myGen));
+      }
+      return infrastructurePromise15862P;
+    };
+
+    /* EARTHLINE M77 / 17631 — eliminate the remaining Property camera→science leak.
+       Outside a certified local-authority jurisdiction, do not build the scientific
+       no-build grid from queryRenderedFeatures/querySourceFeatures because those calls
+       expose only the vector tiles loaded for the current camera/viewport. Use the
+       existing exact Property-bbox OSM geometry adapter every run. Mapbox Tilequery
+       remains dormant; no paid API path is introduced. */
+    if(!localAuthorityAvailable17630){
+      M.vectorNoBuildCoverage.scientificSourceOwner17631="overpass-exact-bbox";
+      M.vectorNoBuildCoverage.evidencePath17630="portable-exact-bbox-open-data";
+      M.vectorNoBuildCoverage.styleScientificRole17631="presentation-only-not-queried";
+      earthlineProgress("hydrology","mapping exact property exclusions…");
+      const infrastructure17631=await infrastructure16550();
+      if(earthlineIsStale(myGen)){
+        earthlineSetVectorVerification16343(M.vectorNoBuildCoverage,"unverified","analysis-stale-after-portable-exact-bbox-retrieval");
+        return false;
+      }
+      /* These masks start empty and therefore contain only the exact-bbox adapter's
+         full road/building/parking/water geometry, never camera-loaded style tiles. */
+      roadMask.fill(0);buildingMask.fill(0);mask.fill(0);
+      earthlineMergeInfraMasks15862P(roadMask,buildingMask,infrastructure17631);
+      count=Number(infrastructure17631&&infrastructure17631.processedGeometryCount||0);
+      const op17631=infrastructure17631&&infrastructure17631.overpass||{};
+      M.vectorNoBuildCoverage.styleReady=false;
+      M.vectorNoBuildCoverage.layerCount=0;
+      M.vectorNoBuildCoverage.styleQueryAttempted16516=false;
+      M.vectorNoBuildCoverage.styleQuerySuccess16516=false;
+      M.vectorNoBuildCoverage.styleQueryFailure16516=false;
+      M.vectorNoBuildCoverage.relevantFeatureCount=0;
+      M.vectorNoBuildCoverage.sourceFeatureCount=Number(op17631.rawElementCount||0);
+      M.vectorNoBuildCoverage.processedFeatureCount=count;
+      M.vectorNoBuildCoverage.infrastructure15862P=earthlineInfraCoverageRecord15862P(infrastructure17631);
+      roadMask=earthlineDilateMask(roadMask,Math.max(1,2.5/Math.max(.2,M.cellM||1)));
+      for(let i=0;i<N;i++)mask[i]=(roadMask[i]||buildingMask[i])?1:0;
+      M.vectorNoBuildMask=mask;M.vectorNoBuildCount=count;
+      M.vectorNoBuildStamp=[Number(M.centerLat||0).toFixed(6),Number(M.centerLng||0).toFixed(6),M.viewZoom,count,"17631"].join("|");
+      M._noBuildStamp="";
+      M.vectorNoBuildCoverage.featureCount=count;
+      const verified17631=earthlineFinalizeVectorVerification16343(M.vectorNoBuildCoverage,infrastructure17631,count,"portable-exact-bbox");
+      window.EARTHLINE_PORTABLE_EXCLUSION_OWNER_17631={
+        build:"EARTHLINE M77 / 17631",owner:"vectorNoBuild15778",
+        scientificSource:"overpass-exact-bbox",cameraDependent:false,
+        searchGen:Number(myGen),processedGeometryCount:count,
+        sourceFeatureCount:Number(op17631.rawElementCount||0),
+        acquisitionResult:M.vectorNoBuildCoverage.acquisitionResult||null,
+        publicationAllowed:M.vectorNoBuildCoverage.publicationAllowed===true,
+        at:new Date().toISOString()
+      };
+      return !!verified17631;
+    }
+
+    const stylePrefetch16459=M&&M._mappedExclusionStylePrefetch16459||null;"""
+          once(old_infra,new_infra,"portable exact-bbox early scientific path")
+
+          if s.count("EARTHLINE M77 / 17631") != 3:
+              raise SystemExit("expected exactly three M77/17631 markers")
+          if 'scientificSourceOwner17631="overpass-exact-bbox"' not in s:
+              raise SystemExit("portable scientific owner marker missing")
+          if 'portable-exact-bbox-open-data-source-failed' not in s:
+              raise SystemExit("portable fail-closed verification missing")
+          if 'Mapbox Tilequery\n       remains dormant' not in s:
+              raise SystemExit("zero-cost Tilequery lock comment missing")
+
+          p.write_text(s,encoding="utf-8")
+          PY
+
+          git diff --check
+          git diff --stat
+          git diff -- index.html | sed -n '1,320p'
+
+      - name: Parse every inline script
         shell: bash
         run: |
-          cat > m77-repeatability.mjs <<'JS'
-          import { chromium } from 'playwright';
-
-          const browser=await chromium.launch({headless:true});
-          const assert=(ok,msg)=>{if(!ok)throw new Error(msg)};
-
-          async function openRegional(query,label){
-            const page=await browser.newPage({viewport:{width:1440,height:1000}});
-            page.on('console',m=>{
-              const t=m.text();
-              if(/error|failed|stale|M77/i.test(t))console.log(label+'_PAGE',m.type(),t);
-            });
-            await page.goto('https://earthlinedevelopment.org/?m77repeat='+encodeURIComponent(label)+'-'+Date.now(),{
-              waitUntil:'domcontentloaded',timeout:60000
-            });
-            await page.waitForSelector('#searchInput',{timeout:30000});
-            await page.fill('#searchInput',query);
-            await page.waitForSelector('#earthlineSearchSuggestions15970 button',{timeout:15000});
-            await page.click('#runBtn');
-            await page.waitForFunction(()=>{
-              const root=document.documentElement;
-              const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
-              const tier=String(d&&(d.tier||d.mode)||'').toLowerCase();
-              return root.dataset.earthlineRunState==='published'&&(tier==='regional'||tier==='focus');
-            },null,{timeout:75000});
-            await page.waitForTimeout(400);
-            return page;
+          node - <<'NODE'
+          const fs=require('fs');
+          const s=fs.readFileSync('index.html','utf8');
+          let n=0;
+          for(const m of s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)){
+            if(!m[1].trim()) continue;
+            new Function(m[1]);
+            n++;
           }
+          console.log('M77_17631_INLINE_SCRIPT_PARSE_OK',n);
+          NODE
 
-          async function setTargetAndRun(page,target,ordinal){
-            const priorSerial=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
-            const set=await page.evaluate(({lat,lng})=>{
-              const fn=window.earthlineSetPropertyTarget16201;
-              if(typeof fn!=='function')return {ok:false,reason:'target-setter-missing'};
-              const ok=fn({lat:Number(lat),lng:Number(lng),source:'crosshair-m77-repeatability'},{openPanel:false});
-              const b=document.getElementById('earthlineDeclareProperty16169');
-              return {ok:!!ok,disabled:!!b?.disabled,owner:b?.dataset?.earthlinePropertyClickOwner16546||'',target:window.EARTHLINE_PROPERTY_TARGET_16201||null};
-            },target);
-            assert(set.ok,target.label+' target setter failed '+JSON.stringify(set));
-            assert(set.owner==='shared-17494',target.label+' Property click owner is '+set.owner);
-
-            await page.locator('#earthlineDeclareProperty16169').click({force:true});
-            await page.waitForFunction(prev=>{
-              const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
-              const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
-              return !!(a&&Number(a.serial)>Number(prev)&&a.settled===true&&
-                String(d&&(d.tier||d.mode)||'').toLowerCase()==='property');
-            },priorSerial,{timeout:80000});
-
-            // Aquifer owner must settle or explicitly end unavailable for this exact generation.
-            await page.waitForFunction(()=>{
-              const m=(typeof M!=='undefined'?M:null); if(!m)return false;
-              const owner=m.propertyAquiferOwner16393||null;
-              const current=!owner||Number(owner.searchGen)===Number(m.searchGen||0);
-              const settled=!m.usgsAquiferLoading&&(
-                !m.usgsAquiferRequestKey16388||
-                m.usgsAquiferCompletedKey16393===m.usgsAquiferRequestKey16388||
-                String(m.usgsAquiferStatus||'')==='coverage-unavailable'
-              );
-              return current&&settled;
-            },null,{timeout:12000}).catch(()=>null);
-            await page.waitForTimeout(900);
-
-            const snap=await page.evaluate(({target,ordinal})=>{
-              const m=(typeof M!=='undefined'?M:null);
-              const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
-              const root=document.documentElement;
-              const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
-              const audit=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
-              const safe=m?.authoritativeSafeSwales15815||{type:'FeatureCollection',features:[]};
-              const water=m?.authoritativeWaterPaths15824||{type:'FeatureCollection',features:[]};
-              const nat=mp?.getSource?.('earthline-property-swale-texture-16174')?._data||{type:'FeatureCollection',features:[]};
-              const naturalCenters={type:'FeatureCollection',features:(nat.features||[]).filter(f=>f?.properties?.geometry_role==='centerline')};
-              const aq=mp?.getSource?.('earthline-aquifers')?._data||{type:'FeatureCollection',features:[]};
-
-              const geometryRows=fc=>{
-                const rows=[];
-                for(const f of (fc?.features||[])){
-                  const g=f?.geometry||{};
-                  if(g.type==='LineString')rows.push(g.coordinates);
-                  else if(g.type==='MultiLineString')for(const p of (g.coordinates||[]))rows.push(p);
-                }
-                return rows;
-              };
-              const fnv=text=>{let h=2166136261>>>0;for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619)>>>0}return h.toString(16).padStart(8,'0')};
-              const lineFp=fc=>fnv(JSON.stringify(geometryRows(fc)));
-              const featureFp=fc=>{
-                const rows=(fc?.features||[]).map(f=>JSON.stringify({
-                  g:f?.geometry||null,
-                  k:f?.properties?.featureKind||'',
-                  n:f?.properties?.name||'',
-                  a:f?.properties?.aquiferType||'',
-                  s:f?.properties?.source||''
-                })).sort();
-                return fnv(JSON.stringify(rows));
-              };
-
-              const style=mp?.getStyle?.()||{};
-              const elderSourceIds=Object.keys(style.sources||{}).filter(id=>/elder/i.test(id)).sort();
-              const elderSources=elderSourceIds.map(id=>{
-                const src=mp?.getSource?.(id),data=src?._data||src?._options?.data||null;
-                return {id,count:Number(data?.features?.length||0),fp:featureFp(data||{features:[]})};
-              });
-              const elderLayers=(style.layers||[]).filter(l=>/elder/i.test(String(l.id||''))).map(l=>({
-                id:l.id,visibility:String(mp?.getLayoutProperty?.(l.id,'visibility')||'visible')
-              })).sort((a,b)=>a.id.localeCompare(b.id));
-              const elderDom=[...document.querySelectorAll('[id*="elder" i],[class*="elder" i]')].map(el=>({
-                id:el.id||'',classes:String(el.className||''),hidden:!!el.hidden,
-                display:getComputedStyle(el).display,visibility:getComputedStyle(el).visibility
-              })).sort((a,b)=>(a.id+a.classes).localeCompare(b.id+b.classes));
-              const elderApi=window.EARTHLINE_ELDER_TREES_V1_17097||null;
-              const elderApiKeys=elderApi?Object.keys(elderApi).sort():[];
-              const elderSignature=fnv(JSON.stringify({elderSources,elderLayers,elderDom,elderApiKeys}));
-
-              const aqAudit=m?.usgsAquiferAudit||null;
-              const aqStatus=String(m?.usgsAquiferStatus||'');
-              const aqClass={
-                status:aqStatus,
-                polygonCount:Number(m?.usgsAquifers?.length||0),
-                wellCount:Number(m?.vtGroundwaterWells16398?.length||0),
-                summary:!!m?.vtGroundwaterSummaryPoint16398,
-                auditStatus:String(aqAudit?.status||''),
-                resolver:String(aqAudit?.resolver||''),
-                selectedTier:String(aqAudit?.selectedPolygonTier?.key||aqAudit?.selectedPolygonTier?.source||''),
-                sourceFeatures:Number(aq?.features?.length||0)
-              };
-              const aqFp=featureFp(aq);
-
-              const decl=window.EARTHLINE_PROPERTY_DECLARATION_16169||null;
-              const tgt=window.EARTHLINE_PROPERTY_TARGET_16201||null;
-              const pub=m?.propertyPublication15816||null;
-              const wpub=m?.authoritativeWaterPublication15824||null;
-              const texture=window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null;
-              const b=document.getElementById('earthlineDeclareProperty16169');
-
-              return {
-                label:target.label,ordinal,
-                runToken:String(d?.runToken||''),
-                tier:String(d&&(d.tier||d.mode)||'').toLowerCase(),
-                target:{lat:Number(tgt?.lat),lng:Number(tgt?.lng)},
-                declarationCenter:{lat:Number(decl?.center?.lat),lng:Number(decl?.center?.lng)},
-                terrainStamp:String(m?.terrainStamp||''),
-                modelSearchGen:Number(m?.searchGen),
-                publicationSearchGen:Number(pub?.searchGen),
-                publicationCommitted:pub?.committed===true,
-                publicationSafe:pub?.safetyVerified===true,
-                sourceStateFingerprint:String(audit?.sourceEvidence?.sourceStateFingerprint||''),
-                scientificInputFingerprint:String(audit?.sourceEvidence?.scientificInputFingerprint||''),
-                noBuildMaskHash:String(audit?.sourceEvidence?.noBuildMaskHash||''),
-                safeCount:Number(safe?.features?.length||0),
-                safeParts:geometryRows(safe).length,
-                swaleFp:lineFp(safe),
-                naturalCenterCount:Number(naturalCenters.features.length||0),
-                renderedSwaleFp:lineFp(naturalCenters),
-                waterCount:Number(water?.features?.length||0),
-                waterFp:lineFp(water),
-                waterCommitted:wpub?.committed===true,
-                waterVerified:wpub?.verified===true,
-                aquiferClass:aqClass,
-                aquiferFp:aqFp,
-                elderSignature,
-                elderSources,elderLayers,
-                elderDomCount:elderDom.length,elderApiKeys,
-                propertyState:String(root.dataset.earthlinePropertyRunState||''),
-                propertyClass:root.classList.contains('earthline-property-running-16233'),
-                propertyLatch:root.classList.contains('earthline-property-orb-latched-16244'),
-                busy:String(b?.dataset?.busy||''),ariaBusy:String(b?.getAttribute('aria-busy')||''),
-                textureCenterlines:Number(texture?.centerlines||0),
-                textureSourceReady:texture?.sourceReady===true,
-                auditSettled:audit?.scientificSettled===true&&audit?.scientificResult===true
-              };
-            },{target,ordinal});
-
-            console.log('M77_REPEAT',JSON.stringify(snap));
-
-            const tol=1e-6;
-            assert(snap.tier==='property',target.label+' wrong tier');
-            assert(snap.auditSettled,target.label+' science not settled true');
-            assert(snap.publicationCommitted&&snap.publicationSafe,target.label+' publication not committed/safe');
-            assert(snap.publicationSearchGen===snap.modelSearchGen,target.label+' publication generation mismatch');
-            assert(Math.abs(snap.target.lat-target.lat)<tol&&Math.abs(snap.target.lng-target.lng)<tol,target.label+' target moved');
-            assert(Math.abs(snap.declarationCenter.lat-target.lat)<tol&&Math.abs(snap.declarationCenter.lng-target.lng)<tol,target.label+' declaration center mismatch');
-            assert(snap.terrainStamp.includes('|18|'),target.label+' scientific frame is not zoom 18: '+snap.terrainStamp);
-            assert(snap.safeCount>0&&snap.safeParts>0,target.label+' no authoritative safe swales');
-            assert(snap.naturalCenterCount===snap.safeParts,target.label+' rendered swale part count mismatch');
-            assert(snap.renderedSwaleFp===snap.swaleFp,target.label+' rendered swale geometry differs from authoritative safe geometry');
-            assert(snap.waterCommitted&&snap.waterVerified,target.label+' water publication not verified');
-            assert(!snap.propertyClass&&!snap.propertyLatch&&snap.busy!=='1'&&snap.ariaBusy!=='true',target.label+' Property Orb/busy state did not clear');
-            assert(snap.sourceStateFingerprint&&snap.scientificInputFingerprint&&snap.noBuildMaskHash,target.label+' missing science fingerprints');
-            return snap;
-          }
-
-          function normalized(s){
-            return JSON.stringify({
-              target:s.target,
-              declarationCenter:s.declarationCenter,
-              terrainStamp:s.terrainStamp,
-              sourceStateFingerprint:s.sourceStateFingerprint,
-              scientificInputFingerprint:s.scientificInputFingerprint,
-              noBuildMaskHash:s.noBuildMaskHash,
-              safeCount:s.safeCount,safeParts:s.safeParts,swaleFp:s.swaleFp,
-              naturalCenterCount:s.naturalCenterCount,renderedSwaleFp:s.renderedSwaleFp,
-              waterCount:s.waterCount,waterFp:s.waterFp,
-              aquiferClass:s.aquiferClass,aquiferFp:s.aquiferFp,
-              elderSignature:s.elderSignature,
-              elderSources:s.elderSources,elderLayers:s.elderLayers,elderDomCount:s.elderDomCount
-            });
-          }
-
-          async function runPoudre(){
-            const page=await openRegional('Colorado','POUDRE');
-            const t={label:'POUDRE',lat:40.6412,lng:-105.2237};
-            const rows=[];
-            for(let i=1;i<=5;i++)rows.push(await setTargetAndRun(page,t,i));
-            const sigs=rows.map(normalized);
-            assert(new Set(sigs).size===1,'POUDRE repeatability mismatch\n'+rows.map((r,i)=>'run'+(i+1)+' '+normalized(r)).join('\n'));
-            console.log('M77_REPEAT_PASS',JSON.stringify({label:'POUDRE',runs:5,swaleFp:rows[0].swaleFp,waterFp:rows[0].waterFp,aquifer:rows[0].aquiferClass,elderSignature:rows[0].elderSignature}));
-            await page.close();
-          }
-
-          async function runArizonaAlternating(){
-            const page=await openRegional('Arizona','ARIZONA');
-            const good={label:'AZ_GOOD',lat:34.21607,lng:-111.93178};
-            const bad={label:'AZ_BAD',lat:34.21605,lng:-111.93582};
-            const groups={AZ_GOOD:[],AZ_BAD:[]};
-            for(let i=1;i<=10;i++){
-              const t=i%2?good:bad;
-              const r=await setTargetAndRun(page,t,Math.ceil(i/2));
-              groups[t.label].push(r);
-            }
-            for(const label of ['AZ_GOOD','AZ_BAD']){
-              const rows=groups[label],sigs=rows.map(normalized);
-              assert(rows.length===5,label+' did not run five times');
-              assert(new Set(sigs).size===1,label+' repeatability mismatch\n'+rows.map((r,i)=>'run'+(i+1)+' '+normalized(r)).join('\n'));
-              console.log('M77_REPEAT_PASS',JSON.stringify({label,runs:5,swaleFp:rows[0].swaleFp,waterFp:rows[0].waterFp,aquifer:rows[0].aquiferClass,elderSignature:rows[0].elderSignature}));
-            }
-            assert(groups.AZ_GOOD[0].terrainStamp!==groups.AZ_BAD[0].terrainStamp,'Arizona nearby controls reused the same terrain frame');
-            assert(groups.AZ_GOOD[0].swaleFp!==groups.AZ_BAD[0].swaleFp,'Arizona nearby controls incorrectly reused identical swale geometry');
-            await page.close();
-          }
-
-          await runPoudre();
-          await runArizonaAlternating();
-          await browser.close();
-          console.log('M77_GATE4_REPEATABILITY_OK');
-          JS
-
-          node m77-repeatability.mjs
+      - name: Commit portable exclusion owner repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "earthline-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: make portable Property exclusions camera-independent"
+          git push origin HEAD:pages-live
