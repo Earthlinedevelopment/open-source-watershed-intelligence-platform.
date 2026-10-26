@@ -180,12 +180,27 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
         return -neg_structural,lon,lat,h,emerg,area,openf
 
     feats=[]
+    refine_none_count=0
+    refined_outside_bbox_count=0
+    dedupe_rejected_count=0
+    refined_count=0
+    rejection_samples=[]
     for rank,(sc,r,c,cohort) in enumerate(ranked,1):
         ref=refine_candidate(r,c)
-        if not ref:continue
+        if not ref:
+            refine_none_count+=1
+            if len(rejection_samples)<8: rejection_samples.append({"rank":rank,"reason":"refine-none","screen_row":int(r),"screen_col":int(c),"cohort":cohort})
+            continue
+        refined_count+=1
         structural,lon,lat,h,emerg,area,openf=ref
-        if not (minlon<=lon<=maxlon and minlat<=lat<=maxlat):continue
-        if any(hav((lon,lat),f["geometry"]["coordinates"])<10 for f in feats):continue
+        if not (minlon<=lon<=maxlon and minlat<=lat<=maxlat):
+            refined_outside_bbox_count+=1
+            if len(rejection_samples)<8: rejection_samples.append({"rank":rank,"reason":"refined-outside-bbox","screen_row":int(r),"screen_col":int(c),"lon":float(lon),"lat":float(lat),"cohort":cohort})
+            continue
+        if any(hav((lon,lat),f["geometry"]["coordinates"])<10 for f in feats):
+            dedupe_rejected_count+=1
+            if len(rejection_samples)<8: rejection_samples.append({"rank":rank,"reason":"dedupe","lon":float(lon),"lat":float(lat),"cohort":cohort})
+            continue
         feats.append({
           "type":"Feature","geometry":{"type":"Point","coordinates":[lon,lat]},
           "properties":{
@@ -226,6 +241,13 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
       "current_target_total":current_target_total,
       "future_target_total":future_target_total,
       "current_selected_total":current_selected_total,
-      "future_selected_total":future_selected_total
+      "future_selected_total":future_selected_total,
+      "ranked_screen_candidate_count":len(ranked),
+      "refined_count":refined_count,
+      "refine_none_count":refine_none_count,
+      "refined_outside_bbox_count":refined_outside_bbox_count,
+      "dedupe_rejected_count":dedupe_rejected_count,
+      "final_feature_count":len(feats),
+      "rejection_samples":rejection_samples
     }
     return {"features":feats,"tile":tile}
