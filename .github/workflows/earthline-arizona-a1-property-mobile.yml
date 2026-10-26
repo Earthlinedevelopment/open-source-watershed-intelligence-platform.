@@ -8,6 +8,7 @@ on:
       - 'tests/arizona-desktop-crosshair-m78.mjs'
       - '.github/workflows/earthline-arizona-a1-property-mobile.yml'
       - 'tools/m78_9_zero_style_fallback.py'
+      - 'tools/m78_11_12_shared_repairs.py'
   workflow_dispatch:
 
 permissions:
@@ -123,6 +124,8 @@ jobs:
           PY
       - name: Apply shared zero-style exclusion fallback
         run: python3 tools/m78_9_zero_style_fallback.py
+      - name: Apply unique-flow and OSM resilience repairs
+        run: python3 tools/m78_11_12_shared_repairs.py
       - name: Verify M78 repair scope
         run: |
           git diff --check
@@ -135,13 +138,16 @@ jobs:
           test "$(grep -c "final clearance excludes Earthline presentation layers" index.html)" = "1"
           test "$(grep -c "self-generated features cannot become exclusions" index.html)" = "1"
           test "$(grep -c "shared-style-zero-plus-infrastructure-fallback" index.html)" = "1"
+          test "$(grep -c "one canonical owner per minor-flow cell" index.html)" = "1"
+          test "$(grep -c "resilient free global OSM transport" index.html)" = "1"
+          test "$(grep -c "effectiveOpenDataRespondedM7812" index.html)" = "3"
       - name: Commit repaired index
         run: |
           if git diff --quiet -- index.html; then exit 0; fi
           git config user.name "Earthlinedevelopment"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m "fix: verify zero style exclusions through shared fallback"
+          git commit -m "fix: dedupe minor flow paths and harden OSM exclusions"
           git push origin HEAD:pages-live
 
   test:
