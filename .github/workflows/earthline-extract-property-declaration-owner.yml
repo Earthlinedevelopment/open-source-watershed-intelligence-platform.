@@ -1,0 +1,30 @@
+name: Earthline Extract Property Declaration Owner
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-extract-property-declaration-owner.yml'
+permissions: {contents: read}
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - name: Extract declaration owner
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          for term in ["earthlineGovernedPropertyRun16202","EARTHLINE_PROPERTY_DECLARATION_16169","earthlineDeclareProperty16169"]:
+              print("\n===== "+term+" =====")
+              start=0
+              found=0
+              while True:
+                  i=s.find(term,start)
+                  if i<0 or found>=8: break
+                  print(s[max(0,i-1800):min(len(s),i+4200)])
+                  print("\n---")
+                  found+=1
+                  start=i+len(term)
+          PY
