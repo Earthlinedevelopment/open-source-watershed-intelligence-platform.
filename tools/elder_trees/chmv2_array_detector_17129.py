@@ -3,7 +3,7 @@ import json, math
 import numpy as np
 from scipy import ndimage
 
-METHOD="earthline-elder-tree-aoi-chmv2-v0.7-high-recall-plateau-collapse"
+METHOD="earthline-elder-tree-aoi-chmv2-v0.8-screen-fallback-refinement"
 CURRENT_ELDER_TARGET_PER_HA=15.0
 FUTURE_ELDER_RATIO=2.5
 
@@ -187,11 +187,27 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
     rejection_samples=[]
     for rank,(sc,r,c,cohort) in enumerate(ranked,1):
         ref=refine_candidate(r,c)
+        refinement_status="native-refined"
         if not ref:
+            # EARTHLINE M78.15 — preserve a valid screen-stage modeled canopy peak
+            # when native refinement cannot resolve a local maximum. This is a
+            # modeled fallback, never upgraded to verified/age evidence.
             refine_none_count+=1
-            if len(rejection_samples)<8: rejection_samples.append({"rank":rank,"reason":"refine-none","screen_row":int(r),"screen_col":int(c),"cohort":cohort})
-            continue
-        refined_count+=1
+            full_col=screen_col0+(c+.5)*screen_ww/max(1,ow)
+            full_row=screen_row0+(r+.5)*screen_wh/max(1,oh)
+            x=origin_x+(full_col+.5)*resx
+            y=origin_y+(full_row+.5)*resy
+            lon,lat=mercator_to_lonlat(x,y)
+            h=float(z[r,c]) if np.isfinite(z[r,c]) else float(canopy_floor_m)
+            emerg=float(prom[r,c]) if np.isfinite(prom[r,c]) else 0.0
+            area=0.0
+            openf=float(open_context[r,c]) if np.isfinite(open_context[r,c]) else 0.0
+            structural=float(sc)
+            ref=(structural,lon,lat,h,emerg,area,openf)
+            refinement_status="screen-fallback"
+            if len(rejection_samples)<8: rejection_samples.append({"rank":rank,"reason":"refine-none-screen-fallback","screen_row":int(r),"screen_col":int(c),"cohort":cohort})
+        else:
+            refined_count+=1
         structural,lon,lat,h,emerg,area,openf=ref
         if not (minlon<=lon<=maxlon and minlat<=lat<=maxlat):
             refined_outside_bbox_count+=1
@@ -207,7 +223,7 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
             "record_class":"ELDER_TREE_CANDIDATE",
             "elder_cohort":cohort,
             "cohort_definition":"CURRENT = top locally ranked structures under the research density prior; FUTURE = successor structures retained for continuity. Neither label proves age.",
-            "verification_status":"modeled remote-sensing candidate only",
+            "verification_status":"modeled remote-sensing candidate only","refinement_status":refinement_status,
             "source_class":"MODELED_CHMV2","source_name":"WRI/Meta CHMv2",
             "source_url":source_url,"source_license":"CC BY 4.0",
             "quadkey":q,"method_version":METHOD,"screen_rank":rank,
