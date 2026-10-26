@@ -1884,12 +1884,15 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     window.addEventListener('hashchange',hash,false);
     document.addEventListener('earthline:analysis-complete',e=>{
       wrapCorridor();
-      void refresh();
       const tier17414=String(e?.detail?.tier||e?.detail?.mode||'').toLowerCase();
-      if(!tier17414.includes('property')){
-        clearTimeout(window.__EARTHLINE_ELDER_POSTREGIONAL_WARM_17416);
-        window.__EARTHLINE_ELDER_POSTREGIONAL_WARM_17416=setTimeout(()=>{void prewarmDynamicWorker()},900);
-      }
+      /* EARTHLINE M78 — PROPERTY ELDER SINGLE LIFECYCLE OWNER.
+         Property publication is owned only by terminalPropertyRun -> startProperty.
+         The generic analysis-complete refresh remains Regional-only so it cannot
+         replace the exact-frame Property Elder result with another lifecycle path. */
+      if(tier17414.includes('property'))return;
+      void refresh();
+      clearTimeout(window.__EARTHLINE_ELDER_POSTREGIONAL_WARM_17416);
+      window.__EARTHLINE_ELDER_POSTREGIONAL_WARM_17416=setTimeout(()=>{void prewarmDynamicWorker()},900);
     },{passive:true});
     /* EARTHLINE 17414 — avoid competing with the first Regional run.
        Warm Elder runtime immediately after Regional publication. */
