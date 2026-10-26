@@ -324,3 +324,5 @@ if(!propClicked||!out.audit?.settled)process.exitCode=1;
 // M78.3 five-repeat four-system binding gate
 
 // M78.4 swale-stage discriminator
+
+// M78.5 final-clearance repeat verification trigger
