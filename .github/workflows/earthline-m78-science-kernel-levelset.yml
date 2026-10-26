@@ -29,14 +29,10 @@ jobs:
           grep -q "M78.30-local-level-set-fallback" index.html
       - name: Install browser test
         run: npm install --no-save playwright@1.55.0
-      - name: Serve candidate locally
-        run: |
-          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-m78-30-http.log 2>&1 &
-          echo $! > /tmp/earthline-m78-30-http.pid
-          sleep 2
-      - name: Run exact desktop Arizona candidate
+      - name: Run exact desktop Arizona candidate on production origin
         env:
-          EARTHLINE_URL: http://127.0.0.1:8787/
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_INJECT_INDEX: '1'
         run: node tests/arizona-desktop-crosshair-m78.mjs
       - name: Commit validated candidate
         if: success()
