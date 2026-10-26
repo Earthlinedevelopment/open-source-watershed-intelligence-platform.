@@ -1,0 +1,117 @@
+import { chromium } from 'playwright';
+
+const browser=await chromium.launch({headless:true,channel:'chrome'});
+const context=await browser.newContext({viewport:{width:1798,height:831},deviceScaleFactor:1});
+const page=await context.newPage();
+const errs=[]; page.on('pageerror',e=>errs.push(String(e)));
+
+await page.goto('https://earthlinedevelopment.org/?m78_desktop_crosshair='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+await page.waitForSelector('#searchInput',{timeout:25000});
+await page.waitForTimeout(1000);
+
+if(!await page.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'))){
+  await page.evaluate(()=>document.getElementById('earthlineRailSearch16188')?.click());
+  await page.waitForTimeout(250);
+}
+await page.locator('#searchInput').click();
+await page.locator('#searchInput').fill('Arizona');
+await page.waitForTimeout(800);
+const opt=page.locator('#earthlineSearchSuggestions15970 [role="option"]').filter({hasText:/Arizona/i}).first();
+if(await opt.count())await opt.click({timeout:8000}).catch(()=>{});
+await page.evaluate(()=>document.getElementById('runBtn')?.click());
+await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191,{timeout:60000,polling:150});
+await page.waitForTimeout(800);
+
+function fnv(payload){let h=2166136261;for(let i=0;i<payload.length;i++){h^=payload.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(16).padStart(8,'0')}
+
+async function runHumanCrosshair(lng,lat,label){
+  const before=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
+  await page.evaluate(({lng,lat})=>{
+    const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+    if(!m)throw new Error('map unavailable');
+    m.jumpTo({center:[lng,lat],zoom:16.59});
+    try{m.fire?.('dragend')}catch(_){}
+  },{lng,lat});
+  await page.waitForTimeout(500);
+  const pre=await page.evaluate(()=>({
+    target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+    button:String(document.getElementById('earthlineDeclareProperty16169')?.textContent||'').replace(/\s+/g,' ').trim(),
+    disabled:!!document.getElementById('earthlineDeclareProperty16169')?.disabled,
+    center:(()=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),c=m?.getCenter?.();return c?{lng:c.lng,lat:c.lat,zoom:m.getZoom?.()}:null})()
+  }));
+  const btn=page.locator('#earthlineDeclareProperty16169');
+  await btn.waitFor({state:'visible',timeout:10000});
+  await btn.click({timeout:10000});
+  await page.waitForFunction(prev=>{
+    const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173;
+    return !!a&&Number(a.serial||0)>prev&&a.settled===true;
+  },before,{timeout:60000,polling:120}).catch(()=>{});
+  await page.waitForFunction(({lng,lat})=>{
+    const e=window.EARTHLINE_ELDER_TREE_LAST_17097;
+    const prefix=lng.toFixed(6)+'|'+lat.toFixed(6)+'|';
+    return !!e&&(e.state==='committed'||e.state==='failed')&&(!e.propertyRunIdentity||String(e.propertyRunIdentity).startsWith(prefix));
+  },{lng,lat},{timeout:30000,polling:120}).catch(()=>{});
+  await page.waitForTimeout(500);
+  const snap=await page.evaluate(({lng,lat,label})=>{
+    const md=(typeof M!=='undefined'&&M)||window.M||{};
+    const map=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+    const safe=md?.authoritativeSafeSwales15815;
+    const sw=Array.isArray(safe?.features)?safe.features:[];
+    const swPayload=JSON.stringify(sw.map(f=>f?.geometry?.coordinates||null));
+    let sh=2166136261;for(let i=0;i<swPayload.length;i++){sh^=swPayload.charCodeAt(i);sh=Math.imul(sh,16777619)}
+    const water=md?.authoritativeWaterPaths15824;
+    const wf=Array.isArray(water?.features)?water.features:[];
+    const wp=JSON.stringify(wf.map(f=>f?.geometry?.coordinates||null));
+    let wh=2166136261;for(let i=0;i<wp.length;i++){wh^=wp.charCodeAt(i);wh=Math.imul(wh,16777619)}
+    const boundary=Array.isArray(md?.analysisBoundaryLngLat)?md.analysisBoundaryLngLat:[];
+    let west=Infinity,south=Infinity,east=-Infinity,north=-Infinity,sx=0,sy=0,n=0;
+    for(const p of boundary){const x=Number(p?.[0]),y=Number(p?.[1]);if(Number.isFinite(x)&&Number.isFinite(y)){west=Math.min(west,x);east=Math.max(east,x);south=Math.min(south,y);north=Math.max(north,y);sx+=x;sy+=y;n++}}
+    const elderSrc=map?.getSource?.('earthline-elder-trees-17097');
+    const elderData=elderSrc&&(elderSrc._data||elderSrc._options?.data);
+    const elderLayer=map?.getLayer?.('earthline-elder-tree-points-17097');
+    const center=map?.getCenter?.();
+    return {
+      label,requested:{lng,lat},
+      target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+      declaration:window.EARTHLINE_PROPERTY_DECLARATION_16169||null,
+      frameSeed:window.EARTHLINE_PROPERTY_FRAME_SEED_16414||null,
+      modelLoc:md?.loc?{lng:md.loc.lng,lat:md.loc.lat,fullName:md.loc.fullName||null}:null,
+      mapCenter:center?{lng:center.lng,lat:center.lat,zoom:map.getZoom?.()}:null,
+      boundary:{count:boundary.length,center:n?{lng:sx/n,lat:sy/n}:null,bounds:Number.isFinite(west)?{west,south,east,north}:null},
+      searchGen:Number(md?.searchGen||0),
+      runAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+      publication:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,
+      publicationModel:md?.propertyPublication15816||null,
+      swales:{count:sw.length,fingerprint:(sh>>>0).toString(16).padStart(8,'0'),meta:md?.swaleMeta||null,diag:md?.swaleDiagnostics||null},
+      water:{count:wf.length,fingerprint:(wh>>>0).toString(16).padStart(8,'0'),publication:md?.authoritativeWaterPublication15824||null},
+      elder:{
+        last:window.EARTHLINE_ELDER_TREE_LAST_17097||null,
+        gauge:String(document.getElementById('earthlineElderTreesGauge17097')?.textContent||'').trim(),
+        sourceFeatures:Array.isArray(elderData?.features)?elderData.features.length:null,
+        layerExists:!!elderLayer,
+        visibility:elderLayer?(map?.getLayoutProperty?.('earthline-elder-tree-points-17097','visibility')??null):null
+      },
+      aquifer:{owner:md?.propertyAquiferOwner16393||null,status:String(md?.usgsAquiferStatus||''),polys:Number(md?.usgsAquifers?.length||0)},
+      noBuild:{provenance:md?.noBuildProvenance15843||null,lock:md?.propertyResultLock15815||null},
+      safeVisibility:window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null,
+      texture:window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null,
+      errs:[...window.__earthlineDesktopErrors||[]]
+    };
+  },{lng,lat,label});
+  await page.screenshot({path:'/tmp/'+label+'.png',fullPage:true});
+  return {pre,snap};
+}
+
+const first=await runHumanCrosshair(-111.93067,34.21568,'m78-desktop-first');
+const second=await runHumanCrosshair(-111.93347,34.21629,'m78-desktop-second');
+console.log('EARTHLINE_M78_DESKTOP_CROSSHAIR '+JSON.stringify({first,second,errs}));
+await browser.close();
+
+function near(a,b,tol=0.00008){return Number.isFinite(Number(a))&&Math.abs(Number(a)-Number(b))<=tol}
+const firstCenter=first.snap.declaration?.center,secondCenter=second.snap.declaration?.center;
+const identityOk=
+ near(first.pre.target?.lng,-111.93067)&&near(first.pre.target?.lat,34.21568)&&
+ near(firstCenter?.lng,-111.93067)&&near(firstCenter?.lat,34.21568)&&
+ near(second.pre.target?.lng,-111.93347)&&near(second.pre.target?.lat,34.21629)&&
+ near(secondCenter?.lng,-111.93347)&&near(secondCenter?.lat,34.21629);
+if(!identityOk)process.exitCode=1;
