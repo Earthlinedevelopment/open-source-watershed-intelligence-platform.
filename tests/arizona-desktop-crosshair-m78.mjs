@@ -123,10 +123,37 @@ const identityOk=
  near(firstCenter?.lng,-111.93067)&&near(firstCenter?.lat,34.21568)&&
  near(second.pre.target?.lng,-111.93347)&&near(second.pre.target?.lat,34.21629)&&
  near(secondCenter?.lng,-111.93347)&&near(secondCenter?.lat,34.21629);
-if(!identityOk)process.exitCode=1;
+const systemsOk=[first,second].every(r=>{
+  const e=r.snap.elder||{};
+  const sw=r.snap.swales||{};
+  const w=r.snap.water||{};
+  const aq=r.snap.aquifer||{};
+  const run=r.snap.runAudit||{};
+  const pub=r.snap.publication||{};
+  const elderLast=e.last||{};
+  return run.settled===true &&
+    pub.published===true &&
+    Number(sw.count)>0 &&
+    Number(w.count)>0 &&
+    String(elderLast.state||'')==='committed' &&
+    Number(elderLast.featureCount||0)>0 &&
+    Number(e.sourceFeatures||0)>0 &&
+    e.layerExists===true &&
+    e.visibility!=='none' &&
+    (!aq.owner || Number(aq.owner.searchGen)===Number(r.snap.searchGen));
+});
+const routeDiffOk=
+  String(first.snap.swales?.fingerprint||'')!=='' &&
+  String(second.snap.swales?.fingerprint||'')!=='' &&
+  (String(first.snap.swales?.fingerprint||'')!==String(second.snap.swales?.fingerprint||'') ||
+   Math.abs(Number(first.snap.declaration?.center?.lng)-Number(second.snap.declaration?.center?.lng))<1e-9);
+console.log('EARTHLINE_M78_DESKTOP_STRICT '+JSON.stringify({identityOk,systemsOk,routeDiffOk,first:{elder:first.snap.elder,swales:first.snap.swales,water:first.snap.water,aquifer:first.snap.aquifer},second:{elder:second.snap.elder,swales:second.snap.swales,water:second.snap.water,aquifer:second.snap.aquifer}}));
+if(!identityOk||!systemsOk||!routeDiffOk)process.exitCode=1;
 
 // M78.8 raw Elder tile verdict capture
 
 // M78.10 capture exact open-data exclusion transport verdict
 
 // M78.13 require repaired production bytes before desktop validation
+
+// M78.14 strict desktop manual-crosshair functional gate
