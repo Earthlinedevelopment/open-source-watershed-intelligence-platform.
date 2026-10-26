@@ -123,4 +123,5 @@ const identityOk=
  near(second.pre.target?.lng,-111.93347)&&near(second.pre.target?.lat,34.21629)&&
  near(secondCenter?.lng,-111.93347)&&near(secondCenter?.lat,34.21629);
 if(!identityOk)process.exitCode=1;
-\n// M78.8 raw Elder tile verdict capture\n
+
+// M78.8 raw Elder tile verdict capture
