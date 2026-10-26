@@ -1,4 +1,4 @@
-name: Earthline M77 Portable Exclusion Owner Repair
+name: Earthline M77 Poudre Five-Run Validation
 
 on:
   push:
@@ -8,14 +8,10 @@ on:
       - ".github/workflows/earthline-m77-property-owner-live.yml"
 
 permissions:
-  contents: write
-
-concurrency:
-  group: earthline-m77-portable-exclusion-owner
-  cancel-in-progress: false
+  contents: read
 
 jobs:
-  patch-pages-live:
+  validate-poudre:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -23,176 +19,150 @@ jobs:
           ref: pages-live
           fetch-depth: 0
 
-      - name: Verify lease
+      - name: Lock repaired build and production bytes
         shell: bash
         run: |
           set -euo pipefail
-          EXPECTED="28c19b3f792d9a2ee3936bd19b26e413e9427115"
-          ACTUAL="$(git rev-parse HEAD)"
-          test "$ACTUAL" = "$EXPECTED"
+          EXPECTED="8d5809b8c36790e5a928e968818750e485b8b481"
+          test "$(git rev-parse HEAD)" = "$EXPECTED"
+          matched=0
+          for i in $(seq 1 20); do
+            curl -fsSL --max-time 30 -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' "https://earthlinedevelopment.org/?m77bytes=$(date +%s)-$i" -o /tmp/prod.html || true
+            if [ -s /tmp/prod.html ] && cmp -s /tmp/prod.html index.html; then matched=1; break; fi
+            sleep 2
+          done
+          test "$matched" = "1"
+          grep -Fq 'scientificSourceOwner17631="overpass-exact-bbox"' /tmp/prod.html
+          echo M77_17631_PRODUCTION_BYTES_MATCH
 
-      - name: Repair portable scientific exclusion owner
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+
+      - name: Five same-page Poudre Property runs
         shell: bash
         run: |
-          python3 <<'PY'
-          from pathlib import Path
-          p=Path("index.html")
-          s=p.read_text(encoding="utf-8")
+          cat > m77-poudre.mjs <<'JS'
+          import { chromium } from 'playwright';
           
-          def once(old,new,label):
-              global s
-              n=s.count(old)
-              if n != 1:
-                  raise SystemExit(f"{label}: expected exactly 1 occurrence, found {n}")
-              s=s.replace(old,new,1)
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1440,height:1000}});
+          const assert=(ok,msg)=>{if(!ok)throw new Error(msg)};
+          page.on('console',m=>{const t=m.text();if(/error|failed|17631|exclusion/i.test(t))console.log('PAGE',m.type(),t)});
           
-          old_verify="""    const openGeometryCount16516=Math.max(0,
-                Number(op.roadGeometryCount||0)+Number(op.buildingGeometryCount||0)+Number(op.parkingGeometryCount||0)+Number(op.waterGeometryCount||0)+
-                Number(c.relevantFeatureCount||0)
-              );
+          await page.goto('https://earthlinedevelopment.org/?m77poudre='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.fill('#searchInput','Colorado');
+          await page.waitForSelector('#earthlineSearchSuggestions15970 button',{timeout:15000});
+          await page.click('#runBtn');
+          await page.waitForFunction(()=>{
+            const r=document.documentElement,d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+            const tier=String(d&&(d.tier||d.mode)||'').toLowerCase();
+            return r.dataset.earthlineRunState==='published'&&(tier==='regional'||tier==='focus');
+          },null,{timeout:75000});
           
-              if(openGeometryCount16516>0&&openDataResponded){"""
-          new_verify="""    const portableExactOwner17631=c.scientificSourceOwner17631==="overpass-exact-bbox";
-              const exactPortableGeometryCount17631=Math.max(0,
-                Number(op.roadGeometryCount||0)+Number(op.buildingGeometryCount||0)+Number(op.parkingGeometryCount||0)+Number(op.waterGeometryCount||0)
-              );
-              const openGeometryCount16516=Math.max(0,
-                exactPortableGeometryCount17631+Number(c.relevantFeatureCount||0)
-              );
+          const target={lat:40.6412,lng:-105.2237};
+          const rows=[];
           
-              /* EARTHLINE M77 / 17631 — portable Property science is geographic, not camera-derived.
-                 For non-local-authority Property runs the existing exact-bbox free/open OSM adapter
-                 is the sole scientific vector-exclusion source. Loaded Mapbox style/source features
-                 remain presentation/audit context only and can never rescue a failed exact-bbox
-                 acquisition. A valid HTTP 200 zero-feature response is screened-clear. */
-              if(portableExactOwner17631){
-                c.openDataSources16539={
-                  overpass:{attempted:!!op.attempted,responded:overpassResponded,failed:overpassFailed},
-                  style:{attempted:false,responded:false,failed:false,scientificRole:"presentation-only"}
-                };
-                c.openGeometryCount16516=exactPortableGeometryCount17631;
-                if(!overpassResponded){
-                  c.sourceTier="open-data";c.acquisitionResult="failed";c.publicationAllowed=false;c.exclusionVerified=false;
-                  c.evidenceGrade="EXCLUSION DATA QUERY FAILED · OUTPUT BLOCKED";
-                  earthlineSetVectorVerification16343(c,"unverified","portable-exact-bbox-open-data-source-failed");
-                  return false;
-                }
-                c.sourceTier="open-data";c.exclusionVerified=false;c.publicationAllowed=true;
-                if(exactPortableGeometryCount17631>0){
-                  c.acquisitionResult="features-found";
-                  c.evidenceGrade="OPEN-DATA SCREENING · FIELD VERIFICATION REQUIRED";
-                  earthlineSetVectorVerification16343(c,"unverified","open-data-screening-not-authoritative");
-                  return true;
-                }
-                c.acquisitionResult="screened-clear";
-                c.evidenceGrade="OPEN-DATA SCREENING · NO MAPPED EXCLUSIONS RETURNED · FIELD VERIFICATION REQUIRED";
-                earthlineSetVectorVerification16343(c,"unverified","open-data-screened-clear-not-authoritative");
-                return true;
-              }
-          
-              if(openGeometryCount16516>0&&openDataResponded){"""
-          once(old_verify,new_verify,"portable exact-bbox verification contract")
-          
-          old_infra="""    const infrastructure16550=()=>{
-                if(!infrastructurePromise15862P){
-                  infrastructurePromise15862P=Promise.resolve(earthlineCollectParcelInfrastructure15862P(myGen));
-                }
-                return infrastructurePromise15862P;
-              };
-              const stylePrefetch16459=M&&M._mappedExclusionStylePrefetch16459||null;"""
-          new_infra="""    const infrastructure16550=()=>{
-                if(!infrastructurePromise15862P){
-                  infrastructurePromise15862P=Promise.resolve(earthlineCollectParcelInfrastructure15862P(myGen));
-                }
-                return infrastructurePromise15862P;
-              };
-          
-              /* EARTHLINE M77 / 17631 — eliminate the remaining Property camera→science leak.
-                 Outside a certified local-authority jurisdiction, do not build the scientific
-                 no-build grid from queryRenderedFeatures/querySourceFeatures because those calls
-                 expose only the vector tiles loaded for the current camera/viewport. Use the
-                 existing exact Property-bbox OSM geometry adapter every run. Mapbox Tilequery
-                 remains dormant; no paid API path is introduced. */
-              if(!localAuthorityAvailable17630){
-                M.vectorNoBuildCoverage.scientificSourceOwner17631="overpass-exact-bbox";
-                M.vectorNoBuildCoverage.evidencePath17630="portable-exact-bbox-open-data";
-                M.vectorNoBuildCoverage.styleScientificRole17631="presentation-only-not-queried";
-                earthlineProgress("hydrology","mapping exact property exclusions…");
-                const infrastructure17631=await infrastructure16550();
-                if(earthlineIsStale(myGen)){
-                  earthlineSetVectorVerification16343(M.vectorNoBuildCoverage,"unverified","analysis-stale-after-portable-exact-bbox-retrieval");
-                  return false;
-                }
-                roadMask.fill(0);buildingMask.fill(0);mask.fill(0);
-                earthlineMergeInfraMasks15862P(roadMask,buildingMask,infrastructure17631);
-                count=Number(infrastructure17631&&infrastructure17631.processedGeometryCount||0);
-                const op17631=infrastructure17631&&infrastructure17631.overpass||{};
-                M.vectorNoBuildCoverage.styleReady=false;
-                M.vectorNoBuildCoverage.layerCount=0;
-                M.vectorNoBuildCoverage.styleQueryAttempted16516=false;
-                M.vectorNoBuildCoverage.styleQuerySuccess16516=false;
-                M.vectorNoBuildCoverage.styleQueryFailure16516=false;
-                M.vectorNoBuildCoverage.relevantFeatureCount=0;
-                M.vectorNoBuildCoverage.sourceFeatureCount=Number(op17631.rawElementCount||0);
-                M.vectorNoBuildCoverage.processedFeatureCount=count;
-                M.vectorNoBuildCoverage.infrastructure15862P=earthlineInfraCoverageRecord15862P(infrastructure17631);
-                roadMask=earthlineDilateMask(roadMask,Math.max(1,2.5/Math.max(.2,M.cellM||1)));
-                for(let i=0;i<N;i++)mask[i]=(roadMask[i]||buildingMask[i])?1:0;
-                M.vectorNoBuildMask=mask;M.vectorNoBuildCount=count;
-                M.vectorNoBuildStamp=[Number(M.centerLat||0).toFixed(6),Number(M.centerLng||0).toFixed(6),M.viewZoom,count,"17631"].join("|");
-                M._noBuildStamp="";
-                M.vectorNoBuildCoverage.featureCount=count;
-                const verified17631=earthlineFinalizeVectorVerification16343(M.vectorNoBuildCoverage,infrastructure17631,count,"portable-exact-bbox");
-                window.EARTHLINE_PORTABLE_EXCLUSION_OWNER_17631={
-                  build:"EARTHLINE M77 / 17631",owner:"vectorNoBuild15778",
-                  scientificSource:"overpass-exact-bbox",cameraDependent:false,
-                  searchGen:Number(myGen),processedGeometryCount:count,
-                  sourceFeatureCount:Number(op17631.rawElementCount||0),
-                  acquisitionResult:M.vectorNoBuildCoverage.acquisitionResult||null,
-                  publicationAllowed:M.vectorNoBuildCoverage.publicationAllowed===true,
-                  at:new Date().toISOString()
-                };
-                return !!verified17631;
-              }
-          
-              const stylePrefetch16459=M&&M._mappedExclusionStylePrefetch16459||null;"""
-          once(old_infra,new_infra,"portable exact-bbox early scientific path")
-          
-          if s.count("EARTHLINE M77 / 17631") != 3:
-              raise SystemExit("expected exactly three M77/17631 markers")
-          if 'scientificSourceOwner17631="overpass-exact-bbox"' not in s:
-              raise SystemExit("portable scientific owner marker missing")
-          if 'portable-exact-bbox-open-data-source-failed' not in s:
-              raise SystemExit("portable fail-closed verification missing")
-          if 'Mapbox Tilequery' not in s:
-              raise SystemExit("zero-cost Tilequery lock comment missing")
-          
-          p.write_text(s,encoding="utf-8")
-          PY
-          git diff --check
-          git diff --stat
-
-      - name: Parse every inline script
-        shell: bash
-        run: |
-          node - <<'NODE'
-          const fs=require('fs');
-          const s=fs.readFileSync('index.html','utf8');
-          let n=0;
-          for(const m of s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)){
-            if(!m[1].trim()) continue;
-            new Function(m[1]);
-            n++;
+          function canonical(r){
+            return JSON.stringify({
+              terrainStamp:r.terrainStamp,
+              sourceStateFingerprint:r.sourceStateFingerprint,
+              scientificInputFingerprint:r.scientificInputFingerprint,
+              noBuildMaskHash:r.noBuildMaskHash,
+              vectorNoBuildMaskHash:r.vectorNoBuildMaskHash,
+              sourceFeatureCount:r.sourceFeatureCount,
+              processedFeatureCount:r.processedFeatureCount,
+              acquisitionResult:r.acquisitionResult,
+              scientificSource:r.scientificSource,
+              safeCount:r.safeCount,swaleFp:r.swaleFp,
+              waterCount:r.waterCount,waterFp:r.waterFp,
+              elderSignature:r.elderSignature
+            });
           }
-          console.log('M77_17631_INLINE_SCRIPT_PARSE_OK',n);
-          NODE
-
-      - name: Commit repair
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "earthline-actions"
-          git config user.email "actions@users.noreply.github.com"
-          git add index.html
-          git commit -m "fix: make portable Property exclusions camera-independent"
-          git push origin HEAD:pages-live
+          
+          for(let ordinal=1;ordinal<=5;ordinal++){
+            const prior=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
+            const set=await page.evaluate(({lat,lng})=>{
+              const fn=window.earthlineSetPropertyTarget16201;
+              const ok=typeof fn==='function'&&fn({lat,lng,source:'crosshair-m77-poudre-repeat'},{openPanel:false});
+              const b=document.getElementById('earthlineDeclareProperty16169');
+              return {ok:!!ok,owner:b?.dataset?.earthlinePropertyClickOwner16546||'',target:window.EARTHLINE_PROPERTY_TARGET_16201||null};
+            },target);
+            assert(set.ok,'target setter failed run '+ordinal);
+            assert(set.owner==='shared-17494','wrong Property click owner '+set.owner);
+            await page.locator('#earthlineDeclareProperty16169').click({force:true});
+            await page.waitForFunction(prev=>{
+              const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+              const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+              return !!(a&&Number(a.serial)>Number(prev)&&a.settled===true&&String(d&&(d.tier||d.mode)||'').toLowerCase()==='property');
+            },prior,{timeout:90000});
+            await page.waitForTimeout(700);
+          
+            const snap=await page.evaluate((ordinal)=>{
+              const m=(typeof M!=='undefined'?M:null),mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+              const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,own=window.EARTHLINE_PORTABLE_EXCLUSION_OWNER_17631||null;
+              const safe=m?.authoritativeSafeSwales15815||{type:'FeatureCollection',features:[]};
+              const water=m?.authoritativeWaterPaths15824||{type:'FeatureCollection',features:[]};
+              const lines=fc=>{const out=[];for(const f of (fc?.features||[])){const g=f?.geometry||{};if(g.type==='LineString')out.push(g.coordinates);else if(g.type==='MultiLineString')for(const p of (g.coordinates||[]))out.push(p)}return out};
+              const fnv=text=>{let h=2166136261>>>0;for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619)>>>0}return h.toString(16).padStart(8,'0')};
+              const fp=fc=>fnv(JSON.stringify(lines(fc)));
+              const style=mp?.getStyle?.()||{};
+              const elderSourceIds=Object.keys(style.sources||{}).filter(id=>/elder/i.test(id)).sort();
+              const elderRows=elderSourceIds.map(id=>{const src=mp?.getSource?.(id),data=src?._data||src?._options?.data||{features:[]};return {id,count:Number(data?.features?.length||0),fp:fnv(JSON.stringify(data?.features||[]))}});
+              const elderSignature=fnv(JSON.stringify(elderRows));
+              const p=m?.noBuildProvenance15843||{},v=m?.vectorNoBuildCoverage||{},b=document.getElementById('earthlineDeclareProperty16169');
+              return {
+                ordinal,terrainStamp:String(m?.terrainStamp||''),
+                sourceStateFingerprint:String(p.sourceStateFingerprint||''),
+                scientificInputFingerprint:String(p.scientificInputFingerprint||''),
+                noBuildMaskHash:String(p.noBuildMaskHash||''),
+                vectorNoBuildMaskHash:String(p.vectorNoBuildMaskHash||''),
+                sourceFeatureCount:Number(v.sourceFeatureCount||0),
+                processedFeatureCount:Number(v.processedFeatureCount||0),
+                sourceTier:String(v.sourceTier||''),acquisitionResult:String(v.acquisitionResult||''),
+                publicationAllowed:v.publicationAllowed===true,
+                scientificSource:String(own?.scientificSource||v.scientificSourceOwner17631||''),
+                cameraDependent:own?.cameraDependent,
+                ownerSearchGen:Number(own?.searchGen),
+                ownerProcessed:Number(own?.processedGeometryCount),
+                ownerSourceFeatures:Number(own?.sourceFeatureCount),
+                safeCount:Number(safe.features?.length||0),swaleFp:fp(safe),
+                waterCount:Number(water.features?.length||0),waterFp:fp(water),
+                elderSignature,elderRows,
+                auditSettled:a?.scientificSettled===true&&a?.scientificResult===true,
+                modelSearchGen:Number(m?.searchGen),publicationSearchGen:Number(m?.propertyPublication15816?.searchGen),
+                committed:m?.propertyPublication15816?.committed===true,safe:m?.propertyPublication15816?.safetyVerified===true,
+                orbClear:!document.documentElement.classList.contains('earthline-property-running-16233')&&!document.documentElement.classList.contains('earthline-property-orb-latched-16244')&&String(b?.dataset?.busy||'')!=='1'
+              };
+            },ordinal);
+            console.log('M77_POUDRE',JSON.stringify(snap));
+            assert(snap.auditSettled,'science did not settle run '+ordinal);
+            assert(snap.committed&&snap.safe,'publication not committed/safe run '+ordinal);
+            assert(snap.modelSearchGen===snap.publicationSearchGen,'generation mismatch run '+ordinal);
+            assert(snap.scientificSource==='overpass-exact-bbox','wrong portable scientific source run '+ordinal+': '+snap.scientificSource);
+            assert(snap.cameraDependent===false,'portable exclusions still camera dependent run '+ordinal);
+            assert(snap.publicationAllowed,'portable exact-bbox acquisition did not allow publication run '+ordinal);
+            assert(snap.safeCount>0,'no authoritative safe swales run '+ordinal);
+            assert(snap.waterCount>0,'no authoritative water run '+ordinal);
+            assert(snap.orbClear,'Property Orb/busy did not clear run '+ordinal);
+            rows.push(snap);
+          }
+          const sigs=rows.map(canonical);
+          if(new Set(sigs).size!==1){
+            console.log('M77_POUDRE_MISMATCH',rows.map((r,i)=>'RUN '+(i+1)+' '+canonical(r)).join('\n'));
+            throw new Error('POUDRE five-run repeatability mismatch');
+          }
+          console.log('M77_POUDRE_REPEAT_PASS',JSON.stringify({
+            runs:5,sourceStateFingerprint:rows[0].sourceStateFingerprint,
+            scientificInputFingerprint:rows[0].scientificInputFingerprint,
+            noBuildMaskHash:rows[0].noBuildMaskHash,vectorNoBuildMaskHash:rows[0].vectorNoBuildMaskHash,
+            sourceFeatureCount:rows[0].sourceFeatureCount,processedFeatureCount:rows[0].processedFeatureCount,
+            swales:rows[0].safeCount,swaleFp:rows[0].swaleFp,water:rows[0].waterCount,waterFp:rows[0].waterFp,
+            elderSignature:rows[0].elderSignature,acquisitionResult:rows[0].acquisitionResult
+          }));
+          await browser.close();
+          JS
+          node m77-poudre.mjs
