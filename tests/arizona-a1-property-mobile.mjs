@@ -101,11 +101,12 @@ async function runExactPropertyM78(lng,lat,label){
   try{
     await page.waitForFunction(()=>!!window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled,{timeout:30000,polling:120});
   }catch(_){}
+  const expectedElderPrefix=lng.toFixed(6)+'|'+lat.toFixed(6)+'|';
   try{
-    await page.waitForFunction(()=>{
+    await page.waitForFunction((prefix)=>{
       const e=window.EARTHLINE_ELDER_TREE_LAST_17097;
-      return !!e && (e.state==='committed'||e.state==='failed');
-    },{timeout:30000,polling:120});
+      return !!e && (e.state==='committed'||e.state==='failed') && String(e.propertyRunIdentity||'').startsWith(prefix);
+    },expectedElderPrefix,{timeout:30000,polling:120});
   }catch(_){}
   await page.waitForTimeout(250);
   return await page.evaluate(({lng,lat,label})=>{
@@ -121,6 +122,7 @@ async function runExactPropertyM78(lng,lat,label){
       target:target?{lng:target.lng,lat:target.lat,source:target.source}:null,
       declaration:decl?.center||null,
       propertyRunIdentity:elder?.propertyRunIdentity||null,
+      elderIdentityOk:String(elder?.propertyRunIdentity||'').startsWith(lng.toFixed(6)+'|'+lat.toFixed(6)+'|'),
       elderState:elder?.state||null,
       elderFeatures:Number(elder?.featureCount||0),
       elderCandidates:Number(elder?.dynamicCandidatePoolCount||0),
@@ -129,17 +131,43 @@ async function runExactPropertyM78(lng,lat,label){
       swalesVisible:!!(safeVisibility?.visible||(safeVisibility?.delegatedToNatural&&Number(safeVisibility?.naturalRenderedFeatures||0)>0)),
       safeVisibility,
       publication,
-      geometryPrefix:''
+      ...(function(){
+        const fc=M?.authoritativeSafeSwales15815;
+        const features=Array.isArray(fc?.features)?fc.features:[];
+        const payload=JSON.stringify(features.map(f=>f?.geometry?.coordinates||null));
+        let h=2166136261;
+        for(let i=0;i<payload.length;i++){h^=payload.charCodeAt(i);h=Math.imul(h,16777619)}
+        const boundary=Array.isArray(M?.analysisBoundaryLngLat)?M.analysisBoundaryLngLat:[];
+        let west=Infinity,south=Infinity,east=-Infinity,north=-Infinity;
+        for(const p of boundary){const x=Number(p?.[0]),y=Number(p?.[1]);if(Number.isFinite(x)&&Number.isFinite(y)){west=Math.min(west,x);east=Math.max(east,x);south=Math.min(south,y);north=Math.max(north,y)}}
+        let swaleFrameOk=boundary.length>=3;
+        const visit=(v)=>{
+          if(!swaleFrameOk)return;
+          if(Array.isArray(v)&&v.length>=2&&Number.isFinite(Number(v[0]))&&Number.isFinite(Number(v[1]))){
+            const x=Number(v[0]),y=Number(v[1]);
+            if(x<west-1e-7||x>east+1e-7||y<south-1e-7||y>north+1e-7)swaleFrameOk=false;
+            return;
+          }
+          if(Array.isArray(v))for(const q of v)visit(q);
+        };
+        for(const ft of features)visit(ft?.geometry?.coordinates);
+        return {swaleFingerprint:(h>>>0).toString(16).padStart(8,'0'),swaleFrameOk};
+      })()
     };
   },{lng,lat,label});
 }
 const exactM78=[];
-exactM78.push(await runExactPropertyM78(-111.93067,34.21568,'az-user-1'));
-exactM78.push(await runExactPropertyM78(-111.93354,34.21600,'az-user-2'));
+exactM78.push(await runExactPropertyM78(-111.93067,34.21568,'az-user-1-a'));
+exactM78.push(await runExactPropertyM78(-111.93067,34.21568,'az-user-1-b'));
+exactM78.push(await runExactPropertyM78(-111.93354,34.21600,'az-user-2-a'));
+exactM78.push(await runExactPropertyM78(-111.93354,34.21600,'az-user-2-b'));
 exactM78.push(await runExactPropertyM78(-111.93178,34.21607,'az-history-good'));
 exactM78.push(await runExactPropertyM78(-111.93582,34.21605,'az-history-bad'));
-console.log('EARTHLINE_M78_EXACT_ARIZONA '+JSON.stringify(exactM78));
-if(exactM78.some(r=>r.elderState!=='committed'||r.elderFeatures<=0||r.swales<=0||!r.swalesVisible))process.exitCode=1;
+const pair1=exactM78.filter(r=>/^az-user-1-/.test(r.label));
+const pair2=exactM78.filter(r=>/^az-user-2-/.test(r.label));
+const repeatOk=[pair1,pair2].every(pair=>pair.length===2&&pair[0].swaleFingerprint===pair[1].swaleFingerprint&&String(pair[0].publication?.scientificInputFingerprint||'')===String(pair[1].publication?.scientificInputFingerprint||''));
+console.log('EARTHLINE_M78_EXACT_ARIZONA '+JSON.stringify({repeatOk,exactM78}));
+if(exactM78.some(r=>r.elderState!=='committed'||!r.elderIdentityOk||r.swales<=0||!r.swalesVisible||!r.swaleFrameOk)||!repeatOk)process.exitCode=1;
 
 await browser.close();
 const visibleFallback=Number(out?.render?.sourceFeatures||0)>0 && Array.isArray(out?.render?.layers) && out.render.layers.some(x=>x.exists&&x.visibility!=='none'&&Number(x.opacity)>0);
