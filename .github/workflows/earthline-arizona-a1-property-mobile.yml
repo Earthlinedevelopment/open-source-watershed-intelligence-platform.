@@ -134,6 +134,8 @@ jobs:
         run: python3 tools/m78_25_crosshair_jitter.py
       - name: Apply realistic Property swale width
         run: python3 tools/m78_20_realistic_swale_width.py
+      - name: Apply contour-start consistency repair
+        run: python3 tools/m78_27_contour_start_consistency.py
       - name: Verify M78 repair scope
         run: |
           git diff --check
@@ -153,6 +155,7 @@ jobs:
           grep -q "sub-meter camera jitter cannot replace the accepted crosshair target" index.html
           grep -q "earthline-launch-16872.js?v=17606" index.html
           grep -q "realistic non-overlapping Property swale presentation" index.html
+          grep -q "contour start and marcher share one half-open crossing rule" index.html
           grep -q "groundWidthM:3" index.html
           grep -q "effectiveOpenDataRespondedM7812" index.html
       - name: Commit repaired index
@@ -188,3 +191,5 @@ jobs:
 # M78.20 render-width correction trigger
 
 # M78.20 wiring correction trigger
+
+# M78.27 trigger contour-start consistency repair
