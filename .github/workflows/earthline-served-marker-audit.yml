@@ -15,7 +15,10 @@ jobs:
           set -e
           curl -L --fail --max-time 30 -A 'Earthline-M78-audit' 'https://earthlinedevelopment.org/?served_audit='$(date +%s) -o /tmp/index.html
           wc -c /tmp/index.html
-          for marker in             'EARTHLINE M78.30 — deterministic local DEM level-set fallback'             'Earthline-Science-Kernel-v1.0.0'             'EARTHLINE M78.32 — accepted crosshair atomically rebinds the Property declaration site'; do
+          for marker in             'EARTHLINE M78.30 — deterministic local DEM level-set fallback'             'Earthline-Science-Kernel-v1.0.0'             'EARTHLINE M78.32 — accepted crosshair atomically rebinds the Property declaration site' \
+            'EARTHLINE M78.33 — explicit crosshair authority overrides stale Regional selection residue'; do
             if grep -Fq "$marker" /tmp/index.html; then echo "PRESENT: $marker"; else echo "MISSING: $marker"; fi
           done
           echo "SHA256: $(sha256sum /tmp/index.html | awk '{print $1}')"
+
+# audit M78.33 served bytes
