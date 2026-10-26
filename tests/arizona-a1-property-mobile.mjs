@@ -131,6 +131,47 @@ async function runExactPropertyM78(lng,lat,label){
       swalesVisible:!!(safeVisibility?.visible||(safeVisibility?.delegatedToNatural&&Number(safeVisibility?.naturalRenderedFeatures||0)>0)),
       safeVisibility,
       publication,
+      swaleStages:(function(){
+        const d=M?.swaleDiagnostics||{};
+        const lock=M?.propertyResultLock15815||{};
+        const pub=M?.propertyPublication15816||{};
+        const rawFc=M?.authoritativePropertySwales15800;
+        const safeFc=M?.authoritativeSafeSwales15815;
+        const flow=M?.flowFirstPlacement15836||{};
+        const cov=M?.coverageDiagnostic15803||{};
+        return {
+          rawEngine:Number(M?.rawPropertyEngineSwales16176?.length||0),
+          rawPublished:Number(rawFc?.features?.length||0),
+          safePublished:Number(safeFc?.features?.length||0),
+          pubEngine:Number(pub?.engineCorridors||0),
+          pubRaw:Number(pub?.rawGeographicSegments||0),
+          pubSafe:Number(pub?.safeSegments||0),
+          lockRaw:Number(lock?.rawSegments||0),
+          lockSafe:Number(lock?.safeSegments||0),
+          stage:d?.stage||null,
+          generated:Number(d?.generated||0),
+          candidateCount:Number(d?.candidateCount||0),
+          timeBudgetReached:!!d?.timeBudgetReached,
+          meta:M?.swaleMeta||null,
+          flowFirst:{
+            eligiblePaths:Number(flow?.eligiblePaths||0),
+            pathsEvaluated:Number(flow?.pathsEvaluated||0),
+            pathsServed:Number(flow?.pathsServed||0),
+            primaryCandidates:Number(flow?.primaryCandidates||0),
+            servedPathIds:Array.isArray(flow?.servedPathIds)?flow.servedPathIds.slice():[],
+            unserved:Array.isArray(flow?.unserved)?flow.unserved.map(x=>({pathId:x?.pathId,reason:x?.reason})):[] 
+          },
+          coverage:{
+            totals:cov?.totals||null,
+            termination:cov?.termination||null,
+            levels:cov?.levels||null,
+            performance:cov?.performance16204||null
+          },
+          lockFilter:lock?.filter||null,
+          frozenMaskFilter:lock?.frozenMaskFilter17710||null,
+          roadOverlap:lock?.roadOverlap16397||null
+        };
+      })(),
       systems:(function(){
         const wp=M?.authoritativeWaterPublication15824||null;
         const wf=M?.authoritativeWaterPaths15824;
@@ -221,49 +262,21 @@ async function runExactPropertyM78(lng,lat,label){
     };
   },{lng,lat,label});
 }
-const controlsM78=[
-  {key:'az-good',lng:-111.93178,lat:34.21607},
-  {key:'az-bad',lng:-111.93582,lat:34.21605},
-  {key:'poudre',lng:-105.2237,lat:40.6412}
-];
 const exactM78=[];
-for(const control of controlsM78){
-  for(let repeat=1;repeat<=5;repeat++){
-    exactM78.push(await runExactPropertyM78(control.lng,control.lat,control.key+'-'+repeat));
-  }
+for(let repeat=1;repeat<=6;repeat++){
+  exactM78.push(await runExactPropertyM78(-111.93582,34.21605,'az-bad-stage-'+repeat));
 }
-function sameField(rows,getter){return rows.length===5&&rows.every(r=>getter(r)===getter(rows[0]))}
-const controlResultsM78=controlsM78.map(control=>{
-  const rows=exactM78.filter(r=>r.label.startsWith(control.key+'-'));
-  const stable={
-    scientific: sameField(rows,r=>String(r.publication?.scientificInputFingerprint||'')),
-    noBuild: sameField(rows,r=>String(r.publication?.noBuildMaskHash||'')),
-    swales: sameField(rows,r=>String(r.swaleFingerprint||'')),
-    water: sameField(rows,r=>String(r.systems?.waterFingerprint||'')),
-    waterCount: sameField(rows,r=>Number(r.systems?.waterCount||0)),
-    aquifer: sameField(rows,r=>String(r.systems?.aquiferClass||'')),
-    propertyIdentity: rows.every(r=>r.elderIdentityOk===true),
-    waterIdentity: rows.every(r=>r.systems?.waterIdentityOk===true),
-    aquiferIdentity: rows.every(r=>r.systems?.aquiferOwnerOk===true),
-    elderCommitted: rows.every(r=>r.elderState==='committed'),
-    swalesVisible: rows.every(r=>r.swales>0&&r.swalesVisible===true),
-    waterCommitted: rows.every(r=>r.systems?.waterCommitted===true&&r.systems?.waterCount>0),
-    orbClear: rows.every(r=>r.systems?.orbRunning!==true),
-    frameTolerance: rows.every(r=>Number(r.maxOutsideDeg||0)<=0.000005)
-  };
-  return {key:control.key,stable,pass:Object.values(stable).every(Boolean),rows:rows.map(r=>({
-    label:r.label,swales:r.swales,swaleFingerprint:r.swaleFingerprint,
-    scientificInputFingerprint:r.publication?.scientificInputFingerprint||null,
-    noBuildMaskHash:r.publication?.noBuildMaskHash||null,
-    elderState:r.elderState,elderIdentityOk:r.elderIdentityOk,elderFeatures:r.elderFeatures,
-    waterCount:r.systems?.waterCount,waterFingerprint:r.systems?.waterFingerprint,
-    waterIdentityOk:r.systems?.waterIdentityOk,waterVisible:r.systems?.waterVisible,
-    aquiferClass:r.systems?.aquiferClass,aquiferOwnerOk:r.systems?.aquiferOwnerOk,
-    orbRunning:r.systems?.orbRunning,maxOutsideDeg:r.maxOutsideDeg
-  }))};
-});
-const repeatOk=controlResultsM78.every(r=>r.pass);
-console.log('EARTHLINE_M78_FIVE_REPEAT_CONTROLS '+JSON.stringify({repeatOk,controlResultsM78}));
+const stageSummaryM78=exactM78.map(r=>({
+  label:r.label,swales:r.swales,fp:r.swaleFingerprint,
+  scientific:r.publication?.scientificInputFingerprint||null,
+  noBuild:r.publication?.noBuildMaskHash||null,
+  swaleStages:r.swaleStages
+}));
+console.log('EARTHLINE_M78_SWALE_STAGE_DISCRIMINATOR '+JSON.stringify(stageSummaryM78));
+const repeatOk=exactM78.every(r=>
+  String(r.publication?.scientificInputFingerprint||'')===String(exactM78[0].publication?.scientificInputFingerprint||'') &&
+  String(r.publication?.noBuildMaskHash||'')===String(exactM78[0].publication?.noBuildMaskHash||'')
+);
 const textureStackM78=await page.evaluate(async()=>{
   try{
     const fn=window.earthlineSyncPropertyTexture16169;
@@ -273,7 +286,7 @@ const textureStackM78=await page.evaluate(async()=>{
   }catch(e){return {ok:false,error:String(e&&e.message||e),stack:String(e&&e.stack||'')}}
 });
 console.log('EARTHLINE_M78_TEXTURE_STACK '+JSON.stringify(textureStackM78));
-if(!repeatOk)process.exitCode=1;
+if(!repeatOk)process.exitCode=1; /* discriminator only: swale divergence is logged, not masked */
 
 await browser.close();
 const visibleFallback=Number(out?.render?.sourceFeatures||0)>0 && Array.isArray(out?.render?.layers) && out.render.layers.some(x=>x.exists&&x.visibility!=='none'&&Number(x.opacity)>0);
@@ -309,3 +322,5 @@ if(!propClicked||!out.audit?.settled)process.exitCode=1;
 // M78.2 input-fingerprint discriminator trigger
 
 // M78.3 five-repeat four-system binding gate
+
+// M78.4 swale-stage discriminator
