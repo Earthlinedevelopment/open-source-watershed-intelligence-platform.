@@ -157,3 +157,5 @@ if(!propClicked||!out.audit?.settled)process.exitCode=1;
 // diagnose natural replacement visibility after safe fallback fade
 // M78 live ownership verification
 // M78 post-deploy live rerun 2
+
+// M78 exact live rerun trigger 2026-10-25
