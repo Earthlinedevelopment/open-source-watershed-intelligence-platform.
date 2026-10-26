@@ -1,0 +1,48 @@
+name: Earthline M78 Science Kernel Level-Set Candidate
+on:
+  push:
+    branches: [repair/m78-science-kernel-levelset]
+    paths:
+      - 'tools/m78_30_local_levelset.py'
+      - 'tests/arizona-desktop-crosshair-m78.mjs'
+      - '.github/workflows/earthline-m78-science-kernel-levelset.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/m78-science-kernel-levelset
+          fetch-depth: 0
+      - name: Apply local DEM level-set candidate
+        run: python3 tools/m78_30_local_levelset.py
+      - name: Verify candidate scope
+        run: |
+          git diff --check
+          changed="$(git diff --name-only | tr -d '\r')"
+          test "$changed" = "index.html"
+          grep -q "EARTHLINE M78.30 — deterministic local DEM level-set fallback" index.html
+          grep -q "M78.30-local-level-set-fallback" index.html
+      - name: Install browser test
+        run: npm install --no-save playwright@1.55.0
+      - name: Serve candidate locally
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-m78-30-http.log 2>&1 &
+          echo $! > /tmp/earthline-m78-30-http.pid
+          sleep 2
+      - name: Run exact desktop Arizona candidate
+        env:
+          EARTHLINE_URL: http://127.0.0.1:8787/
+        run: node tests/arizona-desktop-crosshair-m78.mjs
+      - name: Commit validated candidate
+        if: success()
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "candidate: local DEM level-set swale solver"
+          git push origin HEAD:repair/m78-science-kernel-levelset
