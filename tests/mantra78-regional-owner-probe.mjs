@@ -13,8 +13,8 @@ try{
   await input.click();await input.fill('Arizona');await page.waitForTimeout(900);
   const opt=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible').first();
   if(await opt.count())await opt.click();
-  await page.waitForTimeout(200);
-  await page.locator('#runBtn').click();
+  else await page.locator('#runBtn').click();
+  /* Suggestion commit is itself the governed Regional submission. Do not launch a second run. */
   try{
     await page.waitForFunction(()=>{
       const e=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null;if(e)return true;
