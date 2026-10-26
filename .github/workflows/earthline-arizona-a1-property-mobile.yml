@@ -102,14 +102,16 @@ jobs:
               s=s.replace(legacy_pair,legacy_layer_repl,1)
 
           legacy_class_line='    const tag=featureTag(f),type=String(f&&f.layer&&f.layer.type||"").toLowerCase();'
-          legacy_class_repl=('    const layerIdM785=String(f&&f.layer&&f.layer.id||"").toLowerCase();'+nl+
+          legacy_class_pair='  function featureClass(f){'+nl+legacy_class_line
+          legacy_class_repl=('  function featureClass(f){'+nl+
+                             '    const layerIdM785=String(f&&f.layer&&f.layer.id||"").toLowerCase();'+nl+
                              '    const sourceIdM785=String(f&&f.source||"").toLowerCase();'+nl+
                              '    if(/^earthline-/.test(layerIdM785)||/^earthline-/.test(sourceIdM785))return ""; /* EARTHLINE M78.5 — self-generated features cannot become exclusions. */'+nl+
                              legacy_class_line)
           if "EARTHLINE M78.5 — self-generated features cannot become exclusions." not in s:
-              if s.count(legacy_class_line)!=1:
-                  raise SystemExit(f"M78.5 legacy classifier anchor count={s.count(legacy_class_line)}")
-              s=s.replace(legacy_class_line,legacy_class_repl,1)
+              if s.count(legacy_class_pair)!=1:
+                  raise SystemExit(f"M78.5 legacy classifier anchor count={s.count(legacy_class_pair)}")
+              s=s.replace(legacy_class_pair,legacy_class_repl,1)
 
           if s.count("EARTHLINE M78.5 — final clearance excludes Earthline presentation layers.")!=1:
               raise SystemExit("M78.5 selector marker count wrong")
