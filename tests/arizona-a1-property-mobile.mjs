@@ -189,3 +189,5 @@ if(!propClicked||!out.audit?.settled)process.exitCode=1;
 // M78 exact live rerun trigger 2026-10-25
 
 // M78.1 repair-runner trigger
+
+// M78.1 valid-workflow trigger
