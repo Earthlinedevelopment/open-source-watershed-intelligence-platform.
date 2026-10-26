@@ -1,0 +1,35 @@
+name: Earthline Mantra 78 Live Controls
+on:
+  push:
+    branches:
+      - recovery/mantra76-audit-restart
+    paths:
+      - 'tests/mantra78-live-controls.mjs'
+      - '.github/workflows/earthline-mantra78-live-controls.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-controls:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra76-audit-restart
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run production identity and 5-repeat controls
+        run: node tests/mantra78-live-controls.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-mantra78-live-controls
+          path: artifacts/mantra78-live-controls/results.json
+          if-no-files-found: warn
+          retention-days: 7
