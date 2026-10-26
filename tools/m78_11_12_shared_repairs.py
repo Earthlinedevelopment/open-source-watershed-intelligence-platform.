@@ -47,10 +47,14 @@ new_flags='''    const openDataAttempted=!!(op.attempted===true||styleAttempted)
     const openDataResponded=!!(overpassResponded||styleResponded);
     const openDataFailed=!!(overpassFailed||styleFailed);
     const zeroStyleFallbackRequiredM7812=c.evidencePath17630==="shared-style-zero-plus-infrastructure-fallback";
-    const effectiveOpenDataRespondedM7812=zeroStyleFallbackRequiredM7812?overpassResponded:openDataResponded;
-    const effectiveOpenDataFailedM7812=zeroStyleFallbackRequiredM7812?!overpassResponded:openDataFailed;
+    /* EARTHLINE M78.19 — loaded map evidence is the primary Property exclusion screen.
+       A successful loaded-style query is sufficient to publish as OPEN-DATA SCREENING
+       even when it returns zero relevant exclusions. External Overpass is enrichment,
+       never a publication dependency. */
+    const effectiveOpenDataRespondedM7812=!!(styleResponded||overpassResponded);
+    const effectiveOpenDataFailedM7812=!!(!effectiveOpenDataRespondedM7812&&(overpassFailed||styleFailed));
     const openGeometryCount16516=Math.max(0,'''
-if "effectiveOpenDataRespondedM7812" not in s:
+if "effectiveOpenDataRespondedM7812","EARTHLINE M78.19 — loaded map evidence is the primary Property exclusion screen" not in s:
     if s.count(old_flags)!=1:
         raise SystemExit(f"M78.12 verification flags anchor count={s.count(old_flags)}")
     s=s.replace(old_flags,new_flags,1)
