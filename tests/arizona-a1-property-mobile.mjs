@@ -109,12 +109,13 @@ async function runExactPropertyM78(lng,lat,label){
   }catch(_){}
   await page.waitForTimeout(250);
   return await page.evaluate(({lng,lat,label})=>{
-    const m=window.M||globalThis.M;
-    const fc=m?.authoritativeSafeSwales15815;
     const elder=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+    const publication=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null;
+    const safeVisibility=(typeof window.earthlinePropertySafeVisibilityAudit16221==='function'
+      ?window.earthlinePropertySafeVisibilityAudit16221()
+      :(window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null));
     const decl=window.EARTHLINE_PROPERTY_DECLARATION_16169||null;
     const target=window.EARTHLINE_PROPERTY_TARGET_16201||null;
-    const hash=JSON.stringify((fc?.features||[]).map(f=>f?.geometry?.coordinates||null)).slice(0,5000);
     return {
       label,lng,lat,
       target:target?{lng:target.lng,lat:target.lat,source:target.source}:null,
@@ -124,18 +125,21 @@ async function runExactPropertyM78(lng,lat,label){
       elderFeatures:Number(elder?.featureCount||0),
       elderCandidates:Number(elder?.dynamicCandidatePoolCount||0),
       elderError:elder?.dynamicError||elder?.error||null,
-      swales:Number(fc?.features?.length||0),
-      publication:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,
-      safety:m?.safetyAudit15806||null,
-      geometryPrefix:hash
+      swales:Number(publication?.safeCount||publication?.publicationCount||0),
+      swalesVisible:!!(safeVisibility?.visible||(safeVisibility?.delegatedToNatural&&Number(safeVisibility?.naturalRenderedFeatures||0)>0)),
+      safeVisibility,
+      publication,
+      geometryPrefix:''
     };
   },{lng,lat,label});
 }
 const exactM78=[];
 exactM78.push(await runExactPropertyM78(-111.93067,34.21568,'az-user-1'));
 exactM78.push(await runExactPropertyM78(-111.93354,34.21600,'az-user-2'));
+exactM78.push(await runExactPropertyM78(-111.93178,34.21607,'az-history-good'));
+exactM78.push(await runExactPropertyM78(-111.93582,34.21605,'az-history-bad'));
 console.log('EARTHLINE_M78_EXACT_ARIZONA '+JSON.stringify(exactM78));
-if(exactM78.some(r=>r.elderState!=='committed'||r.elderFeatures<=0||r.swales<=0))process.exitCode=1;
+if(exactM78.some(r=>r.elderState!=='committed'||r.elderFeatures<=0||r.swales<=0||!r.swalesVisible))process.exitCode=1;
 
 await browser.close();
 const visibleFallback=Number(out?.render?.sourceFeatures||0)>0 && Array.isArray(out?.render?.layers) && out.render.layers.some(x=>x.exists&&x.visibility!=='none'&&Number(x.opacity)>0);
