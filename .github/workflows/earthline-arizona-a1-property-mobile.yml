@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 jobs:
-  repair-m78-2:
+  repair-m78-5:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -88,6 +88,35 @@ jobs:
               raise SystemExit("M78.2 style-owner marker count wrong")
           if s.count("fail closed against self-generated exclusions")!=1:
               raise SystemExit("M78.2 classifier marker count wrong")
+          # EARTHLINE M78.5 — the legacy final clearance owner must never
+          # index Earthline-generated presentation layers as environmental evidence.
+          legacy_layer_anchor='''        const tag=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();
+        const type=String(l.type||"").toLowerCase();'''
+          legacy_layer_repl='''        const earthlineOwnedM785=/^earthline-/.test(String(l.id||"").toLowerCase())||/^earthline-/.test(String(l.source||"").toLowerCase());
+        if(earthlineOwnedM785)return false; /* EARTHLINE M78.5 — final clearance excludes Earthline presentation layers. */
+        const tag=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();
+        const type=String(l.type||"").toLowerCase();'''
+          if "EARTHLINE M78.5 — final clearance excludes Earthline presentation layers." not in s:
+              if s.count(legacy_layer_anchor)!=1:
+                  raise SystemExit(f"M78.5 legacy layer selector anchor count={s.count(legacy_layer_anchor)}")
+              s=s.replace(legacy_layer_anchor,legacy_layer_repl,1)
+
+          legacy_class_anchor='''  function featureClass(f){
+    const tag=featureTag(f),type=String(f&&f.layer&&f.layer.type||"").toLowerCase();'''
+          legacy_class_repl='''  function featureClass(f){
+    const layerIdM785=String(f&&f.layer&&f.layer.id||"").toLowerCase();
+    const sourceIdM785=String(f&&f.source||"").toLowerCase();
+    if(/^earthline-/.test(layerIdM785)||/^earthline-/.test(sourceIdM785))return ""; /* EARTHLINE M78.5 — self-generated features cannot become exclusions. */
+    const tag=featureTag(f),type=String(f&&f.layer&&f.layer.type||"").toLowerCase();'''
+          if "EARTHLINE M78.5 — self-generated features cannot become exclusions." not in s:
+              if s.count(legacy_class_anchor)!=1:
+                  raise SystemExit(f"M78.5 legacy classifier anchor count={s.count(legacy_class_anchor)}")
+              s=s.replace(legacy_class_anchor,legacy_class_repl,1)
+
+          if s.count("EARTHLINE M78.5 — final clearance excludes Earthline presentation layers.")!=1:
+              raise SystemExit("M78.5 selector marker count wrong")
+          if s.count("EARTHLINE M78.5 — self-generated features cannot become exclusions.")!=1:
+              raise SystemExit("M78.5 classifier marker count wrong")
           p.write_text(s,encoding="utf-8")
           PY
       - name: Verify M78 repair scope
@@ -99,17 +128,19 @@ jobs:
           ! grep -q "elderPropertySerialM78" index.html
           test "$(grep -c "internal render products are not external exclusion evidence" index.html)" = "2"
           test "$(grep -c "fail closed against self-generated exclusions" index.html)" = "1"
+          test "$(grep -c "final clearance excludes Earthline presentation layers" index.html)" = "1"
+          test "$(grep -c "self-generated features cannot become exclusions" index.html)" = "1"
       - name: Commit repaired index
         run: |
           if git diff --quiet -- index.html; then exit 0; fi
           git config user.name "Earthlinedevelopment"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m "fix: exclude Earthline layers from Property evidence"
+          git commit -m "fix: exclude Earthline layers from final Property clearance"
           git push origin HEAD:pages-live
 
   test:
-    needs: repair-m78-2
+    needs: repair-m78-5
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
