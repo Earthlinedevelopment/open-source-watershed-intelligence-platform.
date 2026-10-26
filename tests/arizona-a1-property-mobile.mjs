@@ -191,3 +191,5 @@ if(!propClicked||!out.audit?.settled)process.exitCode=1;
 // M78.1 repair-runner trigger
 
 // M78.1 valid-workflow trigger
+
+// M78.1 post-production verification trigger
