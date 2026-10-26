@@ -140,18 +140,24 @@ async function runExactPropertyM78(lng,lat,label){
         const boundary=Array.isArray(M?.analysisBoundaryLngLat)?M.analysisBoundaryLngLat:[];
         let west=Infinity,south=Infinity,east=-Infinity,north=-Infinity;
         for(const p of boundary){const x=Number(p?.[0]),y=Number(p?.[1]);if(Number.isFinite(x)&&Number.isFinite(y)){west=Math.min(west,x);east=Math.max(east,x);south=Math.min(south,y);north=Math.max(north,y)}}
-        let swaleFrameOk=boundary.length>=3;
+        let swaleFrameOk=boundary.length>=3,outsidePoints=0,totalPoints=0,swWest=Infinity,swSouth=Infinity,swEast=-Infinity,swNorth=-Infinity,maxOutsideDeg=0,firstOutside=null;
         const visit=(v)=>{
-          if(!swaleFrameOk)return;
           if(Array.isArray(v)&&v.length>=2&&Number.isFinite(Number(v[0]))&&Number.isFinite(Number(v[1]))){
-            const x=Number(v[0]),y=Number(v[1]);
-            if(x<west-1e-7||x>east+1e-7||y<south-1e-7||y>north+1e-7)swaleFrameOk=false;
+            const x=Number(v[0]),y=Number(v[1]);totalPoints++;
+            swWest=Math.min(swWest,x);swEast=Math.max(swEast,x);swSouth=Math.min(swSouth,y);swNorth=Math.max(swNorth,y);
+            const dx=x<west?west-x:(x>east?x-east:0),dy=y<south?south-y:(y>north?y-north:0);
+            if(dx>1e-7||dy>1e-7){outsidePoints++;swaleFrameOk=false;maxOutsideDeg=Math.max(maxOutsideDeg,dx,dy);if(!firstOutside)firstOutside={x,y,dx,dy}}
             return;
           }
           if(Array.isArray(v))for(const q of v)visit(q);
         };
         for(const ft of features)visit(ft?.geometry?.coordinates);
-        return {swaleFingerprint:(h>>>0).toString(16).padStart(8,'0'),swaleFrameOk};
+        return {
+          swaleFingerprint:(h>>>0).toString(16).padStart(8,'0'),swaleFrameOk,
+          boundaryBounds:{west,south,east,north},
+          swaleBounds:[swWest,swSouth,swEast,swNorth].every(Number.isFinite)?{west:swWest,south:swSouth,east:swEast,north:swNorth}:null,
+          outsidePoints,totalPoints,maxOutsideDeg,firstOutside
+        };
       })()
     };
   },{lng,lat,label});
