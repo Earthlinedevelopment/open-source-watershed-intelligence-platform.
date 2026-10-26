@@ -173,6 +173,15 @@ const pair1=exactM78.filter(r=>/^az-user-1-/.test(r.label));
 const pair2=exactM78.filter(r=>/^az-user-2-/.test(r.label));
 const repeatOk=[pair1,pair2].every(pair=>pair.length===2&&pair[0].swaleFingerprint===pair[1].swaleFingerprint&&String(pair[0].publication?.scientificInputFingerprint||'')===String(pair[1].publication?.scientificInputFingerprint||''));
 console.log('EARTHLINE_M78_EXACT_ARIZONA '+JSON.stringify({repeatOk,exactM78}));
+const textureStackM78=await page.evaluate(async()=>{
+  try{
+    const fn=window.earthlineSyncPropertyTexture16169;
+    if(typeof fn!=='function')return {ok:false,error:'texture sync owner unavailable'};
+    const result=await Promise.resolve(fn('m78-stack-force'));
+    return {ok:true,result,audit:(typeof window.earthlinePropertyTextureAudit16169==='function'?window.earthlinePropertyTextureAudit16169():window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null),backgroundError:window.EARTHLINE_PROPERTY_TEXTURE_BACKGROUND_ERROR_16477||null};
+  }catch(e){return {ok:false,error:String(e&&e.message||e),stack:String(e&&e.stack||'')}}
+});
+console.log('EARTHLINE_M78_TEXTURE_STACK '+JSON.stringify(textureStackM78));
 if(exactM78.some(r=>r.elderState!=='committed'||!r.elderIdentityOk||r.swales<=0||!r.swalesVisible||!r.swaleFrameOk)||!repeatOk)process.exitCode=1;
 
 await browser.close();
