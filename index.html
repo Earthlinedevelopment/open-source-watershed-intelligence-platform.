@@ -12176,6 +12176,21 @@ async function directGeocode(q){
           }else{
             M.vectorNoBuildCoverage.localAuthorityFallback17630="open-data-style";
           }
+        }else if(bounded.length===0){
+          /* EARTHLINE M78.9 — a successful loaded-style query with zero relevant
+             exclusion geometry is not proof that the Property frame is clear.
+             Use the existing shared infrastructure adapter before screened-clear. */
+          earthlineProgress("hydrology","confirming parcel exclusions from open data…");
+          const fallbackEvidenceM789=await infrastructure16550();
+          if(earthlineIsStale(myGen)){
+            earthlineSetVectorVerification16343(M.vectorNoBuildCoverage,"unverified","analysis-stale-after-zero-style-fallback");
+            return false;
+          }
+          infrastructure15862P=fallbackEvidenceM789||infrastructure15862P;
+          earthlineMergeInfraMasks15862P(roadMask,buildingMask,infrastructure15862P);
+          count+=Number(infrastructure15862P&&infrastructure15862P.processedGeometryCount||0);
+          M.vectorNoBuildCoverage.sourceFeatureCount+=Number(infrastructure15862P&&infrastructure15862P.overpass&&infrastructure15862P.overpass.rawElementCount||0);
+          M.vectorNoBuildCoverage.evidencePath17630="shared-style-zero-plus-infrastructure-fallback";
         }
       }else{
         earthlineProgress("hydrology","mapping available parcel exclusions…");
