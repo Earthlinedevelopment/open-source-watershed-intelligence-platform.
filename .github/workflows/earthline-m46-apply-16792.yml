@@ -24,38 +24,18 @@ jobs:
           from pathlib import Path
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
-
-          old_gate="""      const elderPropertyGenM78=propertyPublicationGen16334;
-      void Promise.resolve(window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.())
-        .then(()=>{
-          if(Number(m.searchGen||0)!==elderPropertyGenM78)return null;
-          return window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.();
-        })
-        .catch(()=>{});"""
-          new_gate="""      const elderPropertySerialM78=serial;
-      const elderPropertyCenterM78={lng:Number(site.lng),lat:Number(site.lat)};
-      void Promise.resolve(window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.())
-        .then((elderPrimeM78)=>{
-          if(!elderPrimeM78||elderPropertySerialM78!==runSerial)return null;
-          const dM78=window.EARTHLINE_PROPERTY_DECLARATION_16169||null;
-          const dlngM78=Number(dM78?.center?.lng),dlatM78=Number(dM78?.center?.lat);
-          if(!Number.isFinite(dlngM78)||!Number.isFinite(dlatM78))return null;
-          if(Math.abs(dlngM78-elderPropertyCenterM78.lng)>1e-8||Math.abs(dlatM78-elderPropertyCenterM78.lat)>1e-8)return null;
-          return window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.();
-        })
-        .catch(()=>{});"""
+          old_gate="      const elderPropertyGenM78=propertyPublicationGen16334;\n      void Promise.resolve(window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.())\n        .then(()=>{\n          if(Number(m.searchGen||0)!==elderPropertyGenM78)return null;\n          return window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.();\n        })\n        .catch(()=>{});"
+          new_gate="      const elderPropertySerialM78=serial;\n      const elderPropertyCenterM78={lng:Number(site.lng),lat:Number(site.lat)};\n      void Promise.resolve(window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.())\n        .then((elderPrimeM78)=>{\n          if(!elderPrimeM78||elderPropertySerialM78!==runSerial)return null;\n          const dM78=window.EARTHLINE_PROPERTY_DECLARATION_16169||null;\n          const dlngM78=Number(dM78?.center?.lng),dlatM78=Number(dM78?.center?.lat);\n          if(!Number.isFinite(dlngM78)||!Number.isFinite(dlatM78))return null;\n          if(Math.abs(dlngM78-elderPropertyCenterM78.lng)>1e-8||Math.abs(dlatM78-elderPropertyCenterM78.lat)>1e-8)return null;\n          return window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.();\n        })\n        .catch(()=>{});"
           if new_gate not in s:
               if s.count(old_gate)!=1:
                   raise SystemExit(f"Elder M78 gate anchor count={s.count(old_gate)}")
               s=s.replace(old_gate,new_gate,1)
-
           old_ok="const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length&&renderedFeatures17181>0; /* EARTHLINE_SAFE_FIRST_PRESENTATION_17181 */"
-          new_ok="const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length; /* EARTHLINE M78 — source set + all safe layers visible owns presentation; queryRenderedFeatures may be zero before the next Mapbox paint. */"
+          new_ok="const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length; /* EARTHLINE M78 — safe source + all safe layers visible owns presentation; queryRenderedFeatures may be zero before next paint. */"
           if new_ok not in s:
               if s.count(old_ok)!=1:
                   raise SystemExit(f"safe visibility anchor count={s.count(old_ok)}")
               s=s.replace(old_ok,new_ok,1)
-
           old_src='<script src="earthline-launch-16872.js?v=17604"></script>'
           new_src='<script src="earthline-launch-16872.js?v=17605"></script>'
           if old_src in s:
@@ -64,14 +44,13 @@ jobs:
               s=s.replace(old_src,new_src,1)
           elif new_src not in s:
               raise SystemExit("launch version anchor missing")
-
           p.write_text(s,encoding="utf-8")
           PY
       - name: Verify final M78 production locks
         run: |
           git diff --check
           grep -q "elderPropertySerialM78=serial" index.html
-          grep -q "visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length" index.html
+          grep -q "visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length;" index.html
           grep -q 'earthline-launch-16872.js?v=17605' index.html
           grep -q "EARTHLINE M78 — PROPERTY DECLARATION OWNS ELDER IDENTITY" earthline-launch-16872.js
           grep -q "earthline-elder-worker-17129.js?v=17604" earthline-launch-16872.js
