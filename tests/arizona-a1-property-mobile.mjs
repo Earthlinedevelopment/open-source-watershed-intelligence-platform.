@@ -103,3 +103,4 @@ if(!propClicked||!out.audit?.settled)process.exitCode=1;
 // verify fail-visible 17011
 
 // diagnose natural replacement visibility after safe fallback fade
+// M78 live ownership verification
