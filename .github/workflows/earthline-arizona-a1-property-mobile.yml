@@ -180,6 +180,15 @@ jobs:
       - run: |
           npm install --no-save playwright@1.55.0
       - run: node tests/arizona-desktop-crosshair-m78.mjs
+      - name: Upload M78 desktop screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m78-desktop-screens
+          path: |
+            /tmp/m78-desktop-first.png
+            /tmp/m78-desktop-second.png
+          if-no-files-found: error
       - run: node tests/arizona-a1-property-mobile.mjs
 
 # M78.17 trigger exact desktop repair
@@ -193,3 +202,5 @@ jobs:
 # M78.20 wiring correction trigger
 
 # M78.27 trigger contour-start consistency repair
+
+# M78.29 capture exact desktop production screenshots
