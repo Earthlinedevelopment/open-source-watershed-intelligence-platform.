@@ -11775,9 +11775,9 @@ async function directGeocode(q){
       'way["water"]('+bbox+');relation["water"]('+bbox+');'+
       ');out geom;';
     const endpoints=[
-      {url:"https://overpass-api.de/api/interpreter",timeoutMs:5200,label:"canonical"},
-      {url:"https://lz4.overpass-api.de/api/interpreter",timeoutMs:6200,label:"lz4-direct-fallback"}
-    ];
+      {url:"https://overpass.private.coffee/api/interpreter",timeoutMs:5000,label:"private-coffee-global"},
+      {url:"https://maps.mail.ru/osm/tools/overpass/api/interpreter",timeoutMs:5000,label:"vk-maps-global"}
+    ]; /* EARTHLINE M78.12 — resilient free global OSM transport; source/query semantics unchanged. */
     for(const ep of endpoints){
       if(earthlineIsStale(myGen))return false;
       const controller=typeof AbortController!=="undefined"?new AbortController():null;
@@ -11999,12 +11999,15 @@ async function directGeocode(q){
     const openDataAttempted=!!(op.attempted===true||styleAttempted);
     const openDataResponded=!!(overpassResponded||styleResponded);
     const openDataFailed=!!(overpassFailed||styleFailed);
+    const zeroStyleFallbackRequiredM7812=c.evidencePath17630==="shared-style-zero-plus-infrastructure-fallback";
+    const effectiveOpenDataRespondedM7812=zeroStyleFallbackRequiredM7812?overpassResponded:openDataResponded;
+    const effectiveOpenDataFailedM7812=zeroStyleFallbackRequiredM7812?!overpassResponded:openDataFailed;
     const openGeometryCount16516=Math.max(0,
       Number(op.roadGeometryCount||0)+Number(op.buildingGeometryCount||0)+Number(op.parkingGeometryCount||0)+Number(op.waterGeometryCount||0)+
       Number(c.relevantFeatureCount||0)
     );
 
-    if(openGeometryCount16516>0&&openDataResponded){
+    if(openGeometryCount16516>0&&effectiveOpenDataRespondedM7812){
       c.sourceTier="open-data";c.acquisitionResult="features-found";c.publicationAllowed=true;c.exclusionVerified=false;
       c.evidenceGrade="OPEN-DATA SCREENING · FIELD VERIFICATION REQUIRED";
       c.openGeometryCount16516=openGeometryCount16516;
@@ -12012,7 +12015,7 @@ async function directGeocode(q){
       earthlineSetVectorVerification16343(c,"unverified","open-data-screening-not-authoritative");
       return true;
     }
-    if(openDataResponded){
+    if(effectiveOpenDataRespondedM7812){
       /* A successful zero-feature result is screened-clear, never verified-clear and
          never `unavailable`. Unavailable must be positively established, not inferred
          from a blank open-data response. A failure of one optional open source does
@@ -12027,7 +12030,7 @@ async function directGeocode(q){
     if(openDataAttempted){
       c.sourceTier="open-data";c.acquisitionResult="failed";c.publicationAllowed=false;c.exclusionVerified=false;
       c.evidenceGrade="EXCLUSION DATA QUERY FAILED · OUTPUT BLOCKED";
-      c.openDataSources16539={overpass:{attempted:!!op.attempted,responded:false,failed:overpassFailed},style:{attempted:styleAttempted,responded:false,failed:styleFailed}};
+      c.openDataSources16539={overpass:{attempted:!!op.attempted,responded:false,failed:effectiveOpenDataFailedM7812},style:{attempted:styleAttempted,responded:zeroStyleFallbackRequiredM7812?false:styleResponded,failed:styleFailed}};
       earthlineSetVectorVerification16343(c,"unverified","all-attempted-open-data-exclusion-sources-failed");
       return false;
     }
@@ -13317,6 +13320,7 @@ var prescribeSwales;
       const trace=(start)=>{
         const cells=[],seen=new Set();let i=start,guard=0;
         while(i>=0&&i<N&&eligible[i]&&!seen.has(i)&&guard++<N){
+          if(claimed[i])break; /* EARTHLINE M78.11 — one canonical owner per minor-flow cell; stop duplicate downstream tracing. */
           seen.add(i);cells.push(i);claimed[i]=1;
           const x=i%GW,y=Math.floor(i/GW),d=Number(M.dir[i]);
           if(!(d>=0&&d<8))break;
