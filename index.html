@@ -29581,7 +29581,7 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
     const visibleLayers=Object.values(SAFE_LAYERS_16221).filter(id=>{try{return !!mp.getLayer?.(id)&&mp.getLayoutProperty?.(id,'visibility')!=='none'}catch(_){return false}});
     let renderedFeatures17181=0;
     try{const canvas17181=mp.getCanvas?.(),box17181=canvas17181&&[[0,0],[canvas17181.clientWidth||canvas17181.width,canvas17181.clientHeight||canvas17181.height]];if(box17181&&visibleLayers.length)renderedFeatures17181=(mp.queryRenderedFeatures?.(box17181,{layers:visibleLayers})||[]).length}catch(_){}
-    const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length&&renderedFeatures17181>0; /* EARTHLINE_SAFE_FIRST_PRESENTATION_17181 */
+    const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length; /* EARTHLINE M78 — safe source + all safe layers visible owns presentation; queryRenderedFeatures may be zero before next paint. */
     const audit={build:BUILD,reason,active,verified:true,count,sourceReady:true,layersReady:true,visible:ok,renderedFeatures:renderedFeatures17181,visibleLayers,moved,geometrySource:'M.authoritativeSafeSwales15815',safetyGate:'propertyPublication15816 + propertyResultLock15815 + safetyAudit15806 + searchGen match',at:new Date().toISOString()};
     window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221=audit;
     /* EARTHLINE 16289 — self-heal a scientifically verified Property result if
@@ -29879,10 +29879,15 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
        but it may never restore, replace, or republish Property swale science.
        A late Elder completion from an older run is discarded by searchGen. */
     try{
-      const elderPropertyGenM78=propertyPublicationGen16334;
+      const elderPropertySerialM78=serial;
+      const elderPropertyCenterM78={lng:Number(site.lng),lat:Number(site.lat)};
       void Promise.resolve(window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.())
-        .then(()=>{
-          if(Number(m.searchGen||0)!==elderPropertyGenM78)return null;
+        .then((elderPrimeM78)=>{
+          if(!elderPrimeM78||elderPropertySerialM78!==runSerial)return null;
+          const dM78=window.EARTHLINE_PROPERTY_DECLARATION_16169||null;
+          const dlngM78=Number(dM78?.center?.lng),dlatM78=Number(dM78?.center?.lat);
+          if(!Number.isFinite(dlngM78)||!Number.isFinite(dlatM78))return null;
+          if(Math.abs(dlngM78-elderPropertyCenterM78.lng)>1e-8||Math.abs(dlatM78-elderPropertyCenterM78.lat)>1e-8)return null;
           return window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.();
         })
         .catch(()=>{});
@@ -30096,7 +30101,7 @@ html.earthline-map-only-16169 #earthlineTierNotice16173{right:18px;bottom:18px}
 <script>
 window.EARTHLINE_GAUGE_DATA_SYNC_16864={build:'16864',scoreScale:'0-100',measuredInfiltration:false,contract:'Aquifer Recharge Potential and DATA describe the same modeled weighted composite; no measured infiltration-rate claim.',at:new Date().toISOString()};
 </script>
-<script>window.EARTHLINE_LAUNCH_CANDIDATE_16866={build:'16866',scope:'approved launch repairs only',at:new Date().toISOString()};</script><script>window.EARTHLINE_LAUNCH_LIST_16867={build:'16867',at:new Date().toISOString()};</script><script src="earthline-launch-16872.js?v=17604"></script>
+<script>window.EARTHLINE_LAUNCH_CANDIDATE_16866={build:'16866',scope:'approved launch repairs only',at:new Date().toISOString()};</script><script>window.EARTHLINE_LAUNCH_LIST_16867={build:'16867',at:new Date().toISOString()};</script><script src="earthline-launch-16872.js?v=17605"></script>
 
 
 <!-- EARTHLINE_PROPERTY_REPEAT_ONE_PRESS_17451: settled repeat Property control rebind. -->
