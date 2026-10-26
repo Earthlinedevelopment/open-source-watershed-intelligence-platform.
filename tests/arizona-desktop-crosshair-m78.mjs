@@ -113,7 +113,9 @@ async function runHumanCrosshair(lng,lat,label){
 
 const first=await runHumanCrosshair(-111.93067,34.21568,'m78-desktop-first');
 const second=await runHumanCrosshair(-111.93347,34.21629,'m78-desktop-second');
-console.log('EARTHLINE_M78_DESKTOP_CROSSHAIR '+JSON.stringify({first,second,errs}));
+const firstRepeat=await runHumanCrosshair(-111.93067,34.21568,'m78-desktop-first-repeat');
+const secondRepeat=await runHumanCrosshair(-111.93347,34.21629,'m78-desktop-second-repeat');
+console.log('EARTHLINE_M78_DESKTOP_CROSSHAIR '+JSON.stringify({first,second,firstRepeat,secondRepeat,errs}));
 await browser.close();
 
 function near(a,b,tol=0.00008){return Number.isFinite(Number(a))&&Math.abs(Number(a)-Number(b))<=tol}
@@ -123,7 +125,7 @@ const identityOk=
  near(firstCenter?.lng,-111.93067)&&near(firstCenter?.lat,34.21568)&&
  near(second.pre.target?.lng,-111.93347)&&near(second.pre.target?.lat,34.21629)&&
  near(secondCenter?.lng,-111.93347)&&near(secondCenter?.lat,34.21629);
-const systemsOk=[first,second].every(r=>{
+const systemsOk=[first,second,firstRepeat,secondRepeat].every(r=>{
   const e=r.snap.elder||{};
   const sw=r.snap.swales||{};
   const w=r.snap.water||{};
@@ -145,10 +147,16 @@ const systemsOk=[first,second].every(r=>{
 const routeDiffOk=
   String(first.snap.swales?.fingerprint||'')!=='' &&
   String(second.snap.swales?.fingerprint||'')!=='' &&
-  (String(first.snap.swales?.fingerprint||'')!==String(second.snap.swales?.fingerprint||'') ||
-   Math.abs(Number(first.snap.declaration?.center?.lng)-Number(second.snap.declaration?.center?.lng))<1e-9);
-console.log('EARTHLINE_M78_DESKTOP_STRICT '+JSON.stringify({identityOk,systemsOk,routeDiffOk,first:{elder:first.snap.elder,swales:first.snap.swales,water:first.snap.water,aquifer:first.snap.aquifer},second:{elder:second.snap.elder,swales:second.snap.swales,water:second.snap.water,aquifer:second.snap.aquifer}}));
-if(!identityOk||!systemsOk||!routeDiffOk)process.exitCode=1;
+  String(first.snap.swales?.fingerprint||'')!==String(second.snap.swales?.fingerprint||'');
+const repeatOk=
+  String(first.snap.swales?.fingerprint||'')===String(firstRepeat.snap.swales?.fingerprint||'') &&
+  Number(first.snap.swales?.count||0)===Number(firstRepeat.snap.swales?.count||0) &&
+  String(first.snap.water?.fingerprint||'')===String(firstRepeat.snap.water?.fingerprint||'') &&
+  String(second.snap.swales?.fingerprint||'')===String(secondRepeat.snap.swales?.fingerprint||'') &&
+  Number(second.snap.swales?.count||0)===Number(secondRepeat.snap.swales?.count||0) &&
+  String(second.snap.water?.fingerprint||'')===String(secondRepeat.snap.water?.fingerprint||'');
+console.log('EARTHLINE_M78_DESKTOP_STRICT '+JSON.stringify({identityOk,systemsOk,routeDiffOk,repeatOk,first:{elder:first.snap.elder,swales:first.snap.swales,water:first.snap.water,aquifer:first.snap.aquifer},second:{elder:second.snap.elder,swales:second.snap.swales,water:second.snap.water,aquifer:second.snap.aquifer},firstRepeat:{swales:firstRepeat.snap.swales,water:firstRepeat.snap.water},secondRepeat:{swales:secondRepeat.snap.swales,water:secondRepeat.snap.water}}));
+if(!identityOk||!systemsOk||!routeDiffOk||!repeatOk)process.exitCode=1;
 
 // M78.8 raw Elder tile verdict capture
 
@@ -161,3 +169,5 @@ if(!identityOk||!systemsOk||!routeDiffOk)process.exitCode=1;
 // M78.18 require exact repaired production bytes
 
 // M78.20 require swale-first publication gate in served bytes
+
+// M78.21 exact desktop swale repeatability gate
