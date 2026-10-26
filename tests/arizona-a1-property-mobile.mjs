@@ -131,6 +131,39 @@ async function runExactPropertyM78(lng,lat,label){
       swalesVisible:!!(safeVisibility?.visible||(safeVisibility?.delegatedToNatural&&Number(safeVisibility?.naturalRenderedFeatures||0)>0)),
       safeVisibility,
       publication,
+      systems:(function(){
+        const wp=M?.authoritativeWaterPublication15824||null;
+        const wf=M?.authoritativeWaterPaths15824;
+        const waterFeatures=Array.isArray(wf?.features)?wf.features:[];
+        const waterPayload=JSON.stringify(waterFeatures.map(f=>f?.geometry?.coordinates||null));
+        let wh=2166136261;for(let i=0;i<waterPayload.length;i++){wh^=waterPayload.charCodeAt(i);wh=Math.imul(wh,16777619)}
+        const aqOwner=M?.propertyAquiferOwner16393||null;
+        const aqLast=M?.usgsAquiferLastResult16393||null;
+        const aqStatus=String(M?.usgsAquiferStatus||'');
+        const aqPolys=Number(M?.usgsAquifers?.length||0);
+        const aqWells=Number(M?.vtGroundwaterWells16398?.length||0);
+        const runGen=Number(M?.searchGen||0);
+        const orb=document.getElementById('earthlinePropertyOrb16173')||document.querySelector('[data-earthline-property-orb],.earthline-property-orb');
+        return {
+          runGen,
+          waterCommitted:wp?.committed===true&&wp?.verified===true,
+          waterSearchGen:Number(wp?.searchGen),
+          waterIdentityOk:Number(wp?.searchGen)===runGen,
+          waterCount:Number(wp?.featureCount||waterFeatures.length||0),
+          waterFingerprint:(wh>>>0).toString(16).padStart(8,'0'),
+          waterVisible:Number(M?.directWaterRenderer15824?.visiblePaths||0),
+          aquiferOwnerGen:Number(aqOwner?.searchGen),
+          aquiferOwnerOk:!aqOwner||Number(aqOwner?.searchGen)===runGen,
+          aquiferStatus:aqStatus,
+          aquiferPolys:aqPolys,
+          aquiferWells:aqWells,
+          aquiferLastGen:Number(aqLast?.searchGen),
+          aquiferClass:[aqStatus,aqPolys,aqWells].join('|'),
+          aquiferRequestKey:String(M?.usgsAquiferRequestKey16388||''),
+          aquiferCompletedKey:String(M?.usgsAquiferCompletedKey16393||''),
+          orbRunning:!!(orb&&(orb.dataset?.running==='1'||orb.classList?.contains('running')||orb.getAttribute?.('aria-busy')==='true'))
+        };
+      })(),
       provenance:(function(){
         const p=M?.noBuildProvenance15843||{};
         const v=M?.vectorNoBuildCoverage||{};
@@ -188,12 +221,49 @@ async function runExactPropertyM78(lng,lat,label){
     };
   },{lng,lat,label});
 }
+const controlsM78=[
+  {key:'az-good',lng:-111.93178,lat:34.21607},
+  {key:'az-bad',lng:-111.93582,lat:34.21605},
+  {key:'poudre',lng:-105.2237,lat:40.6412}
+];
 const exactM78=[];
-exactM78.push(await runExactPropertyM78(-111.93354,34.21600,'az-user-2-a'));
-exactM78.push(await runExactPropertyM78(-111.93354,34.21600,'az-user-2-b'));
-const pair2=exactM78.filter(r=>/^az-user-2-/.test(r.label));
-const repeatOk=pair2.length===2&&pair2[0].swaleFingerprint===pair2[1].swaleFingerprint&&String(pair2[0].publication?.scientificInputFingerprint||'')===String(pair2[1].publication?.scientificInputFingerprint||'');
-console.log('EARTHLINE_M78_EXACT_ARIZONA '+JSON.stringify({repeatOk,exactM78}));
+for(const control of controlsM78){
+  for(let repeat=1;repeat<=5;repeat++){
+    exactM78.push(await runExactPropertyM78(control.lng,control.lat,control.key+'-'+repeat));
+  }
+}
+function sameField(rows,getter){return rows.length===5&&rows.every(r=>getter(r)===getter(rows[0]))}
+const controlResultsM78=controlsM78.map(control=>{
+  const rows=exactM78.filter(r=>r.label.startsWith(control.key+'-'));
+  const stable={
+    scientific: sameField(rows,r=>String(r.publication?.scientificInputFingerprint||'')),
+    noBuild: sameField(rows,r=>String(r.publication?.noBuildMaskHash||'')),
+    swales: sameField(rows,r=>String(r.swaleFingerprint||'')),
+    water: sameField(rows,r=>String(r.systems?.waterFingerprint||'')),
+    waterCount: sameField(rows,r=>Number(r.systems?.waterCount||0)),
+    aquifer: sameField(rows,r=>String(r.systems?.aquiferClass||'')),
+    propertyIdentity: rows.every(r=>r.elderIdentityOk===true),
+    waterIdentity: rows.every(r=>r.systems?.waterIdentityOk===true),
+    aquiferIdentity: rows.every(r=>r.systems?.aquiferOwnerOk===true),
+    elderCommitted: rows.every(r=>r.elderState==='committed'),
+    swalesVisible: rows.every(r=>r.swales>0&&r.swalesVisible===true),
+    waterCommitted: rows.every(r=>r.systems?.waterCommitted===true&&r.systems?.waterCount>0),
+    orbClear: rows.every(r=>r.systems?.orbRunning!==true),
+    frameTolerance: rows.every(r=>Number(r.maxOutsideDeg||0)<=0.000005)
+  };
+  return {key:control.key,stable,pass:Object.values(stable).every(Boolean),rows:rows.map(r=>({
+    label:r.label,swales:r.swales,swaleFingerprint:r.swaleFingerprint,
+    scientificInputFingerprint:r.publication?.scientificInputFingerprint||null,
+    noBuildMaskHash:r.publication?.noBuildMaskHash||null,
+    elderState:r.elderState,elderIdentityOk:r.elderIdentityOk,elderFeatures:r.elderFeatures,
+    waterCount:r.systems?.waterCount,waterFingerprint:r.systems?.waterFingerprint,
+    waterIdentityOk:r.systems?.waterIdentityOk,waterVisible:r.systems?.waterVisible,
+    aquiferClass:r.systems?.aquiferClass,aquiferOwnerOk:r.systems?.aquiferOwnerOk,
+    orbRunning:r.systems?.orbRunning,maxOutsideDeg:r.maxOutsideDeg
+  }))};
+});
+const repeatOk=controlResultsM78.every(r=>r.pass);
+console.log('EARTHLINE_M78_FIVE_REPEAT_CONTROLS '+JSON.stringify({repeatOk,controlResultsM78}));
 const textureStackM78=await page.evaluate(async()=>{
   try{
     const fn=window.earthlineSyncPropertyTexture16169;
@@ -203,7 +273,7 @@ const textureStackM78=await page.evaluate(async()=>{
   }catch(e){return {ok:false,error:String(e&&e.message||e),stack:String(e&&e.stack||'')}}
 });
 console.log('EARTHLINE_M78_TEXTURE_STACK '+JSON.stringify(textureStackM78));
-if(exactM78.some(r=>r.elderState!=='committed'||!r.elderIdentityOk||r.swales<=0||!r.swalesVisible||Number(r.maxOutsideDeg||0)>0.000005)||!repeatOk)process.exitCode=1;
+if(!repeatOk)process.exitCode=1;
 
 await browser.close();
 const visibleFallback=Number(out?.render?.sourceFeatures||0)>0 && Array.isArray(out?.render?.layers) && out.render.layers.some(x=>x.exists&&x.visibility!=='none'&&Number(x.opacity)>0);
@@ -237,3 +307,5 @@ if(!propClicked||!out.audit?.settled)process.exitCode=1;
 // M78.2 hardened-anchor verification trigger
 
 // M78.2 input-fingerprint discriminator trigger
+
+// M78.3 five-repeat four-system binding gate
