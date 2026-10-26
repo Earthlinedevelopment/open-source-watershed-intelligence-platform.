@@ -1,4 +1,6 @@
 import { chromium } from 'playwright';
+import { readFileSync } from 'node:fs';
+const EARTHLINE_SCIENCE_GOLDEN=JSON.parse(readFileSync(new URL('./science-kernel-golden-v1.json',import.meta.url),'utf8'));
 
 const browser=await chromium.launch({headless:true,channel:'chrome'});
 const context=await browser.newContext({viewport:{width:1798,height:831},deviceScaleFactor:1});
@@ -206,12 +208,32 @@ const levelSetOk=
   secondMedian>=4.572 && secondMedian<=7.62 &&
   String(first.snap.swales?.fingerprint||'')===String(firstRepeat.snap.swales?.fingerprint||'') &&
   String(second.snap.swales?.fingerprint||'')===String(secondRepeat.snap.swales?.fingerprint||'');
+const goldenFirst=EARTHLINE_SCIENCE_GOLDEN.fixtures['AZ-FIRST'];
+const goldenSecond=EARTHLINE_SCIENCE_GOLDEN.fixtures['AZ-SECOND'];
+const goldenOk=
+  EARTHLINE_SCIENCE_GOLDEN.kernelVersion==='Earthline-Science-Kernel-v1.0.0' &&
+  Number(first.snap.swales?.count||0)===Number(goldenFirst.swales) &&
+  String(first.snap.swales?.fingerprint||'')===String(goldenFirst.swaleFingerprint) &&
+  Number(first.snap.water?.count||0)===Number(goldenFirst.water) &&
+  String(first.snap.water?.fingerprint||'')===String(goldenFirst.waterFingerprint) &&
+  Number(first.snap.elder?.sourceFeatures||0)>=Number(goldenFirst.elderMin) &&
+  Number(first.snap.flowFirst?.pathsServed||0)>=Number(goldenFirst.pathsServedMin) &&
+  Number(first.snap.flowFirst?.reasons?.['no-contour-trace']||0)<=Number(goldenFirst.noContourMax) &&
+  Number(second.snap.swales?.count||0)===Number(goldenSecond.swales) &&
+  String(second.snap.swales?.fingerprint||'')===String(goldenSecond.swaleFingerprint) &&
+  Number(second.snap.water?.count||0)===Number(goldenSecond.water) &&
+  String(second.snap.water?.fingerprint||'')===String(goldenSecond.waterFingerprint) &&
+  Number(second.snap.elder?.sourceFeatures||0)>=Number(goldenSecond.elderMin) &&
+  Number(second.snap.flowFirst?.pathsServed||0)>=Number(goldenSecond.pathsServedMin) &&
+  Number(second.snap.flowFirst?.reasons?.['no-contour-trace']||0)<=Number(goldenSecond.noContourMax);
+console.log('EARTHLINE_SCIENCE_KERNEL_GOLDEN '+JSON.stringify({kernelVersion:EARTHLINE_SCIENCE_GOLDEN.kernelVersion,goldenOk,first:{swales:first.snap.swales?.count,fp:first.snap.swales?.fingerprint,water:first.snap.water?.count,waterFp:first.snap.water?.fingerprint,elders:first.snap.elder?.sourceFeatures,served:first.snap.flowFirst?.pathsServed},second:{swales:second.snap.swales?.count,fp:second.snap.swales?.fingerprint,water:second.snap.water?.count,waterFp:second.snap.water?.fingerprint,elders:second.snap.elder?.sourceFeatures,served:second.snap.flowFirst?.pathsServed}}));
+
 console.log('EARTHLINE_M78_PRODUCTION_LEVELSET '+JSON.stringify({
   levelSetOk,
   first:{served:first.snap.flowFirst?.pathsServed,noContour:first.snap.flowFirst?.reasons?.['no-contour-trace']||0,swales:first.snap.swales?.count,fp:first.snap.swales?.fingerprint,medianM:firstMedian},
   second:{served:second.snap.flowFirst?.pathsServed,noContour:second.snap.flowFirst?.reasons?.['no-contour-trace']||0,swales:second.snap.swales?.count,fp:second.snap.swales?.fingerprint,medianM:secondMedian}
 }));
-if(!identityOk||!systemsOk||!routeDiffOk||!repeatOk||!levelSetOk)process.exitCode=1;
+if(!identityOk||!systemsOk||!routeDiffOk||!repeatOk||!levelSetOk||!goldenOk)process.exitCode=1;
 
 // M78.8 raw Elder tile verdict capture
 
@@ -244,3 +266,5 @@ if(!identityOk||!systemsOk||!routeDiffOk||!repeatOk||!levelSetOk)process.exitCod
 // M78.21 extract authoritative prescriber owner source
 
 // M78.30 production level-set science gate
+
+// EARTHLINE SCIENCE KERNEL v1.0.0 — golden regression lock
