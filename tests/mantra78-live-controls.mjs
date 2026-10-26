@@ -43,16 +43,16 @@ async function runOne(c,repeat){
   try{
     await page.goto(BASE+'?m78_control='+encodeURIComponent(c.id)+'_'+repeat+'_'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
     await page.waitForSelector('#searchInput',{state:'attached',timeout:30000});
-    await page.waitForFunction(()=>!!(window.earthlineMap&&typeof window.earthlineMap.jumpTo==='function'&&typeof window.earthlineSyncPropertyTargetFromMap16201==='function'&&document.getElementById('runBtn')),{timeout:30000,polling:100});
+    await page.waitForFunction(()=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);return !!(m&&typeof m.jumpTo==='function'&&typeof window.earthlineSyncPropertyTargetFromMap16201==='function'&&document.getElementById('runBtn'));},{timeout:30000,polling:100});
     await page.evaluate(({lng,lat})=>{
-      const m=window.earthlineMap;
+      const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
       const input=document.getElementById('searchInput');
       if(input){input.value='';input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));}
       m.jumpTo({center:[lng,lat],zoom:18,bearing:0,pitch:0});
     },c);
     await page.waitForTimeout(1000);
     const targetPrep=await page.evaluate(({lng,lat})=>{
-      const m=window.earthlineMap,c=m.getCenter();
+      const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),c=m.getCenter();
       const synced=window.earthlineSyncPropertyTargetFromMap16201();
       const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
       return {synced,center:{lng:Number(c.lng),lat:Number(c.lat)},target:t,zoom:m.getZoom()};
@@ -107,7 +107,7 @@ async function runOne(c,repeat){
       const prov=md.noBuildProvenance15843||null;
       const sourceHashes=prov&&prov.sourceHashes||{};
       const frame=Array.isArray(md.analysisBoundaryLngLat)?md.analysisBoundaryLngLat:[];
-      const mp=window.earthlineMap||null;
+      const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
       const safeSource=mp&&mp.getSource&&mp.getSource('earthline-property-safe-visible-16221');
       const safeSourceData=safeSource&&safeSource._data||{type:'FeatureCollection',features:[]};
       const naturalSource=mp&&mp.getSource&&mp.getSource('earthline-property-swale-texture-16174');
