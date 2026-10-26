@@ -212,3 +212,5 @@ if(!propClicked||!out.audit?.settled)process.exitCode=1;
 // M78.2 exact self-exclusion verification trigger
 
 // M78.2 valid-workflow production verification trigger
+
+// M78.2 hardened-anchor verification trigger
