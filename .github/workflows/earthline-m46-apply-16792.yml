@@ -1,4 +1,4 @@
-name: Earthline M78 Safe Swale Handoff Repair
+name: Earthline M78 Known-Good Elder Production Refresh
 
 on:
   push:
@@ -11,41 +11,42 @@ permissions:
   contents: write
 
 jobs:
-  apply-safe-swale-handoff:
+  publish-known-good-elder:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Keep safe swales visible until natural renderer is drawn
+      - name: Bump live launch asset version
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
-          old="    if(naturalReady16221){\n      setSafeLayerVisibility16221(false);"
-          new="    /* EARTHLINE M78 — SAFE SWALE HANDOFF REQUIRES RENDERED NATURAL FEATURES */\n    if(naturalReady16221 && naturalRendered16221>0){\n      setSafeLayerVisibility16221(false);"
-          if new not in s:
+          old='<script src="earthline-launch-16872.js?v=17603"></script>'
+          new='<script src="earthline-launch-16872.js?v=17604"></script>'
+          if old in s:
               if s.count(old)!=1:
-                  raise SystemExit(f"safe swale handoff anchor count={s.count(old)}")
+                  raise SystemExit("launch version anchor not unique")
               s=s.replace(old,new,1)
-          if new not in s:
-              raise SystemExit("M78 safe swale handoff marker missing")
+          elif new not in s:
+              raise SystemExit("launch version anchor missing")
           p.write_text(s,encoding="utf-8")
           PY
-      - name: Verify M78 owner locks
+      - name: Verify known-good Elder plus M78 swale locks
         run: |
           git diff --check
+          grep -q 'earthline-launch-16872.js?v=17604' index.html
           grep -q "naturalReady16221 && naturalRendered16221>0" index.html
           grep -q "EARTHLINE M78 — ELDER DISPLAY-ONLY RUN BINDING" index.html
-          grep -q "earthline-launch-16872.js?v=17603" index.html
-          grep -q "earthline-elder-worker-17129.js?v=17603" earthline-launch-16872.js
+          grep -q "earthline-elder-worker-17129.js?v=17604" earthline-launch-16872.js
+          grep -q "from scipy import ndimage" tools/elder_trees/chmv2_array_detector_17129.py
       - name: Commit
         run: |
           if git diff --quiet -- index.html; then exit 0; fi
           git config user.name "Earthlinedevelopment"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m "fix: keep authoritative Property swales visible until natural render"
+          git commit -m "fix: publish matched known-good Elder stack to live asset version"
           git push origin HEAD:pages-live
