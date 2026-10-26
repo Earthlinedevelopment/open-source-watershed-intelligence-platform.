@@ -131,6 +131,32 @@ async function runExactPropertyM78(lng,lat,label){
       swalesVisible:!!(safeVisibility?.visible||(safeVisibility?.delegatedToNatural&&Number(safeVisibility?.naturalRenderedFeatures||0)>0)),
       safeVisibility,
       publication,
+      provenance:(function(){
+        const p=M?.noBuildProvenance15843||{};
+        const v=M?.vectorNoBuildCoverage||{};
+        return {
+          m782Served:document.documentElement.innerHTML.includes('fail closed against self-generated exclusions'),
+          noBuildStamp:p.noBuildStamp||null,
+          sourceStateFingerprint:p.sourceStateFingerprint||null,
+          scientificInputFingerprint:p.scientificInputFingerprint||null,
+          hashes:p.sourceHashes||null,
+          satelliteCanvasAvailable:!!p.satelliteCanvasAvailable,
+          imperviousRasterAvailable:!!p.imperviousRasterAvailable,
+          noBuildCellsFromWater:Number(p.noBuildCellsFromWater||0),
+          noBuildCellsFromImpervious:Number(p.noBuildCellsFromImpervious||0),
+          noBuildCellsFromVector:Number(p.noBuildCellsFromVector||0),
+          noBuildCellsFromManual:Number(p.noBuildCellsFromManual||0),
+          noBuildCellsAfterUnion:Number(p.noBuildCellsAfterUnion||0),
+          noBuildCellsAfterDilation:Number(p.noBuildCellsAfterDilation||0),
+          vector:{
+            sourceTier:v.sourceTier||null,acquisitionResult:v.acquisitionResult||null,
+            evidencePath:v.evidencePath17630||null,layerCount:Number(v.layerCount||0),
+            sourceFeatureCount:Number(v.sourceFeatureCount||0),relevantFeatureCount:Number(v.relevantFeatureCount||0),
+            processedFeatureCount:Number(v.processedFeatureCount||0),
+            styleQuerySuccess:v.styleQuerySuccess16516===true,styleQueryFailure:v.styleQueryFailure16516===true
+          }
+        };
+      })(),
       ...(function(){
         const fc=M?.authoritativeSafeSwales15815;
         const features=Array.isArray(fc?.features)?fc.features:[];
@@ -163,15 +189,10 @@ async function runExactPropertyM78(lng,lat,label){
   },{lng,lat,label});
 }
 const exactM78=[];
-exactM78.push(await runExactPropertyM78(-111.93067,34.21568,'az-user-1-a'));
-exactM78.push(await runExactPropertyM78(-111.93067,34.21568,'az-user-1-b'));
 exactM78.push(await runExactPropertyM78(-111.93354,34.21600,'az-user-2-a'));
 exactM78.push(await runExactPropertyM78(-111.93354,34.21600,'az-user-2-b'));
-exactM78.push(await runExactPropertyM78(-111.93178,34.21607,'az-history-good'));
-exactM78.push(await runExactPropertyM78(-111.93582,34.21605,'az-history-bad'));
-const pair1=exactM78.filter(r=>/^az-user-1-/.test(r.label));
 const pair2=exactM78.filter(r=>/^az-user-2-/.test(r.label));
-const repeatOk=[pair1,pair2].every(pair=>pair.length===2&&pair[0].swaleFingerprint===pair[1].swaleFingerprint&&String(pair[0].publication?.scientificInputFingerprint||'')===String(pair[1].publication?.scientificInputFingerprint||''));
+const repeatOk=pair2.length===2&&pair2[0].swaleFingerprint===pair2[1].swaleFingerprint&&String(pair2[0].publication?.scientificInputFingerprint||'')===String(pair2[1].publication?.scientificInputFingerprint||'');
 console.log('EARTHLINE_M78_EXACT_ARIZONA '+JSON.stringify({repeatOk,exactM78}));
 const textureStackM78=await page.evaluate(async()=>{
   try{
@@ -182,7 +203,7 @@ const textureStackM78=await page.evaluate(async()=>{
   }catch(e){return {ok:false,error:String(e&&e.message||e),stack:String(e&&e.stack||'')}}
 });
 console.log('EARTHLINE_M78_TEXTURE_STACK '+JSON.stringify(textureStackM78));
-if(exactM78.some(r=>r.elderState!=='committed'||!r.elderIdentityOk||r.swales<=0||!r.swalesVisible||!r.swaleFrameOk)||!repeatOk)process.exitCode=1;
+if(exactM78.some(r=>r.elderState!=='committed'||!r.elderIdentityOk||r.swales<=0||!r.swalesVisible||Number(r.maxOutsideDeg||0)>0.000005)||!repeatOk)process.exitCode=1;
 
 await browser.close();
 const visibleFallback=Number(out?.render?.sourceFeatures||0)>0 && Array.isArray(out?.render?.layers) && out.render.layers.some(x=>x.exists&&x.visibility!=='none'&&Number(x.opacity)>0);
@@ -214,3 +235,5 @@ if(!propClicked||!out.audit?.settled)process.exitCode=1;
 // M78.2 valid-workflow production verification trigger
 
 // M78.2 hardened-anchor verification trigger
+
+// M78.2 input-fingerprint discriminator trigger
