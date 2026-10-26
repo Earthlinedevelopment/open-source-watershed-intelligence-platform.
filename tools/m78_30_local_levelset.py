@@ -67,13 +67,15 @@ new='''  const a=walk(0),b=walk(1);
   const cleaned=merged.length>=3?earthlineCleanPath(merged):[];
   if(cleaned&&cleaned.length>=3)return cleaned;
   const localM78=earthlineTraceLocalLevelSetM78(sx,sy,L,maxS,dropH,arguments.length>5?arguments[5]:Number.POSITIVE_INFINITY);
-  M.scienceKernelM78=M.scienceKernelM78||{version:'M78.30-local-level-set-fallback',attempts:0,recoveries:0};
+  M.scienceKernelM78=M.scienceKernelM78||{version:'Earthline-Science-Kernel-v1.0.0',owner:'authoritative-property-science-kernel',validationPolicy:'independent-fail-closed-publication-gate',attempts:0,recoveries:0};
   M.scienceKernelM78.attempts=Number(M.scienceKernelM78.attempts||0)+1;
   if(localM78&&localM78.length>=3){M.scienceKernelM78.recoveries=Number(M.scienceKernelM78.recoveries||0)+1;return localM78;}
   return [];
 }'''
 if s.count(old)!=1:raise SystemExit(f'M78.30 return anchor count={s.count(old)}')
 s=s.replace(old,new,1)
-if marker not in s or 'M78.30-local-level-set-fallback' not in s:raise SystemExit('M78.30 verification failed')
+if marker not in s or 'Earthline-Science-Kernel-v1.0.0' not in s:raise SystemExit('M78.30 verification failed')
 p.write_text(s,encoding='utf-8')
 print('Applied M78.30 local DEM level-set fallback')
+
+# EARTHLINE SCIENCE KERNEL v1.0.0 formal identity
