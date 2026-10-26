@@ -55,16 +55,29 @@ new_flags='''    const openDataAttempted=!!(op.attempted===true||styleAttempted)
     const effectiveOpenDataFailedM7812=!!(!effectiveOpenDataRespondedM7812&&(overpassFailed||styleFailed));
     const openGeometryCount16516=Math.max(0,'''
 if "EARTHLINE M78.19 — loaded map evidence is the primary Property exclusion screen" not in s:
-    if s.count(old_flags)!=1:
-        raise SystemExit(f"M78.12 verification flags anchor count={s.count(old_flags)}")
-    s=s.replace(old_flags,new_flags,1)
-    s=s.replace("if(openGeometryCount16516>0&&openDataResponded){","if(openGeometryCount16516>0&&effectiveOpenDataRespondedM7812){",1)
-    s=s.replace("if(openDataResponded){","if(effectiveOpenDataRespondedM7812){",1)
-    s=s.replace(
-      "c.openDataSources16539={overpass:{attempted:!!op.attempted,responded:false,failed:overpassFailed},style:{attempted:styleAttempted,responded:false,failed:styleFailed}};",
-      "c.openDataSources16539={overpass:{attempted:!!op.attempted,responded:false,failed:effectiveOpenDataFailedM7812},style:{attempted:styleAttempted,responded:zeroStyleFallbackRequiredM7812?false:styleResponded,failed:styleFailed}};",
-      1
-    )
+    if s.count(old_flags)==1:
+        s=s.replace(old_flags,new_flags,1)
+        s=s.replace("if(openGeometryCount16516>0&&openDataResponded){","if(openGeometryCount16516>0&&effectiveOpenDataRespondedM7812){",1)
+        s=s.replace("if(openDataResponded){","if(effectiveOpenDataRespondedM7812){",1)
+        s=s.replace(
+          "c.openDataSources16539={overpass:{attempted:!!op.attempted,responded:false,failed:overpassFailed},style:{attempted:styleAttempted,responded:false,failed:styleFailed}};",
+          "c.openDataSources16539={overpass:{attempted:!!op.attempted,responded:false,failed:effectiveOpenDataFailedM7812},style:{attempted:styleAttempted,responded:zeroStyleFallbackRequiredM7812?false:styleResponded,failed:styleFailed}};",
+          1
+        )
+    else:
+        old_effective='''    const zeroStyleFallbackRequiredM7812=c.evidencePath17630==="shared-style-zero-plus-infrastructure-fallback";
+    const effectiveOpenDataRespondedM7812=zeroStyleFallbackRequiredM7812?overpassResponded:openDataResponded;
+    const effectiveOpenDataFailedM7812=zeroStyleFallbackRequiredM7812?!overpassResponded:openDataFailed;'''
+        replacement='''    const zeroStyleFallbackRequiredM7812=c.evidencePath17630==="shared-style-zero-plus-infrastructure-fallback";
+    /* EARTHLINE M78.19 — loaded map evidence is the primary Property exclusion screen.
+       A successful loaded-style query is sufficient to publish as OPEN-DATA SCREENING
+       even when it returns zero relevant exclusions. External Overpass is enrichment,
+       never a publication dependency. */
+    const effectiveOpenDataRespondedM7812=!!(styleResponded||overpassResponded);
+    const effectiveOpenDataFailedM7812=!!(!effectiveOpenDataRespondedM7812&&(overpassFailed||styleFailed));'''
+        if s.count(old_effective)!=1:
+            raise SystemExit(f"M78.19 live effective block count={s.count(old_effective)}")
+        s=s.replace(old_effective,replacement,1)
 
 for marker in [
   "EARTHLINE M78.11 — one canonical owner per minor-flow cell",
