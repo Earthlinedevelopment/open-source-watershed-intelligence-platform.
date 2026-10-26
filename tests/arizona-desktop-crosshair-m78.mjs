@@ -100,7 +100,7 @@ async function runHumanCrosshair(lng,lat,label){
         visibility:elderLayer?(map?.getLayoutProperty?.('earthline-elder-tree-points-17097','visibility')??null):null
       },
       aquifer:{owner:md?.propertyAquiferOwner16393||null,status:String(md?.usgsAquiferStatus||''),polys:Number(md?.usgsAquifers?.length||0)},
-      noBuild:{provenance:md?.noBuildProvenance15843||null,lock:md?.propertyResultLock15815||null},
+      noBuild:{provenance:md?.noBuildProvenance15843||null,lock:md?.propertyResultLock15815||null,vectorCoverage:md?.vectorNoBuildCoverage||null},
       safeVisibility:window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null,
       texture:window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null,
       errs:[...window.__earthlineDesktopErrors||[]]
@@ -125,3 +125,5 @@ const identityOk=
 if(!identityOk)process.exitCode=1;
 
 // M78.8 raw Elder tile verdict capture
+
+// M78.10 capture exact open-data exclusion transport verdict
