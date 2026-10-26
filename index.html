@@ -19465,6 +19465,9 @@ if(!isRegionalTile15769&&Number(flowEvidence15833.crossingHits||0)<=0&&
       .filter(Boolean).join(" ").toLowerCase();
   }
   function featureClass(f){
+    const layerIdM785=String(f&&f.layer&&f.layer.id||"").toLowerCase();
+    const sourceIdM785=String(f&&f.source||"").toLowerCase();
+    if(/^earthline-/.test(layerIdM785)||/^earthline-/.test(sourceIdM785))return ""; /* EARTHLINE M78.5 — self-generated features cannot become exclusions. */
     const tag=featureTag(f),type=String(f&&f.layer&&f.layer.type||"").toLowerCase();
     const water=/river|stream|canal|waterway|water|lake|reservoir|wetland|drain|ditch/.test(tag);
     const structure=type==="fill-extrusion"||/building|structure|house|roof|address/.test(tag);
@@ -19490,6 +19493,8 @@ if(!isRegionalTile15769&&Number(flowEvidence15833.crossingHits||0)<=0&&
     try{
       const style=earthlineMap&&earthlineMap.getStyle&&earthlineMap.getStyle();
       return (style&&style.layers||[]).filter(l=>{
+        const earthlineOwnedM785=/^earthline-/.test(String(l.id||"").toLowerCase())||/^earthline-/.test(String(l.source||"").toLowerCase());
+        if(earthlineOwnedM785)return false; /* EARTHLINE M78.5 — final clearance excludes Earthline presentation layers. */
         const tag=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();
         const type=String(l.type||"").toLowerCase();
         if(!["line","fill","fill-extrusion"].includes(type))return false;
