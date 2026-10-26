@@ -98,8 +98,27 @@ async function runHumanCrosshair(lng,lat,label){
         gauge:String(document.getElementById('earthlineElderTreesGauge17097')?.textContent||'').trim(),
         sourceFeatures:Array.isArray(elderData?.features)?elderData.features.length:null,
         layerExists:!!elderLayer,
-        visibility:elderLayer?(map?.getLayoutProperty?.('earthline-elder-tree-points-17097','visibility')??null):null
+        visibility:elderLayer?(map?.getLayoutProperty?.('earthline-elder-tree-points-17097','visibility')??null):null,
+        renderedFeatures:(()=>{
+          try{
+            const c=map?.getCanvas?.(); const box=c&&[[0,0],[c.clientWidth||c.width,c.clientHeight||c.height]];
+            return box&&elderLayer?(map.queryRenderedFeatures?.(box,{layers:['earthline-elder-tree-points-17097']})||[]).length:0;
+          }catch(_){return -1}
+        })()
       },
+      renderedSwales:(()=>{
+        try{
+          const c=map?.getCanvas?.(); const box=c&&[[0,0],[c.clientWidth||c.width,c.clientHeight||c.height]];
+          const natural=['earthline-property-natural-casing-16174','earthline-property-natural-neutral-16174','earthline-property-natural-uphill-16174','earthline-property-natural-uphill-flipped-16174'].filter(id=>map?.getLayer?.(id));
+          const safe=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'].filter(id=>map?.getLayer?.(id));
+          return {
+            naturalLayers:natural,
+            safeLayers:safe,
+            natural:box&&natural.length?(map.queryRenderedFeatures?.(box,{layers:natural})||[]).length:0,
+            safe:box&&safe.length?(map.queryRenderedFeatures?.(box,{layers:safe})||[]).length:0
+          };
+        }catch(e){return {error:String(e),natural:-1,safe:-1}}
+      })(),
       aquifer:{owner:md?.propertyAquiferOwner16393||null,status:String(md?.usgsAquiferStatus||''),polys:Number(md?.usgsAquifers?.length||0)},
       noBuild:{provenance:md?.noBuildProvenance15843||null,lock:md?.propertyResultLock15815||null,vectorCoverage:md?.vectorNoBuildCoverage||null},
       safeVisibility:window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null,
@@ -140,8 +159,10 @@ const systemsOk=[first,second,firstRepeat,secondRepeat].every(r=>{
     String(elderLast.state||'')==='committed' &&
     Number(elderLast.featureCount||0)>0 &&
     Number(e.sourceFeatures||0)>0 &&
+    Number(e.renderedFeatures||0)>0 &&
     e.layerExists===true &&
     e.visibility!=='none' &&
+    (Number(r.snap.renderedSwales?.natural||0)>0 || Number(r.snap.renderedSwales?.safe||0)>0) &&
     (!aq.owner || Number(aq.owner.searchGen)===Number(r.snap.searchGen));
 });
 const routeDiffOk=
@@ -177,3 +198,5 @@ if(!identityOk||!systemsOk||!routeDiffOk||!repeatOk)process.exitCode=1;
 // M78.24 correct production-identity wait timeout
 
 // M78.26 require jitter-lock production bytes
+
+// M78.19 require actual rendered Elder and swale pixels/features
