@@ -52,7 +52,14 @@ async function runHumanCrosshair(lng,lat,label){
     return !!e&&(e.state==='committed'||e.state==='failed')&&(!e.propertyRunIdentity||String(e.propertyRunIdentity).startsWith(prefix));
   },{lng,lat},{timeout:30000,polling:120}).catch(()=>{});
   await page.waitForTimeout(500);
-  const snap=await page.evaluate(({lng,lat,label})=>{
+  const elderRaw=await page.evaluate(async()=>{
+    try{
+      const api=window.EARTHLINE_ELDER_TREES_V1_17097;
+      const r=await Promise.resolve(api?.primePropertyEvidence?.());
+      return r?{earthline:r.earthline||null,featureCount:Array.isArray(r.features)?r.features.length:null,candidatePoolCount:Array.isArray(r.candidatePool)?r.candidatePool.length:null}:null;
+    }catch(e){return {error:String(e&&e.stack||e)}}
+  });
+  const snap=await page.evaluate(({lng,lat,label,elderRaw})=>{
     const md=(typeof M!=='undefined'&&M)||window.M||{};
     const map=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
     const safe=md?.authoritativeSafeSwales15815;
@@ -85,6 +92,7 @@ async function runHumanCrosshair(lng,lat,label){
       swales:{count:sw.length,fingerprint:(sh>>>0).toString(16).padStart(8,'0'),meta:md?.swaleMeta||null,diag:md?.swaleDiagnostics||null},
       water:{count:wf.length,fingerprint:(wh>>>0).toString(16).padStart(8,'0'),publication:md?.authoritativeWaterPublication15824||null},
       elder:{
+        raw:elderRaw||null,
         last:window.EARTHLINE_ELDER_TREE_LAST_17097||null,
         gauge:String(document.getElementById('earthlineElderTreesGauge17097')?.textContent||'').trim(),
         sourceFeatures:Array.isArray(elderData?.features)?elderData.features.length:null,
@@ -97,7 +105,7 @@ async function runHumanCrosshair(lng,lat,label){
       texture:window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null,
       errs:[...window.__earthlineDesktopErrors||[]]
     };
-  },{lng,lat,label});
+  },{lng,lat,label,elderRaw});
   await page.screenshot({path:'/tmp/'+label+'.png',fullPage:true});
   return {pre,snap};
 }
@@ -115,3 +123,4 @@ const identityOk=
  near(second.pre.target?.lng,-111.93347)&&near(second.pre.target?.lat,34.21629)&&
  near(secondCenter?.lng,-111.93347)&&near(secondCenter?.lat,34.21629);
 if(!identityOk)process.exitCode=1;
+\n// M78.8 raw Elder tile verdict capture\n
