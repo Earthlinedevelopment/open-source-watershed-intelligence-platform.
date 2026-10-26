@@ -326,3 +326,5 @@ if(!propClicked||!out.audit?.settled)process.exitCode=1;
 // M78.4 swale-stage discriminator
 
 // M78.5 final-clearance repeat verification trigger
+
+// M78.5 post-deploy exact repeat gate
