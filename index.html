@@ -3590,18 +3590,20 @@ function earthlineMappedFeatureClass15862J(f){
   const layerText=(layerId+" "+sourceLayer).trim();
   const propText=propValues.join(" ");
   const cls=(layerText+" "+propText).trim();
+  const sourceId=String(f&&f.source||"").toLowerCase();
+  const earthlineOwnedM782=/^earthline-/.test(layerId)||/^earthline-/.test(sourceId); /* EARTHLINE M78.2 — fail closed against self-generated exclusions. */
 
   const railOrFerry=/rail|railway|subway|tram|ferry|aerialway/.test(cls);
   const roadLayer=/road|street|transportation|highway/.test(layerText);
   const roadProperty=/motorway|trunk|primary|secondary|tertiary|residential|unclassified|living_street|service|drive|driveway|parking_aisle|track|path|footway|cycleway|pedestrian|bridge|tunnel/.test(propText);
-  const parking=/parking|parking_aisle/.test(cls);
+  const parking=!earthlineOwnedM782&&/parking|parking_aisle/.test(cls);
   const buildingLayer=/building|structure/.test(layerText);
   const buildingProperty=/\b(building|house|apartments?|commercial|industrial|garage|garages|shed|roof|warehouse|school|hospital|hotel|retail)\b/.test(propText);
   const waterLayer=/water|river|lake|reservoir|stream|canal|wetland/.test(layerText);
   const waterProperty=/\b(water|river|lake|reservoir|stream|canal|wetland|pond|ditch|drain)\b/.test(propText);
-  const road=!railOrFerry&&(roadLayer||roadProperty||parking);
-  const building=buildingLayer||buildingProperty;
-  const water=waterLayer||waterProperty;
+  const road=!earthlineOwnedM782&&!railOrFerry&&(roadLayer||roadProperty||parking);
+  const building=!earthlineOwnedM782&&(buildingLayer||buildingProperty);
+  const water=!earthlineOwnedM782&&(waterLayer||waterProperty);
 
   return {
     relevant:road||building||parking||water,
@@ -3682,6 +3684,8 @@ async function earthlineWaitForMappedExclusionStyle15862B(myGen=M.searchGen,time
       const s=earthlineMap.getStyle&&earthlineMap.getStyle();
       if(!s||!Array.isArray(s.layers)||!s.layers.length)return false;
       const relevant=s.layers.filter(l=>{
+        const earthlineOwnedM782=/^earthline-/.test(String(l.id||"").toLowerCase())||/^earthline-/.test(String(l.source||"").toLowerCase());
+        if(earthlineOwnedM782)return false; /* EARTHLINE M78.2 — internal render products are not external exclusion evidence. */
         const id=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();
         const lineLike=l.type==="line";
         const areaLike=l.type==="fill"||l.type==="fill-extrusion";
@@ -12091,6 +12095,8 @@ async function directGeocode(q){
       }
       const style=earthlineMap.getStyle()||{};
       const layers=(style.layers||[]).filter(l=>{
+        const earthlineOwnedM782=/^earthline-/.test(String(l.id||"").toLowerCase())||/^earthline-/.test(String(l.source||"").toLowerCase());
+        if(earthlineOwnedM782)return false; /* EARTHLINE M78.2 — internal render products are not external exclusion evidence. */
         const id=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();
         const lineLike=l.type==="line";
         const areaLike=l.type==="fill"||l.type==="fill-extrusion";
