@@ -1656,10 +1656,20 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     dynamicWorker().postMessage({id,warm:true});
     return state.dynamic.warmPromise;
   }
+  function propertyEvidenceCenter17543(){
+    const target=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+    const declaration=window.EARTHLINE_PROPERTY_DECLARATION_16169||null;
+    const pending=String(window.EARTHLINE_ELDER_TREE_LAST_17097?.state||'')==='property-pending';
+    const running=String(document.documentElement.dataset.earthlinePropertyRunState||'')==='running';
+    const declaredLng=Number(declaration?.center?.lng),declaredLat=Number(declaration?.center?.lat);
+    if((pending||running)&&Number.isFinite(declaredLng)&&Number.isFinite(declaredLat))return {lng:declaredLng,lat:declaredLat,source:'property-declaration'};
+    const lng=Number(target?.lng),lat=Number(target?.lat);
+    return Number.isFinite(lng)&&Number.isFinite(lat)?{lng,lat,source:'property-target'}:null;
+  } /* EARTHLINE 17543 / M78 — pending Elder identity is anchored to the authoritative accepted Property declaration, not later map-settle target drift. EARTHLINE M78 — RESTORED FROZEN PROPERTY DECLARATION ELDER IDENTITY */
   function propertyBounds17166(){
     try{
-      const target=window.EARTHLINE_PROPERTY_TARGET_16201||null;
-      const lng=Number(target?.lng),lat=Number(target?.lat);
+      const center17543=propertyEvidenceCenter17543();
+      const lng=Number(center17543?.lng),lat=Number(center17543?.lat);
       if(Number.isFinite(lng)&&Number.isFinite(lat)){
         const areaM2=20*4046.8564224,wM=Math.sqrt(areaM2*1.15),hM=areaM2/wM;
         const dLat=hM/(2*111320),dLng=wM/(2*111320*Math.max(.05,Math.cos(lat*Math.PI/180)));
@@ -1679,9 +1689,8 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     return null;
   }
   function propertyRunIdentity17166(b){
-    const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
-    const d=window.EARTHLINE_PROPERTY_DECLARATION_16169||null;
-    const lng=Number(t?.lng??d?.center?.lng),lat=Number(t?.lat??d?.center?.lat);
+    const center17543=propertyEvidenceCenter17543();
+    const lng=Number(center17543?.lng),lat=Number(center17543?.lat);
     return [
       Number.isFinite(lng)?lng.toFixed(6):'',
       Number.isFinite(lat)?lat.toFixed(6):'',
