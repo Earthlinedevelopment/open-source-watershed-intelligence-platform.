@@ -5,7 +5,6 @@ const ROOT="https://dataforgood-fb-data.s3.amazonaws.com/forests/v2/global/dinov
 const RANGE_PROXY="https://ccucaqwbdsskcwxxbqiz.supabase.co/functions/v1/earthline-chmv2-range";
 const METHOD="earthline-elder-tree-aoi-chmv2-v0.7-high-recall-plateau-collapse";
 let pyReady=null;
-const tileCache17196=new Map();
 
 function tileXY(lon,lat,z=10){
   lat=Math.max(-85.05112878,Math.min(85.05112878,lat));
@@ -45,10 +44,8 @@ function hav(a,b){
 async function ensurePy(){
   if(pyReady)return pyReady;
   pyReady=(async()=>{
-    const py=await loadPyodide({
-      indexURL:"https://cdn.jsdelivr.net/pyodide/v0.29.5/full/",
-      packages:["numpy"]
-    }); /* EARTHLINE 17528 — overlap approved NumPy load with Pyodide bootstrap; detector equations unchanged. */
+    const py=await loadPyodide({indexURL:"https://cdn.jsdelivr.net/pyodide/v0.29.5/full/"});
+    await py.loadPackage(["numpy","scipy"]);
     const src=await fetch("tools/elder_trees/chmv2_array_detector_17129.py",{cache:"no-store"});
     if(!src.ok)throw new Error("array detector "+src.status);
     await py.runPythonAsync(await src.text());
@@ -82,72 +79,43 @@ function projectedWindow(image,bbox){
   wh=Math.max(1,Math.min(image.getHeight()-row0,wh));
   return {origin,res,ib,rx,ry,ox,oy,col0,row0,ww,wh,left,right,bottom,top};
 }
-async function getTile17196(q){
-  let cached=tileCache17196.get(q);
-  if(!cached){
-    const transport=RANGE_PROXY+"?q="+encodeURIComponent(q);
-    cached=(async()=>{
-      const tif=await fromUrl(transport,{cacheSize:96});
-      const image=await tif.getImage();
-      return {tif,image};
-    })();
-    tileCache17196.set(q,cached);
-  }
-  try{return await cached}catch(err){tileCache17196.delete(q);throw err}
-}
-async function warmTiles17210(bbox){
-  const qs=bboxTiles(bbox);
-  await Promise.all(qs.map(q=>getTile17196(q)));
-  return {warmBbox:true,requested_tiles:qs};
-}
-async function prepareTileInput17549(q,bbox){
-  const tTile0=performance.now();
+async function processTile(py,q,bbox,maxPerTile=240){
   const url=ROOT+q+".tif";
-  let image;
+  const transport=RANGE_PROXY+"?q="+encodeURIComponent(q);
+  let tif,image;
   try{
-    ({image}=await getTile17196(q));
+    tif=await fromUrl(transport,{cacheSize:32});
+    image=await tif.getImage();
   }catch(err){
-    return {terminal:{features:[],tile:{quadkey:q,status:"NO_TILE",error:String(err?.message||err)}}};
+    return {features:[],tile:{quadkey:q,status:"NO_TILE",error:String(err?.message||err)}};
   }
-  const tOpen=performance.now();
   const debugGeo={origin:image.getOrigin(),resolution:image.getResolution(),bbox:image.getBoundingBox(),projectedSW:merc(bbox[0],bbox[1]),projectedNE:merc(bbox[2],bbox[3])};
   const w=projectedWindow(image,bbox);
-  if(!w)return {terminal:{features:[],tile:{quadkey:q,status:"NO_INTERSECTION",debugGeo}}};
+  if(!w)return {features:[],tile:{quadkey:q,status:"NO_INTERSECTION",debugGeo}};
   const aspect=w.ww/Math.max(1,w.wh);
   let ow,oh;
-  if(Math.max(w.ww,w.wh)<=1024){ow=w.ww;oh=w.wh}
-  else if(aspect>=1){ow=1024;oh=Math.max(1,Math.round(1024/aspect))}
-  else{oh=1024;ow=Math.max(1,Math.round(1024*aspect))}
-  const screenOptions17413={window:[w.col0,w.row0,w.col0+w.ww,w.row0+w.wh],samples:[0],interleave:true};
-  if(ow!==w.ww||oh!==w.wh){
-    screenOptions17413.width=ow;screenOptions17413.height=oh;screenOptions17413.resampleMethod="nearest";
-  }
-  const screenRaw=await image.readRasters(screenOptions17413);
-  const tScreen=performance.now();
+  if(aspect>=1){ow=1024;oh=Math.max(32,Math.round(1024/aspect))}
+  else{oh=1024;ow=Math.max(32,Math.round(1024*aspect))}
+  const screenRaw=await image.readRasters({
+    window:[w.col0,w.row0,w.col0+w.ww,w.row0+w.wh],
+    samples:[0],interleave:true,width:ow,height:oh,resampleMethod:"nearest"
+  });
   const pix=Math.max(Math.abs(w.rx),Math.abs(w.ry));
   const pad=Math.max(64,Math.ceil(60/Math.max(.01,pix)));
   const ncol0=Math.max(0,w.col0-pad),nrow0=Math.max(0,w.row0-pad);
   const ncol1=Math.min(image.getWidth(),w.col0+w.ww+pad),nrow1=Math.min(image.getHeight(),w.row0+w.wh+pad);
-  const nativeRaw=await image.readRasters({window:[ncol0,nrow0,ncol1,nrow1],samples:[0],interleave:true});
-  const tNative=performance.now();
-  return {
-    q,bbox,url,w,ow,oh,ncol0,nrow0,ncol1,nrow1,
-    screen:f32(screenRaw),native:f32(nativeRaw),
-    tTile0,tOpen,tScreen,tNative
-  };
-} /* EARTHLINE 17549 — CHMv2 I/O is independent of Pyodide readiness. */
-
-async function processPreparedTile17549(py,prep,maxPerTile=240){
-  if(prep?.terminal)return prep.terminal;
-  const {q,bbox,url,w,ow,oh,ncol0,nrow0,ncol1,nrow1,screen,native,tTile0,tOpen,tScreen,tNative}=prep;
+  const nativeRaw=await image.readRasters({
+    window:[ncol0,nrow0,ncol1,nrow1],samples:[0],interleave:true
+  });
+  const screen=f32(screenRaw),native=f32(nativeRaw);
   const sid="screen_"+q+".bin",nid="native_"+q+".bin";
-  const tPythonStart=performance.now();
   py.FS.writeFile("/tmp/"+sid,new Uint8Array(screen.buffer,screen.byteOffset,screen.byteLength));
   py.FS.writeFile("/tmp/"+nid,new Uint8Array(native.buffer,native.byteOffset,native.byteLength));
   const meta={
     bbox,quadkey:q,source_url:url,res_x:w.rx,res_y:w.ry,
     screen_col0:w.col0,screen_row0:w.row0,screen_ww:w.ww,screen_wh:w.wh,
-    native_col0:ncol0,native_row0:nrow0,origin_x:w.ox,origin_y:w.oy
+    native_col0:ncol0,native_row0:nrow0,
+    origin_x:w.ox,origin_y:w.oy
   };
   py.globals.set("__el_meta",JSON.stringify(meta));
   let out;
@@ -161,18 +129,8 @@ async function processPreparedTile17549(py,prep,maxPerTile=240){
     try{py.FS.unlink("/tmp/"+nid)}catch(_){}
     try{py.globals.delete("__el_meta")}catch(_){}
   }
-  const tDone=performance.now();
-  out.tile=Object.assign({},out.tile||{quadkey:q,status:"OK"},{
-    worker_timings_ms:{
-      open:Number((tOpen-tTile0).toFixed(1)),
-      screen:Number((tScreen-tOpen).toFixed(1)),
-      native:Number((tNative-tScreen).toFixed(1)),
-      python:Number((tDone-tPythonStart).toFixed(1)),
-      total:Number((tDone-tTile0).toFixed(1))
-    }
-  });
   return out;
-} /* EARTHLINE_ELDER_IO_PYODIDE_OVERLAP_17549 */
+}
 function dedupe(features,minM=10){
   const out=[];
   const sorted=[...features].sort((a,b)=>Number(b?.properties?.height_m||0)-Number(a?.properties?.height_m||0));
@@ -183,89 +141,45 @@ function dedupe(features,minM=10){
   }
   return out;
 }
-function displaySubset(features,limit=24,bbox=null){
-  const rank=(a,b)=>
-    Number(b?.properties?.elder_tree_confidence_pct||0)-Number(a?.properties?.elder_tree_confidence_pct||0) ||
-    Number(b?.properties?.height_m||0)-Number(a?.properties?.height_m||0);
-  const items=[...features].sort(rank);
-  if(items.length<=limit)return items;
-
-  let west=Number(bbox?.[0]),south=Number(bbox?.[1]),east=Number(bbox?.[2]),north=Number(bbox?.[3]);
-  if(![west,south,east,north].every(Number.isFinite)||!(west<east&&south<north)){
-    west=Infinity;south=Infinity;east=-Infinity;north=-Infinity;
-    for(const f of items){
-      const c=f?.geometry?.coordinates;if(!Array.isArray(c))continue;
-      west=Math.min(west,+c[0]);east=Math.max(east,+c[0]);
-      south=Math.min(south,+c[1]);north=Math.max(north,+c[1]);
-    }
+function displaySubset(features,perTile=24){
+  const groups=new Map();
+  for(const f of features){
+    const q=String(f?.properties?.quadkey||"");
+    if(!groups.has(q))groups.set(q,[]);
+    groups.get(q).push(f);
   }
-
-  const cols=6,rows=4,dx=Math.max(1e-12,east-west),dy=Math.max(1e-12,north-south);
-  const cells=new Map();
-  for(const f of items){
-    const c=f?.geometry?.coordinates;if(!Array.isArray(c))continue;
-    const ix=Math.min(cols-1,Math.max(0,Math.floor((+c[0]-west)/dx*cols)));
-    const iy=Math.min(rows-1,Math.max(0,Math.floor((+c[1]-south)/dy*rows)));
-    const key=iy*cols+ix;
-    const prior=cells.get(key);
-    if(!prior||rank(f,prior)<0)cells.set(key,f);
+  const out=[];
+  for(const items of groups.values()){
+    items.sort((a,b)=>
+      Number(b?.properties?.elder_tree_confidence_pct||0)-Number(a?.properties?.elder_tree_confidence_pct||0) ||
+      Number(b?.properties?.height_m||0)-Number(a?.properties?.height_m||0)
+    );
+    out.push(...items.slice(0,perTile));
   }
-
-  const chosen=[...cells.values()].sort(rank).slice(0,limit);
-  const picked=new Set(chosen);
-
-  // Fill remaining slots by maximizing distance from already chosen points,
-  // using evidence rank only as a tie-breaker. This preserves real clustering
-  // when the candidate pool is genuinely clustered, but prevents the display
-  // subset itself from creating artificial east/west concentration.
-  while(chosen.length<limit){
-    let best=null,bestD=-1;
-    for(const f of items){
-      if(picked.has(f))continue;
-      const c=f?.geometry?.coordinates;if(!Array.isArray(c))continue;
-      const nx=(+c[0]-west)/dx,ny=(+c[1]-south)/dy;
-      let d=Infinity;
-      for(const g of chosen){
-        const gc=g?.geometry?.coordinates;if(!Array.isArray(gc))continue;
-        const gx=(+gc[0]-west)/dx,gy=(+gc[1]-south)/dy;
-        d=Math.min(d,(nx-gx)*(nx-gx)+(ny-gy)*(ny-gy));
-      }
-      if(d>bestD+1e-12||(Math.abs(d-bestD)<=1e-12&&best&&rank(f,best)<0)){best=f;bestD=d}
-    }
-    if(!best)break;
-    chosen.push(best);picked.add(best);
-  }
-  return chosen;
-} /* EARTHLINE_ELDER_AOI_BALANCED_DISPLAY_17198 */
+  return out;
+}
 async function detect(bbox,{displayPerTile=24,maxPerTile=240}={}){
-  const tDetect0=performance.now();
   if(!Array.isArray(bbox)||bbox.length!==4||bbox.some(v=>!Number.isFinite(Number(v))))throw new Error("invalid bbox");
   bbox=bbox.map(Number);
   if(!(bbox[0]<bbox[2]&&bbox[1]<bbox[3]))throw new Error("invalid bbox order");
   const qs=bboxTiles(bbox);
   if(qs.length>16)throw new Error("bounded AOI required; "+qs.length+" CHMv2 tiles");
-
-  /* EARTHLINE 17549 — start exact CHMv2 tile reads while the already-owned
-     Pyodide/NumPy promise is still warming. Same raster windows and detector
-     inputs; only independent I/O and runtime initialization overlap. */
-  const pyPromise=ensurePy();
-  const prepared=qs.map(q=>prepareTileInput17549(q,bbox));
-  const py=await pyPromise;
-  const tPyReady=performance.now();
-
+  const py=await ensurePy();
   const features=[],tiles=[];
-  for(let i=0;i<qs.length;i++){
-    const prep=await prepared[i];
-    const r=await processPreparedTile17549(py,prep,maxPerTile);
-    features.push(...(r.features||[]));tiles.push(r.tile||{quadkey:qs[i],status:"UNKNOWN"});
+  for(const q of qs){
+    const r=await processTile(py,q,bbox,maxPerTile);
+    features.push(...(r.features||[]));tiles.push(r.tile||{quadkey:q,status:"UNKNOWN"});
   }
   const pool=dedupe(features,10).map(f=>({
-    type:"Feature",geometry:f.geometry,
+    type:"Feature",
+    geometry:f.geometry,
     properties:Object.assign({},f.properties||{},{
-      science_baseline:"17118",method_version:METHOD,elder_evidence_class:"MODELED_CHMV2"
+      science_baseline:"17118",
+      method_version:METHOD,
+      elder_evidence_class:"MODELED_CHMV2"
     })
   }));
-  const display=displaySubset(pool,displayPerTile,bbox);
+  const display=displaySubset(pool,displayPerTile);
   return {
     type:"FeatureCollection",features:display,
     earthline:{
@@ -273,11 +187,6 @@ async function detect(bbox,{displayPerTile=24,maxPerTile=240}={}){
       candidate_pool_count:pool.length,display_count:display.length,
       count_owner:"candidate_pool",map_owner:"display_subset",
       preserve_all_eligible:true,tile_results:tiles,
-      worker_timings_ms:{
-        ensurePy:Number((tPyReady-tDetect0).toFixed(1)),
-        total:Number((performance.now()-tDetect0).toFixed(1)),
-        tiles:tiles.map(t=>t?.worker_timings_ms||null)
-      },
       scientific_boundary:"Modeled remote-sensing candidates only; not proof of age, veteran status, or mycorrhizal-hub status."
     },
     candidatePool:pool
@@ -290,12 +199,6 @@ self.onmessage=async(e)=>{
       const t0=performance.now();
       await ensurePy();
       self.postMessage({id,ok:true,warm:true,elapsedMs:performance.now()-t0});
-      return;
-    }
-    if(e.data?.warmBbox===true){
-      const bbox=(e.data?.bbox||[]).map(Number);
-      const result=await warmTiles17210(bbox);
-      self.postMessage({id,ok:true,result});
       return;
     }
     const result=await detect(e.data?.bbox,e.data?.options||{});
