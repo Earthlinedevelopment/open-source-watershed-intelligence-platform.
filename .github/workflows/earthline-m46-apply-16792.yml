@@ -1,4 +1,4 @@
-name: Earthline M78 Elder Detector Production Refresh
+name: Earthline M78 Safe Swale Handoff Repair
 
 on:
   push:
@@ -11,41 +11,46 @@ permissions:
   contents: write
 
 jobs:
-  bump-live-assets:
+  apply-safe-swale-handoff:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Bump live launch asset version
+      - name: Keep safe swales visible until natural renderer is drawn
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
-          old='<script src="earthline-launch-16872.js?v=17602"></script>'
-          new='<script src="earthline-launch-16872.js?v=17603"></script>'
-          if old in s:
+          old="""    if(naturalReady16221){
+      setSafeLayerVisibility16221(false);"""
+          new="""    /* EARTHLINE M78 — never hide authoritative safe swales merely because the
+       natural renderer's source/layers exist. Yield only after Mapbox confirms
+       that at least one natural swale feature is actually rendered. */
+    if(naturalReady16221 && naturalRendered16221>0){
+      setSafeLayerVisibility16221(false);"""
+          if new not in s:
               if s.count(old)!=1:
-                  raise SystemExit("launch version anchor not unique")
+                  raise SystemExit(f"safe swale handoff anchor count={s.count(old)}")
               s=s.replace(old,new,1)
-          elif new not in s:
-              raise SystemExit("launch version anchor missing")
+          if new not in s:
+              raise SystemExit("M78 safe swale handoff marker missing")
           p.write_text(s,encoding="utf-8")
           PY
-      - name: Verify production assets
+      - name: Verify M78 owner locks
         run: |
           git diff --check
-          grep -q 'earthline-launch-16872.js?v=17603' index.html
+          grep -q "naturalReady16221 && naturalRendered16221>0" index.html
+          grep -q "EARTHLINE M78 — ELDER DISPLAY-ONLY RUN BINDING" index.html
+          grep -q "earthline-launch-16872.js?v=17603" index.html
           grep -q "earthline-elder-worker-17129.js?v=17603" earthline-launch-16872.js
-          grep -q "EARTHLINE M78 — PROPERTY ELDER SINGLE LIFECYCLE OWNER" earthline-launch-16872.js
-          grep -q "EARTHLINE M78 — RESTORED FROZEN PROPERTY DECLARATION ELDER IDENTITY" earthline-launch-16872.js
       - name: Commit
         run: |
           if git diff --quiet -- index.html; then exit 0; fi
           git config user.name "Earthlinedevelopment"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m "fix: publish restored Elder detector to live asset version"
+          git commit -m "fix: keep authoritative Property swales visible until natural render"
           git push origin HEAD:pages-live
