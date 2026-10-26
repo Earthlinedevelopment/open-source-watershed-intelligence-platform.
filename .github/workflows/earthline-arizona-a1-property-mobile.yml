@@ -126,6 +126,8 @@ jobs:
         run: python3 tools/m78_9_zero_style_fallback.py
       - name: Apply unique-flow and OSM resilience repairs
         run: python3 tools/m78_11_12_shared_repairs.py
+      - name: Apply stale Property presentation and Elder cache repair
+        run: python3 tools/m78_17_property_clear.py
       - name: Verify M78 repair scope
         run: |
           git diff --check
@@ -140,6 +142,8 @@ jobs:
           grep -q "shared-style-zero-plus-infrastructure-fallback" index.html
           grep -q "one canonical owner per minor-flow cell" index.html
           grep -q "resilient free global OSM transport" index.html
+          grep -q "clear prior Property presentation at authoritative run start" index.html
+          grep -q "earthline-launch-16872.js?v=17606" index.html
           grep -q "effectiveOpenDataRespondedM7812" index.html
       - name: Commit repaired index
         run: |
@@ -164,3 +168,5 @@ jobs:
           npm install --no-save playwright@1.55.0
       - run: node tests/arizona-desktop-crosshair-m78.mjs
       - run: node tests/arizona-a1-property-mobile.mjs
+
+# M78.17 trigger exact desktop repair
