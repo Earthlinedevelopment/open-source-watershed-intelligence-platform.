@@ -69,7 +69,7 @@ async function runOne(c,repeat){
     try{
       await page.waitForFunction(()=>{
         const e=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
-        return !e||e.state==='committed'||e.state==='failed';
+        return !!e&&(e.state==='committed'||e.state==='failed');
       },{timeout:30000,polling:200});
     }catch(_){}
     await page.waitForTimeout(900);
