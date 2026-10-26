@@ -89,6 +89,54 @@ const out=await page.evaluate(()=>({
 }));
 await page.screenshot({path:'/tmp/earthline-az-a1-property-mobile.png',fullPage:true});
 console.log('EARTHLINE_AZ_A1_PROPERTY '+JSON.stringify({controls,a1Clicked,a1Detail,zoomClicked,afterZoom,propVisible,propClicked,out,errs}));
+
+
+// M78 exact Arizona live controls from user-reported failing frames.
+async function runExactPropertyM78(lng,lat,label){
+  await page.evaluate(({lng,lat,label})=>{
+    window.earthlineSetPropertyTarget16201?.({lng,lat,source:'m78-'+label},{openPanel:false});
+  },{lng,lat,label});
+  await page.waitForTimeout(150);
+  await page.evaluate(()=>window.earthlineDeclarePropertyAtCrosshair16169?.());
+  try{
+    await page.waitForFunction(()=>!!window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled,{timeout:30000,polling:120});
+  }catch(_){}
+  try{
+    await page.waitForFunction(()=>{
+      const e=window.EARTHLINE_ELDER_TREE_LAST_17097;
+      return !!e && (e.state==='committed'||e.state==='failed');
+    },{timeout:30000,polling:120});
+  }catch(_){}
+  await page.waitForTimeout(250);
+  return await page.evaluate(({lng,lat,label})=>{
+    const m=window.M||globalThis.M;
+    const fc=m?.authoritativeSafeSwales15815;
+    const elder=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+    const decl=window.EARTHLINE_PROPERTY_DECLARATION_16169||null;
+    const target=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+    const hash=JSON.stringify((fc?.features||[]).map(f=>f?.geometry?.coordinates||null)).slice(0,5000);
+    return {
+      label,lng,lat,
+      target:target?{lng:target.lng,lat:target.lat,source:target.source}:null,
+      declaration:decl?.center||null,
+      propertyRunIdentity:elder?.propertyRunIdentity||null,
+      elderState:elder?.state||null,
+      elderFeatures:Number(elder?.featureCount||0),
+      elderCandidates:Number(elder?.dynamicCandidatePoolCount||0),
+      elderError:elder?.dynamicError||elder?.error||null,
+      swales:Number(fc?.features?.length||0),
+      publication:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,
+      safety:m?.safetyAudit15806||null,
+      geometryPrefix:hash
+    };
+  },{lng,lat,label});
+}
+const exactM78=[];
+exactM78.push(await runExactPropertyM78(-111.93067,34.21568,'az-user-1'));
+exactM78.push(await runExactPropertyM78(-111.93354,34.21600,'az-user-2'));
+console.log('EARTHLINE_M78_EXACT_ARIZONA '+JSON.stringify(exactM78));
+if(exactM78.some(r=>r.elderState!=='committed'||r.elderFeatures<=0||r.swales<=0))process.exitCode=1;
+
 await browser.close();
 const visibleFallback=Number(out?.render?.sourceFeatures||0)>0 && Array.isArray(out?.render?.layers) && out.render.layers.some(x=>x.exists&&x.visibility!=='none'&&Number(x.opacity)>0);
 console.log('EARTHLINE_TEXTURE_DIAGNOSTIC '+JSON.stringify(out?.render||null));
