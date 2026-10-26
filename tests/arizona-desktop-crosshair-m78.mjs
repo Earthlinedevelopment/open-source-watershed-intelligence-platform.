@@ -92,6 +92,21 @@ async function runHumanCrosshair(lng,lat,label){
       publicationModel:md?.propertyPublication15816||null,
       swales:{count:sw.length,fingerprint:(sh>>>0).toString(16).padStart(8,'0'),meta:md?.swaleMeta||null,diag:md?.swaleDiagnostics||null},
       water:{count:wf.length,fingerprint:(wh>>>0).toString(16).padStart(8,'0'),publication:md?.authoritativeWaterPublication15824||null},
+      flowFirst:(()=>{
+        const ff=md?.flowFirstPlacement15836||{};
+        const unserved=Array.isArray(ff?.unserved)?ff.unserved:[];
+        const reasons={};
+        for(const x of unserved){const k=String(x?.reason||'unknown');reasons[k]=(reasons[k]||0)+1}
+        return {eligiblePaths:Number(ff?.eligiblePaths||0),pathsEvaluated:Number(ff?.pathsEvaluated||0),pathsServed:Number(ff?.pathsServed||0),unservedCount:unserved.length,reasons,unserved};
+      })(),
+      rendered:(()=>{
+        try{
+          const elderRendered=map?.queryRenderedFeatures?.({layers:['earthline-elder-tree-points-17097']})||[];
+          const safeIds=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'].filter(id=>!!map?.getLayer?.(id));
+          const swaleRendered=safeIds.length?(map?.queryRenderedFeatures?.({layers:safeIds})||[]):[];
+          return {elderRendered:elderRendered.length,swaleRendered:swaleRendered.length,safeIds};
+        }catch(e){return {error:String(e)}}
+      })(),
       elder:{
         raw:elderRaw||null,
         last:window.EARTHLINE_ELDER_TREE_LAST_17097||null,
@@ -202,3 +217,5 @@ if(!identityOk||!systemsOk||!routeDiffOk||!repeatOk)process.exitCode=1;
 // M78.19 require actual rendered Elder and swale pixels/features
 
 // M78.20 require deployed width repair identity
+
+// M78.20 diagnose unserved flow paths and rendered layer truth
