@@ -1,0 +1,31 @@
+name: Earthline Mantra 78 Regional Owner Probe
+on:
+  push:
+    branches:
+      - recovery/mantra76-audit-restart
+    paths:
+      - 'tests/mantra78-regional-owner-probe.mjs'
+      - '.github/workflows/earthline-mantra78-regional-owner-probe.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/mantra76-audit-restart
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          google-chrome --version
+          npm install --no-save playwright-core@1.55.0
+      - run: node tests/mantra78-regional-owner-probe.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-mantra78-regional-owner
+          path: artifacts/mantra78-regional-owner/result.json
+          if-no-files-found: warn
