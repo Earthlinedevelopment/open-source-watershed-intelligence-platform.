@@ -52,7 +52,7 @@ console.log('EARTHLINE_ARIZONA_ROUTE_AUDIT '+JSON.stringify({opts,selected,regio
 const near=(a,b,t=0.002)=>Number.isFinite(Number(a))&&Number.isFinite(Number(b))&&Math.abs(Number(a)-Number(b))<=t;
 const arizona=(p)=>p&&Number(p.lat)>=31&&Number(p.lat)<=37.5&&Number(p.lng)>=-115&&Number(p.lng)<=-109;
 const strict={
-  selectedTargetArizona:arizona(selected.target),
+  searchSelectionHeldUntilRegional:!selected.target,
   regionalTargetArizona:arizona(regional.target),
   declarationArizona:arizona(after.declaration?.center),
   modelArizona:arizona(after.modelLoc),
@@ -70,3 +70,5 @@ await page.screenshot({path:'/tmp/arizona-route-audit.png',fullPage:true});
 await browser.close();
 
 // strict Arizona target authority gate trigger
+
+// corrected strict gate: Property target is expected to be created by authoritative Regional resolution
