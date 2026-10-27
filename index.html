@@ -29196,7 +29196,9 @@ b.dataset.earthlinePropertyClickOwner16546='shared-17494';return b}
          the camera, then runs the authoritative terrain/exclusion/swale pipeline. */
       window.EARTHLINE_PROPERTY_TARGET_16201=Object.assign({},target,{at:new Date().toISOString(),source:target.code?'corridor-direct-property-16254':String(target.source||'crosshair')});
     }
-    return await Promise.resolve(governed(e));
+    const acceptedFallbackM7839=(window.EARTHLINE_PROPERTY_TARGET_16201&&Number.isFinite(Number(window.EARTHLINE_PROPERTY_TARGET_16201.lng))&&Number.isFinite(Number(window.EARTHLINE_PROPERTY_TARGET_16201.lat)))
+      ?Object.freeze(Object.assign({},window.EARTHLINE_PROPERTY_TARGET_16201,{acceptedAt:new Date().toISOString()})):null;
+    return await Promise.resolve(governed(e,acceptedFallbackM7839));
   }
 
   function loadImage(name,uri){const mp=map();return new Promise(resolve=>{if(!mp)return resolve(false);try{if(mp.hasImage?.(name))return resolve(true)}catch(_){}const img=new Image();img.onload=()=>{try{if(!mp.hasImage?.(name))mp.addImage(name,img,{pixelRatio:2});resolve(true)}catch(_){resolve(false)}};img.onerror=()=>resolve(false);img.src=uri})}
@@ -29818,7 +29820,11 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
     return 'the governed Property owner did not publish a verified property result';
   }
 
-  async function terminalPropertyRun(ev){
+  async function terminalPropertyRun(ev,acceptedTargetM7839){
+    /* EARTHLINE M78.39 — physical Property press latches immutable target into terminal owner.
+       Mutable moveend/crosshair reconciliation may continue for presentation, but it can no
+       longer change the Property target after an accepted press. The existing terminal owner
+       remains the sole Property lifecycle/science/publication owner. */
     ev?.preventDefault?.();ev?.stopPropagation?.();ev?.stopImmediatePropagation?.();
     earthlinePropertyLaunchAudit16322("terminalPropertyRun",{
       runningBefore:!!running,
@@ -29829,7 +29835,15 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
     try{const tip=document.getElementById('earthlineCorridorTip16248');if(tip){const close=tip.querySelector('button');if(close)close.click();else tip.classList.remove('open')}}catch(_){ }
     earthlineHideWaterBodyMessage16529();
     try{window.earthlineClosePropertyInfoSurfaces16372?.("property-start");}catch(_){}
-    const mp=map(),m=model(),chosen=window.EARTHLINE_PROPERTY_TARGET_16201,c=(chosen&&Number.isFinite(Number(chosen.lng))&&Number.isFinite(Number(chosen.lat)))?{lng:Number(chosen.lng),lat:Number(chosen.lat)}:mp?.getCenter?.();
+    const mp=map(),m=model(),liveTargetM7839=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+    const latchedTargetM7839=(acceptedTargetM7839&&Number.isFinite(Number(acceptedTargetM7839.lng))&&Number.isFinite(Number(acceptedTargetM7839.lat)))
+      ?Object.freeze(Object.assign({},acceptedTargetM7839)):null;
+    const chosen=latchedTargetM7839||liveTargetM7839;
+    if(latchedTargetM7839){
+      window.EARTHLINE_PROPERTY_ACCEPTED_TARGET_M7839=latchedTargetM7839;
+      window.EARTHLINE_PROPERTY_TARGET_16201=Object.assign({},latchedTargetM7839,{at:new Date().toISOString(),source:String(latchedTargetM7839.source||'crosshair')});
+    }
+    const c=(chosen&&Number.isFinite(Number(chosen.lng))&&Number.isFinite(Number(chosen.lat)))?{lng:Number(chosen.lng),lat:Number(chosen.lat)}:mp?.getCenter?.();
     if(!mp||!m||!c||!Number.isFinite(Number(c.lng))||!Number.isFinite(Number(c.lat))){status('PROPERTY ANALYSIS BLOCKED — map-crosshair coordinates are unavailable.','failed');return false}
     const site=declaredSite(c);if(!site){status('PROPERTY ANALYSIS BLOCKED — the 20-acre scientific frame could not be created.','failed');return false}
     const waterGate16529=earthlineCrosshairMappedOpenWater16529(mp,c);
@@ -29857,7 +29871,7 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
        The existing terminal Property owner remains the only owner. For a manual crosshair
        declaration, its accepted target is the sole center authority for site, frame,
        declaration, audit, and governed runner. Never reuse a previous Property site. */
-    const acceptedM7832=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+    const acceptedM7832=chosen||window.EARTHLINE_PROPERTY_TARGET_16201||null;
     const crosshairAuthorityM7833=/^crosshair(?:$|-)/.test(String(acceptedM7832&&acceptedM7832.source||''));
     /* EARTHLINE M78.33 — explicit crosshair authority overrides stale Regional selection residue.
        A stale selectedCode may survive a previous Regional/Property transition, but it cannot
@@ -32973,6 +32987,11 @@ function syncPropertyTargetFromMap16201(){const m=panelMap16188();if(!m||typeof 
     }
     const fn=window.earthlineDeclarePropertyAtCrosshair16173;
     if(typeof fn!=='function')return false;
+    const targetAtPressM7839=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+    const acceptedTargetM7839=(targetAtPressM7839&&Number.isFinite(Number(targetAtPressM7839.lng))&&Number.isFinite(Number(targetAtPressM7839.lat)))
+      ?Object.freeze(Object.assign({},targetAtPressM7839,{acceptedAt:new Date().toISOString()})):null;
+    if(!acceptedTargetM7839)return false;
+    window.EARTHLINE_PROPERTY_ACCEPTED_TARGET_M7839=acceptedTargetM7839;
     const serialBefore17494=Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0);
     b.dataset.earthlinePressAccepted17494='1';
     document.documentElement.classList.add('earthline-property-orb-latched-16244');
@@ -32987,7 +33006,7 @@ function syncPropertyTargetFromMap16201(){const m=panelMap16188();if(!m||typeof 
        terminal Property owner remains the sole Elder publication/lifecycle owner. */
     /* M76 elder prime retired */
     let out17499;
-    try{out17499=fn()}catch(_){
+    try{out17499=fn(ev,acceptedTargetM7839)}catch(_){
       if(Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)<=serialBefore17494){
         b.dataset.earthlinePressAccepted17494='';
         document.documentElement.classList.remove('earthline-property-orb-latched-16244');
