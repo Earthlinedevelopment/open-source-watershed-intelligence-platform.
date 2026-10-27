@@ -16,6 +16,7 @@ on:
       - 'tools/m78_32_property_declaration_site.py'
       - 'tools/m78_33_crosshair_authority.py'
       - 'tools/m78_39_press_target_latch.py'
+      - 'tools/m78_43_moveend_crosshair_owner.py'
   workflow_dispatch:
 
 permissions:
@@ -153,6 +154,8 @@ jobs:
         run: python3 tools/m78_33_crosshair_authority.py
       - name: Apply immutable Property press target latch
         run: python3 tools/m78_39_press_target_latch.py
+      - name: Apply accepted-crosshair moveend ownership repair
+        run: python3 tools/m78_43_moveend_crosshair_owner.py
       - name: Verify M78 repair scope
         run: |
           git diff --check
@@ -179,6 +182,7 @@ jobs:
           grep -q "accepted crosshair atomically rebinds the Property declaration site" index.html
           grep -q "explicit crosshair authority overrides stale Regional selection residue" index.html
           grep -q "physical Property press latches immutable target into terminal owner" index.html
+          grep -q "generic moveend cannot replace an accepted crosshair target" index.html
           grep -q "effectiveOpenDataRespondedM7812" index.html
       - name: Commit repaired index
         run: |
@@ -238,3 +242,5 @@ jobs:
 # M78.33 explicit crosshair authority trigger
 
 # M78.39 immutable accepted Property target trigger
+
+# M78.43 accepted-crosshair moveend ownership trigger
