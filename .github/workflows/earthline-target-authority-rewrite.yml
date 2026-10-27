@@ -53,14 +53,18 @@ jobs:
 
           # On every non-country resolved Regional/search location, write the resolved location once.
           anchor="    const focusMode=!!(loc&&loc.focusMode===true);"
-          if s.count(anchor)!=1:
-              raise SystemExit(f"resolved-location anchor count={s.count(anchor)}")
+          regional_start=s.find("async function runRegional(q,loc,runToken){")
+          if regional_start<0:
+              raise SystemExit("runRegional owner missing")
+          anchor_at=s.find(anchor,regional_start)
+          if anchor_at<0:
+              raise SystemExit("resolved-location anchor missing inside runRegional")
           inject="""    if(!countryRequest16845&&loc&&Number.isFinite(Number(loc.lng))&&Number.isFinite(Number(loc.lat))){
               const setTargetResolved=typeof window.earthlineSetPropertyTarget16201==='function'?window.earthlineSetPropertyTarget16201:null;
               if(setTargetResolved)setTargetResolved({lng:Number(loc.lng),lat:Number(loc.lat),source:'resolved-search'},{openPanel:false});
             }
           """
-          s=s.replace(anchor,inject+anchor,1)
+          s=s[:anchor_at]+inject+s[anchor_at:]
 
           # Remove stale M78.43/M78.25 target-freeze markers if any remain.
           for token in [
