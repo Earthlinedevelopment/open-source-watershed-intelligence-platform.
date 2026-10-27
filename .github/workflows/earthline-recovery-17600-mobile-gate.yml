@@ -1,0 +1,77 @@
+name: Earthline Recovery 17600 Mobile Property Gate
+on:
+  push:
+    branches: [recovery/full-science-blue-elders-17600]
+    paths: ['.github/workflows/earthline-recovery-17600-mobile-gate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mobile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/full-science-blue-elders-17600
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run mobile live-origin intercepted Property gate
+        run: |
+          cat >tests/_earthline-recovery-mobile-17600.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import { readFileSync } from 'node:fs';
+          const assets={
+            index:readFileSync('index.html','utf8'),
+            launch:readFileSync('earthline-launch-16872.js','utf8'),
+            worker:readFileSync('earthline-elder-worker-17129.js','utf8'),
+            detector:readFileSync('tools/elder_trees/chmv2_array_detector_17129.py','utf8')
+          };
+          const browser=await chromium.launch({headless:true});
+          const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
+          await context.route('https://earthlinedevelopment.org/**',async route=>{
+            const u=new URL(route.request().url()),h={'cache-control':'no-store'};
+            if(u.pathname==='/'||u.pathname==='/index.html')return route.fulfill({status:200,body:assets.index,headers:{...h,'content-type':'text/html; charset=utf-8'}});
+            if(u.pathname==='/earthline-launch-16872.js')return route.fulfill({status:200,body:assets.launch,headers:{...h,'content-type':'text/javascript; charset=utf-8'}});
+            if(u.pathname==='/earthline-elder-worker-17129.js')return route.fulfill({status:200,body:assets.worker,headers:{...h,'content-type':'text/javascript; charset=utf-8'}});
+            if(u.pathname==='/tools/elder_trees/chmv2_array_detector_17129.py')return route.fulfill({status:200,body:assets.detector,headers:{...h,'content-type':'text/plain; charset=utf-8'}});
+            return route.continue();
+          });
+          const page=await context.newPage();const errs=[];page.on('pageerror',e=>errs.push(String(e)));
+          await page.goto('https://earthlinedevelopment.org/?mobile17600='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await page.waitForSelector('#searchInput',{state:'attached',timeout:30000});
+          await page.locator('#searchInput').fill('Arizona');await page.waitForTimeout(650);
+          const opt=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible').first();if(await opt.count())await opt.click();
+          const run=page.locator('#runBtn');if(await run.isVisible()&&!await run.evaluate(b=>b.dataset.busy==='1'||b.disabled))await run.click();
+          await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191,null,{timeout:120000,polling:150});
+          const ctl={lng:-111.93067,lat:34.21568};
+          await page.evaluate(ctl=>{
+            window.earthlineMap?.jumpTo?.({center:[ctl.lng,ctl.lat],zoom:17,bearing:0,pitch:0});
+            const t={lng:ctl.lng,lat:ctl.lat,source:'crosshair',code:'',score:0,at:new Date().toISOString()};
+            if(typeof window.earthlineSetPropertyTarget16201==='function')window.earthlineSetPropertyTarget16201(t,{openPanel:false});else window.EARTHLINE_PROPERTY_TARGET_16201=t;
+            try{window.earthlineReconcilePanel16188?.()}catch(_){}
+          },ctl);
+          await page.waitForFunction(()=>!!document.getElementById('earthlineDeclareProperty16169'),null,{timeout:15000});
+          const before=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
+          await page.locator('#earthlineDeclareProperty16169').click({timeout:15000});
+          await page.waitForFunction(before=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173;return !!a&&Number(a.serial||0)>before&&a.settled===true},before,{timeout:150000,polling:150});
+          await page.waitForTimeout(1800);
+          const out=await page.evaluate(before=>{
+            const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,s=window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null,e=window.EARTHLINE_ELDER_TREE_LAST_17097||null,m=(typeof M!=='undefined'?M:null);
+            let maxSlope=0,unsafeSlope=0,unsafeNoBuild=0,unsafePond=0,unsafeChannel=0,points=0;let threshold=null;try{threshold=Number(streamThreshold()*3.2)}catch(_){}
+            for(const sw of (m?.swales||[]))for(const p of (sw?.pts||[])){const x=Math.max(0,Math.min(GW-1,Math.round(Number(p[0])))),y=Math.max(0,Math.min(GH-1,Math.round(Number(p[1])))),i=y*GW+x;points++;let sp=Infinity;try{sp=Number(slopePct(x,y))}catch(_){};if(Number.isFinite(sp))maxSlope=Math.max(maxSlope,sp);if(!Number.isFinite(sp)||sp>4.000001)unsafeSlope++;if(m?.noBuildMask?.[i])unsafeNoBuild++;if(m?.pond?.[i])unsafePond++;if(Number.isFinite(threshold)&&Number(m?.acc?.[i]||0)>=threshold)unsafeChannel++;}
+            const natural=['earthline-property-swale-footprint-16174','earthline-property-swale-natural-casing-16174','earthline-property-swale-natural-up-16174','earthline-property-swale-natural-flip-16174','earthline-property-swale-neutral-16177','earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'];
+            const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+            const naturalHidden=natural.filter(id=>mp?.getLayer?.(id)).every(id=>mp.getLayoutProperty(id,'visibility')==='none');
+            const elderTiles=Array.isArray(e?.workerTimings?.tiles)?e.workerTimings.tiles:[];
+            return {audit:a,safe:s,elder:e,serialDelta:Number(a?.serial||0)-Number(before),maxSlope,unsafeSlope,unsafeNoBuild,unsafePond,unsafeChannel,points,naturalHidden,elderPass:e?.state==='committed'&&e?.summary?.coverageKnown===true&&!e?.dynamicError&&elderTiles.some(Boolean)};
+          },before);
+          const pass=out.audit?.result===true&&out.serialDelta===1&&out.points>0&&out.unsafeSlope===0&&out.unsafeNoBuild===0&&out.unsafePond===0&&out.unsafeChannel===0&&out.safe?.visible===true&&out.naturalHidden&&out.elderPass&&!errs.length;
+          console.log('EARTHLINE_MOBILE_RECOVERY_17600 '+JSON.stringify({pass,errs,...out}));
+          await browser.close();
+          if(!pass)process.exitCode=1;
+          JS
+          node tests/_earthline-recovery-mobile-17600.mjs
