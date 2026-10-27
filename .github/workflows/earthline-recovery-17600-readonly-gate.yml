@@ -38,6 +38,7 @@ jobs:
             "EARTHLINE_ELDER_FRAME_INSTALL_OWNER_17514",
             "EARTHLINE_ELDER_BEFORE_HYDROLOGY_17515",
             "EARTHLINE_PROPERTY_MAJOR_CHANNEL_CIRCULAR_BUFFER_17483",
+            "EARTHLINE PROPERTY FRAME AUTHORITY 1.0 — safe publication is contained by the declared Property frame",
             "const safeOpacity17172=.98;",
           ]
           missing=[x for x in required if x not in s]
@@ -175,7 +176,8 @@ jobs:
               const safeVisible=safeLayers.filter(x=>x.exists).length>=1&&safeLayers.filter(x=>x.exists).every(x=>x.visibility!=='none'&&Number(x.opacity)>=.97);
               const sciencePass=points>0&&unsafeSlope===0&&unsafeNoBuild===0&&unsafePond===0&&unsafeChannel===0&&outsideFrame===0;
               const presentationPass=Number(safe?.count||0)>0&&safe?.visible===true&&naturalHidden&&safeVisible;
-              const elderPass=elder?.state==='committed'&&Number(elder?.featureCount||0)>0;
+              const elderTiles=Array.isArray(elder?.workerTimings?.tiles)?elder.workerTimings.tiles:[];
+              const elderPass=elder?.state==='committed'&&elder?.summary?.coverageKnown===true&&!elder?.dynamicError&&elderTiles.some(Boolean);
               return {audit:a,safe,elder,serialDelta,natural,safeLayers,maxSlope,unsafeSlope,unsafeNoBuild,unsafePond,unsafeChannel,points,fcCount,outsideFrame,sciencePass,presentationPass,elderPass};
             },{before,NATURAL,SAFE});
             const pass=result.audit?.result===true&&result.serialDelta===1&&result.sciencePass&&result.presentationPass&&result.elderPass&&!pageErrors.length;
