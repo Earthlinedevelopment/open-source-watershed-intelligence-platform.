@@ -53,13 +53,23 @@ new=r'''    /* EARTHLINE M78.45 — parallel first-valid Overpass transport.
       })();
     });
 
+    /* EARTHLINE M78.47 — hard global exclusion-transport budget.
+       Overpass is supplemental to the existing map-style exclusion owner and may not
+       hold the Property terminal open behind unhealthy public endpoints. */
+    const globalBudgetMsM7847=1800;
+    let settledM7847=false;
     let pending16845=jobs16845.length;
     const winner16845=await new Promise(resolve=>{
+      const finish=out=>{if(settledM7847)return;settledM7847=true;resolve(out)};
+      const globalTimer=setTimeout(()=>{
+        for(const c of controllers16845)try{c&&c.abort()}catch(_){}
+        finish(null);
+      },globalBudgetMsM7847);
       for(const job of jobs16845){
         job.then(out=>{
-          if(out&&out.ok)return resolve(out);
+          if(out&&out.ok){clearTimeout(globalTimer);return finish(out)}
           pending16845--;
-          if(pending16845<=0)resolve(null);
+          if(pending16845<=0){clearTimeout(globalTimer);finish(null)}
         });
       }
     });
@@ -83,8 +93,10 @@ new=r'''    /* EARTHLINE M78.45 — parallel first-valid Overpass transport.
       return result.processedGeometryCount>0;
     }
 
+    for(const c of controllers16845)try{c&&c.abort()}catch(_){}
     await Promise.allSettled(jobs16845);
-    result.overpass.error="all-overpass-endpoints-failed: "+result.overpass.endpointAttempts16846.map(x=>x.endpoint+"="+(x.error||("HTTP "+x.httpStatus))).join("; ");
+    result.overpass.globalBudgetMsM7847=globalBudgetMsM7847;
+    result.overpass.error="all-overpass-endpoints-failed-or-budget-expired: "+result.overpass.endpointAttempts16846.map(x=>x.endpoint+"="+(x.error||("HTTP "+x.httpStatus))).join("; ");
     return false;'''
 
 s=s[:start]+new+s[tail:]
@@ -92,3 +104,5 @@ if marker not in s:
     raise SystemExit("M78.45 marker missing after patch")
 p.write_text(s,encoding="utf-8")
 print("Applied M78.45 parallel Overpass transport")
+
+# M78.47 hard 1.8s global Overpass budget
