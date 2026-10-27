@@ -7,7 +7,7 @@ const errs=[]; page.on('pageerror',e=>errs.push(String(e)));
 
 await page.goto('https://earthlinedevelopment.org/?m78_desktop_crosshair='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
 await page.waitForSelector('#searchInput',{timeout:25000});
-await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE TARGET AUTHORITY 1.0 — resolved-search/corridor/user-drag only')&&document.documentElement.innerHTML.includes('complete accepted Build 16584 Property swale prescriber restored')&&document.documentElement.innerHTML.includes('EARTHLINE M78.44 — rejected local level-set pivot removed; pre-pivot contour prescriber restored')&&document.documentElement.innerHTML.includes('earthline-launch-16872.js?v=17606'),undefined,{timeout:90000,polling:500});
+await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE TARGET AUTHORITY 1.0 — resolved-search/corridor/user-drag only')&&document.documentElement.innerHTML.includes('EARTHLINE PROPERTY FRAME AUTHORITY 1.0 — safe publication is contained by the declared Property frame')&&document.documentElement.innerHTML.includes('complete accepted Build 16584 Property swale prescriber restored')&&document.documentElement.innerHTML.includes('EARTHLINE M78.44 — rejected local level-set pivot removed; pre-pivot contour prescriber restored')&&document.documentElement.innerHTML.includes('earthline-launch-16872.js?v=17606'),undefined,{timeout:90000,polling:500});
 await page.waitForTimeout(1000);
 
 if(!await page.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'))){
@@ -230,3 +230,5 @@ if(!identityOk||!systemsOk||!routeDiffOk||!repeatOk)process.exitCode=1;
 // M78.44 pre-pivot science regression gate restored
 
 // exact user Arizona pair + accepted-16584 science validation
+
+// require served Property Frame Authority 1.0
