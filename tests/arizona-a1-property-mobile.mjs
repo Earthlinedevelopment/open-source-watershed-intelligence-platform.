@@ -3,7 +3,9 @@ const browser=await chromium.launch({headless:true,channel:'chrome'});
 const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
 const page=await context.newPage(); const errs=[]; page.on('pageerror',e=>errs.push(String(e)));
 await page.goto('https://earthlinedevelopment.org/?az_a1_property='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-await page.waitForSelector('#searchInput',{state:'attached',timeout:25000}); await page.waitForTimeout(1100);
+await page.waitForSelector('#searchInput',{state:'attached',timeout:25000});
+await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE PROPERTY FRAME AUTHORITY 1.0 — safe publication is contained by the declared Property frame'),undefined,{timeout:90000,polling:500});
+await page.waitForTimeout(1100);
 if(!await page.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'))){await page.evaluate(()=>document.getElementById('earthlineRailSearch16188')?.click());await page.waitForTimeout(250);}
 await page.locator('#searchInput').click(); await page.locator('#searchInput').fill('Arizona'); await page.waitForTimeout(800);
 const opt=page.locator('#earthlineSearchSuggestions15970 [role="option"]').filter({hasText:/Arizona/i}).first();
@@ -359,3 +361,5 @@ if(!propClicked||!out.audit?.settled)process.exitCode=1;
 // M78.6 strict four-system binding verification trigger
 
 // M78.7 guard diagnostic layer reads
+
+// require served Property Frame Authority 1.0
