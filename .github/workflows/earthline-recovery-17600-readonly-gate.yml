@@ -56,19 +56,20 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps ${{ matrix.browser }}
-      - name: Start candidate server
-        run: |
-          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-17600-http.log 2>&1 &
-          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
-          cat /tmp/earthline-17600-http.log
-          exit 1
+      - name: Confirm live origin reachable
+        run: curl -fsS https://earthlinedevelopment.org/ >/dev/null
       - name: Run exact Arizona Property integrated gate
         env:
           BROWSER: ${{ matrix.browser }}
         run: |
           cat >tests/_earthline-recovery-17600-gate.mjs <<'JS'
           import { chromium, firefox } from 'playwright';
+          import { readFileSync } from 'node:fs';
           const browserName=process.env.BROWSER||'chromium';
+          const candidateIndex=readFileSync('index.html','utf8');
+          const candidateLaunch=readFileSync('earthline-launch-16872.js','utf8');
+          const candidateWorker=readFileSync('earthline-elder-worker-17129.js','utf8');
+          const candidateDetector=readFileSync('tools/elder_trees/chmv2_array_detector_17129.py','utf8');
           const browser=await ({chromium,firefox}[browserName]).launch({headless:true});
           const controls=[
             {name:'AZ1',lng:-111.93067,lat:34.21568},
@@ -92,9 +93,18 @@ jobs:
           const rows=[];
           for(const ctl of controls){
             const context=await browser.newContext({viewport:{width:1700,height:950}});
+            await context.route('https://earthlinedevelopment.org/**',async route=>{
+              const u=new URL(route.request().url());
+              const headers={'cache-control':'no-store'};
+              if(u.pathname==='/'||u.pathname==='/index.html')return route.fulfill({status:200,body:candidateIndex,headers:{...headers,'content-type':'text/html; charset=utf-8'}});
+              if(u.pathname==='/earthline-launch-16872.js')return route.fulfill({status:200,body:candidateLaunch,headers:{...headers,'content-type':'text/javascript; charset=utf-8'}});
+              if(u.pathname==='/earthline-elder-worker-17129.js')return route.fulfill({status:200,body:candidateWorker,headers:{...headers,'content-type':'text/javascript; charset=utf-8'}});
+              if(u.pathname==='/tools/elder_trees/chmv2_array_detector_17129.py')return route.fulfill({status:200,body:candidateDetector,headers:{...headers,'content-type':'text/plain; charset=utf-8'}});
+              return route.continue();
+            });
             const page=await context.newPage();
             const pageErrors=[];page.on('pageerror',e=>pageErrors.push(String(e)));
-            await page.goto('http://127.0.0.1:8787/?recovery17600='+ctl.name+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+            await page.goto('https://earthlinedevelopment.org/?recovery17600='+ctl.name+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
             await page.waitForSelector('#searchInput',{timeout:30000});
             await page.locator('#searchInput').fill('Arizona');
             await page.waitForTimeout(650);
