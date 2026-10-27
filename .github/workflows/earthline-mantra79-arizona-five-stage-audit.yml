@@ -5,7 +5,6 @@ on:
     branches: [pages-live]
     paths:
       - '.github/workflows/earthline-mantra79-arizona-five-stage-audit.yml'
-      - '.github/mantra79-candidate-c-trigger.txt'
   workflow_dispatch:
 
 permissions:
@@ -23,25 +22,54 @@ jobs:
         with:
           node-version: '20'
       - run: npm install --no-save playwright@1.55.0
-      - name: Measure Property slope at swale-relevant baselines
+      - name: Build eligible-slope candidate without deployment
         run: |
-          cat > m79-slope-scale.mjs <<'JS'
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          old_pair="const medSlopeRaw=Number(medianSlopeInParcel());\n    const medSlope=clampN(Number.isFinite(medSlopeRaw)?medSlopeRaw:0.012,0.012,0.45);"
+          new_pair="const medSlopeRaw=Number(medianSlopeInParcel());\n    const eligibleSlopeSamples15771=[];\n    for(let sy15771=2;sy15771<GH-2;sy15771+=2)for(let sx15771=2;sx15771<GW-2;sx15771+=2){\n      if(!earthlineSafeCell(sx15771,sy15771,maxS))continue;\n      const eligibleSlope15771=Number(slopePct(sx15771,sy15771))/100;\n      if(Number.isFinite(eligibleSlope15771)&&eligibleSlope15771<=maxS/100)eligibleSlopeSamples15771.push(eligibleSlope15771);\n    }\n    eligibleSlopeSamples15771.sort((a,b)=>a-b);\n    const eligibleMedianSlope15771=eligibleSlopeSamples15771.length?eligibleSlopeSamples15771[Math.floor(eligibleSlopeSamples15771.length/2)]:NaN;\n    const medSlope=clampN(Number.isFinite(eligibleMedianSlope15771)?eligibleMedianSlope15771:Math.min(Number.isFinite(medSlopeRaw)?medSlopeRaw:0.012,maxS/100),0.012,maxS/100);\n    M.propertyEligibleSlopeSpacing15771={sampleCount:eligibleSlopeSamples15771.length,rawParcelMedian:medSlopeRaw,eligibleMedian:eligibleMedianSlope15771,spacingSlope:medSlope,maxSlope:maxS/100};"
+          old_budget="? {maxLevels:14,maxSeedsPerLevel:4,maxCandidates:10,maxFinal:6,perLevel:1,maxMs:2000}\n      : {maxLevels:72,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200,perLevel:16,maxMs:120000};"
+          new_budget="? {maxLevels:14,maxSeedsPerLevel:4,maxCandidates:10,maxFinal:6,perLevel:1,maxMs:2000}\n      : {maxLevels:256,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200,perLevel:16,maxMs:120000};"
+          if s.count(old_pair)!=1: raise SystemExit("median-slope owner anchor mismatch")
+          if s.count(old_budget)!=1: raise SystemExit("level-budget owner anchor mismatch")
+          s=s.replace(old_pair,new_pair,1).replace(old_budget,new_budget,1)
+          Path("m79-candidate-c.html").write_text(s,encoding="utf-8")
+          print("Candidate C: eligible-cell median slope + sufficient Property contour levels.")
+          PY
+          git diff --check
+      - name: Run both Arizona controls at production origin
+        run: |
+          cat > m79-eligible-spacing.mjs <<'JS'
           import { chromium } from 'playwright';
+          import fs from 'fs';
+          const html=fs.readFileSync('m79-candidate-c.html','utf8');
           const controls=[
-            {name:'AZ1',lng:-111.93067,lat:34.21568},
-            {name:'AZ2',lng:-111.93354,lat:34.21600}
+            {name:'AZ1',query:'Arizona',lng:-111.93067,lat:34.21568},
+            {name:'AZ2',query:'Arizona',lng:-111.93354,lat:34.21600},
+            {name:'VT',query:'Vermont',lng:-73.012909,lat:44.513845},
+            {name:'POUDRE',query:'Colorado',lng:-105.2237,lat:40.6412}
           ];
           for(const control of controls){
             const browser=await chromium.launch({headless:true,channel:'chrome'});
-            const page=await browser.newPage({viewport:{width:1798,height:831}});
-            await page.goto('https://earthlinedevelopment.org/?m79_slope_scale='+control.name+'&t='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            const context=await browser.newContext({viewport:{width:1798,height:831},deviceScaleFactor:1});
+            const page=await context.newPage();
+            let fulfilled=false;
+            await page.route('https://earthlinedevelopment.org/**',async route=>{
+              const req=route.request();
+              if(!fulfilled && req.resourceType()==='document'){
+                fulfilled=true;
+                await route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html});
+              }else await route.continue();
+            });
+            await page.goto('https://earthlinedevelopment.org/?m79_candidate_c='+control.name+'&t='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
             await page.waitForSelector('#searchInput',{timeout:30000});
             await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE PROPERTY FRAME AUTHORITY 1.0'),null,{timeout:90000,polling:250});
             if(!await page.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'))){
               await page.evaluate(()=>document.getElementById('earthlineRailSearch16188')?.click());await page.waitForTimeout(250);
             }
-            await page.locator('#searchInput').fill('Arizona');await page.waitForTimeout(900);
-            const opt=page.locator('#earthlineSearchSuggestions15970 [role="option"]').filter({hasText:/Arizona/i}).first();
+            await page.locator('#searchInput').fill(control.query);await page.waitForTimeout(900);
+            const opt=page.locator('#earthlineSearchSuggestions15970 [role="option"]').filter({hasText:new RegExp(control.query,'i')}).first();
             if(await opt.count())await opt.click({timeout:10000}).catch(()=>{});
             await page.evaluate(()=>document.getElementById('runBtn')?.click());
             await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191,null,{timeout:60000,polling:150});
@@ -53,80 +81,39 @@ jobs:
             await page.waitForTimeout(500);
             await page.locator('#earthlineDeclareProperty16169').click({timeout:10000});
             await page.waitForFunction(prev=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173;return !!a&&Number(a.serial||0)>prev&&a.settled===true},before,{timeout:90000,polling:120});
-            await page.waitForTimeout(700);
+            await page.waitForTimeout(800);
             const out=await page.evaluate(()=>{
-              const radii=[1,2,3,4,6,8];
-              const pct=(a,n)=>n?100*a/n:0;
-              const med=a=>{const s=a.slice().sort((x,y)=>x-y);if(!s.length)return null;return s[Math.floor(s.length/2)]};
-              function slopeR(x,y,r){
-                if(x-r<0||x+r>=GW||y-r<0||y+r>=GH)return NaN;
-                const cell=Math.max(.001,Number(M.cellM||1));
-                const gx=(Number(M.h[idx(x+r,y)])-Number(M.h[idx(x-r,y)]))/(2*r*cell);
-                const gy=(Number(M.h[idx(x,y+r)])-Number(M.h[idx(x,y-r)]))/(2*r*cell);
-                return Math.hypot(gx,gy)*100;
+              const md=M,safe=md.authoritativeSafeSwales15815||{features:[]};
+              let max=-Infinity,n=0,over=0;
+              for(const f of safe.features||[])for(const p of f.geometry?.coordinates||[]){
+                try{
+                  const g=earthlineLngLatToGrid(Number(p[0]),Number(p[1]));
+                  const sp=Number(slopePct(Math.round(g[0]),Math.round(g[1])));
+                  if(Number.isFinite(sp)){max=Math.max(max,sp);n++;if(sp>4.000001)over++}
+                }catch(_){}
               }
-              function baseEligible(i,x,y){
-                if(!M.inP?.[i]||M.pond?.[i])return false;
-                if(M.noBuildMask?.[i])return false;
-                try{if(earthlineMajorChannelUnsafeAt16288(x,y))return false}catch(_){}
-                return true;
-              }
-              function components(mask){
-                const seen=new Uint8Array(N);let count=0,largest=0,total=0;
-                const qx=new Int16Array(N),qy=new Int16Array(N);
-                for(let y=1;y<GH-1;y++)for(let x=1;x<GW-1;x++){
-                  const i=idx(x,y);if(!mask[i]||seen[i])continue;
-                  count++;let head=0,tail=0,size=0;qx[tail]=x;qy[tail]=y;tail++;seen[i]=1;
-                  while(head<tail){
-                    const cx=qx[head],cy=qy[head];head++;size++;
-                    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
-                      const nx=cx+dx,ny=cy+dy,ni=idx(nx,ny);
-                      if(nx<=0||ny<=0||nx>=GW-1||ny>=GH-1||seen[ni]||!mask[ni])continue;
-                      seen[ni]=1;qx[tail]=nx;qy[tail]=ny;tail++;
-                    }
-                  }
-                  total+=size;largest=Math.max(largest,size);
-                }
-                return {count,largest,total};
-              }
-              const stats={};
-              for(const r of radii){
-                const vals=[],mask=new Uint8Array(N);let base=0,under4=0;
-                for(let y=Math.max(2,r);y<GH-Math.max(2,r);y++)for(let x=Math.max(2,r);x<GW-Math.max(2,r);x++){
-                  const i=idx(x,y);if(!baseEligible(i,x,y))continue;base++;
-                  const s=slopeR(x,y,r);if(!Number.isFinite(s))continue;vals.push(s);
-                  if(s<=4){under4++;mask[i]=1;}
-                }
-                const c=components(mask);
-                stats[r]={
-                  baselineM:Number((2*r*Math.max(.001,Number(M.cellM||1))).toFixed(2)),
-                  baseCells:base,
-                  medianSlopePct:med(vals),
-                  under4Cells:under4,
-                  under4Pct:pct(under4,base),
-                  components:c.count,
-                  largestComponentCells:c.largest,
-                  largestComponentAreaM2:Number((c.largest*Math.pow(Number(M.cellM||1),2)).toFixed(1))
-                };
-              }
-              const centerX=Math.round(GW/2),centerY=Math.round(GH/2);
-              const center={};
-              for(const r of radii)center[r]=slopeR(centerX,centerY,r);
               return {
-                cellM:M.cellM,
-                currentSlopeSafePct:M.swaleDiagnostics?.slopeSafePct,
-                currentMaxSlopePct:M.swaleDiagnostics?.levelGenerator?.maxSlopePct,
-                currentSafeCount:M.swaleDiagnostics?.levelGenerator?.safeCount,
-                currentSkippedSlope:M.swaleDiagnostics?.levelGenerator?.skippedSlope,
-                currentSwales:M.authoritativeSafeSwales15815?.features?.length||0,
-                frame:window.EARTHLINE_PROPERTY_FRAME_PUBLICATION_AUDIT_M7852||null,
-                center,
-                stats,
-                run:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null
+                count:safe.features?.length||0,
+                eligibleSlopeSpacing:JSON.parse(JSON.stringify(md.propertyEligibleSlopeSpacing15771||null)),
+                swaleMeta:JSON.parse(JSON.stringify(md.swaleMeta||null)),
+                spacingStats:JSON.parse(JSON.stringify(md.spacingStats||null)),
+                diagnostics:JSON.parse(JSON.stringify(md.swaleDiagnostics||null)),
+                coverage:JSON.parse(JSON.stringify(md.coverageDiagnostic15803||null)),
+                slope:{max:Number.isFinite(max)?max:null,samples:n,over4:over},
+                publication:JSON.parse(JSON.stringify(md.propertyPublication15816||null)),
+                frameAudit:JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_FRAME_PUBLICATION_AUDIT_M7852||null)),
+                run:JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null))
               };
             });
-            console.log('EARTHLINE_M79_SLOPE_SCALE '+JSON.stringify({control,out}));
+            console.log('EARTHLINE_M79_CANDIDATE_C_FOUR_CONTROL '+JSON.stringify({control,out}));
+            await page.screenshot({path:'/tmp/m79-'+control.name+'-candidate-c.png',fullPage:true});
             await browser.close();
           }
           JS
-          node m79-slope-scale.mjs
+          node m79-eligible-spacing.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra79-candidate-c-four-control
+          path: /tmp/m79-*-candidate-c.png
+          if-no-files-found: warn
