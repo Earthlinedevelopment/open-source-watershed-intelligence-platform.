@@ -25,7 +25,11 @@ const selected=await page.evaluate(()=>({
   selectedLocation:window.EARTHLINE_SELECTED_LOCATION||window.EARTHLINE_SELECTED_PLACE||window.EARTHLINE_SEARCH_SELECTION||null
 }));
 await page.evaluate(()=>document.getElementById('runBtn')?.click());
-await page.waitForTimeout(5000);
+await page.waitForFunction(()=>{
+  const p=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null;
+  const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+  return !!p&&String(t&&t.source||'')==='regional-center';
+},null,{timeout:20000,polling:100});
 const regional=await page.evaluate(()=>({
   mapCenter:(()=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);const c=m?.getCenter?.();return c?{lng:c.lng,lat:c.lat,zoom:m.getZoom?.()}:null})(),
   target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
@@ -72,3 +76,5 @@ await browser.close();
 // strict Arizona target authority gate trigger
 
 // corrected strict gate: Property target is expected to be created by authoritative Regional resolution
+
+// wait for authoritative Regional publication before Property launch
