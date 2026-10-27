@@ -32945,9 +32945,12 @@ function syncPropertyTargetFromMap16201(){const m=panelMap16188();if(!m||typeof 
      dragend writes the user's new target directly. A later moveend caused by camera framing
      may differ slightly; within 2 m preserve the already accepted crosshair science frame. */
   if(existing&&/^crosshair(?:$|-)/.test(String(existing.source||''))){
-    const lat0=Number(existing.lat),lng0=Number(existing.lng),lat=Number(c.lat),lng=Number(c.lng);
-    const dy=(lat-lat0)*111320,dx=(lng-lng0)*111320*Math.max(.05,Math.cos(lat0*Math.PI/180));
-    if(Number.isFinite(dx)&&Number.isFinite(dy)&&Math.hypot(dx,dy)<=2)return true;
+    /* EARTHLINE M78.43 — generic moveend cannot replace an accepted crosshair target.
+       The existing dragend owner is the sole user-map movement writer. Search/corridor/
+       country owners already set explicit targets directly. Therefore a later programmatic
+       moveend (camera framing, Regional settlement, optional context) may update presentation
+       but cannot rewrite the accepted Property crosshair, regardless of distance. */
+    return true;
   }const prefetch17174=ok=>ok; /* EARTHLINE 17504 — retire map-move Elder warmBbox flood; exact Property frame prime owns compute warm. */if(existing&&existing.code){const lat0=Number(existing.lat),lng0=Number(existing.lng),lat=Number(c.lat),lng=Number(c.lng),dy=(lat-lat0)*111320,dx=(lng-lng0)*111320*Math.max(.05,Math.cos(lat0*Math.PI/180));if(Math.hypot(dx,dy)>18)return true;const ok17529=setPropertyTarget16201({lng,lat,source:'crosshair'},{openPanel:false});if(ok17529){/* M76 elder prime retired */}return prefetch17174(ok17529)}return prefetch17174(setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair'},{openPanel:false}))}
   const CORRIDOR_TIP_KEY_16248='earthline.corridor-tip.seen.v3';
   let corridorTipRegionalReady16252=false;
