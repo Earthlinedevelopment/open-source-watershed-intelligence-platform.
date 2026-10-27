@@ -1,0 +1,108 @@
+name: Earthline Recovery 17600 Exact Owner Repair
+
+on:
+  push:
+    branches:
+      - recovery/full-science-blue-elders-17600
+    paths:
+      - '.github/workflows/earthline-recovery-17600-apply.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/full-science-blue-elders-17600
+          fetch-depth: 0
+
+      - name: Apply locked Property science and presentation owners
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+
+          replacements=[
+            (
+              "const thr=streamThreshold(),chanThr=thr*3.2,maxS=33;",
+              "const thr=streamThreshold(),chanThr=thr*3.2,maxS=4;"
+            ),
+            (
+              "const safeSlope=slopePct(x,y)<=33;",
+              "const safeSlope=slopePct(x,y)<=4;"
+            ),
+            (
+              "the live terrain is classifying most cells above the 33% slope limit",
+              "the live terrain is classifying most cells above the 4% slope limit"
+            ),
+            (
+              "const chanThr=Number(lg.channelThreshold||streamThreshold()*3.2),maxS=Number(lg.maxSlopePct||33);",
+              "const chanThr=Number(lg.channelThreshold||streamThreshold()*3.2),maxS=Number(lg.maxSlopePct||4);"
+            ),
+            (
+              "for(const id of Object.values(LAYERS))visible(id,show);",
+              "for(const id of Object.values(LAYERS))visible(id,false);"
+            ),
+            (
+              "const safeOpacity17172=0;",
+              "const safeOpacity17172=.98;"
+            ),
+            (
+              "if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(true);",
+              "if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(false);"
+            ),
+            (
+              "if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property');if(mp.getLayer?.('earthline-property-swale-ditch-16166'))mp.moveLayer('earthline-property-swale-ditch-16166')",
+              "if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property');for(const id of Object.values(LAYERS))visible(id,false);if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(false);for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{visible(id,true);mp.setPaintProperty(id,'line-opacity',.98);mp.moveLayer(id)}catch(_){}}if(mp.getLayer?.('earthline-property-swale-ditch-16166'))mp.moveLayer('earthline-property-swale-ditch-16166')"
+            )
+          ]
+
+          for old,new in replacements:
+              n=s.count(old)
+              if n != 1:
+                  raise SystemExit(f"expected exactly one owner anchor, got {n}: {old[:140]}")
+              s=s.replace(old,new,1)
+
+          required=[
+            "const thr=streamThreshold(),chanThr=thr*3.2,maxS=4;",
+            "const safeSlope=slopePct(x,y)<=4;",
+            "above the 4% slope limit",
+            "maxS=Number(lg.maxSlopePct||4);",
+            "for(const id of Object.values(LAYERS))visible(id,false);",
+            "const safeOpacity17172=.98;",
+            "earthlineSetNaturalSwalePlantingVisible15806(false)",
+            "earthline-property-safe-water-16221"
+          ]
+          for term in required:
+              if term not in s:
+                  raise SystemExit(f"post-repair assertion missing: {term}")
+
+          p.write_text(s,encoding="utf-8")
+          PY
+
+          git diff --check
+          node --check earthline-launch-16872.js
+
+      - name: Confirm no unrelated runtime file changed
+        shell: bash
+        run: |
+          changed="$(git diff --name-only)"
+          test "$changed" = "index.html"
+
+      - name: Commit candidate repair only
+        shell: bash
+        run: |
+          git config user.name "Earthline Recovery"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: restore 4 percent Property science and authoritative blue presentation"
+          git pull --rebase origin recovery/full-science-blue-elders-17600
+          git push origin HEAD:recovery/full-science-blue-elders-17600
