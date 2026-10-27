@@ -1,0 +1,72 @@
+name: Earthline Mantra 79 Property Slope Owner Repair
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-mantra79-property-slope-owner-repair.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Restore locked Property swale slope owner
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          replacements=[
+            (
+              "const thr=streamThreshold(),chanThr=thr*3.2,maxS=33;",
+              "const thr=streamThreshold(),chanThr=thr*3.2,maxS=4;"
+            ),
+            (
+              "const safeSlope=slopePct(x,y)<=33;",
+              "const safeSlope=slopePct(x,y)<=4;"
+            ),
+            (
+              "the live terrain is classifying most cells above the 33% slope limit",
+              "the live terrain is classifying most cells above the 4% slope limit"
+            ),
+            (
+              "const chanThr=Number(lg.channelThreshold||streamThreshold()*3.2),maxS=Number(lg.maxSlopePct||33);",
+              "const chanThr=Number(lg.channelThreshold||streamThreshold()*3.2),maxS=Number(lg.maxSlopePct||4);"
+            )
+          ]
+          for old,new in replacements:
+              n=s.count(old)
+              if n!=1:
+                  raise SystemExit(f"expected exactly one owner/diagnostic anchor, got {n}: {old}")
+              s=s.replace(old,new,1)
+          required=[
+            "const thr=streamThreshold(),chanThr=thr*3.2,maxS=4;",
+            "const safeSlope=slopePct(x,y)<=4;",
+            "above the 4% slope limit",
+            "maxS=Number(lg.maxSlopePct||4);"
+          ]
+          for term in required:
+              if term not in s:
+                  raise SystemExit(f"post-repair assertion missing: {term}")
+          p.write_text(s,encoding="utf-8")
+          print("Restored Property swale maximum slope to locked <=4% rule in prescriber and aligned diagnostics.")
+          PY
+          git diff --check
+      - name: Commit authoritative science-owner correction
+        run: |
+          git config user.name "Earthline Engine"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: restore locked 4 percent Property swale slope limit"
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live
