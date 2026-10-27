@@ -44,14 +44,9 @@ jobs:
               b=src.find("{",i)
               if b < 0:
                   raise SystemExit(f"{name} body missing")
-              depth=0
-              quote=None
-              esc=False
-              comment=None
-              k=b
+              depth=0; quote=None; esc=False; comment=None; k=b
               while k < len(src):
-                  ch=src[k]
-                  nx=src[k+1] if k+1 < len(src) else ""
+                  ch=src[k]; nx=src[k+1] if k+1 < len(src) else ""
                   if comment=="line":
                       if ch=="\n": comment=None
                       k+=1; continue
@@ -82,29 +77,25 @@ jobs:
                   k+=1
               raise SystemExit(f"{name} unterminated")
 
-          ai,aj,accepted_fn=extract_function(accepted,"traceLevelContour")
+          _,_,accepted_fn=extract_function(accepted,"traceLevelContour")
           ci,cj,current_fn=extract_function(current,"traceLevelContour")
+
+          # Preserve the user's locked <=4% Property slope science.
+          _,_,current_prescriber=extract_function(current,"prescribeSwales15778")
+          if "chanThr=thr*3.2,maxS=4" not in current_prescriber:
+              raise SystemExit("STOP: locked 4% Property slope ceiling is not present")
 
           if current_fn == accepted_fn:
               print("traceLevelContour already matches accepted Build 16584")
               raise SystemExit(0)
 
-          # Safety: accepted core prescriber must remain byte-for-byte identical.
-          _,_,accepted_prescriber=extract_function(accepted,"prescribeSwales15778")
-          _,_,current_prescriber=extract_function(current,"prescribeSwales15778")
-          if current_prescriber != accepted_prescriber:
-              raise SystemExit("STOP: current prescribeSwales15778 no longer matches accepted Build 16584")
-
           repaired=current[:ci]+accepted_fn+current[cj:]
-
           _,_,check_fn=extract_function(repaired,"traceLevelContour")
           if check_fn != accepted_fn:
               raise SystemExit("restore verification failed")
 
-          # Explicitly remove only the superseded M76 exit selector if it is now orphaned
-          # from the authoritative contour tracer; do not alter any other owner.
           current_path.write_text(repaired,encoding="utf-8")
-          print("Restored traceLevelContour exactly from accepted Build 16584")
+          print("Restored traceLevelContour exactly from accepted Build 16584; preserved locked 4% slope ceiling")
           PY
 
           git diff --check
@@ -118,7 +109,9 @@ jobs:
               raise SystemExit("M76 contour-exit mutation still present in authoritative tracer")
           if "candidates[firstPick%candidates.length]:candidates[0]" not in chunk:
               raise SystemExit("accepted deterministic contour exit missing")
-          print("Accepted contour owner verified")
+          if "chanThr=thr*3.2,maxS=4" not in s:
+              raise SystemExit("locked 4% slope ceiling missing after repair")
+          print("Accepted contour owner + locked 4% slope verified")
           PY
 
       - name: Commit restored authoritative contour owner
@@ -127,6 +120,6 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           git add index.html
           git diff --cached --quiet && exit 0
-          git commit -m "fix: restore accepted 16584 contour tracing owner"
+          git commit -m "fix: restore accepted contour tracing owner; preserve 4 percent slope"
           git pull --rebase origin pages-live
           git push origin HEAD:pages-live
