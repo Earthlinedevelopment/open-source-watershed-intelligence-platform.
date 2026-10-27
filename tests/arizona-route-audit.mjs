@@ -6,6 +6,7 @@ const page=await context.newPage();
 const errs=[]; page.on('pageerror',e=>errs.push(String(e)));
 
 await page.goto('https://earthlinedevelopment.org/?az_route_audit='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE TARGET AUTHORITY 1.0 — resolved-search/corridor/user-drag only'),null,{timeout:60000,polling:250});
 await page.waitForSelector('#searchInput',{timeout:30000});
 if(!await page.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'))){
   await page.evaluate(()=>document.getElementById('earthlineRailSearch16188')?.click());
@@ -48,5 +49,24 @@ const after=await page.evaluate(()=>({
   button:String(document.getElementById('earthlineDeclareProperty16169')?.textContent||'').replace(/\s+/g,' ').trim()
 }));
 console.log('EARTHLINE_ARIZONA_ROUTE_AUDIT '+JSON.stringify({opts,selected,regional,propertyMs,after,errs}));
+const near=(a,b,t=0.002)=>Number.isFinite(Number(a))&&Number.isFinite(Number(b))&&Math.abs(Number(a)-Number(b))<=t;
+const arizona=(p)=>p&&Number(p.lat)>=31&&Number(p.lat)<=37.5&&Number(p.lng)>=-115&&Number(p.lng)<=-109;
+const strict={
+  selectedTargetArizona:arizona(selected.target),
+  regionalTargetArizona:arizona(regional.target),
+  declarationArizona:arizona(after.declaration?.center),
+  modelArizona:arizona(after.modelLoc),
+  targetMatchesRegionalMap:near(regional.target?.lng,regional.mapCenter?.lng,0.02)&&near(regional.target?.lat,regional.mapCenter?.lat,0.02),
+  declarationMatchesTarget:near(after.declaration?.center?.lng,after.target?.lng)&&near(after.declaration?.center?.lat,after.target?.lat),
+  modelMatchesDeclaration:near(after.modelLoc?.lng,after.declaration?.center?.lng)&&near(after.modelLoc?.lat,after.declaration?.center?.lat),
+  settled:after.audit?.settled===true,
+  noMexico:!(Number(after.declaration?.center?.lat)>18&&Number(after.declaration?.center?.lat)<22&&Number(after.declaration?.center?.lng)>-104&&Number(after.declaration?.center?.lng)<-100)
+};
+strict.pass=Object.values(strict).every(Boolean);
+console.log('EARTHLINE_ARIZONA_ROUTE_STRICT '+JSON.stringify(strict));
+if(!strict.pass)process.exitCode=1;
+
 await page.screenshot({path:'/tmp/arizona-route-audit.png',fullPage:true});
 await browser.close();
+
+// strict Arizona target authority gate trigger
