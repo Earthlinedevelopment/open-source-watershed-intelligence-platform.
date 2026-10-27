@@ -13065,7 +13065,8 @@ var prescribeSwales;
     };
   };
 
-  async function prescribeSwales15778(myGen=M.searchGen){
+  /* EARTHLINE M78.50 — complete accepted Build 16584 Property swale prescriber restored */
+async function prescribeSwales15778(myGen=M.searchGen){
     const started=performance.now();
     earthlinePathMetricCache15770=new WeakMap();
     earthlineProgress("swales","building road, structure, and waterway exclusions…");
@@ -13126,10 +13127,6 @@ var prescribeSwales;
         (Array.isArray(M.loc.zones)&&M.loc.zones.includes("Regional Tile"))
       )
     );
-    /* EARTHLINE 17485 — authoritative run-scoped scale owner for channel buffer.
-       The prescriber itself owns Property vs Regional truth; downstream channel
-       geometry reads this flag instead of UI/lifecycle heuristics. */
-    M.earthlinePropertyChannelBuffer17485=!isRegionalTile15769;
     const work15771=isRegionalTile15769
       ? {maxLevels:14,maxSeedsPerLevel:4,maxCandidates:10,maxFinal:6,perLevel:1,maxMs:2000}
       : {maxLevels:72,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200,perLevel:16,maxMs:120000};
@@ -13142,7 +13139,7 @@ var prescribeSwales;
       :TARGET_M;
     const minSpacingM15771=isRegionalTile15769?targetSpacingM15771*.68:MIN_M;
     const maxSpacingM15771=isRegionalTile15769?targetSpacingM15771*1.40:MAX_M;
-    const deadline15771=isRegionalTile15769?(started+work15771.maxMs):Number.POSITIVE_INFINITY;
+    const deadline15771=started+work15771.maxMs;
 
     /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
     const effectiveSeedBudget15841=isRegionalTile15769?2:work15771.maxSeedsPerLevel;
@@ -13334,7 +13331,6 @@ var prescribeSwales;
       eligiblePaths:0,pathsEvaluated:0,pathsServed:0,primaryCandidates:0,
       unserved:[],servedPathIds:[],pathSummaries:[]
     };
-    /* EARTHLINE M78.49 — accepted Build 16584 minor-flow tracing restored */
     M.flowFirstPlacement15836=flowFirstAudit15836;
 
     function buildCanonicalMinorPaths15836(){
@@ -13464,16 +13460,8 @@ var prescribeSwales;
           segmentCrossesPath15836(seg,path15836.cells,1,path15836.pathMask16320)
         );
         if(!segs15836.length){lastReason15836="no-safe-contour-crossing";continue;}
-        // Prefer the least-winding safe contour crossing; length breaks ties only.
-        // This keeps the runoff interception but prevents an entire curling contour
-        // from winning merely because it is longest.
-        segs15836.sort((a,b)=>
-          (earthlineSegmentTortuosityM76(a)-earthlineSegmentTortuosityM76(b))||
-          (earthlineSegmentLengthM(b)-earthlineSegmentLengthM(a))
-        );
-        for(const rawSeg15836 of segs15836){
-                    const seg15836=earthlineLocalContourReachM76(rawSeg15836,path15836);
-          if(!isRegionalTile15769&&!earthlineCrossSlopeLocalGuardM76(seg15836)){lastReason15836="local-downslope-kink";continue;}
+        segs15836.sort((a,b)=>earthlineSegmentLengthM(b)-earthlineSegmentLengthM(a));
+        for(const seg15836 of segs15836){
           if(claimR&&earthlinePathOverlap(claimMask,seg15836)>.18){lastReason15836="overlap-with-earlier-primary";continue;}
           const sw15836=earthlineSwaleFromPts(seg15836,-1,chanThr,false,maxS,levels.length);
           if(!sw15836){lastReason15836="geometry-conversion";continue;}
@@ -13595,8 +13583,7 @@ var prescribeSwales;
         coverageDiag15803.totals.traces++;
         /* BUILD-CHECK-15803-DIAGNOSTIC-END */
         M.swaleDiagnostics.stage.traces++;
-        const rawSegsM76=earthlineSplitUsableSegments(pts,maxS).slice(0,3);
-        const segs=rawSegsM76.map(seg=>earthlineLocalSeedReachM76(seg,sd.x,sd.y)).filter(seg=>isRegionalTile15769||earthlineCrossSlopeLocalGuardM76(seg));
+        const segs=earthlineSplitUsableSegments(pts,maxS).slice(0,3);
         if(seedRec15803){
           seedRec15803.segmentCount15840=segs.length;
           seedRec15803.segmentProduced15840=segs.length>0;
@@ -13657,18 +13644,6 @@ var prescribeSwales;
           sw.prescriptionFlowScore15833=Number(flowEvidence15833.score||0);
           sw.seedFlowCrossing15833=Number(sd&&sd.flowCrossingValue||0);
           sw.seedCrossingGeometry15833=Number(sd&&sd.crossingGeometry||0);
-/* EARTHLINE M76G — zero-runoff secondary Property swales are not publishable. */
-if(!isRegionalTile15769&&Number(flowEvidence15833.crossingHits||0)<=0&&
-   Number(sw.seedFlowCrossing15833||0)<=0){
-  M.swaleDiagnostics.stage.rejectConversion++;
-  continue;
-}
-/* EARTHLINE M76E — Property secondary-fill corridors must intercept modeled runoff. */
-if(!isRegionalTile15769&&Number(flowEvidence15833.crossingHits||0)<=0&&
-   Number(sw.seedFlowCrossing15833||0)<=0&&Number(sw.seedCrossingGeometry15833||0)<=0){
-  M.swaleDiagnostics.stage.rejectConversion++;
-  continue;
-}
           M.flowCrossingScoring15833=M.flowCrossingScoring15833||{};
           M.flowCrossingScoring15833.segmentCandidates=(M.flowCrossingScoring15833.segmentCandidates||0)+1;
           if(sw.prescriptionFlowScore15833>0)M.flowCrossingScoring15833.segmentCrossingCandidates=(M.flowCrossingScoring15833.segmentCrossingCandidates||0)+1;
