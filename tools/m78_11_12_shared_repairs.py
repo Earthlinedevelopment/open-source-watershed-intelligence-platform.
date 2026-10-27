@@ -3,16 +3,20 @@ from pathlib import Path
 p=Path("index.html")
 s=p.read_text(encoding="utf-8")
 
-# M78.11 — canonical minor paths must not share already-owned downstream cells.
+# M78.49 — restore accepted Build 16584 minor-flow tracing.
+# M78.11's claimed-cell early break is the only scientific divergence found between
+# the accepted 16584 prescriber and the current prescriber, and it creates sparse
+# downstream coverage. Preserve claimed[] bookkeeping but never terminate a path
+# merely because another minor path already touched the downstream cell.
 old_trace='''        while(i>=0&&i<N&&eligible[i]&&!seen.has(i)&&guard++<N){
           seen.add(i);cells.push(i);claimed[i]=1;'''
-new_trace='''        while(i>=0&&i<N&&eligible[i]&&!seen.has(i)&&guard++<N){
+dedup_trace='''        while(i>=0&&i<N&&eligible[i]&&!seen.has(i)&&guard++<N){
           if(claimed[i])break; /* EARTHLINE M78.11 — one canonical owner per minor-flow cell; stop duplicate downstream tracing. */
           seen.add(i);cells.push(i);claimed[i]=1;'''
-if "EARTHLINE M78.11 — one canonical owner per minor-flow cell" not in s:
-    if s.count(old_trace)!=1:
-        raise SystemExit(f"M78.11 trace anchor count={s.count(old_trace)}")
-    s=s.replace(old_trace,new_trace,1)
+if dedup_trace in s:
+    s=s.replace(dedup_trace,old_trace,1)
+if dedup_trace in s or "EARTHLINE M78.11 — one canonical owner per minor-flow cell" in s:
+    raise SystemExit("M78.49 accepted-flow restoration failed")
 
 # M78.12 — use currently listed free global OSM Overpass instances instead
 # of the failing lz4 backend. Same OSM data, same query, same raster owner.
@@ -80,7 +84,6 @@ if "EARTHLINE M78.19 — loaded map evidence is the primary Property exclusion s
         s=s.replace(old_effective,replacement,1)
 
 for marker in [
-  "EARTHLINE M78.11 — one canonical owner per minor-flow cell",
   "EARTHLINE M78.16 — resilient free global OSM transport with three current public instances",
   "effectiveOpenDataRespondedM7812"
 ]:
@@ -88,3 +91,5 @@ for marker in [
         raise SystemExit("missing "+marker)
 
 p.write_text(s,encoding="utf-8")
+
+# M78.49 accepted Build 16584 minor-flow tracing restored
