@@ -6,17 +6,14 @@ on:
     paths:
       - 'tests/arizona-a1-property-mobile.mjs'
       - 'tests/arizona-desktop-crosshair-m78.mjs'
-      - 'tests/science-kernel-golden-v1.json'
-      - 'tests/science-kernel-controls-v1.mjs'
       - '.github/workflows/earthline-arizona-a1-property-mobile.yml'
       - 'tools/m78_9_zero_style_fallback.py'
       - 'tools/m78_11_12_shared_repairs.py'
-      - 'tools/m78_30_local_levelset.py'
-      - 'tools/m78_31_science_kernel_governance.py'
       - 'tools/m78_32_property_declaration_site.py'
       - 'tools/m78_33_crosshair_authority.py'
       - 'tools/m78_39_press_target_latch.py'
       - 'tools/m78_43_moveend_crosshair_owner.py'
+      - 'tools/m78_44_remove_rejected_levelset.py'
   workflow_dispatch:
 
 permissions:
@@ -142,12 +139,8 @@ jobs:
         run: python3 tools/m78_25_crosshair_jitter.py
       - name: Apply realistic Property swale width
         run: python3 tools/m78_20_realistic_swale_width.py
-      - name: Apply deterministic local DEM level-set fallback
-        run: python3 tools/m78_30_local_levelset.py
       - name: Apply contour-start consistency repair
         run: python3 tools/m78_27_contour_start_consistency.py
-      - name: Apply Science Kernel v1 governance migration
-        run: python3 tools/m78_31_science_kernel_governance.py
       - name: Apply atomic Property declaration-site binding
         run: python3 tools/m78_32_property_declaration_site.py
       - name: Apply explicit crosshair authority over stale selection
@@ -156,6 +149,8 @@ jobs:
         run: python3 tools/m78_39_press_target_latch.py
       - name: Apply accepted-crosshair moveend ownership repair
         run: python3 tools/m78_43_moveend_crosshair_owner.py
+      - name: Apply rejected-science rollback
+        run: python3 tools/m78_44_remove_rejected_levelset.py
       - name: Verify M78 repair scope
         run: |
           git diff --check
@@ -177,12 +172,12 @@ jobs:
           grep -q "realistic non-overlapping Property swale presentation" index.html
           grep -q "contour start and marcher share one half-open crossing rule" index.html
           grep -q "groundWidthM:3" index.html
-          grep -q "EARTHLINE M78.30 — deterministic local DEM level-set fallback" index.html
-          grep -q "Earthline-Science-Kernel-v1.0.0" index.html
           grep -q "accepted crosshair atomically rebinds the Property declaration site" index.html
           grep -q "explicit crosshair authority overrides stale Regional selection residue" index.html
           grep -q "physical Property press latches immutable target into terminal owner" index.html
           grep -q "generic moveend cannot replace an accepted crosshair target" index.html
+          grep -q "rejected local level-set pivot removed; pre-pivot contour prescriber restored" index.html
+          ! grep -q "earthlineTraceLocalLevelSetM78" index.html
           grep -q "effectiveOpenDataRespondedM7812" index.html
       - name: Commit repaired index
         run: |
@@ -216,8 +211,6 @@ jobs:
             /tmp/m78-desktop-second.png
           if-no-files-found: error
       - run: node tests/arizona-a1-property-mobile.mjs
-      - name: Run Science Kernel terrain controls
-        run: node tests/science-kernel-controls-v1.mjs
 
 # M78.17 trigger exact desktop repair
 
@@ -244,3 +237,5 @@ jobs:
 # M78.39 immutable accepted Property target trigger
 
 # M78.43 accepted-crosshair moveend ownership trigger
+
+# M78.44 rejected-science rollback trigger
