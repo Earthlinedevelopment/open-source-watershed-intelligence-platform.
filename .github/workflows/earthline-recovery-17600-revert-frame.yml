@@ -1,0 +1,23 @@
+name: Earthline Recovery 17600 Revert Failed Frame Transplant
+on:
+  push:
+    branches: [recovery/full-science-blue-elders-17600]
+    paths: ['.github/workflows/earthline-recovery-17600-revert-frame.yml']
+permissions:
+  contents: write
+jobs:
+  revert:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/full-science-blue-elders-17600
+          fetch-depth: 0
+      - name: Revert failed frame transplant cleanly
+        run: |
+          git config user.name "Earthline Recovery"
+          git config user.email "actions@users.noreply.github.com"
+          git revert --no-edit 7b3fdbdff78011679273c297f313bb1e8f32bf29
+          git pull --rebase origin recovery/full-science-blue-elders-17600
+          git push origin HEAD:recovery/full-science-blue-elders-17600
