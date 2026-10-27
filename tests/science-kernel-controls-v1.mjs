@@ -88,6 +88,9 @@ async function runHumanCrosshair(lng,lat,label){
       label,requested:{lng,lat},
       target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
       declaration:window.EARTHLINE_PROPERTY_DECLARATION_16169||null,
+      declarationSiteAudit:window.EARTHLINE_PROPERTY_DECLARATION_SITE_AUDIT_M7832||null,
+      governedOwnerHasM7832:String(window.earthlineGovernedPropertyRun16202||'').includes('M78.32'),
+      governedOwnerHasM7833:String(window.earthlineGovernedPropertyRun16202||'').includes('M78.33'),
       frameSeed:window.EARTHLINE_PROPERTY_FRAME_SEED_16414||null,
       modelLoc:md?.loc?{lng:md.loc.lng,lat:md.loc.lat,fullName:md.loc.fullName||null}:null,
       mapCenter:center?{lng:center.lng,lat:center.lat,zoom:map.getZoom?.()}:null,
@@ -181,10 +184,10 @@ for(const c of controls){
                  String(a.snap.water?.fingerprint||'')===String(b.snap.water?.fingerprint||'') &&
                  Number(a.snap.water?.count||0)===Number(b.snap.water?.count||0);
   results[c.id]={identityOk,functionalOk:functional(a)&&functional(b),repeatOk,
-    first:{preTarget:a.pre?.target,declaration:a.snap.declaration?.center,swales:a.snap.swales?.count,swaleFp:a.snap.swales?.fingerprint,water:a.snap.water?.count,waterFp:a.snap.water?.fingerprint,
+    first:{preTarget:a.pre?.target,declaration:a.snap.declaration?.center,declarationSiteAudit:a.snap.declarationSiteAudit,governedOwnerHasM7832:a.snap.governedOwnerHasM7832,governedOwnerHasM7833:a.snap.governedOwnerHasM7833,swales:a.snap.swales?.count,swaleFp:a.snap.swales?.fingerprint,water:a.snap.water?.count,waterFp:a.snap.water?.fingerprint,
       elders:a.snap.elder?.sourceFeatures,served:a.snap.flowFirst?.pathsServed,noContour:a.snap.flowFirst?.reasons?.['no-contour-trace']||0,
       medianM:a.snap.swales?.meta?.measuredMedianSpacingM,aquifer:a.snap.aquifer?.status},
-    second:{preTarget:b.pre?.target,declaration:b.snap.declaration?.center,swales:b.snap.swales?.count,swaleFp:b.snap.swales?.fingerprint,water:b.snap.water?.count,waterFp:b.snap.water?.fingerprint,
+    second:{preTarget:b.pre?.target,declaration:b.snap.declaration?.center,declarationSiteAudit:b.snap.declarationSiteAudit,governedOwnerHasM7832:b.snap.governedOwnerHasM7832,governedOwnerHasM7833:b.snap.governedOwnerHasM7833,swales:b.snap.swales?.count,swaleFp:b.snap.swales?.fingerprint,water:b.snap.water?.count,waterFp:b.snap.water?.fingerprint,
       elders:b.snap.elder?.sourceFeatures,served:b.snap.flowFirst?.pathsServed,noContour:b.snap.flowFirst?.reasons?.['no-contour-trace']||0,
       medianM:b.snap.swales?.meta?.measuredMedianSpacingM,aquifer:b.snap.aquifer?.status}};
 }
@@ -197,3 +200,5 @@ if(Object.values(results).some(r=>!r.identityOk||!r.functionalOk||!r.repeatOk))p
 // Terrain controls require served M78.32 declaration binding bytes
 
 // Terrain controls require served M78.33 explicit-crosshair authority bytes
+
+// Diagnose whether the live governed Property owner actually contains M78.32/M78.33
