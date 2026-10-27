@@ -13334,6 +13334,7 @@ var prescribeSwales;
       eligiblePaths:0,pathsEvaluated:0,pathsServed:0,primaryCandidates:0,
       unserved:[],servedPathIds:[],pathSummaries:[]
     };
+    /* EARTHLINE M78.49 — accepted Build 16584 minor-flow tracing restored */
     M.flowFirstPlacement15836=flowFirstAudit15836;
 
     function buildCanonicalMinorPaths15836(){
@@ -13354,7 +13355,6 @@ var prescribeSwales;
       const trace=(start)=>{
         const cells=[],seen=new Set();let i=start,guard=0;
         while(i>=0&&i<N&&eligible[i]&&!seen.has(i)&&guard++<N){
-          if(claimed[i])break; /* EARTHLINE M78.11 — one canonical owner per minor-flow cell; stop duplicate downstream tracing. */
           seen.add(i);cells.push(i);claimed[i]=1;
           const x=i%GW,y=Math.floor(i/GW),d=Number(M.dir[i]);
           if(!(d>=0&&d<8))break;
