@@ -1,0 +1,129 @@
+name: Earthline Mantra 79 Production-Origin Spacing Audit
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-mantra79-spacing-production-origin-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - name: Build two in-browser candidates without deployment
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          old_slope='const medSlope=clampN(Number.isFinite(medSlopeRaw)?medSlopeRaw:0.012,0.012,0.45);'
+          cap_slope='const medSlope=clampN(Math.min(Number.isFinite(medSlopeRaw)?medSlopeRaw:0.012,maxS/100),0.012,maxS/100);'
+          old_budget='? {maxLevels:14,maxSeedsPerLevel:4,maxCandidates:10,maxFinal:6,perLevel:1,maxMs:2000}\n      : {maxLevels:72,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200,perLevel:16,maxMs:120000};'
+          new_budget='? {maxLevels:14,maxSeedsPerLevel:4,maxCandidates:10,maxFinal:6,perLevel:1,maxMs:2000}\n      : {maxLevels:256,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200,perLevel:16,maxMs:120000};'
+          if s.count(old_slope)!=1: raise SystemExit("slope owner anchor mismatch")
+          if s.count(old_budget)!=1: raise SystemExit("budget owner anchor mismatch")
+          a=s.replace(old_slope,cap_slope,1)
+          b=a.replace(old_budget,new_budget,1)
+          Path("m79-candidate-a.html").write_text(a,encoding="utf-8")
+          Path("m79-candidate-b.html").write_text(b,encoding="utf-8")
+          print("A: eligible-slope spacing basis only")
+          print("B: eligible-slope spacing basis + enough contour levels")
+          PY
+          git diff --check
+      - name: Run production-origin candidate audit
+        run: |
+          cat > m79-prod-origin-spacing.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+
+          const variants=[
+            {name:'A_slope_basis_only',html:fs.readFileSync('m79-candidate-a.html','utf8')},
+            {name:'B_slope_basis_plus_levels',html:fs.readFileSync('m79-candidate-b.html','utf8')}
+          ];
+          const results=[];
+          for(const variant of variants){
+            const browser=await chromium.launch({headless:true,channel:'chrome'});
+            const context=await browser.newContext({viewport:{width:1798,height:831},deviceScaleFactor:1});
+            const page=await context.newPage();
+            let fulfilled=false;
+            await page.route('https://earthlinedevelopment.org/**',async route=>{
+              const req=route.request();
+              if(!fulfilled && req.resourceType()==='document'){
+                fulfilled=true;
+                await route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:variant.html});
+              } else {
+                await route.continue();
+              }
+            });
+            await page.goto('https://earthlinedevelopment.org/?m79_spacing_variant='+encodeURIComponent(variant.name)+'&t='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#searchInput',{timeout:30000});
+            await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE PROPERTY FRAME AUTHORITY 1.0'),null,{timeout:90000,polling:250});
+            if(!await page.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'))){
+              await page.evaluate(()=>document.getElementById('earthlineRailSearch16188')?.click());await page.waitForTimeout(250);
+            }
+            await page.locator('#searchInput').fill('Arizona'); await page.waitForTimeout(900);
+            const opt=page.locator('#earthlineSearchSuggestions15970 [role="option"]').filter({hasText:/Arizona/i}).first();
+            if(await opt.count())await opt.click({timeout:10000}).catch(()=>{});
+            await page.evaluate(()=>document.getElementById('runBtn')?.click());
+            await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191,null,{timeout:60000,polling:150});
+
+            const lng=-111.93354,lat=34.21600;
+            const before=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
+            await page.evaluate(({lng,lat})=>{
+              const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+              if(!m)throw new Error('map unavailable');
+              m.jumpTo({center:[lng,lat],zoom:16.59});try{m.fire?.('dragend')}catch(_){}
+            },{lng,lat});
+            await page.waitForTimeout(500);
+            await page.locator('#earthlineDeclareProperty16169').click({timeout:10000});
+            await page.waitForFunction(prev=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173;return !!a&&Number(a.serial||0)>prev&&a.settled===true},before,{timeout:90000,polling:120});
+            await page.waitForTimeout(1000);
+
+            const out=await page.evaluate(()=>{
+              const md=(typeof M!=='undefined'&&M)||{};
+              const safe=md.authoritativeSafeSwales15815||{type:'FeatureCollection',features:[]};
+              let max=-Infinity,n=0,over=0;
+              for(const f of safe.features||[])for(const p of f.geometry?.coordinates||[]){
+                try{
+                  const g=earthlineLngLatToGrid(Number(p[0]),Number(p[1]));
+                  const sp=Number(slopePct(Math.round(g[0]),Math.round(g[1])));
+                  if(Number.isFinite(sp)){max=Math.max(max,sp);n++;if(sp>4.000001)over++}
+                }catch(_){}
+              }
+              return {
+                count:safe.features?.length||0,
+                swaleMeta:JSON.parse(JSON.stringify(md.swaleMeta||null)),
+                spacingStats:JSON.parse(JSON.stringify(md.spacingStats||null)),
+                diagnostics:JSON.parse(JSON.stringify(md.swaleDiagnostics||null)),
+                coverage:JSON.parse(JSON.stringify(md.coverageDiagnostic15803||null)),
+                slope:{max:Number.isFinite(max)?max:null,samples:n,over4:over},
+                publication:JSON.parse(JSON.stringify(md.propertyPublication15816||null)),
+                frameAudit:JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_FRAME_PUBLICATION_AUDIT_M7852||null)),
+                run:JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null))
+              };
+            });
+            results.push({variant:variant.name,out});
+            console.log('EARTHLINE_M79_PROD_ORIGIN_SPACING '+JSON.stringify({variant:variant.name,out}));
+            await page.screenshot({path:'/tmp/'+variant.name+'.png',fullPage:true});
+            await browser.close();
+          }
+          console.log('EARTHLINE_M79_PROD_ORIGIN_COMPARISON '+JSON.stringify(results));
+          JS
+          node m79-prod-origin-spacing.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra79-production-origin-spacing
+          path: /tmp/*_*.png
+          if-no-files-found: warn
