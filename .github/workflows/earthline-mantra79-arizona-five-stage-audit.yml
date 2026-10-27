@@ -24,7 +24,7 @@ jobs:
       - run: npm install --no-save playwright@1.55.0
       - name: Run exact Arizona control 1 five-stage audit
         run: |
-          cat > /tmp/m79-audit.mjs <<'JS'
+          cat > m79-audit.mjs <<'JS'
           import { chromium } from 'playwright';
 
           const browser=await chromium.launch({headless:true,channel:'chrome'});
@@ -274,7 +274,7 @@ jobs:
           await browser.close();
           if(!identityPass||!noMexico||!slopePass||!rendererGeometryMatches)process.exitCode=1;
           JS
-          node /tmp/m79-audit.mjs
+          node m79-audit.mjs
       - name: Upload exact-control screenshot
         if: always()
         uses: actions/upload-artifact@v4
