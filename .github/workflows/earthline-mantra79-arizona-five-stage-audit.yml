@@ -1,4 +1,4 @@
-name: Earthline Mantra 79 Arizona Five-Stage Audit
+name: Earthline Mantra 79 Arizona Control 2 Five-Stage Audit
 
 on:
   push:
@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: '20'
       - run: npm install --no-save playwright@1.55.0
-      - name: Run exact Arizona control 1 five-stage audit
+      - name: Run exact Arizona control 2 five-stage audit
         run: |
           cat > m79-audit.mjs <<'JS'
           import { chromium } from 'playwright';
@@ -68,7 +68,7 @@ jobs:
             };
           });
 
-          const lng=-111.93067,lat=34.21568;
+          const lng=-111.93354,lat=34.21600;
           const before=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
           await page.evaluate(({lng,lat})=>{
             const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
@@ -269,7 +269,7 @@ jobs:
           const rendererGeometryMatches=D.fingerprint===E.fingerprint&&D.featureCount===E.featureCount;
           const verdict={identityPass,noMexico,slopePass,rendererGeometryMatches,rawToFrameChanged:A.fingerprint!==B.fingerprint,frameToClearanceChanged:B.fingerprint!==C.fingerprint,clearanceToSafeChanged:C.fingerprint!==D.fingerprint,counts:{A:A.featureCount,B:B.featureCount,C:C.featureCount,D:D.featureCount,E:E.featureCount}};
           console.log('EARTHLINE_M79_FIVE_STAGE '+JSON.stringify({pre,result,verdict}));
-          await page.screenshot({path:'/tmp/m79-arizona-control1.png',fullPage:true});
+          await page.screenshot({path:'/tmp/m79-arizona-control2.png',fullPage:true});
           await browser.close();
           if(!identityPass||!noMexico||!slopePass||!rendererGeometryMatches)process.exitCode=1;
           JS
@@ -278,6 +278,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mantra79-arizona-control1
-          path: /tmp/m79-arizona-control1.png
+          name: mantra79-arizona-control2
+          path: /tmp/m79-arizona-control2.png
           if-no-files-found: warn
