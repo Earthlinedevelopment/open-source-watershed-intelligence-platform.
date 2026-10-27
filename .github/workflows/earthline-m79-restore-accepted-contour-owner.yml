@@ -1,0 +1,132 @@
+name: Earthline M79 Restore Accepted Contour Owner
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-m79-restore-accepted-contour-owner.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+
+      - name: Restore traceLevelContour from accepted Build 16584
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+
+          ACCEPTED_COMMIT="376ccfe59f04aaf5638374c981c1bdc63f2bbd43"
+          ACCEPTED_PATH="index (2).html"
+
+          current_path=Path("index.html")
+          current=current_path.read_text(encoding="utf-8")
+          accepted=subprocess.check_output(
+              ["git","show",f"{ACCEPTED_COMMIT}:{ACCEPTED_PATH}"],
+              text=True, encoding="utf-8"
+          )
+
+          def extract_function(src,name):
+              token=f"function {name}("
+              i=src.find(token)
+              if i < 0:
+                  raise SystemExit(f"{name} missing")
+              b=src.find("{",i)
+              if b < 0:
+                  raise SystemExit(f"{name} body missing")
+              depth=0
+              quote=None
+              esc=False
+              comment=None
+              k=b
+              while k < len(src):
+                  ch=src[k]
+                  nx=src[k+1] if k+1 < len(src) else ""
+                  if comment=="line":
+                      if ch=="\n": comment=None
+                      k+=1; continue
+                  if comment=="block":
+                      if ch=="*" and nx=="/":
+                          comment=None; k+=2; continue
+                      k+=1; continue
+                  if quote:
+                      if esc:
+                          esc=False; k+=1; continue
+                      if ch=="\\":
+                          esc=True; k+=1; continue
+                      if ch==quote:
+                          quote=None
+                      k+=1; continue
+                  if ch=="/" and nx=="/":
+                      comment="line"; k+=2; continue
+                  if ch=="/" and nx=="*":
+                      comment="block"; k+=2; continue
+                  if ch in ("'", '"', "`"):
+                      quote=ch; k+=1; continue
+                  if ch=="{":
+                      depth+=1
+                  elif ch=="}":
+                      depth-=1
+                      if depth==0:
+                          return i,k+1,src[i:k+1]
+                  k+=1
+              raise SystemExit(f"{name} unterminated")
+
+          ai,aj,accepted_fn=extract_function(accepted,"traceLevelContour")
+          ci,cj,current_fn=extract_function(current,"traceLevelContour")
+
+          if current_fn == accepted_fn:
+              print("traceLevelContour already matches accepted Build 16584")
+              raise SystemExit(0)
+
+          # Safety: accepted core prescriber must remain byte-for-byte identical.
+          _,_,accepted_prescriber=extract_function(accepted,"prescribeSwales15778")
+          _,_,current_prescriber=extract_function(current,"prescribeSwales15778")
+          if current_prescriber != accepted_prescriber:
+              raise SystemExit("STOP: current prescribeSwales15778 no longer matches accepted Build 16584")
+
+          repaired=current[:ci]+accepted_fn+current[cj:]
+
+          _,_,check_fn=extract_function(repaired,"traceLevelContour")
+          if check_fn != accepted_fn:
+              raise SystemExit("restore verification failed")
+
+          # Explicitly remove only the superseded M76 exit selector if it is now orphaned
+          # from the authoritative contour tracer; do not alter any other owner.
+          current_path.write_text(repaired,encoding="utf-8")
+          print("Restored traceLevelContour exactly from accepted Build 16584")
+          PY
+
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          i=s.find("function traceLevelContour(")
+          j=s.find("function ",i+1)
+          chunk=s[i:j if j>i else i+12000]
+          if "earthlinePickContourExitM76(candidates,pts)" in chunk:
+              raise SystemExit("M76 contour-exit mutation still present in authoritative tracer")
+          if "candidates[firstPick%candidates.length]:candidates[0]" not in chunk:
+              raise SystemExit("accepted deterministic contour exit missing")
+          print("Accepted contour owner verified")
+          PY
+
+      - name: Commit restored authoritative contour owner
+        run: |
+          git config user.name "Earthline Engine"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: restore accepted 16584 contour tracing owner"
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live
