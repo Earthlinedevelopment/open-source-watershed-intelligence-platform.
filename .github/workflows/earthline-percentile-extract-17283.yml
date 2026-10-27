@@ -1,0 +1,22 @@
+name: Earthline Percentile Caller Extract 17283
+on:
+  push:
+    branches: [repair/browser-performance-live-17268]
+    paths:
+      - 'tests/extract-percentile-callers-17283.py'
+      - '.github/workflows/earthline-percentile-extract-17283.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-performance-live-17268}
+      - run: python3 tests/extract-percentile-callers-17283.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: percentile-callers-17283
+          path: percentile-callers-17283.txt
+          if-no-files-found: error

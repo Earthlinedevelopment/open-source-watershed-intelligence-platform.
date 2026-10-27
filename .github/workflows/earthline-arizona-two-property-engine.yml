@@ -1,0 +1,25 @@
+name: Earthline Arizona Two Property Engine
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/arizona-two-property-engine.mjs'
+      - '.github/workflows/earthline-arizona-two-property-engine.yml'
+permissions: {contents: read}
+jobs:
+  engine:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: npm install --no-save playwright@1.55.0
+      - run: node tests/arizona-two-property-engine.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arizona-two-property-engine
+          path: /tmp/arizona-two-property-engine.png
+          if-no-files-found: warn

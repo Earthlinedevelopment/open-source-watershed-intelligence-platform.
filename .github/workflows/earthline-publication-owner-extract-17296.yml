@@ -1,0 +1,20 @@
+name: Earthline Publication Owner Extract 17296
+on:
+  push:
+    branches: [repair/browser-performance-live-17268]
+    paths:
+      - '.github/workflows/earthline-publication-owner-extract-17296.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-performance-live-17268}
+      - run: python3 tests/extract-texas-publication-owner.py > publication-owner-17296.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: publication-owner-17296
+          path: publication-owner-17296.txt

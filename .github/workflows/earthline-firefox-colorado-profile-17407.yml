@@ -1,0 +1,24 @@
+name: Earthline Firefox Colorado Profile 17407
+on:
+  push:
+    branches: [repair/browser-elder-final-17392]
+    paths:
+      - 'tests/apply-elder-python-profile-17407.py'
+      - 'tests/elder-firefox-colorado-profile-17407.mjs'
+      - '.github/workflows/earthline-firefox-colorado-profile-17407.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  firefox-profile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-elder-final-17392}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: python3 tests/apply-elder-python-profile-17407.py
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - run: xvfb-run -a env BROWSER='firefox' HEADLESS='false' node tests/elder-firefox-colorado-profile-17407.mjs

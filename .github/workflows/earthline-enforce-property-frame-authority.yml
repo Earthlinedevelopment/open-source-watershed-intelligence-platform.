@@ -1,0 +1,141 @@
+name: Earthline Enforce Property Frame Authority
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-enforce-property-frame-authority.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  enforce:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Enforce declared Property frame inside authoritative safety lock
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          marker="EARTHLINE PROPERTY FRAME AUTHORITY 1.0 — safe publication is contained by the declared Property frame"
+          if marker in s:
+              print("Property frame authority already installed")
+              raise SystemExit(0)
+
+          fn=s.find("function earthlineLockPropertyResult15815(force=false){")
+          if fn<0:
+              raise SystemExit("authoritative safety-lock owner missing")
+
+          anchor='''      if(!candidate)failures.push("corridor-filter-result-invalid");'''
+          at=s.find(anchor,fn)
+          if at<0:
+              raise SystemExit("authoritative candidate handoff anchor missing")
+
+          replacement=r'''      if(!candidate)failures.push("corridor-filter-result-invalid");
+
+          /* EARTHLINE PROPERTY FRAME AUTHORITY 1.0 — safe publication is contained by the declared Property frame.
+             This is part of the existing safety lock, not a renderer or second publication owner.
+             Contour geometry may reach beyond the raster edge during construction, but geometry
+             entering clearance audit / authoritativeSafeSwales15815 must be clipped to the exact
+             declared Property frame. */
+          let frameClipM7852=null;
+          if(candidate){
+            const boundaryM7852=Array.isArray(M&&M.analysisBoundaryLngLat)?M.analysisBoundaryLngLat:[];
+            let westM7852=Infinity,southM7852=Infinity,eastM7852=-Infinity,northM7852=-Infinity;
+            for(const pM7852 of boundaryM7852){
+              const xM7852=Number(pM7852&&pM7852[0]),yM7852=Number(pM7852&&pM7852[1]);
+              if(Number.isFinite(xM7852)&&Number.isFinite(yM7852)){
+                westM7852=Math.min(westM7852,xM7852);eastM7852=Math.max(eastM7852,xM7852);
+                southM7852=Math.min(southM7852,yM7852);northM7852=Math.max(northM7852,yM7852);
+              }
+            }
+            if(boundaryM7852.length<3||![westM7852,southM7852,eastM7852,northM7852].every(Number.isFinite)||!(eastM7852>westM7852&&northM7852>southM7852)){
+              failures.push("property-frame-unavailable");
+            }else{
+              const clipSegM7852=(aM7852,bM7852)=>{
+                const x0=Number(aM7852&&aM7852[0]),y0=Number(aM7852&&aM7852[1]),x1=Number(bM7852&&bM7852[0]),y1=Number(bM7852&&bM7852[1]);
+                if(![x0,y0,x1,y1].every(Number.isFinite))return null;
+                const dx=x1-x0,dy=y1-y0,p=[-dx,dx,-dy,dy],q=[x0-westM7852,eastM7852-x0,y0-southM7852,northM7852-y0];
+                let u0=0,u1=1;
+                for(let k=0;k<4;k++){
+                  if(Math.abs(p[k])<1e-15){if(q[k]<0)return null;continue}
+                  const r=q[k]/p[k];
+                  if(p[k]<0){if(r>u1)return null;if(r>u0)u0=r}
+                  else{if(r<u0)return null;if(r<u1)u1=r}
+                }
+                const cx=v=>Math.max(westM7852,Math.min(eastM7852,v));
+                const cy=v=>Math.max(southM7852,Math.min(northM7852,v));
+                return [[cx(x0+u0*dx),cy(y0+u0*dy)],[cx(x0+u1*dx),cy(y0+u1*dy)]];
+              };
+              const sameM7852=(a,b)=>Math.abs(Number(a[0])-Number(b[0]))<1e-12&&Math.abs(Number(a[1])-Number(b[1]))<1e-12;
+              const clipLineM7852=coords=>{
+                const parts=[];let cur=null;
+                for(let i=1;i<(Array.isArray(coords)?coords.length:0);i++){
+                  const seg=clipSegM7852(coords[i-1],coords[i]);
+                  if(!seg){if(cur&&cur.length>=2)parts.push(cur);cur=null;continue}
+                  if(!cur)cur=[seg[0],seg[1]];
+                  else if(sameM7852(cur[cur.length-1],seg[0])){
+                    if(!sameM7852(cur[cur.length-1],seg[1]))cur.push(seg[1]);
+                  }else{
+                    if(cur.length>=2)parts.push(cur);
+                    cur=[seg[0],seg[1]];
+                  }
+                }
+                if(cur&&cur.length>=2)parts.push(cur);
+                return parts;
+              };
+              const inCountM7852=Array.isArray(candidate.features)?candidate.features.length:0;
+              const outM7852=[];let clippedM7852=0,droppedM7852=0;
+              for(const ftM7852 of (candidate.features||[])){
+                const gM7852=ftM7852&&ftM7852.geometry;
+                const linesM7852=gM7852&&gM7852.type==="LineString"?[gM7852.coordinates]:(gM7852&&gM7852.type==="MultiLineString"?gM7852.coordinates:[]);
+                const partsM7852=[];
+                for(const lineM7852 of linesM7852)partsM7852.push(...clipLineM7852(lineM7852));
+                if(!partsM7852.length){droppedM7852++;continue}
+                if(JSON.stringify(linesM7852)!==JSON.stringify(partsM7852))clippedM7852++;
+                for(const partM7852 of partsM7852){
+                  const nfM7852=JSON.parse(JSON.stringify(ftM7852));
+                  nfM7852.geometry={type:"LineString",coordinates:partM7852};
+                  outM7852.push(nfM7852);
+                }
+              }
+              candidate={type:"FeatureCollection",features:outM7852};
+              frameClipM7852={
+                build:"EARTHLINE PROPERTY FRAME AUTHORITY 1.0",
+                bounds:{west:westM7852,south:southM7852,east:eastM7852,north:northM7852},
+                inputFeatures:inCountM7852,outputFeatures:outM7852.length,
+                clippedFeatures:clippedM7852,droppedFeatures:droppedM7852,
+                verified:true,at:new Date().toISOString()
+              };
+              window.EARTHLINE_PROPERTY_FRAME_PUBLICATION_AUDIT_M7852=frameClipM7852;
+            }
+          }
+
+          '''
+          s=s[:at]+s[at:].replace(anchor,replacement,1)
+
+          if marker not in s:
+              raise SystemExit("frame authority marker missing after rewrite")
+          p.write_text(s,encoding="utf-8")
+          print("Installed Property frame authority in earthlineLockPropertyResult15815")
+          PY
+          git diff --check
+          grep -q "EARTHLINE PROPERTY FRAME AUTHORITY 1.0" index.html
+      - name: Commit authoritative owner change
+        run: |
+          git config user.name "Earthline Engine"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: contain authoritative Property swales to declared frame"
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live

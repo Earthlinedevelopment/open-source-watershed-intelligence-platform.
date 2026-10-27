@@ -1,0 +1,35 @@
+name: Earthline V1 A10 Back-to-Back Gate 17194
+on:
+  push:
+    branches: [repair/v1-stability-17166]
+    paths:
+      - '.github/workflows/earthline-v1-stability-index-patch-17166.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rendered-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/v1-stability-17166
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run V1 rendered stability candidate
+        shell: bash
+        run: node tests/v1-stability-candidate-17166.mjs
+      - name: Upload V1 stability evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-v1-stability-17194
+          path: artifacts/v1-stability-17166
+          if-no-files-found: ignore

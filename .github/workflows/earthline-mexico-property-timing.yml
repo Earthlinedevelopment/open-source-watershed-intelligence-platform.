@@ -1,0 +1,19 @@
+name: Earthline Mexico Property Timing
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mexico-property-timing.mjs'
+      - '.github/workflows/earthline-mexico-property-timing.yml'
+permissions: {contents: read}
+jobs:
+  timing:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: npm install --no-save playwright@1.55.0
+      - run: node tests/mexico-property-timing.mjs

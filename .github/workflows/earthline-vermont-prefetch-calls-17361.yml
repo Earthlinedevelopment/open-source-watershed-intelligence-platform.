@@ -1,0 +1,20 @@
+name: Earthline Vermont Prefetch Calls 17361
+on:
+  push:
+    branches: [repair/browser-performance-live-17268]
+    paths:
+      - 'tests/extract-vermont-prefetch-calls-17361.py'
+      - '.github/workflows/earthline-vermont-prefetch-calls-17361.yml'
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-performance-live-17268}
+      - run: python3 tests/extract-vermont-prefetch-calls-17361.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vermont-prefetch-calls-17361
+          path: vermont-prefetch-calls-17361.txt

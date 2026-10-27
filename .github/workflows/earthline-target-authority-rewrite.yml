@@ -1,0 +1,97 @@
+name: Earthline Target Authority Rewrite
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-target-authority-rewrite.yml'
+permissions:
+  contents: write
+jobs:
+  rewrite:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Rewrite Property target authority
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+
+          marker="EARTHLINE TARGET AUTHORITY 1.0 — resolved-search/corridor/user-drag only"
+          if marker in s:
+              print("already applied")
+              raise SystemExit(0)
+
+          # Replace camera-driven Property target reconciliation with read-only compatibility.
+          start=s.find("function syncPropertyTargetFromMap16201(){")
+          end=s.find("  const CORRIDOR_TIP_KEY_16248",start)
+          if start<0 or end<0:
+              raise SystemExit("target reconciliation owner anchors missing")
+          shim="""function syncPropertyTargetFromMap16201(){
+            /* EARTHLINE TARGET AUTHORITY 1.0 — resolved-search/corridor/user-drag only.
+               Generic camera motion is presentation-only and cannot write Property science coordinates. */
+            return !!window.EARTHLINE_PROPERTY_TARGET_16201;
+          }
+          """
+          s=s[:start]+shim+s[end:]
+
+          # Simplify the existing dragend owner: actual user drag is the only map interaction that writes target.
+          drag_start=s.find("m.on('dragend',()=>{")
+          if drag_start<0:
+              raise SystemExit("dragend owner missing")
+          drag_end=s.find("m.on('moveend',()=>{",drag_start)
+          if drag_end<0:
+              raise SystemExit("moveend owner missing")
+          move_end=s.find("m.on('resize',positionSuggestions16233)",drag_end)
+          if move_end<0:
+              raise SystemExit("resize owner missing")
+          replacement="""m.on('dragend',()=>{const c=m.getCenter?.();if(!c||!Number.isFinite(Number(c.lng))||!Number.isFinite(Number(c.lat)))return;setPropertyTarget16201({lng:Number(c.lng),lat:Number(c.lat),source:'crosshair-user-drag'},{openPanel:false});try{void window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.()}catch(_){}});m.on('moveend',()=>{positionSuggestions16233()});"""
+          s=s[:drag_start]+replacement+s[move_end:]
+
+          # On every non-country resolved Regional/search location, write the resolved location once.
+          anchor="    const focusMode=!!(loc&&loc.focusMode===true);"
+          regional_start=s.find("async function runRegional(q,loc,runToken){")
+          if regional_start<0:
+              raise SystemExit("runRegional owner missing")
+          anchor_at=s.find(anchor,regional_start)
+          if anchor_at<0:
+              raise SystemExit("resolved-location anchor missing inside runRegional")
+          inject="""    if(!countryRequest16845&&loc&&Number.isFinite(Number(loc.lng))&&Number.isFinite(Number(loc.lat))){
+              const setTargetResolved=typeof window.earthlineSetPropertyTarget16201==='function'?window.earthlineSetPropertyTarget16201:null;
+              if(setTargetResolved)setTargetResolved({lng:Number(loc.lng),lat:Number(loc.lat),source:'resolved-search'},{openPanel:false});
+            }
+          """
+          s=s[:anchor_at]+inject+s[anchor_at:]
+
+          # Remove stale M78.43/M78.25 target-freeze markers if any remain.
+          for token in [
+              "EARTHLINE M78.43 — generic moveend cannot replace an accepted crosshair target",
+              "EARTHLINE M78.25 — sub-meter camera jitter cannot replace the accepted crosshair target"
+          ]:
+              if token in s:
+                  # comments may survive elsewhere; fail because ownership is not clean
+                  raise SystemExit("stale target-freeze owner remains: "+token)
+
+          if marker not in s:
+              raise SystemExit("target authority marker missing")
+          p.write_text(s,encoding="utf-8")
+          print("Target authority rewritten")
+          PY
+      - name: Verify no camera-motion Property writer remains
+        run: |
+          grep -q "EARTHLINE TARGET AUTHORITY 1.0" index.html
+          ! grep -q "generic moveend cannot replace an accepted crosshair target" index.html
+          ! grep -q "sub-meter camera jitter cannot replace the accepted crosshair target" index.html
+          grep -q "source:'resolved-search'" index.html
+          grep -q "source:'crosshair-user-drag'" index.html
+      - name: Commit authoritative rewrite
+        run: |
+          git config user.name "Earthline"
+          git config user.email "earthline@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: unify Property target authority"
+          git push origin HEAD:pages-live

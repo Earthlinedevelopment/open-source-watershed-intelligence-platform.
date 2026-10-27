@@ -1,0 +1,22 @@
+name: Earthline Jurisdiction Handoff Extract 17278
+on:
+  push:
+    branches: [repair/browser-performance-live-17268]
+    paths:
+      - 'tests/extract-jurisdiction-caller-17278.py'
+      - '.github/workflows/earthline-jurisdiction-handoff-extract-17278.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-performance-live-17268}
+      - run: python3 tests/extract-jurisdiction-caller-17278.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jurisdiction-handoff-17278
+          path: jurisdiction-caller-17278.txt
+          if-no-files-found: error

@@ -1,0 +1,20 @@
+name: Earthline Terrain Fetch Extract 17340
+on:
+  push:
+    branches: [repair/browser-performance-live-17268]
+    paths:
+      - 'tests/extract-terrain-fetch-owner-17340.py'
+      - '.github/workflows/earthline-terrain-fetch-extract-17340.yml'
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-performance-live-17268}
+      - run: python3 tests/extract-terrain-fetch-owner-17340.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: terrain-fetch-owner-17340
+          path: terrain-fetch-owner-17340.txt

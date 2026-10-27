@@ -1,0 +1,20 @@
+name: Earthline Selection Owner Extract 17322
+on:
+  push:
+    branches: [repair/browser-performance-live-17268]
+    paths:
+      - 'tests/extract-selection-owner-17322.py'
+      - '.github/workflows/earthline-selection-owner-17322.yml'
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-performance-live-17268}
+      - run: python3 tests/extract-selection-owner-17322.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: selection-owner-17322
+          path: selection-owner-17322.txt

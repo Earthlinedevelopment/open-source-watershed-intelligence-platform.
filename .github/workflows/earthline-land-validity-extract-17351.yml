@@ -1,0 +1,20 @@
+name: Earthline Land Validity Owner Extract 17351
+on:
+  push:
+    branches: [repair/browser-performance-live-17268]
+    paths:
+      - 'tests/extract-land-validity-owner-17351.py'
+      - '.github/workflows/earthline-land-validity-extract-17351.yml'
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-performance-live-17268}
+      - run: python3 tests/extract-land-validity-owner-17351.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: land-validity-owner-17351
+          path: land-validity-owner-17351.txt

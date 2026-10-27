@@ -1,0 +1,21 @@
+name: Earthline Browser Hotspot Extract 17270
+on:
+  push:
+    branches: [repair/browser-performance-live-17268]
+    paths:
+      - '.github/workflows/earthline-browser-hotspot-extract-17270.yml'
+      - 'tests/extract-texas-hotspots.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-performance-live-17268}
+      - run: python3 tests/extract-texas-hotspots.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: earthline-browser-hotspots-17270
+          path: texas-hotspots-extract.txt

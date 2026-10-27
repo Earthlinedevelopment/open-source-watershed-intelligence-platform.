@@ -1,0 +1,35 @@
+name: Earthline Accepted Science Owner Diff
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-accepted-science-owner-diff.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Compare accepted 16584 and live swale science owners
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess, re, difflib
+          live=Path("index.html").read_text(encoding="utf-8")
+          old=subprocess.check_output(["git","show","74343a24f90fed7d7abbe9267ef11a2836220de7:index.html"],text=True)
+          terms=["function prescribeSwales15778","function traceLevelContour","flowFirstPlacement15836","targetSpacingM","acceptedSpacingM"]
+          def extract(src,term,span=14000):
+              i=src.find(term)
+              if i<0:return f"NOT FOUND {term}\n"
+              return src[max(0,i-2500):min(len(src),i+span)]
+          for term in terms:
+              a=extract(old,term)
+              b=extract(live,term)
+              print("\n===== TERM",term,"ACCEPTED =====\n",a[:18000])
+              print("\n===== TERM",term,"LIVE =====\n",b[:18000])
+              print("\n===== DIFF",term,"=====\n")
+              print("".join(difflib.unified_diff(a.splitlines(True),b.splitlines(True),fromfile="accepted",tofile="live"))[:26000])
+          PY

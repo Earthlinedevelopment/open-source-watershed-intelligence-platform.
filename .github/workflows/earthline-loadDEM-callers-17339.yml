@@ -1,0 +1,20 @@
+name: Earthline loadDEM Callers Extract 17339
+on:
+  push:
+    branches: [repair/browser-performance-live-17268]
+    paths:
+      - 'tests/extract-loadDEM-callers-17339.py'
+      - '.github/workflows/earthline-loadDEM-callers-17339.yml'
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-performance-live-17268}
+      - run: python3 tests/extract-loadDEM-callers-17339.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: loadDEM-callers-17339
+          path: loadDEM-callers-17339.txt

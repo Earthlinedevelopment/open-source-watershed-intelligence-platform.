@@ -1,0 +1,30 @@
+name: Earthline makeSwales Phase Profile 17302
+on:
+  push:
+    branches: [repair/browser-performance-live-17268]
+    paths:
+      - 'tests/apply-makeswales-phase-profile-17302.py'
+      - '.github/workflows/earthline-makeswales-phase-profile-17302.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  firefox:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: repair/browser-performance-live-17268}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          python3 tests/apply-browser-yield-17268.py
+          python3 tests/apply-makeswales-phase-profile-17302.py
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps firefox
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - run: xvfb-run -a env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='firefox' HEADLESS='false' STATE='Texas' node tests/browser-hotpath-profile-17287.mjs
