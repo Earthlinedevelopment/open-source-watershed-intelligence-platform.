@@ -66,7 +66,7 @@ jobs:
         env:
           BROWSER: ${{ matrix.browser }}
         run: |
-          cat >/tmp/earthline-17600-gate.mjs <<'JS'
+          cat >tests/_earthline-recovery-17600-gate.mjs <<'JS'
           import { chromium, firefox } from 'playwright';
           const browserName=process.env.BROWSER||'chromium';
           const browser=await ({chromium,firefox}[browserName]).launch({headless:true});
@@ -178,4 +178,4 @@ jobs:
           console.log('EARTHLINE_RECOVERY_17600_SUMMARY '+JSON.stringify(summary));
           if(summary.fail)process.exitCode=1;
           JS
-          node /tmp/earthline-17600-gate.mjs
+          node tests/_earthline-recovery-17600-gate.mjs
