@@ -21,14 +21,21 @@ jobs:
           from pathlib import Path
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
-          bad='''        while(i>=0&&i<N&&eligible[i]&&!seen.has(i)&&guard++<N){
-            if(claimed[i])break; /* EARTHLINE M78.11 — one canonical owner per minor-flow cell; stop duplicate downstream tracing. */
-            seen.add(i);cells.push(i);claimed[i]=1;'''
-          good='''        while(i>=0&&i<N&&eligible[i]&&!seen.has(i)&&guard++<N){
-            seen.add(i);cells.push(i);claimed[i]=1;'''
-          if bad in s:
-              s=s.replace(bad,good,1)
-          if "EARTHLINE M78.11 — one canonical owner per minor-flow cell" in s:
+          marker11="EARTHLINE M78.11 — one canonical owner per minor-flow cell"
+          lines=s.splitlines()
+          removed=0
+          kept=[]
+          for line in lines:
+              if marker11 in line:
+                  if "if(claimed[i])break" not in line:
+                      raise SystemExit("M78.11 marker found on unexpected line")
+                  removed+=1
+                  continue
+              kept.append(line)
+          if removed not in (0,1):
+              raise SystemExit(f"unexpected M78.11 marker count={removed}")
+          s="\n".join(kept)+"\n"
+          if marker11 in s or "if(claimed[i])break;" in s:
               raise SystemExit("M78.11 still present")
           marker="EARTHLINE M78.49 — accepted Build 16584 minor-flow tracing restored"
           if marker not in s:
@@ -51,3 +58,5 @@ jobs:
           git commit -m "science: restore accepted 16584 flow tracing in production"
           git pull --rebase origin pages-live
           git push origin HEAD:pages-live
+
+# exact marker-line restoration
