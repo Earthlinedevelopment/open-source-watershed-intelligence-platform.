@@ -1,0 +1,113 @@
+name: Earthline Mantra 79 Spacing Candidate Audit
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-mantra79-spacing-candidate-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - name: Build local spacing-owner candidate only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          reps=[
+            (
+              '? {maxLevels:14,maxSeedsPerLevel:4,maxCandidates:10,maxFinal:6,perLevel:1,maxMs:2000}\n      : {maxLevels:72,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200,perLevel:16,maxMs:120000};',
+              '? {maxLevels:14,maxSeedsPerLevel:4,maxCandidates:10,maxFinal:6,perLevel:1,maxMs:2000}\n      : {maxLevels:256,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200,perLevel:16,maxMs:120000};'
+            ),
+            (
+              'const medSlope=clampN(Number.isFinite(medSlopeRaw)?medSlopeRaw:0.012,0.012,0.45);',
+              'const medSlope=clampN(Math.min(Number.isFinite(medSlopeRaw)?medSlopeRaw:0.012,maxS/100),0.012,maxS/100);'
+            )
+          ]
+          for old,new in reps:
+              n=s.count(old)
+              if n!=1: raise SystemExit(f"candidate anchor count {n}: {old[:90]}")
+              s=s.replace(old,new,1)
+          p.write_text(s,encoding="utf-8")
+          print("Local-only candidate: Property maxLevels 256; spacing slope capped to eligible maxS domain.")
+          PY
+          git diff --check
+      - name: Serve local candidate
+        run: |
+          nohup python3 -m http.server 8000 --bind 127.0.0.1 >/tmp/m79-http.log 2>&1 &
+          for i in {1..30}; do
+            curl -fsS http://127.0.0.1:8000/index.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/m79-http.log
+          exit 1
+      - name: Audit Arizona control 2 candidate
+        run: |
+          cat > m79-spacing-candidate.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true,channel:'chrome'});
+          const page=await browser.newPage({viewport:{width:1798,height:831}});
+          await page.goto('http://127.0.0.1:8000/?m79_spacing='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE PROPERTY FRAME AUTHORITY 1.0'),null,{timeout:90000,polling:250});
+          if(!await page.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'))){
+            await page.evaluate(()=>document.getElementById('earthlineRailSearch16188')?.click());await page.waitForTimeout(250);
+          }
+          await page.locator('#searchInput').fill('Arizona'); await page.waitForTimeout(900);
+          const opt=page.locator('#earthlineSearchSuggestions15970 [role="option"]').filter({hasText:/Arizona/i}).first();
+          if(await opt.count())await opt.click({timeout:10000}).catch(()=>{});
+          await page.evaluate(()=>document.getElementById('runBtn')?.click());
+          await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191,null,{timeout:60000,polling:150});
+          const lng=-111.93354,lat=34.21600;
+          const before=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
+          await page.evaluate(({lng,lat})=>{const m=window.earthlineMap||earthlineMap;m.jumpTo({center:[lng,lat],zoom:16.59});try{m.fire?.('dragend')}catch(_){}},{lng,lat});
+          await page.waitForTimeout(500);
+          await page.locator('#earthlineDeclareProperty16169').click({timeout:10000});
+          await page.waitForFunction(prev=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173;return !!a&&Number(a.serial||0)>prev&&a.settled===true},before,{timeout:90000,polling:120});
+          await page.waitForTimeout(1000);
+          const out=await page.evaluate(()=>{
+            const md=M;
+            const safe=md.authoritativeSafeSwales15815||{features:[]};
+            let max=-Infinity,n=0,over=0;
+            for(const f of safe.features||[])for(const p of f.geometry?.coordinates||[]){
+              try{
+                const g=earthlineLngLatToGrid(Number(p[0]),Number(p[1]));
+                const sp=Number(slopePct(Math.round(g[0]),Math.round(g[1])));
+                if(Number.isFinite(sp)){max=Math.max(max,sp);n++;if(sp>4.000001)over++}
+              }catch(_){}
+            }
+            return {
+              count:safe.features?.length||0,
+              swaleMeta:JSON.parse(JSON.stringify(md.swaleMeta||null)),
+              spacingStats:JSON.parse(JSON.stringify(md.spacingStats||null)),
+              diagnostics:JSON.parse(JSON.stringify(md.swaleDiagnostics||null)),
+              coverage:JSON.parse(JSON.stringify(md.coverageDiagnostic15803||null)),
+              slope:{max:Number.isFinite(max)?max:null,samples:n,over4:over},
+              run:JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null))
+            };
+          });
+          console.log('EARTHLINE_M79_SPACING_CANDIDATE '+JSON.stringify(out));
+          await page.screenshot({path:'/tmp/m79-spacing-candidate.png',fullPage:true});
+          await browser.close();
+          JS
+          node m79-spacing-candidate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra79-spacing-candidate
+          path: /tmp/m79-spacing-candidate.png
+          if-no-files-found: warn
