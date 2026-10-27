@@ -173,3 +173,5 @@ console.log('EARTHLINE_POUDRE_FIRST_CLICK_DIAG '+JSON.stringify({
 await browser.close();
 
 // Poudre probe requires served M78.39 immutable press-target bytes
+
+// post-deploy M78.39 Poudre probe trigger
