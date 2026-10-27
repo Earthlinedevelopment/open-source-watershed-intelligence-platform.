@@ -2003,15 +2003,16 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 })();
 
 
-/* EARTHLINE MANTRA 79 EMERGENCY PRESENTATION RECOVERY — 2026-10-27
-   User-directed recovery only. Preserve authoritative Property geometry/science.
-   Disable the natural textured/planting swale presentation that creates the worm appearance,
-   keep the existing authoritative safe-line renderer visible, and reassert the existing Elder
-   refresh after Property publication. No hydrology, terrain, slope, recharge, frame, target,
-   exclusion or swale-geometry changes. */
-(function installEarthlineEmergencyBluePropertyRecoveryM79(){
-  if(window.EARTHLINE_EMERGENCY_BLUE_PROPERTY_RECOVERY_M79)return;
-  const NATURAL=[
+/* EARTHLINE MANTRA 80 PROPERTY PRESENTATION OWNERSHIP LOCK — 2026-10-27
+   Presentation/load-order repair only. No hydrology, terrain, slope, recharge, target,
+   exclusion, Property frame, ranking, spacing or swale-geometry changes.
+   While Property is active, legacy natural/worm layers cannot be made visible and the
+   authoritative 16221 safe-line presentation cannot be hidden by a later owner.
+   Existing Elder V2 science remains authoritative; this block only invokes its existing
+   Property-start owner after authoritative Property publication. */
+(function installEarthlinePropertyPresentationOwnershipM80(){
+  if(window.EARTHLINE_PROPERTY_PRESENTATION_OWNERSHIP_M80)return;
+  const NATURAL=new Set([
     'earthline-property-swale-footprint-16174',
     'earthline-property-swale-natural-casing-16174',
     'earthline-property-swale-natural-up-16174',
@@ -2019,37 +2020,176 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     'earthline-property-swale-neutral-16177',
     'earthline-swale-planting-shadow-15806',
     'earthline-swale-planting-layer-15806'
-  ];
-  const SAFE=[
+  ]);
+  const SAFE=new Set([
     'earthline-property-safe-casing-16221',
     'earthline-property-safe-earth-16221',
     'earthline-property-safe-life-16221',
     'earthline-property-safe-water-16221'
-  ];
+  ]);
+  let lockedMap=null,elderRunKey='',elderTimer=0;
+
   function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
-  function propertyActive(){try{return String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property'}catch(_){return false}}
+  function propertyActive(){
+    try{
+      const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
+      const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+      const dt=String(displayed?.tier||displayed?.mode||'').toLowerCase();
+      return tier==='property'||dt==='property';
+    }catch(_){return false}
+  }
+  function runKey(){
+    try{
+      const t=window.EARTHLINE_PROPERTY_TARGET_16201||{};
+      const r=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{};
+      return [
+        String(r.runToken||window.EARTHLINE_ACTIVE_RUN_TOKEN_16151||''),
+        Number(t.lat).toFixed(6),Number(t.lng).toFixed(6)
+      ].join('|');
+    }catch(_){return String(Date.now())}
+  }
+
+  function installMapLock(){
+    const m=map(); if(!m)return false;
+    if(lockedMap===m&&m.__earthlineM80PresentationLock)return true;
+
+    const nativeLayout=m.setLayoutProperty?.bind(m);
+    const nativePaint=m.setPaintProperty?.bind(m);
+    const nativeAdd=m.addLayer?.bind(m);
+
+    if(nativeLayout&&!m.setLayoutProperty?.__earthlineM80){
+      const wrapped=function(id,name,value){
+        if(propertyActive()){
+          if(NATURAL.has(String(id))&&name==='visibility') value='none';
+          if(SAFE.has(String(id))&&name==='visibility') value='visible';
+        }
+        return nativeLayout(id,name,value);
+      };
+      wrapped.__earthlineM80=true;
+      wrapped.__earthlineM80Native=nativeLayout;
+      m.setLayoutProperty=wrapped;
+    }
+
+    if(nativePaint&&!m.setPaintProperty?.__earthlineM80){
+      const wrapped=function(id,name,value){
+        if(propertyActive()){
+          if(NATURAL.has(String(id))&&(name==='line-opacity'||name==='fill-opacity'||name==='raster-opacity'||name==='circle-opacity')) value=0;
+          if(SAFE.has(String(id))&&name==='line-opacity') value=.98;
+        }
+        return nativePaint(id,name,value);
+      };
+      wrapped.__earthlineM80=true;
+      wrapped.__earthlineM80Native=nativePaint;
+      m.setPaintProperty=wrapped;
+    }
+
+    if(nativeAdd&&!m.addLayer?.__earthlineM80){
+      const wrapped=function(layer,beforeId){
+        let next=layer;
+        try{
+          const id=String(layer?.id||'');
+          if(propertyActive()&&(NATURAL.has(id)||SAFE.has(id))){
+            next=Object.assign({},layer,{layout:Object.assign({},layer.layout||{},{
+              visibility:NATURAL.has(id)?'none':'visible'
+            })});
+            if(SAFE.has(id)){
+              next.paint=Object.assign({},layer.paint||{}, {'line-opacity':.98});
+            }else if(NATURAL.has(id)){
+              const paint=Object.assign({},layer.paint||{});
+              for(const k of ['line-opacity','fill-opacity','raster-opacity','circle-opacity'])if(k in paint)paint[k]=0;
+              next.paint=paint;
+            }
+          }
+        }catch(_){}
+        return nativeAdd(next,beforeId);
+      };
+      wrapped.__earthlineM80=true;
+      wrapped.__earthlineM80Native=nativeAdd;
+      m.addLayer=wrapped;
+    }
+
+    lockedMap=m;
+    m.__earthlineM80PresentationLock=true;
+    return true;
+  }
+
   function enforce(reason='manual'){
-    const m=map();if(!m||!propertyActive())return false;
+    const m=map(); if(!m||!propertyActive())return false;
+    installMapLock();
     let naturalHidden=0,safeShown=0;
-    for(const id of NATURAL){try{if(m.getLayer?.(id)){m.setLayoutProperty?.(id,'visibility','none');naturalHidden++}}catch(_){}}
+    for(const id of NATURAL){
+      try{
+        if(!m.getLayer?.(id))continue;
+        m.setLayoutProperty?.(id,'visibility','none');
+        for(const p of ['line-opacity','fill-opacity','raster-opacity','circle-opacity']){
+          try{if(m.getPaintProperty?.(id,p)!=null)m.setPaintProperty?.(id,p,0)}catch(_){}
+        }
+        naturalHidden++;
+      }catch(_){}
+    }
     try{window.earthlineSetNaturalSwalePlantingVisible15806?.(false)}catch(_){}
     for(const id of SAFE){
       try{
         if(!m.getLayer?.(id))continue;
         m.setLayoutProperty?.(id,'visibility','visible');
         m.setPaintProperty?.(id,'line-opacity',.98);
-        m.moveLayer?.(id);safeShown++;
+        m.moveLayer?.(id);
+        safeShown++;
       }catch(_){}
     }
     try{m.triggerRepaint?.()}catch(_){}
-    try{window.EARTHLINE_ELDER_TREES_V1_17097?.refresh?.()}catch(_){}
-    window.EARTHLINE_EMERGENCY_BLUE_PROPERTY_RECOVERY_M79.last={reason,naturalHidden,safeShown,at:new Date().toISOString()};
+    window.EARTHLINE_PROPERTY_PRESENTATION_OWNERSHIP_M80.last={
+      reason,naturalHidden,safeShown,runKey:runKey(),at:new Date().toISOString()
+    };
     return safeShown>0;
   }
-  function after(reason){for(const ms of [0,120,450,1000])setTimeout(()=>enforce(reason+'-'+ms),ms)}
-  window.EARTHLINE_EMERGENCY_BLUE_PROPERTY_RECOVERY_M79={state:'ready',enforce,after};
-  document.addEventListener('earthline:analysis-complete',()=>after('analysis-complete'),{passive:true});
+
+  function startElders(reason){
+    if(!propertyActive())return;
+    const owner=window.EARTHLINE_ELDER_TREES_V1_17097;
+    if(!owner||typeof owner.startProperty!=='function')return;
+    const key=runKey();
+    const last=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+    if(key===elderRunKey&&(last?.state==='property-pending'||last?.state==='committed'))return;
+    elderRunKey=key;
+    clearTimeout(elderTimer);
+    elderTimer=setTimeout(async()=>{
+      try{
+        const out=await owner.startProperty();
+        window.EARTHLINE_PROPERTY_PRESENTATION_OWNERSHIP_M80.elder={
+          reason,key,state:window.EARTHLINE_ELDER_TREE_LAST_17097?.state||null,
+          featureCount:Number(window.EARTHLINE_ELDER_TREE_LAST_17097?.featureCount||0),
+          completed:!!out,at:new Date().toISOString()
+        };
+        enforce('elder-complete');
+      }catch(err){
+        window.EARTHLINE_PROPERTY_PRESENTATION_OWNERSHIP_M80.elder={
+          reason,key,state:'failed',error:String(err&&err.message||err),at:new Date().toISOString()
+        };
+      }
+    },250);
+  }
+
+  function after(reason){
+    installMapLock();
+    for(const ms of [0,80,220,600,1400,3000])setTimeout(()=>enforce(reason+'-'+ms),ms);
+    setTimeout(()=>startElders(reason),350);
+  }
+
+  window.EARTHLINE_PROPERTY_PRESENTATION_OWNERSHIP_M80={
+    state:'ready',enforce,after,installMapLock,
+    rule:'Property-only: natural/worm presentation locked off; authoritative 16221 safe lines locked visible; existing Elder V2 startProperty invoked after publication'
+  };
+
+  document.addEventListener('earthline:analysis-complete',e=>{
+    const raw=String(e?.detail?.tier||e?.detail?.mode||document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
+    if(raw.includes('property')||propertyActive())after('analysis-complete');
+  },{passive:true});
   document.addEventListener('earthline:property-published',()=>after('property-published'),{passive:true});
-  const boot=()=>after('boot');
+
+  const boot=()=>{
+    installMapLock();
+    if(propertyActive())after('boot-property');
+  };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
