@@ -63,10 +63,12 @@ jobs:
               try{
                 await page.waitForFunction(q=>{
                   if(window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970)return true;
+                  const status=String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'');
                   const perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null;
                   const root=window.EARTHLINE_STANDARD_ROOT_CAUSE_AUDIT_16784||null;
-                  return !!perf&&!!root&&String(root.query||'').toLowerCase().includes(q.toLowerCase());
+                  return /screening published\./i.test(status)&&!!perf&&!!root&&String(root.query||'').toLowerCase().includes(q.toLowerCase());
                 },query,{timeout:120000,polling:150});
+                await page.waitForTimeout(250);
               }catch(_){timedOut=true}
             }catch(e){loadError=String(e)}
             const a=loadError?{}:await page.evaluate(()=>({
