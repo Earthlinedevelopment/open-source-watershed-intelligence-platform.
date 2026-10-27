@@ -7,7 +7,7 @@ const errs=[]; page.on('pageerror',e=>errs.push(String(e)));
 
 await page.goto('https://earthlinedevelopment.org/?m78_desktop_crosshair='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
 await page.waitForSelector('#searchInput',{timeout:25000});
-await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE M78.11 — one canonical owner per minor-flow cell')&&document.documentElement.innerHTML.includes('EARTHLINE M78.16 — resilient free global OSM transport with three current public instances')&&document.documentElement.innerHTML.includes('EARTHLINE M78.17 — clear prior Property presentation at authoritative run start')&&document.documentElement.innerHTML.includes('EARTHLINE M78.19 — loaded map evidence is the primary Property exclusion screen')&&document.documentElement.innerHTML.includes('EARTHLINE M78.22 — canonical five-decimal crosshair owns the Property analysis frame')&&document.documentElement.innerHTML.includes('EARTHLINE M78.25 — sub-meter camera jitter cannot replace the accepted crosshair target')&&document.documentElement.innerHTML.includes('EARTHLINE M78.27 — contour start and marcher share one half-open crossing rule')&&document.documentElement.innerHTML.includes('earthline-launch-16872.js?v=17606')&&document.documentElement.innerHTML.includes('EARTHLINE M78.20 — realistic non-overlapping Property swale presentation'),undefined,{timeout:90000,polling:500});
+await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE TARGET AUTHORITY 1.0 — resolved-search/corridor/user-drag only')&&document.documentElement.innerHTML.includes('complete accepted Build 16584 Property swale prescriber restored')&&document.documentElement.innerHTML.includes('EARTHLINE M78.44 — rejected local level-set pivot removed; pre-pivot contour prescriber restored')&&document.documentElement.innerHTML.includes('earthline-launch-16872.js?v=17606'),undefined,{timeout:90000,polling:500});
 await page.waitForTimeout(1000);
 
 if(!await page.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'))){
@@ -42,6 +42,7 @@ async function runHumanCrosshair(lng,lat,label){
   }));
   const btn=page.locator('#earthlineDeclareProperty16169');
   await btn.waitFor({state:'visible',timeout:10000});
+  const propertyStarted=Date.now();
   await btn.click({timeout:10000});
   await page.waitForFunction(prev=>{
     const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173;
@@ -141,14 +142,15 @@ async function runHumanCrosshair(lng,lat,label){
       errs:[...window.__earthlineDesktopErrors||[]]
     };
   },{lng,lat,label,elderRaw});
+  const elapsedMs=Date.now()-propertyStarted;
   await page.screenshot({path:'/tmp/'+label+'.png',fullPage:true});
-  return {pre,snap};
+  return {pre,snap,elapsedMs};
 }
 
 const first=await runHumanCrosshair(-111.93067,34.21568,'m78-desktop-first');
-const second=await runHumanCrosshair(-111.93347,34.21629,'m78-desktop-second');
+const second=await runHumanCrosshair(-111.93354,34.21600,'m78-desktop-second');
 const firstRepeat=await runHumanCrosshair(-111.93067,34.21568,'m78-desktop-first-repeat');
-const secondRepeat=await runHumanCrosshair(-111.93347,34.21629,'m78-desktop-second-repeat');
+const secondRepeat=await runHumanCrosshair(-111.93354,34.21600,'m78-desktop-second-repeat');
 console.log('EARTHLINE_M78_PRESCRIBER_SOURCE '+await page.evaluate(()=>{try{return typeof prescribeSwales15778==='function'?String(prescribeSwales15778):'UNAVAILABLE'}catch(e){return 'ERROR '+String(e)}}));
 console.log('EARTHLINE_M78_DESKTOP_CROSSHAIR '+JSON.stringify({first,second,firstRepeat,secondRepeat,errs}));
 await browser.close();
@@ -158,8 +160,8 @@ const firstCenter=first.snap.declaration?.center,secondCenter=second.snap.declar
 const identityOk=
  near(first.pre.target?.lng,-111.93067)&&near(first.pre.target?.lat,34.21568)&&
  near(firstCenter?.lng,-111.93067)&&near(firstCenter?.lat,34.21568)&&
- near(second.pre.target?.lng,-111.93347)&&near(second.pre.target?.lat,34.21629)&&
- near(secondCenter?.lng,-111.93347)&&near(secondCenter?.lat,34.21629);
+ near(second.pre.target?.lng,-111.93354)&&near(second.pre.target?.lat,34.21600)&&
+ near(secondCenter?.lng,-111.93354)&&near(secondCenter?.lat,34.21600);
 const systemsOk=[first,second,firstRepeat,secondRepeat].every(r=>{
   const e=r.snap.elder||{};
   const sw=r.snap.swales||{};
@@ -192,7 +194,7 @@ const repeatOk=
   String(second.snap.swales?.fingerprint||'')===String(secondRepeat.snap.swales?.fingerprint||'') &&
   Number(second.snap.swales?.count||0)===Number(secondRepeat.snap.swales?.count||0) &&
   String(second.snap.water?.fingerprint||'')===String(secondRepeat.snap.water?.fingerprint||'');
-console.log('EARTHLINE_M78_DESKTOP_STRICT '+JSON.stringify({identityOk,systemsOk,routeDiffOk,repeatOk,first:{elder:first.snap.elder,swales:first.snap.swales,water:first.snap.water,aquifer:first.snap.aquifer},second:{elder:second.snap.elder,swales:second.snap.swales,water:second.snap.water,aquifer:second.snap.aquifer},firstRepeat:{swales:firstRepeat.snap.swales,water:firstRepeat.snap.water},secondRepeat:{swales:secondRepeat.snap.swales,water:secondRepeat.snap.water}}));
+console.log('EARTHLINE_M78_DESKTOP_STRICT '+JSON.stringify({identityOk,systemsOk,routeDiffOk,repeatOk,first:{elapsedMs:first.elapsedMs,elder:first.snap.elder,swales:first.snap.swales,water:first.snap.water,aquifer:first.snap.aquifer},second:{elapsedMs:second.elapsedMs,elder:second.snap.elder,swales:second.snap.swales,water:second.snap.water,aquifer:second.snap.aquifer},firstRepeat:{elapsedMs:firstRepeat.elapsedMs,swales:firstRepeat.snap.swales,water:firstRepeat.snap.water},secondRepeat:{elapsedMs:secondRepeat.elapsedMs,swales:secondRepeat.snap.swales,water:secondRepeat.snap.water}}));
 if(!identityOk||!systemsOk||!routeDiffOk||!repeatOk)process.exitCode=1;
 
 // M78.8 raw Elder tile verdict capture
@@ -226,3 +228,5 @@ if(!identityOk||!systemsOk||!routeDiffOk||!repeatOk)process.exitCode=1;
 // M78.21 extract authoritative prescriber owner source
 
 // M78.44 pre-pivot science regression gate restored
+
+// exact user Arizona pair + accepted-16584 science validation
