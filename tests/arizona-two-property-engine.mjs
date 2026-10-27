@@ -18,11 +18,13 @@ const opt=page.locator('#earthlineSearchSuggestions15970 [role="option"]').filte
 if(await opt.count()) await opt.click({timeout:10000});
 await page.evaluate(()=>document.getElementById('runBtn')?.click());
 await page.waitForFunction(()=>!!window.EARTHLINE_PROPERTY_TARGET_16201&&String(window.EARTHLINE_PROPERTY_TARGET_16201.source||'').includes('resolved-search'),undefined,{timeout:30000,polling:100});
+await page.waitForFunction(()=>!document.documentElement.classList.contains('earthline-regional-running-16233')&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true',undefined,{timeout:30000,polling:100});
+await page.waitForTimeout(300);
 
 async function runProperty(label){
   const before=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
   const t0=Date.now();
-  await page.locator('#earthlineDeclareProperty16169').click({timeout:10000});
+  await page.locator('#earthlineDeclareProperty16169').click({timeout:15000,noWaitAfter:true});
   await page.waitForFunction(prev=>{
     const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173;
     return !!a&&Number(a.serial||0)>prev&&a.settled===true;
@@ -75,3 +77,5 @@ const ok=coherent(first)&&coherent(second);
 console.log('EARTHLINE_ARIZONA_TWO_PROPERTY '+JSON.stringify({ok,first,second,errors}));
 await browser.close();
 if(!ok)process.exitCode=1;
+
+// Wait for Regional terminal before consecutive Property gate
