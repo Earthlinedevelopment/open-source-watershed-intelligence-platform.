@@ -1,0 +1,181 @@
+name: Earthline Recovery 17600 Read-Only Integrated Gate
+on:
+  push:
+    branches: [recovery/full-science-blue-elders-17600]
+    paths: ['.github/workflows/earthline-recovery-17600-readonly-gate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  integrated:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: recovery/full-science-blue-elders-17600
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - name: Static locked-owner assertions
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          required=[
+            "const thr=streamThreshold(),chanThr=thr*3.2,maxS=4;",
+            "const safeSlope=slopePct(x,y)<=4;",
+            "maxS=Number(lg.maxSlopePct||4);",
+            "EARTHLINE_PROPERTY_ONE_PRESS_OWNER_17444",
+            "EARTHLINE_PROPERTY_SHARED_ACTIVATION_17494",
+            "EARTHLINE_PROPERTY_IMMEDIATE_EXECUTION_17497",
+            "EARTHLINE_FIREFOX_STABLE_TARGET_PRIME_17529",
+            "EARTHLINE_ELDER_SCIENTIFIC_TERMINAL_PUBLISH_17512",
+            "EARTHLINE_ELDER_FRAME_INSTALL_OWNER_17514",
+            "EARTHLINE_ELDER_BEFORE_HYDROLOGY_17515",
+            "EARTHLINE_PROPERTY_MAJOR_CHANNEL_CIRCULAR_BUFFER_17483",
+            "const safeOpacity17172=.98;",
+          ]
+          missing=[x for x in required if x not in s]
+          forbidden=[
+            "const thr=streamThreshold(),chanThr=thr*3.2,maxS=33;",
+            "const safeSlope=slopePct(x,y)<=33;",
+            "const safeOpacity17172=0;"
+          ]
+          bad=[x for x in forbidden if x in s]
+          if missing or bad:
+            raise SystemExit(f'missing={missing} forbidden={bad}')
+          print('STATIC_LOCKS_PASS')
+          PY
+          node --check earthline-launch-16872.js
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Start candidate server
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-17600-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/earthline-17600-http.log
+          exit 1
+      - name: Run exact Arizona Property integrated gate
+        env:
+          BROWSER: ${{ matrix.browser }}
+        run: |
+          cat >/tmp/earthline-17600-gate.mjs <<'JS'
+          import { chromium, firefox } from 'playwright';
+          const browserName=process.env.BROWSER||'chromium';
+          const browser=await ({chromium,firefox}[browserName]).launch({headless:true});
+          const controls=[
+            {name:'AZ1',lng:-111.93067,lat:34.21568},
+            {name:'AZ2',lng:-111.93456,lat:34.21545}
+          ];
+          const NATURAL=[
+            'earthline-property-swale-footprint-16174',
+            'earthline-property-swale-natural-casing-16174',
+            'earthline-property-swale-natural-up-16174',
+            'earthline-property-swale-natural-flip-16174',
+            'earthline-property-swale-neutral-16177',
+            'earthline-swale-planting-shadow-15806',
+            'earthline-swale-planting-layer-15806'
+          ];
+          const SAFE=[
+            'earthline-property-safe-casing-16221',
+            'earthline-property-safe-earth-16221',
+            'earthline-property-safe-life-16221',
+            'earthline-property-safe-water-16221'
+          ];
+          const rows=[];
+          for(const ctl of controls){
+            const context=await browser.newContext({viewport:{width:1700,height:950}});
+            const page=await context.newPage();
+            const pageErrors=[];page.on('pageerror',e=>pageErrors.push(String(e)));
+            await page.goto('http://127.0.0.1:8787/?recovery17600='+ctl.name+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+            await page.waitForSelector('#searchInput',{timeout:30000});
+            await page.locator('#searchInput').fill('Arizona');
+            await page.waitForTimeout(650);
+            const opts=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
+            if(await opts.count())await opts.first().click();
+            const run=page.locator('#runBtn');
+            if(await run.isVisible()){
+              const busy=await run.evaluate(b=>b.dataset.busy==='1'||b.disabled);
+              if(!busy)await run.click();
+            }
+            await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191,null,{timeout:120000,polling:100});
+            await page.evaluate(ctl=>{
+              const target={lng:ctl.lng,lat:ctl.lat,source:'crosshair',code:'',score:0,at:new Date().toISOString()};
+              window.earthlineMap?.jumpTo?.({center:[ctl.lng,ctl.lat],zoom:17,bearing:0,pitch:0});
+              if(typeof window.earthlineSetPropertyTarget16201==='function')window.earthlineSetPropertyTarget16201(target,{openPanel:false});
+              else window.EARTHLINE_PROPERTY_TARGET_16201=target;
+              try{window.earthlineReconcilePanel16188?.()}catch(_){}
+            },ctl);
+            await page.waitForFunction(()=>!!document.getElementById('earthlineDeclareProperty16169'),null,{timeout:15000});
+            const before=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
+            const button=page.locator('#earthlineDeclareProperty16169');
+            await button.click({timeout:15000});
+            await page.waitForFunction(before=>{
+              const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+              return !!a&&Number(a.serial||0)>before&&a.settled===true;
+            },before,{timeout:150000,polling:150});
+            await page.waitForTimeout(1800);
+            const result=await page.evaluate(({before,NATURAL,SAFE})=>{
+              const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+              const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+              const safe=window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null;
+              const elder=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+              const m=(typeof M!=='undefined'?M:null);
+              const natural=NATURAL.map(id=>({id,exists:!!mp?.getLayer?.(id),visibility:mp?.getLayer?.(id)?mp.getLayoutProperty(id,'visibility'):null}));
+              const safeLayers=SAFE.map(id=>({id,exists:!!mp?.getLayer?.(id),visibility:mp?.getLayer?.(id)?mp.getLayoutProperty(id,'visibility'):null,opacity:mp?.getLayer?.(id)?mp.getPaintProperty(id,'line-opacity'):null}));
+              let maxSlope=0,unsafeSlope=0,unsafeNoBuild=0,unsafePond=0,unsafeChannel=0,points=0;
+              let channelThreshold=null;
+              try{channelThreshold=Number(streamThreshold()*3.2)}catch(_){}
+              for(const sw of (m?.swales||[])){
+                for(const p of (sw?.pts||[])){
+                  const x=Math.max(0,Math.min(GW-1,Math.round(Number(p?.[0])))),y=Math.max(0,Math.min(GH-1,Math.round(Number(p?.[1])))),i=y*GW+x;
+                  if(!Number.isFinite(x)||!Number.isFinite(y))continue;
+                  points++;
+                  let sp=Infinity;try{sp=Number(slopePct(x,y))}catch(_){}
+                  if(Number.isFinite(sp))maxSlope=Math.max(maxSlope,sp);
+                  if(!Number.isFinite(sp)||sp>4.000001)unsafeSlope++;
+                  if(m?.noBuildMask?.[i])unsafeNoBuild++;
+                  if(m?.pond?.[i])unsafePond++;
+                  if(Number.isFinite(channelThreshold)&&Number(m?.acc?.[i]||0)>=channelThreshold)unsafeChannel++;
+                }
+              }
+              const frame=Array.isArray(m?.analysisBoundaryLngLat)?m.analysisBoundaryLngLat:[];
+              let outsideFrame=0,fcCount=0;
+              if(frame.length){
+                const xs=frame.map(p=>Number(p[0])).filter(Number.isFinite),ys=frame.map(p=>Number(p[1])).filter(Number.isFinite);
+                const bb=[Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)];
+                const fc=m?.authoritativeSafeSwales15815;
+                for(const f of (fc?.features||[])){
+                  for(const q of (f?.geometry?.coordinates||[])){
+                    fcCount++;
+                    const x=Number(q?.[0]),y=Number(q?.[1]);
+                    if(!(x>=bb[0]-1e-8&&x<=bb[2]+1e-8&&y>=bb[1]-1e-8&&y<=bb[3]+1e-8))outsideFrame++;
+                  }
+                }
+              }
+              const serialDelta=Number(a?.serial||0)-Number(before||0);
+              const naturalHidden=natural.filter(x=>x.exists).every(x=>x.visibility==='none');
+              const safeVisible=safeLayers.filter(x=>x.exists).length>=1&&safeLayers.filter(x=>x.exists).every(x=>x.visibility!=='none'&&Number(x.opacity)>=.97);
+              const sciencePass=points>0&&unsafeSlope===0&&unsafeNoBuild===0&&unsafePond===0&&unsafeChannel===0&&outsideFrame===0;
+              const presentationPass=Number(safe?.count||0)>0&&safe?.visible===true&&naturalHidden&&safeVisible;
+              const elderPass=elder?.state==='committed'&&Number(elder?.featureCount||0)>0;
+              return {audit:a,safe,elder,serialDelta,natural,safeLayers,maxSlope,unsafeSlope,unsafeNoBuild,unsafePond,unsafeChannel,points,fcCount,outsideFrame,sciencePass,presentationPass,elderPass};
+            },{before,NATURAL,SAFE});
+            const pass=result.audit?.result===true&&result.serialDelta===1&&result.sciencePass&&result.presentationPass&&result.elderPass&&!pageErrors.length;
+            rows.push({browser:browserName,control:ctl,pass,pageErrors,...result});
+            console.log('EARTHLINE_RECOVERY_17600 '+JSON.stringify(rows.at(-1)));
+            await context.close();
+          }
+          await browser.close();
+          const summary={browser:browserName,total:rows.length,pass:rows.filter(r=>r.pass).length,fail:rows.filter(r=>!r.pass).length,rows};
+          console.log('EARTHLINE_RECOVERY_17600_SUMMARY '+JSON.stringify(summary));
+          if(summary.fail)process.exitCode=1;
+          JS
+          node /tmp/earthline-17600-gate.mjs
