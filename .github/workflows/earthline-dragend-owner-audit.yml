@@ -1,0 +1,25 @@
+name: Earthline Dragend Owner Audit
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-dragend-owner-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: pages-live}
+      - name: Extract dragend owner
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          lines=s.splitlines()
+          for i,line in enumerate(lines):
+              if 'dragend' in line.lower() and ('16201' in line or 'crosshair' in line.lower() or 'property' in line.lower()):
+                  print(f"\n--- line {i+1} ---")
+                  for j in range(max(0,i-8),min(len(lines),i+12)):
+                      print(f"{j+1}: {lines[j]}")
+          PY
