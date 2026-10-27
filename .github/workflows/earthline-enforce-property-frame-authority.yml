@@ -35,12 +35,10 @@ jobs:
           if fn<0:
               raise SystemExit("authoritative safety-lock owner missing")
 
-          anchor='''      if(!candidate)failures.push("corridor-filter-result-invalid");
-
-          if(typeof window.earthlineAuditCorridorClearance15806!=="function"){'''
+          anchor='''      if(!candidate)failures.push("corridor-filter-result-invalid");'''
           at=s.find(anchor,fn)
           if at<0:
-              raise SystemExit("authoritative candidate/audit handoff anchor missing")
+              raise SystemExit("authoritative candidate handoff anchor missing")
 
           replacement=r'''      if(!candidate)failures.push("corridor-filter-result-invalid");
 
@@ -122,17 +120,8 @@ jobs:
             }
           }
 
-          if(typeof window.earthlineAuditCorridorClearance15806!=="function"){'''
+          '''
           s=s[:at]+s[at:].replace(anchor,replacement,1)
-
-          # Put the frame audit into the existing safety verdict.
-          audit_anchor='''      vectorCoverage:M&&M.vectorNoBuildCoverage||null,
-              finalMaskAvailable:!!(M&&M.noBuildMask&&Number(M.noBuildMask.length)>0),'''
-          if audit_anchor not in s[fn:]:
-              raise SystemExit("safety audit metadata anchor missing")
-          s=s[:fn]+s[fn:].replace(audit_anchor,'''      vectorCoverage:M&&M.vectorNoBuildCoverage||null,
-              propertyFrame:frameClipM7852,
-              finalMaskAvailable:!!(M&&M.noBuildMask&&Number(M.noBuildMask.length)>0),''',1)
 
           if marker not in s:
               raise SystemExit("frame authority marker missing after rewrite")
