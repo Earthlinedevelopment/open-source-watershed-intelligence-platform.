@@ -9,20 +9,19 @@ const errs=[]; page.on('pageerror',e=>errs.push(String(e)));
 
 await page.goto('https://earthlinedevelopment.org/?m78_desktop_crosshair='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
 await page.waitForSelector('#searchInput',{timeout:25000});
-await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE M78.11 — one canonical owner per minor-flow cell')&&document.documentElement.innerHTML.includes('EARTHLINE M78.16 — resilient free global OSM transport with three current public instances')&&document.documentElement.innerHTML.includes('EARTHLINE M78.17 — clear prior Property presentation at authoritative run start')&&document.documentElement.innerHTML.includes('EARTHLINE M78.19 — loaded map evidence is the primary Property exclusion screen')&&document.documentElement.innerHTML.includes('EARTHLINE M78.22 — canonical five-decimal crosshair owns the Property analysis frame')&&document.documentElement.innerHTML.includes('EARTHLINE M78.25 — sub-meter camera jitter cannot replace the accepted crosshair target')&&document.documentElement.innerHTML.includes('EARTHLINE M78.27 — contour start and marcher share one half-open crossing rule')&&document.documentElement.innerHTML.includes('Earthline-Science-Kernel-v1.0.0')&&document.documentElement.innerHTML.includes('earthline-launch-16872.js?v=17606')&&document.documentElement.innerHTML.includes('EARTHLINE M78.20 — realistic non-overlapping Property swale presentation')&&document.documentElement.innerHTML.includes('EARTHLINE M78.30 — deterministic local DEM level-set fallback')&&document.documentElement.innerHTML.includes('EARTHLINE M78.32 — accepted crosshair atomically rebinds the Property declaration site')&&document.documentElement.innerHTML.includes('EARTHLINE M78.33 — explicit crosshair authority overrides stale Regional selection residue')&&document.documentElement.innerHTML.includes('EARTHLINE M78.39 — physical Property press latches immutable target into terminal owner')&&document.documentElement.innerHTML.includes('EARTHLINE M78.43 — generic moveend cannot replace an accepted crosshair target'),undefined,{timeout:90000,polling:500});
-await page.waitForTimeout(1000);
+await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE M78.44 — rejected local level-set pivot removed; pre-pivot contour prescriber restored')&&document.documentElement.innerHTML.includes('EARTHLINE M78.43 — generic moveend cannot replace an accepted crosshair target')&&document.documentElement.innerHTML.includes('earthline-launch-16872.js?v=17606'),undefined,{timeout:30000,polling:250});await page.waitForTimeout(1000);
 
 if(!await page.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'))){
   await page.evaluate(()=>document.getElementById('earthlineRailSearch16188')?.click());
   await page.waitForTimeout(250);
 }
 await page.locator('#searchInput').click();
-await page.locator('#searchInput').fill('Arizona');
+await page.locator('#searchInput').fill('Mexico');
 await page.waitForTimeout(800);
-const opt=page.locator('#earthlineSearchSuggestions15970 [role="option"]').filter({hasText:/Arizona/i}).first();
+const opt=page.locator('#earthlineSearchSuggestions15970 [role="option"]').filter({hasText:/Mexico/i}).first();
 if(await opt.count())await opt.click({timeout:8000}).catch(()=>{});
 await page.evaluate(()=>document.getElementById('runBtn')?.click());
-await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191,{timeout:60000,polling:150});
+await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191,{timeout:30000,polling:100});
 await page.waitForTimeout(800);
 
 function fnv(payload){let h=2166136261;for(let i=0;i<payload.length;i++){h^=payload.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(16).padStart(8,'0')}
@@ -74,3 +73,5 @@ const out=await page.evaluate(({lng,lat,settled,targetMs,propertyMs})=>{
 console.log('EARTHLINE_MEXICO_TIMING '+JSON.stringify(out));
 await page.screenshot({path:'/tmp/mexico-property-timing.png',fullPage:true});
 await browser.close();
+
+// Exact Mexico diagnostic uses current pre-pivot science markers only
