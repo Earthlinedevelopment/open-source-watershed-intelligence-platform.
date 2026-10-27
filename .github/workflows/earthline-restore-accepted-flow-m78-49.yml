@@ -1,0 +1,53 @@
+name: Earthline Restore Accepted 16584 Flow Science
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-restore-accepted-flow-m78-49.yml'
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+      - name: Restore accepted 16584 minor-flow tracing only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          bad='''        while(i>=0&&i<N&&eligible[i]&&!seen.has(i)&&guard++<N){
+            if(claimed[i])break; /* EARTHLINE M78.11 — one canonical owner per minor-flow cell; stop duplicate downstream tracing. */
+            seen.add(i);cells.push(i);claimed[i]=1;'''
+          good='''        while(i>=0&&i<N&&eligible[i]&&!seen.has(i)&&guard++<N){
+            seen.add(i);cells.push(i);claimed[i]=1;'''
+          if bad in s:
+              s=s.replace(bad,good,1)
+          if "EARTHLINE M78.11 — one canonical owner per minor-flow cell" in s:
+              raise SystemExit("M78.11 still present")
+          marker="EARTHLINE M78.49 — accepted Build 16584 minor-flow tracing restored"
+          if marker not in s:
+              anchor="    M.flowFirstPlacement15836=flowFirstAudit15836;"
+              if anchor not in s:
+                  raise SystemExit("flow-first audit anchor missing")
+              s=s.replace(anchor,"    /* "+marker+" */\n"+anchor,1)
+          p.write_text(s,encoding="utf-8")
+          print("Accepted 16584 flow tracing restored")
+          PY
+          git diff --check
+          ! grep -q "one canonical owner per minor-flow cell" index.html
+          grep -q "accepted Build 16584 minor-flow tracing restored" index.html
+      - name: Commit science restoration
+        run: |
+          if git diff --quiet -- index.html; then exit 0; fi
+          git config user.name "Earthline Science Repair"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "science: restore accepted 16584 flow tracing in production"
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live
