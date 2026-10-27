@@ -1,0 +1,284 @@
+name: Earthline Mantra 79 Arizona Five-Stage Audit
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/earthline-mantra79-arizona-five-stage-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - name: Run exact Arizona control 1 five-stage audit
+        run: |
+          cat > /tmp/m79-audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+
+          const browser=await chromium.launch({headless:true,channel:'chrome'});
+          const context=await browser.newContext({viewport:{width:1798,height:831},deviceScaleFactor:1});
+          const page=await context.newPage();
+          const errs=[]; page.on('pageerror',e=>errs.push(String(e)));
+
+          await page.goto('https://earthlinedevelopment.org/?m79_geometry='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE PROPERTY FRAME AUTHORITY 1.0'),null,{timeout:90000,polling:250});
+
+          if(!await page.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'))){
+            await page.evaluate(()=>document.getElementById('earthlineRailSearch16188')?.click());
+            await page.waitForTimeout(250);
+          }
+          await page.locator('#searchInput').click();
+          await page.locator('#searchInput').fill('Arizona');
+          await page.waitForTimeout(900);
+          const opt=page.locator('#earthlineSearchSuggestions15970 [role="option"]').filter({hasText:/Arizona/i}).first();
+          if(await opt.count())await opt.click({timeout:10000}).catch(()=>{});
+          await page.evaluate(()=>document.getElementById('runBtn')?.click());
+          await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191,null,{timeout:60000,polling:150});
+          await page.waitForTimeout(600);
+
+          await page.evaluate(()=>{
+            window.EARTHLINE_M79_CAPTURE={clearanceCalls:[]};
+            const original=window.earthlineAuditCorridorClearance15806;
+            if(typeof original!=='function')throw new Error('clearance owner unavailable');
+            window.earthlineAuditCorridorClearance15806=function(collection,...rest){
+              const clone=v=>{try{return JSON.parse(JSON.stringify(v))}catch(_){return null}};
+              const input=clone(collection);
+              const out=original.call(this,collection,...rest);
+              try{
+                window.EARTHLINE_M79_CAPTURE.clearanceCalls.push({
+                  input,
+                  output:clone(out&&out.collection),
+                  stats:clone(out&&out.stats)
+                });
+              }catch(_){}
+              return out;
+            };
+          });
+
+          const lng=-111.93067,lat=34.21568;
+          const before=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
+          await page.evaluate(({lng,lat})=>{
+            const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+            if(!m)throw new Error('map unavailable');
+            m.jumpTo({center:[lng,lat],zoom:16.59});
+            try{m.fire?.('dragend')}catch(_){}
+          },{lng,lat});
+          await page.waitForTimeout(500);
+
+          const pre=await page.evaluate(()=>({
+            target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+            mapCenter:(()=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),c=m?.getCenter?.();return c?{lng:c.lng,lat:c.lat,zoom:m.getZoom?.()}:null})()
+          }));
+
+          await page.locator('#earthlineDeclareProperty16169').click({timeout:10000});
+          await page.waitForFunction(prev=>{
+            const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173;
+            return !!a&&Number(a.serial||0)>prev&&a.settled===true;
+          },before,{timeout:90000,polling:120});
+
+          await page.waitForTimeout(1200);
+
+          const result=await page.evaluate(({lng,lat})=>{
+            const md=(typeof M!=='undefined'&&M)||window.M||{};
+            const map=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+            const clone=v=>{try{return JSON.parse(JSON.stringify(v))}catch(_){return null}};
+            const rad=x=>x*Math.PI/180;
+            function dist(a,b){
+              if(!a||!b)return Infinity;
+              const lat0=rad((Number(a[1])+Number(b[1]))/2);
+              const dx=(Number(b[0])-Number(a[0]))*111320*Math.cos(lat0);
+              const dy=(Number(b[1])-Number(a[1]))*111320;
+              return Math.hypot(dx,dy);
+            }
+            function pointSegDist(p,a,b){
+              const lat0=rad(Number(p[1]));
+              const sx=111320*Math.cos(lat0),sy=111320;
+              const px=Number(p[0])*sx,py=Number(p[1])*sy;
+              const ax=Number(a[0])*sx,ay=Number(a[1])*sy;
+              const bx=Number(b[0])*sx,by=Number(b[1])*sy;
+              const vx=bx-ax,vy=by-ay,wx=px-ax,wy=py-ay;
+              const vv=vx*vx+vy*vy;
+              const t=vv?Math.max(0,Math.min(1,(wx*vx+wy*vy)/vv)):0;
+              return Math.hypot(px-(ax+t*vx),py-(ay+t*vy));
+            }
+            function parts(f){
+              const g=f&&f.geometry;
+              if(!g)return [];
+              if(g.type==='LineString')return [g.coordinates||[]];
+              if(g.type==='MultiLineString')return g.coordinates||[];
+              return [];
+            }
+            function fingerprint(fc){
+              const arr=(fc?.features||[]).map(f=>parts(f));
+              const payload=JSON.stringify(arr);
+              let h=2166136261;
+              for(let i=0;i<payload.length;i++){h^=payload.charCodeAt(i);h=Math.imul(h,16777619)}
+              return (h>>>0).toString(16).padStart(8,'0');
+            }
+            function midpoint(line){
+              if(!line?.length)return null;
+              let total=0;const lens=[];
+              for(let i=1;i<line.length;i++){const d=dist(line[i-1],line[i]);lens.push(d);total+=d}
+              if(!total)return line[Math.floor(line.length/2)]||null;
+              let t=total/2;
+              for(let i=1;i<line.length;i++){if(t<=lens[i-1]){const q=t/lens[i-1],a=line[i-1],b=line[i];return [Number(a[0])+(Number(b[0])-Number(a[0]))*q,Number(a[1])+(Number(b[1])-Number(a[1]))*q]}t-=lens[i-1]}
+              return line[line.length-1];
+            }
+            function metrics(fc){
+              const features=Array.isArray(fc?.features)?fc.features:[];
+              let west=Infinity,south=Infinity,east=-Infinity,north=-Infinity,total=0;
+              const lines=[];
+              for(const f of features)for(const line of parts(f)){
+                if(line.length<2)continue;
+                lines.push(line);
+                for(const p of line){
+                  const x=Number(p?.[0]),y=Number(p?.[1]);if(!Number.isFinite(x)||!Number.isFinite(y))continue;
+                  west=Math.min(west,x);east=Math.max(east,x);south=Math.min(south,y);north=Math.max(north,y);
+                }
+                for(let i=1;i<line.length;i++)total+=dist(line[i-1],line[i]);
+              }
+              const nearest=[];
+              for(let i=0;i<lines.length;i++){
+                const p=midpoint(lines[i]);if(!p)continue;let best=Infinity;
+                for(let j=0;j<lines.length;j++)if(i!==j){
+                  for(let k=1;k<lines[j].length;k++)best=Math.min(best,pointSegDist(p,lines[j][k-1],lines[j][k]));
+                }
+                if(Number.isFinite(best))nearest.push(best);
+              }
+              nearest.sort((a,b)=>a-b);
+              const median=nearest.length?nearest[Math.floor(nearest.length/2)]:null;
+              return {
+                featureCount:features.length,
+                lineCount:lines.length,
+                bounds:Number.isFinite(west)?{west,south,east,north}:null,
+                fingerprint:fingerprint(fc),
+                totalLineLengthM:Number(total.toFixed(2)),
+                medianNearestLineM:median==null?null:Number(median.toFixed(2)),
+                sampleGeometry:features.slice(0,2).map(f=>({id:f?.properties?.id??f?.id??null,coordinates:(parts(f)[0]||[]).slice(0,6)}))
+              };
+            }
+            const raw=clone(md.authoritativePropertySwales15800)||{type:'FeatureCollection',features:[]};
+            const calls=window.EARTHLINE_M79_CAPTURE?.clearanceCalls||[];
+            const frameContained=clone(calls[0]?.input)||{type:'FeatureCollection',features:[]};
+            const clearance=clone(calls[calls.length-1]?.output)||{type:'FeatureCollection',features:[]};
+            const safe=clone(md.authoritativeSafeSwales15815)||{type:'FeatureCollection',features:[]};
+
+            const naturalIds=['earthline-property-natural-casing-16174','earthline-property-natural-neutral-16174','earthline-property-natural-uphill-16174','earthline-property-natural-uphill-flipped-16174'].filter(id=>map?.getLayer?.(id));
+            const safeIds=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'].filter(id=>map?.getLayer?.(id));
+            const layerIds=naturalIds.length?naturalIds:safeIds;
+            const sourceIds=[...new Set(layerIds.map(id=>map.getLayer(id)?.source).filter(Boolean))];
+            let renderFc={type:'FeatureCollection',features:[]},renderSource=null;
+            for(const sid of sourceIds){
+              const src=map?.getSource?.(sid),data=src&&(src._data||src._options?.data);
+              if(data&&Array.isArray(data.features)){
+                let feats=data.features.filter(f=>f?.geometry?.type==='LineString'&&f?.properties?.geometry_role==='centerline');
+                if(!feats.length)feats=data.features.filter(f=>f?.geometry?.type==='LineString');
+                if(feats.length){renderFc={type:'FeatureCollection',features:clone(feats)};renderSource=sid;break}
+              }
+            }
+
+            let maxSafeSlope=-Infinity,slopeSamples=0,over4=0;
+            try{
+              for(const f of safe.features||[])for(const line of parts(f))for(const p of line){
+                const g=typeof earthlineLngLatToGrid==='function'?earthlineLngLatToGrid(Number(p[0]),Number(p[1])):null;
+                if(!g)continue;
+                const x=Math.round(Number(g[0])),y=Math.round(Number(g[1]));
+                const sp=typeof slopePct==='function'?Number(slopePct(x,y)):NaN;
+                if(Number.isFinite(sp)){maxSafeSlope=Math.max(maxSafeSlope,sp);slopeSamples++;if(sp>4.000001)over4++}
+              }
+            }catch(_){}
+
+            const boundary=Array.isArray(md.analysisBoundaryLngLat)?md.analysisBoundaryLngLat:[];
+            let fw=Infinity,fs=Infinity,fe=-Infinity,fn=-Infinity;
+            for(const p of boundary){const x=Number(p?.[0]),y=Number(p?.[1]);if(Number.isFinite(x)&&Number.isFinite(y)){fw=Math.min(fw,x);fe=Math.max(fe,x);fs=Math.min(fs,y);fn=Math.max(fn,y)}}
+            const frameCenter=Number.isFinite(fw)?{lng:(fw+fe)/2,lat:(fs+fn)/2}:null;
+            const aq=md.propertyAquiferOwner16393||null;
+            const aqCenter=aq?.bbox?{lng:(Number(aq.bbox.minLng)+Number(aq.bbox.maxLng))/2,lat:(Number(aq.bbox.minLat)+Number(aq.bbox.maxLat))/2}:null;
+
+            return {
+              requested:{lng,lat},
+              identity:{
+                visibleCrosshair:(()=>{const c=map?.getCenter?.();return c?{lng:c.lng,lat:c.lat}:null})(),
+                acceptedTarget:clone(window.EARTHLINE_PROPERTY_TARGET_16201),
+                declaration:clone(window.EARTHLINE_PROPERTY_DECLARATION_16169),
+                frameCenter,
+                frameBounds:Number.isFinite(fw)?{west:fw,south:fs,east:fe,north:fn}:null,
+                modelLocation:clone(md.loc),
+                waterPublication:clone(md.authoritativeWaterPublication15824),
+                elder:clone(window.EARTHLINE_ELDER_TREE_LAST_17097),
+                aquiferCenter:aqCenter,
+                aquiferOwner:clone(aq),
+                publicationCenter:clone(md.authoritativePropertyRun15800?.center),
+                publication:clone(md.propertyPublication15816)
+              },
+              slope:{
+                diagnosticMaxSlopePct:Number(md.swaleDiagnostics?.levelGenerator?.maxSlopePct),
+                maxPublishedCoordinateSlopePct:Number.isFinite(maxSafeSlope)?Number(maxSafeSlope.toFixed(4)):null,
+                coordinateSamples:slopeSamples,
+                samplesOver4Pct:over4,
+                slopeSafePct:Number(md.swaleDiagnostics?.slopeSafePct),
+                skippedSlope:Number(md.swaleDiagnostics?.levelGenerator?.skippedSlope)
+              },
+              stages:{
+                A_raw_science:metrics(raw),
+                B_frame_contained:metrics(frameContained),
+                C_clearance_output:metrics(clearance),
+                D_authoritative_safe:metrics(safe),
+                E_final_render_source:Object.assign({sourceId:renderSource,layerIds},metrics(renderFc))
+              },
+              frameAudit:clone(window.EARTHLINE_PROPERTY_FRAME_PUBLICATION_AUDIT_M7852),
+              clearanceCalls:calls.map((c,i)=>({i,input:metrics(c.input),output:metrics(c.output),stats:c.stats})),
+              prescriberMedianSpacingM:Number(md.swaleMeta?.measuredMedianSpacingM),
+              runAudit:clone(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173),
+              errors:errs
+            };
+          },{lng,lat});
+
+          const near=(p,lng,lat,t=0.00008)=>p&&Number.isFinite(Number(p.lng))&&Number.isFinite(Number(p.lat))&&Math.abs(Number(p.lng)-lng)<=t&&Math.abs(Number(p.lat)-lat)<=t;
+          const id=result.identity;
+          const waterStamp=String(id.waterPublication?.terrainStamp||'').split('|');
+          const waterCenter=waterStamp.length>=2?{lat:Number(waterStamp[0]),lng:Number(waterStamp[1])}:null;
+          const elderParts=String(id.elder?.propertyRunIdentity||'').split('|');
+          const elderCenter=elderParts.length>=2?{lng:Number(elderParts[0]),lat:Number(elderParts[1])}:null;
+          const identityPass=
+            near(pre.target,lng,lat)&&
+            near(id.acceptedTarget,lng,lat)&&
+            near(id.declaration?.center,lng,lat)&&
+            near(id.frameCenter,lng,lat)&&
+            near(id.modelLocation,lng,lat)&&
+            (!waterCenter||near(waterCenter,lng,lat,.0001))&&
+            (!elderCenter||near(elderCenter,lng,lat,.0001))&&
+            (!id.aquiferCenter||near(id.aquiferCenter,lng,lat,.0002))&&
+            near(id.publicationCenter,lng,lat,.0001);
+          const noMexico=![pre.target,id.acceptedTarget,id.declaration?.center,id.frameCenter,id.modelLocation,waterCenter,elderCenter,id.aquiferCenter,id.publicationCenter]
+            .filter(Boolean).some(p=>Number(p.lat)>18&&Number(p.lat)<22&&Number(p.lng)>-104&&Number(p.lng)<-100);
+          const slopePass=result.slope.diagnosticMaxSlopePct===4&&result.slope.samplesOver4Pct===0;
+          const A=result.stages.A_raw_science,B=result.stages.B_frame_contained,C=result.stages.C_clearance_output,D=result.stages.D_authoritative_safe,E=result.stages.E_final_render_source;
+          const rendererGeometryMatches=D.fingerprint===E.fingerprint&&D.featureCount===E.featureCount;
+          const verdict={identityPass,noMexico,slopePass,rendererGeometryMatches,rawToFrameChanged:A.fingerprint!==B.fingerprint,frameToClearanceChanged:B.fingerprint!==C.fingerprint,clearanceToSafeChanged:C.fingerprint!==D.fingerprint,counts:{A:A.featureCount,B:B.featureCount,C:C.featureCount,D:D.featureCount,E:E.featureCount}};
+          console.log('EARTHLINE_M79_FIVE_STAGE '+JSON.stringify({pre,result,verdict}));
+          await page.screenshot({path:'/tmp/m79-arizona-control1.png',fullPage:true});
+          await browser.close();
+          if(!identityPass||!noMexico||!slopePass||!rendererGeometryMatches)process.exitCode=1;
+          JS
+          node /tmp/m79-audit.mjs
+      - name: Upload exact-control screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mantra79-arizona-control1
+          path: /tmp/m79-arizona-control1.png
+          if-no-files-found: warn
