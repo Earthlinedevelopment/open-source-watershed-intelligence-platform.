@@ -1,41 +1,22 @@
-name: Earthline Arizona Property Validation
-
+name: Earthline Arizona A1 Property Mobile
 on:
   push:
     branches: [pages-live]
     paths:
-      - 'index.html'
       - 'tests/arizona-a1-property-mobile.mjs'
-      - 'tests/arizona-desktop-crosshair-m78.mjs'
       - '.github/workflows/earthline-arizona-a1-property-mobile.yml'
   workflow_dispatch:
-
-permissions:
-  contents: read
-
+permissions: {contents: read}
 jobs:
   test:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: pages-live
+        with: {ref: pages-live}
       - uses: actions/setup-node@v4
         with: {node-version: '20'}
-      - run: npm install --no-save playwright@1.55.0
-      - name: Run Arizona desktop Property controls
-        run: node tests/arizona-desktop-crosshair-m78.mjs
-      - name: Upload Arizona desktop screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: arizona-desktop-property-screens
-          path: |
-            /tmp/m78-desktop-first.png
-            /tmp/m78-desktop-second.png
-            /tmp/m78-desktop-first-repeat.png
-            /tmp/m78-desktop-second-repeat.png
-          if-no-files-found: warn
-      - name: Run Arizona mobile Property controls
-        run: node tests/arizona-a1-property-mobile.mjs
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/arizona-a1-property-mobile.mjs

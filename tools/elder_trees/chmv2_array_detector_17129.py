@@ -3,7 +3,7 @@ import json, math
 import numpy as np
 from scipy import ndimage
 
-METHOD="earthline-elder-tree-aoi-chmv2-v0.8-screen-fallback-refinement"
+METHOD="earthline-elder-tree-aoi-chmv2-v0.7-high-recall-plateau-collapse"
 CURRENT_ELDER_TARGET_PER_HA=15.0
 FUTURE_ELDER_RATIO=2.5
 
@@ -180,50 +180,19 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
         return -neg_structural,lon,lat,h,emerg,area,openf
 
     feats=[]
-    refine_none_count=0
-    refined_outside_bbox_count=0
-    dedupe_rejected_count=0
-    refined_count=0
-    rejection_samples=[]
     for rank,(sc,r,c,cohort) in enumerate(ranked,1):
         ref=refine_candidate(r,c)
-        refinement_status="native-refined"
-        if not ref:
-            # EARTHLINE M78.15 — preserve a valid screen-stage modeled canopy peak
-            # when native refinement cannot resolve a local maximum. This is a
-            # modeled fallback, never upgraded to verified/age evidence.
-            refine_none_count+=1
-            full_col=screen_col0+(c+.5)*screen_ww/max(1,ow)
-            full_row=screen_row0+(r+.5)*screen_wh/max(1,oh)
-            x=origin_x+(full_col+.5)*resx
-            y=origin_y+(full_row+.5)*resy
-            lon,lat=mercator_to_lonlat(x,y)
-            h=float(z[r,c]) if np.isfinite(z[r,c]) else float(canopy_floor_m)
-            emerg=float(prom[r,c]) if np.isfinite(prom[r,c]) else 0.0
-            area=0.0
-            openf=float(open_context[r,c]) if np.isfinite(open_context[r,c]) else 0.0
-            structural=float(sc)
-            ref=(structural,lon,lat,h,emerg,area,openf)
-            refinement_status="screen-fallback"
-            if len(rejection_samples)<8: rejection_samples.append({"rank":rank,"reason":"refine-none-screen-fallback","screen_row":int(r),"screen_col":int(c),"cohort":cohort})
-        else:
-            refined_count+=1
+        if not ref:continue
         structural,lon,lat,h,emerg,area,openf=ref
-        if not (minlon<=lon<=maxlon and minlat<=lat<=maxlat):
-            refined_outside_bbox_count+=1
-            if len(rejection_samples)<8: rejection_samples.append({"rank":rank,"reason":"refined-outside-bbox","screen_row":int(r),"screen_col":int(c),"lon":float(lon),"lat":float(lat),"cohort":cohort})
-            continue
-        if any(hav((lon,lat),f["geometry"]["coordinates"])<10 for f in feats):
-            dedupe_rejected_count+=1
-            if len(rejection_samples)<8: rejection_samples.append({"rank":rank,"reason":"dedupe","lon":float(lon),"lat":float(lat),"cohort":cohort})
-            continue
+        if not (minlon<=lon<=maxlon and minlat<=lat<=maxlat):continue
+        if any(hav((lon,lat),f["geometry"]["coordinates"])<10 for f in feats):continue
         feats.append({
           "type":"Feature","geometry":{"type":"Point","coordinates":[lon,lat]},
           "properties":{
             "record_class":"ELDER_TREE_CANDIDATE",
             "elder_cohort":cohort,
             "cohort_definition":"CURRENT = top locally ranked structures under the research density prior; FUTURE = successor structures retained for continuity. Neither label proves age.",
-            "verification_status":"modeled remote-sensing candidate only","refinement_status":refinement_status,
+            "verification_status":"modeled remote-sensing candidate only",
             "source_class":"MODELED_CHMV2","source_name":"WRI/Meta CHMv2",
             "source_url":source_url,"source_license":"CC BY 4.0",
             "quadkey":q,"method_version":METHOD,"screen_rank":rank,
@@ -257,13 +226,6 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
       "current_target_total":current_target_total,
       "future_target_total":future_target_total,
       "current_selected_total":current_selected_total,
-      "future_selected_total":future_selected_total,
-      "ranked_screen_candidate_count":len(ranked),
-      "refined_count":refined_count,
-      "refine_none_count":refine_none_count,
-      "refined_outside_bbox_count":refined_outside_bbox_count,
-      "dedupe_rejected_count":dedupe_rejected_count,
-      "final_feature_count":len(feats),
-      "rejection_samples":rejection_samples
+      "future_selected_total":future_selected_total
     }
     return {"features":feats,"tile":tile}

@@ -23,23 +23,8 @@ function ensureLanguageOptions(){
   }
   let saved='en';
   try{saved=localStorage.getItem(KEY)||'en'}catch(_){}
-  if(!OPTIONS.some(o=>o.value===saved)){
-    saved='en';
-    try{localStorage.setItem(KEY,'en')}catch(_){}
-  }
+  if(!OPTIONS.some(o=>o.value===saved))saved='en';
   try{sel.value=saved}catch(_){}
-  sel.dataset.earthlineLanguageControl='1';
-  if(sel.dataset.earthlineLanguageBound16890!=='1'){
-    sel.dataset.earthlineLanguageBound16890='1';
-    sel.addEventListener('change',()=>{
-      const next=OPTIONS.some(o=>o.value===sel.value)?sel.value:'en';
-      try{localStorage.setItem(KEY,next)}catch(_){}
-      document.documentElement.lang=next;
-      window.EARTHLINE_LANGUAGE_16488=next;
-    });
-  }
-  document.documentElement.lang=saved;
-  window.EARTHLINE_LANGUAGE_16488=saved;
   sel.disabled=false;
   sel.removeAttribute('disabled');
   sel.setAttribute('aria-disabled','false');
