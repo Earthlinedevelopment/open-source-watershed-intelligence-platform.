@@ -21,7 +21,7 @@ new=r'''    /* EARTHLINE M78.45 — parallel first-valid Overpass transport.
        including a zero-feature result. Losing requests are aborted immediately.
        If every endpoint fails, publication remains fail-closed exactly as before. */
     const controllers16845=[];
-    const jobs16845=endpoints.map((ep,endpointIndex)=>{ 
+    const jobs16845=endpoints.map((ep,endpointIndex)=>{
       const controller=typeof AbortController!=="undefined"?new AbortController():null;
       controllers16845[endpointIndex]=controller;
       const timer=controller?setTimeout(()=>controller.abort(),ep.timeoutMs):null;
