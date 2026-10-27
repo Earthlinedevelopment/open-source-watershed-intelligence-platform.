@@ -1,0 +1,119 @@
+name: Earthline Mantra 79 Candidate C Four-Control Validation
+
+on:
+  push:
+    branches: [mantra79-candidate-c-validate-20261027]
+    paths:
+      - '.github/workflows/earthline-mantra79-candidate-c-four-controls.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra79-candidate-c-validate-20261027
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.55.0
+      - name: Build eligible-slope candidate without deployment
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          old_pair="const medSlopeRaw=Number(medianSlopeInParcel());\n    const medSlope=clampN(Number.isFinite(medSlopeRaw)?medSlopeRaw:0.012,0.012,0.45);"
+          new_pair="const medSlopeRaw=Number(medianSlopeInParcel());\n    const eligibleSlopeSamples15771=[];\n    for(let sy15771=2;sy15771<GH-2;sy15771+=2)for(let sx15771=2;sx15771<GW-2;sx15771+=2){\n      if(!earthlineSafeCell(sx15771,sy15771,maxS))continue;\n      const eligibleSlope15771=Number(slopePct(sx15771,sy15771))/100;\n      if(Number.isFinite(eligibleSlope15771)&&eligibleSlope15771<=maxS/100)eligibleSlopeSamples15771.push(eligibleSlope15771);\n    }\n    eligibleSlopeSamples15771.sort((a,b)=>a-b);\n    const eligibleMedianSlope15771=eligibleSlopeSamples15771.length?eligibleSlopeSamples15771[Math.floor(eligibleSlopeSamples15771.length/2)]:NaN;\n    const medSlope=clampN(Number.isFinite(eligibleMedianSlope15771)?eligibleMedianSlope15771:Math.min(Number.isFinite(medSlopeRaw)?medSlopeRaw:0.012,maxS/100),0.012,maxS/100);\n    M.propertyEligibleSlopeSpacing15771={sampleCount:eligibleSlopeSamples15771.length,rawParcelMedian:medSlopeRaw,eligibleMedian:eligibleMedianSlope15771,spacingSlope:medSlope,maxSlope:maxS/100};"
+          old_budget="? {maxLevels:14,maxSeedsPerLevel:4,maxCandidates:10,maxFinal:6,perLevel:1,maxMs:2000}\n      : {maxLevels:72,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200,perLevel:16,maxMs:120000};"
+          new_budget="? {maxLevels:14,maxSeedsPerLevel:4,maxCandidates:10,maxFinal:6,perLevel:1,maxMs:2000}\n      : {maxLevels:256,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200,perLevel:16,maxMs:120000};"
+          if s.count(old_pair)!=1: raise SystemExit("median-slope owner anchor mismatch")
+          if s.count(old_budget)!=1: raise SystemExit("level-budget owner anchor mismatch")
+          s=s.replace(old_pair,new_pair,1).replace(old_budget,new_budget,1)
+          Path("m79-candidate-c.html").write_text(s,encoding="utf-8")
+          print("Candidate C: eligible-cell median slope + sufficient Property contour levels.")
+          PY
+          git diff --check
+      - name: Run both Arizona controls at production origin
+        run: |
+          cat > m79-eligible-spacing.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const html=fs.readFileSync('m79-candidate-c.html','utf8');
+          const controls=[
+            {name:'AZ1',query:'Arizona',lng:-111.93067,lat:34.21568},
+            {name:'AZ2',query:'Arizona',lng:-111.93354,lat:34.21600},
+            {name:'VT',query:'Vermont',lng:-73.012909,lat:44.513845},
+            {name:'POUDRE',query:'Colorado',lng:-105.2237,lat:40.6412}
+          ];
+          for(const control of controls){
+            const browser=await chromium.launch({headless:true,channel:'chrome'});
+            const context=await browser.newContext({viewport:{width:1798,height:831},deviceScaleFactor:1});
+            const page=await context.newPage();
+            let fulfilled=false;
+            await page.route('https://earthlinedevelopment.org/**',async route=>{
+              const req=route.request();
+              if(!fulfilled && req.resourceType()==='document'){
+                fulfilled=true;
+                await route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html});
+              }else await route.continue();
+            });
+            await page.goto('https://earthlinedevelopment.org/?m79_candidate_c='+control.name+'&t='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#searchInput',{timeout:30000});
+            await page.waitForFunction(()=>document.documentElement.innerHTML.includes('EARTHLINE PROPERTY FRAME AUTHORITY 1.0'),null,{timeout:90000,polling:250});
+            if(!await page.evaluate(()=>document.documentElement.classList.contains('earthline-panel-open-16188'))){
+              await page.evaluate(()=>document.getElementById('earthlineRailSearch16188')?.click());await page.waitForTimeout(250);
+            }
+            await page.locator('#searchInput').fill(control.query);await page.waitForTimeout(900);
+            const opt=page.locator('#earthlineSearchSuggestions15970 [role="option"]').filter({hasText:new RegExp(control.query,'i')}).first();
+            if(await opt.count())await opt.click({timeout:10000}).catch(()=>{});
+            await page.evaluate(()=>document.getElementById('runBtn')?.click());
+            await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191,null,{timeout:60000,polling:150});
+            const before=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
+            await page.evaluate(({lng,lat})=>{
+              const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+              m.jumpTo({center:[lng,lat],zoom:16.59});try{m.fire?.('dragend')}catch(_){}
+            },control);
+            await page.waitForTimeout(500);
+            await page.locator('#earthlineDeclareProperty16169').click({timeout:10000});
+            await page.waitForFunction(prev=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173;return !!a&&Number(a.serial||0)>prev&&a.settled===true},before,{timeout:90000,polling:120});
+            await page.waitForTimeout(800);
+            const out=await page.evaluate(()=>{
+              const md=M,safe=md.authoritativeSafeSwales15815||{features:[]};
+              let max=-Infinity,n=0,over=0;
+              for(const f of safe.features||[])for(const p of f.geometry?.coordinates||[]){
+                try{
+                  const g=earthlineLngLatToGrid(Number(p[0]),Number(p[1]));
+                  const sp=Number(slopePct(Math.round(g[0]),Math.round(g[1])));
+                  if(Number.isFinite(sp)){max=Math.max(max,sp);n++;if(sp>4.000001)over++}
+                }catch(_){}
+              }
+              return {
+                count:safe.features?.length||0,
+                eligibleSlopeSpacing:JSON.parse(JSON.stringify(md.propertyEligibleSlopeSpacing15771||null)),
+                swaleMeta:JSON.parse(JSON.stringify(md.swaleMeta||null)),
+                spacingStats:JSON.parse(JSON.stringify(md.spacingStats||null)),
+                diagnostics:JSON.parse(JSON.stringify(md.swaleDiagnostics||null)),
+                coverage:JSON.parse(JSON.stringify(md.coverageDiagnostic15803||null)),
+                slope:{max:Number.isFinite(max)?max:null,samples:n,over4:over},
+                publication:JSON.parse(JSON.stringify(md.propertyPublication15816||null)),
+                frameAudit:JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_FRAME_PUBLICATION_AUDIT_M7852||null)),
+                run:JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null))
+              };
+            });
+            console.log('EARTHLINE_M79_CANDIDATE_C_FOUR_CONTROL '+JSON.stringify({control,out}));
+            await page.screenshot({path:'/tmp/m79-'+control.name+'-candidate-c.png',fullPage:true});
+            await browser.close();
+          }
+          JS
+          node m79-eligible-spacing.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra79-candidate-c-four-control
+          path: /tmp/m79-*-candidate-c.png
+          if-no-files-found: warn
