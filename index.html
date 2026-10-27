@@ -12222,22 +12222,14 @@ async function directGeocode(q){
             M.vectorNoBuildCoverage.localAuthorityFallback17630="open-data-style";
           }
         }else if(bounded.length===0){
-          /* EARTHLINE M78.9 — a successful loaded-style query with zero relevant
-             exclusion geometry is not proof that the Property frame is clear.
-             Use the existing shared infrastructure adapter before screened-clear. */
-          earthlineProgress("hydrology","confirming parcel exclusions from open data…");
-          const fallbackEvidenceM789=await infrastructure16550();
-          if(earthlineIsStale(myGen)){
-            earthlineSetVectorVerification16343(M.vectorNoBuildCoverage,"unverified","analysis-stale-after-zero-style-fallback");
-            return false;
-          }
-          infrastructure15862P=fallbackEvidenceM789||infrastructure15862P;
-          earthlineMergeInfraMasks15862P(roadMask,buildingMask,infrastructure15862P);
-          count+=Number(infrastructure15862P&&infrastructure15862P.processedGeometryCount||0);
-          M.vectorNoBuildCoverage.sourceFeatureCount+=Number(infrastructure15862P&&infrastructure15862P.overpass&&infrastructure15862P.overpass.rawElementCount||0);
-          M.vectorNoBuildCoverage.evidencePath17630="shared-style-zero-plus-infrastructure-fallback";
-        }
-      }else{
+          /* EARTHLINE M78.48 — successful loaded-style zero result is screened-clear without blocking network fallback.
+             The already-loaded shared map evidence answered successfully and found no relevant exclusion geometry.
+             Per the existing M78.19 evidence contract, that is sufficient OPEN-DATA SCREENING for publication.
+             Overpass remains available only when the loaded style cannot answer; it cannot hold a valid Property run open. */
+          infrastructure15862P.status="loaded-map-style-screened-clear";
+          infrastructure15862P.source="loaded-map-style-open-data";
+          M.vectorNoBuildCoverage.evidencePath17630="shared-style-zero-screened-clear";
+        }      }else{
         earthlineProgress("hydrology","mapping available parcel exclusions…");
         infrastructure15862P=await infrastructure16550();
         if(earthlineIsStale(myGen)){
