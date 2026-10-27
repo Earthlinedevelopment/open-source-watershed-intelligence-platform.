@@ -13129,7 +13129,7 @@ async function prescribeSwales15778(myGen=M.searchGen){
     );
     const work15771=isRegionalTile15769
       ? {maxLevels:14,maxSeedsPerLevel:4,maxCandidates:10,maxFinal:6,perLevel:1,maxMs:2000}
-      : {maxLevels:72,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200,perLevel:16,maxMs:120000};
+      : {maxLevels:256,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200,perLevel:16,maxMs:120000};
 
     // Property mode keeps the real 15–25 ft construction target.
     // Regional mode is a macro opportunity screen, so its band spacing must
@@ -13179,7 +13179,16 @@ async function prescribeSwales15778(myGen=M.searchGen){
       startedAt:performance.now(),updatedAt:new Date().toISOString()
     };
     const medSlopeRaw=Number(medianSlopeInParcel());
-    const medSlope=clampN(Number.isFinite(medSlopeRaw)?medSlopeRaw:0.012,0.012,0.45);
+    const eligibleSlopeSamples15771=[];
+    for(let sy15771=2;sy15771<GH-2;sy15771+=2)for(let sx15771=2;sx15771<GW-2;sx15771+=2){
+      if(!earthlineSafeCell(sx15771,sy15771,maxS))continue;
+      const eligibleSlope15771=Number(slopePct(sx15771,sy15771))/100;
+      if(Number.isFinite(eligibleSlope15771)&&eligibleSlope15771<=maxS/100)eligibleSlopeSamples15771.push(eligibleSlope15771);
+    }
+    eligibleSlopeSamples15771.sort((a,b)=>a-b);
+    const eligibleMedianSlope15771=eligibleSlopeSamples15771.length?eligibleSlopeSamples15771[Math.floor(eligibleSlopeSamples15771.length/2)]:NaN;
+    const medSlope=clampN(Number.isFinite(eligibleMedianSlope15771)?eligibleMedianSlope15771:Math.min(Number.isFinite(medSlopeRaw)?medSlopeRaw:0.012,maxS/100),0.012,maxS/100);
+    M.propertyEligibleSlopeSpacing15771={sampleCount:eligibleSlopeSamples15771.length,rawParcelMedian:medSlopeRaw,eligibleMedian:eligibleMedianSlope15771,spacingSlope:medSlope,maxSlope:maxS/100};
 
     // BUILD-CHECK-15790 — instrument the very first stage of prescription.
     // The 15789 Essex diagnostic proved that no rejection counter fired because
