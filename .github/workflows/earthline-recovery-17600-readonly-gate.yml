@@ -108,15 +108,18 @@ jobs:
             await page.goto('https://earthlinedevelopment.org/?recovery17600='+ctl.name+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
             await page.waitForSelector('#searchInput',{timeout:30000});
             await page.locator('#searchInput').fill('Arizona');
-            await page.waitForTimeout(650);
             const opts=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
-            if(await opts.count())await opts.first().click();
+            await opts.first().waitFor({state:'visible',timeout:15000});
+            await opts.first().click();
+            await page.waitForTimeout(350);
             const run=page.locator('#runBtn');
             if(await run.isVisible()){
               const busy=await run.evaluate(b=>b.dataset.busy==='1'||b.disabled);
               if(!busy)await run.click();
             }
-            await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191,null,{timeout:120000,polling:100});
+            await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191||!!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970,null,{timeout:180000,polling:150});
+            const regionalError=await page.evaluate(()=>window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null);
+            if(regionalError)throw new Error('Regional startup failed: '+JSON.stringify(regionalError));
             await page.evaluate(ctl=>{
               const target={lng:ctl.lng,lat:ctl.lat,source:'crosshair',code:'',score:0,at:new Date().toISOString()};
               window.earthlineMap?.jumpTo?.({center:[ctl.lng,ctl.lat],zoom:17,bearing:0,pitch:0});
