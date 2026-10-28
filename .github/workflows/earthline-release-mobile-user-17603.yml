@@ -1,0 +1,29 @@
+name: Earthline Release Mobile User Flow 17603
+on:
+  push:
+    branches: [candidate-release-17601]
+    paths:
+      - '.github/earthline-mobile-user-17603-trigger.txt'
+permissions:
+  contents: read
+jobs:
+  mobile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-release-17601
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/mobile-user-flow-17603.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-user-flow-17603
+          path: /tmp/mobile-user-17603.png
+          if-no-files-found: warn
