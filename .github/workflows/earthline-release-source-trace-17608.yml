@@ -1,0 +1,47 @@
+name: Earthline Release Source Trace 17608
+on:
+  push:
+    branches: [diag/release-17606-source]
+    paths:
+      - '.github/workflows/earthline-release-source-trace-17608.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trace exact layer, gauge and report insertion points
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for needle in [
+            "SAFE_LAYERS_16221",
+            "earthline-property-safe-casing-16221",
+            "earthline-property-safe-earth-16221",
+            "earthline-property-safe-life-16221",
+            "earthline-property-safe-water-16221",
+            "earthlineRechargeDataContent16488",
+            "Earthline base = Aquifer",
+            "Average yearly rainfall:",
+            "01 · EXECUTIVE DECISION",
+            "02 · HYDROLOGY AND AQUIFER CONTEXT",
+            "FIELD VERIFICATION REQUIRED",
+            "el49-page",
+            "reportHtml",
+            "reportBody",
+            "buildReport"
+          ]:
+            hits=[];p=0
+            while True:
+              i=s.find(needle,p)
+              if i<0 or len(hits)>=12: break
+              hits.append(i);p=i+len(needle)
+            if not hits: continue
+            print("\n### "+needle)
+            for i in hits:
+              line=s.count("\n",0,i)+1
+              a=max(0,i-2600);b=min(len(s),i+9000)
+              print(f"@@ LINE {line} INDEX {i}\n"+s[a:b].replace("\n"," ")+"\n@@ END")
+          PY
