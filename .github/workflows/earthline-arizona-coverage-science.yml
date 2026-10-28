@@ -21,8 +21,12 @@ jobs:
       - run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
       - name: Exact Arizona screenshot controls
-        run: env EARTHLINE_URL='https://earthlinedevelopment.org/' node tests/arizona-coverage-science.mjs
+        run: env EARTHLINE_URL='https://earthlinedevelopment.org/' EARTHLINE_CANDIDATE_ORIGIN='1' node tests/arizona-coverage-science.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
