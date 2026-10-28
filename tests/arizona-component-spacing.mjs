@@ -41,7 +41,7 @@ const result=await page.evaluate(()=>{
     const p=pts[Math.floor((pts.length-1)/2)]||null;
     const g=p?{x:Math.max(0,Math.min(GW-1,Math.round(Number(p[0])))),y:Math.max(0,Math.min(GH-1,Math.round(Number(p[1]))))}:null;
     const component=g?comp[idx(g.x,g.y)]:0;
-    return {i,id:f?.id||null,grid:g,component,componentCells:sizes[component]||0,pts};
+    return {i,id:f?.id||null,grid:g,component,componentCells:sizes[component]||0,levelH:Number(f?.levelH),bandKey:f?.bandKey??null,score:Number(f?.score||0),pts};
   });
   const gridDistanceM=(a,b)=>{
     let best=Infinity;
