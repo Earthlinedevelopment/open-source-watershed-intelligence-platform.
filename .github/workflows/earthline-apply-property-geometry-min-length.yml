@@ -1,0 +1,29 @@
+name: Earthline Apply Property Geometry Minimum Length Science
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-apply-property-geometry-min-length.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 0
+      - name: Apply canonical Property geometry minimum length
+        run: |
+          python3 tools/apply_property_geometry_min_length.py
+          test "$(git diff --name-only)" = "index.html"
+          git diff --check
+      - name: Commit candidate science
+        run: |
+          git config user.name "Earthline Engine"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "science: align Property geometry minimum length with canonical corridor rule"
+          git push origin HEAD:candidate-next
