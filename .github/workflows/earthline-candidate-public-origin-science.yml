@@ -1,0 +1,30 @@
+name: Earthline Candidate Public-Origin Science Gate
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/earthline-public-origin-science-trigger.txt'
+permissions:
+  contents: read
+jobs:
+  science:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run candidate under public Earthline origin
+        run: node tests/candidate-public-origin-science-17502.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-public-origin-science
+          path: /tmp/earthline-public-origin-science.png
+          if-no-files-found: warn
