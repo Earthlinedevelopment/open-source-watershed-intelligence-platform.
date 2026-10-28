@@ -15,7 +15,7 @@ const opt=page.locator('#earthlineSearchSuggestions15970 [role="option"]').filte
 if(await opt.count())await opt.click().catch(()=>{});
 await page.evaluate(()=>document.getElementById('runBtn')?.click());
 await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191,{timeout:90000,polling:150});
-const target={lng:-111.93067,lat:34.21568};
+const target={lng:-111.93331,lat:34.21526};
 await page.evaluate(t=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);m.jumpTo({center:[t.lng,t.lat],zoom:16.59});try{m.fire?.('dragend')}catch(_){}},target);
 await page.waitForFunction(t=>{const p=window.EARTHLINE_PROPERTY_TARGET_16201||null;return !!p&&Math.abs(Number(p.lng)-t.lng)<0.00008&&Math.abs(Number(p.lat)-t.lat)<0.00008},target,{timeout:15000,polling:100});
 const before=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
