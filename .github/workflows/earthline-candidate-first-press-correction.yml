@@ -1,0 +1,80 @@
+name: Earthline Candidate First-Press Property Correction
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-candidate-first-press-correction.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 0
+      - name: Apply first-press Property correction
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          required=[
+            "const thr=streamThreshold(),chanThr=Math.max(thr*3.2,Number(M.maxAcc||0)*0.06),maxS=4;",
+          ]
+          forbidden=[
+            "const thr=streamThreshold(),chanThr=thr*3.2,maxS=33;",
+            "const safeSlope=slopePct(x,y)<=33;",
+            "maxS=Number(lg.maxSlopePct||33);"
+          ]
+          for x in required:
+              if x not in s: raise SystemExit('locked <=4% science anchor missing: '+x)
+          for x in forbidden:
+              if x in s: raise SystemExit('rejected 33% experiment present: '+x)
+
+          old="    const targetAtPressM7839=window.EARTHLINE_PROPERTY_TARGET_16201||null;"
+          new="""    /* EARTHLINE FIRST-PRESS — bind the visible map crosshair synchronously on the
+               same physical press. The Property button must never require a first
+               press merely to establish the target for a second press. */
+    try{
+      const mpFirstPress=panelMap16188?.()||(window.earthlineMap||null);
+      const cFirstPress=mpFirstPress?.getCenter?.();
+      const lngFirstPress=Number(cFirstPress?.lng),latFirstPress=Number(cFirstPress?.lat);
+      if(Number.isFinite(lngFirstPress)&&Number.isFinite(latFirstPress)){
+        window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;
+        window.EARTHLINE_COUNTRY_TARGET_USER_UNLOCKED_17240=true;
+        const priorFirstPress=window.EARTHLINE_PROPERTY_TARGET_16201||{};
+        const reboundFirstPress=Object.assign({},priorFirstPress,{
+          lng:lngFirstPress,lat:latFirstPress,source:'crosshair',
+          at:new Date().toISOString()
+        });
+        if(typeof window.earthlineSetPropertyTarget16201==='function')
+          window.earthlineSetPropertyTarget16201(reboundFirstPress,{openPanel:false});
+        else window.EARTHLINE_PROPERTY_TARGET_16201=reboundFirstPress;
+      }
+    }catch(_){}
+    const targetAtPressM7839=window.EARTHLINE_PROPERTY_TARGET_16201||null;"""
+          if s.count(old)!=1: raise SystemExit(f'first-press target anchor count {s.count(old)}')
+          s=s.replace(old,new,1)
+
+          old2="    window.EARTHLINE_PROPERTY_ACCEPTED_TARGET_M7839=acceptedTargetM7839;\n    const serialBefore17494=Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0);"
+          new2="""    window.EARTHLINE_PROPERTY_ACCEPTED_TARGET_M7839=acceptedTargetM7839;
+    /* Compute-only Elder prime overlaps Property preflight. Publication remains
+       owned by the existing terminal Property lifecycle. */
+    try{void window.EARTHLINE_ELDER_TREES_V1_17097?.primePropertyEvidence?.()}catch(_){}
+    const serialBefore17494=Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0);"""
+          if s.count(old2)!=1: raise SystemExit(f'Elder prime anchor count {s.count(old2)}')
+          s=s.replace(old2,new2,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+      - name: Commit candidate correction
+        run: |
+          git config user.name "Earthline Engine"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: make Property start on first accepted crosshair press"
+          git push origin HEAD:candidate-next
