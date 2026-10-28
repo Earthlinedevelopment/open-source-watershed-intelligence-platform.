@@ -1,0 +1,29 @@
+name: Earthline Geometry Conversion Owner Diagnostic
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-geometry-conversion-owner.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - name: Print geometry conversion owners
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8').splitlines()
+          terms=['function earthlineSwaleFromPts','earthlineSwaleFromPts=','function earthlinePathPointUsable','function earthlineSegmentLengthM','function earthlineOnContourGuard15833']
+          for term in terms:
+              print('\n===== '+term+' =====')
+              for i,line in enumerate(s):
+                  if term in line:
+                      for n in range(max(0,i-30),min(len(s),i+180)):
+                          print(f'{n+1}: {s[n]}')
+                      break
+          PY
