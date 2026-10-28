@@ -29,6 +29,31 @@ jobs:
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
           exit 1
+      - name: Canonical science invariants
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          required=[
+            "const thr=streamThreshold(),chanThr=thr*3.2,maxS=4;",
+            "const safeSlope=slopePct(x,y)<=4;",
+            "maxS=Number(lg.maxSlopePct||4);",
+            "targetSpacingM15771=20*0.3048",
+            "acceptedSpacingM:[15*0.3048,25*0.3048]"
+          ]
+          forbidden=[
+            "const thr=streamThreshold(),chanThr=thr*3.2,maxS=33;",
+            "const safeSlope=slopePct(x,y)<=33;",
+            "maxS=Number(lg.maxSlopePct||33);",
+            "eligibleSlopeSamples15771=[]",
+            "maxLevels:256,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200"
+          ]
+          missing=[x for x in required if x not in s]
+          present=[x for x in forbidden if x in s]
+          if missing or present:
+              raise SystemExit(f"science invariant failure missing={missing} forbidden={present}")
+          print("PASS canonical <=4% slope and 15-25 ft spacing invariants; rejected generation experiment absent")
+          PY
       - name: Regional regression matrix
         run: env EARTHLINE_URL='https://earthlinedevelopment.org/' EARTHLINE_CANDIDATE_ORIGIN='1' BROWSER='chromium' HEADLESS='true' WAIT_MS='90000' STATES='Vermont|Texas|New York|Arkansas|Iowa|Colorado|California' node tests/browser-regional-ab-17269.mjs
       - name: Elder user flow
