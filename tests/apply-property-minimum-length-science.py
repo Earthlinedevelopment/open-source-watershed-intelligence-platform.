@@ -17,5 +17,12 @@ new = '''function earthlineMinimumSwaleLengthM15768(){
 if s.count(old) != 1:
     raise SystemExit(f"expected one minimum-length science owner; found {s.count(old)}")
 s=s.replace(old,new)
+
+geometry_old = "if(!pts||pts.length<3||lenM<12)return false;"
+geometry_new = "if(!pts||pts.length<3||lenM<earthlineMinimumSwaleLengthM15768())return false;"
+if s.count(geometry_old) != 1:
+    raise SystemExit(f"expected one geometry minimum-length owner; found {s.count(geometry_old)}")
+s=s.replace(geometry_old, geometry_new)
+
 path.write_text(s,encoding="utf-8")
 print("PROPERTY_MINIMUM_LENGTH_SCIENCE_READY")
