@@ -6159,6 +6159,7 @@ function earthlineLocalSeedReachM76(seg,x,y){
    of uninterrupted contour at coarse tile resolution. */
 function earthlineMinimumSwaleLengthM15768(){
   const cell=Math.max(0.25,Number(M.cellM||1));
+  if(!earthlineLargeAreaMode())return 6;
   return Math.max(12,Math.min(40,cell*4));
 }
 
@@ -6278,12 +6279,12 @@ function earthlineMergeCompatibleSwales(swales,chanThr,maxS,totalBands,targetM){
 }
 
 function earthlineSwaleGeometryAcceptable(pts,lenM){
-  if(!pts||pts.length<3||lenM<12)return false;
+  if(!pts||pts.length<3||lenM<earthlineMinimumSwaleLengthM15768())return false;
   const a=pts[0],b=pts[pts.length-1],gapM=Math.hypot(a[0]-b[0],a[1]-b[1])*M.cellM;
   let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
   for(const p of pts){minX=Math.min(minX,p[0]);maxX=Math.max(maxX,p[0]);minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1]);}
   const diagM=Math.hypot(maxX-minX,maxY-minY)*M.cellM;
-  const loopish=gapM<Math.max(8,lenM*0.12);
+  const loopish=gapM<(earthlineLargeAreaMode()?Math.max(8,lenM*0.12):Math.max(2,lenM*0.12));
   const tortuosityM76=earthlineSegmentTortuosityM76(pts);
   // A swale is an interception earthwork, not a closed contour ring or a winding contour trace.
   if(loopish)return false;
@@ -12680,7 +12681,7 @@ var prescribeSwales;
      cell list that the former per-level full-grid rescan would have visited. */
   let earthlineSeedLevelIndex16460=null;
   function earthlineBuildSeedLevelIndex16460(levels,maxS,chanThr,regional){
-    const stride=regional?4:2,byLevel=Array.from({length:levels.length},()=>[]),levelMap=new Map();
+    const stride=regional?4:1,byLevel=Array.from({length:levels.length},()=>[]),levelMap=new Map();
     for(let li=0;li<levels.length;li++)levelMap.set(levels[li],li);
     const lowerBound=value=>{let lo=0,hi=levels.length;while(lo<hi){const mid=(lo+hi)>>1;if(levels[mid]<value)lo=mid+1;else hi=mid;}return lo;};
     const upperBound=value=>{let lo=0,hi=levels.length;while(lo<hi){const mid=(lo+hi)>>1;if(levels[mid]<=value)lo=mid+1;else hi=mid;}return lo;};
@@ -12711,7 +12712,7 @@ var prescribeSwales;
         (Array.isArray(M.loc.zones)&&M.loc.zones.includes("Regional Tile"))
       )
     );
-    const stride=regional?4:2;
+    const stride=regional?4:1;
     const maxSeeds=Math.max(0,Math.floor(Number(maxSeedsPerLevel)||0));
     let eligibleCrossingCandidates=0;
 
@@ -12782,9 +12783,36 @@ var prescribeSwales;
       a.y-b.y||a.x-b.x
     );
     const out=[];
-    for(const c of found){
-      if(out.every(s=>Math.hypot(c.x-s.x,c.y-s.y)>(regional?18:24)))out.push(c);
-      if(out.length>=maxSeeds)break;
+    if(regional){
+      for(const c of found){
+        if(out.every(s=>Math.hypot(c.x-s.x,c.y-s.y)>18))out.push(c);
+        if(out.length>=maxSeeds)break;
+      }
+    }else{
+      const byCell=new Map(found.map(c=>[c.x+","+c.y,c]));
+      const seen=new Set();
+      for(const c of found){
+        const key=c.x+","+c.y;
+        if(seen.has(key))continue;
+        out.push(c);
+        const queue=[c];seen.add(key);
+        for(let qi=0;qi<queue.length;qi++){
+          const q=queue[qi];
+          for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+            if(!dx&&!dy)continue;
+            const nk=(q.x+dx)+","+(q.y+dy);
+            if(seen.has(nk))continue;
+            const n=byCell.get(nk);
+            if(n){seen.add(nk);queue.push(n);}
+          }
+        }
+        if(out.length>=maxSeeds)break;
+      }
+      M.propertyContourComponentSeedAudit={
+        build:"EARTHLINE PROPERTY <=4% COMPONENT COVERAGE",
+        level:Number(L),eligibleCrossingCells:found.length,
+        selectedComponents:out.length,maxSeeds,at:new Date().toISOString()
+      };
     }
 
     earthlineObserveSeedPreselection15841({
@@ -13134,7 +13162,7 @@ async function prescribeSwales15778(myGen=M.searchGen){
     // Property mode keeps the real 15–25 ft construction target.
     // Regional mode is a macro opportunity screen, so its band spacing must
     // remain resolvable at the tile's actual ground-cell size.
-    const targetSpacingM15771=isRegionalTile15769
+    let targetSpacingM15771=isRegionalTile15769
       ?Math.max(24,Math.min(60,Math.max(1,M.cellM||1)*4))
       :TARGET_M;
     const minSpacingM15771=isRegionalTile15769?targetSpacingM15771*.68:MIN_M;
@@ -13178,8 +13206,22 @@ async function prescribeSwales15778(myGen=M.searchGen){
       build:"EARTHLINE 16321",stage:"preparing",
       startedAt:performance.now(),updatedAt:new Date().toISOString()
     };
-    const medSlopeRaw=Number(medianSlopeInParcel());
-    const medSlope=clampN(Number.isFinite(medSlopeRaw)?medSlopeRaw:0.012,0.012,0.45);
+    const propertySafeSlopeFractions15771=[];
+    if(!isRegionalTile15769){
+      for(let y=2;y<GH-2;y++)for(let x=2;x<GW-2;x++){
+        const i=idx(x,y);
+        if(!M.inP[i]||M.pond[i]||(M.noBuildMask&&M.noBuildMask[i]))continue;
+        if((M.acc[i]||0)>=chanThr)continue;
+        const sp=Number(slopePct(x,y));
+        if(Number.isFinite(sp)&&sp<=maxS)propertySafeSlopeFractions15771.push(sp/100);
+      }
+      propertySafeSlopeFractions15771.sort((a,b)=>a-b);
+    }
+    const parcelMedianSlope15771=Number(medianSlopeInParcel());
+    const medSlopeRaw=propertySafeSlopeFractions15771.length
+      ?propertySafeSlopeFractions15771[Math.floor(propertySafeSlopeFractions15771.length/2)]
+      :parcelMedianSlope15771;
+    const medSlope=clampN(Number.isFinite(medSlopeRaw)?medSlopeRaw:0.012,0.012,maxS/100);
 
     // BUILD-CHECK-15790 — instrument the very first stage of prescription.
     // The 15789 Essex diagnostic proved that no rejection counter fired because
@@ -13223,6 +13265,29 @@ async function prescribeSwales15778(myGen=M.searchGen){
       /* BUILD-CHECK-15803-DIAGNOSTIC-BEGIN */
       zone15803.safeCells++;coverageDiag15803.totals.safeCells++;
       /* BUILD-CHECK-15803-DIAGNOSTIC-END */
+    }
+
+    let slopeSafeCount15771=0,slopeSampleCount15771=0;
+    if(!isRegionalTile15769){
+      for(let sy15771=2;sy15771<GH-2;sy15771++)for(let sx15771=2;sx15771<GW-2;sx15771++){
+        const si15771=idx(sx15771,sy15771);
+        if(!M.inP[si15771])continue;
+        const sp15771=Number(slopePct(sx15771,sy15771));
+        if(!Number.isFinite(sp15771))continue;
+        slopeSampleCount15771++;
+        if(sp15771<=maxS)slopeSafeCount15771++;
+      }
+    }
+    const propertySlopeSafeShare15771=slopeSafeCount15771/Math.max(1,slopeSampleCount15771);
+    if(!isRegionalTile15769&&propertySlopeSafeShare15771<0.03)targetSpacingM15771=MIN_M;
+    if(M.swaleDiagnostics&&M.swaleDiagnostics.performanceBudget){
+      M.swaleDiagnostics.performanceBudget.targetSpacingM=targetSpacingM15771;
+      M.swaleDiagnostics.performanceBudget.propertySlopeSafeShare15771=propertySlopeSafeShare15771;
+      M.swaleDiagnostics.performanceBudget.slopeSafeCount15771=slopeSafeCount15771;
+      M.swaleDiagnostics.performanceBudget.slopeSampleCount15771=slopeSampleCount15771;
+      M.swaleDiagnostics.performanceBudget.spacingPolicy15771=
+        isRegionalTile15769?"regional":
+        (propertySlopeSafeShare15771<0.03?"sparse-slope-safe-terrain-15ft":"standard-slope-safe-terrain-20ft");
     }
 
     let levelDomainFallback="none";
@@ -13271,12 +13336,20 @@ async function prescribeSwales15778(myGen=M.searchGen){
     let levelStepRaw=medSlope*targetSpacingM15771;
     let levelStep=(Number.isFinite(levelStepRaw)&&levelStepRaw>0)?Math.max(0.08,levelStepRaw):NaN;
     const range=maxH-minH;
-    const maxLevels=Math.max(1,Number(work15771.maxLevels)||1);
+    const configuredMaxLevels15771=Math.max(1,Number(work15771.maxLevels)||1);
+    const targetLevelCount15771=Math.ceil(range/Math.max(0.08,Number(levelStep)||0.08));
+    const maxLevels=isRegionalTile15769
+      ?configuredMaxLevels15771
+      :Math.max(configuredMaxLevels15771,Math.min(512,targetLevelCount15771));
     if(!Number.isFinite(levelStep)||levelStep<=0){
       levelStep=Math.max(0.08,range/maxLevels);
       M.swaleDiagnostics.levelGenerator.levelStepGuard="nonfinite-or-nonpositive";
     }
     if(range/levelStep>maxLevels)levelStep=range/maxLevels;
+    M.swaleDiagnostics.levelGenerator.propertySafeSlopeSamples15771=propertySafeSlopeFractions15771.length;
+    M.swaleDiagnostics.levelGenerator.parcelMedianSlope15771=Number.isFinite(parcelMedianSlope15771)?parcelMedianSlope15771:null;
+    M.swaleDiagnostics.levelGenerator.targetLevelCount15771=targetLevelCount15771;
+    M.swaleDiagnostics.levelGenerator.effectiveMaxLevels15771=maxLevels;
     if(!Number.isFinite(levelStep)||levelStep<=0){
       levelStep=Math.max(0.08,range);
       M.swaleDiagnostics.levelGenerator.levelStepGuard="final-fallback";
