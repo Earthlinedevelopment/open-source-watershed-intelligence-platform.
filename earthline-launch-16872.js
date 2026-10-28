@@ -1790,10 +1790,10 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   async function refresh(){
     try{
       const pending17166=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
-      if(pending17166?.state==='property-pending'&&state.dynamic.promise)return pending17166.summary||null;
+      if(pending17166?.state==='property-pending')return pending17166.summary||null;
       await load();
       const pendingAfterLoad17166=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
-      if(pendingAfterLoad17166?.state==='property-pending'&&state.dynamic.promise)return pendingAfterLoad17166.summary||null;
+      if(pendingAfterLoad17166?.state==='property-pending')return pendingAfterLoad17166.summary||null;
       let coverage=activeCoverage(); /* EARTHLINE_ELDER_PROPERTY_PENDING_REFRESH_GUARD_17203 */
       const dynamic=await dynamicPropertyEvidence(false);
       if(dynamic){
