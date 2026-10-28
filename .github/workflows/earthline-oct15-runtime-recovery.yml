@@ -1,0 +1,40 @@
+name: Earthline Verified October 15 Runtime Recovery Test
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-oct15-runtime-recovery.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Restore exact October 15 verified runtime into local test tree
+        run: |
+          git show ffdd2828001ece32f07d6ef1642c57d024deb571:index.html > index.html
+          git show ffdd2828001ece32f07d6ef1642c57d024deb571:earthline-launch-16872.js > earthline-launch-16872.js
+          git show ffdd2828001ece32f07d6ef1642c57d024deb571:earthline-elder-worker-17129.js > earthline-elder-worker-17129.js
+          if git cat-file -e ffdd2828001ece32f07d6ef1642c57d024deb571:earthline-language-hotfix-16890.js 2>/dev/null; then
+            git show ffdd2828001ece32f07d6ef1642c57d024deb571:earthline-language-hotfix-16890.js > earthline-language-hotfix-16890.js
+          fi
+          git show ffdd2828001ece32f07d6ef1642c57d024deb571:data/elder-trees/v2/manifest.json > data/elder-trees/v2/manifest.json
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Strict Arizona visual controls on verified runtime
+        env:
+          EARTHLINE_URL: 'https://earthlinedevelopment.org/'
+          EARTHLINE_CANDIDATE_ORIGIN: '1'
+        run: node tests/earthline-system-recovery-gate.mjs
