@@ -1,0 +1,54 @@
+name: Earthline Release Source Trace 17607
+on:
+  push:
+    branches: [diag/release-17606-source]
+    paths:
+      - '.github/workflows/earthline-release-source-trace-17607.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trace science/data/report owners
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          files=["index.html","earthline-launch-16872.js"]
+          needles=[
+            "regionalRechargeModel16492",
+            "earthlineRechargePotentialValue16488",
+            "earthlineRechargeDataContent16488",
+            "climateMultiplier",
+            "rechargeScore",
+            "components:",
+            "weights:",
+            "Aquifer 0.30",
+            "Soil 0.20",
+            "Slope 0.18",
+            "Flow 0.17",
+            "How Bioswales Work",
+            "Earthline Process",
+            "el49-page",
+            "Bioswale Impact Report",
+            "Print / Save PDF"
+          ]
+          for fn in files:
+            s=Path(fn).read_text(encoding="utf-8")
+            print("\n===== "+fn+" =====")
+            for needle in needles:
+              hits=[]
+              p=0
+              while True:
+                i=s.find(needle,p)
+                if i<0 or len(hits)>=5: break
+                hits.append(i);p=i+len(needle)
+              if not hits: continue
+              print("\n### "+needle)
+              for i in hits:
+                line=s.count("\n",0,i)+1
+                a=max(0,i-1800);b=min(len(s),i+6500)
+                block=s[a:b].replace("\n"," ")
+                print(f"@@ LINE {line} INDEX {i}\n{block}\n@@ END")
+          PY
