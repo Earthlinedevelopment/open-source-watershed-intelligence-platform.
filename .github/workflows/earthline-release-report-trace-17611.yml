@@ -1,0 +1,45 @@
+name: Earthline Release Report Trace 17611
+on:
+  push:
+    branches: [diag/release-17606-source]
+    paths:
+      - '.github/workflows/earthline-release-report-trace-17611.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trace report construction
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          needles=[
+            "What this report supports",
+            "Hydrology and Aquifer Context Map",
+            "PROFESSIONAL NEXT STEP",
+            "Decision boundary:",
+            "el49-cover-meta",
+            "el49-report",
+            "function renderReport",
+            "function buildReport16149",
+            "function report",
+            "report.innerHTML",
+            "panel.innerHTML"
+          ]
+          for needle in needles:
+            hits=[];p=0
+            while True:
+              i=s.find(needle,p)
+              if i<0 or len(hits)>=8: break
+              hits.append(i);p=i+len(needle)
+            if not hits: continue
+            print("\n### "+needle)
+            for i in hits:
+              line=s.count("\n",0,i)+1
+              print(f"@@ LINE {line} INDEX {i}")
+              print(s[max(0,i-3000):min(len(s),i+9000)].replace("\n"," "))
+              print("@@ END")
+          PY
