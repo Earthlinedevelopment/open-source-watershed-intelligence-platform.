@@ -1,0 +1,36 @@
+name: Earthline Release Language Rail 17614
+on:
+  push:
+    branches: [candidate-release-17601]
+    paths:
+      - '.github/earthline-language-17614-trigger.txt'
+permissions:
+  contents: write
+jobs:
+  language:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-release-17601
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: python3 tests/apply-language-17614.py
+      - name: Confirm isolated runtime change
+        run: |
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "earthline-language-hotfix-16890.js"
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/language-17614.mjs
+      - name: Commit validated language owner
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add earthline-language-hotfix-16890.js
+          git commit -m "ui: restore language selector to Earthline rail"
+          git push origin HEAD:candidate-release-17601
