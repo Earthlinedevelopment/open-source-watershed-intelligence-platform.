@@ -13,23 +13,23 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: candidate-next
-      - name: Extract canonical Property presentation owner
+      - name: Extract Regional renderer ownership
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
           needles=[
-            "function ensureSafePropertyVisibility16221",
-            "function renderSafeProperty",
-            "SAFE_LAYERS_16221.casing",
-            "SAFE_LAYERS_16221.earth",
-            "SAFE_LAYERS_16221.life",
-            "SAFE_LAYERS_16221.water",
-            "const safeOpacity17172=0",
-            "EARTHLINE M76 — natural Property renderer remains"
+            "earthlineRegionalVectorOverlay16020",
+            "EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040",
+            "swaleLines",
+            "earthline-swale"
           ]
           for n in needles:
-              i=s.find(n)
-              print("\n=== EXACT",n,"INDEX",i,"===")
-              if i>=0: print(s[max(0,i-1800):min(len(s),i+7200)])
+              start=0
+              for k in range(4):
+                  i=s.find(n,start)
+                  if i<0: break
+                  print("\n=== REGIONAL",n,"HIT",k+1,"INDEX",i,"===")
+                  print(s[max(0,i-2600):min(len(s),i+7000)])
+                  start=i+len(n)
           PY
