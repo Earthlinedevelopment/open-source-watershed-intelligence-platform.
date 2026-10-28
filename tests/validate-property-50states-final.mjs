@@ -62,7 +62,6 @@ async function rankedTargets(page,stateName){
 }
 
 async function propertyAttempt(page,target){
-  window.__unused=0;
   const before=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
   await page.evaluate(t=>{
     window.EARTHLINE_PROPERTY_TIMEOUT_AUDIT_16178=null;
