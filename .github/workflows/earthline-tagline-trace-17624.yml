@@ -1,0 +1,28 @@
+name: Earthline Tagline Owner Trace 17624
+on:
+  push:
+    branches: [diag/tagline-17624]
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trace exact tagline and brand owner
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          for fn in ["index.html","earthline-launch-16872.js"]:
+              s=Path(fn).read_text(encoding="utf-8")
+              print("\n===== "+fn+" =====")
+              for needle in ["Slow it","Sink it","Spread it","mantra-primary","earthlinePanelBrand16201","earthline-mantra-header"]:
+                  print("\n### "+needle)
+                  p=0;n=0
+                  while True:
+                      i=s.find(needle,p)
+                      if i<0 or n>=12: break
+                      print("LINE",s.count("\n",0,i)+1,"INDEX",i)
+                      print(s[max(0,i-1000):min(len(s),i+2600)].replace("\n"," "))
+                      p=i+len(needle);n+=1
+          PY
