@@ -110,7 +110,7 @@ async function runControl(lng,lat,label){
   },before,{timeout:90000,polling:120});
   await page.waitForFunction(()=> {
     const e=window.EARTHLINE_ELDER_TREE_LAST_17097;
-    return !!e&&(e.state==='committed'||e.state==='failed'||e.state==='property-pending');
+    return !!e&&(e.state==='committed'||e.state==='failed');
   },null,{timeout:30000,polling:120}).catch(()=>{});
   await page.waitForTimeout(800);
 
