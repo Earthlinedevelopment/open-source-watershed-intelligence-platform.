@@ -1,0 +1,45 @@
+name: Earthline Report Tier Trace 17612
+on:
+  push:
+    branches: [diag/release-17606-source]
+    paths:
+      - '.github/workflows/earthline-report-tier-trace-17612.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trace report tier ownership
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for needle in [
+            "function displayed",
+            "function visual",
+            "function summary",
+            "function corridorSummary",
+            "function snapshot",
+            "function reportAquifers",
+            "function corridorTable",
+            "function buildReport(data)",
+            "function openReport",
+            "EARTHLINE_FROZEN_REPORT_SNAPSHOT_16149",
+            "EARTHLINE_PROPERTY_RUN_AUDIT_16173",
+            "authoritativeSafeSwales15815"
+          ]:
+            hits=[];p=0
+            while True:
+              i=s.find(needle,p)
+              if i<0 or len(hits)>=5: break
+              hits.append(i);p=i+len(needle)
+            if not hits: continue
+            print("\n### "+needle)
+            for i in hits:
+              line=s.count("\n",0,i)+1
+              print(f"@@ LINE {line} INDEX {i}")
+              print(s[max(0,i-2600):min(len(s),i+10000)].replace("\n"," "))
+              print("@@ END")
+          PY
