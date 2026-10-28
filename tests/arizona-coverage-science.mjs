@@ -23,6 +23,71 @@ await page.evaluate(()=>document.getElementById('runBtn')?.click());
 await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191,{timeout:90000,polling:150});
 await page.waitForTimeout(700);
 
+await page.evaluate(()=>{
+  window.EARTHLINE_SPLIT_DIAG_CAPTURE={calls:[],pointRejects:{}};
+  const basePoint=window.earthlinePathPointUsable||earthlinePathPointUsable;
+  const baseSplit=window.earthlineSplitUsableSegments||earthlineSplitUsableSegments;
+  const reason=(px,py,maxS)=>{
+    const md=(typeof M!=='undefined'&&M)||window.M||{};
+    const gx=Math.round(px),gy=Math.round(py);
+    if(gx<1||gy<1||gx>=GW-1||gy>=GH-1)return 'bounds';
+    const i=idx(gx,gy);
+    if(!md.inP?.[i])return 'outside-property';
+    if(md.pond?.[i])return 'pond';
+    if(slopePct(gx,gy)>maxS)return 'slope';
+    try{if(earthlineNoBuildBuffered(gx,gy))return 'no-build-buffer';}catch(_){}
+    const channelThreshold=streamThreshold()*3.2;
+    const radius=Math.max(1,Math.ceil(4/Math.max(0.5,md.cellM||1)));
+    for(let oy=-radius;oy<=radius;oy++)for(let ox=-radius;ox<=radius;ox++){
+      const x=gx+ox,y=gy+oy;
+      if(x<0||y<0||x>=GW||y>=GH)continue;
+      const propertyExact=!!(md&&md.earthlinePropertyChannelBuffer17485===true);
+      if(propertyExact&&Math.hypot(ox,oy)*Math.max(0.5,Number(md.cellM||1))>4.000001)continue;
+      if(md.acc&&md.acc[idx(x,y)]>=channelThreshold)return 'channel-buffer';
+    }
+    return 'unknown';
+  };
+  const pointWrap=function(px,py,maxS){
+    const ok=basePoint(px,py,maxS);
+    if(!ok){
+      const r=reason(px,py,maxS);
+      window.EARTHLINE_SPLIT_DIAG_CAPTURE.pointRejects[r]=(window.EARTHLINE_SPLIT_DIAG_CAPTURE.pointRejects[r]||0)+1;
+    }
+    return ok;
+  };
+  window.earthlinePathPointUsable=pointWrap;
+  try{earthlinePathPointUsable=pointWrap}catch(_){}
+  const splitWrap=function(pts,maxS){
+    const md=(typeof M!=='undefined'&&M)||window.M||{};
+    const minM=earthlineMinimumSwaleLengthM15768();
+    const cellM=Math.max(.001,Number(md.cellM||1));
+    let totalM=0,maxSafeRunM=0,currentM=0,safeVertices=0,unsafeVertices=0;
+    let prev=null,prevOk=false;
+    const reasons={};
+    for(const p of (pts||[])){
+      const ok=basePoint(p[0],p[1],maxS);
+      if(ok)safeVertices++;else{unsafeVertices++;const r=reason(p[0],p[1],maxS);reasons[r]=(reasons[r]||0)+1;}
+      if(prev){
+        const d=Math.hypot(Number(p[0])-Number(prev[0]),Number(p[1])-Number(prev[1]))*cellM;
+        totalM+=d;
+        if(ok&&prevOk){currentM+=d;maxSafeRunM=Math.max(maxSafeRunM,currentM);}else currentM=0;
+      }
+      prev=p;prevOk=ok;
+    }
+    const out=baseSplit(pts,maxS);
+    window.EARTHLINE_SPLIT_DIAG_CAPTURE.calls.push({
+      points:Array.isArray(pts)?pts.length:0,totalM:+totalM.toFixed(2),minM:+minM.toFixed(2),
+      safeVertices,unsafeVertices,maxSafeRunM:+maxSafeRunM.toFixed(2),
+      outputCount:Array.isArray(out)?out.length:0,
+      outputLengths:(out||[]).map(seg=>+earthlineSegmentLengthM(seg).toFixed(2)),
+      reasons
+    });
+    return out;
+  };
+  window.earthlineSplitUsableSegments=splitWrap;
+  try{earthlineSplitUsableSegments=splitWrap}catch(_){}
+});
+
 async function runControl(lng,lat,label){
   const before=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
   await page.evaluate(({lng,lat})=>{
@@ -114,6 +179,7 @@ async function runControl(lng,lat,label){
       flow:{eligiblePaths:Number(flow.eligiblePaths||0),pathsEvaluated:Number(flow.pathsEvaluated||0),pathsServed:Number(flow.pathsServed||0),unservedCount:Array.isArray(flow.unserved)?flow.unserved.length:0,reasons},
       prescriber:{meta:md.swaleMeta||null,diagnosticStage:md.swaleDiagnostics?.stage||null,termination:diag.termination||null,coverage:diag.coverage||null,zones:Array.isArray(diag.zones)?diag.zones.map(z=>({id:z.id,safeCells:z.safeCells,contourCells:z.contourCells,seeds:z.seeds,candidates:z.candidates,accepted:z.accepted,rejections:z.rejections})):[]},
       elder:{state:String(elder?.state||''),featureCount:Number(elder?.featureCount||0),summary:elder?.summary||null,identity:String(elder?.propertyRunIdentity||'')},
+      splitDiagnostic:window.EARTHLINE_SPLIT_DIAG_CAPTURE||null,
       pageErrors:[...window.__coverageScienceErrors||[]]
     };
   },{lng,lat,label});
