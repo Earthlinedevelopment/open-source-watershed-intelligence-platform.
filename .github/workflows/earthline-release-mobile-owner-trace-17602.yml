@@ -1,0 +1,42 @@
+name: Earthline Release Mobile Panel Owner Trace 17602
+on:
+  push:
+    branches: [candidate-release-17601]
+    paths:
+      - '.github/workflows/earthline-release-mobile-owner-trace-17602.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-release-17601
+      - name: Trace every mobile panel close owner
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          needles=[
+            "setPanel16188(false)",
+            "setPanel16188(",
+            "earthline-panel-open-16188",
+            "classList.remove('earthline-panel-open-16188')",
+            'classList.remove("earthline-panel-open-16188")',
+            "classList.toggle('earthline-panel-open-16188'",
+            'classList.toggle("earthline-panel-open-16188"'
+          ]
+          for fn in ["index.html","earthline-launch-16872.js"]:
+            s=Path(fn).read_text(encoding="utf-8")
+            print("\n===== ",fn," =====")
+            for n in needles:
+              print("\n---",n,"---")
+              pos=0;seen=0
+              while True:
+                i=s.find(n,pos)
+                if i<0 or seen>=25: break
+                line=s.count("\n",0,i)+1
+                a=max(0,i-700);b=min(len(s),i+1200)
+                print(f"LINE {line}\n"+s[a:b].replace("\n"," ")+"\n")
+                pos=i+len(n);seen+=1
+          PY
