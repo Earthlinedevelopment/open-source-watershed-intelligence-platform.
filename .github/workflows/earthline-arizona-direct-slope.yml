@@ -1,0 +1,25 @@
+name: Earthline Arizona Direct Slope Science
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - 'tests/arizona-direct-slope-science.mjs'
+      - '.github/workflows/earthline-arizona-direct-slope.yml'
+permissions:
+  contents: read
+jobs:
+  slope:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+      - name: Direct exact-parcel slope science
+        run: env EARTHLINE_URL='https://earthlinedevelopment.org/' EARTHLINE_CANDIDATE_ORIGIN='1' node tests/arizona-direct-slope-science.mjs
