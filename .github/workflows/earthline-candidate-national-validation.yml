@@ -30,6 +30,12 @@ jobs:
       - run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
+      - name: Serve candidate files
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/earthline-http.log
+          exit 1
       - name: Run 50-state Regional shard
         shell: bash
         run: |
@@ -63,6 +69,12 @@ jobs:
       - run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
+      - name: Serve candidate files
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/earthline-http.log
+          exit 1
       - name: Run 50-state Property shard
         shell: bash
         run: |
@@ -92,6 +104,12 @@ jobs:
       - run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
+      - name: Serve candidate files
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/earthline-http.log
+          exit 1
       - name: Regional Thailand Vietnam Laos controls
         run: env EARTHLINE_URL='https://earthlinedevelopment.org/' EARTHLINE_CANDIDATE_ORIGIN='1' BROWSER='chromium' HEADLESS='true' WAIT_MS='90000' STATES='Thailand|Vietnam|Laos|Chiang Mai|Can Tho' node tests/browser-regional-ab-17269.mjs
       - uses: actions/upload-artifact@v4
