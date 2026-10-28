@@ -1,0 +1,42 @@
+name: Earthline Release Authoritative Blue 17610
+on:
+  push:
+    branches: [candidate-release-17601]
+    paths:
+      - '.github/earthline-blue-17610-trigger.txt'
+permissions:
+  contents: write
+jobs:
+  blue:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-release-17601
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: python3 tests/apply-blue-17610.py
+      - name: Confirm isolated runtime change
+        run: |
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/blue-17610.mjs
+      - name: Commit validated blue owner
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "presentation: enforce two authoritative dotted blue swale lines"
+          git push origin HEAD:candidate-release-17601
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-blue-17610
+          path: /tmp/earthline-blue-17610.png
+          if-no-files-found: warn
