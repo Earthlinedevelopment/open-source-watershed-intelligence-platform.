@@ -1,0 +1,31 @@
+name: Earthline Candidate Restore Property Blue Owner
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - 'tools/restore-property-blue-owner.py'
+permissions:
+  contents: write
+jobs:
+  restore:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 0
+      - name: Restore canonical blue Property presentation
+        run: python3 tools/restore-property-blue-owner.py
+      - name: Verify isolated product difference
+        run: |
+          git diff --check
+          git diff --stat -- index.html
+          test "$(git diff --name-only | tr '\n' ' ')" = "index.html "
+      - name: Commit candidate presentation correction
+        run: |
+          git config user.name 'earthline-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'presentation: restore authoritative blue Property swales'
+          git push origin HEAD:candidate-next
