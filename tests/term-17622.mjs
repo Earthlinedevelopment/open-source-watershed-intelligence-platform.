@@ -1,0 +1,13 @@
+import { chromium } from 'playwright';import fs from 'node:fs';import {resolve,extname} from 'node:path';
+const launch=fs.readFileSync('earthline-launch-16872.js','utf8');if(launch.includes('Recharge Potential'))throw new Error('legacy Recharge terminology remains in launch runtime');
+const root=process.cwd(),origin='https://earthlinedevelopment.org',mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.geojson':'application/geo+json; charset=utf-8'};
+const browser=await chromium.launch({headless:true}),context=await browser.newContext({viewport:{width:1440,height:900},serviceWorkers:'block'});
+await context.route(origin+'/**',async route=>{const u=new URL(route.request().url()),p=decodeURIComponent(u.pathname).replace(/^\/+/, '')||'index.html',f=resolve(root,p);if(f.startsWith(root)&&fs.existsSync(f))return route.fulfill({status:200,path:f,contentType:mime[extname(f)]||'application/octet-stream',headers:{'cache-control':'no-store'}});return route.continue()});
+const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+await page.goto(origin+'/?term17622='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});await page.waitForSelector('#earthlineLanguage16488',{state:'visible',timeout:30000});
+const label=()=>page.locator('.earthline-recharge-gauge-label-16488').textContent();
+const en=String(await label()||'').trim();
+await page.selectOption('#earthlineLanguage16488','vi');await page.waitForTimeout(500);const vi=String(await label()||'').trim();
+await page.selectOption('#earthlineLanguage16488','en');await page.waitForTimeout(300);const en2=String(await label()||'').trim();
+const pass=en==='Recharge Suitability'&&/Tiềm năng bổ cập/i.test(vi)&&en2==='Recharge Suitability'&&!errors.length;
+console.log('EARTHLINE_TERM_17622 '+JSON.stringify({pass,en,vi,en2,errors}));await browser.close();if(!pass)process.exitCode=1;

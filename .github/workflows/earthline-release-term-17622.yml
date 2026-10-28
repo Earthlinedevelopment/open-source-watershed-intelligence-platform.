@@ -1,0 +1,31 @@
+name: Earthline Release Recharge Terminology 17622
+on:
+  push:
+    branches: [candidate-release-17601]
+    paths:
+      - '.github/earthline-term-17622-trigger.txt'
+permissions:
+  contents: write
+jobs:
+  terminology:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate-release-17601, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: python3 tests/apply-term-17622.py
+      - run: |
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "earthline-launch-16872.js"
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/term-17622.mjs
+      - run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add earthline-launch-16872.js
+          git commit -m "ui: align launch terminology with Recharge Suitability"
+          git push origin HEAD:candidate-release-17601
