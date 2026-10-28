@@ -1,0 +1,26 @@
+name: Earthline Gauge ARIA Trace 17617
+on:
+  push:
+    branches: [diag/release-17606-source]
+    paths:
+      - '.github/workflows/earthline-gauge-aria-trace-17617.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for needle in ["aria-label','Recharge Potential","aria-label\",\"Recharge Potential","percent')","percent\")","earthlineRechargePotentialValue16488"]:
+            p=0
+            while True:
+              i=s.find(needle,p)
+              if i<0: break
+              print("NEEDLE",needle,"LINE",s.count("\n",0,i)+1)
+              print(s[max(0,i-700):min(len(s),i+1500)].replace("\n"," "))
+              p=i+len(needle)
+          PY
