@@ -1,0 +1,44 @@
+name: Earthline Difficult-State Property Regression
+on:
+  push:
+    branches: [science-coverage-recovery]
+    paths:
+      - 'index.html'
+      - 'tests/validate-property-50states-final.mjs'
+      - '.github/workflows/earthline-difficult-property-regression.yml'
+permissions:
+  contents: read
+jobs:
+  property:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        group:
+          - "Vermont|New York|Massachusetts|Maryland"
+          - "Colorado|Texas|Florida|Louisiana"
+          - "California|Oklahoma|Iowa|Arkansas"
+          - "Nebraska|Arizona|Nevada|Alabama"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: science-coverage-recovery
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Difficult-state Property matrix
+        run: env EARTHLINE_URL='https://earthlinedevelopment.org/' EARTHLINE_CANDIDATE_ORIGIN='1' STATES="${{ matrix.group }}" OUT="/tmp/property-difficult-${{ strategy.job-index }}.json" node tests/validate-property-50states-final.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: difficult-property-${{ strategy.job-index }}
+          path: /tmp/property-difficult-${{ strategy.job-index }}.json
+          if-no-files-found: warn
