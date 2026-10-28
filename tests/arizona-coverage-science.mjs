@@ -1,8 +1,10 @@
 import { chromium } from 'playwright';
+import { installCandidateOrigin } from './candidate-origin-router.mjs';
 
 const BASE=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
 const browser=await chromium.launch({headless:true});
 const context=await browser.newContext({viewport:{width:1798,height:831},deviceScaleFactor:1});
+if(process.env.EARTHLINE_CANDIDATE_ORIGIN==='1')await installCandidateOrigin(context);
 const page=await context.newPage();
 const pageErrors=[];
 page.on('pageerror',e=>pageErrors.push(String(e)));
