@@ -134,7 +134,8 @@ for(const c of controls) rows.push(await runProperty(c.lng,c.lat,c.label));
 const near=(a,b,t=0.00008)=>Number.isFinite(Number(a))&&Math.abs(Number(a)-Number(b))<=t;
 const results=rows.map(r=>{
   const spacing=Number(r.meta?.measuredMedianSpacingM);
-  const slopeOk=r.swales.maxRecordedSlope==null || r.swales.maxRecordedSlope<=4.000001;
+  const slopeOwnerOk=Number(r.slopeOwner?.traceMaxS)===4;
+  const slopeOk=slopeOwnerOk && (r.swales.maxRecordedSlope==null || r.swales.maxRecordedSlope<=4.000001);
   const frameOk=r.run?.settled===true && r.run?.result===true && r.publication?.published===true;
   const safetyOk=r.lock?.safetyVerified===true;
   const targetOk=near(r.target?.lng,r.requested.lng)&&near(r.target?.lat,r.requested.lat)&&near(r.declaration?.center?.lng,r.requested.lng)&&near(r.declaration?.center?.lat,r.requested.lat);
@@ -149,7 +150,7 @@ const results=rows.map(r=>{
   const blueIdentity=casing.color==='#0a4772'&&earth.color==='#1389c2'&&life.color==='#67d6ff'&&water.color==='#19a9e8';
   const dottedPair=Array.isArray(life.dash)&&Array.isArray(water.dash)&&life.dash.length===2&&water.dash.length===2;
   const presentationOk=r.presentation.naturalRendered===0 && naturalHidden && r.presentation.safeRendered>0 && blueIdentity && dottedPair;
-  return {label:r.label,targetOk,frameOk,safetyOk,slopeOk,spacingOk,systemsOk,presentationOk,pass:targetOk&&frameOk&&safetyOk&&slopeOk&&spacingOk&&systemsOk&&presentationOk};
+  return {label:r.label,targetOk,frameOk,safetyOk,slopeOwnerOk,slopeOk,spacingOk,systemsOk,presentationOk,pass:targetOk&&frameOk&&safetyOk&&slopeOk&&spacingOk&&systemsOk&&presentationOk};
 });
 const summary={pass:results.every(x=>x.pass)&&pageErrors.length===0,results,rows,pageErrors};
 console.log('EARTHLINE_SYSTEM_RECOVERY_GATE '+JSON.stringify(summary));
