@@ -6286,11 +6286,11 @@ function earthlineSwaleGeometryAcceptable(pts,lenM){
   let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
   for(const p of pts){minX=Math.min(minX,p[0]);maxX=Math.max(maxX,p[0]);minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1]);}
   const diagM=Math.hypot(maxX-minX,maxY-minY)*M.cellM;
-  const loopish=gapM<Math.max(8,lenM*0.12);
+  const loopish=gapM<Math.max(2.5,lenM*0.12);
   const tortuosityM76=earthlineSegmentTortuosityM76(pts);
   // A swale is an interception earthwork, not a closed contour ring or a winding contour trace.
   if(loopish)return false;
-  if(tortuosityM76>1.35)return false;
+  if(tortuosityM76>1.65)return false;
   if(lenM/Math.max(1,diagM)>1.55)return false;
   return true;
 }
