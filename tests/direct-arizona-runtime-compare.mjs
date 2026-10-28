@@ -18,8 +18,7 @@ for(const [name,ref] of VERSIONS){
    await page.waitForSelector('#earthlineDeclareProperty16169',{timeout:30000});
    if(name==='current'){
      await page.evaluate(()=>{
-       window.slopePct=function(x,y){
-         const xi=Number(x),yi=Number(y);
+       const xi0=0,yi0=0;
          function constructionGrad16289(px,py){
            const cell=Math.max(.001,Number(M.cellM||1));
            const r=Math.max(1,Math.min(8,Math.round(7.5/cell)));
