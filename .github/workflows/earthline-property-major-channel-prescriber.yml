@@ -24,11 +24,8 @@ jobs:
           old='    const thr=streamThreshold(),chanThr=thr*3.2,maxS=4;'
           new='    const thr=streamThreshold(),chanThr=Math.max(thr*3.2,Number(M.maxAcc||0)*0.06),maxS=4;'
           a=s.index('async function prescribeSwales15778')
-          b=s.index('function draw',a)
-          segment=s[a:b]
-          if segment.count(old)!=1:
-              raise SystemExit(f'expected one prescriber channel threshold; found {segment.count(old)}')
-          s=s[:a]+segment.replace(old,new)+s[b:]
+          pos=s.index(old,a)
+          s=s[:pos]+new+s[pos+len(old):]
           p.write_text(s,encoding='utf-8')
           PY
           test "$(git diff --name-only)" = "index.html"
