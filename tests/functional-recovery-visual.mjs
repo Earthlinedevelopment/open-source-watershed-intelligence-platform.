@@ -1,11 +1,13 @@
+import { installCandidateOrigin } from './candidate-origin-router.mjs';
 import { chromium } from 'playwright';
-const BASE='http://127.0.0.1:8787/';
+const BASE='https://earthlinedevelopment.org/';
 const cases=[
   {label:'AZ-FIRST',lng:-111.93067,lat:34.21568},
   {label:'AZ-SECOND',lng:-111.93331,lat:34.21526}
 ];
 const browser=await chromium.launch({headless:true});
 const context=await browser.newContext({viewport:{width:1798,height:831}});
+await installCandidateOrigin(context);
 const page=await context.newPage();
 const rows=[];
 for(const c of cases){
