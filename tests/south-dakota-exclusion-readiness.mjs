@@ -55,7 +55,7 @@ async function snapshot(page,label){
   },label);
 }
 
-async function runCase(label,waitForStyle){
+async function runCase(label,waitForStyle,forceReadyFlagFalse=false){
   const page=await context.newPage();
   const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
   await page.goto(BASE+'?sd_exclusion_readiness='+label+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
@@ -84,6 +84,17 @@ async function runCase(label,waitForStyle){
 
   const timeline=[];
   timeline.push(await snapshot(page,'target-ready'));
+  if(forceReadyFlagFalse){
+    const forced=await page.evaluate(()=>{
+      try{
+        if(typeof earthlineMapReady==='undefined')return {supported:false,before:null,after:null};
+        const before=!!earthlineMapReady;
+        earthlineMapReady=false;
+        return {supported:true,before,after:!!earthlineMapReady};
+      }catch(e){return {supported:false,error:String(e)}}
+    });
+    timeline.push({label:'forced-ready-flag-false',forced});
+  }
   if(waitForStyle){
     await page.waitForFunction(()=>{
       try{
@@ -120,7 +131,7 @@ async function runCase(label,waitForStyle){
   timeline.push(await snapshot(page,'after-property'));
   const final=timeline[timeline.length-1];
   const result={
-    label,waitForStyle,disabled,timeline,errors,
+    label,waitForStyle,forceReadyFlagFalse,disabled,timeline,errors,
     pass:final?.publication?.published===true&&final?.run?.settled===true&&final?.run?.result===true,
     blockedReason:final?.run?.error||final?.coverage?.unverifiedReason||null
   };
@@ -128,12 +139,13 @@ async function runCase(label,waitForStyle){
   return result;
 }
 
-const immediate=await runCase('immediate',false);
-const styleWait=await runCase('style-wait',true);
-const out={at:new Date().toISOString(),immediate,styleWait};
+const immediate=await runCase('immediate',false,false);
+const styleWait=await runCase('style-wait',true,false);
+const forcedReadyFalse=await runCase('forced-ready-false',false,true);
+const out={at:new Date().toISOString(),immediate,styleWait,forcedReadyFalse};
 console.log('EARTHLINE_SD_EXCLUSION_READINESS '+JSON.stringify(out));
 await context.close();
 await browser.close();
 
 // Diagnostic success means we captured both cases; product pass/fail is reported in JSON.
-if(!immediate.timeline?.length||!styleWait.timeline?.length)process.exitCode=1;
+if(!immediate.timeline?.length||!styleWait.timeline?.length||!forcedReadyFalse.timeline?.length)process.exitCode=1;
