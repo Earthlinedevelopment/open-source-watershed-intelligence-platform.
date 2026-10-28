@@ -51,3 +51,12 @@ The controlling development method is the **Earthline Modus Operandi** in `EARTH
 6. Automated checks never equal user acceptance.
 7. User visual rejection = failed candidate.
 8. Production promotion requires current production SHA verification, rollback SHA, clean diff, successful exact candidate gate, and post-deployment SHA verification.
+## 2026-10-28 production promotion
+- Public production SHA: 198943eb4084cb7b31326a825d90836f46b8c9e3
+- Pages deployment run: 40623230600 — SUCCESS
+- Production runtime change from de0a7e4939c7dc1e0d63338d08bab89b1ed011ea: index.html only, one-line exclusion-readiness condition.
+- Promoted index blob: 8ec2f3f11b93d7a65495273f1361423e2bc6082b
+- Validation basis: full 50-state Property run 40622815925 — all 10 shards SUCCESS; representative one-press Property flow passed; Regional regression passed; Elder user flow passed; integrated Property science/presentation passed.
+- Scientific guardrails preserved: Property slope owner <=4%; safety lock verified; authoritative blue Property presentation retained; obsolete natural rendering hidden; water/recharge publication retained; target integrity enforced.
+- No other production runtime file changed in this promotion.
+
