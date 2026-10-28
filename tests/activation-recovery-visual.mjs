@@ -40,9 +40,26 @@ for(const c of cases){
     runState:document.documentElement.dataset.earthlineRunState||'',
     propertyRunState:document.documentElement.dataset.earthlinePropertyRunState||'',
     status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||''),
-    buttonDisabled:document.getElementById('earthlineDeclareProperty16169')?.disabled??null
+    buttonDisabled:document.getElementById('earthlineDeclareProperty16169')?.disabled??null,
+    onclickText:String(document.getElementById('earthlineDeclareProperty16169')?.onclick||'').slice(0,800),
+    onpointerdownText:String(document.getElementById('earthlineDeclareProperty16169')?.onpointerdown||'').slice(0,800)
   }));
   await button.click({timeout:10000});
+  await page.waitForTimeout(1200);
+  const afterPhysicalClick=await page.evaluate(()=>({
+    accepted:window.EARTHLINE_PROPERTY_ACCEPTED_TARGET_M7839||null,
+    launchAudit:window.EARTHLINE_PROPERTY_LAUNCH_AUDIT_16322||null,
+    propertyRunAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+    tier:String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()
+  }));
+  let directActivationResult=null;
+  if(!afterPhysicalClick.accepted&&!afterPhysicalClick.propertyRunAudit){
+    directActivationResult=await page.evaluate(async()=>{
+      const b=document.getElementById('earthlineDeclareProperty16169');
+      const fn=window.earthlineActivateProperty17494;
+      try{return await Promise.resolve(typeof fn==='function'?fn(null,b,'click'):'missing')}catch(e){return 'ERROR:'+String(e&&e.message||e)}
+    });
+  }
   await page.waitForTimeout(12000);
   const snap=await page.evaluate(label=>{
     const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
@@ -74,7 +91,7 @@ for(const c of cases){
       status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'')
     };
   },c.label);
-  rows.push({...snap,before});
+  rows.push({...snap,before,afterPhysicalClick,directActivationResult});
 }
 console.log('EARTHLINE_ACTIVATION_RECOVERY '+JSON.stringify(rows));
 const failed=rows.filter(r=>r.tier!=='property'||r.safeRendered<=0||r.elderRendered<=0||r.naturalRendered>0||r.acceptedOwner!=='shared-17494');
