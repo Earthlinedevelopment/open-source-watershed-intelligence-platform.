@@ -30,6 +30,18 @@ for(const c of cases){
   await page.waitForTimeout(1000);
   const button=page.locator('#earthlineDeclareProperty16169');
   await button.waitFor({state:'visible',timeout:15000});
+  const before=await page.evaluate(()=>({
+    governedType:typeof window.earthlineDeclarePropertyAtCrosshair16173,
+    activationType:typeof window.earthlineActivateProperty17494,
+    target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+    accepted:window.EARTHLINE_PROPERTY_ACCEPTED_TARGET_M7839||null,
+    regionalActive:window.earthlineRegional15778?.active??null,
+    regionalMode:window.earthlineRegional15778?.mode??null,
+    runState:document.documentElement.dataset.earthlineRunState||'',
+    propertyRunState:document.documentElement.dataset.earthlinePropertyRunState||'',
+    status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||''),
+    buttonDisabled:document.getElementById('earthlineDeclareProperty16169')?.disabled??null
+  }));
   await button.click({timeout:10000});
   await page.waitForTimeout(12000);
   const snap=await page.evaluate(label=>{
@@ -54,7 +66,7 @@ for(const c of cases){
       acceptedOwner:document.getElementById('earthlineDeclareProperty16169')?.dataset.earthlinePropertyClickOwner16546||''
     };
   },c.label);
-  rows.push(snap);
+  rows.push({...snap,before});
 }
 console.log('EARTHLINE_ACTIVATION_RECOVERY '+JSON.stringify(rows));
 const failed=rows.filter(r=>r.tier!=='property'||r.safeRendered<=0||r.elderRendered<=0||r.naturalRendered>0||r.acceptedOwner!=='shared-17494');
