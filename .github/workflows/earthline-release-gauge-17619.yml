@@ -1,0 +1,31 @@
+name: Earthline Release Gauge Accessibility 17619
+on:
+  push:
+    branches: [candidate-release-17601]
+    paths:
+      - '.github/earthline-gauge-17619-trigger.txt'
+permissions:
+  contents: write
+jobs:
+  gauge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate-release-17601, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: python3 tests/apply-gauge-17619.py
+      - run: |
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/gauge-17619.mjs
+      - run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "ui: describe Recharge Suitability as a 0-100 score"
+          git push origin HEAD:candidate-release-17601

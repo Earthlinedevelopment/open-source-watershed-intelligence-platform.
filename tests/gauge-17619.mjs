@@ -1,0 +1,11 @@
+import { chromium } from 'playwright';import fs from 'node:fs';import {resolve,extname} from 'node:path';
+const root=process.cwd(),origin='https://earthlinedevelopment.org',mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.geojson':'application/geo+json; charset=utf-8'};
+const browser=await chromium.launch({headless:true}),context=await browser.newContext({viewport:{width:1440,height:900},serviceWorkers:'block'});
+await context.route(origin+'/**',async route=>{const u=new URL(route.request().url()),p=decodeURIComponent(u.pathname).replace(/^\/+/, '')||'index.html',f=resolve(root,p);if(f.startsWith(root)&&fs.existsSync(f))return route.fulfill({status:200,path:f,contentType:mime[extname(f)]||'application/octet-stream',headers:{'cache-control':'no-store'}});return route.continue()});
+const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+await page.goto(origin+'/?gauge17619='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});await page.waitForSelector('#searchInput',{timeout:30000});
+await page.locator('#searchInput').fill('Arizona');await page.waitForTimeout(650);const opt=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible').first();if(await opt.count())await opt.click().catch(()=>{});const run=page.locator('#runBtn');if(await run.isVisible()&&!await run.evaluate(b=>b.dataset.busy==='1'||b.disabled))await run.click();
+await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191,null,{timeout:120000,polling:120});await page.waitForTimeout(300);
+const out=await page.evaluate(()=>{const v=document.getElementById('earthlineRechargePotentialValue16488')?.textContent?.trim()||'',ring=document.querySelector('.earthline-recharge-gauge-ring-16488'),label=document.querySelector('.earthline-recharge-gauge-label-16488')?.textContent?.trim()||'';return{value:v,label,aria:ring?.getAttribute('aria-label')||''}});
+const pass=out.label==='Recharge Suitability'&&/^\d+$/.test(out.value)&&/score out of 100/i.test(out.aria)&&!/percent/i.test(out.aria)&&!errors.length;
+console.log('EARTHLINE_GAUGE_17619 '+JSON.stringify({pass,out,errors}));await browser.close();if(!pass)process.exitCode=1;
