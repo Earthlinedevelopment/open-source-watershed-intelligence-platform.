@@ -1,0 +1,49 @@
+name: Earthline Candidate Preserve Safe Uncut Corridors
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-candidate-preserve-safe-uncut-corridors.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 0
+      - name: Preserve accepted corridor when exclusion filter found no hit
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old='''      flush();
+      if(hitAny){stats.noBuildRejected++;if(parts===0)stats.removedCandidates++;else stats.clippedCandidates++;}
+'''
+          new='''      flush();
+      if(!hitAny&&parts===0){
+        features.push({type:"Feature",properties:Object.assign({},f.properties||{},{exclusionAudit:BUILD}),geometry:{type:"LineString",coordinates:coords.map(c=>[Number(c[0]),Number(c[1])])}});
+        parts=1;
+      }
+      if(hitAny){stats.noBuildRejected++;if(parts===0)stats.removedCandidates++;else stats.clippedCandidates++;}
+'''
+          if s.count(old)!=1:
+              raise SystemExit(f'expected exactly one 15788 terminal block; found {s.count(old)}')
+          if new in s:
+              raise SystemExit('correction already present')
+          p.write_text(s.replace(old,new),encoding='utf-8')
+          PY
+          test "$(git diff --name-only)" = "index.html"
+          git diff --check
+          git diff -- index.html
+      - name: Commit candidate science correction
+        run: |
+          git config user.name "Earthline Engine"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "science: preserve exclusion-clear Property corridors"
+          git push origin HEAD:candidate-next
