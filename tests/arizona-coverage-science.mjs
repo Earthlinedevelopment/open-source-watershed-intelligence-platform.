@@ -24,9 +24,38 @@ await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191,{ti
 await page.waitForTimeout(700);
 
 await page.evaluate(()=>{
-  window.EARTHLINE_SPLIT_DIAG_CAPTURE={calls:[],pointRejects:{}};
+  window.EARTHLINE_SPLIT_DIAG_CAPTURE={calls:[],pointRejects:{},geometry:[]};
   const basePoint=window.earthlinePathPointUsable||earthlinePathPointUsable;
   const baseSplit=window.earthlineSplitUsableSegments||earthlineSplitUsableSegments;
+  const baseGeometry=window.earthlineSwaleGeometryAcceptable||earthlineSwaleGeometryAcceptable;
+  const geometryWrap=function(pts,lenM){
+    const md=(typeof M!=='undefined'&&M)||window.M||{};
+    const a=pts?.[0],b=pts?.[pts.length-1];
+    const gapM=(a&&b)?Math.hypot(a[0]-b[0],a[1]-b[1])*Number(md.cellM||1):null;
+    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+    for(const p of (pts||[])){minX=Math.min(minX,p[0]);maxX=Math.max(maxX,p[0]);minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1]);}
+    const diagM=Number.isFinite(minX)?Math.hypot(maxX-minX,maxY-minY)*Number(md.cellM||1):null;
+    const tort=(pts&&pts.length>=2)?earthlineSegmentTortuosityM76(pts):null;
+    const minM=earthlineMinimumSwaleLengthM15768();
+    const loopish=Number.isFinite(gapM)?gapM<Math.max(8,Number(lenM||0)*0.12):null;
+    let reason='pass';
+    if(!pts||pts.length<3||Number(lenM)<minM)reason='minimum-length';
+    else if(loopish)reason='loopish';
+    else if(Number(tort)>1.35)reason='tortuosity';
+    else if(Number(lenM)/Math.max(1,Number(diagM))>1.55)reason='extent-ratio';
+    const ok=baseGeometry(pts,lenM);
+    window.EARTHLINE_SPLIT_DIAG_CAPTURE.geometry.push({
+      points:pts?.length||0,lenM:+Number(lenM||0).toFixed(2),minM:+Number(minM||0).toFixed(2),
+      gapM:Number.isFinite(gapM)?+gapM.toFixed(2):null,
+      diagM:Number.isFinite(diagM)?+diagM.toFixed(2):null,
+      tortuosity:Number.isFinite(tort)?+tort.toFixed(3):null,
+      extentRatio:Number.isFinite(diagM)&&diagM>0?+(Number(lenM||0)/diagM).toFixed(3):null,
+      loopish,reason,ok:!!ok
+    });
+    return ok;
+  };
+  window.earthlineSwaleGeometryAcceptable=geometryWrap;
+  try{earthlineSwaleGeometryAcceptable=geometryWrap}catch(_){};
   const reason=(px,py,maxS)=>{
     const md=(typeof M!=='undefined'&&M)||window.M||{};
     const gx=Math.round(px),gy=Math.round(py);
