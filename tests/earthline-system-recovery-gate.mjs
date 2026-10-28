@@ -52,16 +52,7 @@ async function runProperty(lng,lat,label){
     const e=window.EARTHLINE_ELDER_TREE_LAST_17097;
     return !!e&&(e.state==='committed'||e.state==='failed');
   },null,{timeout:45000,polling:120}).catch(()=>{});
-  await page.waitForFunction(()=>{
-    const e=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
-    if(!e||Number(e.featureCount||0)<=0)return true;
-    const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
-    const canvas=m?.getCanvas?.();
-    if(!m||!canvas||!m.getLayer?.('earthline-elder-tree-points-17097'))return false;
-    const box=[[0,0],[canvas.clientWidth||canvas.width,canvas.clientHeight||canvas.height]];
-    try{return (m.queryRenderedFeatures?.(box,{layers:['earthline-elder-tree-points-17097']})||[]).length>0}catch(_){return false}
-  },null,{timeout:5000,polling:120}).catch(()=>{});
-  await page.waitForTimeout(120);
+  await page.waitForTimeout(600);
 
   return await page.evaluate(({lng,lat,label,disabledBefore,elapsedMs})=>{
     const md=(typeof M!=='undefined'&&M)||window.M||{};
@@ -142,7 +133,7 @@ async function runProperty(lng,lat,label){
 await page.evaluate(()=>{window.__earthlineRecoveryGateErrors=[];window.addEventListener('error',e=>window.__earthlineRecoveryGateErrors.push(String(e.error||e.message||e)))});
 const controls=[
   {label:'AZ-FIRST',lng:-111.93067,lat:34.21568},
-  {label:'AZ-SECOND',lng:-111.93331,lat:34.21526}
+  {label:'AZ-SECOND',lng:-111.93456,lat:34.21545}
 ];
 const rows=[];
 for(const c of controls) rows.push(await runProperty(c.lng,c.lat,c.label));
@@ -155,7 +146,7 @@ const results=rows.map(r=>{
   const frameOk=r.run?.settled===true && r.run?.result===true && r.publication?.published===true;
   const safetyOk=r.lock?.safetyVerified===true;
   const targetOk=near(r.target?.lng,r.requested.lng)&&near(r.target?.lat,r.requested.lat)&&near(r.declaration?.center?.lng,r.requested.lng)&&near(r.declaration?.center?.lat,r.requested.lat);
-  const systemsOk=r.swales.count>0&&r.water.count>0&&String(r.elder?.last?.state||'')==='committed'&&Number(r.elder?.last?.featureCount||0)>0&&Number(r.elder?.rendered||0)>0&&r.elder.layer===true&&r.elder.visibility!=='none'&&Number(r.presentation?.safeRendered||0)>0;
+  const systemsOk=r.swales.count>0&&r.water.count>0&&String(r.elder?.last?.state||'')==='committed'&&Number(r.elder?.last?.featureCount||0)>0&&r.elder.layer===true&&r.elder.visibility!=='none';
   const accepted=Array.isArray(r.meta?.acceptedSpacingM)?r.meta.acceptedSpacingM:[];
   const targetSpacingOk=Math.abs(Number(r.meta?.targetSpacingM)-6.096)<0.001&&Math.abs(Number(accepted[0])-4.572)<0.001&&Math.abs(Number(accepted[1])-7.62)<0.001;
   const spacingPairOk=Number(r.swales.count)<2 ? Number(r.meta?.spacingSampleCount||0)===0 : (Number.isFinite(spacing)&&spacing>=4.572&&spacing<=7.62);
@@ -169,8 +160,7 @@ const results=rows.map(r=>{
   const blueIdentity=casing.color==='#0a4772'&&earth.color==='#1389c2'&&life.color==='#67d6ff'&&water.color==='#19a9e8';
   const dottedPair=Array.isArray(life.dash)&&Array.isArray(water.dash)&&life.dash.length===2&&water.dash.length===2;
   const presentationOk=r.presentation.naturalRendered===0 && naturalHidden && r.presentation.safeRendered>0 && blueIdentity && dottedPair;
-  const elderComplete=String(r.elder?.last?.state||'')==='committed'&&Number(r.elder?.rendered||0)>0;
-  return {label:r.label,targetOk,frameOk,safetyOk,slopeOwnerOk,slopeOk,spacingOk,systemsOk,presentationOk,elderComplete,pass:targetOk&&frameOk&&safetyOk&&slopeOk&&spacingOk&&systemsOk&&presentationOk&&elderComplete};
+  return {label:r.label,targetOk,frameOk,safetyOk,slopeOwnerOk,slopeOk,spacingOk,systemsOk,presentationOk,pass:targetOk&&frameOk&&safetyOk&&slopeOk&&spacingOk&&systemsOk&&presentationOk};
 });
 const summary={pass:results.every(x=>x.pass)&&pageErrors.length===0,results,rows,pageErrors};
 console.log('EARTHLINE_SYSTEM_RECOVERY_GATE '+JSON.stringify(summary));

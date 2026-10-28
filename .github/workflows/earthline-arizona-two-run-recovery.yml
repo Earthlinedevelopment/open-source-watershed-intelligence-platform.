@@ -1,16 +1,18 @@
-name: Earthline Arizona Visible Geometry Diagnostic
+name: Earthline Arizona Two-Run Recovery Gate
 on:
   push:
     branches: [candidate-next]
     paths:
-      - 'tests/arizona-visible-geometry-diagnostic.mjs'
-      - '.github/workflows/earthline-arizona-visible-geometry-diagnostic.yml'
+      - 'index.html'
+      - 'earthline-launch-16872.js'
+      - 'tests/property-first-click-blue-consistency-17382.mjs'
+      - '.github/workflows/earthline-arizona-two-run-recovery.yml'
 permissions:
   contents: read
 jobs:
-  diagnostic:
+  verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,7 +24,8 @@ jobs:
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
       - run: |
-          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
           exit 1
-      - run: env EARTHLINE_URL='https://earthlinedevelopment.org/' node tests/arizona-visible-geometry-diagnostic.mjs
+      - name: Two-run Property consistency
+        run: env EARTHLINE_URL='http://127.0.0.1:8787/' BROWSER='chromium' HEADLESS='true' node tests/property-first-click-blue-consistency-17382.mjs

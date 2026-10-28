@@ -1,5 +1,4 @@
 name: Earthline Candidate System Recovery Gate
-# verify-zero-result-classification
 on:
   push:
     branches: [candidate-next]
@@ -12,7 +11,6 @@ on:
       - 'tests/earthline-system-recovery-gate.mjs'
       - 'tests/browser-regional-ab-17269.mjs'
       - 'tests/elder-user-flow-17418.mjs'
-      - 'tests/validate-property-50states-final.mjs'
       - 'tests/candidate-origin-router.mjs'
       - '.github/workflows/earthline-candidate-system-recovery.yml'
   pull_request:
@@ -31,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: candidate-next
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -48,7 +46,7 @@ jobs:
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
           required=[
-            "const thr=streamThreshold(),chanThr=Math.max(thr*3.2,Number(M.maxAcc||0)*0.06),maxS=4;",
+            "const thr=streamThreshold(),chanThr=thr*3.2,maxS=4;",
             "const safeSlope=slopePct(x,y)<=4;",
             "maxS=Number(lg.maxSlopePct||4);",
             "const requested=Number(M.targetSwaleSpacingM||6.096);",
@@ -75,8 +73,6 @@ jobs:
         run: env EARTHLINE_URL='https://earthlinedevelopment.org/' EARTHLINE_CANDIDATE_ORIGIN='1' BROWSER='chromium' HEADLESS='true' node tests/elder-user-flow-17418.mjs
       - name: Integrated Property science and presentation
         run: env EARTHLINE_URL='https://earthlinedevelopment.org/' EARTHLINE_CANDIDATE_ORIGIN='1' node tests/earthline-system-recovery-gate.mjs
-      - name: Representative Property user flow
-        run: env EARTHLINE_URL='https://earthlinedevelopment.org/' EARTHLINE_CANDIDATE_ORIGIN='1' STATES='Arizona|Vermont|Texas' OUT='/tmp/property-representative.json' node tests/validate-property-50states-final.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

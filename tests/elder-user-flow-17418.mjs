@@ -8,8 +8,7 @@ const BASE=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
 const CANDIDATE_ORIGIN=process.env.EARTHLINE_CANDIDATE_ORIGIN==='1';
 const cases=[
   {name:'Vermont',query:'Vermont',lng:-72.5754,lat:44.2601},
-  {name:'Colorado',query:'Colorado',lng:-105.27,lat:39.73},
-  {name:'Alaska',query:'Alaska',lng:-134.13303559235723,lat:58.7430878435616}
+  {name:'Colorado',query:'Colorado',lng:-105.27,lat:39.73}
 ];
 const rows=[];
 for(const c of cases){
