@@ -1,10 +1,12 @@
 import { chromium, firefox, webkit } from 'playwright';
 import { writeFileSync, mkdirSync } from 'node:fs';
+import { installCandidateOrigin } from './candidate-origin-router.mjs';
 
 const browserName=(process.env.BROWSER||'chromium').toLowerCase();
 const launchers={chromium,firefox,webkit};
 if(!launchers[browserName]) throw new Error('unsupported BROWSER '+browserName);
 const BASE=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
+const CANDIDATE_ORIGIN=process.env.EARTHLINE_CANDIDATE_ORIGIN==='1';
 const states=(process.env.STATES||'Texas|Vermont').split('|').map(s=>s.trim()).filter(Boolean);
 const timeout=Number(process.env.WAIT_MS||60000);
 mkdirSync('artifacts/browser-regional-17269',{recursive:true});
@@ -14,6 +16,7 @@ const browser=await launchers[browserName].launch({headless});
 const results=[];
 for(const query of states){
   const context=await browser.newContext({viewport:{width:1800,height:950}});
+  if(CANDIDATE_ORIGIN)await installCandidateOrigin(context);
   const page=await context.newPage();
   const pageErrors=[];
   page.on('pageerror',e=>pageErrors.push(String(e)));
