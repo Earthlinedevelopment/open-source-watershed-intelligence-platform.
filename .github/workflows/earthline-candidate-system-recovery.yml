@@ -11,6 +11,7 @@ on:
       - 'tests/earthline-system-recovery-gate.mjs'
       - 'tests/browser-regional-ab-17269.mjs'
       - 'tests/elder-user-flow-17418.mjs'
+      - 'tests/validate-property-50states-final.mjs'
       - 'tests/candidate-origin-router.mjs'
       - '.github/workflows/earthline-candidate-system-recovery.yml'
   pull_request:
@@ -73,6 +74,8 @@ jobs:
         run: env EARTHLINE_URL='https://earthlinedevelopment.org/' EARTHLINE_CANDIDATE_ORIGIN='1' BROWSER='chromium' HEADLESS='true' node tests/elder-user-flow-17418.mjs
       - name: Integrated Property science and presentation
         run: env EARTHLINE_URL='https://earthlinedevelopment.org/' EARTHLINE_CANDIDATE_ORIGIN='1' node tests/earthline-system-recovery-gate.mjs
+      - name: Representative Property user flow
+        run: env EARTHLINE_URL='https://earthlinedevelopment.org/' EARTHLINE_CANDIDATE_ORIGIN='1' STATES='Arizona|Vermont|Texas' OUT='/tmp/property-representative.json' node tests/validate-property-50states-final.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
