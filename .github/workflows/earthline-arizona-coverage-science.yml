@@ -5,6 +5,7 @@ on:
     paths:
       - 'tests/arizona-coverage-science.mjs'
       - 'tests/apply-property-minimum-length-science.py'
+      - 'tests/apply-property-component-science.py'
       - '.github/workflows/earthline-arizona-coverage-science.yml'
 # minimum-length consistency run
 permissions:
@@ -23,8 +24,9 @@ jobs:
       - run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Evaluate Property minimum corridor length locally
+      - name: Evaluate complete Property coverage science locally
         run: |
+          python3 tests/apply-property-component-science.py index.html
           python3 tests/apply-property-minimum-length-science.py index.html
       - run: |
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
