@@ -23,7 +23,7 @@ jobs:
       - name: Audit mobile Property control lifecycle at public origin
         shell: bash
         run: |
-          cat > /tmp/mobile-audit-17601.mjs <<'JS'
+          cat > tests/_mobile-audit-17601.mjs <<'JS'
           import { chromium } from 'playwright';
           import { readFileSync,existsSync } from 'node:fs';
           import { resolve,extname } from 'node:path';
@@ -75,7 +75,7 @@ jobs:
           await page.screenshot({path:'/tmp/mobile-17601.png',fullPage:true});
           await browser.close();
           JS
-          node /tmp/mobile-audit-17601.mjs
+          node tests/_mobile-audit-17601.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
