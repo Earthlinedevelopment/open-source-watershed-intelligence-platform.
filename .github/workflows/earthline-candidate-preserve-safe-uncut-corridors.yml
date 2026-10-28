@@ -19,23 +19,15 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
-          old='''      flush();
-      if(hitAny){stats.noBuildRejected++;if(parts===0)stats.removedCandidates++;else stats.clippedCandidates++;}
-'''
-          new='''      flush();
-      if(!hitAny&&parts===0){
-        features.push({type:"Feature",properties:Object.assign({},f.properties||{},{exclusionAudit:BUILD}),geometry:{type:"LineString",coordinates:coords.map(c=>[Number(c[0]),Number(c[1])])}});
-        parts=1;
-      }
-      if(hitAny){stats.noBuildRejected++;if(parts===0)stats.removedCandidates++;else stats.clippedCandidates++;}
-'''
-          if s.count(old)!=1:
-              raise SystemExit(f'expected exactly one 15788 terminal block; found {s.count(old)}')
+          p = Path("index.html")
+          s = p.read_text(encoding="utf-8")
+          old = "      flush();\n      if(hitAny){stats.noBuildRejected++;if(parts===0)stats.removedCandidates++;else stats.clippedCandidates++;}\n"
+          new = "      flush();\n      if(!hitAny&&parts===0){\n        features.push({type:\"Feature\",properties:Object.assign({},f.properties||{},{exclusionAudit:BUILD}),geometry:{type:\"LineString\",coordinates:coords.map(c=>[Number(c[0]),Number(c[1])])}});\n        parts=1;\n      }\n      if(hitAny){stats.noBuildRejected++;if(parts===0)stats.removedCandidates++;else stats.clippedCandidates++;}\n"
+          if s.count(old) != 1:
+              raise SystemExit("expected exactly one 15788 terminal block; found %d" % s.count(old))
           if new in s:
-              raise SystemExit('correction already present')
-          p.write_text(s.replace(old,new),encoding='utf-8')
+              raise SystemExit("correction already present")
+          p.write_text(s.replace(old,new),encoding="utf-8")
           PY
           test "$(git diff --name-only)" = "index.html"
           git diff --check
