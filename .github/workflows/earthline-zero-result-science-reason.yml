@@ -1,0 +1,38 @@
+name: Earthline Zero Result Science Reason
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-zero-result-science-reason.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 0
+      - name: Make every zero Property result scientifically explicit
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old='      M.prescriptionZeroReason15870=earthlineLegitimateZeroReason15870();'
+          new='      M.prescriptionZeroReason15870=earthlineLegitimateZeroReason15870()||"no-contour-traces";'
+          if s.count(old)!=1:
+              raise SystemExit(f'expected one zero-result owner; found {s.count(old)}')
+          p.write_text(s.replace(old,new),encoding='utf-8')
+          PY
+          test "$(git diff --name-only)" = "index.html"
+          test "$(git diff --numstat | awk '{print $1" "$2}')" = "1 1"
+      - name: Commit candidate science
+        run: |
+          git config user.name "Earthline Engine"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "science: classify every zero Property result"
+          git push origin HEAD:candidate-next
