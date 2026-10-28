@@ -5,6 +5,8 @@ on:
     paths:
       - 'tests/arizona-coverage-science.mjs'
       - 'tests/apply-property-level-spacing-science.py'
+      - 'tests/apply-property-component-science.py'
+      - 'tests/apply-property-minimum-length-science.py'
       - '.github/workflows/earthline-arizona-coverage-science.yml'
 permissions:
   contents: read
@@ -22,9 +24,11 @@ jobs:
       - run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Evaluate Property level-spacing science locally
+      - name: Evaluate complete Property coverage recovery locally
         run: |
           python3 tests/apply-property-level-spacing-science.py index.html
+          python3 tests/apply-property-component-science.py index.html
+          python3 tests/apply-property-minimum-length-science.py index.html
       - run: |
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
