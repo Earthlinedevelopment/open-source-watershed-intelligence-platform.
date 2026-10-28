@@ -18,6 +18,35 @@ await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191,{ti
 const target={lng:-111.93331,lat:34.21526};
 await page.evaluate(t=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);m.jumpTo({center:[t.lng,t.lat],zoom:16.59});try{m.fire?.('dragend')}catch(_){}},target);
 await page.waitForFunction(t=>{const p=window.EARTHLINE_PROPERTY_TARGET_16201||null;return !!p&&Math.abs(Number(p.lng)-t.lng)<0.00008&&Math.abs(Number(p.lat)-t.lat)<0.00008},target,{timeout:15000,polling:100});
+await page.evaluate(()=>{
+  window.__earthlineConversionRejects=[];
+  const original=window.earthlineSwaleFromPts;
+  if(typeof original==='function'){
+    window.earthlineSwaleFromPts=function(pts,bandIndex,chanThr,isSite,maxS,totalBands){
+      const result=original.apply(this,arguments);
+      if(!result&&Array.isArray(pts)&&pts.length){
+        let slopeSum=0,slopeN=0,minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+        for(const p of pts){
+          const x=Math.max(0,Math.min(GW-1,Math.round(Number(p[0])))),y=Math.max(0,Math.min(GH-1,Math.round(Number(p[1]))));
+          const sp=Number(slopePct(x,y));
+          if(Number.isFinite(sp)){slopeSum+=sp;slopeN++;}
+          minX=Math.min(minX,Number(p[0]));maxX=Math.max(maxX,Number(p[0]));minY=Math.min(minY,Number(p[1]));maxY=Math.max(maxY,Number(p[1]));
+        }
+        const lenM=earthlineSegmentLengthM(pts);
+        const a=pts[0],b=pts[pts.length-1],gapM=Math.hypot(Number(a[0])-Number(b[0]),Number(a[1])-Number(b[1]))*M.cellM;
+        const diagM=Math.hypot(maxX-minX,maxY-minY)*M.cellM;
+        const tort=earthlineSegmentTortuosityM76(pts);
+        const minLen=earthlineMinimumSwaleLengthM15768();
+        window.__earthlineConversionRejects.push({
+          bandIndex,isSite:!!isSite,maxS:Number(maxS),points:pts.length,lenM,avgSlope:slopeN?slopeSum/slopeN:null,
+          minLen,gapM,diagM,tortuosity:tort,lenDiag:lenM/Math.max(1,diagM),
+          loopish:gapM<Math.max(8,lenM*0.12)
+        });
+      }
+      return result;
+    };
+  }
+});
 const before=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
 await page.locator('#earthlineDeclareProperty16169').click();
 await page.waitForFunction(prev=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true&&Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0)>prev,before,{timeout:90000,polling:120});
@@ -37,6 +66,7 @@ const d=await page.evaluate(()=>{
  }
  let elderRendered=0;try{const c=map?.getCanvas?.();const box=c?[[0,0],[c.clientWidth||c.width,c.clientHeight||c.height]]:null;elderRendered=box&&elderLayer?(map.queryRenderedFeatures(box,{layers:['earthline-elder-tree-points-17097']})||[]).length:0}catch(_){}
  return {
+   conversionRejects:window.__earthlineConversionRejects||[],
    cellM:Number(md.cellM), safeCells:Number(md?.earthlineTraceSafeCache16320?.safeCells||0),
    meta:md.swaleMeta||null, swales, boundary:b,
    elderLast:window.EARTHLINE_ELDER_TREE_LAST_17097||null, elderFeatures, elderRendered,
