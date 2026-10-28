@@ -15,16 +15,20 @@ jobs:
         with:
           ref: candidate-next
           fetch-depth: 0
-      - name: Apply Property minimum corridor science
+      - name: Remove duplicate same-band Property geometry
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
-          old="function earthlineMinimumSwaleLengthM15768(){\n  const cell=Math.max(0.25,Number(M.cellM||1));\n  return Math.max(12,Math.min(40,cell*4));\n}"
-          new="function earthlineMinimumSwaleLengthM15768(){\n  const cell=Math.max(0.25,Number(M.cellM||1));\n  const regional=!!(M.loc&&(/Regional Opportunity Tile/i.test(String(M.loc.name||\"\"))||(Array.isArray(M.loc.zones)&&M.loc.zones.includes(\"Regional Tile\"))));\n  return regional?Math.max(12,Math.min(40,cell*4)):Math.max(6,Math.min(18,cell*3));\n}"
+          old="        if(sw.bandKey===ex.bandKey)continue;"
+          new="""        if(sw.bandKey===ex.bandKey){
+          const duplicateTolM15771=Math.max(.25,Math.min(1.5,Math.max(.25,Number(M.cellM||1))*.5));
+          if(earthlinePathDistanceFast15770(sw,ex,duplicateTolM15771)<duplicateTolM15771){tooClose=true;break;}
+          continue;
+        }"""
           if s.count(old)!=1:
-              raise SystemExit("canonical minimum-corridor owner count="+str(s.count(old)))
+              raise SystemExit("same-band spacing owner count="+str(s.count(old)))
           p.write_text(s.replace(old,new),encoding="utf-8")
           PY
           test "$(git diff --name-only)" = "index.html"
@@ -34,5 +38,5 @@ jobs:
           git config user.name "Earthline Engine"
           git config user.email "actions@users.noreply.github.com"
           git add index.html
-          git commit -m "science: preserve shorter valid Property contour reaches"
+          git commit -m "science: remove duplicate same-band Property contours"
           git push origin HEAD:candidate-next
