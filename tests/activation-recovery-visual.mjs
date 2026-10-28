@@ -63,7 +63,15 @@ for(const c of cases){
       safeRendered:count(safe),
       naturalRendered:count(natural),
       elderRendered:count(elder),
-      acceptedOwner:document.getElementById('earthlineDeclareProperty16169')?.dataset.earthlinePropertyClickOwner16546||''
+      acceptedOwner:document.getElementById('earthlineDeclareProperty16169')?.dataset.earthlinePropertyClickOwner16546||'',
+      acceptedTarget:window.EARTHLINE_PROPERTY_ACCEPTED_TARGET_M7839||null,
+      launchAudit:window.EARTHLINE_PROPERTY_LAUNCH_AUDIT_16322||window.EARTHLINE_PROPERTY_LAUNCH_AUDIT||null,
+      propertyRunAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+      runState:document.documentElement.dataset.earthlineRunState||'',
+      propertyRunState:document.documentElement.dataset.earthlinePropertyRunState||'',
+      regionalActive:window.earthlineRegional15778?.active??null,
+      regionalRunning:window.earthlineRegional15778?.running??null,
+      status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'')
     };
   },c.label);
   rows.push({...snap,before});
