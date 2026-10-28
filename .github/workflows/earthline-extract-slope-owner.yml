@@ -1,0 +1,26 @@
+name: Earthline Extract Property Slope Owner
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-extract-slope-owner.yml'
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - name: Print slope owner
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          needles=['function slopePct','const slopePct','slopePct=','function medianSlopeInParcel','earthlineSafeCell']
+          for n in needles:
+              i=s.find(n)
+              print('\n###',n,'at',i)
+              if i>=0: print(s[max(0,i-1800):i+7000])
+          PY
