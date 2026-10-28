@@ -1,0 +1,41 @@
+name: Earthline Candidate Same-Band Duplicate Correction
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-candidate-same-band-duplicate.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 0
+      - name: Remove duplicate same-band Property geometry
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old='''        if(sw.bandKey===ex.bandKey)continue;'''
+          new='''        if(sw.bandKey===ex.bandKey){
+          const duplicateTolM15771=Math.max(.25,Math.min(1.5,Math.max(.25,Number(M.cellM||1))*.5));
+          if(earthlinePathDistanceFast15770(sw,ex,duplicateTolM15771)<duplicateTolM15771){tooClose=true;break;}
+          continue;
+        }'''
+          if s.count(old)!=1:
+              raise SystemExit(f'expected one same-band spacing bypass; found {s.count(old)}')
+          p.write_text(s.replace(old,new),encoding='utf-8')
+          PY
+          test "$(git diff --name-only)" = "index.html"
+      - name: Commit candidate science
+        run: |
+          git config user.name "Earthline Engine"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "science: remove duplicate same-band Property contours"
+          git push origin HEAD:candidate-next
