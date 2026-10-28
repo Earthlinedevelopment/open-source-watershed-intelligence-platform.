@@ -1,0 +1,37 @@
+name: Earthline Tagline Visibility Trace 17625
+on:
+  push:
+    branches: [diag/tagline-17624]
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trace visibility and panel order
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          for fn in ["index.html","earthline-launch-16872.js"]:
+              s=Path(fn).read_text(encoding="utf-8")
+              print("\n===== "+fn+" =====")
+              for needle in [
+                  ".earthline-mantra-header{display:none",
+                  ".earthline-mantra-header {display:none",
+                  ".earthline-mantra-header",
+                  "#earthlinePanelBrand16201",
+                  "earthlineSearchSection16188",
+                  "earthlineSearchSlot16188",
+                  "earthlinePanelBrand16201"
+              ]:
+                  print("\n###",needle)
+                  p=0;n=0
+                  while True:
+                      i=s.find(needle,p)
+                      if i<0 or n>=20: break
+                      line=s.count("\n",0,i)+1
+                      block=s[max(0,i-550):min(len(s),i+1500)].replace("\n"," ")
+                      print("LINE",line,"INDEX",i,block)
+                      p=i+len(needle);n+=1
+          PY
