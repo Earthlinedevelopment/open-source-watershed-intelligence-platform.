@@ -16,6 +16,33 @@ for(const [name,ref] of VERSIONS){
  try{
    await page.goto('https://earthlinedevelopment.org/?direct_hist='+name+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
    await page.waitForSelector('#earthlineDeclareProperty16169',{timeout:30000});
+   if(name==='current'){
+     await page.evaluate(()=>{
+       window.slopePct=function(x,y){
+         const xi=Number(x),yi=Number(y);
+         function constructionGrad16289(px,py){
+           const cell=Math.max(.001,Number(M.cellM||1));
+           const r=Math.max(1,Math.min(8,Math.round(7.5/cell)));
+           const xx=Math.round(px),yy=Math.round(py);
+           const x0=clamp(xx-r,0,GW-1),x1=clamp(xx+r,0,GW-1);
+           const y0=clamp(yy-r,0,GH-1),y1=clamp(yy+r,0,GH-1);
+           const gx=(M.h[idx(x1,yy)]-M.h[idx(x0,yy)])/Math.max(cell,(x1-x0)*cell);
+           const gy=(M.h[idx(xx,y1)]-M.h[idx(xx,y0)])/Math.max(cell,(y1-y0)*cell);
+           return [gx,gy];
+         }
+         const originalMemoKey=window.earthlineSlopeMemoKey16288;
+         window.earthlineSlopeMemo16288=null; window.earthlineSlopeMemoKey16288='';
+         const fn=function(x,y){
+           const xi=Number(x),yi=Number(y);
+           if(Number.isInteger(xi)&&Number.isInteger(yi)&&xi>=0&&yi>=0&&xi<GW&&yi<GH){
+             const[gx,gy]=constructionGrad16289(xi,yi); return Math.hypot(gx,gy)*100;
+           }
+           const[gx,gy]=constructionGrad16289(x,y); return Math.hypot(gx,gy)*100;
+         };
+         try{eval('slopePct=fn')}catch(_){window.slopePct=fn}
+       });
+     });
+   }
    await page.evaluate(t=>{
      const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
      if(!m)throw new Error('map unavailable');
