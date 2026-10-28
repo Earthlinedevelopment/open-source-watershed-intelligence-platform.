@@ -3,6 +3,9 @@ on:
   push:
     branches: [candidate-next]
     paths:
+      - 'earthline-launch-16872.js'
+      - 'tests/earthline-system-recovery-gate.mjs'
+      - 'tests/arizona-slope-base-science.mjs'
       - '.github/workflows/earthline-arizona-visible-controls.yml'
 permissions:
   contents: read
@@ -26,6 +29,9 @@ jobs:
           exit 1
       - name: Exact Arizona visible controls
         run: env EARTHLINE_URL='https://earthlinedevelopment.org/' EARTHLINE_CANDIDATE_ORIGIN='1' node tests/earthline-system-recovery-gate.mjs
+      - name: Exact Arizona base-science slope diagnostic
+        if: always()
+        run: env EARTHLINE_URL='https://earthlinedevelopment.org/' EARTHLINE_CANDIDATE_ORIGIN='1' node tests/arizona-slope-base-science.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
