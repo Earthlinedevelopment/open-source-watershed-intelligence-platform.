@@ -75,3 +75,16 @@ The controlling development method is the **Earthline Modus Operandi** in `EARTH
 - Presentation/science status: LIVE VALIDATED
 - Final status: USER VISUAL ACCEPTANCE PENDING
 - Rollback reference: validated-live-198943
+
+## 2026-10-28 restored live Property controls
+- Public production SHA: b37721dcd016e13b88bb8772afe599c386c06970
+- Frozen rollback branch: validated-live-b37721
+- Pages deployment run: 40658630174 — SUCCESS
+- Live production verification run: 40658745448 — SUCCESS
+- Exact Arizona controls both PASS on live production.
+- AZ-FIRST: 13 visible safe Property swales, median spacing 5.741 m, 2 rendered Elder candidates.
+- AZ-SECOND: 11 visible safe Property swales, rendered Elder evidence present.
+- Locked <=4% Property slope owner preserved.
+- Natural Property rendering hidden; authoritative blue safe-line presentation active.
+- No subsequent experimental candidate science is promoted from this entry.
+
