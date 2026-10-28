@@ -13,6 +13,9 @@ Updated: 2026-10-28
 ## Operating rule
 ONE DEFECT · ONE OWNER · ONE CHANGE · ONE ROLLBACK
 
+## Modus operandi lock
+The controlling development method is the **Earthline Modus Operandi** in `EARTHLINE-DEVELOPMENT-OPERATING-DOCTRINE.md`. It is mandatory before every repository write and production promotion: freeze accepted success, diagnose first, change one canonical owner, validate off-production, preserve exact rollback, promote by exact SHA, and treat Jon's browser evidence as final acceptance authority.
+
 ## Current recovery record
 | BASELINE | DEFECT | CANONICAL OWNER | VALIDATED CHANGE | CANDIDATE SHA | RESULT | ROLLBACK |
 |---|---|---|---|---|---|---|
