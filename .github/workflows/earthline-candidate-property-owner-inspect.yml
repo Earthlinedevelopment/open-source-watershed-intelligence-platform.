@@ -1,0 +1,33 @@
+name: Earthline Candidate Property Presentation Owner Inspect
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-candidate-property-owner-inspect.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - name: Extract canonical Property presentation owner
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          needles=[
+            "const SAFE_LAYERS_16221",
+            "async function earthlineSyncPropertyTexture16169",
+            "function earthlineSyncPropertyTexture16169",
+            "if(show){for(const id of OLD)",
+            "earthline-property-safe-casing-16221",
+            "earthline-property-swale-natural-casing-16174"
+          ]
+          for n in needles:
+              i=s.find(n)
+              print("\n=== OWNER",n,"INDEX",i,"===")
+              if i>=0: print(s[max(0,i-5000):min(len(s),i+18000)])
+          PY
