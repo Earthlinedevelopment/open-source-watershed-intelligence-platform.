@@ -1,0 +1,28 @@
+name: Earthline 15788 Safety Filter Source
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-15788-safety-source.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - name: Print 15788 owner
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          lines=s.splitlines()
+          matches=[i for i,l in enumerate(lines) if 'BUILD-CHECK-15788' in l]
+          print('MATCHES', [i+1 for i in matches])
+          for i in matches:
+              a=max(0,i-80); b=min(len(lines),i+180)
+              print('\n===== OWNER AROUND LINE',i+1,'=====')
+              for n in range(a,b): print(f'{n+1}: {lines[n]}')
+          PY
