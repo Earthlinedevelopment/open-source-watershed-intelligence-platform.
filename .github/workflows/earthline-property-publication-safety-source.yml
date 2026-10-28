@@ -1,0 +1,46 @@
+name: Earthline Property Publication Safety Diagnostic
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-property-publication-safety-source.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - name: Print publication and safety owners
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          lines=s.splitlines()
+          terms=[
+            'authoritativePropertySwales15800',
+            'authoritativeSafeSwales15815',
+            'propertyResultLock15815',
+            'propertyPublication15816',
+            'safetyVerified',
+            'safeSegments',
+            'rawSegments',
+            'safetyAudit15806',
+            'earthlinePropertySafety',
+            'earthlinePublishProperty',
+            'rendererSource'
+          ]
+          for term in terms:
+              print('\n===== '+term+' =====')
+              seen=0
+              for i,line in enumerate(lines):
+                  if term in line:
+                      seen+=1
+                      a=max(0,i-28); b=min(len(lines),i+95)
+                      print('\n--- occurrence line',i+1,'---')
+                      for n in range(a,b): print(f'{n+1}: {lines[n]}')
+                      if seen>=8: break
+              if not seen: print('NOT FOUND')
+          PY
