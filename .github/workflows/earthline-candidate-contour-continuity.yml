@@ -1,0 +1,41 @@
+name: Earthline Candidate Contour Continuity Correction
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-candidate-contour-continuity.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 0
+      - name: Apply isolated contour continuity science correction
+        run: |
+          test "$(git rev-parse HEAD)" = "90a325c874a45d8b20d6352c45d3f43548c84a51"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old='      if(!earthlineSafeCell(cx,cy,maxS))break;'
+          new='      if(cx<1||cy<1||cx>=GW-1||cy>=GH-1||!M.inP[idx(cx,cy)])break;'
+          if s.count(old)!=1:
+              raise SystemExit(f'expected one contour traversal safety stop; found {s.count(old)}')
+          if new in s:
+              raise SystemExit('contour continuity condition already present')
+          p.write_text(s.replace(old,new),encoding='utf-8')
+          PY
+          test "$(git diff --name-only)" = "index.html"
+          test "$(git diff --numstat | awk '{print $1" "$2}')" = "1 1"
+      - name: Commit candidate science correction
+        run: |
+          git config user.name "Earthline Engine"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "science: trace contours before safety segmentation"
+          git push origin HEAD:candidate-next
