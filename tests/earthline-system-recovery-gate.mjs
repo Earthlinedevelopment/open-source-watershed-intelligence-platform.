@@ -52,7 +52,16 @@ async function runProperty(lng,lat,label){
     const e=window.EARTHLINE_ELDER_TREE_LAST_17097;
     return !!e&&(e.state==='committed'||e.state==='failed');
   },null,{timeout:45000,polling:120}).catch(()=>{});
-  await page.waitForTimeout(600);
+  await page.waitForFunction(()=>{
+    const e=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+    if(!e||Number(e.featureCount||0)<=0)return true;
+    const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+    const canvas=m?.getCanvas?.();
+    if(!m||!canvas||!m.getLayer?.('earthline-elder-tree-points-17097'))return false;
+    const box=[[0,0],[canvas.clientWidth||canvas.width,canvas.clientHeight||canvas.height]];
+    try{return (m.queryRenderedFeatures?.(box,{layers:['earthline-elder-tree-points-17097']})||[]).length>0}catch(_){return false}
+  },null,{timeout:5000,polling:120}).catch(()=>{});
+  await page.waitForTimeout(120);
 
   return await page.evaluate(({lng,lat,label,disabledBefore,elapsedMs})=>{
     const md=(typeof M!=='undefined'&&M)||window.M||{};
