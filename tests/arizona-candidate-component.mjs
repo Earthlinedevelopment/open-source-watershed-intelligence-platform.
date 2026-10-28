@@ -36,7 +36,11 @@ const out=await page.evaluate(()=>{
  for(let i=0;i<N;i++){const c=comp[i];if(!c)continue;const x=i%GW,y=Math.floor(i/GW),v=Number(slopePct(x,y));if(!Number.isFinite(v))continue;(componentSlopes[c]||(componentSlopes[c]=[])).push(v);}
  const componentStats={};
  for(const [k,vals] of Object.entries(componentSlopes)){vals.sort((a,b)=>a-b);const q=p=>vals[Math.min(vals.length-1,Math.max(0,Math.floor((vals.length-1)*p)))];componentStats[k]={n:vals.length,p10:q(.1),p25:q(.25),median:q(.5),p75:q(.75),p90:q(.9),min:vals[0],max:vals[vals.length-1]};}
- return {cellM:m,componentCount:cid,componentSizes:sizes,componentStats,accepted:nearest,pairs,meta:md.swaleMeta||null};
+ const allCandidates=(cov?.spatial?.candidates||[]).map(c=>{
+   const gx=Math.max(0,Math.min(GW-1,Math.round(Number(c.x)))),gy=Math.max(0,Math.min(GH-1,Math.round(Number(c.y)))),component=comp[idx(gx,gy)];
+   return {id:c.id,final:c.finalCorridorId15843||null,status:c.status||null,reason:c.reason||null,x:Number(c.x),y:Number(c.y),component,componentCells:sizes[component]||0,origin:c.candidateOrigin15840||null,levelIndex:c.levelIndex??null,score:Number(c.score||0),accepted:c.accepted===true};
+ });
+ return {cellM:m,componentCount:cid,componentSizes:sizes,componentStats,accepted:nearest,pairs,allCandidates,meta:md.swaleMeta||null,stage:md.swaleDiagnostics?.stage||null};
 });
 console.log('EARTHLINE_AZ_CANDIDATE_COMPONENT '+JSON.stringify(out));
 await browser.close();
