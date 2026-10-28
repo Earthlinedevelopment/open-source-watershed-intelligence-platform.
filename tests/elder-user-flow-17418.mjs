@@ -1,9 +1,11 @@
 import { chromium, firefox, webkit } from 'playwright';
+import { installCandidateOrigin } from './candidate-origin-router.mjs';
 const BROWSER=(process.env.BROWSER||'chromium').toLowerCase();
 const launcher={chromium,firefox,webkit}[BROWSER];
 const headless=String(process.env.HEADLESS||'true').toLowerCase()!=='false';
 const browser=await launcher.launch({headless});
 const BASE=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
+const CANDIDATE_ORIGIN=process.env.EARTHLINE_CANDIDATE_ORIGIN==='1';
 const cases=[
   {name:'Vermont',query:'Vermont',lng:-72.5754,lat:44.2601},
   {name:'Colorado',query:'Colorado',lng:-105.27,lat:39.73}
@@ -11,6 +13,7 @@ const cases=[
 const rows=[];
 for(const c of cases){
   const context=await browser.newContext({viewport:{width:1700,height:950}});
+  if(CANDIDATE_ORIGIN)await installCandidateOrigin(context);
   const page=await context.newPage();
   const errors=[];page.on('pageerror',e=>errors.push(String(e)));
   await page.goto(BASE+'?elderFlow17418='+encodeURIComponent(c.name)+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
