@@ -177,7 +177,25 @@ async function runControl(lng,lat,label){
       slope:{cellM,samples:slopes.length,q10:q(.1),q25:q(.25),median:q(.5),q75:q(.75),q90:q(.9),safePct:Number(md?.swaleDiagnostics?.slopeSafePct),usablePct:Number(md?.swaleDiagnostics?.usablePct)},
       coverage:{safeCells:safe.length,coveredWithin25ft:covered,uncoveredWithin25ft:safe.length-covered,coveragePct:safe.length?+(100*covered/safe.length).toFixed(1):100,acceptedSwales:swales.length},
       flow:{eligiblePaths:Number(flow.eligiblePaths||0),pathsEvaluated:Number(flow.pathsEvaluated||0),pathsServed:Number(flow.pathsServed||0),unservedCount:Array.isArray(flow.unserved)?flow.unserved.length:0,reasons},
-      prescriber:{meta:md.swaleMeta||null,diagnosticStage:md.swaleDiagnostics?.stage||null,termination:diag.termination||null,coverage:diag.coverage||null,zones:Array.isArray(diag.zones)?diag.zones.map(z=>({id:z.id,safeCells:z.safeCells,contourCells:z.contourCells,seeds:z.seeds,candidates:z.candidates,accepted:z.accepted,rejections:z.rejections})):[]},
+      prescriber:{
+        meta:md.swaleMeta||null,
+        diagnosticStage:md.swaleDiagnostics?.stage||null,
+        termination:diag.termination||null,
+        coverage:diag.coverage||null,
+        zones:Array.isArray(diag.zones)?diag.zones.map(z=>({id:z.id,safeCells:z.safeCells,contourCells:z.contourCells,seeds:z.seeds,candidates:z.candidates,accepted:z.accepted,rejections:z.rejections})):[],
+        candidateDiagnostics:Array.isArray(diag?.spatial?.candidates)?diag.spatial.candidates.map(c=>({
+          id:c.id,status:c.status,reason:c.reason,terminalStage:c.terminalStage15840,
+          terminalReason:c.terminalReasonCode15840,candidateOrigin:c.candidateOrigin15840,
+          seedId:c.seedId15840,lengthM:c.lengthM,score:c.score,flowScore:c.flowScore15833,
+          accepted:c.accepted,band:c.band
+        })):[],
+        seedDiagnostics:Array.isArray(diag?.spatial?.seeds)?diag.spatial.seeds.map(c=>({
+          id:c.id,status:c.status,terminalStage:c.terminalStage15840,
+          terminalReason:c.terminalReasonCode15840,segmentCount:c.segmentCount15840,
+          produced:c.segmentProduced15840,segmentTerminalCodes:c.segmentTerminalCodes15840,
+          levelIndex:c.levelIndex,rank:c.rank,x:c.x,y:c.y
+        })):[]
+      },
       elder:{state:String(elder?.state||''),featureCount:Number(elder?.featureCount||0),summary:elder?.summary||null,identity:String(elder?.propertyRunIdentity||'')},
       splitDiagnostic:window.EARTHLINE_SPLIT_DIAG_CAPTURE||null,
       pageErrors:[...window.__coverageScienceErrors||[]]
