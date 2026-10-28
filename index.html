@@ -13806,7 +13806,11 @@ async function prescribeSwales15778(myGen=M.searchGen){
       bboxSkippedFinalPairs16204+=Math.max(0,kept.length-spacingCandidates16456.length);
       for(const exIndex16204 of spacingCandidates16456){
         const ex=kept[exIndex16204];
-        if(sw.bandKey===ex.bandKey)continue;
+        if(sw.bandKey===ex.bandKey){
+          const duplicateTolM15771=Math.max(.25,Math.min(1.5,Math.max(.25,Number(M.cellM||1))*.5));
+          if(earthlinePathDistanceFast15770(sw,ex,duplicateTolM15771)<duplicateTolM15771){tooClose=true;break;}
+          continue;
+        }
         if(Math.abs(Number(sw.levelH||0)-Number(ex.levelH||0))>verticalWindowM)continue;
         if(!earthlineSwaleBBoxesWithin16204(swBBox16204,keptBBox16204[exIndex16204],spacingPadCells16204)){bboxSkippedFinalPairs16204++;continue;}
         exactFinalPairs16204++;
