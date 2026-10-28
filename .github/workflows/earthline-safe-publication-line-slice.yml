@@ -1,0 +1,19 @@
+name: Earthline Safe Publication Line Slice
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-safe-publication-line-slice.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 0
+      - run: |
+          git show origin/pages-live:index.html > /tmp/live-index.html
+          sed -n '29620,29795p' /tmp/live-index.html
