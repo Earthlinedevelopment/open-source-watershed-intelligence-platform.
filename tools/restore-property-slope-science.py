@@ -39,3 +39,4 @@ for forbidden in [
 
 p.write_text(s,encoding="utf-8")
 print("PASS: canonical Property slope ceiling restored to <=4% only; spacing and contour budgets unchanged.")
+# candidate execution trigger
