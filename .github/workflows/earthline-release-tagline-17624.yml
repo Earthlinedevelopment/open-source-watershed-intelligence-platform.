@@ -1,0 +1,33 @@
+name: Earthline Release Locked Tagline 17624
+on:
+  push:
+    branches: [candidate-release-17601]
+    paths:
+      - '.github/earthline-tagline-17624-trigger.txt'
+permissions:
+  contents: write
+jobs:
+  tagline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate-release-17601, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: python3 tests/apply-tagline-17624.py
+      - name: Confirm isolated runtime change
+        run: |
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "earthline-launch-16872.js"
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/tagline-17624.mjs
+      - name: Commit validated tagline owner
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add earthline-launch-16872.js
+          git commit -m "ui: restore locked Earthline tagline above Search"
+          git push origin HEAD:candidate-release-17601
