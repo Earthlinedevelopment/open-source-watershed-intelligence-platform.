@@ -1,0 +1,42 @@
+name: Earthline Property/Regional Report Identity 17612
+on:
+  push:
+    branches: [candidate-report-17612]
+    paths:
+      - '.github/earthline-report-17612-trigger.txt'
+permissions:
+  contents: write
+jobs:
+  report:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-report-17612
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: python3 tests/apply-report-17612.py
+      - name: Confirm isolated runtime change
+        run: |
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/report-17612.mjs
+      - name: Commit validated report owner
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "report: bind Property report to authoritative Property science"
+          git push origin HEAD:candidate-report-17612
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-report-17612
+          path: /tmp/report-17612.png
+          if-no-files-found: warn
