@@ -1,0 +1,28 @@
+name: Earthline Gauge Exact Trace 17618
+on:
+  push:
+    branches: [diag/release-17606-source]
+    paths:
+      - '.github/workflows/earthline-gauge-exact-trace-17618.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          for needle in ['percent', 'aria-valuenow', 'aria-valuetext', 'earthline-recharge-gauge-ring-16488']:
+            print('---',needle,'---')
+            p=0
+            while True:
+              i=s.find(needle,p)
+              if i<0: break
+              block=s[max(0,i-500):min(len(s),i+900)]
+              if 'recharge' in block.lower() or 'gauge' in block.lower():
+                print(block.replace('\n',' '))
+              p=i+len(needle)
+          PY
