@@ -32,7 +32,11 @@ const out=await page.evaluate(()=>{
    pairs.push({a:accepted[i].final,b:accepted[j].final,component:accepted[i].component,dM:Math.hypot(accepted[i].x-accepted[j].x,accepted[i].y-accepted[j].y)*m});
  }
  const nearest=accepted.map(a=>{const ds=pairs.filter(p=>p.a===a.final||p.b===a.final).map(p=>p.dM);return {...a,nearestSameComponentM:ds.length?Math.min(...ds):null}});
- return {cellM:m,componentCount:cid,componentSizes:sizes,accepted:nearest,pairs,meta:md.swaleMeta||null};
+ const componentSlopes={};
+ for(let i=0;i<N;i++){const c=comp[i];if(!c)continue;const x=i%GW,y=Math.floor(i/GW),v=Number(slopePct(x,y));if(!Number.isFinite(v))continue;(componentSlopes[c]||(componentSlopes[c]=[])).push(v);}
+ const componentStats={};
+ for(const [k,vals] of Object.entries(componentSlopes)){vals.sort((a,b)=>a-b);const q=p=>vals[Math.min(vals.length-1,Math.max(0,Math.floor((vals.length-1)*p)))];componentStats[k]={n:vals.length,p10:q(.1),p25:q(.25),median:q(.5),p75:q(.75),p90:q(.9),min:vals[0],max:vals[vals.length-1]};}
+ return {cellM:m,componentCount:cid,componentSizes:sizes,componentStats,accepted:nearest,pairs,meta:md.swaleMeta||null};
 });
 console.log('EARTHLINE_AZ_CANDIDATE_COMPONENT '+JSON.stringify(out));
 await browser.close();
