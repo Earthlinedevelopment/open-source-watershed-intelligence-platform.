@@ -1,3 +1,4 @@
+// current-geometry-check
 import { chromium } from 'playwright';
 import { installCandidateOrigin } from './candidate-origin-router.mjs';
 const BASE=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
