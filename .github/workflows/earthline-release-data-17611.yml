@@ -1,0 +1,36 @@
+name: Earthline Release Recharge Suitability DATA 17611
+on:
+  push:
+    branches: [candidate-release-17601]
+    paths:
+      - '.github/earthline-data-17611-trigger.txt'
+permissions:
+  contents: write
+jobs:
+  data:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-release-17601
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: python3 tests/apply-data-17611.py
+      - name: Confirm isolated runtime change
+        run: |
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/data-17611.mjs
+      - name: Commit validated DATA owner
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "ui: align Recharge Suitability gauge and DATA with science"
+          git push origin HEAD:candidate-release-17601
