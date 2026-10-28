@@ -1,0 +1,41 @@
+name: Earthline Arizona First Spacing Owner Diagnostic
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-arizona-first-spacing-owner.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - name: Print spacing owners
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8').splitlines()
+          terms=[
+            'function earthlineFinalSpacing',
+            'rejectFinalSpacing',
+            'measuredMedianSpacingM',
+            'MIN_M',
+            'MAX_M',
+            'TARGET_M',
+            'earthlineSpacing',
+            'finalSwales',
+            'afterDedupe'
+          ]
+          for term in terms:
+              print('\n===== '+term+' =====')
+              hits=[i for i,l in enumerate(s) if term in l]
+              if not hits:
+                  print('NOT FOUND'); continue
+              for i in hits[:4]:
+                  a=max(0,i-25); b=min(len(s),i+90)
+                  for n in range(a,b): print(f'{n+1}: {s[n]}')
+                  print('---')
+          PY
