@@ -1,0 +1,40 @@
+name: Earthline Property Spacing Owner Diagnostic
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-property-spacing-owner-diagnostic.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - name: Print Property spacing ownership
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          terms=[
+            'if(out.every(s=>Math.hypot(c.x-s.x,c.y-s.y)>(regional?18:24)))',
+            'function earthlineFinal',
+            'rejectFinalSpacing',
+            'acceptedSpacingM',
+            'targetSpacingM15771',
+            'function earthlineDedupe'
+          ]
+          lines=s.splitlines()
+          for term in terms:
+              print('\n===== '+term+' =====')
+              found=False
+              for i,line in enumerate(lines):
+                  if term in line:
+                      found=True
+                      for n in range(max(0,i-35),min(len(lines),i+150)):
+                          print(f'{n+1}: {lines[n]}')
+                      break
+              if not found: print('NOT FOUND')
+          PY
