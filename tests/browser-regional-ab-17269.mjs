@@ -57,18 +57,22 @@ for(const query of states){
       const o=document.getElementById('earthlineRegionalVectorOverlay16020');
       if(!o)return {exists:false};
       const cs=getComputedStyle(o);
-      const selectors=['path','line','polyline','.earthline-swale-hit-16070','[data-grade]','[class*="swale"]'];
+      const selectors=['path','line','polyline','.earthline-swale-label-16149','[data-swale-grade]','[data-swale-rank]','[class*="swale"]'];
       return {exists:true,display:cs.display,visibility:cs.visibility,opacity:cs.opacity,htmlLength:o.innerHTML.length,counts:Object.fromEntries(selectors.map(sel=>[sel,o.querySelectorAll(sel).length]))};
     })()
   }));
   const coreMs=a?.perf?.totalMs??null;
   const generated=a?.pub?.generated??null;
   const visible=a?.display?.swaleLines??a?.pub?.overlaySwaleLines??null;
+  const generatedDisplayed=a?.display?.generatedSwales??null;
+  const renderedLabels=a?.display?.swaleGradeLabels??null;
+  const approvedDomLabels=Number(a?.regionalDom?.counts?.['.earthline-swale-label-16149']||a?.regionalDom?.counts?.['[data-swale-grade]']||0);
   const unsafe=a?.flow?.unsafeSegments??null;
   const outside=a?.boundary?.outsideAfterClip??null;
   const hardRootFail=Array.isArray(a?.root?.rankedCauses)&&a.root.rankedCauses.some(r=>r.status==='critical'||r.status==='fail');
-  const pass=!loadError&&!timedOut&&!a?.lastError&&!pageErrors.length&&Number(coreMs)<=15000&&Number(generated)===Number(visible)&&Number(unsafe)===0&&Number(outside?.swales||0)===0&&!hardRootFail;
-  const row={browser:browserName,headless,query,pass,wallMs:Date.now()-wallStart,coreMs,generated,visible,unsafe,outsideAfterClip:outside,rootPass:a?.root?.pass??null,regionalDom:a?.regionalDom||null,loadError,timedOut,pageErrors,lastError:a?.lastError||null,status:a?.status||''};
+  const presentationOk=Number(generated)>0&&Number(generatedDisplayed)===Number(generated)&&Number(renderedLabels)>0&&approvedDomLabels>0&&a?.regionalDom?.exists===true&&a?.regionalDom?.display!=='none'&&a?.regionalDom?.visibility!=='hidden'&&Number(a?.regionalDom?.opacity??1)>0;
+  const pass=!loadError&&!timedOut&&!a?.lastError&&!pageErrors.length&&Number(coreMs)<=15000&&presentationOk&&Number(unsafe)===0&&Number(outside?.swales||0)===0&&!hardRootFail;
+  const row={browser:browserName,headless,query,pass,wallMs:Date.now()-wallStart,coreMs,generated,legacyVisibleCounter:visible,generatedDisplayed,renderedLabels,approvedDomLabels,presentationOk,unsafe,outsideAfterClip:outside,rootPass:a?.root?.pass??null,regionalDom:a?.regionalDom||null,loadError,timedOut,pageErrors,lastError:a?.lastError||null,status:a?.status||''};
   results.push(row);
   console.log('EARTHLINE_BROWSER_AB '+JSON.stringify(row));
   await context.close();
