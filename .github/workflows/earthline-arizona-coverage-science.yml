@@ -1,0 +1,31 @@
+name: Earthline Arizona Coverage Science
+on:
+  push:
+    branches: [science-coverage-recovery]
+    paths:
+      - 'tests/arizona-coverage-science.mjs'
+      - '.github/workflows/earthline-arizona-coverage-science.yml'
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: science-coverage-recovery
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Exact Arizona screenshot controls
+        run: env EARTHLINE_URL='https://earthlinedevelopment.org/' node tests/arizona-coverage-science.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arizona-coverage-science
+          path: /tmp/earthline-arizona-coverage-science.png
+          if-no-files-found: warn
