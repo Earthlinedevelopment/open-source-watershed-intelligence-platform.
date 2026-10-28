@@ -39,9 +39,8 @@ for(const [name,ref] of VERSIONS){
            }
            const[gx,gy]=constructionGrad16289(x,y); return Math.hypot(gx,gy)*100;
          };
-         try{eval('slopePct=fn')}catch(_){window.slopePct=fn}
+         window.slopePct=fn;
        });
-     });
    }
    await page.evaluate(t=>{
      const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
