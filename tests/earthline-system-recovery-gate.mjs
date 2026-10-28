@@ -1,8 +1,11 @@
 import { chromium } from 'playwright';
+import { installCandidateOrigin } from './candidate-origin-router.mjs';
 
 const BASE=process.env.EARTHLINE_URL||'http://127.0.0.1:8787/';
+const CANDIDATE_ORIGIN=process.env.EARTHLINE_CANDIDATE_ORIGIN==='1';
 const browser=await chromium.launch({headless:true});
 const context=await browser.newContext({viewport:{width:1798,height:831},deviceScaleFactor:1});
+if(CANDIDATE_ORIGIN)await installCandidateOrigin(context);
 const page=await context.newPage();
 const pageErrors=[];
 page.on('pageerror',e=>pageErrors.push(String(e)));
