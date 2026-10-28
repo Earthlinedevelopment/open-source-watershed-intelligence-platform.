@@ -15,22 +15,9 @@ jobs:
         with:
           ref: candidate-next
           fetch-depth: 0
-      - name: Remove duplicate same-band Property geometry
+      - name: Apply deterministic same-band duplicate correction
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path("index.html")
-          s=p.read_text(encoding="utf-8")
-          old="        if(sw.bandKey===ex.bandKey)continue;"
-          new="""        if(sw.bandKey===ex.bandKey){
-          const duplicateTolM15771=Math.max(.25,Math.min(1.5,Math.max(.25,Number(M.cellM||1))*.5));
-          if(earthlinePathDistanceFast15770(sw,ex,duplicateTolM15771)<duplicateTolM15771){tooClose=true;break;}
-          continue;
-        }"""
-          if s.count(old)!=1:
-              raise SystemExit("same-band spacing owner count="+str(s.count(old)))
-          p.write_text(s.replace(old,new),encoding="utf-8")
-          PY
+          python3 tools/apply_same_band_duplicate.py
           test "$(git diff --name-only)" = "index.html"
           git diff --check
       - name: Commit candidate science
