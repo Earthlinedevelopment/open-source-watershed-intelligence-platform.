@@ -107,6 +107,13 @@ async function runProperty(lng,lat,label){
       target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
       declaration:window.EARTHLINE_PROPERTY_DECLARATION_16169||null,
       run,publication,lock,meta,
+      slopeOwner:{
+        traceMaxS:Number(md?.earthlineTraceSafeCache16320?.maxS),
+        safeCells:Number(md?.earthlineTraceSafeCache16320?.safeCells),
+        cacheMode:String(md?.earthlineTraceSafeCache16320?.mode||''),
+        slopeSafePct:Number(md?.swaleDiagnostics?.slopeSafePct),
+        usablePct:Number(md?.swaleDiagnostics?.usablePct)
+      },
       flow:{eligiblePaths:Number(flow?.eligiblePaths||0),pathsServed:Number(flow?.pathsServed||0),unservedCount:Array.isArray(flow?.unserved)?flow.unserved.length:0},
       swales:{count:swales.length,propertyKeys:propKeys,maxRecordedSlope:slopeValues.length?Math.max(...slopeValues):null},
       water:{count:waterFeatures.length,publication:md?.authoritativeWaterPublication15824||null},
@@ -140,7 +147,10 @@ const results=rows.map(r=>{
   const safetyOk=r.lock?.safetyVerified===true;
   const targetOk=near(r.target?.lng,r.requested.lng)&&near(r.target?.lat,r.requested.lat)&&near(r.declaration?.center?.lng,r.requested.lng)&&near(r.declaration?.center?.lat,r.requested.lat);
   const systemsOk=r.swales.count>0&&r.water.count>0&&String(r.elder?.last?.state||'')==='committed'&&Number(r.elder?.last?.featureCount||0)>0&&r.elder.layer===true&&r.elder.visibility!=='none';
-  const spacingOk=!Number.isFinite(spacing)||(spacing>=4.572&&spacing<=7.62);
+  const accepted=Array.isArray(r.meta?.acceptedSpacingM)?r.meta.acceptedSpacingM:[];
+  const targetSpacingOk=Math.abs(Number(r.meta?.targetSpacingM)-6.096)<0.001&&Math.abs(Number(accepted[0])-4.572)<0.001&&Math.abs(Number(accepted[1])-7.62)<0.001;
+  const spacingPairOk=Number(r.swales.count)<2 ? Number(r.meta?.spacingSampleCount||0)===0 : (Number.isFinite(spacing)&&spacing>=4.572&&spacing<=7.62);
+  const spacingOk=targetSpacingOk&&spacingPairOk;
   const safeById=Object.fromEntries((r.presentation.safe||[]).map(x=>[x.id,x]));
   const naturalHidden=(r.presentation.natural||[]).every(x=>!x.exists||x.visibility==='none');
   const casing=safeById['earthline-property-safe-casing-16221']||{};
