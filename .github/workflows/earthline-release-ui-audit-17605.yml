@@ -1,0 +1,25 @@
+name: Earthline Release UI Audit 17605
+on:
+  push:
+    branches: [diag/release-17605-ui]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/release-ui-audit-17605.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-ui-audit-17605
+          path: /tmp/release-ui-17605.png
+          if-no-files-found: warn
