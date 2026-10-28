@@ -1,11 +1,15 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
+import { installCandidateOrigin } from './candidate-origin-router.mjs';
 
 const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
 const STATES=(process.env.STATES||'').split('|').map(s=>s.trim()).filter(Boolean);
 const OUT=process.env.OUT||'property50.json';
+const CANDIDATE_ORIGIN=process.env.EARTHLINE_CANDIDATE_ORIGIN==='1';
 if(!STATES.length)throw new Error('STATES required');
 const browser=await chromium.launch({headless:true});
+const context=await browser.newContext({viewport:{width:1600,height:900}});
+if(CANDIDATE_ORIGIN)await installCandidateOrigin(context);
 const rows=[];
 
 async function runRegional(page,stateName){
@@ -86,7 +90,7 @@ async function snap(page){
 }
 
 for(const stateName of STATES){
-  const page=await browser.newPage({viewport:{width:1600,height:900}});
+  const page=await context.newPage();
   const started=Date.now();let regionalMs=null,propertyMs=null,error=null,usedTarget=null;const attempts=[];
   try{
     regionalMs=await runRegional(page,stateName);
@@ -118,6 +122,7 @@ for(const stateName of STATES){
   rows.push({state:stateName,elapsedMs:Date.now()-started,regionalMs,propertyMs,usedTarget,attempts,snap:s,failures,pass:failures.length===0});
   await page.close();
 }
+await context.close();
 await browser.close();
 const failed=rows.filter(r=>!r.pass).map(r=>({state:r.state,failures:r.failures}));
 const out={at:new Date().toISOString(),url:URL,rows,failed,pass:failed.length===0};
