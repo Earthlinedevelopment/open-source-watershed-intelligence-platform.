@@ -1,0 +1,35 @@
+name: Earthline Property Activation Source Diagnostic
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-property-activation-source.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - name: Print Property activation owners
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          for filename in ['index.html','earthline-launch-16872.js']:
+              s=Path(filename).read_text(encoding='utf-8')
+              lines=s.splitlines()
+              print('\n######## '+filename+' ########')
+              for term in ['earthlineDeclareProperty16169','EARTHLINE_PROPERTY_TARGET_16201','crosshair-user-drag','earthlineGovernedPropertyRun16202','dragend']:
+                  print('\n===== '+term+' =====')
+                  seen=0
+                  for i,line in enumerate(lines):
+                      if term in line:
+                          seen+=1
+                          a=max(0,i-25); b=min(len(lines),i+70)
+                          print('\n--- occurrence line',i+1,'---')
+                          for n in range(a,b): print(f'{n+1}: {lines[n]}')
+                          if seen>=4: break
+                  if not seen: print('NOT FOUND')
+          PY
