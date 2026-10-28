@@ -1,0 +1,24 @@
+name: Earthline Live Arizona First Press Diagnostic
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - 'tests/live-az-first-press-diag.mjs'
+      - '.github/workflows/earthline-live-az-first-press-diag.yml'
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/live-az-first-press-diag.mjs
