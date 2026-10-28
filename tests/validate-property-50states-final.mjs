@@ -131,6 +131,8 @@ async function snap(page){
       rechargeCount:Number(md?.rechZones?.length||0),
       aquiferStatus:String(md?.usgsAquiferStatus||''),
       elder:{state:String(elder?.state||''),featureCount:Number(elder?.featureCount||0),coverageKnown:elder?.summary?.coverageKnown??null,identity:String(elder?.propertyRunIdentity||'')},
+      zeroReason:String(md?.prescriptionZeroReason15870||''),
+      usableCells:Number(md?.swaleDiagnostics?.usable||0),
       integrity:window.EARTHLINE_LOCATION_INTEGRITY_15801||null,
       reclaim:window.EARTHLINE_PROPERTY_DISPLAY_RECLAIM_16727||null,
       timeoutAudit:window.EARTHLINE_PROPERTY_TIMEOUT_AUDIT_16178||null
@@ -155,6 +157,11 @@ for(const stateName of STATES){
     propertyMs=Date.now()-ps;
     if(!usedTarget)throw new Error('top six Regional corridors were all rejected by finer Property water evidence');
     await page.waitForTimeout(3200);
+    await page.waitForFunction(()=>{
+      const e=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+      const state=String(e?.state||'');
+      return !state || !/pending|analyzing/i.test(state);
+    },{timeout:12000,polling:200}).catch(()=>{});
   }catch(e){error=String(e&&e.message||e);}
   const s=await snap(page).catch(e=>({snapshotError:String(e)}));
   const failures=[];
@@ -164,6 +171,8 @@ for(const stateName of STATES){
   if(!s.settled||!s.result||s.timedOut)failures.push('Property run not settled successfully'+(s.runError?' — '+s.runError:''));
   if(!s.renderVerified)failures.push('Property render not verified');
   if(Number(s.corridors)>0&&!s.safeVisible)failures.push('safe Property corridors not visible');
+  if(Number(s.corridors)===0&&!String(s.zeroReason||'').trim())failures.push('zero Property result lacks scientific zero reason');
+  if(/pending|analyzing/i.test(String(s.elder?.state||'')))failures.push('Elder publication did not settle');
   if(s.naturalVisible)failures.push('obsolete natural Property presentation visible');
   if(s.safetyVerified!==true)failures.push('Property safety lock not verified');
   if(Number(s.slopeOwner?.traceMaxS)!==4)failures.push('Property slope owner '+String(s.slopeOwner?.traceMaxS));
