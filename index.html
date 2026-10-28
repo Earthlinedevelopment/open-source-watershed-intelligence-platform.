@@ -10362,7 +10362,7 @@ function earthlineCollectSwaleDiagnostics(){
     inParcel++;
     if(M.pond[i])continue;
     pondFree++;
-    const safeSlope=slopePct(x,y)<=33;
+    const safeSlope=slopePct(x,y)<=4;
     if(safeSlope)slopeSafe++;
     if(M.hardCoreMask&&M.hardCoreMask[i])hardCore++;
     if(M.noBuildMask&&M.noBuildMask[i])noBuild++;
@@ -10383,7 +10383,7 @@ function earthlineSwaleFailureMessage(){
   M.swaleDiagnostics=d;
   let cause='contour tracing produced no usable segments';
   if(d.noBuildPct>=70)cause='automatic no-build mask is blocking most of the site';
-  else if(d.slopeSafePct<15)cause='the live terrain is classifying most cells above the 33% slope limit';
+  else if(d.slopeSafePct<15)cause='the live terrain is classifying most cells above the 4% slope limit';
   else if(d.usable<80)cause='too few safe cells remain after slope, ponding, and no-build checks';
   const summary=`${d.noBuildPct}% masked · ${d.slopeSafePct}% slope-safe · ${d.usable} usable cells`;
   console.warn('[Earthline swale diagnostic]',cause,d);
@@ -13167,7 +13167,7 @@ async function prescribeSwales15778(myGen=M.searchGen){
       levelsScored:0,candidatesScored:0,eligibleCrossingCandidates:0,
       selectedSeeds:0,selectedCrossingSeeds:0
     };
-    const thr=streamThreshold(),chanThr=thr*3.2,maxS=33;
+    const thr=streamThreshold(),chanThr=thr*3.2,maxS=4;
     /* EARTHLINE 16321 — lazy exact safety memo. No full-grid precompute. */
     M.earthlineTraceSafeCache16320={
       build:"EARTHLINE 16321",searchGen:M.searchGen,maxS,
@@ -14689,7 +14689,7 @@ async function prescribeSwales15778(myGen=M.searchGen){
     if(Number.isFinite(lg.firstLevel)&&Number.isFinite(lg.lastLevel)&&Number.isFinite(lg.levelStep)&&lg.levelStep>0){
       for(let v=lg.firstLevel,guard=0;v<=lg.lastLevel+lg.levelStep*.1&&guard<1000;v+=lg.levelStep,guard++)levels.push(v);
     }
-    const chanThr=Number(lg.channelThreshold||streamThreshold()*3.2),maxS=Number(lg.maxSlopePct||33);
+    const chanThr=Number(lg.channelThreshold||streamThreshold()*3.2),maxS=Number(lg.maxSlopePct||4);
     const runMasks15843=diag._runMasks15843||{};
     const noBuildMask15843=runMasks15843.noBuild||M.noBuildMask;
     for(let y=Math.max(2,Math.floor(gy-radiusCells));y<=Math.min(GH-3,Math.ceil(gy+radiusCells));y++){
