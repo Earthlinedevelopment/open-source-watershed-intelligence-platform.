@@ -1,0 +1,45 @@
+name: Earthline Candidate 50-State Property Validation
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - 'tests/validate-property-50states-final.mjs'
+      - 'tests/candidate-origin-router.mjs'
+      - '.github/workflows/earthline-candidate-50state-property.yml'
+permissions:
+  contents: read
+jobs:
+  property:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        group:
+          - "Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia"
+          - "Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland"
+          - "Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey"
+          - "New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina"
+          - "South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Property matrix
+        run: env EARTHLINE_URL='https://earthlinedevelopment.org/' EARTHLINE_CANDIDATE_ORIGIN='1' STATES="${{ matrix.group }}" OUT="/tmp/property-${{ strategy.job-index }}.json" node tests/validate-property-50states-final.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: property-${{ strategy.job-index }}
+          path: /tmp/property-${{ strategy.job-index }}.json
+          if-no-files-found: warn
