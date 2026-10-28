@@ -1,0 +1,104 @@
+name: Earthline Apply Property Component Seeding
+on:
+  push:
+    branches: [science-coverage-recovery]
+    paths:
+      - '.github/workflows/earthline-apply-property-component-seeding.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: science-coverage-recovery
+          fetch-depth: 1
+      - name: Apply canonical Property contour component seeding
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text(encoding="utf-8")
+          old_stride="const stride=regional?4:2"
+          if s.count(old_stride)!=2:
+              raise SystemExit(f"expected two seed stride owners, found {s.count(old_stride)}")
+          s=s.replace(old_stride,"const stride=regional?4:1")
+          old='''    found.sort((a,b)=>
+      b.flowCrossingValue-a.flowCrossingValue||
+      b.legacyQuality-a.legacyQuality||
+      b.accumulation-a.accumulation||
+      a.y-b.y||a.x-b.x
+    );
+    const out=[];
+    for(const c of found){
+      if(out.every(s=>Math.hypot(c.x-s.x,c.y-s.y)>(regional?18:24)))out.push(c);
+      if(out.length>=maxSeeds)break;
+    }
+'''
+          new='''    found.sort((a,b)=>
+      b.flowCrossingValue-a.flowCrossingValue||
+      b.legacyQuality-a.legacyQuality||
+      b.accumulation-a.accumulation||
+      a.y-b.y||a.x-b.x
+    );
+    const out=[];
+    if(regional){
+      for(const c of found){
+        if(out.every(s=>Math.hypot(c.x-s.x,c.y-s.y)>18))out.push(c);
+        if(out.length>=maxSeeds)break;
+      }
+    }else{
+      const byCell=new Map(found.map(c=>[c.x+","+c.y,c]));
+      const seen=new Set();
+      for(const c of found){
+        const key=c.x+","+c.y;
+        if(seen.has(key))continue;
+        out.push(c);
+        const queue=[c];seen.add(key);
+        for(let qi=0;qi<queue.length;qi++){
+          const q=queue[qi];
+          for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+            if(!dx&&!dy)continue;
+            const nk=(q.x+dx)+","+(q.y+dy);
+            if(seen.has(nk))continue;
+            const n=byCell.get(nk);
+            if(n){seen.add(nk);queue.push(n);}
+          }
+        }
+        if(out.length>=maxSeeds)break;
+      }
+      M.propertyContourComponentSeedAudit={
+        build:"EARTHLINE PROPERTY <=4% COMPONENT COVERAGE",
+        level:Number(L),eligibleCrossingCells:found.length,
+        selectedComponents:out.length,maxSeeds,at:new Date().toISOString()
+      };
+    }
+'''
+          if s.count(old)!=1:
+              raise SystemExit(f"expected one seed selection owner, found {s.count(old)}")
+          s=s.replace(old,new)
+          p.write_text(s,encoding="utf-8")
+          PY
+          test "$(git diff --name-only)" = "index.html"
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
+            if(!m[1].trim())continue;
+            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
+          }
+          console.log('SCIENCE_PARSE_OK',parsed);
+          NODE
+      - name: Commit science branch only
+        shell: bash
+        run: |
+          git fetch origin science-coverage-recovery
+          test "$(git rev-parse origin/science-coverage-recovery)" = "$GITHUB_SHA"
+          git config user.name "Earthline Science"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "science: seed each safe Property contour component"
+          git push origin HEAD:science-coverage-recovery
