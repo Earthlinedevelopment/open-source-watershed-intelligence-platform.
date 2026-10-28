@@ -1,0 +1,38 @@
+name: Earthline Release Regional Opportunity 17604
+on:
+  push:
+    branches: [candidate-release-17601]
+    paths:
+      - '.github/earthline-regional-17604-trigger.txt'
+permissions:
+  contents: write
+jobs:
+  repair-and-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-release-17601
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply isolated Regional visibility correction
+        run: python3 tests/apply-regional-opportunity-17604.py
+      - name: Confirm runtime scope
+        run: |
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Gate 12 Regional controls at public origin
+        run: node tests/regional-opportunity-17604.mjs
+      - name: Commit only after green gate
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "presentation: show Regional swale opportunities at watershed view"
+          git push origin HEAD:candidate-release-17601
