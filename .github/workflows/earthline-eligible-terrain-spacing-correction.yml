@@ -22,8 +22,7 @@ jobs:
           p=Path("index.html")
           s=p.read_text(encoding="utf-8")
           old="function earthlineMinimumSwaleLengthM15768(){\n  const cell=Math.max(0.25,Number(M.cellM||1));\n  return Math.max(12,Math.min(40,cell*4));\n}"
-          new="function earthlineMinimumSwaleLengthM15768(){\n  const cell=Math.max(0.25,Number(M.cellM||1));\n  const regional=!!(M.loc&&(/Regional Opportunity Tile/i.test(String(M.loc.name||\"\"))
-||(Array.isArray(M.loc.zones)&&M.loc.zones.includes(\"Regional Tile\"))));\n  return regional?Math.max(12,Math.min(40,cell*4)):Math.max(6,Math.min(18,cell*3));\n}"
+          new="function earthlineMinimumSwaleLengthM15768(){\n  const cell=Math.max(0.25,Number(M.cellM||1));\n  const regional=!!(M.loc&&(/Regional Opportunity Tile/i.test(String(M.loc.name||\"\"))||(Array.isArray(M.loc.zones)&&M.loc.zones.includes(\"Regional Tile\"))));\n  return regional?Math.max(12,Math.min(40,cell*4)):Math.max(6,Math.min(18,cell*3));\n}"
           if s.count(old)!=1:
               raise SystemExit("canonical minimum-corridor owner count="+str(s.count(old)))
           p.write_text(s.replace(old,new),encoding="utf-8")
