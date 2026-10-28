@@ -52,7 +52,14 @@ for(const query of states){
     boundary:window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||null,
     root:window.EARTHLINE_STANDARD_ROOT_CAUSE_AUDIT_16784||null,
     lastError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,
-    status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim()
+    status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'').trim(),
+    regionalDom:(()=>{
+      const o=document.getElementById('earthlineRegionalVectorOverlay16020');
+      if(!o)return {exists:false};
+      const cs=getComputedStyle(o);
+      const selectors=['path','line','polyline','.earthline-swale-hit-16070','[data-grade]','[class*="swale"]'];
+      return {exists:true,display:cs.display,visibility:cs.visibility,opacity:cs.opacity,htmlLength:o.innerHTML.length,counts:Object.fromEntries(selectors.map(sel=>[sel,o.querySelectorAll(sel).length]))};
+    })()
   }));
   const coreMs=a?.perf?.totalMs??null;
   const generated=a?.pub?.generated??null;
@@ -61,7 +68,7 @@ for(const query of states){
   const outside=a?.boundary?.outsideAfterClip??null;
   const hardRootFail=Array.isArray(a?.root?.rankedCauses)&&a.root.rankedCauses.some(r=>r.status==='critical'||r.status==='fail');
   const pass=!loadError&&!timedOut&&!a?.lastError&&!pageErrors.length&&Number(coreMs)<=15000&&Number(generated)===Number(visible)&&Number(unsafe)===0&&Number(outside?.swales||0)===0&&!hardRootFail;
-  const row={browser:browserName,headless,query,pass,wallMs:Date.now()-wallStart,coreMs,generated,visible,unsafe,outsideAfterClip:outside,rootPass:a?.root?.pass??null,loadError,timedOut,pageErrors,lastError:a?.lastError||null,status:a?.status||''};
+  const row={browser:browserName,headless,query,pass,wallMs:Date.now()-wallStart,coreMs,generated,visible,unsafe,outsideAfterClip:outside,rootPass:a?.root?.pass??null,regionalDom:a?.regionalDom||null,loadError,timedOut,pageErrors,lastError:a?.lastError||null,status:a?.status||''};
   results.push(row);
   console.log('EARTHLINE_BROWSER_AB '+JSON.stringify(row));
   await context.close();
