@@ -1,0 +1,30 @@
+name: Earthline Property Contour Spacing Order
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-property-contour-spacing-order.yml'
+      - 'tools/apply_property_contour_spacing_order.py'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 0
+      - name: Apply contour-elevation spacing order
+        run: |
+          test "$(git hash-object index.html)" = "c249d8b412a89725c914cce28323465e6ec05bd3"
+          python3 tools/apply_property_contour_spacing_order.py
+          test "$(git diff --name-only)" = "index.html"
+      - name: Commit contour-elevation spacing order
+        run: |
+          git config user.name "Earthline Engine"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "science: order Property spacing by contour elevation"
+          git push origin HEAD:candidate-next
