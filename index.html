@@ -10217,7 +10217,7 @@ function earthlineBuildNoBuildMask(){
   const waterSeed=new Uint8Array(N);
   const manualSeed15843=new Uint8Array(N);
   const cell=Math.max(.5,Number(M.cellM||1));
-  const channelThreshold=Math.max(3,streamThreshold()*3.0);
+  const channelThreshold=Math.max(3,streamThreshold()*3.0,Number(M.maxAcc||0)*0.06);
 
   // Frozen prescription inputs. The additional source masks are observational copies only.
   for(let i=0;i<N;i++){
@@ -13208,7 +13208,7 @@ async function prescribeSwales15778(myGen=M.searchGen){
       levelsScored:0,candidatesScored:0,eligibleCrossingCandidates:0,
       selectedSeeds:0,selectedCrossingSeeds:0
     };
-    const thr=streamThreshold(),chanThr=thr*3.2,maxS=4;
+    const thr=streamThreshold(),chanThr=Math.max(thr*3.2,Number(M.maxAcc||0)*0.06),maxS=4;
     /* EARTHLINE 16321 — lazy exact safety memo. No full-grid precompute. */
     M.earthlineTraceSafeCache16320={
       build:"EARTHLINE 16321",searchGen:M.searchGen,maxS,
@@ -14015,7 +14015,7 @@ async function prescribeSwales15778(myGen=M.searchGen){
       earthlineHaltPrescription15870("prescriber-return-invalid",audit);
     }
     if(kept.length===0){
-      M.prescriptionZeroReason15870=earthlineLegitimateZeroReason15870();
+      M.prescriptionZeroReason15870=earthlineLegitimateZeroReason15870()||"no-contour-traces";
       console.warn("[Earthline] BUILD-CHECK-15876 legitimate zero-swale result:",M.prescriptionZeroReason15870);
     }else{
       M.prescriptionZeroReason15870=null;
@@ -19883,6 +19883,10 @@ if(candidate){
         else cur.push(c);
       }
       flush();
+      if(!hitAny&&parts===0){
+        features.push({type:"Feature",properties:Object.assign({},f.properties||{},{exclusionAudit:BUILD}),geometry:{type:"LineString",coordinates:coords.map(c=>[Number(c[0]),Number(c[1])])}});
+        parts=1;
+      }
       if(hitAny){stats.noBuildRejected++;if(parts===0)stats.removedCandidates++;else stats.clippedCandidates++;}
     }
     stats.outputSegments=features.length;
