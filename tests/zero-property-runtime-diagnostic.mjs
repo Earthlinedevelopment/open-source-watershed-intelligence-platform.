@@ -36,7 +36,14 @@ for(const c of cases){
      usable:Number(d.usable||0), slopeSafe:Number(d.slopeSafe||0), noBuild:Number(d.noBuild||0),
      stage:st, levelGenerator:lf,
      flow:{eligible:Number(md.flowFirstPlacement15836?.eligiblePaths||0),served:Number(md.flowFirstPlacement15836?.pathsServed||0),unserved:Number(md.flowFirstPlacement15836?.unserved?.length||0),reasons},
-     meta:md.swaleMeta||null
+     meta:md.swaleMeta||null,
+     rawModel:Number(Array.isArray(md.rawPropertyEngineSwales16176)?md.rawPropertyEngineSwales16176.length:0),
+     rawGeo:Number(md.authoritativePropertySwales15800?.features?.length||0),
+     safeGeo:Number(md.authoritativeSafeSwales15815?.features?.length||0),
+     publication:md.propertyPublication15816||null,
+     lock:md.propertyResultLock15815||null,
+     safetyAudit:md.safetyAudit15806||null,
+     publicationBlock:md.propertyPublicationBlock16176||window.EARTHLINE_PROPERTY_PUBLICATION_BLOCK_16176||null
    };
  },c.label));
 }
