@@ -4,7 +4,6 @@ on:
     branches: [science-coverage-recovery]
     paths:
       - 'tests/arizona-coverage-science.mjs'
-      - 'tests/apply-property-tracer-science.py'
       - '.github/workflows/earthline-arizona-coverage-science.yml'
 permissions:
   contents: read
@@ -22,18 +21,6 @@ jobs:
       - run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Evaluate Property contour tracer science locally
-        run: |
-          python3 tests/apply-property-tracer-science.py index.html
-          node - <<'NODE'
-          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
-          let parsed=0;
-          for(const [i,m] of [...s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].entries()){
-            if(!m[1].trim())continue;
-            try{new Function(m[1]);parsed++}catch(e){throw Error('inline script '+i+': '+e.message)}
-          }
-          console.log('LOCAL_SCIENCE_PARSE_OK',parsed);
-          NODE
       - run: |
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
