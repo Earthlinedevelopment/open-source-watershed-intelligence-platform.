@@ -1,0 +1,21 @@
+name: Earthline Release Surface Contract 17623
+on:
+  push:
+    branches: [candidate-release-17601]
+    paths:
+      - '.github/earthline-surface-17623-trigger.txt'
+permissions:
+  contents: read
+jobs:
+  surface:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate-release-17601}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/surface-17623.mjs

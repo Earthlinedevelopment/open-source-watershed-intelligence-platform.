@@ -1,0 +1,21 @@
+name: Earthline Post-Production Read-Only 17631
+on:
+  push:
+    branches: [candidate-release-17601]
+    paths:
+      - '.github/earthline-postprod-17631-trigger.txt'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: candidate-release-17601}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/post-production-17631.mjs
