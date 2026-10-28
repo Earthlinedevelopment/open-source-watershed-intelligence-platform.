@@ -5901,11 +5901,13 @@ function pathCanopy(pts){
   return sum/pts.length;
 }
 // median slope (rise/run fraction) over in-parcel cells — used to cap swale spacing
-function medianSlopeInParcel(){
+function medianSlopeInParcel(maxPct=Infinity){
   const vals=[];
   for(let y=2;y<GH-2;y+=2)for(let x=2;x<GW-2;x+=2){
     const i=idx(x,y);if(!M.inP[i])continue;
-    vals.push(slopePct(x,y)/100);
+    const sp=slopePct(x,y);
+    if(Number.isFinite(maxPct)&&sp>maxPct)continue;
+    vals.push(sp/100);
   }
   if(!vals.length)return 0.05;
   vals.sort((a,b)=>a-b);
@@ -6159,7 +6161,8 @@ function earthlineLocalSeedReachM76(seg,x,y){
    of uninterrupted contour at coarse tile resolution. */
 function earthlineMinimumSwaleLengthM15768(){
   const cell=Math.max(0.25,Number(M.cellM||1));
-  return Math.max(12,Math.min(40,cell*4));
+  const regional=!!(M.loc&&(/Regional Opportunity Tile/i.test(String(M.loc.name||""))||(Array.isArray(M.loc.zones)&&M.loc.zones.includes("Regional Tile"))));
+  return regional?Math.max(12,Math.min(40,cell*4)):Math.max(6,Math.min(18,cell*3));
 }
 
 function earthlineSplitUsableSegments(pts,maxS){
@@ -6278,7 +6281,7 @@ function earthlineMergeCompatibleSwales(swales,chanThr,maxS,totalBands,targetM){
 }
 
 function earthlineSwaleGeometryAcceptable(pts,lenM){
-  if(!pts||pts.length<3||lenM<12)return false;
+  if(!pts||pts.length<3||lenM<earthlineMinimumSwaleLengthM15768())return false;
   const a=pts[0],b=pts[pts.length-1],gapM=Math.hypot(a[0]-b[0],a[1]-b[1])*M.cellM;
   let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
   for(const p of pts){minX=Math.min(minX,p[0]);maxX=Math.max(maxX,p[0]);minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1]);}
@@ -6427,7 +6430,7 @@ function traceLevelContour(sx,sy,L,maxS,dropH){
     const visited=new Set();
 
     for(let step=0;step<1600;step++){
-      if(!earthlineSafeCell(cx,cy,maxS))break;
+      if(cx<1||cy<1||cx>=GW-1||cy>=GH-1||!M.inP[idx(cx,cy)])break;
 
       const key=cx+","+cy+","+prevEdge;
       if(visited.has(key))break;
@@ -13178,8 +13181,8 @@ async function prescribeSwales15778(myGen=M.searchGen){
       build:"EARTHLINE 16321",stage:"preparing",
       startedAt:performance.now(),updatedAt:new Date().toISOString()
     };
-    const medSlopeRaw=Number(medianSlopeInParcel());
-    const medSlope=clampN(Number.isFinite(medSlopeRaw)?medSlopeRaw:0.012,0.012,0.45);
+    const medSlopeRaw=Number(medianSlopeInParcel(maxS));
+    const medSlope=clampN(Number.isFinite(medSlopeRaw)?medSlopeRaw:0.012,0.005,maxS/100);
 
     // BUILD-CHECK-15790 — instrument the very first stage of prescription.
     // The 15789 Essex diagnostic proved that no rejection counter fired because
@@ -13268,10 +13271,11 @@ async function prescribeSwales15778(myGen=M.searchGen){
       return [];
     }
 
-    let levelStepRaw=medSlope*targetSpacingM15771;
+    let levelStepRaw=medSlope*(isRegionalTile15769?targetSpacingM15771:targetSpacingM15771*.4);
     let levelStep=(Number.isFinite(levelStepRaw)&&levelStepRaw>0)?Math.max(0.08,levelStepRaw):NaN;
     const range=maxH-minH;
-    const maxLevels=Math.max(1,Number(work15771.maxLevels)||1);
+    const requestedLevelCount15771=Math.max(1,Math.ceil(range/Math.max(0.08,levelStep))+1);
+    const maxLevels=isRegionalTile15769?Math.max(1,Number(work15771.maxLevels)||1):Math.max(Math.max(1,Number(work15771.maxLevels)||1),Math.min(512,requestedLevelCount15771));
     if(!Number.isFinite(levelStep)||levelStep<=0){
       levelStep=Math.max(0.08,range/maxLevels);
       M.swaleDiagnostics.levelGenerator.levelStepGuard="nonfinite-or-nonpositive";
@@ -13432,12 +13436,18 @@ async function prescribeSwales15778(myGen=M.searchGen){
         if(M.pond[i15836]){lastReason15836="ponding";continue;}
         if(M.noBuildMask&&M.noBuildMask[i15836]){lastReason15836="exclusion-conflict";continue;}
         if(Number(M.acc[i15836]||0)>=chanThr){lastReason15836="protected-major-channel";continue;}
-        if(slopePct(x15836,y15836)>maxS){lastReason15836="slope-too-steep";continue;}
         const L15836=Number(M.h[i15836]);if(!Number.isFinite(L15836)){lastReason15836="missing-elevation";continue;}
-        let cachedFlow16320=flowTraceCache16320.get(i15836);
+        let seedX15836=x15836,seedY15836=y15836;
+        if(slopePct(seedX15836,seedY15836)>maxS){
+          const nearbySafe15836=earthlineNearestContourCell(seedX15836,seedY15836,L15836,maxS);
+          if(!nearbySafe15836){lastReason15836="no-safe-contour-near-flow-path";continue;}
+          seedX15836=nearbySafe15836[0];seedY15836=nearbySafe15836[1];
+        }
+        const seedKey15836=idx(Math.round(seedX15836),Math.round(seedY15836));
+        let cachedFlow16320=flowTraceCache16320.get(seedKey15836);
         if(!cachedFlow16320){
           flowCacheAudit16320.traceMisses++;
-          const pts16320=traceLevelContour(x15836,y15836,L15836,maxS,levelStep,deadline15771);
+          const pts16320=traceLevelContour(seedX15836,seedY15836,L15836,maxS,levelStep,deadline15771);
           if(performance.now()>=deadline15771||traceLevelContour.earthlineDeadlineHit16320){
             lastReason15836="time-budget";flowCacheAudit16320.deadlineInnerBreaks++;
             M.swaleDiagnostics.timeBudgetReached=true;break;
@@ -13448,7 +13458,7 @@ async function prescribeSwales15778(myGen=M.searchGen){
               earthlineOnContourGuard15833(seg,L15836,levelStep)
             );
           cachedFlow16320={pts:pts16320||[],baseSegs:baseSegs16320,L:L15836};
-          flowTraceCache16320.set(i15836,cachedFlow16320);
+          flowTraceCache16320.set(seedKey15836,cachedFlow16320);
           flowCacheAudit16320.cacheEntries=flowTraceCache16320.size;
         }else{
           flowCacheAudit16320.traceHits++;
@@ -13796,7 +13806,11 @@ async function prescribeSwales15778(myGen=M.searchGen){
       bboxSkippedFinalPairs16204+=Math.max(0,kept.length-spacingCandidates16456.length);
       for(const exIndex16204 of spacingCandidates16456){
         const ex=kept[exIndex16204];
-        if(sw.bandKey===ex.bandKey)continue;
+        if(sw.bandKey===ex.bandKey){
+          const duplicateTolM15771=Math.max(.25,Math.min(1.5,Math.max(.25,Number(M.cellM||1))*.5));
+          if(earthlinePathDistanceFast15770(sw,ex,duplicateTolM15771)<duplicateTolM15771){tooClose=true;break;}
+          continue;
+        }
         if(Math.abs(Number(sw.levelH||0)-Number(ex.levelH||0))>verticalWindowM)continue;
         if(!earthlineSwaleBBoxesWithin16204(swBBox16204,keptBBox16204[exIndex16204],spacingPadCells16204)){bboxSkippedFinalPairs16204++;continue;}
         exactFinalPairs16204++;
