@@ -1,0 +1,30 @@
+name: Earthline Activation Recovery Apply
+on:
+  push:
+    branches: [activation-recovery]
+    paths:
+      - 'tools/apply_property_activation_recovery.py'
+      - '.github/workflows/earthline-activation-recovery-apply.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: activation-recovery
+          fetch-depth: 0
+      - run: python3 tools/apply_property_activation_recovery.py
+      - run: |
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+          grep -q "earthlineActivateProperty17494=function" index.html
+          grep -q "earthlinePropertyClickOwner16546='shared-17494'" index.html
+      - run: |
+          git config user.name "Earthline"
+          git config user.email "earthline@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: restore one-press Property activation owner"
+          git push origin HEAD:activation-recovery
