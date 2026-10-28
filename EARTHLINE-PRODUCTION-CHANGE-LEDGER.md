@@ -60,3 +60,18 @@ The controlling development method is the **Earthline Modus Operandi** in `EARTH
 - Scientific guardrails preserved: Property slope owner <=4%; safety lock verified; authoritative blue Property presentation retained; obsolete natural rendering hidden; water/recharge publication retained; target integrity enforced.
 - No other production runtime file changed in this promotion.
 
+
+
+## Live validation record — 2026-10-28
+- Public production SHA: 198943eb4084cb7b31326a825d90836f46b8c9e3
+- Public runtime change from prior live state: index.html only, 1 addition / 1 deletion
+- Purpose: Property exclusion continuity when the stale Mapbox readiness flag is false
+- 50-state Property validation: PASS — run 40622815925
+- Independent 50-state Property validation: PASS — run 40622855561
+- Full recovery gate: PASS — run 40619792839
+- Direct-live production verification: PASS — run 40623554189
+- Direct-live critical controls: South Dakota PASS · Arizona PASS · Vermont PASS
+- Deployed Pages run: 40623230600 — SUCCESS
+- Presentation/science status: LIVE VALIDATED
+- Final status: USER VISUAL ACCEPTANCE PENDING
+- Rollback reference: validated-live-198943
