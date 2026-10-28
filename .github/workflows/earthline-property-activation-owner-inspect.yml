@@ -1,0 +1,33 @@
+name: Earthline Property Activation Owner Inspect
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-property-activation-owner-inspect.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 0
+      - name: Inspect live Property activation owner
+        run: |
+          git show pages-live:index.html > /tmp/live-index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/live-index.html').read_text(encoding='utf-8')
+          terms=['earthlineDeclareProperty16169','earthlineGovernedPropertyRun16202','crosshair-user-drag','RUN PROPERTY','PROPERTY MODELLING']
+          for term in terms:
+              print('\n===== '+term+' =====')
+              start=0; n=0
+              while True:
+                  i=s.find(term,start)
+                  if i<0 or n>=8: break
+                  print(s[max(0,i-2500):min(len(s),i+6000)])
+                  print('\n---')
+                  start=i+len(term); n+=1
+          PY
