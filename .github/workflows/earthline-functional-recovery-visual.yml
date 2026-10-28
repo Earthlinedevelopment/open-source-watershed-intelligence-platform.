@@ -1,0 +1,33 @@
+name: Earthline Functional Recovery Visual Gate
+on:
+  push:
+    branches: [functional-recovery]
+    paths:
+      - 'index.html'
+      - 'earthline-launch-16872.js'
+      - 'earthline-elder-worker-17129.js'
+      - 'earthline-language-hotfix-16890.js'
+      - 'data/elder-trees/v2/manifest.json'
+      - 'tests/functional-recovery-visual.mjs'
+      - '.github/workflows/earthline-functional-recovery-visual.yml'
+permissions:
+  contents: read
+jobs:
+  visual:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: functional-recovery
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - run: node tests/functional-recovery-visual.mjs
