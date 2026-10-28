@@ -1,0 +1,78 @@
+name: Earthline Property Construction-Scale Slope
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-property-construction-slope.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 0
+      - name: Apply canonical Property slope measurement
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old="""function slopePct(x,y){
+  const xi=Number(x),yi=Number(y);
+  if(Number.isInteger(xi)&&Number.isInteger(yi)&&xi>=0&&yi>=0&&xi<GW&&yi<GH){
+    const key=String(M.searchGen||0)+"|"+String(M.terrainStamp||"")+"|"+String(M.cellM||0)+"|"+String(M.maxAcc||0);
+    if(!earthlineSlopeMemo16288||earthlineSlopeMemo16288.length!==N||earthlineSlopeMemoKey16288!==key){
+      earthlineSlopeMemo16288=new Float64Array(N);earthlineSlopeMemo16288.fill(NaN);earthlineSlopeMemoKey16288=key;
+    }
+    const i=idx(xi,yi),cached=earthlineSlopeMemo16288[i];
+    if(Number.isFinite(cached))return cached;
+    const[gx,gy]=gradAt(xi,yi),value=Math.hypot(gx,gy)*100;earthlineSlopeMemo16288[i]=value;return value;
+  }
+  const[gx,gy]=gradAt(x,y);return Math.hypot(gx,gy)*100;
+}"""
+          new="""function slopePct(x,y){
+  const xi=Number(x),yi=Number(y);
+  /* Property suitability uses a construction-scale terrain gradient rather than
+     a single-pixel DEM gradient. The <=4% rule is unchanged; only the terrain
+     baseline used to measure that rule is corrected. A ~15 m full baseline
+     suppresses pixel-scale DEM roughness while preserving the local landform
+     relevant to 15–25 ft contour swale spacing. */
+  function constructionGrad16289(px,py){
+    const cell=Math.max(.001,Number(M.cellM||1));
+    const r=Math.max(1,Math.min(8,Math.round(7.5/cell)));
+    const x0=clamp(Math.round(px)-r,0,GW-1),x1=clamp(Math.round(px)+r,0,GW-1);
+    const y0=clamp(Math.round(py)-r,0,GH-1),y1=clamp(Math.round(py)+r,0,GH-1);
+    const gx=(M.h[idx(x1,Math.round(py))]-M.h[idx(x0,Math.round(py))])/Math.max(cell,(x1-x0)*cell);
+    const gy=(M.h[idx(Math.round(px),y1)]-M.h[idx(Math.round(px),y0)])/Math.max(cell,(y1-y0)*cell);
+    return [gx,gy];
+  }
+  if(Number.isInteger(xi)&&Number.isInteger(yi)&&xi>=0&&yi>=0&&xi<GW&&yi<GH){
+    const key=String(M.searchGen||0)+"|"+String(M.terrainStamp||"")+"|"+String(M.cellM||0)+"|"+String(M.maxAcc||0)+"|construction15m";
+    if(!earthlineSlopeMemo16288||earthlineSlopeMemo16288.length!==N||earthlineSlopeMemoKey16288!==key){
+      earthlineSlopeMemo16288=new Float64Array(N);earthlineSlopeMemo16288.fill(NaN);earthlineSlopeMemoKey16288=key;
+    }
+    const i=idx(xi,yi),cached=earthlineSlopeMemo16288[i];
+    if(Number.isFinite(cached))return cached;
+    const[gx,gy]=constructionGrad16289(xi,yi),value=Math.hypot(gx,gy)*100;earthlineSlopeMemo16288[i]=value;return value;
+  }
+  const[gx,gy]=constructionGrad16289(x,y);return Math.hypot(gx,gy)*100;
+}"""
+          if s.count(old)!=1:
+              raise SystemExit(f'STOP: slopePct owner count={s.count(old)}')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          print('Applied Property construction-scale slope measurement; threshold remains <=4%.')
+          PY
+          git diff --check
+      - name: Commit candidate science correction
+        run: |
+          git config user.name "Earthline Engine"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "science: measure Property slope at construction scale"
+          git pull --rebase origin candidate-next
+          git push origin HEAD:candidate-next
