@@ -10,6 +10,29 @@ Earthline is a real scientific product. Every development action must preserve a
 
 The burden of continuity belongs to the development process, not to Jon.
 
+## Earthline Modus Operandi
+
+This is the permanent working method for Earthline development and production recovery.
+
+1. **Freeze success.** Every user-accepted result becomes protected baseline behavior. Never reopen it casually while solving another defect.
+2. **Observe before editing.** Reproduce the actual failure and capture the first incorrect state before writing code.
+3. **Find the owner.** Identify the single canonical scientific, interaction, lifecycle, or presentation owner responsible for that state.
+4. **Separate science from presentation.** A visual defect cannot justify a science change; a science defect cannot be hidden by display logic.
+5. **One defect, one owner, one candidate.** No patch stacking, cleanup bundles, speculative refactors, or unrelated “improvements.”
+6. **Work off production.** Build and test on an isolated candidate while the accepted public branch remains frozen.
+7. **Keep rollback exact.** Record the production SHA and rollback branch before every promotion.
+8. **Test the actual requirements.** Enforce slope, spacing, exclusions, frame containment, hydrology, aquifer/recharge, Elders, Regional behavior, targeting, and approved presentation in the gate.
+9. **Use the real operating origin.** When external services or token restrictions matter, candidate tests must reproduce the authorized Earthline origin without altering production.
+10. **Reject stale tests.** A historical automated assertion that contradicts an approved current requirement must be corrected before it can judge a candidate.
+11. **Do not manufacture a pass.** Never loosen scientific thresholds, suppress a real failure, or add fake density solely to make automation or a screenshot look better.
+12. **Review the exact diff.** Every changed runtime file must be expected, understood, and tied to the declared owner.
+13. **Promote by exact SHA.** Re-read production immediately before promotion and move it only with an exact expected-SHA lease.
+14. **Verify deployment separately.** A successful deployment proves transport, not product correctness.
+15. **User-visible evidence is final.** Jon’s browser evidence outranks automated PASS. A visible regression rejects the candidate.
+16. **Record the result.** Update the production ledger with the baseline, defect, owner, candidate SHA, evidence, result, and rollback.
+17. **Do not retest unchanged guesses.** Jon is asked to test only after a materially changed, internally validated build has actually been deployed.
+18. **Continue automatically.** Once a repair sequence is approved, proceed without repeatedly requiring “Proceed” unless a genuinely consequential new decision is required.
+
 ## Permanent duties
 
 1. **Preserve** — Do not reopen accepted behavior while solving a different problem.
