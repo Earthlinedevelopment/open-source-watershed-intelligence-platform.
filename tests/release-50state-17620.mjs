@@ -11,7 +11,7 @@ const ROOT=process.cwd(),ORIGIN='https://earthlinedevelopment.org';
 const MIME={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.geojson':'application/geo+json; charset=utf-8','.py':'text/plain; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp'};
 const context=await browser.newContext({viewport:{width:1600,height:900},serviceWorkers:'block'});
 await context.route(ORIGIN+'/**',async route=>{
-  const u=new URL(route.request().url()),p=decodeURIComponent(u.pathname).replace(/^\\/+/, '')||'index.html',file=resolve(ROOT,p);
+  const u=new URL(route.request().url()),decoded=decodeURIComponent(u.pathname),p=(decoded.startsWith('/')?decoded.slice(1):decoded)||'index.html',file=resolve(ROOT,p);
   try{
     if(file.startsWith(ROOT)&&fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({status:200,path:file,contentType:MIME[extname(file).toLowerCase()]||'application/octet-stream',headers:{'cache-control':'no-store'}});
   }catch(_){}
