@@ -1,0 +1,72 @@
+name: Earthline Eligible Terrain Spacing Correction
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-eligible-terrain-spacing-correction.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 0
+      - name: Apply canonical eligible-terrain spacing science
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          changes=[
+          (
+          '''function medianSlopeInParcel(){
+  const vals=[];
+  for(let y=2;y<GH-2;y+=2)for(let x=2;x<GW-2;x+=2){
+    const i=idx(x,y);if(!M.inP[i])continue;
+    vals.push(slopePct(x,y)/100);
+  }
+  if(!vals.length)return 0.05;
+  vals.sort((a,b)=>a-b);
+  return vals[Math.floor(vals.length/2)];
+}''',
+          '''function medianSlopeInParcel(maxPct=Infinity){
+  const vals=[];
+  for(let y=2;y<GH-2;y+=2)for(let x=2;x<GW-2;x+=2){
+    const i=idx(x,y);if(!M.inP[i])continue;
+    const sp=slopePct(x,y);
+    if(Number.isFinite(maxPct)&&sp>maxPct)continue;
+    vals.push(sp/100);
+  }
+  if(!vals.length)return 0.05;
+  vals.sort((a,b)=>a-b);
+  return vals[Math.floor(vals.length/2)];
+}'''
+          ),
+          (
+          'const medSlopeRaw=Number(medianSlopeInParcel());\n    const medSlope=clampN(Number.isFinite(medSlopeRaw)?medSlopeRaw:0.012,0.012,0.45);',
+          'const medSlopeRaw=Number(medianSlopeInParcel(maxS));\n    const medSlope=clampN(Number.isFinite(medSlopeRaw)?medSlopeRaw:0.012,0.005,maxS/100);'
+          ),
+          (
+          'const maxLevels=Math.max(1,Number(work15771.maxLevels)||1);',
+          'const requestedLevelCount15771=Math.max(1,Math.ceil(range/Math.max(0.08,levelStep))+1);\n    const maxLevels=isRegionalTile15769?Math.max(1,Number(work15771.maxLevels)||1):Math.max(Math.max(1,Number(work15771.maxLevels)||1),Math.min(320,requestedLevelCount15771));'
+          )
+          ]
+          for old,new in changes:
+              if s.count(old)!=1:
+                  raise SystemExit(f'expected one canonical spacing owner; found {s.count(old)} for {old[:60]!r}')
+              s=s.replace(old,new)
+          p.write_text(s,encoding='utf-8')
+          PY
+          test "$(git diff --name-only)" = "index.html"
+          git diff --check
+      - name: Commit candidate science correction
+        run: |
+          git config user.name "Earthline Engine"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "science: derive Property contour spacing from eligible terrain"
+          git push origin HEAD:candidate-next
