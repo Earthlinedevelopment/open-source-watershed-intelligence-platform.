@@ -19883,6 +19883,10 @@ if(candidate){
         else cur.push(c);
       }
       flush();
+      if(!hitAny&&parts===0){
+        features.push({type:"Feature",properties:Object.assign({},f.properties||{},{exclusionAudit:BUILD}),geometry:{type:"LineString",coordinates:coords.map(c=>[Number(c[0]),Number(c[1])])}});
+        parts=1;
+      }
       if(hitAny){stats.noBuildRejected++;if(parts===0)stats.removedCandidates++;else stats.clippedCandidates++;}
     }
     stats.outputSegments=features.length;
