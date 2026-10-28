@@ -1,0 +1,46 @@
+name: Earthline Release Source Trace 17609
+on:
+  push:
+    branches: [diag/release-17606-source]
+    paths:
+      - '.github/workflows/earthline-release-source-trace-17609.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trace exact safe-layer creation and gauge renderer
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          needles=[
+            "function syncSafePropertyFallback16221",
+            "function ensureSafe",
+            "SAFE_SOURCE_16221",
+            "SAFE_LAYERS_16221.casing",
+            "SAFE_LAYERS_16221.earth",
+            "SAFE_LAYERS_16221.life",
+            "SAFE_LAYERS_16221.water",
+            "'line-dasharray'",
+            "function renderData",
+            "earthlineRechargeDataContent16488",
+            "earthline-data-rain16488",
+            "Regional recharge score uses"
+          ]
+          for needle in needles:
+            hits=[];p=0
+            while True:
+              i=s.find(needle,p)
+              if i<0 or len(hits)>=6: break
+              hits.append(i);p=i+len(needle)
+            if not hits: continue
+            print("\n### "+needle)
+            for i in hits:
+              line=s.count("\n",0,i)+1
+              print(f"@@ LINE {line} INDEX {i}")
+              print(s[max(0,i-3500):min(len(s),i+11000)].replace("\n"," "))
+              print("@@ END")
+          PY
