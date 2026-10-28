@@ -13,40 +13,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: candidate-next
-      - name: Prove active Property slope owner
+      - name: Prove spacing owner and slope anchors
         run: |
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
-          owner=s.find('async function prescribeSwales15778')
-          if owner<0:
-              raise SystemExit('prescribeSwales15778 not found')
-          end=s.find('\nasync function ',owner+20)
-          if end<0: end=min(len(s),owner+180000)
-          block=s[owner:end]
-          print('OWNER_START',owner,'OWNER_END',end,'OWNER_LENGTH',len(block))
-          needles=['4%','<=4','<= 4','0.04','slopePct','slopeSafe','slope','MAX_SLOPE','maxSlope']
-          found=0
-          for n in needles:
-              start=0
-              while True:
-                  i=block.find(n,start)
-                  if i<0: break
-                  print('\n=== SLOPE',repr(n),'AT',owner+i,'===')
-                  print(block[max(0,i-900):min(len(block),i+2200)])
-                  found+=1
-                  start=i+max(1,len(n))
-                  if found>80: break
-              if found>80: break
-          print('SLOPE_HITS',found)
-          # Also inspect the explicit accepted slope-governance markers anywhere in the product.
-          for n in ['EARTHLINE M78.50','4 percent','4% slope','slope limit','eligible-slope']:
-              start=0; count=0
+          for n in ['targetSpacingM','acceptedSpacing','15*0.3048','25*0.3048','20*0.3048','15–25','15-25','maxS=4','slopePct(x,y)<=4']:
+              start=0; hits=0
               while True:
                   i=s.find(n,start)
                   if i<0: break
-                  print('\n=== PRODUCT',repr(n),'AT',i,'===')
-                  print(s[max(0,i-700):min(len(s),i+1800)])
-                  start=i+len(n);count+=1
-                  if count>=8: break
+                  print('\n===',repr(n),'AT',i,'===')
+                  print(s[max(0,i-900):min(len(s),i+2200)])
+                  start=i+len(n);hits+=1
+                  if hits>=12: break
           PY
