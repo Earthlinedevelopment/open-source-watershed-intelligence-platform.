@@ -16,31 +16,6 @@ for(const [name,ref] of VERSIONS){
  try{
    await page.goto('https://earthlinedevelopment.org/?direct_hist='+name+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
    await page.waitForSelector('#earthlineDeclareProperty16169',{timeout:30000});
-   if(name==='current'){
-     await page.evaluate(()=>{
-       const xi0=0,yi0=0;
-         function constructionGrad16289(px,py){
-           const cell=Math.max(.001,Number(M.cellM||1));
-           const r=Math.max(1,Math.min(8,Math.round(7.5/cell)));
-           const xx=Math.round(px),yy=Math.round(py);
-           const x0=clamp(xx-r,0,GW-1),x1=clamp(xx+r,0,GW-1);
-           const y0=clamp(yy-r,0,GH-1),y1=clamp(yy+r,0,GH-1);
-           const gx=(M.h[idx(x1,yy)]-M.h[idx(x0,yy)])/Math.max(cell,(x1-x0)*cell);
-           const gy=(M.h[idx(xx,y1)]-M.h[idx(xx,y0)])/Math.max(cell,(y1-y0)*cell);
-           return [gx,gy];
-         }
-         const originalMemoKey=window.earthlineSlopeMemoKey16288;
-         window.earthlineSlopeMemo16288=null; window.earthlineSlopeMemoKey16288='';
-         const fn=function(x,y){
-           const xi=Number(x),yi=Number(y);
-           if(Number.isInteger(xi)&&Number.isInteger(yi)&&xi>=0&&yi>=0&&xi<GW&&yi<GH){
-             const[gx,gy]=constructionGrad16289(xi,yi); return Math.hypot(gx,gy)*100;
-           }
-           const[gx,gy]=constructionGrad16289(x,y); return Math.hypot(gx,gy)*100;
-         };
-         window.slopePct=fn;
-       });
-   }
    await page.evaluate(t=>{
      const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
      if(!m)throw new Error('map unavailable');
@@ -62,7 +37,25 @@ for(const [name,ref] of VERSIONS){
        usablePct:Number(md.swaleDiagnostics?.usablePct),
        eligiblePaths:Number(md.flowFirstPlacement15836?.eligiblePaths||0),
        pathsServed:Number(md.flowFirstPlacement15836?.pathsServed||0),
-       run:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null
+       run:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+       slopeScale:(()=>{
+         const cell=Math.max(.001,Number(md.cellM||1));
+         const radii=[1,2,3,4,5];
+         const out={cellM:cell};
+         for(const r of radii){
+           let n=0,under4=0,sum=0;
+           for(let y=r;y<GH-r;y+=1)for(let x=r;x<GW-r;x+=1){
+             const i=idx(x,y);if(!md.inP?.[i]||md.pond?.[i])continue;
+             if(md.noBuildMask?.[i])continue;
+             const gx=(md.h[idx(x+r,y)]-md.h[idx(x-r,y)])/((2*r)*cell);
+             const gy=(md.h[idx(x,y+r)]-md.h[idx(x,y-r)])/((2*r)*cell);
+             const sp=Math.hypot(gx,gy)*100;
+             if(!Number.isFinite(sp))continue;n++;sum+=sp;if(sp<=4)under4++;
+           }
+           out[r]={baselineM:Number((2*r*cell).toFixed(2)),cells:n,under4,under4Pct:n?Number((under4*100/n).toFixed(1)):0,meanSlopePct:n?Number((sum/n).toFixed(2)):null};
+         }
+         return out;
+       })()
      };
    });
    console.log('EARTHLINE_DIRECT_HISTORY '+JSON.stringify({name,ref,out}));
