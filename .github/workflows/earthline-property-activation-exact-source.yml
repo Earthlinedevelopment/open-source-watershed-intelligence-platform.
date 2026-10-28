@@ -1,0 +1,31 @@
+name: Earthline Property Activation Exact Source
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-property-activation-exact-source.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 0
+      - name: Extract exact live activation source
+        run: |
+          git show origin/pages-live:index.html > /tmp/live-index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/live-index.html').read_text(encoding='utf-8').splitlines()
+          terms=['earthlineDeclareProperty16169','async function run15786','function run15786','window.earthlineGovernedPropertyRun16202']
+          for term in terms:
+              print('\n===== '+term+' =====')
+              for i,line in enumerate(s):
+                  if term in line:
+                      a=max(0,i-35); b=min(len(s),i+95)
+                      for n in range(a,b): print(f'{n+1}: {s[n]}')
+                      break
+          PY
