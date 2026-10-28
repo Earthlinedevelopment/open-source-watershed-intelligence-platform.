@@ -1,0 +1,28 @@
+name: Earthline Candidate Filter Owner Diagnostic
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-filter-owner-source.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          lines=s.splitlines()
+          for term in ['inputCandidates','outputSegments','clippedCandidates','noBuildRejected']:
+              print('\n====',term,'====')
+              for i,l in enumerate(lines):
+                  if term in l:
+                      a=max(0,i-60); b=min(len(lines),i+150)
+                      for n in range(a,b): print(f'{n+1}: {lines[n]}')
+                      break
+          PY
