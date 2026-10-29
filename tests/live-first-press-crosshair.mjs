@@ -62,10 +62,24 @@ async function runAt(target,label){
         try{
           const ids=(m?.getStyle?.().layers||[]).map(x=>x.id).filter(id=>/elder|tree/i.test(String(id)));
           return ids.map(id=>{
-            let visible=false,count=0;
+            let visible=false,count=0,sourceId=null,sourceCount=0,dataCount=0,dataCoords=[],type=null,minzoom=null,maxzoom=null,paint={};
             try{visible=m.getLayoutProperty?.(id,'visibility')!=='none';}catch(_){}
             try{count=m.queryRenderedFeatures?.({layers:[id]})?.length||0;}catch(_){}
-            return {id,visible,count};
+            try{
+              const layer=m.getLayer?.(id); sourceId=layer?.source||null; type=layer?.type||null;
+              minzoom=layer?.minzoom??null; maxzoom=layer?.maxzoom??null;
+              if(sourceId){
+                try{sourceCount=m.querySourceFeatures?.(sourceId)?.length||0;}catch(_){}
+                const src=m.getSource?.(sourceId); const d=src?._data;
+                dataCount=Array.isArray(d?.features)?d.features.length:0;
+                dataCoords=Array.isArray(d?.features)?d.features.slice(0,10).map(f=>f?.geometry?.coordinates||null):[];
+              }
+              for(const k of ['circle-radius','circle-opacity','circle-color','circle-stroke-width','icon-opacity','icon-size']){
+                try{const v=m.getPaintProperty?.(id,k); if(v!==undefined)paint[k]=v;}catch(_){}
+                try{const v=m.getLayoutProperty?.(id,k); if(v!==undefined)paint[k]=v;}catch(_){}
+              }
+            }catch(_){}
+            return {id,visible,count,sourceId,sourceCount,dataCount,dataCoords,type,minzoom,maxzoom,paint};
           });
         }catch(_){return [];}
       })()
