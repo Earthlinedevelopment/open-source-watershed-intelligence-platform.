@@ -1,0 +1,25 @@
+name: Apply M81 Post Clip Rank Carry
+on:
+  push:
+    branches: [m81-postclip-rank-carry]
+    paths:
+      - tools/apply-m81-postclip-rank-carry.py
+      - .github/workflows/apply-m81-postclip-rank-carry.yml
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m81-postclip-rank-carry
+          fetch-depth: 0
+      - run: python3 tools/apply-m81-postclip-rank-carry.py
+      - run: |
+          git config user.name earthline-bot
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git diff --cached --check
+          git commit -m "science: carry Property preflight through clipping"
+          git push origin HEAD:m81-postclip-rank-carry
