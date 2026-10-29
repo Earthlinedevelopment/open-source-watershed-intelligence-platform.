@@ -1,3 +1,4 @@
+// validate both early and consolidated suggestion owners
 // validate portal-root mobile suggestion placement
 // rerun latest mobile suggestion candidate
 import { chromium } from 'playwright';
