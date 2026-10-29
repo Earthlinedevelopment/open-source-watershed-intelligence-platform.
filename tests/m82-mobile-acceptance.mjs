@@ -1,3 +1,4 @@
+// rerun on corrected mapped-water integration
 // rerun after landscape rail width repair
 import { chromium } from 'playwright';
 import { installCandidateOrigin } from './candidate-origin-router.mjs';
