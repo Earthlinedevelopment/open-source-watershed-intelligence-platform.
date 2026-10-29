@@ -1,0 +1,49 @@
+name: Earthline Live Difficult-State Matrix
+'on':
+  push:
+    branches:
+      - candidate-next
+    paths:
+      - .github/workflows/earthline-live-known-difficult-matrix.yml
+permissions:
+  contents: read
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        state:
+          - Vermont
+          - New York
+          - Massachusetts
+          - Maryland
+          - Colorado
+          - Texas
+          - Florida
+          - Louisiana
+          - California
+          - Oklahoma
+          - Iowa
+          - Arkansas
+          - Nebraska
+          - Nevada
+          - Alabama
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    name: Property — ${{ matrix.state }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Validate public origin
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          STATES: ${{ matrix.state }}
+          OUT: result.json
+        run: node tests/validate-property-50states-final.mjs
