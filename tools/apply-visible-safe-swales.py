@@ -48,3 +48,5 @@ if s.count(old2)!=1:
 s=s.replace(old2,new2,1)
 p.write_text(s,encoding="utf-8")
 print("corrected verified-safe Property publication")
+
+# trigger isolated repair workflow
