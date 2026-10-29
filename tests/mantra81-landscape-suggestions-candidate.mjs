@@ -1,3 +1,4 @@
+// validate portal-root mobile suggestion placement
 // rerun latest mobile suggestion candidate
 import { chromium } from 'playwright';
 import { installCandidateOrigin } from './candidate-origin-router.mjs';
