@@ -80,12 +80,13 @@ function projectedWindow(image,bbox){
   return {origin,res,ib,rx,ry,ox,oy,col0,row0,ww,wh,left,right,bottom,top};
 }
 async function processTile(py,q,bbox,maxPerTile=240){
+  const timing0=performance.now();let timingOpen=0,timingScreen=0,timingNative=0,timingDetect=0;
   const url=ROOT+q+".tif";
   const transport=RANGE_PROXY+"?q="+encodeURIComponent(q);
   let tif,image;
   try{
     tif=await fromUrl(transport,{cacheSize:32});
-    image=await tif.getImage();
+    image=await tif.getImage();timingOpen=performance.now();
   }catch(err){
     return {features:[],tile:{quadkey:q,status:"NO_TILE",error:String(err?.message||err)}};
   }
@@ -107,7 +108,8 @@ async function processTile(py,q,bbox,maxPerTile=240){
   const nativeRaw=await image.readRasters({
     window:[ncol0,nrow0,ncol1,nrow1],samples:[0],interleave:true
   });
-  const screen=f32(screenRaw),native=f32(nativeRaw);
+  timingScreen=performance.now();
+  const screen=f32(screenRaw),native=f32(nativeRaw);timingNative=performance.now();
   const sid="screen_"+q+".bin",nid="native_"+q+".bin";
   py.FS.writeFile("/tmp/"+sid,new Uint8Array(screen.buffer,screen.byteOffset,screen.byteLength));
   py.FS.writeFile("/tmp/"+nid,new Uint8Array(native.buffer,native.byteOffset,native.byteLength));
@@ -123,12 +125,13 @@ async function processTile(py,q,bbox,maxPerTile=240){
     const txt=py.runPython(
       "json.dumps(detect_from_files('/tmp/"+sid+"',"+oh+","+ow+",'/tmp/"+nid+"',"+(nrow1-nrow0)+","+(ncol1-ncol0)+",__el_meta,"+maxPerTile+",True))"
     );
-    out=JSON.parse(String(txt));
+    out=JSON.parse(String(txt));timingDetect=performance.now();
   }finally{
     try{py.FS.unlink("/tmp/"+sid)}catch(_){}
     try{py.FS.unlink("/tmp/"+nid)}catch(_){}
     try{py.globals.delete("__el_meta")}catch(_){}
   }
+  out.tile=Object.assign({},out.tile||{},{worker_timings_ms:{openMs:Math.round((timingOpen||timing0)-timing0),rasterMs:Math.round((timingNative||timingScreen||timing0)-(timingOpen||timing0)),detectMs:Math.round((timingDetect||performance.now())-(timingNative||timingScreen||timing0)),totalMs:Math.round(performance.now()-timing0)}});
   return out;
 }
 function dedupe(features,minM=10){
@@ -159,12 +162,13 @@ function displaySubset(features,perTile=24){
   return out;
 }
 async function detect(bbox,{displayPerTile=24,maxPerTile=240}={}){
+  const detect0=performance.now();
   if(!Array.isArray(bbox)||bbox.length!==4||bbox.some(v=>!Number.isFinite(Number(v))))throw new Error("invalid bbox");
   bbox=bbox.map(Number);
   if(!(bbox[0]<bbox[2]&&bbox[1]<bbox[3]))throw new Error("invalid bbox order");
   const qs=bboxTiles(bbox);
   if(qs.length>16)throw new Error("bounded AOI required; "+qs.length+" CHMv2 tiles");
-  const py=await ensurePy();
+  const py0=performance.now();const py=await ensurePy();const pyMs=Math.round(performance.now()-py0);
   const features=[],tiles=[];
   for(const q of qs){
     const r=await processTile(py,q,bbox,maxPerTile);
@@ -187,7 +191,8 @@ async function detect(bbox,{displayPerTile=24,maxPerTile=240}={}){
       candidate_pool_count:pool.length,display_count:display.length,
       count_owner:"candidate_pool",map_owner:"display_subset",
       preserve_all_eligible:true,tile_results:tiles,
-      scientific_boundary:"Modeled remote-sensing candidates only; not proof of age, veteran status, or mycorrhizal-hub status."
+      scientific_boundary:"Modeled remote-sensing candidates only; not proof of age, veteran status, or mycorrhizal-hub status.",
+      worker_timings_ms:{ensurePyMs:pyMs,totalMs:Math.round(performance.now()-detect0),tiles:tiles.map(t=>t?.worker_timings_ms||null)}
     },
     candidatePool:pool
   };
