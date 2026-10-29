@@ -1,0 +1,34 @@
+name: Earthline Five Zero-Corridor Diagnostics
+'on':
+  push:
+    branches: [candidate-next]
+    paths:
+      - tests/property-five-zero-diagnostic.mjs
+      - .github/workflows/earthline-five-zero-diagnostic.yml
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    strategy:
+      fail-fast: false
+      matrix:
+        state: [Vermont, Colorado, California, Arkansas, Nevada]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    name: Zero diagnostic — ${{ matrix.state }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Diagnose current public origin
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          STATES: ${{ matrix.state }}
+          OUT: diag.json
+        run: node tests/property-five-zero-diagnostic.mjs
