@@ -30,7 +30,8 @@ const out=await page.evaluate(state=>{
     refinedSelection:window.EARTHLINE_REFINED_SELECTION_16702||null,
     refinedInput:window.EARTHLINE_SCALE_REFINED_INPUT_16702||null,
     terrainGap:window.EARTHLINE_TERRAIN_GAP_REFINEMENT_16730||null,
-    grouped:window.EARTHLINE_GROUPED_LOCAL_PHASE_16841||window.EARTHLINE_GROUPED_STATEWIDE_LOCAL_16841||null
+    grouped:window.EARTHLINE_GROUPED_LOCAL_PHASE_16841||window.EARTHLINE_GROUPED_STATEWIDE_LOCAL_16841||null,
+    preflight17801:window.EARTHLINE_REGIONAL_PROPERTY_SLOPE_PREFLIGHT_17801||null
   };
 },STATE);
 console.log('EARTHLINE_REFINEMENT_DIAG '+JSON.stringify(out));
