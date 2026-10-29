@@ -1,3 +1,4 @@
+// rerun latest Regional visibility candidate 2026-10-29
 import { chromium } from 'playwright';
 import { installCandidateOrigin } from './candidate-origin-router.mjs';
 
