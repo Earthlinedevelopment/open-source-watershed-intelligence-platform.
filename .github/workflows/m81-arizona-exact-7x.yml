@@ -1,0 +1,33 @@
+name: M81 Arizona Exact Seven-Pass
+on:
+  push:
+    branches: [mantra81-integration]
+    paths:
+      - .github/workflows/m81-arizona-exact-7x.yml
+permissions:
+  contents: read
+jobs:
+  certify:
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        round: [1,2,3,4,5,6,7]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    name: "Round ${{ matrix.round }} · Arizona Exact Seven-Pass"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra81-integration
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - run: node tests/m81-arizona-exact-candidate.mjs
