@@ -25531,7 +25531,7 @@ body { overflow-x:hidden!important; }
       const stride=Math.max(1,Math.floor(segment.length/22));let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null;
       for(let k=1;k<segment.length-1;k+=stride){
         const g=llGrid(hy,segment[k]),x=Math.max(1,Math.min(hy.w-2,Math.round(g.x))),y=Math.max(1,Math.min(hy.h-2,Math.round(g.y))),i=y*hy.w+x;
-        const slope=hy.slope[i],acc=hy.acc[i],minSlope=relaxed?.05:.20,maxSlope=relaxed?(focusMode?18:4):13.5;
+        const slope=hy.slope[i],acc=hy.acc[i],minSlope=0,maxSlope=4;
         if(!Number.isFinite(slope)||slope<minSlope||slope>maxSlope||acc>=channel)continue;
         valid++;sumSlope+=slope;sumAcc+=acc;maxAcc=Math.max(maxAcc,acc);if(!anchor)anchor={x,y};
       }
