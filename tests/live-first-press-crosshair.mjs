@@ -40,7 +40,17 @@ async function runAt(target,label){
     },{timeout:20000,polling:100});
     elderMs=Date.now()-t0;
   }catch(_){}
-  return await page.evaluate(({before,target,label,t0,elderMs})=>{
+  let elderPaintMs=null;
+  try{
+    await page.waitForFunction(()=>{
+      const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+      const id='earthline-elder-tree-points-17097';
+      if(!m?.getLayer?.(id))return false;
+      try{return (m.queryRenderedFeatures?.({layers:[id]})?.length||0)>0;}catch(_){return false;}
+    },{timeout:3000,polling:100});
+    elderPaintMs=Date.now()-t0;
+  }catch(_){}
+  return await page.evaluate(({before,target,label,t0,elderMs,elderPaintMs})=>{
     const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
     const s=window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||{};
     const e=window.EARTHLINE_ELDER_TREE_LAST_17097||{};
@@ -54,7 +64,7 @@ async function runAt(target,label){
       label,serialBefore:before.serial,serialAfter:Number(a.serial||0),
       storedBefore:before.stored,mapCenterBefore:before.center,target,
       accepted:ac,declaration:d,
-      swaleMs:Date.now()-t0,elderMs,
+      swaleMs:Date.now()-t0,elderMs,elderPaintMs,
       corridors:Number(a.corridors||0),renderVerified:a.renderVerified===true,safeRendered:Number(s.renderedFeatures||0),
       safeVisible:safe.map(vis),naturalVisible:natural.map(vis),
       elderState:e.state||null,elderCount:Number(e.featureCount||0),
@@ -84,7 +94,7 @@ async function runAt(target,label){
         }catch(_){return [];}
       })()
     };
-  },{before,target,label,t0,elderMs});
+  },{before,target,label,t0,elderMs,elderPaintMs});
 }
 
 const first=await runAt({lng:-111.93066,lat:34.21568},'first');
@@ -104,5 +114,7 @@ for(const r of [first,second]){
   if(!(r.corridors>0&&r.renderVerified&&r.safeRendered>0&&r.safeVisible.every(Boolean)))throw new Error(r.label+' safe swales not visibly rendered');
   if(r.naturalVisible.some(Boolean))throw new Error(r.label+' natural/worm swales visible');
   if(r.elderState!=='committed'||!(r.elderCount>0))throw new Error(r.label+' Elders did not commit');
+  const elderLayer=(r.elderLayers||[]).find(x=>x.id==='earthline-elder-tree-points-17097');
+  if(!(elderLayer&&elderLayer.visible&&elderLayer.count>0))throw new Error(r.label+' Elders committed but did not visibly paint');
 }
 await browser.close();
