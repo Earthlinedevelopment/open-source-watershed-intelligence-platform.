@@ -1,10 +1,13 @@
 import { chromium } from 'playwright';
+import { installCandidateOrigin } from './candidate-origin-router.mjs';
 
 const URL='https://earthlinedevelopment.org/';
 const browser=await chromium.launch({headless:true});
 const rows=[];
 for(let round=1;round<=7;round++){
-  const page=await browser.newPage({viewport:{width:1440,height:900}});
+  const context=await browser.newContext({viewport:{width:1440,height:900}});
+  await installCandidateOrigin(context);
+  const page=await context.newPage();
   const errors=[];page.on('pageerror',e=>errors.push(String(e)));
   let pass=false,fatal=null,state=null;
   try{
@@ -37,6 +40,7 @@ for(let round=1;round<=7;round++){
   }catch(e){fatal=String(e)}
   const row={round,pass,fatal,state,errors};rows.push(row);console.log('M81_REPORT_CLOSE '+JSON.stringify(row));
   await page.close();
+  await context.close();
   if(!pass){await browser.close();throw new Error('report close failed '+JSON.stringify(row));}
 }
 await browser.close();
