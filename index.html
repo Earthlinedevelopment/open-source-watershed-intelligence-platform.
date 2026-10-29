@@ -28901,7 +28901,14 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
         window.EARTHLINE_REGIONAL_CONTEXT_16198={build:'EARTHLINE 16726',runToken,elapsedMs:Math.round(performance.now()-contextStarted16198),basinCount:basinCount16198,aquiferCount:aquiferCount16198,groundwaterReady:groundwaterReady16198,graceReady:graceReady16198,failures:failures16198,displaySuppressedForProperty:propertyOwnsDisplay16726,at:new Date().toISOString()};
         try{earthlineStandardAudit16784({tier:focusMode?'focus':'regional',runToken,query:q,hy,stage:'context-complete'});}catch(_){ }
         recordRun(propertyOwnsDisplay16726?'context_enriched_cached_property_preserved':'context_enriched',runToken,window.EARTHLINE_REGIONAL_CONTEXT_16198);
-        if(!propertyOwnsDisplay16726&&!focusMode){const cov16792=cameraCoverage(m,b);if(!Number.isFinite(cov16792)||cov16792<.98){const ok16792=await settleRegionalCamera(m,b,runToken);if(ok16792!==true)throw new Error('regional final display camera reconciliation failed');}}
+        if(!propertyOwnsDisplay16726&&!focusMode){
+          window.EARTHLINE_CONTEXT_CAMERA_POLICY_M81={
+            build:'EARTHLINE M81',runToken,
+            action:'preserve-current-camera',
+            reason:'core camera already settled before publication; optional context does not recenter after publication',
+            coverage:cameraCoverage(m,b),at:new Date().toISOString()
+          };
+        }
         if(!propertyOwnsDisplay16726&&!focusMode&&/vancouver\s+island/i.test(String(q||''))){
           try{
             if(m.getLayer(IDS.aquiferFill)){m.setLayoutProperty(IDS.aquiferFill,'visibility','visible');m.moveLayer(IDS.aquiferFill);}
@@ -29180,7 +29187,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     for(const id of ['earthlineSearchSuggestions15920','earthlineSearchSuggestions15940','earthlineSearchSuggestions15970'])document.getElementById(id)?.remove();
     const menu=document.createElement('div');menu.id='earthlineSearchSuggestions15970';menu.setAttribute('role','listbox');document.body.appendChild(menu);
     const rows=suggestions();
-    function positionMenu16201(){const r=input.getBoundingClientRect(),run=document.getElementById('runBtn'),rr=run&&run.getBoundingClientRect?run.getBoundingClientRect():null,w=Math.max(320,Math.min(620,window.innerWidth-r.left-18)),top=Math.max(r.bottom,rr&&Number.isFinite(rr.bottom)?rr.bottom:r.bottom)+8;menu.style.setProperty('left',r.left+'px','important');menu.style.setProperty('right','auto','important');menu.style.setProperty('top',top+'px','important');menu.style.setProperty('width',w+'px','important');}
+    function positionMenu16201(){const r=input.getBoundingClientRect(),run=document.getElementById('runBtn'),rr=run&&run.getBoundingClientRect?run.getBoundingClientRect():null,vh=Math.max(1,Number(window.innerHeight||document.documentElement.clientHeight||0)),vw=Math.max(1,Number(window.innerWidth||document.documentElement.clientWidth||0)),belowTop=Math.max(r.bottom,rr&&Number.isFinite(rr.bottom)?rr.bottom:r.bottom)+8,desired=Math.min(340,Math.max(96,Math.floor(vh*.58))),below=Math.max(0,vh-belowTop-8);let top,maxH;if(below>=96){top=belowTop;maxH=Math.min(desired,below)}else{const anchorTop=Math.min(r.top,rr&&Number.isFinite(rr.top)?rr.top:r.top)-8;maxH=Math.min(desired,Math.max(72,anchorTop-8));top=Math.max(8,anchorTop-maxH)}const w=Math.max(120,Math.min(r.width,vw-16)),left=Math.max(8,Math.min(r.left,vw-w-8));menu.style.setProperty('position','fixed','important');menu.style.setProperty('left',Math.round(left)+'px','important');menu.style.setProperty('right','auto','important');menu.style.setProperty('top',Math.round(top)+'px','important');menu.style.setProperty('width',Math.round(w)+'px','important');menu.style.setProperty('max-height',Math.round(maxH)+'px','important');}
     function placeIntentRows16539(raw){
       const v=clean(raw),kq=key(v);
       if(v.length<3||/\d/.test(v)||/,/.test(v)||/\b(?:state|province|region|country|nation|city|address|road|rd|street|st|avenue|ave|drive|dr|lane|ln|highway|hwy|route)\b/i.test(v))return [];
@@ -29226,8 +29233,9 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
       menu.classList.remove('open');
       input.blur();
       setTimeout(()=>{menu.classList.remove('open');delete document.documentElement.dataset.earthlineSuggestionCommit16246;},0);
-      /* A committed suggestion is a Regional search submission. */
-      void action(null);
+      /* EARTHLINE M82 — suggestion selection commits the requested identity only.
+         The visible RUN ANALYSIS control is the single Regional submission owner.
+         This prevents one suggestion tap plus one Run press from launching two concurrent runs. */
       return true;
     }
     menu.addEventListener('pointerdown',e=>{const b=e.target.closest('[data-query]');if(!b)return;suggestionPointerCommit=commitSuggestion16236(b,e);},true);
@@ -30808,13 +30816,10 @@ body{display:block!important}
   function activeTier16168(){const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null;return String(d&&((d.tier||d.mode))||'regional').toLowerCase();}
   function corridorGeometryVisible17434(map){
     const tier=activeTier16168();
-    if(tier==='focus')return true;
     if(tier==='property')return false;
-    const published=window.EARTHLINE_REGIONAL_PUBLICATION_VIEW_16337||null;
-    const publishedZoom=Number(published&&published.zoom),currentZoom=Number(map?.getZoom?.());
-    if(!Number.isFinite(currentZoom))return false;
-    if(!Number.isFinite(publishedZoom))return false;
-    return currentZoom>=publishedZoom+0.85;
+    /* EARTHLINE M81 — Regional swale geometry is part of the default published
+       screening result. Do not hide it behind an extra +0.85 zoom step. */
+    return true;
   }
   function render(data){lastData=data||lastData;if(!lastData)return false;const map=m(),el=overlay();if(!map||!el)return false;const corridorGeometryVisible17434Now=corridorGeometryVisible17434(map);const resizeRunToken16020=String(lastData&&lastData.runToken||'');if(resizeRunToken16020&&resizeRunToken16020!==lastResizeRunToken16020){lastResizeRunToken16020=resizeRunToken16020;}const h=host(),w=Math.max(1,h.clientWidth||window.innerWidth),hh=Math.max(1,h.clientHeight||window.innerHeight);el.setAttribute('viewBox','0 0 '+w+' '+hh);el.replaceChildren();
     const defs=svgEl('defs');const glow=svgEl('filter',{id:'elGlow16020',x:'-30%',y:'-30%',width:'160%',height:'160%'});glow.appendChild(svgEl('feGaussianBlur',{stdDeviation:'1.6',result:'b'}));const merge=svgEl('feMerge');merge.appendChild(svgEl('feMergeNode',{in:'b'}));merge.appendChild(svgEl('feMergeNode',{in:'SourceGraphic'}));glow.appendChild(merge);defs.appendChild(glow);const jurisdictionClipD=jurisdictionClipD16020(),jurisdictionClipId='earthlineJurisdictionClip16020';if(jurisdictionClipD){const cp=svgEl('clipPath',{id:jurisdictionClipId,clipPathUnits:'userSpaceOnUse'});cp.appendChild(svgEl('path',{d:jurisdictionClipD,'fill-rule':'evenodd','clip-rule':'evenodd'}));defs.appendChild(cp);}el.appendChild(defs);
@@ -32676,6 +32681,7 @@ html[data-earthline-analysis-tier="property"] #earthlineDiagramLegend16080{displ
 #earthlineMapOnlyExit16169,#earthlineMapRun15970,#earthlineMapRun16020,#runBtnSide,#fsBtn{display:none!important}
 #earthlineCenterTarget15782,#earthlineAnalysisCenterTarget15830{z-index:100!important}
 @media(max-width:760px){:root{--el-rail-16188:54px;--el-panel-16188:min(330px,calc(100vw - 54px))}#earthlinePanelBrand16201 .mantra-primary{font-size:23px!important}.main,html.earthline-panel-open-16188 .main{left:var(--el-rail-16188)!important}#earthlinePanel16188{width:calc(100vw - var(--el-rail-16188))}#earthlineCorridorTip16248{left:calc(var(--el-rail-16188) + 10px);right:10px;top:118px;width:auto}}
+@media(max-height:500px) and (orientation:landscape){:root{--el-rail-16188:54px;--el-panel-16188:min(385px,calc(100vw - 54px))}#earthlinePanel16188{top:6px!important;bottom:6px!important;height:auto!important;border-radius:0 12px 12px 0!important}#earthlinePanelBody16188{padding-bottom:12px!important}}
 
 
 #earthlineRegionalCorridorTabs16323{
@@ -33122,7 +33128,7 @@ html[data-earthline-analysis-tier="property"] #earthlineDiagramLegend16080{displ
     syncOrbMotion16240();
   }
   function closeSuggestions16233(){const menu=document.getElementById('earthlineSearchSuggestions15970');if(menu)menu.classList.remove('open')}
-  function positionSuggestions16233(){const input=document.getElementById('searchInput'),menu=document.getElementById('earthlineSearchSuggestions15970');if(!input||!menu)return;const r=input.getBoundingClientRect(),run=document.getElementById('runBtn'),rr=run&&run.getBoundingClientRect?run.getBoundingClientRect():null,top=Math.max(r.bottom,rr&&Number.isFinite(rr.bottom)?rr.bottom:r.bottom)+7;menu.style.setProperty('left',Math.round(r.left)+'px','important');menu.style.setProperty('right','auto','important');menu.style.setProperty('top',Math.round(top)+'px','important');menu.style.setProperty('width',Math.round(r.width)+'px','important')}
+  function positionSuggestions16233(){const input=document.getElementById('searchInput'),menu=document.getElementById('earthlineSearchSuggestions15970');if(!input||!menu)return;if(menu.parentElement!==document.body)document.body.appendChild(menu);const r=input.getBoundingClientRect(),run=document.getElementById('runBtn'),rr=run&&run.getBoundingClientRect?run.getBoundingClientRect():null,top=Math.max(r.bottom,rr&&Number.isFinite(rr.bottom)?rr.bottom:r.bottom)+7;menu.style.setProperty('left',Math.round(r.left)+'px','important');menu.style.setProperty('right','auto','important');menu.style.setProperty('top',Math.round(top)+'px','important');menu.style.setProperty('width',Math.round(r.width)+'px','important')}
   function openSuggestions16233(){if(!searchEngaged16233)return;const menu=document.getElementById('earthlineSearchSuggestions15970');if(!menu)return;positionSuggestions16233();if(menu.querySelector('button'))menu.classList.add('open')}
   function bindSearchSuggestions16233(){const input=document.getElementById('searchInput'),menu=document.getElementById('earthlineSearchSuggestions15970');if(!input||!menu||input.dataset.earthline16233Bound==='1')return;input.dataset.earthline16233Bound='1';for(const ev of ['focus','pointerdown'])input.addEventListener(ev,()=>{searchEngaged16233=true;setTimeout(openSuggestions16233,0)});input.addEventListener('input',()=>{if(document.documentElement.dataset.earthlineSuggestionCommit16246==='1'){searchEngaged16233=false;closeSuggestions16233();return;}searchEngaged16233=true;setTimeout(openSuggestions16233,0)});input.addEventListener('keydown',e=>{if(e.key==='Enter')closeSuggestions16233();if(e.key==='Escape'){searchEngaged16233=false;closeSuggestions16233()}});menu.addEventListener('click',()=>{searchEngaged16233=false;closeSuggestions16233()});document.addEventListener('pointerdown',e=>{if(e.target===input||e.target.closest('#earthlineSearchSuggestions15970'))return;searchEngaged16233=false;closeSuggestions16233()},true);const mo=new MutationObserver(()=>{if(!searchEngaged16233)closeSuggestions16233();else positionSuggestions16233()});mo.observe(menu,{attributes:true,attributeFilter:['class'],childList:true,subtree:true});for(const delay of [0,80,300,900])setTimeout(()=>{if(!searchEngaged16233)closeSuggestions16233()},delay)}
   function propertyTargetLabel16233(target){if(target&&target.code)return String(target.code)+' · ANALYZE · 20 ACRES';if(target&&Number.isFinite(Number(target.lat))&&Number.isFinite(Number(target.lng)))return 'CROSSHAIR · '+Number(target.lat).toFixed(5)+', '+Number(target.lng).toFixed(5)+' · 20 ACRES';return 'PROPERTY SEARCH · 20 ACRES'}function propertyTargetMarkup16871(target){const lang=String(window.EARTHLINE_LANGUAGE_16488||'en'),raw=propertyTargetLabel16233(target);let s=raw;if(lang==='es')s=s.replace('CROSSHAIR','PUNTO DE MIRA').replace('ANALYZE','ANALIZAR').replace('PROPERTY SEARCH','BÚSQUEDA DE PROPIEDAD');else if(lang==='vi')s=s.replace('CROSSHAIR','TÂM NGẮM').replace('ANALYZE','PHÂN TÍCH').replace('PROPERTY SEARCH','TÌM KHU ĐẤT');else if(lang==='th')s=s.replace('CROSSHAIR','เป้าเล็ง').replace('ANALYZE','วิเคราะห์').replace('PROPERTY SEARCH','ค้นหาพื้นที่');return s.replace(/20 ACRES/g,'<strong class="earthline-acres-16871">20 ACRES</strong>')}window.earthlinePropertyTargetMarkup16871=propertyTargetMarkup16871;
