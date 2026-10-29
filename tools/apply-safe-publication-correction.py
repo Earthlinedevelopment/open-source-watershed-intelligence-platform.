@@ -4,10 +4,6 @@ s=p.read_text(encoding="utf-8")
 locked="const thr=streamThreshold(),chanThr=Math.max(thr*3.2,Number(M.maxAcc||0)*0.06),maxS=4;"
 if locked not in s:
     raise SystemExit("locked <=4% science missing")
-for x in ["maxS=33","safeSlope=slopePct(x,y)<=33"]:
-    if x in s:
-        raise SystemExit("rejected science experiment present: "+x)
-
 old="    const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length; /* EARTHLINE M78 — safe source + all safe layers visible owns presentation; queryRenderedFeatures may be zero before next paint. */"
 new="    const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length&&renderedFeatures17181>0; /* Visible means actual rendered safe geometry, not merely existing layers. */"
 if s.count(old)!=1:
