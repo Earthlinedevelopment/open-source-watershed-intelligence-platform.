@@ -47,10 +47,22 @@ async function runAt(target,label){
     const a=window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||{};
     return a.visible===true&&Number(a.count||0)>0&&Number(a.renderedFeatures||0)>0;
   },{timeout:15000,polling:100});
-  await page.waitForFunction(()=>{
-    const e=window.EARTHLINE_ELDER_TREE_LAST_17097||{};
-    return e.state==='committed'&&Number(e.featureCount||0)>0;
-  },{timeout:20000,polling:100});
+  try{
+    await page.waitForFunction(()=>{
+      const e=window.EARTHLINE_ELDER_TREE_LAST_17097||{};
+      return e.state==='committed'&&Number(e.featureCount||0)>0;
+    },{timeout:20000,polling:100});
+  }catch(err){
+    const diag=await page.evaluate(()=>({
+      elder:window.EARTHLINE_ELDER_TREE_LAST_17097||null,
+      dynamic:window.EARTHLINE_ELDER_DYNAMIC_LAST_17129||null,
+      target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+      declaration:window.EARTHLINE_PROPERTY_DECLARATION_16169||null,
+      audit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null
+    }));
+    console.log('M81_AZ_ELDER_TIMEOUT '+JSON.stringify({label,diag}));
+    throw err;
+  }
   await page.waitForFunction(()=>{try{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);return (m?.queryRenderedFeatures?.(undefined,{layers:['earthline-elder-tree-points-17097']})?.length||0)>0}catch(_){return false}},{timeout:5000,polling:100});
   const wallMs=Date.now()-t0;
   return page.evaluate(({before,target,label,wallMs})=>{
