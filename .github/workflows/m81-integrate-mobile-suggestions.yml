@@ -1,0 +1,25 @@
+name: M81 Integrate Mobile Suggestions
+on:
+  push:
+    branches: [mantra81-integration]
+    paths:
+      - tools/m81-integrate-mobile-suggestions.py
+      - .github/workflows/m81-integrate-mobile-suggestions.yml
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra81-integration
+          fetch-depth: 0
+      - run: python3 tools/m81-integrate-mobile-suggestions.py
+      - run: |
+          git config user.name earthline-bot
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git diff --cached --check
+          git commit -m "fix: keep search suggestions inside mobile viewport"
+          git push origin HEAD:mantra81-integration
