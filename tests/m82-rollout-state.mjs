@@ -47,10 +47,12 @@ for(const state of STATES){
     await page.evaluate(t=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);m.jumpTo({center:[t.lng,t.lat],zoom:16.7,bearing:0,pitch:0});},target);
     await page.waitForTimeout(350);
     const before=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
+    const hit=await page.evaluate(()=>{const e=document.getElementById('earthlineDeclareProperty16169'),r=e.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,top=document.elementFromPoint(x,y);return{x,y,topmost:!!top?.closest?.('#earthlineDeclareProperty16169'),disabled:!!e.disabled,visible:getComputedStyle(e).display!=='none'&&getComputedStyle(e).visibility!=='hidden'};});
+    if(!hit.topmost||hit.disabled||!hit.visible)throw new Error('Property pointer target not actionable '+JSON.stringify(hit));
     const p0=Date.now();
-    await page.locator('#earthlineDeclareProperty16169').click();
-    await page.waitForFunction(s=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};return Number(a.serial)===s+1&&a.scientificSettled===true&&a.result===true},before,{timeout:60000,polling:100});
-    await page.waitForFunction(()=>{const s=window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||{};return s.visible===true&&Number(s.renderedFeatures||0)>0},{timeout:15000,polling:100});
+    await page.mouse.click(hit.x,hit.y);
+    await page.waitForFunction(s=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};return Number(a.serial)===s+1&&a.scientificSettled===true&&a.result===true},before,{timeout:30000,polling:50});
+    await page.waitForFunction(()=>{const s=window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||{};return s.visible===true&&Number(s.renderedFeatures||0)>0},{timeout:15000,polling:50});
     const propertyMs=Date.now()-p0;
     const prop=await page.evaluate(()=>{
       const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{},v=window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||{},m=typeof M!=='undefined'?M:null;
@@ -68,9 +70,8 @@ for(const state of STATES){
     if(!(prop.corridors>0&&prop.renderVerified&&prop.safeVisible&&prop.safeRendered>0&&prop.acceptedIntersections===0&&prop.roadIntersections===0&&prop.structureIntersections===0&&prop.waterIntersections===0&&prop.developedIntersections===0&&prop.maxSlopePct<=4.0001))throw new Error('Property swale gate '+JSON.stringify(prop));
 
     let elderMs=null,elder=null;
-    const e0=Date.now();
-    await page.waitForFunction(()=>{const e=window.EARTHLINE_ELDER_TREE_LAST_17097||{};return e.state==='committed'||e.state==='failed'},{timeout:20000,polling:100});
-    elderMs=Date.now()-e0;
+    await page.waitForFunction(()=>{const e=window.EARTHLINE_ELDER_TREE_LAST_17097||{};return e.state==='committed'||e.state==='failed'},{timeout:15000,polling:50});
+    elderMs=Date.now()-p0;
     elder=await page.evaluate(()=>{
       const e=window.EARTHLINE_ELDER_TREE_LAST_17097||{},map=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
       let rendered=0;try{rendered=map?.queryRenderedFeatures?.(undefined,{layers:['earthline-elder-tree-points-17097']})?.length||0}catch(_){}
@@ -80,7 +81,7 @@ for(const state of STATES){
     if(elder.count>0&&elder.rendered<=0)throw new Error('Elder evidence not rendered '+JSON.stringify({elderMs,...elder}));
     if(elderMs>15000)throw new Error('Elder load '+elderMs);
 
-    row={state,regionalMs,regionalCoreMs:Number(reg.perf?.totalMs||0),propertyMs,elderMs,reg,prop,elder,errors,pass:errors.length===0};
+    row={state,regionalMs,regionalCoreMs:Number(reg.perf?.totalMs||0),propertyMs,elderMs,pointer:hit,reg,prop,elder,errors,pass:errors.length===0};
   }catch(e){row={state,pass:false,error:String(e),errors}}
   rows.push(row);console.log('EARTHLINE_ROLLOUT_STATE '+JSON.stringify(row));
   await page.close();
