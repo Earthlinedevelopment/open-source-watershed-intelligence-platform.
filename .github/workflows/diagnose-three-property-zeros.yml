@@ -1,0 +1,38 @@
+name: Diagnose Three Remaining Property Zeros
+'on':
+  push:
+    branches: [regional-slope-livefix]
+    paths:
+      - .github/workflows/diagnose-three-property-zeros.yml
+      - tests/property-five-zero-diagnostic.mjs
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    strategy:
+      fail-fast: false
+      matrix:
+        state: [Colorado, California, Arkansas]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    name: Zero — ${{ matrix.state }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: regional-slope-livefix
+      - run: python3 tools/patch-regional-slope-4.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          sleep 1
+      - env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE_ORIGIN: '1'
+          STATES: ${{ matrix.state }}
+          OUT: result.json
+        run: node tests/property-five-zero-diagnostic.mjs
