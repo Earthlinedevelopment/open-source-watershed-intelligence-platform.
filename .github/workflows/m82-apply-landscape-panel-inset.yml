@@ -1,0 +1,22 @@
+name: M82 Apply Landscape Panel Inset
+'on':
+  push:
+    branches: [mantra82-clean-integration]
+    paths:
+      - tools/m82-landscape-panel-inset.py
+      - .github/workflows/m82-apply-landscape-panel-inset.yml
+permissions: { contents: write }
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: mantra82-clean-integration }
+      - run: python3 tools/m82-landscape-panel-inset.py
+      - run: |
+          git diff --quiet -- index.html && exit 1
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: keep landscape control panel inside viewport"
+          git push origin HEAD:mantra82-clean-integration
