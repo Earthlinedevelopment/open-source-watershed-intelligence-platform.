@@ -1,0 +1,78 @@
+name: Earthline Candidate Safe Swale Publication Correction
+on:
+  push:
+    branches: [candidate-next]
+    paths:
+      - '.github/workflows/earthline-candidate-safe-publication-correction.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 0
+      - name: Correct verified-safe Property map publication
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          locked="const thr=streamThreshold(),chanThr=Math.max(thr*3.2,Number(M.maxAcc||0)*0.06),maxS=4;"
+          if locked not in s: raise SystemExit('locked <=4% science missing')
+          for x in ["maxS=33","safeSlope=slopePct(x,y)<=33"]:
+              if x in s: raise SystemExit('rejected science experiment present: '+x)
+
+          old="""    const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length; /* EARTHLINE M78 — safe source + all safe layers visible owns presentation; queryRenderedFeatures may be zero before next paint. */"""
+          new="""    const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length&&renderedFeatures17181>0; /* Visible means actual rendered safe geometry, not merely existing layers. */"""
+          if s.count(old)!=1: raise SystemExit(f'safe visibility anchor count {s.count(old)}')
+          s=s.replace(old,new,1)
+
+          old2="""  function scheduleSafePropertyFallback16221(reason='scheduled'){
+    /* EARTHLINE 17670 — deterministic presentation. No retry ladder. */
+    return syncSafePropertyFallback16221(reason);
+  }
+  async function verifySafePropertyFallback16221(count){
+    if(!(count>0))return {ok:true,count:0,visible:false,required:false,pending:false};
+    const first=syncSafePropertyFallback16221('terminal-atomic-17670');
+    return {...first,required:true,pending:false};
+  }"""
+          new2="""  let safePropertySettleToken=0;
+  function scheduleSafePropertyFallback16221(reason='scheduled'){
+    const token=++safePropertySettleToken,mp=map();
+    let last=null;
+    const run=label=>{
+      if(token!==safePropertySettleToken)return last;
+      last=syncSafePropertyFallback16221(reason+':'+label);
+      if(last?.ok)safePropertySettleToken++;
+      return last;
+    };
+    run('immediate');
+    if(last?.ok)return last;
+    for(const delay of [80,220,520,1000])setTimeout(()=>run('delay-'+delay),delay);
+    try{mp?.once?.('style.load',()=>run('style-load'));mp?.once?.('idle',()=>run('idle'))}catch(_){}
+    return last||{ok:false,pending:true};
+  }
+  async function verifySafePropertyFallback16221(count){
+    if(!(count>0))return {ok:true,count:0,visible:false,required:false,pending:false};
+    const first=syncSafePropertyFallback16221('terminal-atomic');
+    if(first?.ok)return {...first,required:true,pending:false};
+    scheduleSafePropertyFallback16221('terminal-settle');
+    return {...first,required:true,pending:true};
+  }"""
+          if s.count(old2)!=1: raise SystemExit(f'safe schedule block count {s.count(old2)}')
+          s=s.replace(old2,new2,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+      - name: Commit candidate correction
+        run: |
+          git config user.name "Earthline Engine"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: require rendered safe Property swales before visual success"
+          git push origin HEAD:candidate-next
