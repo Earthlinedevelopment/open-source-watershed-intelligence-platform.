@@ -2086,3 +2086,41 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   },{passive:true});
   window.EARTHLINE_CROSSHAIR_MOVE_HINT_17093={state:'ready',show,remove,showAfterEveryRegional:true};
 })();
+
+
+/* EARTHLINE M81 REPORT CLOSE HARDENING
+   Presentation only. Guarantees the Bioswale Impact Report releases pointer
+   ownership immediately when Close is used, and restores it cleanly on reopen. */
+(function installEarthlineReportCloseHardeningM81(){
+  if(window.EARTHLINE_REPORT_CLOSE_HARDENING_M81)return;
+  function panel(){return document.getElementById('earthlineVermontReportPanel16149')}
+  function hardClose(){
+    const p=panel(); if(!p)return false;
+    p.classList.remove('open');
+    p.style.setProperty('display','none','important');
+    p.style.setProperty('visibility','hidden','important');
+    p.style.setProperty('pointer-events','none','important');
+    document.documentElement.classList.remove('earthline-report-open-16966');
+    return true;
+  }
+  function prepareOpen(){
+    const p=panel(); if(!p)return;
+    p.style.removeProperty('display');
+    p.style.removeProperty('visibility');
+    p.style.removeProperty('pointer-events');
+  }
+  document.addEventListener('pointerdown',e=>{
+    if(e.target?.closest?.('#earthlineVermontReport16149'))prepareOpen();
+  },true);
+  document.addEventListener('click',e=>{
+    if(e.target?.closest?.('#earthlineVermontReportPanel16149 [data-action="close"],#earthlineVermontReportPanel16149 .el49-close')){
+      hardClose();
+      setTimeout(hardClose,0);
+      setTimeout(hardClose,80);
+    }
+  },true);
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&panel()?.classList?.contains('open'))hardClose();
+  },true);
+  window.EARTHLINE_REPORT_CLOSE_HARDENING_M81={state:'ready',hardClose,prepareOpen};
+})();
