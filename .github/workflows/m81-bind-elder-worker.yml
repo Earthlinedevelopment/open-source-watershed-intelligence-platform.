@@ -1,0 +1,25 @@
+name: M81 Bind Elder Worker
+on:
+  push:
+    branches: [mantra81-integration]
+    paths:
+      - tools/m81-bind-elder-worker.py
+      - .github/workflows/m81-bind-elder-worker.yml
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra81-integration
+          fetch-depth: 0
+      - run: python3 tools/m81-bind-elder-worker.py
+      - run: |
+          git config user.name earthline-bot
+          git config user.email info@earthlinedevelopment.org
+          git add earthline-launch-16872.js
+          git diff --cached --check
+          git commit -m "perf: bind parity-proven Elder worker revision"
+          git push origin HEAD:mantra81-integration
