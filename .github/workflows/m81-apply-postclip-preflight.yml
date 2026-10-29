@@ -1,0 +1,23 @@
+name: Apply M81 Post-Clip Property Preflight
+'on':
+  push:
+    branches: [m81-postclip-preflight]
+    paths:
+      - tools/m81-move-preflight-postclip.py
+      - .github/workflows/m81-apply-postclip-preflight.yml
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m81-postclip-preflight
+      - run: python3 tools/m81-move-preflight-postclip.py
+      - run: |
+          git config user.name "earthline-bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "science: verify final displayed Regional target after clipping" || exit 0
+          git push origin HEAD:m81-postclip-preflight
