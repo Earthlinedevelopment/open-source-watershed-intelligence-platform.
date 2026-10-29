@@ -1,0 +1,61 @@
+name: Earthline Seven-Pass Launch Certification
+'on':
+  push:
+    branches:
+      - candidate-next
+    paths:
+      - .github/workflows/earthline-seven-pass-launch-certification.yml
+permissions:
+  contents: read
+jobs:
+  certify:
+    strategy:
+      fail-fast: false
+      matrix:
+        round: [1, 2, 3, 4, 5, 6, 7]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    name: Full public-origin certification — pass ${{ matrix.round }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: 50-state Regional launch baseline
+        run: node tests/final-launch-smoke-17001.mjs
+      - name: 50-state Regional to Property consistency
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          STATES: Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming
+          OUT: property-50-pass-${{ matrix.round }}.json
+        run: node tests/validate-property-50states-final.mjs
+      - name: Arizona two-Property repeat and visible safe swales/Elders
+        run: node tests/live-two-property-arizona.mjs
+      - name: Vermont fixed Property launch control
+        run: node tests/live-vermont-fixed-property.mjs
+      - name: Elder user-flow performance and publication
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+        run: node tests/elder-user-flow-17418.mjs
+      - name: Mobile and desktop acceptance
+        run: node tests/mobile-acceptance-17012.mjs
+      - name: Arizona mobile Property path
+        run: node tests/arizona-a1-property-mobile.mjs
+      - name: Arizona mobile Regional performance
+        run: node tests/arizona-mobile-performance.mjs
+      - name: Vermont New York launch regression
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/lab.html
+        run: node tests/final-vt-ny-regression.mjs
+      - name: New York mapped-water exclusion regression
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/lab.html
+        run: node tests/ny-water-regression.mjs
+      - name: Report controls probe
+        run: node tests/report-controls-probe.mjs
