@@ -63,7 +63,13 @@ async function runAt(target,label){
 }
 
 const first=await runAt({lng:-111.93066,lat:34.21568},'first');
+await page.waitForTimeout(600);
+const firstShot=(await page.screenshot({type:'jpeg',quality:45})).toString('base64');
+console.log('EARTHLINE_SCREEN_FIRST '+firstShot);
 const second=await runAt({lng:-111.93456,lat:34.21545},'second');
+await page.waitForTimeout(600);
+const secondShot=(await page.screenshot({type:'jpeg',quality:45})).toString('base64');
+console.log('EARTHLINE_SCREEN_SECOND '+secondShot);
 console.log('EARTHLINE_FIRST_PRESS_CROSSHAIR '+JSON.stringify({first,second}));
 for(const r of [first,second]){
   const close=(p,t)=>p&&Math.abs(Number(p.lng)-t.lng)<.00008&&Math.abs(Number(p.lat)-t.lat)<.00008;
