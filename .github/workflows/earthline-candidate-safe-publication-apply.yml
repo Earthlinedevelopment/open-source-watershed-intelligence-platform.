@@ -1,0 +1,32 @@
+name: Earthline Candidate Safe Publication Apply
+'on':
+  push:
+    branches:
+      - candidate-next
+    paths:
+      - tools/apply-safe-publication-correction.py
+      - .github/workflows/earthline-candidate-safe-publication-apply.yml
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 0
+      - name: Apply correction
+        run: python3 tools/apply-safe-publication-correction.py
+      - name: Verify scope
+        run: |
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+      - name: Commit candidate
+        run: |
+          git config user.name "Earthline Engine"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: require rendered safe Property swales before visual success"
+          git push origin HEAD:candidate-next
