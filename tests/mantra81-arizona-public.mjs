@@ -48,7 +48,7 @@ async function runAt(target,label){
     const e=window.EARTHLINE_ELDER_TREE_LAST_17097||{};
     return e.state==='committed'&&Number(e.featureCount||0)>0;
   },{timeout:20000,polling:100});
-  await page.waitForTimeout(350);
+  await page.waitForFunction(()=>{try{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);return (m?.queryRenderedFeatures?.({layers:['earthline-elder-tree-points-17097']})?.length||0)>0}catch(_){return false}},{timeout:5000,polling:100});
   const wallMs=Date.now()-t0;
   return page.evaluate(({before,target,label,wallMs})=>{
     const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
@@ -75,6 +75,7 @@ async function runAt(target,label){
 const first=await runAt({lng:-111.93066,lat:34.21568},'first');
 const second=await runAt({lng:-111.93456,lat:34.21545},'second');
 const close=(p,t)=>p&&Math.abs(Number(p.lng)-t.lng)<.00008&&Math.abs(Number(p.lat)-t.lat)<.00008;
+console.log('MANTRA81_AZ '+JSON.stringify({regionalWall,regionalCoreMs:regional.perf?.totalMs,first,second}));
 for(const r of [first,second]){
   if(r.serialAfter!==r.serialBefore+1)throw new Error(r.label+' not one-press');
   if(!close(r.accepted,r.target))throw new Error(r.label+' stale accepted target');
@@ -85,5 +86,4 @@ for(const r of [first,second]){
   if(r.wallMs>15000)throw new Error(r.label+' Property too slow '+r.wallMs+'ms');
 }
 if(errors.length)throw new Error('page errors '+JSON.stringify(errors));
-console.log('MANTRA81_AZ '+JSON.stringify({regionalWall,regionalCoreMs:regional.perf?.totalMs,first,second}));
 await browser.close();
