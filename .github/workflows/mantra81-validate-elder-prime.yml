@@ -1,0 +1,23 @@
+name: Validate Mantra 81 Elder Prime Candidate
+on:
+  push:
+    branches: [mantra81-elder-prime-candidate]
+    paths:
+      - tests/mantra81-elder-prime-candidate.mjs
+      - .github/workflows/mantra81-validate-elder-prime.yml
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: mantra81-elder-prime-candidate }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/m81-http.log 2>&1 &
+      - run: node tests/mantra81-elder-prime-candidate.mjs
