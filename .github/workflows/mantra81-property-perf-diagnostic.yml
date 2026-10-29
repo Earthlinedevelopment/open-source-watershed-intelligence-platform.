@@ -1,0 +1,22 @@
+name: Mantra 81 Property Performance Diagnostic
+on:
+  push:
+    branches: [mantra81-perf-diagnostic]
+    paths:
+      - tests/mantra81-property-perf-diagnostic.mjs
+      - .github/workflows/mantra81-property-perf-diagnostic.yml
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: mantra81-perf-diagnostic }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/mantra81-property-perf-diagnostic.mjs
