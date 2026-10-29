@@ -1,0 +1,21 @@
+name: Earthline Current Prescriber Source Extract
+'on':
+  push:
+    branches: [candidate-next]
+    paths:
+      - .github/workflows/earthline-current-prescriber-source.yml
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node tests/mantra46-source-extract.mjs
+      - run: cat artifacts/mantra46-source/makeSwales-snippet.txt
