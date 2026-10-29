@@ -1,0 +1,19 @@
+name: Earthline Property Terminal Sequence Slice
+'on':
+  push:
+    branches: [candidate-next]
+    paths:
+      - .github/workflows/earthline-property-terminal-sequence-slice.yml
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 0
+      - run: |
+          git show origin/pages-live:index.html > /tmp/live-index.html
+          sed -n '30070,30238p' /tmp/live-index.html
