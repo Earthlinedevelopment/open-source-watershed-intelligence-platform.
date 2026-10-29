@@ -1,3 +1,4 @@
+// M81 science rule: zero Elder candidates are valid; never fabricate display points where the governed model returns none.
 // rerun after integrated Elder prime lifecycle
 import { chromium } from 'playwright';
 import { installCandidateOrigin } from './candidate-origin-router.mjs';
@@ -51,7 +52,7 @@ async function runAt(target,label){
   try{
     await page.waitForFunction(()=>{
       const e=window.EARTHLINE_ELDER_TREE_LAST_17097||{};
-      return e.state==='committed'&&Number(e.featureCount||0)>0;
+      return e.state==='committed';
     },{timeout:20000,polling:100});
   }catch(err){
     const diag=await page.evaluate(()=>({
@@ -64,7 +65,8 @@ async function runAt(target,label){
     console.log('M81_AZ_ELDER_TIMEOUT '+JSON.stringify({label,diag}));
     throw err;
   }
-  await page.waitForFunction(()=>{try{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);return (m?.queryRenderedFeatures?.(undefined,{layers:['earthline-elder-tree-points-17097']})?.length||0)>0}catch(_){return false}},{timeout:5000,polling:100});
+  const committedElder=await page.evaluate(()=>window.EARTHLINE_ELDER_TREE_LAST_17097||{});
+  if(Number(committedElder.featureCount||0)>0)await page.waitForFunction(()=>{try{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);return (m?.queryRenderedFeatures?.(undefined,{layers:['earthline-elder-tree-points-17097']})?.length||0)>0}catch(_){return false}},{timeout:5000,polling:100});
   const wallMs=Date.now()-t0;
   return page.evaluate(({before,target,label,wallMs})=>{
     const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
@@ -98,7 +100,8 @@ for(const r of [first,second]){
   if(!r.declaration||!close(r.declaration.center,r.target))throw new Error(r.label+' stale declaration center');
   if(!(r.corridors>0&&r.renderVerified&&r.safeRendered>0&&r.safeVisible.every(Boolean)))throw new Error(r.label+' bioswales not rendered');
   if(r.naturalVisible.some(Boolean))throw new Error(r.label+' old natural swales visible');
-  if(r.elderState!=='committed'||!(r.elderCount>0)||!(r.elderRendered>0))throw new Error(r.label+' Elders not visibly rendered');
+  if(r.elderState!=='committed')throw new Error(r.label+' Elder evidence did not settle');
+  if(r.elderCount>0&&!(r.elderRendered>0))throw new Error(r.label+' committed Elder points not visibly rendered');
   if(r.wallMs>15000)throw new Error(r.label+' Property too slow '+r.wallMs+'ms');
 }
 if(errors.length)throw new Error('page errors '+JSON.stringify(errors));
