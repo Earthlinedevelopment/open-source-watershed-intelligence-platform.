@@ -15,7 +15,13 @@ const snap=async(label)=>{const x=await page.evaluate(()=>({
   property:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
   safe:window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null,
   elder:window.EARTHLINE_ELDER_TREE_LAST_17097||null,
-  target:window.EARTHLINE_PROPERTY_TARGET_16201||null
+  target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+  waterGate:window.EARTHLINE_PROPERTY_WATER_BODY_GATE_16529||null,
+  propertyDiag:(typeof M!=='undefined'&&M?.swaleDiagnostics)?M.swaleDiagnostics:null,
+  zeroReason:(typeof M!=='undefined'&&M?.prescriptionZeroReason15870)||null,
+  vectorCoverage:(typeof M!=='undefined'&&M?.vectorNoBuildCoverage)||null,
+  noBuildProvenance:(typeof M!=='undefined'&&M?.noBuildProvenance15843)?{noBuildCellsFromWater:M.noBuildProvenance15843.noBuildCellsFromWater,noBuildCellsFromVector:M.noBuildProvenance15843.noBuildCellsFromVector,noBuildCellsAfterDilation:M.noBuildProvenance15843.noBuildCellsAfterDilation}:null,
+  preflight:window.EARTHLINE_FINAL_PROPERTY_PREFLIGHT_17803||null
 }));row[label]=x;};
 try{
   await page.goto(URL+'?fourdiag='+encodeURIComponent(state)+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
