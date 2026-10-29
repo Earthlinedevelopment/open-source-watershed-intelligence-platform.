@@ -70,7 +70,7 @@ new=r'''/* EARTHLINE 17802 — exact Property-terrain preflight for top Regional
           return {candidate:c17801,rankBefore:rank17801,pass:null,error:String(e17801&&e17801.message||e17801),lng:lng17801,lat:lat17801};
         }
       };
-      const max17801=Math.min(24,chosen.length),batch17801=4;
+      const max17801=Math.min(12,chosen.length),batch17801=12;
       for(let start17801=0;start17801<max17801&&passed17801.length<3;start17801+=batch17801){
         const batchRows17801=await Promise.all(chosen.slice(start17801,Math.min(max17801,start17801+batch17801)).map((c17801,i17801)=>verify17801(c17801,start17801+i17801+1)));
         for(const row17801 of batchRows17801){
