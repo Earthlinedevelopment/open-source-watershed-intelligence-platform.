@@ -50,20 +50,33 @@ async function rankedTargets(page,stateName){
 }
 
 async function propertyAttempt(page,target){
-  return page.evaluate(async t=>{
+  await page.evaluate(t=>{
     window.EARTHLINE_PROPERTY_TIMEOUT_AUDIT_16178=null;
     window.EARTHLINE_LOCATION_INTEGRITY_15801=null;
     window.EARTHLINE_PROPERTY_DISPLAY_RECLAIM_16727=null;
-    window.EARTHLINE_PROPERTY_TARGET_16201=t;
-    if(typeof window.earthlineSetPropertyTarget16201==='function')window.earthlineSetPropertyTarget16201(t);
-    const fn=window.earthlineDeclarePropertyAtCrosshair16173;
-    if(typeof fn!=='function')return {ok:false,error:'property owner unavailable',gate:null};
-    try{
-      const out=await Promise.race([Promise.resolve(fn()),new Promise((_,rej)=>setTimeout(()=>rej(new Error('property promise timeout')),55000))]);
-      return {ok:out!==false,out,gate:window.EARTHLINE_PROPERTY_WATER_BODY_GATE_16529||null};
-    }catch(e){
-      return {ok:false,error:String(e&&e.message||e),gate:window.EARTHLINE_PROPERTY_WATER_BODY_GATE_16529||null};
-    }
+    const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+    m?.stop?.();
+    m?.jumpTo?.({center:[Number(t.lng),Number(t.lat)],zoom:16.59,bearing:0,pitch:0});
+  },target);
+  await page.waitForFunction(t=>{
+    const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),c=m?.getCenter?.();
+    return c&&Math.abs(Number(c.lng)-Number(t.lng))<.00008&&Math.abs(Number(c.lat)-Number(t.lat))<.00008&&!m?.isMoving?.();
+  },target,{timeout:10000,polling:100});
+  const before=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
+  await page.locator('#earthlineDeclareProperty16169').click();
+  try{
+    await page.waitForFunction(serial=>{
+      const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
+      return Number(a.serial)===serial+1&&a.scientificSettled===true;
+    },before,{timeout:30000,polling:100});
+  }catch(e){
+    return {ok:false,error:String(e&&e.message||e),gate:await page.evaluate(()=>window.EARTHLINE_PROPERTY_WATER_BODY_GATE_16529||null)};
+  }
+  return page.evaluate(t=>{
+    const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
+    const accepted=window.EARTHLINE_PROPERTY_ACCEPTED_TARGET_M7839||null;
+    const close=accepted&&Math.abs(Number(accepted.lng)-Number(t.lng))<.00008&&Math.abs(Number(accepted.lat)-Number(t.lat))<.00008;
+    return {ok:a.result===true&&close,error:a.error||(!close?'accepted crosshair drifted':null),gate:window.EARTHLINE_PROPERTY_WATER_BODY_GATE_16529||null,accepted};
   },target);
 }
 
