@@ -1,0 +1,25 @@
+name: M81 Integrate Regional Visibility
+on:
+  push:
+    branches: [mantra81-integration]
+    paths:
+      - tools/m81-integrate-regional-visibility.py
+      - .github/workflows/m81-integrate-regional-visibility.yml
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra81-integration
+          fetch-depth: 0
+      - run: python3 tools/m81-integrate-regional-visibility.py
+      - run: |
+          git config user.name earthline-bot
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git diff --cached --check
+          git commit -m "fix: keep published Regional corridors visible"
+          git push origin HEAD:mantra81-integration
