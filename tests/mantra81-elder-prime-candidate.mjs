@@ -18,8 +18,8 @@ for(let round=1;round<=7;round++){
   if(await opt.count())await opt.click().catch(()=>{});
   await page.locator('#runBtn').click();
   await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191||!!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970,{timeout:60000,polling:100});
-  await page.evaluate(t=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);m.jumpTo({center:[t.lng,t.lat],zoom:16.59})},TARGET);
-  await page.waitForTimeout(300);
+  await page.evaluate(t=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);m?.stop?.();m?.jumpTo?.({center:[t.lng,t.lat],zoom:16.59,bearing:0,pitch:0})},TARGET);
+  await page.waitForFunction(t=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),c=m?.getCenter?.();return c&&Math.abs(Number(c.lng)-t.lng)<.00008&&Math.abs(Number(c.lat)-t.lat)<.00008&&!m?.isMoving?.()},TARGET,{timeout:10000,polling:100});
   const serial=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
   const t0=Date.now();
   await page.locator('#earthlineDeclareProperty16169').click();
