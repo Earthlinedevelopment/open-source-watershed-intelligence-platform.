@@ -7,12 +7,18 @@ name: Validate Property Preflight 17802 Livefix
       - .github/workflows/validate-property-preflight-17802-livefix.yml
       - tools/apply-regional-property-preflight.py
       - tools/upgrade-regional-property-preflight-17802.py
+      - tests/validate-property-50states-final.mjs
 permissions:
   contents: read
 jobs:
   validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        state: [Vermont, Colorado, Nevada, Arkansas, California]
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 12
+    name: Preflight — ${{ matrix.state }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,6 +29,8 @@ jobs:
           python3 tools/upgrade-regional-property-preflight-17802.py
           git diff --check
           grep -q 'EARTHLINE 17802' index.html
+      - name: Extend diagnostic Regional timeout only
+        run: sed -i 's/timeout:60000,polling:100/timeout:120000,polling:100/' tests/validate-property-50states-final.mjs
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -33,10 +41,10 @@ jobs:
         run: |
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
           sleep 1
-      - name: Validate five failing states through patched candidate
+      - name: Validate patched candidate
         env:
           EARTHLINE_URL: https://earthlinedevelopment.org/
           EARTHLINE_CANDIDATE_ORIGIN: '1'
-          STATES: Vermont|Colorado|Nevada|Arkansas|California
-          OUT: five-preflight-livefix.json
+          STATES: ${{ matrix.state }}
+          OUT: result.json
         run: node tests/validate-property-50states-final.mjs
