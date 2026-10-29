@@ -1,0 +1,23 @@
+name: Earthline Property Publication Order Inspect
+'on':
+  push:
+    branches:
+      - candidate-next
+    paths:
+      - .github/workflows/earthline-property-publication-order-inspect.yml
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 0
+      - run: |
+          git show origin/pages-live:index.html > /tmp/live-index.html
+          for term in "frameDeclaredProperty" "verifySafePropertyFallback16221" "settleCurrentPropertyPresentation16521" "startProperty17166"; do
+            echo "===== $term ====="
+            grep -n -B35 -A90 "$term" /tmp/live-index.html | head -260 || true
+          done
