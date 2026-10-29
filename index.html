@@ -33090,6 +33090,25 @@ function syncPropertyTargetFromMap16201(){
     }
     const fn=window.earthlineDeclarePropertyAtCrosshair16173;
     if(typeof fn!=='function')return false;
+    /* Bind the exact visible crosshair on the same physical Property press.
+       A prior Regional corridor or previous Property target may never survive
+       into a new explicit 20-acre declaration. */
+    try{
+      const mpFirstPress=panelMap16188?.()||(window.earthlineMap||null);
+      const cFirstPress=mpFirstPress?.getCenter?.();
+      const lngFirstPress=Number(cFirstPress?.lng),latFirstPress=Number(cFirstPress?.lat);
+      if(Number.isFinite(lngFirstPress)&&Number.isFinite(latFirstPress)){
+        window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;
+        window.EARTHLINE_COUNTRY_TARGET_USER_UNLOCKED_17240=true;
+        const reboundFirstPress={
+          lng:lngFirstPress,lat:latFirstPress,source:'crosshair',
+          code:'',score:0,parentRunToken:'',at:new Date().toISOString()
+        };
+        if(typeof window.earthlineSetPropertyTarget16201==='function')
+          window.earthlineSetPropertyTarget16201(reboundFirstPress,{openPanel:false});
+        else window.EARTHLINE_PROPERTY_TARGET_16201=reboundFirstPress;
+      }
+    }catch(_){}
     const targetAtPressM7839=window.EARTHLINE_PROPERTY_TARGET_16201||null;
     const acceptedTargetM7839=(targetAtPressM7839&&Number.isFinite(Number(targetAtPressM7839.lng))&&Number.isFinite(Number(targetAtPressM7839.lat)))
       ?Object.freeze(Object.assign({},targetAtPressM7839,{acceptedAt:new Date().toISOString()})):null;
