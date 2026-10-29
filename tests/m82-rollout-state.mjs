@@ -1,3 +1,4 @@
+// rerun rollout gate on corrected mapped-water integration
 // M82 rerun after single Regional submission owner
 import { installCandidateOrigin } from './candidate-origin-router.mjs';
 import { chromium } from 'playwright';
