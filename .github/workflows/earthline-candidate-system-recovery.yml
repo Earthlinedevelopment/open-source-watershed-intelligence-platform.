@@ -62,11 +62,16 @@ jobs:
             "maxLevels:256,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200"
           ]
           slope_owner_ok=bool(re.search(r"const\s+thr\s*=\s*streamThreshold\(\)\s*,\s*chanThr\s*=\s*thr\s*\*\s*3\.2\s*,\s*maxS\s*=\s*4\s*;",s))
-          slope_lines=[ln.strip()[:500] for ln in s.splitlines() if ('streamThreshold' in ln or 'maxS=' in ln or 'maxSlopePct' in ln)]
+          lines=s.splitlines()
+          slope_lines=[ln.strip()[:500] for ln in lines if ('streamThreshold' in ln or 'maxS=' in ln or 'maxSlopePct' in ln)]
+          safe_calls=[]
+          for n,ln in enumerate(lines,1):
+              if 'earthlineFinalSafeSegments15771(' in ln:
+                  safe_calls.append({'line':n,'text':ln.strip()[:900],'context':' || '.join(x.strip()[:300] for x in lines[max(0,n-3):min(len(lines),n+2)])})
           missing=[x for x in required if x not in s]
           present=[x for x in forbidden if x in s]
           if missing or present or not slope_owner_ok:
-              raise SystemExit(f"science invariant failure slope_owner_ok={slope_owner_ok} missing={missing} forbidden={present} slope_lines={slope_lines[:30]}")
+              raise SystemExit(f"science invariant failure slope_owner_ok={slope_owner_ok} missing={missing} forbidden={present} slope_lines={slope_lines[:30]} safe_calls={safe_calls[:30]}")
           print("PASS canonical <=4% slope and 15-25 ft spacing invariants; rejected generation experiment absent")
           PY
       - name: Regional regression matrix
