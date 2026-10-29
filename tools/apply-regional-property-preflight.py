@@ -1,6 +1,19 @@
 from pathlib import Path
 p=Path("index.html")
 s=p.read_text(encoding="utf-8")
+if "EARTHLINE 17801" in s:
+    replacements=[
+        ("if(!focusMode&&chosen.length&&Math.max(Number(hy.cellX)||0,Number(hy.cellY)||0)>=5000){","if(!focusMode&&chosen.length){"),
+        ("],64,64,4500,'Regional Property-scale slope preflight '+rank17801);", "],210,146,6000,'Regional Property-scale slope preflight '+rank17801);"),
+        ("cellThresholdM:5000","cellThresholdM:0")
+    ]
+    for old0,new0 in replacements:
+        n=s.count(old0)
+        if n != 1:
+            raise SystemExit(f"expected one existing preflight token {old0!r}, found {n}")
+        s=s.replace(old0,new0)
+    p.write_text(s,encoding="utf-8")
+    raise SystemExit(0)
 old="""    chosen.sort((a16717,b16717)=>(Number(b16717&&b16717.score)||0)-(Number(a16717&&a16717.score)||0));
     window.EARTHLINE_REGIONAL_SCORE_ORDER_16717={"""
 new="""    chosen.sort((a16717,b16717)=>(Number(b16717&&b16717.score)||0)-(Number(a16717&&a16717.score)||0));
