@@ -1847,7 +1847,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
           const target=window.EARTHLINE_PROPERTY_TARGET_16201||null;
           if(target&&Number.isFinite(Number(target.lng))&&Number.isFinite(Number(target.lat)))void dynamicPropertyEvidence(true);
         }catch(_){}
-      },0); /* EARTHLINE 17561 — start the existing post-Zoom Elder prime immediately after the existing Zoom click owner; no new camera/render owner. */
+      },240); /* EARTHLINE M81 — let the governed crosshair target settle before starting one exact-frame Elder compute. */
     }
     /* EARTHLINE 17133 — Elder is downstream of Property publication; Zoom no longer invokes Elder refresh. */
   }
