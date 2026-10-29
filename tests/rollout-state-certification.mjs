@@ -1,7 +1,6 @@
 import { chromium } from 'playwright';
 const URL='https://earthlinedevelopment.org/';
 const STATES=(process.env.STATES||'').split('|').map(s=>s.trim()).filter(Boolean);
-const ELDER_REQUIRED=new Set(['Vermont','New York','Arkansas','Iowa','Oklahoma','Texas','Colorado','Maryland','California']);
 if(!STATES.length)throw new Error('STATES required');
 
 const browser=await chromium.launch({headless:true});
@@ -65,17 +64,17 @@ for(const state of STATES){
     if(!(prop.corridors>0&&prop.renderVerified&&prop.safeVisible&&prop.safeRendered>0&&prop.acceptedIntersections===0&&prop.roadIntersections===0&&prop.structureIntersections===0&&prop.waterIntersections===0&&prop.developedIntersections===0&&prop.maxSlopePct<=4.0001))throw new Error('Property swale gate '+JSON.stringify(prop));
 
     let elderMs=null,elder=null;
-    if(ELDER_REQUIRED.has(state)){
-      const e0=Date.now();
-      await page.waitForFunction(()=>{const e=window.EARTHLINE_ELDER_TREE_LAST_17097||{};return e.state==='committed'||e.state==='failed'},{timeout:20000,polling:100});
-      elderMs=Date.now()-e0;
-      elder=await page.evaluate(()=>{
-        const e=window.EARTHLINE_ELDER_TREE_LAST_17097||{},map=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
-        let rendered=0;try{rendered=map?.queryRenderedFeatures?.(undefined,{layers:['earthline-elder-tree-points-17097']})?.length||0}catch(_){}
-        return {state:e.state||null,count:Number(e.featureCount||0),rendered,candidatePool:Number(e.candidatePoolSize||e.candidatePool||0),error:e.error||null};
-      });
-      if(!(elder.state==='committed'&&elder.count>0&&elder.rendered>0&&elderMs<=15000))throw new Error('Elder gate '+JSON.stringify({elderMs,...elder}));
-    }
+    const e0=Date.now();
+    await page.waitForFunction(()=>{const e=window.EARTHLINE_ELDER_TREE_LAST_17097||{};return e.state==='committed'||e.state==='failed'},{timeout:20000,polling:100});
+    elderMs=Date.now()-e0;
+    elder=await page.evaluate(()=>{
+      const e=window.EARTHLINE_ELDER_TREE_LAST_17097||{},map=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+      let rendered=0;try{rendered=map?.queryRenderedFeatures?.(undefined,{layers:['earthline-elder-tree-points-17097']})?.length||0}catch(_){}
+      return {state:e.state||null,count:Number(e.featureCount||0),rendered,candidatePool:Number(e.candidatePoolSize||e.candidatePool||0),error:e.error||null};
+    });
+    if(elder.state!=='committed')throw new Error('Elder state '+JSON.stringify({elderMs,...elder}));
+    if(elder.count>0&&elder.rendered<=0)throw new Error('Elder evidence not rendered '+JSON.stringify({elderMs,...elder}));
+    if(elderMs>15000)throw new Error('Elder load '+elderMs);
 
     row={state,regionalMs,regionalCoreMs:Number(reg.perf?.totalMs||0),propertyMs,elderMs,reg,prop,elder,errors,pass:errors.length===0};
   }catch(e){row={state,pass:false,error:String(e),errors}}
