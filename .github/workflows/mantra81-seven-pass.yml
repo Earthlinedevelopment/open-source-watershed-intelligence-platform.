@@ -1,0 +1,112 @@
+name: Mantra 81 Seven-Pass Certification
+on:
+  push:
+    branches: [mantra81-seven-pass]
+    paths:
+      - tests/mantra81-arizona-public.mjs
+      - .github/workflows/mantra81-seven-pass.yml
+permissions:
+  contents: read
+
+jobs:
+  regional50:
+    name: "Round ${{ matrix.round }} · 50-state Regional"
+    strategy:
+      fail-fast: false
+      max-parallel: 7
+      matrix:
+        round: [1,2,3,4,5,6,7]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: mantra81-seven-pass }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/final-launch-smoke-17001.mjs
+
+  difficult_property:
+    name: "Round ${{ matrix.round }} · difficult-state Property"
+    strategy:
+      fail-fast: false
+      max-parallel: 7
+      matrix:
+        round: [1,2,3,4,5,6,7]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: mantra81-seven-pass }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          STATES: Vermont|New York|Massachusetts|Maryland|Colorado|Texas|Florida|Louisiana|California|Oklahoma|Iowa|Arkansas|Nebraska|Nevada|Alabama
+          OUT: mantra81-property-${{ matrix.round }}.json
+        run: node tests/validate-property-50states-final.mjs
+
+  arizona_exact:
+    name: "Round ${{ matrix.round }} · Arizona exact Property"
+    strategy:
+      fail-fast: false
+      max-parallel: 7
+      matrix:
+        round: [1,2,3,4,5,6,7]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: mantra81-seven-pass }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/mantra81-arizona-public.mjs
+
+  mobile_arizona:
+    name: "Round ${{ matrix.round }} · Arizona mobile"
+    strategy:
+      fail-fast: false
+      max-parallel: 7
+      matrix:
+        round: [1,2,3,4,5,6,7]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: mantra81-seven-pass }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/arizona-mobile-performance.mjs
+
+  elder_flow:
+    name: "Round ${{ matrix.round }} · Elder flow"
+    strategy:
+      fail-fast: false
+      max-parallel: 7
+      matrix:
+        round: [1,2,3,4,5,6,7]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: mantra81-seven-pass }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          BROWSER: chromium
+        run: node tests/elder-user-flow-17418.mjs
