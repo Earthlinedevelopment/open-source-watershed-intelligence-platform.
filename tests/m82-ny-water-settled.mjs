@@ -1,3 +1,4 @@
+// rerun after shared mapped-water continuity repair
 import{chromium}from'playwright';import{installCandidateOrigin}from'./candidate-origin-router.mjs';
 const T={lng:-73.6077454739776,lat:43.5729282555177},b=await chromium.launch({headless:true}),c=await b.newContext({viewport:{width:1600,height:900}});await installCandidateOrigin(c);const p=await c.newPage(),errs=[];p.on('pageerror',e=>errs.push(String(e)));
 await p.goto('https://earthlinedevelopment.org/?nywsettled='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});await p.waitForSelector('#searchInput',{timeout:30000});await p.waitForTimeout(2200);
