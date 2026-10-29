@@ -11,6 +11,8 @@ const opt=page.locator('#earthlineSearchSuggestions15970 [role="option"]').filte
 if(await opt.count())await opt.click().catch(()=>{});
 await page.locator('#runBtn').click();
 await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191,{timeout:90000,polling:100});
+await page.waitForTimeout(700);
+await page.screenshot({path:'tests/live-arizona-regional.jpg',type:'jpeg',quality:70});
 
 async function runAt(target,label){
   await page.evaluate(t=>{
