@@ -1,0 +1,54 @@
+name: Earthline Candidate Difficult State Matrix 17801
+'on':
+  push:
+    branches:
+      - candidate-next
+    paths:
+      - .github/workflows/earthline-candidate-difficult-matrix-17801.yml
+permissions:
+  contents: read
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        state:
+          - Vermont
+          - New York
+          - Massachusetts
+          - Maryland
+          - Colorado
+          - Texas
+          - Florida
+          - Louisiana
+          - California
+          - Oklahoma
+          - Iowa
+          - Arkansas
+          - Nebraska
+          - Nevada
+          - Alabama
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    name: Candidate Property — ${{ matrix.state }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Validate candidate Regional to Property
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE_ORIGIN: '1'
+          STATES: ${{ matrix.state }}
+          OUT: result.json
+        run: node tests/property-five-zero-diagnostic.mjs
