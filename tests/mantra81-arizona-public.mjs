@@ -48,7 +48,7 @@ async function runAt(target,label){
     const e=window.EARTHLINE_ELDER_TREE_LAST_17097||{};
     return e.state==='committed'&&Number(e.featureCount||0)>0;
   },{timeout:20000,polling:100});
-  await page.waitForFunction(()=>{try{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);return (m?.queryRenderedFeatures?.({layers:['earthline-elder-tree-points-17097']})?.length||0)>0}catch(_){return false}},{timeout:5000,polling:100});
+  await page.waitForFunction(()=>{try{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);return (m?.queryRenderedFeatures?.(undefined,{layers:['earthline-elder-tree-points-17097']})?.length||0)>0}catch(_){return false}},{timeout:5000,polling:100});
   const wallMs=Date.now()-t0;
   return page.evaluate(({before,target,label,wallMs})=>{
     const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
@@ -61,7 +61,7 @@ async function runAt(target,label){
     const safe=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'];
     const vis=id=>{try{return !!m?.getLayer?.(id)&&m.getLayoutProperty?.(id,'visibility')!=='none'}catch(_){return false}};
     let elderRendered=0;
-    try{elderRendered=m?.queryRenderedFeatures?.({layers:['earthline-elder-tree-points-17097']})?.length||0}catch(_){}
+    try{elderRendered=m?.queryRenderedFeatures?.(undefined,{layers:['earthline-elder-tree-points-17097']})?.length||0}catch(_){}
     return {
       label,serialBefore:before.serial,serialAfter:Number(a.serial||0),mapCenterBefore:before.center,target,
       accepted:ac,declaration:d,wallMs,corridors:Number(a.corridors||0),renderVerified:a.renderVerified===true,
