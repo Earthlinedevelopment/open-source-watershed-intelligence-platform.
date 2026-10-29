@@ -40,6 +40,23 @@ jobs:
           python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
           exit 1
+      - name: Candidate Property slope publication repair (working copy only)
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          a=s.index('function earthlineSwaleGeoJSON(){')
+          b=s.index('function earthlineSyncSwaleLayer(){',a)
+          block=s[a:b]
+          before=block
+          block=block.replace('earthlineSplitUsableSegments(s.pts,33)','earthlineSplitUsableSegments(s.pts,4)')
+          block=block.replace('earthlineFinalSafeSegments15771(displaySeg,33)','earthlineFinalSafeSegments15771(displaySeg,4)')
+          if block==before or 'earthlineSplitUsableSegments(s.pts,33)' in block or 'earthlineFinalSafeSegments15771(displaySeg,33)' in block:
+              raise SystemExit('Property publication slope patch did not apply exactly')
+          p.write_text(s[:a]+block+s[b:],encoding='utf-8')
+          print('PASS working-copy Property publication slope <=4% patch applied')
+          PY
       - name: Canonical science invariants
         run: |
           python3 - <<'PY'
@@ -61,7 +78,8 @@ jobs:
             "eligibleSlopeSamples15771=[]",
             "maxLevels:256,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200"
           ]
-          slope_owner_ok=bool(re.search(r"const\s+thr\s*=\s*streamThreshold\(\)\s*,\s*chanThr\s*=\s*thr\s*\*\s*3\.2\s*,\s*maxS\s*=\s*4\s*;",s))
+          slope_owner_ok=bool(re.search(r"const\s+thr\s*=\s*streamThreshold\(\)\s*,\s*chanThr\s*=\s*Math\.max\(thr\s*\*\s*3\.2\s*,\s*Number\(M\.maxAcc\|\|0\)\s*\*\s*0\.06\)\s*,\s*maxS\s*=\s*4\s*;",s))
+          property_slope_ok=('earthlineSplitUsableSegments(s.pts,4)' in s and 'earthlineFinalSafeSegments15771(displaySeg,4)' in s)
           lines=s.splitlines()
           slope_lines=[ln.strip()[:500] for ln in lines if ('streamThreshold' in ln or 'maxS=' in ln or 'maxSlopePct' in ln)]
           safe_calls=[]
@@ -74,8 +92,8 @@ jobs:
               slices[target]='\n'.join(f"{i+1}: {lines[i]}" for i in range(lo,hi))
           missing=[x for x in required if x not in s]
           present=[x for x in forbidden if x in s]
-          if missing or present or not slope_owner_ok:
-              raise SystemExit(f"science invariant failure slope_owner_ok={slope_owner_ok} missing={missing} forbidden={present} slope_lines={slope_lines[:30]} safe_calls={safe_calls[:30]} slices={slices}")
+          if missing or present or not slope_owner_ok or not property_slope_ok:
+              raise SystemExit(f"science invariant failure slope_owner_ok={slope_owner_ok} property_slope_ok={property_slope_ok} missing={missing} forbidden={present} slope_lines={slope_lines[:30]} safe_calls={safe_calls[:30]} slices={slices}")
           print("PASS canonical <=4% slope and 15-25 ft spacing invariants; rejected generation experiment absent")
           PY
       - name: Regional regression matrix
