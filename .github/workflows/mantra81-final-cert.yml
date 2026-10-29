@@ -104,3 +104,40 @@ jobs:
             echo "MANTRA81 ROUND $r / 7 — Elder actual Property flow"
             node tests/mantra81-elder-public.mjs
           done
+
+
+  launch_continuity:
+    name: Seven sequential · launch continuity + aquifer + DATA + report
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: mantra81-final-cert }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          for r in 1 2 3 4 5 6 7; do
+            echo "MANTRA81 ROUND $r / 7 — launch continuity"
+            node tests/mantra81-launch-continuity.mjs
+          done
+
+  mobile_full:
+    name: Seven sequential · full mobile/desktop acceptance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: mantra81-final-cert }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          for r in 1 2 3 4 5 6 7; do
+            echo "MANTRA81 ROUND $r / 7 — full mobile/desktop acceptance"
+            node tests/mobile-acceptance-17012.mjs
+          done
