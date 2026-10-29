@@ -2122,5 +2122,8 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   document.addEventListener('keydown',e=>{
     if(e.key==='Escape'&&panel()?.classList?.contains('open'))hardClose();
   },true);
+  const obs=new MutationObserver(()=>{const p=panel();if(p?.classList?.contains('open'))prepareOpen()});
+  const boot=()=>{const p=panel();if(p)obs.observe(p,{attributes:true,attributeFilter:['class']})};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
   window.EARTHLINE_REPORT_CLOSE_HARDENING_M81={state:'ready',hardClose,prepareOpen};
 })();
