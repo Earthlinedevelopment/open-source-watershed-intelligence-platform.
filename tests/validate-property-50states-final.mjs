@@ -116,7 +116,8 @@ for(const stateName of STATES){
   if(!s.published)failures.push('Property not published');
   if(!s.settled||!s.result||s.timedOut)failures.push('Property run not settled successfully'+(s.runError?' — '+s.runError:''));
   if(!s.renderVerified)failures.push('Property render not verified');
-  if(Number(s.corridors)>0&&!s.safeVisible)failures.push('safe Property corridors not visible');
+  if(!(Number(s.corridors)>0))failures.push('zero Property corridors');
+  if(!(s.safeVisible&&Number(s.safeCount)>0))failures.push('safe Property corridors not visibly rendered');
   if(s.displayedTier!=='property'||s.documentTier!=='property')failures.push('canonical tier '+s.displayedTier+'/'+s.documentTier);
   if(s.integrity&&s.integrity.ok!==true)failures.push('location integrity '+JSON.stringify(s.integrity.reasons||[]));
   if(s.timeoutAudit)failures.push('Property timeout audit present');
