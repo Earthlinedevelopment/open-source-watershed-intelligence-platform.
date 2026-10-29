@@ -57,7 +57,18 @@ async function runAt(target,label){
       swaleMs:Date.now()-t0,elderMs,
       corridors:Number(a.corridors||0),renderVerified:a.renderVerified===true,safeRendered:Number(s.renderedFeatures||0),
       safeVisible:safe.map(vis),naturalVisible:natural.map(vis),
-      elderState:e.state||null,elderCount:Number(e.featureCount||0)
+      elderState:e.state||null,elderCount:Number(e.featureCount||0),
+      elderLayers:(()=>{
+        try{
+          const ids=(m?.getStyle?.().layers||[]).map(x=>x.id).filter(id=>/elder|tree/i.test(String(id)));
+          return ids.map(id=>{
+            let visible=false,count=0;
+            try{visible=m.getLayoutProperty?.(id,'visibility')!=='none';}catch(_){}
+            try{count=m.queryRenderedFeatures?.({layers:[id]})?.length||0;}catch(_){}
+            return {id,visible,count};
+          });
+        }catch(_){return [];}
+      })()
     };
   },{before,target,label,t0,elderMs});
 }
