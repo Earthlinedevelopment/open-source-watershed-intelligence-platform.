@@ -17,8 +17,8 @@ const regional=await page.evaluate(()=>({
 const top=regional.top[0];
 if(!top?.c)throw new Error('no top');
 const target={lng:Number(top.c[0]),lat:Number(top.c[1])};
-await page.evaluate(t=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);m.jumpTo({center:[t.lng,t.lat],zoom:16.59})},target);
-await page.waitForTimeout(300);
+await page.evaluate(t=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);m?.stop?.();m?.jumpTo?.({center:[t.lng,t.lat],zoom:16.59,bearing:0,pitch:0})},target);
+await page.waitForFunction(t=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null),c=m?.getCenter?.();return c&&Math.abs(Number(c.lng)-t.lng)<.00008&&Math.abs(Number(c.lat)-t.lat)<.00008&&!m?.isMoving?.()},target,{timeout:10000,polling:100});
 const serial=await page.evaluate(()=>Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.serial||0));
 await page.locator('#earthlineDeclareProperty16169').click();
 await page.waitForFunction(s=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};return Number(a.serial)===s+1&&a.scientificSettled===true&&a.result===true},serial,{timeout:60000,polling:100});
