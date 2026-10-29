@@ -1,3 +1,4 @@
+// validate parity-proven native JS Elder backend
 // validate five-decimal Elder frame reuse
 // validate concurrent Elder raster reads
 import { chromium } from 'playwright';
