@@ -1,0 +1,38 @@
+name: Earthline Apply Regional Slope Science Patch
+'on':
+  push:
+    branches: [candidate-next]
+    paths:
+      - .github/workflows/earthline-apply-regional-slope-science.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 1
+      - name: Align Regional swale opportunity slope gate to 0–4%
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text()
+          old="const slope=hy.slope[i],acc=hy.acc[i],minSlope=relaxed?.05:.20,maxSlope=relaxed?(focusMode?18:4):13.5;"
+          new="const slope=hy.slope[i],acc=hy.acc[i],minSlope=0,maxSlope=4;"
+          n=s.count(old)
+          if n != 1:
+              raise SystemExit(f"expected exactly one Regional slope gate, found {n}")
+          p.write_text(s.replace(old,new))
+          PY
+          git diff --check
+          git diff -- index.html | sed -n '1,120p'
+      - name: Commit candidate science patch
+        run: |
+          git config user.name "Earthline Launch Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "science: align Regional opportunities to locked 0-4% slope"
+          git push origin HEAD:candidate-next
