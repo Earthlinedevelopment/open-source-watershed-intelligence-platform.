@@ -18,7 +18,7 @@ await page.waitForFunction(()=>{
   const sw=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.swales?.features||[];
   return !!err||sw.length>0;
 },{timeout:45000,polling:100}).catch(()=>{});
-const regional=await page.evaluate(()=>({perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,err:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null}));
+const regional=await page.evaluate(()=>({perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,err:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,preflight:window.EARTHLINE_FINAL_PROPERTY_PREFLIGHT_17803||null}));
 if(regional.err)throw new Error('Arizona Regional error '+JSON.stringify(regional.err));
 if(!(Number(regional.perf?.totalMs)>0&&Number(regional.perf?.totalMs)<=15000))throw new Error('Arizona Regional core too slow '+JSON.stringify(regional.perf));
 const regionalWall=Date.now()-regionalStart;
@@ -75,7 +75,7 @@ async function runAt(target,label){
 const first=await runAt({lng:-111.93066,lat:34.21568},'first');
 const second=await runAt({lng:-111.93456,lat:34.21545},'second');
 const close=(p,t)=>p&&Math.abs(Number(p.lng)-t.lng)<.00008&&Math.abs(Number(p.lat)-t.lat)<.00008;
-console.log('MANTRA81_AZ '+JSON.stringify({regionalWall,regionalCoreMs:regional.perf?.totalMs,first,second}));
+console.log('MANTRA81_AZ '+JSON.stringify({regionalWall,regionalCoreMs:regional.perf?.totalMs,regionalPreflight:regional.preflight,first,second}));
 for(const r of [first,second]){
   if(r.serialAfter!==r.serialBefore+1)throw new Error(r.label+' not one-press');
   if(!close(r.accepted,r.target))throw new Error(r.label+' stale accepted target');
