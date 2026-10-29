@@ -1,0 +1,27 @@
+name: Earthline Apply Exact Property Terrain Preflight 17802
+'on':
+  push:
+    branches:
+      - candidate-next
+    paths:
+      - tools/upgrade-regional-property-preflight-17802.py
+      - .github/workflows/earthline-apply-exact-property-preflight-17802.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+          fetch-depth: 1
+      - run: python3 tools/upgrade-regional-property-preflight-17802.py
+      - run: git diff --check
+      - run: |
+          git config user.name "Earthline Launch Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "science: match Regional A-ranks to exact Property terrain slope"
+          git push origin HEAD:candidate-next
