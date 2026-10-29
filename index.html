@@ -28308,7 +28308,75 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
       window.EARTHLINE_COVERAGE_POLICY_16733={build:'EARTHLINE 16767',grid:'6x6',jurisdictionAware:!!swaleJurisdictionGeometry16539,maxRefinementBins:18,lateVerificationBins:4,guaranteedCandidatesPerGapTile:2,exactGapCell:true,highResolutionNullAccepted:true,failSoftTransport:true,coverageTruth:'corridor midpoint / anchor presence',rule:'a significant opportunity cell must meet the terrain-proportional midpoint-anchored density floor; exact-cell refinement verifies deficits and line crossover cannot hide a sparse sector',at:new Date().toISOString()};
       window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731={build:'EARTHLINE 16767',coverageMetric:'corridor-midpoint-in-6x6-terrain-bin',densityRule:'significant terrain sectors: preferred >=60 => 3 corridors; >=30 => 2; otherwise >=1; exact-cell high-resolution scientific null may explain a lower count',confirmedNull16735:Array.from(confirmedNullKeys16735),bins:after16731.map(r16731=>({bx:r16731.bx,by:r16731.by,valid:r16731.valid,opportunity:r16731.opportunity,preferred:r16731.preferred,swales:r16731.swales,densityTarget:earthlineCoverageDensityTarget16767(r16731),densityDeficit:Math.max(0,earthlineCoverageDensityTarget16767(r16731)-Number(r16731.swales||0))})),unresolved:unresolved16731.map(r16731=>({bx:r16731.bx,by:r16731.by,valid:r16731.valid,opportunity:r16731.opportunity,preferred:r16731.preferred,swales:r16731.swales,densityTarget:earthlineCoverageDensityTarget16767(r16731)})),passed:unresolved16731.length===0,at:new Date().toISOString()};
     }
-    /* EARTHLINE 17803 — FINAL REGIONAL->PROPERTY TARGET PREFLIGHT.
+    const priorityPreviewEnabled16329=false;
+    window.EARTHLINE_REGIONAL_PREVIEW_POLICY_16329={
+      build:"EARTHLINE 16329",
+      swaleOnlyPreviewEnabled:false,
+      reason:"atomic Regional publication requires verified water + swales + settled camera",
+      runToken,at:new Date().toISOString()
+    };
+    if(priorityPreviewEnabled16329&&!focusMode&&swales&&Array.isArray(swales.features)&&swales.features.length&&isCurrentRun(runToken)){
+      let previewSwales16249=swales;
+      if(jurisdictionCapability16539){
+        try{
+          const boundary16249=selectionBoundary16539||await jurisdictionBoundaryPromise16539;
+          const empty16249={type:'FeatureCollection',features:[]};
+          const clipped16249=await earthlineClipRegionalProducts16539(
+            {contours:empty16249,flows:empty16249,swales,query:q,runToken},
+            boundary16249
+          );
+          previewSwales16249=clipped16249.swales;
+        }catch(_){previewSwales16249=null;}
+      }
+      if(previewSwales16249&&isCurrentRun(runToken)){
+        const previewData16249={runToken,query:q,bounds:b,boundsHash:bHash,contours:{type:'FeatureCollection',features:[]},flows:{type:'FeatureCollection',features:[]},swales:previewSwales16249,generatedAt:new Date().toISOString()};
+        try{if(typeof window.earthlineRenderRegionalOverlay16020==='function')window.earthlineRenderRegionalOverlay16020(previewData16249);}catch(_){ }
+        try{m.triggerRepaint&&m.triggerRepaint();}catch(_){ }
+        window.EARTHLINE_SWALE_PRIORITY_PREVIEW_16249={build:'EARTHLINE 16249',runToken,generated:swales.features.length,published:previewSwales16249.features.length,jurisdictionClipped:!!jurisdictionCapability16539,previewMs:Math.round(performance.now()-productsStarted16198),at:new Date().toISOString()};
+        await wait(0);
+      }
+    }
+    if(!focusMode&&hy&&hy.validityMask16584){
+      hy.styleWaterIndex16584=earthlineLoadedStyleWaterIndex16584(map(),hy.bounds);
+      window.EARTHLINE_STYLE_WATER_INDEX_16584={build:'EARTHLINE 16584',runToken,featureCount:Number(hy.styleWaterIndex16584.featureCount||0),partCount:Number(hy.styleWaterIndex16584.partCount||0),sourceCount:Number(hy.styleWaterIndex16584.sourceCount||0),binCount:Object.keys(hy.styleWaterIndex16584.bins||{}).length,at:new Date().toISOString()};
+    }
+    let flows=makeFlows(hy);noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · FLOWS COMPLETE',runToken);await wait(0);
+    if(!focusMode&&hy.validityMask16584){
+      let unsafe16584=0,segments16584=0;
+      for(const f16584 of (flows&&flows.features||[])){
+        if(!f16584||!f16584.geometry||f16584.geometry.type!=="LineString")continue;
+        const c16584=f16584.geometry.coordinates||[];
+        for(let i16584=1;i16584<c16584.length;i16584++){
+          segments16584++;
+          if(!earthlineRegionalSegmentValid16584(hy,c16584[i16584-1],c16584[i16584]))unsafe16584++;
+        }
+      }
+      window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584={
+        build:"EARTHLINE 16584",runToken,segments:segments16584,unsafeSegments:unsafe16584,
+        safe:unsafe16584===0,gridAudit:window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584||null,
+        at:new Date().toISOString()
+      };
+      if(unsafe16584>0)throw new Error("regional land-validity flow audit failed: "+unsafe16584+" displayed flow segments enter invalid terrain");
+    }
+    window.EARTHLINE_ORB_RESPONSIVENESS_16245={build:'EARTHLINE 16245',cooperativeTerrain:true,compositorOrb:true,productsMs:Math.round(performance.now()-contoursStarted16245),at:new Date().toISOString()};
+    let genericBoundaryAudit16539=null;
+    if(jurisdictionCapability16539){
+      setBusy(true,'VERIFYING JURISDICTION CONTAINMENT');
+      const boundary16539=selectionBoundary16539||await jurisdictionBoundaryPromise16539;
+      if(!boundary16539||!boundary16539.geometry)
+        throw new Error('selected administrative boundary could not be resolved; no uncontained Regional result was published');
+      const bounded16539=await earthlineClipRegionalProducts16539(
+        {contours,flows,swales,query:q,runToken},
+        boundary16539
+      );
+      contours=bounded16539.contours;
+      flows=bounded16539.flows;
+      swales=bounded16539.swales;
+      genericBoundaryAudit16539=bounded16539.audit;
+      window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539=
+        JSON.parse(JSON.stringify(genericBoundaryAudit16539));
+    }
+    /* EARTHLINE 17804 — FINAL POST-CLIP REGIONAL->PROPERTY TARGET PREFLIGHT.
        Before Regional A/B/C publication, verify the actual corridor midpoint that
        Property will analyze using the exact z15 Terrain-RGB / 20-acre Property grid.
        This runs once on the final Regional swale set, not inside recursive refinement. */
@@ -28397,83 +28465,15 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
         });
       }
       window.EARTHLINE_FINAL_PROPERTY_PREFLIGHT_17803={
-        build:"EARTHLINE 17803",lockedMaxSlopePct:4,requiredSafeCells:166,requiredSafeRatio:.01,
+        build:"EARTHLINE 17804",lockedMaxSlopePct:4,requiredSafeCells:166,requiredSafeRatio:.01,
         tested:rows17803.length,passed:passed17803.length,rejected:failed17803.length,unknown:unknown17803.length,
         reordered:passed17803.length>0,
         rows:rows17803.map(r17803=>({rankBefore:r17803.rankBefore,pass:r17803.pass,safeCells:r17803.safeCells??null,parcelCells:r17803.parcelCells??null,safeRatio:Number.isFinite(r17803.safeRatio)?Number(r17803.safeRatio.toFixed(4)):null,lng:r17803.lng??null,lat:r17803.lat??null,error:r17803.error||null})),
-        rule:"final Regional corridor priority is verified at the exact Property midpoint and exact 20-acre <=4% Terrain-RGB slope grid before publication",
+        rule:"post-jurisdiction final Regional corridor priority is verified at the exact displayed Property midpoint and exact 20-acre <=4% Terrain-RGB slope grid before publication",
         at:new Date().toISOString()
       };
     }
 
-    const priorityPreviewEnabled16329=false;
-    window.EARTHLINE_REGIONAL_PREVIEW_POLICY_16329={
-      build:"EARTHLINE 16329",
-      swaleOnlyPreviewEnabled:false,
-      reason:"atomic Regional publication requires verified water + swales + settled camera",
-      runToken,at:new Date().toISOString()
-    };
-    if(priorityPreviewEnabled16329&&!focusMode&&swales&&Array.isArray(swales.features)&&swales.features.length&&isCurrentRun(runToken)){
-      let previewSwales16249=swales;
-      if(jurisdictionCapability16539){
-        try{
-          const boundary16249=selectionBoundary16539||await jurisdictionBoundaryPromise16539;
-          const empty16249={type:'FeatureCollection',features:[]};
-          const clipped16249=await earthlineClipRegionalProducts16539(
-            {contours:empty16249,flows:empty16249,swales,query:q,runToken},
-            boundary16249
-          );
-          previewSwales16249=clipped16249.swales;
-        }catch(_){previewSwales16249=null;}
-      }
-      if(previewSwales16249&&isCurrentRun(runToken)){
-        const previewData16249={runToken,query:q,bounds:b,boundsHash:bHash,contours:{type:'FeatureCollection',features:[]},flows:{type:'FeatureCollection',features:[]},swales:previewSwales16249,generatedAt:new Date().toISOString()};
-        try{if(typeof window.earthlineRenderRegionalOverlay16020==='function')window.earthlineRenderRegionalOverlay16020(previewData16249);}catch(_){ }
-        try{m.triggerRepaint&&m.triggerRepaint();}catch(_){ }
-        window.EARTHLINE_SWALE_PRIORITY_PREVIEW_16249={build:'EARTHLINE 16249',runToken,generated:swales.features.length,published:previewSwales16249.features.length,jurisdictionClipped:!!jurisdictionCapability16539,previewMs:Math.round(performance.now()-productsStarted16198),at:new Date().toISOString()};
-        await wait(0);
-      }
-    }
-    if(!focusMode&&hy&&hy.validityMask16584){
-      hy.styleWaterIndex16584=earthlineLoadedStyleWaterIndex16584(map(),hy.bounds);
-      window.EARTHLINE_STYLE_WATER_INDEX_16584={build:'EARTHLINE 16584',runToken,featureCount:Number(hy.styleWaterIndex16584.featureCount||0),partCount:Number(hy.styleWaterIndex16584.partCount||0),sourceCount:Number(hy.styleWaterIndex16584.sourceCount||0),binCount:Object.keys(hy.styleWaterIndex16584.bins||{}).length,at:new Date().toISOString()};
-    }
-    let flows=makeFlows(hy);noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · FLOWS COMPLETE',runToken);await wait(0);
-    if(!focusMode&&hy.validityMask16584){
-      let unsafe16584=0,segments16584=0;
-      for(const f16584 of (flows&&flows.features||[])){
-        if(!f16584||!f16584.geometry||f16584.geometry.type!=="LineString")continue;
-        const c16584=f16584.geometry.coordinates||[];
-        for(let i16584=1;i16584<c16584.length;i16584++){
-          segments16584++;
-          if(!earthlineRegionalSegmentValid16584(hy,c16584[i16584-1],c16584[i16584]))unsafe16584++;
-        }
-      }
-      window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584={
-        build:"EARTHLINE 16584",runToken,segments:segments16584,unsafeSegments:unsafe16584,
-        safe:unsafe16584===0,gridAudit:window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584||null,
-        at:new Date().toISOString()
-      };
-      if(unsafe16584>0)throw new Error("regional land-validity flow audit failed: "+unsafe16584+" displayed flow segments enter invalid terrain");
-    }
-    window.EARTHLINE_ORB_RESPONSIVENESS_16245={build:'EARTHLINE 16245',cooperativeTerrain:true,compositorOrb:true,productsMs:Math.round(performance.now()-contoursStarted16245),at:new Date().toISOString()};
-    let genericBoundaryAudit16539=null;
-    if(jurisdictionCapability16539){
-      setBusy(true,'VERIFYING JURISDICTION CONTAINMENT');
-      const boundary16539=selectionBoundary16539||await jurisdictionBoundaryPromise16539;
-      if(!boundary16539||!boundary16539.geometry)
-        throw new Error('selected administrative boundary could not be resolved; no uncontained Regional result was published');
-      const bounded16539=await earthlineClipRegionalProducts16539(
-        {contours,flows,swales,query:q,runToken},
-        boundary16539
-      );
-      contours=bounded16539.contours;
-      flows=bounded16539.flows;
-      swales=bounded16539.swales;
-      genericBoundaryAudit16539=bounded16539.audit;
-      window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539=
-        JSON.parse(JSON.stringify(genericBoundaryAudit16539));
-    }
     if(focusMode){for(const f of swales.features||[]){f.properties=Object.assign({},f.properties||{},{analysis_tier:'focus',label:String(f.properties?.grade||'C')+String(f.properties?.rank||'')+' — FOCUS BIOSWALE OPPORTUNITY',screening:'fixed 3 km focus screening; not a property alignment; field and bare-earth verification required'});}}
 
     /* EARTHLINE 16329 — core preflight occurs before any final Regional display
