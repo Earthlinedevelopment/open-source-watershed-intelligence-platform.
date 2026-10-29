@@ -1,3 +1,4 @@
+// rerun after landscape rail width repair
 import{chromium}from'playwright';import{installCandidateOrigin}from'./candidate-origin-router.mjs';
 const b=await chromium.launch({headless:true}),c=await b.newContext({viewport:{width:844,height:390},isMobile:true,hasTouch:true,deviceScaleFactor:2});await installCandidateOrigin(c);const p=await c.newPage();
 await p.goto('https://earthlinedevelopment.org/?landscape='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});await p.waitForSelector('#searchInput',{timeout:20000});await p.waitForTimeout(1000);
