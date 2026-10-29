@@ -70,14 +70,18 @@ new=r'''/* EARTHLINE 17802 — exact Property-terrain preflight for top Regional
           return {candidate:c17801,rankBefore:rank17801,pass:null,error:String(e17801&&e17801.message||e17801),lng:lng17801,lat:lat17801};
         }
       };
-      const max17801=Math.min(12,chosen.length),batch17801=12;
-      for(let start17801=0;start17801<max17801&&passed17801.length<3;start17801+=batch17801){
-        const batchRows17801=await Promise.all(chosen.slice(start17801,Math.min(max17801,start17801+batch17801)).map((c17801,i17801)=>verify17801(c17801,start17801+i17801+1)));
+      const max17801=Math.min(12,chosen.length),batchPlan17801=[4,8];
+      let start17801=0;
+      for(const batch17801 of batchPlan17801){
+        if(start17801>=max17801||passed17801.length>=3)break;
+        const end17801=Math.min(max17801,start17801+batch17801);
+        const batchRows17801=await Promise.all(chosen.slice(start17801,end17801).map((c17801,i17801)=>verify17801(c17801,start17801+i17801+1)));
         for(const row17801 of batchRows17801){
           rows17801.push(row17801);
           if(row17801.pass===true)passed17801.push(row17801.candidate);
           else if(row17801.pass===false)failed17801.add(row17801.candidate);
         }
+        start17801=end17801;
       }
       if(passed17801.length){
         const rest17801=chosen.filter(c17801=>!failed17801.has(c17801)&&!passed17801.includes(c17801));
