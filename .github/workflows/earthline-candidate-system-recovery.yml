@@ -21,7 +21,7 @@ on:
       - 'tests/elder-user-flow-17418.mjs'
       - '.github/workflows/earthline-candidate-system-recovery.yml'
 permissions:
-  contents: read
+  contents: write
 jobs:
   recovery:
     runs-on: ubuntu-24.04
@@ -52,10 +52,12 @@ jobs:
           before=block
           block=block.replace('earthlineSplitUsableSegments(s.pts,33)','earthlineSplitUsableSegments(s.pts,4)')
           block=block.replace('earthlineFinalSafeSegments15771(displaySeg,33)','earthlineFinalSafeSegments15771(displaySeg,4)')
-          if block==before or 'earthlineSplitUsableSegments(s.pts,33)' in block or 'earthlineFinalSafeSegments15771(displaySeg,33)' in block:
-              raise SystemExit('Property publication slope patch did not apply exactly')
+          if 'earthlineSplitUsableSegments(s.pts,33)' in block or 'earthlineFinalSafeSegments15771(displaySeg,33)' in block:
+              raise SystemExit('Property publication slope patch did not converge')
+          if 'earthlineSplitUsableSegments(s.pts,4)' not in block or 'earthlineFinalSafeSegments15771(displaySeg,4)' not in block:
+              raise SystemExit('Property publication <=4% owner missing')
           p.write_text(s[:a]+block+s[b:],encoding='utf-8')
-          print('PASS working-copy Property publication slope <=4% patch applied')
+          print('PASS Property publication slope <=4% state ready; changed='+str(block!=before))
           PY
       - name: Canonical science invariants
         run: |
@@ -102,6 +104,18 @@ jobs:
         run: env EARTHLINE_URL='https://earthlinedevelopment.org/' EARTHLINE_CANDIDATE_ORIGIN='1' BROWSER='chromium' HEADLESS='true' node tests/elder-user-flow-17418.mjs
       - name: Integrated Property science and presentation
         run: env EARTHLINE_URL='https://earthlinedevelopment.org/' EARTHLINE_CANDIDATE_ORIGIN='1' node tests/earthline-system-recovery-gate.mjs
+      - name: Commit validated Property slope owner repair to audit branch
+        if: success()
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "Validated Property repair already committed."
+            exit 0
+          fi
+          git config user.name "Earthline Mantra 82 Audit"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "science: enforce <=4% Property swale publication gate"
+          git push origin HEAD:audit/mantra82-owner-convergence
       - uses: actions/upload-artifact@v4
         if: always()
         with:
