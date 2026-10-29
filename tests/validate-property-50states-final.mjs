@@ -16,11 +16,12 @@ async function runRegional(page,stateName){
   await page.goto(URL+'?property50v16728='+encodeURIComponent(stateName)+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForSelector('#searchInput',{timeout:30000});
   const started=Date.now();
-  await page.evaluate(q=>{
-    window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;
-    const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
-    i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();
-  },stateName);
+  await page.evaluate(()=>{window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;});
+  await page.locator('#searchInput').fill(stateName);
+  await page.waitForTimeout(700);
+  const option=page.locator('#earthlineSearchSuggestions15970 [role="option"]').filter({hasText:stateName}).first();
+  if(await option.count())await option.click().catch(()=>{});
+  await page.locator('#runBtn').click();
   await page.waitForFunction(expected=>{
     const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,err=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null;
     const disp=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null;
