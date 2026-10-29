@@ -20,11 +20,11 @@ const started=Date.now();
 await page.locator('#earthlineDeclareProperty16169').click();
 await page.waitForFunction(b=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};return Number(a.serial)===b+1&&a.settled===true;},before,{timeout:90000,polling:100});
 await page.waitForTimeout(1000);
-const result=await page.evaluate((started,target)=>{
+const result=await page.evaluate(({started,target})=>{
  const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{},s=window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||{};
  const Mx=window.M||M;
  return {elapsedMs:Date.now()-started,target,center:a.center||null,result:a.result===true,stage:a.stage||null,corridors:Number(a.corridors||0),renderVerified:a.renderVerified===true,safeVisible:s.visible===true,safeCount:Number(s.count||0),safeRendered:Number(s.renderedFeatures||0),zeroReason:Mx?.prescriptionZeroReason15870||null,swaleDiagnostics:Mx?.swaleDiagnostics||null,safety:Mx?.safetyAudit15806||null,lock:Mx?.propertyResultLock15815||null,stageTimings:a.stageTimings||null};
-},started,TARGET);
+},{started,target:TARGET});
 console.log('EARTHLINE_VT_FIXED_PROPERTY '+JSON.stringify(result));
 console.log('EARTHLINE_VT_FIXED_SCREEN '+(await page.screenshot({type:'jpeg',quality:45})).toString('base64'));
 await browser.close();
