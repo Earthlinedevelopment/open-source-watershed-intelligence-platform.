@@ -1,0 +1,24 @@
+name: Earthline Live Elder Certification
+'on':
+  push:
+    branches: [live-elder-cert]
+permissions:
+  contents: read
+jobs:
+  elder:
+    strategy:
+      fail-fast: false
+      matrix:
+        state: [Vermont, New York, Colorado, California, Arizona, Arkansas, Iowa, Oklahoma, Maryland, Texas]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - env:
+          STATE: ${{ matrix.state }}
+        run: node tests/live-elder-cert.mjs
