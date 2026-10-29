@@ -118,7 +118,8 @@ for(const stateName of STATES){
   if(s.displayedTier!=='property'||s.documentTier!=='property')failures.push('canonical tier '+s.displayedTier+'/'+s.documentTier);
   if(s.integrity&&s.integrity.ok!==true)failures.push('location integrity '+JSON.stringify(s.integrity.reasons||[]));
   if(s.timeoutAudit)failures.push('Property timeout audit present');
-  if(regionalMs!=null&&regionalMs>25000)failures.push('Regional wall '+regionalMs);\n  if(propertyMs!=null&&propertyMs>15000)failures.push('Property wall '+propertyMs);
+  if(regionalMs!=null&&regionalMs>25000)failures.push('Regional wall '+regionalMs);
+  if(propertyMs!=null&&propertyMs>15000)failures.push('Property wall '+propertyMs);
   rows.push({state:stateName,elapsedMs:Date.now()-started,regionalMs,propertyMs,usedTarget,attempts,snap:s,failures,pass:failures.length===0});
   await page.close();
 }
