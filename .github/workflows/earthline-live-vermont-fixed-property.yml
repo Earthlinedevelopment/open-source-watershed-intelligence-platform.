@@ -1,0 +1,24 @@
+name: Earthline Live Vermont Fixed Property
+'on':
+  push:
+    branches: [candidate-next]
+    paths:
+      - tests/live-vermont-fixed-property.mjs
+      - .github/workflows/earthline-live-vermont-fixed-property.yml
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/live-vermont-fixed-property.mjs
