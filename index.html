@@ -29765,7 +29765,7 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
     const visibleLayers=Object.values(SAFE_LAYERS_16221).filter(id=>{try{return !!mp.getLayer?.(id)&&mp.getLayoutProperty?.(id,'visibility')!=='none'}catch(_){return false}});
     let renderedFeatures17181=0;
     try{const canvas17181=mp.getCanvas?.(),box17181=canvas17181&&[[0,0],[canvas17181.clientWidth||canvas17181.width,canvas17181.clientHeight||canvas17181.height]];if(box17181&&visibleLayers.length)renderedFeatures17181=(mp.queryRenderedFeatures?.(box17181,{layers:visibleLayers})||[]).length}catch(_){}
-    const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length; /* EARTHLINE M78 — safe source + all safe layers visible owns presentation; queryRenderedFeatures may be zero before next paint. */
+    const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length&&renderedFeatures17181>0; /* Visible means actual rendered safe geometry, not merely existing layers. */
     const audit={build:BUILD,reason,active,verified:true,count,sourceReady:true,layersReady:true,visible:ok,renderedFeatures:renderedFeatures17181,visibleLayers,moved,geometrySource:'M.authoritativeSafeSwales15815',safetyGate:'propertyPublication15816 + propertyResultLock15815 + safetyAudit15806 + searchGen match',at:new Date().toISOString()};
     window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221=audit;
     /* EARTHLINE 16289 — self-heal a scientifically verified Property result if
@@ -29786,14 +29786,28 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
     }
     return {ok,count,visible:ok,active,audit};
   }
+  let safePropertySettleToken=0;
   function scheduleSafePropertyFallback16221(reason='scheduled'){
-    /* EARTHLINE 17670 — deterministic presentation. No retry ladder. */
-    return syncSafePropertyFallback16221(reason);
+    const token=++safePropertySettleToken,mp=map();
+    let last=null;
+    const run=label=>{
+      if(token!==safePropertySettleToken)return last;
+      last=syncSafePropertyFallback16221(reason+':'+label);
+      if(last?.ok)safePropertySettleToken++;
+      return last;
+    };
+    run('immediate');
+    if(last?.ok)return last;
+    for(const delay of [80,220,520,1000])setTimeout(()=>run('delay-'+delay),delay);
+    try{mp?.once?.('style.load',()=>run('style-load'));mp?.once?.('idle',()=>run('idle'))}catch(_){}
+    return last||{ok:false,pending:true};
   }
   async function verifySafePropertyFallback16221(count){
     if(!(count>0))return {ok:true,count:0,visible:false,required:false,pending:false};
-    const first=syncSafePropertyFallback16221('terminal-atomic-17670');
-    return {...first,required:true,pending:false};
+    const first=syncSafePropertyFallback16221('terminal-atomic');
+    if(first?.ok)return {...first,required:true,pending:false};
+    scheduleSafePropertyFallback16221('terminal-settle');
+    return {...first,required:true,pending:true};
   }
 
   function propertyLivingMapVisible16262(count){
