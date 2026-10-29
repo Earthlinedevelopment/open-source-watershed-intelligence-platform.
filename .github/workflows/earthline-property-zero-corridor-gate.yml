@@ -1,0 +1,24 @@
+name: Earthline Property Zero-Corridor Gate Diagnostic
+'on':
+  push:
+    branches: [candidate-next]
+    paths:
+      - tests/property-zero-corridor-gate-diagnostic.mjs
+      - .github/workflows/earthline-property-zero-corridor-gate.yml
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: node tests/property-zero-corridor-gate-diagnostic.mjs
