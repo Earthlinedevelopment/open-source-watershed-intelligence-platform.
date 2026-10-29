@@ -47,6 +47,6 @@ const out=await page.evaluate(()=>({
 out.wallMs=Date.now()-before;
 console.log('EARTHLINE_AZ_MOBILE_PERF '+JSON.stringify({out,errs}));
 await browser.close();
-if(out.err||!/screening published\./i.test(out.status||''))process.exitCode=1;
+if(out.err||!/screening published\./i.test(out.status||'')||!(Number(out.perf?.totalMs)>0&&Number(out.perf?.totalMs)<=15000))process.exitCode=1;
 
 // detailed phase audit rerun
