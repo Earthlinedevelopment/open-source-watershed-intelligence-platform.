@@ -1,0 +1,25 @@
+name: Apply Mantra 81 Landscape Suggestion Candidate
+on:
+  push:
+    branches: [mantra81-landscape-suggestions-candidate]
+    paths:
+      - tools/mantra81-fix-landscape-suggestions.py
+      - .github/workflows/mantra81-apply-landscape-suggestions.yml
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra81-landscape-suggestions-candidate
+          fetch-depth: 0
+      - run: python3 tools/mantra81-fix-landscape-suggestions.py
+      - run: |
+          git config user.name "earthline-bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git diff --cached --check
+          git commit -m "fix: keep search suggestions inside mobile viewport"
+          git push origin HEAD:mantra81-landscape-suggestions-candidate
