@@ -1,0 +1,30 @@
+name: Earthline Live Known Difficult States
+'on':
+  push:
+    branches:
+      - candidate-next
+    paths:
+      - .github/workflows/earthline-live-known-difficult-states.yml
+      - tests/validate-property-50states-final.mjs
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run known difficult states against public origin
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          STATES: Vermont|New York|Massachusetts|Maryland|Colorado|Texas|Florida|Louisiana|California|Oklahoma|Iowa|Arkansas|Nebraska|Nevada|Alabama
+          OUT: known-difficult-states.json
+        run: node tests/validate-property-50states-final.mjs
