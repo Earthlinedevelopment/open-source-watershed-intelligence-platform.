@@ -68,10 +68,14 @@ jobs:
           for n,ln in enumerate(lines,1):
               if 'earthlineFinalSafeSegments15771(' in ln:
                   safe_calls.append({'line':n,'text':ln.strip()[:900],'context':' || '.join(x.strip()[:300] for x in lines[max(0,n-3):min(len(lines),n+2)])})
+          slices={}
+          for target in [4406,4454,15517,15556,15696]:
+              lo=max(0,target-18); hi=min(len(lines),target+22)
+              slices[target]='\n'.join(f"{i+1}: {lines[i]}" for i in range(lo,hi))
           missing=[x for x in required if x not in s]
           present=[x for x in forbidden if x in s]
           if missing or present or not slope_owner_ok:
-              raise SystemExit(f"science invariant failure slope_owner_ok={slope_owner_ok} missing={missing} forbidden={present} slope_lines={slope_lines[:30]} safe_calls={safe_calls[:30]}")
+              raise SystemExit(f"science invariant failure slope_owner_ok={slope_owner_ok} missing={missing} forbidden={present} slope_lines={slope_lines[:30]} safe_calls={safe_calls[:30]} slices={slices}")
           print("PASS canonical <=4% slope and 15-25 ft spacing invariants; rejected generation experiment absent")
           PY
       - name: Regional regression matrix
