@@ -97,19 +97,21 @@ async function processTile(py,q,bbox,maxPerTile=240){
   let ow,oh;
   if(aspect>=1){ow=1024;oh=Math.max(32,Math.round(1024/aspect))}
   else{oh=1024;ow=Math.max(32,Math.round(1024*aspect))}
-  const screenRaw=await image.readRasters({
-    window:[w.col0,w.row0,w.col0+w.ww,w.row0+w.wh],
-    samples:[0],interleave:true,width:ow,height:oh,resampleMethod:"nearest"
-  });
   const pix=Math.max(Math.abs(w.rx),Math.abs(w.ry));
   const pad=Math.max(64,Math.ceil(60/Math.max(.01,pix)));
   const ncol0=Math.max(0,w.col0-pad),nrow0=Math.max(0,w.row0-pad);
   const ncol1=Math.min(image.getWidth(),w.col0+w.ww+pad),nrow1=Math.min(image.getHeight(),w.row0+w.wh+pad);
-  const nativeRaw=await image.readRasters({
-    window:[ncol0,nrow0,ncol1,nrow1],samples:[0],interleave:true
-  });
-  timingScreen=performance.now();
-  const screen=f32(screenRaw),native=f32(nativeRaw);timingNative=performance.now();
+  const [screenRaw,nativeRaw]=await Promise.all([
+    image.readRasters({
+      window:[w.col0,w.row0,w.col0+w.ww,w.row0+w.wh],
+      samples:[0],interleave:true,width:ow,height:oh,resampleMethod:"nearest"
+    }),
+    image.readRasters({
+      window:[ncol0,nrow0,ncol1,nrow1],samples:[0],interleave:true
+    })
+  ]);
+  timingScreen=performance.now();timingNative=timingScreen;
+  const screen=f32(screenRaw),native=f32(nativeRaw);
   const sid="screen_"+q+".bin",nid="native_"+q+".bin";
   py.FS.writeFile("/tmp/"+sid,new Uint8Array(screen.buffer,screen.byteOffset,screen.byteLength));
   py.FS.writeFile("/tmp/"+nid,new Uint8Array(native.buffer,native.byteOffset,native.byteLength));
