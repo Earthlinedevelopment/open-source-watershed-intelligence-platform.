@@ -1,0 +1,25 @@
+name: Apply Mantra 81 Elder Prime Candidate
+on:
+  push:
+    branches: [mantra81-elder-prime-candidate]
+    paths:
+      - tools/mantra81-restore-elder-prime.py
+      - .github/workflows/mantra81-apply-elder-prime.yml
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra81-elder-prime-candidate
+          fetch-depth: 0
+      - run: python3 tools/mantra81-restore-elder-prime.py
+      - run: |
+          git config user.name "earthline-bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git diff --cached --check
+          git commit -m "perf: restore accepted-crosshair Elder overlap"
+          git push origin HEAD:mantra81-elder-prime-candidate
