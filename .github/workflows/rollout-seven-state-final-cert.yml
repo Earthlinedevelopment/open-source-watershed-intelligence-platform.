@@ -1,0 +1,31 @@
+name: Earthline Seven Rollout States Final Certification
+'on':
+  push:
+    branches: [rollout-seven-state-final-cert]
+    paths:
+      - tests/rollout-state-certification.mjs
+      - .github/workflows/rollout-seven-state-final-cert.yml
+permissions:
+  contents: read
+jobs:
+  certify:
+    strategy:
+      fail-fast: false
+      matrix:
+        state: [Arizona, New Mexico, Colorado, Texas, California, Vermont, New York]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - env:
+          STATES: ${{ matrix.state }}
+        run: |
+          for r in 1 2 3 4 5 6 7; do
+            echo "ROLLOUT STATE ${{ matrix.state }} ROUND $r / 7"
+            node tests/rollout-state-certification.mjs
+          done
