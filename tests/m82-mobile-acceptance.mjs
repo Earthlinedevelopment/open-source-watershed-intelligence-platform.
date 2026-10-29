@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import { installCandidateOrigin } from './candidate-origin-router.mjs';
-// M82 clean integration mobile gate\nconst browser=await chromium.launch({headless:true});
+// M82 clean integration mobile gate
+const browser=await chromium.launch({headless:true});
 const cases=[
  {name:'phone-small',w:360,h:800,mobile:true},
  {name:'phone-regular',w:390,h:844,mobile:true},
