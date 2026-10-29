@@ -29720,6 +29720,7 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
   function clearSafePropertyFallback16221(reason='clear'){
     const mp=map();
     try{const src=mp?.getSource?.(SAFE_SOURCE_16221);if(src?.setData)src.setData(SAFE_EMPTY_16221)}catch(_){ }
+    window.EARTHLINE_PROPERTY_SAFE_SOURCE_SIGNATURE_17701='';
     setSafeLayerVisibility16221(false);
     window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active:false,verified:false,count:0,visible:false,at:new Date().toISOString()};
     return true;
@@ -29753,7 +29754,16 @@ const registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};win
     if(!mp||!active||count<1){clearSafePropertyFallback16221(reason+':inactive-or-empty');return {ok:count===0&&active,count,visible:false,active,error:!mp?'map unavailable':(!active?'property display inactive':'verified zero-corridor result')}}
     const ensured=ensureSafePropertyLayers16221();
     if(!ensured.ok){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,sourceReady:!!ensured.sourceReady,layersReady:!!ensured.layersReady,errors:ensured.errors||[],error:ensured.error||null,at:new Date().toISOString()};return {ok:false,count,visible:false,active,...ensured}}
-    try{const src=mp.getSource(SAFE_SOURCE_16221);if(!src?.setData)throw new Error('safe source setData unavailable');src.setData(fc)}catch(error){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,error:String(error?.message||error),at:new Date().toISOString()};return {ok:false,count,visible:false,active,error:String(error?.message||error)}}
+    try{
+      const src=mp.getSource(SAFE_SOURCE_16221);
+      if(!src?.setData)throw new Error('safe source setData unavailable');
+      const md17701=model()||{},pub17701=md17701.propertyPublication15816||{};
+      const sig17701=[Number(md17701.searchGen||0),Number(pub17701.searchGen||0),count].join('|');
+      if(String(window.EARTHLINE_PROPERTY_SAFE_SOURCE_SIGNATURE_17701||'')!==sig17701){
+        src.setData(fc);
+        window.EARTHLINE_PROPERTY_SAFE_SOURCE_SIGNATURE_17701=sig17701;
+      }
+    }catch(error){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,error:String(error?.message||error),at:new Date().toISOString()};return {ok:false,count,visible:false,active,error:String(error?.message||error)}}
     /* Authoritative Property presentation: verified safe geometry owns the final display. */
     const naturalLayerIds16221=['earthline-property-swale-footprint-16174','earthline-property-swale-natural-casing-16174','earthline-property-swale-natural-up-16174','earthline-property-swale-natural-flip-16174','earthline-property-swale-neutral-16177'];
     for(const id of naturalLayerIds16221){try{if(mp.getLayer?.(id))mp.setLayoutProperty(id,'visibility','none')}catch(_){}}
