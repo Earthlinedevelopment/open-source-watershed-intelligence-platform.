@@ -124,6 +124,10 @@ async function surfaces(label){
     return {open:!!p?.classList.contains('open'),display:style?.display||'',textHead:text.slice(0,1800),pages:p?.querySelectorAll('.el49-page').length||0,scrollHeight:Number(shell?.scrollHeight||0),clientHeight:Number(shell?.clientHeight||0)};
   });
   if(!rep.open||rep.display==='none'||rep.pages<1||!/Bioswale/i.test(rep.textHead)||!/Earthline/i.test(rep.textHead))throw new Error(label+' report incomplete '+JSON.stringify(rep));
+  const close=page.locator('#earthlineVermontReportPanel16149 [data-action="close"]').first();
+  if(!(await close.count()))throw new Error(label+' report close control missing');
+  await close.click();
+  await page.waitForFunction(()=>!document.getElementById('earthlineVermontReportPanel16149')?.classList.contains('open'),{timeout:5000});
   return {data:{drivers:data.drivers,score:data.score},report:{pages:rep.pages,scrollable:rep.scrollHeight>rep.clientHeight}};
 }
 
