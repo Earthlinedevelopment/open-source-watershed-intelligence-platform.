@@ -1,0 +1,38 @@
+name: M81 Integration 50-State Property Seven-Pass
+on:
+  push:
+    branches: [mantra81-integration]
+    paths:
+      - .github/workflows/m81-integration-property-7x.yml
+permissions:
+  contents: read
+jobs:
+  certify:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        round: [1,2,3,4,5,6,7]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    name: "Round ${{ matrix.round }} · 50-state Property"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra81-integration
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE_ORIGIN: '1'
+          STATES: Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming
+          OUT: m81-property-${{ matrix.round }}.json
+        run: node tests/validate-property-50states-final.mjs
