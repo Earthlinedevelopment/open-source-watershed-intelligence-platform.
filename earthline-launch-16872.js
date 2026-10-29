@@ -1664,9 +1664,10 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     /* EARTHLINE M78 — the accepted Property declaration owns Elder identity for
        the entire Property lifecycle. Camera/target settle may move later; it may
        never replace the declared 20-acre frame used by Elder computation. */
-    if(tier==='property'&&Number.isFinite(declaredLng)&&Number.isFinite(declaredLat))return {lng:declaredLng,lat:declaredLat,source:'property-declaration'};
+    const canonicalM81=(lng,lat,source)=>({lng:Number(Number(lng).toFixed(5)),lat:Number(Number(lat).toFixed(5)),source});
+    if(tier==='property'&&Number.isFinite(declaredLng)&&Number.isFinite(declaredLat))return canonicalM81(declaredLng,declaredLat,'property-declaration');
     const lng=Number(target?.lng),lat=Number(target?.lat);
-    return Number.isFinite(lng)&&Number.isFinite(lat)?{lng,lat,source:'property-target'}:null;
+    return Number.isFinite(lng)&&Number.isFinite(lat)?canonicalM81(lng,lat,'property-target'):null;
   } /* EARTHLINE M78 — PROPERTY DECLARATION OWNS ELDER IDENTITY */
   function propertyBounds17166(){
     try{
