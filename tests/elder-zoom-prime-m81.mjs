@@ -1,3 +1,4 @@
+// validate five-decimal Elder frame reuse
 // validate concurrent Elder raster reads
 import { chromium } from 'playwright';
 import { installCandidateOrigin } from './candidate-origin-router.mjs';
