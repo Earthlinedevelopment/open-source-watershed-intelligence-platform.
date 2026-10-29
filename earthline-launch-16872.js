@@ -1487,7 +1487,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
               ['any',['==',['get','source_class'],'LIDAR'],['==',['get','record_class'],'LIDAR_CONFIRMED_ELDER_TREE_CANDIDATE']],'earthline-elder-pin-lidar',
               'earthline-elder-pin-modeled'
             ],
-            'icon-size':['interpolate',['linear'],['zoom'],6,0.55,10,0.72,14,0.9],
+            'icon-size':['interpolate',['linear'],['zoom'],6,0.55,10,0.72,14,1.12,16,1.45],
             'icon-anchor':'bottom',
             'icon-allow-overlap':true,
             'icon-ignore-placement':true,
