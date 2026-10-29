@@ -1,0 +1,27 @@
+name: Apply Current Crosshair First Press
+'on':
+  push:
+    branches:
+      - repair/current-crosshair-first-press-20261029
+    paths:
+      - tools/apply-current-crosshair-first-press.py
+      - .github/workflows/apply-current-crosshair-first-press.yml
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/current-crosshair-first-press-20261029
+      - run: python3 tools/apply-current-crosshair-first-press.py
+      - run: |
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+      - run: |
+          git config user.name "Earthline Engine"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: bind current crosshair on first Property press"
+          git push origin HEAD:repair/current-crosshair-first-press-20261029
