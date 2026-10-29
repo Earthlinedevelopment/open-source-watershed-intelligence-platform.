@@ -15,12 +15,13 @@ for(const state of STATES){
   try{
     await page.goto(URL+'?m83-owner='+encodeURIComponent(state)+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
     await page.waitForSelector('#searchInput',{timeout:30000});
-    const refs0=await page.evaluate(()=>({
-      vector:window.earthlineBuildVectorNoBuildMask,
-      property:window.earthlineDeclarePropertyAtCrosshair16173,
-      safe:window.earthlineSyncSafePropertyFallback16221,
-      regionalAudit:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040
-    }));
+    await page.evaluate(()=>{
+      window.__m83_owner_refs={
+        v:window.earthlineBuildVectorNoBuildMask,
+        p:window.earthlineDeclarePropertyAtCrosshair16173,
+        s:window.earthlineSyncSafePropertyFallback16221
+      };
+    });
 
     await page.locator('#searchInput').fill(state);
     await page.waitForTimeout(650);
@@ -51,11 +52,6 @@ for(const state of STATES){
     await page.waitForFunction(s=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};return Number(a.serial)===s+1&&a.scientificSettled===true&&a.result===true},serial,{timeout:30000,polling:50});
     await page.waitForFunction(()=>{const s=window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||{};return s.visible===true&&Number(s.renderedFeatures||0)>0},{timeout:15000,polling:50});
 
-    const refs1=await page.evaluate(()=>({
-      vectorSame:window.earthlineBuildVectorNoBuildMask===window.__m83_vector_ref,
-      propertySame:window.earthlineDeclarePropertyAtCrosshair16173===window.__m83_property_ref
-    })).catch(()=>({vectorSame:true,propertySame:true}));
-
     const property=await page.evaluate(()=>({
       corridors:Number(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.corridors||0),
       rendered:Number(window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221?.renderedFeatures||0),
@@ -66,8 +62,7 @@ for(const state of STATES){
 
     const ownerStability=await page.evaluate(()=>{
       const v=window.earthlineBuildVectorNoBuildMask,p=window.earthlineDeclarePropertyAtCrosshair16173,s=window.earthlineSyncSafePropertyFallback16221;
-      if(!window.__m83_owner_refs)window.__m83_owner_refs={v,p,s};
-      return {vector:window.__m83_owner_refs.v===v,property:window.__m83_owner_refs.p===p,safe:window.__m83_owner_refs.s===s};
+      return {vector:window.__m83_owner_refs?.v===v,property:window.__m83_owner_refs?.p===p,safe:window.__m83_owner_refs?.s===s};
     });
     if(!ownerStability.vector||!ownerStability.property||!ownerStability.safe)throw new Error('owner identity changed '+JSON.stringify(ownerStability));
 
