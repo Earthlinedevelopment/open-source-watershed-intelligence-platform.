@@ -1,0 +1,23 @@
+name: Apply Regional Published-Visibility Repair
+'on':
+  push:
+    branches: [regional-visibility-livefix]
+    paths:
+      - tools/apply-regional-published-visibility.py
+      - .github/workflows/apply-regional-published-visibility.yml
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: regional-visibility-livefix
+      - run: python3 tools/apply-regional-published-visibility.py
+      - run: |
+          git config user.name "earthline-bot"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: restore Regional swales at published zoom" || exit 0
+          git push origin HEAD:regional-visibility-livefix
