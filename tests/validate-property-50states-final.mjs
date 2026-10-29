@@ -20,6 +20,7 @@ async function runRegional(page,stateName){
   await page.locator('#searchInput').fill(stateName);
   await page.waitForTimeout(700);
   const option=page.locator('#earthlineSearchSuggestions15970 [role="option"]').filter({hasText:stateName}).first();
+  await option.waitFor({state:'visible',timeout:8000}).catch(()=>{});
   if(await option.count())await option.click().catch(()=>{});
   await page.locator('#runBtn').click();
   await page.waitForFunction(expected=>{
