@@ -68,3 +68,5 @@ for(const r of [first,second]){
   if(r.elderState!=='committed'||!(r.elderCount>0))throw new Error(r.label+' Elder publication did not commit');
 }
 await browser.close();
+
+// rerun after safe-source stability deploy 1793232700830
