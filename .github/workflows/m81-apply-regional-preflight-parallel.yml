@@ -1,0 +1,25 @@
+name: Apply M81 Regional Preflight Parallelism
+on:
+  push:
+    branches: [m81-regional-preflight-parallel]
+    paths:
+      - tools/m81-parallelize-regional-preflight.py
+      - .github/workflows/m81-apply-regional-preflight-parallel.yml
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: m81-regional-preflight-parallel
+          fetch-depth: 0
+      - run: python3 tools/m81-parallelize-regional-preflight.py
+      - run: |
+          git config user.name earthline-bot
+          git config user.email info@earthlinedevelopment.org
+          git add index.html
+          git diff --cached --check
+          git commit -m "perf: parallelize exact Regional Property preflight"
+          git push origin HEAD:m81-regional-preflight-parallel
