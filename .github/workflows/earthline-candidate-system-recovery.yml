@@ -45,8 +45,8 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
+          import re
           required=[
-            "const thr=streamThreshold(),chanThr=thr*3.2,maxS=4;",
             "const safeSlope=slopePct(x,y)<=4;",
             "maxS=Number(lg.maxSlopePct||4);",
             "const requested=Number(M.targetSwaleSpacingM||6.096);",
@@ -61,10 +61,11 @@ jobs:
             "eligibleSlopeSamples15771=[]",
             "maxLevels:256,maxSeedsPerLevel:16,maxCandidates:256,maxFinal:200"
           ]
+          slope_owner_ok=bool(re.search(r"const\s+thr\s*=\s*streamThreshold\(\)\s*,\s*chanThr\s*=\s*thr\s*\*\s*3\.2\s*,\s*maxS\s*=\s*4\s*;",s))
           missing=[x for x in required if x not in s]
           present=[x for x in forbidden if x in s]
-          if missing or present:
-              raise SystemExit(f"science invariant failure missing={missing} forbidden={present}")
+          if missing or present or not slope_owner_ok:
+              raise SystemExit(f"science invariant failure slope_owner_ok={slope_owner_ok} missing={missing} forbidden={present}")
           print("PASS canonical <=4% slope and 15-25 ft spacing invariants; rejected generation experiment absent")
           PY
       - name: Regional regression matrix
