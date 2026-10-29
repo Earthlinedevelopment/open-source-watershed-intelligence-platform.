@@ -146,7 +146,11 @@ const results=rows.map(r=>{
   const frameOk=r.run?.settled===true && r.run?.result===true && r.publication?.published===true;
   const safetyOk=r.lock?.safetyVerified===true;
   const targetOk=near(r.target?.lng,r.requested.lng)&&near(r.target?.lat,r.requested.lat)&&near(r.declaration?.center?.lng,r.requested.lng)&&near(r.declaration?.center?.lat,r.requested.lat);
-  const systemsOk=r.swales.count>0&&r.water.count>0&&String(r.elder?.last?.state||'')==='committed'&&Number(r.elder?.last?.featureCount||0)>0&&r.elder.layer===true&&r.elder.visibility!=='none';
+  const elderCommitted=String(r.elder?.last?.state||'')==='committed';
+  const elderCoverageKnown=r.elder?.last?.summary?.coverageKnown===true;
+  const elderFeatureCount=Number(r.elder?.last?.featureCount);
+  const elderEvidenceValid=elderCommitted&&elderCoverageKnown&&Number.isFinite(elderFeatureCount)&&elderFeatureCount>=0;
+  const systemsOk=r.swales.count>0&&r.water.count>0&&elderEvidenceValid&&r.elder.layer===true&&r.elder.visibility!=='none';
   const accepted=Array.isArray(r.meta?.acceptedSpacingM)?r.meta.acceptedSpacingM:[];
   const targetSpacingOk=Math.abs(Number(r.meta?.targetSpacingM)-6.096)<0.001&&Math.abs(Number(accepted[0])-4.572)<0.001&&Math.abs(Number(accepted[1])-7.62)<0.001;
   const spacingPairOk=Number(r.swales.count)<2 ? Number(r.meta?.spacingSampleCount||0)===0 : (Number.isFinite(spacing)&&spacing>=4.572&&spacing<=7.62);
