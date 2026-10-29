@@ -18,6 +18,8 @@ for(let round=1;round<=7;round++){
     if(!(await opt.count()))throw new Error(tc.name+' no suggestion');
     const rect=await opt.boundingBox(), menuRect=await page.locator('#earthlineSearchSuggestions15970').boundingBox();
     const inViewport=!!rect&&rect.x>=0&&rect.y>=0&&rect.x+rect.width<=tc.w+1&&rect.y+rect.height<=tc.h+1;
+    console.log('M81_SUGGEST_PRE '+JSON.stringify({round,...tc,rect,menuRect,inViewport,inputRect:await page.locator('#searchInput').boundingBox(),runRect:await page.locator('#runBtn').boundingBox(),scrollY:await page.evaluate(()=>window.scrollY)}));
+    if(!inViewport){rows.push({round,...tc,rect,menuRect,inViewport,tapOk:false,valueOk:false,pass:false});await context.close();continue;}
     let tapOk=false;
     if(tc.name==='desktop'){await opt.click({timeout:8000});tapOk=true}else{await opt.tap({timeout:8000});tapOk=true}
     const value=await page.locator('#searchInput').inputValue();
