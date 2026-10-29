@@ -1,0 +1,36 @@
+name: Earthline Regional Refinement Ranking Diagnostic
+'on':
+  push:
+    branches: [candidate-next]
+    paths:
+      - tests/regional-refinement-diagnostic.mjs
+      - .github/workflows/earthline-regional-refinement-diagnostic.yml
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    strategy:
+      fail-fast: false
+      matrix:
+        state: [Colorado, Arkansas, California]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    name: Refined ranking — ${{ matrix.state }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate-next
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          STATE: ${{ matrix.state }}
+        run: node tests/regional-refinement-diagnostic.mjs
