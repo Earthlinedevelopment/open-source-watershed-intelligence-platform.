@@ -1889,7 +1889,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
          and click. The governed terminal Property owner already starts Elder work
          immediately after the click is accepted. Keep only the already-idempotent
          runtime warm here so the physical click cannot be displaced by DOM work. */
-      try{void prewarmDynamicWorker()}catch(_){} /* EARTHLINE 17466 — keep Property pointer path free of target I/O */
+      try{void prewarmDynamicWorker();void dynamicPropertyEvidence(true)}catch(_){} /* EARTHLINE M81 — exact Property Elder compute starts at press as fallback */
     },true);
     document.addEventListener('click',click,false);
     window.addEventListener('hashchange',hash,false);
