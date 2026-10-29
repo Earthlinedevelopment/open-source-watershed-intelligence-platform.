@@ -1,0 +1,42 @@
+name: Validate Property Preflight 17802 Livefix
+'on':
+  push:
+    branches:
+      - property-preflight-17802-livefix
+    paths:
+      - .github/workflows/validate-property-preflight-17802-livefix.yml
+      - tools/apply-regional-property-preflight.py
+      - tools/upgrade-regional-property-preflight-17802.py
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: property-preflight-17802-livefix
+      - name: Apply exact two-stage patch in working tree
+        run: |
+          python3 tools/apply-regional-property-preflight.py
+          python3 tools/upgrade-regional-property-preflight-17802.py
+          git diff --check
+          grep -q 'EARTHLINE 17802' index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start patched local candidate
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          sleep 1
+      - name: Validate five failing states through patched candidate
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_CANDIDATE_ORIGIN: '1'
+          STATES: Vermont|Colorado|Nevada|Arkansas|California
+          OUT: five-preflight-livefix.json
+        run: node tests/validate-property-50states-final.mjs
