@@ -26209,7 +26209,7 @@ body { overflow-x:hidden!important; }
     /* EARTHLINE 17801 — Property-scale slope truth must own the top Regional opportunity ranks.
        Statewide/refinement DEMs can smooth mountain terrain enough to create false <=4% A1 sites.
        Verify leading candidates in small parallel batches using a ~20-acre high-resolution DEM. */
-    if(!focusMode&&chosen.length&&Math.max(Number(hy.cellX)||0,Number(hy.cellY)||0)>=5000){
+    if(!focusMode&&chosen.length){
       const rows17801=[],passed17801=[],failed17801=new Set();
       const verify17801=async(c17801,rank17801)=>{
         const seg17801=Array.isArray(c17801&&c17801.segment)?c17801.segment:[];
@@ -26220,7 +26220,7 @@ body { overflow-x:hidden!important; }
         const dLat17801=halfM17801/111320;
         const dLng17801=halfM17801/(111320*Math.max(.20,Math.cos(lat17801*Math.PI/180)));
         try{
-          const d17801=await loadDEM([lng17801-dLng17801,lat17801-dLat17801,lng17801+dLng17801,lat17801+dLat17801],64,64,4500,'Regional Property-scale slope preflight '+rank17801);
+          const d17801=await loadDEM([lng17801-dLng17801,lat17801-dLat17801,lng17801+dLng17801,lat17801+dLat17801],210,146,6000,'Regional Property-scale slope preflight '+rank17801);
           const h17801=await hydrology(d17801,null);
           let finite17801=0,safe17801=0;
           for(let i17801=0;i17801<h17801.slope.length;i17801++){
@@ -26249,7 +26249,7 @@ body { overflow-x:hidden!important; }
         chosen.length=0;chosen.push(...passed17801,...rest17801);
       }
       window.EARTHLINE_REGIONAL_PROPERTY_SLOPE_PREFLIGHT_17801={
-        build:'EARTHLINE 17801',cellThresholdM:5000,lockedMaxSlopePct:4,halfSideM:160,
+        build:'EARTHLINE 17801',cellThresholdM:0,lockedMaxSlopePct:4,halfSideM:160,
         requiredSafeCells:24,requiredSafeRatio:.01,tested:rows17801.length,passed:passed17801.length,rejected:rows17801.filter(r17801=>r17801.pass===false).length,
         rows:rows17801.map(r17801=>({rankBefore:r17801.rankBefore,pass:r17801.pass,safeCells:r17801.safeCells??null,finiteCells:r17801.finiteCells??null,safeRatio:Number.isFinite(r17801.safeRatio)?Number(r17801.safeRatio.toFixed(4)):null,lng:r17801.lng??null,lat:r17801.lat??null,error:r17801.error||null})),
         rule:'top coarse Regional candidates are rank-eligible only after a ~20-acre high-resolution DEM confirms real <=4% terrain; Property science threshold is unchanged',
