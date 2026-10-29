@@ -1,0 +1,27 @@
+name: Apply Stable Safe Swale Source
+'on':
+  push:
+    branches:
+      - repair/safe-source-stability-20261029
+    paths:
+      - tools/apply-safe-source-stability.py
+      - .github/workflows/apply-safe-source-stability.yml
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/safe-source-stability-20261029
+      - run: python3 tools/apply-safe-source-stability.py
+      - run: |
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+      - run: |
+          git config user.name "Earthline Engine"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: keep verified safe Property source stable during render settlement"
+          git push origin HEAD:repair/safe-source-stability-20261029
