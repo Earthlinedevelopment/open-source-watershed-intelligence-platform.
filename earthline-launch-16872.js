@@ -1664,9 +1664,10 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     /* EARTHLINE M78 — the accepted Property declaration owns Elder identity for
        the entire Property lifecycle. Camera/target settle may move later; it may
        never replace the declared 20-acre frame used by Elder computation. */
-    if(tier==='property'&&Number.isFinite(declaredLng)&&Number.isFinite(declaredLat))return {lng:declaredLng,lat:declaredLat,source:'property-declaration'};
+    const canonicalM81=(lng,lat,source)=>({lng:Number(Number(lng).toFixed(5)),lat:Number(Number(lat).toFixed(5)),source});
+    if(tier==='property'&&Number.isFinite(declaredLng)&&Number.isFinite(declaredLat))return canonicalM81(declaredLng,declaredLat,'property-declaration');
     const lng=Number(target?.lng),lat=Number(target?.lat);
-    return Number.isFinite(lng)&&Number.isFinite(lat)?{lng,lat,source:'property-target'}:null;
+    return Number.isFinite(lng)&&Number.isFinite(lat)?canonicalM81(lng,lat,'property-target'):null;
   } /* EARTHLINE M78 — PROPERTY DECLARATION OWNS ELDER IDENTITY */
   function propertyBounds17166(){
     try{
@@ -1845,9 +1846,9 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       corridorPrimeTimer17558=setTimeout(()=>{
         try{
           const target=window.EARTHLINE_PROPERTY_TARGET_16201||null;
-          if(target&&!target.code&&String(target.source||'')==='crosshair')void dynamicPropertyEvidence(true);
+          if(target&&Number.isFinite(Number(target.lng))&&Number.isFinite(Number(target.lat)))void dynamicPropertyEvidence(true);
         }catch(_){}
-      },0); /* EARTHLINE 17561 — start the existing post-Zoom Elder prime immediately after the existing Zoom click owner; no new camera/render owner. */
+      },240); /* EARTHLINE M81 — let the governed crosshair target settle before starting one exact-frame Elder compute. */
     }
     /* EARTHLINE 17133 — Elder is downstream of Property publication; Zoom no longer invokes Elder refresh. */
   }
@@ -1889,7 +1890,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
          and click. The governed terminal Property owner already starts Elder work
          immediately after the click is accepted. Keep only the already-idempotent
          runtime warm here so the physical click cannot be displaced by DOM work. */
-      try{void prewarmDynamicWorker()}catch(_){} /* EARTHLINE 17466 — keep Property pointer path free of target I/O */
+      try{void prewarmDynamicWorker();void dynamicPropertyEvidence(true)}catch(_){} /* EARTHLINE M81 — exact Property Elder compute starts at press as fallback */
     },true);
     document.addEventListener('click',click,false);
     window.addEventListener('hashchange',hash,false);
