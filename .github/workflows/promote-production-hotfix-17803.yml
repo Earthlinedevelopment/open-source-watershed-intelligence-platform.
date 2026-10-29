@@ -1,0 +1,39 @@
+name: Promote Earthline 17803 Production Repair
+'on':
+  push:
+    branches: [production-hotfix-17803]
+    paths:
+      - .github/workflows/promote-production-hotfix-17803.yml
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: production-hotfix-17803
+          fetch-depth: 0
+      - name: Preserve reviewed surgical patch scripts
+        run: |
+          cp tools/patch-regional-slope-4.py /tmp/patch-regional-slope-4.py
+          cp tools/patch-final-property-preflight-17803.py /tmp/patch-final-property-preflight-17803.py
+      - name: Patch current production only
+        run: |
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          test "$(git rev-parse HEAD)" = "9f08daa9ee5b8ff582f39f77c11dc027e9ee8690"
+          python3 /tmp/patch-regional-slope-4.py
+          python3 /tmp/patch-final-property-preflight-17803.py
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+          grep -q 'EARTHLINE 17803' index.html
+          grep -q 'minSlope=0,maxSlope=4' index.html
+      - name: Publish production repair
+        run: |
+          git config user.name "Earthline Launch Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: align Regional targets with exact Property slope"
+          git push origin HEAD:pages-live
