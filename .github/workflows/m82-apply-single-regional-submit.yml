@@ -1,0 +1,25 @@
+name: M82 Apply Single Regional Submission Owner
+'on':
+  push:
+    branches: [mantra82-clean-integration]
+    paths:
+      - tools/m82-single-regional-submit.py
+      - .github/workflows/m82-apply-single-regional-submit.yml
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: mantra82-clean-integration }
+      - run: python3 tools/m82-single-regional-submit.py
+      - run: |
+          if git diff --quiet -- index.html; then
+            echo "No change"; exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: make Run Analysis the single Regional submission owner"
+          git push origin HEAD:mantra82-clean-integration
