@@ -1,3 +1,4 @@
+// rerun after landscape rail width repair
 import { chromium } from 'playwright';
 import { installCandidateOrigin } from './candidate-origin-router.mjs';
 // M82 clean integration mobile gate
