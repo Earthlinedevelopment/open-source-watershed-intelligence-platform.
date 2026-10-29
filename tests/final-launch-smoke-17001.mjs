@@ -46,16 +46,20 @@ async function runState(query,attempt){
   await context.close();
   const coreMs=a?.perf?.totalMs??null;
   const generated=a?.pub?.generated??null;
-  const visible=a?.display?.swaleLines??a?.pub?.overlaySwaleLines??null;
+  const sourceFeatures=a?.pub?.sourceFeatures??null;
+  const labels=a?.display?.swaleGradeLabels??a?.pub?.overlayLocationPills??null;
+  const geometryVisible=a?.display?.swaleLines??a?.pub?.overlaySwaleLines??null;
   const unsafe=a?.flow?.unsafeSegments??null;
   const outside=a?.boundary?.outsideAfterClip??null;
   const published=/screening published\./i.test(a?.status||'');
   const perfPass=Number.isFinite(Number(coreMs))&&Number(coreMs)>0&&Number(coreMs)<=15000;
-  const swalePass=generated==null||visible==null?true:(Number(generated)>0&&Number(generated)===Number(visible));
+  const swalePass=Number(generated)>0&&Number(sourceFeatures)===Number(generated)&&Number(labels)>0;
   const safetyPass=unsafe==null||Number(unsafe)===0;
   const boundaryPass=outside==null||Number(outside?.swales||0)===0;
-  const pass=!loadError&&!timedOut&&!a?.lastError&&!pageErrors.length&&published&&perfPass&&swalePass&&safetyPass&&boundaryPass;
-  return {query,attempt,pass,loadError,timedOut,pageErrors,elapsedMs:Date.now()-started,coreMs,generated,visible,unsafe,outsideAfterClip:outside,lastError:a?.lastError||null,status:a?.status||''};
+  const elapsedMs=Date.now()-started;
+  const wallPass=elapsedMs<=25000;
+  const pass=!loadError&&!timedOut&&!a?.lastError&&!pageErrors.length&&published&&perfPass&&wallPass&&swalePass&&safetyPass&&boundaryPass;
+  return {query,attempt,pass,loadError,timedOut,pageErrors,elapsedMs,wallPass,coreMs,generated,sourceFeatures,labels,geometryVisible,unsafe,outsideAfterClip:outside,lastError:a?.lastError||null,status:a?.status||''};
 }
 
 for(const query of STATES){
