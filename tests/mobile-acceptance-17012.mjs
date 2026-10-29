@@ -41,7 +41,7 @@ for(const tc of cases){
   const prep=await page.evaluate(async()=>{const t={lng:-73.012909,lat:44.513845};const site=window.earthlineSelectedSiteFromCenter(M?.loc||null,t.lng,t.lat,20);const ok=await window.applyLocation(site,null,M.searchGen,{analyzeNow:false,preserveMapView:false});if(!ok)return false;await new Promise(r=>setTimeout(r,700));return !!window.earthlineSetPropertyTarget16201({lng:t.lng,lat:t.lat,source:'accept17012'},{openPanel:false})});
   const p0=Date.now(); let pErr=null;
   if(prep){try{await page.evaluate(async()=>await window.earthlineDeclarePropertyAtCrosshair16169())}catch(e){pErr=String(e)}}
-  row.property=await page.evaluate(()=>({audit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,safety:M?.safetyAudit15806||null,lock:M?.propertyResultLock15815||null,safe:Number(M?.authoritativeSafeSwales15815?.length||0)}));
+  row.property=await page.evaluate(()=>({audit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,safety:M?.safetyAudit15806||null,lock:M?.propertyResultLock15815||null,safe:Number(M?.authoritativeSafeSwales15815?.features?.length||M?.authoritativeSafeSwales15815?.length||0)}));
   row.property.wallMs=Date.now()-p0; row.property.error=pErr;
 
   let report=false; if(await page.locator('#earthlineVermontReport16149').count()){await page.evaluate(()=>document.getElementById('earthlineVermontReport16149')?.click());await page.waitForTimeout(300);report=await page.evaluate(()=>document.getElementById('earthlineVermontReportPanel16149')?.classList.contains('open')||false)}
