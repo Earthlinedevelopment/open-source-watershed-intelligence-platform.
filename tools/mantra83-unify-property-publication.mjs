@@ -6,7 +6,7 @@ const before=s;
 s=s.replace(/\s*earthlineMap\.on\("(?:idle|styledata|moveend|zoomend)",\(\)=>\{\}\);\s*\/\/[^\n]*/g,'');
 s=s.replaceAll("map.on('styledata',()=>{});",'');
 
-const helper=String.raw\`
+const helper=String.raw`
   /* MANTRA 83 — ONE PROPERTY PUBLICATION OWNER.
      Every Property entry path must finish through this function so the visible target,
      model center, run token, exclusion evidence and displayed result share one identity. */
@@ -49,7 +49,7 @@ const helper=String.raw\`
     window.EARTHLINE_PROPERTY_IDENTITY_MANTRA83={runToken,query:propertySnapshot.query,target:propertySnapshot.location,modelCenter:propertySnapshot.modelCenter,driftM:propertySnapshot.identityDriftM,verified:true,at:new Date().toISOString()};
     return propertySnapshot;
   }
-\`;
+`;
 
 function once(oldText,newText,label){
   const n=s.split(oldText).length-1;
