@@ -31,13 +31,16 @@ await page.route('https://earthlinedevelopment.org/**',async route=>{
 
 await page.goto('https://earthlinedevelopment.org/',{waitUntil:'domcontentloaded',timeout:120000});
 await page.waitForTimeout(2500);
+if(!await page.evaluate(()=>!!window.EARTHLINE_ELDER_TREES_V1_17097)){
+  await page.addScriptTag({content:fs.readFileSync('earthline-elder-runtime-17097.js','utf8')});
+}
+await page.waitForFunction(()=>!!window.EARTHLINE_ELDER_TREES_V1_17097,{timeout:30000});
 await page.locator('#searchInput').fill('61 Sleepy Hollow Rd Essex Vermont');
 await page.evaluate(()=>window.earthlineRunAnalysis?.({preventDefault(){},stopPropagation(){},stopImmediatePropagation(){}}));
 await page.waitForFunction(()=>{
   const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147;
   return !!d&&String(d.tier||d.mode||'').toLowerCase()==='property';
 },{timeout:180000});
-await page.waitForFunction(()=>!!window.EARTHLINE_ELDER_TREES_V1_17097,{timeout:30000});
 await page.waitForTimeout(1200);
 try{await page.evaluate(()=>window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.())}catch(_){}
 await page.waitForFunction(()=>{
