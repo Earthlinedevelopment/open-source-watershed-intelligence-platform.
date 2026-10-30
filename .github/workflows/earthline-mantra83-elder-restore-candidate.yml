@@ -1,0 +1,24 @@
+name: Mantra 83 Elder Restore Candidate
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'earthline-elder-runtime-17097.js'
+      - 'earthline-elder-worker-17129.js'
+      - 'data/elder-trees/**'
+      - 'tests/mantra83-elder-transform.mjs'
+      - 'tests/mantra83-elder-restore-candidate.mjs'
+      - '.github/workflows/earthline-mantra83-elder-restore-candidate.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/mantra83-elder-restore-candidate.mjs
