@@ -1,0 +1,12 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+const p='index.html';
+let s=readFileSync(p,'utf8');
+const old1='const slope=hy.slope[i],acc=hy.acc[i],minSlope=relaxed?.05:.20,maxSlope=relaxed?(focusMode?18:4):13.5;';
+const new1='const slope=hy.slope[i],acc=hy.acc[i],minSlope=relaxed?.05:.20,maxSlope=4;';
+const old2="const acceptedChosen=focusMode?auditedCandidates.filter(c=>c.contourAudit16166.valid):auditedCandidates;";
+const new2="const acceptedChosen=(focusMode?auditedCandidates.filter(c=>c.contourAudit16166.valid):auditedCandidates).filter(c=>Number.isFinite(Number(c.slope))&&Number(c.slope)<=4);";
+if(!s.includes(old1))throw new Error('Regional slope gate owner not found');
+if(!s.includes(old2))throw new Error('Regional publication gate owner not found');
+s=s.replace(old1,new1).replace(old2,new2);
+writeFileSync(p,s);
+console.log('M83_REGIONAL_FOUR_PERCENT_GATE_APPLIED');
