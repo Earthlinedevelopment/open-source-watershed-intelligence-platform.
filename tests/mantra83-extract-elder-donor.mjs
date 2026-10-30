@@ -1,0 +1,13 @@
+import {execFileSync} from 'node:child_process';
+import {writeFileSync} from 'node:fs';
+const sha='b8f023db2ce334f2fe1dc094c08918805ad82c75';
+const s=execFileSync('git',['show',sha+':index.html'],{encoding:'utf8',maxBuffer:80*1024*1024});
+const needle='EARTHLINE_ELDER_TREES_V1_17097';
+const at=s.indexOf(needle);
+if(at<0)throw new Error('elder owner not found');
+const start=s.lastIndexOf('<script',at);
+const end=s.indexOf('</script>',at);
+if(start<0||end<0)throw new Error('elder script bounds not found');
+const block=s.slice(start,end+9);
+writeFileSync('forensics/elder-donor-17097.html',block);
+console.log('M83_ELDER_DONOR_EXTRACT '+JSON.stringify({sha,bytes:block.length,start,end}));
