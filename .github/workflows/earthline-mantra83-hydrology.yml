@@ -1,0 +1,21 @@
+name: Mantra 83 Hydrology Core
+on:
+  push:
+    branches: [mantra83-forensic]
+    paths:
+      - 'science/mantra83-hydrology.mjs'
+      - 'tests/mantra83-hydrology.mjs'
+      - '.github/workflows/earthline-mantra83-hydrology.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node tests/mantra83-hydrology.mjs
