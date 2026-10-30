@@ -1,0 +1,21 @@
+name: Mantra 83 Worm Candidate
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-worm-transform.mjs'
+      - 'tests/mantra83-worm-candidate.mjs'
+      - '.github/workflows/earthline-mantra83-worm-candidate.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/mantra83-worm-candidate.mjs
