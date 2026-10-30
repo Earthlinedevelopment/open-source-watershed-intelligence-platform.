@@ -68,3 +68,29 @@ for(const term of [
 ]){
   console.log('MANTRA83_HISTORY '+JSON.stringify({term,commits:history(term)}));
 }
+
+
+function extractBlock(src, needle, max=18000){
+  const at=src.indexOf(needle);
+  if(at<0)return {needle,at:-1,text:''};
+  const start=Math.max(0,at-1200), end=Math.min(src.length,at+max);
+  return {needle,at,text:src.slice(start,end)};
+}
+const current=readFileSync('index.html','utf8');
+for(const needle of [
+  'function prescribeSwales15778',
+  'function makeSwales',
+  'function hydrology',
+  'function makeFlows',
+  'function makeContours',
+  'function loadDEM',
+  'function earthlineDefaultAnalysisPolygon',
+  'function earthlineGetExclusionEvidence16516',
+  'function loadAquifers',
+  'function loadUSGSKarstAquifers',
+  'function loadIGRACAquifers',
+  'forest',
+  'canopy'
+]){
+  console.log('MANTRA83_SCIENCE '+JSON.stringify(extractBlock(current,needle)));
+}
