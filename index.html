@@ -11254,7 +11254,7 @@ async function directGeocode(q){
     return new Promise((resolve,reject)=>{
       const cb="__earthlineVtInfra16458_"+Date.now()+"_"+Math.random().toString(36).slice(2),script=document.createElement("script");
       let done=false;
-      function cleanup(){try{script.remove()}catch(_){}try{delete window[cb]}catch(_){window[cb]=undefined}}
+      function cleanup(){try{script.remove()}catch(_){}try{window[cb]=()=>{};setTimeout(()=>{try{delete window[cb]}catch(_){window[cb]=undefined}},30000)}catch(_){}}
       const timer=setTimeout(()=>{if(done)return;done=true;cleanup();reject(new Error("JSONP timeout"));},timeoutMs);
       window[cb]=data=>{if(done)return;done=true;clearTimeout(timer);try{const fc=earthlineEsriJsonToGeoJSON16458(data);cleanup();resolve(fc);}catch(error){cleanup();reject(error);}};
       script.onerror=()=>{if(done)return;done=true;clearTimeout(timer);cleanup();reject(new Error("JSONP failed"));};
@@ -30040,7 +30040,7 @@ body { overflow-x:hidden!important; }
       const stride=Math.max(1,Math.floor(segment.length/22));let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null;
       for(let k=1;k<segment.length-1;k+=stride){
         const g=llGrid(hy,segment[k]),x=Math.max(1,Math.min(hy.w-2,Math.round(g.x))),y=Math.max(1,Math.min(hy.h-2,Math.round(g.y))),i=y*hy.w+x;
-        const slope=hy.slope[i],acc=hy.acc[i],minSlope=relaxed?.05:.20,maxSlope=relaxed?(focusMode?18:4):13.5;
+        const slope=hy.slope[i],acc=hy.acc[i],minSlope=relaxed?.05:.20,maxSlope=4;
         if(!Number.isFinite(slope)||slope<minSlope||slope>maxSlope||acc>=channel)continue;
         valid++;sumSlope+=slope;sumAcc+=acc;maxAcc=Math.max(maxAcc,acc);if(!anchor)anchor={x,y};
       }
@@ -30541,7 +30541,7 @@ body { overflow-x:hidden!important; }
        regional corridor because nearest-cell sampling can vary by more than 5 m.
        Regional corridors remain indicative and carry the audit values, but are
        not silently erased by a property/focus-scale tolerance. */
-    const acceptedChosen=focusMode?auditedCandidates.filter(c=>c.contourAudit16166.valid):auditedCandidates;
+    const acceptedChosen=(focusMode?auditedCandidates.filter(c=>c.contourAudit16166.valid):auditedCandidates).filter(c=>Number.isFinite(Number(c.slope))&&Number(c.slope)<=4);
     const contourAudit={
       build:'EARTHLINE 16167',tier:focusMode?'focus':'regional',enforced:!!focusMode,
       evaluated:chosen.length,accepted:acceptedChosen.length,rejected:chosen.length-acceptedChosen.length,
