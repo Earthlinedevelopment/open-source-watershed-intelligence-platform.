@@ -1,0 +1,37 @@
+name: Mantra 83 Property Stability
+
+on:
+  push:
+    branches: [mantra83-unified-engine]
+    paths:
+      - 'index.html'
+      - 'tests/mantra83-property-sequence.mjs'
+      - '.github/workflows/earthline-mantra83-property-stability.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  property-sequence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra83-unified-engine
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start candidate server
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/earthline-m83-http.log 2>&1 &
+          echo $! > /tmp/earthline-m83-http.pid
+      - name: Run Property → Property → Regional → Property
+        env:
+          EARTHLINE_URL: http://127.0.0.1:4173/
+        run: node tests/mantra83-property-sequence.mjs
