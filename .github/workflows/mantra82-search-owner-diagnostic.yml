@@ -1,0 +1,40 @@
+name: Mantra 82 Regional Search Owner Diagnostic
+on:
+  push:
+    branches: [audit/mantra82-owner-convergence]
+    paths:
+      - '.github/workflows/mantra82-search-owner-diagnostic.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - name: Extract Regional search and auto-run owners
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          lines=s.splitlines()
+          needles=[
+            'Run Analysis','runAnalysis','searchInput','search-input','searchBox',
+            'geocoder','result','regional','Regional','dispatchEvent','click()',
+            'addEventListener("change"','addEventListener("keydown"','addEventListener("click"'
+          ]
+          hits=[]
+          for i,line in enumerate(lines,1):
+            if any(n in line for n in needles):
+              hits.append(i)
+          merged=[]
+          for i in hits:
+            if not merged or i-merged[-1][-1]>8: merged.append([i])
+            else: merged[-1].append(i)
+          for group in merged[:120]:
+            lo=max(1,min(group)-8); hi=min(len(lines),max(group)+12)
+            print(f"\n### L{lo}-L{hi}")
+            for n in range(lo,hi+1):
+              print(f"{n}: {lines[n-1][:1200]}")
+          PY
