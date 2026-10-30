@@ -1,0 +1,28 @@
+name: Mantra 83 Extract Elder Controller
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-extract-elder-controller.mjs'
+      - '.github/workflows/earthline-mantra83-extract-elder-controller.yml'
+permissions:
+  contents: write
+concurrency:
+  group: mantra83-elder-controller-extract
+  cancel-in-progress: true
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: mkdir -p forensics && node tests/mantra83-extract-elder-controller.mjs
+      - run: |
+          git config user.name "earthline-ci"
+          git config user.email "actions@users.noreply.github.com"
+          git add forensics/elder-controller-donor.html
+          git diff --cached --quiet || git commit -m "forensics: extract Elder controller donor"
+          git pull --rebase origin mantra83-shadow-live
+          git push origin HEAD:mantra83-shadow-live
