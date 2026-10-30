@@ -38,12 +38,21 @@ const result=await page.evaluate(()=>{
   return {
     displayed:displayed?{runToken:displayed.runToken,tier:displayed.tier||displayed.mode,query:displayed.query,derived:displayed.derived}:null,
     shadowRows:rows.length,
-    shadowLast:rows[rows.length-1]||null
+    shadowLast:rows[rows.length-1]||null,
+    rendered:{
+      overlayExists:!!document.getElementById('earthlineRegionalVectorOverlay16020'),
+      swalePaths:document.querySelectorAll('#earthlineRegionalVectorOverlay16020 [data-layer="swale-opportunities"] path').length,
+      contourPaths:document.querySelectorAll('#earthlineRegionalVectorOverlay16020 [data-layer="numbered-elevation-contours"] path').length,
+      labelNodes:document.querySelectorAll('#earthlineRegionalVectorOverlay16020 [data-layer="always-visible-labels"] *').length
+    }
   };
 });
 if(!result.displayed)throw new Error('real run did not publish');
 if(result.shadowRows<1)throw new Error('shadow observer missed real publication');
 if(result.shadowLast.identityUnchanged!==true)throw new Error('shadow observer altered publication');
+if(!result.rendered.overlayExists)throw new Error('Regional SVG owner missing');
+if(result.rendered.swalePaths<1)throw new Error('Regional swales published but SVG owner rendered none');
+if(result.rendered.contourPaths<1)throw new Error('Regional contours published but SVG owner rendered none');
 
 console.log('M83_REAL_SITE_SHADOW_PASS '+JSON.stringify(result));
 if(errors.length)console.log('M83_REAL_SITE_PAGE_ERRORS '+JSON.stringify(errors.slice(0,20)));
