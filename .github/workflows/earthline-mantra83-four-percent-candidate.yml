@@ -1,0 +1,23 @@
+name: Mantra 83 Four Percent Candidate
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-four-percent-candidate.mjs'
+      - '.github/workflows/earthline-mantra83-four-percent-candidate.yml'
+      - 'tests/mantra83-fix-regional-four-percent.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/mantra83-four-percent-candidate.mjs
