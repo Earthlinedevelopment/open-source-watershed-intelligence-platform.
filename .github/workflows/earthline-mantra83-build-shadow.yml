@@ -1,0 +1,23 @@
+name: Mantra 83 Build Shadow Candidate
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra83-shadow-live
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node tests/mantra83-inject-shadow.mjs
+      - run: |
+          git config user.name "earthline-ci"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "shadow: integrate unified engine observer into candidate page"
+          git push origin HEAD:mantra83-shadow-live
