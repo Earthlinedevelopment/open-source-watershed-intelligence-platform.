@@ -1,0 +1,18 @@
+name: Mantra 83 Regional Slope Audit
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-regional-slope-audit.mjs'
+      - '.github/workflows/earthline-mantra83-regional-slope-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node tests/mantra83-regional-slope-audit.mjs
