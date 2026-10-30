@@ -1,0 +1,31 @@
+name: 16847 Regional Search Enter Gate
+on:
+  push:
+    branches: ['repair/16847-regional-search-enter-owner']
+    paths:
+      - 'index.html'
+      - 'tests/16847-regional-search-enter.mjs'
+      - '.github/workflows/16847-regional-search-enter.yml'
+permissions:
+  contents: read
+jobs:
+  browser-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify Regional Enter handoff
+        run: node tests/16847-regional-search-enter.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: 16847-regional-search-enter
+          path: artifacts/16847-search-enter/
+          if-no-files-found: ignore
