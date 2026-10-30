@@ -1,0 +1,20 @@
+name: Mantra 83 Elder Install Diagnostic
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-elder-install-diag.mjs'
+      - '.github/workflows/earthline-mantra83-elder-install-diag.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/mantra83-elder-install-diag.mjs
