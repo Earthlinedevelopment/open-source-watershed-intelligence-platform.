@@ -1,0 +1,58 @@
+name: Earthline Mantra 49 final release audit 16889
+on:
+  push:
+    branches:
+      - mantra49-release-audit-clean-16882
+    paths:
+      - .github/workflows/mantra49-final-release-audit-16889.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      EARTHLINE_AUDIT_REVISION: "9"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Distinguish New Zealand Property trigger wiring from terminal owner
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('tools/mantra49-final-release-audit-16889.js')
+          s=p.read_text(encoding='utf-8')
+          anchors=[
+            "await languageAudit(b);await accountAudit(b);const places=[['Germany','Germany'],['India','India'],['Vietnam','Vietnam'],['New Zealand','New Zealand country'],['Australia','Australia'],['Alaska','Alaska'],['Hawaii','Hawaii']];for(let i=0;i<places.length;i++)await placeAudit(b,...places[i],i);",
+            "await languageAudit(b);const places=[['New Zealand','New Zealand'],['Australia','Australia'],['Hawaii','Hawaii'],['Alaska','Alaska'],['Germany','Germany'],['India','India'],['Vietnam','Vietnam']];for(let i=0;i<places.length;i++)await placeAudit(b,...places[i],i);await accountAudit(b);",
+            "const places=[['New Zealand','New Zealand']];for(let i=0;i<places.length;i++)await placeAudit(b,...places[i],i);"
+          ]
+          for old in anchors:
+              if old in s:
+                  s=s.replace(old,"const places=[['New Zealand','New Zealand']];for(let i=0;i<places.length;i++)await placeAudit(b,...places[i],i);",1)
+                  break
+          else: raise SystemExit('main audit anchor not found')
+          old="const pp=analysisPromise(p,'property');await p.click('#earthlineDeclareProperty16169');const property=await pp;"
+          new="const buttonDiag=await p.evaluate(()=>{const e=document.getElementById('earthlineDeclareProperty16169');return{exists:!!e,tag:e?.tagName||'',disabled:!!e?.disabled,display:e?getComputedStyle(e).display:'',visibility:e?getComputedStyle(e).visibility:'',pointerEvents:e?getComputedStyle(e).pointerEvents:'',text:e?.textContent?.replace(/\\s+/g,' ').trim()||'',onclickAttr:e?.getAttribute('onclick')||''}});console.log('NEW_ZEALAND_PROPERTY_BUTTON_DIAG',JSON.stringify(buttonDiag));const pp=analysisPromise(p,'property',60000);await p.evaluate(()=>{const f=window.earthlineDeclarePropertyAtCrosshair16173;if(typeof f!=='function')throw new Error('authoritative Property owner missing');window.__m49DirectPropertyStart=Date.now();Promise.resolve(f()).then(v=>window.__m49DirectPropertyResult={ok:true,value:v,at:Date.now()}).catch(e=>window.__m49DirectPropertyResult={ok:false,error:String(e&&e.message||e),at:Date.now()})});const property=await pp;"
+          if old not in s: raise SystemExit('Property trigger anchor not found')
+          s=s.replace(old,new,1)
+          old2="if(!['complete','displayed'].includes(property.kind))throw new Error(`${name}: property ${property.kind}`);"
+          new2="if(!['complete','displayed'].includes(property.kind)){const diag=await p.evaluate(()=>({target:window.EARTHLINE_PROPERTY_TARGET_16201||null,activeStage:window.EARTHLINE_PROPERTY_ACTIVE_STAGE_16178||null,phaseTrace:window.EARTHLINE_PROPERTY_PHASE_TRACE_16319||null,runAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,launchAudit:window.EARTHLINE_PROPERTY_LAUNCH_AUDIT_16322||null,timeoutAudit:window.EARTHLINE_PROPERTY_TIMEOUT_AUDIT_16178||null,publicationAudit:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,directResult:window.__m49DirectPropertyResult||null,runState:document.documentElement.dataset.earthlinePropertyRunState||'',displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,status:document.getElementById('earthlineVermontStatus16147')?.textContent||'',toast:document.getElementById('toast')?.textContent||''}));console.log('NEW_ZEALAND_PROPERTY_DIRECT_DIAG',JSON.stringify(diag));out.places[name]={regional,regionalState,drag,property,buttonDiag,diag};save();throw new Error(`${name}: property ${property.kind}`);}"
+          if old2 not in s: raise SystemExit('property terminal anchor not found')
+          s=s.replace(old2,new2,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Verify candidate syntax
+        run: |
+          node --check earthline-launch-16872.js
+          node --check tools/mantra49-final-release-audit-16889.js
+      - name: Install browser driver library only
+        run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
+      - name: Run New Zealand isolated candidate over production origin
+        run: node tools/mantra49-final-release-audit-16889.js
+      - name: Upload audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-mantra49-final-16889
+          path: artifacts/mantra49-final-16889/
+          if-no-files-found: ignore

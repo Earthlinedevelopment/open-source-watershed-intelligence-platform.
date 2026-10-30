@@ -1,0 +1,28 @@
+name: Earthline Mantra 49 crosshair source diag 16887
+on:
+  push:
+    branches:
+      - mantra49-release-audit-clean-16882
+    paths:
+      - .github/workflows/mantra49-crosshair-source-diag-16887.yml
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract existing crosshair owner source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          needles=['function syncPropertyTargetFromMap16201','function setPropertyTarget16201',"m.on('dragend'", "m.on('moveend'"]
+          for n in needles:
+              i=s.find(n)
+              print('\n===== NEEDLE',repr(n),'AT',i,'=====')
+              if i < 0:
+                  continue
+              print(s[max(0,i-1800):i+5200])
+          PY

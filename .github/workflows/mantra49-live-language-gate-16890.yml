@@ -1,0 +1,24 @@
+name: Earthline live language gate 16890
+on:
+  push:
+    branches: [mantra49-release-audit-clean-16882]
+    paths: [.github/workflows/mantra49-live-language-gate-16890.yml]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
+      - name: Live production language matrix
+        run: |
+          cat > /tmp/lang.js <<'JS'
+          const {chromium}=require('playwright');
+          const exp={en:{search:'Search',property:'Property Modelling',report:'Bioswale Impact Report',status:'Status',results:'Results',run:'RUN ANALYSIS'},es:{search:'Buscar',property:'Modelado de propiedad',report:'Informe de impacto de bioswales',status:'Estado',results:'Resultados',run:'EJECUTAR ANÁLISIS'},vi:{search:'Tìm kiếm',property:'Mô hình hóa khu đất',report:'Báo cáo tác động rãnh sinh học',status:'Trạng thái',results:'Kết quả',run:'CHẠY PHÂN TÍCH'},th:{search:'ค้นหา',property:'การจำลองพื้นที่',report:'รายงานผลกระทบร่องชีวภาพ',status:'สถานะ',results:'ผลลัพธ์',run:'เรียกใช้การวิเคราะห์'}};
+          async function snap(p){return p.evaluate(()=>({lang:document.documentElement.lang,val:document.querySelector('#earthlineLanguage16488')?.value,search:document.querySelector('#earthlineSearchSection16188 .el-panel-label-16188')?.textContent?.trim(),property:document.querySelector('#earthlinePropertySection16188 .el-panel-label-16188')?.textContent?.trim(),report:document.querySelector('#earthlineReportSection16188 .el-panel-label-16188')?.textContent?.trim(),status:document.querySelector('#earthlineStatusSection16188 .el-panel-label-16188')?.textContent?.trim(),results:document.querySelector('#earthlineResultsSection16188 .el-panel-label-16188')?.textContent?.trim(),run:document.querySelector('#runBtn')?.textContent?.replace(/\s+/g,' ').trim()}));}
+          function check(code,s){for(const k of ['search','property','report','status','results','run'])if(s[k]!==exp[code][k])throw new Error(code+' '+k+' expected '+exp[code][k]+' got '+s[k]);if(s.lang!==code||s.val!==code)throw new Error(code+' authority mismatch '+JSON.stringify(s));}
+          (async()=>{const b=await chromium.launch({headless:true,executablePath:'/usr/bin/chromium',args:['--no-sandbox']});const c=await b.newContext({viewport:{width:1600,height:900}});let p=await c.newPage();await p.goto('https://earthlinedevelopment.org/?langgate='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});await p.waitForSelector('#earthlineLanguage16488',{timeout:30000});await p.waitForTimeout(1800);for(const code of ['en','th','en','es','en','vi','en']){await p.selectOption('#earthlineLanguage16488',code);await p.waitForTimeout(450);const s=await snap(p);console.log(code,JSON.stringify(s));check(code,s);}await p.selectOption('#earthlineLanguage16488','th');await p.waitForTimeout(300);await p.reload({waitUntil:'domcontentloaded'});await p.waitForSelector('#earthlineLanguage16488');await p.waitForTimeout(1600);check('th',await snap(p));console.log('LIVE LANGUAGE PASS');await b.close();})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node /tmp/lang.js

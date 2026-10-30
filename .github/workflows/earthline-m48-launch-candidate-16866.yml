@@ -1,0 +1,128 @@
+name: Earthline M48 launch candidate 16866
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - mantra48-launch-clean-16861
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra48-launch-clean-16861
+      - name: Finalize approved launch repairs
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('index.html')
+          t=p.read_text(encoding='utf-8')
+          before=t
+          changes=[]
+
+          # Main Bioswale Impact Report: remove duplicate source listings from page 07 and Appendix B.
+          old07='<h3 style="margin-top:24px">Source and evidence register</h3>${sourceRows(d)}${footer(data,\'07\')}'
+          if old07 in t:
+              t=t.replace(old07,'${footer(data,\'07\')}',1)
+              changes.append('removed duplicate sources from page 07')
+
+          oldB='<h2>What this release is required to preserve</h2>${sourceRows(d)}<h3 style="margin-top:24px">Preserved product artifacts</h3>'
+          if oldB in t:
+              t=t.replace(oldB,'<h2>What this release is required to preserve</h2><h3 style="margin-top:24px">Preserved product artifacts</h3>',1)
+              changes.append('removed duplicate sources from Appendix B')
+
+          # Move consolidated source page to the true end of the report, after Appendix C.
+          final_call='${finalSourcesPage16864(data)}'
+          if final_call in t:
+              t=t.replace(final_call,'',1)
+          anchor='${footer(data,\'C\')}</section>\n</div>`}'
+          if anchor in t:
+              t=t.replace(anchor,'${footer(data,\'C\')}</section>\n${finalSourcesPage16864(data)}\n</div>`}',1)
+              changes.append('moved consolidated sources to final report page')
+          else:
+              raise SystemExit('Appendix C end anchor not found')
+
+          # DATA wording: exact current scoring formula including fixed 0.15 midpoint climate term.
+          oldnote='Modelled — not a measured infiltration rate. The headline is the mean of per-cell Earthline recharge scores. The rows expose the weighted inputs; because the engine clamps each cell before averaging, row means are explanatory rather than a second independent calculation.'
+          newnote='Modelled — not a measured infiltration rate. SCORE 0–100 is the mean of per-cell Earthline recharge suitability scores. Base weights are Aquifer 0.30, Soil 0.20, Slope 0.18, Flow 0.17, plus a 0.15 climate-need term centered at 50 before the rainfall multiplier. Rows are explanatory means from the same inputs; they are not a second independent calculation.'
+          if oldnote in t:
+              t=t.replace(oldnote,newnote,1)
+              changes.append('synchronized DATA wording to current scoring formula')
+
+          # Arizona/statewide Regional swale presentation: scale only SVG stroke widths down at low zoom.
+          old="const casing=grade==='A'?15:grade==='B'?12:9,core=grade==='A'?9.2:grade==='B'?7.2:5.2;"
+          new="const regionalZoom=Number(map?.getZoom?.()||6),regionalScale=regionalZoom<7?0.46:(regionalZoom<8?0.62:(regionalZoom<9?0.78:1)),casing=(grade==='A'?15:grade==='B'?12:9)*regionalScale,core=(grade==='A'?9.2:grade==='B'?7.2:5.2)*regionalScale;"
+          if old in t:
+              t=t.replace(old,new,1)
+              changes.append('scaled Regional swale strokes at statewide zoom only')
+          elif 'regionalScale=regionalZoom<7?0.46' not in t:
+              raise SystemExit('Regional swale width owner not found')
+
+          # Keep highlight proportional too; do not alter geometry or hydrology.
+          oldh="stroke:light,'stroke-width':grade==='A'?'1.8':'1.2'"
+          newh="stroke:light,'stroke-width':String((grade==='A'?1.8:1.2)*regionalScale)"
+          if oldh in t:
+              t=t.replace(oldh,newh,1)
+              changes.append('scaled Regional highlight with same presentation factor')
+
+          # Launch marker.
+          marker="window.EARTHLINE_LAUNCH_CANDIDATE_16866={build:'16866',scope:'approved launch repairs only',at:new Date().toISOString()};"
+          if 'EARTHLINE_LAUNCH_CANDIDATE_16866' not in t:
+              t=t.replace('</body>',f'<script>{marker}</script></body>',1)
+
+          if t==before:
+              raise SystemExit('no final changes made')
+          p.write_text(t,encoding='utf-8')
+          Path('lab').mkdir(exist_ok=True)
+          Path('lab/mantra48-launch-candidate-16866.json').write_text(json.dumps({'build':'16866','changes':changes},indent=2),encoding='utf-8')
+          print(json.dumps({'build':'16866','changes':changes},indent=2))
+          PY
+      - name: Parse JavaScript and verify launch locks
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile, os
+          t=Path('index.html').read_text(encoding='utf-8')
+          checks={
+            'property_modelling':'Property Modelling' in t,
+            'contact':'mailto:info@earthlinedevelopment.org' in t,
+            'spanish':'Español' in t and "'es'" in t,
+            'vancouver':'"vancouver island":{name:"Vancouver Island"' in t,
+            'report_aquifers':'const aquiferSvg=aquiferFeatures.map' in t and '${aquiferSvg}' in t,
+            'final_sources':'${finalSourcesPage16864(data)}' in t,
+            'data_sync':'SCORE 0–100 is the mean of per-cell Earthline recharge suitability scores.' in t,
+            'regional_scale':'regionalScale=regionalZoom<7?0.46' in t,
+            'blue_tiles':'const TILE_UP=' in t and 'const TILE_FLIP=' in t,
+            'one_map':len(re.findall(r'id=["\']map["\']',t))==1,
+            'search_orb':'id="searchOrb"' in t,
+          }
+          bad=[k for k,v in checks.items() if not v]
+          print(checks)
+          if bad: raise SystemExit('launch lock failed: '+', '.join(bad))
+          # Syntax-check every inline script that contains JavaScript.
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',t,re.S|re.I)
+          failures=[]
+          for i,s in enumerate(scripts):
+              if not s.strip(): continue
+              fd,path=tempfile.mkstemp(suffix='.js'); os.close(fd)
+              Path(path).write_text(s,encoding='utf-8')
+              r=subprocess.run(['node','--check',path],capture_output=True,text=True)
+              os.unlink(path)
+              if r.returncode: failures.append((i,r.stderr[-1200:]))
+          if failures:
+              print(failures[:5]); raise SystemExit('JavaScript syntax failure')
+          print('PASS: syntax and launch locks')
+          PY
+      - name: Commit candidate
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html lab/mantra48-launch-candidate-16866.json
+          git commit -m 'candidate: 16866 finalize approved launch repairs'
+          git push origin HEAD:mantra48-launch-clean-16861
