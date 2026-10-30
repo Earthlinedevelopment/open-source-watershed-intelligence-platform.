@@ -1,0 +1,30 @@
+name: Mantra 83 Extract Elder Donor
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-extract-elder-donor.mjs'
+      - '.github/workflows/earthline-mantra83-extract-elder-donor.yml'
+permissions:
+  contents: write
+concurrency:
+  group: mantra83-elder-donor-extract
+  cancel-in-progress: true
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: mkdir -p forensics && node tests/mantra83-extract-elder-donor.mjs
+      - run: |
+          git config user.name "earthline-ci"
+          git config user.email "actions@users.noreply.github.com"
+          git add forensics/elder-donor-17097.html
+          git diff --cached --quiet || git commit -m "forensics: extract exact Elder donor owner"
+          git pull --rebase origin mantra83-shadow-live
+          git push origin HEAD:mantra83-shadow-live
