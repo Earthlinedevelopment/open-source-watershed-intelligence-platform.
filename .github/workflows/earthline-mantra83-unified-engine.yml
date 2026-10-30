@@ -1,0 +1,69 @@
+name: Mantra 83 Unified Engine Candidate
+
+on:
+  push:
+    branches: [mantra83-unified-engine]
+    paths:
+      - 'tools/mantra83-unify-property-publication.mjs'
+      - '.github/workflows/earthline-mantra83-unified-engine.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  consolidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra83-unified-engine
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Unify Property publication identity
+        run: node tools/mantra83-unify-property-publication.mjs
+      - name: Parse every inline JavaScript runtime
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const s=fs.readFileSync('index.html','utf8');
+          const re=/<script([^>]*)>([\s\S]*?)<\/script>/gi;
+          let m,n=0,bad=[];
+          while((m=re.exec(s))){
+            n++;
+            const attrs=m[1]||'',code=m[2]||'';
+            if(/type=["']application\/(?:json|ld\+json)["']/i.test(attrs)||/\bsrc\s*=/i.test(attrs))continue;
+            try{new Function(code)}catch(e){bad.push({script:n,error:e.message});}
+          }
+          console.log(JSON.stringify({scripts:n,syntaxFailures:bad.length,bad}));
+          if(bad.length)process.exit(1);
+          NODE
+      - name: Verify unified Property terminals
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const s=fs.readFileSync('index.html','utf8');
+          const checks={
+            unifiedOwner:(s.match(/function earthlinePublishProperty83\(/g)||[]).length===1,
+            unifiedTerminals:(s.match(/earthlinePublishProperty83\(/g)||[]).length===5,
+            noDeadIdle:!s.includes('earthlineMap.on("idle",()=>{});'),
+            noDeadStyle:!s.includes('earthlineMap.on("styledata",()=>{});'),
+            noDeadMove:!s.includes('earthlineMap.on("moveend",()=>{});'),
+            noDeadZoom:!s.includes('earthlineMap.on("zoomend",()=>{});')
+          };
+          console.log(JSON.stringify(checks));
+          if(Object.values(checks).some(v=>!v))process.exit(1);
+          NODE
+      - name: Commit candidate
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "No index change"
+            exit 0
+          fi
+          git config user.name "Earthline CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "engine: unify Property publication identity"
+          git push origin HEAD:mantra83-unified-engine
