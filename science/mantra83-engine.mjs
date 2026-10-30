@@ -9,6 +9,7 @@ export const ENGINE_VERSION='m83-unified-engine-1';
 
 function freezeDeep(v){
   if(!v||typeof v!=='object'||Object.isFrozen(v))return v;
+  if(ArrayBuffer.isView(v))return v;
   for(const k of Object.keys(v))freezeDeep(v[k]);
   return Object.freeze(v);
 }
