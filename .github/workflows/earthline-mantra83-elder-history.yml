@@ -1,0 +1,19 @@
+name: Mantra 83 Elder History
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-elder-history.mjs'
+      - '.github/workflows/earthline-mantra83-elder-history.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: node tests/mantra83-elder-history.mjs
