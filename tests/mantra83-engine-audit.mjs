@@ -78,6 +78,29 @@ writeFileSync('artifacts/mantra83-engine-audit/ownership-summary.txt',[
   'markers='+report.markers.length
 ].join('\n')+'\n');
 
+
+function snippet(needle,before=1200,after=4200){
+  const at=html.indexOf(needle);
+  if(at<0)return {needle,at:-1,text:''};
+  return {needle,at,text:html.slice(Math.max(0,at-before),Math.min(html.length,at+after))};
+}
+const focusNeedles=[
+  'function createRunToken',
+  'function isCurrentRun',
+  'function publishDisplayedRun16151',
+  'function clearForSubmission',
+  'function runRegional',
+  'function runGovernedFocus16157',
+  'earthlinePropertyRunEngine16156',
+  'function action(',
+  'function applyOwnership',
+  'earthlineApplyRendererOwnership15805'
+];
+for(const n of focusNeedles){
+  const z=snippet(n);
+  console.log('MANTRA83_SNIPPET '+JSON.stringify(z));
+}
+
 console.log('MANTRA83_DUPLICATES '+JSON.stringify(report.duplicateFunctions));
 console.log('MANTRA83_LISTENERS '+JSON.stringify(report.owners));
 console.log('MANTRA83_WINDOWS '+JSON.stringify(report.functions.windowAssigned.filter(x=>/run|prop|region|aqui|elder|water|swale|owner|author|publish|search|cross|frame|terrain|flow/i.test(x.name)).slice(0,250)));
