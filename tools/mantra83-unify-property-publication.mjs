@@ -58,40 +58,40 @@ function once(oldText,newText,label){
 }
 once('  async function runPropertyDirect(q){',helper+'\n  async function runPropertyDirect(q){','helper insertion');
 
-once(\`      const out=await Promise.resolve(governed());
+once(`      const out=await Promise.resolve(governed());
       if(input)input.value=q;st.appliedSearchText=q;
       if(out===false)throw new Error('governed Property analysis did not publish a verified result');
       recordRun('direct_address_property_published',runToken,{query:q,lng:target.lng,lat:target.lat});
       document.documentElement.dataset.earthlineDirectAddress16291='published';
-      return true;\`,
-\`      const out=await Promise.resolve(governed());
+      return true;`,
+`      const out=await Promise.resolve(governed());
       if(input)input.value=q;st.appliedSearchText=q;
       const published83=earthlinePublishProperty83(runToken,q,loc,out);
       if(!published83)throw new Error('governed Property analysis was superseded before publication');
       recordRun('direct_address_property_published',runToken,{query:q,lng:target.lng,lat:target.lat,identityDriftM:published83.identityDriftM});
       document.documentElement.dataset.earthlineDirectAddress16291='published';
-      return true;\`,'direct address terminal');
+      return true;`,'direct address terminal');
 
-once(\`        const out=await runPropertyDirect(q);if(!isCurrentRun(runToken))return false;
+once(`        const out=await runPropertyDirect(q);if(!isCurrentRun(runToken))return false;
         if(out===false)throw new Error('property analysis did not publish. The preserved Property target returned no verified result.');
-        return true;\`,
-\`        const out=await runPropertyDirect(q);if(!isCurrentRun(runToken))return false;
+        return true;`,
+`        const out=await runPropertyDirect(q);if(!isCurrentRun(runToken))return false;
         const published83=earthlinePublishProperty83(runToken,q,null,out);
         if(!published83)throw new Error('property analysis was superseded before publication');
-        return true;\`,'same property terminal');
+        return true;`,'same property terminal');
 
-once(\`        if(z>=15.5){setBusy(true,'ANALYZING PROPERTY');const out=await runPropertyDirect('');if(!isCurrentRun(runToken))return false;return out!==false;}\`,
-\`        if(z>=15.5){setBusy(true,'ANALYZING PROPERTY');const out=await runPropertyDirect('');if(!isCurrentRun(runToken))return false;return !!earthlinePublishProperty83(runToken,'',null,out);}\`,'blank property terminal');
+once(`        if(z>=15.5){setBusy(true,'ANALYZING PROPERTY');const out=await runPropertyDirect('');if(!isCurrentRun(runToken))return false;return out!==false;}`,
+`        if(z>=15.5){setBusy(true,'ANALYZING PROPERTY');const out=await runPropertyDirect('');if(!isCurrentRun(runToken))return false;return !!earthlinePublishProperty83(runToken,'',null,out);}`,'blank property terminal');
 
-once(\`      const out=await runPropertyDirect(q);if(!isCurrentRun(runToken))return false;
+once(`      const out=await runPropertyDirect(q);if(!isCurrentRun(runToken))return false;
       if(out===false)throw new Error('property analysis did not publish. The address resolved, but the property engine returned no verified result; confirm the declared analysis boundary and exclusion data.');
       const md=state(),evidence16516=(typeof window.earthlineGetExclusionEvidence16516==='function'?window.earthlineGetExclusionEvidence16516():null),authoritative16516=!!(evidence16516&&evidence16516.sourceTier==='authoritative-local'),propertySnapshot=Object.freeze({build:BUILD,runToken,query:q,tier:'property',mode:'property',publishedAt:new Date().toISOString(),derived:{swaleOpportunityLines:Array.isArray(md&&md.swales)?md.swales.length:0},exclusionEvidence:evidence16516,sourceRule:authoritative16516?'Vermont E911/VCGI first; exclusions fail closed; Overpass disabled':(evidence16516&&evidence16516.label?evidence16516.label:'Exclusion evidence not recorded')});
-      publishDisplayedRun16151(propertySnapshot);recordRun('property_run_published',runToken,{query:q,swaleCount:propertySnapshot.derived.swaleOpportunityLines,exclusionEvidence:evidence16516});setRunStatus(authoritative16516?('Vermont property analysis published for '+q+' — verify bare-earth terrain, exclusions and field conditions before construction.'):('Property terrain analysis published for '+q+' — '+(evidence16516&&evidence16516.label?evidence16516.label:'verify local exclusions')+'.'),'published');if(typeof window.earthlineRenderExclusionEvidence16516==='function')window.earthlineRenderExclusionEvidence16516();notify('Property analysis complete.');return true;\`,
-\`      const out=await runPropertyDirect(q);if(!isCurrentRun(runToken))return false;
+      publishDisplayedRun16151(propertySnapshot);recordRun('property_run_published',runToken,{query:q,swaleCount:propertySnapshot.derived.swaleOpportunityLines,exclusionEvidence:evidence16516});setRunStatus(authoritative16516?('Vermont property analysis published for '+q+' — verify bare-earth terrain, exclusions and field conditions before construction.'):('Property terrain analysis published for '+q+' — '+(evidence16516&&evidence16516.label?evidence16516.label:'verify local exclusions')+'.'),'published');if(typeof window.earthlineRenderExclusionEvidence16516==='function')window.earthlineRenderExclusionEvidence16516();notify('Property analysis complete.');return true;`,
+`      const out=await runPropertyDirect(q);if(!isCurrentRun(runToken))return false;
       const propertySnapshot=earthlinePublishProperty83(runToken,q,loc,out);
       if(!propertySnapshot)throw new Error('property analysis was superseded before publication');
       const evidence16516=propertySnapshot.exclusionEvidence,authoritative16516=!!(evidence16516&&evidence16516.sourceTier==='authoritative-local');
-      setRunStatus(authoritative16516?('Vermont property analysis published for '+q+' — verify bare-earth terrain, exclusions and field conditions before construction.'):('Property terrain analysis published for '+q+' — '+(evidence16516&&evidence16516.label?evidence16516.label:'verify local exclusions')+'.'),'published');notify('Property analysis complete.');return true;\`,'resolved property terminal');
+      setRunStatus(authoritative16516?('Vermont property analysis published for '+q+' — verify bare-earth terrain, exclusions and field conditions before construction.'):('Property terrain analysis published for '+q+' — '+(evidence16516&&evidence16516.label?evidence16516.label:'verify local exclusions')+'.'),'published');notify('Property analysis complete.');return true;`,'resolved property terminal');
 
 if(!s.startsWith('<!-- MANTRA 83 — UNIFIED PROPERTY PUBLICATION IDENTITY. CANDIDATE / NOT ACCEPTED. -->')){
   s='<!-- MANTRA 83 — UNIFIED PROPERTY PUBLICATION IDENTITY. CANDIDATE / NOT ACCEPTED. -->\n'+s;
