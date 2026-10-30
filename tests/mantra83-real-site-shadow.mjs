@@ -24,19 +24,18 @@ await page.addScriptTag({content:fs.readFileSync('shadow/mantra83-shadow-live.js
 const installed=await page.evaluate(()=>!!window.EARTHLINE_MANTRA83_SHADOW);
 if(!installed)throw new Error('shadow observer failed to install');
 
-// Drive one real Regional analysis through the live controller when available.
-const result=await page.evaluate(async()=>{
-  const q='Rutland, Vermont';
-  const input=document.getElementById('searchInput');
-  if(input){input.value=q;input.dispatchEvent(new Event('input',{bubbles:true}));}
-  let out=null;
-  if(typeof window.earthlineLiveRegionalRun15970==='function')out=await window.earthlineLiveRegionalRun15970(q);
-  else if(typeof window.earthlineRunAnalysis==='function')out=await window.earthlineRunAnalysis();
-  await new Promise(r=>setTimeout(r,3000));
+// Drive one real Regional analysis through the actual live control.
+const input=page.locator('#searchInput');
+await input.fill('Rutland, Vermont');
+const btn=page.locator('#earthlineMapRun16020:visible,#earthlineMapRun15970:visible').first();
+if(await btn.count()) await btn.click();
+else await page.evaluate(()=>{ if(typeof window.earthlineRunAnalysis==='function') return window.earthlineRunAnalysis({preventDefault(){}}); });
+await page.waitForFunction(()=>!!(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147),{timeout:120000});
+await page.waitForTimeout(3000);
+const result=await page.evaluate(()=>{
   const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
   const rows=window.EARTHLINE_MANTRA83_SHADOW.rows();
   return {
-    outType:typeof out,
     displayed:displayed?{runToken:displayed.runToken,tier:displayed.tier||displayed.mode,query:displayed.query,derived:displayed.derived}:null,
     shadowRows:rows.length,
     shadowLast:rows[rows.length-1]||null
