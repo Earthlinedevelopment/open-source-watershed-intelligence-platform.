@@ -50,3 +50,21 @@ const markerCurrent=(current.match(/EARTHLINE\s+\d+/g)||[]);
 const uniq=x=>[...new Set(x)];
 const newer=uniq(markerCurrent).filter(x=>!new Set(markerAccepted).has(x));
 console.log('MANTRA83_NEW_MARKERS '+JSON.stringify({count:newer.length,first:newer.slice(0,30),last:newer.slice(-30)}));
+
+
+function history(term){
+  try{
+    return execFileSync('git',['log','--all','--date=iso-strict','--pretty=format:%H|%ad|%s','-S',term,'--','index.html'],{encoding:'utf8',maxBuffer:10*1024*1024}).trim().split(/\r?\n/).filter(Boolean).slice(0,25);
+  }catch(e){return ['ERROR '+String(e.message||e)];}
+}
+for(const term of [
+  'maxS=33',
+  'maxSlope=relaxed?(focusMode?18:4):13.5',
+  'window.earthlineRunAnalysis=',
+  'earthlineApplyRendererOwnership15805',
+  'publishDisplayedRun16151',
+  'function prescribeSwales15778',
+  'function makeSwales'
+]){
+  console.log('MANTRA83_HISTORY '+JSON.stringify({term,commits:history(term)}));
+}
