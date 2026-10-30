@@ -29,7 +29,7 @@ const input=page.locator('#searchInput');
 await input.fill('Rutland, Vermont');
 const btn=page.locator('#earthlineMapRun16020:visible,#earthlineMapRun15970:visible').first();
 if(await btn.count()) await btn.click();
-else await page.evaluate(()=>{ if(typeof window.earthlineRunAnalysis==='function') return window.earthlineRunAnalysis({preventDefault(){}}); });
+else await page.evaluate(()=>{ if(typeof window.earthlineRunAnalysis==='function') return window.earthlineRunAnalysis({preventDefault(){},stopPropagation(){}}); });
 await page.waitForFunction(()=>!!(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147),{timeout:120000});
 await page.waitForTimeout(3000);
 const result=await page.evaluate(()=>{
