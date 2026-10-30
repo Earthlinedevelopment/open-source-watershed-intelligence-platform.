@@ -78,6 +78,9 @@ writeFileSync('artifacts/mantra83-engine-audit/ownership-summary.txt',[
   'markers='+report.markers.length
 ].join('\n')+'\n');
 
+console.log('MANTRA83_DUPLICATES '+JSON.stringify(report.duplicateFunctions));
+console.log('MANTRA83_LISTENERS '+JSON.stringify(report.owners));
+console.log('MANTRA83_WINDOWS '+JSON.stringify(report.functions.windowAssigned.filter(x=>/run|prop|region|aqui|elder|water|swale|owner|author|publish|search|cross|frame|terrain|flow/i.test(x.name)).slice(0,250)));
 console.log('MANTRA83_AUDIT '+JSON.stringify({
   bytes:report.bytes,
   lines:report.lines,
