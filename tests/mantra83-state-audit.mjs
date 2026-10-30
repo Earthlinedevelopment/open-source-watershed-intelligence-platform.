@@ -35,12 +35,25 @@ async function runQuery(q){
       rendered:{
         swalePaths:document.querySelectorAll('#earthlineRegionalVectorOverlay16020 [data-layer="swale-opportunities"] path').length,
         contourPaths:document.querySelectorAll('#earthlineRegionalVectorOverlay16020 [data-layer="numbered-elevation-contours"] path').length
-      }
+      },
+      slopeAudit:(()=>{
+        const fs=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.swales?.features||[];
+        const fields={};
+        for(const f of fs){
+          const p=f?.properties||{};
+          for(const [k,v] of Object.entries(p)){
+            if(!/slope/i.test(k))continue;
+            const n=Number(v);if(!Number.isFinite(n))continue;
+            fields[k]=Math.max(Number(fields[k]??-Infinity),n);
+          }
+        }
+        return {features:fs.length,maxByField:fields};
+      })()
     };
   });
 }
 
 const out=[];
-for(const q of ['Arkansas','Iowa']) out.push(await runQuery(q));
+for(const q of ['Vermont','Arkansas','Iowa','Nebraska','Oklahoma','Colorado','California','Maryland']) out.push(await runQuery(q));
 console.log('M83_STATE_AUDIT '+JSON.stringify(out));
 await browser.close();
