@@ -1,3 +1,4 @@
+// rerun with complete Elder assets
 import {chromium} from 'playwright';
 import fs from 'node:fs';
 import {applyElderRestore} from './mantra83-elder-transform.mjs';
