@@ -1,11 +1,12 @@
+// production abf4e3c6 actual-control verification
 // production f7c2020 actual control verification
 import {chromium,devices} from 'playwright';
 
 const browser=await chromium.launch({headless:true});
 const cases=[
-  {name:'desktop',opts:{viewport:{width:1440,height:900}}},
-  {name:'iPhone 13',opts:{...devices['iPhone 13']}},
-  {name:'Pixel 7',opts:{...devices['Pixel 7']}}
+  {name:'desktop',opts:{viewport:{width:1440,height:900}},touch:false},
+  {name:'iPhone 13',opts:{...devices['iPhone 13']},touch:true},
+  {name:'Pixel 7',opts:{...devices['Pixel 7']},touch:true}
 ];
 const out=[];
 for(const c of cases){
@@ -23,7 +24,7 @@ for(const c of cases){
     if(!count){out.push({device:c.name,q,completed:false,error:'RUN ANALYSIS button not visible',errors});continue;}
     const t=Date.now();
     try{
-      await button.tap({timeout:10000});
+      if(c.touch)await button.tap({timeout:10000});else await button.click({timeout:10000});
       await p.waitForFunction(prev=>{
         const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147;
         return !!d&&String(d.runToken||'')!==String(prev||'')&&String(document.documentElement.dataset.earthlineRunState||'')==='published';
