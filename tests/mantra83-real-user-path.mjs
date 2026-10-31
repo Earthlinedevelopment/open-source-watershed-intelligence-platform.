@@ -1,11 +1,5 @@
+// production f7c2020 actual control verification
 import {chromium,devices} from 'playwright';
-
-const REPS=[
-  ["const start16839=performance.now(),N16839=24,groupSize16839=6,channel16839=percentile(hy.acc,.972),rows16839=[];","const start16839=performance.now(),N16839=24,groupSize16839=24,channel16839=percentile(hy.acc,.972),rows16839=[];"],
-  ["if(chosenBins16730.length>=4)break;","if(chosenBins16730.length>=3)break;"],
-  ["const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)));","const refinementTileBudget16782=Math.min(8,Math.max(4,Math.ceil(gapsBefore16780.length/3)));"],
-  ["const lateBins16741=unresolved16731.slice(0,4),lateStart16741=performance.now();","const lateBins16741=unresolved16731.slice(0,2),lateStart16741=performance.now();"]
-];
 
 const browser=await chromium.launch({headless:true});
 const cases=[
@@ -18,11 +12,6 @@ for(const c of cases){
   const ctx=await browser.newContext(c.opts);
   const p=await ctx.newPage();
   const errors=[];p.on('pageerror',e=>errors.push(String(e)));
-  await p.route('https://earthlinedevelopment.org/',async route=>{
-    const response=await route.fetch();let body=await response.text();
-    for(const [a,b] of REPS){if(!body.includes(a))throw new Error('candidate owner missing');body=body.replace(a,b);}
-    await route.fulfill({response,body});
-  });
   await p.goto('https://earthlinedevelopment.org/',{waitUntil:'domcontentloaded',timeout:120000});
   await p.waitForTimeout(1600);
   for(const q of ['Vermont','Arizona']){
@@ -52,5 +41,5 @@ for(const c of cases){
 }
 await browser.close();
 const failures=out.filter(r=>!r.completed||String(r.tier||'').toLowerCase()!=='regional'||!(r.swales>0)||r.wallMs>20000);
-console.log('M83_REAL_USER_PATH '+JSON.stringify({out,failures}));
+console.log('M83_PRODUCTION_REAL_USER_PATH '+JSON.stringify({out,failures}));
 if(failures.length)process.exitCode=2;
