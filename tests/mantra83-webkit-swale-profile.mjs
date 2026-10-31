@@ -1,5 +1,6 @@
 import {webkit} from 'playwright';
 
+// rerun exact WebKit swale profile
 const browser=await webkit.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1440,height:900}});
 
