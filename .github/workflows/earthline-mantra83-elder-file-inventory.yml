@@ -1,0 +1,16 @@
+name: Mantra 83 Elder File Inventory
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-elder-file-inventory.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: |
+          echo M83_ELDER_FILES
+          git ls-tree -r --name-only ffdd2828001ece32f07d6ef1642c57d024deb571 | grep -i elder | head -120 || true
