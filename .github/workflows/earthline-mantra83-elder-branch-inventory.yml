@@ -1,0 +1,21 @@
+name: Mantra 83 Elder Branch Inventory
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-elder-branch-inventory.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: |
+          for ref in             origin/feature/v1-elder-trees-17097             origin/v1/elder-tree-lidar-co-az-17099             origin/feature/elder-tree-v1-ui-17100             origin/research/elder-browser-engine-17129             origin/repair/browser-elder-final-17392             origin/candidate/browser-elder-blue-17419-final
+          do
+            echo "M83_ELDER_REF $ref"
+            git ls-tree -r --name-only "$ref" | grep -Ei 'elder|17097|17099|17100|17129|17392|17419' | head -160 || true
+            echo "M83_ELDER_INDEX_LINES $ref"
+            git show "$ref:index.html" 2>/dev/null | grep -n -Ei 'EARTHLINE_ELDER_TREES|elder tree confidence|modeled_elder|lidar_confirmed_elder|verified_elder' | head -60 || true
+          done
