@@ -4409,11 +4409,11 @@ function earthlineNaturalContourDisplay(pts){
     const q=earthlineProjectToContourPoint(p,targetH);
     const gx=Math.round(q[0]),gy=Math.round(q[1]);
     // Never smooth a displayed line through a road, structure, stream, or steep/no-build cell.
-    return earthlinePathPointUsable(gx,gy,33)?q:p;
+    return earthlinePathPointUsable(gx,gy,4)?q:p;
   });
   return earthlineCleanPath(corrected);
 }
-function earthlineFinalSafeSegments15771(pts,maxS=33){
+function earthlineFinalSafeSegments15771(pts,maxS=4){
   const out=[];let cur=[];let prev=null;
   const flush=()=>{
     if(cur.length>=2&&earthlinePathLengthM(cur)>=10)out.push(earthlineCleanPath(cur));
@@ -4450,7 +4450,7 @@ function earthlineSwaleGeoJSON(){
   const targetM=(M.swaleMeta&&M.swaleMeta.targetSpacingM)||30;
   const minVisibleM=Math.max(20,targetM*0.82);
   for(const s of (M.swales||[])){
-    let segs=(typeof earthlineSplitUsableSegments==="function")?earthlineSplitUsableSegments(s.pts,33):[s.pts];
+    let segs=(typeof earthlineSplitUsableSegments==="function")?earthlineSplitUsableSegments(s.pts,4):[s.pts];
     // BUILD-CHECK-15768: if exclusion clipping removes the corridor, withhold it.
     // Never restore the original unclipped path across a road, structure, or waterway.
     if(!segs||!segs.length)continue;
@@ -4461,7 +4461,7 @@ function earthlineSwaleGeoJSON(){
       // but the map shows only field-legible corridors unless it is the central site candidate.
       if(rawLen<minVisibleM&&!s.isSite)continue;
       const displaySeg=earthlineNaturalContourDisplay(seg);
-      for(const safeDisplay of earthlineFinalSafeSegments15771(displaySeg,33)){
+      for(const safeDisplay of earthlineFinalSafeSegments15771(displaySeg,4)){
         if(!safeDisplay||safeDisplay.length<2)continue;
         features.push({type:"Feature",properties:{id:s.id||"",score:Number(s.score||0),scale:"property"},
           geometry:{type:"LineString",coordinates:safeDisplay.map(p=>earthlineGridToLngLat(p[0],p[1]))}});
@@ -8098,7 +8098,7 @@ function drawSwales(){
   // 14700: final render clipping. Even if a calculated contour contains a tiny unsafe
   // bridge, never paint a swale over a current no-build pixel/road/driveway/roof buffer.
   M.swales.forEach((s)=>{
-    const segs=(typeof earthlineSplitUsableSegments==="function")?earthlineSplitUsableSegments(s.pts,33):[s.pts];
+    const segs=(typeof earthlineSplitUsableSegments==="function")?earthlineSplitUsableSegments(s.pts,4):[s.pts];
     segs.forEach(seg=>{
       if(!seg||seg.length<2)return;
       const natural=earthlineNaturalContourDisplay(seg);
@@ -13075,7 +13075,7 @@ var prescribeSwales;
       levelsScored:0,candidatesScored:0,eligibleCrossingCandidates:0,
       selectedSeeds:0,selectedCrossingSeeds:0
     };
-    const thr=streamThreshold(),chanThr=thr*3.2,maxS=33;
+    const thr=streamThreshold(),chanThr=thr*3.2,maxS=4;
     /* EARTHLINE 16321 — lazy exact safety memo. No full-grid precompute. */
     M.earthlineTraceSafeCache16320={
       build:"EARTHLINE 16321",searchGen:M.searchGen,maxS,
@@ -15434,7 +15434,7 @@ var prescribeSwales;
   function swaleDataForTile(tile,cellM,tileIndex){
     const features=[],raw=[];
     for(const s of (M.swales||[])){
-      const segs=earthlineSplitUsableSegments(s.pts,33);
+      const segs=earthlineSplitUsableSegments(s.pts,4);
       for(const seg of (segs||[])){
         if(!seg||seg.length<2||earthlineSegmentLengthM(seg)<18)continue;
         const display=earthlineNaturalContourDisplay(seg);
