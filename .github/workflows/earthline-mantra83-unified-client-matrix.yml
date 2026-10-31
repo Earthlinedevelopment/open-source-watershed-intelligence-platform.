@@ -1,0 +1,21 @@
+name: Mantra 83 Unified Client Matrix
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-unified-client-matrix.mjs'
+      - '.github/workflows/earthline-mantra83-unified-client-matrix.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium webkit
+      - run: node tests/mantra83-unified-client-matrix.mjs
