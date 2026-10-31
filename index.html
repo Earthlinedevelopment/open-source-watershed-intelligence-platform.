@@ -31904,7 +31904,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
       }
       const candidates16730=binRows16730.filter(r16730=>r16730.starved).sort((a16730,b16730)=>b16730.priority-a16730.priority),chosenBins16730=[];
       for(const row16730 of candidates16730){
-        if(chosenBins16730.length>=4)break;
+        if(chosenBins16730.length>=3)break;
         if(chosenBins16730.some(p16730=>Math.hypot(p16730.bx-row16730.bx,p16730.by-row16730.by)<1.1))continue;
         chosenBins16730.push(row16730);
       }
@@ -31956,7 +31956,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
 
     /* EARTHLINE 16841 — GROUPED STATEWIDE-DEM LOCAL PHASE. */
     if(!focusMode&&hy&&hy.validityMask16584&&swales&&Array.isArray(swales.features)){
-      const start16839=performance.now(),N16839=24,groupSize16839=6,channel16839=percentile(hy.acc,.972),rows16839=[];
+      const start16839=performance.now(),N16839=24,groupSize16839=12,channel16839=percentile(hy.acc,.972),rows16839=[];
       for(let by16839=0;by16839<N16839;by16839++)for(let bx16839=0;bx16839<N16839;bx16839++){
         const x016839=Math.floor(bx16839*hy.w/N16839),x116839=Math.min(hy.w-1,Math.ceil((bx16839+1)*hy.w/N16839)-1),y016839=Math.floor(by16839*hy.h/N16839),y116839=Math.min(hy.h-1,Math.ceil((by16839+1)*hy.h/N16839)-1);
         let valid16839=0,opp16839=0,pref16839=0;
@@ -32051,7 +32051,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
         row16780.cluster16781=gapsBefore16780.filter(o16781=>Math.hypot(o16781.bx-row16780.bx,o16781.by-row16780.by)<=1.5).length;
         row16780.coarseContourHit16788=coarseContourCells16788.has(row16780.bx+','+row16780.by)?1:0;
       }
-      const refinementTileBudget16782=Math.min(16,Math.max(8,Math.ceil(gapsBefore16780.length/3)));
+      const refinementTileBudget16782=Math.min(8,Math.max(4,Math.ceil(gapsBefore16780.length/3)));
       while(selected16780.length<refinementTileBudget16782){
         let best16781=null,bestMetric16781=-Infinity;
         for(const row16780 of gapsBefore16780){
@@ -32307,7 +32307,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
          prevents a newly displaced border bin from surviving the final audit.
          A zero-candidate result is a scientific null; a transport failure remains a failure. */
       if(unresolved16731.length){
-        const lateBins16741=unresolved16731.slice(0,4),lateStart16741=performance.now();
+        const lateBins16741=unresolved16731.slice(0,2),lateStart16741=performance.now();
         const savedLandAudit16741=window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584,savedGen16741=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167;
         try{
           const b016741=hy.bounds[0],b116741=hy.bounds[1],b216741=hy.bounds[2],b316741=hy.bounds[3];
