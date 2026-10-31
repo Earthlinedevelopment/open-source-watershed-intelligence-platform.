@@ -1,0 +1,49 @@
+name: Mantra 83 Materialize Elder Runtime
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-materialize-elder.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: mantra83-elder-materialize
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra83-shadow-live
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: |
+          git show origin/repair/browser-elder-final-17392:earthline-launch-16872.js > /tmp/launch.js
+          node - <<'NODE'
+          const fs=require('fs');
+          const s=fs.readFileSync('/tmp/launch.js','utf8');
+          const a=s.indexOf('/* EARTHLINE_ELDER_TREES_V1_17097');
+          const b=s.indexOf('/* EARTHLINE 17121 — ELDER TAB VERTICAL CLIP REPAIR',a);
+          if(a<0||b<0||b<=a) throw new Error('Elder owner boundaries not found');
+          const block=s.slice(a,b).trim()+'\n';
+          if(!block.includes("window.EARTHLINE_ELDER_TREES_V1_17097={")) throw new Error('Elder API missing');
+          fs.writeFileSync('earthline-elder-17097.js',block);
+          console.log('M83_ELDER_EXTRACTED',block.length);
+          NODE
+          git checkout origin/repair/browser-elder-final-17392 -- earthline-elder-worker-17129.js
+          mkdir -p data/elder-trees/v2 data/elder-trees/v1
+          git show origin/repair/browser-elder-final-17392:data/elder-trees/v2/manifest.json > data/elder-trees/v2/manifest.json
+          for f in alaska.geojson california-regional-overview.geojson california-regional-overview.json colorado.geojson england.geojson laos.geojson thailand.geojson vermont.geojson vietnam.geojson; do
+            git show origin/repair/browser-elder-final-17392:data/elder-trees/v2/$f > data/elder-trees/v2/$f
+          done
+          git show origin/repair/browser-elder-final-17392:data/elder-trees/v1/arizona-san-francisco-peaks.geojson > data/elder-trees/v1/arizona-san-francisco-peaks.geojson
+          git config user.name "earthline-ci"
+          git config user.email "actions@users.noreply.github.com"
+          git add earthline-elder-17097.js earthline-elder-worker-17129.js data/elder-trees
+          git diff --cached --quiet || git commit -m "candidate: restore isolated Elder evidence runtime"
+          git pull --rebase origin mantra83-shadow-live
+          git push origin HEAD:mantra83-shadow-live
