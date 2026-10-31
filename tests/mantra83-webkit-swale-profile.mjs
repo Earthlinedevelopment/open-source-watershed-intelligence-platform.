@@ -27,10 +27,6 @@ await page.route('https://earthlinedevelopment.org/',async route=>{
     [
       "candidates.length=0;candidates.push(...eligible16539);\n    }\n    const jurisdictionEligibleCandidates16539=candidates.length;",
       "candidates.length=0;candidates.push(...eligible16539);window.__M83_SWALE_PROFILE.finalScreenMs=performance.now()-__m83FinalScreen;\n    }\n    window.__M83_SWALE_PROFILE.afterJurisdiction=performance.now()-__m83Start;const jurisdictionEligibleCandidates16539=candidates.length;"
-    ],
-    [
-      "window.EARTHLINE_SWALE_GENERATION_AUDIT_16167={",
-      "window.__M83_SWALE_PROFILE.beforeAudit=performance.now()-__m83Start;window.EARTHLINE_SWALE_GENERATION_AUDIT_16167={"
     ]
   ];
 
