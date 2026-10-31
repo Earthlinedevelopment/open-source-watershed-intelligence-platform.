@@ -1,0 +1,19 @@
+name: Mantra 83 Elder Recovery Audit
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-elder-recovery-audit.mjs'
+      - '.github/workflows/earthline-mantra83-elder-recovery-audit.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: git show ffdd2828001ece32f07d6ef1642c57d024deb571:index.html > /tmp/elder-old.html
+      - run: node tests/mantra83-elder-recovery-audit.mjs
