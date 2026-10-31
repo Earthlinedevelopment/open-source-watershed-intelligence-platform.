@@ -1,0 +1,21 @@
+name: Mantra 83 Elder Integration Source
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-elder-integration-source.yml'
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: |
+          git fetch origin feature/v1-elder-tree-integration-17097
+          echo M83_ELDER_BRANCH_FILES
+          git ls-tree -r --name-only origin/feature/v1-elder-tree-integration-17097 | grep -Ei 'elder|17097' | head -200 || true
+          echo M83_ELDER_BRANCH_GREP
+          git show origin/feature/v1-elder-tree-integration-17097:index.html | grep -n -E 'EARTHLINE_ELDER_TREES_V1_17097|elder-tree|Elder Tree|elder tree' | head -120 || true
+          echo M83_ELDER_DIFF_NAMES
+          git diff --name-status pages-live..origin/feature/v1-elder-tree-integration-17097 | grep -Ei 'elder|index.html|worker' | head -120 || true
