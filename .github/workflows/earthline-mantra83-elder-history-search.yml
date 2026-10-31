@@ -1,0 +1,22 @@
+name: Mantra 83 Elder History Search
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-elder-history-search.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          echo 'M83ELDERHISTORY confidence'
+          git log --all --oneline -S 'ELDER TREE CONFIDENCE' -- index.html | head -30
+          echo 'M83ELDERHISTORY candidate'
+          git log --all --oneline -S 'MODELED_ELDER_TREE_CANDIDATE' -- index.html | head -30
+          echo 'M83ELDERHISTORY generic'
+          git log --all --oneline -S 'Elder' -- index.html | head -50
