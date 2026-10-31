@@ -1,0 +1,27 @@
+name: Mantra 83 Client Smoke
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-client-smoke.mjs'
+      - '.github/workflows/earthline-mantra83-client-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        client: [desktop-chromium, desktop-webkit, iphone-webkit, pixel-chromium]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLIENT: ${{ matrix.client }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium webkit
+      - run: node tests/mantra83-client-smoke.mjs
