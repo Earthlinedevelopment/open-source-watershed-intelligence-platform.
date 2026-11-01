@@ -1,0 +1,30 @@
+name: Mantra 83 Property Target Audit
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-property-target-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          term='EARTHLINE_PROPERTY_TARGET_16201'
+          pos=0
+          n=0
+          while True:
+              i=s.find(term,pos)
+              if i<0: break
+              print("\nM83_PROPERTY_TARGET",i)
+              print(s[max(0,i-2200):min(len(s),i+5200)])
+              pos=i+len(term); n+=1
+              if n>=20: break
+          PY
