@@ -1,0 +1,27 @@
+name: Mantra 83 Current Live Gate
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-current-live-gate.mjs'
+      - '.github/workflows/earthline-mantra83-current-live-gate.yml'
+permissions:
+  contents: read
+jobs:
+  gate:
+    strategy:
+      fail-fast: false
+      matrix:
+        client: [chrome, webkit, iphone-webkit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLIENT: ${{ matrix.client }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - if: contains(matrix.client, 'webkit')
+        run: npx playwright install --with-deps webkit
+      - run: node tests/mantra83-current-live-gate.mjs
