@@ -1,0 +1,18 @@
+name: Mantra 83 Regional Phase Mark Audit
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/regional-phase-mark-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          grep -n "phaseMark16198" index.html | head -80
+          grep -n "noteRegionalProgress16347" index.html | head -80
