@@ -1,3 +1,4 @@
+// current-live-head verification 7968af11 1793498834435
 // rerun after first-run Elder and live geometry corrections 1793496439424
 import {chromium} from 'playwright';
 
