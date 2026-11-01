@@ -17,7 +17,8 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text()
-          i=s.find('async function jurisdictionEligibleCount16539')
-          if i<0: raise SystemExit('owner not found')
-          print(s[i:i+5200])
+          a=s.find('function sampleSegment(coords,center,relaxed)')
+          b=s.find('function screenJurisdictionCandidate16539',a)
+          if a<0 or b<0: raise SystemExit('sampleSegment owner not found')
+          print(s[a:b])
           PY
