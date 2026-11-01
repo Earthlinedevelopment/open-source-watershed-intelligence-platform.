@@ -33,7 +33,7 @@ function hav(a,b){const R=6371000,p1=a[1]*Math.PI/180,p2=b[1]*Math.PI/180,dp=(b[
 const browser=await chromium.launch({headless:true,executablePath:chrome,args:['--no-sandbox']});
 const page=await browser.newPage({viewport:{width:1600,height:900}});
 await page.route('https://earthlinedevelopment.org/',async route=>{const res=await route.fetch();await route.fulfill({response:res,body:modify(await res.text())});});
-await page.goto('https://earthlinedevelopment.org/?segment-cap=1',{waitUntil:'domcontentloaded',timeout:120000});
+await page.goto('https://earthlinedevelopment.org/',{waitUntil:'domcontentloaded',timeout:120000});
 await page.waitForTimeout(1000);
 const rows=[];
 for(const q of ['Arizona','Vermont','Arkansas','Iowa']){
