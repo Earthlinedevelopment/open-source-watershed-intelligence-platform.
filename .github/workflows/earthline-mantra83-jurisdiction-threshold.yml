@@ -1,0 +1,20 @@
+name: Mantra 83 Jurisdiction Threshold
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-fix-jurisdiction-threshold.mjs'
+      - 'tests/mantra83-jurisdiction-threshold.mjs'
+      - '.github/workflows/earthline-mantra83-jurisdiction-threshold.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - run: node tests/mantra83-jurisdiction-threshold.mjs
