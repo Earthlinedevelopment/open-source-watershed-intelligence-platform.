@@ -1,0 +1,58 @@
+name: Earthline Mantra 85 Clock Certification
+
+on:
+  push:
+    branches: [mantra85-clock-architecture]
+    paths:
+      - 'science/mantra85-**'
+      - 'tests/mantra85-**'
+      - '.github/workflows/earthline-mantra85-certification.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  clock-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Pure deterministic clock tests
+        run: |
+          node tests/mantra85-clock.test.mjs
+          node tests/mantra85-shadow-adapter.test.mjs
+      - name: Structural source invariants
+        run: |
+          ! grep -q 'earthlineRegionalLocalDisplay16020' index.html
+          ! grep -q 'Elder is downstream of Property publication' earthline-elder-restored-17097.js
+      - name: Verify production product remains untouched on architecture branch
+        run: git diff --exit-code 91d132eb15a408787b21150d2007021cca3b477a -- index.html earthline-elder-restored-17097.js
+
+  live-observer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browser observer dependency
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Observe current production without publishing Mantra 85
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+        run: node tests/mantra85-live-state-probe.mjs
+      - name: Upload observer evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mantra85-live-state-probe
+          path: artifacts/mantra85/live-state-probe.json
+          retention-days: 14
+          if-no-files-found: warn
