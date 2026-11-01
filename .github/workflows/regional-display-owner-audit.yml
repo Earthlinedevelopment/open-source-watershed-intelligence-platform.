@@ -1,0 +1,22 @@
+name: Mantra 83 Regional Display Owner Audit
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/regional-display-owner-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          node <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          for(const term of ['earthlineRegionalVectorOverlay16020','data-layer="swale-opportunities"','swale-opportunities','EARTHLINE_REGIONAL_VISUAL_DATA_16020']){
+            let from=0,n=0;while(true){const at=s.indexOf(term,from);if(at<0)break;console.log('DISPLAY '+JSON.stringify({term,at,text:s.slice(Math.max(0,at-2600),Math.min(s.length,at+9000))}));from=at+term.length;if(++n>=10)break;}
+          }
+          NODE
