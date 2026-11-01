@@ -429,12 +429,9 @@
   }
   async function dynamicPropertyEvidence(forceProperty=false){
     const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
-    if(!forceProperty&&tier!=='property')return null;
-    if(!forceProperty){
-      const coverage=activeCoverage();
-      if(coverage.known)return null;
-    }
-    const b=forceProperty?propertyBounds17166():coverageQueryBounds();
+    const isProperty=tier==='property';
+    if(!forceProperty&&!isProperty)return null;
+    const b=(forceProperty||isProperty)?propertyBounds17166():coverageQueryBounds();
     const key=propertyRunIdentity17166(b);
     if(!b||!key)return null;
     if(state.dynamic.key===key&&state.dynamic.result)return state.dynamic.result;
