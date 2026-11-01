@@ -1,0 +1,29 @@
+name: Mantra 83 Post Swale Source
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-post-swale-source.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for term in ['let swales=await makeSwales','makeFlows(hy','await makeFlows','earthlineClipVermont','earthlineClipJurisdiction','cameraSettle16310','renderRegionalOverlay16020','guardedSetGeo(runToken,m,IDS.contours','phaseMark16198(\'terrainProductsAndPublishMs\'']:
+              pos=0;n=0
+              while True:
+                  i=s.find(term,pos)
+                  if i<0: break
+                  print('\nM83_POST_TERM',term,i)
+                  print(s[max(0,i-3500):min(len(s),i+10000)])
+                  pos=i+len(term);n+=1
+                  if n>=6: break
+          PY
