@@ -1,0 +1,33 @@
+name: Mantra 83 Live Source Invariants
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-live-invariants.yml'
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const s=fs.readFileSync('index.html','utf8');
+          const req=[
+            "const segment=raw;if(segment.length<8)return null;",
+            "const slope=hy.slope[i],acc=hy.acc[i],minSlope=0,maxSlope=4;",
+            "if(!Number.isFinite(slope)||slope<minSlope||slope>maxSlope||!Number.isFinite(acc)||acc>=channel)return null;",
+            "if(focusMode||preferredEligibleCount16539<36){"
+          ];
+          for(const x of req) if(!s.includes(x)) throw new Error('missing invariant '+x);
+          if(s.includes('chaikin(raw,2,false)')) throw new Error('legacy worm smoothing still present');
+          if(s.includes('maxSlope=relaxed?(focusMode?18:4):13.5')) throw new Error('legacy high slope owner present');
+          console.log('M83_LIVE_SOURCE_INVARIANTS_PASS');
+          NODE
