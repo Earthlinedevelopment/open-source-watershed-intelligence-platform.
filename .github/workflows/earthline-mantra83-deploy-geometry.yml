@@ -30,7 +30,7 @@ jobs:
           git checkout -B pages-live origin/pages-live
           node /tmp/fix-geometry.mjs
           node /tmp/fix-jsonp.mjs
-          node -e "const fs=require('fs');const s=fs.readFileSync('index.html','utf8');if(!s.includes('const segment=raw;if(segment.length<8)return null;'))process.exit(2);if(!s.includes('minSlope=0,maxSlope=4'))process.exit(3);if(!s.includes('Math.min(10,Math.floor(coords.length*.07))'))process.exit(5);if(!s.includes('if(focusMode||preferredEligibleCount16539<36){'))process.exit(4);"
+          node -e "const fs=require('fs');const s=fs.readFileSync('index.html','utf8');if(!s.includes('const segment=raw.slice(left,right+1);if(segment.length<2)return null;'))process.exit(2);if(!s.includes('minSlope=0,maxSlope=4'))process.exit(3);if(!s.includes('if(leftM+d>8000)break')||!s.includes('if(rightM+d>8000)break'))process.exit(5);if(!s.includes('if(focusMode||preferredEligibleCount16539<36){'))process.exit(4);"
           git config user.name "earthline-ci"
           git config user.email "actions@users.noreply.github.com"
           git add index.html
