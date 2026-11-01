@@ -4,7 +4,7 @@ const label=process.env.CLIENT||'desktop-chromium';
 let browserType=chromium,ctx={viewport:{width:1440,height:900}};
 if(label==='desktop-webkit')browserType=webkit;
 if(label==='iphone-webkit'){browserType=webkit;ctx={...devices['iPhone 13']};}
-const OLD="async function earthlineCooperativeYield16661(){if(globalThis.scheduler&&typeof globalThis.scheduler.yield==='function')return globalThis.scheduler.yield();if(typeof MessageChannel==='function')return new Promise(r=>{const ch=new MessageChannel();ch.port1.onmessage=()=>{try{ch.port1.close();ch.port2.close()}catch(_){}r()};ch.port2.postMessage(0)});return Promise.resolve();}";
+const OLD="async function earthlineCooperativeYield16661(){return new Promise(resolve=>{const ch=new MessageChannel();ch.port1.onmessage=()=>{try{ch.port1.close();ch.port2.close()}catch(_){}resolve()};ch.port2.postMessage(0)});}";
 const NEW="async function earthlineCooperativeYield16661(){return Promise.resolve();}";
 
 const browser=await browserType.launch({headless:true});
