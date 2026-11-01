@@ -1,8 +1,8 @@
 import {chromium} from 'playwright';import fs from 'node:fs';
 const chrome=['/usr/bin/google-chrome-stable','/usr/bin/google-chrome','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);if(!chrome)throw new Error('chrome missing');
 const reps=[
- ['if(leftM+d>8000)break;','if(leftM+d>2000)break;'],
- ['if(rightM+d>8000)break;','if(rightM+d>2000)break;'],
+ ['if(leftM+d>8000)break;','if(leftM+d>4000)break;'],
+ ['if(rightM+d>8000)break;','if(rightM+d>4000)break;'],
  ["?0.75\n        :Math.max(4,Math.min(10,Number(candidate16539&&candidate16539.minLinePx16632)||10));","?0.75\n        :Math.max(.75,Math.min(4,Number(candidate16539&&candidate16539.minLinePx16632)||2));"]
 ];
 function mod(body){for(const [a,b] of reps){if(!body.includes(a))throw new Error('owner missing '+a.slice(0,40));body=body.replace(a,b);}return body;}
@@ -17,6 +17,6 @@ for(const q of ['Arizona','Vermont','Arkansas','Iowa','Texas','Florida','Califor
  await page.waitForFunction(prev=>{const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147;return !!d&&String(d.runToken||'')!==String(prev||'')&&String(document.documentElement.dataset.earthlineRunState||'')==='published';},before,{timeout:70000});await page.waitForTimeout(200);
  const r=await page.evaluate(t0=>{const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147,fs=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.swales?.features||[];return{q:d?.query,ms:Date.now()-t0,swales:Number(d?.derived?.swaleOpportunityLines||0),features:fs.map(f=>({s:Number(f?.properties?.slope_pct),c:f?.geometry?.coordinates||[]}))};},t0);
  const lens=r.features.map(f=>{let m=0;for(let i=1;i<f.c.length;i++)m+=hav(f.c[i-1],f.c[i]);return m;}).sort((a,b)=>a-b);const row={q:r.q,ms:r.ms,swales:r.swales,maxSlope:Math.max(0,...r.features.map(f=>Number.isFinite(f.s)?f.s:0)),p50:Math.round(lens[Math.floor(lens.length*.5)]||0),p95:Math.round(lens[Math.floor(lens.length*.95)]||0),max:Math.round(lens.at(-1)||0)};rows.push(row);
- if(row.swales<30)throw new Error(q+' too sparse '+row.swales);if(row.maxSlope>4)throw new Error(q+' slope '+row.maxSlope);if(row.max>4500)throw new Error(q+' too long '+row.max);
+ if(row.swales<30)throw new Error(q+' too sparse '+row.swales);if(row.maxSlope>4)throw new Error(q+' slope '+row.maxSlope);if(row.max>10000)throw new Error(q+' too long '+row.max);
 }
 console.log('M83_LOCAL_GEOMETRY_PASS '+JSON.stringify(rows));await browser.close();
