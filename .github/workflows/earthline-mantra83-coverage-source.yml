@@ -1,0 +1,24 @@
+name: Mantra 83 Coverage Source
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-coverage-source.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for term in ['const binsX16731','EARTHLINE_COVERAGE_GAP_REFINEMENT_16731','const fineNX16780','EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16781']:
+              i=s.find(term)
+              print('\nM83_COVERAGE_TERM',term,i)
+              if i>=0: print(s[max(0,i-5000):min(len(s),i+12000)])
+          PY
