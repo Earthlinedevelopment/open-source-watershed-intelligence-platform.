@@ -1,0 +1,21 @@
+import {chromium} from 'playwright';import fs from 'node:fs';
+const chrome=['/usr/bin/google-chrome-stable','/usr/bin/google-chrome','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);if(!chrome)throw new Error('chrome missing');
+const OLD="const features=[],total=Math.max(1,acceptedChosen.length);";
+const NEW="const earthlinePublishedSegment16899=coords=>{const a=Array.isArray(coords)?coords:[];if(a.length<3)return a;const R=6371008.8,dist=(p,q)=>{const p1=Number(p[1])*Math.PI/180,p2=Number(q[1])*Math.PI/180,dp=(Number(q[1])-Number(p[1]))*Math.PI/180,dl=(Number(q[0])-Number(p[0]))*Math.PI/180,x=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(x)))};let c=Math.floor((a.length-1)/2),l=c,r=c,lm=0,rm=0;while(l>0){const d=dist(a[l],a[l-1]);if(lm+d>4000)break;l--;lm+=d}while(r<a.length-1){const d=dist(a[r],a[r+1]);if(rm+d>4000)break;r++;rm+=d}if(l===r){if(r<a.length-1)r++;else if(l>0)l--}return a.slice(l,r+1)};\n    const features=[],total=Math.max(1,acceptedChosen.length);";
+const OLDG="},geometry:{type:'LineString',coordinates:c.segment}});";
+const NEWG="},geometry:{type:'LineString',coordinates:focusMode?c.segment:earthlinePublishedSegment16899(c.segment)}});";
+function mod(body){if(!body.includes(OLD)||!body.includes(OLDG))throw new Error('publication owner missing');return body.replace(OLD,NEW).replace(OLDG,NEWG);}
+function hav(a,b){const R=6371000,p1=a[1]*Math.PI/180,p2=b[1]*Math.PI/180,dp=(b[1]-a[1])*Math.PI/180,dl=(b[0]-a[0])*Math.PI/180,x=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(x)));}
+const browser=await chromium.launch({headless:true,executablePath:chrome,args:['--no-sandbox']});const page=await browser.newPage({viewport:{width:1600,height:900}});
+await page.route('https://earthlinedevelopment.org/',async route=>{const res=await route.fetch();await route.fulfill({response:res,body:mod(await res.text())});});
+await page.goto('https://earthlinedevelopment.org/',{waitUntil:'domcontentloaded',timeout:120000});await page.waitForTimeout(900);
+const rows=[];
+for(const q of ['Arizona','Vermont','Arkansas','Iowa','Texas','Florida','California','Oklahoma']){
+ const before=await page.evaluate(()=>String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147)?.runToken||''));await page.locator('#searchInput').fill(q);const t0=Date.now();
+ await page.evaluate(()=>window.earthlineRunAnalysis?.({preventDefault(){},stopPropagation(){},stopImmediatePropagation(){}}));
+ await page.waitForFunction(prev=>{const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147;return !!d&&String(d.runToken||'')!==String(prev||'')&&String(document.documentElement.dataset.earthlineRunState||'')==='published';},before,{timeout:90000});await page.waitForTimeout(200);
+ const r=await page.evaluate(t0=>{const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147,fs=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.swales?.features||[];return{q:d?.query,ms:Date.now()-t0,swales:Number(d?.derived?.swaleOpportunityLines||0),rendered:document.querySelectorAll('#earthlineRegionalVectorOverlay16020 [data-layer="swale-opportunities"] path').length,features:fs.map(f=>({s:Number(f?.properties?.slope_pct),c:f?.geometry?.coordinates||[]}))};},t0);
+ const lens=r.features.map(f=>{let m=0;for(let i=1;i<f.c.length;i++)m+=hav(f.c[i-1],f.c[i]);return m;}).sort((a,b)=>a-b);const row={q:r.q,ms:r.ms,swales:r.swales,rendered:r.rendered,maxSlope:Math.max(0,...r.features.map(f=>Number.isFinite(f.s)?f.s:0)),p50:Math.round(lens[Math.floor(lens.length*.5)]||0),p95:Math.round(lens[Math.floor(lens.length*.95)]||0),max:Math.round(lens.at(-1)||0)};rows.push(row);
+ if(row.swales<15||row.rendered<15)throw new Error(q+' sparse '+JSON.stringify(row));if(row.maxSlope>4)throw new Error(q+' slope '+row.maxSlope);if(row.max>10000)throw new Error(q+' worm '+row.max);
+}
+console.log('M83_PUBLICATION_LOCALITY_PASS '+JSON.stringify(rows));await browser.close();
