@@ -1,0 +1,33 @@
+name: Mantra 83 Deploy Shared Yield Fix
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-deploy-shared-yield.yml'
+permissions:
+  contents: write
+concurrency:
+  group: mantra83-production-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra83-shadow-live
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: cp tests/mantra83-fix-shared-yield.mjs /tmp/fix-yield.mjs
+      - run: git fetch origin pages-live
+      - run: git checkout -B pages-live origin/pages-live
+      - run: node /tmp/fix-yield.mjs
+      - run: |
+          git config user.name "earthline-ci"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "performance: remove Safari timer-clamp delay from shared Regional engine"
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live
