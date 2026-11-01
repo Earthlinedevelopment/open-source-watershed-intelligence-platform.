@@ -40,7 +40,7 @@ async function snapshot(label){return page.evaluate(({label,target})=>{
       noBuildMaskLength:Number(md?.noBuildMask?.length||0),
       cellM:Number(md?.cellM),requestedCellM:Number(md?.requestedCellM),
       boundaryCount:Number(md?.analysisBoundaryLngLat?.length||0),
-      safeSwales:Number(md?.authoritativeSafeSwales15815?.length||0),
+      safeSwales:Number(md?.authoritativeSafeSwales15815?.features?.length||0),
       swales:Number(md?.swales?.length||0),
       exclusionConfidence:String(md?.exclusionConfidence||''),
       vectorNoBuildCoverage:md?.vectorNoBuildCoverage||null
