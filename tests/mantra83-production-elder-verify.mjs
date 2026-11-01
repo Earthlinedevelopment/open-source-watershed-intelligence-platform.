@@ -39,8 +39,8 @@ const result=await page.evaluate(()=>({
   elderLast:window.EARTHLINE_ELDER_TREE_LAST_17097||null,
   elderSummary:window.EARTHLINE_ELDER_TREES_V1_17097?.summary?.()||null,
   elderFeatures:window.EARTHLINE_ELDER_TREES_V1_17097?.features?.()?.length||0,
-  elderLayer:!!window.earthlineMap?.getLayer?.('earthline-elder-tree-points-17097'),
-  elderSource:!!window.earthlineMap?.getSource?.('earthline-elder-trees-17097'),
+  elderLayer:(()=>{try{return !!(earthlineMap&&earthlineMap.getLayer&&earthlineMap.getLayer('earthline-elder-tree-points-17097'))}catch(_){return false}})(),
+  elderSource:(()=>{try{return !!(earthlineMap&&earthlineMap.getSource&&earthlineMap.getSource('earthline-elder-trees-17097'))}catch(_){return false}})(),
   propertyReady:!!((typeof M!=='undefined'&&M)||window.M)?.analysisReady,
   mapCandidates:Object.keys(window).filter(k=>{try{const v=window[k];return v&&typeof v.getStyle==='function'&&typeof v.addLayer==='function'}catch(_){return false}}).slice(0,30),
   globals:{earthlineMap:typeof window.earthlineMap,map:typeof window.map,mapLexical:(()=>{try{return typeof map}catch(_){return 'error'}})()}
