@@ -1,0 +1,30 @@
+name: Mantra 83 Segment Publication Audit
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-segment-publication-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: git fetch origin pages-live
+      - run: |
+          git show origin/pages-live:index.html > /tmp/live-index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/live-index.html').read_text()
+          term="coordinates:c.segment"
+          start=0;n=0
+          while True:
+              at=s.find(term,start)
+              if at<0: break
+              print("M83_SEGMENT_OCCURRENCE",n,at,s[max(0,at-1600):min(len(s),at+2600)].replace("\n"," "))
+              start=at+len(term);n+=1
+          print("M83_SEGMENT_COUNT",n)
+          PY
