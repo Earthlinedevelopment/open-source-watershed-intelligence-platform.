@@ -1,0 +1,31 @@
+name: Mantra 83 Renderer Definition Audit
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/renderer-definition-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          node <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          const patterns=[
+            /window\.earthlineRenderRegionalOverlay16020\s*=\s*([^;\n]+)/g,
+            /function\s+earthlineRenderRegionalOverlay16020\s*\(/g,
+            /const\s+renderRegionalOverlay16020\s*=/g,
+            /function\s+renderRegional[^\(]*\(/g
+          ];
+          for(const re of patterns){
+            let m,n=0;while((m=re.exec(s))&&n++<20){
+              const at=m.index;
+              console.log('DEF '+JSON.stringify({match:m[0],at,text:s.slice(Math.max(0,at-3000),Math.min(s.length,at+16000))}));
+            }
+          }
+          NODE
