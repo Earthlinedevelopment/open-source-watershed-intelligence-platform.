@@ -1,0 +1,18 @@
+import {webkit} from 'playwright';
+const reps=[
+["let contours=await makeContours(hy);noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · CONTOURS COMPLETE',runToken);await wait(0);","let contours=await makeContours(hy);window.__M83_DOWN={contours:performance.now()};noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · CONTOURS COMPLETE',runToken);await wait(0);"],
+["let swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539,supplementalCandidates16702);noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · SWALES COMPLETE',runToken);await wait(0);","let swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539,supplementalCandidates16702);window.__M83_DOWN.swales=performance.now();noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · SWALES COMPLETE',runToken);await wait(0);"],
+["let flows=makeFlows(hy);noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · FLOWS COMPLETE',runToken);await wait(0);","window.__M83_DOWN.beforeFlows=performance.now();let flows=makeFlows(hy);window.__M83_DOWN.flows=performance.now();noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · FLOWS COMPLETE',runToken);await wait(0);"],
+["    let genericBoundaryAudit16539=null;","    window.__M83_DOWN.beforeBoundary=performance.now();let genericBoundaryAudit16539=null;"],
+["    if(focusMode){for(const f of swales.features||[])","    window.__M83_DOWN.afterBoundary=performance.now();if(focusMode){for(const f of swales.features||[])"],
+["    const cameraFinalStarted16329=performance.now();","    window.__M83_DOWN.beforeCamera=performance.now();const cameraFinalStarted16329=performance.now();"],
+["    const regionalOverlayRenderOk16336=","    window.__M83_DOWN.beforeOverlay=performance.now();const regionalOverlayRenderOk16336="],
+["    phaseMark16198('terrainProductsAndPublishMs',productsStarted16198);","    window.__M83_DOWN.afterOverlay=performance.now();phaseMark16198('terrainProductsAndPublishMs',productsStarted16198);"]
+];
+const browser=await webkit.launch({headless:true});const page=await browser.newPage({viewport:{width:1440,height:900}});
+await page.route('https://earthlinedevelopment.org/',async route=>{const res=await route.fetch();let body=await res.text();for(const [a,b] of reps){if(!body.includes(a))throw new Error('marker missing '+a.slice(0,70));body=body.replace(a,b);}await route.fulfill({response:res,body});});
+await page.goto('https://earthlinedevelopment.org/',{waitUntil:'domcontentloaded',timeout:120000});await page.waitForTimeout(900);await page.locator('#searchInput').fill('Vermont');const t0=performance.now();
+await page.evaluate(()=>{window.__M83_DOWN_START=performance.now();return window.earthlineRunAnalysis?.({preventDefault(){},stopPropagation(){},stopImmediatePropagation(){}})});
+await page.waitForFunction(()=>String(document.documentElement.dataset.earthlineRunState||'')==='published',{timeout:180000});
+const out=await page.evaluate(()=>{const p=window.__M83_DOWN||{},s=window.__M83_DOWN_START||0;const o={};for(const [k,v] of Object.entries(p))o[k]=Math.round(Number(v)-s);return{stages:o,perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,refinements:{scale:window.EARTHLINE_SCALE_REFINED_INPUT_16702||null,terrain:window.EARTHLINE_TERRAIN_GAP_REFINEMENT_16730||null,fine:window.EARTHLINE_FINE_OPPORTUNITY_REFINEMENT_16780||null,late:window.EARTHLINE_LATE_GAP_REFINEMENT_16741||null}}});
+console.log('M83_WEBKIT_DOWNSTREAM_PROFILE '+JSON.stringify(out));await browser.close();
