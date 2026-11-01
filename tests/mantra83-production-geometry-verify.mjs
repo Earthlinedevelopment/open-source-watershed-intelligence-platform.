@@ -1,3 +1,4 @@
+// verify 16 km live geometry 1793495678478
 // rerun current live head 1793494080881
 // verify tightened live geometry 2026-11-01
 import {chromium,webkit,devices} from 'playwright';
