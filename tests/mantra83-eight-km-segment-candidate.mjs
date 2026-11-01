@@ -9,8 +9,8 @@ const NEW=`const half=Math.max(5,Math.min(10,Math.floor(coords.length*.07))),sta
       const rawCenter=Math.max(0,Math.min(raw.length-1,center-start));
       const distM=(a,b)=>{const R=6371008.8,p1=Number(a[1])*Math.PI/180,p2=Number(b[1])*Math.PI/180,dp=(Number(b[1])-Number(a[1]))*Math.PI/180,dl=(Number(b[0])-Number(a[0]))*Math.PI/180,q=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(q)))};
       let left=rawCenter,right=rawCenter,leftM=0,rightM=0;
-      while(left>0){const d=distM(raw[left],raw[left-1]);if(leftM+d>4000)break;left--;leftM+=d}
-      while(right<raw.length-1){const d=distM(raw[right],raw[right+1]);if(rightM+d>4000)break;right++;rightM+=d}
+      while(left>0){const d=distM(raw[left],raw[left-1]);if(leftM+d>8000)break;left--;leftM+=d}
+      while(right<raw.length-1){const d=distM(raw[right],raw[right+1]);if(rightM+d>8000)break;right++;rightM+=d}
       if(left===right){if(right<raw.length-1)right++;else if(left>0)left--}
       const segment=raw.slice(left,right+1);if(segment.length<2)return null;`;
 const SCAN_OLD="for(let k=1;k<segment.length-1;k++){";
@@ -48,7 +48,7 @@ for(const q of ['Arizona','Vermont','Arkansas','Iowa']){
  rows.push(row);
  if(row.swales<40)throw new Error(q+' too sparse '+row.swales);
  if(row.maxSlope>4)throw new Error(q+' slope violation '+row.maxSlope);
- if(row.max>12000)throw new Error(q+' line still too long '+row.max);
+ if(row.max>22000)throw new Error(q+' line still too long '+row.max);
 }
-console.log('M83_8KM_SEGMENT_PASS '+JSON.stringify(rows));
+console.log('M83_16KM_SEGMENT_PASS '+JSON.stringify(rows));
 await browser.close();
