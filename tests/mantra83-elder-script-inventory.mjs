@@ -1,3 +1,4 @@
+// run inventory now
 import {execFileSync} from 'node:child_process';
 const s=execFileSync('git',['show','b8b69f00d3e68e1b77fdee48d196fa58a622b809:index.html'],{encoding:'utf8',maxBuffer:80*1024*1024});
 const re=/<script\b[^>]*>[\s\S]*?<\/script>/gi;let m,n=0;
