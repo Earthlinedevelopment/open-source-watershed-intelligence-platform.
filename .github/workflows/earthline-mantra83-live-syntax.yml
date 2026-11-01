@@ -1,0 +1,20 @@
+name: Mantra 83 Live Syntax Check
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-live-syntax.yml'
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --check earthline-elder-restored-17097.js
+      - run: node --check <(node -e "const fs=require('fs'),s=fs.readFileSync('index.html','utf8');let i=0;for(const m of s.matchAll(/<script(?![^>]*src=)[^>]*>([\s\S]*?)<\/script>/gi)){fs.writeFileSync('/tmp/inline-'+(++i)+'.js',m[1])}console.log(i)") || true
