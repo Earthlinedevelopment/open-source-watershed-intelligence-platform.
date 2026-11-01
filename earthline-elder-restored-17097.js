@@ -601,14 +601,10 @@
   } /* EARTHLINE_ELDER_IMMEDIATE_PROPERTY_START_17386 */
   function install(){
     wrapCorridor();
-    document.addEventListener('pointerdown',e=>{
-      const b=e.target?.closest?.('#earthlineDeclareProperty16169');
-      if(!b||b.disabled)return;
-      schedulePropertyPrime17212();
-    },true);
+    /* MANTRA 84: no pre-publication Property Elder trigger; terminal Property owner invokes startProperty(). */
     document.addEventListener('click',click,false);
     window.addEventListener('hashchange',hash,false);
-    document.addEventListener('earthline:analysis-complete',()=>{wrapCorridor();const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;const tier=String(d?.tier||d?.mode||document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();if(tier==='property')void startProperty17166();else void refresh();},{passive:true});
+    document.addEventListener('earthline:analysis-complete',()=>{wrapCorridor();const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;const tier=String(d?.tier||d?.mode||document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();if(tier!=='property')void refresh();},{passive:true});
     prewarmDynamicWorker();
     load().then(()=>{if(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970)refresh()}).catch(()=>{});
     if(location.hash==='#swales-explained')howParagraph();
@@ -617,6 +613,7 @@
       refresh,startProperty:startProperty17166,prefetchPropertyTarget:prefetchProperty17174,summary:()=>state.lastSummary||summarize(state.active),
       features:()=>state.active.slice(),
       confidenceRule:'Elder Tree Confidence = local structural-evidence percentile within the analyzed source area; not age probability',
+      propertyRunOwner:'authoritative-terminal-property-publication-mantra84',
       rechargeWeight:0
     };
     window.EARTHLINE_ELDER_TREES_V2_17118=window.EARTHLINE_ELDER_TREES_V1_17097;
