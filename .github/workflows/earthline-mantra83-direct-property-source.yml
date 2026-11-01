@@ -1,0 +1,24 @@
+name: Mantra 83 Direct Property Source
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-direct-property-source.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for term in ['async function runDirectAddressProperty16291','function setPropertyTarget16201','async function runPropertyDirect']:
+              i=s.find(term)
+              print('\nM83TERM',term,i)
+              if i>=0: print(s[i:i+12000])
+          PY
