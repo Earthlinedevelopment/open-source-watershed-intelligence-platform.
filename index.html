@@ -6816,7 +6816,7 @@ function earthlineArcGISJsonp16399(base,bb,outFields,timeoutMs=12000){
     });
     const url=base+"?"+params.toString(),script=document.createElement("script");
     let done=false;
-    const finish=(err,val)=>{if(done)return;done=true;clearTimeout(timer);try{delete window[cb];}catch(_){window[cb]=undefined;}try{script.remove();}catch(_){}if(err)reject(err);else resolve(val);};
+    const finish=(err,val)=>{if(done)return;done=true;clearTimeout(timer);try{window[cb]=()=>{};}catch(_){}try{script.remove();}catch(_){}setTimeout(()=>{try{delete window[cb];}catch(_){window[cb]=undefined;}},60000);if(err)reject(err);else resolve(val);};
     const timer=setTimeout(()=>finish(new Error("ArcGIS JSONP timeout")),timeoutMs);
     window[cb]=j=>{
       if(j&&j.error){finish(new Error(j.error.message||"ArcGIS JSONP service error"));return;}
@@ -33472,7 +33472,7 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
     const safeCount=safetyVerified&&safe&&safe.type==='FeatureCollection'&&Array.isArray(safe.features)?safe.features.length:0;
     return {safetyVerified,generationMatches,currentGen,publicationGen,lockGen,safeCount,engineCount:Array.isArray(m.swales)?m.swales.length:0,publicationCount:Number(publication.safeSegments||0),publication,lock,audit,safe:safetyVerified?safe:null};
   }
-  function publishPropertyDisplay16220(site,selectedCode){
+  function publishPropertyDisplay16220(site,selectedCode,elderPreparedM85=null){
     const m=model()||{},before=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,counts=authoritativePropertyCount16220();
     if(!counts.safetyVerified){
       const stale16327=counts.generationMatches===false;
@@ -33495,7 +33495,14 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
       completedAt:new Date().toISOString(),
       derived:{swaleOpportunityLines:counts.safeCount,propertySafeCorridors:counts.safeCount,engineCorridors:counts.engineCount},
       propertyPublication:{committed:true,safetyVerified:true,safeSegments:counts.safeCount,searchGen:Number(m.searchGen||0)},
-      evidence
+      evidence,
+      elderEvidence:elderPreparedM85?{
+        propertyRunIdentity:String(elderPreparedM85.runIdentity||''),
+        featureCount:Number((elderPreparedM85.features||[]).length),
+        summary:elderPreparedM85.summary||null,
+        preparedAt:elderPreparedM85.preparedAt||null,
+        rechargeWeight:0
+      }:{available:false,rechargeWeight:0}
     };
     try{
       if(m.layers&&m.layers.swales)m.layers.swales.on=true;
@@ -33508,7 +33515,7 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
       }
       if(typeof window.earthlineDeliverPropertyResult15817==='function')window.earthlineDeliverPropertyResult15817('property-canonical-display-16220',true);
       if(typeof window.earthlineSyncLivingSwales15792==='function')window.earthlineSyncLivingSwales15792(counts.safe,true);
-      window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220={build:BUILD,published:true,runToken,canonicalTierBefore:String(before?.tier||before?.mode||''),canonicalTierAfter:String(window.EARTHLINE_DISPLAYED_RUN_16151?.tier||''),engineCount:counts.engineCount,safeCount:counts.safeCount,publicationCount:counts.publicationCount,sourceStateFingerprint:evidence.sourceStateFingerprint||null,scientificInputFingerprint:evidence.scientificInputFingerprint||null,noBuildMaskHash:evidence.noBuildMaskHash||null,drivewayFeatureCount:evidence.drivewayFeatureCount,buildingFeatureCount:evidence.buildingFeatureCount,authorityIntersectionCount:evidence.authorityIntersectionCount,at:new Date().toISOString()};
+      window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220={build:BUILD,published:true,runToken,canonicalTierBefore:String(before?.tier||before?.mode||''),canonicalTierAfter:String(window.EARTHLINE_DISPLAYED_RUN_16151?.tier||''),engineCount:counts.engineCount,safeCount:counts.safeCount,publicationCount:counts.publicationCount,sourceStateFingerprint:evidence.sourceStateFingerprint||null,scientificInputFingerprint:evidence.scientificInputFingerprint||null,noBuildMaskHash:evidence.noBuildMaskHash||null,drivewayFeatureCount:evidence.drivewayFeatureCount,buildingFeatureCount:evidence.buildingFeatureCount,authorityIntersectionCount:evidence.authorityIntersectionCount,elderPreparedAt:elderPreparedM85&&elderPreparedM85.preparedAt||null,elderFeatureCount:Number(elderPreparedM85&&elderPreparedM85.features&&elderPreparedM85.features.length||0),at:new Date().toISOString()};
       try{earthlineStandardAudit16784({tier:'property',runToken,query:snapshot.query,stage:'property-published'});}catch(_){ }
       return {ok:true,counts,snapshot};
     }catch(error){
@@ -33912,7 +33919,13 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
     }
     try{mp.stop?.();mp.jumpTo?.({center:[Number(c.lng),Number(c.lat)],zoom:Math.max(17,Number(mp.getZoom?.()||17))});}catch(_){}
     window.EARTHLINE_PROPERTY_DECLARATION_16169={build:BUILD,center:{lng:site.lng,lat:site.lat},acres:20,boundaryPoints:m.analysisBoundaryLngLat.length,selectedCode:selectedCode||null,declaredAt:new Date().toISOString(),route:'window.earthlineGovernedPropertyRun16202'};
-    /* MANTRA 84: Elder computation is owned only by successful terminal Property publication. */
+    /* MANTRA 85: the single Property coordinator prepares Elder evidence in parallel
+       with governed terrain/safety science. No listener, timer, renderer or Elder
+       module may independently publish a different Property identity. */
+    const elderApiM85=window.EARTHLINE_ELDER_TREES_V1_17097||null;
+    const elderPreparePromiseM85=(elderApiM85&&typeof elderApiM85.prepareProperty==='function')
+      ?Promise.resolve(elderApiM85.prepareProperty()).catch(()=>null)
+      :Promise.resolve(null);
     /* EARTHLINE 16341 — a new governed Property run must clear terminal fields from
        the previous run before the panel Orb owner can observe them. */
     setAudit({build:BUILD,serial,startedAt:new Date().toISOString(),deadlineMs:null,observerOnly:true,panelCanTimeout:false,panelCanCancel:false,panelCanIncrementSearchGen:false,route:'window.earthlineGovernedPropertyRun16202',directGovernedPropertyOwnerUsed:true,center:{lng:site.lng,lat:site.lat},selectedCode:selectedCode||null,input:site.fullName,stage:'starting',settled:false,result:null,error:null,scientificSettled:false,scientificResult:false,scientificSettledAt:null,settledAt:null});
@@ -33939,8 +33952,19 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
          displayed tier before any property renderer or texture owner evaluates it.
          A stale Regional snapshot must never determine Property corridor count or
          keep Property layers hidden after the governed owner has committed safely. */
+      const elderPreparedM85=await elderPreparePromiseM85;
+      if(elderPreparedM85&&elderApiM85&&typeof elderApiM85.commitPreparedProperty==='function'){
+        const elderCommittedM85=elderApiM85.commitPreparedProperty(elderPreparedM85);
+        if(!elderCommittedM85){
+          const reason='Elder evidence identity changed before Property publication';
+          status('PROPERTY ANALYSIS STOPPED SAFELY — '+reason+'.','failed');
+          setTierNotice('focus','');
+          setAudit({settled:true,result:false,timedOut:false,error:reason,sourceEvidence:propertyEvidenceSnapshot16206(),stageTimings:Object.assign({},m.lastTiming||{}),elapsedSeconds:Math.round((performance.now()-started)/1000),settledAt:new Date().toISOString()});
+          return false;
+        }
+      }
       earthlinePropertyTrace16319("publishPropertyDisplay16220","enter");
-      const propertyDisplay16220=publishPropertyDisplay16220(site,selectedCode);
+      const propertyDisplay16220=publishPropertyDisplay16220(site,selectedCode,elderPreparedM85);
       earthlinePropertyTrace16319("publishPropertyDisplay16220","exit",{ok:!!propertyDisplay16220&&propertyDisplay16220.ok===true});
       if(!propertyDisplay16220.ok){const reason='the governed Property result did not have a committed, exclusion-verified safety lock';status('PROPERTY ANALYSIS STOPPED SAFELY — '+reason+'.','failed');setTierNotice('focus','');setAudit({settled:true,result:false,timedOut:false,error:reason,sourceEvidence:propertyEvidenceSnapshot16206(),publicationAudit:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,stageTimings:Object.assign({},m.lastTiming||{}),elapsedSeconds:Math.round((performance.now()-started)/1000),settledAt:new Date().toISOString()});return false;}
       const count=Number(propertyDisplay16220.counts.safeCount||0);
@@ -33978,7 +34002,7 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
       const staleParentRegional16727=samePropertyGeneration16727&&displayedTierAfterScience16334==='regional'&&
         targetParent16727&&targetParent16727===activeParent16727;
       if(staleParentRegional16727){
-        const republished16727=publishPropertyDisplay16220(site,selectedCode);
+        const republished16727=publishPropertyDisplay16220(site,selectedCode,elderPreparedM85);
         try{
           const regionalState16727=window.earthlineRegional15778;
           if(regionalState16727){regionalState16727.active=false;regionalState16727.mode='property'}
@@ -34047,7 +34071,7 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
         const settledAt16260=new Date().toISOString();
         setAudit({settled:true,result:true,timedOut:false,corridors:count,renderVerified:false,renderPending:true,renderMode:'pending-authoritative-safe-lines',sourceEvidence:propertyEvidenceSnapshot16206(),publicationAudit:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,safeFallback,texture,stageTimings:Object.assign({},m.lastTiming||{}),elapsedSeconds:Math.round((performance.now()-started)/1000),settledAt:settledAt16260});
         settlePropertyMapVisibility16260(count,texture,serial);
-        try{await window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()}catch(_){} /* MANTRA84_AUTHORITATIVE_PROPERTY_ELDER */
+        /* MANTRA85_ELDER_ALREADY_COMMITTED_BY_PROPERTY_COORDINATOR */
         return true;
       }
       if(count>0&&texture.ok){const d=Number(texture.directional||0),n=Number(texture.neutral||0),authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();status(authoritative16516?('Property detail published — '+count+' verified bioswale'+(count===1?'':'s')+' in the selected 20-acre area. '+d+' terrain-oriented corridor'+(d===1?'':'s')+' show water uphill and berm downhill; '+n+' corridor'+(n===1?'':'s')+' use'+(n===1?'s':'')+' a neutral ribbon because orientation is indeterminate.'):('Property detail published — '+count+' modeled bioswale'+(count===1?'':'s')+' in the selected 20-acre area. '+d+' terrain-oriented corridor'+(d===1?'':'s')+' show water uphill and berm downhill; '+n+' corridor'+(n===1?'':'s')+' use'+(n===1?'s':'')+' a neutral ribbon because orientation is indeterminate. Exclusion evidence is not authoritative; field verification required.'),'published');setTierNotice('property',authoritative16516?(n>0?'PROPERTY DETAIL · '+d+' TERRAIN-ORIENTED · '+n+' NEUTRAL':'PROPERTY DETAIL · TERRAIN-VERIFIED UPHILL WATER ACTIVE'):(n>0?'PROPERTY DETAIL · '+d+' TERRAIN-ORIENTED · '+n+' NEUTRAL · FIELD VERIFY':'PROPERTY DETAIL · TERRAIN-ORIENTED · FIELD VERIFY'))}
@@ -34055,7 +34079,7 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
       else{const authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();status(authoritative16516?'Property detail published — no qualifying bioswale corridors were identified in the selected 20-acre area after terrain and exclusion verification.':'Property detail published — no qualifying bioswale corridors were identified in the selected 20-acre area after terrain screening and available exclusion checks. Exclusion evidence is not authoritative; field verification required.','published');setTierNotice('property',authoritative16516?'PROPERTY DETAIL · VERIFIED ZERO-CORRIDOR RESULT':'PROPERTY DETAIL · ZERO QUALIFYING CORRIDORS · FIELD VERIFY')}
       earthlinePropertyTerminalStage16319('published','Property detail published.');
       earthlinePropertyTrace16319("terminalPropertyRun","exit",{result:true,corridors:count,renderVerified});
-      setAudit({stage:'published',stageLabel:'published',settled:true,result:true,timedOut:false,corridors:count,renderVerified,renderMode:texture.ok?'natural-texture':(safeFallback.ok?'authoritative-safe-lines':'verified-zero'),sourceEvidence:propertyEvidenceSnapshot16206(),publicationAudit:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,safeFallback,texture,stageTimings:Object.assign({},m.lastTiming||{}),elapsedSeconds:Math.round((performance.now()-started)/1000),settledAt:new Date().toISOString()});try{await window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()}catch(_){} /* MANTRA84_AUTHORITATIVE_PROPERTY_ELDER */return true;
+      setAudit({stage:'published',stageLabel:'published',settled:true,result:true,timedOut:false,corridors:count,renderVerified,renderMode:texture.ok?'natural-texture':(safeFallback.ok?'authoritative-safe-lines':'verified-zero'),sourceEvidence:propertyEvidenceSnapshot16206(),publicationAudit:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,safeFallback,texture,stageTimings:Object.assign({},m.lastTiming||{}),elapsedSeconds:Math.round((performance.now()-started)/1000),settledAt:new Date().toISOString()});/* MANTRA85_ELDER_ALREADY_COMMITTED_BY_PROPERTY_COORDINATOR */return true;
     }catch(err){const reason=String(err?.message||err||'unknown property error');earthlinePropertyTerminalStage16319('failed','Property analysis failed.');earthlinePropertyTrace16319("terminalPropertyRun","exit",{result:false,error:reason});setTierNotice('focus','');status('PROPERTY ANALYSIS FAILED — '+reason+'. No unverified property output was published.','failed');setAudit({stage:'failed',stageLabel:'failed',settled:true,result:false,timedOut:false,error:reason,sourceEvidence:propertyEvidenceSnapshot16206(),stageTimings:Object.assign({},m.lastTiming||{}),elapsedSeconds:Math.round((performance.now()-started)/1000),settledAt:new Date().toISOString()});return false;}
     finally{if(serial===runSerial){running=false;document.documentElement.dataset.earthlinePropertyRunState='idle';document.documentElement.classList.remove('earthline-property-running-16233');clearTimers();setButton(false);clearAllBusy();restoreGrab();try{window.getSelection?.()?.removeAllRanges?.();button()?.blur?.()}catch(_){}updateBuild();earthlinePropertyTrace16319("terminal finally","mark",{runState:'idle'});window.EARTHLINE_PROPERTY_TRACE_ACTIVE_16319=false}}
   }
