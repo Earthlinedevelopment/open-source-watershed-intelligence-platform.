@@ -20,7 +20,7 @@ async function run(q){
   return await page.evaluate(()=>{
     const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
     const m=(typeof M!=='undefined'&&M)||window.M||null;
-    const safe=m?.authoritativeSafeSwales15815||m?.swales||[];
+    const safe=Array.isArray(m?.authoritativeSafeSwales15815)?m.authoritativeSafeSwales15815:(Array.isArray(m?.swales)?m.swales:[]);
     let maxSlope=-Infinity,minSlope=Infinity;
     for(const s of safe){
       const candidates=[s?.slopePct,s?.slope_pct,s?.slope,s?.meanSlope,s?.avgSlope,s?.maxSlope];
@@ -30,13 +30,14 @@ async function run(q){
     const pub=m?.propertyPublication15816||null;
     const visibleSwales=document.querySelectorAll('[data-layer="swale-opportunities"] path,#earthlinePropertySwaleOverlay path,.earthline-swale-band-16168').length;
     const waterPaths=document.querySelectorAll('#earthlinePropertyWaterOverlay15824 path').length;
+    let elderSummary=null,elderFeatures=[];try{elderSummary=window.EARTHLINE_ELDER_TREES_V1_17097?.summary?.()||null;elderFeatures=window.EARTHLINE_ELDER_TREES_V1_17097?.features?.()||[]}catch(_){}
     return {
       displayed:{runToken:d?.runToken||null,tier:d?.tier||d?.mode||null,query:d?.query||null},
       target:target?{lat:Number(target.lat),lng:Number(target.lng),query:target.query||null}:null,
       model:{lat:Number(m?.centerLat),lng:Number(m?.centerLng),analysisReady:!!m?.analysisReady,swales:Array.isArray(m?.swales)?m.swales.length:0,safeSwales:Array.isArray(safe)?safe.length:0},
       publication:pub?{committed:pub.committed===true,published:pub.published===true,safeCount:Number(pub.safeCount||0),raw:Number(pub.rawGeographicSegments||0),searchGen:Number(pub.searchGen)}:null,
       slope:{max:Number.isFinite(maxSlope)?maxSlope:null,min:Number.isFinite(minSlope)?minSlope:null},
-      visibleSwales,waterPaths,
+      visibleSwales,waterPaths,elder:{count:Array.isArray(elderFeatures)?elderFeatures.length:0,summary:elderSummary},
       runState:String(document.documentElement.dataset.earthlineRunState||''),
       propertyState:String(document.documentElement.dataset.earthlinePropertyRunState||'')
     };
@@ -57,6 +58,7 @@ for(const [i,r] of propertyResults.entries()){
   if(!(r.model.safeSwales>0))failures.push('property '+i+' zero safe swales');
   if(r.slope.max!==null&&r.slope.max>4)failures.push('property '+i+' max slope '+r.slope.max);
   if(r.publication&&r.publication.committed!==true&&r.publication.published!==true)failures.push('property '+i+' publication not committed');
+  if(!(r.elder?.count>0))failures.push('property '+i+' zero Elder candidates');
 }
 if(String(results[2].displayed?.tier||'').toLowerCase()!=='regional')failures.push('regional transition failed');
 const jsonp=pageErrors.filter(e=>e.includes('__earthlineVtInfra'));
