@@ -1,3 +1,4 @@
+// rerun elder history
 import {execFileSync} from 'node:child_process';
 for(const term of ['ELDER TREE CONFIDENCE','MODELED_ELDER_TREE_CANDIDATE','elder']){
   let out='';
