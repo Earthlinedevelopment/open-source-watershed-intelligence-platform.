@@ -1,0 +1,19 @@
+name: Mantra 83 Elder 256
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-elder-256.mjs'
+      - '.github/workflows/earthline-mantra83-elder-256.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - run: node tests/mantra83-elder-256.mjs
