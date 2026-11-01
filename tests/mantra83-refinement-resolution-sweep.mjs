@@ -1,0 +1,27 @@
+import {webkit,devices} from 'playwright';
+const [cover,late]=String(process.env.VARIANT||'44-72').split('-').map(Number);
+const a="await loadDEM(tile16731.b,48,48,8000,'coverage-gap refinement '+tile16731.id)";
+const b=`await loadDEM(tile16731.b,${cover},${cover},8000,'coverage-gap refinement '+tile16731.id)`;
+const c="await loadDEM(tile16741.b,96,96,8000,'late coverage-gap verification '+tile16741.id)";
+const d=`await loadDEM(tile16741.b,${late},${late},8000,'late coverage-gap verification '+tile16741.id)`;
+const browser=await webkit.launch({headless:true});
+const context=await browser.newContext({...devices['iPhone 13']});
+const page=await context.newPage();
+await page.route('https://earthlinedevelopment.org/',async route=>{
+ const res=await route.fetch();let body=await res.text();
+ if(!body.includes(a)||!body.includes(c))throw new Error('resolution owners missing');
+ body=body.replace(a,b).replace(c,d);await route.fulfill({response:res,body});
+});
+await page.goto('https://earthlinedevelopment.org/',{waitUntil:'domcontentloaded',timeout:120000});
+await page.waitForTimeout(600);
+await page.locator('#searchInput').fill('Vermont');
+const before=await page.evaluate(()=>String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147)?.runToken||''));
+const t0=Date.now();
+await page.evaluate(()=>window.earthlineRunAnalysis?.({preventDefault(){},stopPropagation(){},stopImmediatePropagation(){}}));
+await page.waitForFunction(prev=>{const x=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147;return !!x&&String(x.runToken||'')!==String(prev||'')&&String(document.documentElement.dataset.earthlineRunState||'')==='published';},before,{timeout:120000});
+await page.waitForTimeout(200);
+const out=await page.evaluate(t0=>{const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147;const fs=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.swales?.features||[];return {ms:Date.now()-t0,swales:Number(d?.derived?.swaleOpportunityLines||0),coverage:window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731||null,gap:window.EARTHLINE_COVERAGE_GAP_REFINEMENT_16731||null,late:window.EARTHLINE_LATE_GAP_REFINEMENT_16741||null,maxSlope:Math.max(0,...fs.map(f=>Number(f?.properties?.slope_pct)||0))};},t0);
+const pass=out.swales>0&&out.maxSlope<=4&&(!out.coverage||out.coverage.passed===true);
+console.log('M83_RESOLUTION_SWEEP '+JSON.stringify({variant:process.env.VARIANT,pass,...out}));
+if(!pass)process.exitCode=2;
+await browser.close();
