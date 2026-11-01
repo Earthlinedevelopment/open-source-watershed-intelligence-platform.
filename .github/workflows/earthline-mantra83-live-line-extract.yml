@@ -1,0 +1,17 @@
+name: Mantra 83 Live Line Extract
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-live-line-extract.yml'
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          nl -ba index.html | sed -n '35880,35890p'
