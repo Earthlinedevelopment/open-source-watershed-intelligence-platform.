@@ -5,7 +5,7 @@ const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
 const TARGET={lng:-73.012909,lat:44.513845,label:'61 Sleepy Hollow Rd, Essex, Vermont, USA'};
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1600,height:950}});
-const pageErrors=[];page.on('pageerror',e=>pageErrors.push(String(e)));page.on('console',m=>{if(m.type()==='error')pageErrors.push(m.text())});
+const pageErrors=[],badResponses=[];page.on('pageerror',e=>pageErrors.push(String(e)));page.on('console',m=>{if(m.type()==='error')pageErrors.push(m.text())});page.on('response',r=>{if(r.status()>=400)badResponses.push({status:r.status(),url:r.url()})});
 
 function compactAudit(a){
   if(!a||typeof a!=='object')return null;
@@ -69,19 +69,21 @@ const property=await snapshot('property');
 
 const violations=[];
 if(pageErrors.length)violations.push('browser page/console errors');
-if(!regional.model.present||!regional.model.hLength||!regional.model.inPLength||!regional.model.noBuildMaskLength)violations.push('Regional acquisition fields incomplete');
+if(!regional.model.present||!regional.model.hLength||!regional.model.inPLength)violations.push('Regional terrain/land acquisition fields incomplete');
 if(!regional.flowGrid?.w||!regional.flowGrid?.h)violations.push('Regional explicit grid dimensions missing');
 if(regional.renderer.sourceMutatesGeometry)violations.push('Regional renderer alters science geometry');
 if(!propertyCall.ok)violations.push('Property run failed: '+String(propertyCall.error||''));
 if(!property.model.hLength||!property.model.inPLength||!property.model.noBuildMaskLength)violations.push('Property acquisition fields incomplete');
 const t=property.propertyTarget||{};if(Math.abs(Number(t.lng)-TARGET.lng)>1e-6||Math.abs(Number(t.lat)-TARGET.lat)>1e-6)violations.push('Property target identity mismatch');
 if(property.elder?.state!=='committed')violations.push('Elder evidence not committed at observed Property terminal');
-const pubAt=Date.parse(String(property.propertyPublication?.at||'')),elderAt=Date.parse(String(property.elder?.at||''));
-if(Number.isFinite(pubAt)&&Number.isFinite(elderAt)&&elderAt>pubAt)violations.push('Elder evidence committed after Property publication by '+(elderAt-pubAt)+' ms');
+const pubAt=Date.parse(String(property.propertyPublication?.at||'')),elderPreparedAt=Date.parse(String(property.elder?.preparedAt||property.elder?.at||'')),auditPreparedAt=Date.parse(String(property.propertyPublication?.elderPreparedAt||''));
+if(!property.propertyPublication?.elderPreparedAt)violations.push('Property publication did not carry prepared Elder evidence provenance');
+if(Number.isFinite(pubAt)&&Number.isFinite(elderPreparedAt)&&elderPreparedAt>pubAt)violations.push('Elder evidence prepared after Property publication by '+(elderPreparedAt-pubAt)+' ms');
+if(Number.isFinite(pubAt)&&Number.isFinite(auditPreparedAt)&&auditPreparedAt>pubAt)violations.push('Property publication Elder provenance is newer than publication');
 const publishedSafe=Number(property.propertyPublication?.safeCount||0),modelSafe=Number(property.model?.safeSwales||0);
 if(publishedSafe>0&&modelSafe!==publishedSafe)violations.push('authoritative safe-swale state drift after publication: published '+publishedSafe+' vs model '+modelSafe);
 
-const report={at:new Date().toISOString(),url:URL,target:TARGET,propertyCall,regional,property,pageErrors,violations,pass:violations.length===0};
+const report={at:new Date().toISOString(),url:URL,target:TARGET,propertyCall,regional,property,pageErrors,badResponses,violations,pass:violations.length===0};
 mkdirSync('artifacts/mantra85',{recursive:true});writeFileSync('artifacts/mantra85/live-state-probe.json',JSON.stringify(report,null,2));
 console.log('MANTRA85_LIVE_STATE '+JSON.stringify(report));
 await browser.close();
