@@ -1,0 +1,26 @@
+name: Mantra 83 Jurisdiction Screen Source
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-jurisdiction-screen-source.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          terms=['function screenJurisdictionCandidate16539','function earthlineClipLine16539','function earthlinePointInJurisdiction16539']
+          for term in terms:
+              i=s.find(term)
+              if i>=0:
+                  print('OWNER',term,i)
+                  print(s[i:i+7000])
+          PY
