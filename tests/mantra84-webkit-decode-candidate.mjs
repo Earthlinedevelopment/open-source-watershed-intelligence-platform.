@@ -1,7 +1,7 @@
 import {webkit} from 'playwright';
 const q=process.env.Q||'Vermont';
-const OLD="const r=await fetch(url,{mode:'cors',cache:'force-cache',signal});if(!r.ok)throw new Error('terrain tile HTTP '+r.status);\\n      const blob=await r.blob();if(typeof createImageBitmap==='function')image=await createImageBitmap(blob);else{revoke=URL.createObjectURL(blob);image=await new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(new Error('terrain tile decode failed'));img.src=revoke;});}";
-const NEW="image=await new Promise((resolve,reject)=>{const img=new Image();img.crossOrigin='anonymous';img.onload=()=>resolve(img);img.onerror=()=>reject(new Error('terrain tile decode failed'));if(signal)signal.addEventListener('abort',()=>reject(signal.reason||new Error('terrain tile aborted')),{once:true});img.src=url;});";
+const OLD="if(typeof createImageBitmap==='function')image=await createImageBitmap(blob);else{";
+const NEW="if(false&&typeof createImageBitmap==='function')image=await createImageBitmap(blob);else{";
 const browser=await webkit.launch({headless:true});const page=await browser.newPage({viewport:{width:1440,height:900}});const errors=[];page.on('pageerror',e=>errors.push(String(e)));
 await page.route('https://earthlinedevelopment.org/',async route=>{const res=await route.fetch();let body=await res.text();if(!body.includes(OLD))throw new Error('decode owner missing');body=body.replace(OLD,NEW);await route.fulfill({response:res,body});});
 await page.goto('https://earthlinedevelopment.org/',{waitUntil:'domcontentloaded',timeout:120000});await page.waitForTimeout(900);await page.locator('#searchInput').fill(q);
