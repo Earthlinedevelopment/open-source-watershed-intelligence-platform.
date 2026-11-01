@@ -30071,9 +30071,14 @@ body { overflow-x:hidden!important; }
       if(!runs16539.length){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
       runs16539.sort((a16539,b16539)=>lineLengthPixels(hy,b16539)-lineLengthPixels(hy,a16539));
       const segment16539=runs16539[0];
+      /* MANTRA 85 — jurisdiction owns containment, not a second science threshold.
+         Preserve the candidate's already-validated minimum length after clipping.
+         If clipping at the boundary shortens it below its original gate, reject it;
+         otherwise containment must not silently raise a valid Regional 2 px corridor
+         to the historical 4 px jurisdiction minimum. */
       const minimumScreenPx16737=candidate16539&&candidate16539.coverageGap16731
         ?0.75
-        :Math.max(4,Math.min(10,Number(candidate16539&&candidate16539.minLinePx16632)||10));
+        :Math.max(0.75,Number(candidate16539&&candidate16539.minLinePx16632)||2);
       if(!segment16539||segment16539.length<2||lineLengthPixels(hy,segment16539)<minimumScreenPx16737){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
       const mid16539=segment16539[Math.floor((segment16539.length-1)/2)],grid16539=llGrid(hy,mid16539);
       if(!grid16539||!Number.isFinite(grid16539.x)||!Number.isFinite(grid16539.y)){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
