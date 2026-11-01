@@ -48,6 +48,7 @@ async function runProperty(page,q){
       String(d.tier||d.mode||'').toLowerCase()==='property';
   },before,{timeout:90000});
   await page.waitForTimeout(800);
+  await page.waitForFunction(()=>{const e=window.EARTHLINE_ELDER_TREE_LAST_17097;return !!e&&['committed','failed'].includes(String(e.state||''));},{timeout:120000});
   return await page.evaluate(t0=>{
     const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147;
     const m=(typeof M!=='undefined'&&M)||window.M||{};
@@ -57,7 +58,8 @@ async function runProperty(page,q){
       safeSwales:safe.length,
       analysisReady:!!m.analysisReady,
       target:window.EARTHLINE_PROPERTY_TARGET_16201||null,
-      elderCount:Number(window.EARTHLINE_ELDER_TREE_COUNT||window.EARTHLINE_PROPERTY_ELDER_COUNT||0)
+      elderCount:Number(window.EARTHLINE_ELDER_TREES_V1_17097?.features?.()?.length||0),
+      elderState:String(window.EARTHLINE_ELDER_TREE_LAST_17097?.state||'')
     };
   },t0);
 }
@@ -82,7 +84,7 @@ for(const cfg of CASES){
       row.regional2.swales>0 && row.regional2.rendered>0 &&
       (row.regional.maxSlope===null||row.regional.maxSlope<=4) &&
       (row.regional2.maxSlope===null||row.regional2.maxSlope<=4) &&
-      row.property.analysisReady && row.property.safeSwales>0;
+      row.property.analysisReady && row.property.safeSwales>0 && row.property.elderState==='committed' && row.property.elderCount>0;
   }catch(e){
     row.pass=false;
     row.error=String(e?.message||e);
