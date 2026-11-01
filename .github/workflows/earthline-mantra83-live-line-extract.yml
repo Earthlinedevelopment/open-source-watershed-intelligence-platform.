@@ -17,12 +17,9 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text()
-          term='swaleCandidateContours16609'
-          pos=0
-          while True:
-              i=s.find(term,pos)
-              if i<0: break
-              print('\nM83_CAND_CONTOURS',i)
-              print(s[max(0,i-2600):min(len(s),i+6200)])
-              pos=i+len(term)
+          a=s.find("/* EARTHLINE 16841")
+          b=s.find("EARTHLINE_LATE_GAP_REFINEMENT_16741",a)
+          if a<0: raise SystemExit('16839 owner not found')
+          if b<0: b=a+35000
+          print(s[a:min(len(s),b+7000)])
           PY
