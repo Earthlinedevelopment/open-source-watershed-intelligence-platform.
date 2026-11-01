@@ -13,7 +13,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: pages-live
+          ref: mantra83-shadow-live
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with: {node-version: '24'}
-      - run: node tests/mantra83-refinement-owner-audit.mjs
+      - run: |
+          git fetch origin pages-live
+          git show origin/pages-live:index.html > /tmp/pages-live-index.html
+          cp /tmp/pages-live-index.html index.html
+          node tests/mantra83-refinement-owner-audit.mjs
