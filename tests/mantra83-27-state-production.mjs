@@ -1,3 +1,4 @@
+// Mantra 84 rerun against live 91d132e 2026-11-01
 // current-production rerun 1793511316607
 // verify live fc329052 1793499407377
 // exact-current-head 5b88dae8 1793499144461
