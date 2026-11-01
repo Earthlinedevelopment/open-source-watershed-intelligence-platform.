@@ -5,8 +5,8 @@ const chromePaths=['/usr/bin/google-chrome-stable','/usr/bin/google-chrome','/us
 const executablePath=chromePaths.find(p=>fs.existsSync(p));
 if(!executablePath)throw new Error('system Chrome not found');
 
-const OLD_HEAD="const half=Math.max(8,Math.min(24,Math.floor(coords.length*.10))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);\n      const raw=coords.slice(start,end);if(raw.length<10)return null;\n      const segment=raw;if(segment.length<10)return null;";
-const NEW_HEAD="const half=Math.max(2,Math.min(6,Math.floor(coords.length*.035))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);\n      const raw=coords.slice(start,end);if(raw.length<5)return null;\n      const segment=raw;if(segment.length<5)return null;";
+const OLD_HEAD="const half=Math.max(5,Math.min(10,Math.floor(coords.length*.07))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);\n      const raw=coords.slice(start,end);if(raw.length<8)return null;\n      const segment=raw;if(segment.length<8)return null;";
+const NEW_HEAD="const half=Math.max(2,Math.min(5,Math.floor(coords.length*.035))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);\n      const raw=coords.slice(start,end);if(raw.length<5)return null;\n      const segment=raw;if(segment.length<5)return null;";
 const OLD_VALID="if(valid<2||!anchor)return null;";
 const NEW_VALID="if(valid<Math.max(2,segment.length-2)||!anchor)return null;";
 
@@ -49,7 +49,7 @@ for(const q of ['Arizona','Vermont','Arkansas','Iowa','Texas','Florida','Califor
   rows.push(row);
   if(row.swales<12||row.rendered<12)throw new Error(q+' too sparse '+JSON.stringify(row));
   if(row.maxSlope>4)throw new Error(q+' slope violation '+row.maxSlope);
-  if(row.max>25000)throw new Error(q+' segment still worm-like '+row.max);
+  if(row.max>18000)throw new Error(q+' segment still worm-like '+row.max);
 }
 console.log('M83_SHORT_GEOMETRY_PASS '+JSON.stringify(rows));
 await browser.close();
