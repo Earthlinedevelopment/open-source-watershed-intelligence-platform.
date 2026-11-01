@@ -1,7 +1,7 @@
 import {chromium} from 'playwright';
 import {mkdirSync,writeFileSync} from 'node:fs';
 
-const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/candidate-mantra84/';
+const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/candidate-mantra84/'; // containment-only deployed candidate
 const TARGETS=[
   {name:'control-1',lng:-111.93066,lat:34.21568},
   {name:'control-2',lng:-111.93456,lat:34.21545}
