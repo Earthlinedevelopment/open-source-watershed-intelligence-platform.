@@ -1,0 +1,30 @@
+name: Mantra 83 Regional Renderer Owner
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-regional-renderer-owner.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: git fetch origin pages-live
+      - run: |
+          git show origin/pages-live:index.html > /tmp/live-index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/live-index.html').read_text()
+          for term in ['earthlineRegionalVectorOverlay16020','data-layer="swale-opportunities"','EARTHLINE_REGIONAL_VISUAL_DATA_16020','swale-opportunities']:
+              start=0;n=0
+              while True:
+                  at=s.find(term,start)
+                  if at<0: break
+                  print('M83_RENDER_OWNER',term,n,at,s[max(0,at-2400):min(len(s),at+8500)].replace('\n',' '))
+                  start=at+len(term);n+=1
+                  if n>=10: break
+          PY
