@@ -1,0 +1,29 @@
+name: Mantra 83 Contour Source
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-contour-source.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for term in ['async function makeContours','function makeContours','await wait(0)','await wait(20)','setTimeout(r,0)','earthlineCooperativeYield16661']:
+              pos=0;n=0
+              while True:
+                  i=s.find(term,pos)
+                  if i<0: break
+                  print('\nM83_CONTOUR_TERM',term,i)
+                  print(s[max(0,i-2400):min(len(s),i+9000)])
+                  pos=i+len(term);n+=1
+                  if n>=15: break
+          PY
