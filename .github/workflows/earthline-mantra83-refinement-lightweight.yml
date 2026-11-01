@@ -1,0 +1,43 @@
+name: Mantra 83 Refinement Lightweight
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - tests/mantra83-refinement-lightweight.mjs
+      - .github/workflows/earthline-mantra83-refinement-lightweight.yml
+permissions:
+  contents: read
+jobs:
+  chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env: {CLIENT: desktop-chromium}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/mantra83-refinement-lightweight.mjs
+  webkit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env: {CLIENT: desktop-webkit}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps webkit
+      - run: node tests/mantra83-refinement-lightweight.mjs
+  iphone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env: {CLIENT: iphone-webkit}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps webkit
+      - run: node tests/mantra83-refinement-lightweight.mjs
