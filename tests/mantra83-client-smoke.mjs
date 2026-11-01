@@ -1,3 +1,4 @@
+// current-live-head verification 7968af11 1793498843228
 import {chromium,webkit,devices} from 'playwright';
 
 const name=process.env.CLIENT||'desktop-chromium';
