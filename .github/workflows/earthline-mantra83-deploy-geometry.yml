@@ -25,14 +25,12 @@ jobs:
           node-version: '24'
       - run: |
           cp tests/mantra83-fix-regional-geometry.mjs /tmp/fix-geometry.mjs
-          cp tests/mantra83-fix-regional-four-percent.mjs /tmp/fix-slope.mjs
           cp tests/mantra83-fix-jsonp-late-callback.mjs /tmp/fix-jsonp.mjs
           git fetch origin pages-live
           git checkout -B pages-live origin/pages-live
-          node /tmp/fix-slope.mjs
           node /tmp/fix-geometry.mjs
           node /tmp/fix-jsonp.mjs
-          node -e "const fs=require('fs');const s=fs.readFileSync('index.html','utf8');if(!s.includes('const segment=raw;if(segment.length<10)return null;'))process.exit(2);if(!s.includes('minSlope=0,maxSlope=4'))process.exit(3);if(!s.includes('if(focusMode||preferredEligibleCount16539<36){'))process.exit(4);"
+          node -e "const fs=require('fs');const s=fs.readFileSync('index.html','utf8');if(!s.includes('const segment=raw;if(segment.length<8)return null;'))process.exit(2);if(!s.includes('minSlope=0,maxSlope=4'))process.exit(3);if(!s.includes('Math.min(10,Math.floor(coords.length*.07))'))process.exit(5);if(!s.includes('if(focusMode||preferredEligibleCount16539<36){'))process.exit(4);"
           git config user.name "earthline-ci"
           git config user.email "actions@users.noreply.github.com"
           git add index.html
