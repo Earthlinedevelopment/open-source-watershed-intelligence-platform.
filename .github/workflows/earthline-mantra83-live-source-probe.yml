@@ -1,0 +1,21 @@
+name: Mantra 83 Live Source Probe
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-live-source-probe.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          python3 - <<'PY'
+          import urllib.request,re
+          u='https://earthlinedevelopment.org/?probe=fc329052'
+          s=urllib.request.urlopen(u,timeout=30).read().decode('utf-8','replace')
+          i=s.find('async function earthlineCooperativeYield16661')
+          print('M83_LIVE_YIELD',s[i:i+900] if i>=0 else 'NOT_FOUND')
+          print('M83_LIVE_HAS_MESSAGECHANNEL', 'MessageChannel' in s[i:i+900] if i>=0 else False)
+          PY
