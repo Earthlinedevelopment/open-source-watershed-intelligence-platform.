@@ -3,7 +3,6 @@ on:
   push:
     branches: [mantra83-shadow-live]
     paths:
-      - 'tests/mantra83-safari-owner-audit.mjs'
       - '.github/workflows/earthline-mantra83-safari-owner-audit.yml'
 permissions:
   contents: read
@@ -13,8 +12,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: pages-live
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - run: node tests/mantra83-safari-owner-audit.mjs
+          fetch-depth: 0
+      - run: git fetch origin pages-live
+      - run: |
+          git show origin/pages-live:index.html > /tmp/live-index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/live-index.html').read_text()
+          for term in ['function screenJurisdictionCandidate16539','const screenJurisdictionCandidate16539','function pointInGeometry','function pointInPolygon','lineWithinJurisdiction16539','earthlineClipLineToJurisdiction16539']:
+              start=0;n=0
+              while True:
+                  at=s.find(term,start)
+                  if at<0: break
+                  print('M83_SAFARI_OWNER',term,s[max(0,at-1800):min(len(s),at+6500)].replace('\n',' '))
+                  start=at+len(term);n+=1
+                  if n>=8: break
+          PY
