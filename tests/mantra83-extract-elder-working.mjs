@@ -1,0 +1,10 @@
+import {execFileSync} from 'node:child_process';
+import {writeFileSync,mkdirSync} from 'node:fs';
+const sha='274a7b63a3d1381a7010aa4fbccd320e156b9314';
+const s=execFileSync('git',['show',sha+':index.html'],{encoding:'utf8',maxBuffer:80*1024*1024});
+const marker='<script id="earthline-build-16172-js">',st=s.indexOf(marker),en=s.indexOf('</script>',st);
+if(st<0||en<0)throw new Error('working Property script not found');
+const block=s.slice(st,en+9);
+mkdirSync('forensics',{recursive:true});
+writeFileSync('forensics/elder-working-16172.html',block);
+console.log('M83_ELDER_EXTRACTED '+JSON.stringify({chars:block.length,elder:(block.match(/elder/ig)||[]).length}));
