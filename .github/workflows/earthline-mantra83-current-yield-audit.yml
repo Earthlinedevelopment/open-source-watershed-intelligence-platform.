@@ -1,0 +1,27 @@
+name: Mantra 83 Current Yield Audit
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-current-yield-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          node <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          for(const term of ['function earthlineCooperativeYield16661','earthlineCooperativeYield16661()']){
+            let from=0,n=0;
+            while(true){
+              const at=s.indexOf(term,from);if(at<0)break;
+              console.log('M83YIELD '+JSON.stringify({term,at,text:s.slice(Math.max(0,at-700),Math.min(s.length,at+1400))}));
+              from=at+term.length;if(++n>=80)break;
+            }
+          }
+          NODE
