@@ -1,0 +1,14 @@
+import {webkit} from 'playwright';
+const q=process.env.Q||'Vermont';
+const OLD="const r=await fetch(url,{mode:'cors',cache:'force-cache',signal});if(!r.ok)throw new Error('terrain tile HTTP '+r.status);\\n      const blob=await r.blob();if(typeof createImageBitmap==='function')image=await createImageBitmap(blob);else{revoke=URL.createObjectURL(blob);image=await new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(new Error('terrain tile decode failed'));img.src=revoke;});}";
+const NEW="image=await new Promise((resolve,reject)=>{const img=new Image();img.crossOrigin='anonymous';img.onload=()=>resolve(img);img.onerror=()=>reject(new Error('terrain tile decode failed'));if(signal)signal.addEventListener('abort',()=>reject(signal.reason||new Error('terrain tile aborted')),{once:true});img.src=url;});";
+const browser=await webkit.launch({headless:true});const page=await browser.newPage({viewport:{width:1440,height:900}});const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+await page.route('https://earthlinedevelopment.org/',async route=>{const res=await route.fetch();let body=await res.text();if(!body.includes(OLD))throw new Error('decode owner missing');body=body.replace(OLD,NEW);await route.fulfill({response:res,body});});
+await page.goto('https://earthlinedevelopment.org/',{waitUntil:'domcontentloaded',timeout:120000});await page.waitForTimeout(900);await page.locator('#searchInput').fill(q);
+const before=await page.evaluate(()=>String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147)?.runToken||''));const t=Date.now();
+await page.evaluate(()=>window.earthlineRunAnalysis?.({preventDefault(){},stopPropagation(){},stopImmediatePropagation(){}}));
+await page.waitForFunction(prev=>{const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147;return !!d&&String(d.runToken||'')!==String(prev||'')&&String(document.documentElement.dataset.earthlineRunState||'')==='published';},before,{timeout:180000});
+await page.waitForTimeout(250);
+const out=await page.evaluate(t=>{const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147,fs=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.swales?.features||[];let max=-Infinity;for(const f of fs){const n=Number(f?.properties?.slope_pct);if(Number.isFinite(n))max=Math.max(max,n)}return{ms:Date.now()-t,swales:Number(d?.derived?.swaleOpportunityLines||0),rendered:document.querySelectorAll('#earthlineRegionalVectorOverlay16020 [data-layer="swale-opportunities"] path').length,maxSlope:Number.isFinite(max)?max:null,coverage:window.EARTHLINE_REGIONAL_COVERAGE_AUDIT_16731||null,perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null};},t);
+console.log('M84_WEBKIT_DECODE '+JSON.stringify({q,...out,errors}));await browser.close();
+if(!out.swales||!out.rendered||out.maxSlope>4||errors.length)process.exitCode=2;
