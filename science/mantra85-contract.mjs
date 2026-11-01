@@ -1,8 +1,9 @@
 // Earthline Mantra 85 — Clock Architecture contract.
 // Pure invariants and immutable run identity. No DOM, Mapbox, timers, network I/O, or browser state.
+// Only user-approved / inherited rules belong in LOCKED_SCIENCE. Everything else must carry explicit policy provenance.
 
-export const SCIENCE_VERSION = 'm85-clock-1';
-export const CONTRACT_VERSION = 'm85-contract-1';
+export const SCIENCE_VERSION = 'm85-clock-2';
+export const CONTRACT_VERSION = 'm85-contract-2';
 
 export const LOCKED_SCIENCE = Object.freeze({
   maxSwaleSlopePct: 4,
@@ -10,7 +11,6 @@ export const LOCKED_SCIENCE = Object.freeze({
   propertyMinSpacingM: 4.572,
   propertyMaxSpacingM: 7.620,
   elderRechargeWeight: 0,
-  forestCanopyGate: 0.40,
   rechargeWeights: Object.freeze({aquifer:0.30, soil:0.20, slope:0.18, flow:0.17, climate:0.15})
 });
 
@@ -71,6 +71,22 @@ export function normalizeExtent(extent){
   return Object.freeze(e);
 }
 
+function normalizeRankingPolicy(rankingPolicy){
+  if(!rankingPolicy||typeof rankingPolicy!=='object') throw new Error('explicit rankingPolicy required');
+  const policyId=String(rankingPolicy.policyId||'').trim();
+  if(!policyId) throw new Error('rankingPolicy.policyId required');
+  const allowed=new Set(['meanRecharge','meanFlowAccumulation','lowSlope']);
+  const terms=(rankingPolicy.terms||[]).map(t=>{
+    const metric=String(t?.metric||'');
+    const weight=Number(t?.weight);
+    if(!allowed.has(metric)) throw new Error('unsupported ranking metric '+metric);
+    if(!Number.isFinite(weight)) throw new Error('invalid ranking weight for '+metric);
+    return Object.freeze({metric,weight});
+  });
+  if(!terms.length) throw new Error('rankingPolicy terms required');
+  return deepFreeze({policyId,terms});
+}
+
 export function createRunRequest({runId,mode,target,extent,policy,sourcePlanVersion='unknown'}){
   if(!runId) throw new Error('runId required');
   mode=String(mode||'').toLowerCase();
@@ -79,6 +95,7 @@ export function createRunRequest({runId,mode,target,extent,policy,sourcePlanVers
   if(t.lng<e[0]||t.lng>e[2]||t.lat<e[1]||t.lat>e[3]) throw new Error('target outside declared extent');
   if(!policy||typeof policy!=='object') throw new Error('explicit policy required');
   const p={
+    policyId:String(policy.policyId||'').trim(),
     contourIntervalM:Number(policy.contourIntervalM),
     minCandidateLengthM:Number(policy.minCandidateLengthM),
     maxCandidateLengthM:Number(policy.maxCandidateLengthM),
@@ -86,9 +103,12 @@ export function createRunRequest({runId,mode,target,extent,policy,sourcePlanVers
     minSpacingM:Number(policy.minSpacingM),
     maxSwales:Number(policy.maxSwales),
     maxSlopePct:LOCKED_SCIENCE.maxSwaleSlopePct,
-    forestCanopyGate:LOCKED_SCIENCE.forestCanopyGate,
-    requireNoPendingEvidence:policy.requireNoPendingEvidence!==false
+    requireForestExclusion:policy.requireForestExclusion!==false,
+    requireRechargeGrid:policy.requireRechargeGrid!==false,
+    requireNoPendingEvidence:policy.requireNoPendingEvidence!==false,
+    rankingPolicy:normalizeRankingPolicy(policy.rankingPolicy)
   };
+  if(!p.policyId) throw new Error('policy.policyId required');
   for(const k of ['contourIntervalM','minCandidateLengthM','maxCandidateLengthM','sampleStepM','minSpacingM','maxSwales']){
     if(!Number.isFinite(p[k])||p[k]<=0) throw new Error('invalid policy '+k);
   }
