@@ -8,8 +8,8 @@ const wrapper=`
   function install(){
     const orig=window.earthlineRenderRegionalOverlay16020;if(typeof orig!=='function'||orig.__m83LocalDisplay)return false;
     const wrapped=function(data){
-      const tier=String((window.EARTHLINE_DISPLAYED_RUN_16151||{}).tier||(window.EARTHLINE_DISPLAYED_RUN_16151||{}).mode||'regional').toLowerCase();
-      if(tier==='focus'||!data?.swales?.features)return orig(data);
+      const features=data?.swales?.features||[];const isFocus=features.some(f=>String(f?.properties?.analysis_tier||'').toLowerCase()==='focus');
+      if(isFocus||!features.length)return orig(data);
       const display=Object.assign({},data,{swales:{type:'FeatureCollection',features:data.swales.features.map(f=>f?.geometry?.type==='LineString'?Object.assign({},f,{geometry:Object.assign({},f.geometry,{coordinates:local(f.geometry.coordinates)})}):f)}});
       return orig(display);
     };
