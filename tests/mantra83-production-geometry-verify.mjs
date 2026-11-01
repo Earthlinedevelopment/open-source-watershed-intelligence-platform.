@@ -1,3 +1,4 @@
+// rerun current live head 1793494080881
 // verify tightened live geometry 2026-11-01
 import {chromium,webkit,devices} from 'playwright';
 import fs from 'node:fs';
