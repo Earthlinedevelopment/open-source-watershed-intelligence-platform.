@@ -1,0 +1,29 @@
+name: Mantra 83 Clip Owner Extract
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-clip-owner-extract.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: git fetch origin pages-live
+      - run: |
+          git show origin/pages-live:index.html > /tmp/live-index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/live-index.html').read_text()
+          for term in ['earthlineClipLine16539','function earthlineClipLine16539','const earthlineClipLine16539','pointInRing','pointInPolygon','insideJurisdiction']:
+              start=0
+              while True:
+                  at=s.find(term,start)
+                  if at<0: break
+                  print('M83_CLIP_OWNER',term,at,s[max(0,at-2400):min(len(s),at+8000)].replace('\n',' '))
+                  start=at+len(term)
+          PY
