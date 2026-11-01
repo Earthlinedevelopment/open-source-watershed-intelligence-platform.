@@ -1,0 +1,17 @@
+name: Mantra 83 Elder Dependency Check
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-elder-dependency-check.mjs'
+      - '.github/workflows/earthline-mantra83-elder-dependency-check.yml'
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: node tests/mantra83-elder-dependency-check.mjs
