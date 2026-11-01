@@ -1,0 +1,35 @@
+name: Earthline Apply Principal Aquifer Source Repair
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tools/apply-regional-principal-aquifer-source.py'
+      - '.github/workflows/earthline-apply-principal-aquifer.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-principal-aquifer-repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply validated shared aquifer repair
+        run: python tools/apply-regional-principal-aquifer-source.py
+      - name: Verify product diff
+        run: |
+          git diff --check
+          git diff --stat -- index.html
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+      - name: Commit live product candidate
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "repair: use USGS principal aquifers for Regional context"
+          git push origin HEAD:pages-live

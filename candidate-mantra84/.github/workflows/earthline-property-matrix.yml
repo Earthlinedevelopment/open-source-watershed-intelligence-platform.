@@ -1,0 +1,77 @@
+name: Earthline Property Matrix
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'lab/property-matrix.mjs'
+      - 'builds/16600/**'
+      - 'lab.html'
+      - '.github/workflows/earthline-property-matrix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  us-property:
+    name: US Property shard ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run real Property tests
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/lab.html
+          EARTHLINE_AREA: US
+          EARTHLINE_SHARD_INDEX: ${{ matrix.shard }}
+          EARTHLINE_SHARD_TOTAL: 5
+        run: node lab/property-matrix.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-property-us-${{ matrix.shard }}
+          path: lab-results/property-us-${{ matrix.shard }}-of-5.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  se-asia-property:
+    name: Southeast Asia Property
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run real Property tests
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/lab.html
+          EARTHLINE_AREA: SEA
+          EARTHLINE_SHARD_INDEX: 0
+          EARTHLINE_SHARD_TOTAL: 1
+        run: node lab/property-matrix.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-property-se-asia
+          path: lab-results/property-sea-0-of-1.json
+          if-no-files-found: warn
+          retention-days: 7

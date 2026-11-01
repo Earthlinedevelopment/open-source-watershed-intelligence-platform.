@@ -1,0 +1,31 @@
+name: Mantra 46 Iowa Arkansas Same-Page Cycle
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mantra46-ia-ar-cycle.mjs'
+      - '.github/workflows/earthline-m46-ia-ar-cycle.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run same-page Iowa Arkansas cycle
+        run: node tests/mantra46-ia-ar-cycle.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-ia-ar-cycle
+          path: artifacts/mantra46-ia-ar-cycle/
+          if-no-files-found: error
