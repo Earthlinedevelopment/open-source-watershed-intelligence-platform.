@@ -1,0 +1,19 @@
+name: Mantra 84 Safe Combo 27 State
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra84-safe-combo-27-state.mjs'
+      - '.github/workflows/earthline-mantra84-safe-combo-27-state.yml'
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/mantra84-safe-combo-27-state.mjs
