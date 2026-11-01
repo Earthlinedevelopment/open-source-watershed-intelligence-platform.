@@ -1,0 +1,805 @@
+<script id="earthline-build-16172-js">
+(function(){
+  'use strict';
+  const BUILD='EARTHLINE 16236';
+  let running=false,stageTimer=0,runSerial=0;
+  const STAGES={
+    dem:'loading elevation',terrain:'loading elevation',imagery:'preparing imagery',
+    hydrology:'verifying exclusions and routing water',swales:'deriving property bioswales',
+    recharge:'calculating recharge opportunity',render:'publishing verified property layers',
+    ready:'finalizing'
+  };
+  const SAFE_SOURCE_16221='earthline-property-safe-visible-16221';
+  const SAFE_LAYERS_16221={
+    casing:'earthline-property-safe-casing-16221',
+    earth:'earthline-property-safe-earth-16221',
+    life:'earthline-property-safe-life-16221',
+    water:'earthline-property-safe-water-16221'
+  };
+  const SAFE_EMPTY_16221={type:'FeatureCollection',features:[]};
+  const safeLayerTimers16221=new Set();
+  function model(){try{return M||null}catch(_){return null}}
+  function map(){try{return window.earthlineMap||earthlineMap||null}catch(_){return window.earthlineMap||null}}
+  function button(){return document.getElementById('earthlineDeclareProperty16169')}
+  function status(msg,kind='pending'){
+    let p=document.getElementById('earthlineVermontStatus16147');
+    if(!p&&document.body){p=document.createElement('div');p.id='earthlineVermontStatus16147';p.setAttribute('role','status');p.setAttribute('aria-live','polite');document.body.appendChild(p)}
+    if(p){p.textContent=String(msg||'');p.dataset.kind=kind}
+  }
+  function clean(v){return String(v||'').trim().replace(/\s+/g,' ')}
+  function key(v){return clean(v).toLowerCase()}
+  function restoreLocationIdentity16202(){const x=window.EARTHLINE_CHOSEN_LOCATION_16189;if(!x)return false;const set=(id,v)=>{const el=document.getElementById(id);if(el&&v!=null)el.textContent=String(v)};set('locName',x.label);set('locSub',x.sub||'Selected Earthline location');set('locCoords',Number.isFinite(Number(x.lat))&&Number.isFinite(Number(x.lng))?Number(x.lat).toFixed(5)+', '+Number(x.lng).toFixed(5):x.query);set('locArea',x.area||'');return true}
+  function setButton(on,label){
+    const b=button();if(!b)return;
+    let svg=b.querySelector('svg');if(!svg){svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('aria-hidden','true');const use=document.createElementNS('http://www.w3.org/2000/svg','use');use.setAttribute('href','#orb');svg.appendChild(use);b.prepend(svg)}
+    b.querySelector('.el69-dot')?.remove();
+    b.dataset.terminalRunning=on?'1':'0';b.dataset.busy=on?'1':'0';b.disabled=!!on;b.dataset.state=on?'running':'idle';b.setAttribute('aria-busy',on?'true':'false');
+    svg.classList.remove('earthline-orb-spinning-16202','earthline-orb-spinning-16203');
+    try{if(svg.__earthlineSpin16203){svg.__earthlineSpin16203.cancel();svg.__earthlineSpin16203=null}}catch(_){}
+    svg.style.removeProperty('animation');svg.style.removeProperty('transform');svg.style.removeProperty('transform-origin');svg.style.removeProperty('transform-box');
+    let spin=svg.querySelector('.earthline-orb-spin-16240');if(!spin){spin=document.createElementNS('http://www.w3.org/2000/svg','g');spin.setAttribute('class','earthline-orb-spin-16240');const uses=[...svg.querySelectorAll('use')];if(uses.length){for(const use of uses)spin.appendChild(use)}else{const use=document.createElementNS('http://www.w3.org/2000/svg','use');use.setAttribute('href','#orb');spin.appendChild(use)}svg.appendChild(spin)}
+    const t=b.querySelector('span:last-child');if(t)t.textContent=label||(on?'RUNNING PROPERTY ANALYSIS…':'PROPERTY ANALYSIS · 20 ACRES');
+  }
+  function ensureTierNotice(){
+    let n=document.getElementById('earthlineTierNotice16173');
+    if(!n&&document.body){n=document.createElement('div');n.id='earthlineTierNotice16173';n.setAttribute('role','status');n.setAttribute('aria-live','polite');document.body.appendChild(n)}
+    return n;
+  }
+  function setTierNotice(mode,text){const n=ensureTierNotice();if(!n)return;const m=String(mode||'focus');n.dataset.mode=m;if(m==='focus'){n.textContent='';n.classList.remove('visible');return}n.textContent=String(text||'');n.classList.toggle('visible',!!text)}
+  function propertyTextureAudit(){
+    try{return typeof window.earthlinePropertyTextureAudit16169==='function'?window.earthlinePropertyTextureAudit16169():null}catch(_){return null}
+  }
+  async function verifyPropertyTexture(count){
+    if(!(count>0))return {ok:true,required:false,sourceFeatures:0,layers:{},widthPx:0};
+    /* EARTHLINE 16477 — performance-only terminal-path repair. Natural texture is
+       presentation enrichment, not a scientific/safety prerequisite. Start the
+       unchanged texture synchronization owner in the background, but do not make
+       the governed Property promise wait for image decode/layer registration. The
+       authoritative safe-line fallback remains the immediate verified renderer. */
+    let error='';
+    try{
+      const syncTexture=window.earthlineSyncPropertyTexture16169;
+      if(typeof syncTexture!=='function')throw new Error('property texture synchronization owner unavailable');
+      Promise.resolve(syncTexture('property-published-16173-force')).catch(err=>{
+        window.EARTHLINE_PROPERTY_TEXTURE_BACKGROUND_ERROR_16477=String(err&&err.message||err||'texture synchronization failed');
+      });
+    }catch(err){error=String(err&&err.message||err||'texture synchronization failed')}
+    const a=propertyTextureAudit(),t=a?.texture||window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null,mp=map();
+    const sourceFeatures=Number(a?.sourceFeatures??t?.features??0),centerlines=Number(t?.centerlines||0),footprints=Number(t?.footprints||0),directional=Number(t?.directional||0),neutral=Number(t?.neutral||0),layers=t?.layers||{};
+    const layerValues=Object.values(layers),layersReady=layerValues.length>=5&&layerValues.every(Boolean);
+    const registeredImages={up:!!mp?.hasImage?.('earthline-swale-natural-uphill-16174'),flip:!!mp?.hasImage?.('earthline-swale-natural-uphill-flipped-16174')},imagesReady=registeredImages.up&&registeredImages.flip;
+    const widthPx=Number(t?.widthPx||0),orientationComplete=directional+neutral===centerlines;
+    const ok=sourceFeatures>0&&centerlines>0&&footprints===centerlines&&orientationComplete&&layersReady&&imagesReady&&widthPx>=4;
+    return {ok,required:true,pending:!ok,backgroundSync:true,sourceFeatures,centerlines,footprints,directional,neutral,orientationComplete,layers,layersReady,registeredImages,imagesReady,widthPx,error,audit:a||t||null};
+  }
+  /* EARTHLINE 16348 — native Mapbox owns the completed Property basemap. A
+     Regional→Property transition can reach fitBounds while the Mapbox backing
+     canvas still reflects a prior viewport. Resize before framing, then perform
+     bounded post-frame resize/repaint passes. Tile readiness is presentation
+     evidence only and never alters scientific publication. */
+  function earthlineSettlePropertyBasemap16348(reason='property-frame'){
+    const mp=map();if(!mp)return false;
+    const audit={build:'EARTHLINE 16348',reason,passes:[],startedAt:new Date().toISOString(),settled:false};
+    window.EARTHLINE_PROPERTY_BASEMAP_AUDIT_16348=audit;
+    const sample=(label)=>{
+      try{
+        mp.resize?.();mp.triggerRepaint?.();
+        const host=mp.getContainer?.(),canvas=mp.getCanvas?.(),dpr=window.devicePixelRatio||1;
+        const hostW=Number(host?.clientWidth||0),hostH=Number(host?.clientHeight||0);
+        const canvasW=Number(canvas?.width||0)/dpr,canvasH=Number(canvas?.height||0)/dpr;
+        const sizeMatched=hostW>0&&hostH>0&&Math.abs(canvasW-hostW)<=2&&Math.abs(canvasH-hostH)<=2;
+        const tilesLoaded=typeof mp.areTilesLoaded==='function'?!!mp.areTilesLoaded():null;
+        const loaded=typeof mp.loaded==='function'?!!mp.loaded():null;
+        const row={label,at:new Date().toISOString(),hostW,hostH,canvasW,canvasH,sizeMatched,tilesLoaded,loaded,moving:!!mp.isMoving?.()};
+        audit.passes.push(row);if(audit.passes.length>12)audit.passes.shift();
+        if(sizeMatched&&tilesLoaded!==false&&!row.moving){audit.settled=true;audit.settledAt=row.at;}
+        return row;
+      }catch(error){audit.error=String(error?.message||error);return null;}
+    };
+    sample('immediate');
+    for(const delay of [80,220,520,1000,1800,3200])setTimeout(()=>sample('delay-'+delay),delay);
+    try{mp.once?.('moveend',()=>sample('moveend'));mp.once?.('idle',()=>sample('idle'));}catch(_){ }
+    return true;
+  }
+  window.earthlineSettlePropertyBasemap16348=earthlineSettlePropertyBasemap16348;
+  function frameDeclaredProperty(site){
+    const mp=map(),pts=Array.isArray(site?.analysisBoundaryLngLat)?site.analysisBoundaryLngLat:[];
+    if(!mp||pts.length<3)return false;
+    const xs=pts.map(p=>Number(p?.[0])).filter(Number.isFinite),ys=pts.map(p=>Number(p?.[1])).filter(Number.isFinite);
+    if(xs.length<3||ys.length<3)return false;
+    const bounds=[[Math.min(...xs),Math.min(...ys)],[Math.max(...xs),Math.max(...ys)]];
+    try{
+      if(typeof mp.fitBounds!=='function')throw new Error('map fitBounds unavailable');
+      mp.resize?.();mp.triggerRepaint?.();
+      mp.fitBounds(bounds,{padding:{top:92,right:92,bottom:92,left:92},duration:0,maxZoom:19.1}); /* EARTHLINE_PROPERTY_FRAME_IMMEDIATE_17185 */
+      earthlineSettlePropertyBasemap16348('frameDeclaredProperty');
+      return true;
+    }catch(error){console.warn('[Earthline] property frame failed',error);return false}
+  }
+  function clearTimers(){clearInterval(stageTimer);stageTimer=0}
+  function clearAllBusy(){
+    document.documentElement.dataset.earthlinePropertyRunState='idle';
+    const b=document.getElementById('earthlineDeclareProperty16169');
+    if(b){b.disabled=false;delete b.dataset.busy;b.dataset.state='idle';b.dataset.terminalRunning='0';b.setAttribute('aria-busy','false');const svg=b.querySelector('svg');if(svg){svg.classList.remove('earthline-orb-spinning-16202');svg.style.removeProperty('animation');svg.style.removeProperty('transform-origin');svg.style.removeProperty('transform-box')}}
+  }
+  function restoreGrab(){try{const mp=map(),els=[mp?.getCanvasContainer?.(),mp?.getCanvas?.()];for(const el of els)el?.style?.removeProperty?.('cursor')}catch(_){}}
+  function updateBuild(){const el=document.getElementById('earthlineBuildStamp16154');if(el)el.textContent=BUILD;document.documentElement.dataset.earthlineVermontBuild='16243'}
+  function setAudit(patch){window.EARTHLINE_PROPERTY_RUN_AUDIT_16173=Object.assign({},window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{build:BUILD},patch||{});return window.EARTHLINE_PROPERTY_RUN_AUDIT_16173}
+  function propertyEvidenceSnapshot16206(){
+    const m=model()||{},p=m.noBuildProvenance15843||{},v=m.vectorNoBuildCoverage||{},infra=v.infrastructure15862P||{},vt=infra.vermont||{},direct=m.directAuthorityGeometryAudit15874||null;
+    return {
+      sourceStateFingerprint:p.sourceStateFingerprint||null,
+      scientificInputFingerprint:p.scientificInputFingerprint||null,
+      noBuildMaskHash:p.noBuildMaskHash||null,
+      vectorNoBuildMaskHash:p.vectorNoBuildMaskHash||null,
+      sourceHashes:p.sourceHashes||null,
+      vectorVerified:v.verified===true,
+      publicationAllowed:v.verified===true||v.publicationAllowed===true,
+      sourceTier:v.sourceTier||null,
+      acquisitionResult:v.acquisitionResult||null,
+      evidenceGrade:v.evidenceGrade||null,
+      sourceFeatureCount:Number(v.sourceFeatureCount||v.featureCount||0),
+      processedFeatureCount:Number(v.processedFeatureCount||0),
+      drivewayFeatureCount:Number(vt.drivewayFeatureCount||0),
+      buildingFeatureCount:Number(vt.buildingFeatureCount||0),
+      authoritySourceAvailable:!!(direct&&direct.available),
+      authorityIntersectionCount:direct&&Number.isFinite(Number(direct.intersectionCount))?Number(direct.intersectionCount):null
+    };
+  }
+  function stageName(){const m=model(),raw=String(m?.currentStage||'').toLowerCase();return {raw,label:STAGES[raw]||'processing terrain and exclusions'}}
+  function startStageClock(serial,started){
+    stageTimer=setInterval(()=>{
+      if(!running||serial!==runSerial)return;const st=stageName(),elapsed=Math.max(0,Math.round((performance.now()-started)/1000));
+      setButton(true,'PROPERTY · '+st.label.toUpperCase()+' · '+elapsed+'s');
+      status('Property analysis — '+st.label+'… '+elapsed+' seconds elapsed. No result will publish unless terrain and exclusions complete.','pending');
+      setAudit({stage:st.raw||'starting',stageLabel:st.label,elapsedSeconds:elapsed,updatedAt:new Date().toISOString()});
+    },250);
+  }
+  function declaredSite(center){
+  const m=model(),parent=m?.loc||{},helper=typeof earthlineSelectedSiteFromCenter==='function'?earthlineSelectedSiteFromCenter:null;
+  let site=helper?helper(parent,Number(center.lng),Number(center.lat),20):null;
+  if(!site)return null;
+  const coord=Number(center.lat).toFixed(5)+', '+Number(center.lng).toFixed(5);
+  const parentLabel=String(parent?.fullName||parent?.label||parent?.name||parent?.q||'').trim();
+  const humanLabel=parentLabel&&!/^20-acre project area/i.test(parentLabel)?parentLabel:'';
+  const reportLabel='20-acre project area'+(humanLabel?' · '+humanLabel:'')+' · '+coord;
+  site=Object.assign({},site,{
+    q:reportLabel,
+    name:'20-acre Project Area',
+    fullName:reportLabel,
+    jurisdictionLabel:humanLabel,
+    sub:'Declared from the map crosshair',
+    placeType:'selected_site',userSelectedSite:true,propertyMode:true,regionalMode:false,planning:false,acres:20,
+    lat:Number(center.lat),lng:Number(center.lng),zoomHint:Math.max(17,Number(map()?.getZoom?.()||17))
+  });
+  return site;
+}
+  function authoritativePropertyCount16220(){
+    const m=model()||{},safe=m.authoritativeSafeSwales15815,publication=m.propertyPublication15816||{},lock=m.propertyResultLock15815||{},audit=m.safetyAudit15806||{};
+    const currentGen=Number(m.searchGen),publicationGen=Number(publication.searchGen),lockGen=Number(lock.searchGen);
+    const generationMatches=!!(
+      Number.isFinite(currentGen)&&Number.isFinite(publicationGen)&&Number.isFinite(lockGen)&&
+      currentGen===publicationGen&&currentGen===lockGen
+    );
+    const safetyVerified=!!(
+      generationMatches&&publication.committed===true&&publication.safetyVerified===true&&
+      lock.safetyVerified===true&&audit.verified===true
+    );
+    const safeCount=safetyVerified&&safe&&safe.type==='FeatureCollection'&&Array.isArray(safe.features)?safe.features.length:0;
+    return {safetyVerified,generationMatches,currentGen,publicationGen,lockGen,safeCount,engineCount:Array.isArray(m.swales)?m.swales.length:0,publicationCount:Number(publication.safeSegments||0),publication,lock,audit,safe:safetyVerified?safe:null};
+  }
+  function publishPropertyDisplay16220(site,selectedCode){
+    const m=model()||{},before=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,counts=authoritativePropertyCount16220();
+    if(!counts.safetyVerified){
+      const stale16327=counts.generationMatches===false;
+      window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220={
+        build:BUILD,published:false,
+        reason:stale16327?'property-generation-superseded-by-newer-search':'property-safety-or-publication-unverified',
+        canonicalTierBefore:String(before?.tier||before?.mode||''),
+        generationMatches:counts.generationMatches,
+        currentGen:counts.currentGen,publicationGen:counts.publicationGen,lockGen:counts.lockGen,
+        engineCount:counts.engineCount,safeCount:counts.safeCount,publicationCount:counts.publicationCount,
+        at:new Date().toISOString()
+      };
+      return {ok:false,counts};
+    }
+    const runToken='property-16220-'+Number(m.searchGen||0)+'-'+Date.now().toString(36);
+    const evidence=propertyEvidenceSnapshot16206();
+    const snapshot={
+      runToken,query:String(site?.fullName||site?.name||'20-acre property analysis'),tier:'property',mode:'property',extentClass:'property',
+      center:{lng:Number(site?.lng),lat:Number(site?.lat)},acres:Number(site?.acres||20),selectedCode:selectedCode||null,
+      completedAt:new Date().toISOString(),
+      derived:{swaleOpportunityLines:counts.safeCount,propertySafeCorridors:counts.safeCount,engineCorridors:counts.engineCount},
+      propertyPublication:{committed:true,safetyVerified:true,safeSegments:counts.safeCount,searchGen:Number(m.searchGen||0)},
+      evidence
+    };
+    try{
+      if(m.layers&&m.layers.swales)m.layers.swales.on=true;
+      if(typeof window.earthlinePublishDisplayedRun16151==='function')window.earthlinePublishDisplayedRun16151(snapshot);
+      else{
+        const frozen=Object.freeze(JSON.parse(JSON.stringify(snapshot)));
+        window.EARTHLINE_DISPLAYED_RUN_16147=frozen;window.EARTHLINE_DISPLAYED_RUN_16151=frozen;window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=runToken;
+        document.documentElement.dataset.earthlineActiveRun=runToken;document.documentElement.dataset.earthlineRunState='published';
+        document.dispatchEvent(new CustomEvent('earthline:analysis-complete',{detail:{runToken,query:snapshot.query,tier:'property'}}));
+      }
+      if(typeof window.earthlineDeliverPropertyResult15817==='function')window.earthlineDeliverPropertyResult15817('property-canonical-display-16220',true);
+      if(typeof window.earthlineSyncLivingSwales15792==='function')window.earthlineSyncLivingSwales15792(counts.safe,true);
+      window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220={build:BUILD,published:true,runToken,canonicalTierBefore:String(before?.tier||before?.mode||''),canonicalTierAfter:String(window.EARTHLINE_DISPLAYED_RUN_16151?.tier||''),engineCount:counts.engineCount,safeCount:counts.safeCount,publicationCount:counts.publicationCount,sourceStateFingerprint:evidence.sourceStateFingerprint||null,scientificInputFingerprint:evidence.scientificInputFingerprint||null,noBuildMaskHash:evidence.noBuildMaskHash||null,drivewayFeatureCount:evidence.drivewayFeatureCount,buildingFeatureCount:evidence.buildingFeatureCount,authorityIntersectionCount:evidence.authorityIntersectionCount,at:new Date().toISOString()};
+      try{earthlineStandardAudit16784({tier:'property',runToken,query:snapshot.query,stage:'property-published'});}catch(_){ }
+      return {ok:true,counts,snapshot};
+    }catch(error){
+      window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220={build:BUILD,published:false,reason:String(error?.message||error||'property-display-publication-failed'),canonicalTierBefore:String(before?.tier||before?.mode||''),engineCount:counts.engineCount,safeCount:counts.safeCount,publicationCount:counts.publicationCount,at:new Date().toISOString()};
+      throw error;
+    }
+  }
+  function authoritativeSafePropertyFC16221(){
+    const m=model()||{},publication=m.propertyPublication15816||{},lock=m.propertyResultLock15815||{},audit=m.safetyAudit15806||{},fc=m.authoritativeSafeSwales15815;
+    const currentGen=Number(m.searchGen),publicationGen=Number(publication.searchGen);
+    const generationMatches=!(Number.isFinite(currentGen)&&Number.isFinite(publicationGen))||currentGen===publicationGen;
+    const verified=!!(publication.committed===true&&publication.safetyVerified===true&&lock.safetyVerified===true&&audit.verified===true&&generationMatches&&fc&&fc.type==='FeatureCollection'&&Array.isArray(fc.features));
+    return verified?fc:SAFE_EMPTY_16221;
+  }
+  function propertySafeDisplayActive16221(){
+    const m=model()||{},publication=m.propertyPublication15816||{},lock=m.propertyResultLock15815||{},audit=m.safetyAudit15806||{};
+    return !!(publication.committed===true&&publication.safetyVerified===true&&lock.safetyVerified===true&&audit.verified===true&&m.authoritativeSafeSwales15815&&m.authoritativeSafeSwales15815.type==='FeatureCollection');
+  }
+  function setSafeLayerVisibility16221(on){
+    const mp=map();
+    for(const id of Object.values(SAFE_LAYERS_16221)){
+      try{if(mp?.getLayer?.(id))mp.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){ }
+    }
+  }
+  /* EARTHLINE 16521 — presentation-only retirement + bounded same-generation
+     settlement, rebuilt directly on 16516. Scientific/model fields remain intact. */
+  function retirePriorPropertyPresentation16521(reason='new-property-attempt'){
+    const mp=map();
+    try{clearSafePropertyFallback16221('retire-prior-property-16521')}catch(_){ }
+    try{if(typeof window.earthlineSyncRechargeLayer==='function')window.earthlineSyncRechargeLayer(false)}catch(_){ }
+    try{
+      /* EARTHLINE 16534 — hide-only retirement. Do not clear source data here: the existing
+         texture/living owners retain their caches and republish the new Property after commit. */
+      const ids=[
+        'earthline-living-swales-glow-15792','earthline-living-swales-earth-15792','earthline-living-swales-life-15792','earthline-living-swales-water-15792',
+        'earthline-property-swale-footprint-16174','earthline-property-swale-natural-casing-16174','earthline-property-swale-natural-up-16174','earthline-property-swale-natural-flip-16174','earthline-property-swale-neutral-16177',
+        'earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806',
+        'earthline-property-flow-casing-15792','earthline-property-flow-line-15792','earthline-property-flow-pulse-15792','earthline-property-flow-arrows-15792'
+      ];
+      for(const id of ids){try{if(mp?.getLayer?.(id))mp.setLayoutProperty(id,'visibility','none')}catch(_){ }}
+    }catch(_){ }
+    try{
+      const boundary=document.getElementById('earthlineAnalysisBoundaryOverlay15827');
+      if(boundary){boundary.replaceChildren();boundary.style.setProperty('display','none','important')}
+      const water=document.getElementById('earthlinePropertyWaterOverlay15824');
+      if(water){water.replaceChildren();water.style.display='none'}
+      const aq=document.getElementById('earthlineAquiferTopText16501');
+      if(aq){aq.replaceChildren();aq.style.display='none'}
+    }catch(_){ }
+    window.EARTHLINE_PROPERTY_RETIREMENT_AUDIT_16521={build:'EARTHLINE 16521',reason,presentationOnly:true,scientificStateCleared:false,at:new Date().toISOString()};
+    return true;
+  }
+
+  function boundaryKey16521(points){
+    return (Array.isArray(points)?points:[]).map(p=>Number(p&&p[0]).toFixed(7)+','+Number(p&&p[1]).toFixed(7)).join('|');
+  }
+
+  function settleCurrentPropertyPresentation16521(serial,searchGen,count){
+    (async()=>{
+      let last=null;
+      for(const delay of [0,90,260,620,1300,2200]){
+        if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
+        const md=model()||{};
+        const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+        const tier=String(displayed&&(displayed.tier||displayed.mode)||'').toLowerCase();
+        if(serial!==runSerial||Number(md.searchGen||0)!==Number(searchGen)||tier==='regional')return;
+        let safeOk=count===0;
+        try{const safe=syncSafePropertyFallback16221('bounded-postpublish-16521-'+delay);safeOk=count===0||!!(safe&&safe.ok);last=Object.assign({},last||{},{safe})}catch(_){ }
+        if(count>0&&!safeOk)continue; /* EARTHLINE_SAFE_FIRST_PRESENTATION_17181 */
+        try{if(typeof window.earthlineSchedulePropertyWater15823==='function')window.earthlineSchedulePropertyWater15823('bounded-postpublish-16521-'+delay)}catch(_){ }
+        try{if(typeof window.earthlineRenderDirectWater15824==='function')window.earthlineRenderDirectWater15824(true)}catch(_){ }
+        try{if(typeof window.earthlineSyncAquiferLayer==='function')window.earthlineSyncAquiferLayer()}catch(_){ }
+        try{if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')}catch(_){ }
+        try{if(typeof window.earthlineQueueAnalysisBoundary15827==='function')window.earthlineQueueAnalysisBoundary15827()}catch(_){ }
+        const r=(model()||{}).directWaterRenderer15824||null;
+        const generated=Number(r&&r.generatedPaths),visible=Number(r&&r.visiblePaths||0);
+        const waterOk=!!(r&&Number.isFinite(generated)&&(generated===0||(r.visible===true&&visible>0)));
+        const boundary=document.getElementById('earthlineAnalysisBoundaryOverlay15827');
+        const expectedKey=boundaryKey16521(md.analysisBoundaryLngLat);
+        let renderedKey='';
+        try{const a=typeof window.earthlineBuild15827Audit==='function'?window.earthlineBuild15827Audit():null;renderedKey=boundaryKey16521(a&&a.frame&&a.frame.boundary)}catch(_){ }
+        const boundaryOk=!!(boundary&&boundary.style.display!=='none'&&boundary.childElementCount>0&&expectedKey&&renderedKey===expectedKey);
+        last=Object.assign({},last||{},{water:{generatedPaths:Number.isFinite(generated)?generated:null,visiblePaths:visible,ok:waterOk},boundary:{ok:boundaryOk,children:boundary?boundary.childElementCount:0,display:boundary?boundary.style.display:null,expectedKey,renderedKey}});
+        if(safeOk&&waterOk&&boundaryOk){window.EARTHLINE_PROPERTY_PRESENTATION_SETTLE_AUDIT_16521={build:'EARTHLINE 16521',ok:true,searchGen:Number(searchGen),corridors:Number(count||0),delay,last,at:new Date().toISOString()};return}
+      }
+      window.EARTHLINE_PROPERTY_PRESENTATION_SETTLE_AUDIT_16521={build:'EARTHLINE 16521',ok:false,searchGen:Number(searchGen),corridors:Number(count||0),last,at:new Date().toISOString()};
+    })().catch(error=>{window.EARTHLINE_PROPERTY_PRESENTATION_SETTLE_AUDIT_16521={build:'EARTHLINE 16521',ok:false,error:String(error&&error.message||error),at:new Date().toISOString()}});
+  }
+
+  function clearSafePropertyFallback16221(reason='clear'){
+    const mp=map();
+    try{const src=mp?.getSource?.(SAFE_SOURCE_16221);if(src?.setData)src.setData(SAFE_EMPTY_16221)}catch(_){ }
+    setSafeLayerVisibility16221(false);
+    window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active:false,verified:false,count:0,visible:false,at:new Date().toISOString()};
+    return true;
+  }
+  function ensureSafePropertyLayers16221(){
+    const mp=map();
+    if(!mp)return {ok:false,error:'map unavailable'};
+    /* EARTHLINE 16289 — Mapbox isStyleLoaded() is intentionally NOT a gate here.
+       It can remain false while source/tile work is still settling even though the
+       live style already accepts addSource/addLayer. The authoritative readiness
+       test is whether the style object exists and the actual layer operations
+       succeed. If Mapbox truly is not ready those operations fail closed and the
+       existing style.load/idle retry owner tries again without changing geometry. */
+    try{if(typeof mp.getStyle==='function'&&!mp.getStyle())return {ok:false,error:'map style unavailable'}}catch(error){return {ok:false,error:'map style unavailable: '+String(error?.message||error)}}
+    try{if(!mp.getSource?.(SAFE_SOURCE_16221))mp.addSource(SAFE_SOURCE_16221,{type:'geojson',lineMetrics:true,data:SAFE_EMPTY_16221})}catch(error){return {ok:false,error:String(error?.message||error||'safe source creation failed')}}
+    const specs=[
+      {id:SAFE_LAYERS_16221.casing,type:'line',source:SAFE_SOURCE_16221,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#123d24','line-opacity':.98,'line-width':['interpolate',['linear'],['zoom'],14,10,17,20,20,30]}},
+      {id:SAFE_LAYERS_16221.earth,type:'line',source:SAFE_SOURCE_16221,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7a5738','line-opacity':.98,'line-width':['interpolate',['linear'],['zoom'],14,7,17,15,20,23]}},
+      {id:SAFE_LAYERS_16221.life,type:'line',source:SAFE_SOURCE_16221,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#56a862','line-opacity':.98,'line-width':['interpolate',['linear'],['zoom'],14,4.5,17,9,20,14],'line-offset':['interpolate',['linear'],['zoom'],14,-1.5,17,-3.2,20,-4.8],'line-dasharray':[.7,.38]}},
+      {id:SAFE_LAYERS_16221.water,type:'line',source:SAFE_SOURCE_16221,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#4ec9ff','line-opacity':.98,'line-width':['interpolate',['linear'],['zoom'],14,3.90625,17,8.203125,20,12.5],'line-offset':['interpolate',['linear'],['zoom'],14,1.2,17,2.5,20,3.8]}}
+    ];
+    const errors=[];
+    for(const spec of specs){
+      try{if(!mp.getLayer?.(spec.id))mp.addLayer(spec)}catch(error){errors.push(spec.id+': '+String(error?.message||error))}
+    }
+    const layersReady=Object.values(SAFE_LAYERS_16221).every(id=>!!mp.getLayer?.(id));
+    return {ok:layersReady&&errors.length===0,layersReady,errors,sourceReady:!!mp.getSource?.(SAFE_SOURCE_16221)};
+  }
+  function syncSafePropertyFallback16221(reason='sync'){
+    const mp=map(),fc=authoritativeSafePropertyFC16221(),active=propertySafeDisplayActive16221(),count=Number(fc.features?.length||0);
+    if(!mp||!active||count<1){clearSafePropertyFallback16221(reason+':inactive-or-empty');return {ok:count===0&&active,count,visible:false,active,error:!mp?'map unavailable':(!active?'property display inactive':'verified zero-corridor result')}}
+    const ensured=ensureSafePropertyLayers16221();
+    if(!ensured.ok){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,sourceReady:!!ensured.sourceReady,layersReady:!!ensured.layersReady,errors:ensured.errors||[],error:ensured.error||null,at:new Date().toISOString()};return {ok:false,count,visible:false,active,...ensured}}
+    try{const src=mp.getSource(SAFE_SOURCE_16221);if(!src?.setData)throw new Error('safe source setData unavailable');src.setData(fc)}catch(error){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,error:String(error?.message||error),at:new Date().toISOString()};return {ok:false,count,visible:false,active,error:String(error?.message||error)}}
+    setSafeLayerVisibility16221(true);
+    const moved=[];
+    for(const id of Object.values(SAFE_LAYERS_16221)){try{if(mp.getLayer?.(id)){mp.moveLayer?.(id);moved.push(id)}}catch(_){ }}
+    try{mp.triggerRepaint?.()}catch(_){} /* EARTHLINE_SAFE_SWALE_REPAINT_17177 */
+    const visibleLayers=Object.values(SAFE_LAYERS_16221).filter(id=>{try{return !!mp.getLayer?.(id)&&mp.getLayoutProperty?.(id,'visibility')!=='none'}catch(_){return false}});
+    let renderedFeatures17181=0;
+    try{const canvas17181=mp.getCanvas?.(),box17181=canvas17181&&[[0,0],[canvas17181.clientWidth||canvas17181.width,canvas17181.clientHeight||canvas17181.height]];if(box17181&&visibleLayers.length)renderedFeatures17181=(mp.queryRenderedFeatures?.(box17181,{layers:visibleLayers})||[]).length}catch(_){}
+    const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length&&renderedFeatures17181>0; /* EARTHLINE_SAFE_FIRST_PRESENTATION_17181 */
+    const audit={build:BUILD,reason,active,verified:true,count,sourceReady:true,layersReady:true,visible:ok,renderedFeatures:renderedFeatures17181,visibleLayers,moved,geometrySource:'M.authoritativeSafeSwales15815',safetyGate:'propertyPublication15816 + propertyResultLock15815 + safetyAudit15806 + searchGen match',at:new Date().toISOString()};
+    window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221=audit;
+    /* EARTHLINE 16289 — self-heal a scientifically verified Property result if
+       Mapbox became presentation-ready only after the governed promise settled.
+       This upgrades presentation state only; the exact committed safe FC is the
+       sole geometry source and no failed/unverified result can enter this branch. */
+    if(ok){
+      try{
+        const runAudit=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
+        const sameResult=runAudit&&runAudit.result===true&&Number(runAudit.corridors||0)===count;
+        if(sameResult&&runAudit.renderVerified!==true){
+          const authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();
+          status(authoritative16516?('Property detail published — '+count+' exclusion-verified bioswale corridor'+(count===1?' is':'s are')+' visible from the authoritative safe Property geometry.'):('Property detail published — '+count+' screened bioswale corridor'+(count===1?' is':'s are')+' visible from the current Property geometry. Field verification required.'),'published');
+          setTierNotice('property',authoritative16516?('PROPERTY DETAIL · '+count+' VERIFIED SAFE CORRIDORS VISIBLE'):('PROPERTY DETAIL · '+count+' SCREENED CORRIDORS · FIELD VERIFY'));
+          setAudit({settled:true,result:true,corridors:count,renderVerified:true,renderPending:false,renderMode:'authoritative-safe-lines',safeFallback:{ok:true,count,visible:true,active,audit},currentScientificResultPreserved:true,mapVerificationSettledAt:new Date().toISOString(),settledAt:runAudit.settledAt||new Date().toISOString()});
+        }
+      }catch(error){console.warn('[Earthline 16289] late safe-layer UI settle',error)}
+    }
+    return {ok,count,visible:ok,active,audit};
+  }
+  function scheduleSafePropertyFallback16221(reason='scheduled'){
+    for(const timer of safeLayerTimers16221)clearTimeout(timer);safeLayerTimers16221.clear();
+    for(const delay of [0,90,260,620,1300,2600]){
+      const timer=setTimeout(()=>{safeLayerTimers16221.delete(timer);const result=syncSafePropertyFallback16221(reason+'-'+delay);if(result.ok){for(const pending of safeLayerTimers16221)clearTimeout(pending);safeLayerTimers16221.clear()}},delay);
+      safeLayerTimers16221.add(timer);
+    }
+  }
+  async function verifySafePropertyFallback16221(count){
+    if(!(count>0))return {ok:true,count:0,visible:false,required:false,pending:false};
+    /* EARTHLINE 16260 — presentation verification is non-blocking.
+       The scientific Property result has already committed before this point.
+       One immediate visibility check is allowed inside the governed promise;
+       if Mapbox is still settling, the exact existing safe-layer owner retries
+       after terminal state instead of holding the Property Orb/run open. */
+    const first=syncSafePropertyFallback16221('terminal-immediate-16260');
+    if(first.ok)return {...first,required:true,pending:false};
+    scheduleSafePropertyFallback16221('terminal-background-16260');
+    return {...first,ok:false,count,visible:false,required:true,pending:true};
+  }
+
+  function propertyLivingMapVisible16262(count){
+    try{
+      const audit=typeof window.earthlineDisplayAudit15882==="function"?window.earthlineDisplayAudit15882():null;
+      if(audit&&Number(audit.mapSourceFeatures||0)>0&&Number(audit.layersVisible||0)>=4&&audit.renderer&&audit.renderer.visible===true&&Number(audit.renderer.uniqueCorridors||0)>0){
+        return {ok:true,mode:'living-swales-15792',count:Number(audit.renderer.uniqueCorridors||0),audit};
+      }
+    }catch(_){ }
+    try{
+      const m=model()||{},renderer=m.livingSwaleRenderer15792||null;
+      if(renderer&&renderer.visible===true&&renderer.sourceReady===true&&Number(renderer.features||0)>0){
+        return {ok:true,mode:'living-swales-15792-state',count:Number(renderer.features||0),renderer};
+      }
+    }catch(_){ }
+    return {ok:false,count:Number(count||0)};
+  }
+
+  function settlePropertyMapVisibility16260(count,texture,serial){
+    if(!(count>0)||texture?.ok)return;
+    (async()=>{
+      let last=null;
+      for(const delay of [120,280,520,900,1300,1800]){
+        await new Promise(r=>setTimeout(r,delay));
+        if(serial!==runSerial)return;
+        const living16262=propertyLivingMapVisible16262(count);
+        if(living16262.ok){
+          const current=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
+          const authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();
+          status(authoritative16516?('Property detail published — '+count+' exclusion-verified bioswale corridor'+(count===1?' is':'s are')+' visible on the Property map.'):('Property detail published — '+count+' screened bioswale corridor'+(count===1?' is':'s are')+' visible on the Property map. Field verification required.'),'published');
+          setTierNotice('property',authoritative16516?('PROPERTY DETAIL · '+count+' VERIFIED SAFE CORRIDORS VISIBLE'):('PROPERTY DETAIL · '+count+' SCREENED CORRIDORS · FIELD VERIFY'));
+          setAudit({settled:true,result:true,corridors:count,renderVerified:true,renderPending:false,renderMode:living16262.mode,mapEvidence:living16262,texture,currentScientificResultPreserved:true,mapVerificationSettledAt:new Date().toISOString(),settledAt:current.settledAt||new Date().toISOString()});
+          return;
+        }
+        last=syncSafePropertyFallback16221('post-terminal-16260-'+delay);
+        if(last?.ok){
+          const current=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
+          const authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();
+          status(authoritative16516?('Property detail published — '+count+' exclusion-verified bioswale corridor'+(count===1?' is':'s are')+' visible from the authoritative safe Property geometry.'):('Property detail published — '+count+' screened bioswale corridor'+(count===1?' is':'s are')+' visible from the current Property geometry. Field verification required.'),'published');
+          setTierNotice('property',authoritative16516?('PROPERTY DETAIL · '+count+' VERIFIED SAFE CORRIDORS VISIBLE'):('PROPERTY DETAIL · '+count+' SCREENED CORRIDORS · FIELD VERIFY'));
+          setAudit({settled:true,result:true,corridors:count,renderVerified:true,renderPending:false,renderMode:'authoritative-safe-lines',safeFallback:last,texture,currentScientificResultPreserved:true,mapVerificationSettledAt:new Date().toISOString(),settledAt:current.settledAt||new Date().toISOString()});
+          return;
+        }
+      }
+      const current=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
+      const livingFinal16262=propertyLivingMapVisible16262(count);
+      if(livingFinal16262.ok){
+        const authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();
+        status(authoritative16516?('Property detail published — '+count+' exclusion-verified bioswale corridor'+(count===1?' is':'s are')+' visible on the Property map.'):('Property detail published — '+count+' screened bioswale corridor'+(count===1?' is':'s are')+' visible on the Property map. Field verification required.'),'published');
+        setTierNotice('property',authoritative16516?('PROPERTY DETAIL · '+count+' VERIFIED SAFE CORRIDORS VISIBLE'):('PROPERTY DETAIL · '+count+' SCREENED CORRIDORS · FIELD VERIFY'));
+        setAudit({settled:true,result:true,corridors:count,renderVerified:true,renderPending:false,renderMode:livingFinal16262.mode,mapEvidence:livingFinal16262,texture,currentScientificResultPreserved:true,mapVerificationSettledAt:new Date().toISOString(),settledAt:current.settledAt||new Date().toISOString()});
+        return;
+      }
+      const reason=last?.error||'the authoritative safe Property map layer did not become visible after the bounded post-terminal retries';
+      status('PROPERTY RESULT VERIFIED — '+count+' safe corridor'+(count===1?' was':'s were')+' found, but the map presentation did not verify ('+reason+'). The analytical result remains preserved and no substitute geometry was drawn.','failed');
+      setTierNotice('warning','PROPERTY DETAIL · ANALYSIS VERIFIED · MAP LAYER NOT VERIFIED');
+      setAudit({settled:true,result:true,corridors:count,renderVerified:false,renderPending:false,renderMode:'none',safeFallback:last||null,texture,currentScientificResultPreserved:true,mapVerificationSettledAt:new Date().toISOString(),settledAt:current.settledAt||new Date().toISOString()});
+    })().catch(error=>console.error('[Earthline 16260] post-terminal map verification failed',error));
+  }
+
+  /* EARTHLINE 16529 — pre-analysis mapped-open-water gate. This is intentionally
+     outside the scientific engine: it reads only map data already loaded under the
+     selected crosshair and either declines the Property run or leaves 16521 untouched. */
+  function earthlinePointInRing16529(lng,lat,ring){
+    if(!Array.isArray(ring)||ring.length<3)return false;
+    let inside=false;
+    for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+      const a=ring[i],b=ring[j];
+      const xi=Number(a&&a[0]),yi=Number(a&&a[1]),xj=Number(b&&b[0]),yj=Number(b&&b[1]);
+      if(![xi,yi,xj,yj].every(Number.isFinite))continue;
+      if(((yi>lat)!==(yj>lat))&&(lng<(xj-xi)*(lat-yi)/((yj-yi)||1e-12)+xi))inside=!inside;
+    }
+    return inside;
+  }
+  function earthlineGeometryContainsOpenWater16529(geometry,lng,lat){
+    if(!geometry||!Number.isFinite(lng)||!Number.isFinite(lat))return false;
+    const polygonContains=rings=>{
+      if(!Array.isArray(rings)||!rings.length||!earthlinePointInRing16529(lng,lat,rings[0]))return false;
+      for(let i=1;i<rings.length;i++)if(earthlinePointInRing16529(lng,lat,rings[i]))return false;
+      return true;
+    };
+    if(geometry.type==='Polygon')return polygonContains(geometry.coordinates);
+    if(geometry.type==='MultiPolygon')return (geometry.coordinates||[]).some(polygonContains);
+    return false;
+  }
+  function earthlineCrosshairMappedOpenWater16529(mp,coord){
+    const lng=Number(coord&&coord.lng),lat=Number(coord&&coord.lat);
+    if(!mp||!Number.isFinite(lng)||!Number.isFinite(lat))return {hit:false,source:null};
+    try{
+      const style=typeof mp.getStyle==='function'?(mp.getStyle()||{}):{};
+      const layers=Array.isArray(style.layers)?style.layers:[];
+      const waterLayers=layers.filter(layer=>{
+        const type=String(layer&&layer.type||'').toLowerCase();
+        if(type!=='fill'&&type!=='fill-extrusion')return false;
+        const tag=(String(layer&&layer.id||'')+' '+String(layer&&layer['source-layer']||'')).toLowerCase();
+        return /water|lake|reservoir|riverbank|ocean|sea/.test(tag);
+      }).map(layer=>layer.id).filter(Boolean);
+      if(waterLayers.length&&typeof mp.project==='function'&&typeof mp.queryRenderedFeatures==='function'){
+        const pt=mp.project([lng,lat]);
+        const rendered=mp.queryRenderedFeatures(pt,{layers:waterLayers})||[];
+        if(rendered.some(feature=>earthlineGeometryContainsOpenWater16529(feature&&feature.geometry,lng,lat)))return {hit:true,source:'rendered-water-polygon'};
+      }
+      if(typeof mp.querySourceFeatures==='function'){
+        for(const [sourceId,sourceDef] of Object.entries(style.sources||{})){
+          if(!sourceDef||String(sourceDef.type||'').toLowerCase()!=='vector')continue;
+          let features=[];
+          try{features=mp.querySourceFeatures(sourceId,{sourceLayer:'water'})||[]}catch(_){features=[]}
+          if(features.some(feature=>earthlineGeometryContainsOpenWater16529(feature&&feature.geometry,lng,lat)))return {hit:true,source:'loaded-vector-water-polygon',sourceId};
+        }
+      }
+    }catch(_){ }
+    return {hit:false,source:null};
+  }
+  function earthlineHideWaterBodyMessage16529(){
+    try{const el=document.getElementById('earthlineWaterBodyMessage16529');if(el)el.style.display='none'}catch(_){ }
+  }
+  function earthlineShowWaterBodyMessage16529(mp){
+    try{
+      const host=mp&&typeof mp.getContainer==='function'?mp.getContainer():null;
+      if(!host)return false;
+      let el=document.getElementById('earthlineWaterBodyMessage16529');
+      if(!el){
+        el=document.createElement('div');
+        el.id='earthlineWaterBodyMessage16529';
+        el.setAttribute('role','status');
+        el.style.cssText='position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:100050;max-width:min(520px,calc(100% - 48px));padding:16px 22px;border:1px solid #d4a62a;border-radius:14px;background:rgba(7,20,29,.96);box-shadow:0 14px 38px rgba(0,0,0,.48);color:#f4f7f8;text-align:center;font:700 18px/1.35 system-ui,-apple-system,Segoe UI,sans-serif;pointer-events:none;';
+        host.appendChild(el);
+      }
+      el.textContent='Swales are not modelled over bodies of water.';
+      el.style.display='block';
+      return true;
+    }catch(_){return false}
+  }
+
+  function earthlinePropertyFailureReason16539(m){
+    const block=m&&m.propertyPublicationBlock16176||window.EARTHLINE_PROPERTY_PUBLICATION_BLOCK_16176||null;
+    if(block&&block.reason)return String(block.reason);
+    const safety=m&&m.safetyAudit15806||null;if(safety&&Array.isArray(safety.failures)&&safety.failures.length)return 'property safety: '+safety.failures.join(', ');
+    const vector=m&&m.vectorNoBuildCoverage||null;if(vector&&vector.publicationAllowed!==true)return 'exclusion evidence '+String(vector.acquisitionResult||'failed')+': '+String(vector.unverifiedReason||vector.evidenceGrade||'no publishable exclusion evidence');
+    const location=m&&m.lastLocationIntegrity15801||window.EARTHLINE_LOCATION_INTEGRITY_15801||null;if(location&&location.ok===false)return 'location integrity: '+String((location.reasons||[]).join(', ')||location.reason||'failed');
+    const halt=m&&m.prescriptionHalt15870||null;if(halt&&halt.code)return 'prescription halted: '+String(halt.code);
+    const runFail=m&&m.propertyRunFailure16539||null;if(runFail&&runFail.reason)return String(runFail.reason);
+    return 'the governed Property owner did not publish a verified property result';
+  }
+
+  async function terminalPropertyRun(ev){
+    ev?.preventDefault?.();ev?.stopPropagation?.();ev?.stopImmediatePropagation?.();
+    earthlinePropertyLaunchAudit16322("terminalPropertyRun",{
+      runningBefore:!!running,
+      eventType:String(ev&&ev.type||"")
+    });
+    if(running)return false;
+    /* EARTHLINE 16531 — Property transition uses the existing corridor-tip button so its private dismissal owner records acknowledgment and cannot reopen over Property. */
+    try{const tip=document.getElementById('earthlineCorridorTip16248');if(tip){const close=tip.querySelector('button');if(close)close.click();else tip.classList.remove('open')}}catch(_){ }
+    earthlineHideWaterBodyMessage16529();
+    try{window.earthlineClosePropertyInfoSurfaces16372?.("property-start");}catch(_){}
+    const mp=map(),m=model(),chosen=window.EARTHLINE_PROPERTY_TARGET_16201,c=(chosen&&Number.isFinite(Number(chosen.lng))&&Number.isFinite(Number(chosen.lat)))?{lng:Number(chosen.lng),lat:Number(chosen.lat)}:mp?.getCenter?.();
+    if(!mp||!m||!c||!Number.isFinite(Number(c.lng))||!Number.isFinite(Number(c.lat))){status('PROPERTY ANALYSIS BLOCKED — map-crosshair coordinates are unavailable.','failed');return false}
+    const site=declaredSite(c);if(!site){status('PROPERTY ANALYSIS BLOCKED — the 20-acre scientific frame could not be created.','failed');return false}
+    const waterGate16529=earthlineCrosshairMappedOpenWater16529(mp,c);
+    window.EARTHLINE_PROPERTY_WATER_BODY_GATE_16529={build:'EARTHLINE 16529',hit:!!waterGate16529.hit,source:waterGate16529.source||null,sourceId:waterGate16529.sourceId||null,center:{lng:Number(c.lng),lat:Number(c.lat)},at:new Date().toISOString()};
+    if(waterGate16529.hit){earthlineShowWaterBodyMessage16529(mp);return false}
+    const selectedCode=clean(chosen&&chosen.code||'');
+    if(selectedCode){
+      const parentDisplayed16347=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+      const parentTier16347=String(parentDisplayed16347&&(parentDisplayed16347.tier||parentDisplayed16347.mode)||'').toLowerCase();
+      const displayedToken16347=String(parentDisplayed16347&&parentDisplayed16347.runToken||'');
+      const targetParentToken16347=String(chosen&&chosen.parentRunToken||'');
+      const publication16347=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null;
+      const publicationToken16347=String(publication16347&&publication16347.runToken||'');
+      const publicationGenerated16347=Number(publication16347&&publication16347.generated||0);
+      const runState16347=String(document.documentElement.dataset.earthlineRunState||'').toLowerCase();
+      const noNewRegionalRun16347=runState16347!=='running'&&runState16347!=='failed';
+      const validParent16347=parentTier16347==='regional'&&!!displayedToken16347&&displayedToken16347===targetParentToken16347&&displayedToken16347===publicationToken16347&&publicationGenerated16347>0&&noNewRegionalRun16347;
+      window.EARTHLINE_REGIONAL_PROPERTY_HANDOFF_AUDIT_16347={build:'EARTHLINE 17027',selectedCode,parentTier:parentTier16347,displayedToken:displayedToken16347||null,targetParentToken:targetParentToken16347||null,publicationToken:publicationToken16347||null,publicationGenerated:publicationGenerated16347,runState:runState16347||null,noNewRegionalRun:noNewRegionalRun16347,validParent:validParent16347,at:new Date().toISOString()};
+      if(!validParent16347){
+        status('PROPERTY ANALYSIS BLOCKED — selected regional corridor is not backed by a successfully committed current Regional result. Rerun Regional, wait for publication, then select the corridor again.','failed');
+        return false;
+      }
+    }
+    site.name=selectedCode?selectedCode+' 20-acre Project Area':'20-acre Project Area';
+    if(selectedCode){
+      const coordLabel=Number(c.lat).toFixed(5)+', '+Number(c.lng).toFixed(5);
+      const jurisdictionLabel=String(site.jurisdictionLabel||'').trim();
+      site.fullName=selectedCode+' · 20-acre project area'+(jurisdictionLabel?' · '+jurisdictionLabel:'')+' · '+coordLabel;
+      site.q=site.fullName;
+    }
+    site.sub=selectedCode?'Selected from ranked regional corridor '+selectedCode:'Declared from the map crosshair';
+    const runner=typeof window.earthlineGovernedPropertyRun16202==='function'?window.earthlineGovernedPropertyRun16202:null;
+    if(!runner){status('PROPERTY ANALYSIS BLOCKED — preserved governed Property owner is unavailable.','failed');return false}
+    /* EARTHLINE 16254 — declare Property ownership before camera movement. The
+       older Regional→Focus handoff watches map motion; if the camera moves while
+       the published tier still looks Regional it can reassert the focus workflow
+       before Property starts. Mark the real Property run first, seed its exact
+       20-acre frame, then let this same terminal owner move the camera. */
+    running=true;document.documentElement.dataset.earthlinePropertyRunState='running';document.documentElement.classList.add('earthline-property-running-16233');const serial=++runSerial,started=performance.now();
+    try{if(typeof window.earthlineMarkPropertyRequested16243==='function')window.earthlineMarkPropertyRequested16243()}catch(_){}
+    window.EARTHLINE_PROPERTY_PHASE_TRACE_16319=[];
+    window.EARTHLINE_PROPERTY_TRACE_ACTIVE_16319=true;
+    earthlinePropertyTrace16319("terminalPropertyRun","enter",{serial,selectedCode:selectedCode||null});
+    retirePriorPropertyPresentation16521('terminal-property-start');
+    /* EARTHLINE 16279 — Property owns the map before camera motion. Close any
+       Regional-only onboarding tip and hand analytical visibility to the existing
+       Property renderer owner immediately. This changes presentation state only;
+       no Property science, safety, geometry, or publication rule is altered. */
+    try{const tip=document.getElementById('earthlineCorridorTip16248');if(tip)tip.classList.remove('open');const toastEl=document.getElementById('toast');if(toastEl)toastEl.classList.remove('show');const tierEl=document.getElementById('earthlineTierNotice16173');if(tierEl)tierEl.classList.remove('visible')}catch(_){}
+    try{
+      /* The governed Property owner sets this same state at its first line. Set it
+         here as well so camera moveend/style handlers cannot reassert Regional
+         layers in the short interval before the governed promise is invoked. */
+      const regionalState=window.earthlineRegional15778;
+      if(regionalState){regionalState.active=false;regionalState.mode='property'}
+      const owner=window.earthlineApplyRendererOwnership15805;
+      if(typeof owner==='function')owner('property');
+      const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');
+      if(overlay)overlay.style.display='none';
+    }catch(error){console.warn('[Earthline 16279] Property presentation handoff',error)}
+    clearSafePropertyFallback16221('property-run-start');
+    setButton(true,'PROPERTY · STARTING · 0s');
+    m.loc=site;m.centerLng=site.lng;m.centerLat=site.lat;m.analysisBoundaryLngLat=(site.analysisBoundaryLngLat||[]).map(p=>p.slice());
+    /* EARTHLINE 16414 — replay verified declared-frame ownership directly from 16410. */
+    try{
+      const frame16414={
+        build:'EARTHLINE 16414',
+        searchKey:String(m.appliedSearchText||'').trim().toLowerCase().replace(/\s+/g,' '),
+        center:{lng:Number(site.lng),lat:Number(site.lat)},
+        boundary:(site.analysisBoundaryLngLat||[]).map(p=>[Number(p[0]),Number(p[1])]),
+        acres:Number(site.acres||20),
+        internalAnalysisZoom:18,
+        source:'explicit-current-view-analysis-area',
+        selectedAt:Date.now()
+      };
+      const frameState16414=window.earthlineRegional15778;
+      if(frameState16414)frameState16414.pendingAnalysisFrame15827=JSON.parse(JSON.stringify(frame16414));
+      m.pendingAnalysisFrame15827=JSON.parse(JSON.stringify(frame16414));
+      window.EARTHLINE_PROPERTY_FRAME_SEED_16414={build:'EARTHLINE 16414',center:Object.assign({},frame16414.center),boundaryPoints:frame16414.boundary.length,searchKey:frame16414.searchKey,at:new Date().toISOString()};
+    }catch(error){
+      window.EARTHLINE_PROPERTY_FRAME_SEED_16414={build:'EARTHLINE 16414',error:String(error&&error.message||error),at:new Date().toISOString()};
+    }
+    try{mp.stop?.();mp.jumpTo?.({center:[Number(c.lng),Number(c.lat)],zoom:Math.max(17,Number(mp.getZoom?.()||17))});}catch(_){}
+    window.EARTHLINE_PROPERTY_DECLARATION_16169={build:BUILD,center:{lng:site.lng,lat:site.lat},acres:20,boundaryPoints:m.analysisBoundaryLngLat.length,selectedCode:selectedCode||null,declaredAt:new Date().toISOString(),route:'window.earthlineGovernedPropertyRun16202'};
+    try{void window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()}catch(_){} /* EARTHLINE_PROPERTY_ELDER_EARLY_START_17166 */
+    /* EARTHLINE 16341 — a new governed Property run must clear terminal fields from
+       the previous run before the panel Orb owner can observe them. */
+    setAudit({build:BUILD,serial,startedAt:new Date().toISOString(),deadlineMs:null,observerOnly:true,panelCanTimeout:false,panelCanCancel:false,panelCanIncrementSearchGen:false,route:'window.earthlineGovernedPropertyRun16202',directGovernedPropertyOwnerUsed:true,center:{lng:site.lng,lat:site.lat},selectedCode:selectedCode||null,input:site.fullName,stage:'starting',settled:false,result:null,error:null,scientificSettled:false,scientificResult:false,scientificSettledAt:null,settledAt:null});
+    setTierNotice('running','PROPERTY DETAIL · VERIFYING TERRAIN AND EXCLUSIONS');
+    status('Property analysis started — loading elevation for the selected 20-acre project area.','pending');startStageClock(serial,started);restoreLocationIdentity16202();
+    const searchGenAtLaunch=Number(m.searchGen||0);
+    try{
+      /* EARTHLINE 16206 — observer-only UI lock.
+         The panel launches the preserved governed Property promise directly.
+         It may display progress and terminal state, but it never races, times out,
+         cancels, replaces, or increments the scientific run token. */
+      earthlinePropertyTrace16319("governed runner promise","enter");
+      const result=await Promise.resolve(runner(site,{lng:site.lng,lat:site.lat}));
+      earthlinePropertyTrace16319("governed runner promise","exit",{result:result!==false});
+      try{window.earthlineClosePropertyInfoSurfaces16372?.(result===false?"property-governed-return-failed":"property-governed-return");}catch(_){}
+      if(serial!==runSerial)return false;
+      restoreLocationIdentity16202();
+      setAudit({searchGenAtLaunch,searchGenAtSettle:Number(m.searchGen||0),panelChangedSearchGen:false});
+      const propertyTier=String(window.EARTHLINE_DISPLAYED_RUN_16151?.tier||window.EARTHLINE_DISPLAYED_RUN_16147?.tier||m?.mode||'').toLowerCase();
+      const propertyReady=!!(m&&m.analysisReady&&Array.isArray(m.swales));
+      const ok=result!==false&&(propertyTier==='property'||propertyReady);
+      if(!ok){const reason=earthlinePropertyFailureReason16539(m);setTierNotice('focus','');status('PROPERTY ANALYSIS STOPPED SAFELY — '+reason+'.','failed');setAudit({settled:true,result:false,timedOut:false,error:reason,sourceEvidence:propertyEvidenceSnapshot16206(),stageTimings:Object.assign({},m.lastTiming||{}),elapsedSeconds:Math.round((performance.now()-started)/1000),settledAt:new Date().toISOString()});return false;}
+      /* EARTHLINE 16220 — publish the verified Property result as the canonical
+         displayed tier before any property renderer or texture owner evaluates it.
+         A stale Regional snapshot must never determine Property corridor count or
+         keep Property layers hidden after the governed owner has committed safely. */
+      earthlinePropertyTrace16319("publishPropertyDisplay16220","enter");
+      const propertyDisplay16220=publishPropertyDisplay16220(site,selectedCode);
+      earthlinePropertyTrace16319("publishPropertyDisplay16220","exit",{ok:!!propertyDisplay16220&&propertyDisplay16220.ok===true});
+      if(!propertyDisplay16220.ok){const reason='the governed Property result did not have a committed, exclusion-verified safety lock';status('PROPERTY ANALYSIS STOPPED SAFELY — '+reason+'.','failed');setTierNotice('focus','');setAudit({settled:true,result:false,timedOut:false,error:reason,sourceEvidence:propertyEvidenceSnapshot16206(),publicationAudit:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,stageTimings:Object.assign({},m.lastTiming||{}),elapsedSeconds:Math.round((performance.now()-started)/1000),settledAt:new Date().toISOString()});return false;}
+      const count=Number(propertyDisplay16220.counts.safeCount||0);
+      /* EARTHLINE 16261 — the governed science is terminal once the committed,
+         exclusion-verified Property FeatureCollection and its safe corridor count
+         exist. Record that terminal point before any optional presentation work. */
+      const propertyPublicationGen16334=Number(m.searchGen||0);
+      setAudit({scientificSettled:true,scientificResult:true,corridors:count,scientificSettledAt:new Date().toISOString()});
+      earthlinePropertyTrace16319("scientific terminal","mark",{corridors:count});
+
+      /* EARTHLINE 16334 — verified science is the interactive terminal. Optional
+         presentation verification continues, but the Property control is released now. */
+      running=false;
+      document.documentElement.dataset.earthlinePropertyRunState='idle';
+      document.documentElement.classList.remove('earthline-property-running-16233');
+      clearTimers();setButton(false);clearAllBusy();restoreGrab();
+      try{window.getSelection?.()?.removeAllRanges?.();button()?.blur?.()}catch(_){}
+
+      /* EARTHLINE 17187 — frame the already-selected Property before the first authoritative safe-swale visibility check. This reorders the existing frame owner only; geometry, hydrology, styles and lifecycle ownership are unchanged. */
+      earthlinePropertyTrace16319("frameDeclaredProperty","enter");
+      frameDeclaredProperty(site);
+      earthlinePropertyTrace16319("frameDeclaredProperty","exit");
+      restoreLocationIdentity16202();
+
+      earthlinePropertyTrace16319("safe fallback + texture verify","enter");
+      const [safeFallback,texture]=await Promise.all([
+        verifySafePropertyFallback16221(count),
+        verifyPropertyTexture(count)
+      ]);
+      earthlinePropertyTrace16319("safe fallback + texture verify","exit",{safeFallbackOk:!!safeFallback&&safeFallback.ok===true,textureOk:!!texture&&texture.ok===true});
+
+      let displayedAfterScience16334=
+        window.EARTHLINE_DISPLAYED_RUN_16151||
+        window.EARTHLINE_DISPLAYED_RUN_16147||null;
+      let displayedTierAfterScience16334=String(
+        displayedAfterScience16334&&(displayedAfterScience16334.tier||displayedAfterScience16334.mode)||''
+      ).toLowerCase();
+      const targetParent16727=String(window.EARTHLINE_PROPERTY_TARGET_16201&&window.EARTHLINE_PROPERTY_TARGET_16201.parentRunToken||'');
+      const activeParent16727=String(window.EARTHLINE_ACTIVE_RUN_TOKEN_16151||'');
+      const samePropertyGeneration16727=serial===runSerial&&Number(m.searchGen||0)===propertyPublicationGen16334;
+      const staleParentRegional16727=samePropertyGeneration16727&&displayedTierAfterScience16334==='regional'&&
+        targetParent16727&&targetParent16727===activeParent16727;
+      if(staleParentRegional16727){
+        const republished16727=publishPropertyDisplay16220(site,selectedCode);
+        try{
+          const regionalState16727=window.earthlineRegional15778;
+          if(regionalState16727){regionalState16727.active=false;regionalState16727.mode='property'}
+          if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property');
+          document.documentElement.dataset.earthlineAnalysisTier='property';
+        }catch(_){}
+        window.EARTHLINE_PROPERTY_DISPLAY_RECLAIM_16727={
+          build:'EARTHLINE 16727',reclaimed:!!(republished16727&&republished16727.ok===true),
+          parentRunToken:targetParent16727,at:new Date().toISOString()
+        };
+        displayedAfterScience16334=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+        displayedTierAfterScience16334=String(displayedAfterScience16334&&(displayedAfterScience16334.tier||displayedAfterScience16334.mode)||'').toLowerCase();
+      }
+      const presentationStillCurrent16334=!!(
+        samePropertyGeneration16727&&
+        displayedTierAfterScience16334!=='regional'
+      );
+      if(!presentationStillCurrent16334){
+        window.EARTHLINE_PROPERTY_PRESENTATION_SUPERSEDE_AUDIT_16334={
+          build:"EARTHLINE 16334",suppressed:true,
+          reason:"newer search/tier superseded post-terminal Property presentation",
+          propertyPublicationGen:propertyPublicationGen16334,
+          currentSearchGen:Number(m.searchGen||0),
+          displayedTier:displayedTierAfterScience16334||null,
+          at:new Date().toISOString()
+        };
+        earthlinePropertyTrace16319("terminalPropertyRun","exit",{result:true,corridors:count,presentationSuperseded:true});
+        return true;
+      }
+
+      try{
+        if(typeof window.earthlineSchedulePropertyWater15823!=='function')
+          throw new Error('Property water scheduler unavailable');
+        window.earthlineSchedulePropertyWater15823('property-published-16332');
+        setTimeout(()=>{
+          try{
+            if(typeof window.earthlineRenderDirectWater15824==='function')
+              window.earthlineRenderDirectWater15824(true);
+          }catch(error){
+            console.error('[Earthline 16332] Dense Property water enhancement failed',error);
+          }
+        },0);
+      }catch(error){
+        console.error('[Earthline 16332] Property water scheduling failed',error);
+      }
+
+      window.EARTHLINE_PROPERTY_POSTPUBLISH_EVIDENCE_RETRY_16410={
+        build:"EARTHLINE 16410",
+        suppressed:true,
+        reason:"evidence synchronized by authoritative Property owner before publication",
+        at:new Date().toISOString()
+      };
+      settleCurrentPropertyPresentation16521(serial,propertyPublicationGen16334,count);
+      const renderVerified=count===0||safeFallback.ok||texture.ok;
+      if(count>0&&!renderVerified){
+        /* EARTHLINE 16260 — the scientific result is terminal now. Do not hold
+           the governed Property run/Orb open while Mapbox presentation settles. */
+        const authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();
+        status(authoritative16516?('PROPERTY RESULT VERIFIED — '+count+' safe corridor'+(count===1?' was':'s were')+' found. Finishing the verified Property map layer…'):('PROPERTY RESULT READY — '+count+' screened corridor'+(count===1?' was':'s were')+' found. Finishing the Property map layer; field verification required.'),'published');
+        setTierNotice('property',authoritative16516?('PROPERTY DETAIL · '+count+' VERIFIED SAFE CORRIDORS · MAP FINISHING'):('PROPERTY DETAIL · '+count+' SCREENED CORRIDORS · MAP FINISHING'));
+        const settledAt16260=new Date().toISOString();
+        setAudit({settled:false,result:true,timedOut:false,corridors:count,renderVerified:false,renderPending:true,renderMode:'pending-authoritative-safe-lines',renderTruthOwner:'EARTHLINE_RENDER_TRUTH_SETTLEMENT_17188',sourceEvidence:propertyEvidenceSnapshot16206(),publicationAudit:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,safeFallback,texture,stageTimings:Object.assign({},m.lastTiming||{}),elapsedSeconds:Math.round((performance.now()-started)/1000),settledAt:settledAt16260});
+        settlePropertyMapVisibility16260(count,texture,serial);
+        try{window.EARTHLINE_ELDER_TREES_V1_17097?.refresh?.()}catch(_){} /* EARTHLINE_CANONICAL_PROPERTY_ELDER_REFRESH_17153 */
+        return true;
+      }
+      if(count>0&&texture.ok){const d=Number(texture.directional||0),n=Number(texture.neutral||0),authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();status(authoritative16516?('Property detail published — '+count+' verified bioswale'+(count===1?'':'s')+' in the selected 20-acre area. '+d+' terrain-oriented corridor'+(d===1?'':'s')+' show water uphill and berm downhill; '+n+' corridor'+(n===1?'':'s')+' use'+(n===1?'s':'')+' a neutral ribbon because orientation is indeterminate.'):('Property detail published — '+count+' modeled bioswale'+(count===1?'':'s')+' in the selected 20-acre area. '+d+' terrain-oriented corridor'+(d===1?'':'s')+' show water uphill and berm downhill; '+n+' corridor'+(n===1?'':'s')+' use'+(n===1?'s':'')+' a neutral ribbon because orientation is indeterminate. Exclusion evidence is not authoritative; field verification required.'),'published');setTierNotice('property',authoritative16516?(n>0?'PROPERTY DETAIL · '+d+' TERRAIN-ORIENTED · '+n+' NEUTRAL':'PROPERTY DETAIL · TERRAIN-VERIFIED UPHILL WATER ACTIVE'):(n>0?'PROPERTY DETAIL · '+d+' TERRAIN-ORIENTED · '+n+' NEUTRAL · FIELD VERIFY':'PROPERTY DETAIL · TERRAIN-ORIENTED · FIELD VERIFY'))}
+      else if(count>0&&safeFallback.ok){const authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();status(authoritative16516?('Property detail published — '+count+' exclusion-verified bioswale corridor'+(count===1?' is':'s are')+' visible from the authoritative safe Property geometry. The optional natural-texture enhancement did not verify, so Earthline retained the exact safe green, brown, and blue corridor layer instead of hiding the result.'):('Property detail published — '+count+' screened bioswale corridor'+(count===1?' is':'s are')+' visible from the current Property geometry. The optional natural-texture enhancement did not verify, so Earthline retained the green, brown, and blue corridor layer instead of hiding the result. Field verification required.'),'published');setTierNotice('property',authoritative16516?('PROPERTY DETAIL · '+count+' VERIFIED SAFE CORRIDORS VISIBLE'):('PROPERTY DETAIL · '+count+' SCREENED CORRIDORS · FIELD VERIFY'))}
+      else{const authoritative16516=typeof window.earthlinePropertyEvidenceIsAuthoritative16516==='function'&&window.earthlinePropertyEvidenceIsAuthoritative16516();status(authoritative16516?'Property detail published — no qualifying bioswale corridors were identified in the selected 20-acre area after terrain and exclusion verification.':'Property detail published — no qualifying bioswale corridors were identified in the selected 20-acre area after terrain screening and available exclusion checks. Exclusion evidence is not authoritative; field verification required.','published');setTierNotice('property',authoritative16516?'PROPERTY DETAIL · VERIFIED ZERO-CORRIDOR RESULT':'PROPERTY DETAIL · ZERO QUALIFYING CORRIDORS · FIELD VERIFY')}
+      earthlinePropertyTerminalStage16319('published','Property detail published.');
+      earthlinePropertyTrace16319("terminalPropertyRun","exit",{result:true,corridors:count,renderVerified});
+      setAudit({stage:'published',stageLabel:'published',settled:true,result:true,timedOut:false,corridors:count,renderVerified,renderMode:texture.ok?'natural-texture':(safeFallback.ok?'authoritative-safe-lines':'verified-zero'),sourceEvidence:propertyEvidenceSnapshot16206(),publicationAudit:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,safeFallback,texture,stageTimings:Object.assign({},m.lastTiming||{}),elapsedSeconds:Math.round((performance.now()-started)/1000),settledAt:new Date().toISOString()});try{window.EARTHLINE_ELDER_TREES_V1_17097?.refresh?.()}catch(_){} /* EARTHLINE_CANONICAL_PROPERTY_ELDER_REFRESH_17153 */return true;
+    }catch(err){const reason=String(err?.message||err||'unknown property error');earthlinePropertyTerminalStage16319('failed','Property analysis failed.');earthlinePropertyTrace16319("terminalPropertyRun","exit",{result:false,error:reason});setTierNotice('focus','');status('PROPERTY ANALYSIS FAILED — '+reason+'. No unverified property output was published.','failed');setAudit({stage:'failed',stageLabel:'failed',settled:true,result:false,timedOut:false,error:reason,sourceEvidence:propertyEvidenceSnapshot16206(),stageTimings:Object.assign({},m.lastTiming||{}),elapsedSeconds:Math.round((performance.now()-started)/1000),settledAt:new Date().toISOString()});return false;}
+    finally{if(serial===runSerial){running=false;document.documentElement.dataset.earthlinePropertyRunState='idle';document.documentElement.classList.remove('earthline-property-running-16233');clearTimers();setButton(false);clearAllBusy();restoreGrab();try{window.getSelection?.()?.removeAllRanges?.();button()?.blur?.()}catch(_){}updateBuild();earthlinePropertyTrace16319("terminal finally","mark",{runState:'idle'});window.EARTHLINE_PROPERTY_TRACE_ACTIVE_16319=false}}
+  }
+  function install(){
+    updateBuild();ensureTierNotice();setTierNotice('focus','FOCUS PREVIEW · SELECT PROPERTY ANALYSIS · 20 ACRES FOR NATURAL SWALE FOOTPRINTS');
+    window.EARTHLINE_OBSERVER_ONLY_PROPERTY_LOCK_16220=Object.freeze({build:BUILD,parent:'EARTHLINE 16219',donorReference:'BUILD-CHECK-15882',rule:'panel launches and observes; never races, times out, cancels, gates, replaces, or increments the Property promise token'});
+    window.EARTHLINE_AUTHORITATIVE_PROPERTY_VISIBILITY_LOCK_16221=Object.freeze({build:BUILD,parent:'EARTHLINE 16220',geometry:'M.authoritativeSafeSwales15815 only',rule:'a committed exclusion-verified Property result receives an independent visible layer owner; no substitute or unverified geometry is permitted'});
+    window.earthlineDeclarePropertyAtCrosshair16173=terminalPropertyRun;
+    window.earthlineSyncSafePropertyFallback16221=syncSafePropertyFallback16221;
+    window.earthlinePropertySafeVisibilityAudit16221=()=>JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||{build:BUILD,visible:false,count:0}));
+    window.earthlinePropertyRunAudit16173=()=>JSON.parse(JSON.stringify(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{build:BUILD,settled:false}));
+    const mp=map();if(mp?.on)for(const ev of ['load','style.load','idle','zoomend','moveend'])mp.on(ev,()=>scheduleSafePropertyFallback16221('map-'+ev));
+    document.addEventListener('earthline:analysis-complete',()=>scheduleSafePropertyFallback16221('analysis-complete'),{passive:true});
+    scheduleSafePropertyFallback16221('install');
+    window.EARTHLINE_ARTIFACT_MANIFEST_16173={build:BUILD,required:[...new Set([...(window.EARTHLINE_ARTIFACT_MANIFEST_16172?.required||[]),'20-acre declaration calls the preserved governed Property owner directly; panel state is observer-only','property analysis exposes active stage and elapsed time while running','a committed exclusion-verified Property result replaces stale Regional display identity before renderer synchronization','Property corridor counts come only from the committed safe FeatureCollection, never a prior Regional displayed-run snapshot','the panel observes the preserved Property promise without any UI deadline','the panel never increments the Property generation token, cancels the run, or rejects a late valid publication','selected property search text is a concise coordinate identity rather than a duplicated placeholder','the Focus-to-Property control explicitly says PROPERTY ANALYSIS · 20 ACRES','a property success message requires verified natural texture source, registered images, buffered footprints, layers and width','property mode auto-frames the declared 20-acre boundary and announces the active 9 m natural footprint','property-tier centerlines are paired one-to-one with true 9 m buffered footprint polygons while the longitudinal texture follows the line','focus bioswales render uphill water pockets, downhill berms, irregular tree crowns and understory in the authoritative SVG owner','property bioswale texture is transparent so the actual satellite landscape remains visible through the installation','a committed exclusion-verified Property FeatureCollection always receives an independent visible green-brown-blue layer owner','the independent Property visibility owner draws only M.authoritativeSafeSwales15815 and never substitutes geometry'])]};
+    setInterval(updateBuild,1000);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+})();
+</script>
