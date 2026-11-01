@@ -1,0 +1,28 @@
+name: Mantra 83 Live Swale Source
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-live-swale-source.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          a=s.find('async function makeSwales')
+          if a<0: raise SystemExit('makeSwales missing')
+          b=s.find('function makeFlows',a)
+          if b<0: b=a+70000
+          t=s[a:b]
+          print('M83_MAKESWALES_START')
+          print(t)
+          print('M83_MAKESWALES_END')
+          PY
