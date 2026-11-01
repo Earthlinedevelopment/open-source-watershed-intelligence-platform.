@@ -33,6 +33,11 @@ async function run(size){
 }
 const baseline=await run(1024);
 const candidate=await run(512);
-console.log('M83_ELDER_SCREEN512 '+JSON.stringify({baseline:{size:baseline.size,propertyMs:baseline.propertyMs,elderMs:baseline.elderMs,afterPropertyMs:baseline.afterPropertyMs,count:baseline.count},candidate:{size:candidate.size,propertyMs:candidate.propertyMs,elderMs:candidate.elderMs,afterPropertyMs:candidate.afterPropertyMs,count:candidate.count,last:candidate.last}}));
+function hav(a,b){const R=6371008.8,p1=a.lat*Math.PI/180,p2=b.lat*Math.PI/180,dp=(b.lat-a.lat)*Math.PI/180,dl=(b.lng-a.lng)*Math.PI/180,q=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(q)))}
+const nearest=baseline.features.map(a=>Math.min(...candidate.features.map(b=>hav(a,b))));
+nearest.sort((a,b)=>a-b);
+const match={medianM:nearest[Math.floor(nearest.length/2)]||0,p95M:nearest[Math.floor(nearest.length*.95)]||0,maxM:nearest.at(-1)||0};
+console.log('M83_ELDER_SCREEN512 '+JSON.stringify({baseline:{size:baseline.size,propertyMs:baseline.propertyMs,elderMs:baseline.elderMs,afterPropertyMs:baseline.afterPropertyMs,count:baseline.count},candidate:{size:candidate.size,propertyMs:candidate.propertyMs,elderMs:candidate.elderMs,afterPropertyMs:candidate.afterPropertyMs,count:candidate.count,last:candidate.last},match}));
+if(match.medianM>20||match.p95M>50)throw new Error('candidate locations diverged '+JSON.stringify(match));
 if(candidate.count<12)throw new Error('candidate Elder count too low '+candidate.count);
 if(candidate.elderMs>=baseline.elderMs*.8)throw new Error('candidate did not materially improve Elder time');
