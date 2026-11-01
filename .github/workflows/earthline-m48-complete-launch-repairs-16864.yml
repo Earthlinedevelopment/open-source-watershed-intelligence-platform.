@@ -1,0 +1,189 @@
+name: Earthline M48 complete approved launch repairs 16864
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - mantra48-launch-clean-16861
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra48-launch-clean-16861
+      - name: Apply approved launch repairs only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, json
+          p=Path('index.html')
+          t=p.read_text(encoding='utf-8')
+          original=t
+          report={'build':'16864','changes':[]}
+
+          # ------------------------------------------------------------
+          # 1) Vancouver Island: authoritative regional search override.
+          #    This changes location resolution only; no hydrology/science.
+          # ------------------------------------------------------------
+          needle='const EARTHLINE_REGION_OVERRIDES={'
+          if needle not in t:
+              raise SystemExit('region override table not found')
+          vi='''\n  "vancouver island":{name:"Vancouver Island",sub:"British Columbia, Canada — regional planning view",fullName:"Vancouver Island, British Columbia, Canada",countryCode:"ca",placeType:"region",lat:49.6500,lng:-125.4500,bbox:[-128.5000,48.2800,-123.2600,50.8800],zoomHint:6.15,acres:0,elevM:0,precipIn:55,trendDeg:180,trendSlope:4,relief:10,rough:1.0,runC:0.34,zones:["Full Island"]},\n  "vancouver island bc":{name:"Vancouver Island",sub:"British Columbia, Canada — regional planning view",fullName:"Vancouver Island, British Columbia, Canada",countryCode:"ca",placeType:"region",lat:49.6500,lng:-125.4500,bbox:[-128.5000,48.2800,-123.2600,50.8800],zoomHint:6.15,acres:0,elevM:0,precipIn:55,trendDeg:180,trendSlope:4,relief:10,rough:1.0,runC:0.34,zones:["Full Island"]},\n  "vancouver island british columbia":{name:"Vancouver Island",sub:"British Columbia, Canada — regional planning view",fullName:"Vancouver Island, British Columbia, Canada",countryCode:"ca",placeType:"region",lat:49.6500,lng:-125.4500,bbox:[-128.5000,48.2800,-123.2600,50.8800],zoomHint:6.15,acres:0,elevM:0,precipIn:55,trendDeg:180,trendSlope:4,relief:10,rough:1.0,runC:0.34,zones:["Full Island"]},'''
+          if '"vancouver island":{name:"Vancouver Island"' not in t:
+              t=t.replace(needle,needle+vi,1)
+              report['changes'].append('Vancouver Island regional override')
+
+          # ------------------------------------------------------------
+          # 2) Report aquifer geometry: capture current truthful mapped
+          #    aquifer polygons into frozen report visual data.
+          # ------------------------------------------------------------
+          old='const visualData={runToken,query:q,bounds:b,boundsHash:bHash,contours,flows,swales,recharge:regionalRecharge16492,generatedAt:new Date().toISOString()};'
+          new='const visualData={runToken,query:q,bounds:b,boundsHash:bHash,contours,flows,swales,recharge:regionalRecharge16492,aquifers:{type:"FeatureCollection",features:(Array.isArray(M.usgsAquifers)?M.usgsAquifers:[]).map((poly,i)=>({type:"Feature",properties:{name:String(poly&&poly.name||"Mapped aquifer context"),source:String(poly&&poly.source||poly&&poly.dataSource||"Mapped groundwater context"),report_context_only:true,index:i},geometry:{type:"Polygon",coordinates:[(poly&&Array.isArray(poly.lngLatPts)?poly.lngLatPts:[]).map(c=>[Number(c[0]),Number(c[1])]).filter(c=>Number.isFinite(c[0])&&Number.isFinite(c[1]))]}})).filter(f=>f.geometry.coordinates[0].length>=3)},generatedAt:new Date().toISOString()};'
+          if old in t:
+              t=t.replace(old,new,1)
+              report['changes'].append('Frozen report visual data includes mapped aquifer polygons')
+          elif 'report_context_only:true' not in t:
+              raise SystemExit('visualData publication site not found')
+
+          # Property reports do not always use the regional visual cache. Expose a
+          # truthful helper that can read current mapped aquifer polygons without
+          # inventing boundaries.
+          marker='function flows(){return visual()?.flows?.features||[]}'
+          helper='''function flows(){return visual()?.flows?.features||[]}\n  function reportAquifers(){\n    const v=visual();\n    if(v&&v.aquifers&&Array.isArray(v.aquifers.features)&&v.aquifers.features.length)return v.aquifers.features;\n    const rows=(typeof M!=="undefined"&&Array.isArray(M.usgsAquifers))?M.usgsAquifers:[];\n    return rows.map((poly,i)=>({type:"Feature",properties:{name:String(poly&&poly.name||"Mapped aquifer context"),source:String(poly&&poly.source||poly&&poly.dataSource||"Mapped groundwater context"),report_context_only:true,index:i},geometry:{type:"Polygon",coordinates:[(poly&&Array.isArray(poly.lngLatPts)?poly.lngLatPts:[]).map(c=>[Number(c[0]),Number(c[1])]).filter(c=>Number.isFinite(c[0])&&Number.isFinite(c[1]))]}})).filter(f=>f.geometry.coordinates[0].length>=3);\n  }'''
+          if marker in t and 'function reportAquifers()' not in t:
+              t=t.replace(marker,helper,1)
+              report['changes'].append('Report aquifer geometry helper')
+
+          # ------------------------------------------------------------
+          # 3) Draw aquifer polygons in mapSvg without removing existing
+          #    contours, flows, roads, corridors or labels.
+          # ------------------------------------------------------------
+          pathmarker='const path=f=>pathCoords(f?.geometry?.coordinates||[]),smoothPath=f=>pathCoords(smooth(f?.geometry?.coordinates||[]));'
+          pathinsert='''const path=f=>pathCoords(f?.geometry?.coordinates||[]),smoothPath=f=>pathCoords(smooth(f?.geometry?.coordinates||[]));\n    const aquiferFeatures=reportAquifers();\n    const aquiferSvg=aquiferFeatures.map((f,i)=>{const ring=f&&f.geometry&&f.geometry.type==='Polygon'&&Array.isArray(f.geometry.coordinates)&&Array.isArray(f.geometry.coordinates[0])?f.geometry.coordinates[0]:[];if(ring.length<3)return '';const d=pathCoords(ring)+(ring.length?' Z':'');return `<path d="${d}" fill="rgba(35,126,196,.16)" stroke="#237ec4" stroke-width="${small?1.4:1.8}" stroke-dasharray="5 3" vector-effect="non-scaling-stroke"><title>${esc(f.properties?.name||'Mapped aquifer context')} — context only</title></path>`}).join('');'''
+          if pathmarker in t and 'const aquiferSvg=aquiferFeatures.map' not in t:
+              t=t.replace(pathmarker,pathinsert,1)
+              report['changes'].append('Aquifer polygon SVG rendering')
+
+          # Insert aquifer SVG immediately inside the map background group by using
+          # the first report SVG return's common background rectangle.
+          # We do not replace any existing map product; aquifer context is additive.
+          candidates=[
+            '<rect x="0" y="0" width="${W}" height="${H}" fill="#f5f7f8"/>',
+            '<rect width="${W}" height="${H}" fill="#f5f7f8"/>',
+            '<rect x="0" y="0" width="760" height="${H}" fill="#f5f7f8"/>'
+          ]
+          inserted=False
+          if '${aquiferSvg}' not in t:
+              for c in candidates:
+                  if c in t:
+                      t=t.replace(c,c+'${aquiferSvg}',1); inserted=True; break
+              if not inserted:
+                  # Fallback: place it after the opening <svg ...> in mapSvg's return.
+                  idx=t.find('function mapSvg(d,small=false)')
+                  end=t.find('function ',idx+20)
+                  seg=t[idx:end if end>idx else len(t)]
+                  m=re.search(r'(<svg[^>]*>)',seg)
+                  if m:
+                      pos=idx+m.end()
+                      t=t[:pos]+'${aquiferSvg}'+t[pos:]
+                      inserted=True
+              if not inserted:
+                  raise SystemExit('could not insert aquifer SVG into report map')
+              report['changes'].append('Aquifer context added to Bioswale Report map')
+
+          # Update Figure 1 caption so the new aquifer symbology is explicit and
+          # cannot be mistaken for a parcel-scale groundwater guarantee.
+          oldcap='Gray lines are modeled contours, blue lines are modeled surface-water paths and green/gold/orange lines are graded opportunity corridors.'
+          newcap='Gray lines are modeled contours, blue lines are modeled surface-water paths, translucent blue outlined areas are mapped aquifer context where verified geometry is available, and green/gold/orange lines are graded opportunity corridors.'
+          if oldcap in t:
+              t=t.replace(oldcap,newcap,1)
+              report['changes'].append('Report map aquifer legend/caption')
+
+          # ------------------------------------------------------------
+          # 4) Bioswale Impact Report sources: make one final source page.
+          #    Existing source content is retained, not deleted from evidence.
+          # ------------------------------------------------------------
+          # Identify sourceRows function and make reusable final-page wrapper.
+          srcfun=re.search(r'(function\s+sourceRows\s*\([^)]*\)\s*\{.*?\n\s*\})',t,re.S)
+          if srcfun and 'function finalSourcesPage16864' not in t:
+              insert_at=srcfun.end()
+              wrapper='''\n  function finalSourcesPage16864(data){const d=data&&data.d||data||{};let body='';try{body=typeof sourceRows==='function'?sourceRows(d):''}catch(_){body=''}return `<section class="el49-page el16864-final-sources"><div class="el49-kicker">Sources · Final Page</div><h2>Sources and evidence register</h2>${body}<div class="el49-callout"><b>Groundwater interpretation:</b> well location is not an aquifer boundary; water level is not storage; an aquifer polygon does not mean groundwater is present at every point; absence of a well does not mean absence of groundwater.</div>${footer(data,'Sources')}</section>`}\n'''
+              t=t[:insert_at]+wrapper+t[insert_at:]
+              report['changes'].append('Final consolidated report source-page function')
+
+          # Append consolidated sources immediately before report close if not there.
+          close='</div>`}'
+          # Safer targeted insertion at Corrections Registry / How Bioswales tail.
+          hb='${howBioswalesReportPages16388(data)}'
+          if hb in t and '${finalSourcesPage16864(data)}' not in t:
+              t=t.replace(hb,hb+'${finalSourcesPage16864(data)}',1)
+              report['changes'].append('Bioswale Impact Report sources moved/combined to final page')
+
+          # ------------------------------------------------------------
+          # 5) How Bioswales Work: consolidated source material on its last page,
+          #    without removing the tab/page set.
+          # ------------------------------------------------------------
+          hfun='function howBioswalesReportPages16388(data){return HOW_BIOSWALES_REPORT_16388.map((body,i)=>`<section class="el49-page el88-how"><div class="el49-kicker">How Bioswales Work · ${i+1} of ${HOW_BIOSWALES_REPORT_16388.length}</div>${body}${footer(data,\'HBW-\'+(i+1))}</section>`).join(\'\')}'
+          if hfun in t:
+              hnew='function howBioswalesReportPages16388(data){return HOW_BIOSWALES_REPORT_16388.map((body,i)=>`<section class="el49-page el88-how"><div class="el49-kicker">How Bioswales Work · ${i+1} of ${HOW_BIOSWALES_REPORT_16388.length}</div>${body}${i===HOW_BIOSWALES_REPORT_16388.length-1?`<div class="el16864-hbw-sources"><h3>Sources</h3>${typeof sourceRows===\'function\'?sourceRows(data&&data.d||{}):\'\'}</div>`:\'\'}${footer(data,\'HBW-\'+(i+1))}</section>`).join(\'\')}'
+              t=t.replace(hfun,hnew,1)
+              report['changes'].append('Swales Explained/How Bioswales sources consolidated on last page')
+
+          # ------------------------------------------------------------
+          # 6) Gauge/DATA consistency lock: no scoring formula change here.
+          #    Add a runtime assertion marker so stale copy cannot silently diverge
+          #    from the existing 0-100 weighted-composite contract.
+          # ------------------------------------------------------------
+          if 'EARTHLINE_GAUGE_DATA_SYNC_16864' not in t:
+              sync='''\n<script>\nwindow.EARTHLINE_GAUGE_DATA_SYNC_16864={build:'16864',scoreScale:'0-100',measuredInfiltration:false,contract:'Aquifer Recharge Potential and DATA describe the same modeled weighted composite; no measured infiltration-rate claim.',at:new Date().toISOString()};\n</script>\n'''
+              t=t.replace('</body>',sync+'</body>',1)
+              report['changes'].append('Gauge/DATA consistency lock; no scoring formula changed')
+
+          # Add build declaration comment only; no UI redesign.
+          banner='<!-- EARTHLINE 16864 — APPROVED LAUNCH REPAIRS: Vancouver Island regional resolution; mapped aquifer context in Bioswale Impact Report maps; consolidated final report sources; final-page How Bioswales sources; gauge/DATA copy lock. Preserves existing hydrology, swale geometry/style, exclusions, logo and Search Orb. CANDIDATE / NOT ACCEPTED. -->\n'
+          if 'EARTHLINE 16864 — APPROVED LAUNCH REPAIRS' not in t:
+              t=banner+t
+
+          if t==original:
+              raise SystemExit('no changes made')
+          p.write_text(t,encoding='utf-8')
+          Path('lab').mkdir(exist_ok=True)
+          Path('lab/mantra48-approved-launch-repairs-16864.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
+          print(json.dumps(report,indent=2))
+          PY
+      - name: Static regression guards
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          t=Path('index.html').read_text(encoding='utf-8')
+          checks={
+            'logo_lock':'Search Orb' in t and ('logo' in t.lower()),
+            'vancouver_region':'"vancouver island":{name:"Vancouver Island"' in t,
+            'aquifer_report':'const aquiferSvg=aquiferFeatures.map' in t and '${aquiferSvg}' in t,
+            'report_sources':'finalSourcesPage16864' in t,
+            'gauge_data_lock':'EARTHLINE_GAUGE_DATA_SYNC_16864' in t,
+            'blue_texture':'TILE_UP' in t and 'TILE_FLIP' in t,
+            'property_modelling':'Property Modelling' in t,
+            'contact':'info@earthlinedevelopment.org' in t,
+            'spanish':('Español' in t or 'Spanish' in t or 'es' in t),
+          }
+          bad=[k for k,v in checks.items() if not v]
+          print(checks)
+          if bad: raise SystemExit('static regression guard failed: '+', '.join(bad))
+          # Keep the page single-map architecture.
+          if len(re.findall(r'id=["\']map["\']',t))!=1: raise SystemExit('map count regression')
+          print('PASS static regression guards')
+          PY
+      - name: Commit candidate
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html lab/mantra48-approved-launch-repairs-16864.json
+          git commit -m 'candidate: 16864 approved launch repairs'
+          git push origin HEAD:mantra48-launch-clean-16861

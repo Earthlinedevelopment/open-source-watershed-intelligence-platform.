@@ -1,0 +1,46 @@
+name: Earthline M48 final launch diagnostics 16865
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - mantra48-launch-clean-16861
+jobs:
+  audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra48-launch-clean-16861
+      - name: Capture exact remaining-owner snippets
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,json
+          t=Path('index.html').read_text(encoding='utf-8')
+          needles=[
+            'Aquifer Recharge Potential','SCORE 0','DATA','Weighted','weighted','rechargeScore',
+            'slopeWeight','flowWeight','soilWeight','aquiferWeight','scoreComponents',
+            'usage','Usage','limit','quota','Mapbox','billing','cost',
+            'earthlineRegionalVectorOverlay16020','line-width','propertyActive()',
+            'earthlineApplyRendererOwnership15805','displayedTier()','widthPx()'
+          ]
+          out=[]
+          for n in needles:
+            starts=[m.start() for m in re.finditer(re.escape(n),t)]
+            for i,pos in enumerate(starts[:8]):
+              out.append({'needle':n,'occurrence':i+1,'pos':pos,'snippet':t[max(0,pos-1200):pos+2200]})
+          Path('lab').mkdir(exist_ok=True)
+          Path('lab/mantra48-final-diagnostic-16865.json').write_text(json.dumps(out,indent=2),encoding='utf-8')
+          print('captured',len(out),'snippets')
+          PY
+      - name: Commit diagnostic record
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lab/mantra48-final-diagnostic-16865.json
+          git commit -m 'diagnostic: remaining launch owner snippets 16865'
+          git push origin HEAD:mantra48-launch-clean-16861

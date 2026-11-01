@@ -1,0 +1,28 @@
+name: Earthline M48 final production verification 16869
+on:
+  push:
+    branches:
+      - pages-live
+    paths:
+      - .github/workflows/earthline-m48-live-verify-final-16869.yml
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser driver library only
+        run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
+      - name: Run actual production browser verification
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/?verify=16869-final
+        run: node tools/live_verify_16869.js
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-16869-final-production-verification
+          path: artifacts/
+          if-no-files-found: ignore

@@ -1,0 +1,27 @@
+name: Earthline NZ isolate 16896
+on:
+  push:
+    branches: [mantra49-release-audit-clean-16882]
+    paths:
+      - .github/workflows/mantra49-nz-isolate-16896.yml
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra49-release-audit-clean-16882
+      - run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@1.55.0 --no-save
+      - name: Capture NZ search, camera, target and early Property gates without waiting for Regional completion
+        run: |
+          cat > nz-isolate-16896.js <<'JS'
+          const {chromium}=require('playwright'),fs=require('fs');
+          const html=fs.readFileSync('index.html','utf8'),launch=fs.existsSync('earthline-launch-16872.js')?fs.readFileSync('earthline-launch-16872.js','utf8'):'',css=fs.existsSync('earthline-launch-16872.css')?fs.readFileSync('earthline-launch-16872.css','utf8'):'';
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          async function snap(p,label){const s=await p.evaluate(()=>{const m=window.earthlineMap||null,c=m?.getCenter?.();const root=document.documentElement;return{center:c?{lng:+c.lng,lat:+c.lat}:null,zoom:m?.getZoom?.(),loc:(window.M&&M.loc)?{name:M.loc.name,fullName:M.loc.fullName,lat:M.loc.lat,lng:M.loc.lng,bbox:M.loc.bbox,placeType:M.loc.placeType}:null,target:window.EARTHLINE_PROPERTY_TARGET_16201||null,waterGate:window.EARTHLINE_PROPERTY_WATER_BODY_GATE_16529||null,runState:root.dataset.earthlineRunState||null,propertyState:root.dataset.earthlinePropertyRunState||null,analysisTier:root.dataset.earthlineAnalysisTier||null,regionalTerminal:window.EARTHLINE_REGIONAL_TERMINAL_16539||null,displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,status:document.getElementById('earthlineVermontStatus16147')?.textContent||'',search:document.getElementById('searchInput')?.value||''}});console.log(label,JSON.stringify(s));return s}
+          (async()=>{const b=await chromium.launch({headless:true,executablePath:'/usr/bin/chromium',args:['--no-sandbox']});const c=await b.newContext({viewport:{width:1800,height:950}}),p=await c.newPage();await p.route('https://earthlinedevelopment.org/**',r=>{const u=new URL(r.request().url());if(r.request().isNavigationRequest()&&u.pathname==='/')return r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html});if(u.pathname==='/earthline-launch-16872.js'&&launch)return r.fulfill({status:200,contentType:'application/javascript',body:launch});if(u.pathname==='/earthline-launch-16872.css'&&css)return r.fulfill({status:200,contentType:'text/css',body:css});return r.continue()});await p.goto('https://earthlinedevelopment.org/?nz16896='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});await p.waitForSelector('#searchInput',{timeout:30000});await sleep(1500);await snap(p,'BOOT');await p.fill('#searchInput','New Zealand');await p.press('#searchInput','Enter');for(const t of [500,1500,3000,6000,12000]){await sleep(t-(t===500?0:[500,1500,3000,6000][[1500,3000,6000,12000].indexOf(t)]||0));await snap(p,'NZ+'+t+'ms')}const box=await p.locator('.mapboxgl-canvas').first().boundingBox();if(box){await p.mouse.move(box.x+box.width*.52,box.y+box.height*.52);await p.mouse.down();await p.mouse.move(box.x+box.width*.30,box.y+box.height*.56,{steps:12});await p.mouse.up();await sleep(900);await snap(p,'AFTER_DRAG')}const fn=await p.evaluate(()=>typeof window.earthlineDeclarePropertyAtCrosshair16173==='function');console.log('PROPERTY_OWNER_PRESENT',fn);if(fn){const t0=Date.now();const out=await p.evaluate(async()=>{try{return await window.earthlineDeclarePropertyAtCrosshair16173()}catch(e){return {error:String(e&&e.message||e)}}});console.log('PROPERTY_DIRECT_RESULT',Date.now()-t0,JSON.stringify(out));await sleep(700);await snap(p,'AFTER_PROPERTY_DIRECT')}await b.close()})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node nz-isolate-16896.js
