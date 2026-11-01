@@ -1,8 +1,9 @@
 // Earthline Mantra 85 — pure contour-local swale candidate generation and selection.
 // Geometry is segmented here, not cosmetically shortened by the renderer.
+// Forest exclusion and ranking are explicit provenance-bearing policy inputs; no hidden science constants live here.
 
-import {LOCKED_SCIENCE,clamp01,deepFreeze} from './mantra85-contract.mjs';
-export const CANDIDATE_VERSION='m85-candidates-1';
+import {LOCKED_SCIENCE,deepFreeze} from './mantra85-contract.mjs';
+export const CANDIDATE_VERSION='m85-candidates-2';
 const R=6371008.8;
 
 export function distanceM(a,b){const p1=Number(a[1])*Math.PI/180,p2=Number(b[1])*Math.PI/180,dp=(Number(b[1])-Number(a[1]))*Math.PI/180,dl=(Number(b[0])-Number(a[0]))*Math.PI/180,q=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(q)));}
@@ -27,7 +28,7 @@ function gridIndex(lng,lat,width,height,extent){const [w,s,e,n]=extent;if(lng<w|
 function maskAt(mask,i){return !!(mask&&i>=0&&mask[i]);}
 function numAt(grid,i,d=0){const v=grid&&i>=0?Number(grid[i]):NaN;return Number.isFinite(v)?v:d;}
 
-export function buildCandidates({contours,width,height,extent,hydrology,rechargeGrid,masks={},canopyGrid=null,policy}){
+export function buildCandidates({contours,width,height,extent,hydrology,rechargeGrid,masks={},forestNoBuildMask=null,policy}){
   const candidates=[];
   for(const contour of contours||[]){
     const parts=segmentPolyline(contour.coordinates,policy.maxCandidateLengthM,policy.minCandidateLengthM);
@@ -35,24 +36,55 @@ export function buildCandidates({contours,width,height,extent,hydrology,recharge
       const dense=densify(coordinates,policy.sampleStepM),samples=[];let eligible=true,maxSlope=0;
       for(const [lng,lat] of dense){
         const i=gridIndex(lng,lat,width,height,extent);if(i<0){eligible=false;break;}
-        const slopePct=numAt(hydrology.slopePct,i,Infinity),canopyKnown=!!canopyGrid,canopyScore=numAt(canopyGrid,i,0);
-        const s={i,lng,lat,slopePct,flowScore:clamp01(Math.log1p(Math.max(0,numAt(hydrology.accumulation,i,0)))/Math.log1p(Math.max(2,width*height))),rechargeScore:clamp01(numAt(rechargeGrid,i,0)),insideBoundary:!masks.validMask||maskAt(masks.validMask,i),roadOrDriveway:maskAt(masks.roadOrDriveway,i),structureOrImpervious:maskAt(masks.structureOrImpervious,i),water:maskAt(masks.water,i),majorChannel:maskAt(masks.majorChannel,i),manualNoBuild:maskAt(masks.manualNoBuild,i),canopyKnown,canopyScore};
+        const slopePct=numAt(hydrology.slopePct,i,Infinity);
+        const flowAccumulation=numAt(hydrology.accumulation,i,0);
+        const rechargeScore=numAt(rechargeGrid,i,NaN);
+        const s={
+          i,lng,lat,slopePct,flowAccumulation,rechargeScore,
+          insideBoundary:!masks.validMask||maskAt(masks.validMask,i),
+          roadOrDriveway:maskAt(masks.roadOrDriveway,i),
+          structureOrImpervious:maskAt(masks.structureOrImpervious,i),
+          water:maskAt(masks.water,i),
+          majorChannel:maskAt(masks.majorChannel,i),
+          manualNoBuild:maskAt(masks.manualNoBuild,i),
+          forestNoBuild:maskAt(forestNoBuildMask,i)
+        };
         maxSlope=Math.max(maxSlope,slopePct);
-        if(!s.insideBoundary||!Number.isFinite(slopePct)||slopePct>LOCKED_SCIENCE.maxSwaleSlopePct||s.roadOrDriveway||s.structureOrImpervious||s.water||s.majorChannel||s.manualNoBuild||(s.canopyKnown&&s.canopyScore>LOCKED_SCIENCE.forestCanopyGate)){eligible=false;}
+        if(!s.insideBoundary||!Number.isFinite(slopePct)||slopePct>LOCKED_SCIENCE.maxSwaleSlopePct||
+          s.roadOrDriveway||s.structureOrImpervious||s.water||s.majorChannel||s.manualNoBuild||s.forestNoBuild||
+          !Number.isFinite(rechargeScore)){eligible=false;}
         samples.push(Object.freeze(s));
       }
       if(!eligible||samples.length<2)return;
       const lengthM=polylineLengthM(coordinates);if(lengthM>policy.maxCandidateLengthM+0.01||lengthM<policy.minCandidateLengthM-0.01)return;
-      const meanFlow=samples.reduce((a,s)=>a+s.flowScore,0)/samples.length,meanRecharge=samples.reduce((a,s)=>a+s.rechargeScore,0)/samples.length,meanSlope=samples.reduce((a,s)=>a+s.slopePct,0)/samples.length,contourFit=Math.max(0,1-Math.abs(meanSlope-2)/2),score=meanRecharge*.55+meanFlow*.30+contourFit*.15;
-      candidates.push(deepFreeze({id:`${contour.id}-s${partIndex}`,contourId:contour.id,elevationM:contour.elevationM,coordinates:coordinates.map(p=>Object.freeze(p.slice())),samples,lengthM,maxSlopePct:maxSlope,score}));
+      const meanFlowAccumulation=samples.reduce((a,s)=>a+s.flowAccumulation,0)/samples.length;
+      const meanRecharge=samples.reduce((a,s)=>a+s.rechargeScore,0)/samples.length;
+      const meanSlope=samples.reduce((a,s)=>a+s.slopePct,0)/samples.length;
+      candidates.push(deepFreeze({
+        id:`${contour.id}-s${partIndex}`,contourId:contour.id,elevationM:contour.elevationM,
+        coordinates:coordinates.map(p=>Object.freeze(p.slice())),samples,lengthM,maxSlopePct:maxSlope,
+        metrics:deepFreeze({meanRecharge,meanFlowAccumulation,meanSlope,lowSlope:Math.max(0,LOCKED_SCIENCE.maxSwaleSlopePct-meanSlope)})
+      }));
     });
   }
   return Object.freeze(candidates);
 }
 
 function midpoint(c){const p=c.coordinates[Math.floor(c.coordinates.length/2)];return p;}
-export function selectCandidates(candidates,{maxSwales,minSpacingM}){
-  const ranked=[...(candidates||[])].sort((a,b)=>b.score-a.score||a.id.localeCompare(b.id)),chosen=[];
-  for(const c of ranked){const m=midpoint(c);if(chosen.some(x=>distanceM(m,midpoint(x))<minSpacingM))continue;chosen.push(c);if(chosen.length>=maxSwales)break;}
+function rankScore(c,rankingPolicy){
+  let score=0;
+  for(const term of rankingPolicy.terms){
+    const v=Number(c.metrics?.[term.metric]);
+    if(!Number.isFinite(v))throw new Error('candidate missing ranking metric '+term.metric);
+    score+=v*Number(term.weight);
+  }
+  return score;
+}
+export function selectCandidates(candidates,{maxSwales,minSpacingM,rankingPolicy}){
+  if(!rankingPolicy?.policyId)throw new Error('explicit ranking policy required');
+  const ranked=[...(candidates||[])].map(c=>({c,score:rankScore(c,rankingPolicy)}))
+    .sort((a,b)=>b.score-a.score||a.c.id.localeCompare(b.c.id));
+  const chosen=[];
+  for(const row of ranked){const c=row.c,m=midpoint(c);if(chosen.some(x=>distanceM(m,midpoint(x))<minSpacingM))continue;chosen.push(deepFreeze({...c,rankingScore:row.score,rankingPolicyId:rankingPolicy.policyId}));if(chosen.length>=maxSwales)break;}
   return Object.freeze(chosen);
 }
