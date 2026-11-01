@@ -1,3 +1,4 @@
+// map owner diagnostic current head
 // terminal Elder verification against current live head
 // rerun after worker dependency restoration
 // verify Elder live after detector restore
@@ -40,7 +41,9 @@ const result=await page.evaluate(()=>({
   elderFeatures:window.EARTHLINE_ELDER_TREES_V1_17097?.features?.()?.length||0,
   elderLayer:!!window.earthlineMap?.getLayer?.('earthline-elder-tree-points-17097'),
   elderSource:!!window.earthlineMap?.getSource?.('earthline-elder-trees-17097'),
-  propertyReady:!!((typeof M!=='undefined'&&M)||window.M)?.analysisReady
+  propertyReady:!!((typeof M!=='undefined'&&M)||window.M)?.analysisReady,
+  mapCandidates:Object.keys(window).filter(k=>{try{const v=window[k];return v&&typeof v.getStyle==='function'&&typeof v.addLayer==='function'}catch(_){return false}}).slice(0,30),
+  globals:{earthlineMap:typeof window.earthlineMap,map:typeof window.map,mapLexical:(()=>{try{return typeof map}catch(_){return 'error'}})()}
 }));
 console.log('M83_PRODUCTION_ELDER_VERIFY '+JSON.stringify({installed,result,errors}));
 if(!result.propertyReady)throw new Error('Property not ready');
