@@ -33343,27 +33343,9 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
     try{return typeof window.earthlinePropertyTextureAudit16169==='function'?window.earthlinePropertyTextureAudit16169():null}catch(_){return null}
   }
   async function verifyPropertyTexture(count){
-    if(!(count>0))return {ok:true,required:false,sourceFeatures:0,layers:{},widthPx:0};
-    /* EARTHLINE 16477 — performance-only terminal-path repair. Natural texture is
-       presentation enrichment, not a scientific/safety prerequisite. Start the
-       unchanged texture synchronization owner in the background, but do not make
-       the governed Property promise wait for image decode/layer registration. The
-       authoritative safe-line fallback remains the immediate verified renderer. */
-    let error='';
-    try{
-      const syncTexture=window.earthlineSyncPropertyTexture16169;
-      if(typeof syncTexture!=='function')throw new Error('property texture synchronization owner unavailable');
-      Promise.resolve(syncTexture('property-published-16173-force')).catch(err=>{
-        window.EARTHLINE_PROPERTY_TEXTURE_BACKGROUND_ERROR_16477=String(err&&err.message||err||'texture synchronization failed');
-      });
-    }catch(err){error=String(err&&err.message||err||'texture synchronization failed')}
-    const a=propertyTextureAudit(),t=a?.texture||window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null,mp=map();
-    const sourceFeatures=Number(a?.sourceFeatures??t?.features??0),centerlines=Number(t?.centerlines||0),footprints=Number(t?.footprints||0),directional=Number(t?.directional||0),neutral=Number(t?.neutral||0),layers=t?.layers||{};
-    const layerValues=Object.values(layers),layersReady=layerValues.length>=5&&layerValues.every(Boolean);
-    const registeredImages={up:!!mp?.hasImage?.('earthline-swale-natural-uphill-16174'),flip:!!mp?.hasImage?.('earthline-swale-natural-uphill-flipped-16174')},imagesReady=registeredImages.up&&registeredImages.flip;
-    const widthPx=Number(t?.widthPx||0),orientationComplete=directional+neutral===centerlines;
-    const ok=sourceFeatures>0&&centerlines>0&&footprints===centerlines&&orientationComplete&&layersReady&&imagesReady&&widthPx>=4;
-    return {ok,required:true,pending:!ok,backgroundSync:true,sourceFeatures,centerlines,footprints,directional,neutral,orientationComplete,layers,layersReady,registeredImages,imagesReady,widthPx,error,audit:a||t||null};
+    /* MANTRA 85 — retired duplicate Property texture renderer. Authoritative safe
+       Property geometry is the sole terminal swale presentation owner. */
+    return {ok:false,required:false,pending:false,retired:true,sourceFeatures:0,layers:{},widthPx:0};
   }
   /* EARTHLINE 16348 — native Mapbox owns the completed Property basemap. A
      Regional→Property transition can reach fitBounds while the Mapbox backing
@@ -33647,6 +33629,15 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
     if(!ensured.ok){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,sourceReady:!!ensured.sourceReady,layersReady:!!ensured.layersReady,errors:ensured.errors||[],error:ensured.error||null,at:new Date().toISOString()};return {ok:false,count,visible:false,active,...ensured}}
     try{const src=mp.getSource(SAFE_SOURCE_16221);if(!src?.setData)throw new Error('safe source setData unavailable');src.setData(fc)}catch(error){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,error:String(error?.message||error),at:new Date().toISOString()};return {ok:false,count,visible:false,active,error:String(error?.message||error)}}
     setSafeLayerVisibility16221(true);
+    try{
+      const legacyPropertyPresentation=[
+        'earthline-living-swales-glow-15792','earthline-living-swales-earth-15792','earthline-living-swales-life-15792','earthline-living-swales-water-15792',
+        'earthline-property-swale-footprint-16174','earthline-property-swale-natural-casing-16174','earthline-property-swale-natural-up-16174','earthline-property-swale-natural-flip-16174','earthline-property-swale-neutral-16177',
+        'earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'
+      ];
+      for(const id of legacyPropertyPresentation){if(mp.getLayer?.(id))mp.setLayoutProperty(id,'visibility','none')}
+      window.EARTHLINE_PROPERTY_LEGACY_PRESENTATION_RETIRE_M85={build:'MANTRA 85',retired:legacyPropertyPresentation,at:new Date().toISOString()};
+    }catch(_){}
     const moved=[];
     for(const id of Object.values(SAFE_LAYERS_16221)){try{if(mp.getLayer?.(id)){mp.moveLayer?.(id);moved.push(id)}}catch(_){ }}
     const visibleLayers=Object.values(SAFE_LAYERS_16221).filter(id=>{try{return !!mp.getLayer?.(id)&&mp.getLayoutProperty?.(id,'visibility')!=='none'}catch(_){return false}});
@@ -37407,6 +37398,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     }else if(acquisitionResult==="unavailable"){
       kind="unavailable";label="EXCLUSION DATA UNAVAILABLE · TERRAIN-DERIVED PLANNING ONLY";
       detail="No authoritative local exclusion source was available and no usable open-data exclusion geometry was established for this frame. Corridors are terrain-derived and are not exclusion-verified; field verification is required before any siting decision.";
+    }else if(sourceTier==="open-data"&&acquisitionResult==="screened-clear"){
+      kind="open-data";label="OPEN-DATA SCREENING · NO MAPPED EXCLUSIONS RETURNED · FIELD VERIFICATION REQUIRED";
+      detail="Available open-data sources completed and returned no mapped road, structure, parking, or mapped-water exclusions in this frame. This is screened planning evidence, not authoritative clearance; field verification is required.";
     }else if(acquisitionResult==="failed"){
       kind="failed";label="EXCLUSION DATA QUERY FAILED · OUTPUT BLOCKED";
       detail="An expected exclusion source/query failed. This is a data-acquisition failure, not a verified-clear result.";
