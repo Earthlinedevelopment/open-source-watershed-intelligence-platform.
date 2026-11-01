@@ -15,7 +15,7 @@ const wrapper=`
     };
     wrapped.__m83LocalDisplay=true;wrapped.__earthlineOriginal=orig;window.earthlineRenderRegionalOverlay16020=wrapped;return true;
   }
-  if(!install())setTimeout(install,0);
+  if(!install()){document.addEventListener('DOMContentLoaded',()=>{install();setTimeout(install,120)},{once:true});setTimeout(install,500);}
 })();
 `;
 
