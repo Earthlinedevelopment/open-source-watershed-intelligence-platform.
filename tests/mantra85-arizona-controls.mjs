@@ -17,9 +17,24 @@ mkdirSync('artifacts/arizona-controls',{recursive:true});
 await page.goto(URL+'?az_control='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
 await page.waitForSelector('#searchInput',{timeout:30000});
 await page.evaluate(()=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='Arizona';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
-await page.waitForFunction(()=>{const e=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null;return !!e||(Number(p?.generated||0)>0&&Number(d?.swaleLines||0)>0);},null,{timeout:75000,polling:150});
-const regionalError=await page.evaluate(()=>window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null);
-if(regionalError)throw new Error('Arizona Regional failed: '+JSON.stringify(regionalError));
+let regionalTimeout=false;
+try{await page.waitForFunction(()=>{const e=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,p=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,d=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null;return !!e||(Number(p?.generated||0)>0&&Number(d?.swaleLines||0)>0);},null,{timeout:35000,polling:150});}catch(_){regionalTimeout=true}
+const regionalDiagnostic=await page.evaluate(()=>{
+  const pkg=window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||null;
+  const boundary=pkg?.boundary||null,prepared=boundary?.prepared||null;
+  const polys=(prepared?.polygons||[]).map(p=>({bbox:p.bbox,outerFirst:p.outer?.[0]||null,outerCount:p.outer?.length||0,holeCount:p.holes?.length||0}));
+  const md=(typeof M!=='undefined'&&M)||window.M||null;
+  const gen=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null;
+  const extent=window.EARTHLINE_REGIONAL_ANALYSIS_EXTENT_16712||null;
+  const land=window.EARTHLINE_LAND_VALIDITY_GRID_AUDIT_16584||null;
+  const geom=window.EARTHLINE_REGIONAL_GEOMETRY_M84||null;
+  const perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null;
+  const error=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null;
+  return {pkg:{profileId:pkg?.profileId,center:pkg?.center,extent:pkg?.regionalExtent,boundaryLabel:boundary?.label,boundaryCode:boundary?.code,boundaryType:boundary?.geometry?.type,polys},model:{loc:md?.loc,centerLng:md?.centerLng,centerLat:md?.centerLat,analysisBoundary:md?.analysisBoundaryLngLat,bounds:md?.bounds},gen,extent,land,geom,perf,error,status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||''),tier:String(document.getElementById('earthlineTierNotice16173')?.textContent||'')};
+});
+writeFileSync('artifacts/arizona-controls/regional-diagnostic.json',JSON.stringify({regionalTimeout,regionalDiagnostic,pageErrors,badResponses},null,2));
+console.log('ARIZONA_REGIONAL_DIAGNOSTIC '+JSON.stringify({regionalTimeout,regionalDiagnostic,pageErrors:pageErrors.slice(-10),badResponses:badResponses.slice(-10)}));
+if(regionalTimeout||regionalDiagnostic.error||Number(regionalDiagnostic.gen?.publishedFeatures||0)===0){await browser.close();process.exitCode=1;} 
 
 async function runTarget(target,index){
   const errorStart=pageErrors.length;
