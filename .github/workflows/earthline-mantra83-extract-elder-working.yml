@@ -1,0 +1,28 @@
+name: Mantra 83 Extract Elder Working Script
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-extract-elder-working.mjs'
+      - '.github/workflows/earthline-mantra83-extract-elder-working.yml'
+permissions:
+  contents: write
+concurrency:
+  group: mantra83-elder-extract
+  cancel-in-progress: true
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: node tests/mantra83-extract-elder-working.mjs
+      - run: |
+          git config user.name "earthline-ci"
+          git config user.email "actions@users.noreply.github.com"
+          git add forensics/elder-working-16172.html
+          git diff --cached --quiet || git commit -m "forensics: retain working Elder Property script"
+          git pull --rebase origin mantra83-shadow-live
+          git push origin HEAD:mantra83-shadow-live
