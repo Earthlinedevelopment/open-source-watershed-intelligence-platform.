@@ -1,0 +1,20 @@
+name: Mantra 83 Current Head Matrix
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-current-head-matrix.mjs'
+      - '.github/workflows/earthline-mantra83-current-head-matrix.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps webkit
+      - run: node tests/mantra83-current-head-matrix.mjs
