@@ -1,0 +1,30 @@
+name: Mantra 84 Terrain Hedge Sweep
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra84-terrain-hedge-sweep.mjs'
+      - '.github/workflows/earthline-mantra84-terrain-hedge-sweep.yml'
+permissions: {contents: read}
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {q: Vermont, delay: 4000}
+          - {q: Arizona, delay: 4000}
+          - {q: Vermont, delay: 6000}
+          - {q: Arizona, delay: 6000}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      Q: ${{ matrix.q }}
+      DELAY: ${{ matrix.delay }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps webkit
+      - run: node tests/mantra84-terrain-hedge-sweep.mjs
