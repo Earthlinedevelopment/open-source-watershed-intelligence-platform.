@@ -1,0 +1,19 @@
+name: Mantra 83 Elder Browser Import
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-elder-browser-import.mjs'
+      - '.github/workflows/earthline-mantra83-elder-browser-import.yml'
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - run: node tests/mantra83-elder-browser-import.mjs
