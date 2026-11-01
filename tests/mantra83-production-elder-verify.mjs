@@ -11,7 +11,12 @@ const installed=await page.evaluate(()=>({
   elder:typeof window.EARTHLINE_ELDER_TREES_V1_17097,
   workerScript:[...document.scripts].some(s=>String(s.src||'').includes('earthline-elder-restored-17097.js'))
 }));
-if(installed.elder!=='object')throw new Error('Elder engine not installed');
+if(installed.elder!=='object'){
+  const diag=await page.evaluate(()=>({scripts:[...document.scripts].map(x=>x.src||x.id||'inline').filter(Boolean),htmlHas:document.documentElement.innerHTML.includes('earthline-elder-restored-17097.js')}));
+  const asset=await page.request.get('https://earthlinedevelopment.org/earthline-elder-restored-17097.js?verify=2');
+  console.log('M83_ELDER_INSTALL_DIAG '+JSON.stringify({installed,diag,assetStatus:asset.status(),assetHead:(await asset.text()).slice(0,300)}));
+  throw new Error('Elder engine not installed');
+}
 await page.locator('#searchInput').fill('61 Sleepy Hollow Rd Essex Vermont');
 const before=await page.evaluate(()=>String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147)?.runToken||''));
 await page.evaluate(()=>window.earthlineRunAnalysis?.({preventDefault(){},stopPropagation(){},stopImmediatePropagation(){}}));
