@@ -1,0 +1,22 @@
+name: Mantra 83 Current Swale Publication Audit
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/current-swale-publication-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          node <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          for(const term of ['acceptedChosen','swaleOpportunityLines','geometry:{type:\'LineString\'','feature_type:\'swale']){
+            let from=0,n=0;while(true){const at=s.indexOf(term,from);if(at<0)break;console.log('PUB '+JSON.stringify({term,at,text:s.slice(Math.max(0,at-2200),Math.min(s.length,at+7000))}));from=at+term.length;if(++n>=12)break;}
+          }
+          NODE
