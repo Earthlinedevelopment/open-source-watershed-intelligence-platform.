@@ -1,21 +1,20 @@
-name: Mantra 83 Shared Workload Candidate
+name: Mantra 84 Shared Local Refinement Candidate
 on:
   push:
     branches: [mantra83-shadow-live]
     paths:
       - 'tests/mantra83-shared-workload-candidate.mjs'
       - '.github/workflows/earthline-mantra83-shared-workload-candidate.yml'
-      - 'tests/mantra83-bound-shared-regional-workload.mjs'
 permissions:
   contents: read
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '24'}
       - run: npm install --no-save playwright
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - run: node tests/mantra83-shared-workload-candidate.mjs
