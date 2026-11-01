@@ -14,4 +14,15 @@ jobs:
         with:
           ref: pages-live
       - run: |
-          grep -nE "earthlineMap|new mapboxgl\\.Map|const map=|let map=|var map=" index.html | head -80
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for term in ['jurisdictionEligibleCount16539','preferredEligibleCount16539','candidatesBeforeJurisdiction16539']:
+              pos=0
+              while True:
+                  i=s.find(term,pos)
+                  if i<0: break
+                  print('\nM83JURIS',term,i)
+                  print(s[max(0,i-1800):min(len(s),i+5000)])
+                  pos=i+len(term)
+          PY
