@@ -29,6 +29,7 @@ async function snapshot(label){return page.evaluate(({label,target})=>{
     propertyAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
     propertyPublication:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,
     flowGrid:grid,
+    modelEvidenceKeys:md?Object.keys(md).filter(k=>/canopy|forest|tree|veg|landcover|mask|water|exclude|valid/i.test(k)).sort().map(k=>({key:k,type:ArrayBuffer.isView(md[k])?md[k].constructor.name:typeof md[k],length:Number(md[k]?.length||0)})):[],
     model:{
       present:!!md,
       searchGen:Number(md?.searchGen||0),
@@ -75,6 +76,10 @@ if(!propertyCall.ok)violations.push('Property run failed: '+String(propertyCall.
 if(!property.model.hLength||!property.model.inPLength||!property.model.noBuildMaskLength)violations.push('Property acquisition fields incomplete');
 const t=property.propertyTarget||{};if(Math.abs(Number(t.lng)-TARGET.lng)>1e-6||Math.abs(Number(t.lat)-TARGET.lat)>1e-6)violations.push('Property target identity mismatch');
 if(property.elder?.state!=='committed')violations.push('Elder evidence not committed at observed Property terminal');
+const pubAt=Date.parse(String(property.propertyPublication?.at||'')),elderAt=Date.parse(String(property.elder?.at||''));
+if(Number.isFinite(pubAt)&&Number.isFinite(elderAt)&&elderAt>pubAt)violations.push('Elder evidence committed after Property publication by '+(elderAt-pubAt)+' ms');
+const publishedSafe=Number(property.propertyPublication?.safeCount||0),modelSafe=Number(property.model?.safeSwales||0);
+if(publishedSafe>0&&modelSafe!==publishedSafe)violations.push('authoritative safe-swale state drift after publication: published '+publishedSafe+' vs model '+modelSafe);
 
 const report={at:new Date().toISOString(),url:URL,target:TARGET,propertyCall,regional,property,pageErrors,violations,pass:violations.length===0};
 mkdirSync('artifacts/mantra85',{recursive:true});writeFileSync('artifacts/mantra85/live-state-probe.json',JSON.stringify(report,null,2));
