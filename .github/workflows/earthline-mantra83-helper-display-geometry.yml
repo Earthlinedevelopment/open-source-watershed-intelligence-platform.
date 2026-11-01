@@ -1,0 +1,20 @@
+name: Mantra 83 Helper Display Geometry
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-helper-display-geometry.mjs'
+      - '.github/workflows/earthline-mantra83-helper-display-geometry.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save playwright
+      - run: node tests/mantra83-helper-display-geometry.mjs
