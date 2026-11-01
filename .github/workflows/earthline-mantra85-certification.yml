@@ -25,6 +25,16 @@ jobs:
         run: |
           node tests/mantra85-clock.test.mjs
           node tests/mantra85-shadow-adapter.test.mjs
+      - name: Structural debt audit
+        run: node tests/mantra85-structural-debt-audit.mjs
+      - name: Upload structural debt evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mantra85-structural-debt
+          path: artifacts/mantra85/structural-debt.json
+          retention-days: 14
+          if-no-files-found: warn
       - name: Structural source invariants
         run: |
           ! grep -q 'earthlineRegionalLocalDisplay16020' index.html
