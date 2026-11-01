@@ -1,0 +1,22 @@
+name: Mantra 83 Hydrology Dependency Audit
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-hydrology-dependency-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          node <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          for(const term of ['class MinHeap','async function hydrology','function hydrology','class Heap']){
+            const at=s.indexOf(term);if(at>=0)console.log('M83HYDRO '+JSON.stringify({term,at,text:s.slice(Math.max(0,at-1000),Math.min(s.length,at+9000))}));
+          }
+          NODE
