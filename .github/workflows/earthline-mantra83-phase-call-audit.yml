@@ -1,0 +1,22 @@
+name: Mantra 83 Regional Phase Call Audit
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-phase-call-audit.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          node <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          for(const term of ['await makeSwales(','earthlineClipRegionalProducts16539(','await earthlineClipRegionalProducts16539']){
+            let from=0,n=0;while(true){const at=s.indexOf(term,from);if(at<0)break;console.log('M83CALL '+JSON.stringify({term,at,text:s.slice(Math.max(0,at-1000),Math.min(s.length,at+2200))}));from=at+term.length;if(++n>=20)break;}
+          }
+          NODE
