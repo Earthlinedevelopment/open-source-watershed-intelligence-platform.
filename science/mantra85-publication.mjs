@@ -5,12 +5,14 @@ import {polylineLengthM} from './mantra85-candidates.mjs';
 export const PUBLICATION_VERSION='m85-publication-1';
 
 function pending(v){return String(v?.status||'').toLowerCase()==='pending';}
+function failed(v){const s=String(v?.status||'').toLowerCase();return s==='failed'||s==='error'||s==='blocking-failed';}
 export function validateForPublication(bundle){
   if(!bundle?.identity)throw new Error('missing immutable run identity');assertSameIdentity(bundle.identity,bundle.identity);
   if(bundle.runId!==bundle.identity.runId||bundle.mode!==bundle.identity.mode)throw new Error('bundle identity divergence');
   if(stableHash(bundle.target)!==stableHash(bundle.identity.target)||stableHash(bundle.extent)!==stableHash(bundle.identity.extent))throw new Error('bundle target/extent divergence');
   if(bundle.elder?.rechargeWeight!==LOCKED_SCIENCE.elderRechargeWeight)throw new Error('elder recharge weight must be zero');
   if(bundle.policy.requireNoPendingEvidence&&(pending(bundle.elder)||pending(bundle.aquifer)||pending(bundle.exclusions)||pending(bundle.coverage)))throw new Error('pending evidence cannot be published');
+  if(failed(bundle.elder)||failed(bundle.aquifer)||failed(bundle.exclusions)||failed(bundle.coverage))throw new Error('failed required evidence cannot be published');
   for(const s of bundle.swales||[]){
     const lengthM=polylineLengthM(s.coordinates||[]);if(lengthM>bundle.policy.maxCandidateLengthM+.01)throw new Error('swale exceeds local candidate length invariant');
     if(Number(s.maxSlopePct)>LOCKED_SCIENCE.maxSwaleSlopePct)throw new Error('swale violates 4% rule');
