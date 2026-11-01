@@ -17,8 +17,12 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text()
-          a=s.find('async function makeContours')
-          b=s.find('async function earthlineCooperativeYield16661',a)
-          if a<0 or b<0: raise SystemExit('makeContours owner not found')
-          print(s[a:b])
+          term='swaleCandidateContours16609'
+          pos=0
+          while True:
+              i=s.find(term,pos)
+              if i<0: break
+              print('\nM83_CAND_CONTOURS',i)
+              print(s[max(0,i-2600):min(len(s),i+6200)])
+              pos=i+len(term)
           PY
