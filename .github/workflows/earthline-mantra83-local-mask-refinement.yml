@@ -1,0 +1,43 @@
+name: Mantra 83 Local Mask Refinement
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-local-mask-refinement.mjs'
+      - '.github/workflows/earthline-mantra83-local-mask-refinement.yml'
+permissions:
+  contents: read
+jobs:
+  chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env: {CLIENT: desktop-chromium}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/mantra83-local-mask-refinement.mjs
+  webkit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env: {CLIENT: desktop-webkit}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps webkit
+      - run: node tests/mantra83-local-mask-refinement.mjs
+  iphone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env: {CLIENT: iphone-webkit}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps webkit
+      - run: node tests/mantra83-local-mask-refinement.mjs
