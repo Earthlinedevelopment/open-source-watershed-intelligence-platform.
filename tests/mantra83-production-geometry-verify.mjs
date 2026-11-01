@@ -1,3 +1,4 @@
+// Mantra 84 rerun against live 91d132e 2026-11-01
 // current-production rerun 1793511306731
 // verify live fc329052 1793499411157
 // verify current 16km live geometry 1793499046543
