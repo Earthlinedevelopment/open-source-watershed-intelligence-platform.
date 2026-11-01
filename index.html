@@ -30545,7 +30545,75 @@ body { overflow-x:hidden!important; }
       const relief=values.length?max-min:Infinity,endDrop=values.length>1?Math.abs(values[values.length-1]-values[0]):Infinity;
       return {reliefM:relief,endDropM:endDrop,valid:Number.isFinite(relief)&&relief<=contourToleranceM16166&&endDrop<=contourToleranceM16166};
     }
-    const auditedCandidates=chosen.map(c=>Object.assign(c,{contourAudit16166:contourAudit16166(c)}));
+    function earthlineRegionalDistanceM84(a,b){
+      const R=6371008.8,p1=Number(a[1])*Math.PI/180,p2=Number(b[1])*Math.PI/180,dp=(Number(b[1])-Number(a[1]))*Math.PI/180,dl=(Number(b[0])-Number(a[0]))*Math.PI/180;
+      const q=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+      return 2*R*Math.asin(Math.min(1,Math.sqrt(Math.max(0,q))));
+    }
+    function earthlineRegionalInterpolateM84(a,b,t){return [Number(a[0])+(Number(b[0])-Number(a[0]))*t,Number(a[1])+(Number(b[1])-Number(a[1]))*t];}
+    function earthlineLocalizeRegionalCandidateM84(candidate){
+      if(!candidate||!Array.isArray(candidate.segment)||candidate.segment.length<2)return null;
+      const coords=candidate.segment,mid=Math.max(0,Math.min(coords.length-1,Math.floor((coords.length-1)/2))),maxHalfM=2000;
+      const left=[coords[mid]],right=[coords[mid]];
+      let remaining=maxHalfM;
+      for(let i=mid;i>0&&remaining>0;i--){
+        const a=coords[i],b=coords[i-1],d=earthlineRegionalDistanceM84(a,b);
+        if(!Number.isFinite(d)||d<=0)continue;
+        if(d<=remaining){left.unshift(b);remaining-=d;}
+        else{left.unshift(earthlineRegionalInterpolateM84(a,b,remaining/d));remaining=0;}
+      }
+      remaining=maxHalfM;
+      for(let i=mid;i<coords.length-1&&remaining>0;i++){
+        const a=coords[i],b=coords[i+1],d=earthlineRegionalDistanceM84(a,b);
+        if(!Number.isFinite(d)||d<=0)continue;
+        if(d<=remaining){right.push(b);remaining-=d;}
+        else{right.push(earthlineRegionalInterpolateM84(a,b,remaining/d));remaining=0;}
+      }
+      const segment=left.concat(right.slice(1));
+      if(segment.length<2)return null;
+      const validation=[];
+      for(let i=0;i<segment.length-1;i++){
+        const a=segment[i],b=segment[i+1],d=earthlineRegionalDistanceM84(a,b);
+        if(!Number.isFinite(d))return null;
+        const steps=Math.max(1,Math.ceil(d/250));
+        for(let k=0;k<steps;k++)validation.push(earthlineRegionalInterpolateM84(a,b,k/steps));
+      }
+      validation.push(segment[segment.length-1]);
+      let sumSlope=0,sumAcc=0,valid=0;
+      for(const p of validation){
+        const g=llGrid(hy,p);
+        if(!g||!Number.isFinite(g.x)||!Number.isFinite(g.y))return null;
+        const x=Math.max(1,Math.min(hy.w-2,Math.round(g.x))),y=Math.max(1,Math.min(hy.h-2,Math.round(g.y))),i=y*hy.w+x;
+        const slope=Number(hy.slope[i]),acc=Number(hy.acc[i]);
+        if(!Number.isFinite(slope)||slope<0||slope>4||!Number.isFinite(acc)||acc>=channel)return null;
+        sumSlope+=slope;sumAcc+=acc;valid++;
+      }
+      if(valid<2)return null;
+      let lengthM=0;for(let i=1;i<segment.length;i++)lengthM+=earthlineRegionalDistanceM84(segment[i-1],segment[i]);
+      if(!Number.isFinite(lengthM)||lengthM<=0||lengthM>4005)return null;
+      const center=segment[Math.floor((segment.length-1)/2)],cg=llGrid(hy,center);
+      return Object.assign({},candidate,{
+        segment,
+        x:cg&&Number.isFinite(cg.x)?Math.max(1,Math.min(hy.w-2,Math.round(cg.x))):candidate.x,
+        y:cg&&Number.isFinite(cg.y)?Math.max(1,Math.min(hy.h-2,Math.round(cg.y))):candidate.y,
+        slope:sumSlope/valid,
+        acc:sumAcc/valid,
+        regional_geometry_local_m84:true,
+        regional_length_m84:lengthM
+      });
+    }
+    const geometryCandidatesM84=focusMode?chosen:chosen.map(earthlineLocalizeRegionalCandidateM84).filter(Boolean);
+    if(!focusMode){
+      const lengthsM84=geometryCandidatesM84.map(c=>Number(c.regional_length_m84)).filter(Number.isFinite).sort((a,b)=>a-b);
+      window.EARTHLINE_REGIONAL_GEOMETRY_M84={
+        build:'MANTRA 84',input:chosen.length,accepted:geometryCandidatesM84.length,rejected:chosen.length-geometryCandidatesM84.length,
+        maxLengthM:lengthsM84.length?lengthsM84[lengthsM84.length-1]:0,
+        p95LengthM:lengthsM84.length?lengthsM84[Math.min(lengthsM84.length-1,Math.floor((lengthsM84.length-1)*.95))]:0,
+        rule:'published Regional opportunities are contour-local, capped at 2 km per side / 4 km total, and densely rechecked at <=250 m intervals for 0-4% slope and channel exclusion',
+        at:new Date().toISOString()
+      };
+    }
+    const auditedCandidates=geometryCandidatesM84.map(c=>Object.assign(c,{contourAudit16166:contourAudit16166(c)}));
     /* BUILD-CHECK-16167: the 5 m longitudinal gate is a focus-screening gate.
        Applying that tolerance to Vermont's coarse regional DEM rejected every
        regional corridor because nearest-cell sampling can vary by more than 5 m.
@@ -35142,7 +35210,6 @@ body{display:block!important}
     return {owner:'native-mapbox',ready,layers};
   }
   function activeTier16168(){const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null;return String(d&&((d.tier||d.mode))||'regional').toLowerCase();}
-  function earthlineRegionalLocalDisplay16020(coords,maxHalfM=2000){if(!Array.isArray(coords)||coords.length<3)return coords;const mid=Math.floor((coords.length-1)/2),R=6371008.8,dist=(a,b)=>{const p1=Number(a[1])*Math.PI/180,p2=Number(b[1])*Math.PI/180,dp=(Number(b[1])-Number(a[1]))*Math.PI/180,dl=(Number(b[0])-Number(a[0]))*Math.PI/180,q=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(q)))};let l=mid,r=mid,lm=0,rm=0;while(l>0){const d=dist(coords[l],coords[l-1]);if(!Number.isFinite(d)||lm+d>maxHalfM)break;l--;lm+=d}while(r<coords.length-1){const d=dist(coords[r],coords[r+1]);if(!Number.isFinite(d)||rm+d>maxHalfM)break;r++;rm+=d}if(l===r){if(r<coords.length-1)r++;else if(l>0)l--}return coords.slice(l,r+1)}
   function render(data){lastData=data||lastData;if(!lastData)return false;const map=m(),el=overlay();if(!map||!el)return false;const resizeRunToken16020=String(lastData&&lastData.runToken||'');if(resizeRunToken16020&&resizeRunToken16020!==lastResizeRunToken16020){lastResizeRunToken16020=resizeRunToken16020;}const h=host(),w=Math.max(1,h.clientWidth||window.innerWidth),hh=Math.max(1,h.clientHeight||window.innerHeight);el.setAttribute('viewBox','0 0 '+w+' '+hh);el.replaceChildren();
     const defs=svgEl('defs');const glow=svgEl('filter',{id:'elGlow16020',x:'-30%',y:'-30%',width:'160%',height:'160%'});glow.appendChild(svgEl('feGaussianBlur',{stdDeviation:'1.6',result:'b'}));const merge=svgEl('feMerge');merge.appendChild(svgEl('feMergeNode',{in:'b'}));merge.appendChild(svgEl('feMergeNode',{in:'SourceGraphic'}));glow.appendChild(merge);defs.appendChild(glow);const jurisdictionClipD=jurisdictionClipD16020(),jurisdictionClipId='earthlineJurisdictionClip16020';if(jurisdictionClipD){const cp=svgEl('clipPath',{id:jurisdictionClipId,clipPathUnits:'userSpaceOnUse'});cp.appendChild(svgEl('path',{d:jurisdictionClipD,'fill-rule':'evenodd','clip-rule':'evenodd'}));defs.appendChild(cp);}el.appendChild(defs);
     const clipAttrs=jurisdictionClipD?{'clip-path':'url(#'+jurisdictionClipId+')'}:{},cg=svgEl('g',Object.assign({'data-layer':'numbered-elevation-contours'},clipAttrs)),sg=svgEl('g',Object.assign({'data-layer':'swale-opportunities'},clipAttrs)),lg=svgEl('g',Object.assign({'data-layer':'always-visible-labels'},clipAttrs));el.append(cg,sg,lg);
@@ -35160,7 +35227,7 @@ body{display:block!important}
     const gradeCounts={A:0,B:0,C:0},gradeLabels=[];
     for(const f of (lastData.swales&&lastData.swales.features||[])){
       if(!f.geometry||f.geometry.type!=='LineString')continue;
-      const activeTier=activeTier16168(),rawCoords=f.geometry.coordinates,renderCoords=activeTier==='focus'?rawCoords:earthlineRegionalLocalDisplay16020(rawCoords),pts=points(renderCoords),len=polyLength(pts);
+      const activeTier=activeTier16168(),rawCoords=f.geometry.coordinates,pts=points(rawCoords),len=polyLength(pts);
       if(activeTier==='focus'?(pts.length<3||len<22):(pts.length<2||len<0.1))continue;
       const props=f.properties||{},grade=/^[ABC]$/.test(String(props.grade||''))?String(props.grade):'C';
       const rank=(gradeCounts[grade]||0)+1,score=Math.max(0,Math.min(100,Number(props.score||0)));props.display_rank=rank;props.display_code=grade+rank;
