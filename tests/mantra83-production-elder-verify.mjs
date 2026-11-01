@@ -1,3 +1,4 @@
+// terminal Elder verification against current live head
 // rerun after worker dependency restoration
 // verify Elder live after detector restore
 // verify Elder live after executable placement
@@ -30,7 +31,7 @@ await page.waitForFunction(prev=>{
 await page.waitForTimeout(1200);
 await page.waitForFunction(()=>{
   const e=window.EARTHLINE_ELDER_TREE_LAST_17097;
-  return !!e && ['property-committed','property-pending','ready'].includes(String(e.state||''));
+  return !!e && ['committed','failed'].includes(String(e.state||''));
 },{timeout:120000});
 const result=await page.evaluate(()=>({
   displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,
