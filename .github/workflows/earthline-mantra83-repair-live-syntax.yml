@@ -1,0 +1,59 @@
+name: Mantra 83 Repair Live Syntax
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-repair-live-syntax.yml'
+permissions:
+  contents: write
+concurrency:
+  group: mantra83-production-deploy
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra83-shadow-live
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: |
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          old="""+'</pre>
+</body></html>');"""
+          new="""+'</pre></body></html>');"""
+          if old not in s:
+              if new not in s:
+                  raise SystemExit('syntax defect owner not found')
+          else:
+              s=s.replace(old,new,1)
+              p.write_text(s)
+          PY
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          let i=0;
+          for(const m of s.matchAll(/<script(?![^>]*src=)[^>]*>([\s\S]*?)<\/script>/gi)){
+            fs.writeFileSync('/tmp/earthline-inline-'+(++i)+'.js',m[1]);
+          }
+          const {spawnSync}=require('child_process');
+          for(let n=1;n<=i;n++){
+            const r=spawnSync(process.execPath,['--check','/tmp/earthline-inline-'+n+'.js'],{encoding:'utf8'});
+            if(r.status!==0){console.error('inline script '+n+' syntax fail\n'+r.stderr);process.exit(10);}
+          }
+          console.log('M83_ALL_INLINE_SYNTAX_PASS '+i);
+          NODE
+          git config user.name "earthline-ci"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "repair: restore valid live JavaScript after Elder report edit"
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live
