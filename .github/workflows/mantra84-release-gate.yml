@@ -1,0 +1,59 @@
+name: Mantra 84 Frozen Release Gate
+# post-repair real-origin certification
+# certification rerun 2026-11-01; runtime files unchanged
+
+on:
+  push:
+    branches: [mantra84-release-candidate]
+  pull_request:
+    branches: [pages-live]
+    paths:
+      - 'index.html'
+      - 'earthline-elder-restored-17097.js'
+      - 'earthline-elder-worker-17129.js'
+      - 'tests/mantra84-release-gate.mjs'
+      - 'tests/mantra83-engine-audit.mjs'
+      - '.github/workflows/mantra84-release-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Static ownership audit
+        run: node tests/mantra83-engine-audit.mjs
+      - name: Install browser engines
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium webkit
+      - name: Serve frozen candidate
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/earthline-mantra84-server.log 2>&1 &
+          echo $! > /tmp/earthline-mantra84-server.pid
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/earthline-mantra84-server.log
+          exit 1
+      - name: Run decision-user release gate
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/candidate-mantra84/
+        run: node tests/mantra84-release-gate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra84-release-gate
+          path: |
+            artifacts/mantra84-release-gate/
+            artifacts/mantra83-engine-audit/
+          if-no-files-found: warn
+          retention-days: 7

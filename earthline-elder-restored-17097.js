@@ -477,26 +477,45 @@
       return await promise;
     }catch(_){return null}
   } /* EARTHLINE_ELDER_IO_ONLY_PREFETCH_17211 */
-  async function startProperty17166(){
+  async function prepareProperty17166(){
     try{
       await load();
       const b=propertyBounds17166(),runIdentity=propertyRunIdentity17166(b);
       if(!b||!runIdentity)return null;
-      const pending17389=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
-      if(!(pending17389?.state==='property-pending'&&pending17389?.propertyRunIdentity===runIdentity&&pending17389?.visibleAt)){
-        publishPropertyProvisional17389(b,runIdentity);
-      }
-      const dynamic=await dynamicPropertyEvidence(true); /* EARTHLINE_ELDER_GOVERNED_COMPUTE_17211 */
+      const dynamic=await dynamicPropertyEvidence(true); /* MANTRA85_PROPERTY_ELDER_PREPARE */
       if(!dynamic||propertyRunIdentity17166(propertyBounds17166())!==runIdentity)return null;
-      state.active=dynamic.features||[];
+      const features=dynamic.features||[];
       const coverage={known:true,datasetIds:['dynamic-property-17130'],complete:false,dynamic:true,candidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0)};
-      state.lastSummary=summarize(state.active,coverage);
-      publishMap(state.active);refreshSurfaces();
-      window.EARTHLINE_ELDER_TREE_LAST_17097={
-        state:'committed',propertyRunIdentity:runIdentity,
-        summary:state.lastSummary,featureCount:state.active.length,
+      const summary=summarize(features,coverage);
+      return {
+        runIdentity,
+        features,
+        coverage,
+        summary,
         dynamicCandidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0),
-        dynamicError:null,workerTimings:dynamic?.earthline?.worker_timings_ms||null,at:new Date().toISOString()
+        workerTimings:dynamic?.earthline?.worker_timings_ms||null,
+        preparedAt:new Date().toISOString()
+      };
+    }catch(err){
+      state.dynamic.error=String(err&&err.message||err);
+      return null;
+    }
+  }
+  function commitPreparedProperty17166(prepared){
+    try{
+      if(!prepared||!prepared.runIdentity)return null;
+      const nowIdentity=propertyRunIdentity17166(propertyBounds17166());
+      if(nowIdentity!==prepared.runIdentity)return null;
+      state.active=(prepared.features||[]).slice();
+      state.lastSummary=prepared.summary||summarize(state.active,prepared.coverage||{});
+      publishMap(state.active);refreshSurfaces();
+      const committedAt=new Date().toISOString();
+      window.EARTHLINE_ELDER_TREE_LAST_17097={
+        state:'committed',propertyRunIdentity:prepared.runIdentity,
+        summary:state.lastSummary,featureCount:state.active.length,
+        dynamicCandidatePoolCount:Number(prepared.dynamicCandidatePoolCount||0),
+        dynamicError:null,workerTimings:prepared.workerTimings||null,
+        preparedAt:prepared.preparedAt||null,committedAt,at:prepared.preparedAt||committedAt
       };
       return state.lastSummary;
     }catch(err){
@@ -504,6 +523,11 @@
       return null;
     }
   }
+  async function startProperty17166(){
+    const prepared=await prepareProperty17166();
+    return commitPreparedProperty17166(prepared);
+  }
+
   async function refresh(){
     try{
       const pending17166=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
@@ -601,22 +625,19 @@
   } /* EARTHLINE_ELDER_IMMEDIATE_PROPERTY_START_17386 */
   function install(){
     wrapCorridor();
-    document.addEventListener('pointerdown',e=>{
-      const b=e.target?.closest?.('#earthlineDeclareProperty16169');
-      if(!b||b.disabled)return;
-      schedulePropertyPrime17212();
-    },true);
+    /* MANTRA 84: no pre-publication Property Elder trigger; terminal Property owner invokes startProperty(). */
     document.addEventListener('click',click,false);
     window.addEventListener('hashchange',hash,false);
-    document.addEventListener('earthline:analysis-complete',()=>{wrapCorridor();const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;const tier=String(d?.tier||d?.mode||document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();if(tier==='property')void startProperty17166();else void refresh();},{passive:true});
+    document.addEventListener('earthline:analysis-complete',()=>{wrapCorridor();const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;const tier=String(d?.tier||d?.mode||document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();if(tier!=='property')void refresh();},{passive:true});
     prewarmDynamicWorker();
     load().then(()=>{if(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970)refresh()}).catch(()=>{});
     if(location.hash==='#swales-explained')howParagraph();
     window.EARTHLINE_ELDER_TREES_V1_17097={
       state:'approved-v2-17118',manifest:MANIFEST,source:SOURCE,layer:LAYER,scienceBaseline:'17118',
-      refresh,startProperty:startProperty17166,prefetchPropertyTarget:prefetchProperty17174,summary:()=>state.lastSummary||summarize(state.active),
+      refresh,startProperty:startProperty17166,prepareProperty:prepareProperty17166,commitPreparedProperty:commitPreparedProperty17166,prefetchPropertyTarget:prefetchProperty17174,summary:()=>state.lastSummary||summarize(state.active),
       features:()=>state.active.slice(),
       confidenceRule:'Elder Tree Confidence = local structural-evidence percentile within the analyzed source area; not age probability',
+      propertyRunOwner:'authoritative-property-coordinator-mantra85',
       rechargeWeight:0
     };
     window.EARTHLINE_ELDER_TREES_V2_17118=window.EARTHLINE_ELDER_TREES_V1_17097;
