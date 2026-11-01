@@ -39,12 +39,14 @@ jobs:
             artifacts/mantra85/science-policy-audit.json
           retention-days: 14
           if-no-files-found: warn
+      - name: Approved messaging delta audit
+        run: node tests/mantra85-copy-only.test.mjs
       - name: Structural source invariants
         run: |
           ! grep -q 'earthlineRegionalLocalDisplay16020' index.html
           ! grep -q 'Elder is downstream of Property publication' earthline-elder-restored-17097.js
-      - name: Verify production product remains untouched on architecture branch
-        run: git diff --exit-code 91d132eb15a408787b21150d2007021cca3b477a -- index.html earthline-elder-restored-17097.js
+      - name: Verify non-copy production runtime remains untouched on architecture branch
+        run: git diff --exit-code 91d132eb15a408787b21150d2007021cca3b477a -- earthline-elder-restored-17097.js
 
   live-observer:
     runs-on: ubuntu-latest
