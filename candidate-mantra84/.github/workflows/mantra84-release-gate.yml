@@ -1,8 +1,11 @@
 name: Mantra 84 Frozen Release Gate
+# certification rerun 2026-11-01; runtime files unchanged
 
 on:
   push:
     branches: [mantra84-release-candidate]
+  pull_request:
+    branches: [pages-live]
     paths:
       - 'index.html'
       - 'earthline-elder-restored-17097.js'
@@ -42,7 +45,7 @@ jobs:
           exit 1
       - name: Run decision-user release gate
         env:
-          EARTHLINE_URL: http://127.0.0.1:4173/
+          EARTHLINE_URL: https://earthlinedevelopment.org/candidate-mantra84/
         run: node tests/mantra84-release-gate.mjs
       - uses: actions/upload-artifact@v4
         if: always()
