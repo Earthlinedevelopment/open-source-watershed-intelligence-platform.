@@ -1,0 +1,14 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+const p='index.html';
+let s=readFileSync(p,'utf8');
+s=s.replace(/\s*<script\s+src=["']earthline-elder-restored-17097\.js[^"']*["']><\/script>\s*/gi,'\n');
+const needle='https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.js';
+const at=s.indexOf(needle);
+if(at<0)throw new Error('Mapbox script not found');
+const close=s.indexOf('</script>',at);
+if(close<0)throw new Error('Mapbox script close not found');
+const pos=close+'</script>'.length;
+const tag='\n<script src="earthline-elder-restored-17097.js?v=17097-restored-2"></script>';
+s=s.slice(0,pos)+tag+s.slice(pos);
+writeFileSync(p,s);
+console.log('M83_ELDER_SCRIPT_PLACED');
