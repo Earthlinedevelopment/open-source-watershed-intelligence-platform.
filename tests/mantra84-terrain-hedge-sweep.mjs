@@ -1,0 +1,12 @@
+import {webkit} from 'playwright';
+const q=process.env.Q||'Vermont',delay=Number(process.env.DELAY||4000);
+const OLD="stagger=setTimeout(startAlternate,1200);",NEW="stagger=setTimeout(startAlternate,"+delay+");";
+const browser=await webkit.launch({headless:true});const page=await browser.newPage({viewport:{width:1440,height:900}});const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+await page.route('https://earthlinedevelopment.org/',async route=>{const res=await route.fetch();let body=await res.text();if(!body.includes(OLD))throw new Error('hedge owner missing');body=body.replace(OLD,NEW);await route.fulfill({response:res,body});});
+await page.goto('https://earthlinedevelopment.org/',{waitUntil:'domcontentloaded',timeout:120000});await page.waitForTimeout(700);await page.locator('#searchInput').fill(q);
+const before=await page.evaluate(()=>String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147)?.runToken||''));const t0=Date.now();
+await page.evaluate(()=>window.earthlineRunAnalysis?.({preventDefault(){},stopPropagation(){},stopImmediatePropagation(){}}));
+await page.waitForFunction(prev=>{const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147;return !!d&&String(d.runToken||'')!==String(prev||'')&&String(document.documentElement.dataset.earthlineRunState||'')==='published';},before,{timeout:180000});
+await page.waitForTimeout(250);
+const out=await page.evaluate(t0=>{const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147,fs=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.swales?.features||[];let max=-Infinity;const sig=[];for(const f of fs){const n=Number(f?.properties?.slope_pct);if(Number.isFinite(n))max=Math.max(max,n);const c=f?.geometry?.coordinates||[];const p=c[Math.floor((c.length-1)/2)];if(p)sig.push([Number(p[0]).toFixed(4),Number(p[1]).toFixed(4),Number(n).toFixed(1)].join(','));}sig.sort();return{ms:Date.now()-t0,swales:Number(d?.derived?.swaleOpportunityLines||0),rendered:document.querySelectorAll('#earthlineRegionalVectorOverlay16020 [data-layer="swale-opportunities"] path').length,maxSlope:Number.isFinite(max)?max:null,sig:sig.slice(0,200),perf:window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null};},t0);
+console.log('M84_TERRAIN_HEDGE '+JSON.stringify({q,delay,...out,errors}));await browser.close();if(!out.swales||!out.rendered||out.maxSlope>4||errors.length)process.exitCode=2;
