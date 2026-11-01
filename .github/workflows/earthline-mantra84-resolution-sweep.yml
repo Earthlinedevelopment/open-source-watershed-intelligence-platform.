@@ -1,0 +1,35 @@
+name: Mantra 84 Resolution Sweep
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra84-resolution-sweep.mjs'
+      - '.github/workflows/earthline-mantra84-resolution-sweep.yml'
+permissions: {contents: read}
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {q: Vermont, r1: 40, r2: 64}
+          - {q: Arizona, r1: 40, r2: 64}
+          - {q: Vermont, r1: 40, r2: 72}
+          - {q: Arizona, r1: 40, r2: 72}
+          - {q: Vermont, r1: 44, r2: 72}
+          - {q: Arizona, r1: 44, r2: 72}
+          - {q: Vermont, r1: 44, r2: 80}
+          - {q: Arizona, r1: 44, r2: 80}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      Q: ${{ matrix.q }}
+      R1: ${{ matrix.r1 }}
+      R2: ${{ matrix.r2 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps webkit
+      - run: node tests/mantra84-resolution-sweep.mjs
