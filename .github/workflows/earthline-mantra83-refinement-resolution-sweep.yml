@@ -1,0 +1,26 @@
+name: Mantra 83 Refinement Resolution Sweep
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-refinement-resolution-sweep.mjs'
+      - '.github/workflows/earthline-mantra83-refinement-resolution-sweep.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: ['40-64','40-72','44-72','44-80','48-72']
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      VARIANT: ${{ matrix.variant }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps webkit
+      - run: node tests/mantra83-refinement-resolution-sweep.mjs
