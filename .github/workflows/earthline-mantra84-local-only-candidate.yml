@@ -1,0 +1,20 @@
+name: Mantra 84 Local Only Candidate
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra84-local-only-candidate.mjs'
+      - '.github/workflows/earthline-mantra84-local-only-candidate.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium webkit
+      - run: node tests/mantra84-local-only-candidate.mjs
