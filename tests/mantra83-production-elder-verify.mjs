@@ -1,3 +1,4 @@
+// rerun after worker dependency restoration
 // verify Elder live after detector restore
 // verify Elder live after executable placement
 import {chromium} from 'playwright';
