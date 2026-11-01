@@ -1,17 +1,9 @@
 import {readFileSync} from 'node:fs';
-const s=readFileSync('index.html','utf8');
-for(const term of [
-  'ELDER TREE CONFIDENCE',
-  'elderTree',
-  'elder_tree',
-  'elders',
-  'Elder',
-  'earthlineElder'
-]){
- let from=0,n=0;
- while(true){
-   const at=s.indexOf(term,from);if(at<0)break;
-   console.log('M83ELDER '+JSON.stringify({term,at,text:s.slice(Math.max(0,at-1500),Math.min(s.length,at+4500))}));
-   from=at+term.length;if(++n>=12)break;
- }
+const src=readFileSync('index.html','utf8');
+const re=/elder/ig; let m,n=0;
+while((m=re.exec(src))&&n<80){
+ const at=m.index;
+ console.log('M83ELDER2 '+JSON.stringify({at,text:src.slice(Math.max(0,at-900),Math.min(src.length,at+2400))}));
+ n++;
 }
+console.log('M83ELDER2_COUNT '+JSON.stringify({shown:n,total:(src.match(/elder/ig)||[]).length}));
