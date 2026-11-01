@@ -1,3 +1,4 @@
+// Mantra 84 rerun against live 91d132e 2026-11-01
 // verify live fc329052 1793499414970
 // verify live Elder completion 1793498961532
 // map owner diagnostic current head
