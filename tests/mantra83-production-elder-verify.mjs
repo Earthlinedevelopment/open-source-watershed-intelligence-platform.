@@ -1,3 +1,4 @@
+// verify Elder live after detector restore
 // verify Elder live after executable placement
 import {chromium} from 'playwright';
 import fs from 'node:fs';
