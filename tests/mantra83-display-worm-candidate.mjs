@@ -21,7 +21,7 @@ const wrapper=`
 
 async function suite(modified){
  const browser=await chromium.launch({headless:true,executablePath:chrome,args:['--no-sandbox']});const page=await browser.newPage({viewport:{width:1600,height:900}});
- if(modified)await page.route('https://earthlinedevelopment.org/',async route=>{const res=await route.fetch();let body=await res.text();body=body.replace('</body>', '<script>'+wrapper.replaceAll('</script>','<\\/script>')+'<\\/script></body>');await route.fulfill({response:res,body});});
+ if(modified)await page.route('https://earthlinedevelopment.org/',async route=>{const res=await route.fetch();let body=await res.text();body=body.replace('</body>', '<script>'+wrapper+'</script></body>');await route.fulfill({response:res,body});});
  await page.goto('https://earthlinedevelopment.org/',{waitUntil:'domcontentloaded',timeout:120000});await page.waitForTimeout(1000);
  const rows=[];
  for(const q of ['Arizona','Texas','California','Vermont']){
