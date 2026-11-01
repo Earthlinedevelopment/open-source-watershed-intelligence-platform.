@@ -1,0 +1,50 @@
+name: Mantra 83 Deploy Renderer Geometry
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-deploy-renderer-geometry.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: mantra83-production-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra83-shadow-live
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: |
+          cp tests/mantra83-apply-renderer-only-geometry.mjs /tmp/apply-renderer-geometry.mjs
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          node /tmp/apply-renderer-geometry.mjs
+          node - <<'NODE'
+          const fs=require('fs'),s=fs.readFileSync('index.html','utf8');
+          if(!s.includes('function earthlineRegionalLocalDisplay16020(')) process.exit(2);
+          if(!s.includes("renderCoords=activeTier==='focus'?rawCoords:earthlineRegionalLocalDisplay16020(rawCoords)")) process.exit(3);
+          let i=0;
+          for(const m of s.matchAll(/<script(?![^>]*src=)[^>]*>([\s\S]*?)<\/script>/gi)){
+            fs.writeFileSync('/tmp/el-inline-'+(++i)+'.js',m[1]);
+          }
+          const {spawnSync}=require('child_process');
+          for(let n=1;n<=i;n++){
+            const r=spawnSync(process.execPath,['--check','/tmp/el-inline-'+n+'.js'],{encoding:'utf8'});
+            if(r.status!==0){console.error(r.stderr);process.exit(10);}
+          }
+          console.log('M83_RENDERER_DEPLOY_SYNTAX_PASS '+i);
+          NODE
+          git config user.name "earthline-ci"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "render: shorten Regional corridor display without changing science"
+          git pull --rebase origin pages-live
+          git push origin HEAD:pages-live
