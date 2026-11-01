@@ -27,12 +27,16 @@ jobs:
           node tests/mantra85-shadow-adapter.test.mjs
       - name: Structural debt audit
         run: node tests/mantra85-structural-debt-audit.mjs
+      - name: Science policy provenance audit
+        run: node tests/mantra85-science-policy-audit.mjs
       - name: Upload structural debt evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mantra85-structural-debt
-          path: artifacts/mantra85/structural-debt.json
+          path: |
+            artifacts/mantra85/structural-debt.json
+            artifacts/mantra85/science-policy-audit.json
           retention-days: 14
           if-no-files-found: warn
       - name: Structural source invariants
