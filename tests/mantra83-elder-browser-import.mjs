@@ -1,3 +1,4 @@
+// rerun after detector restore
 import {chromium} from 'playwright';
 import fs from 'node:fs';
 const chrome=['/usr/bin/google-chrome-stable','/usr/bin/google-chrome','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);
