@@ -1,3 +1,4 @@
+// exact-current-head 5b88dae8 1793499144461
 // current-live-head verification 7968af11 1793498840023
 // rerun after live geometry and Elder restoration 1793494161424
 // rerun after Regional geometry correction 60575c59
