@@ -1,0 +1,20 @@
+name: Mantra 83 WebKit Swale Subprofile
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - 'tests/mantra83-webkit-swale-subprofile.mjs'
+      - '.github/workflows/earthline-mantra83-webkit-swale-subprofile.yml'
+permissions:
+  contents: read
+jobs:
+  profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps webkit
+      - run: node tests/mantra83-webkit-swale-subprofile.mjs
