@@ -1,0 +1,30 @@
+name: Mantra 83 Current Swale Selection
+on:
+  push:
+    branches: [mantra83-shadow-live]
+    paths:
+      - '.github/workflows/earthline-mantra83-current-swale-selection.yml'
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          start=s.find('async function makeSwales')
+          end=s.find('function makeFlows',start)
+          t=s[start:end if end>start else start+80000]
+          for term in ['candidates.sort','const chosen','chosen.push','minDist','capacity','acceptedChosen','jurisdictionEligibleCandidates16539']:
+              p=0
+              while True:
+                  i=t.find(term,p)
+                  if i<0: break
+                  print('SELECT_SITE',term,t[max(0,i-1400):i+4200].replace('\n',' '))
+                  p=i+len(term)
+          PY
