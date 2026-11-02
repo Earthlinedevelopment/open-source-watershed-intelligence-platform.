@@ -35252,7 +35252,26 @@ body{display:block!important}
     const gradeCounts={A:0,B:0,C:0},gradeLabels=[];
     for(const f of (lastData.swales&&lastData.swales.features||[])){
       if(!f.geometry||f.geometry.type!=='LineString')continue;
-      const activeTier=activeTier16168(),rawCoords=f.geometry.coordinates,renderCoords=activeTier==='focus'?rawCoords:earthlineRegionalLocalDisplay16020(rawCoords),pts=points(renderCoords),len=polyLength(pts);
+      const activeTier=activeTier16168(),rawCoords=f.geometry.coordinates,
+  renderCoords=activeTier==='focus'?rawCoords:earthlineRegionalLocalDisplay16020(rawCoords),
+  pts=points(renderCoords);
+/* M92: Mapbox source geometry with two valid positions can collapse to one
+   rounded SVG point in a statewide overview. Recover the exact fractional
+   Mapbox projection rather than silently omitting a scientifically valid
+   corridor. This affects presentation only; source coordinates are unchanged. */
+if(activeTier==='regional'&&pts.length===1&&Array.isArray(renderCoords)&&renderCoords.length===2){
+  try{
+    const a=map.project(renderCoords[0]),b=map.project(renderCoords[1]);
+    const valid=[a.x,a.y,b.x,b.y].every(Number.isFinite);
+    const within=[a,b].every(p=>p.x>=0&&p.x<=w&&p.y>=0&&p.y<=hh);
+    if(valid&&within&&Math.hypot(b.x-a.x,b.y-a.y)>=0.1){
+      const tuple=Array.isArray(pts[0]);
+      pts.splice(0,pts.length,tuple?[a.x,a.y]:{x:a.x,y:a.y},
+        tuple?[b.x,b.y]:{x:b.x,y:b.y});
+    }
+  }catch(_){}
+}
+const len=polyLength(pts);
       if(activeTier==='focus'?(pts.length<3||len<22):(pts.length<2||len<0.1))continue;
       const props=f.properties||{},grade=/^[ABC]$/.test(String(props.grade||''))?String(props.grade):'C';
       const rank=(gradeCounts[grade]||0)+1,score=Math.max(0,Math.min(100,Number(props.score||0)));props.display_rank=rank;props.display_code=grade+rank;
