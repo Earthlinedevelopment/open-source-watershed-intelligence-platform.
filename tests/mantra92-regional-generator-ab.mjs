@@ -1,7 +1,19 @@
 import {chromium} from 'playwright';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 const BASE='https://earthlinedevelopment.org/';
-const html=readFileSync('artifacts/mantra92/yield-ab/index.html','utf8');
+let html=readFileSync('artifacts/mantra92/yield-ab/index.html','utf8');
+const renderReject="if(activeTier==='focus'?(pts.length<3||len<22):(pts.length<2||len<0.1))continue;";
+if(html.split(renderReject).length!==2)throw Error('Source renderer skip branch no longer unique');
+html=html.replace(renderReject,`if(activeTier==='focus'?(pts.length<3||len<22):(pts.length<2||len<0.1)){
+  (window.EARTHLINE_M92_RENDER_SKIPS||=([])).push({
+    rawCount:rawCoords?.length,renderCount:renderCoords?.length,projectedCount:pts?.length,
+    projectedLength:len,activeTier,
+    midpoint:rawCoords?.[Math.floor((rawCoords.length-1)/2)]||null,
+    grade:f.properties?.grade
+  });
+  continue;
+}`);
+
 mkdirSync('artifacts/mantra92/yield-ab/results',{recursive:true});
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1600,height:950}});
@@ -74,7 +86,7 @@ const snap=await page.evaluate(()=>{
  lengths.sort((a,b)=>(a.pxLength??Infinity)-(b.pxLength??Infinity));
  return {perf:perf.phaseTotalsMs||{},pub,display:disp,
   map:{zoom:map?.getZoom?.(),bounds:map?.getBounds?.()?.toArray?.(),center:map?.getCenter?.()},
-  count:features.length,shortest:lengths.slice(0,14),below01:lengths.filter(x=>x.pxLength<0.1),
+  count:features.length,renderSkips:window.EARTHLINE_M92_RENDER_SKIPS||[],shortest:lengths.slice(0,14),below01:lengths.filter(x=>x.pxLength<0.1),
   no2:lengths.filter(x=>x.croppedCount<2),sourceErrors:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null};
 });
 const result={snap,errors};
