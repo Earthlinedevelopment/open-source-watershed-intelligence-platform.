@@ -1,0 +1,31 @@
+name: Mantra 92 live Regional timing profile
+on:
+  push:
+    branches: [preview/mantra92-black-dot-correction]
+    paths:
+      - tests/mantra92-live-timing-profile.mjs
+      - .github/workflows/mantra92-live-timing-profile.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  time:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          node --check tests/mantra92-live-timing-profile.mjs
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Profile served Arizona, Alaska and Arizona repeat
+        run: node tests/mantra92-live-timing-profile.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra92-regional-timing-evidence
+          path: artifacts/mantra92-timing
+          retention-days: 14
