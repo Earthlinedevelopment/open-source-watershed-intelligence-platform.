@@ -31080,11 +31080,16 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     }
     return inside16722;
   }
-  function earthlinePrepareJurisdiction16539(g){
-    if(!g)return null;if(g.prepared16539===true)return g;
+  const earthlinePreparedGeometryM92=new WeakMap();
+function earthlinePrepareJurisdiction16539(g){
+  if(!g)return null;if(g.prepared16539===true)return g;
+  const cachedM92=typeof g==='object'?earthlinePreparedGeometryM92.get(g):null;
+  if(cachedM92)return cachedM92;
     const rawPolys=g.type==='Polygon'?[g.coordinates||[]]:g.type==='MultiPolygon'?(g.coordinates||[]):[];
     const polygons=[];for(const rings of rawPolys){if(!Array.isArray(rings)||!rings.length)continue;const outer=rings[0],bbox=earthlineRingBounds16539(outer);if(!bbox)continue;const holes=[];for(let i=1;i<rings.length;i++){const hb=earthlineRingBounds16539(rings[i]);if(hb)holes.push({ring:rings[i],bbox:hb});}polygons.push({outer,bbox,holes});}
-    return {prepared16539:true,polygons};
+    const preparedM92={prepared16539:true,polygons};
+if(typeof g==='object')earthlinePreparedGeometryM92.set(g,preparedM92);
+return preparedM92;
   }
   function earthlinePointInJurisdiction16539(p,g){
     if(!g)return false;
