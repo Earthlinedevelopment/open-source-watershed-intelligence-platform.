@@ -1,0 +1,34 @@
+name: Mantra 91 Alaska diagnostic
+on:
+  push:
+    branches: [mantra91-alaska-diagnostic]
+    paths:
+      - tests/mantra91-alaska-diagnostic.mjs
+      - .github/workflows/mantra91-alaska-diagnostic.yml
+      - index.html
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  alaska:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Live Alaska baseline
+        run: node tests/mantra91-alaska-diagnostic.mjs
+      - name: Candidate Alaska regression
+        if: always()
+        run: CANDIDATE=1 node tests/mantra91-alaska-diagnostic.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra91-alaska-evidence
+          path: artifacts/mantra91
+          retention-days: 14
