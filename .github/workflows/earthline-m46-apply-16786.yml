@@ -1,39 +1,18 @@
-name: Earthline Apply 16786 Spatial Anchors
-
+# Mantra 92 permanent safeguard: obsolete auto-writer retired.
+# Original implementation and provenance remain in git history.
+# Retired because it could commit index.html directly to production,
+# without passing an immutable scientific/browser acceptance gate.
+name: Retired legacy earthline-m46-apply-16786
 on:
-  push:
-    branches: [pages-live]
-    paths:
-      - 'tools/mantra46-apply-16786-spatial-anchors.py'
-      - '.github/workflows/earthline-m46-apply-16786.yml'
   workflow_dispatch:
-
 permissions:
-  contents: write
-
+  contents: read
 jobs:
-  apply-16786:
+  disabled:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Apply 16786 candidate repair
-        run: python tools/mantra46-apply-16786-spatial-anchors.py
-      - name: Verify scoped product diff
+      - name: Disallow direct production mutation
         run: |
-          git diff --check
-          test "$(git diff --name-only | tr -d '\r')" = "index.html"
-          grep -q "EARTHLINE 16786 — SPATIALLY COMPLETE REGIONAL CONTOUR ANCHORS" index.html
-          grep -q "EARTHLINE_SPATIAL_ANCHOR_AUDIT_16786" index.html
-          grep -q "supplementalAnchorAttempts16786" index.html
-          grep -q "regionalCapacity16755" index.html
-          grep -q "EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584" index.html
-      - name: Commit 16786 candidate
-        run: |
-          git config user.name "Earthlinedevelopment"
-          git config user.email "info@earthlinedevelopment.org"
-          git add index.html
-          git commit -m "repair: spatially complete Regional contour anchors"
-          git push origin HEAD:pages-live
+          echo "::error::Legacy direct production writer retired by Mantra 92."
+          echo "::error::Use an immutable certified candidate and approved release path."
+          exit 1
