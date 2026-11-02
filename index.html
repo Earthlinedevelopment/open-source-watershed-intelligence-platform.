@@ -35278,7 +35278,7 @@ const len=polyLength(pts);
         canopy16174(sg,plantPts,-uphill,swales*97+rank*13,zoom,grade);
       }else{
         const regionalZoom=Number(map?.getZoom?.()||6),regionalScale=regionalZoom<7?0.46:(regionalZoom<8?0.62:(regionalZoom<9?0.78:1)),casing=(grade==='A'?15:grade==='B'?12:9)*regionalScale,core=(grade==='A'?9.2:grade==='B'?7.2:5.2)*regionalScale;
-        if(len<2.5){
+        if(len<8){
   /* A short, valid corridor occupies less than 2.5 screen pixels at statewide zoom.
      Keep its source/core/interaction owner, without an 18px black round-capped disc. */
   addPath(sg,pts,{class:'earthline-swale-core-16168','data-swale-index':String(swales),stroke:main,'stroke-width':'1.4','stroke-linecap':'round','stroke-linejoin':'round'});
@@ -35310,6 +35310,12 @@ const len=polyLength(pts);
         }
       }
       swales++;
+    }
+    /* M92: use renderer's zoom-scaled stroke widths, not late 20px CSS overrides. */
+    for(const pathM92 of sg.querySelectorAll(':scope > path')){
+      const widthM92=Number(pathM92.getAttribute('stroke-width'));
+      if(Number.isFinite(widthM92)&&widthM92>0)
+        pathM92.style.setProperty('stroke-width',String(widthM92)+'px','important');
     }
     /* EARTHLINE 16350 — Regional water is counted here for audit only; SVG does not render it.
        Directional presentation is owned by the native Mapbox flow line + line-placement arrow layers. */
