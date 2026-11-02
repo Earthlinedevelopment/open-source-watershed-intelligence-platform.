@@ -97,7 +97,23 @@ function instrumentCandidate(source){
    .replace(clip,':__m92ClipProbe(candidate16539&&candidate16539.segment||[],jurisdictionGeometry16539);')
    .replace(ret,footer);
 }
-const modes=[{name:'metric-profile',html:instrumentCandidate(metricCandidate(false))}];
+function limitYieldPacing(source,per){
+  const original=[
+    '(++finalScreenYield16661%12)===0',
+    '(++yieldCount16661%12)===0'
+  ];
+  for(const needle of original){
+    const n=source.split(needle).length-1;
+    if(n!==1)throw Error('Unexpected yield owner count for '+needle+': '+n);
+    source=source.replace(needle,needle.replace('%12','%'+per));
+  }
+  return source;
+}
+const modes=[
+ {name:'metric-yield12',html:instrumentCandidate(metricCandidate(false))},
+ {name:'metric-yield96',html:instrumentCandidate(limitYieldPacing(metricCandidate(false),96))},
+ {name:'metric-yield384',html:instrumentCandidate(limitYieldPacing(metricCandidate(false),384))}
+];
 const queries=['Alaska','Arizona'];
 const browser=await chromium.launch({headless:true});
 const rows=[];
