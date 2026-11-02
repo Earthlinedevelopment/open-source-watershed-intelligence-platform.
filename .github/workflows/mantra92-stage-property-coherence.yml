@@ -1,0 +1,39 @@
+name: Earthline M92 stage grouped Property repair
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths:
+      - tools/mantra92-property-coherent-live-fix.mjs
+      - .github/workflows/mantra92-stage-property-coherence.yml
+  workflow_dispatch:
+permissions: {contents: write}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Apply verified Property fixes on exact production parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tools/mantra92-property-coherent-live-fix.mjs /tmp/m92-property-fix.mjs
+          REF=fix/mantra92-property-truth-and-transition
+          BASE=60177e1dca18ca7bb3ba561b6039d353943d283b
+          git fetch origin "refs/heads/$REF:refs/remotes/origin/$REF"
+          git checkout -B "$REF" "refs/remotes/origin/$REF"
+          test "$(git rev-parse HEAD)" = "$BASE" || { echo "::error::Candidate base changed";exit 1; }
+          cp /tmp/m92-property-fix.mjs ./m92-property-fix.mjs
+          node --check m92-property-fix.mjs
+          node m92-property-fix.mjs
+          rm m92-property-fix.mjs
+          python3 tools/earthline-release-airlock-static.py
+          test "$(git diff --name-only)" = "index.html" || { echo "::error::Unexpected change";exit 1; }
+          git config user.name "Earthline recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: correct Property construction status, stale ribbons and sparse slope evidence"
+          git push origin HEAD:"refs/heads/$REF"
