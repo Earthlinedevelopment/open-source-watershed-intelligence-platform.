@@ -1,0 +1,54 @@
+name: Earthline preview public URL integrity check
+on:
+  push:
+    branches: [preview/mantra92-recovery]
+    paths:
+      - '.github/workflows/mantra92-preview-http-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm public preview is served byte-for-byte and homepage unchanged
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,hashlib,time,urllib.request
+          from pathlib import Path
+          manifest=json.loads(Path('candidate-mantra92/RELEASE-CANDIDATE.json').read_text())
+          source=Path('candidate-mantra92/index.html').read_bytes()
+          exp=manifest['previewHtmlSHA256']
+          assert hashlib.sha256(source).hexdigest()==exp,'Git stage does not match preview manifest'
+          url='https://earthlinedevelopment.org/candidate-mantra92/'
+          def get(path):
+              req=urllib.request.Request(path,headers={'User-Agent':'Earthline-Release-Safety/1.0','Cache-Control':'no-cache'})
+              with urllib.request.urlopen(req,timeout=25) as response:
+                  if response.status!=200: raise RuntimeError('HTTP '+str(response.status))
+                  return response.read()
+          for attempt in range(8):
+              try:
+                  served=get(url+'?verify='+str(attempt))
+                  got=hashlib.sha256(served).hexdigest()
+                  if got==exp:break
+                  print('PREVIEW_NOT_YET_DEPLOYED',attempt,got,exp,flush=True)
+              except Exception as exc:
+                  print('PREVIEW_FETCH_RETRY',attempt,str(exc),flush=True)
+              time.sleep(8)
+          else:raise RuntimeError('Public preview not serving expected immutable HTML')
+          remote=json.loads(get(url+'RELEASE-CANDIDATE.json'))
+          if remote!=manifest:raise RuntimeError('Served preview manifest differs from Git')
+          homepage_hash=hashlib.sha256(get('https://earthlinedevelopment.org/')).hexdigest()
+          expected_homepage='7ce3e74a81b83bda63bcf06018b66606e0edc8ad55970a1119ae74a69792ffec'
+          if homepage_hash!=expected_homepage:
+              raise RuntimeError('Public homepage changed unexpectedly: '+homepage_hash)
+          if b'id="searchInput"' not in served or b'id="runBtn"' not in served:
+              raise RuntimeError('Required Earthline controls missing from preview')
+          print('EARTHLINE_M92_PREVIEW_PUBLISHED '+json.dumps({
+              'url':url,'http':200,'previewSHA256':got,'manifestCandidateSha':remote['previewOfCandidateSha'],
+              'homepageUnchanged':True,'homepageSHA256':homepage_hash
+          }))
+          PY
