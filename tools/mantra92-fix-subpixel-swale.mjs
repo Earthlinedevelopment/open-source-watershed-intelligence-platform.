@@ -25,7 +25,7 @@ if(activeTier==='regional'&&pts.length===1&&Array.isArray(renderCoords)&&renderC
 }
 const len=polyLength(pts);
 `;
-const out=original.replace(needle,replacement.replace(/[ \\t]+$/gm,''));
+const out=original.replace(needle,replacement.split('\n').map(x=>x.trimEnd()).join('\n'));
 if(!out.includes("if(activeTier==='focus'?(pts.length<3||len<22):(pts.length<2||len<0.1))continue;")||
    !out.includes("metricLengthM92>=250&&metricLengthM92<=4005")||
    !out.includes('(++yieldCount16661%1536)===0'))throw Error('Unapproved regression in product owner');
