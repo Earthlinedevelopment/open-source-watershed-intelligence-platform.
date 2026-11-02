@@ -1,0 +1,59 @@
+name: Earthline M92 Property 80 to 1 source regression
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths: [.github/workflows/mantra92-property-regression-source.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Identify Property geometry filtering, safe-wale owner, and newly introduced masks
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin 9d059f0039ab305245b49e1a7ebda98e54a6d746
+          git fetch origin 60177e1dca18ca7bb3ba561b6039d353943d283b
+          git show 9d059f0039ab305245b49e1a7ebda98e54a6d746:index.html >/tmp/old.html
+          git show 60177e1dca18ca7bb3ba561b6039d353943d283b:index.html >/tmp/new.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,hashlib
+          patterns=[
+            'authoritativeSafeSwales15815',
+            'function earthlineFinalSafeSegments15771(',
+            'function earthlinePathPointUsable(',
+            'function earthlineNaturalContourDisplay(',
+            'forestPenalty','forest','canopy','canopyMask','treeMask',
+            'minVisibleM','swaleCandidates','safeCount',
+            'const safe','landValidity','validLand','constraintMask',
+            'terrain owner','safeSegments','verified','no-build',
+            'Earthline 170','M92'
+          ]
+          old=Path('/tmp/old.html').read_text()
+          new=Path('/tmp/new.html').read_text()
+          def code_after(s,key):
+            pos=s.find(key)
+            return s[max(0,pos-250):pos+2200] if pos>=0 else ''
+          for k in patterns:
+            print('M92_REGRESSION_COUNT',repr(k),'old',old.lower().count(k.lower()),'new',new.lower().count(k.lower()))
+          for n in [
+            'function earthlineFinalSafeSegments15771(',
+            'function earthlinePathPointUsable(',
+            'function earthlineNaturalContourDisplay(',
+            'minVisibleM',
+            'authoritativeSafeSwales15815=',
+            'authoritativeSafeSwales15815:',
+            'if(rawLen<minVisibleM&&!s.isSite)',
+          ]:
+            print('M92_REGRESSION_SOURCE',repr(n))
+            for name,src in [('OCT05',old),('LIVE',new)]:
+              print('M92_REGRESSION_CODE',name,repr(n),repr(code_after(src,n))[:2400])
+          keys=[m.start() for m in re.finditer('forest',new,re.I)]
+          for i in keys[-24:]:
+            print('M92_LIVE_FOREST',repr(new[max(0,i-190):i+320]))
+          PY
