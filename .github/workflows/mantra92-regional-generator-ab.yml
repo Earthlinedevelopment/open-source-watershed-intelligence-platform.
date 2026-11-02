@@ -1,4 +1,4 @@
-name: Mantra 92 exact geometry hot-function source audit
+name: Mantra 92 geospatial source-preserving performance A/B
 on:
   push:
     branches: [audit/mantra92-regional-fallback-isolation]
@@ -8,30 +8,28 @@ on:
 permissions:
   contents: read
 jobs:
-  inspect:
+  regional:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - name: Extract isolated candidate geometry implementations
-        shell: bash
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pin unmodified scientific candidate for geometric comparison
         run: |
-          set -euo pipefail
+          mkdir -p artifacts/mantra92/yield-ab
           git fetch --no-tags --depth=1 origin candidate/mantra92-metric-recovery
-          git show FETCH_HEAD:index.html > /tmp/earthline-index-m92.html
-          python3 - <<'PY'
-          from pathlib import Path
-          s=Path('/tmp/earthline-index-m92.html').read_text()
-          for term,n in [
-            ('function earthlinePointInRing16584(',2700),
-            ('function earthlinePointInJurisdiction16539(',4100),
-            ('function earthlinePointInRingIndexed16722(',3500),
-            ('function earthlinePointOnSegment16539(',1700),
-            ('function earthlineBBoxContains16539(',1200),
-            ('function earthlinePointInRing16539(',1700),
-            ('function earthlinePointInPolygon16539(',1300)
-          ]:
-            at=s.find(term)
-            print('M92_HOT_SOURCE',term,at)
-            if at>=0:print(s[at:at+n])
-          PY
+          git show FETCH_HEAD:index.html > artifacts/mantra92/yield-ab/index.html
+          node --check tests/mantra92-regional-generator-ab.mjs
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Compare existing and memoized exact geospatial predicates
+        run: node tests/mantra92-regional-generator-ab.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra92-geometry-performance-ab
+          path: artifacts/mantra92/yield-ab/results
+          retention-days: 14
