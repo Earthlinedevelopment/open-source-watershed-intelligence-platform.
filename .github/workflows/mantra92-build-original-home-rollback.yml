@@ -1,0 +1,55 @@
+name: Earthline — build October 5 homepage rollback candidate
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths:
+      - .github/workflows/mantra92-build-original-home-rollback.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Assemble byte-identical October 5 homepage and original resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          REF=rollback/earthline-oct05-public-home
+          PIN=2118d30eede185c2fd5866595a1002e4a0e2d931
+          git fetch origin "refs/heads/$REF:refs/remotes/origin/$REF"
+          git checkout -B "$REF" "refs/remotes/origin/$REF"
+          test "$(git rev-parse HEAD)" = "$PIN" || { echo "::error::Rollback parent moved"; exit 1; }
+          cp reference-2026-10-05/index.html index.html
+          for file in earthline-launch-16872.js earthline-launch-16872.css earthline-language-hotfix-16890.js earthline-cost-control-16872.json donate.html merchandise.html; do
+            cp "reference-2026-10-05/$file" "$file"
+          done
+          mkdir -p assets
+          cp -a reference-2026-10-05/assets/. assets/
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          ref=Path('reference-2026-10-05')
+          m=json.loads((ref/'RESTORATION-MANIFEST.json').read_text())
+          html=Path('index.html').read_bytes()
+          assert hashlib.sha256(html).hexdigest()==m['sourceIndexSHA256']
+          cfg=json.loads(Path('earthline-cost-control-16872.json').read_text())
+          assert cfg['paidSearchEnabled'] is False and cfg['failClosed'] is True
+          payload={'releaseType':'USER-REQUESTED ROLLBACK FROM 2026-11-02',
+            'historicalSourceCommit':m['sourceCommit'],'htmlSHA256':m['sourceIndexSHA256'],
+            'costSafetyOverride':'Disable all billable Mapbox search',
+            'paidSearchEnabled':False,
+            'priorProductionSHA':'2118d30eede185c2fd5866595a1002e4a0e2d931',
+            'note':'Later improvements remain preserved in Git history and separate branches.'}
+          Path('EARTHLINE-ROLLBACK-CONTROL.json').write_text(json.dumps(payload,indent=2)+'\n')
+          print('EARTHLINE_OCT05_HOME_CANDIDATE',json.dumps(payload),flush=True)
+          PY
+          git add index.html earthline-launch-16872.js earthline-launch-16872.css earthline-language-hotfix-16890.js earthline-cost-control-16872.json donate.html merchandise.html assets/ EARTHLINE-ROLLBACK-CONTROL.json
+          git config user.name "Earthline historic rollback"
+          git config user.email "info@earthlinedevelopment.org"
+          git commit -m "rollback: restore October 5 working homepage with paid search disabled"
+          git push origin HEAD:"refs/heads/$REF"
