@@ -1,0 +1,32 @@
+name: Earthline Mantra 92 live visual acceptance
+on:
+  push:
+    branches: [preview/mantra92-black-dot-correction]
+    paths:
+      - tests/mantra92-public-visual-sanity.mjs
+      - .github/workflows/mantra92-public-visual-sanity.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate browser test syntax
+        run: node --check tests/mantra92-public-visual-sanity.mjs
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Test exact publicly served corrected preview Arizona Arkansas Iowa Vermont
+        run: node tests/mantra92-public-visual-sanity.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-mantra92-real-public-render
+          path: artifacts/mantra92-live-visual
+          retention-days: 14
