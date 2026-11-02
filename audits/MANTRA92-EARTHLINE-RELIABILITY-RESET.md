@@ -122,3 +122,57 @@ A subsystem is accepted only when:
 5. Run 27 → 50 → Southeast Asia release gates, then promote only the certified SHA.
 
 No production or product feature change is authorized by merely writing this document.
+
+## 10. Verified implementation/evidence update — 2026-11-02
+
+**This section supersedes earlier speculative repair hypotheses.**
+
+### Precisely isolated science regression
+
+A seven-commit same-HTTPS-origin Chromium bisect, GitHub Actions run `41401221914`, showed:
+
+| Code revision | Alaska swales | Arizona swales | Alaska core ms | Arizona core ms |
+| --- | ---: | ---: | ---: | ---: |
+| October 5 launch reference `9d059f0039` | 158 | 192 | 9,687 | 7,834 |
+| Just before 10/31 geometry tightening `aa597601` | 192 | 192 | 11,282 | 7,944 |
+| Geometry tightening `60575c59` | 186 | 189 | 8,807 | 8,999 |
+| Further narrowing `6092d2c2` | 180 | 193 | 11,001 | 5,634 |
+| Physical trim/new full-point validation `14351f06` | **59** | **105** | **17,097** | **14,359** |
+| November 2 production `67de444b` | 59 | 111 | 36,687 | 26,718 |
+
+Each row is one environment-specific run, not a statistical confidence interval. Historical intermediate revision `6092d2c2` had page exceptions; do not treat it as an accepted release.
+
+Source examination confirmed:
+- `14351f06` shortened sampled contour geometry by 8 km each side, forced a neighboring vertex if none fit, and validated all selected contour vertices. This coincides with the sharp coverage collapse.
+- `screenJurisdictionCandidate16539` *subsequently* imposes a screen-space requirement of `Math.max(4, Math.min(10, minLinePx))` grid pixels. This rejects physically short candidates from coarse statewide raster grids.
+- The renderer separately truncates displayed Regional swales to about 2 km on each side without fixing the underlying source geometry.
+- Current source max length in later controlled A/B was approximately **15,695 m Alaska**, **15,241 m Arizona**—not 4 km. **Do not certify renderer-only clipping as sound science.**
+
+### Failed and successful controlled variants
+
+GitHub Actions `41401548619`, `41402534394`, and `41403504892`:
+- Restoring the broad contour fallback alone added only 1 Alaska and 2 Arizona swales. **It is not the principal cause.**
+- A naive 2 km half-length clip, with unchanged pixel screening, generated **zero** swales.
+- Physically interpolating to 2 km per side and bypassing only the *coarse pixel metric* in the generator also generated zero: the **second jurisdiction screen** was still incorrectly rejecting short eligible corridors.
+- The controlled candidate that applies physical interpolation **and** screens the same candidate in **metres after exact jurisdiction clipping**, without relaxing slope or land-exclusion rules, produced:
+  - Alaska 174 candidate swales; max source length 4,000.09 m; max source slope 4.0%; core 42,717 ms — **FAIL performance**.
+  - Arizona 174 candidate swales; max source length 4,000.02 m; max source slope 3.9%; core 10,423 ms — candidate improvement on that run, **not certified across browsers/states**.
+- Restoring unconditional fallback with the metric screen did not raise 174 swales but increased Alaska latency to 55,608 ms, so **do not use the unconditional fallback**.
+- An in-progress isolated profile `41404494553` is measuring clipping costs and per-tile generation timings for the metric candidate. Never report that run as passed until logs are checked.
+
+**Technical consequence:** a physically correct short-corridor generator and a coarse grid pixel-length gate are incompatible. Fix **both** scientific generation and exact downstream screening, while optimizing Alaska so Regional core is ≤15 seconds; do not redefine the performance ceiling.
+
+### Production release hardening implemented, not just proposed
+
+- PR #11 merged: retire legacy `earthline-launch-matrix.yml` direct auto-writer.
+- PR #12 merged: retire nine additional obsolete `pages-live` auto-writers.
+- PR #13 merged: retire remaining Mantra 38 and Mantra 89 direct auto-writers after a full inventory.
+- **12 direct-writing workflows retired** in total; original code preserved in Git history.
+- PR #14 merged: add `earthline-release-airlock.yml`, pinned same-origin seven-rollout-state release test, and static preflight. On isolated branch it parsed **67 inline JS blocks** and scanned **63 workflows**, finding zero current direct-writer patterns. PR #14's own PR check also succeeded.
+- Current safety-only production `pages-live` commit after PR #14: `527635dd390450d4506da3fa0ea05ed52abc6162`. The product `index.html` **blob remains unchanged**: `1c72681e912336fdf7a85d8798c27feafb0f0618`. This means **NO SCIENTIFIC ENGINE RECOVERY HAS BEEN DEPLOYED**.
+- Production GitHub Pages has a successful deployment for `527635dd` as checked on November 2.
+- **Important remaining governance blocker:** repository branch protection was disabled at audit time. The PR workflow can fail, but is not a required blocking check until the production branch rule is configured.
+
+### Next evidence-driven action
+
+Review profiling output for `41404494553`; eliminate the dominant measured CPU hotspot without changing physical geometry, ≤4% slopes, no-build masks, jurisdiction clipping, target identity, or Property authority. Run strict 15s release gate on Alaska and Arizona, then seven rollout states → difficult states → all 50 states → Thailand, Vietnam, Laos and country-by-country expansion. Do **not** promote an unverified or slow candidate.
