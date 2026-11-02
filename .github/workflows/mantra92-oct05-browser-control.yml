@@ -1,0 +1,32 @@
+name: Earthline October 5 original browser acceptance
+on:
+  push:
+    branches: [restore/earthline-oct05-preview]
+    paths:
+      - tests/mantra92-oct05-public-control.mjs
+      - .github/workflows/mantra92-oct05-browser-control.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check historic browser probe
+        run: node --check tests/mantra92-oct05-public-control.mjs
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run exact public historical build Arizona and Arkansas
+        run: node tests/mantra92-oct05-public-control.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-oct05-original-browser-captures
+          path: artifacts/oct05-control
+          retention-days: 10
