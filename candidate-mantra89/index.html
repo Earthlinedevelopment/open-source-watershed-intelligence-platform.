@@ -31241,8 +31241,14 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     const chosen=containing[0]||named[0]||rows[0];
     if(!chosen)throw new Error('authoritative state polygon was not returned');
     const geometryBounds16556=earthlineGeometryBounds16556(chosen.geometry);
-    const intLat16556=Number(chosen.properties&&chosen.properties.INTPTLAT),intLng16556=Number(chosen.properties&&chosen.properties.INTPTLON);
-    const geometryCenter16556=(Number.isFinite(intLat16556)&&Number.isFinite(intLng16556))
+    /* M89: Number(null) is 0. A generalized Census state without an INTPT field
+       must never silently relocate its analytical center to the Gulf of Guinea. */
+    const rawLatM89=chosen.properties&&chosen.properties.INTPTLAT;
+    const rawLngM89=chosen.properties&&chosen.properties.INTPTLON;
+    const intLat16556=rawLatM89==null||String(rawLatM89).trim()===''?NaN:Number(rawLatM89);
+    const intLng16556=rawLngM89==null||String(rawLngM89).trim()===''?NaN:Number(rawLngM89);
+    const geometryCenter16556=(Number.isFinite(intLat16556)&&Number.isFinite(intLng16556)&&
+      earthlinePointInJurisdiction16539([intLng16556,intLat16556],chosen.geometry))
       ?[intLng16556,intLat16556]:earthlineInteriorPoint16556(chosen.geometry,geometryBounds16556);
     const out={geometry:chosen.geometry,prepared:earthlinePrepareJurisdiction16539(chosen.geometry),bbox:geometryBounds16556,center:geometryCenter16556,source:localM89?'U.S. Census Bureau — 2025 Cartographic Boundary States 1:500,000 (same-origin)':cap.source,sourceTier:localM89?'authoritative-national-generalized':cap.sourceTier,sourceVintage:cap.sourceVintage,capability:cap.id,placeType:cap.placeType,label:String(chosen.properties&&chosen.properties.NAME||stateName),code:String(chosen.properties&&chosen.properties.STUSAB||''),resolvedAt:new Date().toISOString()};
     jurisdictionBoundaryCache16539.set(key,out);if(jurisdictionBoundaryCache16539.size>12)jurisdictionBoundaryCache16539.delete(jurisdictionBoundaryCache16539.keys().next().value);
