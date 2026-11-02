@@ -1,0 +1,72 @@
+name: Earthline safe perimeter-only Regional screening A/B
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths:
+      - tests/mantra92-perimeter-ab.mjs
+      - .github/workflows/mantra92-perimeter-hotpath.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Stage exact equivalent perimeter traversal from pinned corrected release candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/m92-ring/results
+          SRC=166f5a603ef0762889972f1011ef4fac3d206f87
+          git fetch --no-tags origin "$SRC"
+          git show "$SRC:index.html" > artifacts/m92-ring/old.html
+          python3 - <<'PY'
+          from pathlib import Path
+          old=Path('artifacts/m92-ring/old.html').read_text()
+          before='for(let r=0;r<=30;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue;'
+          after='for(let r=0;r<=30;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx+=Math.abs(dy)===r?1:(dx===-r?2*r:1)){if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue;'
+          if old.count(before)!=1: raise RuntimeError('Exact ring scan owner not unique; stopping')
+          new=old.replace(before,after)
+          assert new.count(after)==1
+          assert 'metricLengthM92>=250&&metricLengthM92<=4005' in new
+          assert 'if(len<8){' in new
+          Path('artifacts/m92-ring/new.html').write_text(new)
+          print('M92_RING_OPTIMIZATION',len(old),len(new), 'unchanged science and visit order',flush=True)
+          PY
+      - name: Build isolated browser
+        run: |
+          node --check tests/mantra92-perimeter-ab.mjs
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Reject any swale or water path changes
+        run: node tests/mantra92-perimeter-ab.mjs
+      - name: Commit accepted code ONLY to isolated candidate branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          REF=candidate/mantra92-ring-hotpath
+          PIN=166f5a603ef0762889972f1011ef4fac3d206f87
+          git fetch origin "refs/heads/$REF:refs/remotes/origin/$REF"
+          git checkout -B "$REF" "refs/remotes/origin/$REF"
+          test "$(git rev-parse HEAD)" = "$PIN" || { echo "::error::Candidate moved; refusing mutation"; exit 1; }
+          cp artifacts/m92-ring/new.html index.html
+          python3 tools/earthline-release-airlock-static.py
+          test "$(git diff --name-only)" = "index.html" || { echo "::error::Unexpected files";exit 1; }
+          git config user.name "Earthline scientific performance"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "perf(mantra92): scan only perimeter candidates, preserve exact cell order"
+          git push origin HEAD:"refs/heads/$REF"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra92-science-preserving-perimeter-comparison
+          path: artifacts/m92-ring/results
+          retention-days: 14
