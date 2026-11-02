@@ -143,6 +143,8 @@ const regionButtonBefore=await page.evaluate(()=>({
   tier:document.documentElement.dataset.earthlineAnalysisTier
 }));
 console.log('M92_BEFORE_REGION_RETURN '+JSON.stringify(regionButtonBefore));
+const preReentryM92=await page.evaluate(()=>({shownTier:document.documentElement.dataset.earthlineAnalysisTier,display:window.EARTHLINE_DISPLAYED_RUN_16151?.tier||null,token:window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.runToken||null,ledger:window.EARTHLINE_RUN_LEDGER_16147?.slice(-4)||[],lastNav:window.EARTHLINE_TIER_NAV_LAST_ACTION_16156||null,cache:window.EARTHLINE_REGIONAL_CACHE_16157?.snapshot?.runToken||null}));
+console.log('M92_PRE_REENTRY_TRACE '+JSON.stringify(preReentryM92));
 const tokenBefore=await page.evaluate(()=>window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.runToken||null);
 let regionReentry=false,regionReentryError=null;
 try{
@@ -159,9 +161,11 @@ try{
       document.documentElement.dataset.earthlineAnalysisTier==='regional'&&
       window.EARTHLINE_PROPERTY_TARGET_16201==null&&n?.dataset.mode!=='property'&&
       p.runToken===t.runToken;
- },tokenBefore,{timeout:85000,polling:250});
+ },tokenBefore,{timeout:8000,polling:250});
  regionReentry=true;
 }catch(e){regionReentryError=String(e)}
+const traceM92=await page.evaluate(()=>({ledger:window.EARTHLINE_RUN_LEDGER_16147?.slice(-16)||[],lastNav:window.EARTHLINE_TIER_NAV_LAST_ACTION_16156||null,cache:window.EARTHLINE_REGIONAL_CACHE_16157?.snapshot?.runToken||null,display:window.EARTHLINE_DISPLAYED_RUN_16151||null,regionalState:window.earthlineRegional15778?{active:window.earthlineRegional15778.active,mode:window.earthlineRegional15778.mode}:null,map:(()=>{try{const m=window.earthlineMap||earthlineMap;return {zoom:m.getZoom(),center:m.getCenter().toArray()}}catch{return null}})(),isDisabled:document.getElementById('runBtn')?.disabled,propertyTarget:window.EARTHLINE_PROPERTY_TARGET_16201||null,tierNotice:document.getElementById('earthlineTierNotice16173')?.textContent||null}));
+console.log('M92_POST_REENTRY_TRACE '+JSON.stringify(traceM92));
 const reentryState=await page.evaluate(()=>({
   tier:document.documentElement.dataset.earthlineAnalysisTier,
   search:document.getElementById('searchInput')?.value||null,
