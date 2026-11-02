@@ -31748,6 +31748,11 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
       }
       document.documentElement.dataset.earthlineAnalysisTier='regional';
       document.documentElement.dataset.earthlinePropertyRunState='idle';
+      /* M92: one Regional owner retires the previous Property selection and notice. */
+      window.EARTHLINE_PROPERTY_TARGET_16201=null;
+      const tierNoticeM92=document.getElementById('earthlineTierNotice16173');
+      if(tierNoticeM92){tierNoticeM92.textContent='REGIONAL ANALYSIS · SCREENING';tierNoticeM92.dataset.mode='regional';tierNoticeM92.classList.add('visible');}
+
       document.documentElement.classList.remove('earthline-property-running-16233','earthline-direct-property-handoff-16250');
       if(typeof window.earthlineApplyRendererOwnership15805==='function')
         window.earthlineApplyRendererOwnership15805('regional');
@@ -33311,7 +33316,7 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
   function status(msg,kind='pending'){
     let p=document.getElementById('earthlineVermontStatus16147');
     if(!p&&document.body){p=document.createElement('div');p.id='earthlineVermontStatus16147';p.setAttribute('role','status');p.setAttribute('aria-live','polite');document.body.appendChild(p)}
-    if(p){let message=String(msg||'');if(message.startsWith('Property detail published'))message+=sparseTerrainExplanationM92();p.textContent=message;p.dataset.kind=kind}
+    if(p){let message=String(msg||'');if(document.documentElement.dataset.earthlineAnalysisTier==='regional'&&/^Property (?:detail published|result)/i.test(message))return;if(message.startsWith('Property detail published'))message+=sparseTerrainExplanationM92();p.textContent=message;p.dataset.kind=kind}
   }
   function clean(v){return String(v||'').trim().replace(/\s+/g,' ')}
   function key(v){return clean(v).toLowerCase()}
@@ -33332,7 +33337,7 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
     if(!n&&document.body){n=document.createElement('div');n.id='earthlineTierNotice16173';n.setAttribute('role','status');n.setAttribute('aria-live','polite');document.body.appendChild(n)}
     return n;
   }
-  function setTierNotice(mode,text){const n=ensureTierNotice();if(!n)return;const m=String(mode||'focus');n.dataset.mode=m;if(m==='focus'){n.textContent='';n.classList.remove('visible');return}n.textContent=String(text||'');n.classList.toggle('visible',!!text)}
+  function setTierNotice(mode,text){const n=ensureTierNotice();if(!n)return;const m=String(mode||'focus');if(m==='property'&&document.documentElement.dataset.earthlineAnalysisTier==='regional'&&document.documentElement.dataset.earthlinePropertyRunState!=='running')return;n.dataset.mode=m;if(m==='focus'){n.textContent='';n.classList.remove('visible');return}n.textContent=String(text||'');n.classList.toggle('visible',!!text)}
   function propertyTextureAudit(){
     try{return typeof window.earthlinePropertyTextureAudit16169==='function'?window.earthlinePropertyTextureAudit16169():null}catch(_){return null}
   }
