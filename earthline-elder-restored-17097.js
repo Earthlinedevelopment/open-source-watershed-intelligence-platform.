@@ -392,7 +392,8 @@
       .then(()=>{state.dynamic.warmed=true;return true})
       .catch(err=>{state.dynamic.error=String(err&&err.message||err);return false})
       .finally(()=>{state.dynamic.warmPromise=null});
-    dynamicWorker().postMessage({id,warm:true});
+    try{dynamicWorker().postMessage({id,warm:true})}
+    catch(err){const pending=state.dynamic.pending.get(id);state.dynamic.pending.delete(id);pending?.reject(err)}
     return state.dynamic.warmPromise;
   }
   function propertyBounds17166(){
@@ -459,7 +460,8 @@
       })
       .finally(()=>{if(state.dynamic.promise===promise)state.dynamic.promise=null});
     state.dynamic.promise=promise;
-    dynamicWorker().postMessage({id,bbox:b,options:{displayPerTile:24,maxPerTile:240}});
+    try{dynamicWorker().postMessage({id,bbox:b,options:{displayPerTile:24,maxPerTile:240}})}
+    catch(err){const pending=state.dynamic.pending.get(id);state.dynamic.pending.delete(id);pending?.reject(err)}
     return promise;
   }
   async function prefetchProperty17174(){
@@ -487,7 +489,20 @@
         publishPropertyProvisional17389(b,runIdentity);
       }
       const dynamic=await dynamicPropertyEvidence(true); /* EARTHLINE_ELDER_GOVERNED_COMPUTE_17211 */
-      if(!dynamic||propertyRunIdentity17166(propertyBounds17166())!==runIdentity)return null;
+      if(propertyRunIdentity17166(propertyBounds17166())!==runIdentity||String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()!=='property')return null;
+      if(!dynamic){
+        /* M89: Never leave a failed Arizona/uncovered Property worker indefinitely pending.
+           Preserve only genuine precomputed evidence; do not invent candidate points. */
+        const error=state.dynamic.error||'On-demand canopy evidence unavailable';
+        const coverage=activeCoverage();
+        state.lastSummary=summarize(state.active,coverage);
+        publishMap(state.active);refreshSurfaces();
+        const gauge=document.getElementById('earthlineElderTreesGauge17097');
+        if(gauge)gauge.textContent='Elder Trees: on-demand evidence unavailable for this Property; no tree count inferred.';
+        window.EARTHLINE_ELDER_TREE_LAST_17097={state:'unavailable',propertyRunIdentity:runIdentity,
+          summary:state.lastSummary,featureCount:state.active.length,dynamicError:error,at:new Date().toISOString()};
+        return null;
+      }
       state.active=dynamic.features||[];
       const coverage={known:true,datasetIds:['dynamic-property-17130'],complete:false,dynamic:true,candidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0)};
       state.lastSummary=summarize(state.active,coverage);
@@ -521,7 +536,7 @@
       publishMap(state.active);
       refreshSurfaces();
       window.EARTHLINE_ELDER_TREE_LAST_17097={
-        state:'committed',propertyRunIdentity:String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property'?propertyRunIdentity17166(coverageQueryBounds()):'',
+        state:!dynamic&&String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property'&&state.dynamic.error?'unavailable':'committed',propertyRunIdentity:String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property'?propertyRunIdentity17166(propertyBounds17166()):'',
         summary:state.lastSummary,featureCount:state.active.length,
         dynamicCandidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0),
         dynamicError:state.dynamic.error||null,workerTimings:dynamic?.earthline?.worker_timings_ms||null,at:new Date().toISOString()
