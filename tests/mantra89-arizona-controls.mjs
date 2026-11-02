@@ -48,7 +48,14 @@ writeFileSync('artifacts/arizona-controls/regional-diagnostic.json',JSON.stringi
 console.log('ARIZONA_REGIONAL_DIAGNOSTIC '+JSON.stringify({regionalTimeout,regionalDiagnostic,pageErrors:pageErrors.slice(-10),badResponses:badResponses.slice(-10)}));
 /* The refinement stages can leave an interim generation audit at zero after publishing actual final Regional corridors. Gate on the final publisher and delivered result. */
 const finalRegionalCount=Math.max(Number(regionalDiagnostic.pub?.generated||0),Number(regionalDiagnostic.perf?.swales||0));
-if(regionalTimeout||regionalDiagnostic.error||finalRegionalCount===0){await browser.close();process.exit(1);} 
+const azCenter=regionalDiagnostic.pkg?.center||null;
+const azBounds=regionalDiagnostic.pkg?.extent?.bbox||null;
+const regionalCenterPass=!!azCenter&&Array.isArray(azBounds)&&azBounds.length===4&&
+  Number.isFinite(Number(azCenter.lng))&&Number.isFinite(Number(azCenter.lat))&&
+  Number(azCenter.lng)>azBounds[0]&&Number(azCenter.lng)<azBounds[2]&&
+  Number(azCenter.lat)>azBounds[1]&&Number(azCenter.lat)<azBounds[3];
+console.log('ARIZONA_CENTER_GATE '+JSON.stringify({regionalCenterPass,center:azCenter,bounds:azBounds,finalRegionalCount}));
+if(regionalTimeout||regionalDiagnostic.error||!regionalCenterPass||finalRegionalCount===0){await browser.close();process.exit(1);} 
 
 async function runTarget(target,index){
   const errorStart=pageErrors.length;
