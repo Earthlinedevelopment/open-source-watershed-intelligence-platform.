@@ -59,6 +59,7 @@ for(const {mode,html} of cases){
     pub:pub?{generated:pub.generated,sourceFeatures:pub.sourceFeatures,overlaySwaleLines:pub.overlaySwaleLines}:null,
     land:grid?{valid:grid.validLandCellCount,invalid:grid.rasterizedInvalidWaterCellCount}:null,
     tier:document.documentElement.dataset.earthlineAnalysisTier,
+    m92Stages:window.EARTHLINE_M92_STAGE_TIMINGS||null,
     languageOwner16890:!!window.earthlineLanguageOwner16890,
     languages:sel?Array.from(sel.options).map(o=>({value:o.value,label:o.textContent})):null,
     elderModule:!!window.EARTHLINE_ELDER_TREES_V1_17097,
