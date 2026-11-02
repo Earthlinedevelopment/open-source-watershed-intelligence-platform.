@@ -1,0 +1,36 @@
+name: Mantra 92 Regional phase timing source audit
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths: [.github/workflows/mantra92-performance-source-audit.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract Region performance and screening owners
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin refs/heads/candidate/mantra92-arizona-visual-repair:refs/remotes/origin/candidate/mantra92-arizona-visual-repair
+          git show refs/remotes/origin/candidate/mantra92-arizona-visual-repair:index.html >/tmp/m92.html
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/m92.html').read_text()
+          needles=['EARTHLINE_REGIONAL_PERFORMANCE_16191=','phaseTotalsMs','coreTotalMs',
+                   '(++yieldCount16661%384)===0','(++finalScreenYield16661%384)===0',
+                   'function makeSwales(','async function makeSwales(','const swaleCollectionM90=']
+          for needle in needles:
+             print('M92_PERF_SOURCE_TERM',repr(needle),'occurrences',s.count(needle),flush=True)
+             start=0
+             for c in range(min(3,s.count(needle))):
+                i=s.find(needle,start)
+                print('M92_PERF_SOURCE_EXCERPT',repr(needle),c,repr(s[max(0,i-900):i+2400]),flush=True)
+                start=i+len(needle)
+          PY
