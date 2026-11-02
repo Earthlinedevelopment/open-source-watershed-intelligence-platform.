@@ -1,0 +1,74 @@
+name: Earthline immutable release airlock
+on:
+  pull_request:
+    branches: [pages-live]
+  push:
+    branches: [safety/mantra92-permanent-release-airlock]
+    paths:
+      - tools/earthline-release-airlock-static.py
+      - tests/earthline-release-airlock.mjs
+      - .github/workflows/earthline-release-airlock.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    outputs:
+      runtime_changed: ${{ steps.changes.outputs.runtime_changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reject direct production writers and malformed HTML/JS
+        run: python3 tools/earthline-release-airlock-static.py
+      - name: Compile pinned browser release test
+        run: node --check tests/earthline-release-airlock.mjs
+      - id: changes
+        name: Detect science, client and data changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git diff --name-only "${{ github.event.pull_request.base.sha }}" HEAD > /tmp/earthline-diff.txt
+            if grep -Eq '^(index\.html|app/|data/|earthline-.*\.js)' /tmp/earthline-diff.txt; then
+              echo "runtime_changed=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "runtime_changed=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "runtime_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+  browser:
+    needs: static
+    if: ${{ needs.static.outputs.runtime_changed == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Record immutable exact candidate
+        run: |
+          git rev-parse HEAD
+          sha256sum index.html
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Strict seven rollout-state scientific browser gate
+        env:
+          EARTHLINE_EXTENDED: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
+        run: node tests/earthline-release-airlock.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-immutable-release-gate
+          path: artifacts/release-airlock
+          retention-days: 14
