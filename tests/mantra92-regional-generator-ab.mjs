@@ -2,6 +2,32 @@ import {chromium} from 'playwright';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 const BASE='https://earthlinedevelopment.org/';
 let html=readFileSync('artifacts/mantra92/yield-ab/index.html','utf8');
+
+const renderPrep="const activeTier=activeTier16168(),rawCoords=f.geometry.coordinates,renderCoords=activeTier==='focus'?rawCoords:earthlineRegionalLocalDisplay16020(rawCoords),pts=points(renderCoords),len=polyLength(pts);";
+if(html.split(renderPrep).length!==2)throw Error('Regional SVG coordinate owner not unique');
+const displayRecovery=String.raw`
+  const activeTier=activeTier16168(),rawCoords=f.geometry.coordinates,
+  renderCoords=activeTier==='focus'?rawCoords:earthlineRegionalLocalDisplay16020(rawCoords),
+  pts=points(renderCoords);
+  if(activeTier==='regional'&&pts.length===1&&Array.isArray(renderCoords)&&renderCoords.length===2){
+    try{
+      const a=map.project(renderCoords[0]),b=map.project(renderCoords[1]);
+      const valid=[a.x,a.y,b.x,b.y].every(Number.isFinite);
+      const within=[a,b].every(p=>p.x>=0&&p.x<=w&&p.y>=0&&p.y<=hh);
+      if(valid&&within&&Math.hypot(b.x-a.x,b.y-a.y)>=0.1){
+        const tuple=Array.isArray(pts[0]);
+        pts.splice(0,pts.length,tuple?[a.x,a.y]:{x:a.x,y:a.y},
+          tuple?[b.x,b.y]:{x:b.x,y:b.y});
+        window.EARTHLINE_M92_RENDER_RECOVERED=(window.EARTHLINE_M92_RENDER_RECOVERED||0)+1;
+      }
+    }catch(e){
+      (window.EARTHLINE_M92_RENDER_RECOVERY_ERRORS||=[]).push(String(e));
+    }
+  }
+  const len=polyLength(pts);
+`;
+html=html.replace(renderPrep,displayRecovery);
+
 const renderReject="if(activeTier==='focus'?(pts.length<3||len<22):(pts.length<2||len<0.1))continue;";
 if(html.split(renderReject).length!==2)throw Error('Source renderer skip branch no longer unique');
 html=html.replace(renderReject,`if(activeTier==='focus'?(pts.length<3||len<22):(pts.length<2||len<0.1)){
@@ -86,7 +112,7 @@ const snap=await page.evaluate(()=>{
  lengths.sort((a,b)=>(a.pxLength??Infinity)-(b.pxLength??Infinity));
  return {perf:perf.phaseTotalsMs||{},pub,display:disp,
   map:{zoom:map?.getZoom?.(),bounds:map?.getBounds?.()?.toArray?.(),center:map?.getCenter?.()},
-  count:features.length,renderSkips:window.EARTHLINE_M92_RENDER_SKIPS||[],shortest:lengths.slice(0,14),below01:lengths.filter(x=>x.pxLength<0.1),
+  count:features.length,renderRecovered:window.EARTHLINE_M92_RENDER_RECOVERED||0,renderRecoveryErrors:window.EARTHLINE_M92_RENDER_RECOVERY_ERRORS||[],renderSkips:window.EARTHLINE_M92_RENDER_SKIPS||[],shortest:lengths.slice(0,14),below01:lengths.filter(x=>x.pxLength<0.1),
   no2:lengths.filter(x=>x.croppedCount<2),sourceErrors:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null};
 });
 const result={snap,errors};
