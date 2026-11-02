@@ -4,7 +4,7 @@ on:
     branches: [audit/mantra92-regional-fallback-isolation]
     paths:
       - .github/workflows/mantra92-build-arizona-visual-fix.yml
-      - tools/mantra92-fix-regional-black-badges.mjs
+      - tools/mantra92-fix-regional-inline-priority.mjs
   workflow_dispatch:
 permissions:
   contents: write
@@ -23,10 +23,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cp tools/mantra92-fix-regional-black-badges.mjs /tmp/earthline-m92-black-badges.mjs
+          cp tools/mantra92-fix-regional-inline-priority.mjs /tmp/earthline-m92-black-badges.mjs
           git fetch origin refs/heads/candidate/mantra92-arizona-visual-repair:refs/remotes/origin/candidate/mantra92-arizona-visual-repair
           git checkout -B candidate/mantra92-arizona-visual-repair refs/remotes/origin/candidate/mantra92-arizona-visual-repair
-          test "$(git rev-parse HEAD)" = "4dcb7aade2ed64f4a7434ffe115e21864e9f1304" || { echo "::error::Candidate parent moved";exit 1; }
+          test "$(git rev-parse HEAD)" = "b62b40940a1d4e4f962c5de7d65eddf0b22f242c" || { echo "::error::Candidate parent moved";exit 1; }
           cp /tmp/earthline-m92-black-badges.mjs ./m92-visual-fix.mjs
           node --check m92-visual-fix.mjs
           node m92-visual-fix.mjs
@@ -36,5 +36,5 @@ jobs:
           git config user.name "Earthline repair"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m "visual(mantra92): prevent black Regional dots without altering science"
+          git commit -m "visual(mantra92): force zoom-scaled SVG widths over late CSS hard-caps"
           git push origin HEAD:refs/heads/candidate/mantra92-arizona-visual-repair
