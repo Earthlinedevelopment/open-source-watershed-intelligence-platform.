@@ -5,8 +5,8 @@ const BASE='https://earthlinedevelopment.org/';
 const base=readFileSync('artifacts/mantra92/yield-ab/index.html','utf8');
 const head="function earthlinePrepareJurisdiction16539(g){\n    if(!g)return null;if(g.prepared16539===true)return g;";
 const tail="return {prepared16539:true,polygons};";
-const bin="const scale16722=4,bins16722=new Map();";
-for(const label of [head,tail,bin])if(base.split(label).length!==2)throw Error('Source owner not unique: '+label);
+const finite='if(![xi16584,yi16584,xj16584,yj16584].every(Number.isFinite))continue;';
+for(const label of [head,tail,finite])if(base.split(label).length!==2)throw Error('Source owner not unique: '+label);
 function memo(source){
  const h=[
    'const earthlinePreparedGeometryM92=new WeakMap();',
@@ -25,7 +25,7 @@ function memo(source){
 const modes=[
  {name:'current',html:base},
  {name:'prepared-memo',html:memo(base)},
- {name:'prepared-memo-bins32',html:memo(base).replace(bin,'const scale16722=32,bins16722=new Map();')}
+ {name:'prepared-memo-no-array',html:memo(base).replace(finite,'if(!Number.isFinite(xi16584)||!Number.isFinite(yi16584)||!Number.isFinite(xj16584)||!Number.isFinite(yj16584))continue;')}
 ];
 const states=['Alaska','New York','Maryland'];
 const browser=await chromium.launch({headless:true});
