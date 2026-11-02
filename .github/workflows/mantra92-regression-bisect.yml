@@ -1,0 +1,47 @@
+name: Mantra 92 immutable engine regression bisect
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths:
+      - tests/mantra92-regression-bisect.mjs
+      - .github/workflows/mantra92-regression-bisect.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bisect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Stage immutable revision snapshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/mantra92/bisect
+          echo '{"launchOct05":"9d059f0039ab305245b49e1a7ebda98e54a6d746","preOct31":"97e8a4abd05dc604c6839e3e5dac98d2990f34a4","preSelection":"aa597601ab32b56781111281c92341e6b256ede8","selectionFirst":"60575c59b5607b0207af260f448c3ddbec3e719c","selectionSecond":"6092d2c2e81165af20ae0f588b2e6bcb9457dfee","selectionThird":"14351f067bc565b7eda82ee913e41b2593f5753c","liveNov02":"67de444b7048fc9a8ef5282dd3f4fb5961681779"}' > artifacts/mantra92/bisect/manifest.json
+          node -e "const a=require('./artifacts/mantra92/bisect/manifest.json'); for(const [label,sha] of Object.entries(a))process.stdout.write(label+' '+sha+'\n')" | while read -r label sha; do
+            git fetch --no-tags --depth=1 origin "$sha"
+            mkdir -p "artifacts/mantra92/bisect/$label"
+            git show "$sha:index.html" > "artifacts/mantra92/bisect/$label/index.html"
+            for asset in earthline-launch-16872.js earthline-language-hotfix-16890.js earthline-elder-restored-17097.js earthline-elder-worker-17129.js; do
+              if git cat-file -e "$sha:$asset" 2>/dev/null; then
+                git show "$sha:$asset" > "artifacts/mantra92/bisect/$label/$asset"
+              fi
+            done
+            sha256sum "artifacts/mantra92/bisect/$label/index.html"
+          done
+      - name: Run historical Alaska and Arizona browser bisect
+        run: node tests/mantra92-regression-bisect.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra92-historical-engine-bisect
+          path: artifacts/mantra92/bisect/results
+          retention-days: 14
