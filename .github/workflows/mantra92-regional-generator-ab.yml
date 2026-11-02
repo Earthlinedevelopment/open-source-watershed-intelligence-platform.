@@ -1,30 +1,33 @@
-name: Mantra 92 science generator recovery A/B
+name: Mantra 92 Regional generator source audit
 on:
   push:
     branches: [audit/mantra92-regional-fallback-isolation]
     paths:
-      - tests/mantra92-regional-generator-ab.mjs
       - .github/workflows/mantra92-regional-generator-ab.yml
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  regional:
+  inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Compare source generator behaviors with fixed science thresholds
-        run: node tests/mantra92-regional-generator-ab.mjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: mantra92-regional-generator-ab
-          path: artifacts/mantra92/generator-ab
-          retention-days: 14
+      - name: Extract exact source boundaries without modifying product
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for term,before,after in [
+            ('async function makeSwales(',100,1200),
+            ('function sampleSegment(coords,center,relaxed)',900,3800),
+            ('const preferredEligibleCount16539=await',1400,5500),
+            ('function screenJurisdictionCandidate16539(',100,2400),
+            ('const swaleCollectionM90=',600,1600),
+            ('function earthlineRegionalLocalDisplay16020(',100,2400),
+          ]:
+            i=s.find(term)
+            print('M92_SOURCE_BOUNDARY',term,'offset',i)
+            if i>=0: print(s[max(0,i-before):i+after])
+          PY
