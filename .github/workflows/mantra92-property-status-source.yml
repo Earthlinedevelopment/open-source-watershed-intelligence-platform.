@@ -1,0 +1,43 @@
+name: Earthline M92 Property truth/status repair source
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths: [.github/workflows/mantra92-property-status-source.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Locate exact published status, constructionReady, gradient and exclusion evidence owners
+        shell: bash
+        run: |
+          git fetch origin 60177e1dca18ca7bb3ba561b6039d353943d283b
+          git show 60177e1dca18ca7bb3ba561b6039d353943d283b:index.html > /tmp/site.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('/tmp/site.html').read_text()
+          keys=[
+            'constructionReady:',
+            '.constructionReady=',
+            'Property detail published',
+            'terrain-oriented corridors show water uphill',
+            'Exclusion evidence is not authoritative',
+            'orientationComplete',
+            'syncSafePropertyFallback16221',
+            'const safeVisibility',
+            'window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169',
+            'earthlinePropertyRunAudit16173',
+            'propertyResultLock15815',
+            'function earthlinePathPointUsable(',
+          ]
+          for q in keys:
+            positions=[m.start() for m in re.finditer(re.escape(q),s)]
+            print('M92_PROPERTY_STATUS_TERM',repr(q),'count',len(positions),'offsets',positions[:20])
+            for i in positions[:8]:
+              print('M92_PROPERTY_STATUS_CONTEXT',repr(q),'position',i,'excerpt',repr(s[max(0,i-950):i+2100])[:3100])
+          PY
