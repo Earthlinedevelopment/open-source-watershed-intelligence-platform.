@@ -29262,7 +29262,8 @@ body { overflow-x:hidden!important; }
       m.addLayer({id:IDS.groundwaterLayer,type:'raster',source:IDS.groundwater,paint:{'raster-opacity':0,'raster-fade-duration':0}},before);
     }
     if(!m.getLayer(IDS.graceLayer)){
-      if(!m.getSource(IDS.grace))m.addSource(IDS.grace,{type:'raster',tiles:[GRACE_CURRENT],tileSize:256,minzoom:1,maxzoom:7,scheme:'tms'});
+      if(!m.getSource(IDS.grace))/* NOAA NCEI nasa-gws-0.25d info.json coverage (2026-10-27): CONUS only. Constrain requests to published tile bounds; the data/source and TMS coordinates are unchanged. */
+      m.addSource(IDS.grace,{type:'raster',tiles:[GRACE_CURRENT],tileSize:256,minzoom:1,maxzoom:7,scheme:'tms',bounds:[-128.8,24.4,-66.0,50.3]});
       m.addLayer({id:IDS.graceLayer,type:'raster',source:IDS.grace,paint:{'raster-opacity':0,'raster-fade-duration':0}},before);
     }
     if(!m.getLayer(IDS.aquiferRasterLayer)){
