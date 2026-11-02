@@ -109,10 +109,16 @@ function limitYieldPacing(source,per){
   }
   return source;
 }
+function preserveVerifiedProfileCenter(source){
+  const old='?[intLng16556,intLat16556]:earthlineInteriorPoint16556(chosen.geometry,geometryBounds16556);';
+  if(source.split(old).length!==2)throw Error('Expected one explicit Census center fallback');
+  const next='?[intLng16556,intLat16556]:(Number.isFinite(center[0])&&Number.isFinite(center[1])&&earthlinePointInJurisdiction16539(center,chosen.geometry)?[center[0],center[1]]:earthlineInteriorPoint16556(chosen.geometry,geometryBounds16556));';
+  return source.replace(old,next);
+}
+const optimizedM92=limitYieldPacing(metricCandidate(false),384);
 const modes=[
- {name:'metric-yield12',html:instrumentCandidate(metricCandidate(false))},
- {name:'metric-yield96',html:instrumentCandidate(limitYieldPacing(metricCandidate(false),96))},
- {name:'metric-yield384',html:instrumentCandidate(limitYieldPacing(metricCandidate(false),384))}
+  {name:'metric384-current-center',html:instrumentCandidate(optimizedM92)},
+  {name:'metric384-verified-profile-center',html:instrumentCandidate(preserveVerifiedProfileCenter(optimizedM92))}
 ];
 const queries=['Alaska','Arizona'];
 const browser=await chromium.launch({headless:true});
@@ -166,7 +172,7 @@ for(const m of modes)for(const query of queries){
     };
     const lengths=fs.map(f=>lineLenM92(f?.geometry?.coordinates)).filter(x=>Number.isFinite(x)&&x>0).sort((a,b)=>a-b);
     const stage=window.EARTHLINE_M92_STAGE_TIMINGS||null;
-    return {profileId:model?.profileId||null,coreMs:perf?.phaseTotalsMs?.coreTotalMs||null,
+    return {profileId:model?.profileId||null,profileCenter:model?.center||null,coreMs:perf?.phaseTotalsMs?.coreTotalMs||null,
       waterPaths:perf?.waterPaths||null,pub:pub?{generated:pub.generated,source:pub.sourceFeatures,overlay:pub.overlaySwaleLines}:null,
       swaleGeometry:geom?{accepted:geom.accepted,maxLengthM:geom.maxLengthM,p95LengthM:geom.p95LengthM}:null,
       maxSlope:slopes.length?Math.max(...slopes):null,sourceCount:fs.length,maxSourceLengthM:lengths.length?lengths.at(-1):null,p95SourceLengthM:lengths.length?lengths[Math.floor(.95*(lengths.length-1))]:null,
