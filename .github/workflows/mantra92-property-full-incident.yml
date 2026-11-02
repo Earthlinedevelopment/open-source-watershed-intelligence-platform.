@@ -1,0 +1,62 @@
+name: Earthline M92 full Property failure incident
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths: [.github/workflows/mantra92-property-full-incident.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Inspect exact Property source owners current vs historical
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin 60177e1dca18ca7bb3ba561b6039d353943d283b
+          git fetch origin 9d059f0039ab305245b49e1a7ebda98e54a6d746
+          git show 60177e1dca18ca7bb3ba561b6039d353943d283b:index.html >/tmp/current.html
+          git show 9d059f0039ab305245b49e1a7ebda98e54a6d746:index.html >/tmp/launch.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          needles=['earthline-property-safe-water-16221','earthline-property-safe-casing-16221',
+            'EARTHLINE_PROPERTY_PUBLICATION_AUDIT','EARTHLINE_PROPERTY_FINAL_SETTLE','earthlineFinalSafeSegments15771',
+            'earthlinePropertyPublish','earthlinePropertyFinal','earthlinePropertySafe',
+            'earthlineNatural','authoritativeSafeSwales15815','earthlineSetPropertyTarget16201',
+            'earthlinePropertyRun','earthline-property','Property swales','swaleFeatureCollection',
+            'EARTHLINE_PROPERTY_SAFETY','earthlineSwale','forest','slopePct']
+          for name,file in [('LIVE','/tmp/current.html'),('OCT05','/tmp/launch.html')]:
+            s=Path(file).read_text()
+            print('M92_PROPERTY_VERSION',name,len(s),s.count('\\n')+1)
+            for needle in needles:
+              hits=[m.start() for m in re.finditer(re.escape(needle),s,re.I)]
+              print('M92_PROPERTY_TERM',name,repr(needle),'count',len(hits),'offsets',hits[:4])
+              if name=='LIVE' and needle in needles[:15]:
+                for h in hits[:2]:
+                  line=s.count('\\n',0,h)+1
+                  print('M92_PROPERTY_SNIP',needle,'line',line,repr(s[max(0,h-320):h+950]))
+          PY
+  property-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Measure real live Arizona Region-to-Property-to-Property
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+        run: node tests/mantra89-arizona-controls.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-incident-property-browser-images
+          path: artifacts/arizona-controls
+          retention-days: 14
