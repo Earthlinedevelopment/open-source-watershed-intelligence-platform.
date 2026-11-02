@@ -1,0 +1,36 @@
+name: Mantra 90 Candidate Regional Audit Gate
+on:
+  push:
+    branches: [mantra90-regional-audit]
+    paths:
+      - index.html
+      - tests/mantra90-regional-audit.mjs
+      - .github/workflows/mantra90-regional-audit.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regional-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static owner checks
+        run: |
+          node --check tests/mantra90-regional-audit.mjs
+          grep -Fq 'earthlineGenerationAuditM90' index.html
+      - name: Install browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run Arizona, Texas and Vermont against candidate HTML on real production origin
+        run: node tests/mantra90-regional-audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra90-candidate-regional-evidence
+          path: artifacts/mantra90
+          retention-days: 14

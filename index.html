@@ -30613,7 +30613,14 @@ body { overflow-x:hidden!important; }
   window.EARTHLINE_OPPORTUNITY_BALANCE_16836={build:'EARTHLINE 16836',maxSwaps:maxSwaps16836,minGain:minGain16836,swaps:swaps16836,rows:rows16836,chosenCount:chosen.length,rule:'count-neutral opportunity balance; occupied-cell neutral; existing cross-parent donor protection retained'};
 })();
 window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
-    return {type:'FeatureCollection',features};
+    /* Mantra 90 — retain the generator verdict on its returned collection. Nested
+       refinement calls may restore a prior global audit, but must not overwrite
+       the evidence belonging to the actual collection selected for publication. */
+    const swaleCollectionM90={type:'FeatureCollection',features};
+    Object.defineProperty(swaleCollectionM90,'earthlineGenerationAuditM90',{
+      value:Object.freeze(Object.assign({},generationAudit)),enumerable:false
+    });
+    return swaleCollectionM90;
   }
   function jsonp(url,params,ms=22000){
     return new Promise((resolve,reject)=>{
@@ -32456,6 +32463,10 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
       if(unsafe16584>0)throw new Error("regional land-validity flow audit failed: "+unsafe16584+" displayed flow segments enter invalid terrain");
     }
     window.EARTHLINE_ORB_RESPONSIVENESS_16245={build:'EARTHLINE 16245',cooperativeTerrain:true,compositorOrb:true,productsMs:Math.round(performance.now()-contoursStarted16245),at:new Date().toISOString()};
+    /* Mantra 90 — capture actual last-returned generation evidence before final
+       jurisdiction clipping replaces the FeatureCollection object. */
+    const finalGeneratorAuditM90=swales&&swales.earthlineGenerationAuditM90||null;
+    const finalGeneratorCountM90=Number(swales&&swales.features&&swales.features.length||0);
     let genericBoundaryAudit16539=null;
     if(vermontRequest&&typeof window.earthlineClipVermontProducts16178==='function'){
       setBusy(true,focusMode?'VERIFYING FOCUS LOCATION':'BUILDING REGIONAL WATER + CONTOURS');
@@ -32470,6 +32481,21 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
       const bounded16539=await earthlineClipRegionalProducts16539({contours,flows,swales,query:q,runToken},boundary16539);
       contours=bounded16539.contours;flows=bounded16539.flows;swales=bounded16539.swales;genericBoundaryAudit16539=bounded16539.audit;
       window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539=JSON.parse(JSON.stringify(genericBoundaryAudit16539));
+    }
+    if(finalGeneratorAuditM90){
+      if(Number(finalGeneratorAuditM90.publishedFeatures)!==finalGeneratorCountM90)
+        throw new Error('Mantra 90 generation audit mismatch: selected collection does not match its generator verdict');
+      const finalAuditM90=Object.assign({},finalGeneratorAuditM90,{
+        publishedAfterJurisdictionClip:swales&&swales.features?swales.features.length:0,
+        auditOwnerM90:'final-returned-swale-collection'
+      });
+      window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=finalAuditM90;
+      window.EARTHLINE_FINAL_GENERATION_TRACE_M90={runToken,
+        beforeJurisdictionClip:finalGeneratorCountM90,
+        afterJurisdictionClip:swales&&swales.features?swales.features.length:0,
+        generationCandidateCount:Number(finalAuditM90.candidates||0),
+        jurisdictionEligibleCandidates:Number(finalAuditM90.jurisdictionEligibleCandidates||0),
+        source:'final-returned-swale-collection',at:new Date().toISOString()};
     }
     if(focusMode){for(const f of swales.features||[]){f.properties=Object.assign({},f.properties||{},{analysis_tier:'focus',label:String(f.properties?.grade||'C')+String(f.properties?.rank||'')+' — FOCUS BIOSWALE OPPORTUNITY',screening:'fixed 3 km focus screening; not a property alignment; field and bare-earth verification required'});}}
 
