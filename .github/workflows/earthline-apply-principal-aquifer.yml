@@ -1,35 +1,18 @@
-name: Earthline Apply Principal Aquifer Source Repair
-
+# Mantra 92 permanent safeguard: obsolete auto-writer retired.
+# Original implementation and provenance remain in git history.
+# Retired because it could commit index.html directly to production,
+# without passing an immutable scientific/browser acceptance gate.
+name: Retired legacy earthline-apply-principal-aquifer
 on:
-  push:
-    branches: [pages-live]
-    paths:
-      - 'tools/apply-regional-principal-aquifer-source.py'
-      - '.github/workflows/earthline-apply-principal-aquifer.yml'
   workflow_dispatch:
-
 permissions:
-  contents: write
-
+  contents: read
 jobs:
-  apply-principal-aquifer-repair:
+  disabled:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Apply validated shared aquifer repair
-        run: python tools/apply-regional-principal-aquifer-source.py
-      - name: Verify product diff
+      - name: Disallow direct production mutation
         run: |
-          git diff --check
-          git diff --stat -- index.html
-          test "$(git diff --name-only | tr -d '\r')" = "index.html"
-      - name: Commit live product candidate
-        run: |
-          git config user.name "Earthlinedevelopment"
-          git config user.email "info@earthlinedevelopment.org"
-          git add index.html
-          git commit -m "repair: use USGS principal aquifers for Regional context"
-          git push origin HEAD:pages-live
+          echo "::error::Legacy direct production writer retired by Mantra 92."
+          echo "::error::Use an immutable certified candidate and approved release path."
+          exit 1
