@@ -1,64 +1,93 @@
 import {chromium} from 'playwright';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 const BASE='https://earthlinedevelopment.org/';
-const html=readFileSync('artifacts/mantra92/yield-ab/index.html','utf8');
+const base=readFileSync('artifacts/mantra92/yield-ab/index.html','utf8');
+const head="function earthlinePrepareJurisdiction16539(g){\n    if(!g)return null;if(g.prepared16539===true)return g;";
+const tail="return {prepared16539:true,polygons};";
+const bin="const scale16722=4,bins16722=new Map();";
+for(const label of [head,tail,bin])if(base.split(label).length!==2)throw Error('Source owner not unique: '+label);
+function memo(source){
+ const h=[
+   'const earthlinePreparedGeometryM92=new WeakMap();',
+   'function earthlinePrepareJurisdiction16539(g){',
+   '  if(!g)return null;if(g.prepared16539===true)return g;',
+   "  const cachedM92=typeof g==='object'?earthlinePreparedGeometryM92.get(g):null;",
+   '  if(cachedM92)return cachedM92;'
+ ].join('\n');
+ const t=[
+   'const preparedM92={prepared16539:true,polygons};',
+   "if(typeof g==='object')earthlinePreparedGeometryM92.set(g,preparedM92);",
+   'return preparedM92;'
+ ].join('\n');
+ return source.replace(head,h).replace(tail,t);
+}
+const modes=[
+ {name:'current',html:base},
+ {name:'prepared-memo',html:memo(base)},
+ {name:'prepared-memo-bins32',html:memo(base).replace(bin,'const scale16722=32,bins16722=new Map();')}
+];
 const states=['Alaska','New York','Maryland'];
-mkdirSync('artifacts/mantra92/yield-ab/results',{recursive:true});
 const browser=await chromium.launch({headless:true});
-const results=[];
-for(const q of states){
- const context=await browser.newContext({viewport:{width:1600,height:950}});
- const page=await context.newPage(),errors=[];
+const rows=[];
+mkdirSync('artifacts/mantra92/yield-ab/results',{recursive:true});
+const digest=x=>createHash('sha256').update(JSON.stringify(x)).digest('hex');
+for(const m of modes)for(const q of states){
+ const ctx=await browser.newContext({viewport:{width:1600,height:950}});
+ const page=await ctx.newPage(),errors=[];
  page.on('pageerror',e=>errors.push(String(e)));
  await page.route('**/*',route=>{
-  const r=route.request();
-  if(r.isNavigationRequest()&&r.resourceType()==='document'&&r.url().startsWith(BASE))
-    return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html});
-  return route.continue();
+   const req=route.request();
+   if(req.isNavigationRequest()&&req.resourceType()==='document'&&req.url().startsWith(BASE))
+    return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:m.html});
+   return route.continue();
  });
- const cdp=await context.newCDPSession(page);
- let error=null,profile=null;
+ let failure=null;
+ const start=Date.now();
  try{
-  await page.goto(BASE+'?m92cpu='+encodeURIComponent(q),{waitUntil:'domcontentloaded',timeout:45000});
+  await page.goto(BASE+'?m92geoab='+m.name+'-'+encodeURIComponent(q),{waitUntil:'domcontentloaded',timeout:45000});
   await page.waitForSelector('#searchInput',{timeout:15000});
-  await cdp.send('Profiler.enable');
-  await cdp.send('Profiler.setSamplingInterval',{interval:1000});
-  await cdp.send('Profiler.start');
-  await page.evaluate(q=>{const input=document.getElementById('searchInput');
-    input.value=q;input.dispatchEvent(new Event('input',{bubbles:true}));
-    input.dispatchEvent(new Event('change',{bubbles:true}));
+  await page.evaluate(q=>{
+    const e=document.getElementById('searchInput');e.value=q;
+    e.dispatchEvent(new Event('input',{bubbles:true}));
+    e.dispatchEvent(new Event('change',{bubbles:true}));
     document.getElementById('runBtn').click();
   },q);
   await page.waitForFunction(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||
     !!window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.runToken,null,{timeout:90000,polling:200});
-  profile=(await cdp.send('Profiler.stop')).profile;
- }catch(e){error=String(e);try{profile=(await cdp.send('Profiler.stop')).profile}catch{}}
+ }catch(e){failure=String(e)}
  const snap=await page.evaluate(()=>{
-   const p=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{},
-    u=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{};
-   return {phases:p.phaseTotalsMs||null,swales:u.generated??null,source:u.sourceFeatures??null,
-      displayed:u.overlaySwaleLines??null,error:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null};
+  const perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{},
+    pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{},
+    pkg=window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||{};
+  let features=[];
+  try{
+   const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;
+   const s=map?.getSource?.('el-live-swales-15970');
+   features=s?._data?.features||s?.serialize?.()?.data?.features||[];
+  }catch{}
+  return {coreMs:perf.phaseTotalsMs?.coreTotalMs??null,phases:perf.phaseTotalsMs||null,
+     swales:pub.generated??null,source:pub.sourceFeatures??null,display:pub.overlaySwaleLines??null,
+     water:perf.waterPaths??null,profile:pkg.profileId||null,
+     geometry:features.map(f=>f.geometry?.coordinates||[]),
+     error:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null};
  });
- let hits=[];
- if(profile){
-   const nodes=new Map(profile.nodes.map(n=>[n.id,n]));
-   const totals=new Map();
-   for(let i=0;i<(profile.samples||[]).length;i++){
-     const id=profile.samples[i],n=nodes.get(id);
-     if(!n)continue;
-     const f=n.callFrame||{},key=[f.functionName||'(anonymous)',f.lineNumber,f.columnNumber].join('|');
-     const cell=totals.get(key)||{name:f.functionName||'(anonymous)',line:(f.lineNumber||0)+1,
-       column:(f.columnNumber||0)+1,url:f.url||'',cpuMs:0,samples:0};
-     cell.cpuMs+=Number(profile.timeDeltas?.[i]||1000)/1000;cell.samples++;
-     totals.set(key,cell);
-   }
-   hits=Array.from(totals.values()).sort((a,b)=>b.cpuMs-a.cpuMs).slice(0,35);
- }
- const row={query:q,snap,errors:errors.slice(-5),error,topCpu:hits,
-  samples:profile?.samples?.length||0,profileStart:profile?.startTime||null,profileEnd:profile?.endTime||null};
- results.push(row);
- console.log('M92_CPU_PROFILE '+JSON.stringify(row));
- await context.close();
+ const row={mode:m.name,q,core:snap.coreMs,phases:snap.phases,swales:snap.swales,
+   source:snap.source,display:snap.display,water:snap.water,profile:snap.profile,
+   geometryHash:digest(snap.geometry),wall:Date.now()-start,
+   errors:errors.slice(-5),failure:failure||snap.error};
+ rows.push(row);console.log('M92_GEOMETRY_AB '+JSON.stringify(row));
+ await ctx.close();
 }
 await browser.close();
-writeFileSync('artifacts/mantra92/yield-ab/results/cpu-profile.json',JSON.stringify(results,null,2));
+const comparisons=[];
+for(const q of states){
+ const m=rows.filter(x=>x.q===q);
+ comparisons.push({q,variants:m.map(x=>({
+   mode:x.mode,core:x.core,swales:x.swales,digest:x.geometryHash,source:x.source,display:x.display,
+   failed:!!x.failure||x.errors.length>0})),
+  sameSwaleGeometry:m.every(x=>x.geometryHash===m[0].geometryHash)});
+}
+writeFileSync('artifacts/mantra92/yield-ab/results/geometry-ab.json',JSON.stringify({rows,comparisons},null,2));
+console.log('M92_GEOMETRY_AB_SUMMARY '+JSON.stringify(comparisons));
+if(rows.some(x=>x.failure||x.errors.length>0))process.exitCode=1;
