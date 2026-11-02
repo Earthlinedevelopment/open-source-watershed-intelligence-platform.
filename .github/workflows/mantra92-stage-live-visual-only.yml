@@ -1,0 +1,42 @@
+name: Earthline M92 stage live Regional black-dot surgical fix
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths:
+      - tools/mantra92-live-visual-surgery.mjs
+      - .github/workflows/mantra92-stage-live-visual-only.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  compose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch exact live parent without editing the scientific engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tools/mantra92-live-visual-surgery.mjs /tmp/m92-live-visual-surgery.mjs
+          REF=fix/mantra92-live-visual-only
+          OLD=de4c2aea342805264691e57fba11bd22296624e7
+          git fetch origin "refs/heads/$REF:refs/remotes/origin/$REF"
+          git checkout -B "$REF" "refs/remotes/origin/$REF"
+          test "$(git rev-parse HEAD)" = "$OLD" || { echo "::error::Live visual parent moved";exit 1; }
+          cp /tmp/m92-live-visual-surgery.mjs ./m92-live-visual-surgery.mjs
+          node --check m92-live-visual-surgery.mjs
+          node m92-live-visual-surgery.mjs
+          rm m92-live-visual-surgery.mjs
+          python3 tools/earthline-release-airlock-static.py
+          test "$(git diff --name-only)" = "index.html" || { echo "::error::Unexpected edit outside index"; exit 1; }
+          git config user.name "Earthline visual recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix: restore legible Regional swales on public homepage"
+          git push origin HEAD:"refs/heads/$REF"
