@@ -1,0 +1,34 @@
+name: Mantra 90 NOAA Raster Bounds Candidate Gate
+on:
+  push:
+    branches: [mantra90-noaa-raster-bounds]
+    paths:
+      - index.html
+      - tests/mantra90-noaa-bounds.mjs
+      - .github/workflows/mantra90-noaa-bounds.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  raster-bounds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          node --check tests/mantra90-noaa-bounds.mjs
+          grep -Fq "scheme:'tms',bounds:[-128.8,24.4,-66.0,50.3]" index.html
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Verify NOAA bounds and Regional publisher on production origin with candidate HTML
+        run: node tests/mantra90-noaa-bounds.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra90-noaa-raster-candidate
+          path: artifacts/mantra90-noaa
+          retention-days: 14
