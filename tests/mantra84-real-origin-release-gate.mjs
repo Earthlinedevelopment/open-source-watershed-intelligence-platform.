@@ -1,7 +1,7 @@
 import { chromium, webkit, devices } from 'playwright';
 import fs from 'node:fs/promises';
 
-const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/candidate-mantra84/';
+const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
 const TARGET={lng:-73.012909,lat:44.513845,label:'61 Sleepy Hollow Rd, Essex, Vermont, USA'};
 const CRITICAL=['Arizona','Vermont','Arkansas','Iowa','Texas','Florida','California','Oklahoma'];
 const results={generatedAt:null,url:URL,regionalCritical:[],clientMatrix:[],propertySequence:null};
