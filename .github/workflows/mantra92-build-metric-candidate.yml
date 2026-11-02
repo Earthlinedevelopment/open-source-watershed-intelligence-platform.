@@ -1,15 +1,15 @@
-name: Mantra 92 tune isolated candidate screening
+name: Mantra 92 repair isolated candidate Regional SVG
 on:
   push:
     branches: [audit/mantra92-regional-fallback-isolation]
     paths:
-      - tools/mantra92-tune-yield-on-candidate.mjs
+      - tools/mantra92-fix-subpixel-swale.mjs
       - .github/workflows/mantra92-build-metric-candidate.yml
   workflow_dispatch:
 permissions:
   contents: write
 jobs:
-  tune:
+  render:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -20,24 +20,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Tune isolated metric candidate; never write production
+      - name: Recover actual Mapbox-projected corridor in isolated candidate
         shell: bash
-        env:
-          EARTHLINE_M92_YIELD_RATE: '1536'
         run: |
           set -euo pipefail
-          cp tools/mantra92-tune-yield-on-candidate.mjs /tmp/m92-tune.mjs
+          cp tools/mantra92-fix-subpixel-swale.mjs /tmp/m92-render.mjs
           git fetch origin refs/heads/candidate/mantra92-metric-recovery:refs/remotes/origin/candidate/mantra92-metric-recovery
           git checkout -B candidate/mantra92-metric-recovery refs/remotes/origin/candidate/mantra92-metric-recovery
-          test "$(git rev-parse HEAD)" = "4939a8033b07a9c54bf7f9f61ad96844da8fec3d" || { echo "::error::Candidate head advanced; refuse"; exit 1; }
-          cp /tmp/m92-tune.mjs ./m92-tune.mjs
-          node m92-tune.mjs
-          rm m92-tune.mjs
+          test "$(git rev-parse HEAD)" = "7db945d8893060a70119bef5fe524062005b9e2d" || { echo "::error::Candidate advanced; do not overwrite"; exit 1; }
+          cp /tmp/m92-render.mjs ./m92-render.mjs
+          node m92-render.mjs
+          rm m92-render.mjs
           python3 tools/earthline-release-airlock-static.py
           git diff --check
-          test "$(git diff --name-only)" = "index.html" || { echo "::error::Only index.html may change"; exit 1; }
+          test "$(git diff --name-only)" = "index.html" || { echo "::error::Unexpected modified files"; exit 1; }
           git config user.name "Earthline recovery"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m "perf(mantra92): pace screened corridors in 1536-candidate batches"
+          git commit -m "render(mantra92): retain valid regional subpixel swale projection"
           git push origin HEAD:refs/heads/candidate/mantra92-metric-recovery
