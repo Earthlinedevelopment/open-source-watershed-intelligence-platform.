@@ -2,8 +2,6 @@ import {readFileSync,writeFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 const file='index.html',s=readFileSync(file,'utf8');
 const changes=[
- ['(++yieldCount16661%384)===0','(++yieldCount16661%1024)===0'],
- ['(++finalScreenYield16661%384)===0','(++finalScreenYield16661%1024)===0'],
  ['if(![xi16584,yi16584,xj16584,yj16584].every(Number.isFinite))continue;',
  'if(!Number.isFinite(xi16584)||!Number.isFinite(yi16584)||!Number.isFinite(xj16584)||!Number.isFinite(yj16584))continue;']
 ];
@@ -13,4 +11,4 @@ for(const locked of ['metricLengthM92>=250&&metricLengthM92<=4005','const capM92
 const h=x=>createHash('sha256').update(x).digest('hex');
 writeFileSync(file,out);
 console.log('M92_HOTPATH_CANDIDATE '+JSON.stringify({before:h(s),after:h(out),changedOwners:changes.length,
- sourceGeomUnchanged:true,semantics:'Number.isFinite predicate equivalent; yielding every 1024 rather than 384; 4% and exclusion unchanged'}));
+ sourceGeomUnchanged:true,semantics:'Number.isFinite predicate equivalent; cooperative yield remains 1536; 4% and exclusion unchanged'}));
