@@ -99,7 +99,8 @@ async function region(query){
  if(!Number.isFinite(maxLength)||maxLength>4005)fails.push('invalid or overlong source corridor');
  if(!Number.isFinite(maxSlope)||maxSlope>4.0001||slopes.some(x=>!Number.isFinite(x)||x<0))
    fails.push('slope >4% or unverified');
- if(snap.unsafe!==null&&snap.unsafe!==0)fails.push('unsafe mapped segment');
+ if(snap.unsafe!==0)fails.push('unsafe segments detected or safety audit unavailable');
+ if(!Number.isInteger(snap.flowPaths)||snap.flowPaths<=0)fails.push('water-path publication missing');
  if(snap.outside!==null&&snap.outside!==0)fails.push('out-of-jurisdiction swale');
  const row={query,sha256,runWallMs:Date.now()-t,coreMs:snap.coreMs,phases:snap.phases,waterPaths:snap.flowPaths,
    sourceFeatures:snap.sourceFeatures,visible:snap.visible,profile:snap.profileId,
