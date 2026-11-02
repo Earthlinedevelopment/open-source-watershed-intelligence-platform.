@@ -22,14 +22,14 @@ jobs:
           node-version: '22'
       - name: Stage immutable candidate under test route only
         env:
-          M92_PREVIEW_SHA: 'f8623b9c04ff7dc77dcfb5e376653cd506559dac'
+          M92_PREVIEW_SHA: '4dcb7aade2ed64f4a7434ffe115e21864e9f1304'
         run: |
           set -euo pipefail
           cp tools/mantra92-stage-preview.mjs /tmp/earthline-preview.mjs
           git fetch origin refs/heads/preview/mantra92-recovery:refs/remotes/origin/preview/mantra92-recovery
           git fetch origin refs/heads/candidate/mantra92-metric-recovery:refs/remotes/origin/candidate/mantra92-metric-recovery
           git checkout -B preview/mantra92-recovery refs/remotes/origin/preview/mantra92-recovery
-          test "$(git rev-parse HEAD)" = "527635dd390450d4506da3fa0ea05ed52abc6162" || { echo "::error::Preview base moved"; exit 1; }
+          test "$(git rev-parse HEAD)" = "886e03c21b0bf8d6cd29319533f672424c3a7e5c" || { echo "::error::Preview base moved"; exit 1; }
           test "$(git rev-parse refs/remotes/origin/candidate/mantra92-metric-recovery)" = "$M92_PREVIEW_SHA" || { echo "::error::Candidate changed, preview cannot be trusted"; exit 1; }
           mkdir -p artifacts/mantra92-preview-source
           git show "$M92_PREVIEW_SHA:index.html" > artifacts/mantra92-preview-source/index.html
