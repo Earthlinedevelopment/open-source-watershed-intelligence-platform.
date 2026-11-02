@@ -34061,7 +34061,21 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
       earthlinePropertyTrace16319("terminalPropertyRun","exit",{result:true,corridors:count,renderVerified});
       setAudit({stage:'published',stageLabel:'published',settled:true,result:true,timedOut:false,corridors:count,renderVerified,renderMode:texture.ok?'natural-texture':(safeFallback.ok?'authoritative-safe-lines':'verified-zero'),sourceEvidence:propertyEvidenceSnapshot16206(),publicationAudit:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,safeFallback,texture,stageTimings:Object.assign({},m.lastTiming||{}),elapsedSeconds:Math.round((performance.now()-started)/1000),settledAt:new Date().toISOString()});try{await window.EARTHLINE_ELDER_TREES_V1_17097?.startProperty?.()}catch(_){} /* EARTHLINE_ELDER_REFRESH_RESTORE_17097 */return true;
     }catch(err){const reason=String(err?.message||err||'unknown property error');earthlinePropertyTerminalStage16319('failed','Property analysis failed.');earthlinePropertyTrace16319("terminalPropertyRun","exit",{result:false,error:reason});setTierNotice('focus','');status('PROPERTY ANALYSIS FAILED — '+reason+'. No unverified property output was published.','failed');setAudit({stage:'failed',stageLabel:'failed',settled:true,result:false,timedOut:false,error:reason,sourceEvidence:propertyEvidenceSnapshot16206(),stageTimings:Object.assign({},m.lastTiming||{}),elapsedSeconds:Math.round((performance.now()-started)/1000),settledAt:new Date().toISOString()});return false;}
-    finally{if(serial===runSerial){running=false;document.documentElement.dataset.earthlinePropertyRunState='idle';document.documentElement.classList.remove('earthline-property-running-16233');clearTimers();setButton(false);clearAllBusy();restoreGrab();try{window.getSelection?.()?.removeAllRanges?.();button()?.blur?.()}catch(_){}updateBuild();earthlinePropertyTrace16319("terminal finally","mark",{runState:'idle'});window.EARTHLINE_PROPERTY_TRACE_ACTIVE_16319=false}}
+    finally{if(serial===runSerial){running=false;document.documentElement.dataset.earthlinePropertyRunState='idle';document.documentElement.classList.remove('earthline-property-running-16233');clearTimers();setButton(false);clearAllBusy();
+      /* M92: Property terminal may not leave the public Region RUN button latched
+         by the previous regional context run. The new Run action supersedes it. */
+      if(document.documentElement.dataset.earthlineAnalysisTier==='property'){
+        const regionButtonM92=document.getElementById('runBtn');
+        if(regionButtonM92){
+          regionButtonM92.disabled=false;
+          delete regionButtonM92.dataset.busy;
+          regionButtonM92.dataset.state='idle';
+          regionButtonM92.setAttribute('aria-busy','false');
+          const wordsM92=regionButtonM92.querySelector('span');
+          if(wordsM92)wordsM92.textContent='RUN ANALYSIS';
+        }
+      }
+      restoreGrab();try{window.getSelection?.()?.removeAllRanges?.();button()?.blur?.()}catch(_){}updateBuild();earthlinePropertyTrace16319("terminal finally","mark",{runState:'idle'});window.EARTHLINE_PROPERTY_TRACE_ACTIVE_16319=false}}
   }
   function install(){
     updateBuild();ensureTierNotice();setTierNotice('focus','FOCUS PREVIEW · SELECT PROPERTY ANALYSIS · 20 ACRES FOR NATURAL SWALE FOOTPRINTS');
