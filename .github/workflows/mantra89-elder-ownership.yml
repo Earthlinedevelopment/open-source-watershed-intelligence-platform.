@@ -22,12 +22,12 @@ jobs:
           const fs=require('node:fs');
           const assert=require('node:assert/strict');
           const text=fs.readFileSync('earthline-elder-restored-17097.js','utf8');
-          assert.equal((text.match(/async function startProperty17166\\(/g)||[]).length,1);
-          assert.equal((text.match(/async function refresh\\(/g)||[]).length,1);
-          assert.match(text,/let elderPublicationGenerationM89=0;/);
-          assert.ok((text.match(/generation!==elderPublicationGenerationM89/g)||[]).length>=3);
+          assert.equal(text.split('async function startProperty17166(').length-1,1);
+          assert.equal(text.split('async function refresh(').length-1,1);
+          assert.ok(text.includes('let elderPublicationGenerationM89=0;'));
+          assert.ok(text.split('generation!==elderPublicationGenerationM89').length-1>=3);
           assert.ok(!text.includes('propertyRunIdentity17166(coverageQueryBounds())'));
-          assert.match(text,/if\\(tier==='property'\\)return startProperty17166\\(\\);/);
-          assert.match(text,/if\\(nextTier==='property'\\)return startProperty17166\\(\\);/);
+          assert.ok(text.includes("if(tier==='property')return startProperty17166();"));
+          assert.ok(text.includes("if(nextTier==='property')return startProperty17166();"));
           console.log('Elder publication ownership static gate PASS');
           NODE
