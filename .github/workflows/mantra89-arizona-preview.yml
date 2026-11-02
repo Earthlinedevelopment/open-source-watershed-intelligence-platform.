@@ -1,0 +1,46 @@
+name: Mantra 89 Arizona Property Evidence Preview
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - '.github/workflows/mantra89-arizona-preview.yml'
+      - 'candidate-mantra89/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  arizona-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      EARTHLINE_URL: https://earthlinedevelopment.org/candidate-mantra89/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Wait for same-origin preview deployment
+        run: |
+          for i in $(seq 1 18); do
+            STATUS=$(curl -Ls -o /dev/null -w '%{http_code}' "$EARTHLINE_URL")
+            if [ "$STATUS" = "200" ]; then exit 0; fi
+            echo "Preview not ready (HTTP $STATUS), retry $i"
+            sleep 10
+          done
+          echo "Preview unavailable" >&2
+          exit 1
+      - name: Run Arizona Regional and two Property controls
+        run: node tests/mantra85-arizona-controls.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra89-arizona-preview-evidence
+          path: artifacts/arizona-controls
+          retention-days: 14
