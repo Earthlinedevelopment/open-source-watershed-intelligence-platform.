@@ -22,7 +22,13 @@ jobs:
       - run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Validate distance-based Regional screening with preserved strict eligibility
+      - name: Pin exact science candidate without modifying public site
+        run: |
+          mkdir -p artifacts/mantra92/yield-ab
+          git fetch --no-tags --depth=1 origin candidate/mantra92-metric-recovery
+          git show FETCH_HEAD:index.html > artifacts/mantra92/yield-ab/index.html
+          sha256sum artifacts/mantra92/yield-ab/index.html
+      - name: Compare three science-preserving yield intervals
         run: node tests/mantra92-regional-generator-ab.mjs
       - uses: actions/upload-artifact@v4
         if: always()
