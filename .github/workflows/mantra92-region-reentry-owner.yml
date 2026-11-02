@@ -1,0 +1,34 @@
+name: Earthline Region-after-Property owner audit
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths: [.github/workflows/mantra92-region-reentry-owner.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Extract Run Analysis handlers and Property lifecycle gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin 60177e1dca18ca7bb3ba561b6039d353943d283b
+          git show 60177e1dca18ca7bb3ba561b6039d353943d283b:index.html > /tmp/site.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('/tmp/site.html').read_text()
+          needles=['getElementById("runBtn")','getElementById(\'runBtn\')','runBtn.addEventListener','runBtn.onclick',
+                   'runBtn.disabled','searchInput.addEventListener','function runSearch','async function runSearch',
+                   'function runAnalysis','earthlineAnalysisTier','EARTHLINE_PROPERTY_TARGET_16201',
+                   'startRegional','regionalAfterProperty','Region after Property']
+          for term in needles:
+            p=[m.start() for m in re.finditer(re.escape(term),s)]
+            print('M92_REENTRY_TERM',repr(term),'count',len(p),'offsets',p[:25],flush=True)
+            for i in p[-7:]:
+              print('M92_REENTRY_SNIP',repr(term),repr(s[max(0,i-380):i+1100])[:1700],flush=True)
+          PY
