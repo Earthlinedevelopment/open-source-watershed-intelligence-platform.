@@ -1,0 +1,37 @@
+name: Mantra 92 live-performance improvement without science change
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths:
+      - tests/mantra92-live-performance-ab.mjs
+      - .github/workflows/mantra92-live-performance-ab.yml
+  workflow_dispatch:
+permissions: { contents: read }
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Freeze exact current public code
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin 60177e1dca18ca7bb3ba561b6039d353943d283b
+          mkdir -p artifacts/mantra92-hotpath/results
+          git show 60177e1dca18ca7bb3ba561b6039d353943d283b:index.html > artifacts/mantra92-hotpath/baseline.html
+      - run: |
+          node --check tests/mantra92-live-performance-ab.mjs
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Compare Alaska and Arizona using identical science and 12 vs 384 cooperative-yield cadence
+        run: node tests/mantra92-live-performance-ab.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-live-safe-yield-performance
+          path: artifacts/mantra92-hotpath/results
+          retention-days: 10
