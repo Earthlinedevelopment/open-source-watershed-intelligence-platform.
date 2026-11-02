@@ -137,6 +137,12 @@ const propertyTruth=rows.map(r=>{
    published:pub.publicationCount,status:snap.status,texture:tx.centerlines,notes};
 });
 console.log('M92_PROPERTY_COHERENCE '+JSON.stringify(propertyTruth));
+const regionButtonBefore=await page.evaluate(()=>({
+  disabled:document.getElementById('runBtn')?.disabled||false,
+  label:document.getElementById('runBtn')?.textContent?.trim()||null,
+  tier:document.documentElement.dataset.earthlineAnalysisTier
+}));
+console.log('M92_BEFORE_REGION_RETURN '+JSON.stringify(regionButtonBefore));
 const tokenBefore=await page.evaluate(()=>window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.runToken||null);
 let regionReentry=false,regionReentryError=null;
 try{
