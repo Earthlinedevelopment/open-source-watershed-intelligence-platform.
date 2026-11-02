@@ -1,0 +1,47 @@
+name: Earthline confirm deployed live homepage visual hotfix
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths:
+      - .github/workflows/mantra92-live-public-verify.yml
+      - tests/mantra92-live-public-verify.mjs
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify production HTTPS byte-for-byte against deployed hotfix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin 60177e1dca18ca7bb3ba561b6039d353943d283b
+          git show 60177e1dca18ca7bb3ba561b6039d353943d283b:index.html > /tmp/earthline-expected.html
+          python3 - <<'PY'
+          import urllib.request,hashlib,time
+          from pathlib import Path
+          desired=hashlib.sha256(Path('/tmp/earthline-expected.html').read_bytes()).hexdigest()
+          for i in range(20):
+            req=urllib.request.Request('https://earthlinedevelopment.org/?m92_verify='+str(i),headers={'Cache-Control':'no-cache','User-Agent':'Earthline-Public-Release-Check'})
+            try:
+              with urllib.request.urlopen(req,timeout=25) as r:raw=r.read()
+              observed=hashlib.sha256(raw).hexdigest()
+              if observed==desired:
+                print('M92_PUBLIC_LIVE_HASH_VERIFIED',desired,'HTTP 200',flush=True)
+                break
+              print('M92_DEPLOY_PENDING',i,observed,desired,flush=True)
+            except Exception as exc:print('M92_DEPLOY_RETRY',i,str(exc),flush=True)
+            time.sleep(7)
+          else:raise RuntimeError('Public homepage is not yet serving the exact production hotfix')
+          PY
+      - run: |
+          node --check tests/mantra92-live-public-verify.mjs
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Verify no black dots or stale visual state on the actual homepage
+        run: node tests/mantra92-live-public-verify.mjs
