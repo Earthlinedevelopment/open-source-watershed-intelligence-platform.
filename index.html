@@ -30023,12 +30023,26 @@ body { overflow-x:hidden!important; }
       const raw=coords.slice(start,end);if(raw.length<2)return null;
       const rawCenter=Math.max(0,Math.min(raw.length-1,center-start));
       const distM=(a,b)=>{const R=6371008.8,p1=Number(a[1])*Math.PI/180,p2=Number(b[1])*Math.PI/180,dp=(Number(b[1])-Number(a[1]))*Math.PI/180,dl=(Number(b[0])-Number(a[0]))*Math.PI/180,q=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(q)))};
-      let left=rawCenter,right=rawCenter,leftM=0,rightM=0;
-      while(left>0){const d=distM(raw[left],raw[left-1]);if(leftM+d>8000)break;left--;leftM+=d}
-      while(right<raw.length-1){const d=distM(raw[right],raw[right+1]);if(rightM+d>8000)break;right++;rightM+=d}
-      if(left===right){if(right<raw.length-1)right++;else if(left>0)left--}
-      const segment=raw.slice(left,right+1);if(segment.length<2)return null;
-      const linePx16632=lineLengthPixels(hy,segment);let minLinePx16632=focusMode?10:2;
+      const capM92=2000;
+function sectionM92(dir){
+  let cursorM92=rawCenter,totalM92=0;
+  const ptsM92=[raw[rawCenter]];
+  while(cursorM92+dir>=0&&cursorM92+dir<raw.length&&totalM92<capM92){
+    const aM92=raw[cursorM92],bM92=raw[cursorM92+dir],dM92=distM(aM92,bM92);
+    if(!Number.isFinite(dM92)||dM92<=0){cursorM92+=dir;continue;}
+    const remainingM92=capM92-totalM92;
+    if(dM92<=remainingM92){ptsM92.push(bM92);totalM92+=dM92;cursorM92+=dir;continue;}
+    const tM92=remainingM92/dM92;
+    ptsM92.push([Number(aM92[0])+(Number(bM92[0])-Number(aM92[0]))*tM92,
+      Number(aM92[1])+(Number(bM92[1])-Number(aM92[1]))*tM92]);
+    break;
+  }
+  return ptsM92;
+}
+const leftM92=sectionM92(-1),rightM92=sectionM92(1);
+const segment=leftM92.reverse().slice(0,-1).concat(rightM92);
+if(segment.length<2)return null;
+      const linePx16632=lineLengthPixels(hy,segment);let minLinePx16632=focusMode?10:0;
       if(!focusMode&&linePx16632<10&&linePx16632>=4&&Math.max(Number(hy.cellX)||0,Number(hy.cellY)||0)>10000){
         const mp16632=segment[Math.floor((segment.length-1)/2)],mg16632=llGrid(hy,mp16632);
         if(mg16632&&Number.isFinite(mg16632.x)&&Number.isFinite(mg16632.y)){
@@ -30057,7 +30071,7 @@ body { overflow-x:hidden!important; }
       const slopeScore=Math.max(0,1-Math.abs(meanSlope-3.4)/(relaxed?12:7.5));
       const flowScore=meanAcc<=accLow?.18:meanAcc<=accMid?.18+.70*(meanAcc-accLow)/Math.max(1,accMid-accLow):Math.max(.18,.88-.48*(meanAcc-accMid)/Math.max(1,accHigh-accMid));
       const lengthScore=Math.min(1,lineLengthPixels(hy,segment)/85);
-      return {segment,x:anchor.x,y:anchor.y,slope:meanSlope,acc:meanAcc,maxAcc,score:slopeScore*.56+flowScore*.28+lengthScore*.16,confidence:relaxed?'screening':'preferred',minLinePx16632};
+      return {segment,x:anchor.x,y:anchor.y,slope:meanSlope,acc:meanAcc,maxAcc,score:slopeScore*.56+flowScore*.28+lengthScore*.16,confidence:relaxed?'screening':'preferred',minLinePx16632,m92MetricValidated:!focusMode};
     }
     /* EARTHLINE 16591 — jurisdiction eligibility must precede Regional ranking/spacing/capacity.
        Hydrology and contours still span the full DEM envelope; this only prevents candidates
@@ -30073,10 +30087,23 @@ body { overflow-x:hidden!important; }
       runs16539.sort((a16539,b16539)=>lineLengthPixels(hy,b16539)-lineLengthPixels(hy,a16539));
       const segment16539=runs16539[0];
       const minimumScreenPx16737=candidate16539&&candidate16539.coverageGap16731
-        ?0.75
-        :Math.max(4,Math.min(10,Number(candidate16539&&candidate16539.minLinePx16632)||10));
-      if(!segment16539||segment16539.length<2||lineLengthPixels(hy,segment16539)<minimumScreenPx16737){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
-      const mid16539=segment16539[Math.floor((segment16539.length-1)/2)],grid16539=llGrid(hy,mid16539);
+  ?0.75
+  :Math.max(4,Math.min(10,Number(candidate16539&&candidate16539.minLinePx16632)||10));
+const metricLocalM92=!focusMode&&candidate16539?.m92MetricValidated===true;
+let metricLengthM92=0;
+if(metricLocalM92&&Array.isArray(segment16539))for(let iM92=1;iM92<segment16539.length;iM92++){
+  const aM92=segment16539[iM92-1],bM92=segment16539[iM92],R=6371008.8,rad=Math.PI/180;
+  const p1M92=Number(aM92[1])*rad,p2M92=Number(bM92[1])*rad;
+  const dpM92=(Number(bM92[1])-Number(aM92[1]))*rad,dlM92=(Number(bM92[0])-Number(aM92[0]))*rad;
+  const hM92=Math.sin(dpM92/2)**2+Math.cos(p1M92)*Math.cos(p2M92)*Math.sin(dlM92/2)**2;
+  metricLengthM92+=2*R*Math.asin(Math.min(1,Math.sqrt(hM92)));
+}
+if(!segment16539||segment16539.length<2||
+  (metricLocalM92?!(metricLengthM92>=250&&metricLengthM92<=4005)
+    :lineLengthPixels(hy,segment16539)<minimumScreenPx16737)){
+  if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);
+  return null;
+}const mid16539=segment16539[Math.floor((segment16539.length-1)/2)],grid16539=llGrid(hy,mid16539);
       if(!grid16539||!Number.isFinite(grid16539.x)||!Number.isFinite(grid16539.y)){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
       const screenedCandidate16592=Object.assign({},candidate16539,{
         segment:segment16539,
@@ -30092,7 +30119,7 @@ body { overflow-x:hidden!important; }
       let count16539=0,yieldCount16661=0;
       for(const candidate16539 of list16539){
         if(screenJurisdictionCandidate16539(candidate16539)&&++count16539>=36)return 36;
-        if((++yieldCount16661%12)===0)await earthlineCooperativeYield16661();
+        if((++yieldCount16661%384)===0)await earthlineCooperativeYield16661();
       }
       return count16539;
     }
@@ -30149,7 +30176,7 @@ body { overflow-x:hidden!important; }
       for(const candidate16539 of candidates){
         const screened16539=screenJurisdictionCandidate16539(candidate16539);
         if(screened16539)eligible16539.push(screened16539);else jurisdictionRejectedCandidates16539++;
-        if((++finalScreenYield16661%12)===0)await earthlineCooperativeYield16661();
+        if((++finalScreenYield16661%384)===0)await earthlineCooperativeYield16661();
       }
       candidates.length=0;candidates.push(...eligible16539);
     }
