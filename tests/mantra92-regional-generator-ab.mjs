@@ -109,18 +109,49 @@ function limitYieldPacing(source,per){
   }
   return source;
 }
-function preserveVerifiedProfileCenter(source){
-  const old='?[intLng16556,intLat16556]:earthlineInteriorPoint16556(chosen.geometry,geometryBounds16556);';
-  if(source.split(old).length!==2)throw Error('Expected one explicit Census center fallback');
-  const next='?[intLng16556,intLat16556]:(Number.isFinite(center[0])&&Number.isFinite(center[1])&&earthlinePointInJurisdiction16539(center,chosen.geometry)?[center[0],center[1]]:earthlineInteriorPoint16556(chosen.geometry,geometryBounds16556));';
-  return source.replace(old,next);
+function dominantPolygonCenter(source){
+  const owner='function earthlineInteriorPoint16556(g,bbox16556){';
+  if(source.split(owner).length!==2)throw Error('Missing unique interior point owner');
+  const override=String.raw`
+    /* M92: choose representative interior point from the dominant terrestrial
+       polygon, not the global extent of antimeridian-island collections. */
+    const prepM92=earthlinePrepareJurisdiction16539(g),partsM92=prepM92?.polygons||[];
+    let bestM92=null;
+    for(const polyM92 of partsM92){
+      const ringM92=polyM92.outer,bM92=polyM92.bbox;
+      if(!Array.isArray(ringM92)||ringM92.length<4||!bM92||bM92[2]-bM92[0]>180)continue;
+      let sumM92=0,cxM92=0,cyM92=0;
+      for(let iM92=0,jM92=ringM92.length-1;iM92<ringM92.length;jM92=iM92++){
+        const aM92=ringM92[jM92],zM92=ringM92[iM92],
+              kM92=Number(aM92[0])*Number(zM92[1])-Number(zM92[0])*Number(aM92[1]);
+        if(!Number.isFinite(kM92))continue;
+        sumM92+=kM92;cxM92+=(Number(aM92[0])+Number(zM92[0]))*kM92;
+        cyM92+=(Number(aM92[1])+Number(zM92[1]))*kM92;
+      }
+      const areaM92=Math.abs(sumM92)*Math.max(.05,Math.cos(((Number(bM92[1])+Number(bM92[3]))/2)*Math.PI/180));
+      if(!Number.isFinite(areaM92)||areaM92<=0||bestM92&&areaM92<=bestM92.area)continue;
+      bestM92={area:areaM92,bounds:bM92,centroid:[cxM92/(3*sumM92),cyM92/(3*sumM92)]};
+    }
+    if(bestM92){
+      if(earthlinePointInJurisdiction16539(bestM92.centroid,g))return bestM92.centroid;
+      const bM92=bestM92.bounds,midM92=[(bM92[0]+bM92[2])/2,(bM92[1]+bM92[3])/2];
+      if(earthlinePointInJurisdiction16539(midM92,g))return midM92;
+      for(let stepM92=2;stepM92<=12;stepM92++)for(let yiM92=1;yiM92<stepM92;yiM92++)
+        for(let xiM92=1;xiM92<stepM92;xiM92++){
+          const pM92=[bM92[0]+(bM92[2]-bM92[0])*xiM92/stepM92,
+            bM92[1]+(bM92[3]-bM92[1])*yiM92/stepM92];
+          if(earthlinePointInJurisdiction16539(pM92,g))return pM92;
+        }
+    }
+  `;
+  return source.replace(owner,owner+override);
 }
 const optimizedM92=limitYieldPacing(metricCandidate(false),384);
 const modes=[
-  {name:'metric384-current-center',html:instrumentCandidate(optimizedM92)},
-  {name:'metric384-verified-profile-center',html:instrumentCandidate(preserveVerifiedProfileCenter(optimizedM92))}
+  {name:'metric384-legacy-center',html:instrumentCandidate(optimizedM92)},
+  {name:'metric384-dominant-centroid',html:instrumentCandidate(dominantPolygonCenter(optimizedM92))}
 ];
-const queries=['Alaska','Arizona'];
+const queries=['Alaska','Arizona','New York','Texas'];
 const browser=await chromium.launch({headless:true});
 const rows=[];
 mkdirSync('artifacts/mantra92/generator-ab',{recursive:true});
@@ -172,7 +203,7 @@ for(const m of modes)for(const query of queries){
     };
     const lengths=fs.map(f=>lineLenM92(f?.geometry?.coordinates)).filter(x=>Number.isFinite(x)&&x>0).sort((a,b)=>a-b);
     const stage=window.EARTHLINE_M92_STAGE_TIMINGS||null;
-    return {profileId:model?.profileId||null,profileCenter:model?.center||null,coreMs:perf?.phaseTotalsMs?.coreTotalMs||null,
+    return {profileId:model?.profileId||null,profileCenter:model?.center||null,coreMs:perf?.phaseTotalsMs?.coreTotalMs||null,phases:perf?.phaseTotalsMs||null,
       waterPaths:perf?.waterPaths||null,pub:pub?{generated:pub.generated,source:pub.sourceFeatures,overlay:pub.overlaySwaleLines}:null,
       swaleGeometry:geom?{accepted:geom.accepted,maxLengthM:geom.maxLengthM,p95LengthM:geom.p95LengthM}:null,
       maxSlope:slopes.length?Math.max(...slopes):null,sourceCount:fs.length,maxSourceLengthM:lengths.length?lengths.at(-1):null,p95SourceLengthM:lengths.length?lengths[Math.floor(.95*(lengths.length-1))]:null,
