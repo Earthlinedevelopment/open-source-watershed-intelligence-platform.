@@ -33131,23 +33131,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
   opacity:.62!important;stroke-width:1.15px!important
 }
 #earthlineRegionalVectorOverlay16020 [data-layer="directional-water-paths"] > g{opacity:.70!important;transform-box:fill-box;transform-origin:center}
-#earthlineRegionalVectorOverlay16020 [data-layer="swale-opportunities"] path[stroke="rgba(8,18,13,.96)"]{
-  opacity:1!important;stroke-width:18px!important
-}
-#earthlineRegionalVectorOverlay16020 [data-layer="swale-opportunities"] path[stroke="#42ff83"]{
-  opacity:1!important;stroke-width:12.5px!important;filter:url(#elGlow16020) drop-shadow(0 0 4px rgba(66,255,131,.55))!important
-}
-#earthlineRegionalVectorOverlay16020 [data-layer="swale-opportunities"] path[stroke="#ffc12f"]{
-  opacity:1!important;stroke-width:10.5px!important;filter:url(#elGlow16020) drop-shadow(0 0 3px rgba(255,193,47,.46))!important
-}
-#earthlineRegionalVectorOverlay16020 [data-layer="swale-opportunities"] path[stroke="#ff8a2d"]{
-  opacity:.98!important;stroke-width:8.5px!important;filter:url(#elGlow16020)!important
-}
-#earthlineRegionalVectorOverlay16020 [data-layer="swale-opportunities"] path[stroke="#e1ffeb"],
-#earthlineRegionalVectorOverlay16020 [data-layer="swale-opportunities"] path[stroke="#fff2b0"],
-#earthlineRegionalVectorOverlay16020 [data-layer="swale-opportunities"] path[stroke="#ffe0bd"]{
-  opacity:.92!important;stroke-width:2px!important
-}
+/* M92: zoom-calibrated widths are controlled by Regional renderer. */
 #earthlineSwaleLegend16050{z-index:970!important}
 </style>
 
@@ -35242,10 +35226,15 @@ body{display:block!important}
         understory16174(sg,plantPts,-uphill,swales*83+rank*7,zoom);
         canopy16174(sg,plantPts,-uphill,swales*97+rank*13,zoom,grade);
       }else{
-        const casing=grade==='A'?15:grade==='B'?12:9,core=grade==='A'?9.2:grade==='B'?7.2:5.2;
-        addPath(sg,pts,{stroke:'rgba(8,18,13,.96)','stroke-width':String(casing),'stroke-linecap':'round','stroke-linejoin':'round'});
-        addPath(sg,pts,{class:'earthline-swale-core-16168','data-swale-index':String(swales),stroke:main,'stroke-width':String(core),'stroke-linecap':'round','stroke-linejoin':'round',filter:'url(#elGlow16020)'});
-        addPath(sg,pts,{stroke:light,'stroke-width':grade==='A'?'1.8':'1.2','stroke-linecap':'round','stroke-linejoin':'round','stroke-dasharray':grade==='C'?'6 9':'10 7'});
+        const regionalZoom=Number(map?.getZoom?.()||6),regionalScale=regionalZoom<7?0.46:(regionalZoom<8?0.62:(regionalZoom<9?0.78:1)),casing=(grade==='A'?15:grade==='B'?12:9)*regionalScale,core=(grade==='A'?9.2:grade==='B'?7.2:5.2)*regionalScale;
+        if(len<8){
+  /* A valid Regional corridor shorter than eight screen pixels must not become a 20px black dot. */
+  addPath(sg,pts,{class:'earthline-swale-core-16168','data-swale-index':String(swales),stroke:main,'stroke-width':'1.4','stroke-linecap':'round','stroke-linejoin':'round'});
+}else{
+  addPath(sg,pts,{stroke:'rgba(8,18,13,.96)','stroke-width':String(casing),'stroke-linecap':'round','stroke-linejoin':'round'});
+  addPath(sg,pts,{class:'earthline-swale-core-16168','data-swale-index':String(swales),stroke:main,'stroke-width':String(core),'stroke-linecap':'round','stroke-linejoin':'round',filter:'url(#elGlow16020)'});
+  addPath(sg,pts,{stroke:light,'stroke-width':String((grade==='A'?1.8:1.2)*regionalScale),'stroke-linecap':'round','stroke-linejoin':'round','stroke-dasharray':grade==='C'?'6 9':'10 7'});
+}
       }
       gradeCounts[grade]=(gradeCounts[grade]||0)+1;
       const shouldLabel=grade==='A'||(grade==='B'&&gradeCounts.B<=8);
@@ -35269,6 +35258,12 @@ body{display:block!important}
         }
       }
       swales++;
+    }
+    /* M92: later !important CSS must not override the zoom-correct swale widths. */
+    for(const pathM92 of sg.querySelectorAll(':scope > path')){
+      const widthM92=Number(pathM92.getAttribute('stroke-width'));
+      if(Number.isFinite(widthM92)&&widthM92>0)
+        pathM92.style.setProperty('stroke-width',String(widthM92)+'px','important');
     }
     /* EARTHLINE 16350 — Regional water is counted here for audit only; SVG does not render it.
        Directional presentation is owned by the native Mapbox flow line + line-placement arrow layers. */
