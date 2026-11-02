@@ -3,29 +3,11 @@ import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 const BASE='https://earthlinedevelopment.org/';
 const base=readFileSync('artifacts/mantra92/yield-ab/index.html','utf8');
-const head="function earthlinePrepareJurisdiction16539(g){\n    if(!g)return null;if(g.prepared16539===true)return g;";
-const tail="return {prepared16539:true,polygons};";
 const finite='if(![xi16584,yi16584,xj16584,yj16584].every(Number.isFinite))continue;';
-for(const label of [head,tail,finite])if(base.split(label).length!==2)throw Error('Source owner not unique: '+label);
-function memo(source){
- const h=[
-   'const earthlinePreparedGeometryM92=new WeakMap();',
-   'function earthlinePrepareJurisdiction16539(g){',
-   '  if(!g)return null;if(g.prepared16539===true)return g;',
-   "  const cachedM92=typeof g==='object'?earthlinePreparedGeometryM92.get(g):null;",
-   '  if(cachedM92)return cachedM92;'
- ].join('\n');
- const t=[
-   'const preparedM92={prepared16539:true,polygons};',
-   "if(typeof g==='object')earthlinePreparedGeometryM92.set(g,preparedM92);",
-   'return preparedM92;'
- ].join('\n');
- return source.replace(head,h).replace(tail,t);
-}
+if(base.split(finite).length!==2)throw Error('Unmodified ring-predicate source was not unique');
 const modes=[
- {name:'current',html:base},
- {name:'prepared-memo',html:memo(base)},
- {name:'prepared-memo-no-array',html:memo(base).replace(finite,'if(!Number.isFinite(xi16584)||!Number.isFinite(yi16584)||!Number.isFinite(xj16584)||!Number.isFinite(yj16584))continue;')}
+ {name:'current-memo',html:base},
+ {name:'memo-no-array',html:base.replace(finite,'if(!Number.isFinite(xi16584)||!Number.isFinite(yi16584)||!Number.isFinite(xj16584)||!Number.isFinite(yj16584))continue;')}
 ];
 const states=['Alaska','New York','Maryland'];
 const browser=await chromium.launch({headless:true});
