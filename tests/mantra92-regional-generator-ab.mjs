@@ -12,7 +12,7 @@ for(const [needle,n] of [[conditional,1],[cap,1],[capRight,1]]){
   const count=base.split(needle).length-1;
   if(count!==n)throw Error('Non-unique generator owner '+needle+': '+count+' hits');
 }
-const metricClip=String.raw\`
+const metricClip=String.raw`
       const capM92=2000;
       function sectionM92(dir){
         let cursorM92=rawCenter,totalM92=0;
@@ -32,7 +32,7 @@ const metricClip=String.raw\`
       const leftM92=sectionM92(-1),rightM92=sectionM92(1);
       const segment=leftM92.reverse().slice(0,-1).concat(rightM92);
       if(segment.length<2)return null;
-\`;
+`;
 const cutRegex=/let left=rawCenter,right=rawCenter,leftM=0,rightM=0;[\s\S]*?const segment=raw\.slice\(left,right\+1\);if\(segment\.length<2\)return null;/;
 if(!cutRegex.test(base))throw Error('Cannot identify current Regional locality implementation');
 if(base.split('let minLinePx16632=focusMode?10:2;').length!==2)throw Error('Expected one pixel-length gate');
