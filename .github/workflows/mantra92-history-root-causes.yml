@@ -45,3 +45,16 @@ jobs:
                 for i in matches[:3]:
                   print('M92_HISTORY_CONTEXT',label,repr(term),repr(s[max(0,i-270):i+220]),flush=True)
           PY
+
+      - name: Inspect repeated full-square ring scans in production science
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import subprocess,re
+          s=subprocess.check_output(['git','show','166f5a603ef0762889972f1011ef4fac3d206f87:index.html']).decode('utf8')
+          needle='for(let r=0;r<=30;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++)'
+          matches=[m.start() for m in re.finditer(re.escape(needle),s)]
+          print('M92_RING_SCAN_COUNT',len(matches),flush=True)
+          for i in matches[:12]:
+            print('M92_RING_SCAN_EXCERPT',repr(s[max(0,i-130):i+1200]),flush=True)
+          PY
