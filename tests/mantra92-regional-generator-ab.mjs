@@ -1,235 +1,67 @@
 import {chromium} from 'playwright';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
-// M92 controlled generator A/B. Browser uses identical production origin, data,
-// build and all other components. No production file or renderer is changed.
+const original=readFileSync('artifacts/mantra92/yield-ab/index.html','utf8');
 const BASE='https://earthlinedevelopment.org/';
-const base=readFileSync('index.html','utf8');
-const conditional='if(focusMode||preferredEligibleCount16539<36){';
-const conditionalOld='if(!focusMode||preferredEligibleCount16539<36){';
-const cap='if(leftM+d>8000)break;';
-const capRight='if(rightM+d>8000)break;';
-for(const [needle,n] of [[conditional,1],[cap,1],[capRight,1]]){
-  const count=base.split(needle).length-1;
-  if(count!==n)throw Error('Non-unique generator owner '+needle+': '+count+' hits');
-}
-const metricClip=String.raw`
-      const capM92=2000;
-      function sectionM92(dir){
-        let cursorM92=rawCenter,totalM92=0;
-        const ptsM92=[raw[rawCenter]];
-        while(cursorM92+dir>=0&&cursorM92+dir<raw.length&&totalM92<capM92){
-          const aM92=raw[cursorM92],bM92=raw[cursorM92+dir],dM92=distM(aM92,bM92);
-          if(!Number.isFinite(dM92)||dM92<=0){cursorM92+=dir;continue;}
-          const remainingM92=capM92-totalM92;
-          if(dM92<=remainingM92){ptsM92.push(bM92);totalM92+=dM92;cursorM92+=dir;continue;}
-          const tM92=remainingM92/dM92;
-          ptsM92.push([Number(aM92[0])+(Number(bM92[0])-Number(aM92[0]))*tM92,
-            Number(aM92[1])+(Number(bM92[1])-Number(aM92[1]))*tM92]);
-          break;
-        }
-        return ptsM92;
-      }
-      const leftM92=sectionM92(-1),rightM92=sectionM92(1);
-      const segment=leftM92.reverse().slice(0,-1).concat(rightM92);
-      if(segment.length<2)return null;
-`;
-const cutRegex=/let left=rawCenter,right=rawCenter,leftM=0,rightM=0;[\s\S]*?const segment=raw\.slice\(left,right\+1\);if\(segment\.length<2\)return null;/;
-if(!cutRegex.test(base))throw Error('Cannot identify current Regional locality implementation');
-if(base.split('let minLinePx16632=focusMode?10:2;').length!==2)throw Error('Expected one pixel-length gate');
-const screenPrefix='const minimumScreenPx16737=';
-const candidateTag="confidence:relaxed?'screening':'preferred',minLinePx16632};";
-function metricCandidate(regionalContourFallback=false){
-  let result=base.replace(cutRegex,metricClip)
-    .replace('let minLinePx16632=focusMode?10:2;','let minLinePx16632=focusMode?10:0;');
-  if(result.split(candidateTag).length!==2)throw Error('Missing unique candidate output owner');
-  result=result.replace(candidateTag,
-    "confidence:relaxed?'screening':'preferred',minLinePx16632,m92MetricValidated:!focusMode};");
-  const start=result.indexOf(screenPrefix),end=result.indexOf('const mid16539=',start);
-  const original=result.slice(start,end);
-  if(start<0||end<start||!original.includes('lineLengthPixels(hy,segment16539)<minimumScreenPx16737'))
-    throw Error('Missing exact jurisdiction screen owner');
-  const guard=String.raw`
-    const minimumScreenPx16737=candidate16539&&candidate16539.coverageGap16731
-      ?0.75
-      :Math.max(4,Math.min(10,Number(candidate16539&&candidate16539.minLinePx16632)||10));
-    const metricLocalM92=!focusMode&&candidate16539?.m92MetricValidated===true;
-    let metricLengthM92=0;
-    if(metricLocalM92&&Array.isArray(segment16539))for(let iM92=1;iM92<segment16539.length;iM92++){
-      const aM92=segment16539[iM92-1],bM92=segment16539[iM92],R=6371008.8,rad=Math.PI/180;
-      const p1M92=Number(aM92[1])*rad,p2M92=Number(bM92[1])*rad;
-      const dpM92=(Number(bM92[1])-Number(aM92[1]))*rad,dlM92=(Number(bM92[0])-Number(aM92[0]))*rad;
-      const hM92=Math.sin(dpM92/2)**2+Math.cos(p1M92)*Math.cos(p2M92)*Math.sin(dlM92/2)**2;
-      metricLengthM92+=2*R*Math.asin(Math.min(1,Math.sqrt(hM92)));
-    }
-    if(!segment16539||segment16539.length<2||
-      (metricLocalM92?!(metricLengthM92>=250&&metricLengthM92<=4005)
-        :lineLengthPixels(hy,segment16539)<minimumScreenPx16737)){
-      if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);
-      return null;
-    }
-  `;
-  result=result.slice(0,start)+guard+result.slice(end);
-  if(regionalContourFallback)result=result.replace(conditional,conditionalOld);
-  return result;
-}
-function instrumentCandidate(source){
-  const owner='async function makeSwales(hy,contours,focusMode=false,jurisdictionGeometry16539=null,supplementalCandidates16702=null){';
-  const clip=':earthlineClipLine16539(candidate16539&&candidate16539.segment||[],jurisdictionGeometry16539);';
-  const ret='return swaleCollectionM90;';
-  if(source.split(owner).length!==2||source.split(clip).length!==2||source.split(ret).length!==2)
-    throw Error('Unexpected owner or geometry clip count');
-  const hook=String.raw`
-    const __m92SwaleStarted=performance.now();
-    function __m92ClipProbe(segment,geometry){
-      const t=performance.now(),result=earthlineClipLine16539(segment,geometry);
-      const d=(window.EARTHLINE_M92_GATE_PERF||={clipCalls:0,clipMs:0,makes:[]});
-      d.clipCalls++;d.clipMs+=performance.now()-t;return result;
-    }
-  `;
-  const footer=String.raw`
-    const __m92Diag=(window.EARTHLINE_M92_GATE_PERF||={clipCalls:0,clipMs:0,makes:[]});
-    __m92Diag.makes.push({ms:Math.round(performance.now()-__m92SwaleStarted),
-      w:hy.w,h:hy.h,features:features.length,candidateCount:candidates.length,
-      beforeJurisdiction:candidatesBeforeJurisdiction16539,eligible:jurisdictionEligibleCandidates16539});
-    return swaleCollectionM90;
-  `;
-  return source.replace(owner,owner+hook)
-   .replace(clip,':__m92ClipProbe(candidate16539&&candidate16539.segment||[],jurisdictionGeometry16539);')
-   .replace(ret,footer);
-}
-function limitYieldPacing(source,per){
-  const original=[
-    '(++finalScreenYield16661%12)===0',
-    '(++yieldCount16661%12)===0'
-  ];
-  for(const needle of original){
-    const n=source.split(needle).length-1;
-    if(n!==1)throw Error('Unexpected yield owner count for '+needle+': '+n);
-    source=source.replace(needle,needle.replace('%12','%'+per));
-  }
-  return source;
-}
-function dominantPolygonCenter(source){
-  const owner='function earthlineInteriorPoint16556(g,bbox16556){';
-  if(source.split(owner).length!==2)throw Error('Missing unique interior point owner');
-  const override=String.raw`
-    /* M92: choose representative interior point from the dominant terrestrial
-       polygon, not the global extent of antimeridian-island collections. */
-    const prepM92=earthlinePrepareJurisdiction16539(g),partsM92=prepM92?.polygons||[];
-    let bestM92=null;
-    for(const polyM92 of partsM92){
-      const ringM92=polyM92.outer,bM92=polyM92.bbox;
-      if(!Array.isArray(ringM92)||ringM92.length<4||!bM92||bM92[2]-bM92[0]>180)continue;
-      let sumM92=0,cxM92=0,cyM92=0;
-      for(let iM92=0,jM92=ringM92.length-1;iM92<ringM92.length;jM92=iM92++){
-        const aM92=ringM92[jM92],zM92=ringM92[iM92],
-              kM92=Number(aM92[0])*Number(zM92[1])-Number(zM92[0])*Number(aM92[1]);
-        if(!Number.isFinite(kM92))continue;
-        sumM92+=kM92;cxM92+=(Number(aM92[0])+Number(zM92[0]))*kM92;
-        cyM92+=(Number(aM92[1])+Number(zM92[1]))*kM92;
-      }
-      const areaM92=Math.abs(sumM92)*Math.max(.05,Math.cos(((Number(bM92[1])+Number(bM92[3]))/2)*Math.PI/180));
-      if(!Number.isFinite(areaM92)||areaM92<=0||bestM92&&areaM92<=bestM92.area)continue;
-      bestM92={area:areaM92,bounds:bM92,centroid:[cxM92/(3*sumM92),cyM92/(3*sumM92)]};
-    }
-    if(bestM92){
-      if(earthlinePointInJurisdiction16539(bestM92.centroid,g))return bestM92.centroid;
-      const bM92=bestM92.bounds,midM92=[(bM92[0]+bM92[2])/2,(bM92[1]+bM92[3])/2];
-      if(earthlinePointInJurisdiction16539(midM92,g))return midM92;
-      for(let stepM92=2;stepM92<=12;stepM92++)for(let yiM92=1;yiM92<stepM92;yiM92++)
-        for(let xiM92=1;xiM92<stepM92;xiM92++){
-          const pM92=[bM92[0]+(bM92[2]-bM92[0])*xiM92/stepM92,
-            bM92[1]+(bM92[3]-bM92[1])*yiM92/stepM92];
-          if(earthlinePointInJurisdiction16539(pM92,g))return pM92;
-        }
-    }
-  `;
-  return source.replace(owner,owner+override);
-}
-const optimizedM92=limitYieldPacing(metricCandidate(false),384);
-const modes=[
-  {name:'metric384-legacy-center',html:instrumentCandidate(optimizedM92)},
-  {name:'metric384-dominant-centroid',html:instrumentCandidate(dominantPolygonCenter(optimizedM92))}
-];
-const queries=['Alaska','Arizona','New York','Texas'];
+const states=['Alaska','New York','Texas'];
+const expected={'Alaska':'us-ak','New York':'us-ny','Texas':'us-tx'};
+const needleA='(++yieldCount16661%384)===0';
+const needleB='(++finalScreenYield16661%384)===0';
+for(const needle of [needleA,needleB])
+  if(original.split(needle).length!==2)throw Error('Unexpected source: '+needle);
+const modes=[384,1536,4096];
 const browser=await chromium.launch({headless:true});
 const rows=[];
-mkdirSync('artifacts/mantra92/generator-ab',{recursive:true});
-for(const m of modes)for(const query of queries){
+mkdirSync('artifacts/mantra92/yield-ab/results',{recursive:true});
+for(const rate of modes){
+ const html=rate===384?original:original.replace(needleA,'(++yieldCount16661%'+rate+')===0')
+   .replace(needleB,'(++finalScreenYield16661%'+rate+')===0');
+ for(const q of states){
   const ctx=await browser.newContext({viewport:{width:1600,height:950}});
-  const page=await ctx.newPage(),errs=[],http=[];
-  page.on('pageerror',x=>errs.push(String(x)));
-  page.on('response',r=>{if(r.status()>=400)http.push({code:r.status(),url:r.url()})});
-  await page.route('**/*',async route=>{
-    const req=route.request();
-    if(req.isNavigationRequest()&&req.resourceType()==='document'&&req.url().startsWith(BASE))
-      return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:m.html});
-    return route.continue();
+  const page=await ctx.newPage(),errs=[];
+  page.on('pageerror',e=>errs.push(String(e)));
+  await page.route('**/*',route=>{
+   const r=route.request();
+   if(r.isNavigationRequest()&&r.resourceType()==='document'&&r.url().startsWith(BASE))
+     return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html});
+   return route.continue();
   });
-  let failure=null,start=Date.now();
+  let failure=null;
+  const start=Date.now();
   try{
-    await page.goto(BASE+'?m92ab='+m.name+'-'+query+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
-    await page.waitForSelector('#searchInput',{timeout:15000});
-    await page.evaluate(q=>{const e=document.getElementById('searchInput');e.value=q;
-      e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));
-      document.getElementById('runBtn').click()},query);
-    await page.waitForFunction(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||
-      !!window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.runToken,null,{timeout:90000,polling:200});
+   await page.goto(BASE+'?m92yield='+rate+'-'+encodeURIComponent(q),{waitUntil:'domcontentloaded',timeout:45000});
+   await page.waitForSelector('#searchInput',{timeout:15000});
+   await page.evaluate(q=>{const el=document.getElementById('searchInput');
+      el.value=q;el.dispatchEvent(new Event('input',{bubbles:true}));
+      el.dispatchEvent(new Event('change',{bubbles:true}));
+      document.getElementById('runBtn').click();},q);
+   await page.waitForFunction(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||
+    !!window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.runToken,null,{timeout:90000,polling:200});
   }catch(e){failure=String(e)}
   const snap=await page.evaluate(()=>{
-    const perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null,pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null;
-    const geom=window.EARTHLINE_REGIONAL_GEOMETRY_M84||null;
-    const model=window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||null;
-    const generation=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null;
-    let src=null;
-    try{const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;
-      const s=map?.getSource?.('el-live-swales-15970');
-      src=s?._data||s?.serialize?.()?.data||null;
-    }catch{}
-    const fs=src?.features||[];
-    const slopes=fs.map(f=>Number(f?.properties?.slope_pct)).filter(Number.isFinite);
-    const lineLenM92=(coords)=>{
-      if(!Array.isArray(coords))return 0;
-      const R=6371008.8,rad=Math.PI/180;let total=0;
-      for(let i=1;i<coords.length;i++){
-        const a=coords[i-1],b=coords[i];
-        if(!Array.isArray(a)||!Array.isArray(b)||a.length<2||b.length<2)continue;
-        const p1=Number(a[1])*rad,p2=Number(b[1])*rad;
-        const dp=(Number(b[1])-Number(a[1]))*rad,dl=(Number(b[0])-Number(a[0]))*rad;
-        const h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
-        total+=2*R*Math.asin(Math.min(1,Math.sqrt(h)));
-      }
-      return total;
-    };
-    const lengths=fs.map(f=>lineLenM92(f?.geometry?.coordinates)).filter(x=>Number.isFinite(x)&&x>0).sort((a,b)=>a-b);
-    const stage=window.EARTHLINE_M92_STAGE_TIMINGS||null;
-    return {profileId:model?.profileId||null,profileCenter:model?.center||null,coreMs:perf?.phaseTotalsMs?.coreTotalMs||null,phases:perf?.phaseTotalsMs||null,
-      waterPaths:perf?.waterPaths||null,pub:pub?{generated:pub.generated,source:pub.sourceFeatures,overlay:pub.overlaySwaleLines}:null,
-      swaleGeometry:geom?{accepted:geom.accepted,maxLengthM:geom.maxLengthM,p95LengthM:geom.p95LengthM}:null,
-      maxSlope:slopes.length?Math.max(...slopes):null,sourceCount:fs.length,maxSourceLengthM:lengths.length?lengths.at(-1):null,p95SourceLengthM:lengths.length?lengths[Math.floor(.95*(lengths.length-1))]:null,
-      generation:generation?{generated:generation.generated,publishedFeatures:generation.publishedFeatures,
-        candidatesBeforeJurisdiction:generation.candidatesBeforeJurisdiction,eligible:generation.eligible}:null,
-      stage:stage?Object.fromEntries(Object.entries(stage).map(([k,v])=>[k,{calls:v.length,sumMs:v.reduce((a,s)=>a+s.ms,0)}])):null,
-      m92Perf:window.EARTHLINE_M92_GATE_PERF||null,
-      error:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null};
-  }).catch(e=>({evaluationError:String(e)}));
-  const row={mode:m.name,query,sha:'67de444b7048fc9a8ef5282dd3f4fb5961681779',elapsedMs:Date.now()-start,failure,snap,errs,http:http.slice(-8)};
-  rows.push(row);
-  console.log('M92_GENERATOR_AB '+JSON.stringify(row));
-  await page.screenshot({path:'artifacts/mantra92/generator-ab/'+m.name+'-'+query.toLowerCase()+'.png'}).catch(()=>{});
+   const p=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{},
+    pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{},
+    pkg=window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||{},
+    aud=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||{},
+    b=window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||{};
+   return {core:p?.phaseTotalsMs?.coreTotalMs??null,phases:p?.phaseTotalsMs||null,
+     water:p?.waterPaths??null,swales:pub?.generated??null,
+     source:pub?.sourceFeatures??null,overlay:pub?.overlaySwaleLines??null,
+     unsafe:aud?.unsafeSegments??null,outside:b?.outsideAfterClip?.swales??null,
+     profile:pkg?.profileId??null,
+     error:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null};
+  });
+  const why=[];
+  if(failure||snap.error||errs.length)why.push('browser/error');
+  if(snap.profile!==expected[q])why.push('wrong state');
+  if(!Number.isFinite(snap.core)||snap.core>15000)why.push('over 15s');
+  if(!(snap.swales>0)||snap.swales!==snap.source||snap.swales!==snap.overlay)why.push('publish mismatch');
+  if(snap.unsafe!==0||snap.outside!==null&&snap.outside!==0)why.push('unsafe/outside');
+  const row={rate,q,coreMs:snap.core,phases:snap.phases,swales:snap.swales,source:snap.source,overlay:snap.overlay,water:snap.water,
+   wall:Date.now()-start,why,errors:errs.slice(-3),failure};
+  rows.push(row);console.log('M92_YIELD_AB '+JSON.stringify(row));
   await ctx.close();
+ }
 }
 await browser.close();
-writeFileSync('artifacts/mantra92/generator-ab/matrix.json',JSON.stringify(rows,null,2));
-console.log('M92_GENERATOR_AB_SUMMARY '+JSON.stringify(rows.map(r=>({mode:r.mode,query:r.query,core:r.snap?.coreMs,swales:r.snap?.pub?.generated,
- maxLen:r.snap?.maxSourceLengthM,slope:r.snap?.maxSlope,errors:r.errs.length,failure:r.failure}))));
-for(const r of rows){
- const reasons=[];
- if(r.failure||r.snap?.error||r.snap?.evaluationError||r.errs.length)reasons.push('browser error');
- if(!(r.snap?.pub?.generated>0)||r.snap?.pub?.source!==r.snap?.pub?.generated)reasons.push('missing/mismatched swales');
- if(!Number.isFinite(r.snap?.coreMs)||r.snap.coreMs>15000)reasons.push('core over 15 seconds');
- if(!Number.isFinite(r.snap?.maxSourceLengthM)||r.snap.maxSourceLengthM>4005)reasons.push('source geometry too long');
- if(!Number.isFinite(r.snap?.maxSlope)||r.snap.maxSlope>4.0001)reasons.push('slope unsafe/unverified');
- console.log('M92_PROFILE_RELEASE_GATE '+JSON.stringify({mode:r.mode,query:r.query,pass:reasons.length===0,reasons}));
- if(reasons.length)process.exitCode=1;
-}
+writeFileSync('artifacts/mantra92/yield-ab/results/matrix.json',JSON.stringify(rows,null,2));
+console.log('M92_YIELD_AB_SUMMARY '+JSON.stringify(rows.map(({rate,q,coreMs,swales,why})=>({rate,q,coreMs,swales,why}))));
