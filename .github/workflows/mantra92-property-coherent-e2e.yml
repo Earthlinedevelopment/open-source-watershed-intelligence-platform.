@@ -1,0 +1,37 @@
+name: Earthline M92 full Property truth and reentry acceptance
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths:
+      - tests/mantra92-property-coherent-e2e.mjs
+      - .github/workflows/mantra92-property-coherent-e2e.yml
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Load byte-exact Property science and reporting candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin bb9a5579e9a95944c50dfe02dc9276e4a7d1090a
+          mkdir -p artifacts/property-coherent
+          git show bb9a5579e9a95944c50dfe02dc9276e4a7d1090a:index.html > artifacts/property-coherent/index.html
+      - run: |
+          node --check tests/mantra92-property-coherent-e2e.mjs
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Exact candidate Regional→Property→Property→Regional with truthful layers
+        run: node tests/mantra92-property-coherent-e2e.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra92-full-property-candidate-browser-evidence
+          path: artifacts/property-coherent-e2e
+          retention-days: 14
