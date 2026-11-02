@@ -52,3 +52,20 @@ jobs:
               'homepageUnchanged':True,'homepageSHA256':homepage_hash
           }))
           PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated Chromium test browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Verify Arizona Regional and two Property runs on live preview URL
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/candidate-mantra92/
+        run: node tests/mantra89-arizona-controls.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra92-public-preview-property-evidence
+          path: artifacts/arizona-controls
+          retention-days: 7
