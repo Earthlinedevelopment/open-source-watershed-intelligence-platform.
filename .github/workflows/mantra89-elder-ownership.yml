@@ -1,0 +1,33 @@
+name: Mantra 89 Elder Publication Ownership Candidate
+on:
+  push:
+    branches:
+      - repair-mantra89-elder-ownership
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ownership-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: node --check earthline-elder-restored-17097.js
+      - name: Verify one guarded publication owner per tier
+        run: |
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const assert=require('node:assert/strict');
+          const text=fs.readFileSync('earthline-elder-restored-17097.js','utf8');
+          assert.equal((text.match(/async function startProperty17166\\(/g)||[]).length,1);
+          assert.equal((text.match(/async function refresh\\(/g)||[]).length,1);
+          assert.match(text,/let elderPublicationGenerationM89=0;/);
+          assert.ok((text.match(/generation!==elderPublicationGenerationM89/g)||[]).length>=3);
+          assert.ok(!text.includes('propertyRunIdentity17166(coverageQueryBounds())'));
+          assert.match(text,/if\\(tier==='property'\\)return startProperty17166\\(\\);/);
+          assert.match(text,/if\\(nextTier==='property'\\)return startProperty17166\\(\\);/);
+          console.log('Elder publication ownership static gate PASS');
+          NODE
