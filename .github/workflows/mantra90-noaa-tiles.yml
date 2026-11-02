@@ -1,0 +1,21 @@
+name: Mantra 90 NOAA Groundwater Tile Diagnosis
+on:
+  push:
+    branches: [mantra90-noaa-tile-diagnosis]
+    paths:
+      - tests/mantra90-noaa-tiles.mjs
+      - .github/workflows/mantra90-noaa-tiles.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose-noaa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Probe NOAA public metadata and coordinate schemes
+        run: node tests/mantra90-noaa-tiles.mjs
