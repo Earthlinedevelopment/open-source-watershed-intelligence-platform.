@@ -1,0 +1,41 @@
+name: Mantra 92 build isolated scientific recovery candidate
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths:
+      - tools/mantra92-compose-metric-recovery.mjs
+      - .github/workflows/mantra92-build-metric-candidate.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  compose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compose science-only candidate from exact pinned production parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tools/mantra92-compose-metric-recovery.mjs /tmp/earthline-mantra92-compose.mjs
+          git fetch origin refs/heads/candidate/mantra92-metric-recovery:refs/remotes/origin/candidate/mantra92-metric-recovery
+          git checkout -B candidate/mantra92-metric-recovery refs/remotes/origin/candidate/mantra92-metric-recovery
+          test "$(git rev-parse HEAD)" = "527635dd390450d4506da3fa0ea05ed52abc6162" || { echo "::error::Candidate parent changed; refusing mutation"; exit 1; }
+          cp /tmp/earthline-mantra92-compose.mjs ./mantra92-compose.mjs
+          node mantra92-compose.mjs
+          rm mantra92-compose.mjs
+          python3 tools/earthline-release-airlock-static.py
+          git diff --check
+          test "$(git diff --name-only)" = "index.html" || { echo "::error::Only index.html may change"; exit 1; }
+          git config user.name "Earthline recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "science(mantra92): metric Regional corridors and paced exact screening"
+          git push origin HEAD:refs/heads/candidate/mantra92-metric-recovery
