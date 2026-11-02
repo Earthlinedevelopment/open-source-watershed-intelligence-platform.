@@ -1,0 +1,36 @@
+name: Mantra 85 Real-Origin Arizona Controls
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mantra85-arizona-controls.mjs'
+      - '.github/workflows/mantra85-arizona-controls.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  arizona-controls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      EARTHLINE_URL: https://earthlinedevelopment.org/candidate-mantra84/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run exact Arizona controls
+        run: node tests/mantra85-arizona-controls.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra85-arizona-controls
+          path: artifacts/arizona-controls
+          retention-days: 14
