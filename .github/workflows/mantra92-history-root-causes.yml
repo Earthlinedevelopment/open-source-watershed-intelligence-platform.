@@ -37,6 +37,10 @@ jobs:
             for term in terms:
               matches=[m.start() for m in re.finditer(re.escape(term),s)]
               print('M92_HISTORY_TERM',label,repr(term),'count',len(matches),'positions',matches[:4],flush=True)
+              if label=='visualCorrected' and term in ['yieldCount16661%','finalScreenYield16661%']:
+                for p in matches[:3]: print('M92_PRECISE_YIELD',term,repr(s[max(0,p-90):p+120]),flush=True)
+              if label=='visualCorrected' and term=='minLinePx16632':
+                for p in matches[:1]: print('M92_PRECISE_GATE',repr(s[max(0,p-100):p+130]),flush=True)
               if term in terms[:4]:
                 for i in matches[:3]:
                   print('M92_HISTORY_CONTEXT',label,repr(term),repr(s[max(0,i-270):i+220]),flush=True)
