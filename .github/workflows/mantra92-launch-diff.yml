@@ -1,0 +1,37 @@
+name: Mantra 92 Oct 5 vs current evidence
+on:
+  push:
+    branches: [mantra91-alaska-diagnostic]
+    paths:
+      - tests/mantra92-launch-diff.mjs
+      - .github/workflows/mantra92-launch-diff.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Read immutable October 5 launch artifact
+        run: |
+          mkdir -p artifacts/mantra92/oct05
+          git fetch --depth=1 origin 9d059f0039ab305245b49e1a7ebda98e54a6d746
+          git show 9d059f0039ab305245b49e1a7ebda98e54a6d746:index.html > artifacts/mantra92/oct05/index.html
+          git show 9d059f0039ab305245b49e1a7ebda98e54a6d746:earthline-launch-16872.js > artifacts/mantra92/oct05/earthline-launch-16872.js
+          git show 9d059f0039ab305245b49e1a7ebda98e54a6d746:earthline-language-hotfix-16890.js > artifacts/mantra92/oct05/earthline-language-hotfix-16890.js
+      - name: Compare launch, production and candidate on same origin
+        run: node tests/mantra92-launch-diff.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra92-oct05-differential-evidence
+          path: artifacts/mantra92/results
+          retention-days: 14
