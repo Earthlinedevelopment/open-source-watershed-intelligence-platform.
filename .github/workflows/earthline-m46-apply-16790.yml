@@ -1,38 +1,18 @@
-name: Earthline Apply 16790 Audit Ownership
-
+# Mantra 92 permanent safeguard: obsolete auto-writer retired.
+# Original implementation and provenance remain in git history.
+# Retired because it could commit index.html directly to production,
+# without passing an immutable scientific/browser acceptance gate.
+name: Retired legacy earthline-m46-apply-16790
 on:
-  push:
-    branches: [pages-live]
-    paths:
-      - 'tools/mantra46-apply-16790-audit-coverage.py'
-      - '.github/workflows/earthline-m46-apply-16790.yml'
   workflow_dispatch:
-
 permissions:
-  contents: write
-
+  contents: read
 jobs:
-  apply-16790:
+  disabled:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Apply 16790 audit ownership correction
-        run: python tools/mantra46-apply-16790-audit-coverage.py
-      - name: Verify diagnostic-only product scope
+      - name: Disallow direct production mutation
         run: |
-          git diff --check
-          test "$(git diff --name-only | tr -d '\r')" = "index.html"
-          grep -q "EARTHLINE 16790 — CANDIDATE FOOTPRINT AUDIT OWNERSHIP" index.html
-          grep -q "candidateCoverageCellKeys16790" index.html
-          grep -q "const opportunityNoCandidate=diff(opportunityKeys,candidateCoverageKeys);" index.html
-          grep -q "p16783.parent!==add16783.point.parent" index.html
-      - name: Commit product candidate
-        run: |
-          git config user.name "Earthlinedevelopment"
-          git config user.email "info@earthlinedevelopment.org"
-          git add index.html
-          git commit -m "audit: deploy 16790 candidate footprint ownership correction"
-          git push origin HEAD:pages-live
+          echo "::error::Legacy direct production writer retired by Mantra 92."
+          echo "::error::Use an immutable certified candidate and approved release path."
+          exit 1
