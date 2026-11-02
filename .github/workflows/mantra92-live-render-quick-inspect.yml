@@ -1,0 +1,30 @@
+name: Mantra 92 production visual owner quick inspect
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths: [.github/workflows/mantra92-live-render-quick-inspect.yml]
+  workflow_dispatch:
+permissions: { contents: read }
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Extract actual live SVG owner and override
+        run: |
+          git fetch origin de4c2aea342805264691e57fba11bd22296624e7
+          git show de4c2aea342805264691e57fba11bd22296624e7:index.html > /tmp/earthline-live.html
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/earthline-live.html').read_text()
+          needles=['<style id="earthline-regional-16060-css">','stroke-width:20px!important',
+           'stroke-width:18px!important','stroke-width:12.5px!important',
+           'const casing=grade','const len=','addPath(sg,pts,{stroke:',
+           '/* EARTHLINE 16350 — Regional water is counted here for audit only; SVG does not render it.',
+           '#earthlineRegionalVectorOverlay16020 [data-layer="swale-opportunities"] path[stroke="rgba(8,18,13,.96)"]']
+          for n in needles:
+            i=s.find(n); print('M92_PRODUCTION_RENDER',repr(n),'count',s.count(n),'at',i)
+            if i>=0: print('M92_PRODUCTION_CODE',repr(n),repr(s[max(0,i-250):i+1100]))
+          PY
