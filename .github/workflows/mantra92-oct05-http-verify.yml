@@ -1,0 +1,49 @@
+name: Earthline original October 5 release HTTP verification
+on:
+  push:
+    branches: [restore/earthline-oct05-preview]
+    paths:
+      - '.github/workflows/mantra92-oct05-http-verify.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify historical release served byte-for-byte on Earthline domain
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import urllib.request,hashlib,json,time
+          from pathlib import Path
+          base='https://earthlinedevelopment.org/reference-2026-10-05/'
+          manifest=json.loads(Path('reference-2026-10-05/RESTORATION-MANIFEST.json').read_text())
+          expected=manifest['sourceIndexSHA256']
+          assert manifest['sourceCommit']=='9d059f0039ab305245b49e1a7ebda98e54a6d746'
+          def get(url):
+            req=urllib.request.Request(url,headers={'User-Agent':'Earthline-History-Recovery/1.0','Cache-Control':'no-cache'})
+            with urllib.request.urlopen(req,timeout=30) as res:
+              assert res.status==200,('HTTP',res.status,url)
+              return res.read()
+          for i in range(10):
+            try:
+              body=get(base+'?verify='+str(i))
+              observed=hashlib.sha256(body).hexdigest()
+              if observed==expected:break
+              print('NOT_YET_PUBLISHED',i,observed,expected,flush=True)
+            except Exception as exc: print('RETRY',i,str(exc),flush=True)
+            time.sleep(9)
+          else: raise RuntimeError('Original 2026-10-05 HTML not served with expected exact SHA')
+          for p in ['earthline-launch-16872.js','earthline-launch-16872.css','earthline-language-hotfix-16890.js']:
+            original=Path('reference-2026-10-05')/p
+            actual=get(base+p)
+            assert hashlib.sha256(actual).hexdigest()==hashlib.sha256(original.read_bytes()).hexdigest(),('asset does not match',p)
+          public=get('https://earthlinedevelopment.org/')
+          unchanged=hashlib.sha256(public).hexdigest()=='7ce3e74a81b83bda63bcf06018b66606e0edc8ad55970a1119ae74a69792ffec'
+          assert unchanged,'Existing public homepage changed'
+          print('EARTHLINE_ORIGINAL_OCT05_LIVE '+json.dumps({'url':base,'sha256':observed,
+            'sourceCommit':manifest['sourceCommit'],'originalAssetsVerified':3,'publicHomepageUnchanged':True}),flush=True)
+          PY
