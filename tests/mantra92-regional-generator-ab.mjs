@@ -1,67 +1,85 @@
 import {chromium} from 'playwright';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
-const original=readFileSync('artifacts/mantra92/yield-ab/index.html','utf8');
 const BASE='https://earthlinedevelopment.org/';
-const states=['Alaska','New York','Texas'];
-const expected={'Alaska':'us-ak','New York':'us-ny','Texas':'us-tx'};
-const needleA='(++yieldCount16661%384)===0';
-const needleB='(++finalScreenYield16661%384)===0';
-for(const needle of [needleA,needleB])
-  if(original.split(needle).length!==2)throw Error('Unexpected source: '+needle);
-const modes=[384,1536,4096];
-const browser=await chromium.launch({headless:true});
-const rows=[];
+const html=readFileSync('artifacts/mantra92/yield-ab/index.html','utf8');
 mkdirSync('artifacts/mantra92/yield-ab/results',{recursive:true});
-for(const rate of modes){
- const html=rate===384?original:original.replace(needleA,'(++yieldCount16661%'+rate+')===0')
-   .replace(needleB,'(++finalScreenYield16661%'+rate+')===0');
- for(const q of states){
-  const ctx=await browser.newContext({viewport:{width:1600,height:950}});
-  const page=await ctx.newPage(),errs=[];
-  page.on('pageerror',e=>errs.push(String(e)));
-  await page.route('**/*',route=>{
-   const r=route.request();
-   if(r.isNavigationRequest()&&r.resourceType()==='document'&&r.url().startsWith(BASE))
-     return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html});
-   return route.continue();
-  });
-  let failure=null;
-  const start=Date.now();
-  try{
-   await page.goto(BASE+'?m92yield='+rate+'-'+encodeURIComponent(q),{waitUntil:'domcontentloaded',timeout:45000});
-   await page.waitForSelector('#searchInput',{timeout:15000});
-   await page.evaluate(q=>{const el=document.getElementById('searchInput');
-      el.value=q;el.dispatchEvent(new Event('input',{bubbles:true}));
-      el.dispatchEvent(new Event('change',{bubbles:true}));
-      document.getElementById('runBtn').click();},q);
-   await page.waitForFunction(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||
-    !!window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.runToken,null,{timeout:90000,polling:200});
-  }catch(e){failure=String(e)}
-  const snap=await page.evaluate(()=>{
-   const p=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{},
-    pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{},
-    pkg=window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||{},
-    aud=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||{},
-    b=window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||{};
-   return {core:p?.phaseTotalsMs?.coreTotalMs??null,phases:p?.phaseTotalsMs||null,
-     water:p?.waterPaths??null,swales:pub?.generated??null,
-     source:pub?.sourceFeatures??null,overlay:pub?.overlaySwaleLines??null,
-     unsafe:aud?.unsafeSegments??null,outside:b?.outsideAfterClip?.swales??null,
-     profile:pkg?.profileId??null,
-     error:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null};
-  });
-  const why=[];
-  if(failure||snap.error||errs.length)why.push('browser/error');
-  if(snap.profile!==expected[q])why.push('wrong state');
-  if(!Number.isFinite(snap.core)||snap.core>15000)why.push('over 15s');
-  if(!(snap.swales>0)||snap.swales!==snap.source||snap.swales!==snap.overlay)why.push('publish mismatch');
-  if(snap.unsafe!==0||snap.outside!==null&&snap.outside!==0)why.push('unsafe/outside');
-  const row={rate,q,coreMs:snap.core,phases:snap.phases,swales:snap.swales,source:snap.source,overlay:snap.overlay,water:snap.water,
-   wall:Date.now()-start,why,errors:errs.slice(-3),failure};
-  rows.push(row);console.log('M92_YIELD_AB '+JSON.stringify(row));
-  await ctx.close();
+const browser=await chromium.launch({headless:true});
+const page=await browser.newPage({viewport:{width:1600,height:950}});
+const errors=[];
+page.on('pageerror',e=>errors.push(String(e)));
+await page.route('**/*',route=>{
+ const r=route.request();
+ if(r.isNavigationRequest()&&r.resourceType()==='document'&&r.url().startsWith(BASE))
+   return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html});
+ return route.continue();
+});
+await page.goto(BASE+'?m92alaska_publish='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+await page.waitForSelector('#searchInput',{timeout:15000});
+await page.evaluate(()=>{
+ const e=document.getElementById('searchInput');e.value='Alaska';
+ e.dispatchEvent(new Event('input',{bubbles:true}));
+ e.dispatchEvent(new Event('change',{bubbles:true}));
+ document.getElementById('runBtn').click();
+});
+await page.waitForFunction(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||
+ !!window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.runToken,null,{timeout:90000,polling:200});
+const snap=await page.evaluate(()=>{
+ const pub=window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||{},
+  disp=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||
+       window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||{},
+  perf=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{};
+ const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;
+ const src=map?.getSource?.('el-live-swales-15970');
+ const features=src?._data?.features||src?.serialize?.()?.data?.features||[];
+ const dist=(a,b)=>{
+   const rad=Math.PI/180,R=6371008.8,p1=Number(a[1])*rad,p2=Number(b[1])*rad,
+   dp=(Number(b[1])-Number(a[1]))*rad,dl=(Number(b[0])-Number(a[0]))*rad;
+   const h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+   return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));
+ };
+ function cropped(coords,cap=2000){
+   if(!Array.isArray(coords)||coords.length<3)return coords;
+   const mid=Math.floor((coords.length-1)/2);
+   let left=mid,right=mid,leftD=0,rightD=0;
+   while(left>0){
+     const d=dist(coords[left],coords[left-1]);
+     if(!Number.isFinite(d)||leftD+d>cap)break;
+     left--;leftD+=d;
+   }
+   while(right<coords.length-1){
+     const d=dist(coords[right],coords[right+1]);
+     if(!Number.isFinite(d)||rightD+d>cap)break;
+     right++;rightD+=d;
+   }
+   if(left===right){if(right<coords.length-1)right++;else if(left>0)left--;}
+   return coords.slice(left,right+1);
  }
-}
+ const lengths=[];
+ for(let i=0;i<features.length;i++){
+   const coords=features[i].geometry?.coordinates||[];
+   const croppedCoords=cropped(coords);
+   let px=0,projectError=null;
+   try{
+     for(let k=1;k<croppedCoords.length;k++){
+       const a=map.project(croppedCoords[k-1]),b=map.project(croppedCoords[k]);
+       px+=Math.hypot(b.x-a.x,b.y-a.y);
+     }
+   }catch(e){projectError=String(e);px=NaN;}
+   const physical=coords.reduce((n,b,k)=>n+(k?dist(coords[k-1],b):0),0);
+   lengths.push({i,coordinateCount:coords.length,croppedCount:croppedCoords?.length||0,
+     pxLength:px,metres:physical,projectError,
+     sample:coords.length?coords[Math.floor(coords.length/2)]:null,
+     properties:{grade:features[i].properties?.grade,score:features[i].properties?.score}});
+ }
+ lengths.sort((a,b)=>(a.pxLength??Infinity)-(b.pxLength??Infinity));
+ return {perf:perf.phaseTotalsMs||{},pub,display:disp,
+  map:{zoom:map?.getZoom?.(),bounds:map?.getBounds?.()?.toArray?.(),center:map?.getCenter?.()},
+  count:features.length,shortest:lengths.slice(0,14),below01:lengths.filter(x=>x.pxLength<0.1),
+  no2:lengths.filter(x=>x.croppedCount<2),sourceErrors:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null};
+});
+const result={snap,errors};
+console.log('M92_ALASKA_DISPLAY_DIAG '+JSON.stringify(result));
+writeFileSync('artifacts/mantra92/yield-ab/results/alaska-display.json',JSON.stringify(result,null,2));
+await page.screenshot({path:'artifacts/mantra92/yield-ab/results/alaska-display.png'});
 await browser.close();
-writeFileSync('artifacts/mantra92/yield-ab/results/matrix.json',JSON.stringify(rows,null,2));
-console.log('M92_YIELD_AB_SUMMARY '+JSON.stringify(rows.map(({rate,q,coreMs,swales,why})=>({rate,q,coreMs,swales,why}))));
+if(errors.length||snap.sourceErrors)process.exitCode=1;
