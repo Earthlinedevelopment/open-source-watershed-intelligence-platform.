@@ -1,0 +1,41 @@
+name: M92 exact-science Regional CPU pacing A/B
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths:
+      - tests/mantra92-yield-hotpath-ab.mjs
+      - .github/workflows/mantra92-yield-hotpath-ab.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Stage exact accepted visual candidate for no-science-change optimization
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin 166f5a603ef0762889972f1011ef4fac3d206f87
+          mkdir -p artifacts/mantra92-hotpath
+          git show 166f5a603ef0762889972f1011ef4fac3d206f87:index.html > artifacts/mantra92-hotpath/baseline.html
+          sha256sum artifacts/mantra92-hotpath/baseline.html
+      - run: |
+          node --check tests/mantra92-yield-hotpath-ab.mjs
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Compare 384 and 1536 yield intervals with frozen science
+        run: node tests/mantra92-yield-hotpath-ab.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra92-yield-science-parity
+          path: artifacts/mantra92-hotpath/results
+          retention-days: 14
