@@ -1,0 +1,37 @@
+name: Earthline production black-dot before-after proof
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths: [.github/workflows/mantra92-live-visual-before-after.yml]
+  workflow_dispatch:
+permissions: { contents: read }
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Pin live homepage and visual-only surgical candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin de4c2aea342805264691e57fba11bd22296624e7
+          git fetch origin 919d29056a872a0c1f57adb0cf5804d499873fcd
+          mkdir -p artifacts/mantra92-visual/results
+          git show de4c2aea342805264691e57fba11bd22296624e7:index.html > artifacts/mantra92-visual/before.html
+          git show 919d29056a872a0c1f57adb0cf5804d499873fcd:index.html > artifacts/mantra92-visual/corrected.html
+      - run: |
+          node --check tests/mantra92-arizona-visual-regression.mjs
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Prove original scientific geometry and repaired Arizona visual display
+        run: node tests/mantra92-arizona-visual-regression.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-live-before-after-screenshot
+          path: artifacts/mantra92-visual/results
+          retention-days: 14
