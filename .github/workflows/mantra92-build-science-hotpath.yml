@@ -1,0 +1,42 @@
+name: Earthline isolated scientific hotpath candidate
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths:
+      - tools/mantra92-optimize-geospatial-hotpath.mjs
+      - .github/workflows/mantra92-build-science-hotpath.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply exact guarded performance patch to isolated candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tools/mantra92-optimize-geospatial-hotpath.mjs /tmp/m92-hotpath.mjs
+          REF=candidate/mantra92-science-hotpath
+          PIN=166f5a603ef0762889972f1011ef4fac3d206f87
+          git fetch origin "refs/heads/$REF:refs/remotes/origin/$REF"
+          git checkout -B "$REF" "refs/remotes/origin/$REF"
+          test "$(git rev-parse HEAD)" = "$PIN" || { echo "::error::Expected parent moved";exit 1; }
+          cp /tmp/m92-hotpath.mjs ./m92-hotpath.mjs
+          node --check m92-hotpath.mjs
+          node m92-hotpath.mjs
+          rm m92-hotpath.mjs
+          python3 tools/earthline-release-airlock-static.py
+          test "$(git diff --name-only)" = "index.html" || { echo "::error::Source mutator exceeded index.html";exit 1; }
+          git config user.name "Earthline performance repair"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "perf: eliminate geospatial predicate arrays and reduce idle-yield overhead"
+          git push origin HEAD:"refs/heads/$REF"
