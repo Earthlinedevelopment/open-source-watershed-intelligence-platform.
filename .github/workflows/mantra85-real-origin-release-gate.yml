@@ -1,0 +1,36 @@
+name: Mantra 85 Real-Origin Frozen Release Gate
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mantra84-real-origin-release-gate.mjs'
+      - '.github/workflows/mantra85-real-origin-release-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      EARTHLINE_URL: https://earthlinedevelopment.org/candidate-mantra84/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browser engines
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium webkit
+      - name: Run real-origin frozen release gate
+        run: node tests/mantra84-real-origin-release-gate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra85-real-origin-release-gate
+          path: artifacts/mantra84-release-gate
+          retention-days: 14
