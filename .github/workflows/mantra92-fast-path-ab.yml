@@ -1,0 +1,40 @@
+name: Earthline Mantra 92 scientific hotpath performance A/B
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths:
+      - tests/mantra92-fast-path-ab.mjs
+      - .github/workflows/mantra92-fast-path-ab.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pin exact visual-corrected scientific candidate
+        shell: bash
+        run: |
+          mkdir -p artifacts/m92-fastpath/results
+          git fetch --no-tags --depth=1 origin 166f5a603ef0762889972f1011ef4fac3d206f87
+          git show FETCH_HEAD:index.html > artifacts/m92-fastpath/source.html
+          sha256sum artifacts/m92-fastpath/source.html
+          node --check tests/mantra92-fast-path-ab.mjs
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Compare Alaska and Arizona speed while proving identical science and zero black dots
+        run: node tests/mantra92-fast-path-ab.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra92-immutable-hotpath-benchmark
+          path: artifacts/m92-fastpath/results
+          retention-days: 10
