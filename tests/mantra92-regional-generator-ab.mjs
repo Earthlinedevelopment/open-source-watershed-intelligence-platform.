@@ -72,11 +72,32 @@ function metricCandidate(regionalContourFallback=false){
   if(regionalContourFallback)result=result.replace(conditional,conditionalOld);
   return result;
 }
-const modes=[
- {name:'current',html:base},
- {name:'metric-safe',html:metricCandidate(false)},
- {name:'metric-with-coverage',html:metricCandidate(true)}
-];
+function instrumentCandidate(source){
+  const owner='async function makeSwales(hy,contours,focusMode=false,jurisdictionGeometry16539=null,supplementalCandidates16702=null){';
+  const clip=':earthlineClipLine16539(candidate16539&&candidate16539.segment||[],jurisdictionGeometry16539);';
+  const ret='return swaleCollectionM90;';
+  if(source.split(owner).length!==2||source.split(clip).length!==2||source.split(ret).length!==2)
+    throw Error('Unexpected owner or geometry clip count');
+  const hook=String.raw`
+    const __m92SwaleStarted=performance.now();
+    function __m92ClipProbe(segment,geometry){
+      const t=performance.now(),result=earthlineClipLine16539(segment,geometry);
+      const d=(window.EARTHLINE_M92_GATE_PERF||={clipCalls:0,clipMs:0,makes:[]});
+      d.clipCalls++;d.clipMs+=performance.now()-t;return result;
+    }
+  `;
+  const footer=String.raw`
+    const __m92Diag=(window.EARTHLINE_M92_GATE_PERF||={clipCalls:0,clipMs:0,makes:[]});
+    __m92Diag.makes.push({ms:Math.round(performance.now()-__m92SwaleStarted),
+      w:hy.w,h:hy.h,features:features.length,candidateCount:candidates.length,
+      beforeJurisdiction:candidatesBeforeJurisdiction16539,eligible:jurisdictionEligibleCandidates16539});
+    return swaleCollectionM90;
+  `;
+  return source.replace(owner,owner+hook)
+   .replace(clip,':__m92ClipProbe(candidate16539&&candidate16539.segment||[],jurisdictionGeometry16539);')
+   .replace(ret,footer);
+}
+const modes=[{name:'metric-profile',html:instrumentCandidate(metricCandidate(false))}];
 const queries=['Alaska','Arizona'];
 const browser=await chromium.launch({headless:true});
 const rows=[];
@@ -136,6 +157,7 @@ for(const m of modes)for(const query of queries){
       generation:generation?{generated:generation.generated,publishedFeatures:generation.publishedFeatures,
         candidatesBeforeJurisdiction:generation.candidatesBeforeJurisdiction,eligible:generation.eligible}:null,
       stage:stage?Object.fromEntries(Object.entries(stage).map(([k,v])=>[k,{calls:v.length,sumMs:v.reduce((a,s)=>a+s.ms,0)}])):null,
+      m92Perf:window.EARTHLINE_M92_GATE_PERF||null,
       error:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null};
   }).catch(e=>({evaluationError:String(e)}));
   const row={mode:m.name,query,sha:'67de444b7048fc9a8ef5282dd3f4fb5961681779',elapsedMs:Date.now()-start,failure,snap,errs,http:http.slice(-8)};
@@ -148,4 +170,13 @@ await browser.close();
 writeFileSync('artifacts/mantra92/generator-ab/matrix.json',JSON.stringify(rows,null,2));
 console.log('M92_GENERATOR_AB_SUMMARY '+JSON.stringify(rows.map(r=>({mode:r.mode,query:r.query,core:r.snap?.coreMs,swales:r.snap?.pub?.generated,
  maxLen:r.snap?.maxSourceLengthM,slope:r.snap?.maxSlope,errors:r.errs.length,failure:r.failure}))));
-if(rows.some(r=>r.failure||r.snap?.error||r.snap?.evaluationError||r.errs.length))process.exitCode=1;
+for(const r of rows){
+ const reasons=[];
+ if(r.failure||r.snap?.error||r.snap?.evaluationError||r.errs.length)reasons.push('browser error');
+ if(!(r.snap?.pub?.generated>0)||r.snap?.pub?.source!==r.snap?.pub?.generated)reasons.push('missing/mismatched swales');
+ if(!Number.isFinite(r.snap?.coreMs)||r.snap.coreMs>15000)reasons.push('core over 15 seconds');
+ if(!Number.isFinite(r.snap?.maxSourceLengthM)||r.snap.maxSourceLengthM>4005)reasons.push('source geometry too long');
+ if(!Number.isFinite(r.snap?.maxSlope)||r.snap.maxSlope>4.0001)reasons.push('slope unsafe/unverified');
+ console.log('M92_PROFILE_RELEASE_GATE '+JSON.stringify({mode:r.mode,query:r.query,pass:reasons.length===0,reasons}));
+ if(reasons.length)process.exitCode=1;
+}
