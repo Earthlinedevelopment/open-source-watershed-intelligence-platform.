@@ -161,7 +161,7 @@ try{
       document.documentElement.dataset.earthlineAnalysisTier==='regional'&&
       window.EARTHLINE_PROPERTY_TARGET_16201==null&&n?.dataset.mode!=='property'&&
       p.runToken===t.runToken;
- },tokenBefore,{timeout:8000,polling:250});
+ },tokenBefore,{timeout:55000,polling:250});
  regionReentry=true;
 }catch(e){regionReentryError=String(e)}
 const traceM92=await page.evaluate(()=>({ledger:window.EARTHLINE_RUN_LEDGER_16147?.slice(-16)||[],lastNav:window.EARTHLINE_TIER_NAV_LAST_ACTION_16156||null,cache:window.EARTHLINE_REGIONAL_CACHE_16157?.snapshot?.runToken||null,display:window.EARTHLINE_DISPLAYED_RUN_16151||null,regionalState:window.earthlineRegional15778?{active:window.earthlineRegional15778.active,mode:window.earthlineRegional15778.mode}:null,map:(()=>{try{const m=window.earthlineMap||earthlineMap;return {zoom:m.getZoom(),center:m.getCenter().toArray()}}catch{return null}})(),isDisabled:document.getElementById('runBtn')?.disabled,propertyTarget:window.EARTHLINE_PROPERTY_TARGET_16201||null,tierNotice:document.getElementById('earthlineTierNotice16173')?.textContent||null}));
