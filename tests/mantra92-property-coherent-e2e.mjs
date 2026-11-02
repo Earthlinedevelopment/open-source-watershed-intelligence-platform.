@@ -146,9 +146,14 @@ try{
    i.dispatchEvent(new Event('change',{bubbles:true}));b.click();
  });
  await page.waitForFunction(old=>{
+    const t=window.EARTHLINE_REGIONAL_TERMINAL_16539||{};
     const p=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{};
-    return p.runToken&&p.runToken!==old&&document.documentElement.dataset.earthlineAnalysisTier==='regional';
- },tokenBefore,{timeout:22000,polling:200});
+    const n=document.getElementById('earthlineTierNotice16173');
+    return t.status==='published'&&t.runToken&&t.runToken!==old&&
+      document.documentElement.dataset.earthlineAnalysisTier==='regional'&&
+      window.EARTHLINE_PROPERTY_TARGET_16201==null&&n?.dataset.mode!=='property'&&
+      p.runToken===t.runToken;
+ },tokenBefore,{timeout:85000,polling:250});
  regionReentry=true;
 }catch(e){regionReentryError=String(e)}
 const reentryState=await page.evaluate(()=>({
@@ -161,6 +166,7 @@ const reentryState=await page.evaluate(()=>({
   regionalProfile:window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556?.profileId||null,
   sourceCount:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated||null,
   regionError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,
+  regionTerminal:window.EARTHLINE_REGIONAL_TERMINAL_16539||null,
   propertyTarget:window.EARTHLINE_PROPERTY_TARGET_16201||null,
   chosenLocation:window.EARTHLINE_CHOSEN_LOCATION_16189||null,
   propertyRunState:document.documentElement.dataset.earthlinePropertyRunState||null,
