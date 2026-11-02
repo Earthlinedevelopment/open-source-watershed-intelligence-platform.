@@ -24,9 +24,13 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Run exact public historical build Arizona and Arkansas
         run: node tests/mantra92-oct05-public-control.mjs
+      - name: Verify original October 5 Arizona Property twice
+        run: node tests/mantra92-oct05-property-control.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: earthline-oct05-original-browser-captures
-          path: artifacts/oct05-control
+          path: |
+            artifacts/oct05-control
+            artifacts/oct05-property
           retention-days: 10
