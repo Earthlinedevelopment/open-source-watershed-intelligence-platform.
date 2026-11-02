@@ -18,8 +18,7 @@ if(blockStart<0||blockEnd<blockStart||!region.slice(blockStart,blockEnd).include
  !region.slice(blockStart,blockEnd).includes('stroke-width:12.5px!important'))
   throw Error('Unexpected newer hard-width CSS owner');
 const cleanRegion=region.slice(0,blockStart)+
- '/* M92 correction: respect the renderer\\'s zoom-scaled, per-feature stroke widths.\\n'+
- '   Hard 18px/12.5px !important widths turned subpixel swales into opaque black discs. */\\n'+
+ "/* M92 correction: respect zoom-scaled feature width, no hard black discs. */\n"+
  region.slice(blockEnd);
 let changed=s.slice(0,styleStart)+cleanRegion+s.slice(styleEnd);
 const oldWidth="const casing=grade==='A'?15:grade==='B'?12:9,core=grade==='A'?9.2:grade==='B'?7.2:5.2;";
@@ -30,7 +29,7 @@ const oldPaths=[
 "addPath(sg,pts,{stroke:'rgba(8,18,13,.96)','stroke-width':String(casing),'stroke-linecap':'round','stroke-linejoin':'round'});",
 "addPath(sg,pts,{class:'earthline-swale-core-16168','data-swale-index':String(swales),stroke:main,'stroke-width':String(core),'stroke-linecap':'round','stroke-linejoin':'round',filter:'url(#elGlow16020)'});",
 "addPath(sg,pts,{stroke:light,'stroke-width':grade==='A'?'1.8':'1.2','stroke-linecap':'round','stroke-linejoin':'round','stroke-dasharray':grade==='C'?'6 9':'10 7'});"
-].join('\n');
+].join('\n        ');
 onlyOnce(changed,oldPaths,'Regional path trio');
 const newPaths=[
 "if(len<2.5){",
