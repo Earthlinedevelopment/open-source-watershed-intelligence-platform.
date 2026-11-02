@@ -11,9 +11,9 @@ const ROOT=process.cwd();
 const html=readFileSync(path.join(ROOT,'index.html'));
 const sha256=createHash('sha256').update(html).digest('hex');
 const critical=['Arizona','New Mexico','Colorado','Texas','California','Vermont','New York'];
-const extended=['Arkansas','Iowa','Nebraska','Oklahoma','Alaska'];
-const cases=process.env.EARTHLINE_EXTENDED==='1'?critical.concat(extended):critical;
-const ids={Arizona:'us-az','New Mexico':'us-nm',Colorado:'us-co',Texas:'us-tx',California:'us-ca',Vermont:'us-vt','New York':'us-ny',Arkansas:'us-ar',Iowa:'us-ia',Nebraska:'us-ne',Oklahoma:'us-ok',Alaska:'us-ak'};
+const extended=['Arkansas','Iowa','Nebraska','Oklahoma','Alaska','Massachusetts','Maryland','Nevada','Alabama','Florida','Louisiana'];
+const cases=(process.env.GITHUB_EVENT_NAME==='pull_request'||process.env.EARTHLINE_EXTENDED==='1')?critical.concat(extended):critical;
+const ids={Arizona:'us-az','New Mexico':'us-nm',Colorado:'us-co',Texas:'us-tx',California:'us-ca',Vermont:'us-vt','New York':'us-ny',Arkansas:'us-ar',Iowa:'us-ia',Nebraska:'us-ne',Oklahoma:'us-ok',Alaska:'us-ak',Massachusetts:'us-ma',Maryland:'us-md',Nevada:'us-nv',Alabama:'us-al',Florida:'us-fl',Louisiana:'us-la'};
 mkdirSync('artifacts/release-airlock',{recursive:true});
 const browser=await chromium.launch({headless:true});
 const rows=[];
@@ -73,7 +73,7 @@ async function region(query){
      const s=map?.getSource?.('el-live-swales-15970');
      fc=s?._data||s?.serialize?.()?.data||null;
    }catch{}
-   return {profileId:pkg?.profileId||null,coreMs:p?.phaseTotalsMs?.coreTotalMs??null,
+   return {profileId:pkg?.profileId||null,coreMs:p?.phaseTotalsMs?.coreTotalMs??null,phases:p?.phaseTotalsMs||null,
      swales:u?.generated??null,sourceFeatures:u?.sourceFeatures??null,
      visible:u?.overlaySwaleLines??null,flowPaths:p?.waterPaths??null,
      unsafe:a?.unsafeSegments??null,outside:b?.outsideAfterClip?.swales??null,
@@ -99,9 +99,11 @@ async function region(query){
  if(!Number.isFinite(maxLength)||maxLength>4005)fails.push('invalid or overlong source corridor');
  if(!Number.isFinite(maxSlope)||maxSlope>4.0001||slopes.some(x=>!Number.isFinite(x)||x<0))
    fails.push('slope >4% or unverified');
- if(snap.unsafe!==null&&snap.unsafe!==0)fails.push('unsafe mapped segment');
+ if(snap.unsafe!==0)fails.push('unsafe segments detected or safety audit unavailable');
+ if(!Number.isInteger(snap.flowPaths)||snap.flowPaths<=0)fails.push('water-path publication missing');
  if(snap.outside!==null&&snap.outside!==0)fails.push('out-of-jurisdiction swale');
- const row={query,sha256,runWallMs:Date.now()-t,coreMs:snap.coreMs,waterPaths:snap.flowPaths,
+ const row={query,sha256,runWallMs:Date.now()-t,coreMs:snap.coreMs,phases:snap.phases,waterPaths:snap.flowPaths,
+   sourceFeatures:snap.sourceFeatures,visible:snap.visible,profile:snap.profileId,
    count:snap.swales,maxLengthM:maxLength,maxSlope,unsafe:snap.unsafe,outside:snap.outside,
    errors:errors.slice(-5),fails,pass:fails.length===0};
  rows.push(row);console.log('EARTHLINE_RELEASE_AIRLOCK '+JSON.stringify(row));
@@ -109,6 +111,11 @@ async function region(query){
  await ctx.close();
 }
 for(const q of cases)await region(q);
+if(process.env.GITHUB_EVENT_NAME==='pull_request'){
+  // Large-state tail risk: reject candidates that pass Alaska only by chance.
+  await region('Alaska');
+  await region('Alaska');
+}
 await browser.close();
 const result={sha256,commit:process.env.GITHUB_SHA||null,critical:cases,passed:rows.filter(r=>r.pass).length,
  failed:rows.filter(r=>!r.pass).map(r=>r.query),rows};
