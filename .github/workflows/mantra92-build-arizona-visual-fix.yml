@@ -1,0 +1,40 @@
+name: Earthline M92 isolated black-badge visual repair
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths:
+      - .github/workflows/mantra92-build-arizona-visual-fix.yml
+      - tools/mantra92-fix-regional-black-badges.mjs
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  compose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Create presentation-only change, preserving accepted source geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tools/mantra92-fix-regional-black-badges.mjs /tmp/earthline-m92-black-badges.mjs
+          git fetch origin refs/heads/candidate/mantra92-arizona-visual-repair:refs/remotes/origin/candidate/mantra92-arizona-visual-repair
+          git checkout -B candidate/mantra92-arizona-visual-repair refs/remotes/origin/candidate/mantra92-arizona-visual-repair
+          test "$(git rev-parse HEAD)" = "4dcb7aade2ed64f4a7434ffe115e21864e9f1304" || { echo "::error::Candidate parent moved";exit 1; }
+          cp /tmp/earthline-m92-black-badges.mjs ./m92-visual-fix.mjs
+          node --check m92-visual-fix.mjs
+          node m92-visual-fix.mjs
+          rm m92-visual-fix.mjs
+          python3 tools/earthline-release-airlock-static.py
+          test "$(git diff --name-only)" = "index.html" || { echo "::error::Unexpected diff";exit 1; }
+          git config user.name "Earthline repair"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "visual(mantra92): prevent black Regional dots without altering science"
+          git push origin HEAD:refs/heads/candidate/mantra92-arizona-visual-repair
