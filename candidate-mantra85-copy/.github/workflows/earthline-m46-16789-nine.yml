@@ -1,0 +1,42 @@
+name: Mantra 46 16789 Nine-State Closeout
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mantra46-16789-nine-state-production.mjs'
+      - '.github/workflows/earthline-m46-16789-nine.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  nine-state:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Wait for 16789 live deployment
+        run: |
+          for i in $(seq 1 60); do
+            html="$(curl -fsS --max-time 20 https://earthlinedevelopment.org/ || true)"
+            if printf '%s' "$html" | grep -q 'EARTHLINE 16789 — SAME-PARENT COUNT-NEUTRAL FINAL SPREAD'; then exit 0; fi
+            sleep 3
+          done
+          exit 1
+      - name: Run nine-state closeout
+        run: node tests/mantra46-16789-nine-state-production.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16789-nine
+          path: artifacts/mantra46-16789-nine/
+          if-no-files-found: warn

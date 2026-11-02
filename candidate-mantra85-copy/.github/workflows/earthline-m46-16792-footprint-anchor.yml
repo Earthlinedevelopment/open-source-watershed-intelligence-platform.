@@ -1,0 +1,31 @@
+name: Mantra 46 16792 Footprint Anchor A-B
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mantra46-16792-footprint-anchor-ab.mjs'
+      - '.github/workflows/earthline-m46-16792-footprint-anchor.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  footprint-anchor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run exact-cell footprint anchor test
+        run: node tests/mantra46-16792-footprint-anchor-ab.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16792-footprint-anchor
+          path: artifacts/mantra46-16792-footprint-anchor/
+          if-no-files-found: error

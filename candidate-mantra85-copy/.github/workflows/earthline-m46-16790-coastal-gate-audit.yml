@@ -1,0 +1,34 @@
+name: Mantra 46 16790 Six-State Candidate Gate Audit
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mantra46-16790-coastal-gate-audit.mjs'
+      - '.github/workflows/earthline-m46-16790-coastal-gate-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run six-state candidate gate audit
+        run: node tests/mantra46-16790-coastal-gate-audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16790-coastal-gate-audit
+          path: artifacts/mantra46-16790-coastal/
+          if-no-files-found: warn

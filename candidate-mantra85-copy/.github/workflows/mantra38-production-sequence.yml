@@ -1,0 +1,43 @@
+name: Mantra 38 Production Sequence
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tools/mantra38-apply-global-shoreline-setback.mjs'
+      - '.github/workflows/mantra38-production-sequence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  production-sequence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply shared global shoreline publication rule
+        run: node tools/mantra38-apply-global-shoreline-setback.mjs
+      - name: Commit product repair
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "repair: full-cell global shoreline safety margin"
+          git push origin HEAD:pages-live
+      - name: Wait for serving deployment
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 20 https://earthlinedevelopment.org/ | grep -q 'one-local-DEM-cell-diagonal'; then
+              exit 0
+            fi
+            sleep 3
+          done
+          exit 1

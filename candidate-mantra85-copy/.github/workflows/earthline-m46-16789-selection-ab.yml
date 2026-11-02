@@ -1,0 +1,34 @@
+name: Mantra 46 16789 Selection A-B
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mantra46-16789-selection-ab.mjs'
+      - '.github/workflows/earthline-m46-16789-selection-ab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  selection-ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run same-parent final-spread A-B
+        run: node tests/mantra46-16789-selection-ab.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16789-selection-ab
+          path: artifacts/mantra46-16789-selection-ab/
+          if-no-files-found: warn

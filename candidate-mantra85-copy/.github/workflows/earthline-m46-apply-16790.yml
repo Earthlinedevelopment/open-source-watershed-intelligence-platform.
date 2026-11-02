@@ -1,0 +1,38 @@
+name: Earthline Apply 16790 Audit Ownership
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tools/mantra46-apply-16790-audit-coverage.py'
+      - '.github/workflows/earthline-m46-apply-16790.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-16790:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply 16790 audit ownership correction
+        run: python tools/mantra46-apply-16790-audit-coverage.py
+      - name: Verify diagnostic-only product scope
+        run: |
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+          grep -q "EARTHLINE 16790 — CANDIDATE FOOTPRINT AUDIT OWNERSHIP" index.html
+          grep -q "candidateCoverageCellKeys16790" index.html
+          grep -q "const opportunityNoCandidate=diff(opportunityKeys,candidateCoverageKeys);" index.html
+          grep -q "p16783.parent!==add16783.point.parent" index.html
+      - name: Commit product candidate
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "audit: deploy 16790 candidate footprint ownership correction"
+          git push origin HEAD:pages-live

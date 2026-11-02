@@ -1,0 +1,39 @@
+name: Earthline Apply 16786 Spatial Anchors
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tools/mantra46-apply-16786-spatial-anchors.py'
+      - '.github/workflows/earthline-m46-apply-16786.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-16786:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply 16786 candidate repair
+        run: python tools/mantra46-apply-16786-spatial-anchors.py
+      - name: Verify scoped product diff
+        run: |
+          git diff --check
+          test "$(git diff --name-only | tr -d '\r')" = "index.html"
+          grep -q "EARTHLINE 16786 — SPATIALLY COMPLETE REGIONAL CONTOUR ANCHORS" index.html
+          grep -q "EARTHLINE_SPATIAL_ANCHOR_AUDIT_16786" index.html
+          grep -q "supplementalAnchorAttempts16786" index.html
+          grep -q "regionalCapacity16755" index.html
+          grep -q "EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584" index.html
+      - name: Commit 16786 candidate
+        run: |
+          git config user.name "Earthlinedevelopment"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "repair: spatially complete Regional contour anchors"
+          git push origin HEAD:pages-live

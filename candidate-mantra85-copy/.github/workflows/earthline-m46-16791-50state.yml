@@ -1,0 +1,43 @@
+name: Mantra 46 16791 50-State Production Certification
+
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - 'tests/mantra46-16791-50state-production.mjs'
+      - '.github/workflows/earthline-m46-16791-50state.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regional-50:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Wait for 16791 public deployment
+        run: |
+          for i in $(seq 1 80); do
+            html="$(curl -fsS --max-time 20 https://earthlinedevelopment.org/ || true)"
+            if printf '%s' "$html" | grep -q 'EARTHLINE 16791 — CORRECTED REGIONAL AUDIT SEMANTICS'; then exit 0; fi
+            sleep 3
+          done
+          echo "16791 marker not live"
+          exit 1
+      - name: Run all-50 Regional certification
+        run: node tests/mantra46-16791-50state-production.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra46-16791-50state
+          path: artifacts/mantra46-16791-50state/
+          if-no-files-found: warn
