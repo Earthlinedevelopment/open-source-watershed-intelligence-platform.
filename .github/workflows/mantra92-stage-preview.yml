@@ -39,7 +39,9 @@ jobs:
           python3 tools/earthline-release-airlock-static.py
           git diff --quiet -- index.html
           git add candidate-mantra92/index.html candidate-mantra92/RELEASE-CANDIDATE.json
-          git diff --cached --check
+          # Archived source contains historical trailing spaces; do not rewrite the code
+          # merely to satisfy a whitespace linter on a verbatim preview copy.
+          node -e "const fs=require('fs'),c=require('crypto'),j=require('./candidate-mantra92/RELEASE-CANDIDATE.json'),s=fs.readFileSync('candidate-mantra92/index.html');if(c.createHash('sha256').update(s).digest('hex')!==j.previewHtmlSHA256)process.exit(1)"
           test "$(git diff --cached --name-only | sort | tr '\n' ' ')" = "candidate-mantra92/RELEASE-CANDIDATE.json candidate-mantra92/index.html " || { echo "::error::Unexpected files in preview"; exit 1; }
           git config user.name "Earthline recovery"
           git config user.email "info@earthlinedevelopment.org"
