@@ -2,11 +2,11 @@ import {chromium} from 'playwright';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 const html=readFileSync('artifacts/mantra92-hotpath/baseline.html','utf8');
-const tokens=['(++yieldCount16661%384)===0','(++finalScreenYield16661%384)===0'];
+const tokens=['(++yieldCount16661%1536)===0','(++finalScreenYield16661%1536)===0'];
 for(const t of tokens)if(html.split(t).length!==2)throw Error('M92 unsafe or changed owner: '+t);
 const variants=[
-  {label:'baseline384',content:html},
-  {label:'yield1536',content:tokens.reduce((s,t)=>s.replace(t,t.replace('%384','%1536')),html)}
+  {label:'baseline1536',content:html},
+  {label:'yield6144',content:tokens.reduce((s,t)=>s.replace(t,t.replace('%1536','%6144')),html)}
 ];
 const url='https://earthlinedevelopment.org/';
 mkdirSync('artifacts/mantra92-hotpath/results',{recursive:true});
