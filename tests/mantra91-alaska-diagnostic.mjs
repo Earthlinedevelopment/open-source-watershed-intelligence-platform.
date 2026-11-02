@@ -45,4 +45,51 @@ for(const query of queries){
 }
 writeFileSync('artifacts/mantra91/'+(candidate?'candidate':'live')+'.json',JSON.stringify(rows,null,2));
 await browser.close();
-if(rows.some(r=>r.failure||r.snap?.error))process.exitCode=1;
+// M92: A diagnostic that records data is not a release pass. Enforce the actual
+// contract on the candidate, but preserve the live baseline even when it fails.
+const CORE_CEILING_MS=15000;
+const baselineFile='artifacts/mantra91/live.json';
+let baselineRows=[];
+if(candidate){
+ try{baselineRows=JSON.parse(readFileSync(baselineFile,'utf8'));}
+ catch(e){console.error('M91_GATE baseline unavailable:',String(e));process.exitCode=1;}
+}
+const violations=[];
+for(const row of rows){
+ const why=[];
+ if(row.failure||row.snap?.error||row.snap?.evaluationError)why.push('analysis failed');
+ if(row.errors?.length)why.push('uncaught page errors: '+row.errors.length);
+ if(row.snap?.tier!=='regional')why.push('not Regional tier');
+ const perfMs=Number(row.snap?.perf?.phaseTotalsMs?.coreTotalMs);
+ if(!Number.isFinite(perfMs)||perfMs<=0)why.push('missing core timing');
+ if(row.snap?.publication?.generated!==row.snap?.publication?.sourceFeatures||
+    row.snap?.publication?.generated!==row.snap?.publication?.overlaySwaleLines)
+    why.push('display/source swale mismatch');
+ const targetProfile=row.query==='Alaska'?'us-ak':row.query==='Arizona'?'us-az':null;
+ if(row.snap?.pkg?.profileId!==targetProfile)why.push('wrong jurisdiction profile');
+ if((row.snap?.cam?.sampledAreaCoveredByCamera??0)<0.999)why.push('camera does not cover sampled analysis');
+ if(candidate){
+   if(Number.isFinite(perfMs)&&perfMs>CORE_CEILING_MS)
+     why.push('core '+perfMs+' ms exceeds '+CORE_CEILING_MS+' ms ceiling');
+   const baseline=baselineRows.find(x=>x.query===row.query);
+   if(!baseline)why.push('missing same-query live baseline');
+   else for(const [label,now,before] of [
+     ['swale count',row.snap?.publication?.generated,baseline.snap?.publication?.generated],
+     ['water path count',row.snap?.perf?.waterPaths,baseline.snap?.perf?.waterPaths],
+     ['invalid water cells',row.snap?.land?.rasterizedInvalidWaterCellCount,baseline.snap?.land?.rasterizedInvalidWaterCellCount],
+     ['valid land cells',row.snap?.land?.validLandCellCount,baseline.snap?.land?.validLandCellCount]
+   ]){if(now!==before)why.push(label+' changed: '+before+' to '+now);}
+ }
+ console.log('M91_'+(candidate?'CANDIDATE_GATE':'BASELINE_ASSESSMENT')+' '+JSON.stringify({
+   query:row.query,coreMs:perfMs,ceilingMs:CORE_CEILING_MS,
+   meetsCoreCeiling:Number.isFinite(perfMs)&&perfMs<=CORE_CEILING_MS,
+   eligibleForRelease:candidate&&why.length===0,violations:why
+ }));
+ if((candidate||row.failure||row.snap?.error||row.snap?.evaluationError)&&why.length)
+   violations.push({query:row.query,why});
+}
+if(violations.length){
+ console.error('M91_GATE_FAILED '+JSON.stringify(violations));
+ process.exitCode=1;
+}
+
