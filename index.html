@@ -30024,6 +30024,14 @@ body { overflow-x:hidden!important; }
       const rawCenter=Math.max(0,Math.min(raw.length-1,center-start));
       const distM=(a,b)=>{const R=6371008.8,p1=Number(a[1])*Math.PI/180,p2=Number(b[1])*Math.PI/180,dp=(Number(b[1])-Number(a[1]))*Math.PI/180,dl=(Number(b[0])-Number(a[0]))*Math.PI/180,q=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(q)))};
       
+      let segment;
+      if(focusMode){
+      let left=rawCenter,right=rawCenter,leftM=0,rightM=0;
+      while(left>0){const d=distM(raw[left],raw[left-1]);if(leftM+d>8000)break;left--;leftM+=d}
+      while(right<raw.length-1){const d=distM(raw[right],raw[right+1]);if(rightM+d>8000)break;right++;rightM+=d}
+      if(left===right){if(right<raw.length-1)right++;else if(left>0)left--}
+      segment=raw.slice(left,right+1);if(segment.length<2)return null;
+      }else{
       const capM92=2000;
       function sectionM92(dir){
         let cursorM92=rawCenter,totalM92=0;
@@ -30041,8 +30049,9 @@ body { overflow-x:hidden!important; }
         return ptsM92;
       }
       const leftM92=sectionM92(-1),rightM92=sectionM92(1);
-      const segment=leftM92.reverse().slice(0,-1).concat(rightM92);
+      segment=leftM92.reverse().slice(0,-1).concat(rightM92);
       if(segment.length<2)return null;
+      }
 
       const linePx16632=lineLengthPixels(hy,segment);let minLinePx16632=focusMode?10:0;
       if(!focusMode&&linePx16632<10&&linePx16632>=4&&Math.max(Number(hy.cellX)||0,Number(hy.cellY)||0)>10000){
@@ -30073,7 +30082,9 @@ body { overflow-x:hidden!important; }
       const slopeScore=Math.max(0,1-Math.abs(meanSlope-3.4)/(relaxed?12:7.5));
       const flowScore=meanAcc<=accLow?.18:meanAcc<=accMid?.18+.70*(meanAcc-accLow)/Math.max(1,accMid-accLow):Math.max(.18,.88-.48*(meanAcc-accMid)/Math.max(1,accHigh-accMid));
       const lengthScore=Math.min(1,lineLengthPixels(hy,segment)/85);
-      return {segment,x:anchor.x,y:anchor.y,slope:meanSlope,acc:meanAcc,maxAcc,score:slopeScore*.56+flowScore*.28+lengthScore*.16,confidence:relaxed?'screening':'preferred',minLinePx16632,m92MetricValidated:!focusMode};
+      const corridorM92={segment,x:anchor.x,y:anchor.y,slope:meanSlope,acc:meanAcc,maxAcc,score:slopeScore*.56+flowScore*.28+lengthScore*.16,confidence:relaxed?'screening':'preferred',minLinePx16632};
+      if(!focusMode)corridorM92.m92MetricValidated=true;
+      return corridorM92;
     }
     /* EARTHLINE 16591 — jurisdiction eligibility must precede Regional ranking/spacing/capacity.
        Hydrology and contours still span the full DEM envelope; this only prevents candidates
