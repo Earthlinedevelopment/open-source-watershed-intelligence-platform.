@@ -1,35 +1,16 @@
-name: Promote 16601 water mask to live index
-
+# Mantra 92 permanent safeguard: obsolete direct auto-promotion retired.
+# Original implementation remains in git history.
+name: Retired legacy promote-16601-water
 on:
-  push:
-    branches: [pages-live]
-    paths:
-      - '.github/workflows/promote-16601-water.yml'
-
+  workflow_dispatch:
 permissions:
-  contents: write
-
+  contents: read
 jobs:
-  promote:
+  disabled:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: pages-live
-          fetch-depth: 0
-      - name: Append tested 16601 shared-water owner at absolute EOF
-        shell: bash
+      - name: Refuse unverified production writes
         run: |
-          set -euo pipefail
-          marker='builds/16601/earthline-shared-water-mask.js'
-          if grep -Fq "$marker" index.html; then
-            echo '16601 live water loader already present; no change.'
-            exit 0
-          fi
-          printf '\n<script src="/builds/16601/earthline-shared-water-mask.js?v=16601-live-water-20260909"></script>\n' >> index.html
-          tail -n 5 index.html
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add index.html
-          git commit -m 'fix(live): promote tested 16601 shared water mask'
-          git push origin HEAD:pages-live
+          echo "::error::Legacy direct production writer retired by Mantra 92."
+          echo "::error::Use a pinned candidate and required scientific release gates."
+          exit 1
