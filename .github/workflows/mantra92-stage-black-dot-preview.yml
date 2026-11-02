@@ -1,0 +1,45 @@
+name: Earthline — stage visual-corrected recovery preview
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths: [.github/workflows/mantra92-stage-black-dot-preview.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Stage tested pure-visual fix as separate public preview only
+        shell: bash
+        env:
+          M92_PREVIEW_SHA: 166f5a603ef0762889972f1011ef4fac3d206f87
+        run: |
+          set -euo pipefail
+          cp tools/mantra92-stage-preview.mjs /tmp/earthline-m92-stage.mjs
+          REF=preview/mantra92-black-dot-correction
+          BASE=2118d30eede185c2fd5866595a1002e4a0e2d931
+          git fetch origin "refs/heads/$REF:refs/remotes/origin/$REF"
+          git fetch origin refs/heads/candidate/mantra92-arizona-visual-repair:refs/remotes/origin/candidate/mantra92-arizona-visual-repair
+          test "$(git rev-parse refs/remotes/origin/candidate/mantra92-arizona-visual-repair)" = "$M92_PREVIEW_SHA" || { echo "::error::Visual candidate changed";exit 1; }
+          git checkout -B "$REF" "refs/remotes/origin/$REF"
+          test "$(git rev-parse HEAD)" = "$BASE" || { echo "::error::Preview parent moved";exit 1; }
+          mkdir -p artifacts/mantra92-preview-source
+          git show "$M92_PREVIEW_SHA:index.html" > artifacts/mantra92-preview-source/index.html
+          cp /tmp/earthline-m92-stage.mjs ./m92-preview-stage.mjs
+          node m92-preview-stage.mjs
+          rm m92-preview-stage.mjs
+          node -e "const fs=require('fs'),c=require('crypto'),m=require('./candidate-mantra92/RELEASE-CANDIDATE.json');if(c.createHash('sha256').update(fs.readFileSync('candidate-mantra92/index.html')).digest('hex')!==m.previewHtmlSHA256)process.exit(1)"
+          git add candidate-mantra92/index.html candidate-mantra92/RELEASE-CANDIDATE.json
+          test "$(git diff --cached --name-only | wc -l)" -eq 2 || { echo "::error::Unexpected files";exit 1; }
+          git config user.name "Earthline tested visual preview"
+          git config user.email "info@earthlinedevelopment.org"
+          git commit -m "preview(mantra92): remove black dots while preserving science geometry"
+          git push origin HEAD:"refs/heads/$REF"
