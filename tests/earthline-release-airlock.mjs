@@ -67,6 +67,15 @@ async function region(query){
    const pkg=window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||null;
    const a=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null;
    const b=window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||null;
+   const overlay=document.querySelector('#earthlineRegionalVectorOverlay16020 [data-layer="swale-opportunities"]');
+   const paths=[...(overlay?.querySelectorAll(':scope > path')||[])];
+   const dark=paths.filter(el=>el.getAttribute('stroke')==='rgba(8,18,13,.96)');
+   const blackDots=dark.filter(el=>{
+     let len=Infinity;try{len=el.getTotalLength()}catch{}
+     return len<3&&(parseFloat(getComputedStyle(el).strokeWidth)||0)>=10;
+   }).length;
+   const blackMaxWidth=Math.max(0,...dark.map(el=>parseFloat(getComputedStyle(el).strokeWidth)||0));
+   const coreCount=paths.filter(el=>(el.getAttribute('class')||'').includes('earthline-swale-core-16168')).length;
    let fc=null;
    try{
      const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;
@@ -77,6 +86,7 @@ async function region(query){
      swales:u?.generated??null,sourceFeatures:u?.sourceFeatures??null,
      visible:u?.overlaySwaleLines??null,flowPaths:p?.waterPaths??null,
      unsafe:a?.unsafeSegments??null,outside:b?.outsideAfterClip?.swales??null,
+     blackDots,blackMaxWidth,coreCount,overlayPresent:!!overlay,
      features:Array.isArray(fc?.features)?fc.features.map(f=>({
        coords:f?.geometry?.coordinates||null,slope:Number(f?.properties?.slope_pct)
      })):null,
@@ -99,10 +109,15 @@ async function region(query){
  if(!Number.isFinite(maxLength)||maxLength>4005)fails.push('invalid or overlong source corridor');
  if(!Number.isFinite(maxSlope)||maxSlope>4.0001||slopes.some(x=>!Number.isFinite(x)||x<0))
    fails.push('slope >4% or unverified');
- if(snap.unsafe!==null&&snap.unsafe!==0)fails.push('unsafe mapped segment');
+ if(snap.unsafe!==0)fails.push('unsafe segments or missing independent safety proof');
+ if(!Number.isInteger(snap.flowPaths)||snap.flowPaths<=0)fails.push('mapped directional water paths absent');
+ if(!snap.overlayPresent||snap.blackDots!==0||snap.blackMaxWidth>=10)
+   fails.push('black swale dot/overwide casing regression');
+ if(snap.coreCount!==snap.swales)fails.push('SVG corridor render parity mismatch');
  if(snap.outside!==null&&snap.outside!==0)fails.push('out-of-jurisdiction swale');
  const row={query,sha256,runWallMs:Date.now()-t,coreMs:snap.coreMs,waterPaths:snap.flowPaths,
    count:snap.swales,maxLengthM:maxLength,maxSlope,unsafe:snap.unsafe,outside:snap.outside,
+   blackDots:snap.blackDots,blackMaxWidth:snap.blackMaxWidth,coreCount:snap.coreCount,
    errors:errors.slice(-5),fails,pass:fails.length===0};
  rows.push(row);console.log('EARTHLINE_RELEASE_AIRLOCK '+JSON.stringify(row));
  await page.screenshot({path:'artifacts/release-airlock/'+query.toLowerCase().replace(/\s+/g,'-')+'.png'}).catch(()=>{});
