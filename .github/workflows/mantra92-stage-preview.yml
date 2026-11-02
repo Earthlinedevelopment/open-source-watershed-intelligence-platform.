@@ -1,0 +1,46 @@
+name: Mantra 92 stage isolated user test preview
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths:
+      - .github/workflows/mantra92-stage-preview.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Stage immutable candidate under test route only
+        env:
+          M92_PREVIEW_SHA: 'f8623b9c04ff7dc77dcfb5e376653cd506559dac'
+        run: |
+          set -euo pipefail
+          cp tools/mantra92-stage-preview.mjs /tmp/earthline-preview.mjs
+          git fetch origin refs/heads/preview/mantra92-recovery:refs/remotes/origin/preview/mantra92-recovery
+          git fetch origin refs/heads/candidate/mantra92-metric-recovery:refs/remotes/origin/candidate/mantra92-metric-recovery
+          git checkout -B preview/mantra92-recovery refs/remotes/origin/preview/mantra92-recovery
+          test "$(git rev-parse HEAD)" = "527635dd390450d4506da3fa0ea05ed52abc6162" || { echo "::error::Preview base moved"; exit 1; }
+          test "$(git rev-parse refs/remotes/origin/candidate/mantra92-metric-recovery)" = "$M92_PREVIEW_SHA" || { echo "::error::Candidate changed, preview cannot be trusted"; exit 1; }
+          mkdir -p artifacts/mantra92-preview-source
+          git show "$M92_PREVIEW_SHA:index.html" > artifacts/mantra92-preview-source/index.html
+          cp /tmp/earthline-preview.mjs ./m92-preview.mjs
+          node m92-preview.mjs
+          rm m92-preview.mjs
+          python3 tools/earthline-release-airlock-static.py
+          git diff --quiet -- index.html
+          git add candidate-mantra92/index.html candidate-mantra92/RELEASE-CANDIDATE.json
+          git diff --cached --check
+          test "$(git diff --cached --name-only | sort | tr '\n' ' ')" = "candidate-mantra92/RELEASE-CANDIDATE.json candidate-mantra92/index.html " || { echo "::error::Unexpected files in preview"; exit 1; }
+          git config user.name "Earthline recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git commit -m "preview(mantra92): stage pinned repaired engine without changing live homepage"
+          git push origin HEAD:refs/heads/preview/mantra92-recovery
