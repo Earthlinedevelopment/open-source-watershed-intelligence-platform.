@@ -1,15 +1,15 @@
-name: Mantra 92 repair isolated candidate Regional SVG
+name: Mantra 92 promote measured pure geometry cache to candidate
 on:
   push:
     branches: [audit/mantra92-regional-fallback-isolation]
     paths:
-      - tools/mantra92-fix-subpixel-swale.mjs
+      - tools/mantra92-cache-prepared-geometries.mjs
       - .github/workflows/mantra92-build-metric-candidate.yml
   workflow_dispatch:
 permissions:
   contents: write
 jobs:
-  render:
+  optimize:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -20,22 +20,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Recover actual Mapbox-projected corridor in isolated candidate
+      - name: Preserve exact geometry and optimize candidate only
         shell: bash
         run: |
           set -euo pipefail
-          cp tools/mantra92-fix-subpixel-swale.mjs /tmp/m92-render.mjs
+          cp tools/mantra92-cache-prepared-geometries.mjs /tmp/m92-memo.mjs
           git fetch origin refs/heads/candidate/mantra92-metric-recovery:refs/remotes/origin/candidate/mantra92-metric-recovery
           git checkout -B candidate/mantra92-metric-recovery refs/remotes/origin/candidate/mantra92-metric-recovery
-          test "$(git rev-parse HEAD)" = "7db945d8893060a70119bef5fe524062005b9e2d" || { echo "::error::Candidate advanced; do not overwrite"; exit 1; }
-          cp /tmp/m92-render.mjs ./m92-render.mjs
-          node m92-render.mjs
-          rm m92-render.mjs
+          test "$(git rev-parse HEAD)" = "f8623b9c04ff7dc77dcfb5e376653cd506559dac" || { echo "::error::Candidate changed. Refusing unsafe overwrite"; exit 1; }
+          cp /tmp/m92-memo.mjs ./m92-memo.mjs
+          node m92-memo.mjs
+          rm m92-memo.mjs
           python3 tools/earthline-release-airlock-static.py
           git diff --check
-          test "$(git diff --name-only)" = "index.html" || { echo "::error::Unexpected modified files"; exit 1; }
+          test "$(git diff --name-only)" = "index.html" || { echo "::error::Unexpected changed files"; exit 1; }
           git config user.name "Earthline recovery"
           git config user.email "info@earthlinedevelopment.org"
           git add index.html
-          git commit -m "render(mantra92): retain valid regional subpixel swale projection"
+          git commit -m "perf(mantra92): memoize immutable prepared state geometry"
           git push origin HEAD:refs/heads/candidate/mantra92-metric-recovery
