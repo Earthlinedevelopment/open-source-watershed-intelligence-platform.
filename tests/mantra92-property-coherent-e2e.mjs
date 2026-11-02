@@ -148,9 +148,27 @@ try{
  await page.waitForFunction(old=>{
     const p=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{};
     return p.runToken&&p.runToken!==old&&document.documentElement.dataset.earthlineAnalysisTier==='regional';
- },tokenBefore,{timeout:50000,polling:200});
+ },tokenBefore,{timeout:22000,polling:200});
  regionReentry=true;
 }catch(e){regionReentryError=String(e)}
+const reentryState=await page.evaluate(()=>({
+  tier:document.documentElement.dataset.earthlineAnalysisTier,
+  search:document.getElementById('searchInput')?.value||null,
+  runDisabled:document.getElementById('runBtn')?.disabled,
+  runLabel:document.getElementById('runBtn')?.textContent?.trim()?.slice(0,100),
+  regionalRunToken:window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.runToken||null,
+  regionalCoreMs:window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.phaseTotalsMs?.coreTotalMs,
+  regionalProfile:window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556?.profileId||null,
+  sourceCount:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated||null,
+  regionError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null,
+  propertyTarget:window.EARTHLINE_PROPERTY_TARGET_16201||null,
+  chosenLocation:window.EARTHLINE_CHOSEN_LOCATION_16189||null,
+  propertyRunState:document.documentElement.dataset.earthlinePropertyRunState||null,
+  panelTier:document.getElementById('earthlineTierNotice16173')?.textContent||null,
+  mapName:typeof M!=='undefined'?M.loc?.name||null:null,
+  searchGen:typeof M!=='undefined'?M.searchGen:null
+}));
+console.log('M92_REGION_REENTRY_STATE '+JSON.stringify(reentryState));
 console.log('M92_REGION_REENTRY '+JSON.stringify({regionReentry,regionReentryError}));
 
 const replacementPass=rows.length===2&&rows[0].snap.publication?.runToken!==rows[1].snap.publication?.runToken&&Math.abs(Number(rows[1].snap.audit?.center?.lng)-TARGETS[1].lng)<1e-5;
