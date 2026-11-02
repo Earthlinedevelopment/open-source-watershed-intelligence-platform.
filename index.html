@@ -31198,20 +31198,58 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     const key=[cap.id,stateName.toLowerCase()].join('|');
     if(jurisdictionBoundaryCache16539.has(key))return jurisdictionBoundaryCache16539.get(key);
     const params=new URLSearchParams({where:"NAME='"+earthlineSqlLiteral16539(stateName)+"'",outFields:'NAME,STUSAB,GEOID,INTPTLAT,INTPTLON',returnGeometry:'true',outSR:'4326',maxAllowableOffset:'0.0025',geometryPrecision:'5',f:'geojson'});
-    const signal=(typeof AbortSignal!=='undefined'&&typeof AbortSignal.timeout==='function')?AbortSignal.timeout(6500):undefined;
-    const response=await fetch(cap.endpoint+'?'+params.toString(),{mode:'cors',cache:'force-cache',signal,headers:{Accept:'application/geo+json,application/json'}});
-    if(!response.ok)throw new Error('administrative boundary HTTP '+response.status);
-    const data=await response.json();if(runToken&&!isCurrentRun(runToken))return null;
+    /* M89: 2025 U.S. Census cartographic state boundaries are cached on this origin.
+       This removes external TIGERweb CORS as a prerequisite for state-scale screening.
+       A missing cache can still use the original official endpoint, but invalid/wrong-state
+       geometry never enters the hydrology engine. This is NOT legal parcel geometry. */
+    const profileM89=EARTHLINE_US_STATE_REGISTRY_16556.find(p=>earthlinePlaceKey16537(p.query)===earthlinePlaceKey16537(stateName));
+    let data=null,localM89=false,fetchSourceM89=null;
+    if(profileM89){
+      const localUrlM89='/data/jurisdiction/us-states-2025-500k/'+profileM89.abbr+'.geojson';
+      try{
+        const localResponseM89=await fetch(localUrlM89,{cache:'force-cache'});
+        if(localResponseM89.ok){
+          const cachedM89=await localResponseM89.json();
+          const featureM89=cachedM89&&cachedM89.features&&cachedM89.features[0];
+          if(cachedM89.type!=='FeatureCollection'||cachedM89.features.length!==1||
+             featureM89?.properties?.STUSAB!==profileM89.abbr||
+             earthlinePlaceKey16537(featureM89?.properties?.NAME)!==earthlinePlaceKey16537(stateName)||
+             !['Polygon','MultiPolygon'].includes(featureM89?.geometry?.type))
+            throw new Error('cached Census boundary failed state-identity or geometry validation');
+          data=cachedM89;localM89=true;fetchSourceM89=localUrlM89;
+        }else if(localResponseM89.status!==404){
+          throw new Error('cached Census state boundary HTTP '+localResponseM89.status);
+        }
+      }catch(errorM89){
+        if(!/Failed to fetch|NetworkError|HTTP 404/i.test(String(errorM89?.message||errorM89)))
+          throw errorM89;
+      }
+    }
+    if(!data){
+      const signal=(typeof AbortSignal!=='undefined'&&typeof AbortSignal.timeout==='function')?AbortSignal.timeout(6500):undefined;
+      const response=await fetch(cap.endpoint+'?'+params.toString(),{mode:'cors',cache:'force-cache',signal,headers:{Accept:'application/geo+json,application/json'}});
+      if(!response.ok)throw new Error('administrative boundary HTTP '+response.status);
+      data=await response.json();fetchSourceM89=cap.endpoint;
+    }
+    if(runToken&&!isCurrentRun(runToken))return null;
+    window.EARTHLINE_US_STATE_BOUNDARY_CACHE_AUDIT_M89={state:stateName,code:profileM89?.abbr||null,sameOrigin:localM89,
+      source:fetchSourceM89,vintage:'2025',generalized:localM89,at:new Date().toISOString()};
     const rows=Array.isArray(data&&data.features)?data.features.filter(f=>f&&f.geometry&&(f.geometry.type==='Polygon'||f.geometry.type==='MultiPolygon')):[];
     const named=rows.filter(f=>earthlinePlaceKey16537(f&&f.properties&&f.properties.NAME||'')===earthlinePlaceKey16537(stateName));
     const containing=(Number.isFinite(center[0])&&Number.isFinite(center[1]))?(named.length?named:rows).filter(f=>earthlinePointInJurisdiction16539(center,f.geometry)):[];
     const chosen=containing[0]||named[0]||rows[0];
     if(!chosen)throw new Error('authoritative state polygon was not returned');
     const geometryBounds16556=earthlineGeometryBounds16556(chosen.geometry);
-    const intLat16556=Number(chosen.properties&&chosen.properties.INTPTLAT),intLng16556=Number(chosen.properties&&chosen.properties.INTPTLON);
-    const geometryCenter16556=(Number.isFinite(intLat16556)&&Number.isFinite(intLng16556))
+    /* M89: Number(null) is 0. A generalized Census state without an INTPT field
+       must never silently relocate its analytical center to the Gulf of Guinea. */
+    const rawLatM89=chosen.properties&&chosen.properties.INTPTLAT;
+    const rawLngM89=chosen.properties&&chosen.properties.INTPTLON;
+    const intLat16556=rawLatM89==null||String(rawLatM89).trim()===''?NaN:Number(rawLatM89);
+    const intLng16556=rawLngM89==null||String(rawLngM89).trim()===''?NaN:Number(rawLngM89);
+    const geometryCenter16556=(Number.isFinite(intLat16556)&&Number.isFinite(intLng16556)&&
+      earthlinePointInJurisdiction16539([intLng16556,intLat16556],chosen.geometry))
       ?[intLng16556,intLat16556]:earthlineInteriorPoint16556(chosen.geometry,geometryBounds16556);
-    const out={geometry:chosen.geometry,prepared:earthlinePrepareJurisdiction16539(chosen.geometry),bbox:geometryBounds16556,center:geometryCenter16556,source:cap.source,sourceTier:cap.sourceTier,sourceVintage:cap.sourceVintage,capability:cap.id,placeType:cap.placeType,label:String(chosen.properties&&chosen.properties.NAME||stateName),code:String(chosen.properties&&chosen.properties.STUSAB||''),resolvedAt:new Date().toISOString()};
+    const out={geometry:chosen.geometry,prepared:earthlinePrepareJurisdiction16539(chosen.geometry),bbox:geometryBounds16556,center:geometryCenter16556,source:localM89?'U.S. Census Bureau — 2025 Cartographic Boundary States 1:500,000 (same-origin)':cap.source,sourceTier:localM89?'authoritative-national-generalized':cap.sourceTier,sourceVintage:cap.sourceVintage,capability:cap.id,placeType:cap.placeType,label:String(chosen.properties&&chosen.properties.NAME||stateName),code:String(chosen.properties&&chosen.properties.STUSAB||''),resolvedAt:new Date().toISOString()};
     jurisdictionBoundaryCache16539.set(key,out);if(jurisdictionBoundaryCache16539.size>12)jurisdictionBoundaryCache16539.delete(jurisdictionBoundaryCache16539.keys().next().value);
     return out;
   }
