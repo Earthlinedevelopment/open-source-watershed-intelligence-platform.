@@ -5,6 +5,7 @@ on:
     paths:
       - tests/mantra92-regional-generator-ab.mjs
       - .github/workflows/mantra92-regional-generator-ab.yml
+      - tests/mantra92-property-reentry.mjs
   workflow_dispatch:
 permissions:
   contents: read
@@ -35,4 +36,30 @@ jobs:
         with:
           name: mantra92-regional-generator-metric-gate
           path: artifacts/mantra92/generator-ab
+          retention-days: 14
+
+  property:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare frozen candidate HTML
+        run: |
+          mkdir -p artifacts/mantra92/property
+          git fetch --no-tags --depth=1 origin candidate/mantra92-metric-recovery
+          git show FETCH_HEAD:index.html > artifacts/mantra92/property/index.html
+          node --check tests/mantra92-property-reentry.mjs
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Arizona Property one and two then Regional then Property again
+        run: node tests/mantra92-property-reentry.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra92-property-reentry
+          path: artifacts/arizona-controls
           retention-days: 14
