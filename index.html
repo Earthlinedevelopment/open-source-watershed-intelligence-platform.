@@ -32902,6 +32902,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
        typeof window.earthlineRestoreRegional16158==='function'&&
        typeof window.earthlinePublishDisplayedRun16151==='function'){
       try{
+        const restoreStartedM92=performance.now();
         const cachedRunM92=String(cacheM92.snapshot.runToken),freshTokenM92=createRunToken(q);
         const restoredM92=window.earthlineRestoreRegional16158('same-region-property-return');
         if(restoredM92){
@@ -32911,7 +32912,8 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
           const oldPerfM92=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||{};
           window.EARTHLINE_REGIONAL_PERFORMANCE_16191={...oldPerfM92,runToken:freshTokenM92,
             restoredFromAcceptedRegionalRun:cachedRunM92,cacheRestoration:true,
-            phaseTotalsMs:{...(oldPerfM92.phaseTotalsMs||{}),coreTotalMs:0}};
+            originalSciencePhaseTotalsMs:oldPerfM92.phaseTotalsMs||null,
+            phaseTotalsMs:{cacheRestoreMs:Math.round(performance.now()-restoreStartedM92),coreTotalMs:null}};
           window.EARTHLINE_REGIONAL_TERMINAL_16539={build:'EARTHLINE M92',runToken:freshTokenM92,
             status:'published',reason:'exact session-accepted Regional science restored',
             cachedFromRunToken:cachedRunM92,at:new Date().toISOString()};
