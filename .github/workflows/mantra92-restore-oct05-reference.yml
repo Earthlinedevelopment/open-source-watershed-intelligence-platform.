@@ -58,7 +58,7 @@ jobs:
           assert len(raw)>4_000_000,'Historical full HTML missing'
           PY
           git add reference-2026-10-05
-          git diff --cached --check
+          # Do not lint/modify the byte-exact historical HTML; check only changed file paths.
           if git diff --cached --name-only | grep -v '^reference-2026-10-05/'; then
             echo "::error::Historical recovery attempted to alter another path";exit 1
           fi
