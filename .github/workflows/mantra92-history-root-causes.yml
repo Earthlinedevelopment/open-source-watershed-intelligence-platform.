@@ -1,0 +1,43 @@
+name: Earthline Mantra 92 historical regression root causes
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths:
+      - .github/workflows/mantra92-history-root-causes.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Locate when unsafe wide strokes and map processing changes entered site
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin 9d059f0039ab305245b49e1a7ebda98e54a6d746
+          git fetch origin refs/heads/candidate/mantra92-arizona-visual-repair:refs/remotes/origin/candidate/mantra92-arizona-visual-repair
+          for term in 'stroke-width:20px!important' 'stroke-width:18px!important' 'stroke-width:13.5px!important' 'let minLinePx16632=focusMode?10:2' 'const segment=raw.slice(left,right+1)' ; do
+            echo "M92_BISECT_TERM $term"
+            git log --all --no-merges --format='M92_FIRST_APPEARANCE %h %ad %s' --date=iso -S "$term" -- index.html | tail -n 10
+          done
+          python3 - <<'PY'
+          import subprocess,re
+          from pathlib import Path
+          versions={'oct05':'9d059f0039ab305245b49e1a7ebda98e54a6d746','originalLive':'67de444b7048fc9a8ef5282dd3f4fb5961681779','metricRecovery':'4dcb7aade2ed64f4a7434ffe115e21864e9f1304','visualCorrected':'166f5a603ef0762889972f1011ef4fac3d206f87'}
+          terms=['stroke-width:20px!important','stroke-width:18px!important','stroke-width:13.5px!important','stroke-width:12.5px!important',
+            'data-layer="swale-opportunities"','if(len<8){','minLinePx16632','yieldCount16661%','finalScreenYield16661%']
+          for label,ref in versions.items():
+            s=subprocess.check_output(['git','show',ref+':index.html']).decode('utf8')
+            print('M92_HISTORY_CODE',label,ref,'bytes',len(s),flush=True)
+            for term in terms:
+              matches=[m.start() for m in re.finditer(re.escape(term),s)]
+              print('M92_HISTORY_TERM',label,repr(term),'count',len(matches),'positions',matches[:4],flush=True)
+              if term in terms[:4]:
+                for i in matches[:3]:
+                  print('M92_HISTORY_CONTEXT',label,repr(term),repr(s[max(0,i-270):i+220]),flush=True)
+          PY
