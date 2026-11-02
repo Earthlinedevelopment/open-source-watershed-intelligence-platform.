@@ -1,0 +1,48 @@
+name: Mantra 89 Public Arizona Release Gate
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - index.html
+      - tests/mantra89-arizona-controls.mjs
+      - .github/workflows/mantra89-public-arizona.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-arizona:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      EARTHLINE_URL: https://earthlinedevelopment.org/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Wait for published hotfix HTML
+        run: |
+          set -e
+          for i in $(seq 1 18); do
+            status=$(curl -Ls --max-time 20 -H 'Cache-Control: no-cache' -o /tmp/earthline_live.html -w '%{http_code}' "https://earthlinedevelopment.org/?m89_publish=${GITHUB_SHA}_${i}" || true)
+            if [ "$status" = "200" ] && grep -Fq 'rawLatM89' /tmp/earthline_live.html; then
+              echo 'Verified corrected state-boundary code on public origin'
+              exit 0
+            fi
+            echo "Public origin has not served current fix yet (HTTP $status, attempt $i)"
+            sleep 10
+          done
+          echo 'Public homepage did not serve corrected boundary owner'
+          exit 1
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run Arizona Regional and two Property controls on public website
+        run: node tests/mantra89-arizona-controls.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra89-public-arizona-evidence
+          path: artifacts/arizona-controls
+          retention-days: 14
