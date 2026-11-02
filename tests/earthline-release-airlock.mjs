@@ -110,6 +110,11 @@ async function region(query){
  await ctx.close();
 }
 for(const q of cases)await region(q);
+if(process.env.GITHUB_EVENT_NAME==='pull_request'){
+  // Large-state tail risk: reject candidates that pass Alaska only by chance.
+  await region('Alaska');
+  await region('Alaska');
+}
 await browser.close();
 const result={sha256,commit:process.env.GITHUB_SHA||null,critical:cases,passed:rows.filter(r=>r.pass).length,
  failed:rows.filter(r=>!r.pass).map(r=>r.query),rows};
