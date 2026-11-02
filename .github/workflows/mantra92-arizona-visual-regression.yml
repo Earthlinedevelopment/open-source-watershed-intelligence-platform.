@@ -1,0 +1,42 @@
+name: Earthline M92 Arizona screenshot-regression gate
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths:
+      - tests/mantra92-arizona-visual-regression.mjs
+      - .github/workflows/mantra92-arizona-visual-regression.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Load immutable before-and-after HTML from exact commits
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin refs/heads/candidate/mantra92-arizona-visual-repair:refs/remotes/origin/candidate/mantra92-arizona-visual-repair
+          test "$(git rev-parse refs/remotes/origin/candidate/mantra92-arizona-visual-repair)" = "b62b40940a1d4e4f962c5de7d65eddf0b22f242c" || { echo "::error::Candidate moved"; exit 1; }
+          mkdir -p artifacts/mantra92-visual/results
+          git show 4dcb7aade2ed64f4a7434ffe115e21864e9f1304:index.html > artifacts/mantra92-visual/before.html
+          git show b62b40940a1d4e4f962c5de7d65eddf0b22f242c:index.html > artifacts/mantra92-visual/corrected.html
+      - run: |
+          node --check tests/mantra92-arizona-visual-regression.mjs
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run same-source Arizona rendering and black-badge acceptance
+        run: node tests/mantra92-arizona-visual-regression.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra92-arizona-black-dot-screenshot-diff
+          path: artifacts/mantra92-visual/results
+          retention-days: 14
