@@ -1,0 +1,27 @@
+name: Earthline Property terminal and texture owner audit
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths: [.github/workflows/mantra92-property-terminal-extract.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Locate exact Property terminal state and texture calls
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin 60177e1dca18ca7bb3ba561b6039d353943d283b
+          git show 60177e1dca18ca7bb3ba561b6039d353943d283b:index.html >/tmp/s.html
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/s.html').read_text()
+          for label,start,end in [('property terminal',2593000,2600400),('texture renderer',2524000,2537000),('construction indicator',1423400,1424600)]:
+            print('M92_PROPERTY_OWNER_BEGIN',label,'length',end-start)
+            print('M92_PROPERTY_OWNER_SOURCE',label,repr(s[start:end])[:16000])
+          PY
