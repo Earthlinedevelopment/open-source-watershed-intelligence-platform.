@@ -131,7 +131,17 @@ try{
   regionalReentry=true;
 }catch(e){console.error('M92_REGIONAL_REENTRY_FAIL',String(e));}
 if(regionalReentry)rows.push(await runTarget(TARGETS[0],2));
-const replacementPass=rows.length===2&&rows[0].snap.publication?.runToken!==rows[1].snap.publication?.runToken&&Math.abs(Number(rows[1].snap.audit?.center?.lng)-TARGETS[1].lng)<1e-5;
+console.log('M92_PROPERTY_RUN_IDENTITIES '+JSON.stringify(rows.map(r=>({
+ name:r.name,center:r.snap.audit?.center,
+ auditRunId:r.snap.audit?.runId??null,auditRunToken:r.snap.audit?.runToken??null,
+ publicationRunToken:r.snap.publication?.runToken??null,
+ publicationKeys:Object.keys(r.snap.publication||{}),
+ elderIdentity:r.snap.elder?.propertyRunIdentity??null,
+ published:r.snap.publication?.published??null
+}))));
+const token1=rows[0]?.snap.publication?.runToken,token2=rows[1]?.snap.publication?.runToken;
+const replacementPass=token1!=null&&token2!=null&&token1!==token2&&
+ Math.abs(Number(rows[1].snap.audit?.center?.lng)-TARGETS[1].lng)<1e-5;
 const report={at:new Date().toISOString(),url:URL,rows,replacementPass,regionalReentry,pageErrors,badResponses,pass:rows.length===3&&regionalReentry&&rows.every(r=>r.pass)&&replacementPass};
 writeFileSync('artifacts/arizona-controls/results.json',JSON.stringify(report,null,2));
 console.log('ARIZONA_CONTROL '+JSON.stringify({pass:report.pass,replacementPass,rows:rows.map(r=>({name:r.name,pass:r.pass,elapsedMs:r.elapsedMs,safeCount:r.snap.safeCount,elderCount:r.snap.elder?.featureCount||0,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
