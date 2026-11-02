@@ -1,0 +1,68 @@
+name: Earthline — stage original October 5 release unchanged
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths:
+      - .github/workflows/mantra92-restore-oct05-reference.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Stage exact historical October 5 launch under isolated path
+        shell: bash
+        run: |
+          set -euo pipefail
+          OLD=9d059f0039ab305245b49e1a7ebda98e54a6d746
+          BASE=b6ffeffcaf84ab1e3303e9b5e01ee5e0345ebb15
+          REF=restore/earthline-oct05-preview
+          git fetch origin "$OLD"
+          git fetch origin "refs/heads/$REF:refs/remotes/origin/$REF"
+          git checkout -B "$REF" "refs/remotes/origin/$REF"
+          test "$(git rev-parse HEAD)" = "$BASE" || { echo "::error::Recovery reference branch changed unexpectedly"; exit 1; }
+          mkdir -p reference-2026-10-05
+          for p in index.html earthline-launch-16872.js earthline-launch-16872.css earthline-language-hotfix-16890.js earthline-logo-master.png donate.html merchandise.html; do
+            if git cat-file -e "$OLD:$p" 2>/dev/null; then
+              git show "$OLD:$p" > "reference-2026-10-05/$p"
+            fi
+          done
+          if git cat-file -e "$OLD:assets" 2>/dev/null; then
+            git archive "$OLD" assets | tar -x -C reference-2026-10-05/
+          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json,re
+          folder=Path('reference-2026-10-05')
+          raw=(folder/'index.html').read_bytes()
+          text=raw.decode('utf-8')
+          hrefs=re.findall(r'(?:src|href)\s*=\s*["\x27]([^"\x27]+)',text,flags=re.I)
+          refs=sorted({x for x in hrefs if not x.startswith(('https:','http:','data:','mailto:','tel:','#','javascript:'))})
+          record={
+            'status':'ORIGINAL OCTOBER 5 RECOVERY CONTROL — NOT A PRODUCTION RELEASE',
+            'sourceCommit':'9d059f0039ab305245b49e1a7ebda98e54a6d746',
+            'sourceIndexUnmodified':True,
+            'sourceIndexSHA256':hashlib.sha256(raw).hexdigest(),
+            'sourceAssetsCopied':sorted(str(x.relative_to(folder)) for x in folder.rglob('*') if x.is_file() and x.name!='RESTORATION-MANIFEST.json'),
+            'localHtmlReferences':refs[:150],
+            'liveHomepageUnchanged':True
+          }
+          (folder/'RESTORATION-MANIFEST.json').write_text(json.dumps(record,indent=2)+'\n')
+          print('M92_ORIGINAL_RELEASE '+json.dumps({'sha256':record['sourceIndexSHA256'],'assets':len(record['sourceAssetsCopied']),'refs':refs[:50]}),flush=True)
+          assert len(raw)>4_000_000,'Historical full HTML missing'
+          PY
+          git add reference-2026-10-05
+          git diff --cached --check
+          if git diff --cached --name-only | grep -v '^reference-2026-10-05/'; then
+            echo "::error::Historical recovery attempted to alter another path";exit 1
+          fi
+          git config user.name "Earthline historical recovery"
+          git config user.email "info@earthlinedevelopment.org"
+          git commit -m "restore: preserve exact October 5 working release as isolated reference"
+          git push origin HEAD:"refs/heads/$REF"
