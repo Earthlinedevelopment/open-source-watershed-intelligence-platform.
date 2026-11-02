@@ -1,0 +1,40 @@
+name: Mantra 92 Arizona black-marker renderer audit
+on:
+  push:
+    branches: [audit/mantra92-regional-fallback-isolation]
+    paths: [.github/workflows/mantra92-arizona-render-source-audit.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compare actual original and current Regional SVG marker owners
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin 9d059f0039ab305245b49e1a7ebda98e54a6d746
+          git fetch origin refs/heads/candidate/mantra92-metric-recovery:refs/remotes/origin/candidate/mantra92-metric-recovery
+          git show 9d059f0039ab305245b49e1a7ebda98e54a6d746:index.html >/tmp/oct05.html
+          git show refs/remotes/origin/candidate/mantra92-metric-recovery:index.html >/tmp/new.html
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          terms=["function earthlineRegionalLocalDisplay16020(","let contourLines=0,labels=0,waterPaths=0,arrows=0,swales=0","svgEl('circle'","svgEl('text'","swale-opportunities","Regional corridors are clickable","mapboxgl-marker","fill:'#070","fill:'#050","swaleLabels"]
+          for name,path in [('OCT05','/tmp/oct05.html'),('NEW','/tmp/new.html')]:
+            s=Path(path).read_text()
+            print('M92_RENDER_VERSION',name,'length',len(s))
+            for t in terms:
+              indexes=[m.start() for m in re.finditer(re.escape(t),s,re.I)]
+              print('M92_RENDER_TERM',name,repr(t),'count',len(indexes),'first',indexes[:5])
+              for i in indexes[:3]:
+                print('M92_RENDER_CONTEXT',name,repr(t),repr(s[max(0,i-240):i+900]))
+            i=s.find("let contourLines=0,labels=0,waterPaths=0,arrows=0,swales=0")
+            if i>=0:
+              print('M92_RENDER_BODY',name,repr(s[i:i+14000]))
+          PY
