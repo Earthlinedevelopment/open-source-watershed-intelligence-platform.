@@ -36,9 +36,39 @@ const metricClip=String.raw`
 const cutRegex=/let left=rawCenter,right=rawCenter,leftM=0,rightM=0;[\s\S]*?const segment=raw\.slice\(left,right\+1\);if\(segment\.length<2\)return null;/;
 if(!cutRegex.test(base))throw Error('Cannot identify current Regional locality implementation');
 if(base.split('let minLinePx16632=focusMode?10:2;').length!==2)throw Error('Expected one pixel-length gate');
+const screenPrefix='const minimumScreenPx16737=';
+const candidateTag="confidence:relaxed?'screening':'preferred',minLinePx16632};";
 function metricCandidate(regionalContourFallback=false){
   let result=base.replace(cutRegex,metricClip)
     .replace('let minLinePx16632=focusMode?10:2;','let minLinePx16632=focusMode?10:0;');
+  if(result.split(candidateTag).length!==2)throw Error('Missing unique candidate output owner');
+  result=result.replace(candidateTag,
+    "confidence:relaxed?'screening':'preferred',minLinePx16632,m92MetricValidated:!focusMode};");
+  const start=result.indexOf(screenPrefix),end=result.indexOf('const mid16539=',start);
+  const original=result.slice(start,end);
+  if(start<0||end<start||!original.includes('lineLengthPixels(hy,segment16539)<minimumScreenPx16737'))
+    throw Error('Missing exact jurisdiction screen owner');
+  const guard=String.raw`
+    const minimumScreenPx16737=candidate16539&&candidate16539.coverageGap16731
+      ?0.75
+      :Math.max(4,Math.min(10,Number(candidate16539&&candidate16539.minLinePx16632)||10));
+    const metricLocalM92=!focusMode&&candidate16539?.m92MetricValidated===true;
+    let metricLengthM92=0;
+    if(metricLocalM92&&Array.isArray(segment16539))for(let iM92=1;iM92<segment16539.length;iM92++){
+      const aM92=segment16539[iM92-1],bM92=segment16539[iM92],R=6371008.8,rad=Math.PI/180;
+      const p1M92=Number(aM92[1])*rad,p2M92=Number(bM92[1])*rad;
+      const dpM92=(Number(bM92[1])-Number(aM92[1]))*rad,dlM92=(Number(bM92[0])-Number(aM92[0]))*rad;
+      const hM92=Math.sin(dpM92/2)**2+Math.cos(p1M92)*Math.cos(p2M92)*Math.sin(dlM92/2)**2;
+      metricLengthM92+=2*R*Math.asin(Math.min(1,Math.sqrt(hM92)));
+    }
+    if(!segment16539||segment16539.length<2||
+      (metricLocalM92?!(metricLengthM92>=250&&metricLengthM92<=4005)
+        :lineLengthPixels(hy,segment16539)<minimumScreenPx16737)){
+      if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);
+      return null;
+    }
+  `;
+  result=result.slice(0,start)+guard+result.slice(end);
   if(regionalContourFallback)result=result.replace(conditional,conditionalOld);
   return result;
 }
