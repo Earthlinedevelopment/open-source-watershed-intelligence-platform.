@@ -1,0 +1,21 @@
+name: M96 repair painted-zero safe Property swales
+on:
+  push:
+    branches: [fix/m96-visible-property-swales-elders]
+    paths: [.github/workflows/m96-apply-visible-opacity.yml]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          python3 tools/m96-keep-verified-water-visible.py
+          git diff --check
+          git config user.name "Earthline Repair CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix(M96): no zero-opacity blue strips in Property natural-texture fallback"
+          git push origin HEAD:fix/m96-visible-property-swales-elders
