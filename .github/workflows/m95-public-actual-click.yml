@@ -1,0 +1,41 @@
+name: M95 independent public actual-click release check
+on:
+  push:
+    branches: [diagnostics/m95-real-arizona-ui-20261103]
+    paths: [.github/workflows/m95-public-actual-click.yml]
+permissions:
+  contents: read
+jobs:
+  live-click:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require newly deployed M95 public homepage
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 22); do
+            code=$(curl -Ls --max-time 20 -H 'Cache-Control: no-cache' -o /tmp/m95_public.html -w '%{http_code}' "https://earthlinedevelopment.org/?m95_release=${GITHUB_RUN_ID}_${i}" || true)
+            if [ "$code" = "200" ] && grep -Fq "selectedAtClickM95" /tmp/m95_public.html && grep -Fq "optional post-publication" /tmp/m95_public.html; then
+              echo "M95_PUBLIC_SOURCE_VERIFIED"
+              exit 0
+            fi
+            sleep 8
+          done
+          echo "M95 public origin has not published the new release"
+          exit 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Public origin real map motion and visible Property button
+        run: node tests/m95-public-actual-click.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m95-public-real-click-evidence
+          path: artifacts/m95-ui-candidate
+          retention-days: 7
