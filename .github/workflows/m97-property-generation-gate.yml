@@ -1,0 +1,31 @@
+name: M97 Property coverage - protected waterway not minor runoff
+on:
+  push:
+    branches: [fix/m97-protected-waterway-vs-runoff]
+    paths: [.github/workflows/m97-property-generation-gate.yml]
+permissions:
+  contents: read
+jobs:
+  property-safe-coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prove M97 changes only a scoped source and respects JavaScript syntax
+        run: |
+          node --check tests/m97-property-safe-coverage-candidate.mjs
+          git diff --check
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Compare Iowa, Texas and Vermont safe Property corridors against identical M96 baselines
+        run: node tests/m97-property-safe-coverage-candidate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m97-property-science-coverage
+          path: artifacts/m97-candidate-properties
+          retention-days: 4

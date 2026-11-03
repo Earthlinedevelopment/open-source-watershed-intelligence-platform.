@@ -5946,7 +5946,7 @@ function earthlineCellCrossesLevel(cx,cy,L){
 
 let earthlineMajorChannelUnsafe16288=null,earthlineMajorChannelUnsafeKey16288="";
 function earthlineMajorChannelUnsafeAt16288(cx,cy){
-  const threshold=streamThreshold()*3.2;
+  const threshold=earthlineProtectedMajorChannelThresholdM97();
   const radius=Math.max(1,Math.ceil(4/Math.max(0.5,M.cellM||1)));
   const key=String(M.searchGen||0)+"|"+String(M.maxAcc||0)+"|"+String(M.rain||0)+"|"+String(M.cellM||0)+"|"+threshold+"|"+radius;
   if(!earthlineMajorChannelUnsafe16288||earthlineMajorChannelUnsafe16288.length!==N||earthlineMajorChannelUnsafeKey16288!==key){
@@ -9561,7 +9561,7 @@ function earthlinePathPointUsable(px,py,maxS){
   if(!M.inP[i]||M.pond[i])return false;
   if(slopePct(gx,gy)>maxS)return false;
   if(earthlineNoBuildBuffered(gx,gy))return false;
-  const channelThreshold=streamThreshold()*3.2;
+  const channelThreshold=earthlineProtectedMajorChannelThresholdM97();
   const radius=Math.max(1,Math.ceil(4/Math.max(0.5,M.cellM||1)));
   for(let oy=-radius;oy<=radius;oy++)for(let ox=-radius;ox<=radius;ox++){
     const x=gx+ox,y=gy+oy;
@@ -10159,6 +10159,16 @@ function earthlineCurrentNoBuildStamp15870(){
     Math.round(Number(M.maxAcc||0))
   ].join("|");
 }
+/* M97: a modeled D8 rill is not automatically a mapped/protected waterway.
+   Require at least 0.25 ha of locally modeled contributing area before treating
+   a DEM-only path as a protected major channel. Roads, structures, mapped water
+   and actual pond cells remain absolute exclusions; slope stays <=4%. The
+   unverified source must never be presented as construction-ready clearance. */
+function earthlineProtectedMajorChannelThresholdM97(){
+  const cellM=Math.max(0.5,Number(M.cellM||1));
+  const minAreaM2=2500; /* 0.25 hectare of upstream contributing area */
+  return Math.max(3,Math.ceil(streamThreshold()*3.2),Math.ceil(minAreaM2/(cellM*cellM)));
+}
 function earthlineBuildNoBuildMask(){
   const hasImperv=!!(_impervData&&_impervData.length===N);
   const stamp=earthlineCurrentNoBuildStamp15870();
@@ -10195,7 +10205,7 @@ function earthlineBuildNoBuildMask(){
   const waterSeed=new Uint8Array(N);
   const manualSeed15843=new Uint8Array(N);
   const cell=Math.max(.5,Number(M.cellM||1));
-  const channelThreshold=Math.max(3,streamThreshold()*3.0);
+  const channelThreshold=earthlineProtectedMajorChannelThresholdM97();
 
   // Frozen prescription inputs. The additional source masks are observational copies only.
   for(let i=0;i<N;i++){
@@ -10311,6 +10321,8 @@ function earthlineBuildNoBuildMask(){
     hardRadiusM:hardRadius*cell,
     waterRadiusCells:waterRadius,
     waterRadiusM:waterRadius*cell,
+    terrainOnlyProtectedChannelThresholdCells:channelThreshold,
+    terrainOnlyMinimumMajorContributingAreaM2:2500,
     noBuildCellsFromWater:earthlineCountMask15843(waterSeed),
     noBuildCellsFromImpervious:earthlineCountMask15843(imperviousSeed15843),
     noBuildCellsFromVector:earthlineCountMask15843(vectorSeed15843),
@@ -10343,7 +10355,7 @@ function earthlineCollectSwaleDiagnostics(){
     inParcel++;
     if(M.pond[i])continue;
     pondFree++;
-    const safeSlope=slopePct(x,y)<=33;
+    const safeSlope=slopePct(x,y)<=4;
     if(safeSlope)slopeSafe++;
     if(M.hardCoreMask&&M.hardCoreMask[i])hardCore++;
     if(M.noBuildMask&&M.noBuildMask[i])noBuild++;
@@ -10364,7 +10376,7 @@ function earthlineSwaleFailureMessage(){
   M.swaleDiagnostics=d;
   let cause='contour tracing produced no usable segments';
   if(d.noBuildPct>=70)cause='automatic no-build mask is blocking most of the site';
-  else if(d.slopeSafePct<15)cause='the live terrain is classifying most cells above the 33% slope limit';
+  else if(d.slopeSafePct<15)cause='the live terrain is classifying most cells above the 4% slope limit';
   else if(d.usable<80)cause='too few safe cells remain after slope, ponding, and no-build checks';
   const summary=`${d.noBuildPct}% masked · ${d.slopeSafePct}% slope-safe · ${d.usable} usable cells`;
   console.warn('[Earthline swale diagnostic]',cause,d);
