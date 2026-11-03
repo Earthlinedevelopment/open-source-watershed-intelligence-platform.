@@ -1,0 +1,24 @@
+name: M98 isolate water renderer from Property owner
+on:
+  push:
+    branches: [repair/m98-isolate-property-water-owner]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ownership-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate M98 water renderer regression
+        run: |
+          node --check tests/m98-water-renderer-ownership.mjs
+          node tests/m98-water-renderer-ownership.mjs
+      - name: Confirm source diff is limited to expected files
+        run: |
+          git diff --check
+          test -s index.html
