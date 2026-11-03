@@ -1,0 +1,37 @@
+name: M94 isolated 4096 batch candidate patch
+on:
+  push:
+    branches: [candidate/mantra94-batch4096]
+    paths:
+      - .github/workflows/mantra94-apply-batch4096.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exact 2048 to 4096 scheduling-only patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          patterns=[
+             '(++yieldCount16661%2048)===0',
+             '(++finalScreenYield16661%2048)===0',
+             '(++featureIndex16661%2048)===0'
+          ]
+          counts=[s.count(x) for x in patterns]
+          assert counts==[1,1,2],f'Refuse unexpected source, found {counts}'
+          for x in patterns:s=s.replace(x,x.replace('%2048','%4096'))
+          p.write_text(s,encoding='utf-8')
+          print('M94_BATCH_PATCH_ONLY '+str(dict(zip(patterns,counts))))
+          PY
+          git config user.name "earthline-ci"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "perf(mantra94): test exact-science 4096-element scheduling batch"
+          git push origin HEAD:candidate/mantra94-batch4096
