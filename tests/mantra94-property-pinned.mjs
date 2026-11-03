@@ -2,7 +2,7 @@ import {chromium} from 'playwright';
 import {mkdirSync,writeFileSync,existsSync,statSync,readFileSync} from 'node:fs';
 import path from 'node:path';
 
-const URL='https://earthlinedevelopment.org/';
+const BASE_URL='https://earthlinedevelopment.org/';
 const ROOT=process.cwd();
 const TARGETS=[
   {name:'control-1',lng:-111.93066,lat:34.21568},
@@ -18,8 +18,8 @@ mkdirSync('artifacts/arizona-controls',{recursive:true});
 
 /* Pin every same-origin asset to the candidate checkout; never mix in live HTML/JS/data. */
 await page.route('**/*',async route=>{
-  const u=new URL(route.request().url);
-  if(u.origin!==new URL(URL).origin)return route.continue();
+  const u=new URL(route.request().url());
+  if(u.origin!==new URL(BASE_URL).origin)return route.continue();
   let rel;try{rel=decodeURIComponent(u.pathname).replace(/^\/+/,'')||'index.html';}catch{return route.abort();}
   const local=path.resolve(ROOT,rel);
   if(local!==ROOT&&!local.startsWith(ROOT+path.sep))return route.abort();
@@ -30,7 +30,7 @@ await page.route('**/*',async route=>{
 });
 
 
-await page.goto(URL+'?az_control='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+await page.goto(BASE_URL+'?az_control='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
 await page.waitForSelector('#searchInput',{timeout:30000});
 await page.evaluate(()=>{const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');i.value='Arizona';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));b.click();});
 let regionalTimeout=false;
@@ -125,7 +125,7 @@ async function runTarget(target,index){
 const rows=[];
 for(let i=0;i<TARGETS.length;i++) rows.push(await runTarget(TARGETS[i],i));
 const replacementPass=rows.length===2&&rows[0].snap.publication?.runToken!==rows[1].snap.publication?.runToken&&Math.abs(Number(rows[1].snap.audit?.center?.lng)-TARGETS[1].lng)<1e-5;
-const report={at:new Date().toISOString(),url:URL,rows,replacementPass,pageErrors,badResponses,pass:rows.every(r=>r.pass)&&replacementPass};
+const report={at:new Date().toISOString(),url:BASE_URL,rows,replacementPass,pageErrors,badResponses,pass:rows.every(r=>r.pass)&&replacementPass};
 writeFileSync('artifacts/arizona-controls/results.json',JSON.stringify(report,null,2));
 console.log('ARIZONA_CONTROL '+JSON.stringify({pass:report.pass,replacementPass,rows:rows.map(r=>({name:r.name,pass:r.pass,elapsedMs:r.elapsedMs,safeCount:r.snap.safeCount,elderCount:r.snap.elder?.featureCount||0,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
 await browser.close();
