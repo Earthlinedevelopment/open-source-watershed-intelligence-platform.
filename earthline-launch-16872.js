@@ -275,3 +275,51 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
     window.EARTHLINE_POSTHOG_17002.error=String(err&&err.message||err);
   }
 })();
+
+
+/* EARTHLINE M95 — RESTORE USER-APPROVED PROPERTY BLUE PRESENTATION, NO SCIENCE MUTATION.
+   Recovered narrowly from historical M79 presentation repair.
+   This is candidate-only; never overrides scientific safe-swale GeoJSON. */
+(function installEarthlineBluePropertyRecoveryM95(){
+  'use strict';
+  if(window.EARTHLINE_BLUE_PROPERTY_RECOVERY_M95)return;
+  const REJECTED=[
+    'earthline-property-swale-footprint-16174',
+    'earthline-property-swale-natural-casing-16174',
+    'earthline-property-swale-natural-up-16174',
+    'earthline-property-swale-natural-flip-16174',
+    'earthline-property-swale-neutral-16177',
+    'earthline-swale-planting-shadow-15806',
+    'earthline-swale-planting-layer-15806'
+  ];
+  const APPROVED=[
+    'earthline-property-safe-casing-16221',
+    'earthline-property-safe-earth-16221',
+    'earthline-property-safe-life-16221',
+    'earthline-property-safe-water-16221'
+  ];
+  function apply(){
+    try{
+      if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()!=='property')return false;
+      const map=window.earthlineMap;
+      if(!map||typeof map.getLayer!=='function')return false;
+      let approved=0;
+      for(const id of REJECTED)if(map.getLayer(id))map.setLayoutProperty(id,'visibility','none');
+      for(const id of APPROVED)if(map.getLayer(id)){
+        map.setLayoutProperty(id,'visibility','visible');
+        map.moveLayer?.(id);approved++;
+      }
+      if(approved)map.triggerRepaint?.();
+      try{window.EARTHLINE_ELDER_TREES_V1_17097?.refresh?.()}catch(_){}
+      window.EARTHLINE_BLUE_PROPERTY_RECOVERY_M95.last={approved,at:new Date().toISOString()};
+      return approved>0;
+    }catch(err){
+      window.EARTHLINE_BLUE_PROPERTY_RECOVERY_M95.last={error:String(err)};
+      return false;
+    }
+  }
+  function schedule(){for(const delay of [0,120,450])setTimeout(apply,delay)}
+  window.EARTHLINE_BLUE_PROPERTY_RECOVERY_M95={apply,schedule,last:null};
+  document.addEventListener('earthline:property-published',schedule,{passive:true});
+  document.addEventListener('earthline:analysis-complete',schedule,{passive:true});
+})();
