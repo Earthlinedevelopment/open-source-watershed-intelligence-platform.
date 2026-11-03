@@ -1,0 +1,23 @@
+name: M95 source snapshot for actual Property repair
+on:
+  push:
+    branches: [diagnostics/m95-real-arizona-ui-20261103]
+    paths: [.github/workflows/m95-source-snapshot.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pack exact production source and existing gates
+        run: |
+          mkdir -p artifacts/m95-source
+          cp index.html earthline-elder-restored-17097.js earthline-elder-worker-17129.js artifacts/m95-source/
+          cp tests/mantra89-arizona-controls.mjs tests/mantra94-property-pinned.mjs artifacts/m95-source/
+          sha256sum artifacts/m95-source/* > artifacts/m95-source/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m95-production-source
+          path: artifacts/m95-source
+          retention-days: 1
