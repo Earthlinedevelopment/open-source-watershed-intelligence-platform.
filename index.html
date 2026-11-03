@@ -35532,3 +35532,36 @@ html[data-earthline-analysis-tier="regional"] #earthlineCenterTarget15782 .dot{
   #earthlineZoomDock15779{right:12px!important;top:auto!important;bottom:14px!important;transform:none!important}
 }
 </style>
+
+
+<!-- EARTHLINE M95: restore approved Property safe-line presentation only. No scientific mutation. -->
+<script id="earthline-m95-approved-blue-property-only">
+(function(){
+  'use strict';
+  if(window.EARTHLINE_M95_APPROVED_BLUE)return;
+  const NATURAL=['earthline-property-swale-footprint-16174','earthline-property-swale-natural-casing-16174','earthline-property-swale-natural-up-16174','earthline-property-swale-natural-flip-16174','earthline-property-swale-neutral-16177','earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'];
+  const SAFE=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'];
+  function apply(){
+    try{
+      const map=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;
+      if(!map||typeof map.getLayer!=='function')return false;
+      if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()!=='property')return false;
+      let visible=0;
+      for(const id of NATURAL)if(map.getLayer(id))map.setLayoutProperty(id,'visibility','none');
+      try{window.earthlineSetNaturalSwalePlantingVisible15806?.(false)}catch(_){}
+      for(const id of SAFE)if(map.getLayer(id)){
+        map.setLayoutProperty(id,'visibility','visible');
+        map.setPaintProperty(id,'line-opacity',.98);
+        visible++;
+      }
+      if(visible)map.triggerRepaint?.();
+      window.EARTHLINE_M95_APPROVED_BLUE.last={visible,at:new Date().toISOString()};
+      return visible>0;
+    }catch(err){window.EARTHLINE_M95_APPROVED_BLUE.last={error:String(err)};return false}
+  }
+  function resync(){for(const ms of [0,120,450,1000])setTimeout(apply,ms)}
+  window.EARTHLINE_M95_APPROVED_BLUE={apply,resync,last:null};
+  document.addEventListener('earthline:analysis-complete',resync,{passive:true});
+  document.addEventListener('earthline:property-published',resync,{passive:true});
+})();
+</script>
