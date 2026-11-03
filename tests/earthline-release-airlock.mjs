@@ -73,7 +73,7 @@ async function region(query){
      const s=map?.getSource?.('el-live-swales-15970');
      fc=s?._data||s?.serialize?.()?.data||null;
    }catch{}
-   return {profileId:pkg?.profileId||null,coreMs:p?.phaseTotalsMs?.coreTotalMs??null,
+   return {profileId:pkg?.profileId||null,coreMs:p?.phaseTotalsMs?.coreTotalMs??null,phaseMs:p?.phaseTotalsMs||null,slowestPhase:p?.slowestPhase||null,
      swales:u?.generated??null,sourceFeatures:u?.sourceFeatures??null,
      visible:u?.overlaySwaleLines??null,flowPaths:p?.waterPaths??null,
      unsafe:a?.unsafeSegments??null,outside:b?.outsideAfterClip?.swales??null,
@@ -101,7 +101,7 @@ async function region(query){
    fails.push('slope >4% or unverified');
  if(snap.unsafe!==null&&snap.unsafe!==0)fails.push('unsafe mapped segment');
  if(snap.outside!==null&&snap.outside!==0)fails.push('out-of-jurisdiction swale');
- const row={query,sha256,runWallMs:Date.now()-t,coreMs:snap.coreMs,waterPaths:snap.flowPaths,
+ const row={query,sha256,runWallMs:Date.now()-t,coreMs:snap.coreMs,phaseMs:snap.phaseMs,slowestPhase:snap.slowestPhase,waterPaths:snap.flowPaths,
    count:snap.swales,maxLengthM:maxLength,maxSlope,unsafe:snap.unsafe,outside:snap.outside,
    errors:errors.slice(-5),fails,pass:fails.length===0};
  rows.push(row);console.log('EARTHLINE_RELEASE_AIRLOCK '+JSON.stringify(row));
