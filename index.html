@@ -31420,14 +31420,44 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     return [minX16584,minY16584,maxX16584,maxY16584].every(Number.isFinite)
       ?[minX16584,minY16584,maxX16584,maxY16584]:null;
   }
+  /* MANTRA 94 — exact latitude-edge indexing of the EXISTING land/water
+     ray-crossing test. Keeps each original finite edge and the exact same
+     crossing formula; row-bin lookup avoids rescanning entire Natural Earth
+     rings for every DEM node and water-safety sample. */
+  const earthlineRingBinCacheM94=new WeakMap();
   function earthlinePointInRing16584(x16584,y16584,ring16584){
     if(!Array.isArray(ring16584)||ring16584.length<3)return false;
+    let indexM94=earthlineRingBinCacheM94.get(ring16584);
+    if(!indexM94){
+      const scaleM94=8,binsM94=new Map(),wideM94=[];
+      for(let iM94=0,jM94=ring16584.length-1;iM94<ring16584.length;jM94=iM94++){
+        const aM94=ring16584[iM94]||[],bM94=ring16584[jM94]||[];
+        const xiM94=Number(aM94[0]),yiM94=Number(aM94[1]),
+              xjM94=Number(bM94[0]),yjM94=Number(bM94[1]);
+        if(![xiM94,yiM94,xjM94,yjM94].every(Number.isFinite))continue;
+        const edgeM94=[xiM94,yiM94,xjM94,yjM94];
+        const lowM94=Math.floor(Math.min(yiM94,yjM94)*scaleM94);
+        const highM94=Math.floor(Math.max(yiM94,yjM94)*scaleM94);
+        if(highM94-lowM94>64){wideM94.push(edgeM94);continue;}
+        for(let rowM94=lowM94;rowM94<=highM94;rowM94++){
+          let arrM94=binsM94.get(rowM94);
+          if(!arrM94)binsM94.set(rowM94,arrM94=[]);
+          arrM94.push(edgeM94);
+        }
+      }
+      indexM94={scale:scaleM94,bins:binsM94,wide:wideM94};
+      earthlineRingBinCacheM94.set(ring16584,indexM94);
+    }
+    const rowEdgesM94=indexM94.bins.get(Math.floor(y16584*indexM94.scale))||[];
     let inside16584=false;
-    for(let i16584=0,j16584=ring16584.length-1;i16584<ring16584.length;j16584=i16584++){
-      const a16584=ring16584[i16584]||[],b16584=ring16584[j16584]||[];
-      const xi16584=Number(a16584[0]),yi16584=Number(a16584[1]),
-            xj16584=Number(b16584[0]),yj16584=Number(b16584[1]);
-      if(![xi16584,yi16584,xj16584,yj16584].every(Number.isFinite))continue;
+    for(const edgeM94 of rowEdgesM94){
+      const [xi16584,yi16584,xj16584,yj16584]=edgeM94;
+      if(((yi16584>y16584)!==(yj16584>y16584))&&
+         (x16584<(xj16584-xi16584)*(y16584-yi16584)/((yj16584-yi16584)||1e-15)+xi16584))
+        inside16584=!inside16584;
+    }
+    for(const edgeM94 of indexM94.wide){
+      const [xi16584,yi16584,xj16584,yj16584]=edgeM94;
       if(((yi16584>y16584)!==(yj16584>y16584))&&
          (x16584<(xj16584-xi16584)*(y16584-yi16584)/((yj16584-yi16584)||1e-15)+xi16584))
         inside16584=!inside16584;
