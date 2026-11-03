@@ -97,6 +97,7 @@ try{
   elderPresent:snapshot.elder.state==='committed'&&snapshot.elder.count>0&&snapshot.elder.sourceCount>0&&snapshot.elder.layer,
   twoBlueDottedStrips:snapshot.visual?.water?.length===2&&snapshot.visual.water.every(x=>x.exists&&x.visible&&Array.isArray(x.dash)&&x.dash.length===2),
   oppositeBlueOffsets:snapshot.visual.water[0]?.offset?.[0]==='interpolate'&&snapshot.visual.water[1]?.offset?.[0]==='interpolate',
+  actualBlueOpacityVisible:snapshot.visual.water.every(x=>typeof x.opacity==='number'&&x.opacity>=0.95),
   elderCandidateMapLabel:JSON.stringify(snapshot.visual.elderLabel||'').includes('ELDER CANDIDATE'),
   blueMapActuallyRendered:snapshot.visual.blueRendered>0,
   elderPinsActuallyRendered:snapshot.visual.elderRendered>0,
