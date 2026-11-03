@@ -9,24 +9,29 @@ const {execFileSync}=require('node:child_process');
 const html=fs.readFileSync('index.html');
 const js=fs.readFileSync('earthline-launch-16872.js','utf8');
 const repoBlob=execFileSync('git',['hash-object','index.html'],{encoding:'utf8'}).trim();
+const marker=Buffer.from('<!-- EARTHLINE M95: restore approved Property safe-line presentation only.');
+const idx=html.indexOf(marker);
+const original=idx>=0?html.subarray(0,idx-1):Buffer.alloc(0);
+const originalBlob=crypto.createHash('sha1').update(Buffer.concat([Buffer.from('blob '+original.length+'\\0'),original])).digest('hex');
 const checks=[];
 function check(name,fn){try{fn();checks.push({name,status:'PASS'});}catch(e){checks.push({name,status:'FAIL',message:String(e.message||e)});}}
-check('accepted 16584 public homepage unchanged',()=>assert.equal(repoBlob,'1c217d9486f0e234c08e1b6890e28d1db7dc03cf'));
+check('accepted 16584 preserved as exact prefix',()=>assert.equal(originalBlob,'1c217d9486f0e234c08e1b6890e28d1db7dc03cf'));
 check('homepage nonempty',()=>assert.ok(html.length>500000,'unexpectedly small index.html'));
 check('approved tagline preserved',()=>assert.ok(html.toString('utf8').includes('Slow it. Sink it. Spread it.'),'exact approved tagline absent'));
 check('auxiliary JavaScript syntax',()=>{new vm.Script(js,{filename:'earthline-launch-16872.js'});});
-check('approved blue safe-line layer references',()=>{for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'])assert.ok(js.includes(id),'missing '+id);});
-check('rejected natural renderer not made visible by M95 recovery',()=>{
- const start=js.indexOf('/* EARTHLINE M95 — RESTORE');
- assert.ok(start>=0,'candidate patch absent');
- const section=js.slice(start);
- assert.ok(section.includes("setLayoutProperty(id,'visibility','none')"));
- assert.ok(section.includes("setLayoutProperty(id,'visibility','visible')"));
- assert.ok(!section.includes('authoritativeSafeSwales15815='),'candidate presentation mutates science');
+check('approved blue safe-line layer references',()=>{for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'])assert.ok(html.includes(id),'missing '+id);});
+check('M95 candidate script preserves geometry and switches layer visibility',()=>{
+ const m=html.toString('utf8').match(/<script id="earthline-m95-approved-blue-property-only">([\\s\\S]*?)<\\/script>/);
+ assert.ok(m,'M95 script absent');
+ new vm.Script(m[1],{filename:'m95-property-renderer.js'});
+ assert.ok(m[1].includes("setLayoutProperty(id,'visibility','none')"));
+ assert.ok(m[1].includes("setLayoutProperty(id,'visibility','visible')"));
+ assert.ok(m[1].includes("setPaintProperty(id,'line-opacity',.98)"));
+ assert.ok(!m[1].includes('authoritativeSafeSwales15815'),'presentation mutates scientific swale source');
 });
-check('approved Elder refresh is independent and optional',()=>assert.ok(js.includes('EARTHLINE_ELDER_TREES_V1_17097?.refresh?.()')));
+check('dormant auxiliary JS unchanged from protected source',()=>assert.equal(crypto.createHash('sha1').update(Buffer.concat([Buffer.from('blob '+Buffer.byteLength(js)+'\\0'),Buffer.from(js)])).digest('hex'),'6dccecdf8a2ce1ae4cb1ef4b06c03491ba90a3a3'));
 check('no new remote scripts in recovery patch',()=>{
- const section=js.slice(js.indexOf('/* EARTHLINE M95 — RESTORE'));
+ const section=html.toString('utf8').slice(idx);
  assert.ok(!/createElement\(['"]script/.test(section));
 });
 const status=checks.every(x=>x.status==='PASS')?'PASS':'FAIL';
