@@ -1,0 +1,24 @@
+name: Earthline Mantra 99 recovery regression
+on:
+  push:
+    branches:
+      - repair/mantra-98-controlled-recovery
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-and-elder-owner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Print Node version
+        run: node --version
+      - name: Verify recovery source and evidence assets
+        run: node tests/mantra98-source-gate.cjs
+      - name: Verify Elder module syntax
+        run: node --check earthline-elder-restored-17097.js
+      - name: Verify Elder worker module syntax
+        run: node --check --input-type=module < earthline-elder-worker-17129.js
+      - name: Verify stale Regional cannot erase Property Elder evidence
+        run: node tests/mantra94-elder-owner.mjs
