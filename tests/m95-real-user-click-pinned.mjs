@@ -32,6 +32,22 @@ try{
  }));
  if(Math.abs(Number(before.target?.lng)-center.lng)>1e-5||Math.abs(Number(before.target?.lat)-center.lat)>1e-5)
    throw Error('Preclick map target not selected physical location: '+JSON.stringify(before));
+ await page.evaluate(()=>{
+   const logs=[];let previous=window.EARTHLINE_PROPERTY_TARGET_16201;
+   const center=()=>{const c=(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap)?.getCenter?.();return c?{lng:c.lng,lat:c.lat}:null;};
+   Object.defineProperty(window,'EARTHLINE_PROPERTY_TARGET_16201',{
+      configurable:true,
+      get(){return previous;},
+      set(v){logs.push({type:'target-write',to:{lng:v?.lng,lat:v?.lat,source:v?.source},map:center(),stack:String(new Error().stack).split('\n').slice(1,5).join('|')});previous=v;}
+   });
+   for(const type of ['pointerover','pointerdown','focus','click']){
+     document.addEventListener(type,e=>{
+       if(e.target?.closest?.('#earthlineDeclareProperty16169'))
+         logs.push({type,at:Date.now(),target:previous?{lng:previous.lng,lat:previous.lat}:null,map:center()});
+     },true);
+   }
+   window.M95_EVENT_TRACE=logs;
+ });
  const button=page.locator('#earthlineDeclareProperty16169');
  if(!await button.isVisible()||!await button.isEnabled())throw Error('Normal Property control not visible/enabled');
  await button.click();
@@ -66,6 +82,8 @@ try{
   elderPresent:snapshot.elder.state==='committed'&&snapshot.elder.count>0&&snapshot.elder.sourceCount>0&&snapshot.elder.layer,
   screenedClearTruth:snapshot.exclusion.acquisition==='screened-clear'&&snapshot.exclusion.kind==='open-data'&&snapshot.exclusion.uiKind==='open-data'&&!/must remain blocked/i.test(snapshot.exclusion.uiText||'')
  };
+ snapshot.trace=await page.evaluate(()=>window.M95_EVENT_TRACE||[]);
+ console.log('M95_EVENT_TRACE '+JSON.stringify(snapshot.trace));
  snapshot.checks=checks;snapshot.pass=Object.values(checks).every(Boolean)&&errors.length===0;
  console.log('M95_REAL_CLICK_CANDIDATE '+JSON.stringify({...snapshot,errors}));
  if(!snapshot.pass)process.exitCode=1;
