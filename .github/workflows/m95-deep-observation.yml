@@ -1,0 +1,27 @@
+name: M95 real Property state and exclusions after 10s
+on:
+  push:
+    branches: [diagnostics/m95-real-arizona-ui-20261103]
+    paths: [.github/workflows/m95-deep-observation.yml]
+permissions:
+  contents: read
+jobs:
+  deep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Actual public controls, two physical centers, exclusion audit and Elder settlement
+        run: node tests/mantra95-deep-property-observation.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m95-deep-property-state
+          path: artifacts/m95-deep
+          retention-days: 2
