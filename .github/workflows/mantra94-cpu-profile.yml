@@ -1,0 +1,31 @@
+name: M94 isolated CPU profile (New York and Arizona)
+on:
+  push:
+    branches: [diag/mantra94-cpu-profile-20261102]
+    paths:
+      - tests/mantra94-cpu-profile.mjs
+      - .github/workflows/mantra94-cpu-profile.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pinned-cpu-profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tests/mantra94-cpu-profile.mjs
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Profile exact pinned Earthline candidate in Chromium
+        run: node tests/mantra94-cpu-profile.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra94-cpu-profile
+          path: artifacts/m94-cpu
+          retention-days: 7
