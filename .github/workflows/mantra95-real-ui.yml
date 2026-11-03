@@ -1,0 +1,28 @@
+name: M95 real UI observation — Arizona public site
+on:
+  push:
+    branches: [diagnostics/m95-real-arizona-ui-20261103]
+    paths: [.github/workflows/mantra95-real-ui.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run ordinary UI clicks on public Arizona and inspect rendered state
+        run: node tests/mantra95-real-ui-observation.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m95-real-ui-observation
+          path: artifacts/m95-real-ui
+          retention-days: 7
