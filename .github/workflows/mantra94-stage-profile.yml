@@ -1,0 +1,31 @@
+name: M94 isolated regional stage profiler
+on:
+  push:
+    branches: [diag/mantra94-swale-stage-20261102]
+    paths:
+      - tests/mantra94-stage-profile.mjs
+      - .github/workflows/mantra94-stage-profile.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pinned-stages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tests/mantra94-stage-profile.mjs
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Record NY AZ TX exact refinement costs
+        run: node tests/mantra94-stage-profile.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m94-regional-stage-diagnostics
+          path: artifacts/m94-stages
+          retention-days: 7
