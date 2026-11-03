@@ -1,0 +1,40 @@
+name: M97 independent public Property swales - Iowa Texas Vermont
+on:
+  push:
+    branches: [diagnostics/m95-real-arizona-ui-20261103]
+    paths: [.github/workflows/m97-public-multi-property.yml]
+permissions:
+  contents: read
+jobs:
+  public-property:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check public website is serving M97 source
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 24); do
+            status=$(curl -Ls --max-time 20 -H 'Cache-Control: no-cache' -o /tmp/earthline_m97.html -w '%{http_code}' "https://earthlinedevelopment.org/?m97_public=${GITHUB_RUN_ID}_${i}" || true)
+            if [ "$status" = "200" ] && grep -Fq 'earthlineProtectedMajorChannelThresholdM97' /tmp/earthline_m97.html; then
+              echo "M97_PUBLIC_SOURCE_VERIFIED"
+              exit 0
+            fi
+            sleep 8
+          done
+          echo 'Public origin does not serve M97 engine'
+          exit 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Three public Property sites must show increase and scientific safety
+        run: node tests/m97-public-multi-property-gate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m97-public-property-repair-evidence
+          path: artifacts/m97-public-gate
+          retention-days: 6
