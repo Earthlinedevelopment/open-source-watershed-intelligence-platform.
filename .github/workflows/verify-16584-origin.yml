@@ -1,0 +1,30 @@
+name: Verify restored accepted 16584 is actually public
+on:
+  push:
+    branches: [diagnostics/accepted-16584-live-verify-20261103]
+    paths: [.github/workflows/verify-16584-origin.yml]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare actual public HTML with accepted 16584 exact bytes
+        run: |
+          set -euo pipefail
+          echo "REFERENCE_BRANCH_BLOB=$(git hash-object index.html)"
+          sha256sum index.html
+          for i in $(seq 1 18); do
+            status=$(curl -Ls --max-time 25 -H 'Cache-Control: no-cache' -o /tmp/live16584.html -w '%{http_code}' "https://earthlinedevelopment.org/?accepted_rollback_16584=${GITHUB_RUN_ID}_${i}" || true)
+            if [ "$status" = "200" ] && cmp -s index.html /tmp/live16584.html; then
+              echo "EARTHLINE_LIVE_16584_EXACT_BYTES_MATCH=true"
+              sha256sum /tmp/live16584.html
+              exit 0
+            fi
+            echo "Attempt ${i}: HTTP ${status}, bytes $(wc -c </tmp/live16584.html 2>/dev/null || echo 0)"
+            sleep 6
+          done
+          echo "EARTHLINE_LIVE_16584_EXACT_BYTES_MATCH=false"
+          exit 1
