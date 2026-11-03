@@ -17,9 +17,9 @@ try { if (exists(manifestPath)) manifest = JSON.parse(read(manifestPath)); } cat
 // approved Elder script tag; the remaining bytes must retain the exact prior Git blob.
 const gitBlobSha = value => {
   const bytes = Buffer.from(value, 'utf8');
-  return crypto.createHash('sha1').update(Buffer.from('blob ' + bytes.length + '\\0')).update(bytes).digest('hex');
+  return crypto.createHash('sha1').update(Buffer.from('blob ' + bytes.length + String.fromCharCode(0));
 };
-const elderTag = '\\n<script src="earthline-elder-restored-17097.js?v=mantra99-recovery"></script>';
+const elderTag = String.fromCharCode(10) + '<script src="earthline-elder-restored-17097.js?v=mantra99-recovery"></script>';
 const unmodifiedBaselineSha = '1c217d9486f0e234c08e1b6890e28d1db7dc03cf';
 const wiredScripts = (html.match(/<script\b[^>]*\bsrc=["']earthline-elder-restored-17097\.js(?:\?[^"']*)?["'][^>]*><\/script>/g) || []).length;
 const checks = [
