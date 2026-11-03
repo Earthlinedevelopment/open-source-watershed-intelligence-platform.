@@ -1,0 +1,27 @@
+name: M97 Property mask provenance - Iowa and Texas
+on:
+  push:
+    branches: [diagnostics/m95-real-arizona-ui-20261103]
+    paths: [.github/workflows/m97-mask-attribution.yml]
+permissions:
+  contents: read
+jobs:
+  provenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Inspect exact vector, optical impervious and water exclusion mask provenance
+        run: node tests/m97-source-mask-attribution.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m97-mask-attribution
+          path: artifacts/m97-flat-properties
+          retention-days: 3
