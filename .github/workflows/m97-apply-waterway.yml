@@ -1,0 +1,23 @@
+name: M97 isolated Property waterway vs runoff repair
+on:
+  push:
+    branches: [fix/m97-protected-waterway-vs-runoff]
+    paths: [.github/workflows/m97-apply-waterway.yml]
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact M96 source and only change D8 major-channel classification
+        run: |
+          set -euo pipefail
+          python3 tools/m97-patch-waterway-mask.py
+          git diff --check
+          git diff --stat
+          git config user.name "Earthline Repair CI"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix(M97): distinguish modeled minor runoff rills from protected major waterway mask"
+          git push origin HEAD:fix/m97-protected-waterway-vs-runoff
