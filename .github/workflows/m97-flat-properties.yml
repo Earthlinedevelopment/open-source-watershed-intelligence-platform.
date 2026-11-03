@@ -1,0 +1,27 @@
+name: M97 flat Property sites — core generation (Iowa Texas Vermont)
+on:
+  push:
+    branches: [diagnostics/m95-real-arizona-ui-20261103]
+    paths: [.github/workflows/m97-flat-properties.yml]
+permissions:
+  contents: read
+jobs:
+  flat-property:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Inspect real <=4 percent parcel terrain and Property swales on flatter locations
+        run: node tests/m97-flat-property-generation.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m97-flat-real-property-evidence
+          path: artifacts/m97-flat-properties
+          retention-days: 3
