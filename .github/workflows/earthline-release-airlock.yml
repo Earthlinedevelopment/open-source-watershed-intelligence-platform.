@@ -28,6 +28,10 @@ jobs:
         run: python3 tools/earthline-release-airlock-static.py
       - name: Compile pinned browser release test
         run: node --check tests/earthline-release-airlock.mjs
+      - name: Guard Elder Property publication ownership
+        run: node tests/mantra94-elder-owner.mjs
+      - name: Preserve exact land and water polygon classifications
+        run: node tests/mantra94-exact-ring-parity.mjs
       - id: changes
         name: Detect science, client and data changes
         shell: bash
@@ -64,8 +68,10 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Strict seven rollout-state scientific browser gate
         env:
-          EARTHLINE_EXTENDED: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
+          EARTHLINE_EXTENDED: '1'
         run: node tests/earthline-release-airlock.mjs
+      - name: Arizona pinned Regional and two Property integrity controls
+        run: node tests/mantra94-property-pinned.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
