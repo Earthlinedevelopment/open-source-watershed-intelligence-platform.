@@ -31,7 +31,13 @@ async function inspect(label){
 try{
  await page.goto('https://earthlinedevelopment.org/?accepted16584ui='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
  await page.locator('#searchInput').fill('Vermont');
- await page.locator('#runBtn').click();
+ /* Visible search suggestion is deliberately above Run; choose it like a user. */
+ const options=page.locator('#earthlineSearchSuggestions15970 strong');
+ try{await options.first().waitFor({state:'visible',timeout:7000});await options.first().click();}
+ catch(e){errors.push('suggestion:'+String(e));await page.locator('#searchInput').press('Escape');await page.locator('#runBtn').click();}
+ if(!await page.evaluate(()=>window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated>0)){
+  try{await page.waitForTimeout(1000);if(!await page.evaluate(()=>window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated>0))await page.locator('#runBtn').click({timeout:9000});}catch(e){errors.push('run-button-after-suggestion:'+String(e))}
+ }
  try{await page.waitForFunction(()=>window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated>0||!!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970,null,{timeout:48000,polling:300})}catch(e){errors.push('region:'+String(e))}
  await inspect('vermont-regional');
  await page.evaluate(()=>{
