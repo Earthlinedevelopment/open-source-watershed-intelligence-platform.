@@ -31911,8 +31911,13 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
 
     setBusy(true,'DERIVING WATER PATHS + BIOSWALES');setRunStatus(focusMode?'Deriving focus contours, flow paths and bioswale corridors…':'Deriving regional contours, flow paths and bioswale corridors…','pending');await wait(20);if(!isCurrentRun(runToken))return false;
     const productsStarted16198=performance.now();
+    /* DIAG ONLY — timing marks without changing computations. */
+    const segmentsM94=[];let lastMarkM94=performance.now();let swalePassM94=0;
+    function markStageM94(name){const now=performance.now();segmentsM94.push({name,ms:Math.round(now-lastMarkM94)});lastMarkM94=now;window.EARTHLINE_M94_STAGE_TRACE=segmentsM94;}
+    markStageM94('begin');
+
     if(!hy){hy=await hydrology(dem,validityGrid16584&&validityGrid16584.mask||null);if(landValidity16584&&Array.isArray(landValidity16584.waterParts))hy.waterParts16584=landValidity16584.waterParts;}const regionalRecharge16492=regionalRechargeModel16492(hy,loc);const contoursStarted16245=performance.now();
-    let contours=await makeContours(hy);noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · CONTOURS COMPLETE',runToken);await wait(0);
+    let contours=await makeContours(hy);markStageM94('contours');noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · CONTOURS COMPLETE',runToken);await wait(0);
     /* 16249: swales are the primary decision product. Build them immediately after contours,
        then publish a VERIFIED Vermont-clipped swale-only preview before the heavier flow
        construction and full product clipping pass. Final science/products remain identical. */
@@ -31937,7 +31942,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     const swaleJurisdictionGeometry16539=selectionBoundary16539&&(selectionBoundary16539.prepared||selectionBoundary16539.geometry)||null;
     const min16609=percentile(hy.elev,0.02),max16609=percentile(hy.elev,0.98),step16609=niceInterval(Math.max(1,max16609-min16609),20);
     const useSupplemental16609=!focusMode&&step16609>=200;
-    const swaleCandidateContours16609=useSupplemental16609?await makeContours(hy,true):contours;
+    const swaleCandidateContours16609=useSupplemental16609?await makeContours(hy,true):contours;markStageM94('candidate-contours+boundary');
     let supplementalCandidates16702=[];
     let scaleRefineTrigger16705=false;
     if(!focusMode&&Math.max(Number(hy.cellX)||0,Number(hy.cellY)||0)>=12000&&hy.outsideLandMask16632&&hy.validityMask16584){
@@ -32064,7 +32069,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
         window.EARTHLINE_TERRAIN_GAP_REFINEMENT_16730={build:'EARTHLINE 16730',bins:binRows16730.map(r16730=>({bx:r16730.bx,by:r16730.by,valid:r16730.valid,preferred:r16730.preferred,relaxed:r16730.relaxed,preferredRatio:Number(r16730.preferredRatio.toFixed(4)),relaxedRatio:Number(r16730.relaxedRatio.toFixed(4)),relief:Number(r16730.relief.toFixed(1)),starved:r16730.starved})),selectedTiles:[],added:0,rule:'no terrain-gap refinement needed',at:new Date().toISOString()};
       }
     }
-    let swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539,supplementalCandidates16702);noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · SWALES COMPLETE',runToken);await wait(0);
+    let swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539,supplementalCandidates16702);markStageM94('swale-pass-'+(++swalePassM94));noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · SWALES COMPLETE',runToken);await wait(0);
 
 
     /* EARTHLINE 16841 — GROUPED STATEWIDE-DEM LOCAL PHASE. */
@@ -32102,7 +32107,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
         }catch(e16839){failed16839.push({key:key16839,error:String(e16839)});}
         await Promise.resolve();
       }
-      if(added16839.length){supplementalCandidates16702.push(...added16839);swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539,supplementalCandidates16702);}
+      if(added16839.length){supplementalCandidates16702.push(...added16839);swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539,supplementalCandidates16702);markStageM94('swale-pass-'+(++swalePassM94));}
       window.EARTHLINE_STATEWIDE_SUPERTILE_16839={build:'EARTHLINE 16841',grid:'24x24 grouped 6x6; median-only cell phases',gaps:gaps16839.length,groups:groups16839.size,added:added16839.length,failed:failed16839.length,elapsedMs:Math.round(performance.now()-start16839),targetCandidates:added16839.filter(c16839=>['11,11','12,11','11,12','12,12'].includes(c16839.fineCell16839)).map(c16839=>({x:c16839.x,y:c16839.y,slope:c16839.slope,score:c16839.score,fineCell:c16839.fineCell16839})),groupRows:groupRows16839,rule:'group unresolved high-opportunity 24x24 cells into max 16 statewide-DEM local contour windows with one local median phase per gap plus group quantiles; real terrain-derived candidates only; no remote DEM, jurisdiction names, synthetic corridors, slope change or capacity change'};
     }
     /* EARTHLINE 16780 — the coarse 6x6 coverage owner can pass while a large
@@ -32230,7 +32235,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
           }
           if(added16780.length){
             supplementalCandidates16702.push(...added16780);
-            swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539,supplementalCandidates16702);
+            swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539,supplementalCandidates16702);markStageM94('swale-pass-'+(++swalePassM94));
           }
         }catch(e16780){
           failed16780.push({error:String(e16780)});
@@ -32398,7 +32403,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
           }
           if(added16731.length){
             supplementalCandidates16702.push(...added16731);
-            swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539,supplementalCandidates16702);
+            swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539,supplementalCandidates16702);markStageM94('swale-pass-'+(++swalePassM94));
           }
           window.EARTHLINE_COVERAGE_GAP_REFINEMENT_16731={build:'EARTHLINE 16738',before:bins16731.map(r16731=>({bx:r16731.bx,by:r16731.by,valid:r16731.valid,opportunity:r16731.opportunity,preferred:r16731.preferred,swales:r16731.swales})),selected:selected16731.map(r16731=>({bx:r16731.bx,by:r16731.by,valid:r16731.valid,opportunity:r16731.opportunity,preferred:r16731.preferred})),highResCounts16735,failedTiles16738,confirmedNull16735:Array.from(confirmedNullKeys16735),added:added16731.length,elapsedMs:Math.round(performance.now()-start16731),rule:'refine up to 18 exact jurisdiction cells; one tile transport failure cannot discard successful cells and is never mislabeled as a scientific null',at:new Date().toISOString()};
         }catch(e16731){window.EARTHLINE_COVERAGE_GAP_REFINEMENT_16731={build:'EARTHLINE 16731',error:String(e16731),at:new Date().toISOString()};}
@@ -32462,7 +32467,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
           defs16741.forEach((d16741,i16741)=>{if(!failedKeys16741.has(d16741.row.bx+','+d16741.row.by)&&(!Array.isArray(results16741[i16741])||results16741[i16741].length===0)){const k16741=d16741.row.bx+','+d16741.row.by;confirmedNullKeys16735.add(k16741);nulls16741.push(k16741);}});
           const occupied16741=new Set((supplementalCandidates16702||[]).map(c16741=>String(c16741.x)+','+String(c16741.y))),added16741=[];
           for(const c16741 of results16741.flat().sort((a16741,b16741)=>b16741.score-a16741.score)){const k16741=String(c16741.x)+','+String(c16741.y);if(occupied16741.has(k16741))continue;occupied16741.add(k16741);added16741.push(c16741);}
-          if(added16741.length){supplementalCandidates16702.push(...added16741);swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539,supplementalCandidates16702);}
+          if(added16741.length){supplementalCandidates16702.push(...added16741);swales=await makeSwales(hy,swaleCandidateContours16609,focusMode,swaleJurisdictionGeometry16539,supplementalCandidates16702);markStageM94('swale-pass-'+(++swalePassM94));}
           for(const r16741 of after16731)r16741.swales=0;
           for(const f16741 of swales.features||[]){const c16741=f16741&&f16741.geometry&&f16741.geometry.type==='LineString'?f16741.geometry.coordinates:null;if(!Array.isArray(c16741)||!c16741.length)continue;const mid16746=c16741[Math.floor((c16741.length-1)/2)],g16746=llGrid(hy,mid16746);if(!g16746||!Number.isFinite(g16746.x)||!Number.isFinite(g16746.y))continue;const bx16746=Math.max(0,Math.min(binsX16731-1,Math.floor(Number(g16746.x)*binsX16731/Math.max(1,hy.w)))),by16746=Math.max(0,Math.min(binsY16731-1,Math.floor(Number(g16746.y)*binsY16731/Math.max(1,hy.h)))),row16746=after16731.find(r16741=>r16741.bx===bx16746&&r16741.by===by16746);if(row16746)row16746.swales++;}
           unresolved16731=after16731.filter(r16731=>r16731.valid>=45&&r16731.opportunity>=8&&(r16731.opportunity/Math.max(1,r16731.valid))>=.035&&r16731.swales<earthlineCoverageDensityTarget16767(r16731)&&!confirmedNullKeys16735.has(String(r16731.bx)+','+String(r16731.by)));
@@ -32502,7 +32507,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
       hy.styleWaterIndex16584=earthlineLoadedStyleWaterIndex16584(map(),hy.bounds);
       window.EARTHLINE_STYLE_WATER_INDEX_16584={build:'EARTHLINE 16584',runToken,featureCount:Number(hy.styleWaterIndex16584.featureCount||0),partCount:Number(hy.styleWaterIndex16584.partCount||0),sourceCount:Number(hy.styleWaterIndex16584.sourceCount||0),binCount:Object.keys(hy.styleWaterIndex16584.bins||{}).length,at:new Date().toISOString()};
     }
-    let flows=makeFlows(hy);noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · FLOWS COMPLETE',runToken);await wait(0);
+    let flows=makeFlows(hy);markStageM94('pre-flows-and-refinements');noteRegionalProgress16347('DERIVING WATER PATHS + BIOSWALES · FLOWS COMPLETE',runToken);await wait(0);
     if(!focusMode&&hy.validityMask16584){
       let unsafe16584=0,segments16584=0;
       for(const f16584 of (flows&&flows.features||[])){
@@ -32536,7 +32541,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
       setBusy(true,'VERIFYING JURISDICTION CONTAINMENT');
       const boundary16539=selectionBoundary16539||await jurisdictionBoundaryPromise16539;
       if(!boundary16539||!boundary16539.geometry)throw new Error('selected administrative boundary could not be resolved; no uncontained Regional result was published');
-      const bounded16539=await earthlineClipRegionalProducts16539({contours,flows,swales,query:q,runToken},boundary16539);
+      const bounded16539=await earthlineClipRegionalProducts16539({contours,flows,swales,query:q,runToken},boundary16539);markStageM94('clip+verification');
       contours=bounded16539.contours;flows=bounded16539.flows;swales=bounded16539.swales;genericBoundaryAudit16539=bounded16539.audit;
       window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539=JSON.parse(JSON.stringify(genericBoundaryAudit16539));
     }
@@ -32671,7 +32676,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
         :false;
     for(const id of [IDS.contourLine,IDS.flowCasing,IDS.flowLine,IDS.contourLabel,IDS.flowArrow,IDS.swaleHalo,IDS.swaleLine,IDS.aquiferLabel]){try{m.moveLayer(id);}catch(_){}}
     try{m.triggerRepaint&&m.triggerRepaint();}catch(_){}
-    phaseMark16198('terrainProductsAndPublishMs',productsStarted16198);
+    markStageM94('publication-render');phaseMark16198('terrainProductsAndPublishMs',productsStarted16198);
 
     const contourLineCount=contours.features.filter(f=>f.geometry&&(f.geometry.type==='LineString'||f.geometry.type==='MultiLineString')).length;
     const contourLabelCount=contours.features.filter(f=>f.properties&&f.properties.feature_type==='contour-label').length;
