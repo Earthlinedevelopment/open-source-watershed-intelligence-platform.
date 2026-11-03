@@ -1,0 +1,28 @@
+name: M96 visible Property bioswales and Elder UI
+on:
+  push:
+    branches: [fix/m96-visible-property-swales-elders]
+    paths: [.github/workflows/m96-visual-gate.yml]
+permissions:
+  contents: read
+jobs:
+  property-visible:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium for real Mapbox clicks
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Verify visible twin dotted blue Property strips and rendered Elder labels
+        run: node tests/m96-visible-property-real-click.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m96-actual-property-rendering
+          path: artifacts/m96-visible-property
+          retention-days: 5
