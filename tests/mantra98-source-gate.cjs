@@ -13,11 +13,20 @@ const elder = exists(elderPath) ? read(elderPath) : '';
 const manifestPath = 'data/elder-trees/v2/manifest.json';
 let manifest = null;
 try { if (exists(manifestPath)) manifest = JSON.parse(read(manifestPath)); } catch (_) {}
+// Prove that the massive production science/UI file differs by only the single
+// approved Elder script tag; the remaining bytes must retain the exact prior Git blob.
+const gitBlobSha = value => {
+  const bytes = Buffer.from(value, 'utf8');
+  return crypto.createHash('sha1').update(Buffer.from('blob ' + bytes.length + '\\0')).update(bytes).digest('hex');
+};
+const elderTag = '\\n<script src="earthline-elder-restored-17097.js?v=mantra99-recovery"></script>';
+const unmodifiedBaselineSha = '1c217d9486f0e234c08e1b6890e28d1db7dc03cf';
 const wiredScripts = (html.match(/<script\b[^>]*\bsrc=["']earthline-elder-restored-17097\.js(?:\?[^"']*)?["'][^>]*><\/script>/g) || []).length;
 const checks = [
   ['Approved tagline exists', html.includes('Slow it. Sink it. Spread it.')],
   ['Property safe-swale authority exists', html.includes('authoritativeSafeSwales15815')],
   ['Exclusion verification blocks output', html.includes('EXCLUSIONS UNVERIFIED')],
+  ['Production engine and approved UI byte-for-byte preserved', gitBlobSha(html.replace(elderTag, '')) === unmodifiedBaselineSha],
   ['Approved Elder implementation wired once', wiredScripts === 1],
   ['Elder implementation file present', exists(elderPath) && elder.includes('EARTHLINE_ELDER_TREES_V1_17097')],
   ['Elder evidence starts from terminal analysis event', elder.includes("document.addEventListener('earthline:analysis-complete'")],
