@@ -1,0 +1,34 @@
+name: M95 candidate actual UI Property release gate
+on:
+  push:
+    branches: [fix/m95-arizona-actual-property-ui]
+    paths: [.github/workflows/m95-candidate-test.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  actual-user-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check exactly patched source and JS
+        run: |
+          set -euo pipefail
+          echo 'b120ba551c5aff15a3b3de2bb4dea0969167ead1a8a0a11ac9127720595d1840  index.html' | sha256sum -c -
+          node --check tests/m95-real-user-click-pinned.mjs
+          git diff --check
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Camera navigation and physical Property click must retain target, swales, Elders, accurate evidence
+        run: node tests/m95-real-user-click-pinned.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m95-actual-user-property-ui
+          path: artifacts/m95-ui-candidate
+          retention-days: 3
