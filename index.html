@@ -30023,11 +30023,18 @@ body { overflow-x:hidden!important; }
       const raw=coords.slice(start,end);if(raw.length<2)return null;
       const rawCenter=Math.max(0,Math.min(raw.length-1,center-start));
       const distM=(a,b)=>{const R=6371008.8,p1=Number(a[1])*Math.PI/180,p2=Number(b[1])*Math.PI/180,dp=(Number(b[1])-Number(a[1]))*Math.PI/180,dl=(Number(b[0])-Number(a[0]))*Math.PI/180,q=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(q)))};
+      /* M94: keep source geometry consistent with the 4 km Regional corridor gate. */
+      const maxHalfM=focusMode?8000:1900;
       let left=rawCenter,right=rawCenter,leftM=0,rightM=0;
-      while(left>0){const d=distM(raw[left],raw[left-1]);if(leftM+d>8000)break;left--;leftM+=d}
-      while(right<raw.length-1){const d=distM(raw[right],raw[right+1]);if(rightM+d>8000)break;right++;rightM+=d}
+      while(left>0){const d=distM(raw[left],raw[left-1]);if(leftM+d>maxHalfM)break;left--;leftM+=d}
+      while(right<raw.length-1){const d=distM(raw[right],raw[right+1]);if(rightM+d>maxHalfM)break;right++;rightM+=d}
       if(left===right){if(right<raw.length-1)right++;else if(left>0)left--}
       const segment=raw.slice(left,right+1);if(segment.length<2)return null;
+      if(!focusMode){
+        let sourceLengthM94=0;
+        for(let j=1;j<segment.length;j++)sourceLengthM94+=distM(segment[j-1],segment[j]);
+        if(!Number.isFinite(sourceLengthM94)||sourceLengthM94>4000)return null;
+      }
       const linePx16632=lineLengthPixels(hy,segment);let minLinePx16632=focusMode?10:2;
       if(!focusMode&&linePx16632<10&&linePx16632>=4&&Math.max(Number(hy.cellX)||0,Number(hy.cellY)||0)>10000){
         const mp16632=segment[Math.floor((segment.length-1)/2)],mg16632=llGrid(hy,mp16632);
