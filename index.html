@@ -30015,6 +30015,33 @@ body { overflow-x:hidden!important; }
     return {type:'FeatureCollection',features};
   }
   async function earthlineCooperativeYield16661(){return new Promise(resolve=>{const ch=new MessageChannel();ch.port1.onmessage=()=>{try{ch.port1.close();ch.port2.close()}catch(_){}resolve()};ch.port2.postMessage(0)});}
+  /* Mantra 94: trim only AFTER official jurisdiction clipping, to avoid
+     dropping otherwise valid terrain-screened opportunities along borders. */
+  function earthlineRegionalPublishedTrimM94(coords){
+    if(!Array.isArray(coords)||coords.length<2)return [];
+    const R=6371008.8,rad=Math.PI/180,cum=[0];
+    for(let k=1;k<coords.length;k++){
+      const p=coords[k-1],q=coords[k],lat1=Number(p?.[1])*rad,lat2=Number(q?.[1])*rad;
+      const dp=lat2-lat1,dl=(Number(q?.[0])-Number(p?.[0]))*rad;
+      if(![lat1,lat2,dp,dl].every(Number.isFinite))return [];
+      const h=Math.sin(dp/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dl/2)**2;
+      cum.push(cum[k-1]+2*R*Math.asin(Math.min(1,Math.sqrt(Math.max(0,h)))));
+    }
+    const total=cum[cum.length-1],limit=3800;
+    if(!Number.isFinite(total)||total<0.1)return [];
+    if(total<=limit)return coords;
+    const lo=(total-limit)/2,hi=lo+limit;
+    function at(dist){
+      let j=1;while(j<cum.length-1&&cum[j]<dist)j++;
+      const p=coords[j-1],q=coords[j],t=Math.max(0,Math.min(1,(dist-cum[j-1])/Math.max(1e-12,cum[j]-cum[j-1])));
+      const dl=((Number(q[0])-Number(p[0])+540)%360+360)%360-180;
+      return [((Number(p[0])+dl*t+540)%360+360)%360-180,Number(p[1])+(Number(q[1])-Number(p[1]))*t];
+    }
+    const cut=[at(lo)];
+    for(let k=1;k<coords.length-1;k++)if(cum[k]>lo&&cum[k]<hi)cut.push(coords[k]);
+    cut.push(at(hi));
+    return cut;
+  }
   async function makeSwales(hy,contours,focusMode=false,jurisdictionGeometry16539=null,supplementalCandidates16702=null){
     const lines=(contours&&contours.features||[]).filter(f=>f&&f.properties&&f.properties.feature_type==='contour'&&f.geometry&&f.geometry.type==='LineString');
     const channel=percentile(hy.acc,.972),accLow=percentile(hy.acc,.22),accMid=percentile(hy.acc,.72),accHigh=percentile(hy.acc,.91),candidates=[];
@@ -30566,41 +30593,10 @@ body { overflow-x:hidden!important; }
     const features=[],total=Math.max(1,acceptedChosen.length);
     const gradeACount=Math.max(3,Math.ceil(total*.16));
     const gradeBEnd=Math.max(gradeACount+4,Math.ceil(total*.48));
-    /* M94: publish the central <=3.8 km of a previously screened Regional corridor.
-       This operates AFTER eligibility/ranking and preserves source-path curvature
-       and the original slope, water, and jurisdiction screening. */
-    function regionalTrimSourceM94(coords){
-      if(!Array.isArray(coords)||coords.length<2)return [];
-      const R=6371008.8,rad=Math.PI/180,cumulative=[0];
-      for(let k=1;k<coords.length;k++){
-        const a=coords[k-1],b=coords[k],p1=Number(a?.[1])*rad,p2=Number(b?.[1])*rad;
-        const dp=p2-p1,dl=(Number(b?.[0])-Number(a?.[0]))*rad;
-        if(![p1,p2,dp,dl].every(Number.isFinite))return [];
-        const h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
-        const dist=2*R*Math.asin(Math.min(1,Math.sqrt(Math.max(0,h))));
-        cumulative.push(cumulative[k-1]+dist);
-      }
-      const total=cumulative[cumulative.length-1],maxM=3800;
-      if(!Number.isFinite(total)||total<0.1)return [];
-      if(total<=maxM)return coords;
-      const lo=(total-maxM)/2,hi=lo+maxM;
-      const at=d=>{
-        let j=1;while(j<cumulative.length-1&&cumulative[j]<d)j++;
-        const p=coords[j-1],q=coords[j],t=Math.max(0,Math.min(1,(d-cumulative[j-1])/Math.max(1e-12,cumulative[j]-cumulative[j-1])));
-        const delta=((Number(q[0])-Number(p[0])+540)%360+360)%360-180;
-        return [((Number(p[0])+delta*t+540)%360+360)%360-180,Number(p[1])+(Number(q[1])-Number(p[1]))*t];
-      };
-      const result=[at(lo)];
-      for(let k=1;k<coords.length-1;k++)if(cumulative[k]>lo&&cumulative[k]<hi)result.push(coords[k]);
-      result.push(at(hi));
-      return result;
-    }
     for(let index=0;index<acceptedChosen.length;index++){
       const c=acceptedChosen[index],rank=index+1,score=Math.max(0,Math.min(100,Math.round(c.score*100)));
       const grade=index<gradeACount?'A':index<gradeBEnd?'B':'C';
       const gradeLabel=grade==='A'?'BEST':grade==='B'?'STRONG':'GENERAL';
-      const publishedSegmentM94=focusMode?c.segment:regionalTrimSourceM94(c.segment);
-      if(!publishedSegmentM94||publishedSegmentM94.length<2)continue;
       const slopeFit=Math.max(0,Math.min(100,Math.round(100-Math.abs(c.slope-3.4)*9)));
       const relief=Number(c.contourAudit16166.reliefM),drop=Number(c.contourAudit16166.endDropM);
       features.push({type:'Feature',properties:{
@@ -30617,7 +30613,7 @@ body { overflow-x:hidden!important; }
         end_to_end_drop_m:Number.isFinite(drop)?Number(drop.toFixed(2)):null,
         label:grade+rank+' — '+gradeLabel+' '+(focusMode?'FOCUS':'REGIONAL')+' BIOSWALE OPPORTUNITY',
         screening:focusMode?'Earthline focus corridor derived from a modeled contour; longitudinal relief and end-to-end elevation change are each limited to 5 m. Field and bare-earth verification remain required.':'Earthline regional opportunity corridor derived from modeled contour geometry. The 5 m focus tolerance is not enforced against coarse regional DEM cells; a focus or property run is required before placement.'
-      },geometry:{type:'LineString',coordinates:publishedSegmentM94}});
+      },geometry:{type:'LineString',coordinates:c.segment}});
     }
     const generationAudit={
       build:'EARTHLINE 16167',tier:focusMode?'focus':'regional',candidates:candidatesBeforeJurisdiction16539,
@@ -32530,6 +32526,25 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
         source:'final-returned-swale-collection',at:new Date().toISOString()};
     }
     if(focusMode){for(const f of swales.features||[]){f.properties=Object.assign({},f.properties||{},{analysis_tier:'focus',label:String(f.properties?.grade||'C')+String(f.properties?.rank||'')+' — FOCUS BIOSWALE OPPORTUNITY',screening:'fixed 3 km focus screening; not a property alignment; field and bare-earth verification required'});}}
+    /* M94 publication owner: final official state clip has already completed.
+       Publish only vetted corridor subsegments, never 13-16 km raw screening lines.
+       Keep the same number of verified corridors unless malformed geometry fails. */
+    if(!focusMode&&swales&&Array.isArray(swales.features)){
+      const beforeM94=swales.features.length,retainedM94=[];let cappedM94=0,rejectedM94=0;
+      for(const fM94 of swales.features){
+        const rawM94=fM94?.geometry?.type==='LineString'?fM94.geometry.coordinates:null;
+        const trimmedM94=earthlineRegionalPublishedTrimM94(rawM94);
+        if(trimmedM94.length<2){rejectedM94++;continue;}
+        if(trimmedM94!==rawM94)cappedM94++;
+        retainedM94.push(Object.assign({},fM94,{geometry:{type:'LineString',coordinates:trimmedM94}}));
+      }
+      swales=Object.assign({},swales,{features:retainedM94});
+      window.EARTHLINE_REGIONAL_SOURCE_LIMIT_M94={
+        stage:'post-jurisdiction-pre-publication',limitM:3800,before:beforeM94,
+        after:retainedM94.length,capped:cappedM94,rejected:rejectedM94,
+        at:new Date().toISOString()
+      };
+    }
 
     /* EARTHLINE 16329 — core preflight occurs before any final Regional display
        publication. A failed run cannot leave a visually convincing partial result. */
