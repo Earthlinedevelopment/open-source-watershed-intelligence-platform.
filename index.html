@@ -33810,11 +33810,18 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
       eventType:String(ev&&ev.type||"")
     });
     if(running)return false;
+    /* M95: freeze the user's actual crosshair BEFORE closing a corridor tip or an
+       information surface. Those dismissal callbacks can move the camera/target;
+       Property science and Elder coverage must use the clicked location. */
+    const mp=map(),m=model(),selectedAtClickM95=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+    const chosen=selectedAtClickM95?Object.assign({},selectedAtClickM95):null;
+    const c=(chosen&&Number.isFinite(Number(chosen.lng))&&Number.isFinite(Number(chosen.lat)))?{lng:Number(chosen.lng),lat:Number(chosen.lat)}:mp?.getCenter?.();
     /* EARTHLINE 16531 — Property transition uses the existing corridor-tip button so its private dismissal owner records acknowledgment and cannot reopen over Property. */
     try{const tip=document.getElementById('earthlineCorridorTip16248');if(tip){const close=tip.querySelector('button');if(close)close.click();else tip.classList.remove('open')}}catch(_){ }
     earthlineHideWaterBodyMessage16529();
     try{window.earthlineClosePropertyInfoSurfaces16372?.("property-start");}catch(_){}
-    const mp=map(),m=model(),chosen=window.EARTHLINE_PROPERTY_TARGET_16201,c=(chosen&&Number.isFinite(Number(chosen.lng))&&Number.isFinite(Number(chosen.lat)))?{lng:Number(chosen.lng),lat:Number(chosen.lat)}:mp?.getCenter?.();
+    /* Restore the frozen click target after those preflight UI dismissals. */
+    if(chosen)window.EARTHLINE_PROPERTY_TARGET_16201=Object.assign({},chosen);
     if(!mp||!m||!c||!Number.isFinite(Number(c.lng))||!Number.isFinite(Number(c.lat))){status('PROPERTY ANALYSIS BLOCKED — map-crosshair coordinates are unavailable.','failed');return false}
     const site=declaredSite(c);if(!site){status('PROPERTY ANALYSIS BLOCKED — the 20-acre scientific frame could not be created.','failed');return false}
     const waterGate16529=earthlineCrosshairMappedOpenWater16529(mp,c);
@@ -37368,6 +37375,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     }else if(sourceTier==="open-data"&&acquisitionResult==="features-found"){
       kind="open-data";label="OPEN-DATA SCREENING · FIELD VERIFICATION REQUIRED";
       detail="Available open-data / loaded map-source road and building evidence was applied. Coverage is not authoritative and may be incomplete; field verification is required before any siting decision.";
+    }else if(sourceTier==="open-data"&&acquisitionResult==="screened-clear"&&c.publicationAllowed===true){
+      kind="open-data";label="OPEN-DATA SCREENING · NO MAPPED EXCLUSIONS RETURNED · FIELD VERIFICATION REQUIRED";
+      detail="An open-data exclusion query completed with no mapped roads or structures returned for this area. This is not authoritative clearance; on-site verification is required before siting.";
     }else if(acquisitionResult==="unavailable"){
       kind="unavailable";label="EXCLUSION DATA UNAVAILABLE · TERRAIN-DERIVED PLANNING ONLY";
       detail="No authoritative local exclusion source was available and no usable open-data exclusion geometry was established for this frame. Corridors are terrain-derived and are not exclusion-verified; field verification is required before any siting decision.";
