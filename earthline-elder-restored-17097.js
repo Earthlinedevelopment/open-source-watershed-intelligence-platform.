@@ -477,57 +477,94 @@
       return await promise;
     }catch(_){return null}
   } /* EARTHLINE_ELDER_IO_ONLY_PREFETCH_17211 */
+  let regionalRefreshEpochM94=0;
+  let deferredMapRetryM94=null;
+  function elderTierM94(){return String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()}
+  function deferMapRetryM94(identity){
+    const m=map();
+    if(!m||typeof m.once!=='function')return false;
+    const key=identity||'regional';
+    if(deferredMapRetryM94?.map===m&&deferredMapRetryM94.key===key)return true;
+    const retry={map:m,key};deferredMapRetryM94=retry;
+    m.once('style.load',()=>{
+      if(deferredMapRetryM94!==retry)return;
+      deferredMapRetryM94=null;
+      if(identity){
+        if(elderTierM94()==='property'&&propertyRunIdentity17166(propertyBounds17166())===identity)void startProperty17166();
+      }else if(elderTierM94()!=='property')void refresh();
+    });
+    return true;
+  }
   async function startProperty17166(){
+    ++regionalRefreshEpochM94; /* Invalidate any older asynchronous Regional refresh. */
+    let runIdentity='';
     try{
       await load();
-      const b=propertyBounds17166(),runIdentity=propertyRunIdentity17166(b);
+      const b=propertyBounds17166();runIdentity=propertyRunIdentity17166(b);
       if(!b||!runIdentity)return null;
       const pending17389=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
       if(!(pending17389?.state==='property-pending'&&pending17389?.propertyRunIdentity===runIdentity&&pending17389?.visibleAt)){
         publishPropertyProvisional17389(b,runIdentity);
       }
       const dynamic=await dynamicPropertyEvidence(true); /* EARTHLINE_ELDER_GOVERNED_COMPUTE_17211 */
-      if(!dynamic||propertyRunIdentity17166(propertyBounds17166())!==runIdentity)return null;
+      if(!dynamic||elderTierM94()!=='property'||propertyRunIdentity17166(propertyBounds17166())!==runIdentity)return null;
       state.active=dynamic.features||[];
       const coverage={known:true,datasetIds:['dynamic-property-17130'],complete:false,dynamic:true,candidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0)};
       state.lastSummary=summarize(state.active,coverage);
-      publishMap(state.active);refreshSurfaces();
+      const mapPublished=publishMap(state.active);
+      if(!mapPublished){
+        deferMapRetryM94(runIdentity);
+        window.EARTHLINE_ELDER_TREE_LAST_17097={state:'publication-pending',propertyRunIdentity:runIdentity,featureCount:state.active.length,mapPublished:false,at:new Date().toISOString()};
+        return null;
+      }
+      refreshSurfaces();
       window.EARTHLINE_ELDER_TREE_LAST_17097={
-        state:'committed',propertyRunIdentity:runIdentity,
+        state:'committed',mapPublished:true,propertyRunIdentity:runIdentity,
         summary:state.lastSummary,featureCount:state.active.length,
         dynamicCandidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0),
         dynamicError:null,workerTimings:dynamic?.earthline?.worker_timings_ms||null,at:new Date().toISOString()
       };
       return state.lastSummary;
     }catch(err){
+      if(elderTierM94()!=='property'||(runIdentity&&propertyRunIdentity17166(propertyBounds17166())!==runIdentity))return null;
       window.EARTHLINE_ELDER_TREE_LAST_17097={state:'failed',error:String(err&&err.message||err),featureCount:0,at:new Date().toISOString()};
       return null;
     }
   }
   async function refresh(){
+    if(elderTierM94()==='property')return startProperty17166();
+    const epoch=++regionalRefreshEpochM94;
     try{
       const pending17166=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
       if(pending17166?.state==='property-pending'&&state.dynamic.promise)return pending17166.summary||null;
       await load();
+      if(epoch!==regionalRefreshEpochM94||elderTierM94()==='property')return null;
       const pendingAfterLoad17166=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
       if(pendingAfterLoad17166?.state==='property-pending'&&state.dynamic.promise)return pendingAfterLoad17166.summary||null;
       let coverage=activeCoverage(); /* EARTHLINE_ELDER_PROPERTY_PENDING_REFRESH_GUARD_17203 */
       const dynamic=await dynamicPropertyEvidence(false);
+      if(epoch!==regionalRefreshEpochM94||elderTierM94()==='property')return null;
       if(dynamic){
         state.active=dynamic.features||[];
         coverage={known:true,datasetIds:['dynamic-property-17130'],complete:false,dynamic:true,candidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0)};
       }else state.active=activeFeatures();
       state.lastSummary=summarize(state.active,coverage);
-      publishMap(state.active);
+      const mapPublished=publishMap(state.active);
+      if(!mapPublished){
+        deferMapRetryM94('');
+        window.EARTHLINE_ELDER_TREE_LAST_17097={state:'publication-pending',propertyRunIdentity:'',featureCount:state.active.length,mapPublished:false,at:new Date().toISOString()};
+        return null;
+      }
       refreshSurfaces();
       window.EARTHLINE_ELDER_TREE_LAST_17097={
-        state:'committed',propertyRunIdentity:String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property'?propertyRunIdentity17166(coverageQueryBounds()):'',
+        state:'committed',mapPublished:true,propertyRunIdentity:'',
         summary:state.lastSummary,featureCount:state.active.length,
         dynamicCandidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0),
         dynamicError:state.dynamic.error||null,workerTimings:dynamic?.earthline?.worker_timings_ms||null,at:new Date().toISOString()
       };
       return state.lastSummary;
     }catch(err){
+      if(epoch!==regionalRefreshEpochM94||elderTierM94()==='property')return null;
       window.EARTHLINE_ELDER_TREE_LAST_17097={state:'failed',error:String(err&&err.message||err),at:new Date().toISOString()};
       return null;
     }
@@ -561,13 +598,15 @@
     const coverage={known:datasets.length>0,datasetIds:datasets.map(d=>d.id||d.path||''),complete:false};
     const features=state.all.filter(f=>inBounds(f,b));
     state.active=features;state.lastSummary=summarize(features,coverage);
-    publishMap(features);refreshSurfaces();
-    const visibleAt=new Date().toISOString();
+    const mapPublished=publishMap(features);
+    if(!mapPublished)deferMapRetryM94(identity);
+    refreshSurfaces();
+    const visibleAt=mapPublished?new Date().toISOString():null;
     window.EARTHLINE_ELDER_TREE_LAST_17097={
       state:'property-pending',propertyRunIdentity:identity,
       summary:state.lastSummary,featureCount:features.length,
       dynamicCandidatePoolCount:0,dynamicError:null,
-      provisional:true,visibleAt,at:visibleAt
+      provisional:true,mapPublished,visibleAt,at:new Date().toISOString()
     };
     return true;
   }
