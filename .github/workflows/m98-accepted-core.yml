@@ -1,0 +1,32 @@
+name: M98 restore accepted 16584 - all visible essentials
+on:
+  push:
+    branches: [fix/m98-restore-16584-visible-swales-elders-languages]
+    paths: [.github/workflows/m98-accepted-core.yml]
+permissions:
+  contents: read
+jobs:
+  essentials:
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate exact candidate and source syntax
+        run: |
+          set -euo pipefail
+          git diff --check
+          node --check tests/m98-accepted-core-full-ui.mjs
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Actual Property swales, blue, Elders, Regional water, no worms, four languages
+        run: node tests/m98-accepted-core-full-ui.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m98-all-required-live-interface
+          path: artifacts/m98-actual-controls
+          retention-days: 7
