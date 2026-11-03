@@ -12,7 +12,7 @@ const repoBlob=execFileSync('git',['hash-object','index.html'],{encoding:'utf8'}
 const marker=Buffer.from('<!-- EARTHLINE M95: restore approved Property safe-line presentation only.');
 const idx=html.indexOf(marker);
 const original=idx>=0?html.subarray(0,idx-1):Buffer.alloc(0);
-const originalBlob=crypto.createHash('sha1').update(Buffer.concat([Buffer.from('blob '+original.length+'\\0'),original])).digest('hex');
+const originalBlob=crypto.createHash('sha1').update(Buffer.concat([Buffer.from('blob '+original.length+String.fromCharCode(0)),original])).digest('hex');
 const checks=[];
 function check(name,fn){try{fn();checks.push({name,status:'PASS'});}catch(e){checks.push({name,status:'FAIL',message:String(e.message||e)});}}
 check('accepted 16584 preserved as exact prefix',()=>assert.equal(originalBlob,'1c217d9486f0e234c08e1b6890e28d1db7dc03cf'));
@@ -29,7 +29,7 @@ check('M95 candidate script preserves geometry and switches layer visibility',()
  assert.ok(m[1].includes("setPaintProperty(id,'line-opacity',.98)"));
  assert.ok(!m[1].includes('authoritativeSafeSwales15815'),'presentation mutates scientific swale source');
 });
-check('dormant auxiliary JS unchanged from protected source',()=>assert.equal(crypto.createHash('sha1').update(Buffer.concat([Buffer.from('blob '+Buffer.byteLength(js)+'\\0'),Buffer.from(js)])).digest('hex'),'6dccecdf8a2ce1ae4cb1ef4b06c03491ba90a3a3'));
+check('dormant auxiliary JS unchanged from protected source',()=>assert.equal(crypto.createHash('sha1').update(Buffer.concat([Buffer.from('blob '+Buffer.byteLength(js)+String.fromCharCode(0)),Buffer.from(js)])).digest('hex'),'6dccecdf8a2ce1ae4cb1ef4b06c03491ba90a3a3'));
 check('no new remote scripts in recovery patch',()=>{
  const section=html.toString('utf8').slice(idx);
  assert.ok(!/createElement\(['"]script/.test(section));
