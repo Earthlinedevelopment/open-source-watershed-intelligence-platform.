@@ -235,11 +235,27 @@
               ['any',['==',['get','source_class'],'LIDAR'],['==',['get','record_class'],'LIDAR_CONFIRMED_ELDER_TREE_CANDIDATE']],'earthline-elder-pin-lidar',
               'earthline-elder-pin-modeled'
             ],
-            'icon-size':['interpolate',['linear'],['zoom'],6,0.55,10,0.72,14,0.9],
+            /* M96: candidates must be legible on satellite imagery; labels never
+               imply that an unverified modeled tree is known to be old. */
+            'icon-size':['interpolate',['linear'],['zoom'],6,0.55,10,0.72,14,0.96,17,1.48,20,1.65],
             'icon-anchor':'bottom',
             'icon-allow-overlap':true,
             'icon-ignore-placement':true,
+            'text-field':['case',
+              ['any',['==',['get','record_class'],'VERIFIED_ELDER_TREE'],['==',['get','record_class'],'VERIFIED_EXTERNAL_TREE']],
+              'VERIFIED TREE','ELDER CANDIDATE'
+            ],
+            'text-size':['interpolate',['linear'],['zoom'],13,0,15,10,17,12.5,20,13.5],
+            'text-anchor':'top',
+            'text-offset':[0,0.4],
+            'text-allow-overlap':true,
+            'text-ignore-placement':true,
             'visibility':'visible'
+          },
+          paint:{
+            'text-color':'#f7fff6',
+            'text-halo-color':'#12452d',
+            'text-halo-width':2.2
           }
         });
         m.on('click',LAYER,e=>{
