@@ -1,0 +1,40 @@
+name: M96 public proof — visible Property swales and Elder pins
+on:
+  push:
+    branches: [diagnostics/m95-real-arizona-ui-20261103]
+    paths: [.github/workflows/m96-public-visible.yml]
+permissions:
+  contents: read
+jobs:
+  public-visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require actual public M96 JavaScript source
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            code=$(curl -Ls --max-time 20 -H 'Cache-Control: no-cache' -o /tmp/earthline_m96.html -w '%{http_code}' "https://earthlinedevelopment.org/?m96_public=${GITHUB_RUN_ID}_${i}" || true)
+            if [ "$code" = "200" ] && grep -Fq 'naturalReadyM96' /tmp/earthline_m96.html && grep -Fq 'earthline-property-safe-water-second-m96' /tmp/earthline_m96.html; then
+              echo 'M96_PUBLIC_SOURCE_VERIFIED'
+              exit 0
+            fi
+            sleep 8
+          done
+          echo 'Public origin not yet showing M96'
+          exit 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Real public click, cyan strip paint opacity, and Elder candidates
+        run: node tests/m96-public-visible-property.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m96-public-visible-screenshot
+          path: artifacts/m96-visible-property
+          retention-days: 4
