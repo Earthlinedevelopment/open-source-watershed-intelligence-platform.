@@ -1,34 +1,44 @@
-name: M105 worm-only candidate repair
+name: M105 isolated worm repair and safe candidate
 on:
   push:
     branches: ['fix/mantra105-worm-only']
-    paths: ['.github/workflows/m105-worm-only.yml', 'tools/m105-worm-only.py']
+    paths: ['.github/workflows/m105-worm-only.yml']
 permissions:
   contents: write
 jobs:
-  repair-and-verify:
+  patch-then-test-final-tree:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Apply only M105 swale geometry repair to isolated candidate
+      - name: Apply worm-only change, remove temporary writer, pass final release airlock
         run: |
           set -euo pipefail
           python3 tools/m105-worm-only.py
+          rm .github/workflows/m105-worm-only.yml tools/m105-worm-only.py
           node tests/mantra102-no-spline-swales.mjs
           python3 tools/earthline-release-airlock-static.py
+          node - <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert');
+          const html=fs.readFileSync('index.html','utf8'),m=html.match(/  function earthlineSwaleVisibleM105\(pts\)\{[\s\S]*?\n  \}/);
+          assert(m,'M105 final SVG filter must exist');
+          const ctx={polyLength:p=>p.slice(1).reduce((n,v,i)=>n+Math.hypot(v.x-p[i].x,v.y-p[i].y),0)};
+          vm.runInNewContext(m[0]+';globalThis.check=earthlineSwaleVisibleM105;',ctx);
+          assert(ctx.check([{x:0,y:0},{x:20,y:0},{x:40,y:1},{x:60,y:1}]),'valid terrain segment must render');
+          assert(!ctx.check([{x:0,y:0},{x:20,y:0},{x:20,y:20},{x:0,y:20},{x:1,y:1}]),'coiled worm must not render');
+          assert(!ctx.check([{x:0,y:0},{x:40,y:40},{x:0,y:40},{x:40,y:0}]),'self-crossing worm must not render');
+          console.log('M105_SVG_GEOMETRY_PASS normal retained; coils and crossings excluded');
+          JS
           git diff --check
-          git diff --stat -- index.html
-      - name: Commit tested candidate to isolated branch
+          git diff --stat
+      - name: Publish verified worm-only candidate commit to isolated branch
         run: |
           set -euo pipefail
           git config user.name "earthline-m105-github-actions"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html
-          git diff --cached --quiet || git commit -m "fix(mantra105): eliminate re-smoothed Regional worms from terrain swale source"
+          git add index.html .github/workflows/m105-worm-only.yml tools/m105-worm-only.py
+          git commit -m "fix(mantra105): reject worm corridors while preserving contours and native water"
           git push origin HEAD:fix/mantra105-worm-only
