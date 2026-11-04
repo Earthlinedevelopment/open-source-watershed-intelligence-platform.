@@ -42,6 +42,6 @@ a="const pts=points(f.geometry.coordinates),len=polyLength(pts);if(pts.length<3|
 b="const pts=points(f.geometry.coordinates),len=polyLength(pts);if(pts.length<3||len<22||!earthlineSwaleVisibleM105(pts))continue;"
 if s.count(a)!=1:raise RuntimeError('Final SVG swale publication loop absent or duplicated')
 s=s.replace(a,b,1)
-assert s.count('earthlineSwaleVisibleM105(pts)')==1
+assert s.count('earthlineSwaleVisibleM105(pts)')==2
 p.write_text(s,encoding='utf-8')
 print('M105_FIXED_SOURCE: unsmoothed terrain for Regional swale candidates; approved contours and flow paths unchanged')
