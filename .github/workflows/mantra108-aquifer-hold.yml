@@ -1,0 +1,34 @@
+name: Mantra 108 isolated aquifer label hold
+on:
+  pull_request:
+    branches: [pages-live]
+    paths:
+      - index.html
+      - tests/mantra108-aquifer-hold.mjs
+      - .github/workflows/mantra108-aquifer-hold.yml
+permissions:
+  contents: read
+jobs:
+  aquifer-hold:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pin exact candidate
+        run: |
+          git rev-parse HEAD
+          sha256sum index.html
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Verify two Vermont Property aquifer holds without flicker
+        run: node tests/mantra108-aquifer-hold.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra108-aquifer-evidence
+          path: artifacts/mantra108-aquifer
+          retention-days: 14
