@@ -61,6 +61,17 @@ try{
         const published=M?.propertyPublication15816||{};
         const state=window.earthlineRegional15778||{};
         const summary=M?.vtGroundwaterSummaryPoint16398;
+        const polygons=(M?.usgsAquifers||[]).slice(0,3);
+        const center=map?.getCenter?.()||{lng:Number(M?.centerLng),lat:Number(M?.centerLat)};
+        const inside=(lng,lat,ring)=>{
+          let hit=false;
+          for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+            const p=ring[i],q=ring[j];
+            if(((p[1]>lat)!==(q[1]>lat))&&(lng<(q[0]-p[0])*(lat-p[1])/((q[1]-p[1])||1e-12)+p[0]))hit=!hit;
+          }
+          return hit;
+        };
+        const centerInPolygon=polygons.some(poly=>Array.isArray(poly?.lngLatPts)&&poly.lngLatPts.length>=3&&inside(center.lng,center.lat,poly.lngLatPts));
         let projected=null;
         try{
           const pt=summary&&map?.project?.([Number(summary.lng),Number(summary.lat)]);
@@ -71,6 +82,7 @@ try{
           display:overlay?.style.display||'',computed:overlay?getComputedStyle(overlay).display:null,
           children:overlay?.childElementCount||0,
           evidence:!!(summary||(M?.usgsAquifers||[]).length),
+          summaryPresent:!!summary,polygonCount:(M?.usgsAquifers||[]).length,centerInPolygon,
           committed:published.committed===true,rawSegments:Number(published.rawGeographicSegments||0),
           hold:!!state.propertyAquiferHold16359,validationView:state.validationView15806,
           aquiferLayerOn:M?.layers?.usgsAquifer?.on,mapLoaded:map?.loaded?.(),
