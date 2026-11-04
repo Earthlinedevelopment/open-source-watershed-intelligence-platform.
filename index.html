@@ -21827,7 +21827,7 @@ var prescribeSwales;
   const PLANT_SHADOW="earthline-swale-planting-shadow-15806";
   const PLANT_LAYER="earthline-swale-planting-layer-15806";
   const state=window.earthlineRegional15778||{};
-  let plantingVisible=true;
+  let plantingVisible=false; /* MANTRA 100: retired worm-like planting layer cannot initialize visible. */
 
   const emptyFC=()=>({type:"FeatureCollection",features:[]});
   const finiteCoord=c=>Array.isArray(c)&&Number.isFinite(Number(c[0]))&&Number.isFinite(Number(c[1]));
@@ -21939,7 +21939,7 @@ var prescribeSwales;
     return true
   }
   function setPlantingVisible15806(on){
-    plantingVisible=!!on;
+    plantingVisible=false; /* MANTRA 100: irreversible rejection of natural/worm planting presentation; not Elder Trees. */
     for(const id of [PLANT_SHADOW,PLANT_LAYER]){
       try{if(earthlineMap.getLayer(id))earthlineMap.setLayoutProperty(id,"visibility",plantingVisible?"visible":"none")}catch(e){}
     }
