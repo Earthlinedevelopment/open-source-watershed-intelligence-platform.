@@ -34316,20 +34316,34 @@ ${EARTHLINE_CORRECTIONS_REGISTRY_16513}
        Preserve/cache Regional context, but never publish the live Regional layer while
        Property is running or displayed. Property uses its separate earthline-aquifers-*
        native context owner. */
+    /* M113: the late Regional preservation policy must be idempotent.
+       Repeated Mapbox layout/paint writes on every camera/style ownership refresh
+       can invalidate aquifer tiles even when the visual state is unchanged. */
+    const visibility113=(id,value)=>{
+      try{
+        if(!m.getLayer?.(id))return;
+        if((m.getLayoutProperty(id,'visibility')||'visible')!==value)
+          m.setLayoutProperty(id,'visibility',value);
+      }catch(_){}
+    };
+    const paint113=(id,key,value)=>{
+      try{
+        if(!m.getLayer?.(id))return;
+        if(m.getPaintProperty(id,key)!==value)m.setPaintProperty(id,key,value);
+      }catch(_){}
+    };
     if(propertyActive){
-      for(const id of ['el-live-aquifer-fill-15970','el-live-aquifer-line-15970','el-live-aquifer-label-15970']){
-        try{if(m.getLayer?.(id))m.setLayoutProperty(id,'visibility','none')}catch(_){}
-      }
+      for(const id of ['el-live-aquifer-fill-15970','el-live-aquifer-line-15970','el-live-aquifer-label-15970'])
+        visibility113(id,'none');
     }else{
       if(src&&aquiferCache&&(!src._data||!src._data.features?.length)){
         try{src.setData(aquiferCache)}catch(_){}
       }
-      for(const id of ['el-live-aquifer-fill-15970','el-live-aquifer-line-15970']){
-        try{if(m.getLayer?.(id))m.setLayoutProperty(id,'visibility','visible')}catch(_){}
-      }
-      try{if(m.getLayer?.('el-live-aquifer-fill-15970'))m.setPaintProperty('el-live-aquifer-fill-15970','fill-opacity',.40)}catch(_){}
-      try{if(m.getLayer?.('el-live-aquifer-line-15970'))m.setPaintProperty('el-live-aquifer-line-15970','line-opacity',.94)}catch(_){}
-      try{if(m.getLayer?.('el-live-aquifer-label-15970'))m.setLayoutProperty('el-live-aquifer-label-15970','visibility','none')}catch(_){}
+      for(const id of ['el-live-aquifer-fill-15970','el-live-aquifer-line-15970'])
+        visibility113(id,'visible');
+      paint113('el-live-aquifer-fill-15970','fill-opacity',.40);
+      paint113('el-live-aquifer-line-15970','line-opacity',.94);
+      visibility113('el-live-aquifer-label-15970','none');
     }
     for(const id of ['el-live-groundwater-layer-15970','el-live-grace-groundwater-layer-15970','el-live-aquifer-raster-layer-15970']){
       try{if(m.getLayer?.(id))m.setPaintProperty(id,'raster-opacity',0)}catch(_){}
