@@ -9,7 +9,7 @@ if (start < 0) {
   // The 16584 production rollback predates M94's optional performance index.
   // Permit its absence only if the unchanged target production parent also lacks it.
   // If a newer parent includes the index, removing it remains a hard failure.
-  const baseHtml = execFileSync('git', ['show', 'origin/pages-live:index.html'], {encoding:'utf8'});
+  const baseHtml = execFileSync('git', ['show', 'origin/pages-live:index.html'], {encoding:'utf8', maxBuffer:16*1024*1024});
   assert.ok(!baseHtml.includes('  const earthlineRingBinCacheM94='), 'The indexed ring owner was removed relative to the target production parent');
   console.log('MANTRA94_RING_INDEX_NOT_INSTALLED_IN_PARENT: exact science retained; parity test not applicable');
   process.exit(0);
