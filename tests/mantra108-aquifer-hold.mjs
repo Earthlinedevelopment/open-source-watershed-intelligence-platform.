@@ -59,12 +59,24 @@ try{
           try{return [id,map?.getLayer?.(id)?map.getLayoutProperty(id,'visibility')||'visible':'missing']}catch(e){return [id,'error']}
         }));
         const published=M?.propertyPublication15816||{};
+        const state=window.earthlineRegional15778||{};
+        const summary=M?.vtGroundwaterSummaryPoint16398;
+        let projected=null;
+        try{
+          const pt=summary&&map?.project?.([Number(summary.lng),Number(summary.lat)]);
+          if(pt)projected={x:pt.x,y:pt.y};
+        }catch(_){}
+        const host=document.querySelector('.map-area');
         return {
           display:overlay?.style.display||'',computed:overlay?getComputedStyle(overlay).display:null,
           children:overlay?.childElementCount||0,
-          evidence:!!(M?.vtGroundwaterSummaryPoint16398||(M?.usgsAquifers||[]).length),
-          committed:published.committed===true,hold:!!window.earthlineRegional15778?.propertyAquiferHold16359,
-          modelMode:String(window.earthlineRegional15778?.mode||''),
+          evidence:!!(summary||(M?.usgsAquifers||[]).length),
+          committed:published.committed===true,rawSegments:Number(published.rawGeographicSegments||0),
+          hold:!!state.propertyAquiferHold16359,validationView:state.validationView15806,
+          aquiferLayerOn:M?.layers?.usgsAquifer?.on,mapLoaded:map?.loaded?.(),
+          cameraMoving:map?.isMoving?.(),zoom:map?.getZoom?.(),
+          screen:{w:host?.clientWidth,h:host?.clientHeight},projected,
+          modelMode:String(state.mode||''),
           native
         };
       };
