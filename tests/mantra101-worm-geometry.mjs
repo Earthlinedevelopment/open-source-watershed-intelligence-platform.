@@ -28,7 +28,7 @@ for(const query of ['Vermont','Arizona']){
  const context=await browser.newContext({viewport:{width:1500,height:900}}),page=await context.newPage(),errors=[];
  page.on('pageerror',e=>errors.push(String(e)));
  await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.origin!==new URL(BASE).origin)return route.continue();
- let rel;try{rel=decodeURIComponent(u.pathname).replace(/^\\/+/, '')||'index.html'}catch{return route.abort()}
+ let rel;try{rel=decodeURIComponent(u.pathname).replace(/^\/+/, '')||'index.html'}catch{return route.abort()}
  const local=path.resolve(ROOT,rel);if(local!==ROOT&&!local.startsWith(ROOT+path.sep))return route.abort();
  if(existsSync(local)&&statSync(local).isFile()){
   const ext=path.extname(local).toLowerCase(),types={'.html':'text/html; charset=utf-8','.js':'application/javascript','.mjs':'application/javascript','.json':'application/json','.geojson':'application/geo+json','.png':'image/png','.css':'text/css','.svg':'image/svg+xml'};
