@@ -6641,6 +6641,7 @@ function earthlineEnsureAquiferLayers(){
 }
 /* M110: single existing source owner retains VERIFIED same-site evidence during reload only. */
 const earthlineAquiferContinuity110={siteKey:'',data:null,generation:null};
+const earthlineAquiferSourceWrite110={source:null,dataFingerprint:null};
 function earthlineAquiferSiteKey110(){
   const v=typeof M!=='undefined'?M:null;
   if(!v||v.centerLng==null||v.centerLat==null||v.centerLng===''||v.centerLat==='')return '';
@@ -6669,7 +6670,15 @@ function earthlineSyncAquiferLayer(){
     const stableKey110=earthlineAquiferSiteKey110();
     const carry110=data.features.length===0&&earthlineAquiferCanCarry110();
     const sourceData110=carry110?earthlineAquiferContinuity110.data:data;
-    if(src&&src.setData)src.setData(sourceData110);
+    /* Do not rebuild Mapbox source tiles when evidence is unchanged. */
+    const fingerprint110=JSON.stringify(sourceData110);
+    const sourceChanged110=src!==earthlineAquiferSourceWrite110.source;
+    const dataChanged110=fingerprint110!==earthlineAquiferSourceWrite110.dataFingerprint;
+    if(src&&src.setData&&(sourceChanged110||dataChanged110)){
+      src.setData(sourceData110);
+      earthlineAquiferSourceWrite110.source=src;
+      earthlineAquiferSourceWrite110.dataFingerprint=fingerprint110;
+    }
     const pub110=M?.propertyPublication15816||null;
     if(data.features.length>0&&(window.earthlineRegional15778||{}).mode==='property'&&!(window.earthlineRegional15778||{}).propertyAquiferHold16359&&
        stableKey110&&pub110?.committed===true&&Number(pub110.searchGen)===Number(M.searchGen)){
@@ -6679,6 +6688,8 @@ function earthlineSyncAquiferLayer(){
     }
     window.EARTHLINE_AQUIFER_SOURCE_HOLD_AUDIT_110={
       samePropertyCarry:!!carry110,siteKey:stableKey110,
+      sourceRewritten:!!(src?.setData&&(sourceChanged110||dataChanged110)),
+      skippedUnchangedSource:!!(src?.setData&&!sourceChanged110&&!dataChanged110),
       currentEvidenceFeatures:data.features.length,displayedFeatures:sourceData110.features.length,
       status:String(M?.usgsAquiferStatus||''),generation:Number(M?.searchGen||0)
     };
