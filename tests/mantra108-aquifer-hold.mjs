@@ -49,11 +49,42 @@ try{
       return {ok:!!set,searchGen:Number(M?.searchGen||0)};
     },TARGET);
     if(!prepared?.ok){rows.push({run,prepared,pass:false});break}
+    // M110: sample actual Property layer visibility THROUGH the repeat analysis.
+    // Only the Property view for this same official-evidence site is eligible.
+    if(run===2)await page.evaluate(()=>{
+      const samples=[];
+      const sample=()=>{
+        const map=window.earthlineMap,active=window.earthlineRegional15778||{};
+        const audit=window.EARTHLINE_AQUIFER_SOURCE_HOLD_AUDIT_110||{};
+        let fill='missing',nativeFeatures=null;
+        try{if(map?.getLayer?.('earthline-aquifers-fill'))fill=map.getLayoutProperty('earthline-aquifers-fill','visibility')||'visible'}catch(_){}
+        try{
+          const src=map?.getSource?.('earthline-aquifers');
+          const data=src?._data||src?.serialize?.()?.data;
+          if(Array.isArray(data?.features))nativeFeatures=data.features.length;
+        }catch(_){}
+        samples.push({
+          mode:String(active.mode||''),siteKey:String(audit.siteKey||''),
+          fill,sourceFeatures:audit.displayedFeatures??null,nativeFeatures,
+          groundwaterStatus:String(audit.status||''),hold:!!active.propertyAquiferHold16359,
+          aquiferOn:M?.layers?.usgsAquifer?.on===true
+        });
+      };
+      sample();
+      const interval=setInterval(sample,45);
+      window.__m110Probe={samples,stop:()=>clearInterval(interval)};
+    });
     let runError=null;
     try{await page.evaluate(async()=>await window.earthlineDeclarePropertyAtCrosshair16169?.())}catch(e){runError=String(e)}
     try{
       await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true&&document.documentElement.dataset.earthlinePropertyRunState!=='running',null,{timeout:50000,polling:150});
     }catch(e){runError=String(runError||e)}
+    const geometryProbe=run===2?await page.evaluate(()=>{
+      const p=window.__m110Probe;p?.stop();return p?.samples||[];
+    }):[];
+    const geometryEligible=geometryProbe.filter(s=>s.mode==='property'&&s.siteKey==='-73.012909|44.513845'&&s.aquiferOn);
+    const geometryGaps=geometryEligible.filter(s=>s.fill!=='visible'||!(s.sourceFeatures>0)||(s.nativeFeatures!==null&&s.nativeFeatures<1));
+    const geometryPass=run!==2||(geometryEligible.length>=5&&geometryGaps.length===0);
     const samples=await page.evaluate(async ()=>{
       const snap=()=>{
         const overlay=document.getElementById('earthlineAquiferTopText16501');
@@ -111,9 +142,11 @@ try{
     const flicker=watched.some(s=>s.display!=='block'||s.computed!=='block'||s.children<1);
     const nativeOn=samples.some(s=>Object.values(s.native).some(v=>v==='visible'));
     const first=samples[0],last=samples.at(-1);
-    const row={run,before,prepared,runError,eligible,flicker,nativeOn,first,last,
+    const row={run,before,prepared,runError,eligible,flicker,nativeOn,geometryPass,
+      geometryEligibleSamples:geometryEligible.length,geometryGaps:geometryGaps.slice(0,6),
+      geometryProbeSummary:{total:geometryProbe.length,first:geometryProbe[0],last:geometryProbe.at(-1)},first,last,
       transitions:samples.filter((s,i)=>i>0&&(s.display!==samples[i-1].display||s.children!==samples[i-1].children)).map(s=>({display:s.display,children:s.children,committed:s.committed,hold:s.hold})),
-      pass:!runError&&eligible&&!flicker&&!nativeOn};
+      pass:!runError&&eligible&&!flicker&&!nativeOn&&geometryPass};
     rows.push(row);
     console.log('EARTHLINE_M108_AQUIFER_HOLD '+JSON.stringify(row));
     await page.screenshot({path:'artifacts/mantra108-aquifer/property-'+run+'.png'}).catch(()=>{});
