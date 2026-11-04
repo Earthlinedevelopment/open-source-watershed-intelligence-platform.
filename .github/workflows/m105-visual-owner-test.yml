@@ -47,6 +47,9 @@ jobs:
             return {swales:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020?.swaleLines||0,svgPaths:svg?.querySelectorAll('[data-layer="swale-opportunities"] path').length||0,layers,tier:document.documentElement.dataset.earthlineAnalysisTier};
           });
           console.log('M105_PINNED_OWNER_PROOF',JSON.stringify(proof));
+          console.log('M105_GRADE_COUNTS',JSON.stringify(await page.evaluate(()=>window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020?.swaleGradeCounts||null)));
+          const shot=await page.screenshot({type:'jpeg',quality:25,clip:{x:260,y:130,width:1000,height:640}});
+          console.log('M105_JPEG_BASE64',shot.toString('base64'));
           const ok=proof.swales>0&&proof.svgPaths>0&&Object.values(proof.layers).every(v=>!v.exists||v.visibility==='none');
           await browser.close();
           if(!ok)process.exit(1);
