@@ -1,0 +1,67 @@
+name: M105 broad Regional worm visibility acceptance
+on:
+  push:
+    branches: ['test/m105-regional-visual']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Verify Regional worms hidden, labels and water retained
+        run: |
+          node --input-type=module - <<'JS'
+          import {chromium} from 'playwright';
+          import {readFileSync} from 'node:fs';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1600,height:950}});
+          const base='https://earthlinedevelopment.org';
+          page.on('pageerror',e=>console.log('PAGE_ERROR',String(e)));
+          await page.route('**/*',async route=>{
+            const u=new URL(route.request().url());
+            if(u.origin===base&&(u.pathname==='/'||u.pathname==='/index.html'))
+              return route.fulfill({status:200,contentType:'text/html',body:readFileSync('index.html')});
+            return route.continue();
+          });
+          await page.goto(base+'/?m105visual='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+          await page.waitForSelector('#searchInput',{timeout:15000});
+          await page.evaluate(()=>{
+            const i=document.getElementById('searchInput');i.value='Arizona';
+            i.dispatchEvent(new Event('input',{bubbles:true}));
+            i.dispatchEvent(new Event('change',{bubbles:true}));
+            document.getElementById('runBtn').click();
+          });
+          await page.waitForFunction(()=>Number(window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020?.swaleLines||0)>0,null,{timeout:90000});
+          await page.waitForTimeout(700);
+          const proof=await page.evaluate(()=>{
+            const svg=document.getElementById('earthlineRegionalVectorOverlay16020');
+            const sg=svg?.querySelector('[data-layer="swale-opportunities"]');
+            const lg=svg?.querySelector('[data-layer="always-visible-labels"]');
+            const cg=svg?.querySelector('[data-layer="numbered-elevation-contours"]');
+            const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;
+            const water=['el-live-flow-casing-15970','el-live-flow-line-15970','el-live-flow-arrow-15970'];
+            return {tier:document.documentElement.dataset.earthlineAnalysisTier,
+              swales:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020?.swaleLines||0,
+              svgSourcePaths:sg?.querySelectorAll('path').length||0,
+              svgDisplay:sg?.getAttribute('display')||null,
+              computedDisplay:sg?getComputedStyle(sg).display:null,
+              labels:lg?.querySelectorAll('text').length||0,
+              contours:cg?.querySelectorAll('path').length||0,
+              water:Object.fromEntries(water.map(x=>[x,!!map?.getLayer?.(x)])),
+              grades:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020?.swaleGradeCounts||null};
+          });
+          console.log('M105_REGIONAL_VISUAL_PROOF',JSON.stringify(proof));
+          const img=await page.screenshot({type:'jpeg',quality:25,clip:{x:260,y:130,width:1000,height:640}});
+          console.log('M105_AFTER_JPEG_BASE64',img.toString('base64'));
+          await browser.close();
+          if(!(proof.swales>0&&proof.svgSourcePaths>0&&proof.svgDisplay==='none'&&proof.computedDisplay==='none'&&proof.labels>0&&proof.contours>0&&proof.water['el-live-flow-line-15970']))process.exit(1);
+          console.log('M105_REGIONAL_WORMS_HIDDEN_PASS');
+          JS
