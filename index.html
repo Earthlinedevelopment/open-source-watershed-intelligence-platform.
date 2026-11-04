@@ -15344,7 +15344,8 @@ var prescribeSwales;
       vis("earthline-analysis-target-layer-15761",!!state.anchor);
       vis("earthline-regional-coverage-layer-15761",false);
       const flowOn=state.flow.features.length>0;vis("earthline-regional-flow-casing-15761",flowOn);vis("earthline-regional-flow-line-15761",flowOn);vis("earthline-regional-flow-arrows-15761",flowOn);
-      const swOn=state.swales.features.length>0;vis("earthline-swales-casing",swOn);vis("earthline-swales-line",swOn);
+      /* M103: these two legacy Regional worms must never reappear on rerun. */
+      vis("earthline-swales-casing",false);vis("earthline-swales-line",false);
       const rOn=state.recharge.features.length>0;
       for(const id of ["earthline-recharge-casing","earthline-recharge-fill","earthline-recharge-line","earthline-recharge-highlight","earthline-recharge-label"])vis(id,rOn);
       const gOn=state.grades&&state.grades.features.length>0;
@@ -15352,7 +15353,10 @@ var prescribeSwales;
       const cOn=state.contours&&state.contours.features.length>0;
       for(const id of [CONTOUR_LINE,CONTOUR_MAJOR,CONTOUR_LABEL])vis(id,cOn);
       const oOn=state.opportunityLines&&state.opportunityLines.features.length>0;
-      for(const id of [OPPORTUNITY_SOIL,OPPORTUNITY_PLANT,OPPORTUNITY_WATER,OPPORTUNITY_HIT_16153,OPPORTUNITY_LABEL])vis(id,oOn);
+      /* M103: leave native opportunity chips/hit targets working; the vetted
+         SVG owns all visible Regional intervention strokes. */
+      for(const id of [OPPORTUNITY_SOIL,OPPORTUNITY_PLANT,OPPORTUNITY_WATER])vis(id,false);
+      for(const id of [OPPORTUNITY_HIT_16153,OPPORTUNITY_LABEL])vis(id,oOn);
     }catch(e){}
     return true;
   }
@@ -21801,7 +21805,7 @@ var prescribeSwales;
        Keep native opportunity label and hit actions; leave Property unchanged. */
     if(property){setGroup(active.swales,swaleOn);}
     else{
-      for(const id103 of [OPPORTUNITY_SOIL,OPPORTUNITY_PLANT,OPPORTUNITY_WATER])visible(id103,false);
+      for(const id103 of ["earthline-swales-casing","earthline-swales-line",OPPORTUNITY_SOIL,OPPORTUNITY_PLANT,OPPORTUNITY_WATER])visible(id103,false);
       visible(OPPORTUNITY_LABEL,swaleOn);
     }
     setGroup(active.recharge,rechargeOn);setGroup(active.contours,contourOn);setGroup(active.aquifer,aquiferOn);
@@ -33408,7 +33412,7 @@ body{display:block!important}
   function addPath(g,pts,attrs){if(pts.length<2)return null;/* MANTRA 102: preserve actual vetted swale vertices; no post-safety cubic spline overshoot. Elevation contours retain approved smoothing. */const isSwale=g&&g.getAttribute&&g.getAttribute('data-layer')==='swale-opportunities';const p=svgEl('path',Object.assign({d:isSwale?earthlineSwalePolylineM102(pts):spline(pts),fill:'none','vector-effect':'non-scaling-stroke'},attrs||{}));g.appendChild(p);return p;}
   /* EARTHLINE 16350 — SVG intentionally owns Regional contours + swales only.
      Native Mapbox flow casing/line/arrow are the sole Regional water owner and MUST NOT be hidden here. */
-  function hideNative(){const map=m();if(!map||!map.getLayer)return;for(const id of ['el-live-contour-line-15970','el-live-contour-label-15970','el-live-swale-halo-15970','el-live-swale-line-15970','earthline-ranked-swale-soil-15777','earthline-ranked-swale-plant-15777','earthline-ranked-swale-water-15777']){try{if(map.getLayer(id))map.setLayoutProperty(id,'visibility','none');}catch(_){}}}
+  function hideNative(){const map=m();if(!map||!map.getLayer)return;for(const id of ['el-live-contour-line-15970','el-live-contour-label-15970','el-live-swale-halo-15970','el-live-swale-line-15970','earthline-swales-casing','earthline-swales-line','earthline-ranked-swale-soil-15777','earthline-ranked-swale-plant-15777','earthline-ranked-swale-water-15777']){try{if(map.getLayer(id))map.setLayoutProperty(id,'visibility','none');}catch(_){}}}
   function nativeWater16350(){
     const map=m(),ids=['el-live-flow-casing-15970','el-live-flow-line-15970','el-live-flow-arrow-15970'];
     const layers={};let ready=!!map;
@@ -34620,7 +34624,7 @@ html[data-earthline-analysis-tier="focus"] #earthlineRegionalVectorOverlay16020 
   'use strict';
   const BUILD='EARTHLINE 16167';
   const SOURCE='earthline-ranked-swale-opportunities-15775';
-  const ORIGINAL=['earthline-ranked-swale-soil-15777','earthline-ranked-swale-plant-15777','earthline-ranked-swale-water-15777'];
+  const ORIGINAL=['earthline-swales-casing','earthline-swales-line','earthline-ranked-swale-soil-15777','earthline-ranked-swale-plant-15777','earthline-ranked-swale-water-15777'];
   const LOCATION_LABEL='earthline-ranked-swale-label-15775',LOCATION_HIT='earthline-ranked-swale-hit-16153';
   const FOCUS={
     casing:'earthline-focus-swale-casing-16166',
