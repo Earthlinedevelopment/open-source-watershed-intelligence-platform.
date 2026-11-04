@@ -6540,8 +6540,9 @@ function earthlineAquiferGeoJSON(){
 function earthlineApplyAquiferLayerStyle(){
   if(!earthlineMapActive()||!earthlineMap.getStyle())return false;
   try{
-    // Re-apply paint every sync. This prevents an older layer instance or a style reload
-    // from silently keeping stale, faint styling.
+    // M112: idempotent aquifer styling. A recurring sync must not trigger
+    // Mapbox paint/layout revisions when the values are already correct.
+    // Compare actual style properties, so a genuine style reload still repairs them.
     const paint={
       fill:{
         "fill-color":"#ff7600",
@@ -6581,26 +6582,36 @@ function earthlineApplyAquiferLayerStyle(){
     };
     Object.entries(layerPaint).forEach(([id,props])=>{
       if(!earthlineMap.getLayer(id))return;
-      Object.entries(props).forEach(([k,v])=>earthlineMap.setPaintProperty(id,k,v));
+      Object.entries(props).forEach(([k,v])=>{
+        if(JSON.stringify(earthlineMap.getPaintProperty(id,k))!==JSON.stringify(v))
+          earthlineMap.setPaintProperty(id,k,v);
+      });
     });
     if(earthlineMap.getLayer(EARTHLINE_AQUIFER_LABEL)){
-      earthlineMap.setLayoutProperty(EARTHLINE_AQUIFER_LABEL,"text-allow-overlap",true);
-      earthlineMap.setLayoutProperty(EARTHLINE_AQUIFER_LABEL,"text-ignore-placement",true);
-      earthlineMap.setLayoutProperty(EARTHLINE_AQUIFER_LABEL,"text-padding",4);
-      earthlineMap.setPaintProperty(EARTHLINE_AQUIFER_LABEL,"text-color","#fff7e6");
-      earthlineMap.setPaintProperty(EARTHLINE_AQUIFER_LABEL,"text-halo-color","rgba(35,10,0,1)");
-      earthlineMap.setPaintProperty(EARTHLINE_AQUIFER_LABEL,"text-halo-width",5);
-      earthlineMap.setPaintProperty(EARTHLINE_AQUIFER_LABEL,"text-halo-blur",0.2);
+      for(const [k,v] of Object.entries({"text-allow-overlap":true,"text-ignore-placement":true,"text-padding":4})){
+        if(JSON.stringify(earthlineMap.getLayoutProperty(EARTHLINE_AQUIFER_LABEL,k))!==JSON.stringify(v))
+          earthlineMap.setLayoutProperty(EARTHLINE_AQUIFER_LABEL,k,v);
+      }
+      for(const [k,v] of Object.entries({"text-color":"#fff7e6","text-halo-color":"rgba(35,10,0,1)","text-halo-width":5,"text-halo-blur":0.2})){
+        if(JSON.stringify(earthlineMap.getPaintProperty(EARTHLINE_AQUIFER_LABEL,k))!==JSON.stringify(v))
+          earthlineMap.setPaintProperty(EARTHLINE_AQUIFER_LABEL,k,v);
+      }
     }
 
     // Keep official aquifers above satellite/road labels and below swale recommendations.
     // The canvas enhancer is still drawn above all Mapbox layers for guaranteed visibility.
     const before=earthlineMap.getLayer(EARTHLINE_SWALE_CASING)?EARTHLINE_SWALE_CASING:undefined;
-    [EARTHLINE_AQUIFER_FILL,EARTHLINE_AQUIFER_OUTER,EARTHLINE_AQUIFER_LINE,
+    const aquiferOrder112=[EARTHLINE_AQUIFER_FILL,EARTHLINE_AQUIFER_OUTER,EARTHLINE_AQUIFER_LINE,
       EARTHLINE_AQUIFER_HIGHLIGHT,EARTHLINE_AQUIFER_DASH,EARTHLINE_AQUIFER_WELLS_16398,
-      EARTHLINE_AQUIFER_EVIDENCE_LABEL_16398,EARTHLINE_AQUIFER_LABEL].forEach(id=>{
-      if(earthlineMap.getLayer(id))earthlineMap.moveLayer(id,before);
-    });
+      EARTHLINE_AQUIFER_EVIDENCE_LABEL_16398,EARTHLINE_AQUIFER_LABEL].filter(id=>earthlineMap.getLayer(id));
+    const order112=(earthlineMap.getStyle().layers||[]).map(l=>l.id);
+    const positions112=aquiferOrder112.map(id=>order112.indexOf(id));
+    const correctlyOrdered112=positions112.every((p,i)=>i===0||p>positions112[i-1])&&
+      (before?positions112.every(p=>p<order112.indexOf(before)):
+        positions112.every((p,i)=>p===order112.length-aquiferOrder112.length+i));
+    if(!correctlyOrdered112){
+      aquiferOrder112.forEach(id=>earthlineMap.moveLayer(id,before));
+    }
     return true;
   }catch(e){console.warn("[Earthline] aquifer restyle/order failed",e);return false;}
 }
