@@ -35,6 +35,10 @@ try{
   });
   await page.waitForFunction(()=>!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.runToken||!!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970,null,{timeout:55000,polling:200});
   for(let run=1;run<=2;run++){
+    const before=await page.evaluate(()=>{
+      const el=document.getElementById('earthlineAquiferTopText16501');
+      return {display:el?.style.display||'none',children:el?.childElementCount||0,centerKey:el?.dataset?.m108LastPropertyCenter||null};
+    });
     const prepared=await page.evaluate(async target=>{
       const site=window.earthlineSelectedSiteFromCenter?.(M?.loc||null,target.lng,target.lat,20);
       if(!site)return {ok:false,reason:'site not resolved'};
@@ -100,14 +104,14 @@ try{
     // cold first run. On a repeat run with existing evidence, blanking even once
     // is a regression. Once source evidence arrives, the label must hold.
     const firstSummary=samples.findIndex(s=>s.summaryPresent);
-    const warm=samples[0]?.summaryPresent===true;
+    const warm=(run===2&&before.display==='block'&&before.children>0)||samples[0]?.summaryPresent===true;
     const watched=warm?samples:samples.slice(Math.min(samples.length,firstSummary+2));
     const eligible=firstSummary>=0&&watched.length>=8&&
       samples.every(s=>s.committed&&!s.hold&&s.modelMode==='property');
     const flicker=watched.some(s=>s.display!=='block'||s.computed!=='block'||s.children<1);
     const nativeOn=samples.some(s=>Object.values(s.native).some(v=>v==='visible'));
     const first=samples[0],last=samples.at(-1);
-    const row={run,prepared,runError,eligible,flicker,nativeOn,first,last,
+    const row={run,before,prepared,runError,eligible,flicker,nativeOn,first,last,
       transitions:samples.filter((s,i)=>i>0&&(s.display!==samples[i-1].display||s.children!==samples[i-1].children)).map(s=>({display:s.display,children:s.children,committed:s.committed,hold:s.hold})),
       pass:!runError&&eligible&&!flicker&&!nativeOn};
     rows.push(row);
