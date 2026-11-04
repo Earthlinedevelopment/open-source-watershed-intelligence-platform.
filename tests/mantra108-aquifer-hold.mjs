@@ -54,7 +54,7 @@ try{
     if(run===2)await page.evaluate(()=>{
       const samples=[];
       const sample=()=>{
-        const map=window.earthlineMap,active=window.earthlineRegional15778||{};
+        const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap,active=window.earthlineRegional15778||{};
         const audit=window.EARTHLINE_AQUIFER_SOURCE_HOLD_AUDIT_110||{};
         let fill='missing',nativeFeatures=null;
         try{if(map?.getLayer?.('earthline-aquifers-fill'))fill=map.getLayoutProperty('earthline-aquifers-fill','visibility')||'visible'}catch(_){}
@@ -65,6 +65,7 @@ try{
         }catch(_){}
         samples.push({
           mode:String(active.mode||''),siteKey:String(audit.siteKey||''),
+          modelCenter: M?.centerLng!=null&&M?.centerLat!=null?Number(M.centerLng).toFixed(6)+'|'+Number(M.centerLat).toFixed(6):'',
           fill,sourceFeatures:audit.displayedFeatures??null,nativeFeatures,
           groundwaterStatus:String(audit.status||''),hold:!!active.propertyAquiferHold16359,
           aquiferOn:M?.layers?.usgsAquifer?.on===true
@@ -79,10 +80,11 @@ try{
     try{
       await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true&&document.documentElement.dataset.earthlinePropertyRunState!=='running',null,{timeout:50000,polling:150});
     }catch(e){runError=String(runError||e)}
-    const geometryProbe=run===2?await page.evaluate(()=>{
+    const geometryProbe=run===2?await page.evaluate(async()=>{
+      await new Promise(resolve=>setTimeout(resolve,1100));
       const p=window.__m110Probe;p?.stop();return p?.samples||[];
     }):[];
-    const geometryEligible=geometryProbe.filter(s=>s.mode==='property'&&s.siteKey==='-73.012909|44.513845'&&s.aquiferOn);
+    const geometryEligible=geometryProbe.filter(s=>s.mode==='property'&&s.modelCenter==='-73.012909|44.513845'&&s.aquiferOn);
     const geometryGaps=geometryEligible.filter(s=>s.fill!=='visible'||!(s.sourceFeatures>0)||(s.nativeFeatures!==null&&s.nativeFeatures<1));
     const geometryPass=run!==2||(geometryEligible.length>=5&&geometryGaps.length===0);
     const samples=await page.evaluate(async ()=>{
