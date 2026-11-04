@@ -1,25 +1,47 @@
-name: M105 secondary swale owner audit
+name: M105 remove duplicate legacy swale renderer
 on:
   push:
     branches: ['fix/mantra105-single-swale-owner']
     paths: ['.github/workflows/m105-owner-audit.yml']
 permissions:
-  contents: read
+  contents: write
 jobs:
-  inspect:
+  patch-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - name: Trace all competing non-Property visual swale layers
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Hide only legacy ranked-swale Mapbox layers, preserving SVG owner
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
-          s=Path('index.html').read_text()
-          lines=s.splitlines()
-          for a,b in [(12172,12210),(21669,21700),(33398,33415)]:
-            print('M105_RANGE',a,b)
-            for i in range(a-1,b):
-              print(f'M105_CODE {i+1}: {lines[i][:900]}')
-          print('M105_LAYER_IDS',sorted(set(re.findall(r"['\"]([^'\"]*(?:swale|opportunity)[^'\"]*)['\"]",s,re.I)))[:100])
+          p=Path('index.html');s=p.read_text()
+          a="function hideNative(){const map=m();if(!map||!map.getLayer)return;for(const id of ['el-live-contour-line-15970','el-live-contour-label-15970','el-live-swale-halo-15970','el-live-swale-line-15970']){try{if(map.getLayer(id))map.setLayoutProperty(id,'visibility','none');}catch(_){}}}"
+          b="function hideNative(){const map=m();if(!map||!map.getLayer||activeTier16168()==='property')return;for(const id of ['el-live-contour-line-15970','el-live-contour-label-15970','el-live-swale-halo-15970','el-live-swale-line-15970','earthline-ranked-swale-soil-15777','earthline-ranked-swale-plant-15777','earthline-ranked-swale-water-15777','earthline-ranked-swale-label-15775','earthline-ranked-swale-hit-16153']){try{if(map.getLayer(id)&&map.getLayoutProperty(id,'visibility')!=='none')map.setLayoutProperty(id,'visibility','none');}catch(_){}}}"
+          assert s.count(a)==1,'Fail closed: legacy owner anchor not unique'
+          s=s.replace(a,b,1)
+          a="map.on('styledata',()=>{});"
+          b="map.on('styledata',()=>{if(lastData&&activeTier16168()!=='property')setTimeout(hideNative,0);});"
+          assert s.count(a)==1,'Fail closed: late style restore anchor not unique'
+          s=s.replace(a,b,1)
+          assert s.count('function makeSwales(hy,contours,focusMode=false)')==1
+          assert s.count('earthlineSwalePolylineM102')==2
+          p.write_text(s)
+          print('M105_SINGLE_SWALE_OWNER_READY: duplicate Mapbox swale graphics hidden; science untouched')
           PY
+          rm .github/workflows/m105-owner-audit.yml
+          node tests/mantra102-no-spline-swales.mjs
+          python3 tools/earthline-release-airlock-static.py
+          git diff --check
+          git diff --stat
+      - name: Commit only the verified production HTML difference
+        run: |
+          set -euo pipefail
+          git config user.name "earthline-m105-github-actions"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html .github/workflows/m105-owner-audit.yml
+          git commit -m "fix(mantra105): retire duplicate Regional Mapbox swale renderers"
+          git push origin HEAD:fix/mantra105-single-swale-owner
