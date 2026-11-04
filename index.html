@@ -21805,8 +21805,8 @@ var prescribeSwales;
        Keep native opportunity label and hit actions; leave Property unchanged. */
     if(property){setGroup(active.swales,swaleOn);}
     else{
-      for(const id103 of ["earthline-swales-casing","earthline-swales-line",OPPORTUNITY_SOIL,OPPORTUNITY_PLANT,OPPORTUNITY_WATER])visible(id103,false);
-      visible(OPPORTUNITY_LABEL,swaleOn);
+      for(const id103 of ["earthline-swales-casing","earthline-swales-line","earthline-ranked-swale-soil-15777","earthline-ranked-swale-plant-15777","earthline-ranked-swale-water-15777"])visible(id103,false);
+      visible("earthline-ranked-swale-label-15775",swaleOn);
     }
     setGroup(active.recharge,rechargeOn);setGroup(active.contours,contourOn);setGroup(active.aquifer,aquiferOn);
     updateAquiferTopText16501(property,aquiferTextOn);
@@ -29822,7 +29822,7 @@ body { overflow-x:hidden!important; }
     }
     /* An extreme backtracking trace is not a credible swale even if no
        two centerline segments mathematically intersect. */
-    if(length>12&&length/Math.max(chord,1e-6)>1.4)return false;
+    if(length>1.5&&length/Math.max(chord,1e-6)>1.25)return false;
     /* Abrupt turns reveal folded-back snakes that can otherwise pass a
        global end-to-end chord test. Valid smooth contour bends still pass. */
     for(let i=2;i<p.length;i++){
@@ -29834,20 +29834,58 @@ body { overflow-x:hidden!important; }
     return true;
   }
 
+
+    /* MANTRA 103: derive a short LOCAL stretch of the verified contour.
+       Do not double-smooth or publish entire 60-km contour worms. */
+    function earthlineContourDistanceM103(a,b){
+      const lat=(Number(a[1])+Number(b[1]))*.5*Math.PI/180;
+      return Math.hypot((Number(b[0])-Number(a[0]))*111320*Math.cos(lat),(Number(b[1])-Number(a[1]))*111320);
+    }
+    function earthlineLocalContourM103(coords,center,sideLimitM=1800){
+      if(!Array.isArray(coords)||center<0||center>=coords.length)return [];
+      const mid=coords[center];
+      if(!Array.isArray(mid)||!mid.every(Number.isFinite))return [];
+      const left=[mid],right=[mid];
+      for(const dir of [-1,1]){
+        let remaining=sideLimitM,pos=center,side=dir<0?left:right;
+        while(remaining>0&&pos+dir>=0&&pos+dir<coords.length){
+          const from=coords[pos],to=coords[pos+dir],distance=earthlineContourDistanceM103(from,to);
+          if(!Number.isFinite(distance)||distance<=0)break;
+          if(distance<=remaining){side.push(to);remaining-=distance;pos+=dir;continue;}
+          const t=remaining/distance;
+          side.push([from[0]+(to[0]-from[0])*t,from[1]+(to[1]-from[1])*t]);
+          break;
+        }
+      }
+      return left.slice().reverse().concat(right.slice(1));
+    }
     function sampleSegment(coords,center,relaxed){
-      const half=Math.max(10,Math.min(28,Math.floor(coords.length*.12))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);
-      const raw=coords.slice(start,end);if(raw.length<10)return null;
-      const segment=chaikin(raw,2,false);if(segment.length<10||lineLengthPixels(hy,segment)<10)return null;
+      /* The contour source is already smoothed; no Chaikin transformation. */
+      const segment=earthlineLocalContourM103(coords,center);
+      if(segment.length<3)return null;
+      let lengthM=0;for(let i=1;i<segment.length;i++)lengthM+=earthlineContourDistanceM103(segment[i-1],segment[i]);
+      if(!Number.isFinite(lengthM)||lengthM<80||lengthM>4000||lineLengthPixels(hy,segment)<5)return null;
       const gridSegment101=segment.map(ll=>{const g=llGrid(hy,ll);return [g.x,g.y];});
       if(!earthlineWormGeometryPassRegional101(gridSegment101))return null;
-      const stride=Math.max(1,Math.floor(segment.length/22));let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null;
-      for(let k=1;k<segment.length-1;k+=stride){
-        const g=llGrid(hy,segment[k]),x=Math.max(1,Math.min(hy.w-2,Math.round(g.x))),y=Math.max(1,Math.min(hy.h-2,Math.round(g.y))),i=y*hy.w+x;
-        const slope=hy.slope[i],acc=hy.acc[i],minSlope=relaxed?.05:.20,maxSlope=relaxed?18:13.5;
-        if(!Number.isFinite(slope)||slope<minSlope||slope>maxSlope||acc>=channel)continue;
-        valid++;sumSlope+=slope;sumAcc+=acc;maxAcc=Math.max(maxAcc,acc);if(!anchor)anchor={x,y};
+      let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null,previous=null;
+      for(const ll of segment){
+        if(!earthlineRegionalPointValid16584(hy,ll))return null;
+        const g=llGrid(hy,ll);
+        const steps=previous?Math.max(1,Math.ceil(Math.hypot(g.x-previous.x,g.y-previous.y)*3)):1;
+        for(let t=previous?1:0;t<=steps;t++){
+          const xg=previous?previous.x+(g.x-previous.x)*t/steps:g.x;
+          const yg=previous?previous.y+(g.y-previous.y)*t/steps:g.y;
+          const x=Math.max(1,Math.min(hy.w-2,Math.round(xg))),y=Math.max(1,Math.min(hy.h-2,Math.round(yg))),i=y*hy.w+x;
+          const slope=Number(hy.slope[i]),acc=Number(hy.acc[i]);
+          /* The locked 4% and channel exclusions apply to EVERY sampled cell. */
+          if(!Number.isFinite(slope)||slope<0||slope>4||!Number.isFinite(acc)||acc>=channel)return null;
+          if(hy.validityMask16584&&!hy.validityMask16584[i])return null;
+          valid++;sumSlope+=slope;sumAcc+=acc;maxAcc=Math.max(maxAcc,acc);
+          if(!anchor)anchor={x,y};
+        }
+        previous=g;
       }
-      if(valid<(relaxed?1:2)||!anchor)return null;
+      if(valid<2||!anchor)return null;
       const meanSlope=sumSlope/valid,meanAcc=sumAcc/valid;
       const slopeScore=Math.max(0,1-Math.abs(meanSlope-3.4)/(relaxed?12:7.5));
       const flowScore=meanAcc<=accLow?.18:meanAcc<=accMid?.18+.70*(meanAcc-accLow)/Math.max(1,accMid-accLow):Math.max(.18,.88-.48*(meanAcc-accMid)/Math.max(1,accHigh-accMid));
