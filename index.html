@@ -6157,15 +6157,22 @@ function earthlineMergeCompatibleSwales(swales,chanThr,maxS,totalBands,targetM){
 }
 
 function earthlineSwaleGeometryAcceptable(pts,lenM){
-  if(!pts||pts.length<3||lenM<12)return false;
+  /* MANTRA 101 V2 — validate final (including MERGED) geometry before any
+     Property corridor is accepted. Do not substitute or redraw paths. */
+  if(!pts||pts.length<3||!Number.isFinite(lenM)||lenM<12)return false;
   const a=pts[0],b=pts[pts.length-1],gapM=Math.hypot(a[0]-b[0],a[1]-b[1])*M.cellM;
+  if(!Number.isFinite(gapM)||gapM<Math.max(6,lenM*.72))return false;
   let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
-  for(const p of pts){minX=Math.min(minX,p[0]);maxX=Math.max(maxX,p[0]);minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1]);}
+  for(const p of pts){if(!Array.isArray(p)||!Number.isFinite(+p[0])||!Number.isFinite(+p[1]))return false;
+    minX=Math.min(minX,p[0]);maxX=Math.max(maxX,p[0]);minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1]);}
   const diagM=Math.hypot(maxX-minX,maxY-minY)*M.cellM;
-  const loopish=gapM<Math.max(8,lenM*0.12);
-  // Suppress small closed rings and compact bullseyes caused by neighborhood/DEM artifacts.
-  if(loopish&&(lenM<240||lenM/Math.max(1,diagM)>3.2))return false;
-  if(lenM/Math.max(1,diagM)>6)return false;
+  if(lenM/Math.max(1,diagM)>1.85)return false;
+  for(let i=2;i<pts.length;i++){
+    const u=[pts[i-1][0]-pts[i-2][0],pts[i-1][1]-pts[i-2][1]],
+          v=[pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]];
+    const aLen=Math.hypot(...u),bLen=Math.hypot(...v);
+    if(aLen>1e-7&&bLen>1e-7&&(u[0]*v[0]+u[1]*v[1])/(aLen*bLen)<-.25)return false;
+  }
   return true;
 }
 
@@ -13154,7 +13161,7 @@ var prescribeSwales;
     }
     const chord=Math.hypot(p.at(-1)[0]-p[0][0],p.at(-1)[1]-p[0][1]);
     /* A closed or near-closed contour is not a proposed linear interception swale. */
-    if(length>8&&chord/length<.32)return false;
+    if(length>8&&chord/length<.72)return false;
     const orient=(a,b,c)=>(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
     const crossing=(a,b,c,d)=>{
       const ab1=orient(a,b,c),ab2=orient(a,b,d),cd1=orient(c,d,a),cd2=orient(c,d,b);
@@ -13177,7 +13184,15 @@ var prescribeSwales;
     }
     /* An extreme backtracking trace is not a credible swale even if no
        two centerline segments mathematically intersect. */
-    if(length>12&&length/Math.max(chord,1e-6)>3.6)return false;
+    if(length>12&&length/Math.max(chord,1e-6)>1.4)return false;
+    /* Abrupt turns reveal folded-back snakes that can otherwise pass a
+       global end-to-end chord test. Valid smooth contour bends still pass. */
+    for(let i=2;i<p.length;i++){
+      const a=[p[i-1][0]-p[i-2][0],p[i-1][1]-p[i-2][1]],
+            b=[p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]];
+      const al=Math.hypot(...a),bl=Math.hypot(...b);
+      if(al>1e-7&&bl>1e-7&&(a[0]*b[0]+a[1]*b[1])/(al*bl)<-.25)return false;
+    }
     return true;
   }
 
@@ -29771,7 +29786,7 @@ body { overflow-x:hidden!important; }
     }
     const chord=Math.hypot(p.at(-1)[0]-p[0][0],p.at(-1)[1]-p[0][1]);
     /* A closed or near-closed contour is not a proposed linear interception swale. */
-    if(length>8&&chord/length<.32)return false;
+    if(length>8&&chord/length<.72)return false;
     const orient=(a,b,c)=>(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
     const crossing=(a,b,c,d)=>{
       const ab1=orient(a,b,c),ab2=orient(a,b,d),cd1=orient(c,d,a),cd2=orient(c,d,b);
@@ -29794,12 +29809,20 @@ body { overflow-x:hidden!important; }
     }
     /* An extreme backtracking trace is not a credible swale even if no
        two centerline segments mathematically intersect. */
-    if(length>12&&length/Math.max(chord,1e-6)>3.6)return false;
+    if(length>12&&length/Math.max(chord,1e-6)>1.4)return false;
+    /* Abrupt turns reveal folded-back snakes that can otherwise pass a
+       global end-to-end chord test. Valid smooth contour bends still pass. */
+    for(let i=2;i<p.length;i++){
+      const a=[p[i-1][0]-p[i-2][0],p[i-1][1]-p[i-2][1]],
+            b=[p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]];
+      const al=Math.hypot(...a),bl=Math.hypot(...b);
+      if(al>1e-7&&bl>1e-7&&(a[0]*b[0]+a[1]*b[1])/(al*bl)<-.25)return false;
+    }
     return true;
   }
 
     function sampleSegment(coords,center,relaxed){
-      const half=Math.max(10,Math.min(52,Math.floor(coords.length*.18))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);
+      const half=Math.max(10,Math.min(28,Math.floor(coords.length*.12))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);
       const raw=coords.slice(start,end);if(raw.length<10)return null;
       const segment=chaikin(raw,2,false);if(segment.length<10||lineLengthPixels(hy,segment)<10)return null;
       const gridSegment101=segment.map(ll=>{const g=llGrid(hy,ll);return [g.x,g.y];});
