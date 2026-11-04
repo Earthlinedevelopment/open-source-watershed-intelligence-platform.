@@ -21730,7 +21730,7 @@ var prescribeSwales;
     }
     const host=document.querySelector(".map-area"),w=host?host.clientWidth:0,h=host?host.clientHeight:0;
     let visibleCount106=0;for(const e of entries){let p=null;try{p=earthlineMap.project([e.lng,e.lat])}catch(_){}if(!p||p.x<8||p.x>w-8||p.y<8||p.y>h-8)continue;let tag=layer.children[visibleCount106];if(!tag){tag=document.createElement("div");tag.className="earthline-aquifer-top-label-16501";layer.appendChild(tag)}if(tag.textContent!==e.label)tag.textContent=e.label;const x106=p.x.toFixed(1)+"px",y106=p.y.toFixed(1)+"px";if(tag.style.left!==x106)tag.style.left=x106;if(tag.style.top!==y106)tag.style.top=y106;visibleCount106++}while(layer.children.length>visibleCount106)layer.lastElementChild.remove()
-    layer.style.display=layer.childElementCount?"block":"none";window.EARTHLINE_AQUIFER_TOP_TEXT_AUDIT_16501={property,on,labels:layer.childElementCount,zIndex:40,host:"map-area",at:new Date().toISOString()};return layer.childElementCount>0
+    const nextDisplay107=layer.childElementCount?"block":"none";if(layer.style.display!==nextDisplay107)layer.style.display=nextDisplay107;window.EARTHLINE_AQUIFER_TOP_TEXT_AUDIT_16501={property,on,labels:layer.childElementCount,zIndex:40,host:"map-area",at:new Date().toISOString()};return layer.childElementCount>0
   }
   function ensureControl(){
     const host=document.querySelector(".center");if(!host)return null;
@@ -21795,7 +21795,12 @@ var prescribeSwales;
       (M&&Array.isArray(M.usgsAquifers)&&M.usgsAquifers.length)
     );
     setGroup(active.water,flowOn);setGroup(active.swales,swaleOn);
-    setGroup(active.recharge,rechargeOn);setGroup(active.contours,contourOn);setGroup(active.aquifer,aquiferOn);
+    setGroup(active.recharge,rechargeOn);setGroup(active.contours,contourOn);
+    /* M107: Property HTML owns aquifer text. Do not briefly enable native symbol
+       labels and immediately disable them on every ownership refresh. Geometry
+       and well evidence retain their existing visibility decisions. */
+    const propertyNativeAquiferLabels107=new Set(["earthline-aquifers-label","earthline-aquifer-label-points-layer-15788","earthline-aquifer-evidence-label-16398"]);
+    for(const id of active.aquifer.layers)visible(id,aquiferOn&&!(property&&propertyNativeAquiferLabels107.has(id)));
     updateAquiferTopText16501(property,aquiferTextOn);
     /* EARTHLINE 16414 — authoritative hydro evidence visibility order.
        Keep the translucent recharge fill contextual below interventions, but guarantee
