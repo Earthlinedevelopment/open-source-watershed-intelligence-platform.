@@ -21729,8 +21729,13 @@ var prescribeSwales;
     const last108=layer.dataset.m108LastPropertyCenter||"";
     const pub108=M&&M.propertyPublication15816||{};
     const rebuilding108=pub108.committed!==true||Number(pub108.searchGen)!==Number(M&&M.searchGen);
+    /* The authoritative well-summary request may settle AFTER the safe Property
+       publication. The prior same-site annotation remains truthful while that
+       source is reacquired; a different-site or disabled aquifer never inherits it. */
+    const summaryReacquiring108=!(M&&M.vtGroundwaterSummaryPoint16398);
     const retain108=!!(property&&center108&&center108===last108&&layer.childElementCount>0&&
-      rebuilding108&&String(state.validationView15806||"all")==="all"&&M?.layers?.usgsAquifer?.on===true);
+      (rebuilding108||summaryReacquiring108)&&
+      String(state.validationView15806||"all")==="all"&&M?.layers?.usgsAquifer?.on===true);
     if(retain108){layer.dataset.m108PreserveSameProperty="1";if(layer.style.display!=="block")layer.style.display="block";return true}
     if(!property||!on||!mapReady()||!earthlineMap.project){
       /* M108: hold previously verified evidence only for an identical Property
