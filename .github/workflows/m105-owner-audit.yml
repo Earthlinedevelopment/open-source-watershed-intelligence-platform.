@@ -1,0 +1,25 @@
+name: M105 secondary swale owner audit
+on:
+  push:
+    branches: ['fix/mantra105-single-swale-owner']
+    paths: ['.github/workflows/m105-owner-audit.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trace all competing non-Property visual swale layers
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text()
+          lines=s.splitlines()
+          for a,b in [(12172,12210),(21669,21700),(33398,33415)]:
+            print('M105_RANGE',a,b)
+            for i in range(a-1,b):
+              print(f'M105_CODE {i+1}: {lines[i][:900]}')
+          print('M105_LAYER_IDS',sorted(set(re.findall(r"['\"]([^'\"]*(?:swale|opportunity)[^'\"]*)['\"]",s,re.I)))[:100])
+          PY
