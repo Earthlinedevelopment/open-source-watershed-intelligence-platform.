@@ -1,0 +1,16 @@
+name: Earthline Mantra 100 worm presentation regression
+on:
+  push:
+    branches:
+      - repair/mantra-100-worm-source-removal
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  worm-only-source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check source parity, retired worm owners, and every inline script syntax
+        run: node tests/mantra100-worm-retirement.cjs
