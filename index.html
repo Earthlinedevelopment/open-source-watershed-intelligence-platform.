@@ -21721,6 +21721,17 @@ var prescribeSwales;
   }
   function updateAquiferTopText16501(property,on){
     const layer=ensureAquiferTopText16501();if(!layer)return false;/* M106: preserve stable label nodes across repeated renderer-ownership passes. */
+    /* M108: same-coordinate Property re-entry may temporarily empty its groundwater
+       model during a new generation. Retain ONLY the prior displayed, verified
+       annotation for that exact coordinate, until the new generation commits. */
+    const center108=Number.isFinite(Number(M&&M.centerLng))&&Number.isFinite(Number(M&&M.centerLat))
+      ?Number(M.centerLng).toFixed(6)+"|"+Number(M.centerLat).toFixed(6):"";
+    const last108=layer.dataset.m108LastPropertyCenter||"";
+    const pub108=M&&M.propertyPublication15816||{};
+    const rebuilding108=pub108.committed!==true||Number(pub108.searchGen)!==Number(M&&M.searchGen);
+    const retain108=!!(property&&center108&&center108===last108&&layer.childElementCount>0&&
+      rebuilding108&&String(state.validationView15806||"all")==="all"&&M?.layers?.usgsAquifer?.on===true);
+    if(retain108){layer.dataset.m108PreserveSameProperty="1";if(layer.style.display!=="block")layer.style.display="block";return true}
     if(!property||!on||!mapReady()||!earthlineMap.project){
       /* M108: hold previously verified evidence only for an identical Property
          while its next generation is rebuilding. Never carry it to another site. */
@@ -31798,8 +31809,8 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
       if(aq){
         const key=nextSite&&Number.isFinite(Number(nextSite.lng))&&Number.isFinite(Number(nextSite.lat))
           ?Number(nextSite.lng).toFixed(6)+"|"+Number(nextSite.lat).toFixed(6):"";
-        const same=!!(key&&key===aq.dataset.m108LastPropertyCenter&&aq.childElementCount>0&&getComputedStyle(aq).display!=="none");
-        if(same)aq.dataset.m108PreserveSameProperty="1";
+        const same=!!(key&&key===aq.dataset.m108LastPropertyCenter&&aq.childElementCount>0);
+        if(same){aq.dataset.m108PreserveSameProperty="1";if(aq.style.display!=="block")aq.style.display="block"}
         else{delete aq.dataset.m108PreserveSameProperty;aq.replaceChildren();aq.style.display='none'}
       }
     }catch(_){ }
