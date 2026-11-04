@@ -21721,7 +21721,12 @@ var prescribeSwales;
   }
   function updateAquiferTopText16501(property,on){
     const layer=ensureAquiferTopText16501();if(!layer)return false;/* M106: preserve stable label nodes across repeated renderer-ownership passes. */
-    if(!property||!on||!mapReady()||!earthlineMap.project){if(layer.style.display!=="none")layer.style.display="none";return false}
+    if(!property||!on||!mapReady()||!earthlineMap.project){
+      /* M108: hold previously verified evidence only for an identical Property
+         while its next generation is rebuilding. Never carry it to another site. */
+      if(property&&layer.dataset.m108PreserveSameProperty==="1"&&layer.childElementCount>0)return true;
+      if(layer.style.display!=="none")layer.style.display="none";return false
+    }
     /* M108: native label visibility is owned solely by applyOwnership, never by the DOM text painter. */
     const entries=[];const summary=M&&M.vtGroundwaterSummaryPoint16398;
     if(summary&&Number.isFinite(Number(summary.lng))&&Number.isFinite(Number(summary.lat))&&summary.label)entries.push({lng:Number(summary.lng),lat:Number(summary.lat),label:String(summary.label)});
@@ -21730,6 +21735,13 @@ var prescribeSwales;
     }
     const host=document.querySelector(".map-area"),w=host?host.clientWidth:0,h=host?host.clientHeight:0;
     let visibleCount106=0;for(const e of entries){let p=null;try{p=earthlineMap.project([e.lng,e.lat])}catch(_){}if(!p||p.x<8||p.x>w-8||p.y<8||p.y>h-8)continue;let tag=layer.children[visibleCount106];if(!tag){tag=document.createElement("div");tag.className="earthline-aquifer-top-label-16501";layer.appendChild(tag)}if(tag.textContent!==e.label)tag.textContent=e.label;const x106=p.x.toFixed(1)+"px",y106=p.y.toFixed(1)+"px";if(tag.style.left!==x106)tag.style.left=x106;if(tag.style.top!==y106)tag.style.top=y106;visibleCount106++}while(layer.children.length>visibleCount106)layer.lastElementChild.remove()
+    if(visibleCount106>0&&Number.isFinite(Number(M.centerLng))&&Number.isFinite(Number(M.centerLat))){
+      layer.dataset.m108LastPropertyCenter=Number(M.centerLng).toFixed(6)+"|"+Number(M.centerLat).toFixed(6);
+      const current=M.propertyPublication15816||{};
+      if(layer.dataset.m108PreserveSameProperty==="1"&&current.committed===true&&
+         Number(current.searchGen)===Number(M.searchGen)&&!state.propertyAquiferHold16359)
+        delete layer.dataset.m108PreserveSameProperty;
+    }
     const nextDisplay107=layer.childElementCount?"block":"none";if(layer.style.display!==nextDisplay107)layer.style.display=nextDisplay107;window.EARTHLINE_AQUIFER_TOP_TEXT_AUDIT_16501={property,on,labels:layer.childElementCount,zIndex:40,host:"map-area",at:new Date().toISOString()};return layer.childElementCount>0
   }
   function ensureControl(){
@@ -31762,7 +31774,7 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
   }
   /* EARTHLINE 16521 — presentation-only retirement + bounded same-generation
      settlement, rebuilt directly on 16516. Scientific/model fields remain intact. */
-  function retirePriorPropertyPresentation16521(reason='new-property-attempt'){
+  function retirePriorPropertyPresentation16521(reason='new-property-attempt',nextSite=null){
     const mp=map();
     try{clearSafePropertyFallback16221('retire-prior-property-16521')}catch(_){ }
     try{if(typeof window.earthlineSyncRechargeLayer==='function')window.earthlineSyncRechargeLayer(false)}catch(_){ }
@@ -31783,7 +31795,13 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
       const water=document.getElementById('earthlinePropertyWaterOverlay15824');
       if(water){water.replaceChildren();water.style.display='none'}
       const aq=document.getElementById('earthlineAquiferTopText16501');
-      if(aq){aq.replaceChildren();aq.style.display='none'}
+      if(aq){
+        const key=nextSite&&Number.isFinite(Number(nextSite.lng))&&Number.isFinite(Number(nextSite.lat))
+          ?Number(nextSite.lng).toFixed(6)+"|"+Number(nextSite.lat).toFixed(6):"";
+        const same=!!(key&&key===aq.dataset.m108LastPropertyCenter&&aq.childElementCount>0&&getComputedStyle(aq).display!=="none");
+        if(same)aq.dataset.m108PreserveSameProperty="1";
+        else{delete aq.dataset.m108PreserveSameProperty;aq.replaceChildren();aq.style.display='none'}
+      }
     }catch(_){ }
     window.EARTHLINE_PROPERTY_RETIREMENT_AUDIT_16521={build:'EARTHLINE 16521',reason,presentationOnly:true,scientificStateCleared:false,at:new Date().toISOString()};
     return true;
@@ -32098,7 +32116,7 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
     window.EARTHLINE_PROPERTY_PHASE_TRACE_16319=[];
     window.EARTHLINE_PROPERTY_TRACE_ACTIVE_16319=true;
     earthlinePropertyTrace16319("terminalPropertyRun","enter",{serial,selectedCode:selectedCode||null});
-    retirePriorPropertyPresentation16521('terminal-property-start');
+    retirePriorPropertyPresentation16521('terminal-property-start',site);
     /* EARTHLINE 16279 — Property owns the map before camera motion. Close any
        Regional-only onboarding tip and hand analytical visibility to the existing
        Property renderer owner immediately. This changes presentation state only;
