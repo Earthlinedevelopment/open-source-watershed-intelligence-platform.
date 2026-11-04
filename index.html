@@ -6657,9 +6657,15 @@ function earthlineAquiferSiteKey110(){
 function earthlineAquiferCanCarry110(){
   const active=window.earthlineRegional15778||{};
   const key=earthlineAquiferSiteKey110(),status=String(M?.usgsAquiferStatus||'');
+  /* A same-site source is valid during a new Property generation's pre-publication
+     interval even if the network loading flag has not yet been set. Never retain
+     it after the official request explicitly finishes empty or fails. */
+  const terminalEmpty110=['verified-clear-local-evidence','empty','unreachable','outside-us'].includes(status);
+  const pub110=M?.propertyPublication15816||{};
+  const reentering110=pub110.committed!==true||Number(pub110.searchGen)!==Number(M?.searchGen);
   return !!(key&&key===earthlineAquiferContinuity110.siteKey&&earthlineAquiferContinuity110.data?.features?.length&&
     active.mode==='property'&&String(active.validationView15806||'all')==='all'&&M?.layers?.usgsAquifer?.on===true&&
-    (active.propertyAquiferHold16359===true||M.usgsAquiferLoading===true||status==='loading'));
+    !terminalEmpty110&&(active.propertyAquiferHold16359===true||M.usgsAquiferLoading===true||status==='loading'||reentering110));
 }
 function earthlineSyncAquiferLayer(){
   if(!earthlineMapActive())return false;
@@ -6697,7 +6703,7 @@ function earthlineSyncAquiferLayer(){
 
     const requested=!!(
       M.layers&&M.layers.usgsAquifer&&M.layers.usgsAquifer.on&&
-      ((M.usgsAquifers&&M.usgsAquifers.length)||(M.vtGroundwaterWells16398&&M.vtGroundwaterWells16398.length)||M.vtGroundwaterSummaryPoint16398)
+      ((M.usgsAquifers&&M.usgsAquifers.length)||(M.vtGroundwaterWells16398&&M.vtGroundwaterWells16398.length)||M.vtGroundwaterSummaryPoint16398||carry110)
     );
     if(M.usgsAquiferAudit){
       M.usgsAquiferAudit.mapboxSourceFeatures=sourceData110.features.length;
@@ -21867,10 +21873,10 @@ var prescribeSwales;
     const contourOn=propertyCommitted&&!!(M.layers&&M.layers.contours&&M.layers.contours.on)&&(validationView==="all"||swalesContours);
     const aquiferOn=(propertyCommitted&&!state.propertyAquiferHold16359&&!!(M.layers&&M.layers.usgsAquifer&&M.layers.usgsAquifer.on)&&validationView==="all")||
       (property&&validationView==="all"&&earthlineAquiferCanCarry110());
-    const aquiferTextOn=propertyCommitted&&!state.propertyAquiferHold16359&&validationView==="all"&&!!(
+    const aquiferTextOn=(propertyCommitted&&!state.propertyAquiferHold16359&&validationView==="all"&&!!(
       (M&&M.vtGroundwaterSummaryPoint16398)||
       (M&&Array.isArray(M.usgsAquifers)&&M.usgsAquifers.length)
-    );
+    ))||(property&&validationView==="all"&&earthlineAquiferCanCarry110());
     setGroup(active.water,flowOn);setGroup(active.swales,swaleOn);
     setGroup(active.recharge,rechargeOn);setGroup(active.contours,contourOn);
     /* M107: Property HTML owns aquifer text. Do not briefly enable native symbol
