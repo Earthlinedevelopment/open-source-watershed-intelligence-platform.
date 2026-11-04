@@ -1,24 +1,34 @@
-name: M105 worm-only source audit
+name: M105 worm-only candidate repair
 on:
   push:
     branches: ['fix/mantra105-worm-only']
     paths: ['.github/workflows/m105-worm-only.yml', 'tools/m105-worm-only.py']
 permissions:
-  contents: read
+  contents: write
 jobs:
-  inspect:
+  repair-and-verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - name: Print exact Regional worm owner and final SVG code
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply only M105 swale geometry repair to isolated candidate
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          lines=Path("index.html").read_text().splitlines()
-          ranges=[(29605,29785),(29800,29848),(31348,31380),(31740,31790),(33398,33448),(33480,33545)]
-          for start,end in ranges:
-            print(f'M105_RANGE {start}-{end}')
-            for i in range(start-1,min(end,len(lines))):
-              line=lines[i]
-              print(f'{i+1:05d}: {line[:550]}'+(' [...TRUNCATED]' if len(line)>550 else ''))
-          PY
+          set -euo pipefail
+          python3 tools/m105-worm-only.py
+          node tests/mantra102-no-spline-swales.mjs
+          python3 tools/earthline-release-airlock-static.py
+          git diff --check
+          git diff --stat -- index.html
+      - name: Commit tested candidate to isolated branch
+        run: |
+          set -euo pipefail
+          git config user.name "earthline-m105-github-actions"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "fix(mantra105): eliminate re-smoothed Regional worms from terrain swale source"
+          git push origin HEAD:fix/mantra105-worm-only
