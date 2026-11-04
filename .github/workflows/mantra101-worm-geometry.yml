@@ -1,0 +1,32 @@
+name: Mantra 101 worm geometry browser evidence (test branch only)
+on:
+  push:
+    branches: [fix/mantra101-worm-geometry]
+    paths:
+      - tests/mantra101-worm-geometry.mjs
+      - .github/workflows/mantra101-worm-geometry.yml
+      - index.html
+permissions:
+  contents: read
+jobs:
+  worm-geometry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check candidate test code
+        run: node --check tests/mantra101-worm-geometry.mjs
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Pinned Vermont and Arizona regional geometry and screenshot checks
+        run: node tests/mantra101-worm-geometry.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra101-worm-geometry-evidence
+          path: artifacts/mantra101-worm
+          retention-days: 7
