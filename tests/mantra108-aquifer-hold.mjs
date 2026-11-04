@@ -96,8 +96,15 @@ try{
       for(let i=0;i<40;i++){await new Promise(r=>setTimeout(r,150));series.push(snap())}
       return series;
     });
-    const eligible=samples.every(s=>s.committed&&!s.hold&&s.modelMode==='property'&&s.evidence);
-    const flicker=samples.some(s=>s.display!=='block'||s.computed!=='block'||s.children<1);
+    // No label can be required before groundwater evidence is acquired on the
+    // cold first run. On a repeat run with existing evidence, blanking even once
+    // is a regression. Once source evidence arrives, the label must hold.
+    const firstSummary=samples.findIndex(s=>s.summaryPresent);
+    const warm=samples[0]?.summaryPresent===true;
+    const watched=warm?samples:samples.slice(Math.min(samples.length,firstSummary+2));
+    const eligible=firstSummary>=0&&watched.length>=8&&
+      samples.every(s=>s.committed&&!s.hold&&s.modelMode==='property');
+    const flicker=watched.some(s=>s.display!=='block'||s.computed!=='block'||s.children<1);
     const nativeOn=samples.some(s=>Object.values(s.native).some(v=>v==='visible'));
     const first=samples[0],last=samples.at(-1);
     const row={run,prepared,runError,eligible,flicker,nativeOn,first,last,
