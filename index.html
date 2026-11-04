@@ -21722,7 +21722,7 @@ var prescribeSwales;
   function updateAquiferTopText16501(property,on){
     const layer=ensureAquiferTopText16501();if(!layer)return false;/* M106: preserve stable label nodes across repeated renderer-ownership passes. */
     if(!property||!on||!mapReady()||!earthlineMap.project){if(layer.style.display!=="none")layer.style.display="none";return false}
-    for(const id of ["earthline-aquifers-label","earthline-aquifer-label-points-layer-15788","earthline-aquifer-evidence-label-16398"])visible(id,false);
+    /* M108: native label visibility is owned solely by applyOwnership, never by the DOM text painter. */
     const entries=[];const summary=M&&M.vtGroundwaterSummaryPoint16398;
     if(summary&&Number.isFinite(Number(summary.lng))&&Number.isFinite(Number(summary.lat))&&summary.label)entries.push({lng:Number(summary.lng),lat:Number(summary.lat),label:String(summary.label)});
     if(!entries.length&&M&&Array.isArray(M.usgsAquifers)){
