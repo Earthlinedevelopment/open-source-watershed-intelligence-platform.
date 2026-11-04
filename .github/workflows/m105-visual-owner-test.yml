@@ -1,0 +1,54 @@
+name: M105 live-style duplicate swale owner proof
+on:
+  push:
+    branches: ['test/mantra105-render-owner']
+permissions:
+  contents: read
+jobs:
+  az-visual-owner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Inspect Arizona map after pinned candidate Regional publication
+        run: |
+          node --input-type=module - <<'JS'
+          import {chromium} from 'playwright';
+          import {readFileSync} from 'node:fs';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1600,height:950}});
+          const base='https://earthlinedevelopment.org';
+          await page.route('**/*',async route=>{
+            const u=new URL(route.request().url());
+            if(u.origin===base&&(u.pathname==='/'||u.pathname==='/index.html'))return route.fulfill({status:200,contentType:'text/html',body:readFileSync('index.html')});
+            return route.continue();
+          });
+          await page.goto(base+'/?m105owner='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+          await page.waitForSelector('#searchInput',{timeout:15000});
+          await page.evaluate(()=>{
+            const i=document.getElementById('searchInput');i.value='Arizona';
+            i.dispatchEvent(new Event('input',{bubbles:true}));
+            i.dispatchEvent(new Event('change',{bubbles:true}));
+            document.getElementById('runBtn').click();
+          });
+          await page.waitForFunction(()=>Number(window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020?.swaleLines||0)>0,null,{timeout:90000});
+          await page.waitForTimeout(1200);
+          const proof=await page.evaluate(()=>{
+            const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;
+            const ids=['earthline-ranked-swale-soil-15777','earthline-ranked-swale-plant-15777','earthline-ranked-swale-water-15777','earthline-ranked-swale-label-15775','earthline-ranked-swale-hit-16153'];
+            const layers=Object.fromEntries(ids.map(id=>[id,{exists:!!map?.getLayer?.(id),visibility:map?.getLayer?.(id)?map.getLayoutProperty(id,'visibility'):null}]));
+            const svg=document.getElementById('earthlineRegionalVectorOverlay16020');
+            return {swales:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020?.swaleLines||0,svgPaths:svg?.querySelectorAll('[data-layer="swale-opportunities"] path').length||0,layers,tier:document.documentElement.dataset.earthlineAnalysisTier};
+          });
+          console.log('M105_PINNED_OWNER_PROOF',JSON.stringify(proof));
+          const ok=proof.swales>0&&proof.svgPaths>0&&Object.values(proof.layers).every(v=>!v.exists||v.visibility==='none');
+          await browser.close();
+          if(!ok)process.exit(1);
+          console.log('M105_PINNED_OWNER_PASS duplicate ranked layers absent/hidden; SVG swales remain');
+          JS
