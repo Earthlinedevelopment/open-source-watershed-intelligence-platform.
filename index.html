@@ -21917,8 +21917,12 @@ var prescribeSwales;
         "earthline-aquifer-label-points-layer-15788","earthline-aquifer-evidence-label-16398"
       ].filter(id=>earthlineMap.getLayer(id));
       const order112=(earthlineMap.getStyle()?.layers||[]).map(layer=>layer.id);
+      /* M112 stability: other renderers may append layers above these annotations.
+         That does NOT change annotation order and must never trigger repeat moves:
+         a moveLayer on every ownership pass forces Mapbox redraw/flicker. */
+      const annotationOnly112=order112.filter(id=>annotationOrder112.includes(id));
       if(annotationOrder112.length&&
-         JSON.stringify(order112.slice(-annotationOrder112.length))!==JSON.stringify(annotationOrder112)){
+         JSON.stringify(annotationOnly112)!==JSON.stringify(annotationOrder112)){
         for(const id of annotationOrder112)earthlineMap.moveLayer(id);
       }
     }catch(_){ }
