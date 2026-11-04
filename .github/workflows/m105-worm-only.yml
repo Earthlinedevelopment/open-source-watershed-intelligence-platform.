@@ -10,19 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Trace active worm-producing owners without modifying site
+      - name: Print exact Regional worm owner and final SVG code
         run: |
           python3 - <<'PY'
-          import re
           from pathlib import Path
-          txt=Path("index.html").read_text()
-          print("M105_INDEX_BYTES",len(txt))
-          lines=txt.splitlines()
-          needles=[r"function makeSwales\(",r"function addPath\(",r"function spline\(",r"Chaikin",r"chaikin",r"worm",r"natural-casing",r"natural-up",r"natural-flip",r"natural-footprint",r"neutral-16177",r"safe-lines",r"swale-opportunities",r"function earthlineRenderRegionalOverlay16020",r"earthlineRenderRegionalOverlay16020",r"function renderSwales",r"setLayoutProperty\(",r"earthlineSwalePolylineM102",r"swale.*(smoothing|smooth)",r"\.setData\("]
-          for needle in needles:
-            hits=[i for i,line in enumerate(lines) if re.search(needle,line,re.I)]
-            print("M105_TERM",needle,"TOTAL",len(hits),"LINES",[i+1 for i in hits[:16]])
-            for i in hits[:4]:
-              before=max(0,i-1);after=min(len(lines),i+2)
-              print("M105_SOURCE",needle,i+1,repr("\n".join(lines[before:after]))[:2000])
+          lines=Path("index.html").read_text().splitlines()
+          ranges=[(29605,29785),(29800,29848),(31348,31380),(31740,31790),(33398,33448),(33480,33545)]
+          for start,end in ranges:
+            print(f'M105_RANGE {start}-{end}')
+            for i in range(start-1,min(end,len(lines))):
+              line=lines[i]
+              print(f'{i+1:05d}: {line[:550]}'+(' [...TRUNCATED]' if len(line)>550 else ''))
           PY
