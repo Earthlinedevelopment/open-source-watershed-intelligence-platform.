@@ -1,0 +1,29 @@
+name: Mantra 101 swale SVG safety evidence
+on:
+  push:
+    branches: [fix/mantra101-worm-geometry]
+    paths:
+      - tests/mantra101-swale-renderer-unit.mjs
+      - .github/workflows/mantra101-swale-svg.yml
+permissions:
+  contents: read
+jobs:
+  svg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tests/mantra101-swale-renderer-unit.mjs
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node tests/mantra101-swale-renderer-unit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m101-swale-svg-evidence
+          path: artifacts/mantra101-synthetic
+          retention-days: 7
