@@ -21794,7 +21794,16 @@ var prescribeSwales;
       (M&&M.vtGroundwaterSummaryPoint16398)||
       (M&&Array.isArray(M.usgsAquifers)&&M.usgsAquifers.length)
     );
-    setGroup(active.water,flowOn);setGroup(active.swales,swaleOn);
+    setGroup(active.water,flowOn);
+    /* MANTRA 103: Regional has one swale drawing owner, the vetted SVG.
+       Legacy Mapbox soil/plant/water strokes were being re-enabled by this older
+       ownership controller after the M102 SVG fix, reproducing the worms.
+       Keep native opportunity label and hit actions; leave Property unchanged. */
+    if(property){setGroup(active.swales,swaleOn);}
+    else{
+      for(const id103 of [OPPORTUNITY_SOIL,OPPORTUNITY_PLANT,OPPORTUNITY_WATER])visible(id103,false);
+      visible(OPPORTUNITY_LABEL,swaleOn);
+    }
     setGroup(active.recharge,rechargeOn);setGroup(active.contours,contourOn);setGroup(active.aquifer,aquiferOn);
     updateAquiferTopText16501(property,aquiferTextOn);
     /* EARTHLINE 16414 — authoritative hydro evidence visibility order.
@@ -33399,7 +33408,7 @@ body{display:block!important}
   function addPath(g,pts,attrs){if(pts.length<2)return null;/* MANTRA 102: preserve actual vetted swale vertices; no post-safety cubic spline overshoot. Elevation contours retain approved smoothing. */const isSwale=g&&g.getAttribute&&g.getAttribute('data-layer')==='swale-opportunities';const p=svgEl('path',Object.assign({d:isSwale?earthlineSwalePolylineM102(pts):spline(pts),fill:'none','vector-effect':'non-scaling-stroke'},attrs||{}));g.appendChild(p);return p;}
   /* EARTHLINE 16350 — SVG intentionally owns Regional contours + swales only.
      Native Mapbox flow casing/line/arrow are the sole Regional water owner and MUST NOT be hidden here. */
-  function hideNative(){const map=m();if(!map||!map.getLayer)return;for(const id of ['el-live-contour-line-15970','el-live-contour-label-15970','el-live-swale-halo-15970','el-live-swale-line-15970']){try{if(map.getLayer(id))map.setLayoutProperty(id,'visibility','none');}catch(_){}}}
+  function hideNative(){const map=m();if(!map||!map.getLayer)return;for(const id of ['el-live-contour-line-15970','el-live-contour-label-15970','el-live-swale-halo-15970','el-live-swale-line-15970','earthline-ranked-swale-soil-15777','earthline-ranked-swale-plant-15777','earthline-ranked-swale-water-15777']){try{if(map.getLayer(id))map.setLayoutProperty(id,'visibility','none');}catch(_){}}}
   function nativeWater16350(){
     const map=m(),ids=['el-live-flow-casing-15970','el-live-flow-line-15970','el-live-flow-arrow-15970'];
     const layers={};let ready=!!map;
@@ -34654,7 +34663,9 @@ html[data-earthline-analysis-tier="focus"] #earthlineRegionalVectorOverlay16020 
   function applyTierStyling(){
     const t=tier();ensureFocusLayers();ensurePropertyLayers();
     const focus=t==='focus',property=t==='property';
-    for(const id of ORIGINAL)visible(id,!focus&&!property);
+    /* MANTRA 103: this later styling controller must never resurrect the old
+       Regional swale strokes. The SVG owns Regional swale geometry. */
+    for(const id of ORIGINAL)visible(id,false);
     for(const id of Object.values(FOCUS))visible(id,false);
     for(const id of Object.values(PROPERTY))visible(id,property);
     visible(LOCATION_HIT,!property);visible(LOCATION_LABEL,!property);
@@ -34667,7 +34678,7 @@ html[data-earthline-analysis-tier="focus"] #earthlineRegionalVectorOverlay16020 
       try{window.earthlineApplyRendererOwnership15805(t);}catch(_){}
     }
     lastTier=t;
-    window.EARTHLINE_SWALE_RENDERING_AUDIT_16167=window.EARTHLINE_SWALE_RENDERING_AUDIT_16166={build:BUILD,tier:t,locationPillLayerVisible:!property&&!!map()?.getLayer?.(LOCATION_LABEL),locationHitLayerVisible:!property&&!!map()?.getLayer?.(LOCATION_HIT),focusLayers:Object.values(FOCUS).filter(id=>!!map()?.getLayer?.(id)),propertyLayers:Object.values(PROPERTY).filter(id=>!!map()?.getLayer?.(id)),regionalOriginalVisible:!focus&&!property,focusCrossSectionVisible:focus,propertyTextureVisible:property,at:new Date().toISOString()};
+    window.EARTHLINE_SWALE_RENDERING_AUDIT_16167=window.EARTHLINE_SWALE_RENDERING_AUDIT_16166={build:BUILD,tier:t,locationPillLayerVisible:!property&&!!map()?.getLayer?.(LOCATION_LABEL),locationHitLayerVisible:!property&&!!map()?.getLayer?.(LOCATION_HIT),focusLayers:Object.values(FOCUS).filter(id=>!!map()?.getLayer?.(id)),propertyLayers:Object.values(PROPERTY).filter(id=>!!map()?.getLayer?.(id)),regionalOriginalVisible:false,regionalSwaleDrawingOwner:"earthlineRegionalVectorOverlay16020",focusCrossSectionVisible:focus,propertyTextureVisible:property,at:new Date().toISOString()};
   }
   function syncFullscreen(){const on=!!document.querySelector('.center.fs');document.documentElement.classList.toggle('earthline-map-expanded-16166',on);const b=document.getElementById('fsBtn');if(b){b.setAttribute('aria-pressed',String(on));b.title=on?'Exit expanded map':'Expand map'}}
   function ensureBuild(){/* Visible build ownership belongs to the terminal 16171 startup controller. */}
