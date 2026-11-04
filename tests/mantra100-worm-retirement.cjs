@@ -17,7 +17,7 @@ for(const [replacement,orig] of undo){
   assert.equal(parent.split(replacement).length-1,1,'M100 patch anchor missing or duplicated');
   parent=parent.replace(replacement,orig);
 }
-const gitHash=s=>{const bytes=Buffer.from(s,'utf8');return crypto.createHash('sha1').update(Buffer.from('blob '+bytes.length+'\\0','utf8')).update(bytes).digest('hex')};
+const gitHash=s=>{const bytes=Buffer.from(s,'utf8');return crypto.createHash('sha1').update(Buffer.from('blob '+bytes.length+'\0','utf8')).update(bytes).digest('hex')};
 assert.equal(gitHash(parent),'1c217d9486f0e234c08e1b6890e28d1db7dc03cf','Science/UI must match frozen production baseline after undoing worm-only edits');
 assert.match(html,/const show=false;\/\* MANTRA 100/);
 assert.match(html,/function setPlantingVisible15806\(on\)\{\s*plantingVisible=false/);
