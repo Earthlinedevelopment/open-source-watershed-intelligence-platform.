@@ -6654,10 +6654,11 @@ function earthlineAquiferSiteKey110(){
   return lng.toFixed(6)+'|'+lat.toFixed(6);
 }
 function earthlineAquiferCanCarry110(){
+  const active=window.earthlineRegional15778||{};
   const key=earthlineAquiferSiteKey110(),status=String(M?.usgsAquiferStatus||'');
   return !!(key&&key===earthlineAquiferContinuity110.siteKey&&earthlineAquiferContinuity110.data?.features?.length&&
-    state.mode==='property'&&String(state.validationView15806||'all')==='all'&&M?.layers?.usgsAquifer?.on===true&&
-    (state.propertyAquiferHold16359===true||M.usgsAquiferLoading===true||status==='loading'));
+    active.mode==='property'&&String(active.validationView15806||'all')==='all'&&M?.layers?.usgsAquifer?.on===true&&
+    (active.propertyAquiferHold16359===true||M.usgsAquiferLoading===true||status==='loading'));
 }
 function earthlineSyncAquiferLayer(){
   if(!earthlineMapActive())return false;
@@ -6670,7 +6671,7 @@ function earthlineSyncAquiferLayer(){
     const sourceData110=carry110?earthlineAquiferContinuity110.data:data;
     if(src&&src.setData)src.setData(sourceData110);
     const pub110=M?.propertyPublication15816||null;
-    if(data.features.length>0&&state.mode==='property'&&!state.propertyAquiferHold16359&&
+    if(data.features.length>0&&(window.earthlineRegional15778||{}).mode==='property'&&!(window.earthlineRegional15778||{}).propertyAquiferHold16359&&
        stableKey110&&pub110?.committed===true&&Number(pub110.searchGen)===Number(M.searchGen)){
       earthlineAquiferContinuity110.siteKey=stableKey110;
       earthlineAquiferContinuity110.data=data;
