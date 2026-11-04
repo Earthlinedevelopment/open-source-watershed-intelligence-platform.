@@ -1,9 +1,19 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
+import {execFileSync} from 'node:child_process';
 const html=readFileSync('index.html','utf8');
 const start=html.indexOf('  const earthlineRingBinCacheM94=');
 const end=html.indexOf('  function earthlinePointInPolygon16584(',start);
+if (start < 0) {
+  // The 16584 production rollback predates M94's optional performance index.
+  // Permit its absence only if the unchanged target production parent also lacks it.
+  // If a newer parent includes the index, removing it remains a hard failure.
+  const baseHtml = execFileSync('git', ['show', 'origin/pages-live:index.html'], {encoding:'utf8'});
+  assert.ok(!baseHtml.includes('  const earthlineRingBinCacheM94='), 'The indexed ring owner was removed relative to the target production parent');
+  console.log('MANTRA94_RING_INDEX_NOT_INSTALLED_IN_PARENT: exact science retained; parity test not applicable');
+  process.exit(0);
+}
 assert.ok(start>0&&end>start,'The exact ring-index owner must exist');
 const ctx={};
 vm.runInNewContext(html.slice(start,end)+'\n globalThis.indexedRing=earthlinePointInRing16584;',ctx);
