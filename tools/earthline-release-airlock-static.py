@@ -43,7 +43,7 @@ required={
     'Regional engine': 'earthlineLiveRegionalRun15970',
     'Property owner': 'earthlineDeclarePropertyAtCrosshair16169',
     'Property exclusion owner': 'earthlineFinalSafeSegments15771',
-    'Regional swale owner': 'async function makeSwales(',
+    'Regional swale owner': 'function makeSwales(',
     'Locked slogan': 'Slow it. Sink it. Spread it.',
 }
 for title,needle in required.items():

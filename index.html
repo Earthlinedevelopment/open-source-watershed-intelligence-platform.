@@ -21827,7 +21827,7 @@ var prescribeSwales;
   const PLANT_SHADOW="earthline-swale-planting-shadow-15806";
   const PLANT_LAYER="earthline-swale-planting-layer-15806";
   const state=window.earthlineRegional15778||{};
-  let plantingVisible=true;
+  let plantingVisible=false; /* MANTRA 100: retired worm-like planting layer cannot initialize visible. */
 
   const emptyFC=()=>({type:"FeatureCollection",features:[]});
   const finiteCoord=c=>Array.isArray(c)&&Number.isFinite(Number(c[0]))&&Number.isFinite(Number(c[1]));
@@ -21939,7 +21939,7 @@ var prescribeSwales;
     return true
   }
   function setPlantingVisible15806(on){
-    plantingVisible=!!on;
+    plantingVisible=false; /* MANTRA 100: irreversible rejection of natural/worm planting presentation; not Elder Trees. */
     for(const id of [PLANT_SHADOW,PLANT_LAYER]){
       try{if(earthlineMap.getLayer(id))earthlineMap.setLayoutProperty(id,"visibility",plantingVisible?"visible":"none")}catch(e){}
     }
@@ -29704,24 +29704,96 @@ body { overflow-x:hidden!important; }
   function makeSwales(hy,contours,focusMode=false){
     const lines=(contours&&contours.features||[]).filter(f=>f&&f.properties&&f.properties.feature_type==='contour'&&f.geometry&&f.geometry.type==='LineString');
     const channel=percentile(hy.acc,.972),accLow=percentile(hy.acc,.22),accMid=percentile(hy.acc,.72),accHigh=percentile(hy.acc,.91),candidates=[];
+    /* M101: restore M95-published contour segment selection from Nov 1: no Chaikin smoothing, segment-local <=4% slope audit, short source-aligned runs. Worm correction only. */
     function sampleSegment(coords,center,relaxed){
-      const half=Math.max(10,Math.min(52,Math.floor(coords.length*.18))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);
-      const raw=coords.slice(start,end);if(raw.length<10)return null;
-      const segment=chaikin(raw,2,false);if(segment.length<10||lineLengthPixels(hy,segment)<10)return null;
-      const stride=Math.max(1,Math.floor(segment.length/22));let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null;
-      for(let k=1;k<segment.length-1;k+=stride){
+      const half=Math.max(5,Math.min(10,Math.floor(coords.length*.07))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);
+      const raw=coords.slice(start,end);if(raw.length<2)return null;
+      const rawCenter=Math.max(0,Math.min(raw.length-1,center-start));
+      const distM=(a,b)=>{const R=6371008.8,p1=Number(a[1])*Math.PI/180,p2=Number(b[1])*Math.PI/180,dp=(Number(b[1])-Number(a[1]))*Math.PI/180,dl=(Number(b[0])-Number(a[0]))*Math.PI/180,q=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(q)))};
+      let left=rawCenter,right=rawCenter,leftM=0,rightM=0;
+      while(left>0){const d=distM(raw[left],raw[left-1]);if(leftM+d>8000)break;left--;leftM+=d}
+      while(right<raw.length-1){const d=distM(raw[right],raw[right+1]);if(rightM+d>8000)break;right++;rightM+=d}
+      if(left===right){if(right<raw.length-1)right++;else if(left>0)left--}
+      const segment=raw.slice(left,right+1);if(segment.length<2)return null;
+      const linePx16632=lineLengthPixels(hy,segment);let minLinePx16632=focusMode?10:2;
+      if(!focusMode&&linePx16632<10&&linePx16632>=4&&Math.max(Number(hy.cellX)||0,Number(hy.cellY)||0)>10000){
+        const mp16632=segment[Math.floor((segment.length-1)/2)],mg16632=llGrid(hy,mp16632);
+        if(mg16632&&Number.isFinite(mg16632.x)&&Number.isFinite(mg16632.y)){
+          const nsEdge16632=Math.min(Number(mg16632.y),Math.max(0,(Number(hy.h)-1)-Number(mg16632.y)));
+          if(nsEdge16632<=6)minLinePx16632=4;
+          else if(hy.outsideLandMask16632){
+            const cx16632=Math.max(0,Math.min(hy.w-1,Math.round(Number(mg16632.x)))),cy16632=Math.max(0,Math.min(hy.h-1,Math.round(Number(mg16632.y))));
+            outer16632:for(let dy16632=-9;dy16632<=9;dy16632++)for(let dx16632=-9;dx16632<=9;dx16632++){
+              const x16632=cx16632+dx16632,y16632=cy16632+dy16632;
+              if(x16632<0||x16632>=hy.w||y16632<0||y16632>=hy.h)continue;
+              if(hy.outsideLandMask16632[y16632*hy.w+x16632]){minLinePx16632=4;break outer16632;}
+            }
+          }
+        }
+      }
+      if(linePx16632<minLinePx16632)return null;
+      let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null;
+      for(let k=0;k<segment.length;k++){
         const g=llGrid(hy,segment[k]),x=Math.max(1,Math.min(hy.w-2,Math.round(g.x))),y=Math.max(1,Math.min(hy.h-2,Math.round(g.y))),i=y*hy.w+x;
-        const slope=hy.slope[i],acc=hy.acc[i],minSlope=relaxed?.05:.20,maxSlope=relaxed?18:13.5;
-        if(!Number.isFinite(slope)||slope<minSlope||slope>maxSlope||acc>=channel)continue;
+        const slope=hy.slope[i],acc=hy.acc[i],minSlope=0,maxSlope=4;
+        if(!Number.isFinite(slope)||slope<minSlope||slope>maxSlope||!Number.isFinite(acc)||acc>=channel)return null;
         valid++;sumSlope+=slope;sumAcc+=acc;maxAcc=Math.max(maxAcc,acc);if(!anchor)anchor={x,y};
       }
-      if(valid<(relaxed?1:2)||!anchor)return null;
+      if(valid<2||!anchor)return null;
       const meanSlope=sumSlope/valid,meanAcc=sumAcc/valid;
       const slopeScore=Math.max(0,1-Math.abs(meanSlope-3.4)/(relaxed?12:7.5));
       const flowScore=meanAcc<=accLow?.18:meanAcc<=accMid?.18+.70*(meanAcc-accLow)/Math.max(1,accMid-accLow):Math.max(.18,.88-.48*(meanAcc-accMid)/Math.max(1,accHigh-accMid));
       const lengthScore=Math.min(1,lineLengthPixels(hy,segment)/85);
-      return {segment,x:anchor.x,y:anchor.y,slope:meanSlope,acc:meanAcc,maxAcc,score:slopeScore*.56+flowScore*.28+lengthScore*.16,confidence:relaxed?'screening':'preferred'};
+      return {segment,x:anchor.x,y:anchor.y,slope:meanSlope,acc:meanAcc,maxAcc,score:slopeScore*.56+flowScore*.28+lengthScore*.16,confidence:relaxed?'screening':'preferred',minLinePx16632};
     }
+    /* EARTHLINE 16591 — jurisdiction eligibility must precede Regional ranking/spacing/capacity.
+       Hydrology and contours still span the full DEM envelope; this only prevents candidates
+       that cannot be published in the selected jurisdiction from consuming selection slots. */
+    const jurisdictionScreenCache16592=new WeakMap();
+    function screenJurisdictionCandidate16539(candidate16539){
+      if(focusMode||!jurisdictionGeometry16539)return candidate16539;
+      if(candidate16539&&jurisdictionScreenCache16592.has(candidate16539))return jurisdictionScreenCache16592.get(candidate16539);
+      const runs16539=(jurisdictionGeometry16539&&jurisdictionGeometry16539.earthlineVermontExactClip16750===true&&typeof window.earthlineClipVermontLine16178==='function')
+        ?window.earthlineClipVermontLine16178(candidate16539&&candidate16539.segment||[],jurisdictionGeometry16539.earthlineVermontGeometry16750)
+        :earthlineClipLine16539(candidate16539&&candidate16539.segment||[],jurisdictionGeometry16539);
+      if(!runs16539.length){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
+      runs16539.sort((a16539,b16539)=>lineLengthPixels(hy,b16539)-lineLengthPixels(hy,a16539));
+      const segment16539=runs16539[0];
+      const minimumScreenPx16737=candidate16539&&candidate16539.coverageGap16731
+        ?0.75
+        :Math.max(4,Math.min(10,Number(candidate16539&&candidate16539.minLinePx16632)||10));
+      if(!segment16539||segment16539.length<2||lineLengthPixels(hy,segment16539)<minimumScreenPx16737){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
+      const mid16539=segment16539[Math.floor((segment16539.length-1)/2)],grid16539=llGrid(hy,mid16539);
+      if(!grid16539||!Number.isFinite(grid16539.x)||!Number.isFinite(grid16539.y)){if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,null);return null;}
+      const screenedCandidate16592=Object.assign({},candidate16539,{
+        segment:segment16539,
+        x:Math.max(1,Math.min(hy.w-2,Math.round(grid16539.x))),
+        y:Math.max(1,Math.min(hy.h-2,Math.round(grid16539.y))),
+        jurisdiction_screened:true
+      });
+      if(candidate16539)jurisdictionScreenCache16592.set(candidate16539,screenedCandidate16592);
+      return screenedCandidate16592;
+    }
+    async function jurisdictionEligibleCount16539(list16539){
+      if(focusMode||!jurisdictionGeometry16539)return list16539.length;
+      let count16539=0,yieldCount16661=0;
+      for(const candidate16539 of list16539){
+        if(screenJurisdictionCandidate16539(candidate16539)&&++count16539>=36)return 36;
+        if((++yieldCount16661%2048)===0)await earthlineCooperativeYield16661();
+      }
+      return count16539;
+    }
+    const regionalAnchorAttempts16786=new Map();
+    const anchorKey16786=(coords,idx)=>{
+      try{
+        const g=llGrid(hy,coords[idx]);
+        if(!g||!Number.isFinite(Number(g.x))||!Number.isFinite(Number(g.y)))return null;
+        const bx=Math.max(0,Math.min(11,Math.floor(Number(g.x)*12/Math.max(1,hy.w))));
+        const by=Math.max(0,Math.min(11,Math.floor(Number(g.y)*12/Math.max(1,hy.h))));
+        return bx+','+by;
+      }catch(_){return null;}
+    };
+    const noteAnchor16786=(key)=>{if(key)regionalAnchorAttempts16786.set(key,(regionalAnchorAttempts16786.get(key)||0)+1);};
     for(const f of lines){
       const coords=f.geometry.coordinates;if(coords.length<16)continue;
       const fractions=coords.length>110?[.18,.36,.54,.72,.86]:coords.length>55?[.26,.52,.78]:[.38,.68];
@@ -31371,7 +31443,7 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
     regionalOverlay16336.style.removeProperty('opacity');
   }
   return false
-}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline'),footprints=fc.features.filter(f=>f.properties?.geometry_role==='footprint'),directional=centers.filter(f=>f.properties?.orientation_status==='verified'),neutral=centers.filter(f=>f.properties?.orientation_status==='indeterminate'),sig=[model()?.searchGen,centers.length,centers.map(f=>String(f.properties?.rawIndex??f.id??'')).join(','),centers.map(f=>String(f.properties?.orientation_status)+'/'+String(f.properties?.texture_flip)).join('|')].join('|');const src=mp.getSource?.(SOURCE);if(src?.setData&&(sig!==lastSignature||reason.includes('force')||!src._data?.features?.length)){src.setData(fc);lastSignature=sig}try{if(typeof window.earthlineSyncNaturalSwalePlanting15806==='function')window.earthlineSyncNaturalSwalePlanting15806(authoritativeFC())}catch(_){}const show=centers.length>0&&footprints.length===centers.length&&directional.length+neutral.length===centers.length;for(const id of Object.values(LAYERS))visible(id,show);if(show){for(const id of OLD)visible(id,false);/* 16296: preserve the established Property recharge/groundwater context; the natural swale renderer no longer owns or suppresses those context layers. *//* 16294 natural presentation restore: the authoritative solid safe-line owner remains loaded and layout-visible for verification/fallback, but becomes visually transparent after the embedded natural texture is proven ready. This restores the protected brown/blue texture and tree/plant canopy without substituting or changing geometry. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',0)}catch(_){}}try{for(const id of [LAYERS.footprint,LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(true);for(const id of ['earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')}catch(_){}}else{/* If the natural renderer is unavailable, restore the verified authoritative safe-line fallback so Property output never disappears. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',.98)}catch(_){}}}const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');if(overlay)overlay.style.display=show?'none':'';const w=applyWidth(),registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169={build:BUILD,reason,propertyActive:active,features:fc.features.length,centerlines:centers.length,footprints:footprints.length,directional:directional.length,neutral:neutral.length,normal:directional.filter(f=>f.properties.texture_flip===0).length,flipped:directional.filter(f=>f.properties.texture_flip===1).length,widthPx:Number(w.toFixed(2)),groundWidthM:9,waterSide:directional.length?'terrain-verified-uphill':(neutral.length?'not-shown-orientation-indeterminate':'none'),orientationRule:'published-geometry-cross-slope-multisample-16177',orientationComplete:directional.length+neutral.length===centers.length,orientationEvidence:window.EARTHLINE_PROPERTY_ORIENTATION_EVIDENCE_16177||null,sourceReady:!!src,imagesReady:registered.up&&registered.flip,registeredImages:registered,layers:Object.fromEntries(Object.entries(LAYERS).map(([k,id])=>[k,!!mp.getLayer?.(id)])),at:new Date().toISOString()};return show&&registered.up&&registered.flip}
+}if(!await ensureTextureLayers())return false;const fc=orientedFC(),centers=fc.features.filter(f=>f.properties?.geometry_role==='centerline'),footprints=fc.features.filter(f=>f.properties?.geometry_role==='footprint'),directional=centers.filter(f=>f.properties?.orientation_status==='verified'),neutral=centers.filter(f=>f.properties?.orientation_status==='indeterminate'),sig=[model()?.searchGen,centers.length,centers.map(f=>String(f.properties?.rawIndex??f.id??'')).join(','),centers.map(f=>String(f.properties?.orientation_status)+'/'+String(f.properties?.texture_flip)).join('|')].join('|');const src=mp.getSource?.(SOURCE);if(src?.setData&&(sig!==lastSignature||reason.includes('force')||!src._data?.features?.length)){src.setData(fc);lastSignature=sig}try{if(typeof window.earthlineSyncNaturalSwalePlanting15806==='function')window.earthlineSyncNaturalSwalePlanting15806(authoritativeFC())}catch(_){}const show=false;/* MANTRA 100: permanently retire rejected natural/textured Property worm display. Authoritative safe-line geometry and safety gate remain unchanged. */for(const id of Object.values(LAYERS))visible(id,show);if(show){for(const id of OLD)visible(id,false);/* 16296: preserve the established Property recharge/groundwater context; the natural swale renderer no longer owns or suppresses those context layers. *//* 16294 natural presentation restore: the authoritative solid safe-line owner remains loaded and layout-visible for verification/fallback, but becomes visually transparent after the embedded natural texture is proven ready. This restores the protected brown/blue texture and tree/plant canopy without substituting or changing geometry. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',0)}catch(_){}}try{for(const id of [LAYERS.footprint,LAYERS.casing,LAYERS.neutral,LAYERS.up,LAYERS.flip])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineSetNaturalSwalePlantingVisible15806==='function')window.earthlineSetNaturalSwalePlantingVisible15806(true);for(const id of ['earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'])if(mp.getLayer?.(id))mp.moveLayer(id);if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')}catch(_){}}else{try{window.earthlineSetNaturalSwalePlantingVisible15806?.(false)}catch(_){}/* MANTRA 100: retire planting/worm presentation; keep the verified authoritative safe-line fallback. */for(const id of ['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221']){try{if(mp.getLayer?.(id))mp.setPaintProperty(id,'line-opacity',.98)}catch(_){}}}const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');if(overlay)overlay.style.display='none';const w=applyWidth(),registered={up:!!mp.hasImage?.(IMG_UP),flip:!!mp.hasImage?.(IMG_FLIP)};window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169={build:BUILD,reason,propertyActive:active,features:fc.features.length,centerlines:centers.length,footprints:footprints.length,directional:directional.length,neutral:neutral.length,normal:directional.filter(f=>f.properties.texture_flip===0).length,flipped:directional.filter(f=>f.properties.texture_flip===1).length,widthPx:Number(w.toFixed(2)),groundWidthM:9,waterSide:directional.length?'terrain-verified-uphill':(neutral.length?'not-shown-orientation-indeterminate':'none'),orientationRule:'published-geometry-cross-slope-multisample-16177',orientationComplete:directional.length+neutral.length===centers.length,orientationEvidence:window.EARTHLINE_PROPERTY_ORIENTATION_EVIDENCE_16177||null,sourceReady:!!src,imagesReady:registered.up&&registered.flip,registeredImages:registered,layers:Object.fromEntries(Object.entries(LAYERS).map(([k,id])=>[k,!!mp.getLayer?.(id)])),at:new Date().toISOString()};return show&&registered.up&&registered.flip}
   function scheduleSync(reason,delay=80){clearTimeout(syncQueued);syncQueued=setTimeout(()=>syncTexture(reason),delay)}
   function updateBuild(){/* Final visible build ownership belongs to the terminal 16171 startup controller. */}
   function audit(){const b=document.getElementById('earthlineDeclareProperty16169'),x=document.getElementById('earthlineMapOnlyExit16169'),mp=map(),src=mp?.getSource?.(SOURCE);return {build:BUILD,displayedTier:displayedTier(),propertyActive:propertyActive(),declareVisible:!!b&&getComputedStyle(b).display!=='none',mapOnly:mapOnlyOn(),exitPortalVisible:!!x&&getComputedStyle(x).display!=='none',restingCursor:getComputedStyle(mp?.getCanvasContainer?.()||document.body).cursor,inlineCursor:mp?.getCanvasContainer?.()?.style?.cursor||'',sourceFeatures:src&&src._data&&Array.isArray(src._data.features)?src._data.features.length:0,texture:window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||null,declaration:window.EARTHLINE_PROPERTY_DECLARATION_16169||null}}
@@ -33276,7 +33348,8 @@ body{display:block!important}
   function canopy16174(g,pts,side,seed,zoom,grade){const len=polyLength(pts),detail=clamp16174((zoom-13)/6,0,1),baseR=clamp16174(3.2+detail*7.4,3.2,10.6),colors=grade==='A'?['#246b38','#3f8e4d','#68aa5e','#86bd6d']:grade==='B'?['#30683c','#4f8248','#739b56','#91ad67']:['#38633e','#5a7748','#7f8f55','#9b9d61'],grp=svgEl('g',{class:'earthline-swale-canopy-16174','data-natural-swale':'bushy-downhill-canopy','data-density':'16175-bushy'});let d=14+noise16174(seed)*15;while(d<len-6){const cluster=3+Math.floor(noise16174(seed+d)*4);for(let j=0;j<cluster;j++){const dd=clamp16174(d+(j-(cluster-1)/2)*(baseR*.78+1)+(noise16174(seed+d+j*11)-.5)*4,0,len),p=atDistance(pts,dd);if(!p)continue;const rad=(p.angle+90)*Math.PI/180,lateral=side*(baseR*(.56+noise16174(seed+dd*5)*.74)),along=(noise16174(seed+dd*9)-.5)*baseR*.74,x=p.x+Math.cos(rad)*lateral+Math.cos(p.angle*Math.PI/180)*along,y=p.y+Math.sin(rad)*lateral+Math.sin(p.angle*Math.PI/180)*along,r=baseR*(.82+noise16174(seed+dd*2)*.48),crown=svgEl('g',{class:'earthline-swale-tree-crown-16174','data-canopy-style':'bushy'});crown.appendChild(svgEl('ellipse',{cx:(x+1.8).toFixed(1),cy:(y+2.4).toFixed(1),rx:(r*1.28).toFixed(1),ry:(r*.94).toFixed(1),fill:'rgba(5,23,12,.44)'}));for(let k=0;k<9;k++){const a=noise16174(seed+dd+k*13)*Math.PI*2,rr=r*(.10+.43*noise16174(seed+dd+k*19)),cr=r*(.30+.23*noise16174(seed+dd+k*29)),cx=x+Math.cos(a)*rr,cy=y+Math.sin(a)*rr*.72;crown.appendChild(svgEl('circle',{cx:cx.toFixed(1),cy:cy.toFixed(1),r:cr.toFixed(1),fill:colors[k%colors.length],stroke:'rgba(9,42,19,.38)','stroke-width':'.45'}))}crown.appendChild(svgEl('circle',{cx:(x-r*.25).toFixed(1),cy:(y-r*.34).toFixed(1),r:(r*.20).toFixed(1),fill:'rgba(219,239,158,.34)'}));grp.appendChild(crown)}d+=clamp16174(23+noise16174(seed+d*7)*24-detail*6,19,45)}g.appendChild(grp)}
   function understory16174(g,pts,side,seed,zoom){const len=polyLength(pts),detail=clamp16174((zoom-13)/6,0,1),grp=svgEl('g',{class:'earthline-swale-understory-16174'}),spacing=clamp16174(15-detail*4,10,15);for(let d=8;d<len;d+=spacing*(.72+noise16174(seed+d)*.62)){const p=atDistance(pts,d);if(!p)continue;const rad=(p.angle+90)*Math.PI/180,off=side*(2+noise16174(seed+d*3)*5),x=p.x+Math.cos(rad)*off,y=p.y+Math.sin(rad)*off,r=1.1+detail*1.4*noise16174(seed+d*5);grp.appendChild(svgEl('ellipse',{cx:x.toFixed(1),cy:y.toFixed(1),rx:(r*1.45).toFixed(1),ry:r.toFixed(1),fill:noise16174(seed+d*11)>.5?'rgba(106,155,72,.74)':'rgba(71,124,61,.78)'}))}g.appendChild(grp)}
 
-  function addPath(g,pts,attrs){if(pts.length<2)return null;const p=svgEl('path',Object.assign({d:spline(pts),fill:'none','vector-effect':'non-scaling-stroke'},attrs||{}));g.appendChild(p);return p;}
+  function earthlineSwalePolylineM101(pts){return pts.map((p,i)=>(i?' L ':'M ')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join('');}
+  function addPath(g,pts,attrs){if(pts.length<2)return null;/* M101 anti-worm: source-aligned swale vertices, no post-safety cubic overshoot. Other contours preserve approved spline. */const isSwale=g&&g.getAttribute&&g.getAttribute('data-layer')==='swale-opportunities';const p=svgEl('path',Object.assign({d:isSwale?earthlineSwalePolylineM101(pts):spline(pts),fill:'none','vector-effect':'non-scaling-stroke'},attrs||{}));g.appendChild(p);return p;}
   /* EARTHLINE 16350 — SVG intentionally owns Regional contours + swales only.
      Native Mapbox flow casing/line/arrow are the sole Regional water owner and MUST NOT be hidden here. */
   function hideNative(){const map=m();if(!map||!map.getLayer)return;for(const id of ['el-live-contour-line-15970','el-live-contour-label-15970','el-live-swale-halo-15970','el-live-swale-line-15970']){try{if(map.getLayer(id))map.setLayoutProperty(id,'visibility','none');}catch(_){}}}
