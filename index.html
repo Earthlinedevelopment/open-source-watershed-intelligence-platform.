@@ -6580,9 +6580,20 @@ function earthlineApplyAquiferLayerStyle(){
       [EARTHLINE_AQUIFER_HIGHLIGHT]:paint.highlight,
       [EARTHLINE_AQUIFER_DASH]:paint.dash
     };
+    /* M112: final evidence styling owns the five overridden properties;
+       prevent the base->final paint value oscillation during each sync. */
+    const finalPaint112=window.EARTHLINE_AQUIFER_STYLE_OVERRIDES_15788===true;
+    const overridden112={
+      [EARTHLINE_AQUIFER_FILL]:["fill-opacity"],
+      [EARTHLINE_AQUIFER_OUTER]:["line-width","line-opacity","line-blur"],
+      [EARTHLINE_AQUIFER_LINE]:["line-width","line-opacity"],
+      [EARTHLINE_AQUIFER_HIGHLIGHT]:["line-width","line-opacity"],
+      [EARTHLINE_AQUIFER_DASH]:["line-width","line-opacity"]
+    };
     Object.entries(layerPaint).forEach(([id,props])=>{
       if(!earthlineMap.getLayer(id))return;
       Object.entries(props).forEach(([k,v])=>{
+        if(finalPaint112&&overridden112[id]?.includes(k))return;
         if(JSON.stringify(earthlineMap.getPaintProperty(id,k))!==JSON.stringify(v))
           earthlineMap.setPaintProperty(id,k,v);
       });
@@ -6601,16 +6612,15 @@ function earthlineApplyAquiferLayerStyle(){
     // Keep official aquifers above satellite/road labels and below swale recommendations.
     // The canvas enhancer is still drawn above all Mapbox layers for guaranteed visibility.
     const before=earthlineMap.getLayer(EARTHLINE_SWALE_CASING)?EARTHLINE_SWALE_CASING:undefined;
-    const aquiferOrder112=[EARTHLINE_AQUIFER_FILL,EARTHLINE_AQUIFER_OUTER,EARTHLINE_AQUIFER_LINE,
-      EARTHLINE_AQUIFER_HIGHLIGHT,EARTHLINE_AQUIFER_DASH,EARTHLINE_AQUIFER_WELLS_16398,
-      EARTHLINE_AQUIFER_EVIDENCE_LABEL_16398,EARTHLINE_AQUIFER_LABEL].filter(id=>earthlineMap.getLayer(id));
-    const order112=(earthlineMap.getStyle().layers||[]).map(l=>l.id);
-    const positions112=aquiferOrder112.map(id=>order112.indexOf(id));
-    const correctlyOrdered112=positions112.every((p,i)=>i===0||p>positions112[i-1])&&
-      (before?positions112.every(p=>p<order112.indexOf(before)):
-        positions112.every((p,i)=>p===order112.length-aquiferOrder112.length+i));
-    if(!correctlyOrdered112){
-      aquiferOrder112.forEach(id=>earthlineMap.moveLayer(id,before));
+    /* M112: the base layer orders geometry only. Labels and wells are
+       governed by the renderer's final annotation order; no competing moves. */
+    if(before){
+      for(const id of [EARTHLINE_AQUIFER_FILL,EARTHLINE_AQUIFER_OUTER,EARTHLINE_AQUIFER_LINE,
+        EARTHLINE_AQUIFER_HIGHLIGHT,EARTHLINE_AQUIFER_DASH]){
+        const order=(earthlineMap.getStyle()?.layers||[]).map(layer=>layer.id);
+        if(order.indexOf(id)>=0&&order.indexOf(before)>=0&&order.indexOf(id)>order.indexOf(before))
+          earthlineMap.moveLayer(id,before);
+      }
     }
     return true;
   }catch(e){console.warn("[Earthline] aquifer restyle/order failed",e);return false;}
@@ -19844,14 +19854,7 @@ var prescribeSwales;
         src.setData(labelData);
         lastAquiferLabelSignature=signature;
       }
-      if(earthlineMap.getLayer(EARTHLINE_AQUIFER_LABEL)){
-        earthlineMap.setLayoutProperty(
-          EARTHLINE_AQUIFER_LABEL,"visibility","none"
-        );
-      }
-      if(earthlineMap.getLayer(LABEL_LAYER)){
-        earthlineMap.setLayoutProperty(LABEL_LAYER,"visibility","none");
-      }
+      /* M112: don't hide native symbols before the renderer owns visibility. */
       if(typeof window.earthlineApplyRendererOwnership15805==="function"){
         window.earthlineApplyRendererOwnership15805(
           (window.earthlineRegional15778||{}).mode==="regional"
@@ -19862,7 +19865,6 @@ var prescribeSwales;
          layer, never buried by water, swales, contours, recharge, or later
          analytical-layer reordering. Renderer ownership still decides whether
          the label is visible; this changes z-order only. */
-      if(earthlineMap.getLayer(LABEL_LAYER))earthlineMap.moveLayer(LABEL_LAYER);
       return true;
     }catch(e){
       console.warn("[Earthline] "+BUILD+" aquifer labels",e);
@@ -19871,10 +19873,21 @@ var prescribeSwales;
   }
   const baseAquiferStyle15788=typeof earthlineApplyAquiferLayerStyle==="function"?earthlineApplyAquiferLayerStyle:null;
   if(baseAquiferStyle15788){
+    window.EARTHLINE_AQUIFER_STYLE_OVERRIDES_15788=true;
     earthlineApplyAquiferLayerStyle=function(){
       const ok=baseAquiferStyle15788();if(!earthlineMap||!earthlineMap.getLayer)return ok;
       try{
-        const set=(id,k,v)=>{if(earthlineMap.getLayer(id))earthlineMap.setPaintProperty(id,k,v);};
+        /* M112: final styling never revises an identical Mapbox property. */
+        const set=(id,k,v)=>{
+          if(!earthlineMap.getLayer(id))return;
+          if(JSON.stringify(earthlineMap.getPaintProperty(id,k))!==JSON.stringify(v))
+            earthlineMap.setPaintProperty(id,k,v);
+        };
+        const setLayout=(id,k,v)=>{
+          if(!earthlineMap.getLayer(id))return;
+          if(JSON.stringify(earthlineMap.getLayoutProperty(id,k))!==JSON.stringify(v))
+            earthlineMap.setLayoutProperty(id,k,v);
+        };
         const contextType=["match",["get","aquiferType"],["carbonate-karst-context","regional-context"],true,false];
         set(EARTHLINE_AQUIFER_FILL,"fill-opacity",["interpolate",["linear"],["zoom"],
           4,["case",contextType,.10,.20],
@@ -19889,39 +19902,31 @@ var prescribeSwales;
         set(EARTHLINE_AQUIFER_HIGHLIGHT,"line-width",["interpolate",["linear"],["zoom"],4,1.8,16,1.6,19,1.3]);set(EARTHLINE_AQUIFER_HIGHLIGHT,"line-opacity",.88);
         set(EARTHLINE_AQUIFER_DASH,"line-width",["interpolate",["linear"],["zoom"],4,.9,16,.8,19,.7]);set(EARTHLINE_AQUIFER_DASH,"line-opacity",.58);
         if(earthlineMap.getLayer(EARTHLINE_AQUIFER_WELLS_16398)){
-          earthlineMap.setPaintProperty(EARTHLINE_AQUIFER_WELLS_16398,"circle-radius",["interpolate",["linear"],["zoom"],11,3.5,14,5.5,17,7]);
-          earthlineMap.setPaintProperty(EARTHLINE_AQUIFER_WELLS_16398,"circle-color","#ffd07a");
-          earthlineMap.setPaintProperty(EARTHLINE_AQUIFER_WELLS_16398,"circle-stroke-color","#3b1800");
-          earthlineMap.setPaintProperty(EARTHLINE_AQUIFER_WELLS_16398,"circle-stroke-width",2);
+          set(EARTHLINE_AQUIFER_WELLS_16398,"circle-radius",["interpolate",["linear"],["zoom"],11,3.5,14,5.5,17,7]);
+          set(EARTHLINE_AQUIFER_WELLS_16398,"circle-color","#ffd07a");
+          set(EARTHLINE_AQUIFER_WELLS_16398,"circle-stroke-color","#3b1800");
+          set(EARTHLINE_AQUIFER_WELLS_16398,"circle-stroke-width",2);
         }
         if(earthlineMap.getLayer(EARTHLINE_AQUIFER_EVIDENCE_LABEL_16398)){
-          earthlineMap.setLayoutProperty(EARTHLINE_AQUIFER_EVIDENCE_LABEL_16398,"text-max-width",24);
-          earthlineMap.setLayoutProperty(EARTHLINE_AQUIFER_EVIDENCE_LABEL_16398,"text-line-height",1.08);
-          earthlineMap.setPaintProperty(EARTHLINE_AQUIFER_EVIDENCE_LABEL_16398,"text-color","#ffd08a");
-          earthlineMap.setPaintProperty(EARTHLINE_AQUIFER_EVIDENCE_LABEL_16398,"text-halo-color","rgba(18,6,0,.99)");
-          earthlineMap.setPaintProperty(EARTHLINE_AQUIFER_EVIDENCE_LABEL_16398,"text-halo-width",5.0);
+          setLayout(EARTHLINE_AQUIFER_EVIDENCE_LABEL_16398,"text-max-width",24);
+          setLayout(EARTHLINE_AQUIFER_EVIDENCE_LABEL_16398,"text-line-height",1.08);
+          set(EARTHLINE_AQUIFER_EVIDENCE_LABEL_16398,"text-color","#ffd08a");
+          set(EARTHLINE_AQUIFER_EVIDENCE_LABEL_16398,"text-halo-color","rgba(18,6,0,.99)");
+          set(EARTHLINE_AQUIFER_EVIDENCE_LABEL_16398,"text-halo-width",5.0);
         }
-        if(earthlineMap.getLayer(EARTHLINE_AQUIFER_LABEL))earthlineMap.setLayoutProperty(EARTHLINE_AQUIFER_LABEL,"visibility","none");
+        /* M112: only the renderer owner changes symbol visibility. */
         if(earthlineMap.getLayer(LABEL_LAYER)){
-          earthlineMap.setLayoutProperty(LABEL_LAYER,"text-size",["interpolate",["linear"],["zoom"],4.5,12,12,13.5,16,15,19,16.5]);
-          earthlineMap.setLayoutProperty(LABEL_LAYER,"text-allow-overlap",false);
-          earthlineMap.setLayoutProperty(LABEL_LAYER,"text-ignore-placement",false);
-          earthlineMap.setLayoutProperty(LABEL_LAYER,"text-padding",10);
-          earthlineMap.setPaintProperty(LABEL_LAYER,"text-color","#ffd08a");
-          earthlineMap.setPaintProperty(LABEL_LAYER,"text-opacity",["interpolate",["linear"],["zoom"],4.5,1,13,.99,16,.98,19,.96]);
-          earthlineMap.setPaintProperty(LABEL_LAYER,"text-halo-color","rgba(24,8,0,.98)");
-          earthlineMap.setPaintProperty(LABEL_LAYER,"text-halo-width",3.6);
-          earthlineMap.setPaintProperty(LABEL_LAYER,"text-halo-blur",.12);
+          setLayout(LABEL_LAYER,"text-size",["interpolate",["linear"],["zoom"],4.5,12,12,13.5,16,15,19,16.5]);
+          setLayout(LABEL_LAYER,"text-allow-overlap",false);
+          setLayout(LABEL_LAYER,"text-ignore-placement",false);
+          setLayout(LABEL_LAYER,"text-padding",10);
+          set(LABEL_LAYER,"text-color","#ffd08a");
+          set(LABEL_LAYER,"text-opacity",["interpolate",["linear"],["zoom"],4.5,1,13,.99,16,.98,19,.96]);
+          set(LABEL_LAYER,"text-halo-color","rgba(24,8,0,.98)");
+          set(LABEL_LAYER,"text-halo-width",3.6);
+          set(LABEL_LAYER,"text-halo-blur",.12);
         }
-        const before=[
-          "earthline-official-contour-minor-15776",
-          "earthline-property-flow-casing-15792",
-          "earthline-living-swales-glow-15792",
-          EARTHLINE_SWALE_CASING
-        ].find(id=>earthlineMap.getLayer(id));
-        for(const id of [EARTHLINE_AQUIFER_FILL,EARTHLINE_AQUIFER_OUTER,EARTHLINE_AQUIFER_LINE,EARTHLINE_AQUIFER_HIGHLIGHT,EARTHLINE_AQUIFER_DASH,EARTHLINE_AQUIFER_WELLS_16398,EARTHLINE_AQUIFER_EVIDENCE_LABEL_16398])
-          if(earthlineMap.getLayer(id))earthlineMap.moveLayer(id,before);
-        if(earthlineMap.getLayer(LABEL_LAYER))earthlineMap.moveLayer(LABEL_LAYER);
+        /* M112: no competing aquifer geometry/text moves in final paint pass. */
       }catch(e){console.warn("[Earthline] "+BUILD+" aquifer style",e);}
       ensureAquiferLabels15788();return true;
     };
@@ -21905,22 +21910,16 @@ var prescribeSwales;
         earthlineMap.setLayoutProperty("earthline-recharge-label","text-allow-overlap",false);
         earthlineMap.setLayoutProperty("earthline-recharge-label","text-ignore-placement",false);
       }
-      for(const id16414 of [
-        "earthline-recharge-line",
-        "earthline-recharge-highlight",
-        "earthline-recharge-label",
-        "earthline-aquifer-wells-16398"
-      ]){
-        if(earthlineMap.getLayer(id16414))earthlineMap.moveLayer(id16414);
-      }
-      /* 16492: all aquifer language is the final annotation pass. Geometry stays
-         in its governed order; only text is moved above every analytical layer. */
-      for(const id16492 of [
-        "el-live-aquifer-label-15970",
-        "earthline-aquifer-label-points-layer-15788",
-        "earthline-aquifer-evidence-label-16398"
-      ]){
-        if(earthlineMap.getLayer(id16492))earthlineMap.moveLayer(id16492);
+      /* M112: one stable top-of-map annotation ordering, only if changed. */
+      const annotationOrder112=[
+        "earthline-recharge-line","earthline-recharge-highlight","earthline-recharge-label",
+        "earthline-aquifer-wells-16398","el-live-aquifer-label-15970",
+        "earthline-aquifer-label-points-layer-15788","earthline-aquifer-evidence-label-16398"
+      ].filter(id=>earthlineMap.getLayer(id));
+      const order112=(earthlineMap.getStyle()?.layers||[]).map(layer=>layer.id);
+      if(annotationOrder112.length&&
+         JSON.stringify(order112.slice(-annotationOrder112.length))!==JSON.stringify(annotationOrder112)){
+        for(const id of annotationOrder112)earthlineMap.moveLayer(id);
       }
     }catch(_){ }
     try{
