@@ -36,6 +36,7 @@
     }catch(_){}
     return null;
   }
+  function numericCoordinate17097(value){return value==null||value===''?NaN:Number(value)}
   function hav(a,b){const R=6371008.8,p1=a[1]*Math.PI/180,p2=b[1]*Math.PI/180,dp=(b[1]-a[1])*Math.PI/180,dl=(b[0]-a[0])*Math.PI/180,q=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(q)))}
   function inBounds(f,b){
     const q=f?.geometry?.coordinates;
@@ -111,7 +112,7 @@
           if([west,south,east,north].every(Number.isFinite))return [west,south,east,north];
         }
         const loc=md?.loc||window.EARTHLINE_PROPERTY_TARGET_16201||null;
-        const lng=Number(loc?.lng),lat=Number(loc?.lat);
+        const lng=numericCoordinate17097(loc?.lng),lat=numericCoordinate17097(loc?.lat);
         if(Number.isFinite(lng)&&Number.isFinite(lat)){
           const dy=350/111320,dx=350/(111320*Math.max(.05,Math.cos(lat*Math.PI/180)));
           return [lng-dx,lat-dy,lng+dx,lat+dy];
@@ -179,7 +180,7 @@
         const md=(typeof M!=='undefined'&&M)||window.M||null;
         boundary=Array.isArray(md?.analysisBoundaryLngLat)?md.analysisBoundaryLngLat.filter(p=>Array.isArray(p)&&p.length>=2):[];
         const loc=md?.loc||window.EARTHLINE_PROPERTY_TARGET_16201||null;
-        const lng=Number(loc?.lng),lat=Number(loc?.lat);
+        const lng=numericCoordinate17097(loc?.lng),lat=numericCoordinate17097(loc?.lat);
         if(Number.isFinite(lng)&&Number.isFinite(lat))center=[lng,lat];
       }catch(_){}
       if(boundary.length>=3)return state.all.filter(f=>inPolygonLngLat(f?.geometry?.coordinates,boundary));
@@ -414,7 +415,7 @@
   function propertyBounds17166(){
     try{
       const target=window.EARTHLINE_PROPERTY_TARGET_16201||null;
-      const lng=Number(target?.lng),lat=Number(target?.lat);
+      const lng=numericCoordinate17097(target?.lng),lat=numericCoordinate17097(target?.lat);
       if(Number.isFinite(lng)&&Number.isFinite(lat)){
         const areaM2=20*4046.8564224,wM=Math.sqrt(areaM2*1.15),hM=areaM2/wM;
         const dLat=hM/(2*111320),dLng=wM/(2*111320*Math.max(.05,Math.cos(lat*Math.PI/180)));
@@ -436,7 +437,7 @@
   function propertyRunIdentity17166(b){
     const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
     const d=window.EARTHLINE_PROPERTY_DECLARATION_16169||null;
-    const lng=Number(t?.lng??d?.center?.lng),lat=Number(t?.lat??d?.center?.lat);
+    const lng=numericCoordinate17097(t?.lng??d?.center?.lng),lat=numericCoordinate17097(t?.lat??d?.center?.lat);
     return [
       Number.isFinite(lng)?lng.toFixed(6):'',
       Number.isFinite(lat)?lat.toFixed(6):'',
