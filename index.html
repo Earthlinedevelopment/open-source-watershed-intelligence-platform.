@@ -21720,8 +21720,8 @@ var prescribeSwales;
     return layer
   }
   function updateAquiferTopText16501(property,on){
-    const layer=ensureAquiferTopText16501();if(!layer)return false;layer.replaceChildren();
-    if(!property||!on||!mapReady()||!earthlineMap.project){layer.style.display="none";return false}
+    const layer=ensureAquiferTopText16501();if(!layer)return false;/* M106: preserve stable label nodes across repeated renderer-ownership passes. */
+    if(!property||!on||!mapReady()||!earthlineMap.project){if(layer.style.display!=="none")layer.style.display="none";return false}
     for(const id of ["earthline-aquifers-label","earthline-aquifer-label-points-layer-15788","earthline-aquifer-evidence-label-16398"])visible(id,false);
     const entries=[];const summary=M&&M.vtGroundwaterSummaryPoint16398;
     if(summary&&Number.isFinite(Number(summary.lng))&&Number.isFinite(Number(summary.lat))&&summary.label)entries.push({lng:Number(summary.lng),lat:Number(summary.lat),label:String(summary.label)});
@@ -21729,7 +21729,7 @@ var prescribeSwales;
       const seen=new Set();for(const poly of M.usgsAquifers){if(entries.length>=3)break;const ring=(poly&&poly.lngLatPts||[]).filter(c=>Array.isArray(c)&&Number.isFinite(Number(c[0]))&&Number.isFinite(Number(c[1])));if(ring.length<3)continue;const name=String(poly.name||"Mapped aquifer"),type=String(poly.aquiferType||"").toLowerCase(),prefix=(type.includes("aquifer-material")||type.includes("sand-gravel"))?"AQUIFER MATERIAL · ":(type.includes("context")||type.includes("karst")||type.includes("principal-national"))?"AQUIFER CONTEXT · ":"MAPPED AQUIFER · ",key=(prefix+name).toLowerCase();if(seen.has(key))continue;seen.add(key);let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;for(const c of ring){minX=Math.min(minX,Number(c[0]));maxX=Math.max(maxX,Number(c[0]));minY=Math.min(minY,Number(c[1]));maxY=Math.max(maxY,Number(c[1]))}entries.push({lng:(minX+maxX)/2,lat:(minY+maxY)/2,label:prefix+name})}
     }
     const host=document.querySelector(".map-area"),w=host?host.clientWidth:0,h=host?host.clientHeight:0;
-    for(const e of entries){let p=null;try{p=earthlineMap.project([e.lng,e.lat])}catch(_){}if(!p||p.x<8||p.x>w-8||p.y<8||p.y>h-8)continue;const tag=document.createElement("div");tag.className="earthline-aquifer-top-label-16501";tag.textContent=e.label;tag.style.left=p.x.toFixed(1)+"px";tag.style.top=p.y.toFixed(1)+"px";layer.appendChild(tag)}
+    let visibleCount106=0;for(const e of entries){let p=null;try{p=earthlineMap.project([e.lng,e.lat])}catch(_){}if(!p||p.x<8||p.x>w-8||p.y<8||p.y>h-8)continue;let tag=layer.children[visibleCount106];if(!tag){tag=document.createElement("div");tag.className="earthline-aquifer-top-label-16501";layer.appendChild(tag)}if(tag.textContent!==e.label)tag.textContent=e.label;const x106=p.x.toFixed(1)+"px",y106=p.y.toFixed(1)+"px";if(tag.style.left!==x106)tag.style.left=x106;if(tag.style.top!==y106)tag.style.top=y106;visibleCount106++}while(layer.children.length>visibleCount106)layer.lastElementChild.remove()
     layer.style.display=layer.childElementCount?"block":"none";window.EARTHLINE_AQUIFER_TOP_TEXT_AUDIT_16501={property,on,labels:layer.childElementCount,zIndex:40,host:"map-area",at:new Date().toISOString()};return layer.childElementCount>0
   }
   function ensureControl(){
