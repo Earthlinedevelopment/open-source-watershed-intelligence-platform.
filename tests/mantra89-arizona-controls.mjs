@@ -1,5 +1,5 @@
 import {chromium} from 'playwright';
-import {mkdirSync,writeFileSync} from 'node:fs';
+import {mkdirSync,writeFileSync,readFileSync} from 'node:fs';
 
 const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/candidate-mantra84/';
 const TARGETS=[
@@ -13,6 +13,13 @@ page.on('pageerror',e=>pageErrors.push(String(e)));
 page.on('console',m=>{if(m.type()==='error')pageErrors.push(m.text())});
 page.on('response',r=>{if(r.status()>=400)badResponses.push({status:r.status(),url:r.url()})});
 mkdirSync('artifacts/arizona-controls',{recursive:true});
+let candidateWorkerLoads=0;
+if(process.env.EARTHLINE_ELDER_WORKER_LOCAL==='1'){
+  await page.context().route('**/earthline-elder-worker-17129.js',route=>{
+    candidateWorkerLoads++;
+    return route.fulfill({status:200,contentType:'application/javascript',body:readFileSync('earthline-elder-worker-17129.js')});
+  });
+}
 
 await page.goto(URL+'?az_control='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
 await page.waitForSelector('#searchInput',{timeout:30000});
@@ -42,7 +49,26 @@ const regionalDiagnostic=await page.evaluate(()=>{
       if(d?.features?.length){contourSource=id;const pts=[];for(const ft of d.features.slice(0,20)){const co=ft?.geometry?.coordinates;if(ft?.geometry?.type==='LineString'&&Array.isArray(co)){for(const p of co.slice(0,20))if(Array.isArray(p)&&p.length>=2)pts.push(p);}}if(pts.length){contourBBox=[Math.min(...pts.map(p=>Number(p[0]))),Math.min(...pts.map(p=>Number(p[1]))),Math.max(...pts.map(p=>Number(p[0]))),Math.max(...pts.map(p=>Number(p[1])))];contourSample=pts[0];}break;}
     }
   }catch(_){}
-  return {pkg:{profileId:pkg?.profileId,center:pkg?.center,extent:pkg?.regionalExtent,boundaryLabel:boundary?.label,boundaryCode:boundary?.code,boundaryType:boundary?.geometry?.type,polys},model:{loc:md?.loc,centerLng:md?.centerLng,centerLat:md?.centerLat,analysisBoundary:md?.analysisBoundaryLngLat,bounds:md?.bounds},membership:{pointFnType,centerPoint,centerInside,cornerInside},contourSource,contourBBox,contourSample,gen,pub,extent,land,geom,perf,error,status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||''),tier:String(document.getElementById('earthlineTierNotice16173')?.textContent||'')};
+  const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap||null;
+  const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');
+  const host=document.querySelector('.map-area')||document.getElementById('mapboxBase');
+  const sample=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.swales?.features?.slice(0,5).map(f=>{
+    const pts=f?.geometry?.coordinates||[];
+    const px=pts.map(p=>{try{const t=map.project(p);return [t.x,t.y]}catch(_){return [null,null]}});
+    let len=0;for(let i=1;i<px.length;i++)if(px[i].every(Number.isFinite)&&px[i-1].every(Number.isFinite))len+=Math.hypot(px[i][0]-px[i-1][0],px[i][1]-px[i-1][1]);
+    return {coords:pts.length,lenPx:Math.round(len*10)/10,start:pts[0],firstPixel:px[0]};
+  })||[];
+  const camera={
+    center:map?.getCenter?.().toArray(),zoom:map?.getZoom?.(),projection:map?.getProjection?.()?.name,
+    bounds:map?.getBounds?.()?.toArray(),mapLoaded:map?.loaded?.(),
+    cameraAudit:window.EARTHLINE_REGIONAL_CAMERA_SETTLE_AUDIT_16334||null,
+    hostSize:[host?.clientWidth,host?.clientHeight],
+    overlaySize:[overlay?.clientWidth,overlay?.clientHeight],
+    overlayGroups:overlay?.querySelectorAll('g[data-layer]')?.length||0,
+    swalePathCount:overlay?.querySelectorAll('g[data-layer="swale-opportunities"] path')?.length||0,
+    sample
+  };
+  return {camera,pkg:{profileId:pkg?.profileId,center:pkg?.center,extent:pkg?.regionalExtent,boundaryLabel:boundary?.label,boundaryCode:boundary?.code,boundaryType:boundary?.geometry?.type,polys},model:{loc:md?.loc,centerLng:md?.centerLng,centerLat:md?.centerLat,analysisBoundary:md?.analysisBoundaryLngLat,bounds:md?.bounds},membership:{pointFnType,centerPoint,centerInside,cornerInside},contourSource,contourBBox,contourSample,gen,pub,extent,land,geom,perf,error,status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||''),tier:String(document.getElementById('earthlineTierNotice16173')?.textContent||'')};
 });
 writeFileSync('artifacts/arizona-controls/regional-diagnostic.json',JSON.stringify({regionalTimeout,regionalDiagnostic,pageErrors,badResponses},null,2));
 console.log('ARIZONA_REGIONAL_DIAGNOSTIC '+JSON.stringify({regionalTimeout,regionalDiagnostic,pageErrors:pageErrors.slice(-10),badResponses:badResponses.slice(-10)}));
@@ -74,6 +100,17 @@ async function runTarget(target,index){
   const out=await page.evaluate(async()=>await window.earthlineDeclarePropertyAtCrosshair16169?.());
   await page.waitForFunction(()=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};return a.settled===true&&String(document.documentElement.dataset.earthlinePropertyRunState||'')!=='running';},null,{timeout:45000,polling:120});
   await page.waitForTimeout(900);
+  const elderEarly=await page.evaluate(()=>window.EARTHLINE_ELDER_TREE_LAST_17097||null);
+  let elderWait='settled';
+  try{
+    await page.waitForFunction(target=>{
+      const e=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+      return ['committed','failed'].includes(String(e?.state||''))&&
+        String(e?.propertyRunIdentity||'').startsWith(target.lng.toFixed(6)+'|'+target.lat.toFixed(6)+'|');
+    },target,{timeout:30000,polling:150});
+  }catch(err){elderWait=String(err?.message||err).slice(0,140)}
+  const elderLate=await page.evaluate(()=>window.EARTHLINE_ELDER_TREE_LAST_17097||null);
+  console.log('M119_ELDER_COLD_RESULT',JSON.stringify({target:target.name,early:elderEarly,late:elderLate,elderWait}));
   const snap=await page.evaluate(target=>{
     const md=(typeof M!=='undefined'&&M)||window.M||null;
     const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
@@ -109,8 +146,8 @@ async function runTarget(target,index){
 const rows=[];
 for(let i=0;i<TARGETS.length;i++) rows.push(await runTarget(TARGETS[i],i));
 const replacementPass=rows.length===2&&rows[0].snap.publication?.runToken!==rows[1].snap.publication?.runToken&&Math.abs(Number(rows[1].snap.audit?.center?.lng)-TARGETS[1].lng)<1e-5;
-const report={at:new Date().toISOString(),url:URL,rows,replacementPass,pageErrors,badResponses,pass:rows.every(r=>r.pass)&&replacementPass};
+const report={at:new Date().toISOString(),url:URL,rows,replacementPass,pageErrors,badResponses,candidateWorkerLoads,pass:rows.every(r=>r.pass)&&replacementPass};
 writeFileSync('artifacts/arizona-controls/results.json',JSON.stringify(report,null,2));
-console.log('ARIZONA_CONTROL '+JSON.stringify({pass:report.pass,replacementPass,rows:rows.map(r=>({name:r.name,pass:r.pass,elapsedMs:r.elapsedMs,safeCount:r.snap.safeCount,elderCount:r.snap.elder?.featureCount||0,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
+console.log('ARIZONA_CONTROL '+JSON.stringify({pass:report.pass,replacementPass,candidateWorkerLoads,rows:rows.map(r=>({name:r.name,pass:r.pass,elapsedMs:r.elapsedMs,safeCount:r.snap.safeCount,elderCount:r.snap.elder?.featureCount||0,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
 await browser.close();
 if(!report.pass)process.exitCode=1;
