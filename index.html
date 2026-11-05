@@ -23260,9 +23260,10 @@ var prescribeSwales;
       if(typeof window.earthlineSyncPropertyFlow15792==="function"){
         visible=!!window.earthlineSyncPropertyFlow15792(true);
       }
-      if(typeof window.earthlineApplyRendererOwnership15805==="function"){
-        window.earthlineApplyRendererOwnership15805("property");
-      }
+      /* M98: The water renderer is an auxiliary layer owner, not the Property
+         publication authority. Repainting water on move/zoom/idle must never
+         reassign global renderer ownership or hide the safe swale publication.
+         The Property publication path retains authoritative ownership. */
     }catch(error){
       M.propertyFlowRenderer15792={
         build:BUILD,
