@@ -34348,7 +34348,7 @@ ${EARTHLINE_CORRECTIONS_REGISTRY_16513}
     for(const id of ['el-live-groundwater-layer-15970','el-live-grace-groundwater-layer-15970','el-live-aquifer-raster-layer-15970'])
       paint113(id,'raster-opacity',0);
     const legend=document.getElementById('earthlineAquiferLegend16070');
-    if(legend){legend.setAttribute('aria-label','Mapped groundwater context, regional only');legend.innerHTML='<span class="el-aquifer-shape" aria-hidden="true"></span><span>Mapped groundwater context · regional only</span>'}
+    if(legend){if(legend.getAttribute('aria-label')!=='Mapped groundwater context, regional only')legend.setAttribute('aria-label','Mapped groundwater context, regional only');const html='<span class="el-aquifer-shape" aria-hidden="true"></span><span>Mapped groundwater context · regional only</span>';if(legend.innerHTML!==html)legend.innerHTML=html}
     window.EARTHLINE_REGIONAL_AQUIFER_VISIBILITY_AUDIT_16374={
       build:'EARTHLINE 16374',analysisTier:analysisTier||null,propertyActive,
       regionalLiveAquiferVisible:!propertyActive,
@@ -34663,7 +34663,7 @@ html[data-earthline-analysis-tier="focus"] #earthlineRegionalVectorOverlay16020 
     return pub&&currentToken&&String(pub.runToken||'')===currentToken&&Number.isFinite(Number(pub.zoom))
       ?Math.max(10,Number(pub.zoom)):10;
   }
-  function setLayerOpacity(id,property,value){const m=map();try{if(m?.getLayer?.(id))m.setPaintProperty(id,property,value)}catch(_){}}
+  function setLayerOpacity(id,property,value){const m=map();try{if(!m?.getLayer?.(id))return;const old=m.getPaintProperty(id,property);if(JSON.stringify(old)!==JSON.stringify(value))m.setPaintProperty(id,property,value)}catch(_){}}
   function applyHandoff(){
     const m=map();if(!m)return false;
     const z=Number(m.getZoom?.()||0),regional=isRegionalDisplayed(),p=prompt();
