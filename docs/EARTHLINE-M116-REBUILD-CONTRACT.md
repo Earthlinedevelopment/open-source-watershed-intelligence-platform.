@@ -30,12 +30,12 @@ Create a modular successor beside production; selectively revalidate existing hy
 - Groundwater cannot be shown with evidence when recorded unavailable.
 - Self-crossing/closed-loop geometry screened; source-point SVG polyline output with no spline adjustment.
 - Immutable published snapshots.
-- Fourteen synthetic contract tests.
+- Forty-eight synthetic scientific, run-ownership and map-adapter tests (including fully composed DEM→D8→raster audit→immutable publication).
 
 ## Remaining release-blocking work
 
-1. Audit and extract the proven real hydrology/terrain algorithms and data feeds from the existing app; validate scientific proofs independently.
-2. Implement real GIS full-footprint and per-cell slope/flow audits, not merely asserted test certificates.
+1. Complete the independent scientific comparison of the extracted DEM/D8 algorithm against external GIS reference outputs and real source data; validate scientific proofs independently.
+2. Connect the implemented full-footprint DEM/raster audits to real georeferenced and resolution-qualified GIS sources, including protected land and no-build coverage.
 3. Build a Mapbox adapter that retains the approved Orb, logo, labels, gauge, Elder trees and two blue dotted strips without altering scientific geometry.
 4. Prove first-run and repeated Regional/Property transitions in actual HTTPS browser sessions and mobile, including speed and groundwater continuity.
 5. Complete the 50-state fixture matrix plus Thailand → Vietnam → Laos, including basin topology, low-gradient deltas, uncertainties and groundwater data limitations.
@@ -44,3 +44,10 @@ Create a modular successor beside production; selectively revalidate existing hy
 **Do not mark the replacement launch-ready merely because unit tests pass.**
 
 Branch: mantra116-sustainable-rebuild. Production branch pages-live is preserved.
+
+## M116 progress evidence
+
+- Existing production source science contradictions documented in `docs/EARTHLINE-M116-LEGACY-SCIENCE-AUDIT.md`.
+- Isolated runnable modules for priority-flood D8, runoff crossings, Horn slope, no-build footprint, CRS-parity check, fail-closed publication, and Mapbox state ownership.
+- 48 synthetic unit/integration tests in `rebuild/tests`; GitHub Actions automatic test workflow; no browser or geographic production acceptance yet.
+- The existing live production `index.html`, DNS, logo, Search Orb, and CSS remain untouched by this branch.
