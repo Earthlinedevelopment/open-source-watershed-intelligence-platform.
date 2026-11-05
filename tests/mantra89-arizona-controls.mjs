@@ -7,7 +7,12 @@ const TARGETS=[
   {name:'control-2',lng:-111.93456,lat:34.21545}
 ];
 const browser=await chromium.launch({headless:true});
-const page=await browser.newPage({viewport:{width:1600,height:950}});
+const mobileMode=process.env.EARTHLINE_TEST_MOBILE==='1';
+const context=await browser.newContext({
+  viewport:mobileMode?{width:390,height:844}:{width:1600,height:950},
+  isMobile:mobileMode,hasTouch:mobileMode,deviceScaleFactor:mobileMode?2:1
+});
+const page=await context.newPage();
 const pageErrors=[],badResponses=[];
 page.on('pageerror',e=>pageErrors.push(String(e)));
 page.on('console',m=>{if(m.type()==='error')pageErrors.push(m.text())});
@@ -148,6 +153,6 @@ for(let i=0;i<TARGETS.length;i++) rows.push(await runTarget(TARGETS[i],i));
 const replacementPass=rows.length===2&&rows[0].snap.publication?.runToken!==rows[1].snap.publication?.runToken&&Math.abs(Number(rows[1].snap.audit?.center?.lng)-TARGETS[1].lng)<1e-5;
 const report={at:new Date().toISOString(),url:URL,rows,replacementPass,pageErrors,badResponses,candidateWorkerLoads,pass:rows.every(r=>r.pass)&&replacementPass};
 writeFileSync('artifacts/arizona-controls/results.json',JSON.stringify(report,null,2));
-console.log('ARIZONA_CONTROL '+JSON.stringify({pass:report.pass,replacementPass,candidateWorkerLoads,rows:rows.map(r=>({name:r.name,pass:r.pass,elapsedMs:r.elapsedMs,safeCount:r.snap.safeCount,elderCount:r.snap.elder?.featureCount||0,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
+console.log('ARIZONA_CONTROL '+JSON.stringify({mode:mobileMode?'mobile':'desktop',pass:report.pass,replacementPass,candidateWorkerLoads,rows:rows.map(r=>({name:r.name,pass:r.pass,elapsedMs:r.elapsedMs,safeCount:r.snap.safeCount,elderCount:r.snap.elder?.featureCount||0,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
 await browser.close();
 if(!report.pass)process.exitCode=1;
