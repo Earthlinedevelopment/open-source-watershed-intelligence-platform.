@@ -1,5 +1,6 @@
 import {deriveTerrainFlow,routedFlowSegments} from './terrain-flow.mjs';
 import {certifyRasterCandidate} from './raster-audit.mjs';
+import {verifyFrozenExclusions} from './exclusion-source.mjs';
 
 /**
  * Source-backed raster analysis coordinator, not a swale generator.
@@ -31,6 +32,10 @@ export function publishRasterAnalysis(owner,token,{grid,runoff,candidate,project
     return fail(['RUNOFF_HYDROGRAPHY_COVERAGE_MISMATCH']);
   if(typeof projectLonLat!=='function')
     return fail(['PROJECTION_ADAPTER_UNAVAILABLE']);
+  // Structural class-raster proof before terrain, routing, or publication.
+  // No caller-supplied all-clear noBuild array is accepted unexamined.
+  const frozen=verifyFrozenExclusions(grid,candidate.sources.exclusions);
+  if(frozen.status!=='verified')return fail(frozen.errors);
   const routing=deriveTerrainFlow(grid);
   if(routing.status!=='derived')return fail(routing.errors);
   if(!owner.isCurrent(token))return {accepted:false,status:'stale'};
