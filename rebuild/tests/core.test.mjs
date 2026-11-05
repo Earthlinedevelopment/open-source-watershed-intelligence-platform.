@@ -8,7 +8,7 @@ import {validatePolyline, svgPolylinePath} from '../core/geometry.mjs';
 const input = dataset => ({status:'verified',dataset,version:'synthetic-1',coverageId:'synthetic-cell'});
 function fixture(token, {count = 1} = {}) {
   const exclusions = {...input('synthetic-no-build-mask'),fingerprint:'synthetic-mask-v1',
-    classes:{roads:'verified',buildings:'verified',driveways:'verified',mappedWater:'verified'}};
+    classes:{roads:'verified',buildings:'verified',driveways:'verified',mappedWater:'verified',protectedLand:'verified'}};
   return {runId:token.id,tier:token.tier,
     sources:{terrain:input('synthetic-dem'),hydrography:input('synthetic-flow'),
       landCover:input('synthetic-land'),exclusions},
@@ -122,4 +122,12 @@ test('blocked run cannot be repaired by a competing same-token completion',()=>{
   c.swales[0].slopeAudit.maxLocalPct=2;
   assert.deepEqual(owner.publish(token,c),{accepted:false,status:'settled'});
   assert.equal(owner.snapshot().publication,null);
+});
+
+test('protected land must be verified before any standalone publication',()=>{
+  const {owner,token}=start();const c=fixture(token);
+  delete c.sources.exclusions.classes.protectedLand;
+  assert.equal(owner.publish(token,c).status,'blocked');
+  assert.equal(owner.snapshot().publication,null);
+  assert.match(owner.snapshot().errors.join(','),/EXCLUSION_MASK_SOURCES_NOT_VERIFIED/);
 });
