@@ -62,6 +62,18 @@ try {
   mobile.on('console',m=>{if(m.type()==='error')console.error('M118_MOBILE_CONSOLE',m.text().slice(0,350))});
   const mm=await checkMap(mobile,'mobile');
   assert.ok(mm.mapboxCanvas.width>200,'Mobile map not usable');
+  await mobile.evaluate(()=>{
+    window.__earthlineTouchProbe119=[];
+    for(const name of ['touchstart','touchmove','touchend','pointerdown','pointermove']){
+      document.addEventListener(name,e=>{
+        if(window.__earthlineTouchProbe119.length<32)window.__earthlineTouchProbe119.push({
+          name,target:e.target?.id||String(e.target?.className||'').slice(0,90),
+          touches:e.touches?.length,changed:e.changedTouches?.length,
+          defaultPrevented:e.defaultPrevented
+        });
+      },true);
+    }
+  });
   const cdp=await context.newCDPSession(mobile);
   const mx=mm.mapboxCanvas.x+mm.mapboxCanvas.width*.55;
   const my=mm.mapboxCanvas.y+mm.mapboxCanvas.height*.55;
@@ -74,6 +86,19 @@ try {
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
   await mobile.waitForTimeout(700);
   const afterPinch=await mobile.evaluate(()=>((window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)).getZoom()));
+  if(!(afterPinch>mm.zoom+.01)){
+    const diag=await mobile.evaluate(({x,y})=>{
+      const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+      return {
+        touches:window.__earthlineTouchProbe119,
+        targetStack:document.elementsFromPoint(x,y).slice(0,8).map(e=>({tag:e.tagName,id:e.id,cls:String(e.className||'').slice(0,90),touchAction:getComputedStyle(e).touchAction,pointer:getComputedStyle(e).pointerEvents})),
+        mapTouchHandlerEnabled:m.touchZoomRotate?.isEnabled?.(),
+        mapMoving:m.isMoving?.(),mapZooming:m.isZooming?.(),
+        touchSupport:'ontouchstart' in window
+      };
+    },{x:mx,y:my});
+    console.error('M119_MOBILE_PINCH_DIAGNOSTIC',JSON.stringify(diag));
+  }
   assert.ok(afterPinch>mm.zoom+.01,'Mobile pinch did not zoom map');
   results.push({kind:'mobile-behavior',afterPinch,initialZoom:mm.zoom});
   await context.close();
