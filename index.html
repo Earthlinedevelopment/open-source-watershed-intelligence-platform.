@@ -9608,7 +9608,7 @@ function earthlinePathPointUsable(px,py,maxS){
   if(gx<1||gy<1||gx>=GW-1||gy>=GH-1)return false;
   const i=idx(gx,gy);
   if(!M.inP[i]||M.pond[i])return false;
-  if(slopePct(gx,gy)>maxS)return false;
+  const slopeHere=slopePct(gx,gy);if(!Number.isFinite(slopeHere)||slopeHere<0||slopeHere>maxS)return false;
   if(earthlineNoBuildBuffered(gx,gy))return false;
   const channelThreshold=streamThreshold()*3.2;
   const radius=Math.max(1,Math.ceil(4/Math.max(0.5,M.cellM||1)));
@@ -15462,8 +15462,8 @@ var prescribeSwales;
       if(!M.inP[i]||M.pond[i]||(M.noBuildMask&&M.noBuildMask[i]))continue;
       if((M.acc[i]||0)>=channelThreshold)continue;
       const sp=slopePct(x,y);
-      if(sp<2.2||sp>6.5)continue;
-      const slopeFit=Math.max(0,1-Math.abs(sp-3.5)/3.0);
+      if(!Number.isFinite(sp)||sp<0||sp>4)continue;
+      const slopeFit=Math.max(0,1-sp/8);
       const runoff=Math.log1p(M.acc[i]||1)/Math.log1p(maxAcc);
       const open=(M.canopyMask&&M.canopyMask[i])?0.25:1;
       const score=.50*slopeFit+.34*runoff+.16*open;
@@ -15479,7 +15479,7 @@ var prescribeSwales;
       const pts=traceLevelContour(c.x,c.y,c.L,12,Math.max(.12,cellM*.02));
       if(!pts||pts.length<4)continue;
 
-      const split=earthlineSplitUsableSegments(pts,12);
+      const split=earthlineSplitUsableSegments(pts,4);
       let bestSeg=null,bestLen=0;
       for(const seg of (split||[])){
         const len=earthlineSegmentLengthM(seg);
@@ -15488,7 +15488,7 @@ var prescribeSwales;
       if(!bestSeg||bestLen<Math.max(35,cellM*3))continue;
 
       const display=earthlineNaturalContourDisplay(bestSeg);
-      const safeParts=earthlineFinalSafeSegments15771(display,12);
+      const safeParts=earthlineFinalSafeSegments15771(display,4);
       for(const safe of safeParts){
         const lenM=earthlinePathLengthM(safe);
         if(!safe||safe.length<3||lenM<Math.max(30,cellM*2.5))continue;
