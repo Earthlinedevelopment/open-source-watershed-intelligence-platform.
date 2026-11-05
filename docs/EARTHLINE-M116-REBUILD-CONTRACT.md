@@ -60,3 +60,13 @@ Branch: mantra116-sustainable-rebuild. Production branch pages-live is preserved
 - Isolated source-class mask proof: `rebuild/core/exclusion-source.mjs`, wired into `publishRasterAnalysis` before scientific routing. Five mandatory class presence+coverage rasters must agree cell-for-cell with the frozen mask; all five classes require full coverage. This does not authenticate remote source accuracy or spatial completeness.
 - Corrected an unsafe priority-flood assumption: internal unknown DEM holes must never act as drainage outlets. Disconnected valid islands now block, rather than create synthetic runoff pathways.
 - The latest branch remains unpromoted. This is *not* a validated 50-state or Southeast Asian scientific model. Production `pages-live` is unchanged.
+
+## M116 public-production safety audit, 2026-11-05
+
+- Production `pages-live` remained `ffa2ea97545c8128c56b9bcf4931b4297cf54e62`; no production HTML, DNS, logo, styling, or science was written during this continuation.
+- The M89 public Arizona release workflow at run 41938001360 failed in the **prerequisite marker check** (HTTP 200 for all 18 attempts, but `rawLatM89` not found). The exact production HTML blob `c8653b2adb7b45e60c6cf5dba2bcdcd3491c0688` likewise does not contain `rawLatM89`. This outdated predicate is not evidence of a failed Arizona scientific run; no browser stage was reached.
+- A separate **read-only** public HTTPS integrity workflow (run 41970968227) passed. Its production and public homepage HTML each contained exactly 3,760,307 bytes and SHA-256 `f7b1ef6b1092943f6fef7b9c5ce18bde2549caaaf16e31273ed00ba560505bb3`. This proves deployed HTML identity, **not** scientific validity.
+- A separate desktop/mobile public-browser startup smoke was added on the isolated branch. It is a non-mutating startup check; it cannot certify water routing, 4% swale slopes, aquifer truth, GIS coverage or 50-state readiness.
+- The standalone publication gate now requires protected land in addition to roads, buildings, driveways and mapped water. All 56 synthetic core tests passed in run 41970669319.
+
+Production promotion remains **blocked** until source-backed geographical and real browser Regional→Property→Regional→Property acceptance. Never equate a successful static deployment with certified science.
