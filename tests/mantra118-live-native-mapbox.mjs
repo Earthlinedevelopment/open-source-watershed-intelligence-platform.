@@ -15,6 +15,7 @@ async function checkMap(page,kind){
     const rect=m?.getCanvas?.()?.getBoundingClientRect();
     return !!(rect&&rect.width>minWidth&&rect.height>300);
   },kind==='desktop'?300:200,{timeout:45000,polling:250});
+  await page.waitForFunction(()=>window.earthlineStartupSplashAudit16171?.()?.settled===true,null,{timeout:20000,polling:250}).catch(()=>{});
   const result=await page.evaluate(()=>{
     const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
     return {
@@ -22,7 +23,7 @@ async function checkMap(page,kind){
       gestures:Object.fromEntries(['dragPan','scrollZoom','doubleClickZoom','touchZoomRotate','boxZoom'].map(k=>[k,!!m[k]?.isEnabled?.()])),
       zoomButtons:document.querySelectorAll('.mapboxgl-ctrl-zoom-in,.mapboxgl-ctrl-zoom-out').length,
       mapboxCanvas:m.getCanvas().getBoundingClientRect().toJSON(),
-      mapLoaded:m.loaded?.(),navigationAudit:window.earthlineNavigationAudit15784?.()||null
+      mapLoaded:m.loaded?.(),startupAudit:window.earthlineStartupSplashAudit16171?.()||null,navigationAudit:window.earthlineNavigationAudit15784?.()||null
     };
   });
   for(const [name,on] of Object.entries(result.gestures)) assert.ok(on,kind+' '+name+' disabled');
@@ -43,6 +44,10 @@ try {
   await desktop.waitForTimeout(700);
   const afterDrag=await desktop.evaluate(()=>((window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)).getCenter().toArray()));
   const moved=Math.hypot(afterDrag[0]-initial.center[0],afterDrag[1]-initial.center[1]);
+  if(!(moved>1e-5)){
+    const hits=await desktop.evaluate(({x,y})=>document.elementsFromPoint(x,y).slice(0,9).map(el=>({tag:el.tagName,id:el.id,cls:String(el.className||'').slice(0,120),pointer:getComputedStyle(el).pointerEvents})),{x,y});
+    console.error('M118_DRAG_HIT_TEST',JSON.stringify({hits,initial,afterDrag}));
+  }
   assert.ok(moved>1e-5,'Pointer drag did not pan map');
   await desktop.mouse.wheel(0,-560);
   await desktop.waitForTimeout(1200);
