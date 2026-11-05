@@ -51,6 +51,15 @@ export function createAnalysisOwner() {
     active.errors = [];
     return {accepted: true, status: verdict.status};
   }
+  function fail(token, reasons) {
+    if (!isCurrent(token)) return {accepted:false,status:'stale'};
+    if (active.status !== 'running') return {accepted:false,status:'settled'};
+    const errors=Array.isArray(reasons)?reasons.filter(v=>typeof v==='string'&&v.trim()):[];
+    active.status='blocked';
+    active.publication=null;
+    active.errors=errors.length?[...errors]:['ANALYSIS_FAILED_WITHOUT_REASON'];
+    return {accepted:false,status:'blocked',errors:[...active.errors]};
+  }
   function cancel(token) {
     if (!isCurrent(token)) return false;
     active.controller.abort('cancelled');
@@ -63,5 +72,5 @@ export function createAnalysisOwner() {
       target: active.target, status: active.status,
       publication: active.publication, errors: active.errors}) : null;
   }
-  return Object.freeze({begin, isCurrent, publish, cancel, snapshot});
+  return Object.freeze({begin, isCurrent, publish, fail, cancel, snapshot});
 }
