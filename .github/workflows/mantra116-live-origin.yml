@@ -1,0 +1,38 @@
+name: Mantra 116 read-only live origin integrity
+on:
+  push:
+    branches: [mantra116-sustainable-rebuild]
+    paths:
+      - '.github/workflows/mantra116-live-origin.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-origin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Checkout deployed production source separately
+        uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          path: current-production
+      - name: Read-only HTTPS comparison to deployed source
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Production HEAD: $(git -C current-production rev-parse HEAD)"
+          sha256sum current-production/index.html
+          status=$(curl -sS -L --retry 3 --retry-delay 2 --max-time 40             -H 'Cache-Control: no-cache'             -o /tmp/earthline-origin-116.html -w '%{http_code}'             "https://earthlinedevelopment.org/?m116_integrity=$GITHUB_RUN_ID")
+          echo "HTTPS status: $status"
+          test "$status" = 200 || { echo "::error::Public origin did not return HTTP 200"; exit 1; }
+          test -s /tmp/earthline-origin-116.html || { echo "::error::Empty origin HTML"; exit 1; }
+          sha256sum /tmp/earthline-origin-116.html
+          wc -c current-production/index.html /tmp/earthline-origin-116.html
+          if cmp -s current-production/index.html /tmp/earthline-origin-116.html; then
+            echo 'PASS: public HTML bytes are identical to current pages-live HEAD'
+          else
+            echo '::error::Public HTML differs from pages-live source: deployment, cache, or transformation mismatch'
+            exit 1
+          fi
+          echo 'NOTE: This is an origin-integrity check, not a hydrology/browser or geographic acceptance test.'
