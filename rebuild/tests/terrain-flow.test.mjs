@@ -70,3 +70,17 @@ test('DEM-derived D8 runoff can be tested against a proposed safe footprint',()=
   assert.ok(result.flowAudit.crossingCount>0);
   assert.ok(result.flowAudit.positiveRunoffEvidence>0);
 });
+
+test('an island surrounded by internal DEM no-data cannot invent an outlet',()=>{
+  const g=grid();
+  g.validity.fill(0);
+  g.demMeters.fill(NaN);
+  for(let y=12;y<=16;y++)for(let x=12;x<=16;x++){
+    const i=y*W+x;
+    g.validity[i]=1;
+    g.demMeters[i]=100-y*0.02;
+  }
+  const d=deriveTerrainFlow(g);
+  assert.equal(d.status,'blocked');
+  assert.deepEqual(d.errors,['UNREACHABLE_VALID_TERRAIN']);
+});
