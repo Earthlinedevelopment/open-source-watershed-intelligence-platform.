@@ -15462,7 +15462,7 @@ var prescribeSwales;
       if(!M.inP[i]||M.pond[i]||(M.noBuildMask&&M.noBuildMask[i]))continue;
       if((M.acc[i]||0)>=channelThreshold)continue;
       const sp=slopePct(x,y);
-      if(sp<2.2||sp>6.5)continue;
+      if(!Number.isFinite(sp)||sp<0||sp>4)continue;
       const slopeFit=Math.max(0,1-Math.abs(sp-3.5)/3.0);
       const runoff=Math.log1p(M.acc[i]||1)/Math.log1p(maxAcc);
       const open=(M.canopyMask&&M.canopyMask[i])?0.25:1;
@@ -15476,10 +15476,10 @@ var prescribeSwales;
       if(features.length>=4)break;
       if(acceptedLevels.some(L=>Math.abs(L-c.L)<Math.max(.25,cellM*.018)))continue;
 
-      const pts=traceLevelContour(c.x,c.y,c.L,12,Math.max(.12,cellM*.02));
+      const pts=traceLevelContour(c.x,c.y,c.L,4,Math.max(.12,cellM*.02));
       if(!pts||pts.length<4)continue;
 
-      const split=earthlineSplitUsableSegments(pts,12);
+      const split=earthlineSplitUsableSegments(pts,4);
       let bestSeg=null,bestLen=0;
       for(const seg of (split||[])){
         const len=earthlineSegmentLengthM(seg);
@@ -15487,8 +15487,8 @@ var prescribeSwales;
       }
       if(!bestSeg||bestLen<Math.max(35,cellM*3))continue;
 
-      const display=earthlineNaturalContourDisplay(bestSeg);
-      const safeParts=earthlineFinalSafeSegments15771(display,12);
+      const display=earthlineCleanPath(bestSeg);
+      const safeParts=earthlineFinalSafeSegments15771(display,4);
       for(const safe of safeParts){
         const lenM=earthlinePathLengthM(safe);
         if(!safe||safe.length<3||lenM<Math.max(30,cellM*2.5))continue;
@@ -15520,14 +15520,14 @@ var prescribeSwales;
   function swaleDataForTile(tile,cellM,tileIndex){
     const features=[],raw=[];
     for(const s of (M.swales||[])){
-      const segs=earthlineSplitUsableSegments(s.pts,33);
+      const segs=earthlineSplitUsableSegments(s.pts,4);
       for(const seg of (segs||[])){
         if(!seg||seg.length<2||earthlineSegmentLengthM(seg)<18)continue;
-        const display=earthlineNaturalContourDisplay(seg);
+        const display=earthlineCleanPath(seg);
         const levelH=Number(s.levelH!=null?s.levelH:levelOfSwale(s));
         const absLevelM=Number((M.loc&&M.loc.elevM)||0)+levelH;
         const bandKey=String(tileIndex)+"|"+String(s.bandKey!=null?s.bandKey:Math.round(levelH*10));
-        for(const safeDisplay of earthlineFinalSafeSegments15771(display,33)){
+        for(const safeDisplay of earthlineFinalSafeSegments15771(display,4)){
           if(!safeDisplay||safeDisplay.length<2)continue;
           const coords=safeDisplay.map(p=>gridToLngLat(tile,cellM,p[0],p[1]));
           features.push({type:"Feature",properties:{
@@ -29926,17 +29926,30 @@ body { overflow-x:hidden!important; }
     function sampleSegment(coords,center,relaxed){
       const half=Math.max(10,Math.min(28,Math.floor(coords.length*.12))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);
       const raw=coords.slice(start,end);if(raw.length<10)return null;
-      const segment=chaikin(raw,2,false);if(segment.length<10||lineLengthPixels(hy,segment)<10)return null;
+      /* M115: no post-contour smoothing of a proposed swale. */
+       const segment=cleanLine(raw);if(segment.length<10||lineLengthPixels(hy,segment)<10)return null;
       const gridSegment101=segment.map(ll=>{const g=llGrid(hy,ll);return [g.x,g.y];});
       if(!earthlineWormGeometryPassRegional101(gridSegment101))return null;
-      const stride=Math.max(1,Math.floor(segment.length/22));let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null;
-      for(let k=1;k<segment.length-1;k+=stride){
-        const g=llGrid(hy,segment[k]),x=Math.max(1,Math.min(hy.w-2,Math.round(g.x))),y=Math.max(1,Math.min(hy.h-2,Math.round(g.y))),i=y*hy.w+x;
-        const slope=hy.slope[i],acc=hy.acc[i],minSlope=relaxed?.05:.20,maxSlope=relaxed?18:13.5;
-        if(!Number.isFinite(slope)||slope<minSlope||slope>maxSlope||acc>=channel)continue;
-        valid++;sumSlope+=slope;sumAcc+=acc;maxAcc=Math.max(maxAcc,acc);if(!anchor)anchor={x,y};
-      }
-      if(valid<(relaxed?1:2)||!anchor)return null;
+      /* M115: every half-grid-cell is checked; one violation vetoes the line.
+          Relaxed candidate search cannot relax slope, land, or channel safety. */
+       const checked115=new Set();let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null;
+       for(let k=0;k<segment.length;k++){
+         const a=llGrid(hy,segment[k]),b=llGrid(hy,segment[Math.max(0,k-1)]),
+               steps=Math.max(1,Math.ceil(Math.hypot(a.x-b.x,a.y-b.y)*2));
+         for(let j=0;j<=steps;j++){
+           const t=j/steps,
+                 x=Math.max(1,Math.min(hy.w-2,Math.round(b.x+(a.x-b.x)*t))),
+                 y=Math.max(1,Math.min(hy.h-2,Math.round(b.y+(a.y-b.y)*t))),
+                 i=y*hy.w+x;
+           if(hy.validityMask16584&&!hy.validityMask16584[i])return null;
+           const slope=hy.slope[i],acc=hy.acc[i];
+           if(!Number.isFinite(slope)||slope<0||slope>4||!Number.isFinite(acc)||acc>=channel)return null;
+           if(checked115.has(i))continue;
+           checked115.add(i);valid++;sumSlope+=slope;sumAcc+=acc;maxAcc=Math.max(maxAcc,acc);
+           if(!anchor)anchor={x,y};
+         }
+       }
+       if(!valid||!anchor)return null;
       const meanSlope=sumSlope/valid,meanAcc=sumAcc/valid;
       const slopeScore=Math.max(0,1-Math.abs(meanSlope-3.4)/(relaxed?12:7.5));
       const flowScore=meanAcc<=accLow?.18:meanAcc<=accMid?.18+.70*(meanAcc-accLow)/Math.max(1,accMid-accLow):Math.max(.18,.88-.48*(meanAcc-accMid)/Math.max(1,accHigh-accMid));
