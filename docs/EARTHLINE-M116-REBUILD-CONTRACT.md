@@ -30,7 +30,10 @@ Create a modular successor beside production; selectively revalidate existing hy
 - Groundwater cannot be shown with evidence when recorded unavailable.
 - Self-crossing/closed-loop geometry screened; source-point SVG polyline output with no spline adjustment.
 - Immutable published snapshots.
-- Forty-eight synthetic scientific, run-ownership and map-adapter tests (including fully composed DEM→D8→raster audit→immutable publication).
+- Synthetic scientific, run-ownership and map-adapter tests (including fully composed DEM→D8→raster audit→immutable publication).
+
+- Frozen no-build union is now checked independently against five required complete class rasters (roads, buildings, driveways, mapped water and protected land) before routing or publication; mismatched or unknown source cells fail closed.
+- DEM internal no-data holes no longer seed invented hydrologic outlets; any valid terrain isolated from raster edges blocks D8 routing.
 
 ## Remaining release-blocking work
 
@@ -49,5 +52,11 @@ Branch: mantra116-sustainable-rebuild. Production branch pages-live is preserved
 
 - Existing production source science contradictions documented in `docs/EARTHLINE-M116-LEGACY-SCIENCE-AUDIT.md`.
 - Isolated runnable modules for priority-flood D8, runoff crossings, Horn slope, no-build footprint, CRS-parity check, fail-closed publication, and Mapbox state ownership.
-- 48 synthetic unit/integration tests in `rebuild/tests`; GitHub Actions automatic test workflow; no browser or geographic production acceptance yet.
+- Synthetic unit/integration tests in `rebuild/tests`; GitHub Actions automatic test workflow; no browser or geographic production acceptance yet. See workflow runs for the exact current test count.
 - The existing live production `index.html`, DNS, logo, Search Orb, and CSS remain untouched by this branch.
+
+## M116 November 5 continued-rebuild audit
+
+- Isolated source-class mask proof: `rebuild/core/exclusion-source.mjs`, wired into `publishRasterAnalysis` before scientific routing. Five mandatory class presence+coverage rasters must agree cell-for-cell with the frozen mask; all five classes require full coverage. This does not authenticate remote source accuracy or spatial completeness.
+- Corrected an unsafe priority-flood assumption: internal unknown DEM holes must never act as drainage outlets. Disconnected valid islands now block, rather than create synthetic runoff pathways.
+- The latest branch remains unpromoted. This is *not* a validated 50-state or Southeast Asian scientific model. Production `pages-live` is unchanged.
