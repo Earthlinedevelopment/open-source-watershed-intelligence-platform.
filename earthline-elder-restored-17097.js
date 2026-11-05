@@ -414,8 +414,9 @@
   function propertyBounds17166(){
     try{
       const target=window.EARTHLINE_PROPERTY_TARGET_16201||null;
-      const lng=Number(target?.lng),lat=Number(target?.lat);
-      if(Number.isFinite(lng)&&Number.isFinite(lat)){
+      const hasTarget=target&&target.lng!==null&&target.lng!==undefined&&target.lng!==''&&target.lat!==null&&target.lat!==undefined&&target.lat!=='';
+      const lng=hasTarget?Number(target.lng):NaN,lat=hasTarget?Number(target.lat):NaN;
+      if(Number.isFinite(lng)&&Number.isFinite(lat)&&Math.abs(lng)<=180&&Math.abs(lat)<=90){
         const areaM2=20*4046.8564224,wM=Math.sqrt(areaM2*1.15),hM=areaM2/wM;
         const dLat=hM/(2*111320),dLng=wM/(2*111320*Math.max(.05,Math.cos(lat*Math.PI/180)));
         return [lng-dLng,lat-dLat,lng+dLng,lat+dLat];
@@ -436,7 +437,9 @@
   function propertyRunIdentity17166(b){
     const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
     const d=window.EARTHLINE_PROPERTY_DECLARATION_16169||null;
-    const lng=Number(t?.lng??d?.center?.lng),lat=Number(t?.lat??d?.center?.lat);
+    const rawLng=t?.lng??d?.center?.lng,rawLat=t?.lat??d?.center?.lat;
+    const lng=rawLng===null||rawLng===undefined||rawLng===''?NaN:Number(rawLng);
+    const lat=rawLat===null||rawLat===undefined||rawLat===''?NaN:Number(rawLat);
     return [
       Number.isFinite(lng)?lng.toFixed(6):'',
       Number.isFinite(lat)?lat.toFixed(6):'',
