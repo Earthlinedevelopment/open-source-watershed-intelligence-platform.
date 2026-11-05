@@ -74,6 +74,17 @@ async function runTarget(target,index){
   const out=await page.evaluate(async()=>await window.earthlineDeclarePropertyAtCrosshair16169?.());
   await page.waitForFunction(()=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};return a.settled===true&&String(document.documentElement.dataset.earthlinePropertyRunState||'')!=='running';},null,{timeout:45000,polling:120});
   await page.waitForTimeout(900);
+  const elderEarly=await page.evaluate(()=>window.EARTHLINE_ELDER_TREE_LAST_17097||null);
+  let elderWait='settled';
+  try{
+    await page.waitForFunction(target=>{
+      const e=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+      return ['committed','failed'].includes(String(e?.state||''))&&
+        String(e?.propertyRunIdentity||'').startsWith(target.lng.toFixed(6)+'|'+target.lat.toFixed(6)+'|');
+    },target,{timeout:30000,polling:150});
+  }catch(err){elderWait=String(err?.message||err).slice(0,140)}
+  const elderLate=await page.evaluate(()=>window.EARTHLINE_ELDER_TREE_LAST_17097||null);
+  console.log('M119_ELDER_COLD_RESULT',JSON.stringify({target:target.name,early:elderEarly,late:elderLate,elderWait}));
   const snap=await page.evaluate(target=>{
     const md=(typeof M!=='undefined'&&M)||window.M||null;
     const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
