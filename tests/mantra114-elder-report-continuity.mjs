@@ -6,6 +6,10 @@ const source=readFileSync('earthline-elder-restored-17097.js','utf8');
 const html=readFileSync('index.html','utf8');
 new vm.Script(source,{filename:'earthline-elder-restored-17097.js'});
 assert.ok(html.includes('<script src="earthline-elder-restored-17097.js" defer></script>'),'approved Elder component must be loaded by production HTML');
+const mapReportSource=html.slice(html.indexOf('function mapSvg(d,small=false)'),html.indexOf('function gradeSummary()'));
+assert.ok(mapReportSource.includes('dpath=path(r.f)'),'report graphics must use vetted swale vertices, not regenerate curved paths');
+assert.ok(mapReportSource.includes('showVermontReference'),'regional report should suppress false Vermont references elsewhere');
+assert.ok(mapReportSource.includes('(showVermontReference?towns:[])'),'Vermont-only labels may not appear for other locations');
 assert.ok(html.includes("\${window.EARTHLINE_ELDER_TREES_V1_17097?.reportHtml?.(data.d)||''}"),'one frozen report HTML must include current-run Elder evidence in print, tab and download');
 
 const feature={type:'Feature',geometry:{type:'Point',coordinates:[-111.93066,34.21568]},properties:{record_class:'ELDER_TREE_CANDIDATE',source_name:'official test evidence'}};
