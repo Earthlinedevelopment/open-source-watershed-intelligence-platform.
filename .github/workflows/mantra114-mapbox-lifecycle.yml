@@ -1,0 +1,29 @@
+name: Mantra 114 Mapbox lifecycle regression
+on:
+  push:
+    branches: [mantra114-mapbox-lifecycle-repair]
+  pull_request:
+    branches: [pages-live]
+    paths:
+      - index.html
+      - tests/mantra114-mapbox-idempotence.mjs
+      - .github/workflows/mantra114-mapbox-lifecycle.yml
+permissions:
+  contents: read
+jobs:
+  state-idempotence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify unchanged source/style writes and JavaScript syntax
+        run: |
+          node tests/mantra114-mapbox-idempotence.mjs
+          node tests/mantra102-no-spline-swales.mjs
+      - name: Check exact candidate version
+        run: |
+          git rev-parse HEAD
+          sha256sum index.html
