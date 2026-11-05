@@ -63,8 +63,10 @@ export function deriveTerrainFlow(grid,{pitRaiseM=0.001}={}){
     if(!validity[i]){seen[i]=1;continue;}
     covered++;
     const edge=x===0||y===0||x===w-1||y===h-1;
-    const hole=!edge&&neighbors.some(([dx,dy])=>!validity[idx(x+dx,y+dy,w)]);
-    if(edge||hole)seed(i);
+    // An internal DEM no-data hole is NOT a hydrologically proven outlet.
+    // Only independently established tile-edge outlets seed priority flood.
+    // A valid island unreachable from the raster edge fails closed below.
+    if(edge)seed(i);
   }
   if(!covered)return {status:'blocked',errors:['DEM_NO_VALID_CELLS']};
   let visited=0;
