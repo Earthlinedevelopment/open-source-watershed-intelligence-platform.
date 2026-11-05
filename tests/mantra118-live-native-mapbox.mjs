@@ -10,6 +10,11 @@ async function checkMap(page,kind){
     const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
     return !!(m&&m.getCanvas?.()&&m.getCenter?.());
   },null,{timeout:60000,polling:300});
+  await page.waitForFunction(minWidth=>{
+    const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+    const rect=m?.getCanvas?.()?.getBoundingClientRect();
+    return !!(rect&&rect.width>minWidth&&rect.height>300);
+  },kind==='desktop'?300:200,{timeout:45000,polling:250});
   const result=await page.evaluate(()=>{
     const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
     return {
