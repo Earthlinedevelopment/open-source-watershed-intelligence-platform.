@@ -15,8 +15,10 @@ jobs:
           node-version: '22'
       - name: Confirm live publication matches repository baseline
         run: node tests/mantra119-deployment-parity.mjs
-      - name: Validate Elder script syntax
-        run: node --check earthline-elder-restored-17097.js
+      - name: Validate Elder script and candidate worker syntax
+        run: |
+          node --check earthline-elder-restored-17097.js
+          node --check earthline-elder-worker-17129.js
       - name: Validate Elder lifecycle and missing-coordinate guard
         run: node tests/mantra94-elder-owner.mjs
       - name: Preserve worm-free swale geometry
@@ -32,6 +34,7 @@ jobs:
       - name: Exercise Arizona Regional and repeated Property publication on public site
         env:
           EARTHLINE_URL: https://earthlinedevelopment.org/
+          EARTHLINE_ELDER_WORKER_LOCAL: '1'
         run: node tests/mantra89-arizona-controls.mjs
       - name: Check native Mapbox interaction ownership
         run: |
