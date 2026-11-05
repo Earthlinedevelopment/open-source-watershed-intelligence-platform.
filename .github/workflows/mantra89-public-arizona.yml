@@ -25,14 +25,14 @@ jobs:
           set -e
           for i in $(seq 1 18); do
             status=$(curl -Ls --max-time 20 -H 'Cache-Control: no-cache' -o /tmp/earthline_live.html -w '%{http_code}' "https://earthlinedevelopment.org/?m89_publish=${GITHUB_SHA}_${i}" || true)
-            if [ "$status" = "200" ] && grep -Fq 'rawLatM89' /tmp/earthline_live.html; then
-              echo 'Verified corrected state-boundary code on public origin'
+            if [ "$status" = "200" ] && cmp -s index.html /tmp/earthline_live.html; then
+              echo 'Verified exact published pages-live index on public origin'
               exit 0
             fi
             echo "Public origin has not served current fix yet (HTTP $status, attempt $i)"
             sleep 10
           done
-          echo 'Public homepage did not serve corrected boundary owner'
+          echo 'Public homepage did not match the pages-live index'
           exit 1
       - name: Install Chromium
         run: |
