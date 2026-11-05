@@ -1,5 +1,5 @@
 import {chromium} from 'playwright';
-import {mkdirSync,writeFileSync} from 'node:fs';
+import {mkdirSync,writeFileSync,readFileSync} from 'node:fs';
 
 const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/candidate-mantra84/';
 const TARGETS=[
@@ -13,6 +13,13 @@ page.on('pageerror',e=>pageErrors.push(String(e)));
 page.on('console',m=>{if(m.type()==='error')pageErrors.push(m.text())});
 page.on('response',r=>{if(r.status()>=400)badResponses.push({status:r.status(),url:r.url()})});
 mkdirSync('artifacts/arizona-controls',{recursive:true});
+let candidateWorkerLoads=0;
+if(process.env.EARTHLINE_ELDER_WORKER_LOCAL==='1'){
+  await page.context().route('**/earthline-elder-worker-17129.js',route=>{
+    candidateWorkerLoads++;
+    return route.fulfill({status:200,contentType:'application/javascript',body:readFileSync('earthline-elder-worker-17129.js')});
+  });
+}
 
 await page.goto(URL+'?az_control='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
 await page.waitForSelector('#searchInput',{timeout:30000});
@@ -120,8 +127,8 @@ async function runTarget(target,index){
 const rows=[];
 for(let i=0;i<TARGETS.length;i++) rows.push(await runTarget(TARGETS[i],i));
 const replacementPass=rows.length===2&&rows[0].snap.publication?.runToken!==rows[1].snap.publication?.runToken&&Math.abs(Number(rows[1].snap.audit?.center?.lng)-TARGETS[1].lng)<1e-5;
-const report={at:new Date().toISOString(),url:URL,rows,replacementPass,pageErrors,badResponses,pass:rows.every(r=>r.pass)&&replacementPass};
+const report={at:new Date().toISOString(),url:URL,rows,replacementPass,pageErrors,badResponses,candidateWorkerLoads,pass:rows.every(r=>r.pass)&&replacementPass};
 writeFileSync('artifacts/arizona-controls/results.json',JSON.stringify(report,null,2));
-console.log('ARIZONA_CONTROL '+JSON.stringify({pass:report.pass,replacementPass,rows:rows.map(r=>({name:r.name,pass:r.pass,elapsedMs:r.elapsedMs,safeCount:r.snap.safeCount,elderCount:r.snap.elder?.featureCount||0,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
+console.log('ARIZONA_CONTROL '+JSON.stringify({pass:report.pass,replacementPass,candidateWorkerLoads,rows:rows.map(r=>({name:r.name,pass:r.pass,elapsedMs:r.elapsedMs,safeCount:r.snap.safeCount,elderCount:r.snap.elder?.featureCount||0,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
 await browser.close();
 if(!report.pass)process.exitCode=1;
