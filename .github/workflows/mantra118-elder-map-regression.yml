@@ -1,0 +1,33 @@
+name: Mantra 118 Elder and native navigation regression
+on:
+  push:
+    branches:
+      - repair/mantra-118-elder-null-coordinate-guard
+  workflow_dispatch:
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate Elder script syntax
+        run: node --check earthline-elder-restored-17097.js
+      - name: Validate Elder lifecycle and missing-coordinate guard
+        run: node tests/mantra94-elder-owner.mjs
+      - name: Preserve worm-free swale geometry
+        run: node tests/mantra102-no-spline-swales.mjs
+      - name: Check native Mapbox interaction ownership
+        run: |
+          node - <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const s=fs.readFileSync('index.html','utf8');
+          for(const method of ['dragPan.enable()','scrollZoom.enable()','doubleClickZoom.enable()','touchZoomRotate.enable()','touchZoomRotate.disableRotation()','boxZoom.enable()']){
+            assert.ok(s.includes(method),'Missing native Mapbox interaction: '+method);
+          }
+          assert.ok(s.includes('new mapboxgl.NavigationControl('),'Native zoom button control must remain');
+          assert.ok(s.includes('earthlineSwalePolylineM102(pts)'),'Must preserve accepted M102 geometry');
+          console.log('M118_NATIVE_MAPBOX_INTERACTION_STATIC_PASS');
+          NODE
