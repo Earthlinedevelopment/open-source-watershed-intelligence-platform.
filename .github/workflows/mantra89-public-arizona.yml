@@ -4,6 +4,7 @@ on:
     branches: [pages-live]
     paths:
       - index.html
+      - earthline-elder-worker-17129.js
       - tests/mantra89-arizona-controls.mjs
       - .github/workflows/mantra89-public-arizona.yml
   workflow_dispatch:
@@ -20,20 +21,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Wait for published hotfix HTML
+      - name: Wait for published HTML and Elder worker parity
         run: |
           set -e
           for i in $(seq 1 18); do
             status=$(curl -Ls --max-time 20 -H 'Cache-Control: no-cache' -o /tmp/earthline_live.html -w '%{http_code}' "https://earthlinedevelopment.org/?m89_publish=${GITHUB_SHA}_${i}" || true)
-            if [ "$status" = "200" ] && cmp -s index.html /tmp/earthline_live.html; then
-              echo 'Verified exact published pages-live index on public origin'
+            worker_status=$(curl -Ls --max-time 20 -H 'Cache-Control: no-cache' -o /tmp/earthline_worker.js -w '%{http_code}' "https://earthlinedevelopment.org/earthline-elder-worker-17129.js?m119_publish=${GITHUB_SHA}_${i}" || true)
+            if [ "$status" = "200" ] && cmp -s index.html /tmp/earthline_live.html && [ "$worker_status" = "200" ] && cmp -s earthline-elder-worker-17129.js /tmp/earthline_worker.js; then
+              echo 'Verified exact public HTML and Elder worker publication'
               exit 0
             fi
             echo "Public origin has not served current fix yet (HTTP $status, attempt $i)"
             sleep 10
           done
-          echo 'Public homepage did not match the pages-live index'
+          echo 'Public homepage or Elder worker did not match pages-live'
           exit 1
+      - name: Validate single-flight Elder worker syntax
+        run: node --check earthline-elder-worker-17129.js
       - name: Install Chromium
         run: |
           npm install --no-save playwright
