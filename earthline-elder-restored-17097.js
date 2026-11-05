@@ -685,7 +685,7 @@
     document.addEventListener('click',click,false);
     window.addEventListener('hashchange',hash,false);
     document.addEventListener('earthline:analysis-complete',()=>{wrapCorridor();const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;const tier=String(d?.tier||d?.mode||document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();if(tier==='property')void startProperty17166();else void refresh();},{passive:true});
-    prewarmDynamicWorker();
+    /* M114: do not load the heavy optional CHM/Pyodide worker on every Regional page view; Property requests and explicit corridor prefetch start it on demand. */
     load().then(()=>{if(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970)refresh()}).catch(()=>{});
     if(location.hash==='#swales-explained')howParagraph();
     window.EARTHLINE_ELDER_TREES_V1_17097={
