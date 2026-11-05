@@ -7,9 +7,13 @@ const W=30,H=30,N=W*H;
 function grid(){
   const demMeters=new Float64Array(N);
   for(let y=0;y<H;y++)for(let x=0;x<W;x++)demMeters[y*W+x]=100-y*0.02;
+  const exclusionLayers=Object.fromEntries(
+    ['roads','buildings','driveways','mappedWater','protectedLand'].map(cls=>
+      [cls,{presence:new Uint8Array(N),known:new Uint8Array(N).fill(1)}]));
   return {width:W,height:H,cellSizeM:1,originX:0,originY:0,
     metricCrs:'LOCAL_TEST_METRES',gridId:'test-tile-1',maskFingerprint:'test-mask-1',
-    demMeters,validity:new Uint8Array(N).fill(1),noBuild:new Uint8Array(N)};
+    demMeters,validity:new Uint8Array(N).fill(1),noBuild:new Uint8Array(N),
+    exclusionLayers};
 }
 const source=(dataset,coverageId)=>({status:'verified',dataset,version:'synthetic-v1',coverageId});
 function setup(){
@@ -21,7 +25,7 @@ function setup(){
       hydrography:source('synthetic-hydrography',g.gridId),
       landCover:source('synthetic-land',g.gridId),
       exclusions:{...source('synthetic-mask',g.gridId),fingerprint:g.maskFingerprint,
-        classes:{roads:'verified',buildings:'verified',driveways:'verified',mappedWater:'verified'}}},
+        classes:{roads:'verified',buildings:'verified',driveways:'verified',mappedWater:'verified',protectedLand:'verified'}}},
     groundwater:{status:'unavailable',evidence:[]},
     swales:[{id:'corridor-1',coordinates:[[-72,44],[-71.999,44]],
       centerlineM:[[8.5,15.5],[21.5,15.5]],halfWidthM:0.6}]
@@ -49,6 +53,7 @@ test('end-to-end DEM D8 + actual raster footprint audit + immutable publication'
 test('no-build intersection invalidates entire analysis instead of hiding one swale',()=>{
   const {owner,token,inputs}=setup();
   inputs.grid.noBuild[14*W+14]=1;
+  inputs.grid.exclusionLayers.buildings.presence[14*W+14]=1;
   const r=publishRasterAnalysis(owner,token,inputs);
   assert.equal(r.status,'blocked');
   assert.equal(owner.snapshot().publication,null);
@@ -83,4 +88,20 @@ test('explicit scientific failure blocks further same-run publication',()=>{
   inputs.runoff.depthM=0.01;
   assert.deepEqual(publishRasterAnalysis(owner,token,inputs),
     {accepted:false,status:'settled'});
+});
+
+test('an unsupported frozen no-build mask or missing protected-land coverage blocks before hydrology',()=>{
+  const a=setup();
+  a.inputs.grid.noBuild[14*W+14]=1;
+  const result=publishRasterAnalysis(a.owner,a.token,a.inputs);
+  assert.equal(result.status,'blocked');
+  assert.deepEqual(a.owner.snapshot().errors,['EXCLUSION_FROZEN_MASK_NOT_CLASS_UNION']);
+  assert.equal(a.owner.snapshot().publication,null);
+
+  const b=setup();
+  b.inputs.grid.exclusionLayers.protectedLand.known[14*W+14]=0;
+  const result2=publishRasterAnalysis(b.owner,b.token,b.inputs);
+  assert.equal(result2.status,'blocked');
+  assert.deepEqual(b.owner.snapshot().errors,['EXCLUSION_CLASS_COVERAGE_GAP']);
+  assert.equal(b.owner.snapshot().publication,null);
 });
