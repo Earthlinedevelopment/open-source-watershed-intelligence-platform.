@@ -19,6 +19,12 @@ jobs:
         run: node tests/mantra94-elder-owner.mjs
       - name: Preserve worm-free swale geometry
         run: node tests/mantra102-no-spline-swales.mjs
+      - name: Install browser for real user navigation test
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Run live desktop and mobile navigation smoke
+        run: node tests/mantra118-live-native-mapbox.mjs
       - name: Check native Mapbox interaction ownership
         run: |
           node - <<'NODE'
