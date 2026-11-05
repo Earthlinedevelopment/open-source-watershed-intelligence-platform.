@@ -32,3 +32,15 @@ These are **synthetic contract tests**, not independent verification of DEM, flo
 ## Promotion
 
 No merge or deployment until scientific fixtures, real-world source adapters, browser lifecycle, desktop/mobile visuals, performance, international coverage and exact production checksum gates pass. See docs/EARTHLINE-M116-REBUILD-CONTRACT.md.
+
+## Implemented on the isolated branch
+
+- Pure deterministic priority-flood D8 and runoff model adapter: `core/terrain-flow.mjs`
+- Full metric raster slope, no-build and crossing verification: `core/raster-audit.mjs`
+- Exact geo/metric corridor equivalence check (caller supplies a trusted CRS transform)
+- Verified source/DEM/flow certification entrypoint: `core/science-runner.mjs`
+- Single-run lifecycle owner: `core/run-owner.mjs`
+- Mapbox-only publication adapter requiring injected **approved** styles: `core/map-publication.mjs`
+- GitHub CI runs `node --test rebuild/tests/*.test.mjs` covering 48 synthetic contract/integration tests.
+
+All 48 are synthetic fixtures; **zero real regions certified**. Existing production map and old baseline remain unchanged. Next: real source adapter, science fixtures and browser/cross-region verification. The audited legacy code discrepancies are recorded at `docs/EARTHLINE-M116-LEGACY-SCIENCE-AUDIT.md`.
