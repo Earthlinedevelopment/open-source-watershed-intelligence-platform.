@@ -8,7 +8,7 @@ async function checkMap(page,kind){
   await page.goto(origin+'?m118_native='+kind+'_'+Date.now(),{waitUntil:'domcontentloaded',timeout:70000});
   await page.waitForFunction(()=>{
     const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
-    return !!(m&&m.getCanvas?.()&&m.loaded?.());
+    return !!(m&&m.getCanvas?.()&&m.getCenter?.());
   },null,{timeout:60000,polling:300});
   const result=await page.evaluate(()=>{
     const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
@@ -17,7 +17,7 @@ async function checkMap(page,kind){
       gestures:Object.fromEntries(['dragPan','scrollZoom','doubleClickZoom','touchZoomRotate','boxZoom'].map(k=>[k,!!m[k]?.isEnabled?.()])),
       zoomButtons:document.querySelectorAll('.mapboxgl-ctrl-zoom-in,.mapboxgl-ctrl-zoom-out').length,
       mapboxCanvas:m.getCanvas().getBoundingClientRect().toJSON(),
-      navigationAudit:window.earthlineNavigationAudit15784?.()||null
+      mapLoaded:m.loaded?.(),navigationAudit:window.earthlineNavigationAudit15784?.()||null
     };
   });
   for(const [name,on] of Object.entries(result.gestures)) assert.ok(on,kind+' '+name+' disabled');
@@ -48,6 +48,8 @@ try {
 
   const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
   const mobile=await context.newPage();
+  mobile.on('pageerror',e=>console.error('M118_MOBILE_PAGE_ERROR',String(e)));
+  mobile.on('console',m=>{if(m.type()==='error')console.error('M118_MOBILE_CONSOLE',m.text().slice(0,350))});
   const mm=await checkMap(mobile,'mobile');
   assert.ok(mm.mapboxCanvas.width>200,'Mobile map not usable');
   const cdp=await context.newCDPSession(mobile);
