@@ -32,6 +32,7 @@ export function createAnalysisOwner() {
   }
   function publish(token, candidate) {
     if (!isCurrent(token)) return {accepted: false, status: 'stale'};
+    if (active.status !== 'running') return {accepted: false, status: 'settled'};
     if (candidate?.runId !== token.id || candidate?.tier !== token.tier) {
       active.status = 'blocked';
       active.publication = null;
