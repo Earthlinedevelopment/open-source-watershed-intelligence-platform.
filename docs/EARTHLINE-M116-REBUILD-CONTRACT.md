@@ -70,3 +70,9 @@ Branch: mantra116-sustainable-rebuild. Production branch pages-live is preserved
 - The standalone publication gate now requires protected land in addition to roads, buildings, driveways and mapped water. All 56 synthetic core tests passed in run 41970669319.
 
 Production promotion remains **blocked** until source-backed geographical and real browser Regional→Property→Regional→Property acceptance. Never equate a successful static deployment with certified science.
+
+## M116 real-browser results (public site)
+
+- Read-only desktop/mobile browser test **passed both** profiles: desktop 1366×900 and mobile 390×844, public HTTP 200, search and Run Analysis controls present, Mapbox canvas initialized, zero uncaught page errors. GitHub run 41971134986. This tests startup only.
+- Arizona full scientific browser diagnostic (run 41971363513) **did not pass its complete acceptance gate**. Regional successfully produced 30 swales and 136 water paths in 4,150 ms, with 27 visible overlay swale lines and no page errors; boundary center was inside statewide extent. Two Property runs reported 74 and 72 safe corridors, visible safe property layers, and distinct run identities; both reported zero Elder tree features. The test's final `pass` was false and requires further attribution to `centerPass/safePass/elderPass/tierPass` before any repair. These counts are pipeline observations, **not verified safe ground-truth prescriptions**.
+- **No promotion** of M116 to `pages-live`. This diagnostic is more probative than obsolete `rawLatM89` marker check, but no region has yet passed independent ground-truth validation.
