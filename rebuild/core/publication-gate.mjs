@@ -1,7 +1,7 @@
 import {validatePolyline} from './geometry.mjs';
 
 const REQUIRED_INPUTS = Object.freeze(['terrain', 'hydrography', 'landCover']);
-const EXCLUSION_CLASSES = Object.freeze(['roads', 'buildings', 'driveways', 'mappedWater']);
+import {REQUIRED_EXCLUSION_CLASSES} from './exclusion-source.mjs';
 const text = s => typeof s === 'string' && s.trim().length > 0;
 const isObject = x => x !== null && typeof x === 'object' && !Array.isArray(x);
 const verifiedInput = x => isObject(x) && x.status === 'verified' &&
@@ -49,7 +49,7 @@ export function validatePublication(candidate) {
     if (!verifiedInput(sources?.[name])) errors.push(name.toUpperCase() + '_NOT_VERIFIED');
   const exclusions = sources?.exclusions;
   if (!verifiedInput(exclusions) || !text(exclusions?.fingerprint) ||
-      !EXCLUSION_CLASSES.every(name => exclusions?.classes?.[name] === 'verified'))
+      !REQUIRED_EXCLUSION_CLASSES.every(name => exclusions?.classes?.[name] === 'verified'))
     errors.push('EXCLUSION_MASK_SOURCES_NOT_VERIFIED');
   const swales = candidate.swales;
   if (!Array.isArray(swales)) errors.push('SWALES_INVALID');
