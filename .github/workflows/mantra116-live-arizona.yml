@@ -1,0 +1,30 @@
+name: Mantra 116 live Arizona Regional and Property diagnostic
+on:
+  push:
+    branches: [mantra116-sustainable-rebuild]
+    paths:
+      - '.github/workflows/mantra116-live-arizona.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  arizona:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      EARTHLINE_URL: https://earthlinedevelopment.org/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Live Arizona Regional and two independent Property runs
+        run: node tests/mantra89-arizona-controls.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra116-arizona-science-diagnostic
+          path: artifacts/arizona-controls/
+          retention-days: 14
