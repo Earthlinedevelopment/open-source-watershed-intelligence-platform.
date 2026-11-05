@@ -78,10 +78,15 @@ try {
   // Close it using the real user-facing rail control before attempting a map pinch.
   await mobile.locator('#earthlineRailSearch16188').click();
   await mobile.waitForFunction(()=>!document.documentElement.classList.contains('earthline-panel-open-16188'),null,{timeout:5000});
+  // The panel remains hit-testable during its 180 ms translate-out transition.
+  // Wait for it to become physically clear of BOTH touch-start positions.
+  await mobile.waitForTimeout(300);
   const cdp=await context.newCDPSession(mobile);
   const mx=mm.mapboxCanvas.x+mm.mapboxCanvas.width*.55;
   const my=mm.mapboxCanvas.y+mm.mapboxCanvas.height*.55;
   const p=(x,y,id)=>({x:Math.round(x),y:Math.round(y),id});
+  const hit=await mobile.evaluate(([x1,x2,y])=>[x1,x2].map(x=>document.elementFromPoint(x,y)?.closest('.mapboxgl-canvas-container')!=null),[mx-30,mx+30,my]);
+  assert.ok(hit.every(Boolean),'Pinch start positions are obstructed; cannot test Mapbox gestures');
   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[p(mx-30,my,1),p(mx+30,my,2)]});
   for(let step=1;step<=6;step++){
     await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[p(mx-30-step*14,my,1),p(mx+30+step*14,my,2)]});
