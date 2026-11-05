@@ -1,0 +1,31 @@
+name: Mantra 114 pinned report and Elder export
+on:
+  pull_request:
+    branches: [pages-live]
+    paths:
+      - index.html
+      - earthline-elder-restored-17097.js
+      - tests/mantra114-report-browser.mjs
+      - .github/workflows/mantra114-report-browser.yml
+permissions:
+  contents: read
+jobs:
+  report-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Open real Regional report and verify same-run Elder export
+        run: node tests/mantra114-report-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra114-report-evidence
+          path: artifacts/mantra114-report*
+          retention-days: 14
