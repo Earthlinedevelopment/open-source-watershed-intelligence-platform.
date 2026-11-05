@@ -75,6 +75,10 @@ test('invalid or unspecified metric grid cannot silently validate',()=>{
   const g=grid();delete g.metricCrs;
   assert.equal(auditMetricCorridor(args(g)).errors[0],'INVALID_OR_INCOMPLETE_METRIC_GRID');
 });
+const projectSynthetic=([lon,lat],crs)=>{
+  assert.equal(crs,'LOCAL_TEST_METRES');
+  return [8.5+(lon+72)*13000,15.5+(lat-44)*1000];
+};
 test('supplied green checks cannot override actual raster audit',()=>{
   const candidate={runId:'run-1',tier:'property',verifiedZeroOpportunity:false,
     sources:{
@@ -92,12 +96,27 @@ test('supplied green checks cannot override actual raster audit',()=>{
       exclusionAudit:{status:'verified',coverage:'full-corridor-footprint',checkedCells:99,
         unsafeIntersections:0,maskFingerprint:'synthetic-mask-v1',corridorId:'one'}}]};
   const g=grid();g.noBuild[14*W+14]=1;
-  const verdict=certifyRasterCandidate(candidate,{grid:g,flowSegments:flow(),flowModelId:'synthetic-flow-model'});
+  const verdict=certifyRasterCandidate(candidate,{grid:g,flowSegments:flow(),flowModelId:'synthetic-flow-model',projectLonLat:projectSynthetic});
   assert.equal(verdict.status,'blocked');
   assert.equal(verdict.errors[0],'one:CORRIDOR_INTERSECTS_NO_BUILD');
   g.noBuild[14*W+14]=0;
-  const good=certifyRasterCandidate(candidate,{grid:g,flowSegments:flow(),flowModelId:'synthetic-flow-model'});
+  const good=certifyRasterCandidate(candidate,{grid:g,flowSegments:flow(),flowModelId:'synthetic-flow-model',projectLonLat:projectSynthetic});
   assert.equal(good.status,'audited');
   assert.equal(good.candidate.swales[0].flowAudit.crossingCount,1);
   assert.equal(validatePublication(good.candidate).status,'verified');
+});
+
+test('unregistered CRS projection blocks publication even if raster audits are safe',()=>{
+  const c={sources:{exclusions:{fingerprint:'synthetic-mask-v1'}},swales:[]};
+  assert.equal(certifyRasterCandidate(c,{grid:grid(),flowSegments:flow(),flowModelId:'synthetic-flow-model'}).errors[0],
+    'GEOREFERENCING_TRANSFORM_MISSING');
+});
+test('a safe audited corridor cannot publish a different mapped swale',()=>{
+  const c={sources:{exclusions:{fingerprint:'synthetic-mask-v1'}},
+    swales:[{id:'wrong',coordinates:[[-71,44],[-71.999,44]],
+      centerlineM,halfWidthM:0.6}]};
+  const r=certifyRasterCandidate(c,{grid:grid(),flowSegments:flow(),
+    flowModelId:'synthetic-flow-model',projectLonLat:projectSynthetic});
+  assert.equal(r.status,'blocked');
+  assert.equal(r.errors[0],'wrong:GEOGRAPHIC_METRIC_PATH_MISMATCH');
 });
