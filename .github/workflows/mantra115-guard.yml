@@ -1,0 +1,21 @@
+name: Mantra 115 candidate geometry and browser acceptance
+on:
+  pull_request:
+    branches: [pages-live]
+    paths:
+      - 'index.html'
+      - 'tests/mantra115-rendering-and-geometry.mjs'
+      - '.github/workflows/mantra115-guard.yml'
+permissions:
+  contents: read
+jobs:
+  geometry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tests/mantra115-rendering-and-geometry.mjs
+      - run: node tests/mantra102-no-spline-swales.mjs

@@ -15452,6 +15452,35 @@ var prescribeSwales;
     const keys=new Set(target.map(featureKey));
     for(const f of (features||[])){const k=featureKey(f);if(keys.has(k))continue;keys.add(k);target.push(f);}
   }
+  /* M115: reject looped, folded and self-crossing Regional lines. */
+  function earthlineRegionalShapeGate115(pts){
+    if(!Array.isArray(pts)||pts.length<2)return false;
+    const p=[];
+    for(const q of pts){if(!Array.isArray(q)||!Number.isFinite(q[0])||!Number.isFinite(q[1]))return false;if(!p.length||Math.hypot(q[0]-p.at(-1)[0],q[1]-p.at(-1)[1])>1e-7)p.push(q)}
+    if(p.length<2)return false;
+    let length=0;const edges=[];
+    for(let i=1;i<p.length;i++){const a=p[i-1],b=p[i],d=Math.hypot(b[0]-a[0],b[1]-a[1]);length+=d;edges.push([a,b])}
+    const chord=Math.hypot(p.at(-1)[0]-p[0][0],p.at(-1)[1]-p[0][1]);
+    if(length>1e-6&&chord/length<.72)return false;
+    for(let i=2;i<p.length;i++){
+      const a=[p[i-1][0]-p[i-2][0],p[i-1][1]-p[i-2][1]],
+            b=[p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]],
+            mag=Math.hypot(...a)*Math.hypot(...b);
+      if(mag>1e-10&&(a[0]*b[0]+a[1]*b[1])/mag<-.25)return false;
+    }
+    const cross=(a,b,c)=>(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
+    for(let i=0;i<edges.length;i++)for(let j=i+2;j<edges.length;j++){
+      const [a,b]=edges[i],[c,d]=edges[j];
+      if(Math.max(a[0],b[0])<Math.min(c[0],d[0])||
+         Math.max(c[0],d[0])<Math.min(a[0],b[0])||
+         Math.max(a[1],b[1])<Math.min(c[1],d[1])||
+         Math.max(c[1],d[1])<Math.min(a[1],b[1]))continue;
+      if(cross(a,b,c)*cross(a,b,d)< -1e-9&&cross(c,d,a)*cross(c,d,b)< -1e-9)return false;
+    }
+    return true;
+  }
+  window.earthlineRegionalShapeGate115=earthlineRegionalShapeGate115;
+
   function regionalOpportunitySwales15773(tile,cellM,tileIndex,opportunity){
     const features=[],raw=[],candidates=[];
     const maxAcc=Math.max(2,Number(M.maxAcc||2));
@@ -15462,7 +15491,7 @@ var prescribeSwales;
       if(!M.inP[i]||M.pond[i]||(M.noBuildMask&&M.noBuildMask[i]))continue;
       if((M.acc[i]||0)>=channelThreshold)continue;
       const sp=slopePct(x,y);
-      if(sp<2.2||sp>6.5)continue;
+      if(!Number.isFinite(sp)||sp<0||sp>4)continue;
       const slopeFit=Math.max(0,1-Math.abs(sp-3.5)/3.0);
       const runoff=Math.log1p(M.acc[i]||1)/Math.log1p(maxAcc);
       const open=(M.canopyMask&&M.canopyMask[i])?0.25:1;
@@ -15476,10 +15505,10 @@ var prescribeSwales;
       if(features.length>=4)break;
       if(acceptedLevels.some(L=>Math.abs(L-c.L)<Math.max(.25,cellM*.018)))continue;
 
-      const pts=traceLevelContour(c.x,c.y,c.L,12,Math.max(.12,cellM*.02));
+      const pts=traceLevelContour(c.x,c.y,c.L,4,Math.max(.12,cellM*.02));
       if(!pts||pts.length<4)continue;
 
-      const split=earthlineSplitUsableSegments(pts,12);
+      const split=earthlineSplitUsableSegments(pts,4);
       let bestSeg=null,bestLen=0;
       for(const seg of (split||[])){
         const len=earthlineSegmentLengthM(seg);
@@ -15487,11 +15516,11 @@ var prescribeSwales;
       }
       if(!bestSeg||bestLen<Math.max(35,cellM*3))continue;
 
-      const display=earthlineNaturalContourDisplay(bestSeg);
-      const safeParts=earthlineFinalSafeSegments15771(display,12);
+      const display=earthlineCleanPath(bestSeg);
+      const safeParts=earthlineFinalSafeSegments15771(display,4);
       for(const safe of safeParts){
         const lenM=earthlinePathLengthM(safe);
-        if(!safe||safe.length<3||lenM<Math.max(30,cellM*2.5))continue;
+        if(!safe||safe.length<3||lenM<Math.max(30,cellM*2.5)||!earthlineRegionalShapeGate115(safe))continue;
         const coords=safe.map(p=>gridToLngLat(tile,cellM,p[0],p[1]));
         const id="O"+tileIndex+"-"+(features.length+1);
         const score=Math.round(100*(.65*c.score+.35*Math.min(1,Number(opportunity&&opportunity.score||0)/100)));
@@ -15520,15 +15549,15 @@ var prescribeSwales;
   function swaleDataForTile(tile,cellM,tileIndex){
     const features=[],raw=[];
     for(const s of (M.swales||[])){
-      const segs=earthlineSplitUsableSegments(s.pts,33);
+      const segs=earthlineSplitUsableSegments(s.pts,4);
       for(const seg of (segs||[])){
         if(!seg||seg.length<2||earthlineSegmentLengthM(seg)<18)continue;
-        const display=earthlineNaturalContourDisplay(seg);
+        const display=earthlineCleanPath(seg);
         const levelH=Number(s.levelH!=null?s.levelH:levelOfSwale(s));
         const absLevelM=Number((M.loc&&M.loc.elevM)||0)+levelH;
         const bandKey=String(tileIndex)+"|"+String(s.bandKey!=null?s.bandKey:Math.round(levelH*10));
-        for(const safeDisplay of earthlineFinalSafeSegments15771(display,33)){
-          if(!safeDisplay||safeDisplay.length<2)continue;
+        for(const safeDisplay of earthlineFinalSafeSegments15771(display,4)){
+          if(!safeDisplay||safeDisplay.length<2||!earthlineRegionalShapeGate115(safeDisplay))continue;
           const coords=safeDisplay.map(p=>gridToLngLat(tile,cellM,p[0],p[1]));
           features.push({type:"Feature",properties:{
             id:s.id||"",tile:tileIndex,bandKey,score:Number(s.score||0),
@@ -29926,17 +29955,30 @@ body { overflow-x:hidden!important; }
     function sampleSegment(coords,center,relaxed){
       const half=Math.max(10,Math.min(28,Math.floor(coords.length*.12))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);
       const raw=coords.slice(start,end);if(raw.length<10)return null;
-      const segment=chaikin(raw,2,false);if(segment.length<10||lineLengthPixels(hy,segment)<10)return null;
+      /* M115: no post-contour smoothing of a proposed swale. */
+       const segment=cleanLine(raw);if(segment.length<10||lineLengthPixels(hy,segment)<10)return null;
       const gridSegment101=segment.map(ll=>{const g=llGrid(hy,ll);return [g.x,g.y];});
       if(!earthlineWormGeometryPassRegional101(gridSegment101))return null;
-      const stride=Math.max(1,Math.floor(segment.length/22));let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null;
-      for(let k=1;k<segment.length-1;k+=stride){
-        const g=llGrid(hy,segment[k]),x=Math.max(1,Math.min(hy.w-2,Math.round(g.x))),y=Math.max(1,Math.min(hy.h-2,Math.round(g.y))),i=y*hy.w+x;
-        const slope=hy.slope[i],acc=hy.acc[i],minSlope=relaxed?.05:.20,maxSlope=relaxed?18:13.5;
-        if(!Number.isFinite(slope)||slope<minSlope||slope>maxSlope||acc>=channel)continue;
-        valid++;sumSlope+=slope;sumAcc+=acc;maxAcc=Math.max(maxAcc,acc);if(!anchor)anchor={x,y};
-      }
-      if(valid<(relaxed?1:2)||!anchor)return null;
+      /* M115: every half-grid-cell is checked; one violation vetoes the line.
+          Relaxed candidate search cannot relax slope, land, or channel safety. */
+       const checked115=new Set();let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null;
+       for(let k=0;k<segment.length;k++){
+         const a=llGrid(hy,segment[k]),b=llGrid(hy,segment[Math.max(0,k-1)]),
+               steps=Math.max(1,Math.ceil(Math.hypot(a.x-b.x,a.y-b.y)*2));
+         for(let j=0;j<=steps;j++){
+           const t=j/steps,
+                 x=Math.max(1,Math.min(hy.w-2,Math.round(b.x+(a.x-b.x)*t))),
+                 y=Math.max(1,Math.min(hy.h-2,Math.round(b.y+(a.y-b.y)*t))),
+                 i=y*hy.w+x;
+           if(hy.validityMask16584&&!hy.validityMask16584[i])return null;
+           const slope=hy.slope[i],acc=hy.acc[i];
+           if(!Number.isFinite(slope)||slope<0||slope>4||!Number.isFinite(acc)||acc>=channel)return null;
+           if(checked115.has(i))continue;
+           checked115.add(i);valid++;sumSlope+=slope;sumAcc+=acc;maxAcc=Math.max(maxAcc,acc);
+           if(!anchor)anchor={x,y};
+         }
+       }
+       if(!valid||!anchor)return null;
       const meanSlope=sumSlope/valid,meanAcc=sumAcc/valid;
       const slopeScore=Math.max(0,1-Math.abs(meanSlope-3.4)/(relaxed?12:7.5));
       const flowScore=meanAcc<=accLow?.18:meanAcc<=accMid?.18+.70*(meanAcc-accLow)/Math.max(1,accMid-accLow):Math.max(.18,.88-.48*(meanAcc-accMid)/Math.max(1,accHigh-accMid));
@@ -33512,13 +33554,13 @@ body{display:block!important}
   function addPath(g,pts,attrs){if(pts.length<2)return null;/* MANTRA 102: preserve actual vetted swale vertices; no post-safety cubic spline overshoot. Elevation contours retain approved smoothing. */const isSwale=g&&g.getAttribute&&g.getAttribute('data-layer')==='swale-opportunities';const p=svgEl('path',Object.assign({d:isSwale?earthlineSwalePolylineM102(pts):spline(pts),fill:'none','vector-effect':'non-scaling-stroke'},attrs||{}));g.appendChild(p);return p;}
   /* EARTHLINE 16350 — SVG intentionally owns Regional contours + swales only.
      Native Mapbox flow casing/line/arrow are the sole Regional water owner and MUST NOT be hidden here. */
-  function hideNative(){const map=m();if(!map||!map.getLayer)return;for(const id of ['el-live-contour-line-15970','el-live-contour-label-15970','el-live-swale-halo-15970','el-live-swale-line-15970']){try{if(map.getLayer(id))map.setLayoutProperty(id,'visibility','none');}catch(_){}}}
+  function hideNative(){const map=m();if(!map||!map.getLayer)return;for(const id of ['el-live-contour-line-15970','el-live-contour-label-15970','el-live-swale-halo-15970','el-live-swale-line-15970']){try{if(map.getLayer(id)&&(map.getLayoutProperty(id,'visibility')||'visible')!=='none')map.setLayoutProperty(id,'visibility','none');}catch(_){}}}
   function nativeWater16350(){
     const map=m(),ids=['el-live-flow-casing-15970','el-live-flow-line-15970','el-live-flow-arrow-15970'];
     const layers={};let ready=!!map;
     for(const id of ids){
       let exists=false,visibility=null;
-      try{exists=!!(map&&map.getLayer&&map.getLayer(id));if(exists){map.setLayoutProperty(id,'visibility','visible');visibility=map.getLayoutProperty(id,'visibility')||'visible';}}catch(_){exists=false;}
+      try{exists=!!(map&&map.getLayer&&map.getLayer(id));if(exists){if((map.getLayoutProperty(id,'visibility')||'visible')!=='visible')map.setLayoutProperty(id,'visibility','visible');visibility=map.getLayoutProperty(id,'visibility')||'visible';}}catch(_){exists=false;}
       layers[id]={exists,visibility};ready=ready&&exists&&visibility!=='none';
     }
     return {owner:'native-mapbox',ready,layers};
@@ -33557,7 +33599,7 @@ body{display:block!important}
         addPath(sg,pts,{class:'earthline-swale-band-16168 earthline-swale-survey-16168',stroke:'rgba(235,244,229,.36)','stroke-width':'.85','stroke-linecap':'butt','stroke-linejoin':'round','stroke-dasharray':'1 12'});
         understory16174(sg,plantPts,-uphill,swales*83+rank*7,zoom);
         canopy16174(sg,plantPts,-uphill,swales*97+rank*13,zoom,grade);
-      }else{
+      }else if(sg.getAttribute('display')!=='none'){
         const casing=grade==='A'?15:grade==='B'?12:9,core=grade==='A'?9.2:grade==='B'?7.2:5.2;
         addPath(sg,pts,{stroke:'rgba(8,18,13,.96)','stroke-width':String(casing),'stroke-linecap':'round','stroke-linejoin':'round'});
         addPath(sg,pts,{class:'earthline-swale-core-16168','data-swale-index':String(swales),stroke:main,'stroke-width':String(core),'stroke-linecap':'round','stroke-linejoin':'round',filter:'url(#elGlow16020)'});
@@ -34303,9 +34345,11 @@ ${EARTHLINE_CORRECTIONS_REGISTRY_16513}
     const m=map();if(!m)return false;
     const root=document.documentElement;
     const analysisTier=String(root.dataset.earthlineAnalysisTier||'').toLowerCase();
-    const propertyActive=analysisTier==='property'||
+    const displayedTier115=String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||{}).tier||analysisTier).toLowerCase();
+    const propertyActive=analysisTier==='property'||displayedTier115==='property'||
       root.dataset.earthlinePropertyRunState==='running'||
       root.classList.contains('earthline-property-running-16233');
+    const regionalContextHidden115=propertyActive||analysisTier==='focus'||displayedTier115==='focus';
     const src=m.getSource?.('el-live-aquifer-15970');
     if(src&&src._data?.features?.length)aquiferCache=src._data;
 
@@ -34332,26 +34376,23 @@ ${EARTHLINE_CORRECTIONS_REGISTRY_16513}
         if(m.getPaintProperty(id,key)!==value)m.setPaintProperty(id,key,value);
       }catch(_){}
     };
-    if(propertyActive){
+    /* M115: focus/property cannot show Regional aquifer context. The zoom
+       handoff alone owns opacity. Do not restore cleared GeoJSON from a prior run. */
+    if(regionalContextHidden115){
       for(const id of ['el-live-aquifer-fill-15970','el-live-aquifer-line-15970','el-live-aquifer-label-15970'])
         visibility113(id,'none');
     }else{
-      if(src&&aquiferCache&&(!src._data||!src._data.features?.length)){
-        try{src.setData(aquiferCache)}catch(_){}
-      }
       for(const id of ['el-live-aquifer-fill-15970','el-live-aquifer-line-15970'])
         visibility113(id,'visible');
-      paint113('el-live-aquifer-fill-15970','fill-opacity',.40);
-      paint113('el-live-aquifer-line-15970','line-opacity',.94);
       visibility113('el-live-aquifer-label-15970','none');
     }
     for(const id of ['el-live-groundwater-layer-15970','el-live-grace-groundwater-layer-15970','el-live-aquifer-raster-layer-15970'])
       paint113(id,'raster-opacity',0);
     const legend=document.getElementById('earthlineAquiferLegend16070');
-    if(legend){legend.setAttribute('aria-label','Mapped groundwater context, regional only');legend.innerHTML='<span class="el-aquifer-shape" aria-hidden="true"></span><span>Mapped groundwater context · regional only</span>'}
+    if(legend){if(legend.getAttribute('aria-label')!=='Mapped groundwater context, regional only')legend.setAttribute('aria-label','Mapped groundwater context, regional only');const html='<span class="el-aquifer-shape" aria-hidden="true"></span><span>Mapped groundwater context · regional only</span>';if(legend.innerHTML!==html)legend.innerHTML=html}
     window.EARTHLINE_REGIONAL_AQUIFER_VISIBILITY_AUDIT_16374={
       build:'EARTHLINE 16374',analysisTier:analysisTier||null,propertyActive,
-      regionalLiveAquiferVisible:!propertyActive,
+      regionalLiveAquiferVisible:!regionalContextHidden115,
       cachedRegionalFeatures:Number(aquiferCache?.features?.length||0),
       at:new Date().toISOString()
     };
@@ -34663,7 +34704,7 @@ html[data-earthline-analysis-tier="focus"] #earthlineRegionalVectorOverlay16020 
     return pub&&currentToken&&String(pub.runToken||'')===currentToken&&Number.isFinite(Number(pub.zoom))
       ?Math.max(10,Number(pub.zoom)):10;
   }
-  function setLayerOpacity(id,property,value){const m=map();try{if(m?.getLayer?.(id))m.setPaintProperty(id,property,value)}catch(_){}}
+  function setLayerOpacity(id,property,value){const m=map();try{if(!m?.getLayer?.(id))return;const old=m.getPaintProperty(id,property);if(JSON.stringify(old)!==JSON.stringify(value))m.setPaintProperty(id,property,value)}catch(_){}}
   function applyHandoff(){
     const m=map();if(!m)return false;
     const z=Number(m.getZoom?.()||0),regional=isRegionalDisplayed(),p=prompt();
@@ -34757,8 +34798,8 @@ html[data-earthline-analysis-tier="focus"] #earthlineRegionalVectorOverlay16020 
   function displayed(){return window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null}
   function tier(){return String(displayed()?.tier||displayed()?.mode||'regional').toLowerCase()||'regional'}
   function safeLayer(spec,before){const m=map();if(!m||!m.getSource?.(spec.source))return false;try{if(!m.getLayer(spec.id))m.addLayer(spec,before);return true}catch(e){console.warn('[Earthline] 16166 layer',spec.id,e);return false}}
-  function visible(id,on){const m=map();try{if(m?.getLayer?.(id))m.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){}}
-  function setPaint(id,prop,value){const m=map();try{if(m?.getLayer?.(id))m.setPaintProperty(id,prop,value)}catch(_){}}
+  function visible(id,on){const m=map();try{if(!m?.getLayer?.(id))return;const next=on?'visible':'none';if((m.getLayoutProperty(id,'visibility')||'visible')!==next)m.setLayoutProperty(id,'visibility',next)}catch(_){}}
+  function setPaint(id,prop,value){const m=map();try{if(!m?.getLayer?.(id))return;const old=m.getPaintProperty(id,prop);if(JSON.stringify(old)!==JSON.stringify(value))m.setPaintProperty(id,prop,value)}catch(_){}}
   function ensureFocusLayers(){
     const m=map();if(!m?.getSource?.(SOURCE))return false;
     const before=m.getLayer?.('earthline-ranked-swale-label-15775')?'earthline-ranked-swale-label-15775':undefined;
@@ -34784,7 +34825,7 @@ html[data-earthline-analysis-tier="focus"] #earthlineRegionalVectorOverlay16020 
     for(const id of Object.values(FOCUS))visible(id,false);
     for(const id of Object.values(PROPERTY))visible(id,property);
     visible(LOCATION_HIT,!property);visible(LOCATION_LABEL,!property);
-    try{const m=map();if(!property&&m?.getLayer?.(LOCATION_HIT))m.moveLayer(LOCATION_HIT);if(!property&&m?.getLayer?.(LOCATION_LABEL))m.moveLayer(LOCATION_LABEL);}catch(_){}
+    try{const m=map();if(!property&&m?.getLayer?.(LOCATION_HIT)&&m?.getLayer?.(LOCATION_LABEL)){const ids=(m.getStyle()?.layers||[]).map(layer=>layer.id);if(ids[ids.length-2]!==LOCATION_HIT||ids[ids.length-1]!==LOCATION_LABEL){m.moveLayer(LOCATION_HIT);m.moveLayer(LOCATION_LABEL)}}}catch(_){}
     if(property){
       setPaint('earthline-living-swales-earth-15792','line-color','#7A5A3A');
       setPaint('earthline-living-swales-life-15792','line-offset',['interpolate',['linear'],['zoom'],14,-1.6,17,-2.8,20,-4.0]);
