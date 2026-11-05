@@ -1,0 +1,29 @@
+name: Mantra 116 read-only desktop and mobile browser smoke
+on:
+  push:
+    branches: [mantra116-sustainable-rebuild]
+    paths:
+      - 'rebuild/tests/live-browser-smoke.mjs'
+      - '.github/workflows/mantra116-live-browser.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Public desktop/mobile startup only, never scientific publication
+        run: node rebuild/tests/live-browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra116-readonly-browser-evidence
+          path: artifacts/mantra116-live-browser/
+          retention-days: 14
