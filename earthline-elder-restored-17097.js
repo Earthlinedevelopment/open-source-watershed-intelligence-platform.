@@ -8,7 +8,7 @@
   const MANIFEST='data/elder-trees/v2/manifest.json';
   const SOURCE='earthline-elder-trees-17097';
   const LAYER='earthline-elder-tree-points-17097';
-  const state={loaded:false,loading:null,manifest:null,all:[],active:[],lastSummary:null,dynamic:{worker:null,seq:0,pending:new Map(),key:'',result:null,promise:null,error:null,warmPromise:null,warmed:false,tileWarmKey:'',tileWarmPromise:null}};
+  const state={loaded:false,loading:null,manifest:null,all:[],active:[],lastSummary:null,mapPublishedSource:null,mapPublishedFingerprint:null,dynamic:{worker:null,seq:0,pending:new Map(),key:'',result:null,promise:null,error:null,warmPromise:null,warmed:false,tileWarmKey:'',tileWarmPromise:null}};
 
   function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
@@ -221,11 +221,16 @@
     try{
       ensureElderPinImages(m);
       let src=m.getSource?.(SOURCE);
-      if(src?.setData)src.setData(fc);
-      else{
+      const fingerprint=JSON.stringify(fc);
+      if(src?.setData){
+        /* M114: no tile reprocessing for unchanged Elder points. */
+        if(src!==state.mapPublishedSource||fingerprint!==state.mapPublishedFingerprint)src.setData(fc);
+      }else{
         m.addSource(SOURCE,{type:'geojson',data:fc});
         src=m.getSource?.(SOURCE);
       }
+      state.mapPublishedSource=src||null;
+      state.mapPublishedFingerprint=src?fingerprint:null;
       if(!m.getLayer?.(LAYER)){
         m.addLayer({
           id:LAYER,type:'symbol',source:SOURCE,
@@ -273,11 +278,8 @@
         });
       }
       try{
-        if(m.getLayer?.(LAYER)){
-          m.setLayoutProperty?.(LAYER,'visibility','visible');
-          m.moveLayer?.(LAYER);
-        }
-        m.triggerRepaint?.();
+        if(m.getLayer?.(LAYER)&&(m.getLayoutProperty?.(LAYER,'visibility')||'visible')!=='visible')m.setLayoutProperty?.(LAYER,'visibility','visible');
+        /* No repeated moveLayer or repaint on unchanged Elder evidence. */
       }catch(_){}
       return !!m.getLayer?.(LAYER);
     }catch(_){return false}
@@ -286,7 +288,7 @@
     const wrap=document.querySelector('.earthline-recharge-gauge-wrap-16488');if(!wrap)return false;
     let el=document.getElementById('earthlineElderTreesGauge17097');
     if(!el){el=document.createElement('div');el.id='earthlineElderTreesGauge17097';el.style.cssText='margin-top:3px;color:#2f5b3c;font:900 10.5px/1.25 "Noto Sans",system-ui,sans-serif;text-align:center;letter-spacing:.1px';wrap.appendChild(el)}
-    el.textContent='Elder Trees: '+summary.evidenceLabel+(summary.coverageKnown&&summary.partial?' · current Earthline coverage':'');
+    const next='Elder Trees: '+summary.evidenceLabel+(summary.coverageKnown&&summary.partial?' · current Earthline coverage':'');if(el.textContent!==next)el.textContent=next;
     return true;
   }
   function propertyCard(summary){
@@ -305,18 +307,37 @@
       const rain=content.querySelector('.earthline-data-rain16488');
       rain?.insertAdjacentElement('afterend',el);
     }
-    el.innerHTML='<b style="color:#254d31">ELDER TREE EVIDENCE</b><br>'+esc(summary.evidenceLabel)+
+    const nextHtml='<b style="color:#254d31">ELDER TREE EVIDENCE</b><br>'+esc(summary.evidenceLabel)+
       (summary.meanConfidence!=null?'<br>Mean candidate confidence: <b>'+esc(summary.meanConfidence)+'%</b>':'')+
       '<br><span style="color:#68756b">Displayed candidate counts are the approved thinned map subset; the high-recall structural pool remains the evidence-count owner. Elder Tree Confidence is a local structural-evidence percentile, not probability of age. Elder Trees have zero weight in Recharge Potential.</span>'+
       (summary.sources?.length?'<br><span style="color:#68756b">Source: '+summary.sources.map(esc).join(' · ')+'</span>':'')+
       (summary.coverageKnown&&summary.partial?'<br><span style="color:#7c6240">Counts reflect current Earthline Elder Tree coverage, not a complete natural-population census.</span>':'')+
       (!summary.coverageKnown?'<br><span style="color:#7c6240">No Elder Tree count is reported because this area has not yet been processed into the current Elder V2 evidence coverage.</span>':'');
+    if(el.innerHTML!==nextHtml)el.innerHTML=nextHtml;
     return true;
+  }
+  /* M114: the same scoped Elder block must appear in screen, print and exported report artifacts. */
+  function currentReportTokenM114(){return String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||{}).runToken||'')}
+  function frozenReportHtmlM114(run){
+    const token=String(run?.runToken||''),tier=String(run?.tier||run?.mode||'').toLowerCase();
+    const ledger=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+    const identityOk=tier!=='property'||ledger?.propertyRunIdentity===propertyRunIdentity17166(propertyBounds17166());
+    const sameRun=!!(token&&ledger?.runToken===token&&ledger?.state==='committed'&&identityOk);
+    const summary=sameRun?ledger.summary:null;
+    const message=summary?esc(summary.evidenceLabel):'Elder Tree evidence not yet published for this run.';
+    const extra=summary
+      ?(summary.meanConfidence!=null?' · mean candidate confidence '+esc(summary.meanConfidence)+'%':'')+
+        '<br><span style="font-size:10.5px">Displayed candidates are a thinned map subset; structural confidence is not proof of age or ancient/veteran status.</span>'+
+        (summary.sources?.length?'<br><span style="font-size:10.5px">Source: '+summary.sources.map(esc).join(' · ')+'</span>':'')+
+        (summary.partial?'<br><span style="font-size:10.5px">Current Earthline coverage is partial, not a complete tree census.</span>':'')
+      :'<br><span style="font-size:10.5px">No Elder Tree count is asserted until this exact run has committed evidence.</span>';
+    return '<div id="earthlineElderTreesReport17097" class="el49-callout" data-earthline-elder-run="'+esc(token)+'"><b>Elder Tree evidence</b><br>'+message+extra+'</div>';
   }
   function reportBlock(summary){
     const panel=document.getElementById('earthlineVermontReportPanel16149');if(!panel?.classList?.contains('open'))return false;
     const page=panel.querySelector('.el49-page');if(!page)return false;
     let el=panel.querySelector('#earthlineElderTreesReport17097');
+    if(el)return true; /* The report is frozen; late Elder refreshes cannot rewrite its evidence. */
     if(!el){
       el=document.createElement('div');el.id='earthlineElderTreesReport17097';el.className='el49-callout';
       const meta=page.querySelector('.el49-cover-meta');
@@ -535,7 +556,7 @@
       }
       refreshSurfaces();
       window.EARTHLINE_ELDER_TREE_LAST_17097={
-        state:'committed',mapPublished:true,propertyRunIdentity:runIdentity,
+        state:'committed',mapPublished:true,runToken:currentReportTokenM114(),propertyRunIdentity:runIdentity,
         summary:state.lastSummary,featureCount:state.active.length,
         dynamicCandidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0),
         dynamicError:null,workerTimings:dynamic?.earthline?.worker_timings_ms||null,at:new Date().toISOString()
@@ -573,7 +594,7 @@
       }
       refreshSurfaces();
       window.EARTHLINE_ELDER_TREE_LAST_17097={
-        state:'committed',mapPublished:true,propertyRunIdentity:'',
+        state:'committed',mapPublished:true,runToken:currentReportTokenM114(),propertyRunIdentity:'',
         summary:state.lastSummary,featureCount:state.active.length,
         dynamicCandidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0),
         dynamicError:state.dynamic.error||null,workerTimings:dynamic?.earthline?.worker_timings_ms||null,at:new Date().toISOString()
@@ -668,7 +689,7 @@
     load().then(()=>{if(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970)refresh()}).catch(()=>{});
     if(location.hash==='#swales-explained')howParagraph();
     window.EARTHLINE_ELDER_TREES_V1_17097={
-      state:'approved-v2-17118',manifest:MANIFEST,source:SOURCE,layer:LAYER,scienceBaseline:'17118',
+      state:'approved-v2-17118',manifest:MANIFEST,source:SOURCE,layer:LAYER,scienceBaseline:'17118',reportHtml:frozenReportHtmlM114,
       refresh,startProperty:startProperty17166,prefetchPropertyTarget:prefetchProperty17174,summary:()=>state.lastSummary||summarize(state.active),
       features:()=>state.active.slice(),
       confidenceRule:'Elder Tree Confidence = local structural-evidence percentile within the analyzed source area; not age probability',
