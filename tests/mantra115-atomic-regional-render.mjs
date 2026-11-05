@@ -22,7 +22,7 @@ assert.ok(render.indexOf('el.replaceChildren(frame115)')<
   render.indexOf('earthlineDecorateSwales16149'),
   'Swale decorators must run against the committed SVG');
 
-const nativeStart=html.indexOf('function hideNative(){',end-1800);
+const nativeStart=html.lastIndexOf('function hideNative(){',start);
 const nativeEnd=html.indexOf('function activeTier16168()',nativeStart);
 assert.ok(nativeStart>0&&nativeEnd>nativeStart);
 const visibility=html.slice(nativeStart,nativeEnd);
