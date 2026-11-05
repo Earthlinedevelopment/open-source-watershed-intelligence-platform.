@@ -90,4 +90,14 @@ await new Promise(resolve=>setTimeout(resolve,20));
 status=window.EARTHLINE_ELDER_TREE_LAST_17097;
 assert.equal(status.state,'committed','Map retry should publish when style loads');
 assert.equal(status.mapPublished,true);
+// Mantra 118 regression: absent Property coordinates must never be coerced to (0,0).
+// No worker request or property publication may be initiated for a missing target.
+const committedBeforeMissingTarget=window.EARTHLINE_ELDER_TREE_LAST_17097;
+window.EARTHLINE_PROPERTY_TARGET_16201=null;
+document.documentElement.dataset.earthlineAnalysisTier='property';
+const missingTargetResult=await api.startProperty();
+assert.equal(missingTargetResult,null,'Missing Property target must not initiate an Elder analysis');
+assert.equal(window.EARTHLINE_ELDER_TREE_LAST_17097,committedBeforeMissingTarget,
+  'Missing target must not publish a new Elder result near 0,0');
+
 console.log('MANTRA94_ELDER_OWNER_PASS',JSON.stringify({identity:status.propertyRunIdentity,count:status.featureCount}));
