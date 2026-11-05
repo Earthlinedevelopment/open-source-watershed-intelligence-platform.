@@ -15388,7 +15388,7 @@ var prescribeSwales;
       earthlineMap.getSource(CONTOUR_SOURCE)
     );
   }
-  function setData(id,data){const s=earthlineMap.getSource(id);if(s&&s.setData)s.setData(data);}
+  function setData(id,data){const s=earthlineMap.getSource(id);if(!s?.setData)return;let same=false;try{const old=s._data;same=(typeof old==='string'?old:JSON.stringify(old))===JSON.stringify(data);}catch(_){}if(!same)s.setData(data);}
   const baseSyncSwale15778=earthlineSyncSwaleLayer;
   const baseSyncRecharge15778=earthlineSyncRechargeLayer;
   function syncLayers15778(mode="regional"){
@@ -15415,7 +15415,7 @@ var prescribeSwales;
     setData(CONTOUR_SOURCE,state.contours||{type:"FeatureCollection",features:[]});
     setData(OPPORTUNITY_SOURCE,state.opportunityLines||{type:"FeatureCollection",features:[]});
     try{
-      const vis=(id,on)=>{if(earthlineMap.getLayer(id))earthlineMap.setLayoutProperty(id,"visibility",on?"visible":"none");};
+      const vis=(id,on)=>{if(!earthlineMap.getLayer(id))return;const next=on?"visible":"none";if((earthlineMap.getLayoutProperty(id,"visibility")||"visible")!==next)earthlineMap.setLayoutProperty(id,"visibility",next);};
       vis("earthline-analysis-target-layer-15761",!!state.anchor);
       vis("earthline-regional-coverage-layer-15761",false);
       const flowOn=state.flow.features.length>0;vis("earthline-regional-flow-casing-15761",flowOn);vis("earthline-regional-flow-line-15761",flowOn);vis("earthline-regional-flow-arrows-15761",flowOn);
@@ -29340,7 +29340,7 @@ body { overflow-x:hidden!important; }
       try{m.addImage(FLOW_ARROW_IMAGE,c,{pixelRatio:2});return true;}catch(_){console.warn('[Earthline] flow-arrow image unavailable',err);return false;}
     }
   }
-  function setGeo(m,id,data){const s=m.getSource(id);if(s&&s.setData)s.setData(data||EMPTY);}
+  function setGeo(m,id,data){const s=m.getSource(id),next=data||EMPTY;if(!s?.setData)return;let same=false;try{const old=s._data;same=(typeof old==='string'?old:JSON.stringify(old))===JSON.stringify(next);}catch(_){}if(!same)s.setData(next);}
   function ensureLayers(){
     const m=map();if(!m)return false;const before=beforeLabels(m);ensureFlowArrowImage(m);
     addGeoSource(m,IDS.basin);addGeoSource(m,IDS.aquifer);addGeoSource(m,IDS.contours);addGeoSource(m,IDS.flows);addGeoSource(m,IDS.swales);
@@ -33512,13 +33512,13 @@ body{display:block!important}
   function addPath(g,pts,attrs){if(pts.length<2)return null;/* MANTRA 102: preserve actual vetted swale vertices; no post-safety cubic spline overshoot. Elevation contours retain approved smoothing. */const isSwale=g&&g.getAttribute&&g.getAttribute('data-layer')==='swale-opportunities';const p=svgEl('path',Object.assign({d:isSwale?earthlineSwalePolylineM102(pts):spline(pts),fill:'none','vector-effect':'non-scaling-stroke'},attrs||{}));g.appendChild(p);return p;}
   /* EARTHLINE 16350 — SVG intentionally owns Regional contours + swales only.
      Native Mapbox flow casing/line/arrow are the sole Regional water owner and MUST NOT be hidden here. */
-  function hideNative(){const map=m();if(!map||!map.getLayer)return;for(const id of ['el-live-contour-line-15970','el-live-contour-label-15970','el-live-swale-halo-15970','el-live-swale-line-15970']){try{if(map.getLayer(id))map.setLayoutProperty(id,'visibility','none');}catch(_){}}}
+  function hideNative(){const map=m();if(!map||!map.getLayer)return;for(const id of ['el-live-contour-line-15970','el-live-contour-label-15970','el-live-swale-halo-15970','el-live-swale-line-15970']){try{if(map.getLayer(id)&&(map.getLayoutProperty(id,'visibility')||'visible')!=='none')map.setLayoutProperty(id,'visibility','none');}catch(_){}}}
   function nativeWater16350(){
     const map=m(),ids=['el-live-flow-casing-15970','el-live-flow-line-15970','el-live-flow-arrow-15970'];
     const layers={};let ready=!!map;
     for(const id of ids){
       let exists=false,visibility=null;
-      try{exists=!!(map&&map.getLayer&&map.getLayer(id));if(exists){map.setLayoutProperty(id,'visibility','visible');visibility=map.getLayoutProperty(id,'visibility')||'visible';}}catch(_){exists=false;}
+      try{exists=!!(map&&map.getLayer&&map.getLayer(id));if(exists){visibility=map.getLayoutProperty(id,'visibility')||'visible';if(visibility!=='visible'){map.setLayoutProperty(id,'visibility','visible');visibility='visible';}}}catch(_){exists=false;}
       layers[id]={exists,visibility};ready=ready&&exists&&visibility!=='none';
     }
     return {owner:'native-mapbox',ready,layers};
