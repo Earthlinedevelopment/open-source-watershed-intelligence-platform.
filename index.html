@@ -6865,7 +6865,8 @@ function earthlineArcGISJsonp16399(base,bb,outFields,timeoutMs=12000){
     });
     const url=base+"?"+params.toString(),script=document.createElement("script");
     let done=false;
-    const finish=(err,val)=>{if(done)return;done=true;clearTimeout(timer);try{delete window[cb];}catch(_){window[cb]=undefined;}try{script.remove();}catch(_){}if(err)reject(err);else resolve(val);};
+    /* M114: ArcGIS may execute a delayed JSONP script even after this request settles. A no-op tombstone retains its unique callback name so an expired response cannot raise ReferenceError or change current evidence. */
+    const finish=(err,val)=>{if(done)return;done=true;clearTimeout(timer);window[cb]=()=>{};try{script.remove();}catch(_){}if(err)reject(err);else resolve(val);};
     const timer=setTimeout(()=>finish(new Error("ArcGIS JSONP timeout")),timeoutMs);
     window[cb]=j=>{
       if(j&&j.error){finish(new Error(j.error.message||"ArcGIS JSONP service error"));return;}
