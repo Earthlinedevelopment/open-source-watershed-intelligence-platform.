@@ -1,0 +1,19 @@
+name: Mantra 116 isolated core contract tests
+on:
+  push:
+    branches: [mantra116-sustainable-rebuild]
+    paths:
+      - 'rebuild/**'
+      - '.github/workflows/mantra116-core.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  core-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test rebuild/tests/core.test.mjs
