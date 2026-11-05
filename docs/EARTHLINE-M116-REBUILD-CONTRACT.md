@@ -30,7 +30,7 @@ Create a modular successor beside production; selectively revalidate existing hy
 - Groundwater cannot be shown with evidence when recorded unavailable.
 - Self-crossing/closed-loop geometry screened; source-point SVG polyline output with no spline adjustment.
 - Immutable published snapshots.
-- Twelve synthetic contract tests.
+- Fourteen synthetic contract tests.
 
 ## Remaining release-blocking work
 
