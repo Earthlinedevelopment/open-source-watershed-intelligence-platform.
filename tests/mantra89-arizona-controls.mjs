@@ -49,7 +49,26 @@ const regionalDiagnostic=await page.evaluate(()=>{
       if(d?.features?.length){contourSource=id;const pts=[];for(const ft of d.features.slice(0,20)){const co=ft?.geometry?.coordinates;if(ft?.geometry?.type==='LineString'&&Array.isArray(co)){for(const p of co.slice(0,20))if(Array.isArray(p)&&p.length>=2)pts.push(p);}}if(pts.length){contourBBox=[Math.min(...pts.map(p=>Number(p[0]))),Math.min(...pts.map(p=>Number(p[1]))),Math.max(...pts.map(p=>Number(p[0]))),Math.max(...pts.map(p=>Number(p[1])))];contourSample=pts[0];}break;}
     }
   }catch(_){}
-  return {pkg:{profileId:pkg?.profileId,center:pkg?.center,extent:pkg?.regionalExtent,boundaryLabel:boundary?.label,boundaryCode:boundary?.code,boundaryType:boundary?.geometry?.type,polys},model:{loc:md?.loc,centerLng:md?.centerLng,centerLat:md?.centerLat,analysisBoundary:md?.analysisBoundaryLngLat,bounds:md?.bounds},membership:{pointFnType,centerPoint,centerInside,cornerInside},contourSource,contourBBox,contourSample,gen,pub,extent,land,geom,perf,error,status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||''),tier:String(document.getElementById('earthlineTierNotice16173')?.textContent||'')};
+  const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap||null;
+  const overlay=document.getElementById('earthlineRegionalVectorOverlay16020');
+  const host=document.querySelector('.map-area')||document.getElementById('mapboxBase');
+  const sample=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020?.swales?.features?.slice(0,5).map(f=>{
+    const pts=f?.geometry?.coordinates||[];
+    const px=pts.map(p=>{try{const t=map.project(p);return [t.x,t.y]}catch(_){return [null,null]}});
+    let len=0;for(let i=1;i<px.length;i++)if(px[i].every(Number.isFinite)&&px[i-1].every(Number.isFinite))len+=Math.hypot(px[i][0]-px[i-1][0],px[i][1]-px[i-1][1]);
+    return {coords:pts.length,lenPx:Math.round(len*10)/10,start:pts[0],firstPixel:px[0]};
+  })||[];
+  const camera={
+    center:map?.getCenter?.().toArray(),zoom:map?.getZoom?.(),projection:map?.getProjection?.()?.name,
+    bounds:map?.getBounds?.()?.toArray(),mapLoaded:map?.loaded?.(),
+    cameraAudit:window.EARTHLINE_REGIONAL_CAMERA_SETTLE_AUDIT_16334||null,
+    hostSize:[host?.clientWidth,host?.clientHeight],
+    overlaySize:[overlay?.clientWidth,overlay?.clientHeight],
+    overlayGroups:overlay?.querySelectorAll('g[data-layer]')?.length||0,
+    swalePathCount:overlay?.querySelectorAll('g[data-layer="swale-opportunities"] path')?.length||0,
+    sample
+  };
+  return {camera,pkg:{profileId:pkg?.profileId,center:pkg?.center,extent:pkg?.regionalExtent,boundaryLabel:boundary?.label,boundaryCode:boundary?.code,boundaryType:boundary?.geometry?.type,polys},model:{loc:md?.loc,centerLng:md?.centerLng,centerLat:md?.centerLat,analysisBoundary:md?.analysisBoundaryLngLat,bounds:md?.bounds},membership:{pointFnType,centerPoint,centerInside,cornerInside},contourSource,contourBBox,contourSample,gen,pub,extent,land,geom,perf,error,status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||''),tier:String(document.getElementById('earthlineTierNotice16173')?.textContent||'')};
 });
 writeFileSync('artifacts/arizona-controls/regional-diagnostic.json',JSON.stringify({regionalTimeout,regionalDiagnostic,pageErrors,badResponses},null,2));
 console.log('ARIZONA_REGIONAL_DIAGNOSTIC '+JSON.stringify({regionalTimeout,regionalDiagnostic,pageErrors:pageErrors.slice(-10),badResponses:badResponses.slice(-10)}));
