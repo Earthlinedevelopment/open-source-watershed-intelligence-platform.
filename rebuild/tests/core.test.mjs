@@ -107,3 +107,19 @@ test('cancel clears result and invalidates token',()=>{
   assert.equal(owner.cancel(token),true);
   assert.deepEqual(owner.publish(token,fixture(token)),{accepted:false,status:'stale'});
 });
+
+test('completed run cannot be republished or mutated',()=>{
+  const {owner,token}=start(); const c=fixture(token);
+  assert.equal(owner.publish(token,c).accepted,true);
+  c.swales[0].slopeAudit.maxLocalPct=1;
+  assert.deepEqual(owner.publish(token,c),{accepted:false,status:'settled'});
+  assert.equal(owner.snapshot().publication.swales[0].slopeAudit.maxLocalPct,4);
+});
+test('blocked run cannot be repaired by a competing same-token completion',()=>{
+  const {owner,token}=start(); const c=fixture(token);
+  c.swales[0].slopeAudit.maxLocalPct=5;
+  assert.equal(owner.publish(token,c).status,'blocked');
+  c.swales[0].slopeAudit.maxLocalPct=2;
+  assert.deepEqual(owner.publish(token,c),{accepted:false,status:'settled'});
+  assert.equal(owner.snapshot().publication,null);
+});
