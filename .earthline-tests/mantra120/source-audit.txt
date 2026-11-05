@@ -1,0 +1,940 @@
+size=3757808
+lines=35782
+PATTERN __earthlineVtBoundary16178 COUNT 1
+OCCURRENCE 1 OFFSET 3675260
+g.coordinates);else if(g.type==='MultiPolygon')polygons.push(...g.coordinates);}
+    if(!polygons.length)throw new Error('VCGI state-boundary response contained no polygon');
+    return {type:'MultiPolygon',coordinates:polygons};
+  }
+  function esriToGeoJSON(data){
+    const polygons=[];for(const f of (data&&data.features||[])){for(const ring of (f&&f.geometry&&f.geometry.rings||[])){if(Array.isArray(ring)&&ring.length>=4)polygons.push([ring.map(p=>[Number(p[0]),Number(p[1])])]);}}
+    if(!polygons.length)throw new Error('VCGI JSONP boundary response contained no rings');
+    return {type:'MultiPolygon',coordinates:polygons};
+  }
+  function loadCache(){try{const raw=localStorage.getItem(CACHE_KEY);if(!raw)return null;const row=JSON.parse(raw);return row&&row.geometry?row.geometry:null}catch(_){return null}}
+  function saveCache(g){try{localStorage.setItem(CACHE_KEY,JSON.stringify({source:SERVICE,geometry:g,savedAt:new Date().toISOString()}))}catch(_){}}
+  function fetchGeoJSON(){
+    const p=new URLSearchParams({where:'1=1',outFields:'OBJECTID',returnGeometry:'true',outSR:'4326',f:'geojson'}),ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),8000);
+    return fetch(SERVICE+'?'+p.toString(),{mode:'cors',cache:'force-cache',signal:ctl.signal}).then(r=>{if(!r.ok)throw new Error('VCGI boundary HTTP '+r.status);return r.json()}).then(normalizeGeoJSON).finally(()=>clearTimeout(timer));
+  }
+  function fetchJSONP(){
+    return new Promise((resolve,reject)=>{
+      const cb='__earthlineVtBoundary16178_'+Date.now()+'_'+Math.random().toString(36).slice(2),script=document.createElement('script');
+      const params=new URLSearchParams({where:'1=1',outFields:'OBJECTID',returnGeometry:'true',outSR:'4326',f:'json',callback:cb});
+      const timer=setTimeout(()=>{cleanup();reject(new Error('VCGI boundary JSONP timed out'));},8000);
+      function cleanup(){clearTimeout(timer);script.remove();try{delete window[cb]}catch(_){window[cb]=undefined}}
+      window[cb]=data=>{try{const g=esriToGeoJSON(data);cleanup();resolve(g)}catch(err){cleanup();reject(err)}};
+      script.onerror=()=>{cleanup();reject(new Error('VCGI boundary JSONP failed'))};script.async=true;script.src=SERVICE+'?'+params.toString();document.head.appendChild(script);
+    });
+  }
+  async function ensureBoundary(){
+    if(boundaryGeometry)return boundaryGeometry;if(boundaryPromise)return boundaryPromise;
+    boundaryPromise=(async()=>{
+      const cached=loadCache();if(cached){boundaryGeometry=cached;window.EARTHLINE_VERMONT_BOUNDARY_SOURCE_16178={source:'cached official VCGI state boundary',service:SERVICE,at:new Date().toISOString()};return boundaryGeometry;}
+      const cors=Promise.resolve().then(fetchGeoJSON).then(geometry=>({geometry,source:'VCGI GeoJSON'}));
+      const jsonp=Promise.resolve().then(fetchJSONP).then(geometry=>({geometry,source:'VCGI JSONP'}));
+      let winner;
+      try{
+        if(typeof Promise.any==='function')winner=await Promise.any([cors,jsonp]);
+        else winner=await new Promise((resolve,reject)=>{let failed=0,last;for(const p of [cors,jsonp])p.then(resolve,e=>{last=e;if(++failed===2)reject(last)});});
+      }catch(error){lastError=new Error('official Vermont boundary unavailable: '+String(error&&error.message||error));throw lastError;}
+      boundaryGeometry=winner.geometry;
+      window.EARTHLINE_VERMONT_BOUNDARY_SOURCE_16178={source:winner.source,service:SERVICE,parallelTransport16453:true,at:new Date().toISOString()};
+      saveCache(boundaryGeometry);return boundaryGeometry;
+    })().finally(()=>{boundaryPromise=null});
+    return boundaryPromise;
+  }
+  function centroid(points){const pts=(points||[]).filter(finitePoint);if(!pts.length)return null;return [pts.reduce((a,p)=>a+Number(p[0]),0)/pts.length,pts.reduce((a,p)=>a+Number(p[1]),0)
+PATTERN EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040 COUNT 3
+OCCURRENCE 1 OFFSET 2231080
+store it before the atomic Regional render. */
+    const regionalOverlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
+    if(regionalOverlay16336){
+      regionalOverlay16336.style.removeProperty('display');
+      regionalOverlay16336.style.removeProperty('visibility');
+      regionalOverlay16336.style.removeProperty('opacity');
+    }
+    const regionalOverlayRenderOk16336=
+      typeof window.earthlineRenderRegionalOverlay16020==='function'
+        ?window.earthlineRenderRegionalOverlay16020(visualData)
+        :false;
+    for(const id of [IDS.contourLine,IDS.flowCasing,IDS.flowLine,IDS.contourLabel,IDS.flowArrow,IDS.swaleHalo,IDS.swaleLine,IDS.aquiferLabel]){try{m.moveLayer(id);}catch(_){}}
+    try{m.triggerRepaint&&m.triggerRepaint();}catch(_){}
+    phaseMark16198('terrainProductsAndPublishMs',productsStarted16198);
+
+    const contourLineCount=contours.features.filter(f=>f.geometry&&(f.geometry.type==='LineString'||f.geometry.type==='MultiLineString')).length;
+    const contourLabelCount=contours.features.filter(f=>f.properties&&f.properties.feature_type==='contour-label').length;
+    const flowLineCount=flows.features.filter(f=>f.properties&&f.properties.feature_type==='flow').length;
+    const flowArrowCount=flows.features.filter(f=>f.properties&&f.properties.feature_type==='flow-arrow').length;
+    const swaleCount=swales.features.length;
+    const generationAudit=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null;
+    const overlayAudit=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null;
+    let sourceFeatureCount=null;
+    try{const src=m.getSource&&m.getSource(IDS.swales),data=src&&(src._data||src._options&&src._options.data);if(data&&Array.isArray(data.features))sourceFeatureCount=data.features.length;}catch(_){}
+    window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167={
+      build:'EARTHLINE 16167',runToken,tier:focusMode?'focus':'regional',generated:swaleCount,
+      generatedBeforeTierGate:Number(generationAudit&&generationAudit.chosenBeforeTierGate||0),
+      sourceFeatures:sourceFeatureCount,overlaySwaleLines:Number(overlayAudit&&overlayAudit.swaleLines||0),
+      overlayLocationPills:Number(overlayAudit&&overlayAudit.swaleGradeLabels||0),
+      mapboxLabelLayer:!!(m.getLayer&&m.getLayer('earthline-ranked-swale-label-15775')),
+      mapboxHitLayer:!!(m.getLayer&&m.getLayer('earthline-ranked-swale-hit-16153')),
+      checkedAt:new Date().toISOString()
+    };
+    const vermontBoundaryAudit16178=window.EARTHLINE_VERMONT_PRODUCT_BOUNDARY_AUDIT_16178||null;
+    const boundaryExplainsZero16178=!!(
+      (vermontRequest&&vermontBoundaryAudit16178&&Number(vermontBoundaryAudit16178.before&&vermontBoundaryAudit16178.before.swales||0)>0&&Number(vermontBoundaryAudit16178.after&&vermontBoundaryAudit16178.after.swales||0)===0)||
+      (genericBoundaryAudit16539&&Number(genericBoundaryAudit16539.before&&genericBoundaryAudit16539.before.swales||0)>0&&Number(genericBoundaryAudit16539.after&&genericBoundaryAudit16539.after.swales||0)===0)
+    );
+    if(!focusMode&&swaleCount===0&&Number(generationAudit&&generationAudit.chosenBeforeTierGate||0)>0&&!boundaryExplainsZero16178){
+      throw new Error('regional corridor publication blocked: terrain-derived candidates existed but zero corridors survived; a focus-only contour tolerance must not govern regional screening');
+    }
+    if(swaleCount>0&&overlayAudit&&Number(overlayAudit.swaleLines||0)===0){
+      try{
+        clearLive();
+        window.EARTHLINE_REGIONAL_VISUAL_DATA_16020=null;
+        document.getElementById('earthlineRegionalVectorOverlay16020')?.replaceChildren();
+        document.getElementById('earthlineRegionalCorridorTabs16323')?.remove();
+      }catch(_){}
+      throw new Error('corridor rendering i
+OCCURRENCE 2 OFFSET 2527643
+      g.appendChild(svgEl('rect',{x:(-bw/2).toFixed(1),y:'-12',width:bw.toFixed(1),height:'24',rx:'12',fill:grade==='A'?'rgba(10,92,48,.96)':grade==='B'?'rgba(119,72,4,.95)':'rgba(76,49,24,.92)',stroke:light,'stroke-width':grade==='A'?'2.2':'1.4'}));
+          const t=svgEl('text',{x:'0',y:'1',fill:'#fff','font-family':'system-ui,-apple-system,Segoe UI,sans-serif','font-size':grade==='A'?'13':'12','font-weight':'950','text-anchor':'middle','dominant-baseline':'central'});
+          t.textContent=label;g.appendChild(t);lg.appendChild(g);gradeLabels.push(label);
+        }
+      }
+      swales++;
+    }
+    /* EARTHLINE 16350 — Regional water is counted here for audit only; SVG does not render it.
+       Directional presentation is owned by the native Mapbox flow line + line-placement arrow layers. */
+    for(const f of (lastData.flows&&lastData.flows.features||[])){
+      if(!f||!f.properties)continue;
+      if(f.properties.feature_type==='flow'&&f.geometry&&f.geometry.type==='LineString')waterPaths++;
+      if(f.properties.feature_type==='flow-arrow')arrows++;
+    }
+    setTimeout(()=>{try{window.earthlineDecorateSwales16149&&window.earthlineDecorateSwales16149();}catch(_){}},0);
+    hideNative();
+    const nativeWater=nativeWater16350();
+    window.EARTHLINE_REGIONAL_WATER_OWNERSHIP_AUDIT_16350={build:'EARTHLINE 16350',owner:'native-mapbox',svgWaterRendered:false,nativeWater,waterPathFeatures:waterPaths,flowArrowFeatures:arrows,renderedAt:new Date().toISOString()};
+    window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16030=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020={build:'EARTHLINE-REGIONAL-FINAL-16050',contourLines,elevationLabels:labels,waterPaths,directionArrows:arrows,waterOwner:'native-mapbox',svgWaterRendered:false,nativeWaterReady:!!nativeWater.ready,swaleLines:swales,swaleGradeCounts:gradeCounts,swaleGradeLabels:gradeLabels.length,topSwaleGradeLabel:gradeLabels[0]||'',buttonText:(document.getElementById('earthlineMapRun16020')||{}).textContent||'',renderedAt:new Date().toISOString()};return labels>0&&waterPaths>0&&nativeWater.ready&&swales>0&&gradeCounts.A>0&&gradeLabels.length>0;
+  }
+  function schedule(){
+    if(activeTier16168()==="property")return;
+    cancelAnimationFrame(scheduled);scheduled=requestAnimationFrame(()=>render(lastData));
+  }
+  function clean(){for(const id of ['earthline15857strip','earthline15861strip','earthlineMapRun15970','earthlineMapRun16020','runBtnSide'])document.getElementById(id)?.remove();}
+  function installButton(){clean();return null;}
+  function install(){if(installed)return;installed=true;clean();const map=m();if(map&&map.on){map.on('moveend',schedule);map.on('zoomend',schedule);map.on('rotateend',schedule);map.on('pitchend',schedule);map.on('resize',schedule);map.on('style.load',()=>{if(lastData)setTimeout(schedule,80);});map.on('styledata',()=>{});}window.addEventListener('resize',schedule,{passive:true});setInterval(clean,350);window.earthlineRenderRegionalOverlay16020=render;window.earthlineRegionalDisplayAudit16040=()=>window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16030||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{build:BUILD,rendered:false,buttonText:(document.getElementById('earthlineMapRun16020')||{}).textContent||''};if(window.EARTHLINE_REGIONAL_VISUAL_DATA_16020)render(window.EARTHLINE_REGIONAL_VISUAL_DATA_16020);document.documentElement.dataset.earthlineRegionalFinal='16050';}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+})();
+</script>
+<!-- EARTHLINE REGIONAL FINAL DISPLAY 16020 END -->
+<!-- EARTHLINE REGIONAL 16030: explicit elevation labels, dense terrain-derived swale opportunities, Chiang Mai aliases -->
+<!-- EARTH
+OCCURRENCE 3 OFFSET 2529213
+AY_AUDIT_16030=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020={build:'EARTHLINE-REGIONAL-FINAL-16050',contourLines,elevationLabels:labels,waterPaths,directionArrows:arrows,waterOwner:'native-mapbox',svgWaterRendered:false,nativeWaterReady:!!nativeWater.ready,swaleLines:swales,swaleGradeCounts:gradeCounts,swaleGradeLabels:gradeLabels.length,topSwaleGradeLabel:gradeLabels[0]||'',buttonText:(document.getElementById('earthlineMapRun16020')||{}).textContent||'',renderedAt:new Date().toISOString()};return labels>0&&waterPaths>0&&nativeWater.ready&&swales>0&&gradeCounts.A>0&&gradeLabels.length>0;
+  }
+  function schedule(){
+    if(activeTier16168()==="property")return;
+    cancelAnimationFrame(scheduled);scheduled=requestAnimationFrame(()=>render(lastData));
+  }
+  function clean(){for(const id of ['earthline15857strip','earthline15861strip','earthlineMapRun15970','earthlineMapRun16020','runBtnSide'])document.getElementById(id)?.remove();}
+  function installButton(){clean();return null;}
+  function install(){if(installed)return;installed=true;clean();const map=m();if(map&&map.on){map.on('moveend',schedule);map.on('zoomend',schedule);map.on('rotateend',schedule);map.on('pitchend',schedule);map.on('resize',schedule);map.on('style.load',()=>{if(lastData)setTimeout(schedule,80);});map.on('styledata',()=>{});}window.addEventListener('resize',schedule,{passive:true});setInterval(clean,350);window.earthlineRenderRegionalOverlay16020=render;window.earthlineRegionalDisplayAudit16040=()=>window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16030||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||{build:BUILD,rendered:false,buttonText:(document.getElementById('earthlineMapRun16020')||{}).textContent||''};if(window.EARTHLINE_REGIONAL_VISUAL_DATA_16020)render(window.EARTHLINE_REGIONAL_VISUAL_DATA_16020);document.documentElement.dataset.earthlineRegionalFinal='16050';}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+})();
+</script>
+<!-- EARTHLINE REGIONAL FINAL DISPLAY 16020 END -->
+<!-- EARTHLINE REGIONAL 16030: explicit elevation labels, dense terrain-derived swale opportunities, Chiang Mai aliases -->
+<!-- EARTHLINE REGIONAL 16050 — approved visual hierarchy, swale legend, final Chiang Mai control ownership -->
+<style id="earthline-regional-16050-css">
+#earthlineSwaleLegend16050{
+  position:fixed;left:22px;top:184px;z-index:945;display:flex;align-items:center;gap:10px;
+  min-height:38px;padding:7px 11px;border-radius:12px;border:1px solid rgba(151,179,193,.28);
+  background:rgba(8,17,24,.88);box-shadow:0 8px 22px rgba(0,0,0,.28);backdrop-filter:blur(10px);
+  color:#f4fbff;font:800 11px/1.15 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  letter-spacing:.025em;pointer-events:none
+}
+#earthlineSwaleLegend16050 strong{font-size:10px;letter-spacing:.09em;color:#cfe5ef;margin-right:2px}
+#earthlineSwaleLegend16050 .el-grade{display:flex;align-items:center;gap:5px;white-space:nowrap}
+#earthlineSwaleLegend16050 .el-dot{width:11px;height:11px;border-radius:999px;box-shadow:0 0 0 2px rgba(255,255,255,.14)}
+#earthlineSwaleLegend16050 .a{background:#42ff83}#earthlineSwaleLegend16050 .b{background:#ffc12f}#earthlineSwaleLegend16050 .c{background:#ff8a2d}
+@media(max-width:720px){#earthlineSwaleLegend16050{left:12px;top:184px;gap:7px;padding:7px 9px;font-size:10px}#earthlineSwaleLegend16050 strong{display:none}}
+</style>
+<!-- EARTHLINE REGIONAL 16070 — final control ownership, aquifer legend, swale GPS hover -->
+<style id="earthline-regional-16070-css">
+/* Keep supporting hydrology readable but subordinate to prescribed swale corridors. */
+#earthlineRegionalVectorOverlay16020 [data-layer="directional-water-paths"] > path[stroke^="rgba(0,18,29"]{st
+PATTERN EARTHLINE_DISPLAYED_RUN_16151 COUNT 33
+OCCURRENCE 1 OFFSET 883132
+recharge belongs only to the geographic earthline-recharge-*
+     source/layers. The historical screen-space orange canvas/SVG must never be allowed
+     to re-enter presentation during Property run-state gaps, move/idle repaint, or
+     post-terminal map finishing. This is presentation ownership only; native recharge
+     geometry/science and the offline analytical-canvas fallback are unchanged. */
+  if(earthlineMapActive()){
+    canvas.style.display="none";
+    canvas.style.visibility="hidden";
+    const ctx16356=canvas.getContext&&canvas.getContext("2d");
+    if(ctx16356){
+      try{
+        const dpr16356=window.devicePixelRatio||1;
+        ctx16356.setTransform(dpr16356,0,0,dpr16356,0,0);
+        ctx16356.clearRect(0,0,canvas.width/dpr16356,canvas.height/dpr16356);
+      }catch(_){}
+    }
+    if(oldSvg){oldSvg.style.display="none";oldSvg.style.visibility="hidden";oldSvg.replaceChildren();}
+    window.EARTHLINE_PROPERTY_RECHARGE_SURFACE_AUDIT_16356={
+      build:"EARTHLINE 16356",
+      nativeMapActive:true,
+      legacyCanvasVisible:false,
+      legacySvgVisible:false,
+      nativeRechargeOwner:"earthlineSyncRechargeLayer / BUILD-CHECK-15805",
+      at:new Date().toISOString()
+    };
+    return false;
+  }
+
+  /* EARTHLINE 16324 — after verified Property publication, the native Mapbox
+     recharge owner remains authoritative. Do not let the historical screen-space
+     orange canvas reappear on later render()/move/idle repaint calls. */
+  const displayed16324=
+    window.EARTHLINE_DISPLAYED_RUN_16151||
+    window.EARTHLINE_DISPLAYED_RUN_16149||
+    window.EARTHLINE_DISPLAYED_RUN_16147||null;
+  const tier16324=String(
+    document.documentElement.dataset.earthlineAnalysisTier||
+    (displayed16324&&(displayed16324.tier||displayed16324.mode))||
+    ""
+  ).toLowerCase();
+  const propertyCommitted16324=!!(
+    tier16324==="property"&&
+    M&&M.propertyPublication15816&&
+    M.propertyPublication15816.committed===true
+  );
+  /* EARTHLINE 16345 — a new Property run owns presentation from its synchronous
+     start. The historical orange screen-space recharge renderer must not repaint
+     stale/prior-run recharge while terrain, exclusions, hydrology, or swales are
+     still being calculated. Native post-publication recharge remains unchanged. */
+  const propertyRunning16345=String(document.documentElement.dataset.earthlinePropertyRunState||"")==="running";
+  if(propertyRunning16345||propertyCommitted16324){
+    canvas.style.display="none";
+    canvas.style.visibility="hidden";
+    const ctx16324=canvas.getContext&&canvas.getContext("2d");
+    if(ctx16324){
+      try{
+        const dpr16324=window.devicePixelRatio||1;
+        ctx16324.setTransform(dpr16324,0,0,dpr16324,0,0);
+        ctx16324.clearRect(0,0,canvas.width/dpr16324,canvas.height/dpr16324);
+      }catch(_){}
+    }
+    if(oldSvg){oldSvg.style.display="none";oldSvg.replaceChildren();}
+    window.EARTHLINE_PROPERTY_RECHARGE_PRESENTATION_AUDIT_16324={
+      build:"EARTHLINE 16345",
+      tier:tier16324,
+      propertyRunning:propertyRunning16345,
+      propertyCommitted:propertyCommitted16324,
+      legacyCanvasVisible:false,
+      nativeRechargePreserved:true,
+      at:new Date().toISOString()
+    };
+    return false;
+  }
+
+  canvas.style.removeProperty("visibility");
+  const show=(force===false)?false:earthlineRechargeSvgVisible();
+  const host=canvas.parentElement;
+  const w=Math.max(1,host?host.clientWidth:canvas.clientWidth);
+  const h=Math.max(1,host?host.clientHeight:canvas.clientHeight);
+  const dpr=window.devicePixelRatio||1;
+
+  if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){
+    canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
+    canvas.style.width=w+"px";canvas.style.height=h+"px";
+  }
+  const rctx=canvas.getContext("2d");
+  
+OCCURRENCE 2 OFFSET 1982579
+thoritative scientific analysis boundary"
+    );
+    overlay15827.setAttribute("preserveAspectRatio","none");
+    host.appendChild(overlay15827);
+    return overlay15827;
+  }
+
+  function ensurePanel15827(){
+    if(panel15827&&panel15827.isConnected)return panel15827;
+    panel15827=document.getElementById("earthlineBoundaryPanel15827");
+    if(panel15827)return panel15827;
+
+    const parent=document.querySelector(".map-area");
+    if(!parent)return null;
+
+    panel15827=document.createElement("div");
+    panel15827.id="earthlineBoundaryPanel15827";
+    panel15827.setAttribute(
+      "aria-label",
+      "Scientific analysis boundary controls"
+    );
+    parent.appendChild(panel15827);
+    return panel15827;
+  }
+
+  function frame15827(){
+    /* EARTHLINE 16521 — visible boundary uses the exact CURRENT committed
+       Property analysis boundary. The older frame can lag crosshair moves because
+       it is keyed to the search text rather than the Property generation. */
+    const md=M||{};
+    const publication=md.propertyPublication15816||null;
+    const currentGen=Number(md.searchGen);
+    const publicationGen=Number(publication&&publication.searchGen);
+    const generationMatches=!(Number.isFinite(currentGen)&&Number.isFinite(publicationGen))||currentGen===publicationGen;
+    const points=Array.isArray(md.analysisBoundaryLngLat)
+      ?md.analysisBoundaryLngLat.map(p=>[Number(p&&p[0]),Number(p&&p[1])]).filter(p=>p.every(Number.isFinite))
+      :[];
+    const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+    const tier=String(displayed&&(displayed.tier||displayed.mode)||md.mode||'').toLowerCase();
+    if(publication&&publication.committed===true&&generationMatches&&tier!=='regional'&&points.length>=3){
+      const loc=md.loc||{};
+      const center={
+        lng:Number.isFinite(Number(md.centerLng))?Number(md.centerLng):Number(loc.lng),
+        lat:Number.isFinite(Number(md.centerLat))?Number(md.centerLat):Number(loc.lat)
+      };
+      let acres=Number(loc.acres||20);
+      try{
+        if(typeof earthlinePolygonAreaM2==='function'){
+          const measured=Number(earthlinePolygonAreaM2(points))/4046.8564224;
+          if(Number.isFinite(measured)&&measured>0)acres=measured;
+        }
+      }catch(_){ }
+      return{
+        build:'EARTHLINE 16521',
+        owner:'earthline-visible-boundary-15827',
+        searchKey:String(md.appliedSearchText||'').trim().toLowerCase().replace(/\s+/g,' '),
+        center,acres:Number.isFinite(acres)?acres:20,internalAnalysisZoom:18,
+        boundary:points,source:'current-property-analysis-boundary',
+        viewportIndependent:true,changesOnlyByExplicitAction:true,
+        searchGen:Number.isFinite(currentGen)?currentGen:null
+      };
+    }
+    if(publication&&publication.committed===true&&!generationMatches)return null;
+    return md.authoritativePropertyFrame15821||
+      state.authoritativePropertyFrame15821||null;
+  }
+
+  function boundsPolygon15827(){
+    if(
+      !earthlineMap||!earthlineMap.getBounds||
+      !earthlineMap.getCenter
+    )return null;
+
+    const bounds=earthlineMap.getBounds();
+    const center=earthlineMap.getCenter();
+    const polygon=[
+      [Number(bounds.getWest()),Number(bounds.getSouth())],
+      [Number(bounds.getEast()),Number(bounds.getSouth())],
+      [Number(bounds.getEast()),Number(bounds.getNorth())],
+      [Number(bounds.getWest()),Number(bounds.getNorth())]
+    ];
+
+    const meanLat=polygon.reduce(
+      (sum,point)=>sum+Number(point[1]||0),
+      0
+    )/polygon.length;
+    const metresPerDegreeX=
+      111320*Math.max(
+        .05,
+        Math.cos(meanLat*Math.PI/180)
+      );
+    const metresPerDegreeY=111320;
+    let areaM2=0;
+
+    for(let i=0,j=polygon.length-1;i<polygon.length;j=i++){
+      const xi=Numbe
+OCCURRENCE 3 OFFSET 2103118
+label:'Cambodia'},
+    'laos':{lat:18.2,lng:103.8,bbox:[100.1,13.9,107.7,22.6],placeType:'country',label:'Laos'}
+  };
+  function state(){try{return M;}catch(_){return null;}}
+  function map(){try{return earthlineMap||window.earthlineMap||null;}catch(_){return window.earthlineMap||null;}}
+  function n(v,d=0){v=Number(v);return Number.isFinite(v)?v:d;}
+  function clean(v){return String(v||'').trim();}
+  function key(v){return clean(v).toLowerCase().replace(/\s+/g,' ');}
+  function wait(ms){return new Promise(r=>setTimeout(r,ms));}
+  function boundsHash(b){return Array.isArray(b)?b.map(v=>Number(v).toFixed(5)).join('|'):'no-bounds';}
+  function createRunToken(q){runSerial++;return 'el-'+Date.now().toString(36)+'-'+runSerial.toString(36)+'-'+key(q).replace(/[^a-z0-9]+/g,'-').slice(0,24);}
+  function isCurrentRun(token){return !!token&&token===activeRunToken;}
+  function recordRun(event,token,details={}){
+    const row=Object.assign({event,runToken:token||null,activeRunToken:activeRunToken||null,at:new Date().toISOString()},details||{});
+    RUN_LEDGER.push(row);if(RUN_LEDGER.length>500)RUN_LEDGER.splice(0,RUN_LEDGER.length-500);
+    window.EARTHLINE_RUN_LEDGER_16147=RUN_LEDGER;return row;
+  }
+  function publishDisplayedRun16151(value){
+    if(!value||!value.runToken)throw new Error('published result is missing run identity');
+    const frozen=Object.isFrozen(value)?value:Object.freeze(JSON.parse(JSON.stringify(value)));
+    window.EARTHLINE_DISPLAYED_RUN_16147=frozen;
+    window.EARTHLINE_DISPLAYED_RUN_16151=frozen;
+    window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=frozen.runToken;
+    document.documentElement.dataset.earthlineActiveRun=frozen.runToken;
+    document.documentElement.dataset.earthlineRunState='published';
+    document.dispatchEvent(new CustomEvent('earthline:analysis-complete',{detail:{runToken:frozen.runToken,query:frozen.query||'',tier:frozen.extentClass||frozen.tier||'regional'}}));
+    return frozen;
+  }
+  window.earthlinePublishDisplayedRun16151=publishDisplayedRun16151;
+  function ensureStatusPanel(){
+    let el=document.getElementById('earthlineVermontStatus16147');
+    if(!el&&document.body){el=document.createElement('div');el.id='earthlineVermontStatus16147';el.setAttribute('role','status');el.setAttribute('aria-live','polite');document.body.appendChild(el);}
+    return el;
+  }
+  function setRunStatus(message,kind='info'){
+    const el=ensureStatusPanel();if(!el)return;el.dataset.kind=kind;el.textContent=String(message||'');
+    window.EARTHLINE_LOADING_AUDIT_16167=Object.assign({},window.EARTHLINE_LOADING_AUDIT_16167||{},{phase:String(message||''),kind,updatedAt:new Date().toISOString()});
+  }
+  function guardedSetGeo(token,m,id,data,sourceId){
+    if(!isCurrentRun(token)){recordRun('write_discarded',token,{sourceId:sourceId||id,source:id,discardReason:'superseded_run'});return false;}
+    setGeo(m,id,data);
+    /* EARTHLINE 16373 — capture accepted Regional aquifer geometry at the same
+       authoritative publication point that commits it to the live Regional map. */
+    if(id===IDS.aquifer&&data&&Array.isArray(data.features)&&data.features.length){
+      try{
+        window.EARTHLINE_ACCEPTED_REGIONAL_AQUIFER_GEOJSON_16373=JSON.parse(JSON.stringify(data));
+        window.EARTHLINE_ACCEPTED_REGIONAL_AQUIFER_AUDIT_16373={
+          build:'EARTHLINE 16373',runToken:String(token||''),sourceId:String(sourceId||id),
+          features:data.features.length,acceptedAt:new Date().toISOString()
+        };
+      }catch(_){}
+    }
+    recordRun('source_published',token,{sourceId:sourceId||id,source:id});return true;
+  }
+  function earthlineSupersedePropertyForNewSearch16327(token,q){
+    const md=state();
+    const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+    const displayed
+OCCURRENCE 4 OFFSET 2105324
+147';el.setAttribute('role','status');el.setAttribute('aria-live','polite');document.body.appendChild(el);}
+    return el;
+  }
+  function setRunStatus(message,kind='info'){
+    const el=ensureStatusPanel();if(!el)return;el.dataset.kind=kind;el.textContent=String(message||'');
+    window.EARTHLINE_LOADING_AUDIT_16167=Object.assign({},window.EARTHLINE_LOADING_AUDIT_16167||{},{phase:String(message||''),kind,updatedAt:new Date().toISOString()});
+  }
+  function guardedSetGeo(token,m,id,data,sourceId){
+    if(!isCurrentRun(token)){recordRun('write_discarded',token,{sourceId:sourceId||id,source:id,discardReason:'superseded_run'});return false;}
+    setGeo(m,id,data);
+    /* EARTHLINE 16373 — capture accepted Regional aquifer geometry at the same
+       authoritative publication point that commits it to the live Regional map. */
+    if(id===IDS.aquifer&&data&&Array.isArray(data.features)&&data.features.length){
+      try{
+        window.EARTHLINE_ACCEPTED_REGIONAL_AQUIFER_GEOJSON_16373=JSON.parse(JSON.stringify(data));
+        window.EARTHLINE_ACCEPTED_REGIONAL_AQUIFER_AUDIT_16373={
+          build:'EARTHLINE 16373',runToken:String(token||''),sourceId:String(sourceId||id),
+          features:data.features.length,acceptedAt:new Date().toISOString()
+        };
+      }catch(_){}
+    }
+    recordRun('source_published',token,{sourceId:sourceId||id,source:id});return true;
+  }
+  function earthlineSupersedePropertyForNewSearch16327(token,q){
+    const md=state();
+    const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+    const displayedTier=String(displayed&&(displayed.tier||displayed.mode)||'').toLowerCase();
+    const propertyState=String(document.documentElement.dataset.earthlinePropertyRunState||'');
+    const regionalState=window.earthlineRegional15778||null;
+    const priorProperty=!!(
+      displayedTier==='property'||
+      propertyState==='running'||
+      (regionalState&&regionalState.mode==='property')
+    );
+    if(!priorProperty)return false;
+
+    const beforeGen=Number(md&&md.searchGen||0);
+    if(md)md.searchGen=beforeGen+1;
+
+    if(regionalState){
+      regionalState.running=false;
+      regionalState.active=true;
+      regionalState.mode='regional';
+      regionalState.queuedRunCount15786=0;
+    }
+    document.documentElement.dataset.earthlinePropertyRunState='idle';
+    document.documentElement.dataset.earthlineAnalysisTier='regional';
+    document.documentElement.classList.remove('earthline-property-running-16233','earthline-direct-property-handoff-16250');
+
+    try{
+      if(typeof window.earthlineApplyRendererOwnership15805==='function')
+        window.earthlineApplyRendererOwnership15805('regional');
+    }catch(_){}
+
+    window.EARTHLINE_CROSS_TIER_SUPERSEDE_AUDIT_16327={
+      build:'EARTHLINE 16327',runToken:token||null,query:String(q||''),
+      priorDisplayedTier:displayedTier||null,priorPropertyState:propertyState||null,
+      searchGenBefore:beforeGen,searchGenAfter:Number(md&&md.searchGen||beforeGen),
+      regionalOwnershipPredeclared:true,at:new Date().toISOString()
+    };
+    recordRun('property_superseded_for_new_search',token,window.EARTHLINE_CROSS_TIER_SUPERSEDE_AUDIT_16327);
+    return true;
+  }
+  function clearForSubmission(token,q){
+    const m=map();
+    earthlineSupersedePropertyForNewSearch16327(token,q);
+
+    /* EARTHLINE 16334 — remove Property-only presentation before Regional camera
+       movement. Scientific model values remain available only until the new run owns them. */
+    try{
+      const empty16334={type:'FeatureCollection',features:[]};
+      for(const sourceId16334 of [
+        'earthline-property-flow-15792',
+        'earthline-living-swales-15792',
+        'earthline-property-swale-texture-16174',
+        'earthline-property-safe-visible-1622
+OCCURRENCE 5 OFFSET 2110151
+   recordRun('property_presentation_clear_warning_16334',token,{error:String(error&&error.message||error)});
+    }
+    try{const resetTier=window.earthlineResetTierNavigationForSearch16178;if(typeof resetTier==='function')resetTier('new-run-submission',token,q);else setTimeout(()=>{try{const deferredReset=window.earthlineResetTierNavigationForSearch16178;if(typeof deferredReset==='function')deferredReset('deferred-new-run-submission',token,q);else recordRun('tier_reset_unavailable',token,{query:q});}catch(error){recordRun('tier_reset_warning',token,{error:String(error&&error.message||error)});}},0);}catch(error){recordRun('tier_reset_warning',token,{error:String(error&&error.message||error)});}
+    /* BUILD-CHECK-16155 — clear only sources/layers that already exist.
+       Do not call ensureLayers() here. Installing optional raster sources before
+       waitMap() can keep Mapbox isStyleLoaded() false and deadlock the very run
+       that created those sources. Layer creation belongs after base-style readiness. */
+    try{if(m){clearLive();setRasterOpacity(m,IDS.groundwaterLayer,0);setRasterOpacity(m,IDS.graceLayer,0);setRasterOpacity(m,IDS.aquiferRasterLayer,0);}}catch(error){recordRun('clear_warning',token,{error:String(error&&error.message||error)});}
+    window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970=null;
+    window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;
+    window.EARTHLINE_REGIONAL_VISUAL_DATA_16020=null;
+    window.EARTHLINE_DISPLAYED_RUN_16147=null;
+    window.EARTHLINE_DISPLAYED_RUN_16151=null;
+    window.EARTHLINE_ACTIVE_RUN_TOKEN_16147=token;
+    window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=token;
+    document.documentElement.dataset.earthlineActiveRun=token||'';
+    document.documentElement.dataset.earthlineRunState='pending';
+    setRunStatus('Preparing '+(q||'current map')+' — previous scientific results removed.','pending');
+    recordRun('previous_results_cleared',token,{query:q||''});
+  }
+  async function withTimeout(p,ms,label){let t;return Promise.race([Promise.resolve(p),new Promise((_,rej)=>{t=setTimeout(()=>rej(new Error(label+' timed out')),ms);})]).finally(()=>clearTimeout(t));}
+  function notify(text){try{if(typeof earthlineReady==='function')earthlineReady(text);else if(typeof toast==='function')toast(text);}catch(_){} }
+  let runBusyWatchdog16170=0,runBusyStartedAt16170=0,runBusyLastProgressAt16347=0,runBusyLastLabel16347='',runBusyWatchdogToken16347=null;
+  const REGIONAL_STALL_MS_16347=30000;
+  function clearRegionalStallWatchdog16347(){
+    clearTimeout(runBusyWatchdog16170);runBusyWatchdog16170=0;runBusyStartedAt16170=0;runBusyLastProgressAt16347=0;runBusyLastLabel16347='';runBusyWatchdogToken16347=null;
+  }
+  function failRegionalStall16347(token){
+    if(!token||token!==activeRunToken||token!==runBusyWatchdogToken16347)return;
+    const now=Date.now(),idleMs=now-runBusyLastProgressAt16347;
+    if(idleMs<REGIONAL_STALL_MS_16347){
+      clearTimeout(runBusyWatchdog16170);
+      runBusyWatchdog16170=setTimeout(()=>failRegionalStall16347(token),Math.max(1,REGIONAL_STALL_MS_16347-idleMs));
+      return;
+    }
+    const startedAt=runBusyStartedAt16170,stage=runBusyLastLabel16347||'regional stage unavailable';
+    activeRunToken=null;running=false;document.documentElement.dataset.earthlineRunState='failed';
+    try{recordRun('run_stall_timeout',token,{elapsedMs:startedAt?now-startedAt:null,idleMs,stage,reason:'regional analysis made no authoritative stage progress for 30 seconds'});}catch(_){}
+    window.EARTHLINE_REGIONAL_STALL_WATCHDOG_16347={build:'EARTHLINE 16347',runToken:token,failed:true,stallMs:REGIONAL_STALL_MS_16347,idleMs,stage,elapsedMs:startedAt?now-startedAt:null,at:new Date().toISOString()};
+    clearRegionalStallWatchdog16347();setBusy(false,'RUN ANALYSIS');
+    document.documentElement.
+OCCURRENCE 6 OFFSET 2254776
+='published';
+      return true;
+    }catch(err){
+      document.documentElement.dataset.earthlineDirectAddress16291='failed';
+      recordRun('direct_address_run_failed',runToken,{query:q,error:String(err&&err.message||err)});
+      setRunStatus('PROPERTY ANALYSIS FAILED — '+String(err&&err.message||err)+'. No different address or unverified geometry was substituted.','failed');
+      notify('Property analysis stopped — '+String(err&&err.message||err));
+      return false;
+    }finally{
+      if(activeRunToken===runToken)activeRunToken=null;
+      if(document.documentElement.dataset.earthlineRunState!=='failed')document.documentElement.dataset.earthlineRunState='idle';
+    }
+  }
+
+  async function action(e){
+    if(e){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation&&e.stopImmediatePropagation();}
+    const input=document.getElementById('searchInput');let q=normalizeSearchAlias(input&&input.value);if(input&&q!==clean(input.value))input.value=q;
+    /* EARTHLINE 16483 — exact same street-address reruns must reach the existing
+       16479 warm-Property branch before the direct-address geocoder. Previously
+       every numeric street address returned here first, so even an unchanged,
+       already-resolved Property paid the bounded 15-second geocode path again.
+       New/different street addresses retain the original direct-address resolver. */
+    const md16483=state(),target16483=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+    const displayed16483=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+    const displayedTier16483=String(displayed16483&&(displayed16483.tier||displayed16483.mode)||'').toLowerCase();
+    const norm16483=v=>String(v||'').trim().toLowerCase().replace(/,+/g,' ').replace(/\s+/g,' ');
+    const q16483=norm16483(q),targetQuery16483=norm16483(target16483&&target16483.query||'');
+    const exactSameStreetProperty16483=!!(
+      q&&isNumericStreetAddress16291(q)&&displayedTier16483==='property'&&
+      target16483&&Number.isFinite(Number(target16483.lng))&&Number.isFinite(Number(target16483.lat))&&
+      q16483&&targetQuery16483&&q16483===targetQuery16483
+    );
+    if(q&&isNumericStreetAddress16291(q)&&!exactSameStreetProperty16483)return await runDirectAddressProperty16291(q,input);
+    /* 16236 — create the run token before any identity bookkeeping. The previous
+       ordering referenced runToken inside the chosen-location fallback before the
+       token existed, aborting both suggestion-triggered and button-triggered runs. */
+    const prior=activeRunToken,runToken=createRunToken(q||'current-map');
+    /* EARTHLINE 16479 — exact-same Property rerun only.
+       Never infer Property ownership merely because a stale Property target exists.
+       A new/nonmatching query follows the original chosen-location + clear + resolver path byte-for-byte.
+       Only the exact currently applied Property query (or an empty-query current-map Property rerun)
+       may preserve the existing Property state and call the existing Property owner directly. */
+    const md16479=state(),target16479=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+    const displayed16479=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+    const displayedTier16479=String(displayed16479&&(displayed16479.tier||displayed16479.mode)||'').toLowerCase();
+    const norm16479=v=>String(v||'').trim().toLowerCase().replace(/,+/g,' ').replace(/\s+/g,' ');
+    const q16479=norm16479(q),targetQuery16479=norm16479(target16479&&target16479.query||'');
+    const targetReady16479=!!(target16479&&Number.isFinite(Number(target16479.lng))&&Number.isFinite(Number(target16479.lat)));
+    /* EARTHLINE 16491 — a non-empty warm rerun belongs to the same Property only when
+       the authori
+OCCURRENCE 7 OFFSET 2256461
+e();
+    const norm16483=v=>String(v||'').trim().toLowerCase().replace(/,+/g,' ').replace(/\s+/g,' ');
+    const q16483=norm16483(q),targetQuery16483=norm16483(target16483&&target16483.query||'');
+    const exactSameStreetProperty16483=!!(
+      q&&isNumericStreetAddress16291(q)&&displayedTier16483==='property'&&
+      target16483&&Number.isFinite(Number(target16483.lng))&&Number.isFinite(Number(target16483.lat))&&
+      q16483&&targetQuery16483&&q16483===targetQuery16483
+    );
+    if(q&&isNumericStreetAddress16291(q)&&!exactSameStreetProperty16483)return await runDirectAddressProperty16291(q,input);
+    /* 16236 — create the run token before any identity bookkeeping. The previous
+       ordering referenced runToken inside the chosen-location fallback before the
+       token existed, aborting both suggestion-triggered and button-triggered runs. */
+    const prior=activeRunToken,runToken=createRunToken(q||'current-map');
+    /* EARTHLINE 16479 — exact-same Property rerun only.
+       Never infer Property ownership merely because a stale Property target exists.
+       A new/nonmatching query follows the original chosen-location + clear + resolver path byte-for-byte.
+       Only the exact currently applied Property query (or an empty-query current-map Property rerun)
+       may preserve the existing Property state and call the existing Property owner directly. */
+    const md16479=state(),target16479=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+    const displayed16479=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+    const displayedTier16479=String(displayed16479&&(displayed16479.tier||displayed16479.mode)||'').toLowerCase();
+    const norm16479=v=>String(v||'').trim().toLowerCase().replace(/,+/g,' ').replace(/\s+/g,' ');
+    const q16479=norm16479(q),targetQuery16479=norm16479(target16479&&target16479.query||'');
+    const targetReady16479=!!(target16479&&Number.isFinite(Number(target16479.lng))&&Number.isFinite(Number(target16479.lat)));
+    /* EARTHLINE 16491 — a non-empty warm rerun belongs to the same Property only when
+       the authoritative Property target carries that same query identity. A mutable
+       search-field/appliedSearchText value cannot promote a new Regional request. */
+    /* EARTHLINE 16547 — RUN ANALYSIS is the Regional/search owner. A corridor-derived
+       Property target can legitimately carry the same parent query (for example
+       "New York"), so query equality alone must not hijack a later Regional request
+       back into Property. Preserve the warm shortcut only for explicit numeric street
+       addresses or an empty-query current-map Property rerun. The separate Property
+       control remains the governed owner for corridor/crosshair Property reruns. */
+    const explicitWarmPropertyQuery16547=!!q16479&&typeof isNumericStreetAddress16291==='function'&&isNumericStreetAddress16291(q);
+    const exactSameProperty16479=!!(
+      displayedTier16479==='property'&&targetReady16479&&(
+        (!q16479)||(explicitWarmPropertyQuery16547&&targetQuery16479&&q16479===targetQuery16479)
+      )
+    );
+    if(!exactSameProperty16479){
+      try{const setChosen=window.earthlineSetChosenLocation16189;if(typeof setChosen==='function')setChosen(q,null);else recordRun('chosen_location_owner_unavailable',runToken,{query:q});}catch(error){recordRun('chosen_location_warning',runToken,{error:String(error&&error.message||error)});}
+    }
+    activeRunToken=runToken;running=true;runCount++;
+    if(!exactSameProperty16479)clearForSubmission(runToken,q);
+    else{
+      document.documentElement.dataset.earthlineRunState='pending';
+      recordRun('exact_same_property_rerun_preserved_16479',runToken,{query:q||'',appliedSearchText:md16479&&md16479.appliedSearchText||'',displayedTier:dis
+OCCURRENCE 8 OFFSET 2338735
+vpCpaCSnRZf4e0LCx7sRML/OJxyiR/zIbnUfrFacSJoUkG0mvBlSAo5HCxuUggQeuICdZ1Veab8p2xMgR1ykOcAs78vWJGuRe2UtkrNx3GV60+YjSJlG14WqDEXMiSHOz589A8ZkKnLr+S1RNPE4csy8CUidwrNnbrCz+/kaVbfFWC9d8H3TKuzwF2AoeFT1zd7YvJZtFTrv15PERKtqKIBeIerKLX9wc8QZ4Ta1+tDenYHIsUq3D1piXho0+b2pXG83pex6O2NEm57FbBAzcF1MVc3Se2DaZGC88ap/M1vO2RKoeq8TfOBY11NTCpubmLVMxPjUxOna8JzE8Iat/Tf8cxDP4gEq3mfzgped1QNswBm0PmeOkI27q4DSPViqI/ABHV76YNJck9Uzg8CeIMr25jbj0cvWF0pvv1cn2N4GZFQZT5Y7lM0yHyU3dTujHuJdF2ev9rkzIHh/xKCROtPiZvNPgdr5zxfX+nS56cERjtixkH7n9d/2uq3fHY5g845MsqKOrdF6kM/5JowtW4lii+uXL03NQ8sEkBPW5KvPh5yf//3WESrP0BLxbdt6p9q9YAIJ7XxCNVkaPOTsOgFEFIJiFBUmp280sADg+NipeI4iNwBjwgluI+hkXaL0CxTU2afyJocrXLioBgwUv3g3/3Onex1Z+V83k7XwZ34xLPvVCKogigEl+088nAQQdnNR+E55sx52RPaUK6dellMCqVklSIEONexI7ejMymWg7+/KBakWbKDHnTVBOZ1ue+2XxM9a8Bp+lWRql3gDmWGXlmBpnz3/XDiVKk6kYDC0Dzbcc51Ypv+cYYVNfOxBujGKxXx771mqeu6NUa8JsSLmwOLRRVkQRhuQZCmo0bM0coIYmd2UQnnYIJ1QTq2TZE6NrOcKuQRUomFMFL9l//7wP/9sm//3bV2lMwD9J3Mp7su3oIOAUBRFd/LxjVZr/CbWcnp+MIUBCVSgX6w5DqUPi7JHFy8KVN0gfRU5F9j5aZNp+msKbHxb1B2NYKCFO7SsFP2EcWdp3Uck6bomjzlvKkMWhefL8BPcNb83gQiOs3ZAtwR8tX9wzUACErPjWPE2+16/ZBioAbFzEuFTAblky7QbT2AdpMBm1Uhw64AAAA==';
+  let installed=false,imagesReady=false,syncQueued=0,lastSignature='',lastWidth=0;
+
+  function map(){try{return window.earthlineMap||earthlineMap||null}catch(_){return null}}
+  function model(){try{return typeof M!=='undefined'?M:null}catch(_){return null}}
+  function state(){return window.earthlineRegional15778||{}}
+  function displayedTier(){const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null;return String(d&&(d.tier||d.mode)||'regional').toLowerCase()}
+  function propertyActive(){const s=state(),m=model();return !!(m&&m.analysisReady&&s.mode==='property'&&!s.active)}
+  function focusActive(){return displayedTier()==='focus'&&!propertyActive()}
+  function visible(id,on){const mp=map();try{if(mp?.getLayer?.(id))mp.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){}}
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function widthPx(){const z=Number(map()?.getZoom?.()||17);/* 16325 presentation only: scientific/footprint geometry remains 9 m. */return z<=14?4.6:z<=16?6.1:z<=18?8.2:z<=20?10.5:12.1}
+  function restoreGrab(){const mp=map(),container=mp?.getCanvasContainer?.(),canvas=mp?.getCanvas?.();for(const el of [container,canvas])if(el)el.style.removeProperty('cursor');if(container&&!container.classList.contains('mapboxgl-interactive'))container.classList.add('mapboxgl-interactive');document.documentElement.dataset.earthlineRestingCursor16169='grab'}
+  function mapOnlyOn(){return !!document.querySelector('.center')?.classList?.contains('fs')}
+  function syncPortal(){document.documentElement.classList.toggle('earthline-map-only-16169',mapOnlyOn())}
+  function exitMapOnly(){try{if(typeof setFullscreen==='function')setFullscreen(false)}catch(_){}const c=document.querySelector('.center');c?.classList?.remove('fs');document.documentElement.classList.remove('earthline-map-expanded-16166','earthline-map-only-16169');try{map()?.resize?.()}catch(_){}restoreGrab();return true}
+  function ensureExitPortal(){let b=document.getElementById('earthlineMapOnlyExit16169');if(b)return b;b=document.createElement('button');b.id='earthlineMapOnlyExit16169';b.type='button';b.textContent='✕ EXIT MAP ONLY';b.setAttribute('aria-label','Exit map-only view');const stop=e=>{e.preventDefault();e.stopPropagation();e.stopImmediatePropagation?.();exitMapOnly()};b.addEventListener('pointerdown',stop,true);b.addEventListener('click',stop,true);document.body.appendChild(b);return b}
+  function ensureDeclareButton(){let b=document.getElementById('earthlineDeclareProperty16169');const created16546=!b;if(!b){b=document.createElement('button');b.id='eart
+OCCURRENCE 9 OFFSET 2378345
+ct area at '+coord,
+      sub:'Declared from the map crosshair',
+      placeType:'selected_site',userSelectedSite:true,propertyMode:true,regionalMode:false,planning:false,acres:20,
+      lat:Number(center.lat),lng:Number(center.lng),zoomHint:Math.max(17,Number(map()?.getZoom?.()||17))
+    });
+    return site;
+  }
+  function authoritativePropertyCount16220(){
+    const m=model()||{},safe=m.authoritativeSafeSwales15815,publication=m.propertyPublication15816||{},lock=m.propertyResultLock15815||{},audit=m.safetyAudit15806||{};
+    const currentGen=Number(m.searchGen),publicationGen=Number(publication.searchGen),lockGen=Number(lock.searchGen);
+    const generationMatches=!!(
+      Number.isFinite(currentGen)&&Number.isFinite(publicationGen)&&Number.isFinite(lockGen)&&
+      currentGen===publicationGen&&currentGen===lockGen
+    );
+    const safetyVerified=!!(
+      generationMatches&&publication.committed===true&&publication.safetyVerified===true&&
+      lock.safetyVerified===true&&audit.verified===true
+    );
+    const safeCount=safetyVerified&&safe&&safe.type==='FeatureCollection'&&Array.isArray(safe.features)?safe.features.length:0;
+    return {safetyVerified,generationMatches,currentGen,publicationGen,lockGen,safeCount,engineCount:Array.isArray(m.swales)?m.swales.length:0,publicationCount:Number(publication.safeSegments||0),publication,lock,audit,safe:safetyVerified?safe:null};
+  }
+  function publishPropertyDisplay16220(site,selectedCode){
+    const m=model()||{},before=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,counts=authoritativePropertyCount16220();
+    if(!counts.safetyVerified){
+      const stale16327=counts.generationMatches===false;
+      window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220={
+        build:BUILD,published:false,
+        reason:stale16327?'property-generation-superseded-by-newer-search':'property-safety-or-publication-unverified',
+        canonicalTierBefore:String(before?.tier||before?.mode||''),
+        generationMatches:counts.generationMatches,
+        currentGen:counts.currentGen,publicationGen:counts.publicationGen,lockGen:counts.lockGen,
+        engineCount:counts.engineCount,safeCount:counts.safeCount,publicationCount:counts.publicationCount,
+        at:new Date().toISOString()
+      };
+      return {ok:false,counts};
+    }
+    const runToken='property-16220-'+Number(m.searchGen||0)+'-'+Date.now().toString(36);
+    const evidence=propertyEvidenceSnapshot16206();
+    const snapshot={
+      runToken,query:String(site?.fullName||site?.name||'20-acre property analysis'),tier:'property',mode:'property',extentClass:'property',
+      center:{lng:Number(site?.lng),lat:Number(site?.lat)},acres:Number(site?.acres||20),selectedCode:selectedCode||null,
+      completedAt:new Date().toISOString(),
+      derived:{swaleOpportunityLines:counts.safeCount,propertySafeCorridors:counts.safeCount,engineCorridors:counts.engineCount},
+      propertyPublication:{committed:true,safetyVerified:true,safeSegments:counts.safeCount,searchGen:Number(m.searchGen||0)},
+      evidence
+    };
+    try{
+      if(m.layers&&m.layers.swales)m.layers.swales.on=true;
+      if(typeof window.earthlinePublishDisplayedRun16151==='function')window.earthlinePublishDisplayedRun16151(snapshot);
+      else{
+        const frozen=Object.freeze(JSON.parse(JSON.stringify(snapshot)));
+        window.EARTHLINE_DISPLAYED_RUN_16147=frozen;window.EARTHLINE_DISPLAYED_RUN_16151=frozen;window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=runToken;
+        document.documentElement.dataset.earthlineActiveRun=runToken;document.documentElement.dataset.earthlineRunState='published';
+        document.dispatchEvent(new CustomEvent('earthline:analysis-complete',{detail:{runToken,query:snapshot.query,tier:'property'}}));
+      }
+      if(typeof window
+OCCURRENCE 10 OFFSET 2380258
+fied',
+        canonicalTierBefore:String(before?.tier||before?.mode||''),
+        generationMatches:counts.generationMatches,
+        currentGen:counts.currentGen,publicationGen:counts.publicationGen,lockGen:counts.lockGen,
+        engineCount:counts.engineCount,safeCount:counts.safeCount,publicationCount:counts.publicationCount,
+        at:new Date().toISOString()
+      };
+      return {ok:false,counts};
+    }
+    const runToken='property-16220-'+Number(m.searchGen||0)+'-'+Date.now().toString(36);
+    const evidence=propertyEvidenceSnapshot16206();
+    const snapshot={
+      runToken,query:String(site?.fullName||site?.name||'20-acre property analysis'),tier:'property',mode:'property',extentClass:'property',
+      center:{lng:Number(site?.lng),lat:Number(site?.lat)},acres:Number(site?.acres||20),selectedCode:selectedCode||null,
+      completedAt:new Date().toISOString(),
+      derived:{swaleOpportunityLines:counts.safeCount,propertySafeCorridors:counts.safeCount,engineCorridors:counts.engineCount},
+      propertyPublication:{committed:true,safetyVerified:true,safeSegments:counts.safeCount,searchGen:Number(m.searchGen||0)},
+      evidence
+    };
+    try{
+      if(m.layers&&m.layers.swales)m.layers.swales.on=true;
+      if(typeof window.earthlinePublishDisplayedRun16151==='function')window.earthlinePublishDisplayedRun16151(snapshot);
+      else{
+        const frozen=Object.freeze(JSON.parse(JSON.stringify(snapshot)));
+        window.EARTHLINE_DISPLAYED_RUN_16147=frozen;window.EARTHLINE_DISPLAYED_RUN_16151=frozen;window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=runToken;
+        document.documentElement.dataset.earthlineActiveRun=runToken;document.documentElement.dataset.earthlineRunState='published';
+        document.dispatchEvent(new CustomEvent('earthline:analysis-complete',{detail:{runToken,query:snapshot.query,tier:'property'}}));
+      }
+      if(typeof window.earthlineDeliverPropertyResult15817==='function')window.earthlineDeliverPropertyResult15817('property-canonical-display-16220',true);
+      if(typeof window.earthlineSyncLivingSwales15792==='function')window.earthlineSyncLivingSwales15792(counts.safe,true);
+      window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220={build:BUILD,published:true,runToken,canonicalTierBefore:String(before?.tier||before?.mode||''),canonicalTierAfter:String(window.EARTHLINE_DISPLAYED_RUN_16151?.tier||''),engineCount:counts.engineCount,safeCount:counts.safeCount,publicationCount:counts.publicationCount,sourceStateFingerprint:evidence.sourceStateFingerprint||null,scientificInputFingerprint:evidence.scientificInputFingerprint||null,noBuildMaskHash:evidence.noBuildMaskHash||null,drivewayFeatureCount:evidence.drivewayFeatureCount,buildingFeatureCount:evidence.buildingFeatureCount,authorityIntersectionCount:evidence.authorityIntersectionCount,at:new Date().toISOString()};
+      return {ok:true,counts,snapshot};
+    }catch(error){
+      window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220={build:BUILD,published:false,reason:String(error?.message||error||'property-display-publication-failed'),canonicalTierBefore:String(before?.tier||before?.mode||''),engineCount:counts.engineCount,safeCount:counts.safeCount,publicationCount:counts.publicationCount,at:new Date().toISOString()};
+      throw error;
+    }
+  }
+  function authoritativeSafePropertyFC16221(){
+    const m=model()||{},publication=m.propertyPublication15816||{},lock=m.propertyResultLock15815||{},audit=m.safetyAudit15806||{},fc=m.authoritativeSafeSwales15815;
+    const currentGen=Number(m.searchGen),publicationGen=Number(publication.searchGen);
+    const generationMatches=!(Number.isFinite(currentGen)&&Number.isFinite(publicationGen))||currentGen===publicationGen;
+    const verified=!!(publication.committed===true&&publication.safetyVerified===true&&lock.safety
+OCCURRENCE 11 OFFSET 2381089
+de||null,
+      completedAt:new Date().toISOString(),
+      derived:{swaleOpportunityLines:counts.safeCount,propertySafeCorridors:counts.safeCount,engineCorridors:counts.engineCount},
+      propertyPublication:{committed:true,safetyVerified:true,safeSegments:counts.safeCount,searchGen:Number(m.searchGen||0)},
+      evidence
+    };
+    try{
+      if(m.layers&&m.layers.swales)m.layers.swales.on=true;
+      if(typeof window.earthlinePublishDisplayedRun16151==='function')window.earthlinePublishDisplayedRun16151(snapshot);
+      else{
+        const frozen=Object.freeze(JSON.parse(JSON.stringify(snapshot)));
+        window.EARTHLINE_DISPLAYED_RUN_16147=frozen;window.EARTHLINE_DISPLAYED_RUN_16151=frozen;window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=runToken;
+        document.documentElement.dataset.earthlineActiveRun=runToken;document.documentElement.dataset.earthlineRunState='published';
+        document.dispatchEvent(new CustomEvent('earthline:analysis-complete',{detail:{runToken,query:snapshot.query,tier:'property'}}));
+      }
+      if(typeof window.earthlineDeliverPropertyResult15817==='function')window.earthlineDeliverPropertyResult15817('property-canonical-display-16220',true);
+      if(typeof window.earthlineSyncLivingSwales15792==='function')window.earthlineSyncLivingSwales15792(counts.safe,true);
+      window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220={build:BUILD,published:true,runToken,canonicalTierBefore:String(before?.tier||before?.mode||''),canonicalTierAfter:String(window.EARTHLINE_DISPLAYED_RUN_16151?.tier||''),engineCount:counts.engineCount,safeCount:counts.safeCount,publicationCount:counts.publicationCount,sourceStateFingerprint:evidence.sourceStateFingerprint||null,scientificInputFingerprint:evidence.scientificInputFingerprint||null,noBuildMaskHash:evidence.noBuildMaskHash||null,drivewayFeatureCount:evidence.drivewayFeatureCount,buildingFeatureCount:evidence.buildingFeatureCount,authorityIntersectionCount:evidence.authorityIntersectionCount,at:new Date().toISOString()};
+      return {ok:true,counts,snapshot};
+    }catch(error){
+      window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220={build:BUILD,published:false,reason:String(error?.message||error||'property-display-publication-failed'),canonicalTierBefore:String(before?.tier||before?.mode||''),engineCount:counts.engineCount,safeCount:counts.safeCount,publicationCount:counts.publicationCount,at:new Date().toISOString()};
+      throw error;
+    }
+  }
+  function authoritativeSafePropertyFC16221(){
+    const m=model()||{},publication=m.propertyPublication15816||{},lock=m.propertyResultLock15815||{},audit=m.safetyAudit15806||{},fc=m.authoritativeSafeSwales15815;
+    const currentGen=Number(m.searchGen),publicationGen=Number(publication.searchGen);
+    const generationMatches=!(Number.isFinite(currentGen)&&Number.isFinite(publicationGen))||currentGen===publicationGen;
+    const verified=!!(publication.committed===true&&publication.safetyVerified===true&&lock.safetyVerified===true&&audit.verified===true&&generationMatches&&fc&&fc.type==='FeatureCollection'&&Array.isArray(fc.features));
+    return verified?fc:SAFE_EMPTY_16221;
+  }
+  function propertySafeDisplayActive16221(){
+    const m=model()||{},publication=m.propertyPublication15816||{},lock=m.propertyResultLock15815||{},audit=m.safetyAudit15806||{};
+    return !!(publication.committed===true&&publication.safetyVerified===true&&lock.safetyVerified===true&&audit.verified===true&&m.authoritativeSafeSwales15815&&m.authoritativeSafeSwales15815.type==='FeatureCollection');
+  }
+  function setSafeLayerVisibility16221(on){
+    const mp=map();
+    for(const id of Object.values(SAFE_LAYERS_16221)){
+      try{if(mp?.getLayer?.(id))mp.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){ }
+    }
+  }
+  /* EARTHLINE 16521 — presen
+OCCURRENCE 12 OFFSET 2386438
+boundary){boundary.replaceChildren();boundary.style.setProperty('display','none','important')}
+      const water=document.getElementById('earthlinePropertyWaterOverlay15824');
+      if(water){water.replaceChildren();water.style.display='none'}
+      const aq=document.getElementById('earthlineAquiferTopText16501');
+      if(aq){
+        const key=nextSite&&Number.isFinite(Number(nextSite.lng))&&Number.isFinite(Number(nextSite.lat))
+          ?Number(nextSite.lng).toFixed(6)+"|"+Number(nextSite.lat).toFixed(6):"";
+        const same=!!(key&&key===aq.dataset.m108LastPropertyCenter&&aq.childElementCount>0);
+        if(same){aq.dataset.m108PreserveSameProperty="1";if(aq.style.display!=="block")aq.style.display="block"}
+        else{delete aq.dataset.m108PreserveSameProperty;aq.replaceChildren();aq.style.display='none'}
+      }
+    }catch(_){ }
+    window.EARTHLINE_PROPERTY_RETIREMENT_AUDIT_16521={build:'EARTHLINE 16521',reason,presentationOnly:true,scientificStateCleared:false,at:new Date().toISOString()};
+    return true;
+  }
+
+  function boundaryKey16521(points){
+    return (Array.isArray(points)?points:[]).map(p=>Number(p&&p[0]).toFixed(7)+','+Number(p&&p[1]).toFixed(7)).join('|');
+  }
+
+  function settleCurrentPropertyPresentation16521(serial,searchGen,count){
+    (async()=>{
+      let last=null;
+      for(const delay of [0,90,260,620,1300,2200]){
+        if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
+        const md=model()||{};
+        const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+        const tier=String(displayed&&(displayed.tier||displayed.mode)||'').toLowerCase();
+        if(serial!==runSerial||Number(md.searchGen||0)!==Number(searchGen)||tier==='regional')return;
+        let safeOk=count===0;
+        try{const safe=syncSafePropertyFallback16221('bounded-postpublish-16521-'+delay);safeOk=count===0||!!(safe&&safe.ok);last=Object.assign({},last||{},{safe})}catch(_){ }
+        try{if(typeof window.earthlineSchedulePropertyWater15823==='function')window.earthlineSchedulePropertyWater15823('bounded-postpublish-16521-'+delay)}catch(_){ }
+        try{if(typeof window.earthlineRenderDirectWater15824==='function')window.earthlineRenderDirectWater15824(true)}catch(_){ }
+        try{if(typeof window.earthlineSyncAquiferLayer==='function')window.earthlineSyncAquiferLayer()}catch(_){ }
+        try{if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('property')}catch(_){ }
+        try{if(typeof window.earthlineQueueAnalysisBoundary15827==='function')window.earthlineQueueAnalysisBoundary15827()}catch(_){ }
+        const r=(model()||{}).directWaterRenderer15824||null;
+        const generated=Number(r&&r.generatedPaths),visible=Number(r&&r.visiblePaths||0);
+        const waterOk=!!(r&&Number.isFinite(generated)&&(generated===0||(r.visible===true&&visible>0)));
+        const boundary=document.getElementById('earthlineAnalysisBoundaryOverlay15827');
+        const expectedKey=boundaryKey16521(md.analysisBoundaryLngLat);
+        let renderedKey='';
+        try{const a=typeof window.earthlineBuild15827Audit==='function'?window.earthlineBuild15827Audit():null;renderedKey=boundaryKey16521(a&&a.frame&&a.frame.boundary)}catch(_){ }
+        const boundaryOk=!!(boundary&&boundary.style.display!=='none'&&boundary.childElementCount>0&&expectedKey&&renderedKey===expectedKey);
+        last=Object.assign({},last||{},{water:{generatedPaths:Number.isFinite(generated)?generated:null,visiblePaths:visible,ok:waterOk},boundary:{ok:boundaryOk,children:boundary?boundary.childElementCount:0,display:boundary?boundary.style.display:null,expectedKey,renderedKey}});
+        if(safeOk&&waterOk&&boundaryOk){window.EARTHLINE_PROPERTY_PRESENTATION_S
+PATTERN regional2 COUNT 0
+PATTERN earthlineVtBoundary16178 COUNT 1
+OCCURRENCE 1 OFFSET 3675262
+coordinates);else if(g.type==='MultiPolygon')polygons.push(...g.coordinates);}
+    if(!polygons.length)throw new Error('VCGI state-boundary response contained no polygon');
+    return {type:'MultiPolygon',coordinates:polygons};
+  }
+  function esriToGeoJSON(data){
+    const polygons=[];for(const f of (data&&data.features||[])){for(const ring of (f&&f.geometry&&f.geometry.rings||[])){if(Array.isArray(ring)&&ring.length>=4)polygons.push([ring.map(p=>[Number(p[0]),Number(p[1])])]);}}
+    if(!polygons.length)throw new Error('VCGI JSONP boundary response contained no rings');
+    return {type:'MultiPolygon',coordinates:polygons};
+  }
+  function loadCache(){try{const raw=localStorage.getItem(CACHE_KEY);if(!raw)return null;const row=JSON.parse(raw);return row&&row.geometry?row.geometry:null}catch(_){return null}}
+  function saveCache(g){try{localStorage.setItem(CACHE_KEY,JSON.stringify({source:SERVICE,geometry:g,savedAt:new Date().toISOString()}))}catch(_){}}
+  function fetchGeoJSON(){
+    const p=new URLSearchParams({where:'1=1',outFields:'OBJECTID',returnGeometry:'true',outSR:'4326',f:'geojson'}),ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),8000);
+    return fetch(SERVICE+'?'+p.toString(),{mode:'cors',cache:'force-cache',signal:ctl.signal}).then(r=>{if(!r.ok)throw new Error('VCGI boundary HTTP '+r.status);return r.json()}).then(normalizeGeoJSON).finally(()=>clearTimeout(timer));
+  }
+  function fetchJSONP(){
+    return new Promise((resolve,reject)=>{
+      const cb='__earthlineVtBoundary16178_'+Date.now()+'_'+Math.random().toString(36).slice(2),script=document.createElement('script');
+      const params=new URLSearchParams({where:'1=1',outFields:'OBJECTID',returnGeometry:'true',outSR:'4326',f:'json',callback:cb});
+      const timer=setTimeout(()=>{cleanup();reject(new Error('VCGI boundary JSONP timed out'));},8000);
+      function cleanup(){clearTimeout(timer);script.remove();try{delete window[cb]}catch(_){window[cb]=undefined}}
+      window[cb]=data=>{try{const g=esriToGeoJSON(data);cleanup();resolve(g)}catch(err){cleanup();reject(err)}};
+      script.onerror=()=>{cleanup();reject(new Error('VCGI boundary JSONP failed'))};script.async=true;script.src=SERVICE+'?'+params.toString();document.head.appendChild(script);
+    });
+  }
+  async function ensureBoundary(){
+    if(boundaryGeometry)return boundaryGeometry;if(boundaryPromise)return boundaryPromise;
+    boundaryPromise=(async()=>{
+      const cached=loadCache();if(cached){boundaryGeometry=cached;window.EARTHLINE_VERMONT_BOUNDARY_SOURCE_16178={source:'cached official VCGI state boundary',service:SERVICE,at:new Date().toISOString()};return boundaryGeometry;}
+      const cors=Promise.resolve().then(fetchGeoJSON).then(geometry=>({geometry,source:'VCGI GeoJSON'}));
+      const jsonp=Promise.resolve().then(fetchJSONP).then(geometry=>({geometry,source:'VCGI JSONP'}));
+      let winner;
+      try{
+        if(typeof Promise.any==='function')winner=await Promise.any([cors,jsonp]);
+        else winner=await new Promise((resolve,reject)=>{let failed=0,last;for(const p of [cors,jsonp])p.then(resolve,e=>{last=e;if(++failed===2)reject(last)});});
+      }catch(error){lastError=new Error('official Vermont boundary unavailable: '+String(error&&error.message||error));throw lastError;}
+      boundaryGeometry=winner.geometry;
+      window.EARTHLINE_VERMONT_BOUNDARY_SOURCE_16178={source:winner.source,service:SERVICE,parallelTransport16453:true,at:new Date().toISOString()};
+      saveCache(boundaryGeometry);return boundaryGeometry;
+    })().finally(()=>{boundaryPromise=null});
+    return boundaryPromise;
+  }
+  function centroid(points){const pts=(points||[]).filter(finitePoint);if(!pts.length)return null;return [pts.reduce((a,p)=>a+Number(p[0]),0)/pts.length,pts.reduce((a,p)=>a+Number(p[1]),0)/p
+PATTERN EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167 COUNT 1
+OCCURRENCE 1 OFFSET 2231417
+perty('opacity');
+    }
+    const regionalOverlayRenderOk16336=
+      typeof window.earthlineRenderRegionalOverlay16020==='function'
+        ?window.earthlineRenderRegionalOverlay16020(visualData)
+        :false;
+    for(const id of [IDS.contourLine,IDS.flowCasing,IDS.flowLine,IDS.contourLabel,IDS.flowArrow,IDS.swaleHalo,IDS.swaleLine,IDS.aquiferLabel]){try{m.moveLayer(id);}catch(_){}}
+    try{m.triggerRepaint&&m.triggerRepaint();}catch(_){}
+    phaseMark16198('terrainProductsAndPublishMs',productsStarted16198);
+
+    const contourLineCount=contours.features.filter(f=>f.geometry&&(f.geometry.type==='LineString'||f.geometry.type==='MultiLineString')).length;
+    const contourLabelCount=contours.features.filter(f=>f.properties&&f.properties.feature_type==='contour-label').length;
+    const flowLineCount=flows.features.filter(f=>f.properties&&f.properties.feature_type==='flow').length;
+    const flowArrowCount=flows.features.filter(f=>f.properties&&f.properties.feature_type==='flow-arrow').length;
+    const swaleCount=swales.features.length;
+    const generationAudit=window.EARTHLINE_SWALE_GENERATION_AUDIT_16167||null;
+    const overlayAudit=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null;
+    let sourceFeatureCount=null;
+    try{const src=m.getSource&&m.getSource(IDS.swales),data=src&&(src._data||src._options&&src._options.data);if(data&&Array.isArray(data.features))sourceFeatureCount=data.features.length;}catch(_){}
+    window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167={
+      build:'EARTHLINE 16167',runToken,tier:focusMode?'focus':'regional',generated:swaleCount,
+      generatedBeforeTierGate:Number(generationAudit&&generationAudit.chosenBeforeTierGate||0),
+      sourceFeatures:sourceFeatureCount,overlaySwaleLines:Number(overlayAudit&&overlayAudit.swaleLines||0),
+      overlayLocationPills:Number(overlayAudit&&overlayAudit.swaleGradeLabels||0),
+      mapboxLabelLayer:!!(m.getLayer&&m.getLayer('earthline-ranked-swale-label-15775')),
+      mapboxHitLayer:!!(m.getLayer&&m.getLayer('earthline-ranked-swale-hit-16153')),
+      checkedAt:new Date().toISOString()
+    };
+    const vermontBoundaryAudit16178=window.EARTHLINE_VERMONT_PRODUCT_BOUNDARY_AUDIT_16178||null;
+    const boundaryExplainsZero16178=!!(
+      (vermontRequest&&vermontBoundaryAudit16178&&Number(vermontBoundaryAudit16178.before&&vermontBoundaryAudit16178.before.swales||0)>0&&Number(vermontBoundaryAudit16178.after&&vermontBoundaryAudit16178.after.swales||0)===0)||
+      (genericBoundaryAudit16539&&Number(genericBoundaryAudit16539.before&&genericBoundaryAudit16539.before.swales||0)>0&&Number(genericBoundaryAudit16539.after&&genericBoundaryAudit16539.after.swales||0)===0)
+    );
+    if(!focusMode&&swaleCount===0&&Number(generationAudit&&generationAudit.chosenBeforeTierGate||0)>0&&!boundaryExplainsZero16178){
+      throw new Error('regional corridor publication blocked: terrain-derived candidates existed but zero corridors survived; a focus-only contour tolerance must not govern regional screening');
+    }
+    if(swaleCount>0&&overlayAudit&&Number(overlayAudit.swaleLines||0)===0){
+      try{
+        clearLive();
+        window.EARTHLINE_REGIONAL_VISUAL_DATA_16020=null;
+        document.getElementById('earthlineRegionalVectorOverlay16020')?.replaceChildren();
+        document.getElementById('earthlineRegionalCorridorTabs16323')?.remove();
+      }catch(_){}
+      throw new Error('corridor rendering incomplete: '+swaleCount+' corridors were generated but the visible overlay rendered zero');
+    }
+    if(swaleCount>0&&(
+      regionalOverlayRenderOk16336!==true||
+      !overlayAudit||
+      Number(overlayAudit.swaleGradeLabels||0)===0
+    )){
+      try{
+        clearLive();
+        window.EARTHLINE_REGIONAL_VISUAL_DATA_16020=null;
+ 
