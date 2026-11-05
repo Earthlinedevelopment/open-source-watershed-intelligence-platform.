@@ -74,6 +74,10 @@ try {
       },true);
     }
   });
+  // The search panel deliberately occupies the narrow mobile map on first load.
+  // Close it using the real user-facing rail control before attempting a map pinch.
+  await mobile.locator('#earthlineRailSearch16188').click();
+  await mobile.waitForFunction(()=>!document.documentElement.classList.contains('earthline-panel-open-16188'),null,{timeout:5000});
   const cdp=await context.newCDPSession(mobile);
   const mx=mm.mapboxCanvas.x+mm.mapboxCanvas.width*.55;
   const my=mm.mapboxCanvas.y+mm.mapboxCanvas.height*.55;
