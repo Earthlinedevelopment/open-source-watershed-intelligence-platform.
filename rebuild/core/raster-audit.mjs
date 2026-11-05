@@ -83,6 +83,11 @@ function hornSlope(g,x,y) {
   return Math.hypot(dzdx,dzdy)*100;
 }
 function allFootprintCells(g,polyline,radius) {
+  const west=g.originX,east=g.originX+g.width*g.cellSizeM;
+  const south=g.originY,north=g.originY+g.height*g.cellSizeM;
+  // Check whole buffered footprint BEFORE clipping candidate raster cells.
+  if(polyline.some(p=>p[0]-radius<west-EPS||p[0]+radius>east+EPS||
+                     p[1]-radius<south-EPS||p[1]+radius>north+EPS))return null;
   const cells=new Set();
   for(let k=1;k<polyline.length;k++){
     const a=polyline[k-1],b=polyline[k];
@@ -135,17 +140,26 @@ export function auditMetricCorridor({grid,centerlineM,halfWidthM,flowSegments,fl
       return fail('CORRIDOR_ZERO_LENGTH_EDGE');
   const cells=allFootprintCells(grid,centerlineM,halfWidthM);
   if(!cells||!cells.size)return fail('CORRIDOR_OUTSIDE_VERIFIED_RASTER');
-  let maxLocalPct=0;
+  // Preflight all footprints before computing slopes; report absent input
+  // instead of only a downstream gradient failure when the missing cell is
+  // encountered through a neighbor's 3x3 Horn window.
   for(const i of cells) {
     const x=i%grid.width,y=Math.floor(i/grid.width);
     if(grid.validity[i]!==1)return fail('CORRIDOR_HAS_UNKNOWN_TERRAIN',{x,y});
     if(grid.noBuild[i]!==0)return fail('CORRIDOR_INTERSECTS_NO_BUILD',{x,y});
+  }
+  let maxLocalPct=0;
+  for(const i of cells) {
+    const x=i%grid.width,y=Math.floor(i/grid.width);
     const slope=hornSlope(grid,x,y);
     if(slope===null)return fail('CORRIDOR_SLOPE_UNRESOLVED',{x,y});
     maxLocalPct=Math.max(maxLocalPct,slope);
     if(maxLocalPct>4+EPS)
       return fail('CORRIDOR_EXCEEDS_4_PCT',{x,y,maxLocalPct});
   }
+  // Allow insignificant double-rounding error at exactly 4%, but never
+  // publish a value slightly above the 4% rule accepted by the outer gate.
+  if(maxLocalPct<=4+EPS)maxLocalPct=Math.min(maxLocalPct,4);
   const flow=flowEvidence(grid,centerlineM,flowSegments,flowModelId);
   if(!flow.crossings||!finite(flow.runoff)||flow.runoff<=0)
     return fail('POSITIVE_RUNOFF_CROSSING_NOT_PROVEN');
