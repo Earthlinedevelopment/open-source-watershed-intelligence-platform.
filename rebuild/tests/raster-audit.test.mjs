@@ -87,7 +87,7 @@ test('supplied green checks cannot override actual raster audit',()=>{
       landCover:{status:'verified',dataset:'synthetic',version:'1',coverageId:'raster'},
       exclusions:{status:'verified',dataset:'synthetic',version:'1',coverageId:'raster',
         fingerprint:'synthetic-mask-v1',
-        classes:{roads:'verified',buildings:'verified',driveways:'verified',mappedWater:'verified'}}},
+        classes:{roads:'verified',buildings:'verified',driveways:'verified',mappedWater:'verified',protectedLand:'verified'}}},
     groundwater:{status:'unavailable',evidence:[]},
     swales:[{id:'one',coordinates:[[-72,44],[-71.999,44]],
       centerlineM,halfWidthM:0.6,
