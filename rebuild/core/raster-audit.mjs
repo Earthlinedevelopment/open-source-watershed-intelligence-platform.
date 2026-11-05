@@ -173,15 +173,32 @@ export function auditMetricCorridor({grid,centerlineM,halfWidthM,flowSegments,fl
 }
 /**
  * Recompute raster-based audits rather than trusting supplier-written audit fields.
- * SOURCE ALIGNMENT NOT YET PROVEN: caller must independently verify that the
- * published lon/lat coordinates correspond to the exact metric centerline.
+ * The injected projectLonLat function must be tied to an independently verified
+ * CRS adapter. A wrong projection implementation cannot be detected here.
  */
-export function certifyRasterCandidate(candidate,{grid,flowSegments,flowModelId}){
+export function certifyRasterCandidate(candidate,{grid,flowSegments,flowModelId,projectLonLat}){
   if(!candidate||!Array.isArray(candidate.swales)||!candidate.sources?.exclusions)
     return {status:'blocked',errors:['CANDIDATE_OR_EXCLUSION_SOURCE_MISSING']};
+  // One GIS projection adapter, independently selected for grid.metricCrs.
+  // Prevent a safe metric path from certifying an unrelated displayed GeoJSON.
+  if(typeof projectLonLat!=='function')
+    return {status:'blocked',errors:['GEOREFERENCING_TRANSFORM_MISSING']};
   const verified=[];
   const errors=[];
   for(const swale of candidate.swales){
+    const coords=swale?.coordinates,metric=swale?.centerlineM;
+    let aligned=Array.isArray(coords)&&Array.isArray(metric)&&
+      coords.length===metric.length&&coords.length>=2;
+    if(aligned)for(let k=0;k<coords.length;k++){
+      try{
+        if(!point(coords[k])||!point(metric[k])){aligned=false;break;}
+        const projected=projectLonLat(coords[k],grid.metricCrs);
+        if(!point(projected)||Math.hypot(...sub(projected,metric[k]))>0.001){
+          aligned=false;break;
+        }
+      }catch{aligned=false;break;}
+    }
+    if(!aligned){errors.push(String(swale?.id||'(missing)')+':GEOGRAPHIC_METRIC_PATH_MISMATCH');continue;}
     const result=auditMetricCorridor({grid,centerlineM:swale.centerlineM,
       halfWidthM:swale.halfWidthM,flowSegments,flowModelId,
       maskFingerprint:candidate.sources.exclusions.fingerprint});
