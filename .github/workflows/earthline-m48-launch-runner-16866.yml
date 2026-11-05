@@ -1,6 +1,6 @@
 name: Earthline Iowa Public URL Validation
 permissions:
-  contents: read
+  contents: write
 on:
   push:
     branches:
@@ -163,12 +163,53 @@ jobs:
           SERVER_PID=$!
           trap 'kill $SERVER_PID || true' EXIT
           for i in {1..30}; do curl -fsS http://127.0.0.1:8787/ >/dev/null && break; sleep 1; done
-          node ./iowa-owner-test.mjs
+          set +e
+          OVERALL=0
+          mkdir -p /tmp/earthline-seven
+          for RUN in 1 2 3 4 5 6 7; do
+            echo "===== MANTRA 120 RUN $RUN / 7 ====="
+            node ./iowa-owner-test.mjs > "mantra120-run-$RUN.log" 2>&1
+            RC=$?
+            cp "mantra120-run-$RUN.log" "/tmp/earthline-seven/"
+            if [ -f iowa-owner-validation.json ]; then cp iowa-owner-validation.json "/tmp/earthline-seven/mantra120-run-$RUN.json"; fi
+            echo "RUN $RUN exit=$RC" | tee -a /tmp/earthline-seven/summary.txt
+            grep 'EARTHLINE_OWNER_VALIDATION ' "mantra120-run-$RUN.log" | tail -1 >> /tmp/earthline-seven/summary.txt || true
+            if [ "$RC" -ne 0 ]; then
+              tail -15 "mantra120-run-$RUN.log" >> /tmp/earthline-seven/summary.txt
+              OVERALL=1
+            fi
+            for IMG in iowa-owner-regional.png iowa-owner-property.png iowa-owner-regional2.png; do
+              if [ -f "$IMG" ]; then cp "$IMG" "/tmp/earthline-seven/mantra120-$RUN-$IMG"; fi
+            done
+          done
+          cp /tmp/earthline-seven/summary.txt mantra120-seven-summary.txt
+          cp /tmp/earthline-seven/mantra120-run-*.json ./ 2>/dev/null || true
+          exit "$OVERALL"
+      - name: Record seven-run diagnostics (not deployment)
+        if: always()
+        shell: bash
+        run: |
+          if [ -f /tmp/earthline-seven/summary.txt ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git fetch origin main
+            git switch -C main origin/main
+            mkdir -p .earthline-tests/mantra120
+            cp /tmp/earthline-seven/summary.txt .earthline-tests/mantra120/seven-run-summary.txt
+            cp /tmp/earthline-seven/mantra120-run-*.json .earthline-tests/mantra120/ 2>/dev/null || true
+            cp /tmp/earthline-seven/mantra120-run-*.log .earthline-tests/mantra120/ 2>/dev/null || true
+            git add .earthline-tests/mantra120
+            git commit -m "test: record Mantra 120 seven browser runs" || true
+            git push origin HEAD:main
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: iowa-public-url-validation
           path: |
+            mantra120-seven-summary.txt
+            mantra120-run-*.json
+            mantra120-run-*.log
             iowa-owner-validation.json
             iowa-owner-regional.png
             iowa-owner-property.png
