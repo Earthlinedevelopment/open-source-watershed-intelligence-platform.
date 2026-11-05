@@ -13,7 +13,7 @@ This directory is **not connected to production**. Live index.html, published as
 
 ## Checks and status
 
-Run: node --test rebuild/tests/core.test.mjs
+Run: node --test rebuild/tests/*.test.mjs
 
 These are **synthetic contract tests**, not independent verification of DEM, flow, GIS footprint validity, groundwater evidence or regional coverage. No states or countries have been certified by this rebuild.
 
@@ -37,10 +37,12 @@ No merge or deployment until scientific fixtures, real-world source adapters, br
 
 - Pure deterministic priority-flood D8 and runoff model adapter: `core/terrain-flow.mjs`
 - Full metric raster slope, no-build and crossing verification: `core/raster-audit.mjs`
+- Source-class exclusion union and coverage proof: `core/exclusion-source.mjs` (five complete layers required; unknown cells block)
+- D8 drainage never treats internal DEM no-data as a fabricated outlet; unreachable terrain blocks
 - Exact geo/metric corridor equivalence check (caller supplies a trusted CRS transform)
 - Verified source/DEM/flow certification entrypoint: `core/science-runner.mjs`
 - Single-run lifecycle owner: `core/run-owner.mjs`
 - Mapbox-only publication adapter requiring injected **approved** styles: `core/map-publication.mjs`
-- GitHub CI runs `node --test rebuild/tests/*.test.mjs` covering 48 synthetic contract/integration tests.
+- GitHub CI runs `node --test rebuild/tests/*.test.mjs` covering 55 synthetic contract/integration tests (55/55 passing on 2026-11-05).
 
-All 48 are synthetic fixtures; **zero real regions certified**. Existing production map and old baseline remain unchanged. Next: real source adapter, science fixtures and browser/cross-region verification. The audited legacy code discrepancies are recorded at `docs/EARTHLINE-M116-LEGACY-SCIENCE-AUDIT.md`.
+All 55 are synthetic fixtures; **zero real regions certified**. Existing production map and old baseline remain unchanged. Next: real source adapter, science fixtures and browser/cross-region verification. The audited legacy code discrepancies are recorded at `docs/EARTHLINE-M116-LEGACY-SCIENCE-AUDIT.md`.
