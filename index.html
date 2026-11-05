@@ -33512,13 +33512,13 @@ body{display:block!important}
   function addPath(g,pts,attrs){if(pts.length<2)return null;/* MANTRA 102: preserve actual vetted swale vertices; no post-safety cubic spline overshoot. Elevation contours retain approved smoothing. */const isSwale=g&&g.getAttribute&&g.getAttribute('data-layer')==='swale-opportunities';const p=svgEl('path',Object.assign({d:isSwale?earthlineSwalePolylineM102(pts):spline(pts),fill:'none','vector-effect':'non-scaling-stroke'},attrs||{}));g.appendChild(p);return p;}
   /* EARTHLINE 16350 — SVG intentionally owns Regional contours + swales only.
      Native Mapbox flow casing/line/arrow are the sole Regional water owner and MUST NOT be hidden here. */
-  function hideNative(){const map=m();if(!map||!map.getLayer)return;for(const id of ['el-live-contour-line-15970','el-live-contour-label-15970','el-live-swale-halo-15970','el-live-swale-line-15970']){try{if(map.getLayer(id))map.setLayoutProperty(id,'visibility','none');}catch(_){}}}
+  function hideNative(){const map=m();if(!map||!map.getLayer)return;for(const id of ['el-live-contour-line-15970','el-live-contour-label-15970','el-live-swale-halo-15970','el-live-swale-line-15970']){try{if(map.getLayer(id)&&(map.getLayoutProperty(id,'visibility')||'visible')!=='none')map.setLayoutProperty(id,'visibility','none');}catch(_){}}}
   function nativeWater16350(){
     const map=m(),ids=['el-live-flow-casing-15970','el-live-flow-line-15970','el-live-flow-arrow-15970'];
     const layers={};let ready=!!map;
     for(const id of ids){
       let exists=false,visibility=null;
-      try{exists=!!(map&&map.getLayer&&map.getLayer(id));if(exists){map.setLayoutProperty(id,'visibility','visible');visibility=map.getLayoutProperty(id,'visibility')||'visible';}}catch(_){exists=false;}
+      try{exists=!!(map&&map.getLayer&&map.getLayer(id));if(exists){if((map.getLayoutProperty(id,'visibility')||'visible')!=='visible')map.setLayoutProperty(id,'visibility','visible');visibility=map.getLayoutProperty(id,'visibility')||'visible';}}catch(_){exists=false;}
       layers[id]={exists,visibility};ready=ready&&exists&&visibility!=='none';
     }
     return {owner:'native-mapbox',ready,layers};
@@ -33557,7 +33557,7 @@ body{display:block!important}
         addPath(sg,pts,{class:'earthline-swale-band-16168 earthline-swale-survey-16168',stroke:'rgba(235,244,229,.36)','stroke-width':'.85','stroke-linecap':'butt','stroke-linejoin':'round','stroke-dasharray':'1 12'});
         understory16174(sg,plantPts,-uphill,swales*83+rank*7,zoom);
         canopy16174(sg,plantPts,-uphill,swales*97+rank*13,zoom,grade);
-      }else{
+      }else if(sg.getAttribute('display')!=='none'){
         const casing=grade==='A'?15:grade==='B'?12:9,core=grade==='A'?9.2:grade==='B'?7.2:5.2;
         addPath(sg,pts,{stroke:'rgba(8,18,13,.96)','stroke-width':String(casing),'stroke-linecap':'round','stroke-linejoin':'round'});
         addPath(sg,pts,{class:'earthline-swale-core-16168','data-swale-index':String(swales),stroke:main,'stroke-width':String(core),'stroke-linecap':'round','stroke-linejoin':'round',filter:'url(#elGlow16020)'});
@@ -34303,9 +34303,11 @@ ${EARTHLINE_CORRECTIONS_REGISTRY_16513}
     const m=map();if(!m)return false;
     const root=document.documentElement;
     const analysisTier=String(root.dataset.earthlineAnalysisTier||'').toLowerCase();
-    const propertyActive=analysisTier==='property'||
+    const displayedTier115=String((window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||{}).tier||analysisTier).toLowerCase();
+    const propertyActive=analysisTier==='property'||displayedTier115==='property'||
       root.dataset.earthlinePropertyRunState==='running'||
       root.classList.contains('earthline-property-running-16233');
+    const regionalContextHidden115=propertyActive||analysisTier==='focus'||displayedTier115==='focus';
     const src=m.getSource?.('el-live-aquifer-15970');
     if(src&&src._data?.features?.length)aquiferCache=src._data;
 
@@ -34332,17 +34334,14 @@ ${EARTHLINE_CORRECTIONS_REGISTRY_16513}
         if(m.getPaintProperty(id,key)!==value)m.setPaintProperty(id,key,value);
       }catch(_){}
     };
-    if(propertyActive){
+    /* M115: focus/property cannot show Regional aquifer context. The zoom
+       handoff alone owns opacity. Do not restore cleared GeoJSON from a prior run. */
+    if(regionalContextHidden115){
       for(const id of ['el-live-aquifer-fill-15970','el-live-aquifer-line-15970','el-live-aquifer-label-15970'])
         visibility113(id,'none');
     }else{
-      if(src&&aquiferCache&&(!src._data||!src._data.features?.length)){
-        try{src.setData(aquiferCache)}catch(_){}
-      }
       for(const id of ['el-live-aquifer-fill-15970','el-live-aquifer-line-15970'])
         visibility113(id,'visible');
-      paint113('el-live-aquifer-fill-15970','fill-opacity',.40);
-      paint113('el-live-aquifer-line-15970','line-opacity',.94);
       visibility113('el-live-aquifer-label-15970','none');
     }
     for(const id of ['el-live-groundwater-layer-15970','el-live-grace-groundwater-layer-15970','el-live-aquifer-raster-layer-15970'])
@@ -34351,7 +34350,7 @@ ${EARTHLINE_CORRECTIONS_REGISTRY_16513}
     if(legend){if(legend.getAttribute('aria-label')!=='Mapped groundwater context, regional only')legend.setAttribute('aria-label','Mapped groundwater context, regional only');const html='<span class="el-aquifer-shape" aria-hidden="true"></span><span>Mapped groundwater context · regional only</span>';if(legend.innerHTML!==html)legend.innerHTML=html}
     window.EARTHLINE_REGIONAL_AQUIFER_VISIBILITY_AUDIT_16374={
       build:'EARTHLINE 16374',analysisTier:analysisTier||null,propertyActive,
-      regionalLiveAquiferVisible:!propertyActive,
+      regionalLiveAquiferVisible:!regionalContextHidden115,
       cachedRegionalFeatures:Number(aquiferCache?.features?.length||0),
       at:new Date().toISOString()
     };
@@ -34757,8 +34756,8 @@ html[data-earthline-analysis-tier="focus"] #earthlineRegionalVectorOverlay16020 
   function displayed(){return window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null}
   function tier(){return String(displayed()?.tier||displayed()?.mode||'regional').toLowerCase()||'regional'}
   function safeLayer(spec,before){const m=map();if(!m||!m.getSource?.(spec.source))return false;try{if(!m.getLayer(spec.id))m.addLayer(spec,before);return true}catch(e){console.warn('[Earthline] 16166 layer',spec.id,e);return false}}
-  function visible(id,on){const m=map();try{if(m?.getLayer?.(id))m.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){}}
-  function setPaint(id,prop,value){const m=map();try{if(m?.getLayer?.(id))m.setPaintProperty(id,prop,value)}catch(_){}}
+  function visible(id,on){const m=map();try{if(!m?.getLayer?.(id))return;const next=on?'visible':'none';if((m.getLayoutProperty(id,'visibility')||'visible')!==next)m.setLayoutProperty(id,'visibility',next)}catch(_){}}
+  function setPaint(id,prop,value){const m=map();try{if(!m?.getLayer?.(id))return;const old=m.getPaintProperty(id,prop);if(JSON.stringify(old)!==JSON.stringify(value))m.setPaintProperty(id,prop,value)}catch(_){}}
   function ensureFocusLayers(){
     const m=map();if(!m?.getSource?.(SOURCE))return false;
     const before=m.getLayer?.('earthline-ranked-swale-label-15775')?'earthline-ranked-swale-label-15775':undefined;
@@ -34784,7 +34783,7 @@ html[data-earthline-analysis-tier="focus"] #earthlineRegionalVectorOverlay16020 
     for(const id of Object.values(FOCUS))visible(id,false);
     for(const id of Object.values(PROPERTY))visible(id,property);
     visible(LOCATION_HIT,!property);visible(LOCATION_LABEL,!property);
-    try{const m=map();if(!property&&m?.getLayer?.(LOCATION_HIT))m.moveLayer(LOCATION_HIT);if(!property&&m?.getLayer?.(LOCATION_LABEL))m.moveLayer(LOCATION_LABEL);}catch(_){}
+    try{const m=map();if(!property&&m?.getLayer?.(LOCATION_HIT)&&m?.getLayer?.(LOCATION_LABEL)){const ids=(m.getStyle()?.layers||[]).map(layer=>layer.id);if(ids[ids.length-2]!==LOCATION_HIT||ids[ids.length-1]!==LOCATION_LABEL){m.moveLayer(LOCATION_HIT);m.moveLayer(LOCATION_LABEL)}}}catch(_){}
     if(property){
       setPaint('earthline-living-swales-earth-15792','line-color','#7A5A3A');
       setPaint('earthline-living-swales-life-15792','line-offset',['interpolate',['linear'],['zoom'],14,-1.6,17,-2.8,20,-4.0]);
