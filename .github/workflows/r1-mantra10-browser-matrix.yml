@@ -35,21 +35,21 @@ jobs:
           set -euo pipefail
           mkdir -p ci-builds/production ci-builds/r1 artifacts/r1-browser-matrix/hashes
           git show 66e6d35ef69ec78bcd7a934b576dd5ad3c4d77b3:index.html > ci-builds/production/index.html
-          git show 528d0e88a28183710a5935f174864f85f5dfc8ba:index.html > ci-builds/r1/index.html
+          git show 3349f41adafce03e23cfa1cdf7bc688d1d834724:index.html > ci-builds/r1/index.html
           {
             echo 'PRODUCTION commit=66e6d35ef69ec78bcd7a934b576dd5ad3c4d77b3'
             git hash-object ci-builds/production/index.html
             sha256sum ci-builds/production/index.html
             wc -c < ci-builds/production/index.html
-            echo 'R1 commit=528d0e88a28183710a5935f174864f85f5dfc8ba'
+            echo 'R1 commit=3349f41adafce03e23cfa1cdf7bc688d1d834724'
             git hash-object ci-builds/r1/index.html
             sha256sum ci-builds/r1/index.html
             wc -c < ci-builds/r1/index.html
           } | tee artifacts/r1-browser-matrix/hashes/local-hashes.log
           test "$(git hash-object ci-builds/production/index.html)" = 'b2f321aa00946787ef58f7695270db6a07ec599b'
-          test "$(git hash-object ci-builds/r1/index.html)" = '792f2a3c4260a6b167e7352e768854ce5c4e74b6'
+          test "$(git hash-object ci-builds/r1/index.html)" = '745de00dcfafc3aeb6607497fd8a4830c34555b2'
           test "$(wc -c < ci-builds/production/index.html)" -eq 3760439
-          test "$(wc -c < ci-builds/r1/index.html)" -eq 3760472
+          test "$(wc -c < ci-builds/r1/index.html)" -eq 3760534
 
       - name: Setup Node
         uses: actions/setup-node@v4
