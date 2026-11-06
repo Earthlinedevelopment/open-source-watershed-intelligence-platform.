@@ -76,7 +76,7 @@ async function boot(browser,engine,build,tag){
   await page.goto(address(build)+'?r1='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForSelector('#searchInput',{timeout:30000});
   const mapOk=await page.waitForFunction(()=>{const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;return !!m?.getCanvas?.()&&m.getCanvas().width>0},{},{timeout:20000}).then(()=>true).catch(()=>false);
-  if(!mapOk)throw new Error('map canvas failed to start; possible WebGL limitation');
+  if(!mapOk)throw new Error('map canvas failed to start');
   return {context,page,row};
  }catch(e){
   row.status=classifyBoot(e,row.logs);row.reason=String(e);await save(row,page);
@@ -138,30 +138,53 @@ async function late(browser,engine,build){
  const session=await boot(browser,engine,build,'late-reply');
  if(!session)return;
  const {context,page,row}=session;row.run=1;
- let intercepted=0,delivered=0;
+ let intercepted=0,requestUrl=null,callback=null,fulfilled=0;
+ const payload=()=> "window.__R1_LATE_DELIVERY=(window.__R1_LATE_DELIVERY||0)+1;window["+JSON.stringify(callback)+"]({features:[]});";
  try{
   await page.route('**/*',async route=>{
    const url=route.request().url();
    if(!url.includes('__earthlineVtBoundary16178_'))return route.continue();
    intercepted++;
-   const callback=new URL(url).searchParams.get('callback');
-   await sleep(9000);
-   const payload="window.__R1_LATE_DELIVERY=(window.__R1_LATE_DELIVERY||0)+1;"+callback+"({features:[]});";
-   try{await route.fulfill({status:200,contentType:'application/javascript',body:payload});delivered++}
-   catch(e){row.logs.push('LATE_FULFILL_ERROR '+String(e))}
+   if(intercepted===1){
+    requestUrl=url;
+    callback=new URL(url).searchParams.get('callback');
+    await sleep(9000); // Hold the exact VCGI script request beyond its 8-second app timeout.
+    try{await route.fulfill({status:200,contentType:'application/javascript',body:payload()});fulfilled++}
+    catch(e){row.logs.push('ORIGINAL_LATE_RESPONSE_CANCELED '+String(e))}
+   }else{
+    // An explicitly reinserted script tests whether the retired callback is callable.
+    try{await route.fulfill({status:200,contentType:'application/javascript',body:payload()});fulfilled++}
+    catch(e){row.logs.push('REPLAY_FAILED '+String(e))}
+   }
   });
   await trigger(page,'Vermont');
-  await sleep(12000);
-  row.intercepted=intercepted;row.routeFulfilled=delivered;
-  row.deliverySentinel=await page.evaluate(()=>window.__R1_LATE_DELIVERY||0);
-  const callbackError=row.pageErrors.some(e=>/__earthlineVtBoundary16178_|is not a function|not defined/i.test(e));
-  row.callbackError=callbackError;
-  row.status=intercepted===1&&delivered===1&&row.deliverySentinel===1&&(build==='production'?callbackError:!callbackError)?'passed':'failed';
-  if(row.status==='failed')row.reason='late JSONP delivery, expected throw, or sentinel assertion failed';
+  await sleep(10500);
+  let sentinel=await page.evaluate(()=>window.__R1_LATE_DELIVERY||0);
+  row.deliveryMode=sentinel===1?'original-held-request':'reinjected-script-after-original-removal';
+  if(sentinel===0&&requestUrl){
+    // The app may remove the original script at t=8s. Reloading the same
+    // VCGI URL in a NEW script executes an authentic browser-delivered JSONP
+    // response at t>9s, rather than calling the callback from evaluate().
+    await page.evaluate(url=>{
+      const script=document.createElement('script');
+      script.async=true;script.src=url;document.head.appendChild(script);
+    },requestUrl);
+    await page.waitForFunction(()=>window.__R1_LATE_DELIVERY===1,null,{timeout:10000,polling:100}).catch(()=>{});
+    sentinel=await page.evaluate(()=>window.__R1_LATE_DELIVERY||0);
+  }
+  await sleep(300);
+  row.intercepted=intercepted;
+  row.routeFulfilled=fulfilled;
+  row.requestCallback=callback;
+  row.deliverySentinel=sentinel;
+  row.callbackError=row.pageErrors.some(e=>/__earthlineVtBoundary16178_|is not a function|not defined/i.test(e));
+  row.status=!!requestUrl&&sentinel===1&&(build==='production'?row.callbackError:row.pageErrors.length===0)?'passed':'failed';
+  if(row.status==='failed')row.reason='VCGI interception, late execution, expected baseline exception, or zero-error R1 assertion failed';
  }catch(e){row.status='failed';row.reason=String(e)}
  await save(row,page);await context.close();
  if(row.status==='failed')failures++;
 }
+
 try{
  for(const [engine,launcher] of Object.entries(engines)){
   let browser;
