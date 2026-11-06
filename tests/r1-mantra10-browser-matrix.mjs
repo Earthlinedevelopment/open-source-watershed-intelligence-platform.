@@ -75,9 +75,35 @@ function state(){
  scan(window.EARTHLINE_STANDARD_ROOT_CAUSE_AUDIT_16784,0);
  scan(window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584,0);
  if(typeof M!=='undefined'){scan(M?.safetyAudit15806,0);scan(M?.propertyResultLock15815,0)}
- return {fingerprints,regional:{generated:generation?.publishedFeatures??publication?.generated??null,processedPaths:display?.processedPaths??display?.processedPathCount??display?.swaleLines??null,drawn:display?.drawnLines??display?.visibleSwaleLines??null,pills:display?.opportunityPills??display?.pillCount??null,rootPass:a?.pass??null,firstFailedStage:a?.firstFailedStage??null,elapsedMs:performance?.totalMs??null,regionalError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null},property:{settled:run?.settled??null,result:run?.result??null,swales:typeof M!=='undefined'?M?.swales?.length??null:null,corridors:propPub?.count??propPub?.features??safe?.count??null,published:propPub?.published??null,safeVisible:safe?.visible??null,runToken:propPub?.runToken??null}};
+ return {fingerprints,regional:{generated:generation?.publishedFeatures??publication?.generated??null,processedPaths:display?.processedPaths??display?.processedPathCount??display?.swaleLines??null,rootPass:a?.pass??null,firstFailedStage:a?.firstFailedStage??null,elapsedMs:performance?.totalMs??null,regionalError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null},property:{settled:run?.settled??null,result:run?.result??null,swales:typeof M!=='undefined'?M?.swales?.length??null:null,corridors:propPub?.count??propPub?.features??safe?.count??null,published:propPub?.published??null,safeVisible:safe?.visible??null,runToken:propPub?.runToken??null}};
 }
-function comparable(x){return {regional:{generated:x.regional?.generated,processedPaths:x.regional?.processedPaths,drawn:x.regional?.drawn,pills:x.regional?.pills,rootPass:x.regional?.rootPass,firstFailedStage:x.regional?.firstFailedStage},property:{result:x.property?.result,swales:x.property?.swales,corridors:x.property?.corridors,published:x.property?.published,safeVisible:x.property?.safeVisible},reentry:{generated:x.reentry?.generated,processedPaths:x.reentry?.processedPaths,drawn:x.reentry?.drawn,pills:x.reentry?.pills,rootPass:x.reentry?.rootPass,firstFailedStage:x.reentry?.firstFailedStage}}}
+function pageEvidence(){
+ const styleVisible=element=>{
+  let el=element;
+  while(el&&el.nodeType===1){
+   const cs=getComputedStyle(el);
+   if(cs.display==='none'||cs.visibility==='hidden'||cs.visibility==='collapse'||Number(cs.opacity)===0||el.hasAttribute('hidden'))return false;
+   el=el.parentElement;
+  }
+  const r=element.getBoundingClientRect();
+  return r.width>0&&r.height>0;
+ };
+ const swalePaths=[...document.querySelectorAll('svg path')].filter(el=>{
+  let p=el;for(let i=0;i<8&&p;i++,p=p.parentElement){
+   if(/swale/i.test(String(p.id||'')+' '+String(p.getAttribute('class')||'')+' '+String(p.getAttribute('data-layer')||'')))return true;
+  }return false;
+ });
+ const paths=swalePaths.map(el=>({id:el.id||null,ancestor:(el.closest('[id*="swale"],[id*="Swale"],[class*="swale"],[class*="Swale"]')?.id||null),visible:styleVisible(el)}));
+ const pillElements=[...document.querySelectorAll('button,[role="button"],.chip,.pill,[class*="chip"],[class*="pill"]')].filter(el=>{
+  const signature=String(el.id||'')+' '+String(el.className||'')+' '+String(el.getAttribute('data-role')||'');
+  return /opportun|swale|regional.*(chip|pill)|(?:chip|pill).*regional/i.test(signature);
+ });
+ const pills=pillElements.filter(styleVisible);
+ return {drawn:paths.filter(p=>p.visible).length,pills:pills.length,swalePathCandidates:paths.length,pillCandidates:pillElements.length,
+  pathDetails:paths.slice(0,60),pillDetails:pills.map(el=>({tag:el.tagName,id:el.id,className:String(el.className),text:String(el.textContent||'').trim().slice(0,90)})).slice(0,35),
+  missingEvidence:swalePaths.length===0||pillElements.length===0};
+}
+function comparable(x){return {regional:{generated:x.regional?.generated,processedPaths:x.regional?.processedPaths,drawn:x.regional?.dom?.drawn,pills:x.regional?.dom?.pills,rootPass:x.regional?.rootPass,firstFailedStage:x.regional?.firstFailedStage},property:{result:x.property?.result,swales:x.property?.swales,corridors:x.property?.corridors,published:x.property?.published,safeVisible:x.property?.safeVisible},reentry:{generated:x.reentry?.generated,processedPaths:x.reentry?.processedPaths,drawn:x.reentry?.dom?.drawn,pills:x.reentry?.dom?.pills,rootPass:x.reentry?.rootPass,firstFailedStage:x.reentry?.firstFailedStage}}}
 function classifyBoot(err,logs){
  const txt=String(err)+' '+logs.join(' ');
  return /webgl|webgl2|swiftshader|gpu process|gl context|failed to create context|canvas.*context/i.test(txt)?'environment-limitation':'failed';
@@ -118,7 +144,7 @@ async function iowa(browser,engine,build,index,baseline){
    const status=String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'');
    return !!err||(/screening published|regional analysis complete/i.test(status)&&!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191);
   },null,{timeout:90000,polling:150});
-  const regional=await page.evaluate(state);row.regionalDurationMs=Date.now()-begin;
+  const regional=await page.evaluate(state);regional.regional.dom=await page.evaluate(pageEvidence);row.regionalDurationMs=Date.now()-begin;
   row.camera=await page.evaluate(()=>{const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;return {zoom:m?.getZoom?.()??null,width:window.innerWidth,height:window.innerHeight}});
   row.viewportPass=row.camera.width===1800&&row.camera.height===1000;
   row.goldenZoomPass=typeof row.camera.zoom==='number'&&Math.abs(row.camera.zoom-7.08)<=0.1;
@@ -150,12 +176,12 @@ async function iowa(browser,engine,build,index,baseline){
   row.reentryDurationMs=Date.now()-reentryStarted;
   row.reentryWithin30s=row.reentryDurationMs<=30000;
   row.reentry30sAssertion=row.reentryWithin30s?'PASS':'FAIL_UNCHANGED';
-  const reentry=await page.evaluate(state);
+  const reentry=await page.evaluate(state);reentry.regional.dom=await page.evaluate(pageEvidence);
   snap={regional:regional.regional,property:prop.property,reentry:reentry.regional,fingerprints:prop.fingerprints};
   row.fingerprintMatch=Object.entries(IOWA_GOLDEN.fingerprints).every(([k,v])=>snap.fingerprints?.[k]===v);
   row.snapshot=snap;row.comparable=comparable(snap);
   row.baselineMatch=baseline?JSON.stringify(row.comparable)===JSON.stringify(baseline):null;
-  row.scientificPass=row.viewportPass&&row.goldenZoomPass&&row.fingerprintMatch&&snap.regional.generated===IOWA_GOLDEN.regionalGenerated&&snap.regional.processedPaths===IOWA_GOLDEN.regionalProcessedPaths&&Number(snap.property.corridors)===IOWA_GOLDEN.propertyCorridors&&snap.reentry.generated===IOWA_GOLDEN.regionalGenerated&&snap.reentry.processedPaths===IOWA_GOLDEN.regionalProcessedPaths;
+  row.scientificPass=row.viewportPass&&row.goldenZoomPass&&row.fingerprintMatch&&snap.regional.generated===IOWA_GOLDEN.regionalGenerated&&snap.regional.processedPaths===IOWA_GOLDEN.regionalProcessedPaths&&!snap.regional.dom.missingEvidence&&snap.regional.dom.drawn===IOWA_GOLDEN.regionalDrawn&&snap.regional.dom.pills===IOWA_GOLDEN.regionalPills&&Number(snap.property.corridors)===IOWA_GOLDEN.propertyCorridors&&snap.reentry.generated===IOWA_GOLDEN.regionalGenerated&&snap.reentry.processedPaths===IOWA_GOLDEN.regionalProcessedPaths&&!snap.reentry.dom.missingEvidence&&snap.reentry.dom.drawn===IOWA_GOLDEN.regionalDrawn&&snap.reentry.dom.pills===IOWA_GOLDEN.regionalPills;
   row.publicationPass=row.pageErrors.length===0&&!snap.regional.regionalError&&snap.property.settled===true&&snap.property.result===true;
   row.goldenParity=row.scientificPass;
   row.existingCrossBrowserDifference=engine!=='chromium'&&build==='production'&&!row.goldenParity;
