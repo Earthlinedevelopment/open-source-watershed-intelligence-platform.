@@ -313,8 +313,8 @@ async function smokeGate(){
    for(const build of Object.keys(SHA)){
     const row={engine,build,commit:SHA[build],case:'preflight-smoke',run:0,status:'failed',downloads:[],logs:[],pageErrors:[]};
     const context=await browser.newContext({viewport:{width:1800,height:1000},acceptDownloads:false,serviceWorkers:'block'});
-    await routeLocalCommit(page,build);
     const page=await context.newPage();
+    await routeLocalCommit(page,build);
     capture(page,row);
     page.on('download',d=>row.downloads.push(d.suggestedFilename()));
     try{
