@@ -4,7 +4,7 @@ import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 
 const OUT='artifacts/r1-browser-matrix';
-const SHA={production:'66e6d35ef69ec78bcd7a934b576dd5ad3c4d77b3',r1:'528d0e88a28183710a5935f174864f85f5dfc8ba'};
+const SHA={production:'66e6d35ef69ec78bcd7a934b576dd5ad3c4d77b3',r1:'3349f41adafce03e23cfa1cdf7bc688d1d834724'};
 const POINT={lng:-93.38977,lat:41.95715,acres:20};
 const IOWA_GOLDEN={regionalGenerated:40,regionalProcessedPaths:28,regionalDrawn:0,regionalPills:11,propertyCorridors:57,fingerprints:{sourceStateFingerprint:'f45509978ce31467',scientificInputFingerprint:'e689e5e520256050',noBuildMaskHash:'9e84647e45512220',elevationGridHash:'9b43dc7c77c80042',flowDirectionHash:'445f85f5442a02d5',flowAccumulationHash:'860f65cc4d80e2f6'}};
 const engines={chromium,firefox,webkit};
