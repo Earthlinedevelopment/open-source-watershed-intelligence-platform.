@@ -24,7 +24,7 @@ function serverFor(name){
    try{data=await readFile(file);break}catch{}
   }
   if(!data){res.writeHead(404);res.end('not found');return}
-  res.writeHead(200,{'content-type':MIME[extname(requestPath)]||'application/octet-stream','cache-control':'no-store'});
+  res.writeHead(200,{'content-type':requestPath==='/'?'text/html; charset=utf-8':(MIME[extname(requestPath)]||'application/octet-stream'),'cache-control':'no-store'});
   res.end(data);
  });
 }
