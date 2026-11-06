@@ -5,7 +5,8 @@ import { extname, resolve, sep } from 'node:path';
 
 const OUT='artifacts/r1-browser-matrix';
 const SHA={production:'66e6d35ef69ec78bcd7a934b576dd5ad3c4d77b3',r1:'528d0e88a28183710a5935f174864f85f5dfc8ba'};
-const POINT={lng:Number(process.env.IOWA_PROPERTY_LNG??-93.6208),lat:Number(process.env.IOWA_PROPERTY_LAT??41.5868)};
+const POINT={lng:-93.38977,lat:41.95715,acres:20};
+const IOWA_GOLDEN={regionalGenerated:40,regionalVisible:28,propertyCorridors:57,fingerprints:{sourceStateFingerprint:'f45509978ce31467',scientificInputFingerprint:'e689e5e520256050',noBuildMaskHash:'9e84647e45512220',elevationGridHash:'9b43dc7c77c80042',flowDirectionHash:'445f85f5442a02d5',flowAccumulationHash:'860f65cc4d80e2f6'}};
 const engines={chromium,firefox,webkit};
 const results=[]; let failures=0;
 await mkdir(OUT,{recursive:true});
@@ -93,7 +94,7 @@ async function trigger(page,query){
 async function iowa(browser,engine,build,index,baseline){
  const session=await boot(browser,engine,build,'iowa');
  if(!session)return null;
- const {context,page,row}=session;row.run=index;row.point=POINT;
+ const {context,page,row}=session;row.run=index;row.point=POINT;row.goldens=IOWA_GOLDEN;
  let snap=null;
  try{
   const begin=Date.now();await trigger(page,'Iowa');
@@ -122,8 +123,11 @@ async function iowa(browser,engine,build,index,baseline){
   snap={regional:regional.regional,property:prop.property};
   row.snapshot=snap;row.comparable=comparable(snap);
   row.baselineMatch=baseline?JSON.stringify(row.comparable)===JSON.stringify(baseline):null;
-  row.status=(row.pageErrors.length===0&&!snap.regional.regionalError&&snap.property.settled===true&&snap.property.result===true&&row.propertyWithin30s&&(!baseline||row.baselineMatch))?'passed':'failed';
+  row.scientificPass=snap.regional.generated===IOWA_GOLDEN.regionalGenerated&&snap.regional.visible===IOWA_GOLDEN.regionalVisible&&Number(snap.property.corridors)===IOWA_GOLDEN.propertyCorridors;
+  row.publicationPass=row.pageErrors.length===0&&!snap.regional.regionalError&&snap.property.settled===true&&snap.property.result===true;
+  row.status=(row.publicationPass&&row.scientificPass&&row.propertyWithin30s&&(!baseline||row.baselineMatch))?'passed':'failed';
   if(!row.propertyWithin30s)row.existing30sAssertion='FAILED_UNCHANGED';
+  row.goldens=IOWA_GOLDEN;
   if(row.status==='failed')row.reason='page errors, incomplete publication, or baseline mismatch';
  }catch(e){row.status=classifyBoot(e,row.logs);row.reason=String(e)}
  await save(row,page);await context.close();
@@ -167,7 +171,8 @@ try{
   await late(browser,engine,'r1');
   const prod=[];
   for(let n=1;n<=3;n++)prod.push(await iowa(browser,engine,'production',n,null));
-  const clean=prod.filter(x=>x?.status==='passed');
+  // Existing 30-second re-entry failure must not erase each engine's scientific baseline.
+  const clean=prod.filter(x=>x?.publicationPass===true&&x?.scientificPass===true);
   const baseline=clean.length===3&&clean.every(x=>JSON.stringify(x.comparable)===JSON.stringify(clean[0].comparable))?clean[0].comparable:null;
   if(!baseline){
    const row={engine,build:'production',case:'iowa-baseline',run:0,status:'failed',reason:'Three production baselines did not agree or did not complete',logs:[]};
