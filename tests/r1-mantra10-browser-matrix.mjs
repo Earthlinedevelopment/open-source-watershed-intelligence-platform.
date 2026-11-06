@@ -67,10 +67,10 @@ function classifyBoot(err,logs){
  const txt=String(err)+' '+logs.join(' ');
  return /webgl|webgl2|swiftshader|gpu process|gl context|failed to create context|canvas.*context/i.test(txt)?'environment-limitation':'failed';
 }
-async function boot(browser,engine,build,tag){
+async function boot(browser,engine,build,tag,runNumber=0){
  const context=await browser.newContext({viewport:{width:1600,height:950}});
  const page=await context.newPage();
- const row={engine,build,commit:SHA[build],case:tag,run:0};
+ const row={engine,build,commit:SHA[build],case:tag,run:runNumber};
  capture(page,row);
  try{
   await page.goto(address(build)+'?r1='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
@@ -92,7 +92,7 @@ async function trigger(page,query){
  },query);
 }
 async function iowa(browser,engine,build,index,baseline){
- const session=await boot(browser,engine,build,'iowa');
+ const session=await boot(browser,engine,build,'iowa',index);
  if(!session)return null;
  const {context,page,row}=session;row.run=index;row.point=POINT;row.goldens=IOWA_GOLDEN;
  let snap=null;
@@ -120,6 +120,7 @@ async function iowa(browser,engine,build,index,baseline){
   row.propertyDurationMs=Date.now()-propStart;
   // Keep existing 30-second assertion unchanged: report, do not weaken.
   row.propertyWithin30s=row.propertyDurationMs<=30000;
+  row.property30sAssertion=row.propertyWithin30s?'PASS':'FAIL_UNCHANGED';
   snap={regional:regional.regional,property:prop.property};
   row.snapshot=snap;row.comparable=comparable(snap);
   row.baselineMatch=baseline?JSON.stringify(row.comparable)===JSON.stringify(baseline):null;
@@ -189,7 +190,7 @@ try{
  for(const [engine,launcher] of Object.entries(engines)){
   let browser;
   try{browser=await launcher.launch({headless:true,args:engine==='chromium'?['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']:[]})}
-  catch(e){await save({engine,build:'both',case:'startup',run:0,status:classifyBoot(e,[]),reason:String(e),logs:[]},null);continue}
+  catch(e){const status=classifyBoot(e,[]);await save({engine,build:'both',case:'startup',run:0,status,reason:String(e),logs:[]},null);if(status==='failed')failures++;continue}
   await late(browser,engine,'production');
   await late(browser,engine,'r1');
   const prod=[];
