@@ -1,0 +1,24 @@
+name: Mantra 109 source and report identity
+on:
+  pull_request:
+    branches: [pages-live]
+    paths:
+      - index.html
+      - tests/mantra109-source-integrity.cjs
+      - .github/workflows/mantra109-integrity.yml
+permissions:
+  contents: read
+jobs:
+  run-identity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compile all original inline JavaScript
+        run: |
+          node --check tests/mantra109-source-integrity.cjs
+      - name: Validate no cross-run report mixing, no worm smoothing, and source-only aquifer names
+        run: node tests/mantra109-source-integrity.cjs
