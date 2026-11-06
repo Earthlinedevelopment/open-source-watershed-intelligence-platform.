@@ -104,6 +104,9 @@ async function iowa(browser,engine,build,index,baseline){
    return !!err||(/screening published|regional analysis complete/i.test(status)&&!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191);
   },null,{timeout:90000,polling:150});
   const regional=await page.evaluate(state);row.regionalDurationMs=Date.now()-begin;
+  row.camera=await page.evaluate(()=>{const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;return {zoom:m?.getZoom?.()??null,width:window.innerWidth,height:window.innerHeight}});
+  row.viewportPass=row.camera.width===1800&&row.camera.height===1000;
+  row.goldenZoomPass=typeof row.camera.zoom==='number'&&Math.abs(row.camera.zoom-7.08)<=0.1;
   const prepare=await page.evaluate(async point=>{
    if(typeof M==='undefined'||typeof window.earthlineSelectedSiteFromCenter!=='function'||typeof window.applyLocation!=='function'||typeof window.earthlineSetPropertyTarget16201!=='function')return {ok:false,why:'property APIs unavailable'};
    const site=window.earthlineSelectedSiteFromCenter(M?.loc||null,point.lng,point.lat,20);
@@ -136,7 +139,7 @@ async function iowa(browser,engine,build,index,baseline){
   snap={regional:regional.regional,property:prop.property,reentry:reentry.regional};
   row.snapshot=snap;row.comparable=comparable(snap);
   row.baselineMatch=baseline?JSON.stringify(row.comparable)===JSON.stringify(baseline):null;
-  row.scientificPass=snap.regional.generated===IOWA_GOLDEN.regionalGenerated&&snap.regional.processedPaths===IOWA_GOLDEN.regionalProcessedPaths&&Number(snap.property.corridors)===IOWA_GOLDEN.propertyCorridors&&snap.reentry.generated===IOWA_GOLDEN.regionalGenerated&&snap.reentry.processedPaths===IOWA_GOLDEN.regionalProcessedPaths;
+  row.scientificPass=row.viewportPass&&row.goldenZoomPass&&snap.regional.generated===IOWA_GOLDEN.regionalGenerated&&snap.regional.processedPaths===IOWA_GOLDEN.regionalProcessedPaths&&Number(snap.property.corridors)===IOWA_GOLDEN.propertyCorridors&&snap.reentry.generated===IOWA_GOLDEN.regionalGenerated&&snap.reentry.processedPaths===IOWA_GOLDEN.regionalProcessedPaths;
   row.publicationPass=row.pageErrors.length===0&&!snap.regional.regionalError&&snap.property.settled===true&&snap.property.result===true;
   row.status=(row.publicationPass&&row.scientificPass&&row.propertyWithin30s&&row.reentryWithin30s&&(!baseline||row.baselineMatch))?'passed':'failed';
   if(!row.propertyWithin30s)row.existing30sAssertion='FAILED_UNCHANGED';
