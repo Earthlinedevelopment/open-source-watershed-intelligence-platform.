@@ -1,0 +1,300 @@
+name: Earthline Mantra 7 R1 baseline vs isolated fix
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/mantra7-r1-acceptance.yml']
+permissions:
+  contents: read
+jobs:
+  verify-r1:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 66e6d35ef69ec78bcd7a934b576dd5ad3c4d77b3
+          path: baseline
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra7-r1-vermont-jsonp
+          path: candidate
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify exact parent and one-line patch
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,difflib
+          b=Path('baseline/index.html').read_bytes()
+          f=Path('candidate/index.html').read_bytes()
+          old=b"function cleanup(){clearTimeout(timer);script.remove();try{delete window[cb]}catch(_){window[cb]=undefined}}"
+          new=b"function cleanup(){clearTimeout(timer);script.remove();window[cb]=function(){/* retired JSONP callback: late VCGI script must not throw */};}"
+          assert b.count(old)==1
+          assert f==b.replace(old,new)
+          print("VERIFIED one exact callback-line replacement; baseline SHA256",hashlib.sha256(b).hexdigest(),"fixed SHA256",hashlib.sha256(f).hexdigest())
+          PY
+      - name: Install Chromium test dependency
+        run: npm install --no-save playwright@1.55.0
+      - name: Run 9 s real-page callback test (baseline must fail, fix must pass)
+        shell: bash
+        run: |
+          cat > ./r1-real-page.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+          const browser=await chromium.launch({headless:true,channel:'chrome'});
+          const jsonpPayload=JSON.stringify({features:[{geometry:{rings:[[[-73.42,42.73],[-71.5,42.73],[-71.5,45],[-73.42,45],[-73.42,42.73]]]}}]});
+          async function check(name,htmlFile,delayMs,mode){
+            const page=await browser.newPage({viewport:{width:1800,height:1000}});
+            const errors=[];let requests=0,delivered=0;
+            page.on('pageerror',e=>errors.push(String(e)));
+            await page.route('**/*',async route=>{
+              const url=new URL(route.request().url());
+              if(url.hostname==='earthlinedevelopment.org'&&url.pathname==='/'&&route.request().isNavigationRequest()){
+                await route.fulfill({path:htmlFile,contentType:'text/html'});return;
+              }
+              const cb=url.searchParams.get('callback');
+              if(cb&&cb.startsWith('__earthlineVtBoundary16178_')){
+                requests++;
+                await new Promise(resolve=>setTimeout(resolve,delayMs));
+                if(mode==='error'){await route.abort();return;}
+                const body='window.__r1LateSentinel=(window.__r1LateSentinel||0)+1;'+cb+'('+jsonpPayload+');';
+                delivered++;await route.fulfill({status:200,contentType:'application/javascript',body});return;
+              }
+              if(url.searchParams.get('f')==='geojson'&&/vermont|vcgi/i.test(url.hostname+url.pathname)){
+                await route.abort();return;
+              }
+              await route.continue();
+            });
+            let navigationError=null;
+            try{await page.goto('https://earthlinedevelopment.org/?r1='+name+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});}
+            catch(e){navigationError=String(e);}
+            try{await page.waitForFunction(()=>Number(window.__r1LateSentinel||0)>=1,null,{timeout:delayMs+13000,polling:100});}
+            catch(e){if(mode!=='error')navigationError=(navigationError||'')+'; no sentinel: '+String(e);}
+            await page.waitForTimeout(500);
+            const reported=await page.evaluate(()=>({sentinel:Number(window.__r1LateSentinel||0),boundarySource:window.EARTHLINE_VERMONT_BOUNDARY_SOURCE_16178||null})).catch(e=>({evaluationError:String(e)}));
+            const result={name,htmlFile,delayMs,mode,requests,delivered,errors,navigationError,reported};
+            fs.appendFileSync('r1-browser-results.jsonl',JSON.stringify(result)+'\n');
+            console.log('R1_REAL_PAGE '+JSON.stringify(result));
+            await page.close();
+            const lateBase=name==='baseline-late';
+            if(requests!==1)throw Error(name+': expected one real JSONP request, got '+requests);
+            if(mode!=='error'&&reported.sentinel!==1)throw Error(name+': JSONP response did not execute; test invalid');
+            if(lateBase){
+              if(!errors.some(e=>e.includes('ReferenceError')&&e.includes('__earthlineVtBoundary16178_')))throw Error(name+': baseline failed to reproduce targeted ReferenceError');
+            }else if(errors.length)throw Error(name+': uncaught page errors '+errors.join(' | '));
+            if(mode!=='error'&&navigationError)throw Error(name+': '+navigationError);
+            if(name==='fix-early'&&!String(reported.boundarySource?.source||'').includes('JSONP'))throw Error(name+': timely JSONP did not resolve source');
+          }
+          try{
+            await check('baseline-late','baseline/index.html',9000,'deliver');
+            await check('fix-late','candidate/index.html',9000,'deliver');
+            await check('fix-early','candidate/index.html',2000,'deliver');
+            await check('fix-error','candidate/index.html',100,'error');
+            console.log('R1_REAL_PAGE_ACCEPTANCE_PASS');
+          } finally {await browser.close();}
+          
+          JS
+          node ./r1-real-page.mjs 2>&1 | tee r1-real-page.log
+      - name: Prepare unchanged Iowa browser runner with branch document
+        shell: bash
+        run: |
+          cat > ./iowa-owner-test.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          
+          const browser=await chromium.launch({headless:true,channel:'chrome'});
+          const page=await browser.newPage({viewport:{width:1800,height:1000}});
+          const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+          await page.route('https://api.mapbox.com/**',async route=>{
+            const headers={...route.request().headers(),referer:'https://earthlinedevelopment.org/',origin:'https://earthlinedevelopment.org'};
+            await route.continue({headers});
+          });
+          
+          await page.route('https://earthlinedevelopment.org/**',async route=>{if(route.request().isNavigationRequest()&&new URL(route.request().url()).pathname==='/')await route.fulfill({path:'candidate/index.html',contentType:'text/html'});else await route.continue();});
+          await page.goto('https://earthlinedevelopment.org/?owner-test='+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});
+          await page.waitForSelector('#searchInput',{timeout:30000});
+          await page.waitForFunction(()=>window.earthlineMap||(typeof earthlineMap!=='undefined'&&earthlineMap),null,{timeout:30000,polling:100});
+          
+          const snap=async(label)=>page.evaluate((label)=>{
+            const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+            const style=mp?.getStyle?.()||{};
+            const layers=(style.layers||[]).filter(l=>/swale|tree|forest|canopy|regional|water|contour/i.test(String(l.id||''))).map(l=>({
+              id:l.id,type:l.type,source:l.source,
+              visibility:(()=>{try{return mp.getLayoutProperty(l.id,'visibility')||'visible'}catch(_){return null}})()
+            }));
+            const rendered={};
+            try{
+              const c=mp?.getCanvas?.(),box=c&&[[0,0],[c.clientWidth||c.width,c.clientHeight||c.height]];
+              if(box)for(const l of layers.filter(x=>x.visibility!=='none'&&x.type!=='raster'))try{rendered[l.id]=(mp.queryRenderedFeatures(box,{layers:[l.id]})||[]).length}catch(_){}
+            }catch(_){}
+            const M0=(typeof M!=='undefined'?M:null),model={};
+            if(M0){
+              for(const k of Object.keys(M0).filter(k=>/tree|forest|canopy|swale|coverage|spread|regional|prescription|flow/i.test(k))){
+                const v=M0[k];
+                if(Array.isArray(v)||ArrayBuffer.isView(v)) model[k]={type:'array',length:v.length};
+                else if(v&&typeof v==='object'){
+                  try{model[k]={type:'object',value:JSON.parse(JSON.stringify(v))}}catch(_){model[k]={type:'object',keys:Object.keys(v).slice(0,50)}}
+                } else if(['string','number','boolean'].includes(typeof v)) model[k]={type:typeof v,value:v};
+              }
+            }
+            return {
+              label,
+              displayed:window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null,
+              publication:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||null,
+              displayAudit:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040||window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020||null,
+              spatial:window.EARTHLINE_SPATIAL_COVERAGE_SELECTION_16736||null,
+              spread:window.EARTHLINE_FINAL_PUBLISHED_SPREAD_16783||null,
+              property:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+              layers,rendered,model,
+              busy:document.getElementById('runBtn')?.getAttribute('aria-busy')||null,
+              status:document.getElementById('earthlineVermontStatus16147')?.textContent||''
+            };
+          },label);
+          
+          const input=page.locator('#searchInput');
+          await input.fill('Iowa');
+          await page.waitForTimeout(900);
+          const opts=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
+          if(await opts.count()) await opts.first().click({force:true}); else await input.press('Enter').catch(()=>{});
+          await page.waitForTimeout(200);
+          
+          const regionalStart=Date.now();
+          await page.locator('#runBtn').click({force:true});
+          await page.waitForFunction(()=>{
+            const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+            return String(d&&(d.tier||d.mode)||'').toLowerCase()==='regional'&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';
+          },null,{timeout:90000,polling:200});
+          const regionalMs=Date.now()-regionalStart;
+          await page.waitForTimeout(1000);
+          const regional=await snap('regional');
+          await page.screenshot({path:'iowa-owner-regional.png',fullPage:false});
+          
+          await page.evaluate(()=>{
+            const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+            const lat=41.95715,lng=-93.38977;
+            if(typeof M!=='undefined'&&M){
+              M.centerLat=lat;M.centerLng=lng;
+              M.loc=Object.assign({},M.loc||{},{name:'Iowa diagnostic',lat,lng,countryCode:'us',query:'Iowa'});
+            }
+            try{mp?.jumpTo?.({center:[lng,lat],zoom:13});}catch(_){}
+          });
+          await page.waitForTimeout(1000);
+          
+          const propStart=Date.now();
+          const btn=page.locator('#earthlineDeclareProperty16169');
+          if(await btn.count()) await btn.click({force:true});
+          else await page.evaluate(()=>window.earthlineDeclarePropertyAtCrosshair16173?.());
+          await page.waitForFunction(()=>{
+            const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+            return a?.settled===true;
+          },null,{timeout:90000,polling:200});
+          const propertyMs=Date.now()-propStart;
+          await page.waitForTimeout(1000);
+          const property=await snap('property');
+          await page.screenshot({path:'iowa-owner-property.png',fullPage:false});
+          
+          // Re-entry test: return from Property to Iowa Regional on the same page.
+          await input.fill('Iowa');
+          await page.waitForTimeout(900);
+          const opts2=page.locator('#earthlineSearchSuggestions15970 [role="option"]:visible');
+          if(await opts2.count()) await opts2.first().click({force:true}); else await input.press('Enter').catch(()=>{});
+          await page.waitForTimeout(200);
+          const regional2Start=Date.now();
+          await page.locator('#runBtn').click({force:true});
+          await page.waitForFunction(()=>{
+            const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+            return String(d&&(d.tier||d.mode)||'').toLowerCase()==='regional'&&document.getElementById('runBtn')?.getAttribute('aria-busy')!=='true';
+          },null,{timeout:90000,polling:200});
+          const regional2Ms=Date.now()-regional2Start;
+          await page.waitForTimeout(1000);
+          const regional2=await snap('regional2');
+          await page.screenshot({path:'iowa-owner-regional2.png',fullPage:false});
+          
+          const regionalGenerated=Number(regional.publication?.generated||regional.displayAudit?.swaleLines||0);
+          const regionalVisible=Number(regional.displayAudit?.swaleLines||0);
+          const propertyCorridors=Number(property.property?.corridors||0);
+          const treeLayersRegional=regional.layers.filter(l=>/tree|forest|canopy/i.test(l.id)&&l.visibility!=='none').length;
+          const treeLayersProperty=property.layers.filter(l=>/tree|forest|canopy/i.test(l.id)&&l.visibility!=='none').length;
+          
+          const regional2Generated=Number(regional2.publication?.generated||regional2.displayAudit?.swaleLines||0);
+          const regional2Visible=Number(regional2.displayAudit?.swaleLines||0);
+          const treeLayersRegional2=regional2.layers.filter(l=>/tree|forest|canopy/i.test(l.id)&&l.visibility!=='none').length;
+          const out={regionalMs,propertyMs,regional2Ms,regionalGenerated,regionalVisible,regional2Generated,regional2Visible,propertyCorridors,treeLayersRegional,treeLayersProperty,treeLayersRegional2,regional,property,regional2,errors};
+          fs.writeFileSync('iowa-owner-validation.json',JSON.stringify(out,null,2));
+          console.log('EARTHLINE_OWNER_VALIDATION '+JSON.stringify({regionalMs,propertyMs,regional2Ms,regionalGenerated,regionalVisible,regional2Generated,regional2Visible,propertyCorridors,treeLayersRegional,treeLayersProperty,treeLayersRegional2,errors}));
+          
+          if(errors.length) throw new Error(errors.join(' | '));
+          if(!(regionalGenerated>0&&regionalVisible>0)) throw new Error('Regional produced no visible corridors');
+          if(!(propertyCorridors>0)) throw new Error('Property produced no corridors');
+          if(!(regional2Generated>0&&regional2Visible>0)) throw new Error('Second Regional produced no visible corridors');
+          if(regionalMs>30000) throw new Error('Regional too slow '+regionalMs);
+          if(propertyMs>30000) throw new Error('Property too slow '+propertyMs);
+          if(regional2Ms>30000) throw new Error('Second Regional too slow '+regional2Ms);
+          
+          await browser.close();
+          JS
+          cat > ./r1-golden-check.mjs <<'JS'
+          import fs from 'node:fs';
+          let failures=[];
+          let rows=[];
+          for(let i=1;i<=10;i++){
+           const path='r1-iowa-'+i+'.json';
+           if(!fs.existsSync(path)){failures.push('missing '+path);continue;}
+           const j=JSON.parse(fs.readFileSync(path,'utf8'));
+           const p=j.property?.property?.sourceEvidence||{};
+           const hashes=p.sourceHashes||{};
+           const checks={
+            generated1:j.regional?.publication?.generated===40,
+            sourceFeatures1:j.regional?.publication?.sourceFeatures===40,
+            generated2:j.regional2?.publication?.generated===40,
+            sourceFeatures2:j.regional2?.publication?.sourceFeatures===40,
+            propertyCorridors:j.propertyCorridors===57,
+            sourceStateFingerprint:p.sourceStateFingerprint==='f45509978ce31467',
+            scientificInputFingerprint:p.scientificInputFingerprint==='e689e5e520256050',
+            noBuildMaskHash:p.noBuildMaskHash==='9e84647e45512220',
+            elevationGridHash:hashes.elevationGridHash==='9b43dc7c77c80042',
+            flowDirectionHash:hashes.flowDirectionHash==='445f85f5442a02d5',
+            flowAccumulationHash:hashes.flowAccumulationHash==='860f65cc4d80e2f6',
+            regionalContours:j.regional?.displayAudit?.contourLines===210,
+            regionalElevationLabels:j.regional?.displayAudit?.elevationLabels===24,
+            regionalWaterPaths:j.regional?.displayAudit?.waterPaths===126,
+            regionalArrows:j.regional?.displayAudit?.directionArrows===372,
+            regionalGradePills:j.regional?.displayAudit?.swaleGradeLabels===11,
+            regional2WaterPaths:j.regional2?.displayAudit?.waterPaths===126,
+            pageErrors:Array.isArray(j.errors)&&j.errors.length===0,
+           };
+           for(const [k,v] of Object.entries(checks))if(!v)failures.push('run '+i+' '+k+' actual='+JSON.stringify({generated:j.regional?.publication?.generated,property:j.propertyCorridors,errors:j.errors}));
+           rows.push({run:i,firstMs:j.regionalMs,secondMs:j.regional2Ms,propertyCorridors:j.propertyCorridors,errors:j.errors,checks});
+          }
+          fs.writeFileSync('r1-iowa-golden-results.json',JSON.stringify({rows,failures},null,2));
+          console.log('R1_IOWA10_REPORT '+JSON.stringify({runs:rows.length,failures,count:failures.length}));
+          if(failures.length)process.exit(1);
+          
+          JS
+      - name: Ten Iowa runs, capturing original assertion failures separately
+        shell: bash
+        run: |
+          set +e
+          for RUN in {1..10}; do
+            echo "===== R1 IOWA $RUN / 10 ====="
+            node ./iowa-owner-test.mjs > "r1-iowa-$RUN.log" 2>&1
+            RC=$?
+            if [ -f iowa-owner-validation.json ]; then cp iowa-owner-validation.json "r1-iowa-$RUN.json"; fi
+            echo "RUN $RUN original_runner_exit=$RC" | tee -a r1-iowa-run-status.txt
+          done
+          set -e
+          node ./r1-golden-check.mjs 2>&1 | tee r1-golden-check.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra7-r1-baseline-and-fix-validation
+          retention-days: 30
+          path: |
+            r1-real-page.log
+            r1-browser-results.jsonl
+            r1-iowa-run-status.txt
+            r1-iowa-*.log
+            r1-iowa-golden-results.json
+            r1-golden-check.log
