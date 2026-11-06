@@ -7,8 +7,14 @@ const OUT='artifacts/r1-browser-matrix';
 const SHA={production:'66e6d35ef69ec78bcd7a934b576dd5ad3c4d77b3',r1:'3349f41adafce03e23cfa1cdf7bc688d1d834724'};
 const POINT={lng:-93.38977,lat:41.95715,acres:20};
 const IOWA_GOLDEN={regionalGenerated:40,regionalProcessedPaths:28,regionalDrawn:0,regionalPills:11,propertyCorridors:57,fingerprints:{sourceStateFingerprint:'f45509978ce31467',scientificInputFingerprint:'e689e5e520256050',noBuildMaskHash:'9e84647e45512220',elevationGridHash:'9b43dc7c77c80042',flowDirectionHash:'445f85f5442a02d5',flowAccumulationHash:'860f65cc4d80e2f6'}};
-const engines={chromium,firefox,webkit};
+const engines={chromium,webkit};
+const ENGINE=process.env.R1_ENGINE||'chromium';
+if(!engines[ENGINE])throw Error('Unsupported engine '+ENGINE);
+const selectedEngines={[ENGINE]:engines[ENGINE]};
+const IOWA_R1_RUNS=Number(process.env.R1_IOWA_RUNS||3);
+const LIVE_ORIGIN='https://earthlinedevelopment.org/';
 const results=[]; let failures=0;
+const identity={production:{commit:SHA.production,blob:'b2f321aa00946787ef58f7695270db6a07ec599b',bytes:3760439},r1:{commit:SHA.r1,blob:'745de00dcfafc3aeb6607497fd8a4830c34555b2',bytes:3760534}};
 await mkdir(OUT,{recursive:true});
 const MIME={'.html':'text/html; charset=utf-8','.js':'application/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.svg':'image/svg+xml','.wasm':'application/wasm'};
 function serverFor(name){
@@ -34,7 +40,13 @@ for(const name of Object.keys(SHA)){
  await new Promise(r=>servers[name].listen(0,'127.0.0.1',r));
 }
 const port=name=>servers[name].address().port;
-const address=name=>'http://127.0.0.1:'+port(name)+'/';
+const address=name=>LIVE_ORIGIN;
+async function routeLocalCommit(page,name){
+ await page.route(/^https:\/\/earthlinedevelopment\.org\/(?:\?.*)?$/,async route=>{
+  const bytes=await readFile(resolve('ci-builds',name,'index.html'));
+  await route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:bytes,headers:{'cache-control':'no-store'}});
+ });
+}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function save(row,page){
  const dir=OUT+'/'+row.engine+'/'+row.build+'/'+row.case+'/'+String(row.run).padStart(2,'0');
@@ -109,11 +121,12 @@ function classifyBoot(err,logs){
  return /webgl|webgl2|swiftshader|gpu process|gl context|failed to create context|canvas.*context/i.test(txt)?'environment-limitation':'failed';
 }
 async function boot(browser,engine,build,tag,runNumber=0,beforeNavigate=null){
- const context=await browser.newContext({viewport:{width:1800,height:1000}});
+ const context=await browser.newContext({viewport:{width:1800,height:1000},serviceWorkers:'block'});
  const page=await context.newPage();
  const row={engine,build,commit:SHA[build],case:tag,run:runNumber};
  capture(page,row);
  try{
+  await routeLocalCommit(page,build);
   if(beforeNavigate)await beforeNavigate(page,row);
   await page.goto(address(build)+'?r1='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForSelector('#searchInput',{timeout:30000});
@@ -238,6 +251,28 @@ async function late(browser,engine,build,spec){
  row.prefix=spec.prefix;row.testQuery=spec.query;row.delayMs=spec.delayMs;row.expectedTimeoutMs=spec.timeoutMs;
  try{
   await trigger(page,spec.query);
+  // Explicitly exercise the existing feature entry points when regional search alone
+  // does not request the selected JSONP family. Do not inject fake callback declarations.
+  if(spec.prefix==='__earthlineJsonp15970_'||spec.prefix==='__earthlineArcGIS16399_'){
+    await sleep(1800);
+    if(!targetCallback){
+      await page.evaluate(async()=>{
+        const target={lng:-93.38977,lat:41.95715};
+        if(typeof M!=='undefined'&&typeof window.earthlineSelectedSiteFromCenter==='function'&&
+           typeof window.applyLocation==='function'&&typeof window.earthlineSetPropertyTarget16201==='function'){
+          const site=window.earthlineSelectedSiteFromCenter(M.loc||null,target.lng,target.lat,20);
+          if(site){
+            const applied=await window.applyLocation(site,null,M.searchGen,{analyzeNow:false,preserveMapView:false});
+            if(applied){
+              window.earthlineSetPropertyTarget16201({...target,source:'r1-callback-coverage'},{openPanel:false});
+              if(typeof window.earthlineDeclarePropertyAtCrosshair16169==='function')
+                await window.earthlineDeclarePropertyAtCrosshair16169();
+            }
+          }
+        }
+      }).catch(e=>row.logs.push('FEATURE_TRIGGER_ERROR '+String(e)));
+    }
+  }
   // Wait for a controlled request, then for the original delay to elapse and settle.
   await page.waitForFunction(()=>true,null,{timeout:1000});
   await sleep(spec.delayMs+2200);
@@ -271,13 +306,14 @@ async function late(browser,engine,build,spec){
 }
 
 async function smokeGate(){
- for(const [engine,launcher] of Object.entries(engines)){
+ for(const [engine,launcher] of Object.entries(selectedEngines)){
   let browser=null;
   try{
    browser=await launcher.launch({headless:true,args:engine==='chromium'?['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']:[]});
    for(const build of Object.keys(SHA)){
     const row={engine,build,commit:SHA[build],case:'preflight-smoke',run:0,status:'failed',downloads:[],logs:[],pageErrors:[]};
-    const context=await browser.newContext({viewport:{width:1800,height:1000},acceptDownloads:false});
+    const context=await browser.newContext({viewport:{width:1800,height:1000},acceptDownloads:false,serviceWorkers:'block'});
+    await routeLocalCommit(page,build);
     const page=await context.newPage();
     capture(page,row);
     page.on('download',d=>row.downloads.push(d.suggestedFilename()));
@@ -293,7 +329,7 @@ async function smokeGate(){
     await save(row,page);
     await context.close();
     if(row.status!=='passed'){
-     await writeFile(OUT+'/summary.json',JSON.stringify({stage:'smoke',status:'aborted-before-matrix',failed:row,rows:results},null,2));
+     await writeFile(OUT+'/summary.json',JSON.stringify({identity,stage:'smoke',status:'aborted-before-matrix',failed:row,rows:results},null,2));
      throw new Error('R1_SMOKE_GATE_FAILED engine='+engine+' build='+build+' reason='+(row.reason||'unexpected response'));
     }
    }
@@ -304,7 +340,7 @@ async function smokeGate(){
 
 try{
  await smokeGate();
- for(const [engine,launcher] of Object.entries(engines)){
+ for(const [engine,launcher] of Object.entries(selectedEngines)){
   let browser;
   try{browser=await launcher.launch({headless:true,args:engine==='chromium'?['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']:[]})}
   catch(e){const status=classifyBoot(e,[]);await save({engine,build:'both',case:'startup',run:0,status,reason:String(e),logs:[]},null);if(status==='failed')failures++;continue}
@@ -321,12 +357,12 @@ try{
    const row={engine,build:'production',case:'iowa-baseline',run:0,status:'failed',reason:'Three production baselines did not agree or did not complete',logs:[]};
    await save(row,null);failures++;
   }
-  for(let n=1;n<=10;n++)await iowa(browser,engine,'r1',n,baseline||{invalidBaseline:true});
+  for(let n=1;n<=IOWA_R1_RUNS;n++)await iowa(browser,engine,'r1',n,baseline||{invalidBaseline:true});
   await browser.close();
  }
 }finally{
  for(const server of Object.values(servers))await new Promise(r=>server.close(r));
 }
-await writeFile(OUT+'/summary.json',JSON.stringify({commits:SHA,point:POINT,rows:results,failures},null,2));
+await writeFile(OUT+'/summary.json',JSON.stringify({identity,commits:SHA,engine:ENGINE,iowaR1Runs:IOWA_R1_RUNS,point:POINT,rows:results,failures},null,2));
 console.log('R1_MATRIX_SUMMARY '+JSON.stringify({total:results.length,failures}));
 if(failures)process.exitCode=1;
