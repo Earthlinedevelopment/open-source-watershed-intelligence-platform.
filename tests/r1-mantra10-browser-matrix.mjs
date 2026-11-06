@@ -257,7 +257,41 @@ async function late(browser,engine,build){
  if(row.status==='failed'||row.status==='invalid-test')failures++;
 }
 
+
+async function smokeGate(){
+ for(const [engine,launcher] of Object.entries(engines)){
+  let browser=null;
+  try{
+   browser=await launcher.launch({headless:true,args:engine==='chromium'?['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']:[]});
+   for(const build of Object.keys(SHA)){
+    const row={engine,build,commit:SHA[build],case:'preflight-smoke',run:0,status:'failed',downloads:[],logs:[],pageErrors:[]};
+    const context=await browser.newContext({viewport:{width:1800,height:1000},acceptDownloads:false});
+    const page=await context.newPage();
+    capture(page,row);
+    page.on('download',d=>row.downloads.push(d.suggestedFilename()));
+    try{
+     const response=await page.goto(address(build)+'?smoke='+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
+     row.httpStatus=response?.status()??null;
+     row.contentType=response?.headers()['content-type']??null;
+     await page.locator('#searchInput').waitFor({state:'attached',timeout:15000});
+     row.elementPresent=await page.locator('#searchInput').count()===1;
+     row.status=row.httpStatus===200&&/^text\/html\b/i.test(row.contentType||'')&&row.elementPresent&&row.downloads.length===0?'passed':'failed';
+     if(row.status==='failed')row.reason='Expected HTML 200, searchInput, and zero download events';
+    }catch(e){row.reason=String(e);row.status='failed'}
+    await save(row,page);
+    await context.close();
+    if(row.status!=='passed'){
+     await writeFile(OUT+'/summary.json',JSON.stringify({stage:'smoke',status:'aborted-before-matrix',failed:row,rows:results},null,2));
+     throw new Error('R1_SMOKE_GATE_FAILED engine='+engine+' build='+build+' reason='+(row.reason||'unexpected response'));
+    }
+   }
+  }finally{if(browser)await browser.close()}
+ }
+ console.log('R1_SMOKE_GATE_PASSED 6/6 HTML navigations; starting matrix');
+}
+
 try{
+ await smokeGate();
  for(const [engine,launcher] of Object.entries(engines)){
   let browser;
   try{browser=await launcher.launch({headless:true,args:engine==='chromium'?['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']:[]})}
