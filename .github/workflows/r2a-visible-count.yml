@@ -1,0 +1,51 @@
+name: R2a visible count audit
+on:
+  push:
+    branches: [mantra112-r2a-visible-count-audit]
+    paths: [index.html, tests/r2a-visible-count.mjs, .github/workflows/r2a-visible-count.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, webkit]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify pinned accepted baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ci-builds/r1 ci-builds/r2a artifacts/r2a
+          git show 3349f41adafce03e23cfa1cdf7bc688d1d834724:index.html > ci-builds/r1/index.html
+          cp index.html ci-builds/r2a/index.html
+          { git hash-object ci-builds/r1/index.html; sha256sum ci-builds/r1/index.html ci-builds/r2a/index.html; wc -c ci-builds/r1/index.html ci-builds/r2a/index.html; } | tee artifacts/r2a/identity.log
+          test "$(git hash-object ci-builds/r1/index.html)" = 745de00dcfafc3aeb6607497fd8a4830c34555b2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install selected browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.engine }}
+      - name: Execute baseline versus R2a
+        env:
+          R2A_${{ matrix.engine }}: ${{ matrix.engine }}
+        shell: bash
+        run: |
+          set -o pipefail
+          node tests/r2a-visible-count.mjs 2>&1 | tee artifacts/r2a/${{ matrix.engine }}-run.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r2a-${{ matrix.engine }}-evidence
+          path: artifacts/r2a/
+          retention-days: 30
+          if-no-files-found: warn
