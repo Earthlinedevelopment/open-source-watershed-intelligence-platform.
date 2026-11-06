@@ -122,7 +122,7 @@ async function iowa(browser,engine,build,index,baseline){
   snap={regional:regional.regional,property:prop.property};
   row.snapshot=snap;row.comparable=comparable(snap);
   row.baselineMatch=baseline?JSON.stringify(row.comparable)===JSON.stringify(baseline):null;
-  row.status=(row.pageErrors.length===0&&!snap.regional.regionalError&&snap.property.settled===true&&snap.property.result===true&&(!baseline||row.baselineMatch))?'passed':'failed';
+  row.status=(row.pageErrors.length===0&&!snap.regional.regionalError&&snap.property.settled===true&&snap.property.result===true&&row.propertyWithin30s&&(!baseline||row.baselineMatch))?'passed':'failed';
   if(!row.propertyWithin30s)row.existing30sAssertion='FAILED_UNCHANGED';
   if(row.status==='failed')row.reason='page errors, incomplete publication, or baseline mismatch';
  }catch(e){row.status=classifyBoot(e,row.logs);row.reason=String(e)}
