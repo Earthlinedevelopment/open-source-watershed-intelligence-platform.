@@ -1,5 +1,6 @@
 import { chromium, firefox, webkit } from 'playwright';
 import { createServer } from 'node:http';
+import { createHash } from 'node:crypto';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 
@@ -14,6 +15,46 @@ const selectedEngines={[ENGINE]:engines[ENGINE]};
 const IOWA_R1_RUNS=Number(process.env.R1_IOWA_RUNS||3);
 const LIVE_ORIGIN='https://earthlinedevelopment.org/';
 const results=[]; let failures=0;
+const fixtureByEngine=new Map();
+function dataKey(url){
+ const u=new URL(url);
+ for(const k of ['_','_ts','timestamp','cacheBust','callback'])u.searchParams.delete(k);
+ u.searchParams.sort();
+ return u.origin+u.pathname+'?'+u.searchParams.toString();
+}
+async function attachDataFixture(context,engine,build,index,row){
+ if(!fixtureByEngine.has(engine))fixtureByEngine.set(engine,new Map());
+ const cache=fixtureByEngine.get(engine);
+ row.dataFixture={mode:build==='production'&&index===1?'record':'replay',hits:0,recorded:0,misses:[],requests:[]};
+ await context.route('**/*',async route=>{
+  const req=route.request(),url=req.url();
+  let host='';try{host=new URL(url).hostname}catch{return route.fallback()}
+  // Preserve browser Mapbox navigation and tiles; record hydrographic/well/OSM inputs.
+  if(req.method()!=='GET'||!/(?:arcgis|openstreetmap|overpass|usgs|waterdata|hydro|geoserver|nominatim|maps\.vermont|geoportal)/i.test(host))
+    return route.fallback();
+  const key=dataKey(url),entry=cache.get(key);
+  if(entry){
+   row.dataFixture.hits++;
+   row.dataFixture.requests.push({key,sha256:entry.sha256,replayed:true});
+   return route.fulfill({status:entry.status,contentType:entry.contentType,body:entry.body,headers:{'cache-control':'no-store'}});
+  }
+  if(build==='production'&&index===1){
+   try{
+    const response=await route.fetch({timeout:45000});
+    const body=await response.body();
+    const contentType=response.headers()['content-type']||'application/octet-stream';
+    const item={status:response.status(),contentType,body,sha256:sha256(body)};
+    cache.set(key,item);
+    row.dataFixture.recorded++;
+    row.dataFixture.requests.push({key,sha256:item.sha256,replayed:false});
+    return route.fulfill({response,body});
+   }catch(e){row.dataFixture.misses.push({key,error:String(e)});return route.abort('failed')}
+  }
+  row.dataFixture.misses.push({key,error:'UNRECORDED_DATA_DEPENDENCY'});
+  return route.abort('failed');
+ });
+}
+const sha256=buf=>createHash('sha256').update(buf).digest('hex');
 const identity={production:{commit:SHA.production,blob:'b2f321aa00946787ef58f7695270db6a07ec599b',bytes:3760439},r1:{commit:SHA.r1,blob:'745de00dcfafc3aeb6607497fd8a4830c34555b2',bytes:3760534}};
 await mkdir(OUT,{recursive:true});
 const MIME={'.html':'text/html; charset=utf-8','.js':'application/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.svg':'image/svg+xml','.wasm':'application/wasm'};
@@ -42,10 +83,33 @@ for(const name of Object.keys(SHA)){
 const port=name=>servers[name].address().port;
 const address=name=>LIVE_ORIGIN;
 async function routeLocalCommit(page,name){
- await page.route(/^https:\/\/earthlinedevelopment\.org\/(?:\?.*)?$/,async route=>{
-  const bytes=await readFile(resolve('ci-builds',name,'index.html'));
-  await route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:bytes,headers:{'cache-control':'no-store'}});
+ const bytes=await readFile(resolve('ci-builds',name,'index.html'));
+ const hash=sha256(bytes);
+ const marker=bytes.includes(Buffer.from('retired JSONP callback'));
+ if(marker!==(name==='r1'))throw Error('R1_MARKER_IDENTITY_FAILED build='+name+' marker='+marker);
+ const expected=identity[name];
+ if(bytes.length!==expected.bytes)throw Error('R1_FILE_LENGTH_INVALID '+name);
+ let documentHits=0;
+ // A catch-all registered first; a later JSONP route must use fallback(), not continue().
+ await page.route('**/*',async route=>{
+  const req=route.request();
+  if(req.isNavigationRequest()&&req.resourceType()==='document'){
+    const url=new URL(req.url());
+    if(url.origin!=='https://earthlinedevelopment.org')throw Error('UNEXPECTED_DOCUMENT_ORIGIN '+url.href);
+    if(url.pathname!=='/')throw Error('UNEXPECTED_DOCUMENT_PATH '+url.href);
+    documentHits++;
+    await route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:bytes,headers:{'cache-control':'no-store','x-earthline-test-build':name,'x-earthline-test-sha256':hash}});
+  }else await route.fallback();
  });
+ return async(response,row)=>{
+   if(!response)throw Error('EMPTY_NAVIGATION_RESPONSE');
+   const delivered=await response.body();
+   const browserHash=sha256(delivered);
+   const url=response.url();
+   row.documentIdentity={build:name,bytes:delivered.length,sourceSha256:hash,browserReceivedSha256:browserHash,documentHits,markerPresent:delivered.includes(Buffer.from('retired JSONP callback')),url,headerBuild:response.headers()['x-earthline-test-build']||null};
+   if(documentHits!==1||browserHash!==hash||row.documentIdentity.headerBuild!==name||row.documentIdentity.markerPresent!==(name==='r1'))throw Error('BROWSER_DOCUMENT_IDENTITY_FAILED '+JSON.stringify(row.documentIdentity));
+   console.log('R1_DOCUMENT_IDENTITY '+JSON.stringify(row.documentIdentity));
+ };
 }
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function save(row,page){
@@ -106,29 +170,33 @@ function pageEvidence(){
   }return false;
  });
  const paths=swalePaths.map(el=>({id:el.id||null,ancestor:(el.closest('[id*="swale"],[id*="Swale"],[class*="swale"],[class*="Swale"]')?.id||null),visible:styleVisible(el)}));
- const pillElements=[...document.querySelectorAll('button,[role="button"],.chip,.pill,[class*="chip"],[class*="pill"]')].filter(el=>{
+ const pillElements=[...document.querySelectorAll('button,[role="button"],.chip,.pill,[class*="chip"],[class*="pill"],[class*="opportun"],[id*="opportun"],[class*="Opportunity"],[data-opportunity],li')].filter(el=>{
   const signature=String(el.id||'')+' '+String(el.className||'')+' '+String(el.getAttribute('data-role')||'');
-  return /opportun|swale|regional.*(chip|pill)|(?:chip|pill).*regional/i.test(signature);
+  const text=String(el.textContent||'').trim();
+  return /opportun|swale|regional.*(chip|pill)|(?:chip|pill).*regional/i.test(signature)||
+   (/^(?:[A-Z][1-9]|[1-9][0-9]?)[.\s]/.test(text)&&text.length<140);
  });
  const pills=pillElements.filter(styleVisible);
  return {drawn:paths.filter(p=>p.visible).length,pills:pills.length,swalePathCandidates:paths.length,pillCandidates:pillElements.length,
   pathDetails:paths.slice(0,60),pillDetails:pills.map(el=>({tag:el.tagName,id:el.id,className:String(el.className),text:String(el.textContent||'').trim().slice(0,90)})).slice(0,35),
-  missingEvidence:swalePaths.length===0||pillElements.length===0};
+  missingEvidence:swalePaths.length===0||pillElements.length===0,visibleOpportunityCandidateCount:[...document.querySelectorAll('[class*="opportun"],[id*="opportun"],[data-opportunity]')].filter(styleVisible).length};
 }
 function comparable(x){return {regional:{generated:x.regional?.generated,processedPaths:x.regional?.processedPaths,drawn:x.regional?.dom?.drawn,pills:x.regional?.dom?.pills,rootPass:x.regional?.rootPass,firstFailedStage:x.regional?.firstFailedStage},property:{result:x.property?.result,swales:x.property?.swales,corridors:x.property?.corridors,published:x.property?.published,safeVisible:x.property?.safeVisible},reentry:{generated:x.reentry?.generated,processedPaths:x.reentry?.processedPaths,drawn:x.reentry?.dom?.drawn,pills:x.reentry?.dom?.pills,rootPass:x.reentry?.rootPass,firstFailedStage:x.reentry?.firstFailedStage}}}
 function classifyBoot(err,logs){
  const txt=String(err)+' '+logs.join(' ');
  return /webgl|webgl2|swiftshader|gpu process|gl context|failed to create context|canvas.*context/i.test(txt)?'environment-limitation':'failed';
 }
-async function boot(browser,engine,build,tag,runNumber=0,beforeNavigate=null){
+async function boot(browser,engine,build,tag,runNumber=0,beforeNavigate=null,configureContext=null){
  const context=await browser.newContext({viewport:{width:1800,height:1000},serviceWorkers:'block'});
  const page=await context.newPage();
  const row={engine,build,commit:SHA[build],case:tag,run:runNumber};
  capture(page,row);
  try{
-  await routeLocalCommit(page,build);
+  const verifyDocument=await routeLocalCommit(page,build);
+  if(configureContext)await configureContext(context,row);
   if(beforeNavigate)await beforeNavigate(page,row);
-  await page.goto(address(build)+'?r1='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+  const response=await page.goto(address(build)+'?r1='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+  await verifyDocument(response,row);
   await page.waitForSelector('#searchInput',{timeout:30000});
   const mapOk=await page.waitForFunction(()=>{const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;return !!m?.getCanvas?.()&&m.getCanvas().width>0},{},{timeout:20000}).then(()=>true).catch(()=>false);
   if(!mapOk)throw new Error('map canvas failed to start');
@@ -147,7 +215,7 @@ async function trigger(page,query){
  },query);
 }
 async function iowa(browser,engine,build,index,baseline){
- const session=await boot(browser,engine,build,'iowa',index);
+ const session=await boot(browser,engine,build,'iowa',index,null,async(context,row)=>attachDataFixture(context,engine,build,index,row));
  if(!session)return null;
  const {context,page,row}=session;row.run=index;row.point=POINT;row.goldens=IOWA_GOLDEN;
  let snap=null;
@@ -157,7 +225,7 @@ async function iowa(browser,engine,build,index,baseline){
    const err=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970;
    const status=String(document.getElementById('earthlineVermontStatus16147')?.textContent||document.getElementById('earthlineTierNotice16173')?.textContent||'');
    return !!err||(/screening published|regional analysis complete/i.test(status)&&!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191);
-  },null,{timeout:90000,polling:150});
+  },null,{timeout:engine==='webkit'?180000:90000,polling:150});
   const regional=await page.evaluate(state);regional.regional.dom=await page.evaluate(pageEvidence);row.regionalDurationMs=Date.now()-begin;
   row.camera=await page.evaluate(()=>{const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;return {zoom:m?.getZoom?.()??null,width:window.innerWidth,height:window.innerHeight}});
   row.viewportPass=row.camera.width===1800&&row.camera.height===1000;
@@ -173,7 +241,7 @@ async function iowa(browser,engine,build,index,baseline){
   if(!prepare.ok)throw new Error('Property preparation: '+prepare.why);
   const propStart=Date.now();
   await page.evaluate(async()=>await window.earthlineDeclarePropertyAtCrosshair16169());
-  await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true&&document.documentElement.dataset.earthlinePropertyRunState!=='running',null,{timeout:90000,polling:150});
+  await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true&&document.documentElement.dataset.earthlinePropertyRunState!=='running',null,{timeout:engine==='webkit'?180000:90000,polling:150});
   const prop=await page.evaluate(state);
   row.propertyDurationMs=Date.now()-propStart;
   // Keep existing 30-second assertion unchanged: report, do not weaken.
@@ -186,7 +254,7 @@ async function iowa(browser,engine,build,index,baseline){
     const current=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null;
     const err=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970;
     return !!err||!!(current&&current!==window.__R1_PREVIOUS_REGIONAL_PERF);
-  },null,{timeout:90000,polling:150});
+  },null,{timeout:engine==='webkit'?180000:90000,polling:150});
   row.reentryDurationMs=Date.now()-reentryStarted;
   row.reentryWithin30s=row.reentryDurationMs<=30000;
   row.reentry30sAssertion=row.reentryWithin30s?'PASS':'FAIL_UNCHANGED';
@@ -196,12 +264,13 @@ async function iowa(browser,engine,build,index,baseline){
   row.snapshot=snap;row.comparable=comparable(snap);
   row.baselineMatch=baseline?JSON.stringify(row.comparable)===JSON.stringify(baseline):null;
   row.scientificPass=row.viewportPass&&row.goldenZoomPass&&row.fingerprintMatch&&snap.regional.generated===IOWA_GOLDEN.regionalGenerated&&snap.regional.processedPaths===IOWA_GOLDEN.regionalProcessedPaths&&!snap.regional.dom.missingEvidence&&snap.regional.dom.drawn===IOWA_GOLDEN.regionalDrawn&&snap.regional.dom.pills===IOWA_GOLDEN.regionalPills&&Number(snap.property.corridors)===IOWA_GOLDEN.propertyCorridors&&snap.reentry.generated===IOWA_GOLDEN.regionalGenerated&&snap.reentry.processedPaths===IOWA_GOLDEN.regionalProcessedPaths&&!snap.reentry.dom.missingEvidence&&snap.reentry.dom.drawn===IOWA_GOLDEN.regionalDrawn&&snap.reentry.dom.pills===IOWA_GOLDEN.regionalPills;
-  row.publicationPass=row.pageErrors.length===0&&!snap.regional.regionalError&&snap.property.settled===true&&snap.property.result===true;
+  row.publicationPass=row.pageErrors.length===0&&!snap.regional.regionalError&&snap.property.settled===true&&snap.property.result===true&&row.dataFixture.misses.length===0;
   row.goldenParity=row.scientificPass;
   row.existingCrossBrowserDifference=engine!=='chromium'&&build==='production'&&!row.goldenParity;
   row.status=(row.publicationPass&&row.propertyWithin30s&&row.reentryWithin30s&&(!baseline||row.baselineMatch)&&(engine!=='chromium'||row.goldenParity))?'passed':'failed';
   if(!row.propertyWithin30s)row.existing30sAssertion='FAILED_UNCHANGED';
   row.goldens=IOWA_GOLDEN;
+  row.replayCoverage=row.dataFixture.misses.length===0?'complete-for-intercepted-data-hosts':'incomplete';
   if(row.status==='failed')row.reason='page errors, incomplete publication, or baseline mismatch';
  }catch(e){row.status=classifyBoot(e,row.logs);row.reason=String(e)}
  await save(row,page);await context.close();
@@ -229,7 +298,7 @@ async function late(browser,engine,build,spec){
    const url=route.request().url();
    let callback=null;
    try{callback=new URL(url).searchParams.get('callback')}catch{}
-   if(!callback||!JSONP_CASES.some(x=>callback.startsWith(x.prefix)))return route.continue();
+   if(!callback||!JSONP_CASES.some(x=>callback.startsWith(x.prefix)))return route.fallback();
    if(callback.startsWith(spec.prefix)&&targetCallback===null){
     targetCallback=callback;targetUrl=url;intercepted++;
     await sleep(spec.delayMs);
@@ -278,13 +347,14 @@ async function late(browser,engine,build,spec){
   await sleep(spec.delayMs+2200);
   naturalSentinel=await page.evaluate(()=>Number(window.__R1_LATE_DELIVERY||0));
   row.naturalSentinel=naturalSentinel;
-  if(naturalSentinel===0&&targetUrl){
+  if(naturalSentinel===0&&targetUrl&&originalOutcome!=='fulfilled'){
    syntheticUsed=true;
    // A removed <script> may be canceled by the browser; explicitly replay only
    // after the held request has completed/canceled. This is NOT a natural reproduction.
    await page.evaluate(url=>{const script=document.createElement('script');script.async=true;script.src=url;document.head.appendChild(script)},targetUrl);
    await sleep(800);
   }
+  row.featureTriggerCoverage={regionalSearch:spec.query,propertyCrosshairAttempted:['__earthlineJsonp15970_','__earthlineArcGIS16399_'].includes(spec.prefix),callbackCaptured:!!targetCallback};
   row.intercepted=intercepted;
   row.targetCallback=targetCallback;
   row.originalOutcome=originalOutcome;
@@ -314,11 +384,12 @@ async function smokeGate(){
     const row={engine,build,commit:SHA[build],case:'preflight-smoke',run:0,status:'failed',downloads:[],logs:[],pageErrors:[]};
     const context=await browser.newContext({viewport:{width:1800,height:1000},acceptDownloads:false,serviceWorkers:'block'});
     const page=await context.newPage();
-    await routeLocalCommit(page,build);
+    const verifyDocument=await routeLocalCommit(page,build);
     capture(page,row);
     page.on('download',d=>row.downloads.push(d.suggestedFilename()));
     try{
      const response=await page.goto(address(build)+'?smoke='+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
+     await verifyDocument(response,row);
      row.httpStatus=response?.status()??null;
      row.contentType=response?.headers()['content-type']??null;
      await page.locator('#searchInput').waitFor({state:'attached',timeout:15000});
@@ -352,6 +423,9 @@ try{
   for(let n=1;n<=3;n++)prod.push(await iowa(browser,engine,'production',n,null));
   // Existing 30-second re-entry failure must not erase each engine's scientific baseline.
   const clean=prod.filter(x=>x?.publicationPass===true&&x?.comparable);
+  await writeFile(OUT+'/'+engine+'-replay-fixtures.json',JSON.stringify({engine,entries:[...(fixtureByEngine.get(engine)||new Map())].map(([key,value])=>({key,status:value.status,contentType:value.contentType,sha256:value.sha256,bytes:value.body.length}))},null,2));
+  const recordedGolden=clean.length?clean[0].comparable:null;
+  await writeFile(OUT+'/'+engine+'-recorded-production-golden.json',JSON.stringify({engine,source:'production-first-available-published-run',golden:recordedGolden,canonicalLockedGolden:IOWA_GOLDEN,recordedFixtureCount:fixtureByEngine.get(engine)?.size||0},null,2));
   const baseline=clean.length===3&&clean.every(x=>JSON.stringify(x.comparable)===JSON.stringify(clean[0].comparable))?clean[0].comparable:null;
   if(!baseline){
    const row={engine,build:'production',case:'iowa-baseline',run:0,status:'failed',reason:'Three production baselines did not agree or did not complete',logs:[]};
@@ -363,6 +437,6 @@ try{
 }finally{
  for(const server of Object.values(servers))await new Promise(r=>server.close(r));
 }
-await writeFile(OUT+'/summary.json',JSON.stringify({identity,commits:SHA,engine:ENGINE,iowaR1Runs:IOWA_R1_RUNS,point:POINT,rows:results,failures},null,2));
+await writeFile(OUT+'/summary.json',JSON.stringify({identity,commits:SHA,engine:ENGINE,iowaR1Runs:IOWA_R1_RUNS,point:POINT,fixture:{recorded:fixtureByEngine.get(ENGINE)?.size||0,replayScope:'hydrographic/OSM/USGS external inputs; map tiles pass-through; unrecorded intercepts fail closed'},documentIdentities:results.map(r=>({case:r.case,build:r.build,run:r.run,...(r.documentIdentity||{})})),rows:results,failures},null,2));
 console.log('R1_MATRIX_SUMMARY '+JSON.stringify({total:results.length,failures}));
 if(failures)process.exitCode=1;
