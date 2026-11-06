@@ -1,0 +1,111 @@
+name: Earthline Mantra 7 R1 literal localhost source comparison
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/mantra7-r1-localhost.yml']
+permissions:
+  contents: read
+jobs:
+  r1-localhost:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 66e6d35ef69ec78bcd7a934b576dd5ad3c4d77b3
+          path: baseline
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra7-r1-vermont-jsonp
+          path: candidate
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify exact byte identity of both local source files
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          b=Path('baseline/index.html').read_bytes()
+          f=Path('candidate/index.html').read_bytes()
+          old=b"function cleanup(){clearTimeout(timer);script.remove();try{delete window[cb]}catch(_){window[cb]=undefined}}"
+          new=b"function cleanup(){clearTimeout(timer);script.remove();window[cb]=function(){/* retired JSONP callback: late VCGI script must not throw */};}"
+          assert len(b)==3760439 and len(f)==3760472
+          assert b.count(old)==1
+          assert f==b.replace(old,new)
+          assert hashlib.sha256(b).hexdigest()=='e3a8b791cba0f5a1fbf31b282e6ad25cc88c8c2e2110533d9751932bebc7752f'
+          assert hashlib.sha256(f).hexdigest()=='6fe8c01acbd2c1ed56c681d4010738d57f381f771295f9e33f479ab52ea042ee'
+          print("R1 source byte comparison + SHA-256 PASS")
+          PY
+      - name: Install browser dependency
+        run: npm install --no-save playwright@1.55.0
+      - name: Serve exact HTML bytes locally and verify 9 s late callback in Chromium
+        shell: bash
+        run: |
+          cat > ./r1-localhost.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+          const browser=await chromium.launch({headless:true,channel:'chrome'});
+          const jsonpPayload=JSON.stringify({features:[{geometry:{rings:[[[-73.42,42.73],[-71.5,42.73],[-71.5,45],[-73.42,45],[-73.42,42.73]]]}}]});
+          async function check(name,htmlFile,delayMs,mode){
+            const page=await browser.newPage({viewport:{width:1800,height:1000}});
+            const errors=[];let requests=0,delivered=0;
+            page.on('pageerror',e=>errors.push(String(e)));
+            await page.route('**/*',async route=>{
+              const url=new URL(route.request().url());
+              const cb=url.searchParams.get('callback');
+              if(cb&&cb.startsWith('__earthlineVtBoundary16178_')){
+                requests++;
+                await new Promise(resolve=>setTimeout(resolve,delayMs));
+                if(mode==='error'){await route.abort();return;}
+                const body='window.__r1LateSentinel=(window.__r1LateSentinel||0)+1;'+cb+'('+jsonpPayload+');';
+                delivered++;await route.fulfill({status:200,contentType:'application/javascript',body});return;
+              }
+              if(url.searchParams.get('f')==='geojson'&&/vermont|vcgi/i.test(url.hostname+url.pathname)){
+                await route.abort();return;
+              }
+              await route.continue();
+            });
+            let navigationError=null;
+            try{await page.goto('http://127.0.0.1:8787/'+htmlFile+'?r1='+name+'-'+Date.now(),{waitUntil:'domcontentloaded',timeout:90000});}
+            catch(e){navigationError=String(e);}
+            try{await page.waitForFunction(()=>Number(window.__r1LateSentinel||0)>=1,null,{timeout:delayMs+13000,polling:100});}
+            catch(e){if(mode!=='error')navigationError=(navigationError||'')+'; no sentinel: '+String(e);}
+            await page.waitForTimeout(500);
+            const reported=await page.evaluate(()=>({sentinel:Number(window.__r1LateSentinel||0),boundarySource:window.EARTHLINE_VERMONT_BOUNDARY_SOURCE_16178||null})).catch(e=>({evaluationError:String(e)}));
+            const result={name,htmlFile,delayMs,mode,requests,delivered,errors,navigationError,reported};
+            fs.appendFileSync('r1-browser-results.jsonl',JSON.stringify(result)+'\n');
+            console.log('R1_REAL_PAGE '+JSON.stringify(result));
+            await page.close();
+            const lateBase=name==='baseline-late';
+            if(requests!==1)throw Error(name+': expected one real JSONP request, got '+requests);
+            if(mode!=='error'&&reported.sentinel!==1)throw Error(name+': JSONP response did not execute; test invalid');
+            if(lateBase){
+              if(!errors.some(e=>e.includes('ReferenceError')&&e.includes('__earthlineVtBoundary16178_')))throw Error(name+': baseline failed to reproduce targeted ReferenceError');
+            }else if(errors.length)throw Error(name+': uncaught page errors '+errors.join(' | '));
+            if(mode!=='error'&&navigationError)throw Error(name+': '+navigationError);
+            if(name==='fix-early'&&!String(reported.boundarySource?.source||'').includes('JSONP'))throw Error(name+': timely JSONP did not resolve source');
+          }
+          try{
+            await check('baseline-late','baseline/index.html',9000,'deliver');
+            await check('fix-late','candidate/index.html',9000,'deliver');
+            await check('fix-early','candidate/index.html',2000,'deliver');
+            await check('fix-error','candidate/index.html',100,'error');
+            console.log('R1_REAL_PAGE_ACCEPTANCE_PASS');
+          } finally {await browser.close();}
+          
+          JS
+          python3 -m http.server 8787 --bind 127.0.0.1 > r1-localhost-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          for i in {1..20}; do curl -fsS http://127.0.0.1:8787/baseline/index.html -o /dev/null && break; sleep 1; done
+          node ./r1-localhost.mjs 2>&1 | tee r1-localhost.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra7-r1-literal-localhost
+          retention-days: 30
+          path: |
+            r1-browser-results.jsonl
+            r1-localhost.log
+            r1-localhost-server.log
