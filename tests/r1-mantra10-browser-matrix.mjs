@@ -108,12 +108,13 @@ function classifyBoot(err,logs){
  const txt=String(err)+' '+logs.join(' ');
  return /webgl|webgl2|swiftshader|gpu process|gl context|failed to create context|canvas.*context/i.test(txt)?'environment-limitation':'failed';
 }
-async function boot(browser,engine,build,tag,runNumber=0){
+async function boot(browser,engine,build,tag,runNumber=0,beforeNavigate=null){
  const context=await browser.newContext({viewport:{width:1800,height:1000}});
  const page=await context.newPage();
  const row={engine,build,commit:SHA[build],case:tag,run:runNumber};
  capture(page,row);
  try{
+  if(beforeNavigate)await beforeNavigate(page,row);
   await page.goto(address(build)+'?r1='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForSelector('#searchInput',{timeout:30000});
   const mapOk=await page.waitForFunction(()=>{const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;return !!m?.getCanvas?.()&&m.getCanvas().width>0},{},{timeout:20000}).then(()=>true).catch(()=>false);
@@ -195,12 +196,10 @@ async function iowa(browser,engine,build,index,baseline){
  return row;
 }
 async function late(browser,engine,build){
- const session=await boot(browser,engine,build,'late-reply');
- if(!session)return;
- const {context,page,row}=session;row.run=1;
  let intercepted=0,requestUrl=null,callback=null,fulfilled=0;
+ let session=null;
  const payload=()=> "window.__R1_LATE_DELIVERY=(window.__R1_LATE_DELIVERY||0)+1;window["+JSON.stringify(callback)+"]({features:[]});";
- try{
+ const beforeNavigate=async(page,row)=>{
   await page.route('**/*',async route=>{
    const url=route.request().url();
    if(!url.includes('__earthlineVtBoundary16178_'))return route.continue();
@@ -217,6 +216,11 @@ async function late(browser,engine,build){
     catch(e){row.logs.push('REPLAY_FAILED '+String(e))}
    }
   });
+ };
+ session=await boot(browser,engine,build,'late-reply',1,beforeNavigate);
+ if(!session)return;
+ const {context,page,row}=session;
+ try{
   await trigger(page,'Vermont');
   await sleep(10500);
   let sentinel=await page.evaluate(()=>window.__R1_LATE_DELIVERY||0);
