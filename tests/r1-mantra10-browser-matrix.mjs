@@ -191,11 +191,19 @@ async function late(browser,engine,build){
   row.requestCallback=callback;
   row.deliverySentinel=sentinel;
   row.callbackError=row.pageErrors.some(e=>/__earthlineVtBoundary16178_|is not a function|not defined/i.test(e));
-  row.status=!!requestUrl&&sentinel===1&&(build==='production'?row.callbackError:row.pageErrors.length===0)?'passed':'failed';
+  row.naturalDelivery=row.deliveryMode==='original-held-request'&&sentinel===1;
+  row.syntheticDelivery=row.deliveryMode==='reinjected-script-after-original-removal'&&sentinel===1;
+  row.defectReachability=row.naturalDelivery?'naturally-reachable':row.syntheticDelivery?'synthetic-only-not-naturally-reachable':'not-executed';
+  const delivered=sentinel===1;
+  const expectedThrow=build==='production'&&row.callbackError;
+  const expectedR1=build==='r1'&&row.pageErrors.length===0;
+  row.status=!delivered?'invalid-test':
+    engine==='chromium'&&!row.naturalDelivery?'failed':
+    (build==='production'?(row.naturalDelivery?expectedThrow:row.syntheticDelivery&&expectedThrow):expectedR1)?'passed':'failed';
   if(row.status==='failed')row.reason='VCGI interception, late execution, expected baseline exception, or zero-error R1 assertion failed';
  }catch(e){row.status='failed';row.reason=String(e)}
  await save(row,page);await context.close();
- if(row.status==='failed')failures++;
+ if(row.status==='failed'||row.status==='invalid-test')failures++;
 }
 
 try{
