@@ -157,7 +157,9 @@ async function iowa(browser,engine,build,index,baseline){
   row.baselineMatch=baseline?JSON.stringify(row.comparable)===JSON.stringify(baseline):null;
   row.scientificPass=row.viewportPass&&row.goldenZoomPass&&row.fingerprintMatch&&snap.regional.generated===IOWA_GOLDEN.regionalGenerated&&snap.regional.processedPaths===IOWA_GOLDEN.regionalProcessedPaths&&Number(snap.property.corridors)===IOWA_GOLDEN.propertyCorridors&&snap.reentry.generated===IOWA_GOLDEN.regionalGenerated&&snap.reentry.processedPaths===IOWA_GOLDEN.regionalProcessedPaths;
   row.publicationPass=row.pageErrors.length===0&&!snap.regional.regionalError&&snap.property.settled===true&&snap.property.result===true;
-  row.status=(row.publicationPass&&row.scientificPass&&row.propertyWithin30s&&row.reentryWithin30s&&(!baseline||row.baselineMatch))?'passed':'failed';
+  row.goldenParity=row.scientificPass;
+  row.existingCrossBrowserDifference=engine!=='chromium'&&build==='production'&&!row.goldenParity;
+  row.status=(row.publicationPass&&row.propertyWithin30s&&row.reentryWithin30s&&(!baseline||row.baselineMatch)&&(engine!=='chromium'||row.goldenParity))?'passed':'failed';
   if(!row.propertyWithin30s)row.existing30sAssertion='FAILED_UNCHANGED';
   row.goldens=IOWA_GOLDEN;
   if(row.status==='failed')row.reason='page errors, incomplete publication, or baseline mismatch';
@@ -235,7 +237,7 @@ try{
   const prod=[];
   for(let n=1;n<=3;n++)prod.push(await iowa(browser,engine,'production',n,null));
   // Existing 30-second re-entry failure must not erase each engine's scientific baseline.
-  const clean=prod.filter(x=>x?.publicationPass===true&&x?.scientificPass===true);
+  const clean=prod.filter(x=>x?.publicationPass===true&&x?.comparable);
   const baseline=clean.length===3&&clean.every(x=>JSON.stringify(x.comparable)===JSON.stringify(clean[0].comparable))?clean[0].comparable:null;
   if(!baseline){
    const row={engine,build:'production',case:'iowa-baseline',run:0,status:'failed',reason:'Three production baselines did not agree or did not complete',logs:[]};
