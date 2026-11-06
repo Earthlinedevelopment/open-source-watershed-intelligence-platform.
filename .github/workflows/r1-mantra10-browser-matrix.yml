@@ -1,0 +1,72 @@
+name: R1 isolated browser A-B and Iowa matrix
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: r1-mantra10-manual
+  cancel-in-progress: false
+
+jobs:
+  r1-browser-matrix:
+    if: github.ref == 'refs/heads/mantra7-r1-vermont-jsonp'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout isolated R1 branch
+        uses: actions/checkout@v4
+        with:
+          ref: mantra7-r1-vermont-jsonp
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Pin HTML commit bytes and verify hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ci-builds/production ci-builds/r1 artifacts/r1-browser-matrix/hashes
+          git show 66e6d35ef69ec78bcd7a934b576dd5ad3c4d77b3:index.html > ci-builds/production/index.html
+          git show 528d0e88a28183710a5935f174864f85f5dfc8ba:index.html > ci-builds/r1/index.html
+          {
+            echo 'PRODUCTION commit=66e6d35ef69ec78bcd7a934b576dd5ad3c4d77b3'
+            git hash-object ci-builds/production/index.html
+            sha256sum ci-builds/production/index.html
+            wc -c < ci-builds/production/index.html
+            echo 'R1 commit=528d0e88a28183710a5935f174864f85f5dfc8ba'
+            git hash-object ci-builds/r1/index.html
+            sha256sum ci-builds/r1/index.html
+            wc -c < ci-builds/r1/index.html
+          } | tee artifacts/r1-browser-matrix/hashes/local-hashes.log
+          test "$(git hash-object ci-builds/production/index.html)" = 'b2f321aa00946787ef58f7695270db6a07ec599b'
+          test "$(git hash-object ci-builds/r1/index.html)" = '792f2a3c4260a6b167e7352e768854ce5c4e74b6'
+          test "$(wc -c < ci-builds/production/index.html)" -eq 3760439
+          test "$(wc -c < ci-builds/r1/index.html)" -eq 3760472
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright browsers
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium firefox webkit
+
+      - name: Execute local-server A-B and Iowa matrix
+        env:
+          CI: 'true'
+        shell: bash
+        run: |
+          set -o pipefail
+          node tests/r1-mantra10-browser-matrix.mjs 2>&1 | tee artifacts/r1-browser-matrix/run.log
+
+      - name: Upload all artifacts even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r1-mantra10-browser-matrix
+          path: artifacts/r1-browser-matrix/
+          if-no-files-found: warn
+          retention-days: 30
