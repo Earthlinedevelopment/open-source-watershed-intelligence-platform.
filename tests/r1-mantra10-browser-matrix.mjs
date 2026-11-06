@@ -62,7 +62,7 @@ function state(){
  const a=window.EARTHLINE_STANDARD_ROOT_CAUSE_AUDIT_16784||null;
  return {regional:{generated:generation?.publishedFeatures??publication?.generated??null,visible:display?.swaleLines??publication?.overlaySwaleLines??null,rootPass:a?.pass??null,firstFailedStage:a?.firstFailedStage??null,elapsedMs:performance?.totalMs??null,regionalError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null},property:{settled:run?.settled??null,result:run?.result??null,swales:typeof M!=='undefined'?M?.swales?.length??null:null,corridors:propPub?.count??propPub?.features??safe?.count??null,published:propPub?.published??null,safeVisible:safe?.visible??null,runToken:propPub?.runToken??null}};
 }
-function comparable(x){return {regional:{generated:x.regional?.generated,visible:x.regional?.visible,rootPass:x.regional?.rootPass,firstFailedStage:x.regional?.firstFailedStage},property:{result:x.property?.result,swales:x.property?.swales,corridors:x.property?.corridors,published:x.property?.published,safeVisible:x.property?.safeVisible}}}
+function comparable(x){return {regional:{generated:x.regional?.generated,visible:x.regional?.visible,rootPass:x.regional?.rootPass,firstFailedStage:x.regional?.firstFailedStage},property:{result:x.property?.result,swales:x.property?.swales,corridors:x.property?.corridors,published:x.property?.published,safeVisible:x.property?.safeVisible},reentry:{generated:x.reentry?.generated,visible:x.reentry?.visible,rootPass:x.reentry?.rootPass,firstFailedStage:x.reentry?.firstFailedStage}}}
 function classifyBoot(err,logs){
  const txt=String(err)+' '+logs.join(' ');
  return /webgl|webgl2|swiftshader|gpu process|gl context|failed to create context|canvas.*context/i.test(txt)?'environment-limitation':'failed';
@@ -121,12 +121,24 @@ async function iowa(browser,engine,build,index,baseline){
   // Keep existing 30-second assertion unchanged: report, do not weaken.
   row.propertyWithin30s=row.propertyDurationMs<=30000;
   row.property30sAssertion=row.propertyWithin30s?'PASS':'FAIL_UNCHANGED';
-  snap={regional:regional.regional,property:prop.property};
+  await page.evaluate(()=>{window.__R1_PREVIOUS_REGIONAL_PERF=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null});
+  const reentryStarted=Date.now();
+  await trigger(page,'Iowa');
+  await page.waitForFunction(()=>{
+    const current=window.EARTHLINE_REGIONAL_PERFORMANCE_16191||null;
+    const err=window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970;
+    return !!err||!!(current&&current!==window.__R1_PREVIOUS_REGIONAL_PERF);
+  },null,{timeout:90000,polling:150});
+  row.reentryDurationMs=Date.now()-reentryStarted;
+  row.reentryWithin30s=row.reentryDurationMs<=30000;
+  row.reentry30sAssertion=row.reentryWithin30s?'PASS':'FAIL_UNCHANGED';
+  const reentry=await page.evaluate(state);
+  snap={regional:regional.regional,property:prop.property,reentry:reentry.regional};
   row.snapshot=snap;row.comparable=comparable(snap);
   row.baselineMatch=baseline?JSON.stringify(row.comparable)===JSON.stringify(baseline):null;
-  row.scientificPass=snap.regional.generated===IOWA_GOLDEN.regionalGenerated&&snap.regional.visible===IOWA_GOLDEN.regionalVisible&&Number(snap.property.corridors)===IOWA_GOLDEN.propertyCorridors;
+  row.scientificPass=snap.regional.generated===IOWA_GOLDEN.regionalGenerated&&snap.regional.visible===IOWA_GOLDEN.regionalVisible&&Number(snap.property.corridors)===IOWA_GOLDEN.propertyCorridors&&snap.reentry.generated===IOWA_GOLDEN.regionalGenerated&&snap.reentry.visible===IOWA_GOLDEN.regionalVisible;
   row.publicationPass=row.pageErrors.length===0&&!snap.regional.regionalError&&snap.property.settled===true&&snap.property.result===true;
-  row.status=(row.publicationPass&&row.scientificPass&&row.propertyWithin30s&&(!baseline||row.baselineMatch))?'passed':'failed';
+  row.status=(row.publicationPass&&row.scientificPass&&row.propertyWithin30s&&row.reentryWithin30s&&(!baseline||row.baselineMatch))?'passed':'failed';
   if(!row.propertyWithin30s)row.existing30sAssertion='FAILED_UNCHANGED';
   row.goldens=IOWA_GOLDEN;
   if(row.status==='failed')row.reason='page errors, incomplete publication, or baseline mismatch';
