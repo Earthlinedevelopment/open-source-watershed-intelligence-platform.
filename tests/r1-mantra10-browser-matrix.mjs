@@ -60,7 +60,22 @@ function state(){
  const propPub=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null;
  const safe=window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null;
  const a=window.EARTHLINE_STANDARD_ROOT_CAUSE_AUDIT_16784||null;
- return {regional:{generated:generation?.publishedFeatures??publication?.generated??null,processedPaths:display?.processedPaths??display?.processedPathCount??display?.swaleLines??null,drawn:display?.drawnLines??display?.visibleSwaleLines??null,pills:display?.opportunityPills??display?.pillCount??null,rootPass:a?.pass??null,firstFailedStage:a?.firstFailedStage??null,elapsedMs:performance?.totalMs??null,regionalError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null},property:{settled:run?.settled??null,result:run?.result??null,swales:typeof M!=='undefined'?M?.swales?.length??null:null,corridors:propPub?.count??propPub?.features??safe?.count??null,published:propPub?.published??null,safeVisible:safe?.visible??null,runToken:propPub?.runToken??null}};
+ const fingerprintKeys=['sourceStateFingerprint','scientificInputFingerprint','noBuildMaskHash','elevationGridHash','flowDirectionHash','flowAccumulationHash'];
+ const fingerprints={};const seen=new WeakSet();let visited=0;
+ function scan(obj,depth){
+  if(!obj||typeof obj!=='object'||depth>5||visited++>8000||seen.has(obj))return;
+  seen.add(obj);
+  for(const [k,v] of Object.entries(obj)){
+   if(fingerprintKeys.includes(k)&&(typeof v==='string'||typeof v==='number'))fingerprints[k]=String(v);
+   else if(v&&typeof v==='object'&&depth<5)scan(v,depth+1);
+  }
+ }
+ scan(window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556,0);
+ scan(window.EARTHLINE_PROPERTY_RUN_AUDIT_16173,0);
+ scan(window.EARTHLINE_STANDARD_ROOT_CAUSE_AUDIT_16784,0);
+ scan(window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584,0);
+ if(typeof M!=='undefined'){scan(M?.safetyAudit15806,0);scan(M?.propertyResultLock15815,0)}
+ return {fingerprints,regional:{generated:generation?.publishedFeatures??publication?.generated??null,processedPaths:display?.processedPaths??display?.processedPathCount??display?.swaleLines??null,drawn:display?.drawnLines??display?.visibleSwaleLines??null,pills:display?.opportunityPills??display?.pillCount??null,rootPass:a?.pass??null,firstFailedStage:a?.firstFailedStage??null,elapsedMs:performance?.totalMs??null,regionalError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null},property:{settled:run?.settled??null,result:run?.result??null,swales:typeof M!=='undefined'?M?.swales?.length??null:null,corridors:propPub?.count??propPub?.features??safe?.count??null,published:propPub?.published??null,safeVisible:safe?.visible??null,runToken:propPub?.runToken??null}};
 }
 function comparable(x){return {regional:{generated:x.regional?.generated,processedPaths:x.regional?.processedPaths,drawn:x.regional?.drawn,pills:x.regional?.pills,rootPass:x.regional?.rootPass,firstFailedStage:x.regional?.firstFailedStage},property:{result:x.property?.result,swales:x.property?.swales,corridors:x.property?.corridors,published:x.property?.published,safeVisible:x.property?.safeVisible},reentry:{generated:x.reentry?.generated,processedPaths:x.reentry?.processedPaths,drawn:x.reentry?.drawn,pills:x.reentry?.pills,rootPass:x.reentry?.rootPass,firstFailedStage:x.reentry?.firstFailedStage}}}
 function classifyBoot(err,logs){
@@ -136,10 +151,11 @@ async function iowa(browser,engine,build,index,baseline){
   row.reentryWithin30s=row.reentryDurationMs<=30000;
   row.reentry30sAssertion=row.reentryWithin30s?'PASS':'FAIL_UNCHANGED';
   const reentry=await page.evaluate(state);
-  snap={regional:regional.regional,property:prop.property,reentry:reentry.regional};
+  snap={regional:regional.regional,property:prop.property,reentry:reentry.regional,fingerprints:prop.fingerprints};
+  row.fingerprintMatch=Object.entries(IOWA_GOLDEN.fingerprints).every(([k,v])=>snap.fingerprints?.[k]===v);
   row.snapshot=snap;row.comparable=comparable(snap);
   row.baselineMatch=baseline?JSON.stringify(row.comparable)===JSON.stringify(baseline):null;
-  row.scientificPass=row.viewportPass&&row.goldenZoomPass&&snap.regional.generated===IOWA_GOLDEN.regionalGenerated&&snap.regional.processedPaths===IOWA_GOLDEN.regionalProcessedPaths&&Number(snap.property.corridors)===IOWA_GOLDEN.propertyCorridors&&snap.reentry.generated===IOWA_GOLDEN.regionalGenerated&&snap.reentry.processedPaths===IOWA_GOLDEN.regionalProcessedPaths;
+  row.scientificPass=row.viewportPass&&row.goldenZoomPass&&row.fingerprintMatch&&snap.regional.generated===IOWA_GOLDEN.regionalGenerated&&snap.regional.processedPaths===IOWA_GOLDEN.regionalProcessedPaths&&Number(snap.property.corridors)===IOWA_GOLDEN.propertyCorridors&&snap.reentry.generated===IOWA_GOLDEN.regionalGenerated&&snap.reentry.processedPaths===IOWA_GOLDEN.regionalProcessedPaths;
   row.publicationPass=row.pageErrors.length===0&&!snap.regional.regionalError&&snap.property.settled===true&&snap.property.result===true;
   row.status=(row.publicationPass&&row.scientificPass&&row.propertyWithin30s&&row.reentryWithin30s&&(!baseline||row.baselineMatch))?'passed':'failed';
   if(!row.propertyWithin30s)row.existing30sAssertion='FAILED_UNCHANGED';
