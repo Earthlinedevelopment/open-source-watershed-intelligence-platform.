@@ -61,7 +61,7 @@ function state(){
  const a=window.EARTHLINE_STANDARD_ROOT_CAUSE_AUDIT_16784||null;
  return {regional:{generated:generation?.publishedFeatures??publication?.generated??null,visible:display?.swaleLines??publication?.overlaySwaleLines??null,rootPass:a?.pass??null,firstFailedStage:a?.firstFailedStage??null,elapsedMs:performance?.totalMs??null,regionalError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null},property:{settled:run?.settled??null,result:run?.result??null,swales:typeof M!=='undefined'?M?.swales?.length??null:null,corridors:propPub?.count??propPub?.features??safe?.count??null,published:propPub?.published??null,safeVisible:safe?.visible??null,runToken:propPub?.runToken??null}};
 }
-function comparable(x){return {regional:x.regional,property:{result:x.property?.result,swales:x.property?.swales,corridors:x.property?.corridors,published:x.property?.published,safeVisible:x.property?.safeVisible}}}
+function comparable(x){return {regional:{generated:x.regional?.generated,visible:x.regional?.visible,rootPass:x.regional?.rootPass,firstFailedStage:x.regional?.firstFailedStage},property:{result:x.property?.result,swales:x.property?.swales,corridors:x.property?.corridors,published:x.property?.published,safeVisible:x.property?.safeVisible}}}
 function classifyBoot(err,logs){
  const txt=String(err)+' '+logs.join(' ');
  return /webgl|webgl2|swiftshader|gpu process|gl context|failed to create context|canvas.*context/i.test(txt)?'environment-limitation':'failed';
