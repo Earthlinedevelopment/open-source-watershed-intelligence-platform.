@@ -226,7 +226,8 @@ async function late(browser,engine,build,spec){
     }catch(e){originalOutcome='canceled';row.logs.push('ORIGINAL_REQUEST_CANCELED '+String(e))}
    }else{
     controlledOtherRequests++;
-    try{await route.fulfill({status:200,contentType:'application/javascript',body:jsonpScript(callback,false)})}
+    const isExplicitReplay=callback===targetCallback&&syntheticUsed;
+    try{await route.fulfill({status:200,contentType:'application/javascript',body:jsonpScript(callback,isExplicitReplay)})}
     catch(e){row.logs.push('OTHER_JSONP_FULFILL_ERROR '+String(e))}
    }
   });
