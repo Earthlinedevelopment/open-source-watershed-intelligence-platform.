@@ -195,68 +195,79 @@ async function iowa(browser,engine,build,index,baseline){
  if(row.status==='failed')failures++;
  return row;
 }
-async function late(browser,engine,build){
- let intercepted=0,requestUrl=null,callback=null,fulfilled=0;
- let session=null;
- const payload=()=> "window.__R1_LATE_DELIVERY=(window.__R1_LATE_DELIVERY||0)+1;window["+JSON.stringify(callback)+"]({features:[]});";
+const JSONP_CASES=[
+ {prefix:'__earthlineVtBoundary16178_',query:'Vermont',delayMs:9000,timeoutMs:8000},
+ {prefix:'__earthlineVtInfra16458_',query:'Vermont',delayMs:26000,timeoutMs:25000},
+ {prefix:'__earthlineJsonp15970_',query:'Iowa state',delayMs:25000,timeoutMs:22000},
+ {prefix:'__earthlineArcGIS16399_',query:'Iowa state',delayMs:15000,timeoutMs:12000}
+];
+function jsonpScript(callback,tracked){
+ // Actual ArcGIS JSONP executes the bare callback identifier, not window[callback].
+ // Each controlled script increments the sentinel only for the selected test request.
+ return (tracked?'window.__R1_LATE_DELIVERY=(window.__R1_LATE_DELIVERY||0)+1;':'')+
+  callback+'({features:[],fields:[],geometryType:"esriGeometryPolygon",spatialReference:{wkid:4326}});';
+}
+async function late(browser,engine,build,spec){
+ const caseName='late-'+spec.prefix.replace(/_+$/,'').replace(/^_+/,'');
+ let intercepted=0,fulfills=0,targetCallback=null,targetUrl=null,naturalSentinel=0;
+ let originalOutcome='not-intercepted',syntheticUsed=false,controlledOtherRequests=0;
  const beforeNavigate=async(page,row)=>{
   await page.route('**/*',async route=>{
    const url=route.request().url();
-   if(!url.includes('__earthlineVtBoundary16178_'))return route.continue();
-   intercepted++;
-   if(intercepted===1){
-    requestUrl=url;
-    callback=new URL(url).searchParams.get('callback');
-    await sleep(9000); // Hold the exact VCGI script request beyond its 8-second app timeout.
-    try{await route.fulfill({status:200,contentType:'application/javascript',body:payload()});fulfilled++}
-    catch(e){row.logs.push('ORIGINAL_LATE_RESPONSE_CANCELED '+String(e))}
+   let callback=null;
+   try{callback=new URL(url).searchParams.get('callback')}catch{}
+   if(!callback||!JSONP_CASES.some(x=>callback.startsWith(x.prefix)))return route.continue();
+   if(callback.startsWith(spec.prefix)&&targetCallback===null){
+    targetCallback=callback;targetUrl=url;intercepted++;
+    await sleep(spec.delayMs);
+    try{
+     await route.fulfill({status:200,contentType:'application/javascript',body:jsonpScript(callback,true)});
+     fulfills++;originalOutcome='fulfilled';
+    }catch(e){originalOutcome='canceled';row.logs.push('ORIGINAL_REQUEST_CANCELED '+String(e))}
    }else{
-    // An explicitly reinserted script tests whether the retired callback is callable.
-    try{await route.fulfill({status:200,contentType:'application/javascript',body:payload()});fulfilled++}
-    catch(e){row.logs.push('REPLAY_FAILED '+String(e))}
+    controlledOtherRequests++;
+    try{await route.fulfill({status:200,contentType:'application/javascript',body:jsonpScript(callback,false)})}
+    catch(e){row.logs.push('OTHER_JSONP_FULFILL_ERROR '+String(e))}
    }
   });
  };
- session=await boot(browser,engine,build,'late-reply',1,beforeNavigate);
+ const session=await boot(browser,engine,build,caseName,1,beforeNavigate);
  if(!session)return;
  const {context,page,row}=session;
+ row.prefix=spec.prefix;row.testQuery=spec.query;row.delayMs=spec.delayMs;row.expectedTimeoutMs=spec.timeoutMs;
  try{
-  await trigger(page,'Vermont');
-  await sleep(10500);
-  let sentinel=await page.evaluate(()=>window.__R1_LATE_DELIVERY||0);
-  row.deliveryMode=sentinel===1?'original-held-request':'reinjected-script-after-original-removal';
-  if(sentinel===0&&requestUrl){
-    // The app may remove the original script at t=8s. Reloading the same
-    // VCGI URL in a NEW script executes an authentic browser-delivered JSONP
-    // response at t>9s, rather than calling the callback from evaluate().
-    await page.evaluate(url=>{
-      const script=document.createElement('script');
-      script.async=true;script.src=url;document.head.appendChild(script);
-    },requestUrl);
-    await page.waitForFunction(()=>window.__R1_LATE_DELIVERY===1,null,{timeout:10000,polling:100}).catch(()=>{});
-    sentinel=await page.evaluate(()=>window.__R1_LATE_DELIVERY||0);
+  await trigger(page,spec.query);
+  // Wait for a controlled request, then for the original delay to elapse and settle.
+  await page.waitForFunction(()=>true,null,{timeout:1000});
+  await sleep(spec.delayMs+2200);
+  naturalSentinel=await page.evaluate(()=>Number(window.__R1_LATE_DELIVERY||0));
+  row.naturalSentinel=naturalSentinel;
+  if(naturalSentinel===0&&targetUrl){
+   syntheticUsed=true;
+   // A removed <script> may be canceled by the browser; explicitly replay only
+   // after the held request has completed/canceled. This is NOT a natural reproduction.
+   await page.evaluate(url=>{const script=document.createElement('script');script.async=true;script.src=url;document.head.appendChild(script)},targetUrl);
+   await sleep(800);
   }
-  await sleep(300);
   row.intercepted=intercepted;
-  row.routeFulfilled=fulfilled;
-  row.requestCallback=callback;
-  row.deliverySentinel=sentinel;
-  row.callbackError=row.pageErrors.some(e=>/__earthlineVtBoundary16178_|is not a function|not defined/i.test(e));
-  row.naturalDelivery=row.deliveryMode==='original-held-request'&&sentinel===1;
-  row.syntheticDelivery=row.deliveryMode==='reinjected-script-after-original-removal'&&sentinel===1;
-  row.defectReachability=row.naturalDelivery?'naturally-reachable':row.syntheticDelivery?'synthetic-only-not-naturally-reachable':'not-executed';
-  const delivered=sentinel===1;
-  const expectedThrow=build==='production'&&row.callbackError;
-  const expectedR1=build==='r1'&&row.pageErrors.length===0;
-  row.status=!delivered?'invalid-test':
-    engine==='chromium'&&!row.naturalDelivery?'failed':
-    (build==='production'?(row.naturalDelivery?expectedThrow:row.syntheticDelivery&&expectedThrow):expectedR1)?'passed':'failed';
-  if(row.status==='failed')row.reason='VCGI interception, late execution, expected baseline exception, or zero-error R1 assertion failed';
- }catch(e){row.status='failed';row.reason=String(e)}
+  row.targetCallback=targetCallback;
+  row.originalOutcome=originalOutcome;
+  row.routeFulfilled=fulfills;
+  row.controlledOtherRequests=controlledOtherRequests;
+  row.syntheticUsed=syntheticUsed;
+  row.deliveryMode=naturalSentinel===1?'original-held-request':syntheticUsed?'synthetic-reinsertion':'not-executed';
+  row.deliverySentinel=await page.evaluate(()=>Number(window.__R1_LATE_DELIVERY||0));
+  row.expectedCallbackError=row.pageErrors.some(e=>e.includes(String(targetCallback||'no-target-callback')));
+  row.zeroPageErrors=row.pageErrors.length===0;
+  row.status=!targetCallback||row.deliverySentinel!==1?'invalid-test':
+   engine==='chromium'&&row.deliveryMode!=='original-held-request'?'failed':
+   build==='production'?(row.expectedCallbackError?'passed':'failed'):
+   (row.zeroPageErrors?'passed':'failed');
+  if(row.status!=='passed')row.reason='Prefix absent, sentinel not exactly one, Chromium natural path absent, production callback exception missing, or R1 page errors';
+ }catch(e){row.status='invalid-test';row.reason=String(e)}
  await save(row,page);await context.close();
- if(row.status==='failed'||row.status==='invalid-test')failures++;
+ if(row.status!=='passed')failures++;
 }
-
 
 async function smokeGate(){
  for(const [engine,launcher] of Object.entries(engines)){
@@ -296,8 +307,10 @@ try{
   let browser;
   try{browser=await launcher.launch({headless:true,args:engine==='chromium'?['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']:[]})}
   catch(e){const status=classifyBoot(e,[]);await save({engine,build:'both',case:'startup',run:0,status,reason:String(e),logs:[]},null);if(status==='failed')failures++;continue}
-  await late(browser,engine,'production');
-  await late(browser,engine,'r1');
+  for(const spec of JSONP_CASES){
+   await late(browser,engine,'production',spec);
+   await late(browser,engine,'r1',spec);
+  }
   const prod=[];
   for(let n=1;n<=3;n++)prod.push(await iowa(browser,engine,'production',n,null));
   // Existing 30-second re-entry failure must not erase each engine's scientific baseline.
