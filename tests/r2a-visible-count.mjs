@@ -58,7 +58,7 @@ async function test(browser,build,n){
   const c=row.counts,a=c.audit;
   row.domPass=c.generated===40&&c.processedPaths===28&&c.drawn===0&&c.pills===11;
   row.auditPass=!!a&&a.generated?.value===40&&a.qualified?.value===null&&a.drawn?.value===c.drawn&&a.pills?.value===c.pills&&a.processedPaths?.value===28;
-  row.statusPass=/No regional swale corridor strokes are currently visible/.test(c.statusText);
+  row.statusPass=/Corridor lines are not drawn at this scale\./.test(c.statusText);
   row.status=build==='r1'?(row.domPass&&!row.auditPass&&!row.statusPass?'baseline-fails-as-required':'invalid-baseline'):
     row.domPass&&row.auditPass&&row.statusPass&&row.errors.length===0&&!row.regionalError?'candidate-display-pass':'candidate-failed';
   // Collect Property and re-entry without weakening the original 30-second thresholds.
