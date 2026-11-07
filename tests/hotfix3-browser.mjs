@@ -35,7 +35,7 @@ async function overlay(){
    const r=el.getBoundingClientRect();return r.width>0&&r.height>0&&r.bottom>0&&r.right>0&&r.left<innerWidth&&r.top<innerHeight
   };
   return {
-   zoom:window.earthlineMap?.getZoom?.(),
+   zoom:(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap)?.getZoom?.(),
    generated:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated??null,
    processedPaths:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040?.swaleLines??null,
    drawn:root?[...root.querySelectorAll('path.earthline-swale-core-16168')].filter(visible).length:0,
@@ -45,15 +45,17 @@ async function overlay(){
   }
  })
 }
-async function zoom(z){await page.evaluate(z=>{const m=window.earthlineMap;if(!m)throw Error('No Mapbox map');m.jumpTo({zoom:z})},z);await page.waitForTimeout(1100)}
+async function zoom(z){await page.evaluate(z=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;if(!m)throw Error('No Mapbox map');m.jumpTo({zoom:z})},z);await page.waitForTimeout(1100)}
 try{
  const response=await page.goto('https://earthlinedevelopment.org/?hf3='+engine,{waitUntil:'domcontentloaded',timeout:60000});
  result.document={status:response.status(),header:response.headers()['x-hotfix3-candidate'],hits:docHits};
  await page.waitForSelector('#searchInput',{timeout:30000});
  const start=Date.now();
  await trigger('Iowa state');
- await page.waitForFunction(()=>{const t=document.getElementById('earthlineVermontStatus16147')?.textContent||'';return !!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||(/screening published|regional analysis complete/i.test(t)&&!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191)},null,{timeout:engine==='webkit'?180000:120000,polling:150});
+ await page.waitForFunction(()=>{const t=document.getElementById('earthlineVermontStatus16147')?.textContent||'';const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;return !!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||(!!m&&/screening published|regional analysis complete/i.test(t)&&!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191)},null,{timeout:engine==='webkit'?180000:120000,polling:150});
  result.regionalMs=Date.now()-start;
+ result.mapReady=await page.evaluate(()=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;return !!m});
+ if(!result.mapReady)throw Error('Mapbox unavailable after Regional publication: '+JSON.stringify({consoleErrors:result.consoleErrors.slice(-5),pageErrors:result.pageErrors}));
  await zoom(7);
  result.regionalZ7=await overlay();
  result.checks.z7=result.regionalZ7.generated===40&&result.regionalZ7.processedPaths===28&&result.regionalZ7.drawn===0&&result.regionalZ7.pills===11;
@@ -62,6 +64,11 @@ try{
  result.regionalZ11=await overlay();
  result.checks.z11=result.regionalZ11.drawn>0;
  await screenshot('iowa-z11');
+ result.regionalChip=await page.evaluate(()=>({chip:document.getElementById('earthlineTierNotice16173')?.textContent||'',visible:document.getElementById('earthlineTierNotice16173')?.classList.contains('visible')||false}));
+ result.checks.regionalChip=!result.regionalChip.visible;
+ result.legends=await page.evaluate(()=>{const ids=['earthlineSwaleLegend16050','earthlineAquiferLegend16070','earthlineDiagramLegend16080'];return ids.map(id=>{const el=document.getElementById(id);if(!el)return {id,present:false};const r=el.getBoundingClientRect(),c=getComputedStyle(el);return {id,present:true,display:c.display,visibility:c.visibility,left:r.left,right:r.right,visible:c.display!=='none'&&c.visibility!=='hidden'&&r.width>0&&r.left<innerWidth&&r.right>0}})});
+ result.checks.legends=result.legends.every(x=>x.present&&x.visible);
+ await screenshot('regional-open-panel-legends');
  const prepared=await page.evaluate(async()=>{
   if(typeof M==='undefined'||typeof window.earthlineSelectedSiteFromCenter!=='function'||typeof window.applyLocation!=='function'||typeof window.earthlineSetPropertyTarget16201!=='function')return false;
   const p={lng:-93.38977,lat:41.95715},site=window.earthlineSelectedSiteFromCenter(M.loc||null,p.lng,p.lat,20);
@@ -80,7 +87,8 @@ try{
   await page.evaluate(()=>window.earthlineOpenVermontReport16151?.());
   try{await page.waitForSelector('#earthlineVermontReportPanel16149.open .el49-report',{timeout:15000})}catch(_){}
   result.report=await page.evaluate(()=>({open:!!document.querySelector('#earthlineVermontReportPanel16149.open'),text:document.querySelector('#earthlineVermontReportPanel16149')?.innerText.slice(0,1600)||'',location:[...document.querySelectorAll('#earthlineVermontReportPanel16149 .el49-cover .el49-location')].map(x=>x.textContent),aquiferNote:document.querySelector('#earthlineVermontReportPanel16149 svg')?.textContent.includes('Aquifer context not loaded')||false}));
-  result.checks.report=!!result.report.open&&result.report.location.length>=2;
+  result.checks.report=!!result.report.open&&result.report.location.length>=2&&result.report.location.some(x=>/[A-Za-z]{3,}/.test(x)&&!/^\s*(?:\d|coordinates?)/i.test(x));
+ result.checks.aquifer=!result.report.aquiferNote;
   await screenshot('report');
  }
  result.checks.noPageErrors=result.pageErrors.length===0;
