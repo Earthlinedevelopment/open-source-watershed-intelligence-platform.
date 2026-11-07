@@ -31667,6 +31667,8 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
     return n;
   }
   function setTierNotice(mode,text){const n=ensureTierNotice();if(!n)return;const m=String(mode||'focus');n.dataset.mode=m;if(m==='focus'){n.textContent='';n.classList.remove('visible');return}n.textContent=String(text||'');n.classList.toggle('visible',!!text)}
+  /* Hotfix 3 R3: retire a Property-only chip only after a Regional result publishes. */
+  document.addEventListener('earthline:analysis-complete',event=>{if(String(event?.detail?.tier||event?.detail?.mode||'').toLowerCase()!=='regional')return;const chip=document.getElementById('earthlineTierNotice16173');if(chip){chip.textContent='';chip.dataset.mode='regional';chip.classList.remove('visible')}},{passive:true});
   function propertyTextureAudit(){
     try{return typeof window.earthlinePropertyTextureAudit16169==='function'?window.earthlinePropertyTextureAudit16169():null}catch(_){return null}
   }
