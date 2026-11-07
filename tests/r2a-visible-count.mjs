@@ -28,6 +28,31 @@ function measure(){
   statusText:document.getElementById('earthlineVermontStatus16147')?.textContent||''
  };
 }
+
+async function labelSnapshot(page,phase){
+ return page.evaluate(phase=>{
+  const rect=r=>r?{x:r.x,y:r.y,left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height}:null;
+  const describe=el=>el?{tag:el.tagName,id:el.id||null,classes:typeof el.className==='string'?el.className:(el.className?.baseVal||''),text:(el.textContent||'').trim().slice(0,120)}:null;
+  const labels=[...document.querySelectorAll('g.earthline-swale-label-16149')];
+  const map=document.querySelector('.mapboxgl-map')||document.getElementById('map')||document.querySelector('[id*="map" i]');
+  const panelCandidates=[...document.querySelectorAll('aside,[id*="sidebar" i],[class*="sidebar" i],[id*="panel" i],[class*="panel" i]')]
+   .filter(el=>{const r=el.getBoundingClientRect(),cs=getComputedStyle(el);return r.width>100&&r.height>100&&r.left<innerWidth/2&&cs.display!=='none'&&cs.visibility!=='hidden';})
+   .map(el=>({element:describe(el),rect:rect(el.getBoundingClientRect()),zIndex:getComputedStyle(el).zIndex})).slice(0,15);
+  return {phase,at:new Date().toISOString(),viewport:{width:innerWidth,height:innerHeight},
+   map:{element:describe(map),rect:rect(map?.getBoundingClientRect())},leftPanelCandidates:panelCandidates,
+   labels:labels.map((el,index)=>{
+    const r=el.getBoundingClientRect(),s=getComputedStyle(el),cx=(r.left+r.right)/2,cy=(r.top+r.bottom)/2;
+    const inViewport=cx>=0&&cy>=0&&cx<innerWidth&&cy<innerHeight;
+    const hit=inViewport?document.elementFromPoint(cx,cy):null;
+    const ancestorHit=!!hit&&(hit===el||el.contains(hit));
+    return {index,text:(el.textContent||'').trim(),rect:rect(r),
+      opacity:s.opacity,display:s.display,visibility:s.visibility,
+      centre:{x:cx,y:cy},hit:describe(hit),hitIsLabelOrDescendant:ancestorHit,
+      ancestorStyles:[el.parentElement,el.parentElement?.parentElement].filter(Boolean).map(p=>({element:describe(p),opacity:getComputedStyle(p).opacity,display:getComputedStyle(p).display,visibility:getComputedStyle(p).visibility}))};
+   })};
+ },phase);
+}
+
 async function trigger(page,q){await page.evaluate(s=>{const x=document.getElementById('searchInput'),b=document.getElementById('runBtn');if(!x||!b)throw Error('controls absent');x.value=s;x.dispatchEvent(new Event('input',{bubbles:true}));x.dispatchEvent(new Event('change',{bubbles:true}));b.click()},q)}
 async function test(browser,build,n){
  const row={engine,build,run:n,golden:GOLD,errors:[],startedAt:new Date().toISOString()};
@@ -54,6 +79,11 @@ async function test(browser,build,n){
    return !!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||(/screening published|regional analysis complete/i.test(t)&&!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191);
   },null,{timeout:engine==='webkit'?180000:120000,polling:150});
   row.counts=await page.evaluate(measure);
+  if(process.env.R2A_LABEL_DIAG==='1'){
+   row.labelSnapshots=[await labelSnapshot(page,'audit-time')];
+   await page.waitForTimeout(2000);
+   row.labelSnapshots.push(await labelSnapshot(page,'audit-plus-2s'));
+  }
   row.regionalError=await page.evaluate(()=>window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null);
   const c=row.counts,a=c.audit;
   row.domPass=c.generated===40&&c.processedPaths===28&&c.drawn===0&&c.pills===11;
@@ -62,7 +92,7 @@ async function test(browser,build,n){
   row.status=build==='r1'?(row.domPass&&!row.auditPass&&!row.statusPass?'baseline-fails-as-required':'invalid-baseline'):
     row.domPass&&row.auditPass&&row.statusPass&&row.errors.length===0&&!row.regionalError?'candidate-display-pass':'candidate-failed';
   // Collect Property and re-entry without weakening the original 30-second thresholds.
-  try{
+  if(process.env.R2A_LABEL_DIAG!=='1')try{
    const prepared=await page.evaluate(async()=>{
     if(typeof M==='undefined'||typeof window.earthlineSelectedSiteFromCenter!=='function'||typeof window.applyLocation!=='function'||typeof window.earthlineSetPropertyTarget16201!=='function')return false;
     const p={lng:-93.38977,lat:41.95715},site=window.earthlineSelectedSiteFromCenter(M.loc||null,p.lng,p.lat,20);
@@ -94,10 +124,11 @@ async function test(browser,build,n){
 let browser;
 try{
  browser=await launch.launch({headless:true,args:engine==='chromium'?['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']:[]});
- for(const build of ['r1','r2a'])for(let i=1;i<=3;i++)await test(browser,build,i);
+ if(process.env.R2A_LABEL_DIAG==='1')await test(browser,'r2a',1);
+ else for(const build of ['r1','r2a'])for(let i=1;i<=3;i++)await test(browser,build,i);
 }finally{if(browser)await browser.close()}
 const baseline=rows.filter(x=>x.build==='r1'),candidate=rows.filter(x=>x.build==='r2a');
 const summary={identity,engine,golden:GOLD,baselineDefectReproduced:baseline.every(x=>x.status==='baseline-fails-as-required'),candidateDisplayPass:candidate.every(x=>x.status==='candidate-display-pass'),rows};
 await writeFile(dir+'/summary.json',JSON.stringify(summary,null,2));
 console.log('R2A_SUMMARY '+JSON.stringify({engine,baselineDefectReproduced:summary.baselineDefectReproduced,candidateDisplayPass:summary.candidateDisplayPass}));
-if(!summary.baselineDefectReproduced||!summary.candidateDisplayPass)process.exitCode=1;
+if(process.env.R2A_LABEL_DIAG!=='1'&&(!summary.baselineDefectReproduced||!summary.candidateDisplayPass))process.exitCode=1;
