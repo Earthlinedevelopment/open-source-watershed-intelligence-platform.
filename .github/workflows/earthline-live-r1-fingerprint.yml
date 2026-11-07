@@ -1,0 +1,36 @@
+name: Earthline live R1 delivery fingerprint (manual, read-only)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-live-r1:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Fetch live HTML and verify exact accepted R1 bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --show-error --silent --location --retry 3 --max-time 90 \
+            -H 'Cache-Control: no-cache' \
+            'https://earthlinedevelopment.org/' -o live.html
+          echo 'git hash-object:'
+          git hash-object live.html
+          echo 'byte count:'
+          wc -c live.html
+          echo 'sha256sum:'
+          sha256sum live.html
+          actual="$(git hash-object live.html)"
+          test "$actual" = '745de00dcfafc3aeb6607497fd8a4830c34555b2' || {
+            echo "::error::Live HTML blob mismatch: $actual"
+            exit 1
+          }
+          test "$(wc -c < live.html)" -eq 3760534 || {
+            echo "::error::Live HTML byte-size mismatch"
+            exit 1
+          }
+          echo 'PASS: public HTML exactly matches accepted R1'
