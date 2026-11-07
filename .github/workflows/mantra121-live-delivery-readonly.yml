@@ -34,3 +34,30 @@ jobs:
             exit 1
           fi
           echo "PASS: live entrypoint matches expected Git blob"
+      - name: Diagnose live subdomain DNS and HTTP (read-only)
+        shell: bash
+        run: |
+          set -uo pipefail
+          echo "=== live. CNAME ==="
+          dig +short live.earthlinedevelopment.org CNAME || true
+          echo "=== live. DNS answers ==="
+          dig +short live.earthlinedevelopment.org || true
+          echo "=== live. response headers (no redirects followed) ==="
+          curl --silent --show-error --head --max-time 20 https://live.earthlinedevelopment.org/ -o live-headers.txt
+          head_status=$?
+          if [[ $head_status -eq 0 ]]; then
+            cat live-headers.txt
+            grep -iE '^(server|location|x-vercel-[^:]*|x-github-[^:]*|x-served-by|x-cache|via):' live-headers.txt || true
+          else
+            echo "HEAD failed with exit code $head_status"
+          fi
+          echo "=== live. content identity (redirects followed) ==="
+          curl --silent --show-error --location --max-time 30 -o live-subdomain.html -w 'Final status: %{http_code}; final URL: %{url_effective}\n' https://live.earthlinedevelopment.org/
+          get_status=$?
+          if [[ $get_status -eq 0 ]]; then
+            echo "Git blob:"; git hash-object live-subdomain.html
+            echo "Byte count:"; wc -c live-subdomain.html
+            echo "SHA-256:"; sha256sum live-subdomain.html
+          else
+            echo "GET failed with exit code $get_status"
+          fi
