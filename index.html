@@ -30960,6 +30960,10 @@ body { overflow-x:hidden!important; }
       generatedBeforeTierGate:Number(generationAudit&&generationAudit.chosenBeforeTierGate||0),
       sourceFeatures:sourceFeatureCount,overlaySwaleLines:Number(overlayAudit&&overlayAudit.swaleLines||0),
       overlayLocationPills:Number(overlayAudit&&overlayAudit.swaleGradeLabels||0),
+      visibleCountsR2a:(()=>{
+        const v=window.EARTHLINE_R2A_VISIBLE_COUNT_AUDIT||null;
+        return v?{generated:{value:swaleCount,source:'generated regional FeatureCollection'},qualified:v.qualified,drawn:v.drawn,pills:v.pills,processedPaths:v.processedPaths,discrepancies:v.discrepancies}:null;
+      })(),
       mapboxLabelLayer:!!(m.getLayer&&m.getLayer('earthline-ranked-swale-label-15775')),
       mapboxHitLayer:!!(m.getLayer&&m.getLayer('earthline-ranked-swale-hit-16153')),
       checkedAt:new Date().toISOString()
@@ -31055,8 +31059,12 @@ body { overflow-x:hidden!important; }
     window.EARTHLINE_REGIONAL_PERFORMANCE_16191={build:'EARTHLINE 16198',runToken,query:q,phaseTotalsMs:Object.assign({},phase16198),totalMs:phase16198.coreTotalMs,slowestPhase:Object.entries(phase16198).filter(([k])=>k!=='coreTotalMs').sort((x,y)=>Number(y[1])-Number(x[1]))[0]?.[0]||'none',terrainSource:dem.source||'open elevation',waterPaths:flowLineCount,swales:swaleCount,contextBlocking:false,capturedAt:new Date().toISOString()};
     recordRun('core_run_published',runToken,{query:q,boundsHash:bHash,swaleCount,waterPaths:flowLineCount,totalMs:phase16198.coreTotalMs});
     const focusOutcome=focusMode?(swaleCount?'Focus screening published for the declared 3 km location. ':'Focus screening complete — zero qualifying corridors in the declared 3 km location. '):'';
-    setRunStatus((focusMode?focusOutcome:(isVermont?'Vermont screening published. ':'Regional screening published. '))+'Terrain-derived water paths and ranked swale opportunities are visible. Watershed and groundwater context are updating independently.'+swaleNote+(!focusMode?earthlineLandValidityStatus16584():''),'published');
-    notify((focusMode?'Fixed-location focus analysis complete. ':'Regional terrain analysis complete. ')+swaleCount+' ranked swale opportunities published.'+swaleNote);
+    const r2aCounts=window.EARTHLINE_R2A_VISIBLE_COUNT_AUDIT||null;
+    const r2aDrawnCount=r2aCounts&&r2aCounts.drawn?Number(r2aCounts.drawn.value):null;
+    const r2aPillCount=r2aCounts&&r2aCounts.pills?Number(r2aCounts.pills.value):null;
+    const r2aVisiblePhrase=(r2aPillCount===null?'Map opportunity labels are not yet verified.':r2aPillCount+' top swale opportunities are labelled on the map.')+' '+(r2aDrawnCount===null?'Map corridor lines are not yet verified.':r2aDrawnCount===0?'Corridor lines are not drawn at this scale.':r2aDrawnCount+' swale corridor lines are shown.');
+    setRunStatus((focusMode?focusOutcome:(isVermont?'Vermont screening published. ':'Regional screening published. '))+'Water paths are shown. '+r2aVisiblePhrase+' Watershed and groundwater context are still loading.'+swaleNote+(!focusMode?earthlineLandValidityStatus16584():''),'published');
+    notify((focusMode?'Fixed-location focus analysis complete: ':'Regional analysis complete: ')+swaleCount+' swale opportunities found, '+(r2aPillCount===null?'map labels not yet verified':r2aPillCount+' labelled on the map')+'.'+swaleNote);
 
     const finishContext16198=async()=>{
       const contextStarted16198=performance.now();
@@ -33598,6 +33606,31 @@ body{display:block!important}
     hideNative();
     const nativeWater=nativeWater16350();
     window.EARTHLINE_REGIONAL_WATER_OWNERSHIP_AUDIT_16350={build:'EARTHLINE 16350',owner:'native-mapbox',svgWaterRendered:false,nativeWater,waterPathFeatures:waterPaths,flowArrowFeatures:arrows,renderedAt:new Date().toISOString()};
+    /* R2a: audit what the user can actually see; preserve swales as processed-path diagnostic. */
+    const r2aVisible=element=>{
+      if(!element||!element.isConnected)return false;
+      for(let n=element;n&&n.nodeType===1;n=n.parentElement){
+        const st=getComputedStyle(n);
+        if(st.display==='none'||st.visibility==='hidden'||st.visibility==='collapse'||Number(st.opacity)===0||n.hasAttribute('hidden'))return false;
+      }
+      const rect=element.getBoundingClientRect();
+      const hr=h.getBoundingClientRect();return rect.width>0&&rect.height>0&&rect.right>hr.left&&rect.bottom>hr.top&&rect.left<hr.right&&rect.top<hr.bottom;
+    };
+    const r2aDrawn=[...sg.querySelectorAll('path.earthline-swale-core-16168')].filter(r2aVisible).length;
+    const r2aPills=[...lg.querySelectorAll('g.earthline-swale-label-16149')].filter(r2aVisible).length;
+    const r2aGenerated=Number(lastData.swales&&lastData.swales.features&&lastData.swales.features.length||0);
+    const r2aDiagnostics=[];
+    if(r2aPills!==gradeLabels.length)r2aDiagnostics.push('SVG label-count/visible pill-count discrepancy');
+    if(r2aDrawn===0&&swales>0)r2aDiagnostics.push('processed paths are not visible strokes');
+    window.EARTHLINE_R2A_VISIBLE_COUNT_AUDIT={
+      build:'EARTHLINE R2a',tier:activeTier16168(),
+      generated:{value:r2aGenerated,source:'regional hydrology FeatureCollection'},
+      qualified:{value:null,source:'not independently exposed by final screening/exclusion stage',status:'unverified'},
+      drawn:{value:r2aDrawn,source:'computed-visible SVG swale-core path DOM'},
+      pills:{value:r2aPills,source:'computed-visible SVG opportunity-label DOM'},
+      processedPaths:{value:swales,source:'projected regional paths passing existing 22px gate'},
+      discrepancies:r2aDiagnostics,verifiedAt:new Date().toISOString()
+    };
     window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16030=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020={build:'EARTHLINE-REGIONAL-FINAL-16050',contourLines,elevationLabels:labels,waterPaths,directionArrows:arrows,waterOwner:'native-mapbox',svgWaterRendered:false,nativeWaterReady:!!nativeWater.ready,swaleLines:swales,swaleGradeCounts:gradeCounts,swaleGradeLabels:gradeLabels.length,topSwaleGradeLabel:gradeLabels[0]||'',buttonText:(document.getElementById('earthlineMapRun16020')||{}).textContent||'',renderedAt:new Date().toISOString()};return labels>0&&waterPaths>0&&nativeWater.ready&&swales>0&&gradeCounts.A>0&&gradeLabels.length>0;
   }
   function schedule(){
