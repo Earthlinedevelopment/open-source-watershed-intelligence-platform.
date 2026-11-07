@@ -1,0 +1,47 @@
+name: Mantra 123 Hotfix 3 review (Chromium + WebKit)
+on:
+  push:
+    branches: [mantra123-hotfix3-review]
+    paths:
+      - index.html
+      - earthline-elder-restored-17097.js
+      - tests/hotfix3-browser.mjs
+      - .github/workflows/mantra123-hotfix3-review.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install selected Playwright engine
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.engine }}
+      - name: Run protected review (no deployment)
+        env:
+          HF3_ENGINE: ${{ matrix.engine }}
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/hotfix3/${{ matrix.engine }}
+          node tests/hotfix3-browser.mjs 2>&1 | tee artifacts/hotfix3/${{ matrix.engine }}/run.log
+      - name: Archive screenshots and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotfix3-${{ matrix.engine }}-screenshots
+          path: artifacts/hotfix3/
+          retention-days: 30
+          if-no-files-found: warn
