@@ -2,14 +2,18 @@ name: Mantra 117 label geometry diagnostic
 on:
   push:
     branches: [audit/mantra117-r2a-label-geometry]
-    paths: [tests/r2a-visible-count.mjs, .github/workflows/mantra117-label-geometry.yml]
+    paths: [index.html, tests/r2a-visible-count.mjs, .github/workflows/mantra117-label-geometry.yml]
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  chromium-labels:
+  browser-acceptance:
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, webkit]
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,22 +27,21 @@ jobs:
           git show 3349f41adafce03e23cfa1cdf7bc688d1d834724:index.html > ci-builds/r1/index.html
           cp index.html ci-builds/r2a/index.html
           test "$(git hash-object ci-builds/r1/index.html)" = 745de00dcfafc3aeb6607497fd8a4830c34555b2
-          test "$(sha256sum ci-builds/r2a/index.html | cut -d' ' -f1)" = 642c27e719b8539f387db629de8e9b9c8480016b95d4fd7e589a7d0c56e9b385
+          test "$(git hash-object ci-builds/r2a/index.html)" = 87af6337a5fab0a4bd048877675651a8cda3d487
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install Chromium
+      - name: Install browser
         run: |
           npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
-      - name: Single R2a diagnostic
+          npx playwright install --with-deps ${{ matrix.engine }}
+      - name: R1 versus R2a browser acceptance
         env:
-          R2A_ENGINE: chromium
-          R2A_LABEL_DIAG: '1'
+          R2A_ENGINE: ${{ matrix.engine }}
         run: node tests/r2a-visible-count.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: mantra117-chromium-label-evidence
+          name: mantra118-${{ matrix.engine }}-acceptance
           path: artifacts/r2a/
           retention-days: 30
