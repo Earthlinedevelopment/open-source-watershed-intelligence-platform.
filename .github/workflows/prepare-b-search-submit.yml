@@ -1,0 +1,42 @@
+name: Prepare full B with verified Enter-key dropdown correction on isolated branch
+on:
+  push:
+    branches: [live-b-repair-validation]
+    paths:
+      - .github/workflows/prepare-b-search-submit.yml
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: live-b-repair-validation
+          persist-credentials: true
+      - name: Verify and patch only search submission
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          p=Path('index.html');raw=p.read_bytes()
+          def gitsha(x):return hashlib.sha1(b'blob '+str(len(x)).encode()+b'\0'+x).hexdigest()
+          assert gitsha(raw)=='4f26efbaaa718460f178440439a6f980645f819e','B source drifted'
+          s=raw.decode('utf8')
+          a="const input=document.getElementById('searchInput');let q=normalizeSearchAlias(input&&input.value);if(input&&q!==clean(input.value))input.value=q;"
+          b=a+"\n    if(q){document.documentElement.dataset.earthlineSuggestionsSuppressed='1';document.getElementById('earthlineSearchSuggestions15970')?.classList.remove('open');input?.blur();}"
+          assert s.count(a)==1,'Not exact search submission function'
+          candidate=s.replace(a,b,1).encode()
+          assert gitsha(candidate)=='33db0971eba8c3b40d28b6908e7eec82e22b0d9c','Unexpected candidate'
+          p.write_bytes(candidate)
+          print('B+search submission candidate exact blob verified')
+          PY
+      - name: Commit to isolated branch only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix(B review): suppress search dropdown on Enter and Run Analysis'
+          git push origin HEAD:live-b-repair-validation
