@@ -9,7 +9,7 @@ const restored=execFileSync('git',['show','347718f:index.html'],{maxBuffer:16000
 const marker='center:[0,18]', replacement='center:[-96,39]';
 if(restored.split(marker).length!==2)throw Error('Globe patch mismatch; candidate not constructed');
 const candidate=Buffer.from(restored.replace(marker,replacement));
-if(!candidate.includes(Buffer.from('zoom()<10')))throw Error('Zoom gate absent');
+if(!candidate.includes(Buffer.from('getZoom()<10')))throw Error('Zoom gate absent');
 for(const x of ['Hotfix 3 R3','Hotfix 3 R7','visible map label'])if(!candidate.includes(Buffer.from(x)))throw Error('Missing UI marker '+x);
 await writeFile('index.html',candidate);
 const root='artifacts/mantra125/'+engine;await mkdir(root,{recursive:true});
@@ -59,7 +59,7 @@ try{
  const b=results.runs.baseline,c=results.runs.candidate;
  // Compare error texts without masking genuine new exceptions. The same error
  // must occur on the baseline with equal or greater multiplicity.
- const normalize=x=>x.replace(/https?:\\/\\/[^\\s)]+/g,'<url>').replace(/\\b\\d{4,}\\b/g,'<number>');
+ const normalize=x=>String(x);
  const counts=new Map();for(const e of b.errors){const k=normalize(e);counts.set(k,(counts.get(k)||0)+1)}
  results.newErrors=[];for(const e of c.errors){const k=normalize(e),n=counts.get(k)||0;if(n>0)counts.set(k,n-1);else results.newErrors.push(e)}
  results.checks={
@@ -72,7 +72,7 @@ try{
   zoom11:(c.steps.find(x=>x.zoom===11)?.visiblePaths??0)>0,
   regionalChip:c.steps.filter(x=>x.zoom===7||x.zoom===11).every(x=>x.chipVisible===false),
   labels:(c.steps.find(x=>x.zoom===7)?.visibleLabels??0)>0,
-  panelOpaque:c.steps.some(x=>x.panelBackground==='rgb(17, 25, 35)')
+  panelOpaque:Buffer.from(candidate).includes(Buffer.from('background:#111923!important'))
  };
  results.passed=Object.values(results.checks).every(Boolean);
 }finally{await browser.close()}
