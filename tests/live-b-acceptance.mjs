@@ -15,7 +15,7 @@ await p.route('**/*',route=>{if(route.request().isNavigationRequest()&&route.req
 const snap=async n=>{try{await p.screenshot({path:out+'/'+n+'.png',timeout:15000});r.screenshots.push(n)}catch(e){r['screenshot_'+n]=String(e)}};
 try{
  await p.goto('https://earthlinedevelopment.org/?candidate-b-test='+engine,{waitUntil:'domcontentloaded',timeout:60000});
- r.startView=await p.evaluate(()=>({zoom:window.earthlineMap?.getZoom?.(),center:window.earthlineMap?.getCenter?.()}));
+ r.startView=await p.evaluate(()=>({zoom:(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap)?.getZoom?.(),center:(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap)?.getCenter?.()}));
  r.checks.startup=(await p.locator('#searchInput').count())===1;
  await snap('startup');
  const input=p.locator('#searchInput'),menu=p.locator('#earthlineSearchSuggestions15970');
@@ -33,9 +33,9 @@ try{
  r.enterMenuOpen=await p.locator('#earthlineSearchSuggestions15970').evaluate(e=>e.classList.contains('open'));
  r.checks.enterDropdown=!r.enterMenuOpen;
  await p.waitForFunction(()=>{const t=document.getElementById('earthlineVermontStatus16147')?.textContent||'';return /screening published|analysis failed/i.test(t)},null,{timeout:engine==='webkit'?200000:135000,polling:200});
- r.regional=await p.evaluate(()=>({status:document.getElementById('earthlineVermontStatus16147')?.textContent||'',generated:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated,swaleLines:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040?.swaleLines,zoom:window.earthlineMap?.getZoom?.()}));
+ r.regional=await p.evaluate(()=>({status:document.getElementById('earthlineVermontStatus16147')?.textContent||'',generated:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated,swaleLines:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040?.swaleLines,zoom:(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap)?.getZoom?.()}));
  r.checks.regionalPublished=/screening published/i.test(r.regional.status);
- const m=p.evaluate(()=>window.earthlineMap?.jumpTo({zoom:7}));
+ const m=p.evaluate(()=>(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap)?.jumpTo({zoom:7}));
  await m; await p.waitForTimeout(900);
  await snap('iowa-z7');
  await p.waitForFunction(()=>{
@@ -47,19 +47,19 @@ try{
   return {root:!!root,labels:root?.querySelectorAll('g.earthline-swale-label-16149').length||0,
    allLabels:document.querySelectorAll('g.earthline-swale-label-16149').length,
    rootHtml:root?.outerHTML.slice(0,650)||null,
-   mapCenter:window.earthlineMap?.getCenter?.(),mapZoom:window.earthlineMap?.getZoom?.()};
+   mapCenter:(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap)?.getCenter?.(),mapZoom:(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap)?.getZoom?.()};
  });
  r.chip=await p.evaluate(()=>({visible:document.getElementById('earthlineTierNotice16173')?.classList.contains('visible')||false}));
  r.checks.noStaleChip=!r.chip.visible;
  r.labelTarget=await p.evaluate(()=>{
-  const root=document.getElementById('earthlineRegionalVectorOverlay16020'),m=window.earthlineMap,canvas=m?.getCanvas();
+  const root=document.getElementById('earthlineRegionalVectorOverlay16020'),m=(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap),canvas=m?.getCanvas();
   const g=[...(root?.querySelectorAll('g.earthline-swale-label-16149')||[])].find(x=>/\bA1\b/.test(x.textContent||''))||root?.querySelector('g.earthline-swale-label-16149');
   if(!g||!canvas)return null;
   const rect=g.getBoundingClientRect(),v=canvas.getBoundingClientRect();
   const lnglat=m.unproject([rect.left+rect.width/2-v.left,rect.top+rect.height/2-v.top]);
   return {lng:lnglat.lng,lat:lnglat.lat};
  });
- if(r.labelTarget)await p.evaluate(c=>window.earthlineMap.jumpTo({zoom:11,center:c}),r.labelTarget);
+ if(r.labelTarget)await p.evaluate(c=>(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap).jumpTo({zoom:11,center:c}),r.labelTarget);
  await p.waitForTimeout(1300);
  await p.waitForFunction(()=>{
   const el=document.getElementById('earthlineRegionalVectorOverlay16020');
@@ -69,7 +69,7 @@ try{
   const root=document.getElementById('earthlineRegionalVectorOverlay16020');
   const paths=[...(root?.querySelectorAll('path.earthline-swale-core-16168')||[])];
   const visible=el=>{for(let a=el;a&&a.nodeType===1;a=a.parentElement){const c=getComputedStyle(a);if(c.display==='none'||c.visibility==='hidden'||Number(c.opacity)===0)return false}const v=el.getBoundingClientRect();return v.width>0&&v.height>0&&v.right>0&&v.bottom>0&&v.left<innerWidth&&v.top<innerHeight};
-  return {zoom:window.earthlineMap?.getZoom?.(),groupDisplay:root?getComputedStyle(root).display:null,total:paths.length,inView:paths.filter(visible).length};
+  return {zoom:(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap)?.getZoom?.(),groupDisplay:root?getComputedStyle(root).display:null,total:paths.length,inView:paths.filter(visible).length};
  });
  r.checks.swalesZ11=r.z11.inView>0;
  await snap('iowa-z11');
