@@ -25,8 +25,12 @@ try{
  r.dropdown=await menu.evaluate(e=>({open:e.classList.contains('open'),display:getComputedStyle(e).display}));
  r.checks.mouseDropdown=!r.dropdown.open;
  await snap('selected');
- await input.fill('Iowa state');
- await p.locator('#runBtn').click();
+ await p.reload({waitUntil:'domcontentloaded',timeout:60000});
+ await p.locator('#searchInput').fill('Iowa state');
+ await p.locator('#searchInput').press('Enter');
+ await p.waitForTimeout(250);
+ r.enterMenuOpen=await p.locator('#earthlineSearchSuggestions15970').evaluate(e=>e.classList.contains('open'));
+ r.checks.enterDropdown=!r.enterMenuOpen;
  await p.waitForFunction(()=>{const t=document.getElementById('earthlineVermontStatus16147')?.textContent||'';return /screening published|analysis failed/i.test(t)},null,{timeout:engine==='webkit'?200000:135000,polling:200});
  r.regional=await p.evaluate(()=>({status:document.getElementById('earthlineVermontStatus16147')?.textContent||'',generated:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated,swaleLines:window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040?.swaleLines,zoom:window.earthlineMap?.getZoom?.()}));
  r.checks.regionalPublished=/screening published/i.test(r.regional.status);
