@@ -1,0 +1,107 @@
+name: Earthline live UI repairs exact-hash browser-gated
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - .github/workflows/earthline-presentable-ui-once.yml
+permissions:
+  contents: write
+concurrency:
+  group: earthline-presentable-ui
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify exact current app and construct smallest accepted UI patches
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          p=Path('index.html');s=p.read_text()
+          def blob(x):
+           b=x.encode();return hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()
+          assert blob(s)=='d3f4e47829ca6968743cb7486fd656b65a51fc03',blob(s)
+          def replace(a,b):
+           global s
+           assert s.count(a)==1,('unexpected exact replacement count',s.count(a),a[:100]);s=s.replace(a,b,1)
+          a="  function setTierNotice(mode,text){const n=ensureTierNotice();if(!n)return;const m=String(mode||'focus');n.dataset.mode=m;if(m==='focus'){n.textContent='';n.classList.remove('visible');return}n.textContent=String(text||'');n.classList.toggle('visible',!!text)}"
+          replace(a,a+"\n  /* Hotfix 3 R3: retire a Property-only chip only after a Regional result publishes. */\n  document.addEventListener('earthline:analysis-complete',event=>{if(!String(event?.detail?.tier||event?.detail?.mode||'').toLowerCase().includes('regional'))return;const chip=document.getElementById('earthlineTierNotice16173');if(chip){chip.textContent='';chip.dataset.mode='regional';chip.classList.remove('visible')}},{passive:true});")
+          replace("if(activeTier16168()!=='focus')sg.setAttribute('display','none');","if(activeTier16168()!=='focus'&&earthlineMap.getZoom()<10)sg.setAttribute('display','none');")
+          a='html[data-earthline-analysis-tier="property"] #earthlineDiagramLegend16080{display:none!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important}'
+          replace(a,a+"\n/* Hotfix 3 R7: Regional map-only legends must never bleed through the navigation panel. */\nhtml.earthline-panel-open-16188 #earthlineSwaleLegend16050,\nhtml.earthline-panel-open-16188 #earthlineAquiferLegend16070,\nhtml.earthline-panel-open-16188 #earthlineDiagramLegend16080{left:calc(var(--el-rail-16188) + var(--el-panel-16188) + 16px)!important;visibility:visible!important;pointer-events:auto}\nhtml.earthline-panel-open-16188 #earthlinePanel16188{background:#111923!important;z-index:1800!important}")
+          replace('Select a map label such as <b>A4</b> to open its evidence, ranking and actions.','Select a visible map label to open its evidence, ranking and actions.')
+          a="const tip=ensureCorridorTip16248();tip.classList.add('open');"
+          b="const visibleLabels=Array.from(document.querySelectorAll('.earthline-swale-label-16149')).filter(el=>el.getClientRects().length&&getComputedStyle(el).visibility!=='hidden').map(el=>String(el.textContent||'').trim()).filter(x=>/^[ABC]\\d+$/.test(x));if(!visibleLabels.length)return false;visibleLabels.sort((a,b)=>('ABC'.indexOf(a[0])-'ABC'.indexOf(b[0]))||(Number(a.slice(1))-Number(b.slice(1))));const tip=ensureCorridorTip16248();const p=tip.querySelector('p');if(p){p.textContent='Select the visible map label ';const bold=document.createElement('b');bold.textContent=visibleLabels[0];p.appendChild(bold);p.append(' to open its evidence, ranking and actions.')}tip.classList.add('open');"
+          replace(a,b)
+          replace('m.jumpTo({center:[0,18],zoom:1.25,bearing:0,pitch:0})','m.jumpTo({center:[-96,39],zoom:1.25,bearing:0,pitch:0})')
+          assert blob(s)=='c39fd79ba0eb3a82f11afdb2978af57c94a917c7',blob(s)
+          p.write_text(s)
+          print('Exact presentable UI + initial US globe candidate verified',blob(s))
+          PY
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Browser gate before changing production HTML
+        run: |
+          mkdir -p artifacts
+          cat > artifacts/smoke.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {readFile,writeFile} from 'node:fs/promises';
+          const browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+          const p=await browser.newPage({viewport:{width:1800,height:900},serviceWorkers:'block'});
+          const html=await readFile('index.html'),errors=[];
+          p.on('pageerror',e=>errors.push(String(e)));
+          await p.route('**/*',r=>r.request().isNavigationRequest()&&r.request().resourceType()==='document'?r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html}):r.continue());
+          const result={errors,checks:{}};
+          try {
+           await p.goto('https://earthlinedevelopment.org/?ui-presentable-smoke',{waitUntil:'domcontentloaded',timeout:60000});
+           await p.waitForFunction(()=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;return !!m?.getCenter&&!!m?.getZoom},null,{timeout:30000});
+           result.home=await p.evaluate(()=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;return {center:m.getCenter(),zoom:m.getZoom()}});
+           result.checks.usHome=Math.abs(result.home.center.lng+96)<1&&Math.abs(result.home.center.lat-39)<1;
+           await p.screenshot({path:'artifacts/home-us.png'});
+           await p.locator('#searchInput').fill('iow');
+           await p.waitForFunction(()=>document.querySelector('#earthlineSearchSuggestions15970')?.classList.contains('open'),null,{timeout:12000});
+           await p.locator('#earthlineSearchSuggestions15970 button[data-query]').first().click();
+           await p.waitForTimeout(500);
+           result.checks.searchChoiceClosed=!(await p.locator('#earthlineSearchSuggestions15970').evaluate(el=>el.classList.contains('open')));
+           await p.reload({waitUntil:'domcontentloaded'});
+           await p.locator('#searchInput').fill('iow');
+           await p.locator('#searchInput').press('Enter');
+           await p.waitForTimeout(500);
+           result.checks.enterClosed=!(await p.locator('#earthlineSearchSuggestions15970').evaluate(el=>el.classList.contains('open')));
+           result.checks.noPageErrors=errors.length===0;
+           result.checks.copy=!!(await p.locator('#earthlinePanel16188').count());
+           await p.screenshot({path:'artifacts/after-enter.png'});
+          } catch(e) {result.failure=String(e)}
+          await writeFile('artifacts/result.json',JSON.stringify(result,null,2));console.log('PRESENTABLE_UI_GATE '+JSON.stringify(result));await browser.close();
+          if(result.failure||Object.values(result.checks).some(v=>!v))process.exitCode=1;
+          JS
+          node artifacts/smoke.mjs
+      - name: Publish only reviewed UI and starter camera
+        run: |
+          set -euo pipefail
+          test "$(git hash-object index.html)" = "c39fd79ba0eb3a82f11afdb2978af57c94a917c7"
+          test "$(git hash-object earthline-elder-restored-17097.js)" = "808890f0c86d501939e8cfdf00148287c7dd3ebc"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix(live): US-first globe, visible zoomed swales, regional chips and panel polish'
+          git push origin HEAD:pages-live
+      - name: Save browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: presentable-ui-smoke
+          path: artifacts/
+          retention-days: 30
