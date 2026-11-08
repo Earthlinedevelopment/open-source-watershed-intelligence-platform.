@@ -1,0 +1,120 @@
+name: Earthline live search submission pathways gated repair
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - .github/workflows/earthline-search-submit-gated.yml
+permissions:
+  contents: write
+concurrency:
+  group: earthline-live-search-submit
+  cancel-in-progress: false
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify and build exact minimal search-submission fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          p=Path('index.html');old=p.read_bytes()
+          def hashblob(x):return hashlib.sha1(b'blob '+str(len(x)).encode()+b'\0'+x).hexdigest()
+          assert hashblob(old)=='b33f4a487e0ad5ea3c23f017c96200d4a0f4496c','Unexpected HTML; refuse'
+          Path('/tmp/search-submission-baseline.html').write_bytes(old)
+          s=old.decode('utf-8')
+          a="const input=document.getElementById('searchInput');let q=normalizeSearchAlias(input&&input.value);if(input&&q!==clean(input.value))input.value=q;"
+          b=a+"\n    if(q){document.documentElement.dataset.earthlineSuggestionsSuppressed='1';document.getElementById('earthlineSearchSuggestions15970')?.classList.remove('open');input?.blur();}"
+          assert s.count(a)==1,'Unexpected search submission code'
+          fixed=s.replace(a,b,1).encode()
+          assert hashblob(fixed)=='d3f4e47829ca6968743cb7486fd656b65a51fc03','Patch fingerprint mismatch'
+          p.write_bytes(fixed)
+          print('Verified exact 179-byte submission-only patch')
+          PY
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Test old version fails Enter pathway, fix passes mouse Enter and Run
+        shell: bash
+        run: |
+          mkdir -p artifacts/submission
+          cat > artifacts/submission/test.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {readFile,writeFile} from 'node:fs/promises';
+          const browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+          const results={};
+          for(const stage of ['baseline','fixed']){
+            const html=await readFile(stage==='baseline'?'/tmp/search-submission-baseline.html':'index.html');
+            results[stage]={};
+            for(const method of ['mouse','enter','runButton']){
+              const c=await browser.newContext({viewport:{width:1800,height:900},serviceWorkers:'block'});
+              const p=await c.newPage(),errors=[];
+              p.on('pageerror',e=>errors.push(String(e)));
+              await p.route('**/*',r=>{
+                if(r.request().isNavigationRequest()&&r.request().resourceType()==='document')
+                  return r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html});
+                return r.continue();
+              });
+              const rec={};
+              try{
+                await p.goto('https://earthlinedevelopment.org/?submission='+stage+'-'+method,{waitUntil:'domcontentloaded',timeout:60000});
+                const input=p.locator('#searchInput'),menu=p.locator('#earthlineSearchSuggestions15970');
+                await input.fill('iow');
+                await p.waitForFunction(()=>document.querySelector('#earthlineSearchSuggestions15970')?.classList.contains('open'),null,{timeout:14000});
+                rec.beforeOpen=true;
+                if(method==='mouse')await menu.locator('button[data-query]').first().click();
+                if(method==='enter')await input.press('Enter');
+                if(method==='runButton')await p.locator('#runBtn').click();
+                await p.waitForTimeout(350);
+                rec.after350=await menu.evaluate(e=>({open:e.classList.contains('open'),display:getComputedStyle(e).display}));
+                await p.waitForTimeout(700);
+                rec.after1050=await menu.evaluate(e=>({open:e.classList.contains('open'),display:getComputedStyle(e).display}));
+                rec.flag=await p.evaluate(()=>document.documentElement.dataset.earthlineSuggestionsSuppressed);
+                await p.screenshot({path:'artifacts/submission/'+stage+'-'+method+'.png',timeout:20000});
+              }catch(e){rec.error=String(e)}
+              rec.pageErrors=errors;results[stage][method]=rec;
+              await c.close();
+            }
+          }
+          await browser.close();
+          await writeFile('artifacts/submission/results.json',JSON.stringify(results,null,2));
+          console.log('SUBMISSION_GATE '+JSON.stringify(results));
+          const old=results.baseline.enter,fix=results.fixed;
+          if(!old?.after350?.open||old.error)throw Error('Baseline did not reproduce Enter dropdown bug');
+          for(const method of ['mouse','enter','runButton']){
+            const a=fix[method];
+            if(a.error||a.pageErrors.length||a.after350?.open||a.after1050?.open||a.flag!=='1')
+              throw Error('Fixed '+method+' did not close suggestions: '+JSON.stringify(a));
+          }
+          JS
+          node artifacts/submission/test.mjs
+      - name: Publish exact HTML only after browser gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object index.html)" = "d3f4e47829ca6968743cb7486fd656b65a51fc03"
+          test "$(git hash-object earthline-elder-restored-17097.js)" = "808890f0c86d501939e8cfdf00148287c7dd3ebc"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix(live): close search prepopulation for all submission pathways'
+          git push origin HEAD:pages-live
+      - name: Preserve diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: search-submission-evidence
+          path: artifacts/submission/
+          retention-days: 30
