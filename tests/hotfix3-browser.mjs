@@ -9,7 +9,7 @@ const out='artifacts/hotfix3/'+engine;
 await mkdir(out,{recursive:true});
 const html=await readFile('index.html');
 const identity=createHash('sha256').update(html).digest('hex');
-const productionRef='5bab57f';
+const productionRef='5bab57f03bdd491671a13b70d56bde9357f43bac';
 // Resolve the exact deployed Git commit, independent of current public cache/CDN.
 execFileSync('git',['fetch','--no-tags','--depth=1','origin',productionRef],{timeout:120000});
 const baselineHtml=execFileSync('git',['show',productionRef+':index.html'],{maxBuffer:12*1024*1024});
