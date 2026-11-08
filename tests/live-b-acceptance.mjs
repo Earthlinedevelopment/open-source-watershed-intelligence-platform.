@@ -38,6 +38,17 @@ try{
  const m=p.evaluate(()=>window.earthlineMap?.jumpTo({zoom:7}));
  await m; await p.waitForTimeout(900);
  await snap('iowa-z7');
+ await p.waitForFunction(()=>{
+  const root=document.getElementById('earthlineRegionalVectorOverlay16020');
+  return root?.querySelectorAll('g.earthline-swale-label-16149').length>0;
+ },null,{timeout:engine==='webkit'?30000:20000}).catch(()=>{});
+ r.z7DOM=await p.evaluate(()=>{
+  const root=document.getElementById('earthlineRegionalVectorOverlay16020');
+  return {root:!!root,labels:root?.querySelectorAll('g.earthline-swale-label-16149').length||0,
+   allLabels:document.querySelectorAll('g.earthline-swale-label-16149').length,
+   rootHtml:root?.outerHTML.slice(0,650)||null,
+   mapCenter:window.earthlineMap?.getCenter?.(),mapZoom:window.earthlineMap?.getZoom?.()};
+ });
  r.chip=await p.evaluate(()=>({visible:document.getElementById('earthlineTierNotice16173')?.classList.contains('visible')||false}));
  r.checks.noStaleChip=!r.chip.visible;
  r.labelTarget=await p.evaluate(()=>{
@@ -50,6 +61,10 @@ try{
  });
  if(r.labelTarget)await p.evaluate(c=>window.earthlineMap.jumpTo({zoom:11,center:c}),r.labelTarget);
  await p.waitForTimeout(1300);
+ await p.waitForFunction(()=>{
+  const el=document.getElementById('earthlineRegionalVectorOverlay16020');
+  return (el?.querySelectorAll('path.earthline-swale-core-16168').length||0)>0;
+ },null,{timeout:engine==='webkit'?30000:20000}).catch(()=>{});
  r.z11=await p.evaluate(()=>{
   const root=document.getElementById('earthlineRegionalVectorOverlay16020');
   const paths=[...(root?.querySelectorAll('path.earthline-swale-core-16168')||[])];
