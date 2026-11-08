@@ -80,6 +80,44 @@ try{
  r.legends=await p.evaluate(()=>['earthlineSwaleLegend16050','earthlineAquiferLegend16070','earthlineDiagramLegend16080'].map(id=>{const el=document.getElementById(id);if(!el)return {id,exists:false};const v=el.getBoundingClientRect(),cs=getComputedStyle(el);return {id,exists:true,visible:cs.display!=='none'&&cs.visibility!=='hidden'&&v.width>0}}));
  r.checks.legends=r.legends.every(x=>x.visible);
  await snap('legends');
+ r.propertySetup=await p.evaluate(async()=>{
+  if(typeof M==='undefined'||typeof window.earthlineSelectedSiteFromCenter!=='function'||
+      typeof window.applyLocation!=='function'||typeof window.earthlineSetPropertyTarget16201!=='function')
+    return {prepared:false,reason:'Property bootstrap functions unavailable'};
+  const point={lng:-93.38977,lat:41.95715};
+  const site=window.earthlineSelectedSiteFromCenter(M.loc||null,point.lng,point.lat,20);
+  if(!site)return {prepared:false,reason:'No site returned'};
+  const applied=await window.applyLocation(site,null,M.searchGen,{analyzeNow:false,preserveMapView:false});
+  if(!applied)return {prepared:false,reason:'applyLocation refused',site};
+  const target=window.earthlineSetPropertyTarget16201({...point,source:'live-B-acceptance'},{openPanel:false});
+  return {prepared:!!target,target};
+ });
+ r.checks.propertyPrepared=!!r.propertySetup.prepared;
+ if(r.propertySetup.prepared){
+  await p.evaluate(async()=>await window.earthlineDeclarePropertyAtCrosshair16169());
+  try{await p.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,null,{timeout:engine==='webkit'?180000:120000})}
+  catch(e){r.propertyTimeout=String(e)}
+  r.property=await p.evaluate(()=>({audit:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null,
+    runAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
+    elder:window.EARTHLINE_ELDER_TREE_LAST_17097||null,
+    status:document.getElementById('earthlineVermontStatus16147')?.textContent||''}));
+  r.checks.property=Number.isFinite(r.property.audit?.count);
+  await snap('property');
+  await p.evaluate(()=>window.earthlineOpenVermontReport16151?.());
+  try{await p.waitForSelector('#earthlineVermontReportPanel16149.open .el49-report',{timeout:20000})}
+  catch(e){r.reportTimeout=String(e)}
+  r.report=await p.evaluate(()=>{
+    const root=document.getElementById('earthlineVermontReportPanel16149');
+    return {open:!!root?.classList.contains('open'),
+      location:[...document.querySelectorAll('#earthlineVermontReportPanel16149 .el49-cover .el49-location')].map(el=>el.textContent),
+      text:root?.innerText?.slice(0,3000)||'',
+      svgCount:root?.querySelectorAll('svg')?.length||0,
+      aquiferFallback:(root?.innerText||'').includes('Aquifer context not loaded')};
+  });
+  r.checks.report=!!r.report.open&&r.report.location.length>0;
+  r.checks.aquiferContext=!!r.report.open&&(r.report.svgCount>0||r.report.aquiferFallback);
+  await snap('report');
+ }
 }catch(e){r.failure=String(e)}
 finally{r.checks.noPageErrors=r.errors.length===0;r.finished=new Date().toISOString();await writeFile(out+'/result.json',JSON.stringify(r,null,2));await b.close();console.log('B_SMOKE '+JSON.stringify(r))}
 if(r.failure||Object.values(r.checks).some(x=>!x))process.exitCode=1;
