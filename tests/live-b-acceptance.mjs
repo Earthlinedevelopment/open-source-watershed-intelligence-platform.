@@ -27,6 +27,10 @@ try{
  r.checks.mouseDropdown=!r.dropdown.open;
  await snap('selected');
  await p.reload({waitUntil:'domcontentloaded',timeout:60000});
+ await p.waitForFunction(()=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;return !!m?.jumpTo},null,{timeout:30000});
+ await p.evaluate(()=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;m.jumpTo({center:[-93.38977,41.95748],zoom:7})});
+ await p.waitForTimeout(1500);
+ r.testLocation='Iowa coordinate pre-centered to isolate zoom/display independently of geocoding';
  await p.locator('#searchInput').fill('Iowa state');
  await p.locator('#searchInput').press('Enter');
  await p.waitForTimeout(250);
