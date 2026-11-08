@@ -101,7 +101,7 @@ try{
     runAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,
     elder:window.EARTHLINE_ELDER_TREE_LAST_17097||null,
     status:document.getElementById('earthlineVermontStatus16147')?.textContent||''}));
-  r.checks.property=Number.isFinite(r.property.audit?.count);
+  r.checks.property=!!r.property.audit?.published&&r.property.audit?.publicationCount>0;
   await snap('property');
   await p.evaluate(()=>window.earthlineOpenVermontReport16151?.());
   try{await p.waitForSelector('#earthlineVermontReportPanel16149.open .el49-report',{timeout:20000})}
@@ -116,6 +116,10 @@ try{
   });
   r.checks.report=!!r.report.open&&r.report.location.length>0;
   r.checks.aquiferContext=!!r.report.open&&(r.report.svgCount>0||r.report.aquiferFallback);
+  r.checks.reportTierMatchesProperty=!!r.report.open&&
+     !/\\b\\d+ regional opportunity corridors? warrant|corridors met the current regional screening publication threshold/i.test(r.report.text);
+  r.checks.reportCoordinatesMatchProperty=!!r.report.location.length&&
+     r.report.location.some(line=>line.includes('41.95715')&&line.includes('-93.38977'));
   await snap('report');
  }
 }catch(e){r.failure=String(e)}
