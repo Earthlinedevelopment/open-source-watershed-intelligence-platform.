@@ -56,12 +56,20 @@ jobs:
             await page.waitForTimeout(400);
             result.afterTyping=await page.evaluate(()=>({open:document.querySelector('#earthlineSearchSuggestions15970').classList.contains('open'),display:getComputedStyle(document.querySelector('#earthlineSearchSuggestions15970')).display,suppressed:document.documentElement.dataset.earthlineSuggestionsSuppressed}));
             await page.screenshot({path:'artifacts/live-search/after-typing.png'});
+            await page.reload({waitUntil:'domcontentloaded',timeout:60000});
+            await page.locator('#searchInput').fill('iow');
+            await page.waitForFunction(()=>document.querySelector('#earthlineSearchSuggestions15970')?.classList.contains('open'),null,{timeout:16000});
+            await page.locator('#searchInput').press('Enter');
+            await page.waitForTimeout(400);
+            result.enterAfter400=await page.evaluate(()=>({open:document.querySelector('#earthlineSearchSuggestions15970').classList.contains('open'),display:getComputedStyle(document.querySelector('#earthlineSearchSuggestions15970')).display,suppressed:document.documentElement.dataset.earthlineSuggestionsSuppressed}));
+            await page.screenshot({path:'artifacts/live-search/after-enter.png'});
           } catch(e){result.failure=String(e)}
           await writeFile('artifacts/live-search/result.json',JSON.stringify(result,null,2));
           console.log('LIVE_SEARCH_DIAGNOSTIC '+JSON.stringify(result));
           await browser.close();
           if(!result.deliveryMatched)throw Error('Public delivery mismatch');
           if(result.failure)throw Error('Diagnostic interaction failure');
+          if(result.enterAfter400?.open||result.enterAfter400?.suppressed!=='1')throw Error('Live Enter submission leaves dropdown open');
           JS
           node artifacts/live-search/check.mjs
       - name: Save evidence
