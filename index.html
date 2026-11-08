@@ -31219,6 +31219,7 @@ body { overflow-x:hidden!important; }
   async function action(e){
     if(e){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation&&e.stopImmediatePropagation();}
     const input=document.getElementById('searchInput');let q=normalizeSearchAlias(input&&input.value);if(input&&q!==clean(input.value))input.value=q;
+    if(q){document.documentElement.dataset.earthlineSuggestionsSuppressed='1';document.getElementById('earthlineSearchSuggestions15970')?.classList.remove('open');input?.blur();}
     /* EARTHLINE 16483 — exact same street-address reruns must reach the existing
        16479 warm-Property branch before the direct-address geocoder. Previously
        every numeric street address returned here first, so even an unchanged,
