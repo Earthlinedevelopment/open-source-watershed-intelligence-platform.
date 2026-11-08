@@ -1,3 +1,4 @@
+// Exact B+search candidate regression run, source index blob 33db0971eba8c3b40d28b6908e7eec82e22b0d9c.
 import {chromium,webkit} from 'playwright';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
