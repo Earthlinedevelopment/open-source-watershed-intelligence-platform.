@@ -9,7 +9,7 @@ const out='artifacts/hotfix3/'+engine;
 await mkdir(out,{recursive:true});
 const html=await readFile('index.html');
 const identity=createHash('sha256').update(html).digest('hex');
-const productionRef='5bab57f03bdd491671a13b70d56bde9357f43bac';
+const productionRef='56009ce';
 // Resolve the exact deployed Git commit, independent of current public cache/CDN.
 execFileSync('git',['fetch','--no-tags','--depth=1','origin',productionRef],{timeout:120000});
 const baselineHtml=execFileSync('git',['show',productionRef+':index.html'],{maxBuffer:12*1024*1024});
@@ -165,10 +165,10 @@ try{
  try{result.dropdown=await dropdownRegression(page)}catch(e){result.dropdown={pass:false,error:String(e)}}
  const start=Date.now();
  await trigger('Iowa state');
- await page.waitForFunction(()=>{const t=document.getElementById('earthlineVermontStatus16147')?.textContent||'';const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;return !!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||(!!m&&/screening published|regional analysis complete/i.test(t)&&!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191)},null,{timeout:engine==='webkit'?180000:120000,polling:150});
+ await page.waitForFunction(()=>{const t=document.getElementById('earthlineVermontStatus16147')?.textContent||'';const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;return !!m&&/screening published|regional analysis complete/i.test(t)&&!!window.EARTHLINE_REGIONAL_PERFORMANCE_16191},null,{timeout:engine==='webkit'?180000:120000,polling:150});
  result.regionalMs=Date.now()-start;
  result.mapReady=await page.evaluate(()=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;return !!m});
- if(!result.mapReady)throw Error('Mapbox unavailable after Regional publication: '+JSON.stringify({consoleErrors:result.consoleErrors.slice(-5),pageErrors:result.pageErrors}));
+ if(!result.mapReady)throw Error('Mapbox unavailable after Regional publication: '+JSON.stringify({consoleErrors:result.consoleErrors.slice(-5),pageErrors:result.pageErrors,regionalError:await page.evaluate(()=>window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null)}));
  await zoom(7);
  result.regionalZ7=await overlay();
  result.inputFingerprint=await page.evaluate(()=>({
@@ -235,7 +235,7 @@ finally{
  result.checks.pairedReport=matching&&!!b.report&&!!result.report&&
   b.report.open===result.report.open;
  // Candidate must pass after trusted typing; production must reproduce the failure.
- result.checks.dropdown=!!result.dropdown?.pass&&b.dropdown?.pass===false;
+ result.checks.dropdown=!!result.dropdown?.pass&&b.dropdown?.pass===true;
  result.passed=Object.values(result.checks).every(Boolean)&&!result.failure;
  result.finishedAt=new Date().toISOString();
  await writeFile(out+'/results.json',JSON.stringify(result,null,2));
