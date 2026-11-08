@@ -1,0 +1,39 @@
+name: Mantra 125 paired display repair validation
+on:
+  push:
+    branches: [candidate/mantra125-ui-restore]
+    paths:
+      - 'tests/mantra125-ui-compare.mjs'
+      - '.github/workflows/mantra125-ui-restore.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  paired:
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, webkit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test browser
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps ${{ matrix.engine }}
+      - name: Compare exact production and four restored display fixes
+        env:
+          ENGINE: ${{ matrix.engine }}
+        run: node tests/mantra125-ui-compare.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra125-${{ matrix.engine }}
+          path: artifacts/mantra125/
+          retention-days: 14
