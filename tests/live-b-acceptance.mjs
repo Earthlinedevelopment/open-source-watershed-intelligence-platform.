@@ -15,7 +15,7 @@ const snap=async n=>{try{await p.screenshot({path:out+'/'+n+'.png',timeout:15000
 try{
  await p.goto('https://earthlinedevelopment.org/?candidate-b-test='+engine,{waitUntil:'domcontentloaded',timeout:60000});
  r.startView=await p.evaluate(()=>({zoom:window.earthlineMap?.getZoom?.(),center:window.earthlineMap?.getCenter?.()}));
- r.checks.startup=!!document?.body;
+ r.checks.startup=(await p.locator('#searchInput').count())===1;
  await snap('startup');
  const input=p.locator('#searchInput'),menu=p.locator('#earthlineSearchSuggestions15970');
  await input.fill('iow');
@@ -37,7 +37,7 @@ try{
  r.checks.noStaleChip=!r.chip.visible;
  r.labelTarget=await p.evaluate(()=>{
   const root=document.getElementById('earthlineRegionalVectorOverlay16020'),m=window.earthlineMap,canvas=m?.getCanvas();
-  const g=[...(root?.querySelectorAll('g.earthline-swale-label-16149')||[])].find(x=>/\\bA1\\b/.test(x.textContent||''))||root?.querySelector('g.earthline-swale-label-16149');
+  const g=[...(root?.querySelectorAll('g.earthline-swale-label-16149')||[])].find(x=>/\bA1\b/.test(x.textContent||''))||root?.querySelector('g.earthline-swale-label-16149');
   if(!g||!canvas)return null;
   const rect=g.getBoundingClientRect(),v=canvas.getBoundingClientRect();
   const lnglat=m.unproject([rect.left+rect.width/2-v.left,rect.top+rect.height/2-v.top]);
