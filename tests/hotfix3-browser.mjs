@@ -171,6 +171,11 @@ try{
  if(!result.mapReady)throw Error('Mapbox unavailable after Regional publication: '+JSON.stringify({consoleErrors:result.consoleErrors.slice(-5),pageErrors:result.pageErrors}));
  await zoom(7);
  result.regionalZ7=await overlay();
+ result.inputFingerprint=await page.evaluate(()=>({
+  location:(typeof M!=='undefined'&&M.loc)?JSON.stringify(M.loc).slice(0,500):null,
+  regional:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.inputFingerprint??null,
+  performance:window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.inputFingerprint??null
+ }));
  result.checks.z7=result.regionalZ7.drawn===0&&result.regionalZ7.pills>0;
  await screenshot('iowa-z7');
  result.z11Target=await topLabelPosition(page);
@@ -213,11 +218,7 @@ try{
 finally{
  // Independently test the exact production commit in the same runner/browser.
  try{result.baseline=await runBaseline()}catch(e){result.baseline={error:String(e)}}
- result.inputFingerprint=await page.evaluate(()=>({
-  location:(typeof M!=='undefined'&&M.loc)?JSON.stringify(M.loc).slice(0,500):null,
-  regional:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.inputFingerprint??null,
-  performance:window.EARTHLINE_REGIONAL_PERFORMANCE_16191?.inputFingerprint??null
- })).catch(()=>null);
+ // Capture inputs at Regional publication, before changing to Property.
  const b=result.baseline||{};
  const matching=!!result.inputFingerprint&&!!b.inputFingerprint&&
   JSON.stringify(result.inputFingerprint)===JSON.stringify(b.inputFingerprint);
