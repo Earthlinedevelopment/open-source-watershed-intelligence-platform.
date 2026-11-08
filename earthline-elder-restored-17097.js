@@ -248,9 +248,8 @@
             'text-size':['interpolate',['linear'],['zoom'],13,0,15,10,17,12.5,20,13.5],
             'text-anchor':'top',
             'text-offset':[0,0.4],
-            'text-allow-overlap':false,
-            'text-ignore-placement':false,
-             'text-optional':true,
+            'text-allow-overlap':true,
+            'text-ignore-placement':true,
             'visibility':'visible'
           },
           paint:{
@@ -276,8 +275,6 @@
       try{
         if(m.getLayer?.(LAYER)){
           m.setLayoutProperty?.(LAYER,'visibility','visible');
-           /* R8: Property keeps pins but reveals full labels only on click, inside its own popup. Regional labels are collision-managed. */
-           m.setLayoutProperty?.(LAYER,'text-field',document.documentElement.dataset.earthlineAnalysisTier==='property'?'':['case',['any',['==',['get','record_class'],'VERIFIED_ELDER_TREE'],['==',['get','record_class'],'VERIFIED_EXTERNAL_TREE']],'VERIFIED TREE','ELDER CANDIDATE']);
           m.moveLayer?.(LAYER);
         }
         m.triggerRepaint?.();
