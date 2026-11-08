@@ -7,33 +7,54 @@ on:
       - '.github/workflows/mantra125-ui-restore.yml'
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   paired:
-    strategy:
-      fail-fast: false
-      matrix:
-        engine: [chromium, webkit]
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: true
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install test browser
+      - name: Install browser engines
         run: |
           npm install --no-save --ignore-scripts playwright@1.56.1
-          npx playwright install --with-deps ${{ matrix.engine }}
-      - name: Compare exact production and four restored display fixes
-        env:
-          ENGINE: ${{ matrix.engine }}
-        run: node tests/mantra125-ui-compare.mjs
+          npx playwright install --with-deps chromium webkit
+      - name: Compare baseline and UI bundle; retain evidence even on failure
+        shell: bash
+        run: |
+          set +e
+          ENGINE=chromium node tests/mantra125-ui-compare.mjs
+          C=$?
+          ENGINE=webkit node tests/mantra125-ui-compare.mjs
+          W=$?
+          set -e
+          mkdir -p reviews/mantra125
+          for E in chromium webkit; do
+            if test -f "artifacts/mantra125/$E/results.json"; then
+              cp "artifacts/mantra125/$E/results.json" "reviews/mantra125/$E-results.json"
+            fi
+          done
+          printf '{"chromium_exit":%s,"webkit_exit":%s,"production":"56009ce","rollback":"56009ce"}\n' "$C" "$W" > reviews/mantra125/run-status.json
+          git config user.name 'earthline-ci'
+          git config user.email 'earthline-ci@users.noreply.github.com'
+          git add reviews/mantra125
+          if test "$C" -eq 0 && test "$W" -eq 0; then
+            git add index.html
+            echo "Both engines passed: include exact candidate HTML."
+          else
+            echo "Acceptance failed: retain evidence only; DO NOT stage candidate HTML."
+          fi
+          git commit -m "test(mantra125): record paired chromium/webkit evidence" || true
+          git push origin HEAD:candidate/mantra125-ui-restore
+          test "$C" -eq 0 && test "$W" -eq 0
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: mantra125-${{ matrix.engine }}
+          name: mantra125-paired-evidence
           path: artifacts/mantra125/
           retention-days: 14
