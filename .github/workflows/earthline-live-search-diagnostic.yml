@@ -1,0 +1,73 @@
+name: Earthline live delivery and search interaction diagnosis
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - .github/workflows/earthline-live-search-diagnostic.yml
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Inspect real live page delivery and search after selection
+        run: |
+          mkdir -p artifacts/live-search
+          cat > artifacts/live-search/check.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import { createHash } from 'node:crypto';
+          import { readFile,writeFile } from 'node:fs/promises';
+          const expected=createHash('sha256').update(await readFile('index.html')).digest('hex');
+          const browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+          const context=await browser.newContext({viewport:{width:1800,height:900},serviceWorkers:'block'});
+          const page=await context.newPage();
+          const result={expected,pageErrors:[],failedRequests:[],events:[]};
+          page.on('pageerror',e=>result.pageErrors.push(String(e)));
+          page.on('requestfailed',r=>result.failedRequests.push({url:r.url().slice(0,150),error:r.failure()?.errorText}));
+          try {
+            const response=await page.goto('https://earthlinedevelopment.org/?earthline_diagnostic='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            result.responseStatus=response.status();
+            result.receivedSha=createHash('sha256').update(await response.body()).digest('hex');
+            result.deliveryMatched=result.receivedSha===expected;
+            await page.locator('#searchInput').fill('iow',{timeout:30000});
+            const menu=page.locator('#earthlineSearchSuggestions15970');
+            await page.waitForFunction(()=>document.querySelector('#earthlineSearchSuggestions15970')?.classList.contains('open'),null,{timeout:16000});
+            result.before=await page.evaluate(()=>({open:document.querySelector('#earthlineSearchSuggestions15970').classList.contains('open'),display:getComputedStyle(document.querySelector('#earthlineSearchSuggestions15970')).display,options:document.querySelectorAll('#earthlineSearchSuggestions15970 button[data-query]').length}));
+            await page.screenshot({path:'artifacts/live-search/before.png'});
+            await menu.locator('button[data-query]').first().click();
+            result.immediate=await page.evaluate(()=>({open:document.querySelector('#earthlineSearchSuggestions15970').classList.contains('open'),display:getComputedStyle(document.querySelector('#earthlineSearchSuggestions15970')).display,suppressed:document.documentElement.dataset.earthlineSuggestionsSuppressed,focused:document.activeElement?.id}));
+            await page.waitForTimeout(2500);
+            result.after2500=await page.evaluate(()=>({open:document.querySelector('#earthlineSearchSuggestions15970').classList.contains('open'),display:getComputedStyle(document.querySelector('#earthlineSearchSuggestions15970')).display,suppressed:document.documentElement.dataset.earthlineSuggestionsSuppressed,focused:document.activeElement?.id}));
+            await page.screenshot({path:'artifacts/live-search/after-selection.png'});
+            await page.locator('#searchInput').click();
+            await page.waitForTimeout(300);
+            result.refocused=await page.evaluate(()=>({open:document.querySelector('#earthlineSearchSuggestions15970').classList.contains('open'),display:getComputedStyle(document.querySelector('#earthlineSearchSuggestions15970')).display,suppressed:document.documentElement.dataset.earthlineSuggestionsSuppressed}));
+            await page.screenshot({path:'artifacts/live-search/refocused.png'});
+            await page.keyboard.type('a');
+            await page.waitForTimeout(400);
+            result.afterTyping=await page.evaluate(()=>({open:document.querySelector('#earthlineSearchSuggestions15970').classList.contains('open'),display:getComputedStyle(document.querySelector('#earthlineSearchSuggestions15970')).display,suppressed:document.documentElement.dataset.earthlineSuggestionsSuppressed}));
+            await page.screenshot({path:'artifacts/live-search/after-typing.png'});
+          } catch(e){result.failure=String(e)}
+          await writeFile('artifacts/live-search/result.json',JSON.stringify(result,null,2));
+          console.log('LIVE_SEARCH_DIAGNOSTIC '+JSON.stringify(result));
+          await browser.close();
+          if(!result.deliveryMatched)throw Error('Public delivery mismatch');
+          if(result.failure)throw Error('Diagnostic interaction failure');
+          JS
+          node artifacts/live-search/check.mjs
+      - name: Save evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-search-diagnostic
+          path: artifacts/live-search/
+          retention-days: 14
