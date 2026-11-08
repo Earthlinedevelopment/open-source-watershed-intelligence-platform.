@@ -1,0 +1,40 @@
+name: Earthline B independent Chromium and WebKit smoke
+on:
+  push:
+    branches: [live-b-repair-validation]
+    paths:
+      - .github/workflows/earthline-live-b-acceptance.yml
+      - tests/live-b-acceptance.mjs
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium,webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Test B candidate without deploying
+        env:
+          ENGINE: ${{ matrix.browser }}
+        shell: bash
+        run: |
+          mkdir -p artifacts/b/${{ matrix.browser }}
+          node tests/live-b-acceptance.mjs | tee artifacts/b/${{ matrix.browser }}/stdout.log
+      - name: Preserve screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b-smoke-${{ matrix.browser }}
+          path: artifacts/b/
+          retention-days: 30
