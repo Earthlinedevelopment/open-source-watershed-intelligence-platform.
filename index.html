@@ -35601,10 +35601,41 @@ html[data-earthline-analysis-tier="property"] #earthlineDiagramLegend16080{displ
     const dismiss=()=>{tip.remove();document.removeEventListener('pointerdown',dismiss,true);document.removeEventListener('wheel',dismiss,true);document.removeEventListener('earthline:analysis-complete',dismiss,true)};
     document.addEventListener('pointerdown',dismiss,true);
     document.addEventListener('wheel',dismiss,{capture:true,passive:true});
-    document.addEventListener('earthline:analysis-complete',dismiss,true);
-    setTimeout(dismiss,8500);
+    /* Do not immediately dismiss the requested message on analysis completion. */
+    setTimeout(dismiss,20000);
   }
-  function initRealGlobe16233(){const m=panelMap16188();if(!m)return false;const hasResult=!!(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||window.EARTHLINE_CHOSEN_LOCATION_16189);if(hasResult)return false;try{if(typeof m.setProjection==='function')m.setProjection('globe')}catch(error){console.warn('[Earthline 16233] Globe projection unavailable',error)}try{if(typeof m.setFog==='function')m.setFog({'range':[.5,10],'color':'#07111d','high-color':'#102238','space-color':'#02050a','star-intensity':.35})}catch(_){ }try{if(typeof m.jumpTo==='function')m.jumpTo({center:[-96,39],zoom:1.25,bearing:0,pitch:0})}catch(error){console.warn('[Earthline 16233] Globe camera unavailable',error)}earthlineShowMapHint126();return true}
+
+  /* M126: show the instruction only AFTER the first successful Regional publication.
+     The home map cannot consume the one-time hint. */
+  (function setupRegionalMapHint126(){
+    let completed=false;
+    function regionalPublished126(){
+      const d=window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||
+        window.EARTHLINE_DISPLAYED_RUN_16151||
+        window.EARTHLINE_DISPLAYED_RUN_16147||null;
+      const tier=String(d?.tier||d?.mode||document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
+      const status=String(document.getElementById('earthlineVermontStatus16147')?.textContent||'');
+      const published=/screening published|regional analysis complete|regional screening published/i.test(status);
+      return !!d && tier!=='property' && tier!=='focus' && (published||!!window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970);
+    }
+    function showWhenRegional126(event){
+      if(completed||earthlineMapHintShown126)return;
+      const mode=String(event?.detail?.tier||event?.detail?.mode||'').toLowerCase();
+      if(mode&&mode!=='regional')return;
+      if(!regionalPublished126())return;
+      completed=true;
+      earthlineShowMapHint126();
+      window.EARTHLINE_MAP_HINT_AUDIT_126={trigger:'regional-published',shown:true,at:new Date().toISOString()};
+    }
+    document.addEventListener('earthline:analysis-complete',showWhenRegional126);
+    /* Status/run polling handles Regional engines that do not emit the DOM event. */
+    const interval=setInterval(()=>{
+      if(completed||earthlineMapHintShown126){clearInterval(interval);return;}
+      showWhenRegional126();
+    },500);
+    window.addEventListener('pagehide',()=>clearInterval(interval),{once:true});
+  })();
+  function initRealGlobe16233(){const m=panelMap16188();if(!m)return false;const hasResult=!!(window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||window.EARTHLINE_CHOSEN_LOCATION_16189);if(hasResult)return false;try{if(typeof m.setProjection==='function')m.setProjection('globe')}catch(error){console.warn('[Earthline 16233] Globe projection unavailable',error)}try{if(typeof m.setFog==='function')m.setFog({'range':[.5,10],'color':'#07111d','high-color':'#102238','space-color':'#02050a','star-intensity':.35})}catch(_){ }try{if(typeof m.jumpTo==='function')m.jumpTo({center:[-96,39],zoom:1.25,bearing:0,pitch:0})}catch(error){console.warn('[Earthline 16233] Globe camera unavailable',error)}return true}
   function ensureRegionalCorridorTabs16323(resultsSlot){
     /* EARTHLINE 16334 — explicitly removed by user direction.
        Do not recreate ranked corridor chips/chart in navigation. */
