@@ -29,7 +29,7 @@ async function run(name,html){
    await page.waitForSelector('#searchInput',{timeout:30000});
    try{await page.waitForFunction(()=>{let m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;return !!m?.jumpTo},{timeout:45000});outcome.mapReady=true}catch(e){outcome.mapReady=false;outcome.mapWaitError=String(e)}
    await page.locator('#searchInput').fill('Iowa state');
-   await page.locator('#runBtn').click();
+   await page.locator('#searchInput').press('Enter');
    try{await page.waitForFunction(()=>{const t=document.getElementById('earthlineVermontStatus16147')?.textContent||'';return /screening published|regional analysis complete|analysis failed/i.test(t)||!!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970},{timeout:engine==='webkit'?180000:120000});}catch(e){outcome.analysisWaitError=String(e)}
    for(const z of [7,11]){
      try{await page.evaluate(z=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;if(!m)throw Error('No Mapbox map');let center=null;if(z>=10){const g=document.querySelector('#earthlineRegionalVectorOverlay16020 g.earthline-swale-label-16149');const cr=m.getCanvas?.().getBoundingClientRect(),r=g?.getBoundingClientRect();if(cr&&r&&r.width&&r.height){const ll=m.unproject([r.left+r.width/2-cr.left,r.top+r.height/2-cr.top]);center=[ll.lng,ll.lat]}}m.jumpTo(center?{zoom:z,center}:{zoom:z});},z);await page.waitForTimeout(1800)}
