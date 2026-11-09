@@ -1,0 +1,98 @@
+name: Mantra 127 R3 R6 R7 isolated release
+on:
+  push:
+    branches: [candidate/mantra127-r3-r6-r7-only]
+    paths:
+      - tools/mantra127-apply-r3-r6-r7.py
+      - .github/workflows/mantra127-r3-r6-r7.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: earthline-mantra127-ui-only
+  cancel-in-progress: false
+jobs:
+  chromium-webkit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra127-r3-r6-r7-only
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Apply exact three UI repairs on pinned live parent
+        run: |
+          set -euo pipefail
+          cp tools/mantra127-apply-r3-r6-r7.py /tmp/m127.py
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          test "$(git rev-parse HEAD)" = "8029cb03d49dd5220c9c6d687c04197acb0f58d1"
+          test "$(git hash-object index.html)" = "88555ef15405443a84413ae9e1e95b1c1e87d173"
+          python3 /tmp/m127.py
+          test "$(git diff --name-only)" = "index.html"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium and WebKit
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium webkit
+      - name: Verify both browser engines; preserve screenshots
+        shell: bash
+        run: |
+          mkdir -p artifacts/m127-ui
+          cat > artifacts/m127-ui/test.mjs <<'JS'
+          import {chromium,webkit} from 'playwright';
+          import {readFile,writeFile} from 'node:fs/promises';
+          const html=await readFile('index.html');
+          const results=[];
+          for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
+            const browser=await engine.launch({headless:true,args:name==='chromium'?['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']:[]});
+            const page=await browser.newPage({viewport:{width:1500,height:950},serviceWorkers:'block'});
+            const out={name,checks:{},errors:[]};page.on('pageerror',e=>out.errors.push(String(e)));
+            await page.route('**/*',route=>route.request().isNavigationRequest()&&route.request().resourceType()==='document'?route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html}):route.continue());
+            try{
+              await page.goto('https://earthlinedevelopment.org/?m127ui='+name,{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#searchInput',{timeout:30000});
+              out.checks.search=await page.locator('#searchInput').isVisible();
+              out.checks.r3=await page.evaluate(()=>{
+                let c=document.getElementById('earthlineTierNotice16173');
+                if(!c){c=document.createElement('div');c.id='earthlineTierNotice16173';document.body.appendChild(c)}
+                c.dataset.mode='property';c.textContent='Property detail';c.classList.add('visible');
+                document.dispatchEvent(new CustomEvent('earthline:analysis-complete',{detail:{tier:'regional'}}));
+                return !c.classList.contains('visible')&&c.textContent===''&&c.dataset.mode==='regional';
+              });
+              out.checks.r6Source=html.includes('Select a visible map label')&&!html.includes('Select a map label such as <b>A4</b>');
+              out.checks.r7Source=html.includes('Hotfix 3 R7')&&html.includes('background:#111923!important');
+              out.checks.panelOpaque=await page.evaluate(()=>{
+                document.documentElement.classList.add('earthline-panel-open-16188');
+                const p=document.querySelector('#earthlinePanel16188');
+                return !!p&&getComputedStyle(p).backgroundColor==='rgb(17, 25, 35)';
+              });
+              out.checks.noPageErrors=out.errors.length===0;
+              await page.screenshot({path:'artifacts/m127-ui/'+name+'.png',timeout:20000});
+            }catch(e){out.failure=String(e)}
+            out.passed=!out.failure&&Object.keys(out.checks).length===6&&Object.values(out.checks).every(Boolean);
+            results.push(out);await browser.close();
+          }
+          console.log('M127_R3_R6_R7 '+JSON.stringify(results));
+          await writeFile('artifacts/m127-ui/results.json',JSON.stringify(results,null,2));
+          if(results.some(r=>!r.passed))process.exitCode=1;
+          JS
+          node artifacts/m127-ui/test.mjs
+      - name: Promote ONLY tested R3 R6 R7 to live
+        run: |
+          set -euo pipefail
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix(live): restore R3 R6 R7 UI only; preserve M105'
+          git push origin HEAD:pages-live
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m127-r3-r6-r7-evidence
+          path: artifacts/m127-ui/
+          retention-days: 30
