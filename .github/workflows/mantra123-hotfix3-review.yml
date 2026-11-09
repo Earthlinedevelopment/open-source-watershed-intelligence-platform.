@@ -37,6 +37,25 @@ jobs:
           set -o pipefail
           mkdir -p artifacts/hotfix3/${{ matrix.engine }}
           node tests/hotfix3-browser.mjs 2>&1 | tee artifacts/hotfix3/${{ matrix.engine }}/run.log
+      - name: Preserve run outcome even if setup or browser fails
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p artifacts/hotfix3/${{ matrix.engine }}
+          python3 - <<'PY'
+          import json,os,pathlib
+          root=pathlib.Path('artifacts/hotfix3')/os.environ['BROWSER_ENGINE']
+          result=root/'results.json'
+          status={'engine':os.environ['BROWSER_ENGINE'],
+                  'candidate_sha':os.environ['GITHUB_SHA'],
+                  'result_file_present':result.is_file(),
+                  'run_log_present':(root/'run.log').is_file(),
+                  'note':'Browser acceptance is unverified if result_file_present is false'}
+          (root/'job-evidence-status.json').write_text(json.dumps(status,indent=2))
+          print('HOTFIX3_EVIDENCE_STATUS',json.dumps(status))
+          PY
+        env:
+          BROWSER_ENGINE: ${{ matrix.engine }}
       - name: Archive screenshots and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
