@@ -56,11 +56,12 @@ jobs:
               await page.goto('https://earthlinedevelopment.org/?m127ui='+name,{waitUntil:'domcontentloaded',timeout:60000});
               await page.waitForSelector('#searchInput',{timeout:30000});
               out.checks.search=await page.locator('#searchInput').isVisible();
-              out.checks.r3=await page.evaluate(()=>{
+              out.checks.r3=await page.evaluate(async()=>{
                 let c=document.getElementById('earthlineTierNotice16173');
                 if(!c){c=document.createElement('div');c.id='earthlineTierNotice16173';document.body.appendChild(c)}
                 c.dataset.mode='property';c.textContent='Property detail';c.classList.add('visible');
                 document.dispatchEvent(new CustomEvent('earthline:analysis-complete',{detail:{tier:'regional'}}));
+                await new Promise(resolve=>setTimeout(resolve,50));
                 return !c.classList.contains('visible')&&c.textContent===''&&c.dataset.mode==='regional';
               });
               out.checks.r6Source=html.includes('Select a visible map label')&&!html.includes('Select a map label such as <b>A4</b>');
