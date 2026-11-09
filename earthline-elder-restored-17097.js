@@ -64,21 +64,36 @@
     if(state.loading)return state.loading;
     state.loading=(async()=>{
       const manifest=await fetch(MANIFEST,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('Elder Tree manifest '+r.status);return r.json()});
-      const all=[];
-      for(const d of (manifest.datasets||[])){
-        try{
-          const fc=await fetch(d.path,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(String(r.status));return r.json()});
-          for(const f of (fc.features||[])){
-            if(f?.geometry?.type!=='Point')continue;
-            const copy={type:'Feature',geometry:f.geometry,properties:Object.assign({},f.properties||{},{
-              elder_dataset_id:d.id||'',
-              elder_dataset_label:d.label||d.id||'',
-              elder_coverage_complete:d.coverage_complete===true
-            })};
-            all.push(copy);
+      /* M127 Elder I/O only: fetch independent evidence datasets concurrently
+         (up to four), then publish in manifest order. No evidence/count changes. */
+      const all=[],datasets=manifest.datasets||[];
+      const responses=new Array(datasets.length);
+      const slots=Math.min(4,datasets.length);
+      await Promise.all(Array.from({length:slots},async(_,slot)=>{
+        for(let i=slot;i<datasets.length;i+=slots){
+          const d=datasets[i];
+          try{
+            const fc=await fetch(d.path,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(String(r.status));return r.json()});
+            responses[i]={features:fc.features||[]};
+          }catch(err){
+            responses[i]={error:String(err&&err.message||err)};
           }
-        }catch(err){
-          (manifest.load_errors||(manifest.load_errors=[])).push({dataset:d.id||d.path,error:String(err&&err.message||err)});
+        }
+      }));
+      for(let i=0;i<datasets.length;i++){
+        const d=datasets[i],record=responses[i]||{};
+        if(record.error){
+          (manifest.load_errors||(manifest.load_errors=[])).push({dataset:d.id||d.path,error:record.error});
+          continue;
+        }
+        for(const f of (record.features||[])){
+          if(f?.geometry?.type!=='Point')continue;
+          const copy={type:'Feature',geometry:f.geometry,properties:Object.assign({},f.properties||{},{
+            elder_dataset_id:d.id||'',
+            elder_dataset_label:d.label||d.id||'',
+            elder_coverage_complete:d.coverage_complete===true
+          })};
+          all.push(copy);
         }
       }
       state.manifest=manifest;state.all=all;state.loaded=true;
