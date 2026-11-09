@@ -1,0 +1,90 @@
+name: Mantra 126 requested fixes - verified production patch
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - tools/mantra126-requested-fixes.py
+      - .github/workflows/mantra126-requested-fixes.yml
+permissions:
+  contents: write
+concurrency:
+  group: earthline-m126-requested-fixes
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Fingerprint and isolate exact production source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin mantra123-hotfix3-review
+          test "$(git rev-parse HEAD)" = "745591fb4b3d06ffc3cf3baa5afc4cba90c8d071"
+          test "$(git hash-object index.html)" = "2e42e06c58791bba621a5f515d4d763e9855e08c"
+          cp index.html /tmp/m126-production-before.html
+          python3 tools/mantra126-requested-fixes.py
+          test "$(git diff --name-only)" = "index.html"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium for real browser smoke
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify temporary hint and report functions
+        shell: bash
+        run: |
+          mkdir -p artifacts/m126
+          cat > artifacts/m126/check.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {readFile,writeFile} from 'node:fs/promises';
+          const html=await readFile('index.html');
+          const browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+          const page=await browser.newPage({viewport:{width:1400,height:900},serviceWorkers:'block'});
+          const errors=[];
+          page.on('pageerror',e=>errors.push(String(e)));
+          await page.route('**/*',r=>r.request().isNavigationRequest()&&r.request().resourceType()==='document'?r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html}):r.continue());
+          const result={};
+          try{
+            await page.goto('https://earthlinedevelopment.org/?m126=verified',{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#searchInput',{timeout:30000});
+            await page.waitForFunction(()=>!!document.getElementById('earthlineTemporaryMapHint126'),null,{timeout:18000});
+            result.hintText=await page.locator('#earthlineTemporaryMapHint126').innerText();
+            result.hintShown=result.hintText==='Place hand cursor over bare land to move map.';
+            await page.mouse.click(900,600);
+            await page.waitForTimeout(250);
+            result.hintDismissed=(await page.locator('#earthlineTemporaryMapHint126').count())===0;
+            result.reportHelpers=await page.evaluate(()=>typeof window.earthlineOpenVermontReport16151==='function');
+            result.logo=await page.locator('#searchInput').isVisible();
+            result.errors=errors;
+            await page.screenshot({path:'artifacts/m126/home.png'});
+          }catch(e){result.failure=String(e)}
+          await writeFile('artifacts/m126/result.json',JSON.stringify(result,null,2));
+          await browser.close();
+          console.log('M126_RESULT',JSON.stringify(result));
+          if(result.failure||!result.hintShown||!result.hintDismissed||!result.reportHelpers||!result.logo||result.errors.length)process.exitCode=1;
+          JS
+          node artifacts/m126/check.mjs
+      - name: Publish only after smoke gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix(live): temporary map hint and current-run report aquifer/location'
+          git push origin HEAD:pages-live
+      - name: Archive pass or failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mantra126-requested-fixes-evidence
+          path: artifacts/m126/
+          retention-days: 30
