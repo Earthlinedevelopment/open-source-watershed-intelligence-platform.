@@ -1,0 +1,130 @@
+name: Mantra 128 exact uploaded ZIP swale zoom paired browser gate
+on:
+  push:
+    branches: [candidate/mantra128-swale-zoom-zip]
+    paths:
+      - tools/mantra128-apply-exact-zip.py
+      - .github/workflows/mantra128-swale-zoom-zip.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: earthline-mantra128-zoom-zip
+  cancel-in-progress: false
+jobs:
+  browser-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra128-swale-zoom-zip
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Guard production SHA and apply exact uploaded block
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tools/mantra128-apply-exact-zip.py /tmp/m128.py
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          test "$(git rev-parse HEAD)" = "0dada9873cd547ccadaed99ccd976799626409fa"
+          cp index.html /tmp/m128-original.html
+          python3 /tmp/m128.py
+          test "$(git diff --name-only)" = "index.html"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install both browser engines
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium webkit
+      - name: Compare production and candidate Iowa at zoom 7 and 11
+        shell: bash
+        run: |
+          mkdir -p artifacts/m128
+          cat > artifacts/m128/check.mjs <<'JS'
+          import {chromium,webkit} from 'playwright';
+          import {readFile,writeFile} from 'node:fs/promises';
+          import {createHash} from 'node:crypto';
+          const base=await readFile('/tmp/m128-original.html'),candidate=await readFile('index.html');
+          const digest=x=>createHash('sha256').update(x).digest('hex');
+          const results={baseSha:digest(base),candidateSha:digest(candidate),engines:[]};
+          async function one(engine,name,body,label) {
+            const b=await engine.launch({headless:true,args:name==='chromium'?['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']:[]});
+            const p=await b.newPage({viewport:{width:1800,height:1000},serviceWorkers:'block'});
+            const o={engine:name,label,errors:[],checks:{},zooms:{}};
+            p.on('pageerror',e=>o.errors.push(String(e)));
+            await p.route('**/*',r=>{
+              if(r.request().isNavigationRequest()&&r.request().resourceType()==='document')return r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:body,headers:{'cache-control':'no-store'}});
+              return r.continue();
+            });
+            try{
+              const response=await p.goto('https://earthlinedevelopment.org/?m128='+label+'-'+name,{waitUntil:'domcontentloaded',timeout:60000});
+              o.checks.exactDocument=digest(await response.body())===digest(body);
+              await p.waitForSelector('#searchInput',{timeout:30000});
+              await p.locator('#searchInput').fill('Iowa state');
+              await p.locator('#searchInput').press('Enter');
+              await p.waitForFunction(()=>/screening published|regional analysis complete|analysis failed/i.test(document.getElementById('earthlineVermontStatus16147')?.textContent||''),null,{timeout:160000});
+              for(const z of [7,11,7]) {
+                await p.evaluate(z=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;m.jumpTo({zoom:z});},z);
+                await p.waitForTimeout(2100);
+                const v=await p.evaluate(()=>{
+                  const svg=document.getElementById('earthlineRegionalVectorOverlay16020'),g=svg?.querySelector('g[data-layer="swale-opportunities"]');
+                  const path=g?.querySelector('path.earthline-swale-core-16168')||g?.querySelector('path');
+                  const rect=path?.getBoundingClientRect(),cs=path?getComputedStyle(path):null,gs=g?getComputedStyle(g):null;
+                  return {zoom:(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap)?.getZoom(),
+                    groupAttribute:g?.getAttribute('display'),groupDisplay:gs?.display,
+                    nearFlag:document.documentElement.hasAttribute('data-earthline-swales-near'),
+                    totalPaths:g?.querySelectorAll('path').length||0,
+                    pathDisplay:cs?.display,pathVisibility:cs?.visibility,pathOpacity:cs?.opacity,
+                    pathStrokeWidth:cs?.strokeWidth,rectWidth:rect?.width??null,rectHeight:rect?.height??null,
+                    status:document.getElementById('earthlineVermontStatus16147')?.textContent?.slice(0,160)};
+                });
+                o.zooms[String(z)+(Object.keys(o.zooms).length>1?'-return':'')]=v;
+                await p.screenshot({path:'artifacts/m128/'+name+'-'+label+'-z'+z+'-'+Object.keys(o.zooms).length+'.png',timeout:20000});
+              }
+            }catch(e){o.failure=String(e)}
+            await b.close();return o;
+          }
+          for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]) {
+            const baseline=await one(engine,name,base,'production');
+            const changed=await one(engine,name,candidate,'candidate');
+            const z7=changed.zooms['7'],z11=changed.zooms['11'],z7Back=changed.zooms['7-return'];
+            const checks={
+              identity:baseline.checks.exactDocument&&changed.checks.exactDocument,
+              analysis:!baseline.failure&&!changed.failure,
+              samePaths:z11?.totalPaths>0&&z11.totalPaths===baseline.zooms['11']?.totalPaths,
+              broadHidden:z7?.groupDisplay==='none'&&z7?.nearFlag===false,
+              closeShown:z11?.groupDisplay!=='none'&&z11?.nearFlag===true&&z11?.rectWidth>0&&z11?.rectHeight>0,
+              returnHidden:z7Back?.groupDisplay==='none'&&z7Back?.nearFlag===false,
+              noNewPageErrors:changed.errors.length<=baseline.errors.length
+            };
+            results.engines.push({name,checks,baseline,candidate:changed,passed:Object.values(checks).every(Boolean)});
+            console.log('M128_ENGINE '+JSON.stringify({name,checks,baseline:baseline.zooms,candidate:changed.zooms,errors:changed.errors,failures:[baseline.failure,changed.failure]}));
+          }
+          results.passed=results.engines.every(e=>e.passed);
+          await writeFile('artifacts/m128/results.json',JSON.stringify(results,null,2));
+          console.log('M128_FINAL '+JSON.stringify({passed:results.passed,engines:results.engines.map(e=>({name:e.name,checks:e.checks}))}));
+          if(!results.passed)process.exitCode=1;
+          JS
+          node artifacts/m128/check.mjs
+      - name: Promote tested exact source only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse origin/pages-live)" = "0dada9873cd547ccadaed99ccd976799626409fa"
+          test "$(git hash-object index.html)" = "0f865cf6dd3ffec340214c99e58a6d51aa087f9e"
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix(live): show existing swale group at zoom 10+ using uploaded verified CSS gate'
+          git push origin HEAD:pages-live
+      - name: Preserve all browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m128-swale-zoom-both-browsers
+          path: artifacts/m128/
+          retention-days: 30
