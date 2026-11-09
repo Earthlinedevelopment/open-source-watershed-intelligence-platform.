@@ -35971,3 +35971,20 @@ html[data-earthline-analysis-tier="regional"] #earthlineCenterTarget15782 .dot{
   #earthlineZoomDock15779{right:12px!important;top:auto!important;bottom:14px!important;transform:none!important}
 }
 </style>
+<style id="earthline-swale-zoom-gate-css">
+/* Swale lines at close zoom: CSS overrides the M105 display="none" attribute on the Regional swale group once the map is zoomed to 10 or closer. Broad zoom keeps M105 behaviour. */
+html[data-earthline-swales-near] #earthlineRegionalVectorOverlay16020 g[data-layer="swale-opportunities"]{display:inline!important}
+</style>
+<script id="earthline-swale-zoom-gate-js">
+(function(){
+  function getMap(){try{return (typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap||null}catch(_){return window.earthlineMap||null}}
+  var tries=0;
+  function bind(){
+    var m=getMap();
+    if(!m||typeof m.on!=='function'||typeof m.getZoom!=='function'){if(++tries<240)setTimeout(bind,500);return}
+    function update(){try{document.documentElement.toggleAttribute('data-earthline-swales-near',m.getZoom()>=10)}catch(_){}}
+    m.on('zoom',update);m.on('zoomend',update);m.on('moveend',update);update();
+  }
+  bind();
+})();
+</script>
