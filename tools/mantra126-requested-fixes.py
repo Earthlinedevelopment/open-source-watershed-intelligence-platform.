@@ -43,7 +43,7 @@ hint="""
 """
 change('  function initRealGlobe16233()',hint+'  function initRealGlobe16233()')
 start=only(s,'  function initRealGlobe16233()')
-end=s.find('\n   function ensureRegionalCorridorTabs',start)
+end=s.find('function ensureRegionalCorridorTabs',start)
 if end<0:raise RuntimeError('initializer boundary not found')
 f=s[start:end]
 if f.count('return true}')!=1:raise RuntimeError('initializer malformed')
