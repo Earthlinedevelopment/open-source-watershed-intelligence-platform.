@@ -1,0 +1,29 @@
+name: M127 Swale SVG computed visibility evidence
+on:
+  push:
+    branches: [candidate/mantra127-swale-visibility-diagnostic]
+    paths:
+      - tests/mantra127-swale-computed.mjs
+      - .github/workflows/mantra127-swale-computed.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - run: node tests/mantra127-swale-computed.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m127-swale-styles
+          path: artifacts/m127-swale/
+          retention-days: 30
