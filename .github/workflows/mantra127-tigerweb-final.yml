@@ -1,0 +1,97 @@
+name: M127 report place and aquifer cover map correction
+on:
+  push:
+    branches: [candidate/mantra127-tigerweb-final]
+    paths:
+      - tools/mantra127-tigerweb-final.py
+      - .github/workflows/mantra127-tigerweb-final.yml
+permissions:
+  contents: write
+concurrency:
+  group: earthline-m127-report-final
+  cancel-in-progress: false
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra127-tigerweb-final
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Apply to exact protected production source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tools/mantra127-tigerweb-final.py /tmp/m127-tiger.py
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          test "$(git rev-parse HEAD)" = "87b47f46ed475e2d1a5da2efeee68b36ec73e090"
+          python3 /tmp/m127-tiger.py
+          test "$(git diff --name-only)" = "index.html"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Test real TIGERweb result plus both report maps
+        shell: bash
+        run: |
+          mkdir -p artifacts/m127-report
+          cat > artifacts/m127-report/check.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {readFile,writeFile} from 'node:fs/promises';
+          const html=await readFile('index.html');
+          const b=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+          const p=await b.newPage({viewport:{width:1500,height:950},serviceWorkers:'block'});
+          const o={checks:{},errors:[]};p.on('pageerror',e=>o.errors.push(String(e)));
+          await p.route('**/*',r=>r.request().isNavigationRequest()&&r.request().resourceType()==='document'?r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html}):r.continue());
+          try{
+            await p.goto('https://earthlinedevelopment.org/?m127report=1',{waitUntil:'domcontentloaded',timeout:60000});
+            await p.waitForSelector('#searchInput',{timeout:30000});
+            await p.locator('#searchInput').fill('Rutland, Vermont');
+            await p.waitForFunction(()=>document.querySelector('#earthlineSearchSuggestions15970')?.classList.contains('open'),null,{timeout:18000});
+            await p.locator('#earthlineSearchSuggestions15970 button[data-query]').first().click();
+            await p.waitForFunction(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970,null,{timeout:110000});
+            await p.evaluate(()=>window.earthlineOpenVermontReport16151());
+            await p.waitForSelector('#earthlineVermontReportPanel16149.open .el49-report',{timeout:30000});
+            o.report=await p.evaluate(()=>{
+              const d=window.EARTHLINE_FROZEN_REPORT_SNAPSHOT_16388;
+              const panel=document.getElementById('earthlineVermontReportPanel16149');
+              const cover=panel?.querySelector('.el49-cover .el49-cover-map svg');
+              const technical=panel?.querySelectorAll('.el49-page')[2]?.querySelector('svg');
+              const isAquifer=el=>[...(el?.querySelectorAll('path')||[])].filter(x=>x.getAttribute('fill-opacity')==='.27').length;
+              return {placeLine:d?.placeLine,query:d?.query,aqState:d?.reportAquifer?.state,aqFeatures:d?.reportAquifer?.features?.length||0,
+                coverAquiferPaths:isAquifer(cover),technicalAquiferPaths:isAquifer(technical),coverPresent:!!cover,technicalPresent:!!technical};
+            });
+            o.checks.countyFromTIGER=typeof o.report.placeLine==='string'&&!o.report.placeLine.startsWith('Coordinates:')&&/Rutland/i.test(o.report.placeLine);
+            o.checks.aquiferLoaded=o.report.aqState==='loaded'&&o.report.aqFeatures>0;
+            o.checks.coverAquifers=o.report.coverAquiferPaths>0;
+            o.checks.technicalAquifers=o.report.technicalAquiferPaths>0;
+            o.checks.noErrors=o.errors.length===0;
+            await p.screenshot({path:'artifacts/m127-report/report.png',timeout:20000});
+          }catch(e){o.failure=String(e)}
+          await writeFile('artifacts/m127-report/result.json',JSON.stringify(o,null,2));
+          await b.close();
+          console.log('M127_REPORT_RESULT '+JSON.stringify(o));
+          if(o.failure||Object.keys(o.checks).length!==5||Object.values(o.checks).some(v=>!v))process.exitCode=1;
+          JS
+          node artifacts/m127-report/check.mjs
+      - name: Publish only verified changes
+        run: |
+          set -euo pipefail
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix(live): source-backed TIGERweb county and aquifers on both report maps'
+          git push origin HEAD:pages-live
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m127-report-map-evidence
+          path: artifacts/m127-report/
+          retention-days: 30
