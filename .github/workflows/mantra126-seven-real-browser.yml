@@ -1,0 +1,45 @@
+name: Mantra 126 - seven public site browser tests
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - tests/mantra126-seven-real-browser.mjs
+      - .github/workflows/mantra126-seven-real-browser.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: earthline-m126-seven-live
+  cancel-in-progress: false
+jobs:
+  seven-independent-browsers:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        pass: [1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Test actual public HTTPS site - independent pass ${{ matrix.pass }}
+        env:
+          PASS_NUMBER: ${{ matrix.pass }}
+        run: node tests/mantra126-seven-real-browser.mjs
+      - name: Preserve results and screenshots on pass or fail
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m126-seven-pass-${{ matrix.pass }}
+          path: artifacts/m126-seven/pass-${{ matrix.pass }}/
+          if-no-files-found: warn
+          retention-days: 30
