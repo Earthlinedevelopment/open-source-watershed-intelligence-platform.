@@ -1,0 +1,82 @@
+name: Mantra 126 stabilize temporary Regional hint
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - tools/mantra126-hint-persistence.py
+      - .github/workflows/mantra126-hint-persistence.yml
+permissions:
+  contents: write
+concurrency:
+  group: earthline-m126-hint-stable
+  cancel-in-progress: false
+jobs:
+  verified-commit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pages-live
+          persist-credentials: true
+      - name: Apply only temporary hint lifecycle correction
+        run: |
+          set -euo pipefail
+          python3 tools/mantra126-hint-persistence.py
+          test "$(git diff --name-only)" = "index.html"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify actual Regional hint stays visible after map click
+        run: |
+          mkdir -p artifacts/m126-hint-persistence
+          cat > artifacts/m126-hint-persistence/check.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {readFile,writeFile} from 'node:fs/promises';
+          const html=await readFile('index.html');
+          const b=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+          const p=await b.newPage({viewport:{width:1500,height:950},serviceWorkers:'block'});
+          const r={checks:{},errors:[]};p.on('pageerror',e=>r.errors.push(String(e)));
+          await p.route('**/*',route=>route.request().isNavigationRequest()&&route.request().resourceType()==='document'?route.fulfill({status:200,contentType:'text/html',body:html}):route.continue());
+          try{
+            await p.goto('https://earthlinedevelopment.org/?hint=persistence',{waitUntil:'domcontentloaded',timeout:60000});
+            await p.waitForSelector('#searchInput',{timeout:30000});
+            r.checks.notOnHome=await p.locator('#earthlineTemporaryMapHint126').count()===0;
+            await p.locator('#searchInput').fill('Rutland, Vermont');
+            await p.waitForFunction(()=>document.querySelector('#earthlineSearchSuggestions15970')?.classList.contains('open'),null,{timeout:18000});
+            await p.locator('#earthlineSearchSuggestions15970 button[data-query]').first().click();
+            await p.waitForFunction(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970,null,{timeout:110000});
+            await p.waitForFunction(()=>document.querySelector('#earthlineTemporaryMapHint126')?.textContent==='Place hand cursor over bare land to move map.',null,{timeout:12000});
+            r.checks.visibleAfterRegional=true;
+            await p.mouse.click(1000,650);
+            await p.waitForTimeout(450);
+            r.checks.persistsAfterMapClick=await p.locator('#earthlineTemporaryMapHint126').count()===1;
+            await p.screenshot({path:'artifacts/m126-hint-persistence/hint-visible.png'});
+            r.checks.reportUnchanged=await p.evaluate(()=>typeof window.earthlineOpenVermontReport16151==='function');
+            r.checks.noErrors=r.errors.length===0;
+          }catch(e){r.failure=String(e)}
+          await writeFile('artifacts/m126-hint-persistence/result.json',JSON.stringify(r,null,2));
+          await b.close();
+          console.log('M126_HINT_PERSISTENCE '+JSON.stringify(r));
+          if(r.failure||Object.values(r.checks).length!==5||Object.values(r.checks).some(x=>!x))process.exitCode=1;
+          JS
+          node artifacts/m126-hint-persistence/check.mjs
+      - name: Publish exact tested lifecycle fix
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix(live): preserve requested Regional note until timeout'
+          git push origin HEAD:pages-live
+      - name: Archive check
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m126-hint-persistence
+          path: artifacts/m126-hint-persistence/
+          retention-days: 30
