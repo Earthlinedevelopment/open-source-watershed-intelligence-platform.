@@ -6,10 +6,11 @@ on:
       - index.html
       - earthline-elder-restored-17097.js
       - tests/hotfix3-browser.mjs
+      - tools/mantra126-us-home-restore.py
       - .github/workflows/mantra123-hotfix3-review.yml
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   browser:
     runs-on: ubuntu-24.04
@@ -21,7 +22,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          persist-credentials: false
+          persist-credentials: true
+      - name: Apply Mantra 126 accepted home-camera correction (review checkout only)
+        run: python3 tools/mantra126-us-home-restore.py
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -37,6 +40,21 @@ jobs:
           set -o pipefail
           mkdir -p artifacts/hotfix3/${{ matrix.engine }}
           node tests/hotfix3-browser.mjs 2>&1 | tee artifacts/hotfix3/${{ matrix.engine }}/run.log
+      - name: Commit repaired candidate only after Chromium browser gate
+        if: success() && matrix.engine == 'chromium'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- index.html; then
+            echo 'Candidate camera already corrected'
+            exit 0
+          fi
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix(candidate): restore accepted US-facing globe after Chromium gate'
+          git push origin HEAD:mantra123-hotfix3-review
       - name: Preserve run outcome even if setup or browser fails
         if: always()
         shell: bash
