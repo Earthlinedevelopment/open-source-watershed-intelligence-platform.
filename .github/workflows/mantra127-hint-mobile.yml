@@ -1,0 +1,105 @@
+name: M127 mobile dismissible Regional hint - browser-gated live fix
+on:
+  push:
+    branches: [candidate/mantra127-hint-mobile]
+    paths:
+      - tools/mantra127-hint-mobile.py
+      - .github/workflows/mantra127-hint-mobile.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: earthline-m127-dismissible-tip-promotion
+  cancel-in-progress: false
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra127-hint-mobile
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Patch precise production source without adding scripts to live branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tools/mantra127-hint-mobile.py /tmp/m126-dismissible-note.py
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          test "$(git hash-object index.html)" = "ab7daeb8dc98b674e8b1e2e2ecb8011d78b427e9"
+          python3 /tmp/m126-dismissible-note.py
+          test "$(git diff --name-only)" = "index.html"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Browser-check Regional display, scale clearance and close control
+        shell: bash
+        run: |
+          mkdir -p artifacts/m126-dismissible
+          cat > artifacts/m126-dismissible/check.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {readFile,writeFile} from 'node:fs/promises';
+          const html=await readFile('index.html');
+          const browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+          const results=[];
+          for(let pass=1;pass<=3;pass++){
+            const ctx=await browser.newContext({viewport:{width:pass===3?390:1500,height:pass===3?844:950},serviceWorkers:'block'});
+            const page=await ctx.newPage();
+            const rec={pass,checks:{},errors:[]};page.on('pageerror',e=>rec.errors.push(String(e)));
+            await page.route('**/*',route=>route.request().isNavigationRequest()&&route.request().resourceType()==='document'?route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html,headers:{'cache-control':'no-store'}}):route.continue());
+            try{
+              await page.goto('https://earthlinedevelopment.org/?m126-dismissible='+pass,{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#searchInput',{timeout:30000});
+              rec.checks.absentOnGlobe=await page.locator('#earthlineTemporaryMapHint126').count()===0;
+              await page.locator('#searchInput').fill('Rutland, Vermont');
+              await page.waitForFunction(()=>document.querySelector('#earthlineSearchSuggestions15970')?.classList.contains('open'),null,{timeout:18000});
+              await page.locator('#earthlineSearchSuggestions15970 button[data-query]').first().click();
+              await page.waitForFunction(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970,null,{timeout:110000});
+              await page.waitForFunction(()=>document.querySelector('#earthlineTemporaryMapHint126 span')?.textContent==='Place hand cursor over bare land to move map.',null,{timeout:12000});
+              rec.checks.shownAfterRegional=true;
+              rec.layout=await page.evaluate(()=>{
+                const tip=document.getElementById('earthlineTemporaryMapHint126');
+                const close=tip?.querySelector('button');
+                const scale=[...document.querySelectorAll('.mapboxgl-ctrl-scale,.maplibregl-ctrl-scale')].filter(x=>x.getBoundingClientRect().width>0);
+                const a=tip.getBoundingClientRect();
+                const overlap=scale.some(el=>{const b=el.getBoundingClientRect();return a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top});
+                return {top:a.top,bottom:a.bottom,scaleCount:scale.length,overlap,closeVisible:!!close&&close.getBoundingClientRect().width>0,closeLabel:close?.getAttribute('aria-label')};
+              });
+              rec.checks.clearOfScale=rec.layout.top>=48&&!rec.layout.overlap;
+              rec.checks.closePresent=rec.layout.closeVisible&&rec.layout.closeLabel==='Dismiss map tip';
+              await page.screenshot({path:'artifacts/m126-dismissible/pass-'+pass+'.png'});
+              await page.getByRole('button',{name:'Dismiss map tip'}).click();
+              rec.checks.dismissible=await page.locator('#earthlineTemporaryMapHint126').count()===0;
+              rec.checks.noErrors=rec.errors.length===0;
+            }catch(e){rec.failure=String(e)}
+            rec.passed=!rec.failure&&Object.keys(rec.checks).length===6&&Object.values(rec.checks).every(Boolean);
+            results.push(rec);await ctx.close();
+          }
+          await writeFile('artifacts/m126-dismissible/results.json',JSON.stringify(results,null,2));
+          await browser.close();
+          console.log('M126_DISMISSIBLE_RESULTS '+JSON.stringify(results));
+          if(results.some(x=>!x.passed))process.exitCode=1;
+          JS
+          node artifacts/m126-dismissible/check.mjs
+      - name: Publish exact tested UI patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+users.noreply.github.com@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix(live): move Regional note clear of scale and add close button'
+          git push origin HEAD:pages-live
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m126-dismissible-hint-evidence
+          path: artifacts/m126-dismissible/
+          retention-days: 30
