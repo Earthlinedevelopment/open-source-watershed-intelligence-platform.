@@ -35623,19 +35623,42 @@ html.earthline-panel-open-16188 #earthlinePanel16188{background:#111923!importan
   function earthlineShowMapHint126(){
     if(earthlineMapHintShown126)return;
     earthlineMapHintShown126=true;
-    const tip=document.createElement('div');
+    const tip=document.createElement('aside');
     tip.id='earthlineTemporaryMapHint126';
     tip.setAttribute('role','status');
-    tip.textContent='Place hand cursor over bare land to move map.';
-    Object.assign(tip.style,{position:'fixed',bottom:'24px',left:'50%',transform:'translateX(-50%)',maxWidth:'calc(100vw - 32px)',background:'rgba(15,28,36,.94)',color:'#fff',padding:'10px 18px',fontFamily:'Noto Sans,sans-serif',fontSize:'14px',textAlign:'center',borderRadius:'8px',zIndex:'1200',pointerEvents:'none',boxShadow:'0 4px 18px rgba(0,0,0,.25)'});
+    tip.setAttribute('aria-label','Map navigation tip');
+    Object.assign(tip.style,{
+      position:'fixed',top:'96px',left:'50%',bottom:'auto',
+      transform:'translateX(-50%)',width:'max-content',
+      maxWidth:'min(420px,calc(100vw - 32px))',
+      display:'flex',gap:'12px',alignItems:'center',
+      background:'rgba(15,28,36,.97)',color:'#fff',
+      padding:'10px 12px 10px 16px',
+      fontFamily:'Noto Sans,sans-serif',fontSize:'14px',
+      textAlign:'left',borderRadius:'9px',
+      zIndex:'2147483647',pointerEvents:'auto',
+      boxShadow:'0 4px 18px rgba(0,0,0,.3)'
+    });
+    const text=document.createElement('span');
+    text.textContent='Place hand cursor over bare land to move map.';
+    const close=document.createElement('button');
+    close.type='button';
+    close.setAttribute('aria-label','Dismiss map tip');
+    close.textContent='×';
+    Object.assign(close.style,{
+      display:'inline-flex',alignItems:'center',justifyContent:'center',
+      flex:'0 0 28px',width:'28px',height:'28px',
+      background:'rgba(255,255,255,.16)',color:'#fff',
+      border:'1px solid rgba(255,255,255,.45)',borderRadius:'5px',
+      cursor:'pointer',fontSize:'22px',lineHeight:'1'
+    });
+    tip.append(text,close);
     document.body.appendChild(tip);
-    const dismiss=()=>{tip.remove();document.removeEventListener('pointerdown',dismiss,true);document.removeEventListener('wheel',dismiss,true);document.removeEventListener('earthline:analysis-complete',dismiss,true)};
-    /* Keep the instruction visible for its full temporary interval.
-       Mapbox and overlapping controls can dispatch inconsistent pointer events. */
-    /* Do not immediately dismiss the requested message on analysis completion. */
-    setTimeout(dismiss,20000);
+    let timer=null;
+    const dismiss=()=>{if(timer!==null)clearTimeout(timer);tip.remove()};
+    close.addEventListener('click',dismiss,{once:true});
+    timer=setTimeout(dismiss,20000);
   }
-
   /* M126: show the instruction only AFTER the first successful Regional publication.
      The home map cannot consume the one-time hint. */
   (function setupRegionalMapHint126(){
