@@ -1,0 +1,99 @@
+name: M127 Elder manifest fetch latency - bounded concurrency
+on:
+  push:
+    branches: [candidate/mantra127-elder-load-parallel]
+    paths:
+      - earthline-elder-restored-17097.js
+      - .github/workflows/mantra127-elder-load-parallel.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: earthline-m127-elder
+  cancel-in-progress: false
+jobs:
+  syntax-and-real-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra127-elder-load-parallel
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Preserve candidate asset and switch to live source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp earthline-elder-restored-17097.js /tmp/elder-candidate.js
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          test "$(git rev-parse HEAD)" = "47da648130c8d5dbf6b6ce1cbceb3297c462800a"
+          test "$(git hash-object earthline-elder-restored-17097.js)" = "808890f0c86d501939e8cfdf00148287c7dd3ebc"
+          cp /tmp/elder-candidate.js earthline-elder-restored-17097.js
+          test "$(git diff --name-only)" = "earthline-elder-restored-17097.js"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify JS and manifest evidence unchanged
+        run: |
+          node --check earthline-elder-restored-17097.js
+          node - <<'JS'
+          const fs=require('node:fs');
+          const s=fs.readFileSync('earthline-elder-restored-17097.js','utf8');
+          const m=JSON.parse(fs.readFileSync('data/elder-trees/v2/manifest.json','utf8'));
+          if(m.science_baseline!=='17118'||m.datasets.length<7)throw Error('Elder approved baseline changed');
+          for(const term of ['Math.min(4,datasets.length)','responses[i]={features:fc.features||[]}','await Promise.all','state.all=all;state.loaded=true','EARTHLINE_ELDER_TREES_V1_17097'])if(!s.includes(term))throw Error('Elder required invariant missing: '+term);
+          console.log('ELDER_APPROVED_METHOD_PRESERVED',m.science_baseline,'datasetCount',m.datasets.length);
+          JS
+      - name: Browser verify Elder source loads and remains operational
+        shell: bash
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+          mkdir -p artifacts/m127-elder
+          cat > artifacts/m127-elder/check.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {readFile,writeFile} from 'node:fs/promises';
+          const js=await readFile('earthline-elder-restored-17097.js','utf8');
+          const b=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+          const p=await b.newPage({viewport:{width:1450,height:950},serviceWorkers:'block'});
+          const o={checks:{},errors:[]};
+          p.on('pageerror',e=>o.errors.push(String(e)));
+          await p.route('**/earthline-elder-restored-17097.js*',r=>r.fulfill({status:200,contentType:'application/javascript',body:js}));
+          try{
+            await p.goto('https://earthlinedevelopment.org/?m127elder=1',{waitUntil:'domcontentloaded',timeout:60000});
+            await p.waitForSelector('#searchInput',{timeout:30000});
+            await p.waitForFunction(()=>!!window.EARTHLINE_ELDER_TREES_V1_17097,null,{timeout:45000});
+            const state=await p.evaluate(async()=>{
+              const a=window.EARTHLINE_ELDER_TREES_V1_17097;
+              const s=await Promise.race([a.refresh(),new Promise((_,rej)=>setTimeout(()=>rej(Error('refresh timeout')),30000))]);
+              return {method:a.scienceBaseline,weight:a.rechargeWeight,features:a.features().length,summaryCount:s?.total??null};
+            });
+            o.state=state;
+            o.checks.scienceProtected=state.method==='17118'&&state.weight===0;
+            o.checks.refreshSuccess=state.summaryCount!==null;
+            o.checks.noPageErrors=o.errors.length===0;
+            await p.screenshot({path:'artifacts/m127-elder/home.png'});
+          }catch(e){o.failure=String(e)}
+          await writeFile('artifacts/m127-elder/result.json',JSON.stringify(o,null,2));
+          await b.close();
+          console.log('M127_ELDER_RESULT '+JSON.stringify(o));
+          if(o.failure||Object.keys(o.checks).length!==3||Object.values(o.checks).some(x=>!x))process.exitCode=1;
+          JS
+          node artifacts/m127-elder/check.mjs
+      - name: Promote only evidence-preserving loader speed patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add earthline-elder-restored-17097.js
+          git commit -m 'perf(live): parallelize Elder evidence fetch with preserved feature order'
+          git push origin HEAD:pages-live
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m127-elder-loader-evidence
+          path: artifacts/m127-elder/
+          retention-days: 30
