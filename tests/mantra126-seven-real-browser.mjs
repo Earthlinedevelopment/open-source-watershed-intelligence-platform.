@@ -47,7 +47,7 @@ try{
    await page.screenshot({path:out+'/hint-after-regional.png',timeout:20000});
    await page.mouse.click(1000,650);
    await page.waitForTimeout(250);
-   result.checks.dismissed=(await page.locator('#earthlineTemporaryMapHint126').count())===0;
+   result.checks.persistsAfterMapClick=(await page.locator('#earthlineTemporaryMapHint126').count())===1;
   }catch(e){result.failures.push('Post-Regional hint missing: '+String(e).slice(0,220));result.checks.exactHint=false;result.checks.afterRegional=false}
   try{
    await page.evaluate(()=>window.earthlineOpenVermontReport16151());
