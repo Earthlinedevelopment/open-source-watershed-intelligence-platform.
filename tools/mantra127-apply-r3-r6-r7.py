@@ -35,7 +35,7 @@ a=candidate.index(r7start)
 b=candidate.index('#earthlineResultsSlot16188:empty',a)
 r7=candidate[a:b]
 if 'Hotfix 3 R7' in live:raise RuntimeError('R7 already installed')
-replace_once('#earthlineResultsSlot16188:empty',r7+'#earthlineResultsSlot16188:empty','R7')
+replace_once('#earthlineResultsSlot16188:empty,#earthlineStatusSlot16188:empty',r7+'#earthlineResultsSlot16188:empty,#earthlineStatusSlot16188:empty','R7')
 # Fail-closed protected anchors
 assert "if(activeTier16168()!=='focus')sg.setAttribute('display','none')" in live
 assert 'Place hand cursor over bare land to move map.' in live
