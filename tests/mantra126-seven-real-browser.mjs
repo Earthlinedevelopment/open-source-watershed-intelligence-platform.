@@ -30,7 +30,14 @@ try{
  result.checks.reportAquiferImplementation=await page.evaluate(()=>String(window.earthlineOpenVermontReport16151||'').includes('reportAquiferContext123'));
  // Genuine regional analysis from the user's search button; no injected mock data.
  await page.locator('#searchInput').fill('Rutland, Vermont');
- await page.locator('#runBtn').click();
+ await page.waitForFunction(()=>document.querySelector('#earthlineSearchSuggestions15970')?.classList.contains('open'),null,{timeout:18000});
+ await page.locator('#earthlineSearchSuggestions15970 button[data-query]').first().click();
+ result.checks.autocompleteSelection=true;
+ // Selecting a place can launch analysis itself; otherwise use the visible Run control.
+ await page.waitForTimeout(600);
+ if(!(await page.evaluate(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970))) {
+   await page.locator('#runBtn').evaluate(el=>el.click());
+ }
  try{
   await page.waitForFunction(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||
     /screening published|regional analysis complete/i.test(document.querySelector('#earthlineVermontStatus16147')?.textContent||''),
