@@ -2754,6 +2754,24 @@ Projects footer, and Support footer. Core Earthline analysis remains.
 <div class="ticks"><span>0</span><span id="scaleMid">50</span><span id="scaleEnd">100 m</span></div>
 </div>
 <div class="coordbar" id="coordBar">Drag the globe to explore · Scroll to zoom · Search any location</div>
+<!-- MANTRA 125: temporary map navigation guidance; presentation-only -->
+<style id="earthline-map-move-notice-125-style">
+#earthlineMapMoveNotice125{position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:1340;max-width:min(390px,calc(100vw - 36px));padding:10px 16px;border:1px solid rgba(78,201,255,.66);border-radius:12px;background:rgba(7,20,29,.95);box-shadow:0 10px 32px rgba(0,0,0,.3);color:#eefaff;text-align:center;font:750 13px/1.4 "Noto Sans",system-ui,sans-serif;pointer-events:none;opacity:1;transition:opacity .3s ease}
+#earthlineMapMoveNotice125[data-hidden="true"]{opacity:0;visibility:hidden}
+@media(max-width:720px){#earthlineMapMoveNotice125{top:14px;font-size:12px;padding:8px 12px}}
+</style>
+<div id="earthlineMapMoveNotice125" role="status" aria-live="polite">Drag the map to move around · Scroll or pinch to zoom</div>
+<script id="earthline-map-move-notice-125-script">
+(function(){
+  const note=document.getElementById('earthlineMapMoveNotice125');
+  if(!note)return;
+  let hidden=false;
+  const hide=()=>{if(hidden)return;hidden=true;note.dataset.hidden='true';setTimeout(()=>note.remove(),400)};
+  setTimeout(hide,8500);
+  const area=note.closest('.map-area');
+  if(area){area.addEventListener('pointerdown',hide,{once:true,passive:true});area.addEventListener('wheel',hide,{once:true,passive:true});area.addEventListener('touchstart',hide,{once:true,passive:true});}
+})();
+</script>
 <div class="attrib"><span id="attribTxt">DEM: generated terrain · D8 flow model<br/>Earthline offline screening build</span></div>
 <div class="toast" id="toast"></div>
 </div>
