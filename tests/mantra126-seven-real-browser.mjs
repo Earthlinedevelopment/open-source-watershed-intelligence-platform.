@@ -17,14 +17,8 @@ try{
  result.checks.http200=response.status()===200;
  await page.waitForSelector('#searchInput',{timeout:35000});
  result.checks.search=await page.locator('#searchInput').isVisible();
- await page.waitForFunction(()=>!!document.querySelector('#earthlineTemporaryMapHint126'),null,{timeout:25000});
- result.hint=await page.locator('#earthlineTemporaryMapHint126').textContent();
- result.checks.exactHint=result.hint.trim()==='Place hand cursor over bare land to move map.';
- await page.screenshot({path:out+'/hint.png',timeout:20000});
- // Mouse or touch dismissal exercises user-facing behavior on the delivered site.
- await page.mouse.click(1000,650);
- await page.waitForTimeout(300);
- result.checks.dismissed=await page.locator('#earthlineTemporaryMapHint126').count()===0;
+ await page.waitForTimeout(1200);
+ result.checks.notOnHome=(await page.locator('#earthlineTemporaryMapHint126').count())===0;
  result.checks.reportEntryFunction=await page.evaluate(()=>typeof window.earthlineOpenVermontReport16151==='function');
  result.checks.reportLocationImplementation=await page.evaluate(()=>String(window.earthlineOpenVermontReport16151||'').includes('reportPlaceLine123'));
  result.checks.reportAquiferImplementation=await page.evaluate(()=>String(window.earthlineOpenVermontReport16151||'').includes('reportAquiferContext123'));
@@ -45,6 +39,16 @@ try{
   result.regionalPublished=true;
  }catch(e){result.regionalPublished=false;result.failures.push('Real Regional result timeout: '+String(e).slice(0,220))}
  if(result.regionalPublished){
+  try{
+   await page.waitForFunction(()=>document.getElementById('earthlineTemporaryMapHint126')?.textContent==='Place hand cursor over bare land to move map.',null,{timeout:13000});
+   result.hint=await page.locator('#earthlineTemporaryMapHint126').textContent();
+   result.checks.exactHint=result.hint.trim()==='Place hand cursor over bare land to move map.';
+   result.checks.afterRegional=!!(await page.evaluate(()=>window.EARTHLINE_MAP_HINT_AUDIT_126?.shown));
+   await page.screenshot({path:out+'/hint-after-regional.png',timeout:20000});
+   await page.mouse.click(1000,650);
+   await page.waitForTimeout(250);
+   result.checks.dismissed=(await page.locator('#earthlineTemporaryMapHint126').count())===0;
+  }catch(e){result.failures.push('Post-Regional hint missing: '+String(e).slice(0,220));result.checks.exactHint=false;result.checks.afterRegional=false}
   try{
    await page.evaluate(()=>window.earthlineOpenVermontReport16151());
    await page.waitForSelector('#earthlineVermontReportPanel16149.open .el49-report',{timeout:25000});
