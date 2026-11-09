@@ -1,0 +1,54 @@
+name: Mantra 126 restore candidate US home camera
+on:
+  push:
+    branches: [mantra123-hotfix3-review]
+    paths:
+      - tools/mantra126-us-home-restore.py
+      - .github/workflows/mantra126-us-home-restore.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: m126-candidate-home-camera
+  cancel-in-progress: false
+jobs:
+  repair-candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mantra123-hotfix3-review
+          persist-credentials: true
+      - name: Verify exact approved camera correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp index.html /tmp/m126-before.html
+          python3 tools/mantra126-us-home-restore.py
+          python3 - <<'PY'
+          from pathlib import Path
+          old=Path('/tmp/m126-before.html').read_bytes()
+          new=Path('index.html').read_bytes()
+          a=b'm.jumpTo({center:[0,18],zoom:1.25,bearing:0,pitch:0})'
+          b=b'm.jumpTo({center:[-96,39],zoom:1.25,bearing:0,pitch:0})'
+          assert new.count(b)==1
+          if old!=new: assert old.replace(a,b,1)==new, 'Only home-camera literal may change'
+          assert b'earthlineSuggestionsSuppressed' in new
+          assert b'earthline-swale-core-16168' in new
+          print('M126_STATIC_PASS')
+          PY
+      - name: Save isolated candidate fix (never public production)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- index.html; then
+            echo 'Already repaired'
+            exit 0
+          fi
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix(candidate): preserve approved US-facing home globe'
+          git push origin HEAD:mantra123-hotfix3-review
