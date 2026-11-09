@@ -20,6 +20,17 @@ def replace_once(old,new,label):
     live=live.replace(old,new,1)
 # R3: remove old Property chip only when Regional run has published
 r3=line(candidate,r'/\* Hotfix 3 R3:')
+r3 += """
+  /* M127 post-publication precedence: other UI listeners may recreate the old chip. */
+  document.addEventListener('earthline:analysis-complete',e=>{
+    const tier=String(e?.detail?.tier||e?.detail?.mode||'').toLowerCase();
+    if(!tier.includes('regional'))return;
+    queueMicrotask(()=>{
+      const chip=document.getElementById('earthlineTierNotice16173');
+      if(chip){chip.textContent='';chip.dataset.mode='regional';chip.classList.remove('visible')}
+    });
+  },{passive:true});
+"""
 anchor=line(live,r'function setTierNotice\(mode,text\)')
 if 'Hotfix 3 R3' in live:raise RuntimeError('R3 already present')
 replace_once(anchor,anchor+'\n'+r3,'R3')
