@@ -1,0 +1,49 @@
+name: M129 promote accepted Elder presentation only
+on:
+  push:
+    branches: [candidate/mantra129-tree-canopy-ui]
+    paths:
+      - .github/workflows/mantra129-promote-elder-ui.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: earthline-m129-elder-presentation-promotion
+  cancel-in-progress: false
+jobs:
+  promote:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra129-tree-canopy-ui
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Verify tested candidate and live ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object earthline-elder-restored-17097.js)" = "b5a06e9a2da46c7be04266a575fa2e3e337782df"
+          cp earthline-elder-restored-17097.js /tmp/m129-tested-elder.js
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          test "$(git rev-parse HEAD)" = "394c7c1fc7e612afacf45baaa6fedcc3b2ed563f"
+          test "$(git hash-object earthline-elder-restored-17097.js)" = "24c2e6998b0f5f5b120d9f83ff174998d6cd507e"
+          cp /tmp/m129-tested-elder.js earthline-elder-restored-17097.js
+          test "$(git diff --name-only)" = "earthline-elder-restored-17097.js"
+          node --check earthline-elder-restored-17097.js
+          node - <<'JS'
+          const s=require('node:fs').readFileSync('earthline-elder-restored-17097.js','utf8');
+          for(const v of ["ctx.arc(24,24,20.5","'text-field':''","'icon-anchor':'center'","rechargeWeight:0","scienceBaseline:'17118'"])if(!s.includes(v))throw Error('M129 invariant failed: '+v);
+          console.log('M129_PRESENTATION_PROVENANCE_PASS');
+          JS
+      - name: Publish only isolated Elder visualization
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add earthline-elder-restored-17097.js
+          git commit -m 'fix(live): round brown-green Elder canopy markers and remove map label clutter'
+          git push origin HEAD:pages-live
