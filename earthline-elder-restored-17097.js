@@ -202,22 +202,24 @@
     }
     return b?state.all.filter(f=>inBounds(f,b)):[];
   }
+  /* M129: round brown trunk ring and green canopy, sourced points only.
+     Marker geometry and colors affect presentation, never Elder evidence counts. */
   function elderPinImage(fill){
-    const canvas=document.createElement('canvas');canvas.width=40;canvas.height=48;
+    const canvas=document.createElement('canvas');canvas.width=48;canvas.height=48;
     const ctx=canvas.getContext('2d');if(!ctx)return null;
-    ctx.clearRect(0,0,40,48);
-    ctx.beginPath();
-    ctx.moveTo(20,46);
-    ctx.bezierCurveTo(17,40,6,30,6,19);
-    ctx.bezierCurveTo(6,10,12,4,20,4);
-    ctx.bezierCurveTo(28,4,34,10,34,19);
-    ctx.bezierCurveTo(34,30,23,40,20,46);
-    ctx.closePath();
+    ctx.clearRect(0,0,48,48);
+    ctx.beginPath();ctx.arc(24,24,20.5,0,Math.PI*2);
+    ctx.fillStyle='#76502b';ctx.fill();
+    ctx.lineWidth=2;ctx.strokeStyle='#d7bd83';ctx.stroke();
+    ctx.beginPath();ctx.arc(24,24,15.5,0,Math.PI*2);
     ctx.fillStyle=fill;ctx.fill();
-    ctx.lineWidth=2.2;ctx.strokeStyle='#ffffff';ctx.stroke();
-    ctx.beginPath();ctx.arc(20,18,6.2,0,Math.PI*2);ctx.fillStyle='#ffffff';ctx.fill();
-    ctx.beginPath();ctx.arc(20,18,3.4,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();
-    return ctx.getImageData(0,0,40,48);
+    for(const [x,y,r] of [[17,19,6],[28,17,7],[33,27,6],[23,31,7],[15,29,6]]){
+      ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+      ctx.fillStyle=fill;ctx.fill();
+    }
+    ctx.beginPath();ctx.arc(22,23,4,0,Math.PI*2);
+    ctx.fillStyle='rgba(210,245,185,.42)';ctx.fill();
+    return ctx.getImageData(0,0,48,48);
   }
   function ensureElderPinImages(m){
     const pins=[
@@ -253,18 +255,15 @@
             /* M96: candidates must be legible on satellite imagery; labels never
                imply that an unverified modeled tree is known to be old. */
             'icon-size':['interpolate',['linear'],['zoom'],6,0.55,10,0.72,14,0.96,17,1.48,20,1.65],
-            'icon-anchor':'bottom',
+            'icon-anchor':'center',
             'icon-allow-overlap':true,
             'icon-ignore-placement':true,
-            'text-field':['case',
-              ['any',['==',['get','record_class'],'VERIFIED_ELDER_TREE'],['==',['get','record_class'],'VERIFIED_EXTERNAL_TREE']],
-              'VERIFIED TREE','ELDER CANDIDATE'
-            ],
-            'text-size':['interpolate',['linear'],['zoom'],13,0,15,10,17,12.5,20,13.5],
-            'text-anchor':'top',
-            'text-offset':[0,0.4],
-            'text-allow-overlap':true,
-            'text-ignore-placement':true,
+            /* Evidence is available in the interactive popup; repeated text
+               labels obscured Property swales and are deliberately suppressed. */
+            'text-field':'',
+            'text-size':0,
+            'text-allow-overlap':false,
+            'text-ignore-placement':false,
             'visibility':'visible'
           },
           paint:{
