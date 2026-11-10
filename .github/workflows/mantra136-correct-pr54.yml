@@ -1,0 +1,113 @@
+name: M136 correct PR54 panel and phone positions — no live push
+on:
+  push:
+    branches: [candidate/mantra136-regional-layout-only]
+    paths: [.github/workflows/mantra136-correct-pr54.yml]
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra136-regional-layout-only
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Apply correction to PR 54 only
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tools/mantra136-correct-pr54.py /tmp/m136-correct.py
+          git fetch origin pages-live candidate/mantra136-display-review
+          test "$(git rev-parse origin/pages-live)" = "ad1138af29e423e385e950b781558ae597df3c64"
+          git checkout -B candidate/mantra136-display-review origin/candidate/mantra136-display-review
+          python3 /tmp/m136-correct.py
+          test "$(git diff --name-only)" = "index.html"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Desktop panel open/closed and mobile layout evidence
+        shell: bash
+        run: |
+          mkdir -p artifacts/m136-correction
+          cat > m136-correction.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {readFile,writeFile} from 'node:fs/promises';
+          const html=await readFile('index.html');
+          const result={cases:[],errors:[]};
+          const browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+          for(const [name,width,height,panelOpen] of [
+            ['desktop-open',1800,1000,true],['desktop-closed',1800,1000,false],
+            ['phone-open',390,844,true],['phone-closed',390,844,false]]){
+            const page=await browser.newPage({viewport:{width,height},serviceWorkers:'block'});
+            page.on('pageerror',e=>result.errors.push(name+': '+e));
+            await page.route('**/*',r=>r.request().isNavigationRequest()&&r.request().resourceType()==='document'?r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html}):r.continue());
+            try{
+              await page.goto('https://earthlinedevelopment.org/?m136-review='+name,{waitUntil:'domcontentloaded',timeout:45000});
+              await page.waitForSelector('#searchInput',{timeout:20000});
+              await page.evaluate(({panelOpen})=>{
+                document.documentElement.classList.toggle('earthline-panel-open-16188',panelOpen);
+                document.documentElement.setAttribute('data-earthline-has-results','');
+                const root=document.documentElement;
+                root.style.setProperty('--el-rail-16188',innerWidth<=760?'54px':'86px');
+                root.style.setProperty('--el-panel-16188','385px');
+                for(const id of ['earthlineSwaleLegend16050','earthlineAquiferLegend16070','earthlineDiagramLegend16080']) {
+                  let x=document.getElementById(id);if(!x){x=document.createElement('div');x.id=id;x.textContent=id==='earthlineSwaleLegend16050'?'POTENTIAL BIOSWALES A Highest B Strong C General':id==='earthlineAquiferLegend16070'?'Mapped groundwater context · regional only':'Swales Explained';document.body.appendChild(x)}
+                }
+                let x=document.createElement('aside');x.id='earthlineTemporaryMapHint126';x.textContent='Place hand cursor over bare land to move map.';x.style.cssText='position:fixed;background:#182631;color:white;padding:12px;';document.body.appendChild(x);
+                x=document.createElement('aside');x.id='earthlineCorridorTip16248';x.className='open';x.textContent='Regional corridors are clickable';document.body.appendChild(x);
+              },{panelOpen});
+              const examine=()=>page.evaluate(()=>{
+                const rect=id=>{const e=document.getElementById(id);if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,display:getComputedStyle(e).display}};
+                return {legend:['earthlineSwaleLegend16050','earthlineAquiferLegend16070','earthlineDiagramLegend16080'].map(rect),hint:rect('earthlineTemporaryMapHint126'),tip:rect('earthlineCorridorTip16248')};
+              });
+              const during=await examine();
+              if(during.tip.display!=='none')throw Error('two messages shown simultaneously');
+              await page.screenshot({path:'artifacts/m136-correction/'+name+'-hint.png',timeout:15000});
+              await page.evaluate(()=>document.getElementById('earthlineTemporaryMapHint126')?.remove());
+              const after=await examine();
+              if(after.tip.display==='none')throw Error('tip never appears');
+              const left=width<=760?64:(panelOpen?86+385+22:86+22);
+              if(Math.abs(after.legend[0].x-left)>3)throw Error('legend incorrect x='+after.legend[0].x+', expected '+left);
+              if(width>760){
+                const center=(width+(panelOpen?86+385:86))/2;
+                if(Math.abs(after.tip.x+after.tip.width/2-center)>4)throw Error('tip off center '+JSON.stringify(after.tip));
+              }
+              if(after.legend.some(r=>r.x<54&&width<=760))throw Error('legend under phone bar');
+              for(let i=1;i<after.legend.length;i++){
+                if(after.legend[i].y+after.legend[i].height>after.legend[i-1].y-4)throw Error('legends overlap '+JSON.stringify(after.legend));
+              }
+              if(after.legend[2].y+after.legend[2].height>height-100)throw Error('scale area collision');
+              await page.screenshot({path:'artifacts/m136-correction/'+name+'-after-hint.png',timeout:15000});
+              result.cases.push({name,pass:true,during,after});
+            }catch(e){result.errors.push(name+': '+String(e));result.cases.push({name,pass:false});}
+            await page.close();
+          }
+          await browser.close();
+          result.pass=result.errors.length===0&&result.cases.every(x=>x.pass);
+          await writeFile('artifacts/m136-correction/results.json',JSON.stringify(result,null,2));
+          console.log('M136_CORRECTED_LAYOUT '+JSON.stringify(result).slice(0,25000));
+          if(!result.pass)process.exitCode=1;
+          JS
+          node m136-correction.mjs
+      - name: Update draft PR 54 branch only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix(draft PR54): account for closed panel and phone icon bar'
+          git push origin HEAD:candidate/mantra136-display-review
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m136-corrected-panel-positions
+          path: artifacts/m136-correction/
+          retention-days: 30
