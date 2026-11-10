@@ -1,0 +1,42 @@
+name: M130 live CDN Property slope proof
+on:
+  push:
+    branches: [candidate/mantra130-swale-prescription]
+    paths:
+      - tests/mantra130-live-safety.mjs
+      - .github/workflows/mantra130-live-safety.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-verification:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra130-swale-prescription
+          fetch-depth: 0
+      - name: Use production's exact currently released HTML
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin pages-live
+          test "$(git rev-parse origin/pages-live)" = "f9d479a08c75b23a766b15b8f82ec273e5b8a046"
+          git show origin/pages-live:index.html > index.html
+          grep -q 'rejectSlopeAbove4M130' index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Inspect actual CDN and actual Property publication
+        run: node tests/mantra130-live-safety.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m130-live-property-safety-evidence
+          path: artifacts/m130-live/
+          retention-days: 30
