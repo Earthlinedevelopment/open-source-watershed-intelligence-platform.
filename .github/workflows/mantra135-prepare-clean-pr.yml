@@ -1,0 +1,37 @@
+name: M135 prepare clean index-only review branch
+on:
+  push:
+    branches: [candidate/mantra135-property-rollback-review]
+    paths:
+      - .github/workflows/mantra135-prepare-clean-pr.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  stage-index-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra135-property-rollback-review
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Transfer exact candidate index, no other files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object index.html)" = "0adfba90e63a6e1dd6ed3b6b27f387a5bcdf9165"
+          cp index.html /tmp/m135-review-index.html
+          git fetch origin pages-live candidate/mantra135-property-rollback-only
+          test "$(git rev-parse origin/pages-live)" = "ad1138af29e423e385e950b781558ae597df3c64"
+          git checkout -B candidate/mantra135-property-rollback-only origin/candidate/mantra135-property-rollback-only
+          test "$(git hash-object index.html)" = "151001d83787bb156efdfccc85e20cf697b1ad69"
+          cp /tmp/m135-review-index.html index.html
+          test "$(git diff --name-only)" = "index.html"
+          test "$(git hash-object index.html)" = "0adfba90e63a6e1dd6ed3b6b27f387a5bcdf9165"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'review only: Property pre-M131 selection restoration; safety acceptance pending'
+          git push origin HEAD:candidate/mantra135-property-rollback-only
