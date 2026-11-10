@@ -7,9 +7,10 @@ const center={lng:-72.45500,lat:43.88110},out={location:center,errors:[],checks:
 p.on('pageerror',e=>out.errors.push(String(e)));
 try{
  await p.goto('https://earthlinedevelopment.org/?m129parcel='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
- await p.locator('#searchInput').fill('Vermont');
- await p.locator('#searchInput').press('Enter');
- await p.waitForFunction(()=>/screening published|regional analysis complete/i.test(document.getElementById('earthlineVermontStatus16147')?.textContent||''),null,{timeout:100000});
+ await p.locator('#searchInput').fill('Rutland, Vermont');
+ await p.waitForFunction(()=>document.querySelector('#earthlineSearchSuggestions15970')?.classList.contains('open'),null,{timeout:18000});
+ await p.locator('#earthlineSearchSuggestions15970 button[data-query]').first().click();
+ await p.waitForFunction(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970,null,{timeout:110000});
  await p.waitForTimeout(1900);
  await p.evaluate(center=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;m.stop();m.jumpTo({center:[center.lng,center.lat],zoom:17.7});},center);
  await p.waitForFunction(()=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;return Math.abs(m?.getZoom?.()-17.7)<.1;},null,{timeout:16000});
