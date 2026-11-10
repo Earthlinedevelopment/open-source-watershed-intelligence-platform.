@@ -33564,6 +33564,33 @@ body{display:block!important}
           crown.appendChild(svgEl('circle',{cx:x.toFixed(1),cy:y.toFixed(1),r:(r*.95).toFixed(1),fill:colors[0],stroke:'#22542b','stroke-width':String(Math.max(.5,r*.11))}));crown.appendChild(svgEl('ellipse',{cx:(x+1.8).toFixed(1),cy:(y+2.4).toFixed(1),rx:(r*1.28).toFixed(1),ry:(r*.94).toFixed(1),fill:'rgba(5,23,12,.44)'}));for(let k=0;k<9;k++){const a=noise16174(seed+dd+k*13)*Math.PI*2,rr=r*(.10+.43*noise16174(seed+dd+k*19)),cr=r*(.30+.23*noise16174(seed+dd+k*29)),cx=x+Math.cos(a)*rr,cy=y+Math.sin(a)*rr*.72;crown.appendChild(svgEl('circle',{cx:cx.toFixed(1),cy:cy.toFixed(1),r:cr.toFixed(1),fill:colors[k%colors.length],stroke:'rgba(9,42,19,.38)','stroke-width':'.45'}))}crown.appendChild(svgEl('circle',{cx:(x-r*.25).toFixed(1),cy:(y-r*.34).toFixed(1),r:(r*.20).toFixed(1),fill:'rgba(219,239,158,.34)'}));grp.appendChild(crown)}d+=clamp16174(23+noise16174(seed+d*7)*24-detail*6,19,45)}g.appendChild(grp)}
   function understory16174(g,pts,side,seed,zoom){const len=polyLength(pts),detail=clamp16174((zoom-13)/6,0,1),grp=svgEl('g',{class:'earthline-swale-understory-16174'}),spacing=clamp16174(15-detail*4,10,15);for(let d=8;d<len;d+=spacing*(.72+noise16174(seed+d)*.62)){const p=atDistance(pts,d);if(!p)continue;const rad=(p.angle+90)*Math.PI/180,off=side*(2+noise16174(seed+d*3)*5),x=p.x+Math.cos(rad)*off,y=p.y+Math.sin(rad)*off,r=1.1+detail*1.4*noise16174(seed+d*5);grp.appendChild(svgEl('ellipse',{cx:x.toFixed(1),cy:y.toFixed(1),rx:(r*1.45).toFixed(1),ry:r.toFixed(1),fill:noise16174(seed+d*11)>.5?'rgba(106,155,72,.74)':'rgba(71,124,61,.78)'}))}g.appendChild(grp)}
 
+  /* MANTRA 103: display-only guard. Reject visibly coiled or folded projected swales without altering analysis output. */
+  function earthlineSwaleDisplayPassM103(pts){
+    if(!Array.isArray(pts)||pts.length<2)return false;
+    let length=0,turn=0,prev=null;const seg=[];
+    for(let i=1;i<pts.length;i++){
+      const a=pts[i-1],b=pts[i],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);
+      if(!Number.isFinite(d)||!Number.isFinite(a.x)||!Number.isFinite(a.y)||!Number.isFinite(b.x)||!Number.isFinite(b.y))return false;
+      if(d<.01)continue;
+      const u={x:dx/d,y:dy/d};if(prev){
+        const dot=Math.max(-1,Math.min(1,prev.x*u.x+prev.y*u.y)),angle=Math.acos(dot);
+        if(dot<-.15)return false;turn+=angle;
+      }
+      prev=u;length+=d;seg.push({a,b,d});
+    }
+    if(!length)return false;
+    const chord=Math.hypot(pts.at(-1).x-pts[0].x,pts.at(-1).y-pts[0].y);
+    if(length>30&&chord/length<.74)return false;
+    if(seg.length>5&&turn>Math.PI*1.45&&turn>length/15)return false;
+    const cross=(a,b,c,d)=>{const orient=(p,q,r)=>(q.x-p.x)*(r.y-p.y)-(q.y-p.y)*(r.x-p.x);return orient(a,b,c)*orient(a,b,d)<-1e-7&&orient(c,d,a)*orient(c,d,b)<-1e-7;};
+    for(let i=0;i<seg.length;i++)for(let j=i+2;j<seg.length;j++){
+      if(j===i+2&&seg[i+1].d<1)continue;
+      const a=seg[i],b=seg[j];
+      if(Math.max(a.a.x,a.b.x)<Math.min(b.a.x,b.b.x)||Math.max(b.a.x,b.b.x)<Math.min(a.a.x,a.b.x)||Math.max(a.a.y,a.b.y)<Math.min(b.a.y,b.b.y)||Math.max(b.a.y,b.b.y)<Math.min(a.a.y,a.b.y))continue;
+      if(cross(a.a,a.b,b.a,b.b))return false;
+    }
+    return true;
+  }
   function earthlineSwalePolylineM102(pts){return pts.map((p,i)=>(i?' L ':'M ')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join('');}
   function addPath(g,pts,attrs){if(pts.length<2)return null;/* MANTRA 102: preserve actual vetted swale vertices; no post-safety cubic spline overshoot. Elevation contours retain approved smoothing. */const isSwale=g&&g.getAttribute&&g.getAttribute('data-layer')==='swale-opportunities';const p=svgEl('path',Object.assign({d:isSwale?earthlineSwalePolylineM102(pts):spline(pts),fill:'none','vector-effect':'non-scaling-stroke'},attrs||{}));g.appendChild(p);return p;}
   /* EARTHLINE 16350 — SVG intentionally owns Regional contours + swales only.
@@ -33597,7 +33624,7 @@ body{display:block!important}
     const gradeCounts={A:0,B:0,C:0},gradeLabels=[];
     for(const f of (lastData.swales&&lastData.swales.features||[])){
       if(!f.geometry||f.geometry.type!=='LineString')continue;
-      const pts=points(f.geometry.coordinates),len=polyLength(pts);if(pts.length<3||len<22)continue;
+      const pts=points(f.geometry.coordinates),len=polyLength(pts);if(pts.length<3||len<22||!earthlineSwaleDisplayPassM103(pts))continue;
       const props=f.properties||{},grade=/^[ABC]$/.test(String(props.grade||''))?String(props.grade):'C';
       const rank=(gradeCounts[grade]||0)+1,score=Math.max(0,Math.min(100,Number(props.score||0)));props.display_rank=rank;props.display_code=grade+rank;
       const main=grade==='A'?'#42ff83':grade==='B'?'#ffc12f':'#ff8a2d';
@@ -33611,8 +33638,7 @@ body{display:block!important}
         waterPockets16174(sg,waterPts,swales*131+rank*17,water,zoom);
         addPath(sg,plantPts,{class:'earthline-swale-band-16168 earthline-swale-crown-16168',stroke:'#527f4d','stroke-width':String(plant),'stroke-linecap':'round','stroke-linejoin':'round','stroke-dasharray':detail>.4?'4 7':'2 8'});
         addPath(sg,pts,{class:'earthline-swale-band-16168 earthline-swale-survey-16168',stroke:'rgba(235,244,229,.36)','stroke-width':'.85','stroke-linecap':'butt','stroke-linejoin':'round','stroke-dasharray':'1 12'});
-        understory16174(sg,plantPts,-uphill,swales*83+rank*7,zoom);
-        canopy16174(sg,plantPts,-uphill,swales*97+rank*13,zoom,grade);
+        /* MANTRA 103: retire the remaining worm-like focus understory/canopy SVG graphics. */
       }else{
         const casing=grade==='A'?15:grade==='B'?12:9,core=grade==='A'?9.2:grade==='B'?7.2:5.2;
         addPath(sg,pts,{stroke:'rgba(8,18,13,.96)','stroke-width':String(casing),'stroke-linecap':'round','stroke-linejoin':'round'});
