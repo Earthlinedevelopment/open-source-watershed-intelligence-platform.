@@ -1,0 +1,100 @@
+name: M132 live Property Overpass reliability gated release
+on:
+  push:
+    branches: [candidate/mantra132-exclusion-engineering]
+    paths:
+      - tools/mantra132-overpass-fallback.py
+      - .github/workflows/mantra132-overpass-release.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: earthline-m132-property-evidence-reliability
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 19
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra132-exclusion-engineering
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply narrowly scoped fallback to exact live source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tools/mantra132-overpass-fallback.py /tmp/m132-patch.py
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          test "$(git rev-parse HEAD)" = "37d9aac3e4ccd162a346b9c403a25f0c597c4c1a"
+          python3 /tmp/m132-patch.py
+          test "$(git diff --name-only)" = "index.html"
+      - name: Install Chromium
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Real Iowa Property exclusion verification
+        shell: bash
+        run: |
+          mkdir -p artifacts/m132-overpass
+          cat > artifacts/m132-overpass/check.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {readFile,writeFile} from 'node:fs/promises';
+          const html=await readFile('index.html');
+          const b=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+          const p=await b.newPage({viewport:{width:1800,height:1000},serviceWorkers:'block'});
+          const o={network:[],errors:[],checks:{}};p.on('pageerror',e=>o.errors.push(String(e)));
+          p.on('requestfailed',r=>{if(r.url().includes('overpass'))o.network.push({url:r.url(),failure:r.failure()?.errorText})});
+          p.on('response',r=>{if(r.url().includes('overpass'))o.network.push({url:r.url(),status:r.status()})});
+          await p.route('**/*',r=>r.request().isNavigationRequest()&&r.request().resourceType()==='document'?
+            r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html}):r.continue());
+          try{
+            await p.goto('https://earthlinedevelopment.org/?m132-probe=1',{waitUntil:'domcontentloaded',timeout:60000});
+            await p.locator('#searchInput').fill('Iowa');await p.locator('#searchInput').press('Enter');
+            await p.waitForFunction(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970,null,{timeout:110000});
+            await p.waitForTimeout(1100);
+            await p.evaluate(()=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;m.stop();m.jumpTo({center:[-93.52,42.08],zoom:17.7});});
+            await p.waitForTimeout(2300);
+            await p.locator('#earthlineDeclareProperty16169').click({timeout:16000});
+            await p.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,null,{timeout:115000});
+            o.state=await p.evaluate(()=>{
+              const m=typeof M!=='undefined'?M:window.M,a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{},d=m?.swaleDiagnostics?.stage||{},sw=Array.isArray(m?.swales)?m.swales:[];
+              return {run:a.result,runError:a.error,vector:m?.vectorNoBuildCoverage,
+                swales:sw.length,maxSlope:Math.max(0,...sw.map(x=>Number(x.slope)||0)),
+                rejectedSlope:d.rejectSlopeAbove4M131||0,
+                safety:m?.safetyAudit15806?.verified,published:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220?.published||false};
+            });
+            o.checks.verifiedExclusion=!!o.state.vector?.publicationAllowed;
+            o.checks.sourceResponded=o.state.vector?.acquisitionResult==='features-found';
+            o.checks.propertyPublished=o.state.run===true&&o.state.published;
+            o.checks.scientificSlope=o.state.maxSlope<=4.000001;
+            o.checks.safe=o.state.safety===true;
+            o.checks.noErrors=o.errors.length===0;
+            await p.screenshot({path:'artifacts/m132-overpass/iowa.png',timeout:18000});
+          }catch(e){o.failure=String(e)}
+          await writeFile('artifacts/m132-overpass/result.json',JSON.stringify(o,null,2));
+          await b.close();
+          console.log('M132_OVERPASS_RESULT '+JSON.stringify(o).slice(0,16000));
+          if(o.failure||Object.keys(o.checks).length!==6||Object.values(o.checks).some(x=>!x))process.exitCode=1;
+          JS
+          node artifacts/m132-overpass/check.mjs
+      - name: Promote only verified transport change
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix(live): OSM exclusion verification with two independent Overpass sources'
+          git push origin HEAD:pages-live
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m132-overpass-evidence
+          path: artifacts/m132-overpass/
+          retention-days: 30
