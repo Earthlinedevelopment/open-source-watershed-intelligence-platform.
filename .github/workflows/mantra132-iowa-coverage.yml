@@ -1,0 +1,61 @@
+name: M132 Iowa exclusion failure exact evidence
+on:
+  push:
+    branches: [candidate/mantra132-exclusion-engineering]
+    paths: [.github/workflows/mantra132-iowa-coverage.yml]
+permissions: {contents: read}
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Inspect actual production exclusion evidence without bypassing gates
+        shell: bash
+        run: |
+          mkdir -p artifacts/m132
+          cat > artifacts/m132/iowa.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {writeFile} from 'node:fs/promises';
+          const browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+          const p=await browser.newPage({viewport:{width:1800,height:1000},serviceWorkers:'block'});
+          const o={network:[],errors:[]};
+          p.on('pageerror',e=>o.errors.push(String(e)));
+          p.on('requestfailed',r=>{if(/overpass|nominatim|osm|arcgis|api|vector|geometry|geo/i.test(r.url()))o.network.push({url:r.url().slice(0,240),failure:r.failure()?.errorText})});
+          p.on('response',r=>{if(r.status()>=400&&/overpass|osm|arcgis|api|vector|geometry|geo/i.test(r.url()))o.network.push({url:r.url().slice(0,240),status:r.status()})});
+          try{
+            await p.goto('https://earthlinedevelopment.org/?m132='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await p.locator('#searchInput').fill('Iowa');await p.locator('#searchInput').press('Enter');
+            await p.waitForFunction(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970,null,{timeout:110000});
+            await p.waitForTimeout(1000);
+            await p.evaluate(()=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;m.stop();m.jumpTo({center:[-93.52,42.08],zoom:17.7});});
+            await p.waitForTimeout(2300);
+            await p.locator('#earthlineDeclareProperty16169').click({timeout:14000});
+            await p.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,null,{timeout:115000});
+            o.state=await p.evaluate(()=>{
+              const Mx=typeof M!=='undefined'?M:window.M;
+              return {run:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173,coverage:Mx?.vectorNoBuildCoverage,
+                coreFailure:Mx?.propertyCoreFailure16548,propertyFailure:Mx?.propertyRunFailure16539,
+                exclusions:Mx?.noBuildProvenance15843?.sourceStateFingerprint,
+                maskLength:Mx?.noBuildMask?.length,stamp:Mx?.vectorNoBuildStamp,
+                diagnostics:Mx?.swaleDiagnostics?.stage,
+                status:document.getElementById('earthlineVermontStatus16147')?.textContent};
+            });
+          }catch(e){o.failure=String(e)}
+          await writeFile('artifacts/m132/iowa.json',JSON.stringify(o,null,2));
+          console.log('M132_IOWA_EXCLUSION_EVIDENCE '+JSON.stringify(o).slice(0,20000));
+          await browser.close();
+          JS
+          node artifacts/m132/iowa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m132-iowa-diagnostics
+          path: artifacts/m132/
+          retention-days: 30
