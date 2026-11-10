@@ -1,0 +1,27 @@
+name: Mantra 129 Property source-failure inspection
+on:
+  push:
+    branches: [candidate/mantra129-source-inspection]
+    paths:
+      - .github/workflows/mantra129-source-inspection.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record Property integrity, generated density, and WebKit rendering guard
+        shell: bash
+        run: |
+          set -eu
+          echo 'M129_SOURCE_PHRASE_LOCATION_INTEGRITY'
+          grep -n -C 12 'location integrity failed before Property publication' index.html || true
+          echo 'M129_SOURCE_PHRASE_CORRIDOR_RENDERING'
+          grep -n -C 10 'corridor rendering incomplete' index.html || true
+          echo 'M129_SOURCE_PHRASE_FINAL_SPACING'
+          grep -n -C 10 'rejectFinalSpacing' index.html | head -120 || true
+          echo 'M129_SOURCE_PHRASE_NO_BUILD_FOREST'
+          grep -n -C 4 -i 'forest.*penalty\|canopy.*penalty\|dense.*forest' index.html | head -140 || true
