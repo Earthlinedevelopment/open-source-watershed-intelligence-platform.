@@ -217,7 +217,11 @@
       ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
       ctx.fillStyle=fill;ctx.fill();
     }
-    ctx.beginPath();ctx.arc(22,23,4,0,Math.PI*2);
+    /* M139: distinguish the approved Elder tree canopy from a plain green disc.
+       The small central brown trunk is visual-only; marker locations and evidence are unchanged. */
+    ctx.beginPath();ctx.arc(24,24,3.4,0,Math.PI*2);
+    ctx.fillStyle='#76502b';ctx.fill();
+    ctx.beginPath();ctx.arc(22.8,22.8,1.2,0,Math.PI*2);
     ctx.fillStyle='rgba(210,245,185,.42)';ctx.fill();
     return ctx.getImageData(0,0,48,48);
   }
