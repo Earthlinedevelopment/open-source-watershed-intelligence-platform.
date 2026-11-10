@@ -1,0 +1,23 @@
+name: M130 prescription gate source inspection
+on:
+  push:
+    branches: [candidate/mantra130-swale-prescription]
+    paths: [.github/workflows/mantra130-prescription-inspect.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect accepted filtering and publication
+        shell: bash
+        run: |
+          echo 'M130_FINAL_SELECTION'
+          sed -n '13660,13865p' index.html
+          echo 'M130_ENFORCEMENT'
+          sed -n '13710,13825p' index.html
+          echo 'M130_LOCATION_CAMERA'
+          sed -n '17750,17890p' index.html
+          echo 'M130_OTHER_SPACING'
+          grep -n -C 4 'TARGET_M\|MIN_M\|MAX_M' index.html | head -100
