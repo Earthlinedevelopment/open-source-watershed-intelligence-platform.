@@ -1,0 +1,56 @@
+name: M132 Overpass endpoint CORS proof
+on:
+  push:
+    branches: [candidate/mantra132-exclusion-engineering]
+    paths: [.github/workflows/mantra132-overpass-transport.yml]
+permissions: {contents: read}
+jobs:
+  cors:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Check response and CORS from actual Earthline origin
+        shell: bash
+        run: |
+          mkdir -p artifacts/m132-cors
+          cat > artifacts/m132-cors/check.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {writeFile} from 'node:fs/promises';
+          const b=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+          const p=await b.newPage({serviceWorkers:'block'});
+          const results=[];
+          try{
+            await p.goto('https://earthlinedevelopment.org/?cors='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            const query='[out:json][timeout:12];way["highway"](42.0795,-93.5206,42.0805,-93.5194);out geom;';
+            for(const url of ['https://overpass.private.coffee/api/interpreter','https://overpass-api.de/api/interpreter']){
+              const result=await p.evaluate(async({url,query})=>{
+                const c=new AbortController(),id=setTimeout(()=>c.abort(),18000);
+                const t=performance.now();
+                try{
+                  const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+                    body:'data='+encodeURIComponent(query),signal:c.signal});
+                  const data=await response.json();
+                  return {url,status:response.status,elapsed:Math.round(performance.now()-t),
+                    content:response.headers.get('content-type'),elements:data?.elements?.length??null,valid:Array.isArray(data?.elements)};
+                }catch(e){return {url,error:String(e),elapsed:Math.round(performance.now()-t)}}finally{clearTimeout(id)}
+              },{url,query});results.push(result);console.log('M132_CORS_RESULT '+JSON.stringify(result));
+            }
+          }catch(e){results.push({fatal:String(e)})}
+          await writeFile('artifacts/m132-cors/results.json',JSON.stringify(results,null,2));
+          await b.close();
+          if(!results.some(x=>x.valid===true))process.exitCode=1;
+          JS
+          node artifacts/m132-cors/check.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m132-overpass-cors-evidence
+          path: artifacts/m132-cors/
+          retention-days: 30
