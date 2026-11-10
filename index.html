@@ -13785,30 +13785,12 @@ var prescribeSwales;
         finalRec15803.reachedFinalCapEvaluation15840=true;
       }
       /* BUILD-CHECK-15803-DIAGNOSTIC-END */
-      if(!isRegionalTile15769){
-        const ptsM130=Array.isArray(sw&&sw.pts)?sw.pts:[];
-        let safeSlopeM130=ptsM130.length>=2 && Number.isFinite(Number(sw.slope)) && Number(sw.slope)<=4;
-        if(safeSlopeM130)for(const ptM130 of ptsM130){
-          const xM130=Math.round(Number(ptM130&&ptM130[0])),yM130=Math.round(Number(ptM130&&ptM130[1]));
-          if(!Number.isFinite(xM130)||!Number.isFinite(yM130)||xM130<0||yM130<0||xM130>=GW||yM130>=GH){safeSlopeM130=false;break;}
-          const slopeM130=Number(slopePct(xM130,yM130));
-          if(!Number.isFinite(slopeM130)||slopeM130>4){safeSlopeM130=false;break;}
-        }
-        if(!safeSlopeM130){
-          M.swaleDiagnostics.stage.rejectSlopeAbove4M130=(M.swaleDiagnostics.stage.rejectSlopeAbove4M130||0)+1;
-          if(finalRec15803){finalRec15803.status="rejected-property-slope-over-4pct";finalRec15803.reason="property-slope-limit-4pct";}
-          continue;
-        }
-      }
       let tooClose=false;const swBBox16204=earthlineSwaleGridBBox16204(sw);
       const spacingCandidates16456=spacingIndexCandidates16456(swBBox16204);
       bboxSkippedFinalPairs16204+=Math.max(0,kept.length-spacingCandidates16456.length);
       for(const exIndex16204 of spacingCandidates16456){
         const ex=kept[exIndex16204];
-        /* M130: Regional same-band policy unchanged. Property fragments at the
-           same contour elevation must still satisfy the exact minimum-distance
-           test; truly separated fragments remain valid. */
-        if(isRegionalTile15769&&sw.bandKey===ex.bandKey)continue;
+        if(sw.bandKey===ex.bandKey)continue;
         if(Math.abs(Number(sw.levelH||0)-Number(ex.levelH||0))>verticalWindowM)continue;
         if(!earthlineSwaleBBoxesWithin16204(swBBox16204,keptBBox16204[exIndex16204],spacingPadCells16204)){bboxSkippedFinalPairs16204++;continue;}
         exactFinalPairs16204++;
