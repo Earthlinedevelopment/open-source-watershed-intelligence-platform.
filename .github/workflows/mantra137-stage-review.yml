@@ -1,0 +1,119 @@
+name: M137 display-only three legend retirement and 20s map hint
+on:
+  push:
+    branches: [candidate/mantra137-hide-legacy-legends-map-hint]
+    paths: [.github/workflows/mantra137-stage-review.yml]
+permissions:
+  contents: write
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra137-hide-legacy-legends-map-hint
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Pin accepted live and apply append-only patch to clean review branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tools/mantra137-apply-display-only.py /tmp/m137-apply.py
+          git fetch origin pages-live candidate/mantra137-display-review
+          test "$(git rev-parse origin/pages-live)" = "e0172573bb2bd8385fad4f8dcef1ca3d1d63a00d"
+          git checkout -B candidate/mantra137-display-review origin/candidate/mantra137-display-review
+          python3 /tmp/m137-apply.py
+          test "$(git diff --name-only)" = "index.html"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify map hint, legend retirement and phone clearance
+        shell: bash
+        run: |
+          mkdir -p artifacts/m137
+          cat > m137-check.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {readFile,writeFile} from 'node:fs/promises';
+          const html=await readFile('index.html');
+          const baseline=(await import('node:child_process')).execFileSync('git',['show','origin/pages-live:index.html']);
+          const originalText=baseline.toString();
+          const newText=html.toString();
+          const result={tests:[],errors:[],exactAppend:newText.startsWith(originalText)};
+          const browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+          for(const [size,w,h] of [['desktop',1800,1000],['phone',390,844]]){
+            const page=await browser.newPage({viewport:{width:w,height:h},serviceWorkers:'block'});
+            page.on('pageerror',e=>result.errors.push(size+': '+String(e)));
+            await page.route('**/*',r=>r.request().isNavigationRequest()&&r.request().resourceType()==='document'?r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html}):r.continue());
+            const record={size,pass:false};
+            const state=()=>page.evaluate(()=>{
+              const ids=['earthlineSwaleLegend16050','earthlineAquiferLegend16070','earthlineDiagramLegend16080'];
+              const hint=document.getElementById('earthlineTemporaryMapHint126');
+              const r=hint?.getBoundingClientRect();
+              return {
+                legends:ids.map(id=>({id,present:!!document.getElementById(id),visible:!!document.getElementById(id)&&getComputedStyle(document.getElementById(id)).display!=='none'})),
+                hint:hint?{text:hint.textContent,hasClose:!!hint.querySelector('button'),x:r.x,right:r.right}:null,
+                corridorVisible:!!document.getElementById('earthlineCorridorTip16248')&&getComputedStyle(document.getElementById('earthlineCorridorTip16248')).display!=='none'
+              };
+            });
+            try{
+              await page.goto('https://earthlinedevelopment.org/?m137='+size,{waitUntil:'domcontentloaded',timeout:50000});
+              await page.waitForSelector('#searchInput',{timeout:25000});
+              await page.screenshot({path:'artifacts/m137/'+size+'-home.png',timeout:18000});
+              record.home=await state();
+              if(record.home.legends.some(x=>x.visible)||record.home.hint)throw Error('home overlay incorrectly shown');
+              await page.evaluate(()=>{
+                const ids=['earthlineSwaleLegend16050','earthlineAquiferLegend16070','earthlineDiagramLegend16080'];
+                for(const id of ids){if(!document.getElementById(id)){const d=document.createElement('div');d.id=id;d.textContent=id;document.body.appendChild(d)}}
+                document.documentElement.setAttribute('data-earthline-has-results','');
+                document.dispatchEvent(new CustomEvent('earthline:analysis-complete',{detail:{tier:'regional',runToken:'m137-a'}}));
+              });
+              await page.waitForTimeout(150);
+              record.regional=await state();
+              await page.screenshot({path:'artifacts/m137/'+size+'-iowa-regional-hint.png',timeout:18000});
+              if(!record.regional.hint?.text?.includes('Place hand cursor over bare land to move map.')||!record.regional.hint.hasClose||record.regional.legends.some(x=>x.visible)||record.regional.corridorVisible)throw Error('regional hint/legacy boxes incorrect');
+              if(size==='phone'&&record.regional.hint.x<54)throw Error('phone hint overlaps icon rail');
+              await page.locator('#earthlineTemporaryMapHint126 button').click({timeout:3000});
+              record.closed=await state();
+              if(record.closed.hint)throw Error('hint could not be dismissed');
+              await page.evaluate(()=>document.dispatchEvent(new CustomEvent('earthline:analysis-complete',{detail:{tier:'regional',runToken:'m137-b'}})));
+              await page.waitForTimeout(100);
+              record.secondRegional=await state();
+              if(!record.secondRegional.hint)throw Error('hint not restored on next regional analysis');
+              await page.evaluate(()=>document.dispatchEvent(new CustomEvent('earthline:analysis-complete',{detail:{tier:'property',runToken:'m137-p'}})));
+              await page.waitForTimeout(100);
+              record.property=await state();
+              await page.screenshot({path:'artifacts/m137/'+size+'-property.png',timeout:18000});
+              if(record.property.hint||record.property.legends.some(x=>x.visible))throw Error('Property overlays incorrectly shown');
+              record.pass=true;
+            }catch(e){result.errors.push(size+': '+String(e))}
+            result.tests.push(record);
+            await page.close();
+          }
+          await browser.close();
+          result.pass=result.exactAppend&&result.errors.length===0&&result.tests.every(x=>x.pass);
+          await writeFile('artifacts/m137/results.json',JSON.stringify(result,null,2));
+          console.log('M137_BROWSER_EVIDENCE '+JSON.stringify(result).slice(0,16000));
+          if(!result.pass)process.exitCode=1;
+          JS
+          node m137-check.mjs
+      - name: Push exact index-only candidate for human review
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'review only: hide three old map legends and restore temporary navigation tip'
+          git push origin HEAD:candidate/mantra137-display-review
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m137-hint-and-legend-desktop-phone
+          path: artifacts/m137/
+          retention-days: 30
