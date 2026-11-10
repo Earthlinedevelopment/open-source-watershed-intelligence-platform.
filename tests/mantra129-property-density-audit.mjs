@@ -9,9 +9,12 @@ try{
  await p.goto('https://earthlinedevelopment.org/?m129parcel='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
  await p.locator('#searchInput').fill('Vermont');
  await p.locator('#searchInput').press('Enter');
- await p.waitForFunction(()=>!!window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated||!!window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||!!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970,null,{timeout:80000});
+ await p.waitForFunction(()=>/screening published|regional analysis complete/i.test(document.getElementById('earthlineVermontStatus16147')?.textContent||''),null,{timeout:100000});
+ await p.waitForTimeout(1900);
  await p.evaluate(center=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;m.stop();m.jumpTo({center:[center.lng,center.lat],zoom:17.7});},center);
+ await p.waitForFunction(()=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;return Math.abs(m?.getZoom?.()-17.7)<.1;},null,{timeout:16000});
  await p.waitForTimeout(2200);
+ out.preclick=await p.evaluate(()=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;return {zoom:m?.getZoom(),center:m?.getCenter(),target:window.EARTHLINE_PROPERTY_TARGET_16201}});
  await p.locator('#earthlineDeclareProperty16169').click({timeout:15000});
  await p.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,null,{timeout:110000});
  try{await p.waitForFunction(()=>['committed','failed'].includes(window.EARTHLINE_ELDER_TREE_LAST_17097?.state),null,{timeout:30000});}catch{}
