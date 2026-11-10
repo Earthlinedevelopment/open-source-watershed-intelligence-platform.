@@ -3651,7 +3651,17 @@ function earthlineProcessMappedFeature(roadMask,buildingMask,f){
   return touched;
 }
 async function earthlineWaitForMappedExclusionStyle15862B(myGen=M.searchGen,timeoutMs=5000){
-  if(!earthlineMapActive())return {ready:false,status:"map-inactive",waitedMs:0};
+  /* M132: first-frame/GL context initialization is transient. Do not classify
+     an uninitialized map as missing evidence without a bounded readiness wait.
+     This does not accept any exclusion data or waive source verification. */
+  const initializationStartM132=performance.now();
+  while(!earthlineMapActive()&&performance.now()-initializationStartM132<Math.min(3000,timeoutMs)){
+    if(typeof earthlineIsStale==="function"&&earthlineIsStale(myGen))
+      return {ready:false,status:"stale-before-map-ready",waitedMs:Math.round(performance.now()-initializationStartM132)};
+    await new Promise(resolve=>setTimeout(resolve,100));
+  }
+  if(!earthlineMapActive())
+    return {ready:false,status:"map-inactive",waitedMs:Math.round(performance.now()-initializationStartM132)};
   const started=performance.now();
   /* EARTHLINE 16467 — performance only. Exclusion processing does not need the
      entire Mapbox style (imagery, glyphs, unrelated sources) to settle. It needs
