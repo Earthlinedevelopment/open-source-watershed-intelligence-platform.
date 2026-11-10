@@ -59,11 +59,17 @@ for(const [version,html] of [['before',base],['after',candidate]]){
       }));
    }else entry.property.buttonMissing=true;
    await snap('iowa-property');
-   entry.report={modalButtons:await p.locator('button').filter({hasText:/report|bioswale report/i}).count()};
-   const reportButton=p.locator('button').filter({hasText:/bioswale report|generate report|view report/i}).first();
-   if(await reportButton.isVisible().catch(()=>false)){
-      await reportButton.click({timeout:5000}).catch(e=>entry.report.clickError=String(e));
-      await p.waitForTimeout(750);
+   entry.report=await p.evaluate(()=>({
+     audit:window.earthlineReportReachabilityAudit16151?.()||null,
+     buttonPresent:!!document.getElementById('earthlineVermontReport16149')
+   }));
+   const reportButton=p.locator('#earthlineVermontReport16149');
+   if(await reportButton.count()){
+      await reportButton.focus();
+      await p.keyboard.press('Enter');
+      await p.waitForFunction(()=>document.getElementById('earthlineVermontReportPanel16149')?.classList.contains('open'),null,{timeout:18000})
+        .catch(e=>{entry.report.openError=String(e)});
+      entry.report.after=await p.evaluate(()=>window.earthlineReportReachabilityAudit16151?.()||null);
    } else entry.report.buttonMissing=true;
    await snap('report-or-current-view');
   }catch(e){entry.failure=String(e);try{await snap('failure-state')}catch{}}
@@ -73,4 +79,4 @@ for(const [version,html] of [['before',base],['after',candidate]]){
 await browser.close();
 await writeFile('artifacts/m136-real/results.json',JSON.stringify(outputs,null,2));
 console.log('M136_REAL_IOWA_RESULTS '+JSON.stringify(outputs).slice(0,19000));
-if(outputs.some(x=>!x.resultPublished||x.failure||x.property?.buttonMissing||x.report?.buttonMissing))process.exitCode=1;
+if(outputs.some(x=>!x.resultPublished||x.failure||x.property?.buttonMissing||x.report?.buttonMissing||x.report?.openError))process.exitCode=1;
