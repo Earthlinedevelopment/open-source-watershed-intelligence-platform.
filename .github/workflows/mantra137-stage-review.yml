@@ -40,7 +40,7 @@ jobs:
           import {chromium} from 'playwright';
           import {readFile,writeFile} from 'node:fs/promises';
           const html=await readFile('index.html');
-          const baseline=(await import('node:child_process')).execFileSync('git',['show','origin/pages-live:index.html']);
+          const baseline=await readFile('/tmp/m137-baseline.html');
           const originalText=baseline.toString();
           const newText=html.toString();
           const result={tests:[],errors:[],exactAppend:newText.startsWith(originalText)};
@@ -100,6 +100,7 @@ jobs:
           console.log('M137_BROWSER_EVIDENCE '+JSON.stringify(result).slice(0,16000));
           if(!result.pass)process.exitCode=1;
           JS
+          git show origin/pages-live:index.html >/tmp/m137-baseline.html
           node m137-check.mjs
       - name: Push exact index-only candidate for human review
         shell: bash
