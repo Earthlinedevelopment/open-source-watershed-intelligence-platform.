@@ -1,0 +1,19 @@
+name: M132 inspect actual Property location-integrity guard
+on:
+  push:
+    branches: [candidate/mantra132-exclusion-engineering]
+    paths: [.github/workflows/mantra132-location-inspect.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for term in ['function assertLocationIntegrity15801','function selectedMapIdentity15801','before-property-render','function earthlineGovernedPropertyRun16202','propertyRunFailure16539']:
+            p=s.find(term)
+            print('M132_LOCATION_SOURCE',term,p,repr(s[max(0,p-350):p+5700]))
+          PY
