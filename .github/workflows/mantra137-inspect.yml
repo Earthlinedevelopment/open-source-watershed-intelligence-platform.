@@ -1,0 +1,24 @@
+name: M137 inspect current temporary hint and legend ownership
+on:
+  push:
+    branches: [candidate/mantra137-hide-legacy-legends-map-hint]
+    paths: [.github/workflows/mantra137-inspect.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect source ownership
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for term in ['earthlineTemporaryMapHint126','earthlineCorridorTip16248','earthlineSwaleLegend16050','earthlineAquiferLegend16070','earthlineDiagramLegend16080','earthline:analysis-complete','Place hand cursor over bare land to move map.']:
+            print('M137_TERM',repr(term),s.count(term))
+            p=0
+            for i in range(min(7,s.count(term))):
+              p=s.index(term,p)
+              print('M137_SNIP',term,i,s[max(0,p-420):p+650].replace(chr(10),' '))
+              p+=len(term)
+          PY
