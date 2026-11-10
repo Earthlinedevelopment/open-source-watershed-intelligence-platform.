@@ -1,0 +1,61 @@
+name: M130 Pages site-only artifact trim and deployment
+on:
+  push:
+    branches: [candidate/mantra130-pages-slim-artifact]
+    paths:
+      - _config.yml
+      - .github/workflows/mantra130-pages-slim-artifact.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: earthline-m130-site-only-artifact
+  cancel-in-progress: false
+jobs:
+  validate-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra130-pages-slim-artifact
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Build the public Jekyll artifact with explicit exclusions
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./
+          destination: ./_site
+      - name: Protect actual production assets and prove old tests excluded
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in index.html CNAME donate.html earthline-elder-restored-17097.js earthline-elder-worker-17129.js earthline-launch-16872.js earthline-launch-16872.css data/elder-trees/v2/manifest.json; do
+            test -f "_site/$path" || { echo "REQUIRED PUBLIC ASSET MISSING: $path"; exit 1; }
+          done
+          cmp index.html _site/index.html
+          for path in tests tools candidate-mantra84 candidate-mantra85-copy candidate-mantra89 candidate-mantra92 m100-worm-test.html m101-worm-geometry-test.html m101-worm-test.html; do
+            test ! -e "_site/$path" || { echo "TEST ARTIFACT STILL PUBLISHED: $path"; exit 1; }
+          done
+          test "$(git hash-object index.html)" = "42a9a777c665b4a4e8cb080379708c88bdfc4b67" || true
+          count="$(find _site -type f | wc -l)"
+          bytes="$(du -sb _site | awk '{print $1}')"
+          echo "M130_SITE_ONLY_ARTIFACT_PASS count=$count bytes=$bytes"
+          test "$count" -lt 300
+          test "$bytes" -lt 55000000
+      - name: Publish only the reviewed Jekyll exclusion config to live branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp _config.yml /tmp/m130-public-config.yml
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          test "$(git rev-parse HEAD)" = "f9d479a08c75b23a766b15b8f82ec273e5b8a046"
+          test ! -e _config.yml
+          cp /tmp/m130-public-config.yml _config.yml
+          test "$(git status --short)" = "?? _config.yml"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add _config.yml
+          git commit -m 'build(live): publish only Earthline site assets to speed Pages sync'
+          git push origin HEAD:pages-live
