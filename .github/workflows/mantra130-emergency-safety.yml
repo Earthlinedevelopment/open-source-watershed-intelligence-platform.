@@ -1,0 +1,78 @@
+name: M130 emergency Property slope safety release
+on:
+  push:
+    branches: [candidate/mantra130-swale-prescription]
+    paths: [.github/workflows/mantra130-emergency-safety.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: earthline-m130-science-emergency-direct
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra130-swale-prescription
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply exact tested Property safety patch to current accepted parent only
+        run: |
+          set -euo pipefail
+          cp tools/mantra130-property-same-band.py /tmp/m130-patch.py
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          test "$(git rev-parse HEAD)" = "862426db2440a7b2b8652b75d4fc654118d190dc"
+          test "$(git hash-object index.html)" = "0f865cf6dd3ffec340214c99e58a6d51aa087f9e"
+          python3 /tmp/m130-patch.py
+          test "$(git diff --name-only)" = "index.html"
+      - name: Unit-check exact 4 percent contour sample ceiling and Regional preservation
+        shell: bash
+        run: |
+          node - <<'JS'
+          const fs=require('node:fs');
+          const src=fs.readFileSync('index.html','utf8');
+          const at=src.indexOf('for(const sw of ordered){');
+          if(at<0)throw Error('M130 missing final ranking loop');
+          const a=src.indexOf('if(!isRegionalTile15769){',at);
+          const b=src.indexOf('let tooClose=false;',a);
+          if(a<0||b<a)throw Error('M130 Property ceiling absent');
+          const fragment=src.slice(a,b);
+          const evalGate=new Function('items','isRegionalTile15769','slopePct',\`
+            const M={swaleDiagnostics:{stage:{}}},GW=210,GH=146,kept=[];
+            for(const sw of items){
+              const finalRec15803=null;
+              \${fragment}
+              kept.push(sw);
+            }
+            return kept;
+          \`);
+          const make=(slope)=>({slope,pts:[[12,12],[13,13],[14,14]]});
+          const checks={
+            acceptsExactlyFour:evalGate([make(4)],false,()=>4).length===1,
+            rejectsAboveFour:evalGate([make(3)],false,()=>4.001).length===0,
+            rejectsSteepAverage:evalGate([make(4.01)],false,()=>3).length===0,
+            rejectsMissingSamples:evalGate([{slope:3,pts:[]}],false,()=>3).length===0,
+            preservesRegional:evalGate([make(9)],true,()=>9).length===1,
+            preservesExactSpacing:src.includes('if(isRegionalTile15769&&sw.bandKey===ex.bandKey)continue;'),
+            preservesTarget:src.includes('const TARGET_M=6.096, MIN_M=4.572, MAX_M=7.620')
+          };
+          console.log('M130_EMERGENCY_UNIT_CHECKS',JSON.stringify(checks));
+          if(Object.values(checks).some(v=>!v))process.exitCode=1;
+          JS
+      - name: Publish only tested emergency Property safety rule
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix(live): fail closed above 4 percent Property slope and enforce same-band spacing'
+          git push origin HEAD:pages-live
