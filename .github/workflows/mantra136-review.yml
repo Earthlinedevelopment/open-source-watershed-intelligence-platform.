@@ -1,0 +1,125 @@
+name: M136 stage and evidence display-only Regional layout PR
+on:
+  push:
+    branches: [candidate/mantra136-regional-layout-only]
+    paths:
+      - tools/mantra136-append-regional-layout.py
+      - .github/workflows/mantra136-review.yml
+permissions:
+  contents: write
+jobs:
+  validate-and-stage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra136-regional-layout-only
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply exact CSS-only patch on pinned live source
+        run: |
+          set -euo pipefail
+          cp tools/mantra136-append-regional-layout.py /tmp/m136.py
+          git fetch origin pages-live candidate/mantra136-display-review
+          git checkout -B candidate/mantra136-display-review origin/candidate/mantra136-display-review
+          test "$(git rev-parse HEAD)" = "ad1138af29e423e385e950b781558ae597df3c64"
+          python3 /tmp/m136.py
+          test "$(git diff --name-only)" = "index.html"
+      - name: Install browsers for desktop and phone screenshots
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify UI state transitions and capture desktop/phone evidence
+        shell: bash
+        run: |
+          mkdir -p artifacts/m136
+          cat > /tmp/m136-check.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {readFile,writeFile} from 'node:fs/promises';
+          const html=await readFile('index.html');
+          const results={states:[],errors:[],pictures:[],engine:'chromium',checks:{}};
+          const browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+          for(const [size,w,h] of [['desktop',1800,1000],['phone',390,844]]){
+            const page=await browser.newPage({viewport:{width:w,height:h},serviceWorkers:'block'});
+            page.on('pageerror',e=>results.errors.push(size+':'+String(e)));
+            await page.route('**/*',r=>r.request().isNavigationRequest()&&r.request().resourceType()==='document'?r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html}):r.continue());
+            try{
+              await page.goto('https://earthlinedevelopment.org/?m136='+size,{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#searchInput',{timeout:30000});
+              const snap=async(name)=>{await page.screenshot({path:'artifacts/m136/'+size+'-'+name+'.png',timeout:20000});results.pictures.push(size+'-'+name)};
+              const check=()=>page.evaluate(()=>{
+                const ids=['earthlineSwaleLegend16050','earthlineAquiferLegend16070','earthlineDiagramLegend16080'];
+                const rect=id=>{const e=document.getElementById(id);if(!e)return null;const r=e.getBoundingClientRect();return {display:getComputedStyle(e).display,x:Math.round(r.x),y:Math.round(r.y),width:Math.round(r.width),height:Math.round(r.height)}};
+                return {legend:ids.map(rect),hint:rect('earthlineTemporaryMapHint126'),corridor:rect('earthlineCorridorTip16248'),width:innerWidth,height:innerHeight};
+              });
+              await snap('home');
+              const home=await check();
+              results.states.push({size,state:'home',data:home});
+              if(home.legend.some(x=>x&&x.display!=='none'))throw Error('legends visible on home');
+              // Exercise actual tip semantics without waiting for live Regional analysis.
+              await page.evaluate(()=>{
+                document.documentElement.setAttribute('data-earthline-has-results','');
+                for(const id of ['earthlineSwaleLegend16050','earthlineAquiferLegend16070','earthlineDiagramLegend16080']){
+                  if(!document.getElementById(id)){const e=document.createElement('div');e.id=id;e.textContent=id==='earthlineSwaleLegend16050'?'POTENTIAL BIOSWALES A B C':id==='earthlineAquiferLegend16070'?'Mapped groundwater context':'Swales Explained';document.body.appendChild(e)}
+                }
+                const hint=document.createElement('aside');hint.id='earthlineTemporaryMapHint126';
+                Object.assign(hint.style,{position:'fixed',top:'96px',left:'50%',transform:'translateX(-50%)',padding:'12px',background:'#142833',color:'white'});
+                hint.textContent='Place hand cursor over bare land to move map.';document.body.appendChild(hint);
+                const tip=document.createElement('aside');tip.id='earthlineCorridorTip16248';tip.classList.add('open');tip.textContent='Regional corridors are clickable';document.body.appendChild(tip);
+              });
+              await page.waitForTimeout(150);
+              const during=await check();
+              await snap('iowa-regional-hint-open-layout-test');
+              results.states.push({size,state:'hint-open-layout-test',data:during});
+              if(during.hint?.display==='none'||during.corridor?.display!=='none')throw Error('simultaneous message collision');
+              if(during.legend.some(x=>!x||x.display==='none'))throw Error('regional legend not visible');
+              await page.evaluate(()=>document.getElementById('earthlineTemporaryMapHint126')?.remove());
+              await page.waitForTimeout(150);
+              const after=await check();
+              await snap('iowa-regional-hint-closed-layout-test');
+              results.states.push({size,state:'hint-closed-layout-test',data:after});
+              if(after.corridor?.display==='none')throw Error('corridor message not revealed');
+              if(size==='desktop'){
+                const maxLegendBottom=Math.max(...after.legend.map(x=>x?.y+x?.height||0));
+                if(maxLegendBottom>h-100)throw Error('legend stack too close to scale bar');
+                if(after.corridor.x<w*.38)throw Error('tip not centered over map');
+              }
+              await page.evaluate(()=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;if(m?.jumpTo)m.jumpTo({zoom:11.1})});
+              await page.waitForTimeout(200);
+              await snap('iowa-zoom11-layout-test');
+              await page.evaluate(()=>document.documentElement.setAttribute('data-earthline-analysis-tier','property'));
+              await page.waitForTimeout(100);
+              await snap('property-layout-test');
+              results.states.push({size,state:'property-layout-test',data:await check()});
+              results.checks[size]=true;
+            }catch(e){results.checks[size]=false;results.errors.push(size+':'+String(e))}
+            await page.close();
+          }
+          await browser.close();
+          results.pass=Object.values(results.checks).every(Boolean)&&results.errors.length===0;
+          await writeFile('artifacts/m136/results.json',JSON.stringify(results,null,2));
+          console.log('M136_LAYOUT_RESULTS '+JSON.stringify({checks:results.checks,errors:results.errors,states:results.states}).slice(0,17000));
+          if(!results.pass)process.exitCode=1;
+          JS
+          cp /tmp/m136-check.mjs m136-check.mjs
+          node m136-check.mjs
+      - name: Stage only verified index.html on review branch (never pages-live)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'review only: sequence Regional tips and move legends below map messages'
+          git push origin HEAD:candidate/mantra136-display-review
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m136-desktop-phone-layout-evidence
+          path: artifacts/m136/
+          retention-days: 30
