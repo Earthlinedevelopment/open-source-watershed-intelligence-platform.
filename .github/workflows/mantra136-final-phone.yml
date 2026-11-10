@@ -1,0 +1,108 @@
+name: M136 phone menu rail clearance PR54 only
+on:
+  push:
+    branches: [candidate/mantra136-regional-layout-only]
+    paths:
+      - .github/workflows/mantra136-final-phone.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  phone:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra136-regional-layout-only
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Pin draft and apply phone-only correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tools/mantra136-final-phone-correction.py /tmp/m136-phone.py
+          git fetch origin pages-live candidate/mantra136-display-review
+          test "$(git rev-parse origin/pages-live)" = "ad1138af29e423e385e950b781558ae597df3c64"
+          git checkout -B candidate/mantra136-display-review origin/candidate/mantra136-display-review
+          python3 /tmp/m136-phone.py
+          test "$(git diff --name-only)" = "index.html"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Validate real DOM phone message clearance and desktop unchanged
+        shell: bash
+        run: |
+          mkdir -p artifacts/m136-final-phone
+          cat > m136-phone-test.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {readFile,writeFile} from 'node:fs/promises';
+          const html=await readFile('index.html');
+          const result={cases:[],errors:[]};
+          const browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+          for(const [name,width,height] of [['phone',390,844],['desktop',1800,1000]]){
+            const p=await browser.newPage({viewport:{width,height},serviceWorkers:'block'});
+            p.on('pageerror',e=>result.errors.push(name+': '+e));
+            await p.route('**/*',r=>r.request().isNavigationRequest()&&r.request().resourceType()==='document'?r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html}):r.continue());
+            try{
+             await p.goto('https://earthlinedevelopment.org/?m136-final='+name,{waitUntil:'domcontentloaded',timeout:40000});
+             await p.waitForSelector('#searchInput',{timeout:24000});
+             await p.evaluate(({width})=>{
+               document.documentElement.style.setProperty('--el-rail-16188',width<=760?'54px':'86px');
+               document.documentElement.style.setProperty('--el-panel-16188','385px');
+               document.documentElement.setAttribute('data-earthline-has-results','');
+               for(const id of ['earthlineSwaleLegend16050','earthlineAquiferLegend16070','earthlineDiagramLegend16080']){
+                 if(!document.getElementById(id)){const e=document.createElement('div');e.id=id;e.textContent='Legend';document.body.appendChild(e)}
+               }
+               let hint=document.getElementById('earthlineTemporaryMapHint126');
+               if(!hint){hint=document.createElement('aside');hint.id='earthlineTemporaryMapHint126';hint.textContent='Place hand cursor over bare land to move map';hint.style.cssText='position:fixed;padding:12px';document.body.appendChild(hint)}
+               let tip=document.getElementById('earthlineCorridorTip16248');
+               if(!tip){tip=document.createElement('aside');tip.id='earthlineCorridorTip16248';tip.textContent='Regional corridors are clickable';document.body.appendChild(tip)}
+               tip.classList.add('open');
+             },{width});
+             const coords=()=>p.evaluate(()=>{
+               const r=id=>{const el=document.getElementById(id);if(!el)return null;const a=el.getBoundingClientRect();return {x:a.x,y:a.y,width:a.width,height:a.height,display:getComputedStyle(el).display}};
+               return {hint:r('earthlineTemporaryMapHint126'),tip:r('earthlineCorridorTip16248'),rail:r('earthlineRail16188')};
+             });
+             const a=await coords();
+             await p.screenshot({path:'artifacts/m136-final-phone/'+name+'-hint.png',timeout:14000});
+             if(a.tip?.display!=='none')throw Error('corridor visible behind hint');
+             await p.evaluate(()=>document.getElementById('earthlineTemporaryMapHint126')?.remove());
+             const b=await coords();
+             await p.screenshot({path:'artifacts/m136-final-phone/'+name+'-tip.png',timeout:14000});
+             if(b.tip?.display==='none')throw Error('corridor missing after hint');
+             if(width===390){
+               for(const v of [a.hint,b.tip]){
+                 if(v.x<74-1||v.x+v.width>390-9)throw Error('message overlaps rail or screen edge '+JSON.stringify(v));
+               }
+             }
+             result.cases.push({name,pass:true,hint:a.hint,tip:b.tip});
+            }catch(e){result.errors.push(name+': '+String(e));result.cases.push({name,pass:false})}
+            await p.close();
+          }
+          await browser.close();
+          result.passed=result.errors.length===0&&result.cases.every(x=>x.pass);
+          await writeFile('artifacts/m136-final-phone/results.json',JSON.stringify(result,null,2));
+          console.log('M136_FINAL_PHONE_RESULTS '+JSON.stringify(result));
+          if(!result.passed)process.exitCode=1;
+          JS
+          node m136-phone-test.mjs
+      - name: Push only candidate PR54, not production
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix(draft PR54): center phone tips clear of menu rail'
+          git push origin HEAD:candidate/mantra136-display-review
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m136-final-phone-rail-evidence
+          path: artifacts/m136-final-phone/
+          retention-days: 30
