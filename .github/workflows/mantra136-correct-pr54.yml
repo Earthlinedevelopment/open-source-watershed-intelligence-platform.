@@ -80,7 +80,7 @@ jobs:
               }
               if(after.legend.some(r=>r.x<54&&width<=760))throw Error('legend under phone bar');
               for(let i=1;i<after.legend.length;i++){
-                if(after.legend[i].y+after.legend[i].height>after.legend[i-1].y-4)throw Error('legends overlap '+JSON.stringify(after.legend));
+                if(after.legend[i-1].y+after.legend[i-1].height>after.legend[i].y-4)throw Error('legends overlap '+JSON.stringify(after.legend));
               }
               if(after.legend[2].y+after.legend[2].height>height-100)throw Error('scale area collision');
               await page.screenshot({path:'artifacts/m136-correction/'+name+'-after-hint.png',timeout:15000});
