@@ -1,0 +1,29 @@
+name: M133 investigate home legends and event state
+on:
+  push:
+    branches: [candidate/mantra133-home-legend-gate]
+    paths: [.github/workflows/mantra133-inspect.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect precise live source and supplied-zip legend behavior
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for term in ['earthline:analysis-complete','earthlineSwaleLegend16050','earthlineAquiferLegend16070','earthlineDiagramLegend16080','data-earthline-has-results','earthline:regional','data-earthline-analysis-tier','Regional screening published']:
+            print('M133_TERM',term,'COUNT',s.count(term))
+            p=0
+            for i in range(min(5,s.count(term))):
+              p=s.index(term,p)
+              print('M133_CONTEXT',term,s[max(0,p-300):p+400].replace(chr(10),' '))
+              p+=len(term)
+          PY
+          echo M133_LIVE_HASH
+          git rev-parse HEAD
+          git hash-object index.html
+          wc -c index.html
