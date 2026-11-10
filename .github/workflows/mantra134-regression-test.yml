@@ -1,0 +1,29 @@
+name: M134 live Iowa Regional Property Elder regression diagnosis
+on:
+  push:
+    branches: [candidate/mantra134-regional-zoom-clutter]
+    paths:
+      - tests/mantra134-regression-diagnostic.mjs
+      - .github/workflows/mantra134-regression-test.yml
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Investigate actual Iowa runs
+        run: node tests/mantra134-regression-diagnostic.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m134-regression-evidence
+          path: artifacts/m134/
+          retention-days: 30
