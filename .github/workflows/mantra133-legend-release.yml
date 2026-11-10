@@ -1,0 +1,105 @@
+name: M133 eliminate home globe legend regression
+on:
+  push:
+    branches: [candidate/mantra133-home-legend-gate]
+    paths:
+      - tools/mantra133-append-legend-gate.py
+      - .github/workflows/mantra133-legend-release.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: earthline-m133-home-legend
+  cancel-in-progress: false
+jobs:
+  browser-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra133-home-legend-gate
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Exact patch on protected production head
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tools/mantra133-append-legend-gate.py /tmp/m133.py
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          test "$(git rev-parse HEAD)" = "4d9784c472a5bab6f358b010f750786e6fecd257"
+          cp index.html /tmp/m133-parent.html
+          python3 /tmp/m133.py
+          test "$(git diff --name-only)" = "index.html"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install two engines
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium webkit
+      - name: Verify hidden on home and shown after published event in two engines
+        shell: bash
+        run: |
+          mkdir -p artifacts/m133
+          cat > artifacts/m133/check.mjs <<'JS'
+          import {chromium,webkit} from 'playwright';
+          import {readFile,writeFile} from 'node:fs/promises';
+          const original=await readFile('/tmp/m133-parent.html');
+          const candidate=await readFile('index.html');
+          const output={checks:[],passed:false};
+          for(const [engine,name] of [[chromium,'chromium'],[webkit,'webkit']]){
+            const browser=await engine.launch({headless:true,args:name==='chromium'?['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']:[]});
+            const p=await browser.newPage({viewport:{width:1800,height:1000},serviceWorkers:'block'});
+            const record={engine:name,errors:[],home:{},after:{},reset:{}};
+            p.on('pageerror',e=>record.errors.push(String(e)));
+            await p.route('**/*',r=>r.request().isNavigationRequest()&&r.request().resourceType()==='document'?r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:candidate}):r.continue());
+            try{
+              await p.goto('https://earthlinedevelopment.org/?m133='+name,{waitUntil:'domcontentloaded',timeout:60000});
+              await p.waitForSelector('#searchInput',{timeout:30000});
+              await p.waitForTimeout(800);
+              const inspect=()=>p.evaluate(()=>{
+                const ids=['earthlineSwaleLegend16050','earthlineAquiferLegend16070','earthlineDiagramLegend16080'];
+                return {flag:document.documentElement.hasAttribute('data-earthline-has-results'),
+                  runState:document.documentElement.dataset.earthlineRunState||null,
+                  present:ids.map(id=>!!document.getElementById(id)),
+                  displays:ids.map(id=>{const e=document.getElementById(id);return e?getComputedStyle(e).display:null;})};
+              });
+              record.home=await inspect();
+              await p.screenshot({path:'artifacts/m133/'+name+'-home.png',timeout:20000});
+              await p.evaluate(()=>document.dispatchEvent(new CustomEvent('earthline:analysis-complete',{detail:{tier:'regional'}})));
+              await p.waitForTimeout(200);
+              record.after=await inspect();
+              await p.evaluate(()=>document.documentElement.removeAttribute('data-earthline-has-results'));
+              record.reset=await inspect();
+              record.pass=record.home.flag===false&&record.home.present.every(Boolean)&&record.home.displays.every(x=>x==='none')&&
+                record.after.flag===true&&record.after.displays.every(x=>x!=='none')&&record.reset.displays.every(x=>x==='none')&&record.errors.length===0;
+            }catch(e){record.failure=String(e);record.pass=false}
+            output.checks.push(record);
+            await browser.close();
+          }
+          output.exactChange=candidate.length-original.length===596&&candidate.subarray(0,original.length).equals(original);
+          output.passed=output.exactChange&&output.checks.every(x=>x.pass);
+          await writeFile('artifacts/m133/result.json',JSON.stringify(output,null,2));
+          console.log('M133_HOME_LEGEND_GATE '+JSON.stringify(output));
+          if(!output.passed)process.exitCode=1;
+          JS
+          node artifacts/m133/check.mjs
+      - name: Publish exact-append-only fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "4d9784c472a5bab6f358b010f750786e6fecd257"
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix(live): hide all three regional legends on home globe until analysis publishes'
+          git push origin HEAD:pages-live
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m133-home-legend-comparison
+          path: artifacts/m133/
+          retention-days: 30
