@@ -1,0 +1,73 @@
+name: M131 gentle-land opportunity preservation
+on:
+  push:
+    branches: [candidate/mantra131-five-fixes]
+    paths: [.github/workflows/mantra131-gentle-land.yml]
+permissions: {contents: read}
+jobs:
+  verify-iowa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra131-five-fixes
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Load the exact released index HTML
+        run: |
+          git fetch origin pages-live
+          test "$(git rev-parse origin/pages-live)" = "37d9aac3e4ccd162a346b9c403a25f0c597c4c1a"
+          git show origin/pages-live:index.html > /tmp/m131-live.html
+      - name: Install Chromium
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Iowa gentle-land science and report smoke
+        shell: bash
+        run: |
+          mkdir -p artifacts/m131-gentle
+          cat > artifacts/m131-gentle/check.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {readFile,writeFile} from 'node:fs/promises';
+          const html=await readFile('/tmp/m131-live.html','utf8');
+          const b=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+          const p=await b.newPage({viewport:{width:1800,height:1000},serviceWorkers:'block'});
+          const o={checks:{},errors:[]};p.on('pageerror',e=>o.errors.push(String(e)));
+          await p.route('**/*',r=>r.request().isNavigationRequest()&&r.request().resourceType()==='document'?r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html}):r.continue());
+          try{
+            await p.goto('https://earthlinedevelopment.org/?m131iowa=1',{waitUntil:'domcontentloaded',timeout:60000});
+            await p.locator('#searchInput').fill('Iowa');
+            await p.locator('#searchInput').press('Enter');
+            await p.waitForFunction(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970,null,{timeout:115000});
+            await p.waitForTimeout(1100);
+            await p.evaluate(()=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;m.stop();m.jumpTo({center:[-93.52,42.08],zoom:17.7});});
+            await p.waitForTimeout(2400);
+            await p.locator('#earthlineDeclareProperty16169').click({timeout:16000});
+            await p.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,null,{timeout:115000});
+            o.audit=await p.evaluate(()=>{
+              const m=(typeof M!=='undefined'?M:window.M)||{},a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{},s=m.swaleDiagnostics?.stage||{},sw=Array.isArray(m.swales)?m.swales:[];
+              return {settled:a.settled,result:a.result,error:a.error,swales:sw.length,rejectSlope:s.rejectSlopeAbove4M131||0,
+                maxSlope:Math.max(0,...sw.map(x=>Number(x.slope)||0)),
+                status:document.getElementById('earthlineVermontStatus16147')?.textContent?.slice(0,170)};
+            });
+            o.checks.settled=o.audit.settled===true;
+            o.checks.hasValidSwales=o.audit.swales>0&&o.audit.result===true;
+            o.checks.allUnderFour=o.audit.maxSlope<=4;
+            o.checks.noErrors=o.errors.length===0;
+            await p.screenshot({path:'artifacts/m131-gentle/iowa-property.png',timeout:20000});
+          }catch(e){o.failure=String(e)}
+          await writeFile('artifacts/m131-gentle/result.json',JSON.stringify(o,null,2));
+          console.log('M131_GENTLE_RESULT '+JSON.stringify(o));
+          await b.close();
+          if(o.failure||Object.keys(o.checks).length!==4||Object.values(o.checks).some(v=>!v))process.exitCode=1;
+          JS
+          node artifacts/m131-gentle/check.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m131-gentle-evidence
+          path: artifacts/m131-gentle/
+          retention-days: 30
