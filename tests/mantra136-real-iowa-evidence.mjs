@@ -14,7 +14,7 @@ for(const [version,html] of [['before',base],['after',candidate]]){
   p.on('requestfailed',r=>{if(entry.requestsFailed.length<15)entry.requestsFailed.push({url:r.url().slice(0,110),failure:r.failure()?.errorText})});
   await p.route('**/*',r=>r.request().isNavigationRequest()&&r.request().resourceType()==='document'?r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html}):r.continue());
   const snap=async(label)=>{
-    await p.screenshot({path:'artifacts/m136-real/'+version+'-'+device+'-'+label+'.png',timeout:18000});
+    await p.screenshot({path:'artifacts/m136-real/'+version+'-'+device+'-'+label+'.png',timeout:30000,animations:'disabled'});
     entry.photos.push(label);
   };
   try{
@@ -37,8 +37,26 @@ for(const [version,html] of [['before',base],['after',candidate]]){
    await p.waitForTimeout(1100);
    const prop=p.locator('#earthlineDeclareProperty16169');
    if(await prop.isVisible().catch(()=>false)){
-      await prop.click({timeout:8000});
+      // Browser click can be intercepted by Earthline's existing left rail in BOTH
+      // baseline and candidate. Use genuine keyboard activation, not DOM .click().
+      entry.property.interaction=await p.evaluate(()=>{
+        const button=document.getElementById('earthlineDeclareProperty16169');
+        const rail=document.getElementById('earthlineRail16188');
+        const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height}};
+        const r=button?.getBoundingClientRect();
+        const blocker=r?document.elementFromPoint(r.left+r.width/2,r.top+r.height/2):null;
+        return {button:rect(button),rail:rect(rail),hitElement: blocker?.outerHTML?.slice(0,320)};
+      });
+      await prop.focus();
+      await p.keyboard.press('Enter');
       await p.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,null,{timeout:35000}).catch(e=>{entry.property.waitError=String(e)});
+      entry.property.audit=await p.evaluate(()=>({
+        settled:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled||false,
+        phase:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.phase||null,
+        swales:(window.M?.swales||[]).length,
+        committed:!!window.M?.propertyPublication15816?.committed,
+        status:document.getElementById('earthlineVermontStatus16147')?.textContent?.slice(0,300)
+      }));
    }else entry.property.buttonMissing=true;
    await snap('iowa-property');
    entry.report={modalButtons:await p.locator('button').filter({hasText:/report|bioswale report/i}).count()};
