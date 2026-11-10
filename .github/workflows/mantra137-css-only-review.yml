@@ -1,0 +1,46 @@
+name: M137 make PR55 CSS-only and capture real Iowa
+on:
+  push:
+    branches: [candidate/mantra137-hide-legacy-legends-map-hint]
+    paths: [.github/workflows/mantra137-css-only-review.yml]
+permissions: {contents: write}
+jobs:
+  simplify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra137-hide-legacy-legends-map-hint
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Remove unapproved repeating hint script, leave only CSS
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tools/mantra137-css-only-pr55.py /tmp/strip-m137.py
+          git fetch origin pages-live candidate/mantra137-display-review
+          test "$(git rev-parse origin/pages-live)" = "e0172573bb2bd8385fad4f8dcef1ca3d1d63a00d"
+          git checkout -B candidate/mantra137-display-review origin/candidate/mantra137-display-review
+          python3 /tmp/strip-m137.py
+          test "$(git diff --name-only)" = "index.html"
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          base=subprocess.check_output(['git','show','origin/pages-live:index.html'])
+          cur=Path('index.html').read_bytes()
+          delta=cur[len(base):]
+          assert cur.startswith(base), 'Not append-only'
+          assert b'<style id="mantra137-legacy-box-removal">' in delta
+          assert b'mantra137-map-moving-tip-return' not in delta
+          assert delta.strip().startswith(b'<style') and delta.strip().endswith(b'</style>')
+          assert b'#earthlineSwaleLegend16050' in delta
+          assert b'#earthlineAquiferLegend16070' in delta
+          assert b'#earthlineDiagramLegend16080' in delta
+          print('M137_REVIEW_CSS_ONLY',delta.decode()[:2000])
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix(draft PR55): remove repeat tip script; three-box CSS only'
+          git push origin HEAD:candidate/mantra137-display-review
