@@ -13795,33 +13795,12 @@ var prescribeSwales;
         finalRec15803.reachedFinalCapEvaluation15840=true;
       }
       /* BUILD-CHECK-15803-DIAGNOSTIC-END */
-      /* M131: no Property route is prescribed above 4% slope at ANY sample. */
-      if(!isRegionalTile15769){
-        const ptsM131=Array.isArray(sw&&sw.pts)?sw.pts:[];
-        let safeSlopeM131=ptsM131.length>=2 && Number.isFinite(Number(sw.slope)) && Number(sw.slope)<=4;
-        if(safeSlopeM131)for(const pointM131 of ptsM131){
-          const xM131=Math.round(Number(pointM131?.[0])),yM131=Math.round(Number(pointM131?.[1]));
-          if(!Number.isFinite(xM131)||!Number.isFinite(yM131)||xM131<0||yM131<0||xM131>=GW||yM131>=GH){safeSlopeM131=false;break;}
-          const localSlopeM131=Number(slopePct(xM131,yM131));
-          if(!Number.isFinite(localSlopeM131)||localSlopeM131>4){safeSlopeM131=false;break;}
-        }
-        if(!safeSlopeM131){
-          M.swaleDiagnostics.stage.rejectSlopeAbove4M131=(M.swaleDiagnostics.stage.rejectSlopeAbove4M131||0)+1;
-          if(finalRec15803){
-            finalRec15803.status='rejected-property-slope-above-four';
-            finalRec15803.reason='property-slope-limit-4pct';
-          }
-          continue;
-        }
-      }
       let tooClose=false;const swBBox16204=earthlineSwaleGridBBox16204(sw);
       const spacingCandidates16456=spacingIndexCandidates16456(swBBox16204);
       bboxSkippedFinalPairs16204+=Math.max(0,kept.length-spacingCandidates16456.length);
       for(const exIndex16204 of spacingCandidates16456){
         const ex=kept[exIndex16204];
-        /* M131: Property fragments in the same elevation band must still
-           satisfy exact minimum-distance clearance; Regional logic unchanged. */
-        if(isRegionalTile15769&&sw.bandKey===ex.bandKey)continue;
+        if(sw.bandKey===ex.bandKey)continue;
         if(Math.abs(Number(sw.levelH||0)-Number(ex.levelH||0))>verticalWindowM)continue;
         if(!earthlineSwaleBBoxesWithin16204(swBBox16204,keptBBox16204[exIndex16204],spacingPadCells16204)){bboxSkippedFinalPairs16204++;continue;}
         exactFinalPairs16204++;
