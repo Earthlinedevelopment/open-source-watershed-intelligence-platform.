@@ -1,0 +1,30 @@
+name: M129 Vermont pinned Property density and Elder visibility
+on:
+  push:
+    branches: [candidate/mantra129-vermont-property-audit]
+    paths:
+      - tests/mantra129-property-density-audit.mjs
+      - .github/workflows/mantra129-property-density-audit.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Inspect real Vermont parcel at supplied screenshot coordinates
+        run: node tests/mantra129-property-density-audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra129-vermont-density-evidence
+          path: artifacts/m129-property/
+          retention-days: 30
