@@ -1,0 +1,52 @@
+name: M130 meeting rollback - HTML only
+on:
+  push:
+    branches: [candidate/mantra130-meeting-rollback]
+    paths: [.github/workflows/mantra130-meeting-rollback.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: earthline-m130-meeting-rollback
+  cancel-in-progress: false
+jobs:
+  restore:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra130-meeting-rollback
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Restore only prior accepted HTML preserving Elder
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          test "$(git rev-parse HEAD)" = "f9d479a08c75b23a766b15b8f82ec273e5b8a046"
+          test "$(git hash-object index.html)" != "0f865cf6dd3ffec340214c99e58a6d51aa087f9e"
+          test "$(git hash-object earthline-elder-restored-17097.js)" = "b5a06e9a2da46c7be04266a575fa2e3e337782df"
+          git show 394c7c1fc7e612afacf45baaa6fedcc3b2ed563f:index.html > /tmp/previous-approved-index.html
+          test "$(git hash-object --stdin < /tmp/previous-approved-index.html)" = "0f865cf6dd3ffec340214c99e58a6d51aa087f9e"
+          cp /tmp/previous-approved-index.html index.html
+          test "$(git diff --name-only)" = "index.html"
+          test "$(git hash-object index.html)" = "0f865cf6dd3ffec340214c99e58a6d51aa087f9e"
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for term in ['earthline-swale-zoom-gate-css','reportAquiferContext123(baseData.d)','reportPlaceLine123(baseData.d)','Place hand cursor over bare land to move map.']:
+              assert term in s, term
+          assert 'rejectSlopeAbove4M130' not in s
+          print('M130 MEETING ROLLBACK VERIFIED - HTML ONLY; TREE MARKERS PRESERVED')
+          PY
+      - name: Publish reversible HTML-only rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'revert(live): restore pre-M130 HTML for consultant meeting; preserve Elder tree markers'
+          git push origin HEAD:pages-live
