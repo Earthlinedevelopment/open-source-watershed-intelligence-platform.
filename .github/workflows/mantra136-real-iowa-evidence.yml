@@ -1,0 +1,40 @@
+name: M136 real Iowa before after visual acceptance (no deploy)
+on:
+  push:
+    branches: [candidate/mantra136-regional-layout-only]
+    paths:
+      - tests/mantra136-real-iowa-evidence.mjs
+      - .github/workflows/mantra136-real-iowa-evidence.yml
+permissions: {contents: read}
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra136-regional-layout-only
+          fetch-depth: 0
+      - name: Pin exact current production and draft PR sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin pages-live candidate/mantra136-display-review
+          test "$(git rev-parse origin/pages-live)" = "ad1138af29e423e385e950b781558ae597df3c64"
+          git show origin/pages-live:index.html >baseline-index.html
+          git show origin/candidate/mantra136-display-review:index.html >candidate-index.html
+          test "$(git hash-object candidate-index.html)" != "$(git hash-object baseline-index.html)"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Capture actual Iowa searches and report, desktop and phone
+        run: node tests/mantra136-real-iowa-evidence.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m136-real-iowa-before-after
+          path: artifacts/m136-real/
+          retention-days: 30
