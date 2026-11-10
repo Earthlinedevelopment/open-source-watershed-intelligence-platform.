@@ -1,0 +1,85 @@
+name: Mantra 129 - Elder round canopy markers and label cleanup
+on:
+  push:
+    branches: [candidate/mantra129-tree-canopy-ui]
+    paths:
+      - earthline-elder-restored-17097.js
+      - .github/workflows/mantra129-tree-canopy-ui.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium and WebKit
+        run: |
+          set -e
+          node --check earthline-elder-restored-17097.js
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium webkit
+      - name: Test Elder symbols, evidence, no text clutter
+        shell: bash
+        run: |
+          mkdir -p artifacts/m129
+          cat > artifacts/m129/test.mjs <<'JS'
+          import {chromium,webkit} from 'playwright';
+          import {readFile,writeFile} from 'node:fs/promises';
+          const script=await readFile('earthline-elder-restored-17097.js','utf8');
+          const results=[];
+          for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
+            const browser=await engine.launch({headless:true,args:name==='chromium'?['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']:[]});
+            const page=await browser.newPage({viewport:{width:1500,height:950},serviceWorkers:'block'});
+            const out={name,checks:{},errors:[]};
+            page.on('pageerror',err=>out.errors.push(String(err)));
+            await page.route('**/earthline-elder-restored-17097.js*',r=>r.fulfill({status:200,contentType:'application/javascript',body:script,headers:{'cache-control':'no-store'}}));
+            try{
+              await page.goto('https://earthlinedevelopment.org/?m129='+name,{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#searchInput',{timeout:35000});
+              await page.waitForFunction(()=>!!window.EARTHLINE_ELDER_TREES_V1_17097,null,{timeout:35000});
+              await page.waitForFunction(()=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);return !!m?.isStyleLoaded?.()},null,{timeout:50000});
+              await page.evaluate(()=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);m.jumpTo({center:[-73.195,44.483],zoom:16});});
+              await page.waitForTimeout(1200);
+              const audit=await page.evaluate(async()=>{
+                const a=window.EARTHLINE_ELDER_TREES_V1_17097;
+                const result=await Promise.race([a.refresh(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Elder refresh timeout')),35000))]);
+                const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+                const layer=m.getLayer(a.layer);
+                const source=m.getSource(a.source);
+                const layout=layer?m.getLayoutProperty(a.layer,'text-field'):null;
+                const image=m.hasImage('earthline-elder-pin-modeled');
+                const mapFeatures=source?source._data?.features?.length:null;
+                return {summary:result?.total??null,displayFeatures:a.features().length,
+                  layer:!!layer,source:!!source,image,textField:layout,iconAnchor:layer?m.getLayoutProperty(a.layer,'icon-anchor'):null,
+                  rechargeWeight:a.rechargeWeight,scienceBaseline:a.scienceBaseline,mapFeatures};
+              });
+              out.audit=audit;
+              out.checks.scienceUnchanged=audit.scienceBaseline==='17118'&&audit.rechargeWeight===0;
+              out.checks.hasEvidence=audit.displayFeatures>0&&audit.summary!==null;
+              out.checks.canopyImage=audit.image===true&&audit.iconAnchor==='center';
+              out.checks.labelClutterGone=audit.textField==='';
+              out.checks.layerLive=audit.layer&&audit.source;
+              out.checks.noNewErrors=out.errors.length===0;
+              await page.screenshot({path:'artifacts/m129/'+name+'.png',timeout:20000});
+            }catch(e){out.failure=String(e)}
+            out.passed=!out.failure&&Object.keys(out.checks).length===6&&Object.values(out.checks).every(Boolean);
+            results.push(out);
+            await browser.close();
+          }
+          await writeFile('artifacts/m129/results.json',JSON.stringify(results,null,2));
+          console.log('M129_ELDER_RESULTS '+JSON.stringify(results));
+          if(results.some(x=>!x.passed))process.exitCode=1;
+          JS
+          node artifacts/m129/test.mjs
+      - name: Preserve browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m129-tree-canopy-evidence
+          path: artifacts/m129/
+          retention-days: 30
