@@ -44,15 +44,15 @@ jobs:
           const b=src.indexOf('let tooClose=false;',a);
           if(a<0||b<a)throw Error('M130 Property ceiling absent');
           const fragment=src.slice(a,b);
-          const evalGate=new Function('items','isRegionalTile15769','slopePct',\`
+          const evalGate=new Function('items','isRegionalTile15769','slopePct',`
             const M={swaleDiagnostics:{stage:{}}},GW=210,GH=146,kept=[];
             for(const sw of items){
               const finalRec15803=null;
-              \${fragment}
+              ${fragment}
               kept.push(sw);
             }
             return kept;
-          \`);
+          `);
           const make=(slope)=>({slope,pts:[[12,12],[13,13],[14,14]]});
           const checks={
             acceptsExactlyFour:evalGate([make(4)],false,()=>4).length===1,
