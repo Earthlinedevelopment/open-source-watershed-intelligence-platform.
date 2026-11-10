@@ -1,0 +1,30 @@
+name: M131 inspect exactly live map and report hooks
+on:
+  push:
+    branches: [candidate/mantra131-five-fixes]
+    paths: [.github/workflows/mantra131-inspect.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Print bounded contextual source
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for name,needle,before,after in [
+            ('PROPERTY_FILTER','if(sw.bandKey===ex.bandKey)continue;',1100,1200),
+            ('SWALE_RENDER','earthline-swale-core-16168',1400,1800),
+            ('PROPERTY_TREE','earthline-elder-tree-points-17097',700,900),
+            ('HINT','function earthlineShowMapHint126',200,2700),
+            ('REPORT_PLACE','async function reportPlaceLine123',200,1900),
+            ('REPORT_AQUIFER','reportAquiferContext123',150,1200),
+            ('REGIONAL_RENDER','data-layer="swale-opportunities"',1200,1700),
+            ('TREE_SVG','tree',200,450)
+          ]:
+            p=s.find(needle)
+            print('\nM131_'+name,'offset',p,'\n',s[max(0,p-before):p+after] if p>=0 else '')
+          PY
