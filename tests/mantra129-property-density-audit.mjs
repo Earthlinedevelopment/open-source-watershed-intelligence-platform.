@@ -29,13 +29,18 @@ try{
   const len=lines.map(length).sort((a,b)=>a-b),mdpt=c=>c[Math.floor(c.length/2)],mids=lines.map(mdpt);
   const spacing=mids.map((pt,i)=>mids.reduce((closest,q,j)=>{if(i===j)return closest;const lat=(pt[1]+q[1])/2*Math.PI/180;return Math.min(closest,Math.hypot((pt[0]-q[0])*111320*Math.cos(lat),(pt[1]-q[1])*110540))},Infinity)).filter(Number.isFinite).sort((a,b)=>a-b);
   let elderRendered=null;try{elderRendered=map?.getLayer(elderLayer)?map.queryRenderedFeatures({layers:[elderLayer]})?.length:null}catch{}
+  const engine=Array.isArray(md.swales)?md.swales:[];
+  const grade=field=>{const nums=engine.map(x=>Number(x[field])).filter(Number.isFinite).sort((a,b)=>a-b);return {nonzero:nums.filter(x=>x>0).length,min:nums[0]??null,p10:nums[Math.floor(nums.length*.1)]??null,median:nums[Math.floor(nums.length*.5)]??null,p90:nums[Math.floor(nums.length*.9)]??null,max:nums.at(-1)??null}};
+  const density={count:engine.length,forested:engine.filter(x=>x.forested===true).length,canopyOver40:engine.filter(x=>Number(x.canopy)>.4).length,
+    primaryFlow:engine.filter(x=>x.primaryFlowFirst15836===true).length,
+    flowScore:grade('prescriptionFlowScore15833'),score:grade('score'),canopy:grade('canopy'),slope:grade('slope'),flowCrossing:grade('seedFlowCrossing15833')};
   const diag=md?.swaleDiagnostics||{},g=diag?.stage||{},audit=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{},evidence=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{};
   return {tier:document.documentElement.dataset.earthlineAnalysisTier,
    result:audit.result,elapsedSeconds:audit.elapsedSeconds,settled:audit.settled,center:audit.center,error:audit.error,
    safeCount:evidence.safeCount,published:evidence.published,engineCount:md.swales?.length,
    lines:lines.length,lengthMeters:{p10:len[Math.floor(len.length*.1)]??null,median:len[Math.floor(len.length*.5)]??null,p90:len[Math.floor(len.length*.9)]??null,total:len.reduce((x,y)=>x+y,0)},
    spacingMeters:{p10:spacing[Math.floor(spacing.length*.1)]??null,median:spacing[Math.floor(spacing.length*.5)]??null,p90:spacing[Math.floor(spacing.length*.9)]??null},
-   generation:g,mask:md.noBuildProvenance15843,safety:md.safetyAudit15806,
+   generation:g,density,mask:md.noBuildProvenance15843,safety:md.safetyAudit15806,
    elder:{state:el.state,count:el.featureCount,visibleAt:el.visibleAt||null,workerTimings:el.workerTimings||null,mapSource:map?.getSource('earthline-elder-trees-17097')?._data?.features?.length??null,rendered:elderRendered,
     iconAnchor:map?.getLayer(elderLayer)?map.getLayoutProperty(elderLayer,'icon-anchor'):null,text:map?.getLayer(elderLayer)?map.getLayoutProperty(elderLayer,'text-field'):null},
    status:document.getElementById('earthlineVermontStatus16147')?.textContent?.slice(0,330)};
