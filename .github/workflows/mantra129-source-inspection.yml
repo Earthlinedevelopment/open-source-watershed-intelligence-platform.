@@ -17,6 +17,12 @@ jobs:
         shell: bash
         run: |
           set -eu
+          echo 'M129_PROPERTY_LOCATION_INTEGRITY_DEFINITION'
+          grep -n -A 95 -B 6 'function assertLocationIntegrity15801' index.html | head -110 || true
+          echo 'M129_PROPERTY_SPACING_POLICY'
+          grep -n -C 12 'minSpacingM15771=' index.html | head -120 || true
+          echo 'M129_FOREST_SCORE_CONTEXT'
+          sed -n '6190,6280p' index.html
           echo 'M129_SOURCE_PHRASE_LOCATION_INTEGRITY'
           grep -n -C 12 'location integrity failed before Property publication' index.html || true
           echo 'M129_SOURCE_PHRASE_CORRIDOR_RENDERING'
