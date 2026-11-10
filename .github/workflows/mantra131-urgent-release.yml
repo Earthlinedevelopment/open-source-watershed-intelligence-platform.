@@ -1,0 +1,105 @@
+name: M131 urgent swale science and brown-green circle release
+on:
+  push:
+    branches: [candidate/mantra131-five-fixes]
+    paths:
+      - tools/mantra131-patch.py
+      - .github/workflows/mantra131-urgent-release.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: earthline-m131-verified-release
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra131-five-fixes
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Patch protected live parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tools/mantra131-patch.py /tmp/m131-patch.py
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          test "$(git rev-parse HEAD)" = "8176e215468efa5853239cd31f62d35c40caa2f5"
+          cp index.html /tmp/m131-original.html
+          python3 /tmp/m131-patch.py
+          test "$(git diff --name-only)" = "index.html"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify Property slope gate, proposed trees, report and note in browser
+        shell: bash
+        run: |
+          mkdir -p artifacts/m131
+          cat > artifacts/m131/check.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {readFile,writeFile} from 'node:fs/promises';
+          const candidate=await readFile('index.html','utf8');
+          const browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+          const page=await browser.newPage({viewport:{width:1800,height:1000},serviceWorkers:'block'});
+          const result={checks:{},errors:[]};
+          page.on('pageerror',e=>result.errors.push(String(e)));
+          await page.route('**/*',r=>r.request().isNavigationRequest()&&r.request().resourceType()==='document'?r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:candidate}):r.continue());
+          try{
+            await page.goto('https://earthlinedevelopment.org/?m131='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#searchInput',{timeout:30000});
+            result.checks.mapSearch=await page.locator('#searchInput').isVisible();
+            result.checks.note=await page.evaluate(()=>document.documentElement.outerHTML.includes('Dismiss map tip'));
+            result.checks.reportPlace=await page.evaluate(()=>typeof window.earthlineOpenVermontReport16151==='function');
+            await page.locator('#searchInput').fill('Rutland, Vermont');
+            await page.waitForFunction(()=>document.querySelector('#earthlineSearchSuggestions15970')?.classList.contains('open'),null,{timeout:18000});
+            await page.locator('#earthlineSearchSuggestions15970 button[data-query]').first().click();
+            await page.waitForFunction(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970,null,{timeout:115000});
+            await page.waitForTimeout(1500);
+            await page.evaluate(()=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;m.stop();m.jumpTo({center:[-72.455,43.8811],zoom:17.7});});
+            await page.waitForTimeout(2300);
+            await page.locator('#earthlineDeclareProperty16169').click({timeout:16000});
+            await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,null,{timeout:115000});
+            result.audit=await page.evaluate(()=>{
+              const m=(typeof M!=='undefined'?M:window.M)||{},a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{},s=m.swaleDiagnostics?.stage||{},sw=Array.isArray(m.swales)?m.swales:[];
+              return {settled:a.settled,error:a.error,result:a.result,swales:sw.length,
+                rejectedAboveFour:s.rejectSlopeAbove4M131||0,maxSlope:Math.max(0,...sw.map(x=>Number(x.slope)||0)),
+                status:document.getElementById('earthlineVermontStatus16147')?.textContent?.slice(0,180)};
+            });
+            result.checks.safeSlope=result.audit.maxSlope<=4.000001;
+            result.checks.slopeGateExercised=result.audit.rejectedAboveFour>0;
+            result.checks.propertySettled=result.audit.settled===true;
+            result.checks.treeCircleSource=candidate.includes("data-canopy-style':'round-brown-green'")&&candidate.includes("data-symbol-semantics':'illustrative-proposed-planting'");
+            result.checks.reportAquiferSource=candidate.includes('reportAquiferContext123(baseData.d)')&&candidate.includes('reportAquifer:data.reportAquifer');
+            result.checks.noPageErrors=result.errors.length===0;
+            await page.screenshot({path:'artifacts/m131/property.png',timeout:20000});
+          }catch(e){result.failure=String(e)}
+          await writeFile('artifacts/m131/result.json',JSON.stringify(result,null,2));
+          console.log('M131_VERIFIED '+JSON.stringify(result));
+          await browser.close();
+          if(result.failure||Object.values(result.checks).some(x=>!x)||Object.keys(result.checks).length!==9)process.exitCode=1;
+          JS
+          node artifacts/m131/check.mjs
+      - name: Publish only one HTML file after successful checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix(live): Property swale slope and spacing plus brown-green circular planting illustration'
+          git push origin HEAD:pages-live
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m131-urgent-check
+          path: artifacts/m131/
+          retention-days: 30
