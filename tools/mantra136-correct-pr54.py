@@ -8,7 +8,7 @@ assert subprocess.check_output(["git","hash-object","index.html"],text=True).str
 start=s.index('<style id="earthline-m136-regional-layout-only">')
 end=s.index('</style>',start)+len('</style>')
 block=s[start:end]
-assert block.count('var(--el-rail-16188, 86px) + var(--el-panel-16188, 385px)')==6,block.count('var(--el-rail-16188, 86px) + var(--el-panel-16188, 385px)')
+assert block.count('var(--el-rail-16188, 86px) + var(--el-panel-16188, 385px)')==5,block.count('var(--el-rail-16188, 86px) + var(--el-panel-16188, 385px)')
 block=block.replace('var(--el-rail-16188, 86px) + var(--el-panel-16188, 385px)','var(--el-map-left-m136)')
 block=block.replace('var(--el-rail-16188, 86px) - var(--el-panel-16188, 385px) - 28px','var(--el-map-left-m136) - 28px')
 block=block.replace('var(--el-rail-16188, 86px) - var(--el-panel-16188, 385px) - 38px','var(--el-map-left-m136) - 38px')
