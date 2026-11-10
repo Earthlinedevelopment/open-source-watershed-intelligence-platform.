@@ -1,0 +1,47 @@
+name: M137 CSS-only real Iowa before-after screenshots
+on:
+  push:
+    branches: [candidate/mantra137-hide-legacy-legends-map-hint]
+    paths: [tests/mantra137-real-iowa-visual.mjs, .github/workflows/mantra137-iowa-visual.yml]
+permissions: {contents: read}
+jobs:
+  real-iowa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra137-hide-legacy-legends-map-hint
+          fetch-depth: 0
+      - name: Pin live and draft PR source independently
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin pages-live candidate/mantra137-display-review
+          test "$(git rev-parse origin/pages-live)" = "e0172573bb2bd8385fad4f8dcef1ca3d1d63a00d"
+          git show origin/pages-live:index.html >/tmp/m137-original.html
+          git show origin/candidate/mantra137-display-review:index.html >/tmp/m137-proposed.html
+          python3 - <<'PY'
+          from pathlib import Path
+          a=Path('/tmp/m137-original.html').read_bytes()
+          b=Path('/tmp/m137-proposed.html').read_bytes()
+          assert b.startswith(a)
+          tail=b[len(a):]
+          assert b'<style id="mantra137-legacy-box-removal">' in tail
+          assert b'<script' not in tail
+          print('M137_CSS_ONLY_VERIFIED',len(tail))
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Compare real Iowa Regional at two sizes
+        run: node tests/mantra137-real-iowa-visual.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m137-real-iowa-css-only-before-after
+          path: artifacts/m137-iowa/
+          retention-days: 30
