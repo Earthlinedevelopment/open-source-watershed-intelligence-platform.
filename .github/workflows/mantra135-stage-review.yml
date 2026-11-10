@@ -1,0 +1,48 @@
+name: M135 stage exact uploaded rollback on review branch only
+on:
+  push:
+    branches: [candidate/mantra135-property-rollback-review]
+    paths:
+      - tools/mantra135-verify-uploaded-property-rollback.py
+      - .github/workflows/mantra135-stage-review.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  review-candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra135-property-rollback-review
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Verify exact parent and uploaded hash
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin pages-live
+          test "$(git rev-parse origin/pages-live)" = "ad1138af29e423e385e950b781558ae597df3c64"
+          python3 tools/mantra135-verify-uploaded-property-rollback.py
+          test "$(git hash-object index.html)" = "0adfba90e63a6e1dd6ed3b6b27f387a5bcdf9165"
+          test "$(git diff --name-only)" = "index.html"
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          assert "earthline-legend-home-gate-css" in s
+          assert "earthline-swale-zoom-gate-css" in s
+          assert "data-symbol-semantics':'illustrative-proposed-planting'" in s
+          assert "earthlineWaitForMappedExclusionStyle15862B" in s
+          assert "rejectSlopeAbove4M131" not in s
+          print("REVIEW CANDIDATE ONLY: two removal/revert edits; accepted latest UI preserved")
+          PY
+      - name: Commit to review branch only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'review only: restore pre-M131 Property selection (scientific safety pending)'
+          git push origin HEAD:candidate/mantra135-property-rollback-review
