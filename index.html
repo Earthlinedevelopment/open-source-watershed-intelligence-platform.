@@ -13799,11 +13799,25 @@ var prescribeSwales;
       if(!isRegionalTile15769){
         const ptsM131=Array.isArray(sw&&sw.pts)?sw.pts:[];
         let safeSlopeM131=ptsM131.length>=2 && Number.isFinite(Number(sw.slope)) && Number(sw.slope)<=4;
+        /* M138: rolling five-sample median and full route sampled mean must both be <=4%.
+           No finite or out-of-grid point is eligible. Existing stored sw.slope <=4% remains required. */
+        const slopesM138=[];
         if(safeSlopeM131)for(const pointM131 of ptsM131){
           const xM131=Math.round(Number(pointM131?.[0])),yM131=Math.round(Number(pointM131?.[1]));
           if(!Number.isFinite(xM131)||!Number.isFinite(yM131)||xM131<0||yM131<0||xM131>=GW||yM131>=GH){safeSlopeM131=false;break;}
           const localSlopeM131=Number(slopePct(xM131,yM131));
-          if(!Number.isFinite(localSlopeM131)||localSlopeM131>4){safeSlopeM131=false;break;}
+          if(!Number.isFinite(localSlopeM131)){safeSlopeM131=false;break;}
+          slopesM138.push(localSlopeM131);
+        }
+        if(safeSlopeM131){
+          const nM138=slopesM138.length;
+          const meanSlopeM138=slopesM138.reduce((sum,value)=>sum+value,0)/nM138;
+          if(!Number.isFinite(meanSlopeM138)||meanSlopeM138>4)safeSlopeM131=false;
+          for(let iM138=0;safeSlopeM131&&iM138<nM138;iM138++){
+            const a=Math.max(0,Math.min(iM138-2,nM138-5));
+            const windowM138=slopesM138.slice(a,Math.min(nM138,a+5)).sort((p,q)=>p-q);
+            if(windowM138[Math.floor(windowM138.length/2)]>4){safeSlopeM131=false;break;}
+          }
         }
         if(!safeSlopeM131){
           M.swaleDiagnostics.stage.rejectSlopeAbove4M131=(M.swaleDiagnostics.stage.rejectSlopeAbove4M131||0)+1;
