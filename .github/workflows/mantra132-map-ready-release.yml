@@ -54,8 +54,20 @@ jobs:
             await p.locator('#searchInput').fill('Iowa');await p.locator('#searchInput').press('Enter');
             await p.waitForFunction(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970,null,{timeout:100000});
             await p.waitForTimeout(1300);
-            await p.evaluate(()=>{const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;m.stop();m.jumpTo({center:[-93.51983,42.08043],zoom:17.7})});
+            await p.evaluate(()=>{
+              window.M132_CAMERA_HISTORY=[];
+              const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;
+              const log=label=>window.M132_CAMERA_HISTORY.push({label,at:performance.now(),center:m.getCenter().toArray(),zoom:m.getZoom(),moving:m.isMoving()});
+              m.on('moveend',()=>log('moveend'));
+              m.on('movestart',()=>log('movestart'));
+              m.stop();log('before-jump');m.jumpTo({center:[-93.51983,42.08043],zoom:17.7});log('after-jump');
+            });
             await p.waitForTimeout(2700);
+            o.preclick=await p.evaluate(()=>{
+              const m=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;
+              return {center:m.getCenter().toArray(),zoom:m.getZoom(),history:window.M132_CAMERA_HISTORY,
+                location:(typeof M!=='undefined'?M:window.M)?.loc};
+            });
             await p.locator('#earthlineDeclareProperty16169').click({timeout:16000});
             await p.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,null,{timeout:105000});
             o.state=await p.evaluate(()=>{
@@ -65,7 +77,7 @@ jobs:
                 location:m?.lastLocationIntegrity15801||m?.propertyRunFailure16539?.audit||window.EARTHLINE_LOCATION_INTEGRITY_15801||null,propertyFailure:m?.propertyRunFailure16539||null,mapCenter:(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap)?.getCenter?.(),
                 safety:m?.safetyAudit15806?.verified,
                 publication:m?.propertyPublication15816?.committed===true,
-                stage:m?.swaleDiagnostics?.stage};
+                stage:m?.swaleDiagnostics?.stage,cameraHistory:window.M132_CAMERA_HISTORY};
             });
             o.checks.gotEvidence=!!o.state.coverage?.publicationAllowed;
             o.checks.noLocationDrift=o.state.location?.ok!==false;
