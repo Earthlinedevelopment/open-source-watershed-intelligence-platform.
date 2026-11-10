@@ -29431,8 +29431,8 @@ body { overflow-x:hidden!important; }
     },before);
     if(!m.getLayer(IDS.aquiferLabel))m.addLayer({id:IDS.aquiferLabel,type:'symbol',source:IDS.aquifer,layout:{'text-field':['coalesce',['get','name'],['get','Name'],['get','AQUIFER'],['get','aquifer'],'Mapped aquifer system'],'text-size':11,'text-font':['Open Sans Semibold'],'text-max-width':10,'visibility':'none'},paint:{'text-color':'#ffd08a','text-halo-color':'rgba(22,12,2,.98)','text-halo-width':1.8}},before);
     const top=[IDS.contourLine,IDS.swaleHalo,IDS.swaleLine,IDS.flowCasing,IDS.flowLine,IDS.contourLabel,IDS.flowArrow];
-    for(const id of top){try{m.setLayoutProperty&&m.setLayoutProperty(id,'visibility','visible');}catch(_){}try{m.moveLayer(id);}catch(_){}}
-    try{if(m.getLayer(IDS.aquiferLabel))m.moveLayer(IDS.aquiferLabel);}catch(_){}
+    for(const id of top){try{if(m.getLayer(id)&&(m.getLayoutProperty(id,'visibility')||'visible')!=='visible')m.setLayoutProperty(id,'visibility','visible');}catch(_){}}
+    try{const ordered=[...top,IDS.aquiferLabel].filter(id=>!!m.getLayer(id));const actual=(m.getStyle()?.layers||[]).map(x=>x.id).filter(id=>ordered.includes(id));if(actual.join('|')!==ordered.join('|'))for(const id of ordered)m.moveLayer(id);}catch(_){}
     return true;
   }
   function clearLive(){const m=map();if(!m)return;for(const id of [IDS.basin,IDS.aquifer,IDS.contours,IDS.flows,IDS.swales])setGeo(m,id,EMPTY);}
@@ -30973,7 +30973,7 @@ body { overflow-x:hidden!important; }
       typeof window.earthlineRenderRegionalOverlay16020==='function'
         ?window.earthlineRenderRegionalOverlay16020(visualData)
         :false;
-    for(const id of [IDS.contourLine,IDS.flowCasing,IDS.flowLine,IDS.contourLabel,IDS.flowArrow,IDS.swaleHalo,IDS.swaleLine,IDS.aquiferLabel]){try{m.moveLayer(id);}catch(_){}}
+    {const ordered=[IDS.contourLine,IDS.flowCasing,IDS.flowLine,IDS.contourLabel,IDS.flowArrow,IDS.swaleHalo,IDS.swaleLine,IDS.aquiferLabel].filter(id=>!!m.getLayer(id));try{const actual=(m.getStyle()?.layers||[]).map(x=>x.id).filter(id=>ordered.includes(id));if(actual.join('|')!==ordered.join('|'))for(const id of ordered)m.moveLayer(id);}catch(_){}}
     try{m.triggerRepaint&&m.triggerRepaint();}catch(_){}
     phaseMark16198('terrainProductsAndPublishMs',productsStarted16198);
 
@@ -33102,10 +33102,13 @@ html.earthline-map-only-16169 #earthlineTierNotice16173{right:18px;bottom:18px}
   }
   function forceVisible(mp){
     if(!mp)return;
-    for(const id of SWALE_LAYERS){
-      try{if(mp.getLayer&&mp.getLayer(id)){mp.setLayoutProperty(id,"visibility","visible");if(mp.moveLayer)mp.moveLayer(id);}}catch(_){ }
+    let changed=false;
+    const present=SWALE_LAYERS.filter(id=>!!mp.getLayer?.(id));
+    for(const id of present){
+      try{if((mp.getLayoutProperty(id,'visibility')||'visible')!=='visible'){mp.setLayoutProperty(id,'visibility','visible');changed=true;}}catch(_){ }
     }
-    try{if(mp.triggerRepaint)mp.triggerRepaint();}catch(_){ }
+    try{const order=(mp.getStyle()?.layers||[]).map(x=>x.id).filter(id=>present.includes(id));if(order.join('|')!==present.join('|')){for(const id of present)mp.moveLayer(id);changed=true;}}catch(_){ }
+    try{if(changed&&mp.triggerRepaint)mp.triggerRepaint();}catch(_){ }
   }
   function detachRecovery(){
     const mp=map();
@@ -34812,7 +34815,7 @@ html[data-earthline-analysis-tier="focus"] #earthlineRegionalVectorOverlay16020 
     return pub&&currentToken&&String(pub.runToken||'')===currentToken&&Number.isFinite(Number(pub.zoom))
       ?Math.max(10,Number(pub.zoom)):10;
   }
-  function setLayerOpacity(id,property,value){const m=map();try{if(m?.getLayer?.(id))m.setPaintProperty(id,property,value)}catch(_){}}
+  function setLayerOpacity(id,property,value){const m=map();try{if(m?.getLayer?.(id)&&m.getPaintProperty(id,property)!==value)m.setPaintProperty(id,property,value)}catch(_){}}
   function applyHandoff(){
     const m=map();if(!m)return false;
     const z=Number(m.getZoom?.()||0),regional=isRegionalDisplayed(),p=prompt();
@@ -34865,7 +34868,7 @@ html[data-earthline-analysis-tier="focus"] #earthlineRegionalVectorOverlay16020 
   function cameraSnapshot(){const m=map();if(!m)return null;try{const c=m.getCenter();return{center:[Number(c.lng),Number(c.lat)],zoom:Number(m.getZoom()),bearing:Number(m.getBearing?.()||0),pitch:Number(m.getPitch?.()||0)}}catch(_){return null}}
   function captureRegional(reason){if(!isRegionalDisplayed())return regionalCache;const st=regionalState(),md=model(),sources=sourceSnapshot();regionalCache={build:BUILD,capturedAt:new Date().toISOString(),reason:reason||'regional-published',snapshot:clone(displayed()),visual:clone(window.EARTHLINE_REGIONAL_VISUAL_DATA_16020),lastLive:clone(window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970),state:copyKeys(st,STATE_KEYS),model:copyKeys(md,MODEL_KEYS),sources,layers:layerSnapshot(Object.keys(sources)),camera:cameraSnapshot(),status:document.getElementById('earthlineVermontStatus16147')?.textContent||''};window.EARTHLINE_REGIONAL_CACHE_16157=regionalCache;historyTier='regional';try{history.replaceState(Object.assign({},history.state||{},{earthlineNav16157:'regional',earthlineNav16156:'regional'}),'')}catch(_){}updateBreadcrumb();return regionalCache}
   function setSourceData(id,data){const m=map();try{const s=m?.getSource?.(id);if(s?.setData)s.setData(clone(data));return !!s}catch(_){return false}}
-  function restoreLayerState(cache){const m=map();if(!m)return;for(const [id,row] of Object.entries(cache.layers||{})){try{if(!m.getLayer?.(id))continue;m.setLayoutProperty(id,'visibility',row.visibility||'visible');for(const [p,v] of Object.entries(row.paint||{}))m.setPaintProperty(id,p,clone(v))}catch(_){}}}
+  function restoreLayerState(cache){const m=map();if(!m)return;for(const [id,row] of Object.entries(cache.layers||{})){try{if(!m.getLayer?.(id))continue;const target=row.visibility||'visible';if((m.getLayoutProperty(id,'visibility')||'visible')!==target)m.setLayoutProperty(id,'visibility',target);for(const [p,v] of Object.entries(row.paint||{})){const prior=m.getPaintProperty(id,p);if((Array.isArray(prior)||Array.isArray(v))?JSON.stringify(prior)!==JSON.stringify(v):prior!==v)m.setPaintProperty(id,p,clone(v))}}catch(_){}}}
   function restoreRegional(reason){document.documentElement.classList.remove('earthline-direct-property-handoff-16250');if(!regionalCache){status('REGIONAL RESTORE UNAVAILABLE — run Vermont screening first.','failed');return false}const m=map(),st=regionalState(),md=model();try{m?.stop?.()}catch(_){}if(st)for(const [k,v] of Object.entries(regionalCache.state||{}))st[k]=clone(v);if(st){st.active=true;st.mode='regional';st.pendingAnalysisFrame15827=null}if(md){for(const [k,v] of Object.entries(regionalCache.model||{}))md[k]=clone(v);md.pendingAnalysisFrame15827=null;md.analysisBoundaryLngLat=clone(regionalCache.model?.analysisBoundaryLngLat||null)}window.EARTHLINE_REGIONAL_VISUAL_DATA_16020=clone(regionalCache.visual);window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970=clone(regionalCache.lastLive||regionalCache.snapshot);window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970=null;clearCorridorTransientState('restore-regional:'+String(reason||''),true);for(const [id,data] of Object.entries(regionalCache.sources||{}))setSourceData(id,data);try{if(typeof window.earthlineApplyRendererOwnership15805==='function')window.earthlineApplyRendererOwnership15805('regional')}catch(_){}try{if(typeof window.earthlineSyncLayers15778==='function')window.earthlineSyncLayers15778('regional')}catch(_){}for(const [id,data] of Object.entries(regionalCache.sources||{}))setSourceData(id,data);try{if(window.EARTHLINE_REGIONAL_VISUAL_DATA_16020&&typeof window.earthlineRenderRegionalOverlay16020==='function')window.earthlineRenderRegionalOverlay16020(window.EARTHLINE_REGIONAL_VISUAL_DATA_16020)}catch(_){}restoreLayerState(regionalCache);try{if(regionalCache.camera)m?.jumpTo?.(regionalCache.camera)}catch(_){}const snap=clone(regionalCache.snapshot);if(snap&&typeof window.earthlinePublishDisplayedRun16151==='function')window.earthlinePublishDisplayedRun16151(snap);historyTier='regional';try{history.replaceState(Object.assign({},history.state||{},{earthlineNav16157:'regional',earthlineNav16156:'regional'}),'')}catch(_){}status(regionLabel()+' regional screening restored from cache.','published');applyHandoff();window.EARTHLINE_TIER_NAV_LAST_ACTION_16156={action:'restore-regional',reason:reason||'',at:new Date().toISOString()};return true}
   function clearEarthlineSources(){const m=map(),st=regionalState(),md=model();if(st){st.active=false;st.mode='home';st.pendingAnalysisFrame15827=null}if(md){md.analysisReady=false;md.terrainReady=false;md.swales=[];md.analysisBoundaryLngLat=null;md.pendingAnalysisFrame15827=null}try{const cv=document.getElementById('map');if(cv?.getContext){const ctx=cv.getContext('2d');ctx?.clearRect(0,0,cv.width||0,cv.height||0)}}catch(_){}try{const r=document.getElementById('earthlineRechargeOverlay');if(r)r.innerHTML=''}catch(_){}if(!m?.getStyle)return;let ids=[];try{ids=Object.keys(m.getStyle().sources||{})}catch(_){}for(const id of ids){if(!/^(earthline-|el-live-)/.test(id))continue;try{const src=m.getSource(id);if(src?.setData)src.setData(clone(EMPTY))}catch(_){}}const svg=document.getElementById(REGIONAL_OVERLAY);if(svg){svg.innerHTML='';svg.style.opacity='0'}}
   function returnHome(){document.documentElement.classList.remove('earthline-direct-property-handoff-16250');const m=map();clearCorridorTransientState('return-home',true);clearEarthlineSources();window.EARTHLINE_DISPLAYED_RUN_16151=null;window.EARTHLINE_DISPLAYED_RUN_16149=null;window.EARTHLINE_DISPLAYED_RUN_16147=null;window.EARTHLINE_ACTIVE_RUN_TOKEN_16151=null;window.EARTHLINE_ACTIVE_RUN_TOKEN_16147=null;document.documentElement.dataset.earthlineRunState='idle';const input=document.getElementById('searchInput');if(input)input.value='';historyTier='home';try{m?.stop?.();m?.jumpTo?.({center:[-20,18],zoom:0.8,bearing:0,pitch:0})}catch(_){}prompt().classList.remove('open');breadcrumb().classList.remove('open');status('Choose a location, then run Earthline analysis.','info');try{history.replaceState(Object.assign({},history.state||{},{earthlineNav16157:'home',earthlineNav16156:'home'}),'')}catch(_){}window.EARTHLINE_TIER_NAV_LAST_ACTION_16156={action:'home',at:new Date().toISOString()};return true}
@@ -34906,8 +34909,8 @@ html[data-earthline-analysis-tier="focus"] #earthlineRegionalVectorOverlay16020 
   function displayed(){return window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||null}
   function tier(){return String(displayed()?.tier||displayed()?.mode||'regional').toLowerCase()||'regional'}
   function safeLayer(spec,before){const m=map();if(!m||!m.getSource?.(spec.source))return false;try{if(!m.getLayer(spec.id))m.addLayer(spec,before);return true}catch(e){console.warn('[Earthline] 16166 layer',spec.id,e);return false}}
-  function visible(id,on){const m=map();try{if(m?.getLayer?.(id))m.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){}}
-  function setPaint(id,prop,value){const m=map();try{if(m?.getLayer?.(id))m.setPaintProperty(id,prop,value)}catch(_){}}
+  function visible(id,on){const m=map();try{if(m?.getLayer?.(id)){const target=on?'visible':'none';if((m.getLayoutProperty(id,'visibility')||'visible')!==target)m.setLayoutProperty(id,'visibility',target)}}catch(_){}}
+  function setPaint(id,prop,value){const m=map();try{if(m?.getLayer?.(id)){const prior=m.getPaintProperty(id,prop);if((Array.isArray(prior)||Array.isArray(value))?JSON.stringify(prior)!==JSON.stringify(value):prior!==value)m.setPaintProperty(id,prop,value)}}catch(_){}}
   function ensureFocusLayers(){
     const m=map();if(!m?.getSource?.(SOURCE))return false;
     const before=m.getLayer?.('earthline-ranked-swale-label-15775')?'earthline-ranked-swale-label-15775':undefined;
