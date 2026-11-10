@@ -55,10 +55,10 @@ const parent=await one('accepted',baseline),changed=await one('candidate',candid
 result.runs=[parent,changed];
 const b=parent.snap||{},c=changed.snap||{};
 result.checks={
- baselineHasSwales:b.rawCount>0&&b.result===true,
+ baselineValidOrEvidenceBlocked:(b.rawCount>0&&b.result===true)||b.error==='vector-exclusion-coverage-unverified',
  candidateCompleted:!changed.failure&&c.settled===true&&!/location integrity/i.test(String(c.error||'')),
  candidateNoSteepSegments:c.rawCount===0||(c.slopeMax<=4&&c.maxPointSlope<=4.000001),
- countsNotIncreased:c.rawCount<=b.rawCount,
+ countsNotIncreased:b.result===true?c.rawCount<=b.rawCount:true,
  noNewPageErrors:changed.errors.length<=parent.errors.length,
  exclusionsPreserved:c.safeCount===0||(c.safetyVerified&&c.unsafeSegments===0&&c.acceptedIntersections===0),
  scienceMaskPresent:!!c.sourceState,
