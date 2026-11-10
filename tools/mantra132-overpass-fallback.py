@@ -10,7 +10,7 @@ from pathlib import Path
 import subprocess
 p=Path('index.html')
 s=p.read_text()
-assert subprocess.check_output(['git','hash-object','index.html'],text=True).strip()=='39c47dfe5b41c4da56daee74fc0b5b4bf62dbdc2', 'unexpected site revision' or True
+assert subprocess.check_output(['git','hash-object','index.html'],text=True).strip()=='26829330aed4b2042aedca5408c4583ea69a777c', 'unexpected site revision'
 start=s.index('    const controller=typeof AbortController!=="undefined"?new AbortController():null;',s.index('async function earthlineFetchOverpass15862P('))
 end=s.index('\n  }\n  function earthlineTilequerySamples15862P',start)
 original=s[start:end]
