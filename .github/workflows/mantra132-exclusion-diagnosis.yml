@@ -1,0 +1,31 @@
+name: M132 diagnose fail-closed exclusion data source
+on:
+  push:
+    branches: [candidate/mantra132-exclusion-engineering]
+    paths: [.github/workflows/mantra132-exclusion-diagnosis.yml]
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Print bounded code contexts for vector exclusion coverage
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          terms=['vector-exclusion-coverage-unverified','exclusionCoverageVerified','noBuildProvenance15843','earthlineBuildVectorExclusion','vectorExclusion','vectorCoverage','exclusion-source','exclusionCoverage']
+          for t in terms:
+            print('M132_TERM',t,'COUNT',s.count(t))
+            starts=[]
+            i=0
+            while True:
+              p=s.find(t,i)
+              if p<0:break
+              starts.append(p)
+              i=p+len(t)
+            for p in starts[:5]:
+              print('M132_CONTEXT',t,p,repr(s[max(0,p-2000):p+3200]))
+          PY
