@@ -13,6 +13,12 @@ jobs:
       - name: Inspect accepted filtering and publication
         shell: bash
         run: |
+          echo 'M130_PROPERTY_IDENTITY_USE'
+          grep -n -C 10 'selectedMapIdentity15801(' index.html | head -140 || true
+          echo 'M130_PROPERTY_BUTTON_BINDING'
+          grep -n -C 15 'earthlineDeclareProperty16169' index.html | head -180 || true
+          echo 'M130_ACCEPTED_SW_AUDITS'
+          sed -n '13820,13940p' index.html
           echo 'M130_FINAL_SELECTION'
           sed -n '13660,13865p' index.html
           echo 'M130_ENFORCEMENT'
