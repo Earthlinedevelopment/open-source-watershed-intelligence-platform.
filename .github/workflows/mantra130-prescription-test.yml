@@ -1,0 +1,86 @@
+name: M130 Property swales ≤4 percent and final-spacing acceptance
+on:
+  push:
+    branches: [candidate/mantra130-swale-prescription]
+    paths:
+      - tools/mantra130-property-same-band.py
+      - tests/mantra130-prescription-compare.mjs
+      - .github/workflows/mantra130-prescription-test.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: earthline-m130-science-prescription
+  cancel-in-progress: false
+jobs:
+  property-acceptance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    strategy:
+      fail-fast: false
+      matrix:
+        site: [vermont, iowa, texas]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra130-swale-prescription
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch exact accepted production source in test checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tools/mantra130-property-same-band.py /tmp/m130-patch.py
+          cp tests/mantra130-prescription-compare.mjs /tmp/m130-test.mjs
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          test "$(git rev-parse HEAD)" = "862426db2440a7b2b8652b75d4fc654118d190dc"
+          cp index.html /tmp/m130-parent.html
+          python3 /tmp/m130-patch.py
+          test "$(git diff --name-only)" = "index.html"
+          mkdir -p tests
+          cp /tmp/m130-test.mjs tests/mantra130-prescription-compare.mjs
+      - name: Install browser
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Run real Property and safety comparison - ${{ matrix.site }}
+        env:
+          TEST_CASE: ${{ matrix.site }}
+        run: node tests/mantra130-prescription-compare.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m130-property-${{ matrix.site }}
+          path: artifacts/m130/${{ matrix.site }}/
+          if-no-files-found: warn
+          retention-days: 30
+  promote:
+    needs: [property-acceptance]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra130-swale-prescription
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Reapply exact tested science patch on pinned production
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tools/mantra130-property-same-band.py /tmp/m130-patch.py
+          git fetch origin pages-live
+          git checkout -B pages-live origin/pages-live
+          test "$(git rev-parse HEAD)" = "862426db2440a7b2b8652b75d4fc654118d190dc"
+          python3 /tmp/m130-patch.py
+          test "$(git diff --name-only)" = "index.html"
+          grep -q 'rejectSlopeAbove4M130' index.html
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix(live): enforce <=4% Property swale slope and same-band spacing'
+          git push origin HEAD:pages-live
