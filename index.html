@@ -29954,25 +29954,75 @@ body { overflow-x:hidden!important; }
     return true;
   }
 
+    /* MANTRA 104 — Regional source-geometry repair.
+       No second Chaikin smoothing and no arbitrary 50–70 km contour worms.
+       Crop each opportunity to its actual local source-contour neighborhood,
+       densely check the entire corridor, and fail closed on slopes >4%,
+       invalid land, major water channels, absent upslope flow or folded paths.
+       Region-scale DEM screening is not a property/site engineering verdict. */
     function sampleSegment(coords,center,relaxed){
-      const half=Math.max(10,Math.min(28,Math.floor(coords.length*.12))),start=Math.max(0,center-half),end=Math.min(coords.length,center+half+1);
-      const raw=coords.slice(start,end);if(raw.length<10)return null;
-      const segment=chaikin(raw,2,false);if(segment.length<10||lineLengthPixels(hy,segment)<10)return null;
-      const gridSegment101=segment.map(ll=>{const g=llGrid(hy,ll);return [g.x,g.y];});
-      if(!earthlineWormGeometryPassRegional101(gridSegment101))return null;
-      const stride=Math.max(1,Math.floor(segment.length/22));let valid=0,sumSlope=0,sumAcc=0,maxAcc=0,anchor=null;
-      for(let k=1;k<segment.length-1;k+=stride){
-        const g=llGrid(hy,segment[k]),x=Math.max(1,Math.min(hy.w-2,Math.round(g.x))),y=Math.max(1,Math.min(hy.h-2,Math.round(g.y))),i=y*hy.w+x;
-        const slope=hy.slope[i],acc=hy.acc[i],minSlope=relaxed?.05:.20,maxSlope=relaxed?18:13.5;
-        if(!Number.isFinite(slope)||slope<minSlope||slope>maxSlope||acc>=channel)continue;
-        valid++;sumSlope+=slope;sumAcc+=acc;maxAcc=Math.max(maxAcc,acc);if(!anchor)anchor={x,y};
+      if(!Array.isArray(coords)||coords.length<3||center<=0||center>=coords.length-1)return null;
+      const halfM104=1700,minimumM104=160;
+      const cellX104=Math.abs(Number(hy.cellX)),cellY104=Math.abs(Number(hy.cellY));
+      if(!(cellX104>0&&cellY104>0))return null;
+      const distanceM104=(a,b)=>{
+        if(!a||!b||!Number.isFinite(+a[0])||!Number.isFinite(+a[1])||!Number.isFinite(+b[0])||!Number.isFinite(+b[1]))return NaN;
+        const p=llGrid(hy,a),q=llGrid(hy,b);
+        return Math.hypot((q.x-p.x)*cellX104,(q.y-p.y)*cellY104);
+      };
+      function traceSide104(direction){
+        const out=[];let i=center,used=0;
+        while(i+direction>=0&&i+direction<coords.length&&used<halfM104-1e-8){
+          const a=coords[i],b=coords[i+direction],d=distanceM104(a,b);
+          if(!Number.isFinite(d))return [];
+          if(d<1e-6){i+=direction;continue;}
+          const t=Math.min(1,(halfM104-used)/d);
+          out.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]);
+          used+=d*t;
+          if(t<1-1e-9)break;
+          i+=direction;
+        }
+        return out;
       }
-      if(valid<(relaxed?1:2)||!anchor)return null;
-      const meanSlope=sumSlope/valid,meanAcc=sumAcc/valid;
-      const slopeScore=Math.max(0,1-Math.abs(meanSlope-3.4)/(relaxed?12:7.5));
+      const left104=traceSide104(-1),right104=traceSide104(1);
+      if(!left104.length||!right104.length)return null;
+      const source104=cleanLine([...left104.reverse(),coords[center],...right104]);
+      if(source104.length<3)return null;
+      const segment=[],sampleStep104=Math.max(60,Math.min(180,Math.min(cellX104,cellY104)/3));
+      let lengthM104=0;
+      for(let j=1;j<source104.length;j++){
+        const a=source104[j-1],b=source104[j],d=distanceM104(a,b);
+        if(!Number.isFinite(d)||d<=0)return null;
+        lengthM104+=d;
+        const subdivisions=Math.max(1,Math.ceil(d/sampleStep104));
+        for(let k=0;k<subdivisions;k++){
+          const t=k/subdivisions;
+          segment.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]);
+        }
+      }
+      segment.push(source104[source104.length-1].slice());
+      if(segment.length<3||lengthM104<minimumM104||lengthM104>3400.01)return null;
+      if(!earthlineWormGeometryPassRegional101(segment.map(ll=>{const g=llGrid(hy,ll);return [g.x,g.y];})))return null;
+      let sumSlope=0,sumAcc=0,maxAcc=0,maxSlope=0,flowCells=0,anchor=null;
+      for(const ll of segment){
+        const g=llGrid(hy,ll),x=Math.round(g.x),y=Math.round(g.y);
+        if(x<1||x>=hy.w-1||y<1||y>=hy.h-1)return null;
+        const i=y*hy.w+x,slope=Number(hy.slope[i]),acc=Number(hy.acc[i]);
+        if(hy.validityMask16584&&!hy.validityMask16584[i])return null;
+        if(!Number.isFinite(slope)||slope<0||slope>4||!Number.isFinite(acc)||acc<1||acc>=channel)return null;
+        if(acc>1.0001)flowCells++;
+        sumSlope+=slope;sumAcc+=acc;maxAcc=Math.max(maxAcc,acc);maxSlope=Math.max(maxSlope,slope);
+        if(!anchor)anchor={x,y};
+      }
+      if(!anchor||flowCells<1)return null;
+      const meanSlope=sumSlope/segment.length,meanAcc=sumAcc/segment.length;
+      const slopeScore=Math.max(0,1-Math.abs(meanSlope-2)/4);
       const flowScore=meanAcc<=accLow?.18:meanAcc<=accMid?.18+.70*(meanAcc-accLow)/Math.max(1,accMid-accLow):Math.max(.18,.88-.48*(meanAcc-accMid)/Math.max(1,accHigh-accMid));
-      const lengthScore=Math.min(1,lineLengthPixels(hy,segment)/85);
-      return {segment,x:anchor.x,y:anchor.y,slope:meanSlope,acc:meanAcc,maxAcc,score:slopeScore*.56+flowScore*.28+lengthScore*.16,confidence:relaxed?'screening':'preferred'};
+      const lengthScore=Math.min(1,lengthM104/900);
+      return {segment,x:anchor.x,y:anchor.y,slope:meanSlope,maxSlopeM104:maxSlope,lengthM104,
+        acc:meanAcc,maxAcc,flowCellsM104:flowCells,
+        score:slopeScore*.56+flowScore*.28+lengthScore*.16,
+        confidence:relaxed?'screening':'preferred'};
     }
     for(const f of lines){
       const coords=f.geometry.coordinates;if(coords.length<16)continue;
@@ -30037,6 +30087,9 @@ body { overflow-x:hidden!important; }
         grade,rank,score,
         grade_label:gradeLabel,
         slope_pct:Number(c.slope.toFixed(1)),
+        corridor_max_slope_pct:Number(c.maxSlopeM104.toFixed(2)),
+        corridor_length_m:Number(c.lengthM104.toFixed(1)),
+        upslope_flow_cells:Number(c.flowCellsM104),
         slope_fit_score:slopeFit,
         confidence:c.confidence,
         contour_valid:focusMode?true:null,
@@ -33597,7 +33650,7 @@ body{display:block!important}
     const gradeCounts={A:0,B:0,C:0},gradeLabels=[];
     for(const f of (lastData.swales&&lastData.swales.features||[])){
       if(!f.geometry||f.geometry.type!=='LineString')continue;
-      const pts=points(f.geometry.coordinates),len=polyLength(pts);if(pts.length<3||len<22)continue;
+      /* MANTRA 104: source-correct Regional corridors may be short at state-scale zoom. Do not suppress truthful <22px source segments. */const pts=points(f.geometry.coordinates),len=polyLength(pts);if(pts.length<2||len<1)continue;
       const props=f.properties||{},grade=/^[ABC]$/.test(String(props.grade||''))?String(props.grade):'C';
       const rank=(gradeCounts[grade]||0)+1,score=Math.max(0,Math.min(100,Number(props.score||0)));props.display_rank=rank;props.display_code=grade+rank;
       const main=grade==='A'?'#42ff83':grade==='B'?'#ffc12f':'#ff8a2d';
