@@ -22,12 +22,12 @@ jobs:
           start=s.index('  async function runCore15786(){')
           end=s.index('  function run15786(ev){',start)
           part=s[start:end]
-          orig="      let resolvedSearchLoc15801=null;\\n\\n      if(entered&&entered!==applied){"
-          replacement="      let resolvedSearchLoc15801=null;\\n      /* M195: preserve an already published Property run on repeated click. */\\n      const alreadyPropertyM195=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property'&&window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220?.published===true&&M?.analysisBoundaryLngLat?.length>=3;\\n\\n      if(entered&&entered!==applied&&!alreadyPropertyM195){"
+          orig="      let resolvedSearchLoc15801=null;\n\n      if(entered&&entered!==applied){"
+          replacement="      let resolvedSearchLoc15801=null;\n      /* M195: preserve an already published Property run on repeated click. */\n      const alreadyPropertyM195=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property'&&window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220?.published===true&&M?.analysisBoundaryLngLat?.length>=3;\n\n      if(entered&&entered!==applied&&!alreadyPropertyM195){"
           assert part.count(orig)==1,repr(part[part.index('      let resolvedSearchLoc15801=null;'):part.index('      let resolvedSearchLoc15801=null;')+120])
           part=part.replace(orig,replacement)
-          orig2="      const property=\\n        highZoomProperty||"
-          repl2="      const property=\\n        alreadyPropertyM195||\\n        highZoomProperty||"
+          orig2="      const property=\n        highZoomProperty||"
+          repl2="      const property=\n        alreadyPropertyM195||\n        highZoomProperty||"
           assert part.count(orig2)==1
           part=part.replace(orig2,repl2)
           s=s[:start]+part+s[end:]
