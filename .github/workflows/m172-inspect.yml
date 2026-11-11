@@ -1,0 +1,24 @@
+name: M172 inspect Regional popup visibility lifecycle
+on:
+  push:
+    branches: ['repair/m172-sequential-tab-tip']
+    paths: ['.github/workflows/m172-inspect.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Print authoritative popup styles and lifecycle
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          a=Path('index.html').read_text().splitlines()
+          ids=[i for i,s in enumerate(a) if any(t in s for t in ['earthlineTemporaryMapHint126','earthlineCorridorTip16248','earthline-m136-regional-layout-only'])]
+          print('M172_OCCURRENCES',len(ids))
+          for i in ids:
+            print('M172_BLOCK',i+1)
+            for j in range(max(0,i-5),min(len(a),i+8)):
+              print('M172_LINE',j+1,a[j][:1700])
+          PY
