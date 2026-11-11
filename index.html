@@ -34336,14 +34336,15 @@ body{display:block!important}
       return String(a.BASENAME||a.NAME||'').trim();
     };
     try{
-      const [incorporated,designated,county]=await Promise.allSettled([
+      const [incorporated,designated,county,state]=await Promise.allSettled([
         request('Places_CouSub_ConCity_SubMCD',4),
         request('Places_CouSub_ConCity_SubMCD',5),
-        request('State_County',1)
+        request('State_County',1),
+        request('State_County',0)
       ]);
       const get=x=>x.status==='fulfilled'?x.value:'';
-      const place=get(incorporated)||get(designated),countyName=get(county);
-      return [place,countyName].filter(Boolean).join(' · ')||fallback;
+      const place=get(incorporated)||get(designated),countyName=get(county),stateName=get(state);
+      return [place,countyName,stateName].filter(Boolean).join(' · ')||fallback;
     }catch(_){return fallback}finally{clearTimeout(timer)}
   }
   /* Hotfix 3 R10 — report owns a bounded copy of actually loaded aquifer geometry. */
