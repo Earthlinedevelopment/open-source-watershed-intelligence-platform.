@@ -25,8 +25,7 @@ jobs:
       - name: Prepare exact historical HTML, worker, and November 5 Arizona test
         run: |
           mkdir -p /tmp/earthline-m127
-          git show "${{ matrix.revision }}:index.html" > /tmp/earthline-m127/index.html
-          git show "${{ matrix.revision }}:earthline-elder-worker-17129.js" > /tmp/earthline-m127/earthline-elder-worker-17129.js
+          git archive "${{ matrix.revision }}" | tar -x -C /tmp/earthline-m127
           git show '66e6d35:tests/mantra89-arizona-controls.mjs' > tests/mantra127-arizona-control.mjs
           git rev-parse "${{ matrix.revision }}" > /tmp/earthline-m127/revision.txt
           node --check /tmp/earthline-m127/earthline-elder-worker-17129.js
