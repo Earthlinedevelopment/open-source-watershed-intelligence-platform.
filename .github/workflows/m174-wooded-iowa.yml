@@ -1,0 +1,83 @@
+name: M174 live wooded Iowa Property forensic audit
+on:
+  push:
+    branches: ['audit/m174-wooded-iowa-forensic']
+    paths: ['.github/workflows/m174-wooded-iowa.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run actual deployed site Iowa forest river-bend analysis
+        run: |
+          mkdir -p artifacts/m174
+          cat > m174-wooded.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {writeFileSync} from 'node:fs';
+          const c={lng:-93.38977,lat:41.95748};
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1800,height:950}});
+          const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+          const out={site:c,errors,url:'https://earthlinedevelopment.org/',observations:[]};
+          const snap=async label=>page.evaluate(label=>{
+            const m=typeof M!=='undefined'?M:window.M;
+            const map=typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap;
+            const e=window.EARTHLINE_ELDER_TREE_LAST_17097||{};
+            const d=m?.swaleDiagnostics||{},g=d.levelGenerator||{},stage=d.stage||{};
+            const safe=m?.authoritativeSafeSwales15815?.features||[];
+            const noBuild=m?.noBuildProvenance15843||{};
+            const waterLayers=['earthline-property-flow-line-15792','earthline-property-safe-water-16221','earthline-property-safe-water-second-m96'];
+            const waterFeatures={};
+            for(const id of waterLayers){try{const layer=map?.getLayer?.(id);waterFeatures[id]={exists:!!layer,rendered:layer?map.queryRenderedFeatures({layers:[id]}).length:null}}catch(err){waterFeatures[id]={error:String(err)}}}
+            const points=[];let inP=0,slopeLe4=0,nb=0;const hist={lte1:0,one2:0,two3:0,three4:0,four6:0,six10:0,above10:0,nan:0};
+            if(m?.inP&&typeof slopePct==='function'){
+              const n=m.inP.length,w=Number(typeof GW!=='undefined'?GW:210),h=Number(typeof GH!=='undefined'?GH:144);
+              for(let i=0;i<n;i++){if(!m.inP[i])continue;const x=i%w,y=Math.floor(i/w);if(x<2||y<2||x>=w-2||y>=h-2)continue;inP++;const v=Number(slopePct(x,y));if(!Number.isFinite(v)){hist.nan++;continue}if(v<=1)hist.lte1++;else if(v<=2)hist.one2++;else if(v<=3)hist.two3++;else if(v<=4)hist.three4++;else if(v<=6)hist.four6++;else if(v<=10)hist.six10++;else hist.above10++;if(v<=4)slopeLe4++;if(m.noBuildMask?.[i])nb++;}
+            }
+            // Authoritative masks and existing safety audit own intersection counts; do not infer stream polygons from blue decor.
+            const clearance=m?.safetyAudit15806?.clearance||{};
+            return {label,tier:document.documentElement.dataset.earthlineAnalysisTier,actualTarget:window.EARTHLINE_PROPERTY_TARGET_16201,run:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173,
+              publication:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220,finalSafe:safe.length,swaleEngineCount:m?.swales?.length,
+              diagnostics:{stage,levelGenerator:g,raw:d,mask:noBuild,parcelCells:inP,le4Cells:slopeLe4,noBuildCells:nb,slopeHistogram:hist},
+              water:{rendered:waterFeatures,clearance,exclusion:window.earthlineGetExclusionEvidence16516?.()},
+              elder:{state:e.state,error:e.error,dynamicError:e.dynamicError,workerTimings:e.workerTimings,featureCount:e.featureCount,candidatePool:e.dynamicCandidatePoolCount,summary:e.summary,runIdentity:e.propertyRunIdentity,sourceFeatures:map?.getSource?.('earthline-elder-trees-17097')?._data?.features?.length},
+              status:document.getElementById('earthlineVermontStatus16147')?.textContent?.slice(0,300)};
+          },label);
+          try{
+            await page.goto(out.url+'?m174='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.locator('#searchInput').fill('Iowa');
+            await page.locator('#runBtn').click();
+            await page.waitForFunction(()=>window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated>0||!!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970,null,{timeout:60000,polling:200});
+            const regional=await page.evaluate(()=>({count:window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated,error:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970}));
+            out.regional=regional;if(regional.error)throw Error('Regional error '+JSON.stringify(regional.error));
+            await page.evaluate(c=>{const mp=(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap);mp.stop();mp.jumpTo({center:[c.lng,c.lat],zoom:17.7})},c);
+            await page.waitForTimeout(1600);
+            out.selected=await page.evaluate(()=>window.EARTHLINE_PROPERTY_TARGET_16201);
+            await page.locator('#earthlineDeclareProperty16169').click({timeout:10000});
+            await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true&&document.documentElement.dataset.earthlinePropertyRunState!=='running',null,{timeout:90000,polling:200});
+            out.observations.push(await snap('property-settled'));
+            await page.screenshot({path:'artifacts/m174/wooded-property.png'});
+            // Do not mistake asynchronous CHMv2 work for completed zero-coverage evidence.
+            try{await page.waitForFunction(()=>['committed','failed'].includes(window.EARTHLINE_ELDER_TREE_LAST_17097?.state),null,{timeout:45000,polling:300})}catch{}
+            out.observations.push(await snap('elder-waited-45s'));
+          }catch(err){out.error=String(err)}
+          console.log('M174_WOODED_AUDIT '+JSON.stringify(out));
+          writeFileSync('artifacts/m174/forensic.json',JSON.stringify(out,null,2));
+          await browser.close();
+        JS
+          node m174-wooded.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wooded-iowa-forensic
+          path: artifacts/m174/
+          retention-days: 10
