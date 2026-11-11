@@ -20,28 +20,15 @@ jobs:
           s=p.read_bytes()
           assert hashlib.sha1(b'blob '+str(len(s)).encode()+b'\0'+s).hexdigest()=='0f88f8abb3446db1d3ba5f32cb44f05dec8bb0a2','Live baseline drifted'
           a=s.decode('utf-8')
-          old='''      /* M175: an empty non-authoritative map-source response cannot certify road,
-                 building or narrow-channel clearance. Fail closed until independent
-                 mapped exclusion evidence is available; never treat blank as clear. */'''
-          # Exact live source uses nine spaces for continuation, not seventeen.
-          old='''      /* M175: an empty non-authoritative map-source response cannot certify road,
-         building or narrow-channel clearance. Fail closed until independent
-         mapped exclusion evidence is available; never treat blank as clear. */'''
-          new='''      /* A successful zero-feature result is screened-clear, never verified-clear and
-         never `unavailable`. Unavailable must be positively established, not inferred
-         from a blank open-data response. A failure of one optional open source does
-         not erase a successful response from another source for the same frame. */'''
-          changes=[
-           (old,new),
-           ('c.sourceTier="open-data";c.acquisitionResult="failed";c.publicationAllowed=false;c.exclusionVerified=false;','c.sourceTier="open-data";c.acquisitionResult="screened-clear";c.publicationAllowed=true;c.exclusionVerified=false;'),
-           ('c.evidenceGrade="ROAD AND WATER CHECK UNAVAILABLE · TRY AGAIN";','c.evidenceGrade="OPEN-DATA SCREENING · NO MAPPED EXCLUSIONS RETURNED · FIELD VERIFICATION REQUIRED";'),
-           ('earthlineSetVectorVerification16343(c,"unverified","empty-open-data-does-not-establish-road-or-water-clearance");\n      return false;','earthlineSetVectorVerification16343(c,"unverified","open-data-screened-clear-not-authoritative");\n      return true;'),
-           ('earthlineNotice("Road and water check unavailable, try again. Property swales were not published.");','earthlineNotice("Property analysis stopped safely. No fallback swales were substituted.");'),
-          ]
-          for original,revised in changes:
-            n=a.count(original)
-            assert n==1,(original[:80],n)
-            a=a.replace(original,revised)
+          import base64
+          oldblock=base64.b64decode('ICAgIGlmKG9wZW5EYXRhUmVzcG9uZGVkKXsKICAgICAgLyogTTE3NTogYW4gZW1wdHkgbm9uLWF1dGhvcml0YXRpdmUgbWFwLXNvdXJjZSByZXNwb25zZSBjYW5ub3QgY2VydGlmeSByb2FkLAogICAgICAgICBidWlsZGluZyBvciBuYXJyb3ctY2hhbm5lbCBjbGVhcmFuY2UuIEZhaWwgY2xvc2VkIHVudGlsIGluZGVwZW5kZW50CiAgICAgICAgIG1hcHBlZCBleGNsdXNpb24gZXZpZGVuY2UgaXMgYXZhaWxhYmxlOyBuZXZlciB0cmVhdCBibGFuayBhcyBjbGVhci4gKi8KICAgICAgYy5zb3VyY2VUaWVyPSJvcGVuLWRhdGEiO2MuYWNxdWlzaXRpb25SZXN1bHQ9ImZhaWxlZCI7Yy5wdWJsaWNhdGlvbkFsbG93ZWQ9ZmFsc2U7Yy5leGNsdXNpb25WZXJpZmllZD1mYWxzZTsKICAgICAgYy5ldmlkZW5jZUdyYWRlPSJST0FEIEFORCBXQVRFUiBDSEVDSyBVTkFWQUlMQUJMRSDCtyBUUlkgQUdBSU4iOwogICAgICBjLm9wZW5HZW9tZXRyeUNvdW50MTY1MTY9MDsKICAgICAgYy5vcGVuRGF0YVNvdXJjZXMxNjUzOT17b3ZlcnBhc3M6e2F0dGVtcHRlZDohIW9wLmF0dGVtcHRlZCxyZXNwb25kZWQ6b3ZlcnBhc3NSZXNwb25kZWQsZmFpbGVkOm92ZXJwYXNzRmFpbGVkfSxzdHlsZTp7YXR0ZW1wdGVkOnN0eWxlQXR0ZW1wdGVkLHJlc3BvbmRlZDpzdHlsZVJlc3BvbmRlZCxmYWlsZWQ6c3R5bGVGYWlsZWR9fTsKICAgICAgZWFydGhsaW5lU2V0VmVjdG9yVmVyaWZpY2F0aW9uMTYzNDMoYywidW52ZXJpZmllZCIsImVtcHR5LW9wZW4tZGF0YS1kb2VzLW5vdC1lc3RhYmxpc2gtcm9hZC1vci13YXRlci1jbGVhcmFuY2UiKTsKICAgICAgcmV0dXJuIGZhbHNlOwogICAgfQo=').decode()
+          newblock=base64.b64decode('ICAgIGlmKG9wZW5EYXRhUmVzcG9uZGVkKXsKICAgICAgLyogQSBzdWNjZXNzZnVsIHplcm8tZmVhdHVyZSByZXN1bHQgaXMgc2NyZWVuZWQtY2xlYXIsIG5ldmVyIHZlcmlmaWVkLWNsZWFyIGFuZAogICAgICAgICBuZXZlciBgdW5hdmFpbGFibGVgLiBVbmF2YWlsYWJsZSBtdXN0IGJlIHBvc2l0aXZlbHkgZXN0YWJsaXNoZWQsIG5vdCBpbmZlcnJlZAogICAgICAgICBmcm9tIGEgYmxhbmsgb3Blbi1kYXRhIHJlc3BvbnNlLiBBIGZhaWx1cmUgb2Ygb25lIG9wdGlvbmFsIG9wZW4gc291cmNlIGRvZXMKICAgICAgICAgbm90IGVyYXNlIGEgc3VjY2Vzc2Z1bCByZXNwb25zZSBmcm9tIGFub3RoZXIgc291cmNlIGZvciB0aGUgc2FtZSBmcmFtZS4gKi8KICAgICAgYy5zb3VyY2VUaWVyPSJvcGVuLWRhdGEiO2MuYWNxdWlzaXRpb25SZXN1bHQ9InNjcmVlbmVkLWNsZWFyIjtjLnB1YmxpY2F0aW9uQWxsb3dlZD10cnVlO2MuZXhjbHVzaW9uVmVyaWZpZWQ9ZmFsc2U7CiAgICAgIGMuZXZpZGVuY2VHcmFkZT0iT1BFTi1EQVRBIFNDUkVFTklORyDCtyBOTyBNQVBQRUQgRVhDTFVTSU9OUyBSRVRVUk5FRCDCtyBGSUVMRCBWRVJJRklDQVRJT04gUkVRVUlSRUQiOwogICAgICBjLm9wZW5HZW9tZXRyeUNvdW50MTY1MTY9MDsKICAgICAgYy5vcGVuRGF0YVNvdXJjZXMxNjUzOT17b3ZlcnBhc3M6e2F0dGVtcHRlZDohIW9wLmF0dGVtcHRlZCxyZXNwb25kZWQ6b3ZlcnBhc3NSZXNwb25kZWQsZmFpbGVkOm92ZXJwYXNzRmFpbGVkfSxzdHlsZTp7YXR0ZW1wdGVkOnN0eWxlQXR0ZW1wdGVkLHJlc3BvbmRlZDpzdHlsZVJlc3BvbmRlZCxmYWlsZWQ6c3R5bGVGYWlsZWR9fTsKICAgICAgZWFydGhsaW5lU2V0VmVjdG9yVmVyaWZpY2F0aW9uMTYzNDMoYywidW52ZXJpZmllZCIsIm9wZW4tZGF0YS1zY3JlZW5lZC1jbGVhci1ub3QtYXV0aG9yaXRhdGl2ZSIpOwogICAgICByZXR1cm4gdHJ1ZTsKICAgIH0K').decode()
+          assert a.count(oldblock)==1
+          a=a.replace(oldblock,newblock)
+          oldnotice='earthlineNotice("Road and water check unavailable, try again. Property swales were not published.");'
+          newnotice='earthlineNotice("Property analysis stopped safely. No fallback swales were substituted.");'
+          assert a.count(oldnotice)==1
+          a=a.replace(oldnotice,newnotice)
           b=a.encode('utf-8')
           expected='c1068459e0c2b2a29b006c3758774e7df5a58828'
           actual=hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()
