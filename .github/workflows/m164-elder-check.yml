@@ -1,0 +1,32 @@
+name: M164 Elder search latency and round marker regression
+on:
+  push:
+    branches: ['repair/m164-elder-speed-icons']
+    paths: ['.github/workflows/m164-elder-check.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate Elder syntax and ownership
+        run: |
+          node --check earthline-elder-restored-17097.js
+          node tests/mantra94-elder-owner.mjs
+          node tests/mantra94-exact-ring-parity.mjs
+      - name: Confirm Property no longer waits for full manifest before detector begins
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('earthline-elder-restored-17097.js').read_text()
+          sub=s.split('async function startProperty17166(){',1)[1].split('async function refresh()',1)[0]
+          assert 'await load();' not in sub
+          assert "if(!state.loaded)void load().catch(()=>{});" in sub
+          assert 'const dynamic=await dynamicPropertyEvidence(true)' in sub
+          assert "getImageData(0,0,48,48)" in s
+          print('M164_ELDER_NONBLOCKING_PROPERTY_AND_ROUND_ICONS_PASS')
+          PY
