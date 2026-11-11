@@ -17938,8 +17938,10 @@ var prescribeSwales;
       const entered=raw.toLowerCase().replace(/\s+/g," ");
       const applied=String(M.appliedSearchText||"");
       let resolvedSearchLoc15801=null;
+      /* M195: preserve an already published Property run on repeated click. */
+      const alreadyPropertyM195=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property'&&window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220?.published===true&&M?.analysisBoundaryLngLat?.length>=3;
 
-      if(entered&&entered!==applied){
+      if(entered&&entered!==applied&&!alreadyPropertyM195){
         /* BUILD-CHECK-15876 — reload-safe run controller.
            Never repeat a network geocode for the location already resolved on the map.
            On a fresh reload, resolve bundled known locations synchronously before any
@@ -18217,6 +18219,7 @@ var prescribeSwales;
       const explicitBoundary=Array.isArray(M.analysisBoundaryLngLat)&&
         M.analysisBoundaryLngLat.length>=3;
       const property=
+        alreadyPropertyM195||
         highZoomProperty||
         parent.userSelectedSite===true||
         pt==="selected_site"||
