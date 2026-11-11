@@ -93,8 +93,10 @@ jobs:
             window.earthlinePropertyTreeVisibilityM186=update;
           })();
           </script>'''
-          assert s.count('</body>')==1
-          s=s.replace('</body>',note+'\n</body>')
+          end=s.rfind('</body>')
+          if end<0:end=s.rfind('</html>')
+          assert end>=0,'No closing document tag for Property trees'
+          s=s[:end]+note+'\n'+s[end:]
           p.write_text(s)
           print('M186_PROPERTY_MAP_BOUNDS_AND_ROUND_TREE_SOURCE_APPLIED')
           PY
