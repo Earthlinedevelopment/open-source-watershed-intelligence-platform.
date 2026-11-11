@@ -1,0 +1,62 @@
+name: Mantra 127 Arizona isolated regression bisect
+on:
+  push:
+    branches: [candidate/mantra127-arizona-bisect-20261111]
+    paths:
+      - .github/workflows/mantra127-arizona-bisect.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  arizona-revision:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    strategy:
+      fail-fast: false
+      matrix:
+        revision: ['66e6d35', 'f9d479a', '37d9aac', 'a0f2b22', '6b9c444', '6f7d7c6', '783bddc']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare exact historical HTML, worker, and November 5 Arizona test
+        run: |
+          mkdir -p /tmp/earthline-m127
+          git show "${{ matrix.revision }}:index.html" > /tmp/earthline-m127/index.html
+          git show "${{ matrix.revision }}:earthline-elder-worker-17129.js" > /tmp/earthline-m127/earthline-elder-worker-17129.js
+          git show '66e6d35:tests/mantra89-arizona-controls.mjs' > tests/mantra127-arizona-control.mjs
+          git rev-parse "${{ matrix.revision }}" > /tmp/earthline-m127/revision.txt
+          node --check /tmp/earthline-m127/earthline-elder-worker-17129.js
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory /tmp/earthline-m127 >/tmp/m127-server.log 2>&1 &
+          sleep 2
+          curl -fsS http://127.0.0.1:8765/revision.txt
+      - name: Install browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run unchanged November 5 Arizona control on exact historical HTML
+        id: run
+        env:
+          EARTHLINE_URL: http://127.0.0.1:8765/
+        run: |
+          set +e
+          node tests/mantra127-arizona-control.mjs > /tmp/m127-result.log 2>&1
+          code=$?
+          grep -E 'ARIZONA_CONTROL |ARIZONA_CENTER_GATE |Error:|ERR_|TimeoutError|Page crashed' /tmp/m127-result.log | tail -35 || true
+          mkdir -p artifacts/mantra127
+          cp /tmp/m127-result.log artifacts/mantra127/console.log
+          printf '%s\n' "${{ matrix.revision }}" > artifacts/mantra127/revision.txt
+          printf '%s\n' "$code" > artifacts/mantra127/exit-code.txt
+          exit "$code"
+      - name: Upload complete diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mantra127-arizona-${{ matrix.revision }}
+          path: |
+            artifacts/mantra127
+            artifacts/arizona-controls
+          retention-days: 14
