@@ -18,6 +18,17 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
+      - name: Use actual search suggestion selection, not covered Run button
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tests/m97-property-safe-coverage-candidate.mjs')
+          s=p.read_text()
+          old="  await page.locator('#searchInput').fill(pt.search);\n  await page.locator('#runBtn').click();"
+          new="  await page.locator('#searchInput').fill(pt.search);\n  await page.locator('#earthlineSearchSuggestions15970 button[data-query]').first().click({timeout:18000});\n  await page.waitForTimeout(800);\n  if(!(await page.evaluate(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970)))await page.locator('#runBtn').evaluate(el=>el.click());"
+          assert s.count(old)==1
+          p.write_text(s.replace(old,new,1))
+          PY
       - name: Run real Iowa Texas Vermont Property coverage checks against candidate
         run: node tests/m97-property-safe-coverage-candidate.mjs
       - uses: actions/upload-artifact@v4
