@@ -29983,10 +29983,10 @@ body { overflow-x:hidden!important; }
       for(const f of lines){const coords=f.geometry.coordinates;if(coords.length<12)continue;for(const frac of [.28,.56,.82]){const c=sampleSegment(coords,Math.max(3,Math.min(coords.length-4,Math.round((coords.length-1)*frac))),true);if(c)candidates.push(c);}}
     }
     candidates.sort((a,b)=>b.score-a.score);
-    const chosen=[],primarySpacing=Math.max(6,Math.round(hy.w/31));
+    const chosen=[],primarySpacing=Math.max(3,Math.round(hy.w/31));
     for(const c of candidates){
       if(chosen.length>=52)break;
-      const spacing=chosen.length<20?primarySpacing:Math.max(4,Math.round(primarySpacing*.72));
+      const spacing=chosen.length<20?primarySpacing:Math.max(2,Math.round(primarySpacing*.72));
       if(chosen.some(p=>Math.hypot(p.x-c.x,p.y-c.y)<spacing))continue;
       chosen.push(c);
     }
@@ -31016,21 +31016,18 @@ body { overflow-x:hidden!important; }
       }catch(_){}
       throw new Error('corridor rendering incomplete: '+swaleCount+' corridors were generated but the visible overlay rendered zero');
     }
-    if(swaleCount>0&&(
-      regionalOverlayRenderOk16336!==true||
-      !overlayAudit||
-      Number(overlayAudit.swaleGradeLabels||0)===0
-    )){
-      try{
-        clearLive();
-        window.EARTHLINE_REGIONAL_VISUAL_DATA_16020=null;
-        const overlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
-        if(overlay16336)overlay16336.replaceChildren();
-      }catch(_){}
-      throw new Error(
-        'regional corridor-label publication incomplete: '+
-        swaleCount+' corridors exist but zero approved on-map corridor tabs/labels rendered'
-      );
+    /* M140: never erase safely rendered, counted corridors solely because the
+       auxiliary SVG label layer is missing; keep the strict zero-line gate above. */
+    if(swaleCount>0&&!overlayAudit){
+      throw new Error('regional overlay audit missing for '+swaleCount+' corridors');
+    }
+    if(swaleCount>0&&(regionalOverlayRenderOk16336!==true||
+      Number(overlayAudit.swaleGradeLabels||0)===0)){
+      window.EARTHLINE_REGIONAL_CORRIDOR_LABEL_WARNING_M140={
+        runToken,generated:swaleCount,renderedCorridors:Number(overlayAudit.swaleLines||0),
+        renderedLabels:Number(overlayAudit.swaleGradeLabels||0),at:new Date().toISOString()
+      };
+      console.warn('[Earthline] regional corridor labels unavailable; retain verified visible swale lines',window.EARTHLINE_REGIONAL_CORRIDOR_LABEL_WARNING_M140);
     }
     window.EARTHLINE_REGIONAL_CORRIDOR_LABEL_AUDIT_16336={
       build:'EARTHLINE 16336',runToken,
@@ -36087,6 +36084,23 @@ html[data-earthline-has-results] #earthlineDiagramLegend16080{
  html[data-earthline-has-results] #earthlineDiagramLegend16080{
    left:calc(var(--el-rail-16188, 54px) + 10px)!important;bottom:137px!important;
  }
+}
+
+/* M144 UI: independent map guidance boxes; temporary note at right-middle. */
+body:has(#earthlineTemporaryMapHint126) #earthlineCorridorTip16248.open{
+  display:block!important;
+}
+#earthlineTemporaryMapHint126{
+  left:auto!important;right:20px!important;top:50%!important;bottom:auto!important;
+  transform:translateY(-50%)!important;
+  width:max-content!important;max-width:min(420px,calc(100vw - var(--el-map-left-m136) - 40px))!important;
+}
+@media(max-width:760px){
+  #earthlineTemporaryMapHint126{
+    left:auto!important;right:10px!important;top:50%!important;
+    transform:translateY(-50%)!important;
+    width:max-content!important;max-width:calc(100vw - var(--el-rail-16188,54px) - 20px)!important;
+  }
 }
 </style>
 
