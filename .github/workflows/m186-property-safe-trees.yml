@@ -1,0 +1,185 @@
+name: M186 Property tree circles and correct Property report map extent
+on:
+  push:
+    branches: ['repair/m186-property-map-display-current']
+    paths: ['.github/workflows/m186-property-map.yml']
+permissions:
+  contents: write
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Two visual repairs, keep hydrology unchanged
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          orig='  function reportBounds(d){const b=d?.bounds||visual()?.bounds;if(Array.isArray(b)&&b.length===4&&b.every(Number.isFinite))return b;const pts=allCoordinates();if(!pts.length)return[-73.5,42.7,-71.4,45.1];return[Math.min(...pts.map(p=>+p[0])),Math.min(...pts.map(p=>+p[1])),Math.max(...pts.map(p=>+p[0])),Math.max(...pts.map(p=>+p[1]))]}'
+          repl="""  function reportBounds(d){
+            /* M186: Property maps show the selected Property frame, not
+               the stale statewide Regional extent carried by the snapshot. */
+            const t=String(d?.tier||d?.mode||d?.extentClass||'').toLowerCase();
+            if(t.includes('property')||t.includes('20-acre')){
+              const m=typeof M!=='undefined'?M:null;
+              const pts=m?.analysisBoundaryLngLat;
+              if(Array.isArray(pts)&&pts.length>=3){
+                const xs=pts.map(p=>Number(p?.[0])),ys=pts.map(p=>Number(p?.[1]));
+                if([...xs,...ys].every(Number.isFinite))return [Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)];
+              }
+              const target=window.EARTHLINE_PROPERTY_TARGET_16201||m?.loc||null;
+              const lng=Number(target?.lng),lat=Number(target?.lat);
+              if(Number.isFinite(lng)&&Number.isFinite(lat)){
+                const half=185,dy=half/111320,dx=half/(111320*Math.max(.1,Math.cos(lat*Math.PI/180)));
+                return [lng-dx,lat-dy,lng+dx,lat+dy];
+              }
+            }
+            const b=d?.bounds||visual()?.bounds;
+            if(Array.isArray(b)&&b.length===4&&b.every(Number.isFinite))return b;
+            const pts=allCoordinates();
+            if(!pts.length)return[-73.5,42.7,-71.4,45.1];
+            return[Math.min(...pts.map(p=>+p[0])),Math.min(...pts.map(p=>+p[1])),Math.max(...pts.map(p=>+p[0])),Math.max(...pts.map(p=>+p[1]))];
+          }"""
+          assert s.count(orig)==1
+          s=s.replace(orig,repl)
+          note='''<script id="earthline-property-round-trees-m186">
+          /* M186 display only: attach crowns to the safety-approved published
+             Property source, not the legacy living-swales source. */
+          (function(){
+            "use strict";
+            const id="earthline-property-swale-round-trees-m186",imageId="earthline-property-tree-round-m186";
+            const safeId="earthline-property-safe-water-16221";
+            function update(){
+              try{
+                const m=window.earthlineMap||(typeof earthlineMap!=="undefined"?earthlineMap:null);
+                if(!m||!m.isStyleLoaded?.())return;
+                const inProperty=document.documentElement.dataset.earthlineAnalysisTier==="property";
+                const approved=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220?.published===true;
+                const safeLayer=m.getLayer?.(safeId);
+                if(!inProperty||!approved||!safeLayer){
+                  if(m.getLayer?.(id))m.setLayoutProperty(id,"visibility","none");
+                  return;
+                }
+                const source=safeLayer.source;
+                if(!source||!m.getSource?.(source))return;
+                if(m.getLayer?.(id)&&m.getLayer(id).source!==source)m.removeLayer(id);
+                if(!m.hasImage(imageId)){
+                  const cv=document.createElement("canvas");cv.width=40;cv.height=40;
+                  const c=cv.getContext("2d");if(!c)return;
+                  c.beginPath();c.arc(20,20,16,0,Math.PI*2);
+                  c.fillStyle="#775331";c.fill();c.strokeStyle="#c59d68";c.lineWidth=2;c.stroke();
+                  c.beginPath();c.arc(20,20,12.7,0,Math.PI*2);
+                  c.fillStyle="#438b4b";c.fill();c.strokeStyle="#275333";c.lineWidth=1.6;c.stroke();
+                  c.beginPath();c.arc(16,16,3.2,0,Math.PI*2);
+                  c.fillStyle="rgba(221,244,171,.35)";c.fill();
+                  m.addImage(imageId,c.getImageData(0,0,40,40),{pixelRatio:2});
+                }
+                if(!m.getLayer(id))m.addLayer({id,type:"symbol",source,minzoom:15,
+                  layout:{"symbol-placement":"line","symbol-spacing":46,
+                    "icon-image":imageId,
+                    "icon-size":["interpolate",["linear"],["zoom"],15,.8,18,1.1,20,1.25],
+                    "icon-allow-overlap":true,"icon-ignore-placement":true,
+                    "visibility":"visible"}});
+                else m.setLayoutProperty(id,"visibility","visible");
+              }catch(error){console.warn("[Earthline M186 Property tree layer]",error)}
+            }
+            document.addEventListener("earthline:analysis-complete",()=>setTimeout(update,250),{passive:true});
+            setInterval(update,1600);
+            window.earthlinePropertyTreeVisibilityM186=update;
+          })();
+          </script>'''
+          assert s.count('</body>')==1
+          s=s.replace('</body>',note+'\n</body>')
+          p.write_text(s)
+          print('M186_PROPERTY_MAP_BOUNDS_AND_ROUND_TREE_SOURCE_APPLIED')
+          PY
+      - name: Static code and scientific-scope checks
+        run: |
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,subprocess
+          s=Path('index.html').read_text()
+          chunks=re.findall(r'<script\b[^>]*>(.*?)</script>',s,re.S|re.I)
+          count=0
+          for i,x in enumerate(chunks):
+            if not x.strip() or x.lstrip().startswith('{'):continue
+            f=Path('/tmp/m186-'+str(i)+'.js');f.write_text(x)
+            r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
+            if r.returncode:raise RuntimeError('script '+str(i)+': '+r.stderr[:600])
+            count+=1
+          assert s.count('earthline-property-swale-round-trees-m186')>=1
+          assert s.count("M186: Property maps show") ==1
+          print('M186_SOURCE_SYNTAX_PASS',count)
+          PY
+      - name: Browser test existing live Property workflow and report map
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+          cat > m186-test.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {existsSync,statSync,readFileSync} from 'node:fs';
+          import path from 'node:path';
+          const root=process.cwd();
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1650,height:950}});
+          const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+          await page.route('https://earthlinedevelopment.org/**',route=>{
+            const req=new URL(route.request().url()),rel=decodeURIComponent(req.pathname).replace(/^[/]+/,'')||'index.html',loc=path.resolve(root,rel);
+            if((loc!==root&&!loc.startsWith(root+path.sep))||!existsSync(loc)||!statSync(loc).isFile())return route.abort();
+            const types={'.html':'text/html','.js':'application/javascript','.json':'application/json','.css':'text/css','.png':'image/png'};
+            return route.fulfill({status:200,contentType:types[path.extname(loc)]||'application/octet-stream',body:readFileSync(loc)});
+          });
+          let o={};
+          try{
+            await page.goto('https://earthlinedevelopment.org/?m186='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.locator('#searchInput').fill('Iowa');
+            await page.locator('#runBtn').evaluate(el=>el.click());
+            await page.waitForFunction(()=>window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated>0||!!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970,null,{timeout:60000});
+            const regional=await page.evaluate(()=>window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null);
+            if(regional)throw Error('Regional '+JSON.stringify(regional));
+            await page.evaluate(()=>{const m=window.earthlineMap||earthlineMap;m.stop();m.jumpTo({center:[-93.68,42.13],zoom:17.7})});
+            await page.waitForTimeout(1600);
+            await page.locator('#earthlineDeclareProperty16169').evaluate(el=>el.click());
+            await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,null,{timeout:85000,polling:150});
+            await page.waitForTimeout(1000);
+            o.prop=await page.evaluate(()=>{
+              const m=window.earthlineMap||earthlineMap;
+              const id='earthline-property-swale-round-trees-m186';
+              const safe=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{};
+              let rendered=0;
+              try{rendered=m.getLayer(id)?m.queryRenderedFeatures({layers:[id]}).length:0}catch{}
+              return {safe:safe.safeCount||0,tier:document.documentElement.dataset.earthlineAnalysisTier,verified:M?.safetyAudit15806?.verified,
+                unsafe:M?.safetyAudit15806?.clearance?.unsafeSegments,
+                treeLayer:!!m.getLayer(id),treeIcon:m.hasImage('earthline-property-tree-round-m186'),treeRendered:rendered,
+                actualCenter:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.center};
+            });
+            if(o.prop.safe<=0)throw Error('Property swales absent: '+JSON.stringify(o.prop));
+            await page.screenshot({path:'artifacts/m186-property.png'});
+            await page.locator('#earthlineVermontReport16149').evaluate(el=>el.click());
+            await page.waitForFunction(()=>document.querySelector('#earthlineVermontReportPanel16149.open .el49-cover-map svg')!==null,null,{timeout:30000,polling:200});
+            o.report=await page.evaluate(()=>{
+              const el=document.querySelector('#earthlineVermontReportPanel16149 .el49-cover-map svg');
+              const text=el?.textContent||'';
+              const bounds=text.includes('Bounds:')?text.slice(text.indexOf('Bounds:')+7,text.indexOf('Bounds:')+95):'';
+              return {text:text.slice(0,260),bounds,hasIowa:text.includes('Iowa'),hasCoordinates:text.includes('-93.3')||text.includes('-93.6')};
+            });
+            o.pass=o.prop.safe>0&&o.prop.treeLayer&&o.prop.treeIcon&&o.prop.treeRendered>0&&o.prop.unsafe===0&&o.report.hasIowa&&o.report.hasCoordinates&&!errors.length;
+          }catch(e){o.error=String(e)}
+          console.log('M186_PROPERTY_REPORT '+JSON.stringify({...o,errors}));
+          await browser.close();
+          if(!o.pass)process.exitCode=1;
+          JS
+          node m186-test.mjs
+      - name: Commit tested candidate only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix(live): place circular trees on Property swales and map actual Property extent in report"
+          git push origin HEAD:repair/m186-property-map-display-current
