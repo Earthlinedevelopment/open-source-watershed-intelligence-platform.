@@ -1,0 +1,77 @@
+name: M195 RUN PROPERTY must retain published Property mode
+on:
+  push:
+    branches: ['repair/m195-keep-property-when-rerun']
+    paths: ['.github/workflows/m195-rerun-fix.yml']
+permissions:
+  contents: write
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Fix scientific-tier rerun state
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          start=s.index('  async function runCore15786(){')
+          end=s.index('  function run15786(ev){',start)
+          part=s[start:end]
+          orig='''      let resolvedSearchLoc15801=null;
+      
+      if(entered&&entered!==applied){'''
+          replacement='''      let resolvedSearchLoc15801=null;
+      /* M195: a user pressing RUN PROPERTY on an already published Property
+         must not re-interpret the old Regional search text as a new search.
+         The Property scientific frame remains authoritative unless the user
+         actually selects another place via the search workflow. */
+      const alreadyPropertyM195=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property'&&
+        window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220?.published===true&&
+        M?.analysisBoundaryLngLat?.length>=3;
+
+      if(entered&&entered!==applied&&!alreadyPropertyM195){'''
+          if part.count(orig)!=1:
+            orig=orig.replace('      if(entered','      if(entered')
+            # tolerate the original single empty line
+          assert part.count(orig)==1,(part.count(orig),repr(part[part.index('      let resolvedSearchLoc15801=null;'):part.index('      let resolvedSearchLoc15801=null;')+130]))
+          part=part.replace(orig,replacement)
+          orig2='''      const property=
+        highZoomProperty||'''
+          repl2='''      const property=
+        alreadyPropertyM195||
+        highZoomProperty||'''
+          assert part.count(orig2)==1
+          part=part.replace(orig2,repl2)
+          s=s[:start]+part+s[end:]
+          p.write_text(s)
+          print('M195_PROPERTY_RERUN_MODE_GUARD_PATCHED')
+          PY
+      - name: Check single-owner gate, JS syntax
+        run: |
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,subprocess
+          s=Path('index.html').read_text()
+          assert s.count('const alreadyPropertyM195=')==1
+          assert 'if(entered&&entered!==applied&&!alreadyPropertyM195)' in s
+          assert 'const property=\n        alreadyPropertyM195||' in s
+          for i,js in enumerate(re.findall(r'<script\b[^>]*>(.*?)</script>',s,re.S|re.I)):
+            if not js.strip() or js.lstrip().startswith('{'):continue
+            f=Path('/tmp/m195-'+str(i)+'.js');f.write_text(js)
+            z=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
+            if z.returncode:raise RuntimeError(str(i)+': '+z.stderr[:500])
+          print('M195_JS_PASS')
+          PY
+      - name: Commit test candidate (not production)
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add index.html
+          git commit -m "fix(property): preserve active Property run when RUN PROPERTY repeats"
+          git push origin HEAD:repair/m195-keep-property-when-rerun
