@@ -16,9 +16,12 @@ jobs:
           from pathlib import Path
           a=Path('index.html').read_text().splitlines()
           terms=['exclusionVerified','publicationAllowed','acquisitionResult','earthlineGetExclusionEvidence16516','prescriptionMaskFrozenAtStart','propertyResultLock15815','authoritativeSafeSwales15815','EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220','function openReport','reportPlaceLine123','corridorTipSeenThisPage16253']
-          for lo,hi in [(12040,12225),(11950,12045),(16700,16725),(17435,17465),(19190,19290),(31790,31815),(32188,32212),(35920,35950)]:
+          for lo,hi in [(10190,10360),(10370,10440),(12040,12225),(11950,12045),(16700,16725),(17435,17465),(19190,19290),(31790,31815),(32188,32212),(35920,35950)]:
             print('M175_RANGE',lo,hi)
             for i in range(lo-1,hi):print('M175_EXACT',i+1,a[i][:2000])
+          for term in ['earthlineCollectParcelInfrastructure15862P','_portableInfrastructurePrefetch16549','overpass-api.de','overpass.kumi','overpass.private.coffee']:
+            ids=[i for i,x in enumerate(a) if term in x]
+            print('M175_FIND',term,[i+1 for i in ids[:25]])
           for term in terms:
             ids=[i for i,x in enumerate(a) if term in x]
             print('M175_MATCH',term,'count',len(ids),'lines',[i+1 for i in ids[:35]])
