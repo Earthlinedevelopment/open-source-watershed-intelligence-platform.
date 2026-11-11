@@ -29,6 +29,18 @@ jobs:
           assert s.count(old)==1
           p.write_text(s.replace(old,new,1))
           PY
+      - name: Inspect source and record all Property swale rejection counters
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          lines=p.read_text().splitlines()
+          for a,b in [(13640,13880),(13700,14100)]:
+            print('SOURCE_EXCERPT',a,b)
+            for i in range(a-1,min(b,len(lines))):
+              if a==13700 and i+1<13880: continue
+              print(f'{i+1}: {lines[i][:260]}')
+          PY
       - name: Run real Iowa Texas Vermont Property coverage checks against candidate
         run: node tests/m97-property-safe-coverage-candidate.mjs
       - uses: actions/upload-artifact@v4
