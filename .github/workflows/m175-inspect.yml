@@ -1,0 +1,25 @@
+name: M175 locate exclusion enforcement production
+on:
+  push:
+    branches: ['repair/m175-property-exclusion-failclosed']
+    paths: ['.github/workflows/m175-inspect.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect exclusion gate and control labels
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          a=Path('index.html').read_text().splitlines()
+          terms=['exclusionVerified','publicationAllowed','acquisitionResult','earthlineGetExclusionEvidence16516','prescriptionMaskFrozenAtStart','propertyResultLock15815','authoritativeSafeSwales15815','EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220','function openReport','reportPlaceLine123','corridorTipSeenThisPage16253']
+          for term in terms:
+            ids=[i for i,x in enumerate(a) if term in x]
+            print('M175_MATCH',term,'count',len(ids),'lines',[i+1 for i in ids[:35]])
+            for i in ids[-5:]:
+              for j in range(max(0,i-2),min(len(a),i+3)):
+                print('M175_LINE',j+1,a[j][:1800])
+          PY
