@@ -1,0 +1,51 @@
+name: M138 safe swale coverage browser validation
+on:
+  push:
+    branches: ['candidate/m138-sustained-4pct-mean-guard-test']
+    paths: ['.github/workflows/m138-swale-real-browser.yml']
+permissions:
+  contents: read
+jobs:
+  property-coverage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser for actual map and terrain runs
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Use actual search suggestion selection, not covered Run button
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tests/m97-property-safe-coverage-candidate.mjs')
+          s=p.read_text()
+          old="  await page.locator('#searchInput').fill(pt.search);\n  await page.locator('#runBtn').click();"
+          new="  await page.locator('#searchInput').fill(pt.search);\n  await page.locator('#earthlineSearchSuggestions15970 button[data-query]').first().click({timeout:18000});\n  await page.waitForTimeout(800);\n  if(!(await page.evaluate(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970)))await page.locator('#runBtn').evaluate(el=>el.click());"
+          assert s.count(old)==1
+          p.write_text(s.replace(old,new,1))
+          PY
+      - name: Inspect source and record all Property swale rejection counters
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          lines=p.read_text().splitlines()
+          for a,b in [(13640,13880),(13700,14100)]:
+            print('SOURCE_EXCERPT',a,b)
+            for i in range(a-1,min(b,len(lines))):
+              if a==13700 and i+1<13880: continue
+              print(f'{i+1}: {lines[i][:260]}')
+          PY
+      - name: Run real Iowa Texas Vermont Property coverage checks against candidate
+        run: node tests/m97-property-safe-coverage-candidate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m138-swale-coverage-evidence
+          path: artifacts/m97-candidate-properties/
+          retention-days: 14

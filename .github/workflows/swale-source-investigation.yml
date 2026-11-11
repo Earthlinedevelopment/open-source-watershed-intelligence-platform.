@@ -1,0 +1,31 @@
+name: Swale source investigation isolated
+on:
+  push:
+    branches: ['candidate/m138-sustained-4pct-mean-guard-test']
+    paths: ['.github/workflows/swale-source-investigation.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect generator budgets, result rejection and regional label publication
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          l=Path('index.html').read_text().splitlines()
+          terms=['regionalOverlayRenderOk16336','swaleGradeLabels','regional corridor-label publication incomplete','work15771=','perLevel:','maxCandidates:','rejectSlopeAbove4M131','maxFinal:','EARTHLINE_REGIONAL_CORRIDOR_LABEL','corridor-label']
+          spans=[]
+          for term in terms:
+            hits=[i for i,s in enumerate(l) if term in s]
+            print('MATCH',term,'COUNT',len(hits),'LINES',[i+1 for i in hits[:20]])
+            for i in hits[:10]:
+              spans.append((max(0,i-16),min(len(l),i+19)))
+          seen=set()
+          for a,b in spans:
+            for i in range(a,b):
+              if i in seen:continue
+              seen.add(i)
+              print('SOURCE',i+1,l[i][:400])
+          PY
