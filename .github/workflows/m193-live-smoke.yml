@@ -1,0 +1,69 @@
+name: M193 public Ernst Creek Property safety smoke
+on:
+  push:
+    branches: ['audit/m193-public-ernst-smoke']
+    paths: ['.github/workflows/m193-live-smoke.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify published HTTPS on farmland and mapped creek
+        run: |
+          mkdir -p artifacts/m191
+          cat > m191-test.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {existsSync,statSync,readFileSync,writeFileSync} from 'node:fs';
+          import path from 'node:path';
+          const root=process.cwd(),browser=await chromium.launch({headless:true});
+          const sites=[{name:'farmland',lng:-93.68,lat:42.13},{name:'ernst-creek',lng:-93.38977,lat:41.95748}];
+          const results=[];
+          for(const site of sites){
+            const page=await browser.newPage({viewport:{width:1650,height:920}}),errors=[];
+            page.on('pageerror',e=>errors.push(String(e)));
+            let result={site,errors};
+            try{
+              await page.goto('https://earthlinedevelopment.org/?m191='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.locator('#searchInput').fill('Iowa');
+              await page.locator('#runBtn').evaluate(el=>el.click());
+              await page.waitForFunction(()=>window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated>0||window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970,null,{timeout:60000,polling:250});
+              await page.evaluate(site=>{const m=window.earthlineMap||earthlineMap;m.stop();m.jumpTo({center:[site.lng,site.lat],zoom:17.7})},site);
+              await page.waitForTimeout(1100);
+              await page.locator('#earthlineDeclareProperty16169').evaluate(el=>el.click());
+              await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,null,{timeout:85000,polling:250});
+              result=Object.assign(result,await page.evaluate(()=>{
+                const c=M?.vectorNoBuildCoverage||{},run=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
+                const safety=M?.safetyAudit15806||{},o=c.infrastructure15862P?.overpass||{};
+                return {stage:run.stage,error:run.error,swales:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220?.safeCount||0,
+                  vector:{sourceTier:c.sourceTier,acquisitionResult:c.acquisitionResult,allowed:c.publicationAllowed,processed:c.processedFeatureCount,provider:o.provider,http:o.httpStatus,bytes:o.responseBytes,ways:o.rawElementCount,water:o.waterGeometryCount,roads:o.roadGeometryCount,buildings:o.buildingGeometryCount,exception:o.error,bbox:o.queryBBox},
+                  safety:{verified:safety.verified,unsafe:safety.clearance?.unsafeSegments,waterIntersections:safety.clearance?.waterIntersections},
+                  treeCircles:window.EARTHLINE_PROPERTY_TREE_CIRCLES_AUDIT_M189?.treeCircles||0
+                };
+              }));
+              await page.screenshot({path:'artifacts/m191/'+site.name+'.png'});
+            }catch(e){result.error=String(e)}
+            console.log('M191_SITE '+JSON.stringify(result));results.push(result);await page.close();
+          }
+          writeFileSync('artifacts/m191/results.json',JSON.stringify(results,null,2));
+          await browser.close();
+          const pass=results.every(r=>!r.error&&!r.errors.length&&r.swales>0&&r.vector?.allowed===true&&r.vector?.processed>0&&r.safety?.verified===true&&r.safety?.unsafe===0&&r.safety?.waterIntersections===0)&&results[1]?.vector?.water>0;
+          console.log('M191_BOTH_SITES_SAFE '+pass);
+          if(!pass)process.exitCode=1;
+          JS
+          node m191-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m193-public-site-Iowa-property-screenshots
+          path: artifacts/m191/
+          retention-days: 14
