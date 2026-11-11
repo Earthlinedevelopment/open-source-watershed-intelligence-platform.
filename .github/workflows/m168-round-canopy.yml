@@ -1,0 +1,85 @@
+name: M168 individual circular trees along Property swales
+on:
+  push:
+    branches: ['repair/m168-round-trees-along-swales']
+    paths: ['.github/workflows/m168-round-canopy.yml']
+permissions:
+  contents: write
+jobs:
+  test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace only visual canopy geometry with round tree crowns
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          a=s.index('  function canopy16174(')
+          b=s.index('  function understory16174(',a)
+          original=s[a:b]
+          assert 'earthline-swale-tree-crown-16174' in original
+          replacement="""  function canopy16174(g,pts,side,seed,zoom,grade){
+            const len=polyLength(pts),detail=clamp16174((zoom-13)/6,0,1),
+              baseR=clamp16174(3.2+detail*7.4,3.2,10.6),
+              fill=grade==='A'?'#3f8e4d':grade==='B'?'#4f8248':'#5a7748',
+              group=svgEl('g',{class:'earthline-swale-canopy-16174','data-natural-swale':'round-downhill-trees','data-density':'m168-separated-round'});
+            const spacing=Math.max(20,baseR*2.45);
+            for(let d=spacing/2+noise16174(seed)*spacing*.3;d<len-4;d+=spacing){
+              const p=atDistance(pts,d);if(!p)continue;
+              const rad=(p.angle+90)*Math.PI/180,
+                lateral=side*(baseR*1.2),
+                x=p.x+Math.cos(rad)*lateral,
+                y=p.y+Math.sin(rad)*lateral,
+                r=baseR*(.86+.12*noise16174(seed+d*3));
+              const crown=svgEl('g',{class:'earthline-swale-tree-crown-16174','data-canopy-style':'round-brown-green','data-symbol-semantics':'tree-crown'});
+              crown.appendChild(svgEl('circle',{cx:x.toFixed(1),cy:y.toFixed(1),r:(r*1.20).toFixed(1),fill:'#765336',stroke:'#c69b69','stroke-width':String(Math.max(.8,r*.12))}));
+              crown.appendChild(svgEl('circle',{cx:x.toFixed(1),cy:y.toFixed(1),r:(r*.92).toFixed(1),fill,stroke:'#22542b','stroke-width':String(Math.max(.5,r*.10))}));
+              crown.appendChild(svgEl('circle',{cx:(x-r*.28).toFixed(1),cy:(y-r*.29).toFixed(1),r:(r*.23).toFixed(1),fill:'rgba(219,239,158,.38)'}));
+              group.appendChild(crown);
+            }
+            g.appendChild(group);
+          }
+          """
+          s=s[:a]+replacement+s[b:]
+          assert s.count('function canopy16174(')==1
+          p.write_text(s)
+          print('M168_ROUND_TREES_ONLY_PATCH')
+          PY
+      - name: Static visual geometry and embedded JS gate
+        run: |
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          import subprocess
+          class S(HTMLParser):
+            def __init__(self):super().__init__();self.on=False;self.buf='';self.blocks=[]
+            def handle_starttag(self,t,a):
+              if t=='script':self.on=True;self.buf='';self.typ=dict(a).get('type','')
+            def handle_data(self,x):
+              if self.on:self.buf+=x
+            def handle_endtag(self,t):
+              if t=='script' and self.on:
+                if self.typ not in ['application/json','application/ld+json'] and self.buf.strip():self.blocks.append(self.buf)
+                self.on=False
+          p=Path('index.html');s=p.read_text()
+          a=s.index('function canopy16174(');b=s.index('function understory16174(',a);segment=s[a:b]
+          assert segment.count("svgEl('circle'")==3
+          assert "svgEl('ellipse'" not in segment
+          assert "earthline-swale-tree-crown-16174" in segment
+          z=S();z.feed(s)
+          for i,x in enumerate(z.blocks):
+            f=Path('/tmp/m168-'+str(i)+'.js');f.write_text(x)
+            r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
+            if r.returncode:raise RuntimeError(str(i)+' '+r.stderr[:700])
+          print('M168_CIRCULAR_TREE_JS_PASS',len(z.blocks))
+          PY
+      - name: Commit only verified visual change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix(ui): draw separated circular tree crowns along eligible swales"
+          git push origin HEAD:repair/m168-round-trees-along-swales
