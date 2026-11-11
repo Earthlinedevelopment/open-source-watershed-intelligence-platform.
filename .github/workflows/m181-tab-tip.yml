@@ -1,0 +1,59 @@
+name: M181 restore sequential Choose a tab guidance
+on:
+  push:
+    branches: ['repair/m181-choose-tab-tip']
+    paths: ['.github/workflows/m181-tab-tip.yml']
+permissions:
+  contents: write
+jobs:
+  test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore existing Regional tip copy and visibility without popup overlap
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          old='<strong>Regional corridors are clickable</strong><p>Select a visible map label to open its evidence, ranking and actions.</p>'
+          new='<strong>Choose a tab</strong><p>Use Search, Property Investigation, or Bioswale Impact Report to continue.</p>'
+          assert s.count(old)==1
+          s=s.replace(old,new)
+          old2="if(!visibleLabels.length)return false;visibleLabels.sort"
+          new2="if(!visibleLabels.length&&regionalEvidence!==true)return false;visibleLabels.sort"
+          assert s.count(old2)==1
+          s=s.replace(old2,new2)
+          old3="p.textContent='Select the visible map label ';const bold=document.createElement('b');bold.textContent=visibleLabels[0];p.appendChild(bold);p.append(' to open its evidence, ranking and actions.')"
+          new3="p.textContent='Use the Search, Property Investigation, or Bioswale Impact Report tab to continue.';if(visibleLabels.length){p.append(' Map label ');const bold=document.createElement('b');bold.textContent=visibleLabels[0];p.appendChild(bold);p.append(' opens corridor details.')}"
+          assert s.count(old3)==1
+          s=s.replace(old3,new3)
+          assert "body:has(#earthlineTemporaryMapHint126) #earthlineCorridorTip16248.open" in s
+          p.write_text(s)
+          print('M181_SEQUENTIAL_CHOOSE_TAB_GUIDANCE_PATCHED')
+          PY
+      - name: JS syntax, old suppression rule still in force
+        run: |
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,subprocess
+          s=Path('index.html').read_text()
+          assert '<strong>Choose a tab</strong>' in s
+          assert s.count('body:has(#earthlineTemporaryMapHint126) #earthlineCorridorTip16248.open')==1
+          assert 'display:none!important' in s[s.index('body:has(#earthlineTemporaryMapHint126) #earthlineCorridorTip16248.open'):][:150]
+          assert 'tip.remove()' in s
+          for i,js in enumerate(re.findall(r'<script\b[^>]*>(.*?)</script>',s,re.S|re.I)):
+            if not js.strip() or js.lstrip().startswith('{'):continue
+            f=Path('/tmp/m181-'+str(i)+'.js');f.write_text(js)
+            r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
+            if r.returncode:raise RuntimeError(str(i)+': '+r.stderr[:500])
+          print('M181_SCRIPT_AND_SEQUENTIAL_GUARD_PASS')
+          PY
+      - name: Commit popup-copy-only fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix(ui): restore Choose a tab after temporary navigation note"
+          git push origin HEAD:repair/m181-choose-tab-tip
