@@ -12004,15 +12004,16 @@ async function directGeocode(q){
       return true;
     }
     if(openDataResponded){
-      /* M175: an empty non-authoritative map-source response cannot certify road,
-         building or narrow-channel clearance. Fail closed until independent
-         mapped exclusion evidence is available; never treat blank as clear. */
-      c.sourceTier="open-data";c.acquisitionResult="failed";c.publicationAllowed=false;c.exclusionVerified=false;
-      c.evidenceGrade="ROAD AND WATER CHECK UNAVAILABLE · TRY AGAIN";
+      /* A successful zero-feature result is screened-clear, never verified-clear and
+         never `unavailable`. Unavailable must be positively established, not inferred
+         from a blank open-data response. A failure of one optional open source does
+         not erase a successful response from another source for the same frame. */
+      c.sourceTier="open-data";c.acquisitionResult="screened-clear";c.publicationAllowed=true;c.exclusionVerified=false;
+      c.evidenceGrade="OPEN-DATA SCREENING · NO MAPPED EXCLUSIONS RETURNED · FIELD VERIFICATION REQUIRED";
       c.openGeometryCount16516=0;
       c.openDataSources16539={overpass:{attempted:!!op.attempted,responded:overpassResponded,failed:overpassFailed},style:{attempted:styleAttempted,responded:styleResponded,failed:styleFailed}};
-      earthlineSetVectorVerification16343(c,"unverified","empty-open-data-does-not-establish-road-or-water-clearance");
-      return false;
+      earthlineSetVectorVerification16343(c,"unverified","open-data-screened-clear-not-authoritative");
+      return true;
     }
     if(openDataAttempted){
       c.sourceTier="open-data";c.acquisitionResult="failed";c.publicationAllowed=false;c.exclusionVerified=false;
@@ -17443,7 +17444,7 @@ var prescribeSwales;
     earthlinePropertyTrace16319("rebuildModel(true)","enter");
     const ok=await rebuildModel(true,gen);
     earthlinePropertyTrace16319("rebuildModel(true)","exit",{ok:!!ok});
-    if(!ok||earthlineIsStale(gen)){const coreFailure16548=M.propertyCoreFailure16548||null;M.propertyRunFailure16539={stage:String(coreFailure16548&&coreFailure16548.stage||"rebuild-model"),reason:earthlineIsStale(gen)?"property analysis superseded by a newer run":String(coreFailure16548&&coreFailure16548.reason||"property terrain/exclusion core did not complete"),vectorCoverage:M.vectorNoBuildCoverage||null,prescriptionHalt:M.prescriptionHalt15870||null,at:new Date().toISOString()};earthlineNotice("Road and water check unavailable, try again. Property swales were not published.");return false;}
+    if(!ok||earthlineIsStale(gen)){const coreFailure16548=M.propertyCoreFailure16548||null;M.propertyRunFailure16539={stage:String(coreFailure16548&&coreFailure16548.stage||"rebuild-model"),reason:earthlineIsStale(gen)?"property analysis superseded by a newer run":String(coreFailure16548&&coreFailure16548.reason||"property terrain/exclusion core did not complete"),vectorCoverage:M.vectorNoBuildCoverage||null,prescriptionHalt:M.prescriptionHalt15870||null,at:new Date().toISOString()};earthlineNotice("Property analysis stopped safely. No fallback swales were substituted.");return false;}
     const exclusionsVerified15786=!!(
       M.vectorNoBuildCoverage&&(M.vectorNoBuildCoverage.verified===true||M.vectorNoBuildCoverage.publicationAllowed===true)&&
       M.noBuildMask&&Number(M.noBuildMask.length)>0
