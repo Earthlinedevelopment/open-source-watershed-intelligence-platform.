@@ -1,0 +1,35 @@
+name: M143 actual Property swale rejection audit
+on:
+  push:
+    branches: ['audit/m143-property-swale-rejection']
+    paths: ['.github/workflows/m143-property-rejection.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instrument existing real browser test without modifying engine
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tests/m97-property-safe-coverage-candidate.mjs');s=p.read_text()
+          s=s.replace(" {name:'Texas-plain',search:'Texas',lng:-96.47,lat:29.2},\n","")
+          old="  await page.locator('#searchInput').fill(pt.search);\n  await page.locator('#runBtn').click();"
+          new="  await page.locator('#searchInput').fill(pt.search);\n  await page.locator('#earthlineSearchSuggestions15970 button[data-query]').first().click({timeout:18000});\n  await page.waitForTimeout(800);\n  if(!(await page.evaluate(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970)))await page.locator('#runBtn').evaluate(el=>el.click());"
+          assert s.count(old)==1
+          s=s.replace(old,new)
+          s=s.replace("    generation:{levels:stage.levels", "    stageVerbose:stage,coverageTermination:m?.coverageDiagnostic15803?.termination,\n    generation:{levels:stage.levels")
+          p.write_text(s)
+          PY
+      - name: Install actual Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run Iowa Vermont real Property audit and preserve failure evidence
+        run: node tests/m97-property-safe-coverage-candidate.mjs || true
