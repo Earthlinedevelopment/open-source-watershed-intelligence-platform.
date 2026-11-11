@@ -204,6 +204,7 @@
   }
   /* M129: round brown trunk ring and green canopy, sourced points only.
      Marker geometry and colors affect presentation, never Elder evidence counts. */
+  /* M164: clear round, brown-rimmed green Elder tree symbols; evidence tiers keep their colors. */
   function elderPinImage(fill){
     const canvas=document.createElement('canvas');canvas.width=48;canvas.height=48;
     const ctx=canvas.getContext('2d');if(!ctx)return null;
@@ -211,14 +212,13 @@
     ctx.beginPath();ctx.arc(24,24,20.5,0,Math.PI*2);
     ctx.fillStyle='#76502b';ctx.fill();
     ctx.lineWidth=2;ctx.strokeStyle='#d7bd83';ctx.stroke();
-    ctx.beginPath();ctx.arc(24,24,15.5,0,Math.PI*2);
+    ctx.beginPath();ctx.arc(24,24,15.7,0,Math.PI*2);
     ctx.fillStyle=fill;ctx.fill();
-    for(const [x,y,r] of [[17,19,6],[28,17,7],[33,27,6],[23,31,7],[15,29,6]]){
-      ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
-      ctx.fillStyle=fill;ctx.fill();
-    }
-    ctx.beginPath();ctx.arc(22,23,4,0,Math.PI*2);
-    ctx.fillStyle='rgba(210,245,185,.42)';ctx.fill();
+    ctx.lineWidth=1.3;ctx.strokeStyle='#163b24';ctx.stroke();
+    ctx.beginPath();ctx.arc(19,18,5.8,0,Math.PI*2);
+    ctx.fillStyle='rgba(210,245,185,.32)';ctx.fill();
+    ctx.beginPath();ctx.arc(28,29,4,0,Math.PI*2);
+    ctx.fillStyle='rgba(8,38,19,.18)';ctx.fill();
     return ctx.getImageData(0,0,48,48);
   }
   function ensureElderPinImages(m){
@@ -532,7 +532,9 @@
     ++regionalRefreshEpochM94; /* Invalidate any older asynchronous Regional refresh. */
     let runIdentity='';
     try{
-      await load();
+      /* M164: on-demand Property detection must not wait for all global Elder datasets.
+         Manifest/other-region evidence continues in parallel; same worker and final result. */
+      if(!state.loaded)void load().catch(()=>{});
       const b=propertyBounds17166();runIdentity=propertyRunIdentity17166(b);
       if(!b||!runIdentity)return null;
       const pending17389=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
