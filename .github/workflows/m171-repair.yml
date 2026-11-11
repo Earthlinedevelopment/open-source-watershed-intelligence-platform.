@@ -53,13 +53,13 @@ jobs:
           marker='    // Explicit order: terrain/aquifer context -> water paths -> living swales.'
           assert s.count(marker)==1
           body="""    /* M171: Mapbox's existing safe Property LineStrings own tree placement.
-       Symbol-spacing follows the lines; no additional candidate geometry. */
-    try{
-      const icon='earthline-property-tree-round-m171';
-      if(!earthlineMap.hasImage(icon)){
-        const canvas=document.createElement('canvas');canvas.width=40;canvas.height=40;
-        const ctx=canvas.getContext('2d');
-        if(ctx){
+          Symbol-spacing follows the lines; no additional candidate geometry. */
+          try{
+          const icon='earthline-property-tree-round-m171';
+          if(!earthlineMap.hasImage(icon)){
+          const canvas=document.createElement('canvas');canvas.width=40;canvas.height=40;
+          const ctx=canvas.getContext('2d');
+          if(ctx){
           ctx.clearRect(0,0,40,40);
           ctx.beginPath();ctx.arc(20,20,16,0,Math.PI*2);ctx.fillStyle='#765336';ctx.fill();
           ctx.strokeStyle='#c69b69';ctx.lineWidth=2;ctx.stroke();
@@ -67,16 +67,16 @@ jobs:
           ctx.strokeStyle='#22542b';ctx.lineWidth=1.5;ctx.stroke();
           ctx.beginPath();ctx.arc(16.5,16,3.2,0,Math.PI*2);ctx.fillStyle='rgba(219,239,158,.35)';ctx.fill();
           earthlineMap.addImage(icon,ctx.getImageData(0,0,40,40),{pixelRatio:2});
-        }
-      }
-      if(earthlineMap.hasImage(icon)){
-        addLayer({id:SWALE_TREES_M171,type:'symbol',source:SWALE_SOURCE,minzoom:15,
+          }
+          }
+          if(earthlineMap.hasImage(icon)){
+          addLayer({id:SWALE_TREES_M171,type:'symbol',source:SWALE_SOURCE,minzoom:15,
           layout:{'symbol-placement':'line','symbol-spacing':42,'icon-image':icon,
-            'icon-size':['interpolate',['linear'],['zoom'],15,.64,18,1.0,20,1.3],
-            'icon-allow-overlap':true,'icon-ignore-placement':true,'visibility':'visible'}},beforeLegacy);
-      }
-    }catch(e){console.warn('[Earthline] Property round tree icon setup',e)}
-    """
+          'icon-size':['interpolate',['linear'],['zoom'],15,.64,18,1.0,20,1.3],
+          'icon-allow-overlap':true,'icon-ignore-placement':true,'visibility':'visible'}},beforeLegacy);
+          }
+          }catch(e){console.warn('[Earthline] Property round tree icon setup',e)}
+          """
           s=s.replace(marker,body+marker)
           original="for(const id of [FLOW_CASING,FLOW_LINE,FLOW_PULSE,FLOW_ARROWS,SWALE_GLOW,SWALE_EARTH,SWALE_LIFE,SWALE_WATER])"
           assert s.count(original)==1
@@ -84,8 +84,8 @@ jobs:
           p.write_text(s)
           print('M171_PROPERTY_MAP_BOUNDS_AND_ROUND_TREE_SOURCE_APPLIED')
           PY
-      - name: Static code and scientific-scope checks
-        run: |
+          - name: Static code and scientific-scope checks
+          run: |
           git diff --check
           python3 - <<'PY'
           from pathlib import Path
@@ -94,17 +94,17 @@ jobs:
           chunks=re.findall(r'<script\b[^>]*>(.*?)</script>',s,re.S|re.I)
           count=0
           for i,x in enumerate(chunks):
-            if not x.strip() or x.lstrip().startswith('{'):continue
-            f=Path('/tmp/m171-'+str(i)+'.js');f.write_text(x)
-            r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
-            if r.returncode:raise RuntimeError('script '+str(i)+': '+r.stderr[:600])
-            count+=1
+          if not x.strip() or x.lstrip().startswith('{'):continue
+          f=Path('/tmp/m171-'+str(i)+'.js');f.write_text(x)
+          r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
+          if r.returncode:raise RuntimeError('script '+str(i)+': '+r.stderr[:600])
+          count+=1
           assert s.count("SWALE_TREES_M171")>=3
           assert s.count("M171: Property maps show") ==1
           print('M171_SOURCE_SYNTAX_PASS',count)
           PY
-      - name: Browser test existing live Property workflow and report map
-        run: |
+          - name: Browser test existing live Property workflow and report map
+          run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
           cat > m171-test.mjs <<'JS'
@@ -128,26 +128,26 @@ jobs:
           await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,null,{timeout:90000});
           await page.waitForTimeout(1000);
           const prop=await page.evaluate(()=>{
-            const m=window.earthlineMap||earthlineMap;
-            return {count:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220?.safeCount||0,
-              treeLayer:!!m.getLayer('earthline-property-swale-round-trees-m171'),
-              treeIcon:m.hasImage('earthline-property-tree-round-m171'),
-              treeVisibility:m.getLayer('earthline-property-swale-round-trees-m171')&&m.getLayoutProperty('earthline-property-swale-round-trees-m171','visibility')||'visible'};
+          const m=window.earthlineMap||earthlineMap;
+          return {count:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220?.safeCount||0,
+          treeLayer:!!m.getLayer('earthline-property-swale-round-trees-m171'),
+          treeIcon:m.hasImage('earthline-property-tree-round-m171'),
+          treeVisibility:m.getLayer('earthline-property-swale-round-trees-m171')&&m.getLayoutProperty('earthline-property-swale-round-trees-m171','visibility')||'visible'};
           });
           await page.locator('#earthlineVermontReport16149').evaluate(el=>el.click());
           await page.waitForFunction(()=>document.querySelector('#earthlineVermontReportPanel16149.open .el49-cover-map svg')!==null,null,{timeout:22000});
           const report=await page.evaluate(()=>{
-            const el=document.querySelector('#earthlineVermontReportPanel16149 .el49-cover-map svg');
-            const label=el?.textContent||'';
-            return {label:label.slice(0,170),tinyExtent:/Bounds:\s*-93\.68[0-9]*,\s*42\.12[0-9]*,\s*-93\.67[0-9]*,\s*42\.13[0-9]*/.test(label)};
+          const el=document.querySelector('#earthlineVermontReportPanel16149 .el49-cover-map svg');
+          const label=el?.textContent||'';
+          return {label:label.slice(0,170),tinyExtent:/Bounds:\s*-93\.68[0-9]*,\s*42\.12[0-9]*,\s*-93\.67[0-9]*,\s*42\.13[0-9]*/.test(label)};
           });
           console.log('M171_PROPERTY_REPORT '+JSON.stringify({prop,report,errs}));
           await browser.close();
           if(!prop.count||!prop.treeLayer||!prop.treeIcon||!report.tinyExtent||errs.length)process.exitCode=1;
           JS
           node m171-test.mjs
-      - name: Commit tested candidate only
-        run: |
+          - name: Commit tested candidate only
+          run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
