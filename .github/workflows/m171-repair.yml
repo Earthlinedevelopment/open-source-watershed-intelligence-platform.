@@ -118,6 +118,7 @@ jobs:
           await page.locator('#searchInput').fill('Iowa');
           const opt=page.locator('#earthlineSearchSuggestions15970 button[data-query]').first();
           if(await opt.count())await opt.click({timeout:18000}).catch(()=>{});
+          await page.evaluate(()=>{const i=document.getElementById('searchInput');i.value='Iowa';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));document.getElementById('runBtn')?.click()});
           await page.waitForFunction(()=>!!window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||!!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970,null,{timeout:70000});
           const regional=await page.evaluate(()=>window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970);
           if(regional)throw Error('Regional '+JSON.stringify(regional));
