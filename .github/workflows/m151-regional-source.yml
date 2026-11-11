@@ -1,0 +1,30 @@
+name: M151 regional source corridor length and slope pipeline inspection
+on:
+  push:
+    branches: ['audit/m143-property-swale-rejection']
+    paths: ['.github/workflows/m151-regional-source.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect actual Regional generator, screening and publication
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          a=Path('index.html').read_text().splitlines()
+          terms=['function makeSwales(', 'function makeSwales', 'const swales=makeSwales', 'makeSwales(hy', 'slope_pct:', 'function makeRegional', 'const swales=']
+          spans=[]
+          for term in terms:
+            ids=[i for i,s in enumerate(a) if term in s]
+            print('MATCH',term,len(ids),[i+1 for i in ids[:20]])
+            for i in ids[:10]:spans.append((max(0,i-18),min(len(a),i+58)))
+          seen=set()
+          for x,y in spans:
+            for i in range(x,y):
+              if i in seen:continue
+              seen.add(i)
+              print(f'SOURCE {i+1} {a[i][:420]}')
+          PY
