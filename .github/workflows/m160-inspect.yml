@@ -33,7 +33,15 @@ jobs:
           for i in range(34100-1,34141):print(f'REPORTMAP {i+1} {a[i][:1800]}')
           for i in range(34280-1,34356):print(f'REPORTBUILD {i+1} {a[i][:1100]}')
           for i in range(34333-1,34445):print(f'AQREPORT {i+1} {a[i][:1650]}')
-          b=Path('earthline-elder-restored-17097.js').read_text().splitlines()
+          import re
+          for term in ['tree-crown','canopy16174(','earthline-property-swale-canopy','earthline-living-swales','tree-circle','treePoint','canopy-tree','circle-layer','swale-tree','drawTrees','treeDecorations','tree-markers']:
+            ids=[i for i,line in enumerate(a) if term in line]
+            print('TREEMATCH',term,len(ids),[i+1 for i in ids[:25]])
+            for i in ids[:8]:
+              if i>2000:
+                for j in range(max(0,i-3),min(len(a),i+5)):print(f'TREESOURCE {j+1} {a[j][:900]}')
+          for i in range(34095-1,34103):print(f'REPORTBOUNDS {i+1} {a[i][:1400]}')
+                    b=Path('earthline-elder-restored-17097.js').read_text().splitlines()
           for i in list(range(55,115))+list(range(212,272))+list(range(445,555)):
             print(f'ELDER {i+1} {b[i][:380]}')
           PY
