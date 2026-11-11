@@ -1,0 +1,76 @@
+name: M187 Property-scale map in Bioswale Report
+on:
+  push:
+    branches: ['repair/m187-report-map-property-only']
+    paths: ['.github/workflows/m187-report-only.yml']
+permissions:
+  contents: write
+jobs:
+  test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Replace only reportBounds with current Property analysis frame
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          orig='  function reportBounds(d){const b=d?.bounds||visual()?.bounds;if(Array.isArray(b)&&b.length===4&&b.every(Number.isFinite))return b;const pts=allCoordinates();if(!pts.length)return[-73.5,42.7,-71.4,45.1];return[Math.min(...pts.map(p=>+p[0])),Math.min(...pts.map(p=>+p[1])),Math.max(...pts.map(p=>+p[0])),Math.max(...pts.map(p=>+p[1]))]}'
+          repl="""  function reportBounds(d){
+            /* M187: Property maps show the selected Property frame, not
+               the stale statewide Regional extent carried by the snapshot. */
+            const t=String(d?.tier||d?.mode||d?.extentClass||'').toLowerCase();
+            if(t.includes('property')||t.includes('20-acre')){
+              const m=typeof M!=='undefined'?M:null;
+              const pts=m?.analysisBoundaryLngLat;
+              if(Array.isArray(pts)&&pts.length>=3){
+                const xs=pts.map(p=>Number(p?.[0])),ys=pts.map(p=>Number(p?.[1]));
+                if([...xs,...ys].every(Number.isFinite))return [Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)];
+              }
+              const target=window.EARTHLINE_PROPERTY_TARGET_16201||m?.loc||null;
+              const lng=Number(target?.lng),lat=Number(target?.lat);
+              if(Number.isFinite(lng)&&Number.isFinite(lat)){
+                const half=185,dy=half/111320,dx=half/(111320*Math.max(.1,Math.cos(lat*Math.PI/180)));
+                return [lng-dx,lat-dy,lng+dx,lat+dy];
+              }
+            }
+            const b=d?.bounds||visual()?.bounds;
+            if(Array.isArray(b)&&b.length===4&&b.every(Number.isFinite))return b;
+            const pts=allCoordinates();
+            if(!pts.length)return[-73.5,42.7,-71.4,45.1];
+            return[Math.min(...pts.map(p=>+p[0])),Math.min(...pts.map(p=>+p[1])),Math.max(...pts.map(p=>+p[0])),Math.max(...pts.map(p=>+p[1]))];
+          }"""
+          assert s.count(orig)==1
+          s=s.replace(orig,repl)
+
+          p.write_text(s)
+          print('M187_PROPERTY_REPORT_BOUNDS_ONLY_PATCHED')
+          PY
+      - name: Exact source scope and JS syntax
+        run: |
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,subprocess
+          s=Path('index.html').read_text()
+          assert "M187: Property maps show" in s
+          assert "m?.analysisBoundaryLngLat" in s
+          assert "EARTHLINE_PROPERTY_TARGET_16201" in s
+          assert "earthline-property-swale-round-trees-m186" not in s
+          for i,js in enumerate(re.findall(r'<script\b[^>]*>(.*?)</script>',s,re.S|re.I)):
+            if not js.strip() or js.lstrip().startswith('{'):continue
+            f=Path('/tmp/m187-'+str(i)+'.js');f.write_text(js)
+            r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
+            if r.returncode:raise RuntimeError(str(i)+': '+r.stderr[:450])
+          print('M187_PROPERTY_REPORT_JS_PASS')
+          PY
+      - name: Commit scoped report rendering patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix(report): use actual Property boundary instead of Regional map extent"
+          git push origin HEAD:repair/m187-report-map-property-only
