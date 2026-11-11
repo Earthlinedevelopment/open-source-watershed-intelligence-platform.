@@ -1,0 +1,108 @@
+name: M183 remote OSM fallback for empty Mapbox exclusions
+on:
+  push:
+    branches: ['repair/m183-map-empty-remote-exclusions']
+    paths: ['.github/workflows/m183-osm-fallback.yml']
+permissions:
+  contents: write
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Require OSM query if loaded-map exclusions empty, preserve fail-closed gate
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          old='if(portableStyleFirst16550&&styleQuerySuccess16516){'
+          new='if(portableStyleFirst16550&&styleQuerySuccess16516&&bounded.length>0){'
+          assert s.count(old)==1
+          s=s.replace(old,new)
+          s=s.replace('/* A successful loaded-style/source query is already an open-data screening\n           response under the existing evidence contract. Use exactly those mapped',
+              '/* M183: only positive, bounded features can justify loaded-style-first.\n           Empty style/source results must query OSM for mapped road/water evidence.\n           Use exactly those mapped')
+          assert 'empty-open-data-does-not-establish-road-or-water-clearance' in s
+          assert 'ROAD AND WATER CHECK UNAVAILABLE · TRY AGAIN' in s
+          p.write_text(s)
+          print('M183_OSM_FALLBACK_FOR_EMPTY_STYLE_PATCHED')
+          PY
+      - name: JS source gate
+        run: |
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,subprocess
+          s=Path('index.html').read_text()
+          assert 'if(portableStyleFirst16550&&styleQuerySuccess16516&&bounded.length>0)' in s
+          assert 'c.acquisitionResult="failed";c.publicationAllowed=false;c.exclusionVerified=false' in s
+          assert 'earthlineFetchOverpass15862P(result,boundary,myGen)' in s
+          for i,js in enumerate(re.findall(r'<script\b[^>]*>(.*?)</script>',s,re.S|re.I)):
+            if not js.strip() or js.lstrip().startswith('{'):continue
+            f=Path('/tmp/m183-'+str(i)+'.js');f.write_text(js)
+            r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
+            if r.returncode:raise RuntimeError('script '+str(i)+': '+r.stderr[:450])
+          print('M183_JS_SAFE_PASS')
+          PY
+      - name: Connected browser test of Iowa open farmland and river bend
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+          mkdir -p artifacts/m183
+          cat > m183-test.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {existsSync,statSync,readFileSync,writeFileSync} from 'node:fs';
+          import path from 'node:path';
+          const root=process.cwd(),browser=await chromium.launch({headless:true});
+          const sites=[{name:'open-farmland',lng:-93.68,lat:42.13},{name:'wooded-river-bend',lng:-93.38977,lat:41.95748}];
+          const results=[];
+          for(const site of sites){
+            const page=await browser.newPage({viewport:{width:1650,height:920}}),errors=[];
+            page.on('pageerror',e=>errors.push(String(e)));
+            await page.route('https://earthlinedevelopment.org/**',route=>{
+              const req=new URL(route.request().url());const rel=decodeURIComponent(req.pathname).replace(/^\/+/,'')||'index.html',loc=path.resolve(root,rel);
+              if((loc!==root&&!loc.startsWith(root+path.sep))||!existsSync(loc)||!statSync(loc).isFile())return route.abort();
+              const types={'.html':'text/html','.js':'application/javascript','.json':'application/json','.css':'text/css','.png':'image/png'};
+              return route.fulfill({status:200,contentType:types[path.extname(loc)]||'application/octet-stream',body:readFileSync(loc)});
+            });
+            let o={site,errors};
+            try{
+              await page.goto('https://earthlinedevelopment.org/?m183='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.locator('#searchInput').fill('Iowa');
+              await page.locator('#runBtn').evaluate(el=>el.click());
+              await page.waitForFunction(()=>window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated>0||!!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970,null,{timeout:60000});
+              await page.evaluate(site=>{const m=window.earthlineMap||earthlineMap;m.stop();m.jumpTo({center:[site.lng,site.lat],zoom:17.7})},site);
+              await page.waitForTimeout(1700);
+              await page.locator('#earthlineDeclareProperty16169').evaluate(el=>el.click());
+              await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,null,{timeout:90000});
+              o=Object.assign(o,await page.evaluate(()=>{const m=typeof M!=='undefined'?M:window.M,c=m?.vectorNoBuildCoverage||{},a=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{};return{coverage:{sourceTier:c.sourceTier,acquisitionResult:c.acquisitionResult,publicationAllowed:c.publicationAllowed,featureCount:c.sourceFeatureCount,processedCount:c.processedFeatureCount,remote:c.infrastructure15862P,route:c.portableEvidencePath16550},run:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173,publication:{safeCount:a.safeCount,published:a.published},safety:m?.safetyAudit15806}}));
+              await page.screenshot({path:'artifacts/m183/'+site.name+'.png'});
+            }catch(e){o.error=String(e)}
+            console.log('M183_SITE '+JSON.stringify(o));
+            results.push(o);
+            await page.close();
+          }
+          writeFileSync('artifacts/m183/results.json',JSON.stringify(results,null,2));
+          await browser.close();
+          // Intent: prove recovered mapped evidence on both locations while never allowing silent fail-open.
+          const pass=results.every(r=>!r.error&&!r.errors.length&&r.coverage?.publicationAllowed===true&&r.coverage?.acquisitionResult==='features-found'&&r.coverage?.processedCount>0&&r.publication.safeCount>0&&r.safety?.verified===true);
+          console.log('M183_RECOVERY_PASS '+pass);
+          if(!pass)process.exitCode=1;
+          JS
+          node m183-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m183-open-farmland-wooded-osm-evidence
+          path: artifacts/m183/
+          retention-days: 14
+      - name: Commit only if actual Property map evidence reappears
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix(property): query mapped OSM exclusions when Mapbox style returns no features"
+          git push origin HEAD:repair/m183-map-empty-remote-exclusions
