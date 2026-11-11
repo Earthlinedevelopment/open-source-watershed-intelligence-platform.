@@ -87,6 +87,10 @@ jobs:
           }
           """
           s=s[:start]+replacement+s[end:]
+          # Empty style queries must invoke the real mapped-water fallback.
+          previous='if(portableStyleFirst16550&&styleQuerySuccess16516){'
+          assert s.count(previous)==1
+          s=s.replace(previous,'if(portableStyleFirst16550&&styleQuerySuccess16516&&bounded.length>0){')
           assert 'empty-open-data-does-not-establish-road-or-water-clearance' in s
           assert 'c.acquisitionResult="failed";c.publicationAllowed=false' in s
           assert 'earthlineRasterOverpassElement15862P' in s
