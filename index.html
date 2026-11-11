@@ -29983,10 +29983,10 @@ body { overflow-x:hidden!important; }
       for(const f of lines){const coords=f.geometry.coordinates;if(coords.length<12)continue;for(const frac of [.28,.56,.82]){const c=sampleSegment(coords,Math.max(3,Math.min(coords.length-4,Math.round((coords.length-1)*frac))),true);if(c)candidates.push(c);}}
     }
     candidates.sort((a,b)=>b.score-a.score);
-    const chosen=[],primarySpacing=Math.max(6,Math.round(hy.w/31));
+    const chosen=[],primarySpacing=Math.max(3,Math.round(hy.w/31));
     for(const c of candidates){
       if(chosen.length>=52)break;
-      const spacing=chosen.length<20?primarySpacing:Math.max(4,Math.round(primarySpacing*.72));
+      const spacing=chosen.length<20?primarySpacing:Math.max(2,Math.round(primarySpacing*.72));
       if(chosen.some(p=>Math.hypot(p.x-c.x,p.y-c.y)<spacing))continue;
       chosen.push(c);
     }
@@ -36084,6 +36084,23 @@ html[data-earthline-has-results] #earthlineDiagramLegend16080{
  html[data-earthline-has-results] #earthlineDiagramLegend16080{
    left:calc(var(--el-rail-16188, 54px) + 10px)!important;bottom:137px!important;
  }
+}
+
+/* M144 UI: independent map guidance boxes; temporary note at right-middle. */
+body:has(#earthlineTemporaryMapHint126) #earthlineCorridorTip16248.open{
+  display:block!important;
+}
+#earthlineTemporaryMapHint126{
+  left:auto!important;right:20px!important;top:50%!important;bottom:auto!important;
+  transform:translateY(-50%)!important;
+  width:max-content!important;max-width:min(420px,calc(100vw - var(--el-map-left-m136) - 40px))!important;
+}
+@media(max-width:760px){
+  #earthlineTemporaryMapHint126{
+    left:auto!important;right:10px!important;top:50%!important;
+    transform:translateY(-50%)!important;
+    width:max-content!important;max-width:calc(100vw - var(--el-rail-16188,54px) - 20px)!important;
+  }
 }
 </style>
 
