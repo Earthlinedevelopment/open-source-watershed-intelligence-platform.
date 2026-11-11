@@ -1,0 +1,56 @@
+name: M179 state names on Bioswale report
+on:
+  push:
+    branches: ['repair/m179-report-state-name']
+    paths: ['.github/workflows/m179-report-state.yml']
+permissions:
+  contents: write
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Query TIGERweb States layer 0 alongside existing place/county
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          replacements=[
+           ("const [incorporated,designated,county]=await Promise.allSettled([","const [incorporated,designated,county,state]=await Promise.allSettled(["),
+           ("request('State_County',1)\n      ]);","request('State_County',1),\n        request('State_County',0)\n      ]);"),
+           ("const place=get(incorporated)||get(designated),countyName=get(county);","const place=get(incorporated)||get(designated),countyName=get(county),stateName=get(state);"),
+           ("return [place,countyName].filter(Boolean).join(' · ')||fallback;","return [place,countyName,stateName].filter(Boolean).join(' · ')||fallback;")
+          ]
+          for a,b in replacements:
+            assert s.count(a)==1,(a[:80],s.count(a))
+            s=s.replace(a,b)
+          p.write_text(s)
+          print('M179_STATES_RESOLVER_PATCHED')
+          PY
+      - name: Check exact geocoding logic and JS syntax
+        run: |
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,subprocess
+          s=Path('index.html').read_text()
+          f=s[s.index('async function reportPlaceLine123('):s.index('async function reportAquiferContext123(')]
+          assert "request('State_County',0)" in f
+          assert "request('State_County',1)" in f
+          assert "stateName=get(state)" in f
+          assert "[place,countyName,stateName].filter(Boolean)" in f
+          for i,js in enumerate(re.findall(r'<script\b[^>]*>(.*?)</script>',s,re.S|re.I)):
+            if not js.strip() or js.lstrip().startswith('{'):continue
+            p=Path('/tmp/m179-'+str(i)+'.js');p.write_text(js)
+            r=subprocess.run(['node','--check',str(p)],capture_output=True,text=True)
+            if r.returncode:raise RuntimeError('script '+str(i)+': '+r.stderr[:500])
+          print('M179_STATE_REPORT_JS_PASS')
+          PY
+      - name: Commit visual report label only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix(report): include Census State name with current place and county"
+          git push origin HEAD:repair/m179-report-state-name
