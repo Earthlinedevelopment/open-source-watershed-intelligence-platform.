@@ -1,0 +1,22 @@
+name: M145 source diagnosis for safe contour-fragment salvage
+on:
+  push:
+    branches: ['audit/m143-property-swale-rejection']
+    paths: ['.github/workflows/m145-swale-fragments-source.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Identify segment conversion and swale data format
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          a=Path('index.html').read_text().splitlines()
+          for lo,hi in [(13370,13670),(13788,13862)]:
+            print('CHUNK',lo,hi)
+            for i in range(lo-1,hi):
+              print(f'SOURCE {i+1} {a[i][:400]}')
+          PY
