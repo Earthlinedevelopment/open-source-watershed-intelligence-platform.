@@ -31016,21 +31016,18 @@ body { overflow-x:hidden!important; }
       }catch(_){}
       throw new Error('corridor rendering incomplete: '+swaleCount+' corridors were generated but the visible overlay rendered zero');
     }
-    if(swaleCount>0&&(
-      regionalOverlayRenderOk16336!==true||
-      !overlayAudit||
-      Number(overlayAudit.swaleGradeLabels||0)===0
-    )){
-      try{
-        clearLive();
-        window.EARTHLINE_REGIONAL_VISUAL_DATA_16020=null;
-        const overlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
-        if(overlay16336)overlay16336.replaceChildren();
-      }catch(_){}
-      throw new Error(
-        'regional corridor-label publication incomplete: '+
-        swaleCount+' corridors exist but zero approved on-map corridor tabs/labels rendered'
-      );
+    /* M140: never erase safely rendered, counted corridors solely because the
+       auxiliary SVG label layer is missing; keep the strict zero-line gate above. */
+    if(swaleCount>0&&!overlayAudit){
+      throw new Error('regional overlay audit missing for '+swaleCount+' corridors');
+    }
+    if(swaleCount>0&&(regionalOverlayRenderOk16336!==true||
+      Number(overlayAudit.swaleGradeLabels||0)===0)){
+      window.EARTHLINE_REGIONAL_CORRIDOR_LABEL_WARNING_M140={
+        runToken,generated:swaleCount,renderedCorridors:Number(overlayAudit.swaleLines||0),
+        renderedLabels:Number(overlayAudit.swaleGradeLabels||0),at:new Date().toISOString()
+      };
+      console.warn('[Earthline] regional corridor labels unavailable; retain verified visible swale lines',window.EARTHLINE_REGIONAL_CORRIDOR_LABEL_WARNING_M140);
     }
     window.EARTHLINE_REGIONAL_CORRIDOR_LABEL_AUDIT_16336={
       build:'EARTHLINE 16336',runToken,
