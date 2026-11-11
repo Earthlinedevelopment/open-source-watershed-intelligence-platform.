@@ -116,7 +116,7 @@ jobs:
           const page=await browser.newPage({viewport:{width:1650,height:950}});
           const errors=[];page.on('pageerror',e=>errors.push(String(e)));
           await page.route('https://earthlinedevelopment.org/**',route=>{
-            const req=new URL(route.request().url()),rel=decodeURIComponent(req.pathname).replace(/^\\/+/, '')||'index.html',loc=path.resolve(root,rel);
+            const req=new URL(route.request().url()),rel=decodeURIComponent(req.pathname).replace(/^[/]+/,'')||'index.html',loc=path.resolve(root,rel);
             if((loc!==root&&!loc.startsWith(root+path.sep))||!existsSync(loc)||!statSync(loc).isFile())return route.abort();
             const types={'.html':'text/html','.js':'application/javascript','.json':'application/json','.css':'text/css','.png':'image/png'};
             return route.fulfill({status:200,contentType:types[path.extname(loc)]||'application/octet-stream',body:readFileSync(loc)});
@@ -152,7 +152,7 @@ jobs:
             o.report=await page.evaluate(()=>{
               const el=document.querySelector('#earthlineVermontReportPanel16149 .el49-cover-map svg');
               const text=el?.textContent||'';
-              const bounds=text.match(/Bounds:\\s*([-0-9.,\\s]+)/)?.[1]?.slice(0,100)||'';
+              const bounds=text.includes('Bounds:')?text.slice(text.indexOf('Bounds:')+7,text.indexOf('Bounds:')+95):'';
               return {text:text.slice(0,260),bounds,hasIowa:text.includes('Iowa'),hasCoordinates:text.includes('-93.3')||text.includes('-93.6')};
             });
             o.pass=o.prop.safe>0&&o.prop.treeLayer&&o.prop.treeIcon&&o.prop.treeRendered>0&&o.prop.unsafe===0&&o.report.hasIowa&&o.report.hasCoordinates&&!errors.length;
