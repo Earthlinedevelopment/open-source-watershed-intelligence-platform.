@@ -1,0 +1,93 @@
+name: M196 public Ernst Creek Property safety smoke
+on:
+  push:
+    branches: ['repair/m196-keep-property-when-rerun']
+    paths: ['.github/workflows/m196-verify-rerun.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify published HTTPS on farmland and mapped creek
+        run: |
+          mkdir -p artifacts/m196
+          cat > m196-test.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {existsSync,statSync,readFileSync,writeFileSync} from 'node:fs';
+          import path from 'node:path';
+          const root=process.cwd(),browser=await chromium.launch({headless:true});
+          const sites=[{name:'farmland',lng:-93.68,lat:42.13},{name:'ernst-creek',lng:-93.38977,lat:41.95748}];
+          const results=[];
+          for(const site of sites){
+            const page=await browser.newPage({viewport:{width:1650,height:920}}),errors=[];
+            page.on('pageerror',e=>errors.push(String(e)));
+            await page.route('https://earthlinedevelopment.org/**',async route=>{
+              const u=new URL(route.request().url());
+              if(u.pathname==='/'||u.pathname==='/index.html'){
+                const {readFileSync}=await import('node:fs');
+                return route.fulfill({status:200,contentType:'text/html;charset=utf-8',body:readFileSync('index.html')});
+              }
+              return route.continue();
+            });
+            let result={site,errors};
+            try{
+              await page.goto('https://earthlinedevelopment.org/?m196='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.locator('#searchInput').fill('Iowa');
+              await page.locator('#runBtn').evaluate(el=>el.click());
+              await page.waitForFunction(()=>window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated>0||window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970,null,{timeout:60000,polling:250});
+              await page.evaluate(site=>{const m=window.earthlineMap||earthlineMap;m.stop();m.jumpTo({center:[site.lng,site.lat],zoom:17.7})},site);
+              await page.waitForTimeout(1100);
+              await page.locator('#earthlineDeclareProperty16169').evaluate(el=>el.click());
+              await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,null,{timeout:85000,polling:250});
+              result=Object.assign(result,await page.evaluate(()=>{
+                const c=M?.vectorNoBuildCoverage||{},run=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
+                const safety=M?.safetyAudit15806||{},o=c.infrastructure15862P?.overpass||{};
+                return {stage:run.stage,error:run.error,swales:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220?.safeCount||0,
+                  vector:{sourceTier:c.sourceTier,acquisitionResult:c.acquisitionResult,allowed:c.publicationAllowed,processed:c.processedFeatureCount,provider:o.provider,http:o.httpStatus,bytes:o.responseBytes,ways:o.rawElementCount,water:o.waterGeometryCount,roads:o.roadGeometryCount,buildings:o.buildingGeometryCount,exception:o.error,bbox:o.queryBBox},
+                  safety:{verified:safety.verified,unsafe:safety.clearance?.unsafeSegments,waterIntersections:safety.clearance?.waterIntersections},
+                  treeCircles:window.EARTHLINE_PROPERTY_TREE_CIRCLES_AUDIT_M189?.treeCircles||0
+                };
+              }));
+              // The previous acceptance clicked only the portal. User clicks RUN PROPERTY.
+              result.beforeRunButton={...result};
+              await page.locator('#runBtn').evaluate(el=>el.click());
+              await page.waitForTimeout(14000);
+              result.afterRunButton=await page.evaluate(()=>{
+                const run=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
+                const map=window.earthlineMap||earthlineMap;
+                const l=['earthline-property-safe-water-16221','earthline-property-flow-line-15792','earthline-property-safe-tree-core-m189'];
+                const layers={};
+                for(const id of l){let n=0;try{n=map.getLayer(id)?map.queryRenderedFeatures({layers:[id]}).length:0}catch{}layers[id]={exists:!!map.getLayer(id),visible:map.getLayer(id)?map.getLayoutProperty(id,'visibility'):null,rendered:n}}
+                return {run,button:document.querySelector('#runBtn')?.textContent?.trim(),publication:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220,block:window.EARTHLINE_PROPERTY_PUBLICATION_BLOCK_16176,
+                  tier:document.documentElement.dataset.earthlineAnalysisTier,elders:window.EARTHLINE_ELDER_TREE_LAST_17097,
+                  gauge:document.getElementById('earthlineElderTreesGauge17097')?.textContent,
+                  toast:document.getElementById('toast')?.textContent,
+                  reroute:window.EARTHLINE_RUN_PROPERTY_ROUTING_M196,layers,activeModeDecision:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.stage};
+              });
+              await page.screenshot({path:'artifacts/m196/'+site.name+'.png'});
+            }catch(e){result.error=String(e)}
+            console.log('M196_SITE '+JSON.stringify(result));results.push(result);await page.close();
+          }
+          writeFileSync('artifacts/m196/results.json',JSON.stringify(results,null,2));
+          await browser.close();
+          const pass=results.every(r=>!r.error&&!r.errors.length&&r.afterRunButton?.tier==='property'&&!!r.afterRunButton?.reroute&&r.afterRunButton?.publication?.safeCount>0&&r.afterRunButton?.publication?.published===true&&r.afterRunButton?.layers?.['earthline-property-safe-water-16221']?.visible!=='none');
+          console.log('M196_BOTH_SITES_SAFE '+pass);
+          if(!pass)process.exitCode=1;
+          JS
+          node m196-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m196-public-site-Iowa-property-screenshots
+          path: artifacts/m196/
+          retention-days: 14
