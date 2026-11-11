@@ -1,0 +1,171 @@
+name: M185 Property tree circles and correct Property report map extent
+on:
+  push:
+    branches: ['repair/m185-live-property-tree-report']
+    paths: ['.github/workflows/m185-repair.yml']
+permissions:
+  contents: write
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Two visual repairs, keep hydrology unchanged
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          orig='  function reportBounds(d){const b=d?.bounds||visual()?.bounds;if(Array.isArray(b)&&b.length===4&&b.every(Number.isFinite))return b;const pts=allCoordinates();if(!pts.length)return[-73.5,42.7,-71.4,45.1];return[Math.min(...pts.map(p=>+p[0])),Math.min(...pts.map(p=>+p[1])),Math.max(...pts.map(p=>+p[0])),Math.max(...pts.map(p=>+p[1]))]}'
+          repl="""  function reportBounds(d){
+            /* M185: Property maps show the selected Property frame, not
+               the stale statewide Regional extent carried by the snapshot. */
+            const t=String(d?.tier||d?.mode||d?.extentClass||'').toLowerCase();
+            if(t.includes('property')||t.includes('20-acre')){
+              const m=typeof M!=='undefined'?M:null;
+              const pts=m?.analysisBoundaryLngLat;
+              if(Array.isArray(pts)&&pts.length>=3){
+                const xs=pts.map(p=>Number(p?.[0])),ys=pts.map(p=>Number(p?.[1]));
+                if([...xs,...ys].every(Number.isFinite))return [Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)];
+              }
+              const target=window.EARTHLINE_PROPERTY_TARGET_16201||m?.loc||null;
+              const lng=Number(target?.lng),lat=Number(target?.lat);
+              if(Number.isFinite(lng)&&Number.isFinite(lat)){
+                const half=185,dy=half/111320,dx=half/(111320*Math.max(.1,Math.cos(lat*Math.PI/180)));
+                return [lng-dx,lat-dy,lng+dx,lat+dy];
+              }
+            }
+            const b=d?.bounds||visual()?.bounds;
+            if(Array.isArray(b)&&b.length===4&&b.every(Number.isFinite))return b;
+            const pts=allCoordinates();
+            if(!pts.length)return[-73.5,42.7,-71.4,45.1];
+            return[Math.min(...pts.map(p=>+p[0])),Math.min(...pts.map(p=>+p[1])),Math.max(...pts.map(p=>+p[0])),Math.max(...pts.map(p=>+p[1]))];
+          }"""
+          assert s.count(orig)==1
+          s=s.replace(orig,repl)
+          const='  const SWALE_WATER="earthline-living-swales-water-15792";'
+          assert s.count(const)==1
+          s=s.replace(const,const+'\n  const SWALE_TREES_M185="earthline-property-swale-round-trees-m185";')
+          marker='    // Explicit order: terrain/aquifer context -> water paths -> living swales.'
+          assert s.count(marker)==1
+          body="""    /* M185: Mapbox's existing safe Property LineStrings own tree placement.
+          Symbol-spacing follows the lines; no additional candidate geometry. */
+          try{
+          const icon='earthline-property-tree-round-m185';
+          if(!earthlineMap.hasImage(icon)){
+          const canvas=document.createElement('canvas');canvas.width=40;canvas.height=40;
+          const ctx=canvas.getContext('2d');
+          if(ctx){
+          ctx.clearRect(0,0,40,40);
+          ctx.beginPath();ctx.arc(20,20,16,0,Math.PI*2);ctx.fillStyle='#765336';ctx.fill();
+          ctx.strokeStyle='#c69b69';ctx.lineWidth=2;ctx.stroke();
+          ctx.beginPath();ctx.arc(20,20,12.5,0,Math.PI*2);ctx.fillStyle='#3f8e4d';ctx.fill();
+          ctx.strokeStyle='#22542b';ctx.lineWidth=1.5;ctx.stroke();
+          ctx.beginPath();ctx.arc(16.5,16,3.2,0,Math.PI*2);ctx.fillStyle='rgba(219,239,158,.35)';ctx.fill();
+          earthlineMap.addImage(icon,ctx.getImageData(0,0,40,40),{pixelRatio:2});
+          }
+          }
+          if(earthlineMap.hasImage(icon)){
+          addLayer({id:SWALE_TREES_M185,type:'symbol',source:SWALE_SOURCE,minzoom:15,
+          layout:{'symbol-placement':'line','symbol-spacing':42,'icon-image':icon,
+            'icon-size':['interpolate',['linear'],['zoom'],15,.64,18,1.0,20,1.3],
+            'icon-allow-overlap':true,'icon-ignore-placement':true,'visibility':'visible'}},beforeLegacy);
+          }
+          }catch(e){console.warn('[Earthline] Property round tree icon setup',e)}
+          """
+          s=s.replace(marker,body+marker)
+          original="for(const id of [FLOW_CASING,FLOW_LINE,FLOW_PULSE,FLOW_ARROWS,SWALE_GLOW,SWALE_EARTH,SWALE_LIFE,SWALE_WATER])"
+          assert s.count(original)==1
+          s=s.replace(original,"for(const id of [FLOW_CASING,FLOW_LINE,FLOW_PULSE,FLOW_ARROWS,SWALE_GLOW,SWALE_EARTH,SWALE_LIFE,SWALE_WATER,SWALE_TREES_M185])")
+          p.write_text(s)
+          print('M185_PROPERTY_MAP_BOUNDS_AND_ROUND_TREE_SOURCE_APPLIED')
+          PY
+      - name: Static code and scientific-scope checks
+        run: |
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,subprocess
+          s=Path('index.html').read_text()
+          chunks=re.findall(r'<script\b[^>]*>(.*?)</script>',s,re.S|re.I)
+          count=0
+          for i,x in enumerate(chunks):
+            if not x.strip() or x.lstrip().startswith('{'):continue
+            f=Path('/tmp/m185-'+str(i)+'.js');f.write_text(x)
+            r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
+            if r.returncode:raise RuntimeError('script '+str(i)+': '+r.stderr[:600])
+            count+=1
+          assert s.count("SWALE_TREES_M185")>=3
+          assert s.count("M185: Property maps show") ==1
+          print('M185_SOURCE_SYNTAX_PASS',count)
+          PY
+      - name: Browser test existing live Property workflow and report map
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+          cat > m185-test.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {existsSync,statSync,readFileSync} from 'node:fs';
+          import path from 'node:path';
+          const root=process.cwd();
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1650,height:950}});
+          const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+          await page.route('https://earthlinedevelopment.org/**',route=>{
+            const req=new URL(route.request().url()),rel=decodeURIComponent(req.pathname).replace(/^\\/+/, '')||'index.html',loc=path.resolve(root,rel);
+            if((loc!==root&&!loc.startsWith(root+path.sep))||!existsSync(loc)||!statSync(loc).isFile())return route.abort();
+            const types={'.html':'text/html','.js':'application/javascript','.json':'application/json','.css':'text/css','.png':'image/png'};
+            return route.fulfill({status:200,contentType:types[path.extname(loc)]||'application/octet-stream',body:readFileSync(loc)});
+          });
+          let o={};
+          try{
+            await page.goto('https://earthlinedevelopment.org/?m185='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+            await page.locator('#searchInput').fill('Iowa');
+            await page.locator('#runBtn').evaluate(el=>el.click());
+            await page.waitForFunction(()=>window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated>0||!!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970,null,{timeout:60000});
+            const regional=await page.evaluate(()=>window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null);
+            if(regional)throw Error('Regional '+JSON.stringify(regional));
+            await page.evaluate(()=>{const m=window.earthlineMap||earthlineMap;m.stop();m.jumpTo({center:[-93.68,42.13],zoom:17.7})});
+            await page.waitForTimeout(1600);
+            await page.locator('#earthlineDeclareProperty16169').evaluate(el=>el.click());
+            await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,null,{timeout:85000,polling:150});
+            await page.waitForTimeout(1000);
+            o.prop=await page.evaluate(()=>{
+              const m=window.earthlineMap||earthlineMap;
+              const id='earthline-property-swale-round-trees-m185';
+              const safe=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{};
+              let rendered=0;
+              try{rendered=m.getLayer(id)?m.queryRenderedFeatures({layers:[id]}).length:0}catch{}
+              return {safe:safe.safeCount||0,tier:document.documentElement.dataset.earthlineAnalysisTier,verified:M?.safetyAudit15806?.verified,
+                unsafe:M?.safetyAudit15806?.clearance?.unsafeSegments,
+                treeLayer:!!m.getLayer(id),treeIcon:m.hasImage('earthline-property-tree-round-m185'),treeRendered:rendered,
+                actualCenter:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.center};
+            });
+            if(o.prop.safe<=0)throw Error('Property swales absent: '+JSON.stringify(o.prop));
+            await page.screenshot({path:'artifacts/m185-property.png'});
+            await page.locator('#earthlineVermontReport16149').evaluate(el=>el.click());
+            await page.waitForFunction(()=>document.querySelector('#earthlineVermontReportPanel16149.open .el49-cover-map svg')!==null,null,{timeout:30000,polling:200});
+            o.report=await page.evaluate(()=>{
+              const el=document.querySelector('#earthlineVermontReportPanel16149 .el49-cover-map svg');
+              const text=el?.textContent||'';
+              const bounds=text.match(/Bounds:\\s*([-0-9.,\\s]+)/)?.[1]?.slice(0,100)||'';
+              return {text:text.slice(0,260),bounds,hasIowa:text.includes('Iowa'),hasCoordinates:text.includes('-93.3')||text.includes('-93.6')};
+            });
+            o.pass=o.prop.safe>0&&o.prop.treeLayer&&o.prop.treeIcon&&o.prop.treeRendered>0&&o.prop.unsafe===0&&o.report.hasIowa&&o.report.hasCoordinates&&!errors.length;
+          }catch(e){o.error=String(e)}
+          console.log('M185_PROPERTY_REPORT '+JSON.stringify({...o,errors}));
+          await browser.close();
+          if(!o.pass)process.exitCode=1;
+          JS
+          node m185-test.mjs
+      - name: Commit tested candidate only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix(live): place circular trees on Property swales and map actual Property extent in report"
+          git push origin HEAD:repair/m185-live-property-tree-report
