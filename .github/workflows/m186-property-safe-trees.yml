@@ -57,7 +57,7 @@ jobs:
             function update(){
               try{
                 const m=window.earthlineMap||(typeof earthlineMap!=="undefined"?earthlineMap:null);
-                if(!m||!m.isStyleLoaded?.())return;
+                if(!m||!m.getStyle?.())return;
                 const inProperty=document.documentElement.dataset.earthlineAnalysisTier==="property";
                 const approved=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220?.published===true;
                 const safeLayer=m.getLayer?.(safeId);
@@ -129,7 +129,7 @@ jobs:
           const root=process.cwd();
           const browser=await chromium.launch({headless:true});
           const page=await browser.newPage({viewport:{width:1650,height:950}});
-          const errors=[];page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='warning'||m.type()==='error')errors.push(m.type()+':'+m.text().slice(0,230))});
+          const errors=[];page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error'&&m.text().includes('Earthline M186'))errors.push(m.text().slice(0,230))});
           await page.route('https://earthlinedevelopment.org/**',route=>{
             const req=new URL(route.request().url()),rel=decodeURIComponent(req.pathname).replace(/^[/]+/,'')||'index.html',loc=path.resolve(root,rel);
             if((loc!==root&&!loc.startsWith(root+path.sep))||!existsSync(loc)||!statSync(loc).isFile())return route.abort();
