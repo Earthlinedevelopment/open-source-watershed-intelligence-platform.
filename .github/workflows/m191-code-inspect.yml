@@ -1,0 +1,23 @@
+name: M191 inspect OSM geometry adapter
+on:
+  push:
+    branches: ['repair/m191-ernst-creek-osm-recovery']
+    paths: ['.github/workflows/m191-code-inspect.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          a=Path('index.html').read_text().splitlines()
+          terms=['function earthlineRasterOverpassElement15862P','function earthlineInfraResult15862P','function earthlineFetchOverpass15862P','earthlineInfraCoverageRecord15862P','osmGeometryCount16516']
+          for term in terms:
+            ids=[i for i,l in enumerate(a) if term in l]
+            print('M191_TERM',term,[i+1 for i in ids])
+            for i in ids[:1]:
+              for j in range(max(0,i-3),min(len(a),i+85)):print('M191_CODE',j+1,a[j][:1200])
+          PY
