@@ -1,0 +1,30 @@
+name: M149 regional overlay publication count diagnosis
+on:
+  push:
+    branches: ['audit/m143-property-swale-rejection']
+    paths: ['.github/workflows/m149-overlay-source.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect precise overlay filtering behavior without changing runtime
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          a=Path('index.html').read_text().splitlines()
+          words=['function earthlineRenderRegionalOverlay16020','swaleLines:','swaleLines++','swaleGradeLabels','EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040','EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020']
+          spans=[]
+          for word in words:
+            ids=[i for i,l in enumerate(a) if word in l]
+            print('MATCH',word,[i+1 for i in ids[:20]])
+            for i in ids[:12]:spans.append((max(0,i-30),min(len(a),i+32)))
+          seen=set()
+          for x,y in spans:
+            for i in range(x,y):
+              if i in seen:continue
+              seen.add(i)
+              print(f'SOURCE {i+1} {a[i][:380]}')
+          PY
