@@ -1,0 +1,53 @@
+name: Emergency Claude exact blob comparison — staging branch only
+on:
+  push:
+    branches: ['recovery/emergency-claude-blob-review']
+    paths: ['.github/workflows/claude-emergency-blob-review.yml']
+permissions:
+  contents: write
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reproduce exact emergency ZIP contents and verify Git blob, never deploy
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          p=Path('index.html')
+          s=p.read_bytes()
+          assert hashlib.sha1(b'blob '+str(len(s)).encode()+b'\0'+s).hexdigest()=='0f88f8abb3446db1d3ba5f32cb44f05dec8bb0a2','Live baseline drifted'
+          a=s.decode('utf-8')
+          old='''      /* M175: an empty non-authoritative map-source response cannot certify road,
+                 building or narrow-channel clearance. Fail closed until independent
+                 mapped exclusion evidence is available; never treat blank as clear. */
+              c.sourceTier="open-data";c.acquisitionResult="failed";c.publicationAllowed=false;c.exclusionVerified=false;
+              c.evidenceGrade="ROAD AND WATER CHECK UNAVAILABLE · TRY AGAIN";'''
+          new='''      /* A successful zero-feature result is screened-clear, never verified-clear and
+                 never `unavailable`. Unavailable must be positively established, not inferred
+                 from a blank open-data response. A failure of one optional open source does
+                 not erase a successful response from another source for the same frame. */
+              c.sourceTier="open-data";c.acquisitionResult="screened-clear";c.publicationAllowed=true;c.exclusionVerified=false;
+              c.evidenceGrade="OPEN-DATA SCREENING · NO MAPPED EXCLUSIONS RETURNED · FIELD VERIFICATION REQUIRED";'''
+          # Match exact source indentation from ZIP.
+          a=a.replace(old,new)
+          a=a.replace('earthlineSetVectorVerification16343(c,"unverified","empty-open-data-does-not-establish-road-or-water-clearance");\n      return false;',
+                      'earthlineSetVectorVerification16343(c,"unverified","open-data-screened-clear-not-authoritative");\n      return true;')
+          a=a.replace('earthlineNotice("Road and water check unavailable, try again. Property swales were not published.");','earthlineNotice("Property analysis stopped safely. No fallback swales were substituted.");')
+          b=a.encode('utf-8')
+          expected='c1068459e0c2b2a29b006c3758774e7df5a58828'
+          actual=hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()
+          print('EMERGENCY_BLOB_ACTUAL',actual,'EXPECTED',expected)
+          assert actual==expected,'The candidate must be byte-identical to attached emergency ZIP'
+          p.write_bytes(b)
+          PY
+          git diff --check
+      - name: Commit to review branch, not pages-live
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add index.html
+          git commit -m "review only: Claude emergency fail-open screening candidate"
+          git push origin HEAD:recovery/emergency-claude-blob-review
