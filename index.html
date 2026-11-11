@@ -13442,7 +13442,7 @@ var prescribeSwales;
             M.swaleDiagnostics.timeBudgetReached=true;break;
           }
           const baseSegs16320=(!pts16320||pts16320.length<3)?[]:
-            earthlineSplitUsableSegments(pts16320,maxS).filter(seg=>
+            earthlineSplitUsableSegments(pts16320,isRegionalTile15769?maxS:4).filter(seg=>
               seg&&seg.length>=3&&earthlineSegmentLengthM(seg)>=minSegmentM&&
               earthlineOnContourGuard15833(seg,L15836,levelStep)
             );
@@ -13583,7 +13583,7 @@ var prescribeSwales;
         coverageDiag15803.totals.traces++;
         /* BUILD-CHECK-15803-DIAGNOSTIC-END */
         M.swaleDiagnostics.stage.traces++;
-        const segs=earthlineSplitUsableSegments(pts,maxS).slice(0,3);
+        const segs=earthlineSplitUsableSegments(pts,isRegionalTile15769?maxS:4).slice(0,3);
         if(seedRec15803){
           seedRec15803.segmentCount15840=segs.length;
           seedRec15803.segmentProduced15840=segs.length>0;
