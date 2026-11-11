@@ -11785,6 +11785,15 @@ async function directGeocode(q){
     result.overpass.responseBytes=new TextEncoder().encode(raw).length;
     const xml=new DOMParser().parseFromString(raw,'application/xml');
     if(xml.getElementsByTagName('parsererror').length)throw new Error('OSM invalid XML');
+    if(xml.documentElement?.localName!=='osm')throw new Error('OSM wrong XML root');
+    const bounds=xml.getElementsByTagName('bounds');
+    if(bounds.length!==1)throw new Error('OSM missing authoritative BBOX');
+    const b=bounds[0],num=k=>Number(b.getAttribute(k));
+    const eps=0.00001;
+    if(!['minlon','minlat','maxlon','maxlat'].every(k=>b.hasAttribute(k)&&Number.isFinite(num(k)))||
+       num('minlon')>west+eps||num('minlat')>south+eps||
+       num('maxlon')<east-eps||num('maxlat')<north-eps)
+      throw new Error('OSM response BBOX incomplete');
     if(earthlineIsStale(myGen))return false;
     const nodes=new Map();
     for(const node of xml.getElementsByTagName('node')){
@@ -11811,6 +11820,7 @@ async function directGeocode(q){
         usable+=earthlineRasterOverpassElement15862P(result,{tags,members});
     }
     result.overpass.rawElementCount=ways.size+xml.getElementsByTagName('relation').length;
+    result.overpass.sourceComplete=true;
     result.processedGeometryCount+=usable;
     result.overpass.ok=true;
     return usable>0;
@@ -12014,6 +12024,16 @@ async function directGeocode(q){
       c.openGeometryCount16516=openGeometryCount16516;
       c.openDataSources16539={overpass:{attempted:!!op.attempted,responded:overpassResponded,failed:overpassFailed},style:{attempted:styleAttempted,responded:styleResponded,failed:styleFailed}};
       earthlineSetVectorVerification16343(c,"unverified","open-data-screening-not-authoritative");
+      return true;
+    }
+    if(openDataResponded&&op.provider==='openstreetmap-api-0.6-map'&&op.sourceComplete===true&&
+       Number(op.httpStatus)===200&&!op.error&&openGeometryCount16516===0){
+      c.sourceTier="open-data";c.acquisitionResult="screened-clear";
+      c.publicationAllowed=true;c.exclusionVerified=false;
+      c.evidenceGrade="NO MAPPED ROADS, BUILDINGS OR WATER FOUND · FIELD VERIFICATION REQUIRED";
+      c.openGeometryCount16516=0;
+      c.openDataSources16539={overpass:{attempted:true,responded:true,failed:false,sourceComplete:true},style:{attempted:styleAttempted,responded:styleResponded,failed:styleFailed}};
+      earthlineSetVectorVerification16343(c,"unverified","complete-osm-zero-mapped-exclusions-screening-only");
       return true;
     }
     if(openDataResponded){
