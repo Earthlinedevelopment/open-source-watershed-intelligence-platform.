@@ -1,0 +1,28 @@
+name: M160 inspect existing report and Elder visual owners
+on:
+  push:
+    branches: ['audit/m160-report-elder-visual-inspect']
+    paths: ['.github/workflows/m160-inspect.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect report map and swale trees source only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          a=Path('index.html').read_text().splitlines()
+          for term in ['Bioswale Impact Report','BIOSWALE IMPACT REPORT','reportMap','report-map','report-mapbox','aquifer','location name','function canopy16174','earthlineSwale']:
+            ids=[i for i,x in enumerate(a) if term.casefold() in x.casefold()]
+            print('MATCH',term,'count',len(ids),'lines',[i+1 for i in ids[:35]])
+          for term in ['function canopy16174','reportMap','report-map','report-mapbox','BIOSWALE IMPACT REPORT']:
+            for i in [i for i,x in enumerate(a) if term.casefold() in x.casefold()][:8]:
+              for j in range(max(0,i-5),min(len(a),i+11)):
+                print(f'SOURCE {j+1} {a[j][:380]}')
+          b=Path('earthline-elder-restored-17097.js').read_text().splitlines()
+          for i in list(range(55,115))+list(range(212,272))+list(range(445,555)):
+            print(f'ELDER {i+1} {b[i][:380]}')
+          PY
