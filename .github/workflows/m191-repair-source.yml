@@ -1,0 +1,176 @@
+name: M191 direct mapped OSM exclusion fallback at Ernst Creek
+on:
+  push:
+    branches: ['repair/m191-ernst-creek-osm-recovery']
+    paths: ['.github/workflows/m191-repair-source.yml']
+permissions:
+  contents: write
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Scope substitute failed Overpass with direct mapped OSM geometry
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          start=s.index('  async function earthlineFetchOverpass15862P(result,boundary,myGen){')
+          end=s.index('  function earthlineTilequerySamples15862P(',start)
+          replacement="""  async function earthlineFetchOverpass15862P(result,boundary,myGen){
+            /* M191: retrieve the small Property frame directly from OSM's read-only
+               map endpoint. Overpass rate-limits the POST; zero data is NOT clear.
+               A source response with mapped geometry alone allows SCREENING,
+               never authoritative clearance. No new prescribed geometry. */
+            result.overpass.attempted=true;
+            result.overpass.ok=false;result.overpass.error=null;
+            result.overpass.provider='openstreetmap-api-0.6-map';
+            const lngs=boundary.map(p=>Number(p[0])),lats=boundary.map(p=>Number(p[1]));
+            const lat0=lats.reduce((a,b)=>a+b,0)/lats.length;
+            const latPad=30/111320,lngPad=30/(111320*Math.max(.05,Math.cos(lat0*Math.PI/180)));
+            const south=Math.min(...lats)-latPad,north=Math.max(...lats)+latPad;
+            const west=Math.min(...lngs)-lngPad,east=Math.max(...lngs)+lngPad;
+            const span=(north-south)*(east-west);
+            if(!(span>0&&span<=0.00014)){
+              result.overpass.error='property-frame-outside-safe-openstreetmap-query-area';return false;
+            }
+            const bbox=[west,south,east,north].map(v=>v.toFixed(7)).join(',');
+            const controller=typeof AbortController!=='undefined'?new AbortController():null;
+            const timer=controller?setTimeout(()=>controller.abort(),9500):null;
+            try{
+              const response=await fetch('https://api.openstreetmap.org/api/0.6/map?bbox='+encodeURIComponent(bbox),{
+                method:'GET',signal:controller?.signal,mode:'cors'});
+              result.overpass.httpStatus=response.status;
+              result.overpass.queryBBox=bbox;
+              if(!response.ok)throw new Error('OSM HTTP '+response.status);
+              const raw=await response.text();
+              result.overpass.responseBytes=new TextEncoder().encode(raw).length;
+              const xml=new DOMParser().parseFromString(raw,'application/xml');
+              if(xml.getElementsByTagName('parsererror').length)throw new Error('OSM invalid XML');
+              if(earthlineIsStale(myGen))return false;
+              const nodes=new Map();
+              for(const node of xml.getElementsByTagName('node')){
+                const lon=Number(node.getAttribute('lon')),lat=Number(node.getAttribute('lat'));
+                if(Number.isFinite(lon)&&Number.isFinite(lat))
+                  nodes.set(node.getAttribute('id'),{lon,lat});
+              }
+              const ways=new Map();
+              let usable=0;
+              for(const w of xml.getElementsByTagName('way')){
+                const tags={};
+                for(const tag of w.getElementsByTagName('tag'))tags[tag.getAttribute('k')]=tag.getAttribute('v');
+                const geometry=Array.from(w.getElementsByTagName('nd')).map(nd=>nodes.get(nd.getAttribute('ref'))).filter(Boolean);
+                const item={id:w.getAttribute('id'),tags,geometry};
+                ways.set(item.id,item);
+                if(geometry.length>1)usable+=earthlineRasterOverpassElement15862P(result,item);
+              }
+              for(const rel of xml.getElementsByTagName('relation')){
+                const tags={};
+                for(const tag of rel.getElementsByTagName('tag'))tags[tag.getAttribute('k')]=tag.getAttribute('v');
+                const members=Array.from(rel.getElementsByTagName('member')).filter(x=>x.getAttribute('type')==='way')
+                  .map(x=>({role:x.getAttribute('role'),geometry:ways.get(x.getAttribute('ref'))?.geometry||[]}));
+                if(members.some(x=>x.geometry.length>1))
+                  usable+=earthlineRasterOverpassElement15862P(result,{tags,members});
+              }
+              result.overpass.rawElementCount=ways.size+xml.getElementsByTagName('relation').length;
+              result.processedGeometryCount+=usable;
+              result.overpass.ok=true;
+              return usable>0;
+            }catch(error){
+              result.overpass.error=String(error?.message||error);
+              return false;
+            }finally{if(timer)clearTimeout(timer)}
+          }
+          """
+          s=s[:start]+replacement+s[end:]
+          assert 'empty-open-data-does-not-establish-road-or-water-clearance' in s
+          assert 'c.acquisitionResult="failed";c.publicationAllowed=false' in s
+          assert 'earthlineRasterOverpassElement15862P' in s
+          p.write_text(s)
+          print('M191_OSM_DIRECT_MAPPED_EXCLUSIONS_PATCHED')
+          PY
+      - name: Scientific scope and syntax gate
+        run: |
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess,re
+          s=Path('index.html').read_text()
+          assert s.count('openstreetmap-api-0.6-map')==1
+          assert 'result.overpass.queryBBox=bbox' in s
+          assert 'c.acquisitionResult="failed";c.publicationAllowed=false' in s
+          for i,js in enumerate(re.findall(r'<script\b[^>]*>(.*?)</script>',s,re.S|re.I)):
+            if not js.strip() or js.lstrip().startswith('{'):continue
+            f=Path('/tmp/m191-'+str(i)+'.js');f.write_text(js)
+            z=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
+            if z.returncode:raise RuntimeError(str(i)+': '+z.stderr[:400])
+          print('M191_INLINE_JS_PASS')
+          PY
+      - name: Browser evidence both Iowa control locations
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+          mkdir -p artifacts/m191
+          cat > m191-test.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {existsSync,statSync,readFileSync,writeFileSync} from 'node:fs';
+          import path from 'node:path';
+          const root=process.cwd(),browser=await chromium.launch({headless:true});
+          const sites=[{name:'farmland',lng:-93.68,lat:42.13},{name:'ernst-creek',lng:-93.38977,lat:41.95748}];
+          const results=[];
+          for(const site of sites){
+            const page=await browser.newPage({viewport:{width:1650,height:920}}),errors=[];
+            page.on('pageerror',e=>errors.push(String(e)));
+            await page.route('https://earthlinedevelopment.org/**',route=>{
+              const u=new URL(route.request().url()),rel=decodeURIComponent(u.pathname).replace(/^[/]+/,'')||'index.html',loc=path.resolve(root,rel);
+              if((loc!==root&&!loc.startsWith(root+path.sep))||!existsSync(loc)||!statSync(loc).isFile())return route.abort();
+              const types={'.html':'text/html','.js':'application/javascript','.json':'application/json','.css':'text/css','.png':'image/png'};
+              return route.fulfill({status:200,contentType:types[path.extname(loc)]||'application/octet-stream',body:readFileSync(loc)});
+            });
+            let result={site,errors};
+            try{
+              await page.goto('https://earthlinedevelopment.org/?m191='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.locator('#searchInput').fill('Iowa');
+              await page.locator('#runBtn').evaluate(el=>el.click());
+              await page.waitForFunction(()=>window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167?.generated>0||window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970,null,{timeout:60000,polling:250});
+              await page.evaluate(site=>{const m=window.earthlineMap||earthlineMap;m.stop();m.jumpTo({center:[site.lng,site.lat],zoom:17.7})},site);
+              await page.waitForTimeout(1100);
+              await page.locator('#earthlineDeclareProperty16169').evaluate(el=>el.click());
+              await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,null,{timeout:85000,polling:250});
+              result=Object.assign(result,await page.evaluate(()=>{
+                const c=M?.vectorNoBuildCoverage||{},run=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
+                const safety=M?.safetyAudit15806||{},o=c.infrastructure15862P?.overpass||{};
+                return {stage:run.stage,error:run.error,swales:window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220?.safeCount||0,
+                  vector:{sourceTier:c.sourceTier,acquisitionResult:c.acquisitionResult,allowed:c.publicationAllowed,processed:c.processedFeatureCount,provider:o.provider,http:o.httpStatus,bytes:o.responseBytes,ways:o.rawElementCount,water:o.waterGeometryCount,roads:o.roadGeometryCount,buildings:o.buildingGeometryCount,exception:o.error,bbox:o.queryBBox},
+                  safety:{verified:safety.verified,unsafe:safety.clearance?.unsafeSegments,waterIntersections:safety.clearance?.waterIntersections},
+                  treeCircles:window.EARTHLINE_PROPERTY_TREE_CIRCLES_AUDIT_M189?.treeCircles||0
+                };
+              }));
+              await page.screenshot({path:'artifacts/m191/'+site.name+'.png'});
+            }catch(e){result.error=String(e)}
+            console.log('M191_SITE '+JSON.stringify(result));results.push(result);await page.close();
+          }
+          writeFileSync('artifacts/m191/results.json',JSON.stringify(results,null,2));
+          await browser.close();
+          const pass=results.every(r=>!r.error&&!r.errors.length&&r.swales>0&&r.vector?.allowed===true&&r.vector?.processed>0&&r.safety?.verified===true&&r.safety?.unsafe===0&&r.safety?.waterIntersections===0)&&results[1]?.vector?.water>0;
+          console.log('M191_BOTH_SITES_SAFE '+pass);
+          if(!pass)process.exitCode=1;
+          JS
+          node m191-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m191-both-property-osm-recovery-checks
+          path: artifacts/m191/
+          retention-days: 14
+      - name: Commit only if connected runs and safe exclusions pass
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add index.html
+          git commit -m "fix(property): source mapped road/water exclusions via OSM read-only snapshot"
+          git push origin HEAD:repair/m191-ernst-creek-osm-recovery
