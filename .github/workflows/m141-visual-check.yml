@@ -1,0 +1,46 @@
+name: M141 temporary guidance visual CSS validation
+on:
+  push:
+    branches: ['repair/m141-temporary-note-placement']
+    paths: ['.github/workflows/m141-visual-check.yml']
+permissions:
+  contents: read
+jobs:
+  visual:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify both guidance boxes remain separate on desktop and mobile
+        run: |
+          cat > m141-ui-check.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import {readFileSync} from 'node:fs';
+          const html=readFileSync('index.html','utf8');
+          const css=html.split('<style id="earthline-m136-regional-layout-only">')[1]?.split('</style>')[0];
+          if(!css)throw Error('M136 CSS missing');
+          const browser=await chromium.launch({headless:true});
+          for(const width of [1500,390]){
+            const page=await browser.newPage({viewport:{width,height:900}});
+            await page.setContent('<!doctype html><html><head><style>'+css+'</style></head><body><aside id="earthlineTemporaryMapHint126" style="position:fixed;left:50%;top:96px;transform:translateX(-50%);width:max-content;display:flex">Place hand cursor over bare land to move map.</aside><aside class="open" id="earthlineCorridorTip16248" style="position:fixed;display:block">Choose a tab to inspect a corridor</aside></body></html>');
+            const r=await page.evaluate(()=>{
+              const a=document.getElementById('earthlineTemporaryMapHint126'),b=document.getElementById('earthlineCorridorTip16248');
+              const x=a.getBoundingClientRect(),v=getComputedStyle(b);
+              return {right:Math.round(window.innerWidth-x.right),midY:Math.round((x.top+x.bottom)/2),height:window.innerHeight,tipDisplay:v.display,noteDisplay:getComputedStyle(a).display};
+            });
+            console.log('M141_VISUAL '+JSON.stringify({width,...r}));
+            if(r.tipDisplay==='none'||r.noteDisplay==='none')throw Error('guidance hidden on '+width);
+            if(r.right<0||r.right>27)throw Error('map hint not right on '+width);
+            if(Math.abs(r.midY-r.height/2)>30)throw Error('map hint not vertically centered on '+width);
+            await page.close();
+          }
+          await browser.close();
+          console.log('M141_VISUAL_PASS');
+          JS
+          node m141-ui-check.mjs
