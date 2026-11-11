@@ -36153,4 +36153,86 @@ html[data-earthline-has-results] #earthlineDiagramLegend16080{
 #earthlineAquiferLegend16070,
 #earthlineDiagramLegend16080{display:none!important}
 </style>
-
+<script id="earthline-property-safe-tree-circles-m189">
+/* Display only. Every tree marker originates on a published,
+   independently safety-audited Property corridor LineString. */
+(function(){
+  "use strict";
+  const src="earthline-property-safe-tree-points-m189";
+  const outer="earthline-property-safe-tree-rim-m189",inner="earthline-property-safe-tree-core-m189";
+  let priorToken="",priorSource=null;
+  const fc=x=>({type:"FeatureCollection",features:x});
+  const meters=(a,b)=>{
+    const cos=Math.cos(((a[1]+b[1])/2)*Math.PI/180);
+    return Math.hypot((b[0]-a[0])*111320*cos,(b[1]-a[1])*111320);
+  };
+  function pointsFromSafeLines(features){
+    const out=[];
+    for(const f of (features||[])){
+      const coords=f?.geometry?.type==="LineString"?f.geometry.coordinates:null;
+      if(!Array.isArray(coords)||coords.length<2)continue;
+      const lengths=[];let total=0;
+      for(let i=1;i<coords.length;i++){
+        const d=meters(coords[i-1],coords[i]);lengths.push(d);total+=d;
+      }
+      if(!(total>1))continue;
+      const targets=[];
+      const spacing=18;
+      for(let d=spacing/2;d<total&&targets.length<12;d+=spacing)targets.push(d);
+      if(!targets.length)targets.push(total/2);
+      for(const target of targets){
+        let cumulative=0;
+        for(let i=0;i<lengths.length;i++){
+          const d=lengths[i];
+          if(target<=cumulative+d||i===lengths.length-1){
+            const t=d?Math.max(0,Math.min(1,(target-cumulative)/d)):0;
+            const a=coords[i],b=coords[i+1];
+            if(a&&b&&Number.isFinite(a[0])&&Number.isFinite(a[1])&&Number.isFinite(b[0])&&Number.isFinite(b[1])){
+              out.push({type:"Feature",properties:{kind:"tree-illustration",swale:String(f.properties?.display_code||f.properties?.id||"")},geometry:{type:"Point",coordinates:[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]}});
+            }
+            break;
+          }
+          cumulative+=d;
+        }
+      }
+      if(out.length>2000)break;
+    }
+    return out;
+  }
+  function refresh(){
+    try{
+      const m=window.earthlineMap||(typeof earthlineMap!=="undefined"?earthlineMap:null);
+      if(!m||!m.getStyle?.())return;
+      const active=document.documentElement.dataset.earthlineAnalysisTier==="property";
+      const audit=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{};
+      const model=typeof M!=="undefined"?M:null;
+      const safe=model?.authoritativeSafeSwales15815?.features||[];
+      const verified=model?.safetyAudit15806?.verified===true;
+      const approved=active&&audit.published===true&&verified&&audit.safeCount>0&&safe.length>0;
+      if(!approved){
+        for(const id of [outer,inner])if(m.getLayer(id))m.setLayoutProperty(id,"visibility","none");
+        return;
+      }
+      const token=String(audit.runToken||"")+":"+safe.length;
+      if(!m.getSource(src))m.addSource(src,{type:"geojson",data:fc([])});
+      const source=m.getSource(src);
+      if(token!==priorToken||source!==priorSource){
+        const features=pointsFromSafeLines(safe);
+        source.setData(fc(features));
+        priorToken=token;priorSource=source;
+        window.EARTHLINE_PROPERTY_TREE_CIRCLES_AUDIT_M189={safeSwales:safe.length,treeCircles:features.length,runToken:audit.runToken,verified};
+      }
+      if(!m.getLayer(outer))m.addLayer({id:outer,type:"circle",source:src,minzoom:15,paint:{
+        "circle-radius":["interpolate",["linear"],["zoom"],15,2.5,18,5.2,20,6.5],
+        "circle-color":"#76502b","circle-stroke-color":"#d4ae79","circle-stroke-width":1,"circle-opacity":.92}});
+      if(!m.getLayer(inner))m.addLayer({id:inner,type:"circle",source:src,minzoom:15,paint:{
+        "circle-radius":["interpolate",["linear"],["zoom"],15,1.6,18,3.65,20,4.9],
+        "circle-color":"#3e8d48","circle-stroke-color":"#1e522e","circle-stroke-width":.7,"circle-opacity":.95}});
+      for(const id of [outer,inner])m.setLayoutProperty(id,"visibility","visible");
+    }catch(e){console.warn("[Earthline M189 trees]",e)}
+  }
+  document.addEventListener("earthline:analysis-complete",()=>setTimeout(refresh,400),{passive:true});
+  setInterval(refresh,1700);
+  window.earthlineRefreshPropertyTreeCirclesM189=refresh;
+})();
+</script>
