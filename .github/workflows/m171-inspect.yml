@@ -1,0 +1,22 @@
+name: M171 inspect native Property and report owners
+on:
+  push:
+    branches: ['repair/m171-live-property-tree-report']
+    paths: ['.github/workflows/m171-inspect.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Locate exact Property swale feature schema and report area
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          a=Path('index.html').read_text().splitlines()
+          for lo,hi in [(20390,20525),(34885,34990),(34095,34121),(34330,34357)]:
+            print('M171_RANGE',lo,hi)
+            for i in range(lo-1,hi):
+              print('M171_SOURCE',i+1,a[i][:1500])
+          PY
