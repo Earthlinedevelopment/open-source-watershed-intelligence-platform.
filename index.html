@@ -34113,7 +34113,30 @@ body{display:block!important}
     };panel.querySelector('[data-action="report"]').onclick=()=>{panel.classList.remove('open');openReport()};panel.classList.add('open');ledger('corridor_detail_opened',{code:row.code,score:row.score});return true
   };
   function allCoordinates(){const out=[];for(const f of [...contours(),...flows(),...swales()]){const c=f?.geometry?.coordinates;if(f?.geometry?.type==='LineString'&&Array.isArray(c))out.push(...c)}return out.filter(p=>Array.isArray(p)&&Number.isFinite(+p[0])&&Number.isFinite(+p[1]))}
-  function reportBounds(d){const b=d?.bounds||visual()?.bounds;if(Array.isArray(b)&&b.length===4&&b.every(Number.isFinite))return b;const pts=allCoordinates();if(!pts.length)return[-73.5,42.7,-71.4,45.1];return[Math.min(...pts.map(p=>+p[0])),Math.min(...pts.map(p=>+p[1])),Math.max(...pts.map(p=>+p[0])),Math.max(...pts.map(p=>+p[1]))]}
+  function reportBounds(d){
+  /* M187: Property maps show the selected Property frame, not
+     the stale statewide Regional extent carried by the snapshot. */
+  const t=String(d?.tier||d?.mode||d?.extentClass||'').toLowerCase();
+  if(t.includes('property')||t.includes('20-acre')){
+    const m=typeof M!=='undefined'?M:null;
+    const pts=m?.analysisBoundaryLngLat;
+    if(Array.isArray(pts)&&pts.length>=3){
+      const xs=pts.map(p=>Number(p?.[0])),ys=pts.map(p=>Number(p?.[1]));
+      if([...xs,...ys].every(Number.isFinite))return [Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)];
+    }
+    const target=window.EARTHLINE_PROPERTY_TARGET_16201||m?.loc||null;
+    const lng=Number(target?.lng),lat=Number(target?.lat);
+    if(Number.isFinite(lng)&&Number.isFinite(lat)){
+      const half=185,dy=half/111320,dx=half/(111320*Math.max(.1,Math.cos(lat*Math.PI/180)));
+      return [lng-dx,lat-dy,lng+dx,lat+dy];
+    }
+  }
+  const b=d?.bounds||visual()?.bounds;
+  if(Array.isArray(b)&&b.length===4&&b.every(Number.isFinite))return b;
+  const pts=allCoordinates();
+  if(!pts.length)return[-73.5,42.7,-71.4,45.1];
+  return[Math.min(...pts.map(p=>+p[0])),Math.min(...pts.map(p=>+p[1])),Math.max(...pts.map(p=>+p[0])),Math.max(...pts.map(p=>+p[1]))];
+}
   function mapSvg(d,small=false){
     const b=reportBounds(d),W=760,H=small?360:440,pad=30;
     const sx=x=>pad+(x-b[0])/Math.max(.000001,b[2]-b[0])*(W-pad*2),sy=y=>H-pad-(y-b[1])/Math.max(.000001,b[3]-b[1])*(H-pad*2);
