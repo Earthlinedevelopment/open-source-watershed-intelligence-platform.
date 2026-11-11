@@ -300,7 +300,8 @@
     const wrap=document.querySelector('.earthline-recharge-gauge-wrap-16488');if(!wrap)return false;
     let el=document.getElementById('earthlineElderTreesGauge17097');
     if(!el){el=document.createElement('div');el.id='earthlineElderTreesGauge17097';el.style.cssText='margin-top:3px;color:#2f5b3c;font:900 10.5px/1.25 "Noto Sans",system-ui,sans-serif;text-align:center;letter-spacing:.1px';wrap.appendChild(el)}
-    el.textContent='Elder Trees: '+summary.evidenceLabel+(summary.coverageKnown&&summary.partial?' · current Earthline coverage':'');
+    const pending=elderTierM94()==='property'&&window.EARTHLINE_ELDER_TREE_LAST_17097?.state==='property-pending';
+    el.textContent=pending?'Elder Trees: Finding trees…':'Elder Trees: '+summary.evidenceLabel+(summary.coverageKnown&&summary.partial?' · current Earthline coverage':'');
     return true;
   }
   function propertyCard(summary){
@@ -643,6 +644,7 @@
       dynamicCandidatePoolCount:0,dynamicError:null,
       provisional:true,mapPublished,visibleAt,at:new Date().toISOString()
     };
+    gaugeLine(state.lastSummary); /* Pending search must remain visible until the worker commits. */
     return true;
   }
   function beginPropertyElderState17216(){
@@ -651,7 +653,7 @@
     if(!publishPropertyProvisional17389(b,identity)){
       state.active=[];state.lastSummary=null;publishMap([]);
       const gauge=document.getElementById('earthlineElderTreesGauge17097');
-      if(gauge)gauge.textContent='Elder Trees: analyzing Property canopy…';
+      if(gauge)gauge.textContent='Elder Trees: Finding trees…';
       window.EARTHLINE_ELDER_TREE_LAST_17097={
         state:'property-pending',propertyRunIdentity:identity,
         summary:null,featureCount:0,dynamicCandidatePoolCount:0,dynamicError:null,
