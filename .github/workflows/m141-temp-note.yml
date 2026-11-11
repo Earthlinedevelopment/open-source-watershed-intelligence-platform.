@@ -34,24 +34,18 @@ jobs:
           }"""
           assert s.count(old)==1,'map note style unexpectedly changed'
           s=s.replace(old,new)
-          old="""  #earthlineTemporaryMapHint126,#earthlineCorridorTip16248{
-             left:calc((100vw + var(--el-rail-16188,54px))/2)!important;top:78px!important;
-             width:min(350px,calc(100vw - var(--el-rail-16188,54px) - 20px))!important;
-             max-width:calc(100vw - var(--el-rail-16188,54px) - 20px)!important;
-             transform:translateX(-50%)!important;
-           }"""
-          assert s.count(old)==1,'mobile shared rule unexpectedly changed'
-          new="""  #earthlineCorridorTip16248{
-             left:calc((100vw + var(--el-rail-16188,54px))/2)!important;top:78px!important;
-             width:min(350px,calc(100vw - var(--el-rail-16188,54px) - 20px))!important;
-             max-width:calc(100vw - var(--el-rail-16188,54px) - 20px)!important;
-             transform:translateX(-50%)!important;
-           }
-           #earthlineTemporaryMapHint126{
-             left:auto!important;right:10px!important;top:50%!important;
-             transform:translateY(-50%)!important;
-             width:max-content!important;max-width:calc(100vw - var(--el-rail-16188,54px) - 20px)!important;
-           }"""
+          import re
+          pattern=r'(?m)^  #earthlineTemporaryMapHint126,#earthlineCorridorTip16248\\{[\\s\\S]*?^  \\}'
+          matches=list(re.finditer(pattern,s))
+          assert len(matches)==1, ('mobile rule hits',len(matches))
+          old=matches[0].group(0)
+          new=old.replace('#earthlineTemporaryMapHint126,#earthlineCorridorTip16248{','#earthlineCorridorTip16248{')
+          new+="""
+          #earthlineTemporaryMapHint126{
+            left:auto!important;right:10px!important;top:50%!important;
+            transform:translateY(-50%)!important;
+            width:max-content!important;max-width:calc(100vw - var(--el-rail-16188,54px) - 20px)!important;
+          }"""
           s=s.replace(old,new)
           p.write_text(s)
           assert "display:none!important;" not in s[s.index('<style id="earthline-m136-regional-layout-only">'):s.index('<style id="earthline-m136-regional-layout-only">')+650]
