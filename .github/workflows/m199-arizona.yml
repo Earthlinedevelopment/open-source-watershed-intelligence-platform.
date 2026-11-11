@@ -1,7 +1,7 @@
 name: M199 public Ernst Creek Property safety smoke
 on:
   push:
-    branches: ['audit/m199-arizona-empty-osm']
+    branches: ['repair/m199-complete-empty-osm-arizona']
     paths: ['.github/workflows/m199-arizona.yml']
 permissions:
   contents: write
@@ -40,19 +40,19 @@ jobs:
           chunk=chunk.replace(anchor,anchor+"\n    result.overpass.sourceComplete=true;")
           s=s[:start]+chunk+s[end:]
           old='''    if(openDataResponded){
-      /* M175: an empty non-authoritative map-source response cannot certify road,'''
+                /* M175: an empty non-authoritative map-source response cannot certify road,'''
           new='''    if(openDataResponded&&op.provider==='openstreetmap-api-0.6-map'&&op.sourceComplete===true&&
-       Number(op.httpStatus)===200&&!op.error&&openGeometryCount16516===0){
-      c.sourceTier="open-data";c.acquisitionResult="screened-clear";
-      c.publicationAllowed=true;c.exclusionVerified=false;
-      c.evidenceGrade="NO MAPPED ROADS, BUILDINGS OR WATER FOUND · FIELD VERIFICATION REQUIRED";
-      c.openGeometryCount16516=0;
-      c.openDataSources16539={overpass:{attempted:true,responded:true,failed:false,sourceComplete:true},style:{attempted:styleAttempted,responded:styleResponded,failed:styleFailed}};
-      earthlineSetVectorVerification16343(c,"unverified","complete-osm-zero-mapped-exclusions-screening-only");
-      return true;
-    }
-    if(openDataResponded){
-      /* M175: an empty non-authoritative map-source response cannot certify road,'''
+                 Number(op.httpStatus)===200&&!op.error&&openGeometryCount16516===0){
+                c.sourceTier="open-data";c.acquisitionResult="screened-clear";
+                c.publicationAllowed=true;c.exclusionVerified=false;
+                c.evidenceGrade="NO MAPPED ROADS, BUILDINGS OR WATER FOUND · FIELD VERIFICATION REQUIRED";
+                c.openGeometryCount16516=0;
+                c.openDataSources16539={overpass:{attempted:true,responded:true,failed:false,sourceComplete:true},style:{attempted:styleAttempted,responded:styleResponded,failed:styleFailed}};
+                earthlineSetVectorVerification16343(c,"unverified","complete-osm-zero-mapped-exclusions-screening-only");
+                return true;
+              }
+              if(openDataResponded){
+                /* M175: an empty non-authoritative map-source response cannot certify road,'''
           assert s.count(old)==1
           s=s.replace(old,new)
           assert "empty-open-data-does-not-establish-road-or-water-clearance" in s
