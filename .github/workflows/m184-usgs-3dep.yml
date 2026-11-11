@@ -1,0 +1,70 @@
+name: M184 USGS 3DEP bare-earth Iowa slope audit only
+on:
+  push:
+    branches: ['audit/m184-usgs-3dep-bare-earth-iowa']
+    paths: ['.github/workflows/m184-usgs-3dep.yml']
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install geospatial audit tools
+        run: |
+          python -m pip install --quiet numpy rasterio requests
+      - name: Download USGS bare-earth DEM for exact wooded Iowa Property footprint
+        run: |
+          mkdir -p artifacts/m184
+          cat > m184-usgs.py <<'PY'
+          import requests, rasterio, numpy as np, json, math, pathlib
+          # Bounding rectangle recorded by Earthline's actual Property Elders
+          # worker and Property boundary at 41.95748,-93.38977.
+          bbox=(-93.391613,41.956288,-93.387927,41.958672)
+          w,h=210,146
+          source='https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage'
+          params={'bbox':','.join(map(str,bbox)),'bboxSR':'4326','imageSR':'4326','size':f'{w},{h}',
+                  'format':'tiff','pixelType':'F32','interpolation':'+RSP_BilinearInterpolation','f':'image'}
+          out=pathlib.Path('artifacts/m184')
+          r=requests.get(source,params=params,timeout=100)
+          (out/'3dep-response-head.txt').write_text(str({'status':r.status_code,'content-type':r.headers.get('content-type'),'url':r.url,'size':len(r.content),'response_prefix':r.content[:180].decode('utf-8','replace')}))
+          r.raise_for_status()
+          if len(r.content)<1000 or r.content[:1]==b'{':raise RuntimeError('No valid bare-earth raster '+r.text[:200])
+          (out/'usgs-3dep.tif').write_bytes(r.content)
+          with rasterio.open(out/'usgs-3dep.tif') as ds:
+            elevations=ds.read(1,masked=True).astype(float)
+            mask=np.ma.getmaskarray(elevations)
+            validity=(~mask)&np.isfinite(elevations.data)&(elevations.data>-1000)&(elevations.data<8000)
+            print('M184_SOURCE',{'width':ds.width,'height':ds.height,'crs':str(ds.crs),'nodata':ds.nodata,'valid':int(validity.sum()),'source_bbox':bbox})
+            if validity.sum()<w*h*.8:raise RuntimeError('Insufficient valid USGS 3DEP data')
+            values=elevations.filled(np.nan)
+          dy=(bbox[3]-bbox[1])*111320/h
+          dx=(bbox[2]-bbox[0])*111320*math.cos(math.radians((bbox[1]+bbox[3])/2))/w
+          gy,gx=np.gradient(values,dy,dx)
+          pct=100*np.sqrt(gx*gx+gy*gy)
+          # Cropping two border pixels matches Earthline's inP validation and
+          # avoids edge-derivative artifacts; not a parcel polygon census.
+          interior=pct[2:-2,2:-2]
+          good=interior[np.isfinite(interior)]
+          measured={'center':[41.95748,-93.38977],'source':'USGS 3DEP 3DEPElevation ImageServer',
+           'method':'210x146 exportImage float DEM, 3-point numpy finite differences, 2-cell edge inset',
+           'bbox_lon_lat':bbox,'approx_dx_m':dx,'approx_dy_m':dy,
+           'usgs_3dep_samples':len(good),'pct_at_or_below_4':round(100*float(np.mean(good<=4)),2),
+           'pct_above_10':round(100*float(np.mean(good>10)),2),
+           'p10_p50_p90':np.percentile(good,[10,50,90]).round(3).tolist(),
+           'earthline_prior_same_site':{'inParcel':16560,'pct_at_or_below_4':round(100*3073/16560,2),'pct_above_10':round(100*10031/16560,2)},
+           'comparability':'Approximate extent-aligned grid, not exact inP-masked parcel comparison. Do not change production slope source without exact mask/resampling agreement and measured scientific pass.'}
+          print('M184_BARE_EARTH_RESULT '+json.dumps(measured))
+          (out/'comparison.json').write_text(json.dumps(measured,indent=2))
+          PY
+          python m184-usgs.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m184-usgs-3dep-wooded-iowa-slope-evidence
+          path: artifacts/m184/
+          retention-days: 14
