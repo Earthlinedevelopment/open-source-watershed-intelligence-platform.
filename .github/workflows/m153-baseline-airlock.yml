@@ -1,0 +1,36 @@
+name: M153 unmodified dc69730 12-state baseline comparison
+on:
+  push:
+    branches: ['audit/m153-baseline-12-state-airlock']
+    paths: ['.github/workflows/m153-baseline-airlock.yml']
+permissions:
+  contents: read
+jobs:
+  unchanged_baseline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prove index is original baseline and no scientific code is edited
+        run: |
+          git rev-parse HEAD
+          sha256sum index.html
+          git diff --exit-code dc69730ab63957b9bec0a4036a73cd10629c4d3d -- index.html
+          echo M153_UNCHANGED_BASELINE_INDEX_PASS
+      - name: Install exactly the release browser dependency
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run original extended twelve-state release gate unchanged
+        env:
+          EARTHLINE_EXTENDED: '1'
+        run: node tests/earthline-release-airlock.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m153-unchanged-baseline-12-state-evidence
+          path: artifacts/release-airlock/
+          retention-days: 14
