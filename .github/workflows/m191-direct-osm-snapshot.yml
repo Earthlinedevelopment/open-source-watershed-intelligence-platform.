@@ -1,0 +1,35 @@
+name: M191 direct OSM map snapshot availability
+on:
+  push:
+    branches: ['repair/m191-ernst-creek-osm-recovery']
+    paths: ['.github/workflows/m191-direct-osm-snapshot.yml']
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read one narrow, cacheable OSM snapshot for Ernst Creek
+        run: |
+          python3 - <<'PY'
+          import requests,xml.etree.ElementTree as ET,json,time
+          headers={'User-Agent':'Earthline-Nonprofit-Hydrology/1.0 contact:info@earthlinedevelopment.org'}
+          url='https://api.openstreetmap.org/api/0.6/map'
+          bbox='-93.3925,41.9555,-93.3870,41.9595'
+          t=time.monotonic()
+          try:
+            r=requests.get(url,params={'bbox':bbox},headers=headers,timeout=28)
+            o={'url':r.url,'status':r.status_code,'bytes':len(r.content),'seconds':round(time.monotonic()-t,2),'head':r.text[:150]}
+            if r.ok:
+              root=ET.fromstring(r.content)
+              ways=root.findall('way')
+              cats={}
+              for w in ways:
+                tags={x.attrib['k']:x.attrib['v'] for x in w.findall('tag')}
+                for k in ['waterway','natural','highway','building','amenity']:
+                  if k in tags:cats[k]=cats.get(k,0)+1
+              o.update({'nodes':len(root.findall('node')),'ways':len(ways),'relations':len(root.findall('relation')),'categories':cats,'waterwayNames':[{x.attrib['k']:x.attrib['v'] for x in w.findall('tag')}.get('name') for w in ways if any(t.attrib['k']=='waterway' for t in w.findall('tag'))][:8]})
+            print('M191_DIRECT_OSM '+json.dumps(o),flush=True)
+          except Exception as e:print('M191_DIRECT_OSM '+json.dumps({'error':str(e)}),flush=True)
+          PY
