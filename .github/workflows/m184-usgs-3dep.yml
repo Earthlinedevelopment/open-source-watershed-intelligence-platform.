@@ -30,12 +30,24 @@ jobs:
           params={'bbox':','.join(map(str,bbox)),'bboxSR':'4326','imageSR':'4326','size':f'{w},{h}',
                   'format':'tiff','pixelType':'F32','interpolation':'+RSP_BilinearInterpolation','f':'image'}
           out=pathlib.Path('artifacts/m184')
-          r=requests.get(source,params=params,timeout=100)
-          (out/'3dep-response-head.txt').write_text(str({'status':r.status_code,'content-type':r.headers.get('content-type'),'url':r.url,'size':len(r.content),'response_prefix':r.content[:180].decode('utf-8','replace')}))
-          r.raise_for_status()
-          if len(r.content)<1000 or r.content[:1]==b'{':raise RuntimeError('No valid bare-earth raster '+r.text[:200])
-          (out/'usgs-3dep.tif').write_bytes(r.content)
-          with rasterio.open(out/'usgs-3dep.tif') as ds:
+          response_log=[]
+          r=None
+          candidates=[
+           ('USGS 3DEP bare-earth',source),
+           ('Iowa State University 2020 LiDAR bare-earth DEM','https://ortho.gis.iastate.edu/arcgis/rest/services/ortho/lidar_2020_dem/ImageServer/exportImage'),
+          ]
+          chosen=None
+          for label,endpoint in candidates:
+            try:
+              rr=requests.get(endpoint,params=params,timeout=60)
+              response_log.append({'source':label,'status':rr.status_code,'type':rr.headers.get('content-type'),'bytes':len(rr.content),'url':rr.url,'prefix':rr.content[:100].decode('utf-8','replace')})
+              if rr.ok and len(rr.content)>1000 and rr.content[:2] in (b'II',b'MM'):
+                chosen=label;r=rr;break
+            except Exception as e:response_log.append({'source':label,'error':str(e)})
+          (out/'source-requests.json').write_text(json.dumps(response_log,indent=2))
+          if r is None:raise RuntimeError('USGS and independent Iowa bare-earth services did not return a TIFF: '+json.dumps(response_log))
+          (out/'bare-earth-dem.tif').write_bytes(r.content)
+          with rasterio.open(out/'bare-earth-dem.tif') as ds:
             elevations=ds.read(1,masked=True).astype(float)
             mask=np.ma.getmaskarray(elevations)
             validity=(~mask)&np.isfinite(elevations.data)&(elevations.data>-1000)&(elevations.data<8000)
@@ -50,7 +62,7 @@ jobs:
           # avoids edge-derivative artifacts; not a parcel polygon census.
           interior=pct[2:-2,2:-2]
           good=interior[np.isfinite(interior)]
-          measured={'center':[41.95748,-93.38977],'source':'USGS 3DEP 3DEPElevation ImageServer',
+          measured={'center':[41.95748,-93.38977],'source':chosen,
            'method':'210x146 exportImage float DEM, 3-point numpy finite differences, 2-cell edge inset',
            'bbox_lon_lat':bbox,'approx_dx_m':dx,'approx_dy_m':dy,
            'usgs_3dep_samples':len(good),'pct_at_or_below_4':round(100*float(np.mean(good<=4)),2),
