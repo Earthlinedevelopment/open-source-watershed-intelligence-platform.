@@ -129,7 +129,7 @@ jobs:
           const root=process.cwd();
           const browser=await chromium.launch({headless:true});
           const page=await browser.newPage({viewport:{width:1650,height:950}});
-          const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+          const errors=[];page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='warning'||m.type()==='error')errors.push(m.type()+':'+m.text().slice(0,230))});
           await page.route('https://earthlinedevelopment.org/**',route=>{
             const req=new URL(route.request().url()),rel=decodeURIComponent(req.pathname).replace(/^[/]+/,'')||'index.html',loc=path.resolve(root,rel);
             if((loc!==root&&!loc.startsWith(root+path.sep))||!existsSync(loc)||!statSync(loc).isFile())return route.abort();
@@ -149,13 +149,15 @@ jobs:
             await page.locator('#earthlineDeclareProperty16169').evaluate(el=>el.click());
             await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,null,{timeout:85000,polling:150});
             await page.waitForTimeout(1000);
+            await page.evaluate(()=>window.earthlinePropertyTreeVisibilityM186?.());
             o.prop=await page.evaluate(()=>{
               const m=window.earthlineMap||earthlineMap;
               const id='earthline-property-swale-round-trees-m186';
               const safe=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||{};
               let rendered=0;
               try{rendered=m.getLayer(id)?m.queryRenderedFeatures({layers:[id]}).length:0}catch{}
-              return {safe:safe.safeCount||0,tier:document.documentElement.dataset.earthlineAnalysisTier,verified:M?.safetyAudit15806?.verified,
+              const base=m.getLayer('earthline-property-safe-water-16221');
+              return {installed:typeof window.earthlinePropertyTreeVisibilityM186,styleLoaded:m.isStyleLoaded?.(),safeLayer:!!base,safeSource:base?.source,safe:safe.safeCount||0,tier:document.documentElement.dataset.earthlineAnalysisTier,verified:M?.safetyAudit15806?.verified,
                 unsafe:M?.safetyAudit15806?.clearance?.unsafeSegments,
                 treeLayer:!!m.getLayer(id),treeIcon:m.hasImage('earthline-property-tree-round-m186'),treeRendered:rendered,
                 actualCenter:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.center};
