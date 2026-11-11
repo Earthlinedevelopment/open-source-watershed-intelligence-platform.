@@ -1,0 +1,28 @@
+name: M138 safe swale coverage browser validation
+on:
+  push:
+    branches: ['candidate/m138-sustained-4pct-mean-guard-test']
+    paths: ['.github/workflows/m138-swale-real-browser.yml']
+permissions:
+  contents: read
+jobs:
+  property-coverage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser for actual map and terrain runs
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run real Iowa Texas Vermont Property coverage checks against candidate
+        run: node tests/m97-property-safe-coverage-candidate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m138-swale-coverage-evidence
+          path: artifacts/m97-candidate-properties/
+          retention-days: 14
