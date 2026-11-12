@@ -13474,7 +13474,7 @@ var prescribeSwales;
             M.swaleDiagnostics.timeBudgetReached=true;break;
           }
           const baseSegs16320=(!pts16320||pts16320.length<3)?[]:
-            earthlineSplitUsableSegments(pts16320,isRegionalTile15769?maxS:4).filter(seg=>
+            earthlineSplitUsableSegments(pts16320,maxS).filter(seg=>
               seg&&seg.length>=3&&earthlineSegmentLengthM(seg)>=minSegmentM&&
               earthlineOnContourGuard15833(seg,L15836,levelStep)
             );
@@ -13615,7 +13615,7 @@ var prescribeSwales;
         coverageDiag15803.totals.traces++;
         /* BUILD-CHECK-15803-DIAGNOSTIC-END */
         M.swaleDiagnostics.stage.traces++;
-        const segs=earthlineSplitUsableSegments(pts,isRegionalTile15769?maxS:4).slice(0,3);
+        const segs=earthlineSplitUsableSegments(pts,maxS).slice(0,3);
         if(seedRec15803){
           seedRec15803.segmentCount15840=segs.length;
           seedRec15803.segmentProduced15840=segs.length>0;
@@ -13831,11 +13831,24 @@ var prescribeSwales;
       if(!isRegionalTile15769){
         const ptsM131=Array.isArray(sw&&sw.pts)?sw.pts:[];
         let safeSlopeM131=ptsM131.length>=2 && Number.isFinite(Number(sw.slope)) && Number(sw.slope)<=4;
+        /* M200 Property 4% rule (option B): the route's sampled mean slope must be 4% or less AND no 5-sample stretch
+           may have a median above 4% (any 3 of 5 consecutive samples above 4% rejects). Isolated 1-2 sample bumps
+           (rock, trunk, bank edge) do not reject a route; sustained slopes above 4% always do. */
+        const slopesM200=[];
         if(safeSlopeM131)for(const pointM131 of ptsM131){
           const xM131=Math.round(Number(pointM131?.[0])),yM131=Math.round(Number(pointM131?.[1]));
           if(!Number.isFinite(xM131)||!Number.isFinite(yM131)||xM131<0||yM131<0||xM131>=GW||yM131>=GH){safeSlopeM131=false;break;}
           const localSlopeM131=Number(slopePct(xM131,yM131));
-          if(!Number.isFinite(localSlopeM131)||localSlopeM131>4){safeSlopeM131=false;break;}
+          if(!Number.isFinite(localSlopeM131)){safeSlopeM131=false;break;}
+          slopesM200.push(localSlopeM131);
+        }
+        if(safeSlopeM131){
+          const nM200=slopesM200.length;
+          if(!(nM200>=2)||slopesM200.reduce((t,v)=>t+v,0)/nM200>4)safeSlopeM131=false;
+          for(let iM200=0;safeSlopeM131&&iM200<nM200;iM200++){
+            const a=Math.max(0,Math.min(iM200-2,nM200-5)),w=slopesM200.slice(a,Math.min(nM200,a+5)).sort((p,q)=>p-q);
+            if(w[Math.floor(w.length/2)]>4)safeSlopeM131=false;
+          }
         }
         if(!safeSlopeM131){
           M.swaleDiagnostics.stage.rejectSlopeAbove4M131=(M.swaleDiagnostics.stage.rejectSlopeAbove4M131||0)+1;
@@ -35928,7 +35941,7 @@ const BUILD='EARTHLINE 16492';
 function model(){try{return typeof M!=='undefined'?M:(window.M||null)}catch(_){return window.M||null}}
 function clamp(v,a=0,b=100){v=Number(v);return Number.isFinite(v)?Math.max(a,Math.min(b,v)):null}
 function displayed(){return window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16149||window.EARTHLINE_DISPLAYED_RUN_16147||window.EARTHLINE_LAST_LIVE_REGIONAL_RUN_15970||null}
-function tier(){const d=displayed();return String(d&&(d.tier||d.mode)||document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()}
+function tier(){/* M197: the page's active mode wins over any leftover displayed Regional run, so a Property view never shows the Regional score. */const live=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();if(live)return live;const d=displayed();return String(d&&(d.tier||d.mode)||'').toLowerCase()}
 function regionalSummary(){try{return window.earthlineRegional15778&&window.earthlineRegional15778.summary||null}catch(_){return null}}
 function currentScore(){const m=model(),rs=regionalSummary(),d=displayed(),t=tier(),regional=/^(regional|region|statewide)$/.test(t);let v=NaN;if(regional&&d&&d.recharge&&Number.isFinite(Number(d.recharge.score)))v=Number(d.recharge.score);else if(regional&&rs&&Number.isFinite(Number(rs.rechargeScore)))v=Number(rs.rechargeScore);else if(!regional&&m&&m.rechargeStats)v=Number(m.rechargeStats.modeledPotentialPct);return clamp(v)}
 function currentRain(){const m=model(),rs=regionalSummary(),d=displayed(),t=tier(),regional=/^(regional|region|statewide)$/.test(t);const v=Number(regional&&d&&d.recharge&&Number.isFinite(Number(d.recharge.rainfallIn))?d.recharge.rainfallIn:(regional&&rs&&Number.isFinite(Number(rs.precipIn))?rs.precipIn:(m&&m.loc&&m.loc.precipIn)));return Number.isFinite(v)&&v>0?v:null}
@@ -36287,3 +36300,8 @@ html[data-earthline-has-results] #earthlineDiagramLegend16080{
   },true);
 })();
 </script>
+
+<style id="earthline-m199-property-hides-regional-labels">
+/* M199 display only: Regional opportunity labels (A1, B3...) never show in the Property view; they return in Regional. */
+html[data-earthline-analysis-tier="property"] g.earthline-swale-label-16149{display:none!important}
+</style>
