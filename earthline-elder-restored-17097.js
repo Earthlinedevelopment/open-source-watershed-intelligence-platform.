@@ -543,6 +543,11 @@
         publishPropertyProvisional17389(b,runIdentity);
       }
       const dynamic=await dynamicPropertyEvidence(true); /* EARTHLINE_ELDER_GOVERNED_COMPUTE_17211 */
+      if(!dynamic&&elderTierM94()==='property'&&propertyRunIdentity17166(propertyBounds17166())===runIdentity){
+        window.EARTHLINE_ELDER_TREE_LAST_17097={state:'failed',error:'no tree-finder result',propertyRunIdentity:runIdentity,featureCount:0,at:new Date().toISOString()};
+        const g198=document.getElementById('earthlineElderTreesGauge17097');if(g198)g198.textContent='Elder Trees: not available for this run'; /* M198 */
+        return null;
+      }
       if(!dynamic||elderTierM94()!=='property'||propertyRunIdentity17166(propertyBounds17166())!==runIdentity)return null;
       state.active=dynamic.features||[];
       const coverage={known:true,datasetIds:['dynamic-property-17130'],complete:false,dynamic:true,candidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0)};
@@ -553,17 +558,18 @@
         window.EARTHLINE_ELDER_TREE_LAST_17097={state:'publication-pending',propertyRunIdentity:runIdentity,featureCount:state.active.length,mapPublished:false,at:new Date().toISOString()};
         return null;
       }
-      refreshSurfaces();
       window.EARTHLINE_ELDER_TREE_LAST_17097={
         state:'committed',mapPublished:true,propertyRunIdentity:runIdentity,
         summary:state.lastSummary,featureCount:state.active.length,
         dynamicCandidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0),
         dynamicError:null,workerTimings:dynamic?.earthline?.worker_timings_ms||null,at:new Date().toISOString()
       };
+      refreshSurfaces(); /* M198: refresh after the state is committed so "Finding trees…" clears. */
       return state.lastSummary;
     }catch(err){
       if(elderTierM94()!=='property'||(runIdentity&&propertyRunIdentity17166(propertyBounds17166())!==runIdentity))return null;
       window.EARTHLINE_ELDER_TREE_LAST_17097={state:'failed',error:String(err&&err.message||err),featureCount:0,at:new Date().toISOString()};
+      const g198=document.getElementById('earthlineElderTreesGauge17097');if(g198)g198.textContent='Elder Trees: not available for this run'; /* M198: explicit failure state */
       return null;
     }
   }
