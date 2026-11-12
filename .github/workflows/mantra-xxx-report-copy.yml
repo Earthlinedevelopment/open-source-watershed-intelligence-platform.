@@ -1,0 +1,70 @@
+name: Mantra XXX - approved copy and report candidate
+on:
+  push:
+    branches: [candidate/mantra-xxx-recovery-no-regress]
+    paths: [.github/workflows/mantra-xxx-report-copy.yml, scripts/mantra-xxx-report-copy-patch.py]
+permissions:
+  contents: write
+concurrency:
+  group: earthline-mantra-xxx-report-candidate
+  cancel-in-progress: false
+jobs:
+  candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra-xxx-recovery-no-regress
+          fetch-depth: 0
+      - name: Lock exact mechanical repair parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object index.html)" = "c02fa52a59178c9532283d2f7364ebeb2e8e82c9"
+          git diff --quiet
+      - name: Restore approved copy and report PDF controls
+        run: python3 scripts/mantra-xxx-report-copy-patch.py
+      - name: Parse every inline program and assert report invariants
+        shell: bash
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert');
+          const h=fs.readFileSync('index.html','utf8');
+          let parsed=0;
+          for(const [i,m] of [...h.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)].entries()){
+            if(/src=|application\/json|type=["']module/i.test(m[1])||!m[2].trim())continue;
+            new vm.Script(m[2],{filename:'inline-'+i+'.js'});
+            parsed++;
+          }
+          assert(parsed>=60,'Lost inline programs');
+          for(const marker of [
+            'Earthline is a free, community-focused tool',
+            'A no-cost science perspective for communities',
+            'A shovel multiplied is a bulldozer.',
+            'data-action="print"',
+            "window.print()",
+            'data-action="top"',
+            'data-action="bottom"',
+            'earthline-mantra-xxx-regional-clarity',
+            'el49-page el16864-final-sources',
+            '@media print{body>*:not(#earthlineVermontReportPanel16149)',
+            'earthlineOpenVermontReport16151',
+            'How Bioswales Work',
+            'Hydrology and Aquifer Context Map',
+            'EXCLUSIONS UNVERIFIED',
+            'Slow it. Sink it. Spread it.'
+          ])assert(h.includes(marker),'Missing: '+marker);
+          assert(!h.includes('Earthline is free and available 24 hours a day'),'Removed wording resurrected');
+          console.log('PASS',parsed,'JS scripts; approved copy; report map, sources, print, navigation and safety contracts retained');
+          JS
+      - name: Commit only candidate HTML, never pages-live
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'candidate(mantra-xxx): recover Nov 2 copy and report print/navigation'
+          git push origin HEAD:candidate/mantra-xxx-recovery-no-regress
