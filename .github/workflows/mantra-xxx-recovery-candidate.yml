@@ -1,0 +1,71 @@
+name: Mantra XXX - isolated no-regression recovery candidate
+on:
+  push:
+    branches: [candidate/mantra-xxx-recovery-no-regress]
+    paths: [.github/workflows/mantra-xxx-recovery-candidate.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: earthline-mantra-xxx-candidate
+  cancel-in-progress: false
+jobs:
+  candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra-xxx-recovery-no-regress
+          fetch-depth: 0
+      - name: Verify exact production rollback source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object index.html)" = "d2d5314c7e5db279aaeb7aea30ec9d7c636667ef"
+          git diff --quiet
+      - name: Apply the isolated candidate patch
+        run: python3 scripts/mantra-xxx-isolated-patch.py
+      - name: Regression - inline JavaScript parse and architectural invariants
+        shell: bash
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert');
+          const h=fs.readFileSync('index.html','utf8');
+          const scripts=[...h.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
+          let parsed=0;
+          for(const [i,m] of scripts.entries()){
+            if(/src=|application\/json|type=["']module/i.test(m[1]) || !m[2].trim())continue;
+            try{new vm.Script(m[2],{filename:'inline-'+i+'.js'})}
+            catch(err){throw new Error('Inline script '+i+': '+err.message)}
+            parsed++;
+          }
+          assert(parsed>=60,'Unexpected inline script loss');
+          for(const marker of [
+            'id="earthline-mantra-xxx-regional-clarity"',
+            'len<22))continue;',
+            "dataset.earthlineCorridorScaleMxxx",
+            "window.earthlineDecorateSwales16149",
+            "window.earthlineRenderRegionalOverlay16020",
+            "window.earthlineOpenVermontReport16151",
+            "EARTHLINE_DISPLAYED_RUN_16151",
+            "How Bioswales Work",
+            "Slow it. Sink it. Spread it.",
+            "earthline-elder-restored-17097.js",
+            "Recharge Suitability '+q+' out of 100'"
+          ]) assert(h.includes(marker),'Missing retained marker: '+marker);
+          assert(!h.includes("if(tier()==='focus')refreshRender()})"),'Duplicate idle focus redraw not removed');
+          assert(!h.includes("value.textContent=q==null?'—%':q+'%'"),'Gauge still reads percentage');
+          assert(!h.includes("if(activeTier==='focus'?(pts.length<3||len<22):(pts.length<2||len<0.1))continue;"),'Visual floor not applied');
+          console.log('PASS',parsed,'inline scripts, report retained, source owners preserved, no live branch changed');
+          JS
+      - name: Commit only candidate HTML and retain exact rollback parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'candidate(mantra-xxx): slim regional overlay and remove competing focus redraw'
+          git push origin HEAD:candidate/mantra-xxx-recovery-no-regress
