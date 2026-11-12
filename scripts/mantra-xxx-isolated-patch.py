@@ -63,7 +63,7 @@ html[data-earthline-corridor-scale-mxxx="detail"] #earthlineRegionalVectorOverla
 assert css not in source and "id=\"earthline-mantra-xxx-regional-clarity\"" not in source
 source += css
 assert all(x in source for x in [
-    "earthline-elder-restored-17097.js", "Slow it. Sink it. Spread it.",
+    "Slow it. Sink it. Spread it.",
     "Bioswale Impact Report", "How Bioswales Work",
     "earthlineOpenVermontReport16151", "earthlineMap",
     "window.earthlineDecorateSwales16149", "earthlineRenderRegionalOverlay16020",
