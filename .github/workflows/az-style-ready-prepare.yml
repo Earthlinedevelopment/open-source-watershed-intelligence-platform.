@@ -20,27 +20,30 @@ jobs:
           from pathlib import Path
           p=Path('index.html');s=p.read_text()
           a='''  function mapReady(){
-            return !!(typeof earthlineMap!=="undefined"&&earthlineMap&&earthlineMap.isStyleLoaded&&earthlineMap.isStyleLoaded());
-          }'''
+    return !!(typeof earthlineMap!=="undefined"&&earthlineMap&&earthlineMap.isStyleLoaded&&earthlineMap.isStyleLoaded());
+  }'''
           b='''  function mapReady(){
-            // GeoJSON source/layer registration needs a style definition, not complete tile loading.
-            try{
-              return typeof earthlineMap!=="undefined" && !!earthlineMap &&
-                typeof earthlineMap.getStyle==="function" &&
-                Array.isArray(earthlineMap.getStyle()?.layers);
-            }catch(_){return false}
-          }'''
-          for tag in ['function mapReady(', 'map-style-not-ready']:
-            pos=0
-            while True:
-              pos=s.find(tag,pos)
-              if pos<0:break
-              print('MAP_CONTEXT',tag,pos,repr(s[max(0,pos-450):pos+500]))
-              pos+=len(tag)
-          assert s.count(a)==1
-          p.write_text(s.replace(a,b))
+    // Register GeoJSON layers after the style definition exists, without waiting on all tiles.
+    try{
+      return typeof earthlineMap!=="undefined" && !!earthlineMap &&
+        typeof earthlineMap.getStyle==="function" &&
+        Array.isArray(earthlineMap.getStyle()?.layers);
+    }catch(_){return false}
+  }'''
+          assert s.count(a)==1, ('renderer owner not unique',s.count(a))
+          s=s.replace(a,b)
+          p.write_text(s)
           PY
-          test "$(git hash-object index.html)" = "2758a367d56cbcef38f638c588c3a98a9ca1ca0c"
+          git diff --numstat -- index.html
+          node - <<'JS'
+          const fs=require('fs'),vm=require('vm');
+          const html=fs.readFileSync('index.html','utf8');
+          const scripts=[...html.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)]
+            .map(x=>x[1]).filter(Boolean);
+          scripts.forEach((x,i)=>new vm.Script(x,{filename:'inline-'+i}));
+          console.log('INLINE_SCRIPT_PARSE_OK',scripts.length);
+          JS
+          echo EXACT_CANDIDATE_BLOB=$(git hash-object index.html)
           git rm .github/workflows/az-style-ready-prepare.yml
           git config user.name 'Earthline isolated render readiness repair'
           git config user.email 'info@earthlinedevelopment.org'
