@@ -4,7 +4,8 @@ const BASE_URL='https://earthlinedevelopment.org/';
 const targets=[
 {name:'vermont',lng:-72.45147,lat:43.88279},
 {name:'iowa',lng:-93.68000,lat:42.13000},
-{name:'arizona',lng:-111.93073,lat:34.21572}
+{name:'arizona',lng:-111.93073,lat:34.21572},
+{name:'arizona-darling-mine',lng:-114.33439,lat:33.73774}
 ];
 const patch=readFileSync('index.html','utf8');
 mkdirSync('artifacts/m201',{recursive:true});
@@ -57,7 +58,7 @@ async function run(name,target,patched){
   const elder=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
   return {engineCount:sw.length,engineSlopeCount:sl.length,maxEngineMeanSlope:sl.length?Math.max(...sl):null,
     publishedFeatureCount:features.length,publishedSlopeCount:fs.length,maxPublishedMeanSlope:fs.length?Math.max(...fs):null,
-    mappedPublishedSlopeCount:mappedValid.length,maxMappedPublishedMeanSlope:mappedValid.length?Math.max(...mappedValid):null,
+    over4MappedPublished:mappedValid.filter(v=>v>4).length,mappedPublishedSlopeCount:mappedValid.length,maxMappedPublishedMeanSlope:mappedValid.length?Math.max(...mappedValid):null,
     featureSampleProperties:features[0]?.properties||null,engineSample:sw[0]?{slope:sw[0].slope,id:sw[0].id}:null,
     publication:p,run,elderCount:Number(elder?.featureCount||0),elderState:elder?.state||null,
     safe:window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null,
@@ -73,6 +74,6 @@ for(const target of targets){await run(target.name,target,false);await run(targe
 await browser.close();
 writeFileSync('artifacts/m201/results.json',JSON.stringify(rows,null,2));
 const candidates=rows.filter(r=>r.mode==='candidate');
-const pass=candidates.length===3&&candidates.every(r=>r.run?.settled===true&&r.run?.result===true&&r.publication?.published===true&&r.publishedFeatureCount>0&&r.engineSlopeCount>0&&r.mappedPublishedSlopeCount===r.publishedFeatureCount&&r.maxMappedPublishedMeanSlope<=4);
-console.log('M201_CANDIDATE_GATE '+JSON.stringify({pass,targets:candidates.map(r=>({name:r.name,swales:r.publishedFeatureCount,maxSlope:r.maxEngineMeanSlope,elders:r.elderCount,errors:r.errors}))}));
+const pass=candidates.length===4&&candidates.every(r=>r.run?.settled===true&&r.run?.result===true&&r.publication?.published===true&&r.publishedFeatureCount>0&&r.engineSlopeCount>0&&r.mappedPublishedSlopeCount===r.publishedFeatureCount&&r.maxMappedPublishedMeanSlope<=4&&r.errors.length===0);
+console.log('M201_FOUR_LOCATION_CANDIDATE_GATE '+JSON.stringify({pass,targets:candidates.map(r=>({name:r.name,swales:r.publishedFeatureCount,maxSlope:r.maxEngineMeanSlope,elders:r.elderCount,errors:r.errors}))}));
 if(!pass)process.exitCode=1;
