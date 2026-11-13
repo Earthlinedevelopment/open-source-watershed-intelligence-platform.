@@ -265,7 +265,7 @@
             ],
             /* M96: candidates must be legible on satellite imagery; labels never
                imply that an unverified modeled tree is known to be old. */
-            'icon-size':['interpolate',['linear'],['zoom'],6,0.55,10,0.72,14,0.96,17,1.48,20,1.65],
+            'icon-size':['interpolate',['linear'],['zoom'],6,0.275,10,0.36,14,0.48,17,0.74,20,0.825], /* M11: half-size Elder symbols */
             'icon-anchor':'center',
             'icon-allow-overlap':true,
             'icon-ignore-placement':true,
@@ -413,6 +413,25 @@
     if(apply())return true;
     frame.addEventListener('load',apply,{once:true});
     return false;
+  }
+  /* One introductory Elder help link per page visit; removed after ten seconds. */
+  let elderInfoShownM11=false;
+  function showElderInfoLinkM11(){
+    if(elderInfoShownM11)return;
+    const m=window.earthlineMap;
+    const pts=(Array.isArray(state.active)?state.active:[])
+      .map(f=>f?.geometry?.coordinates)
+      .filter(c=>Array.isArray(c)&&Number.isFinite(c[0])&&Number.isFinite(c[1]));
+    if(!m||!pts.length||typeof mapboxgl==='undefined')return;
+    const top=pts.reduce((a,b)=>b[1]>a[1]?b:a);
+    try{
+      const popup=new mapboxgl.Popup({closeButton:false,closeOnClick:false,anchor:'bottom',offset:18,className:'earthline-elder-info-m11'})
+        .setLngLat(top)
+        .setHTML('<a href="#swales-explained" style="font:800 11px/1.2 system-ui,sans-serif;color:#245e39;text-decoration:none;white-space:nowrap">&#9432; What are Elder Trees?</a>')
+        .addTo(m);
+      elderInfoShownM11=true;
+      setTimeout(()=>{try{popup.remove()}catch(_){}},10000);
+    }catch(_){}
   }
   function refreshSurfaces(){
     const s=state.lastSummary||summarize(state.active);
@@ -589,6 +608,7 @@
         dynamicError:null,workerTimings:dynamic?.earthline?.worker_timings_ms||null,at:new Date().toISOString()
       };
       refreshSurfaces(); /* M198: refresh after the state is committed so "Finding trees…" clears. */
+      showElderInfoLinkM11();
       return state.lastSummary;
     }catch(err){
       if(elderTierM94()!=='property'||(runIdentity&&propertyRunIdentity17166(propertyBounds17166())!==runIdentity))return null;
