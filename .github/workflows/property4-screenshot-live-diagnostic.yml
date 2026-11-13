@@ -1,0 +1,25 @@
+name: Exact Arizona screenshot live swale diagnostic
+on:
+  push:
+    branches: [repair/property4-gentle-contour-split-20261113]
+    paths: [tests/property4-screenshot-live-diagnostic.mjs, .github/workflows/property4-screenshot-live-diagnostic.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node tests/property4-screenshot-live-diagnostic.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-arizona-screenshot-diagnostic
+          path: artifacts/property4-screenshot
+          retention-days: 14
