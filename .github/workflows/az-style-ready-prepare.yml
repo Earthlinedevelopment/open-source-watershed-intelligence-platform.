@@ -30,6 +30,11 @@ jobs:
                 Array.isArray(earthlineMap.getStyle()?.layers);
             }catch(_){return false}
           }'''
+          import re
+          for m in re.finditer(r'function mapReady\\s*\\(',s):
+            print('MAP_READY_CONTEXT',repr(s[m.start():m.start()+470]))
+          for m in re.finditer('map-style-not-ready',s):
+            print('LIVING_NOT_READY_CONTEXT',repr(s[max(0,m.start()-700):m.start()+220]))
           assert s.count(a)==1
           p.write_text(s.replace(a,b))
           PY
