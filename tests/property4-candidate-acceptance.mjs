@@ -57,7 +57,7 @@ for(const site of cases){
     const layer=id=>{try{return map?.getLayoutProperty?.(id,'visibility')??null}catch{return null}};
     const drawn=id=>{try{return map?.getLayer?.(id)?map.queryRenderedFeatures({layers:[id]}).length:0}catch{return 0}};
     return {site:t,pub:p,swales:m?.swales?.length,vector:m?.vectorNoBuildCoverage||null,
-       tier:document.documentElement.dataset.earthlineAnalysisTier,demSource:m?.demSource,
+       tier:document.documentElement.dataset.earthlineAnalysisTier,demSource:m?.demSource,integrity:window.EARTHLINE_LOCATION_INTEGRITY_15801||null,
        gauge:document.querySelector('.earthline-recharge-gauge-label-16488')?.textContent,
        contoursAudit:window.earthlineElevationAudit15776?.()||null,drawnElevationLabels:drawn('earthline-official-contour-label-15776'),recharge:count('earthline-recharge-zones'),
        owner:m?.rendererOwnership15805||null,layerVisibility:{
