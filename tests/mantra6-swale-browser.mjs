@@ -3,7 +3,7 @@ import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 const HTML=readFileSync('index.html','utf8');
 const BASE_URL='https://earthlinedevelopment.org/';
 const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
-const errors=[],report={at:new Date().toISOString(),target:{lng:-111.93066,lat:34.21568},errors,pass:false};
+const errors=[],report={at:new Date().toISOString(),target:{lng:-73.012909,lat:44.513845},errors,pass:false};
 mkdirSync('artifacts/mantra6-swale',{recursive:true});
 const context=await browser.newContext({viewport:{width:1440,height:920},serviceWorkers:'block'});
 await context.route('https://earthlinedevelopment.org/**',async route=>{
@@ -16,7 +16,7 @@ page.on('pageerror',e=>errors.push(String(e)));
 try{
   await page.goto(BASE_URL+'?mantra6=swale-browser',{waitUntil:'domcontentloaded',timeout:60000});
   await page.locator('#searchInput').waitFor({timeout:30000});
-  await page.evaluate(()=>{const input=document.getElementById('searchInput'),run=document.getElementById('runBtn');input.value='Arizona';input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));run.click();});
+  await page.evaluate(()=>{const input=document.getElementById('searchInput'),run=document.getElementById('runBtn');input.value='Vermont';input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));run.click();});
   await page.waitForFunction(()=>Boolean(window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970),null,{timeout:55000});
   report.prepared=await page.evaluate(async t=>{
     const m=typeof M!=='undefined'?M:window.M;
@@ -35,7 +35,7 @@ try{
   report.afterProperty=await page.evaluate(()=>{
     const mp=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
     const a=window.EARTHLINE_PROPERTY_TEXTURE_AUDIT_16169||{};
-    return {tier:document.documentElement.dataset.earthlineAnalysisTier,settled:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled,sourceReady:a.sourceReady,centerlines:a.centerlines,layers:a.layers,publishedSwales:(typeof M!=='undefined'?M:null)?.authoritativeSafeSwales15815?.features?.length||0,mapReady:!!mp};
+    return {tier:document.documentElement.dataset.earthlineAnalysisTier,settled:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled,sourceReady:a.sourceReady,centerlines:a.centerlines,layers:a.layers,publishedSwales:(typeof M!=='undefined'?M:null)?.authoritativeSafeSwales15815?.features?.length||0,runAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,lastError:window.EARTHLINE_PROPERTY_LAST_ERROR_16173||null,textureAudit:a,sourceComplete:(typeof M!=='undefined'?M:null)?.vectorNoBuildCoverage?.overpass?.sourceComplete??null,mapReady:!!mp};
   });
   if(report.afterProperty.centerlines<=0||!report.afterProperty.sourceReady)throw Error('No published Property swale texture to measure');
   report.camera=await page.evaluate(async()=>{
