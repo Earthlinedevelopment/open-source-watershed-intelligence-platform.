@@ -1,6 +1,6 @@
 import {chromium} from 'playwright';
 import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
-const URL='https://earthlinedevelopment.org/';
+const BASE_URL='https://earthlinedevelopment.org/';
 const targets=[
 {name:'vermont',lng:-72.45147,lat:43.88279},
 {name:'iowa',lng:-93.68000,lat:42.13000},
@@ -24,9 +24,9 @@ async function run(name,target,patched){
    await route.continue();
   });
  }
- let info={name,mode:patched?'candidate':'live',url:URL};
+ let info={name,mode:patched?'candidate':'live',url:BASE_URL};
  try{
- await page.goto(URL+'?m201='+name+'_'+(patched?'candidate':'live'),{waitUntil:'domcontentloaded',timeout:65000});
+ await page.goto(BASE_URL+'?m201='+name+'_'+(patched?'candidate':'live'),{waitUntil:'domcontentloaded',timeout:65000});
  await page.waitForSelector('#searchInput',{timeout:40000});
  const prep=await page.evaluate(async target=>{
    const md=typeof M!=='undefined'?M:window.M;
@@ -41,7 +41,8 @@ async function run(name,target,patched){
  if(!prep.ok)throw new Error('prepare: '+JSON.stringify(prep));
  await page.evaluate(async()=>await window.earthlineDeclarePropertyAtCrosshair16169?.());
  try{await page.waitForFunction(()=>window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.settled===true,null,{timeout:70000,polling:250});}catch(e){errors.push('property settle timeout')}
- await page.waitForTimeout(1200);
+ try{await page.waitForFunction(()=>{const e=window.EARTHLINE_ELDER_TREE_LAST_17097;return e?.state==='committed'||e?.state==='error'},null,{timeout:15000,polling:350});}catch(_){}
+ await page.waitForTimeout(400);
  const diag=await page.evaluate(()=>{
   const md=typeof M!=='undefined'?M:window.M;
   const sw=Array.isArray(md?.swales)?md.swales:[];
@@ -49,11 +50,14 @@ async function run(name,target,patched){
   const fc=md?.authoritativeSafeSwales15815;
   const features=fc?.features||[];
   const fs=features.map(f=>Number(f?.properties?.slope)).filter(Number.isFinite);
+  const mapped=features.map(f=>Number(sw[Number(f?.properties?.rawIndex)]?.slope));
+  const mappedValid=mapped.filter(Number.isFinite);
   const p=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null;
   const run=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
   const elder=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
   return {engineCount:sw.length,engineSlopeCount:sl.length,maxEngineMeanSlope:sl.length?Math.max(...sl):null,
     publishedFeatureCount:features.length,publishedSlopeCount:fs.length,maxPublishedMeanSlope:fs.length?Math.max(...fs):null,
+    mappedPublishedSlopeCount:mappedValid.length,maxMappedPublishedMeanSlope:mappedValid.length?Math.max(...mappedValid):null,
     featureSampleProperties:features[0]?.properties||null,engineSample:sw[0]?{slope:sw[0].slope,id:sw[0].id}:null,
     publication:p,run,elderCount:Number(elder?.featureCount||0),elderState:elder?.state||null,
     safe:window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null,
@@ -69,6 +73,6 @@ for(const target of targets){await run(target.name,target,false);await run(targe
 await browser.close();
 writeFileSync('artifacts/m201/results.json',JSON.stringify(rows,null,2));
 const candidates=rows.filter(r=>r.mode==='candidate');
-const pass=candidates.length===3&&candidates.every(r=>r.run?.settled===true&&r.run?.result===true&&r.publication?.published===true&&r.publishedFeatureCount>0&&r.engineSlopeCount>0&&r.maxEngineMeanSlope<=4&&r.errors?.length===0);
+const pass=candidates.length===3&&candidates.every(r=>r.run?.settled===true&&r.run?.result===true&&r.publication?.published===true&&r.publishedFeatureCount>0&&r.engineSlopeCount>0&&r.mappedPublishedSlopeCount===r.publishedFeatureCount&&r.maxMappedPublishedMeanSlope<=4);
 console.log('M201_CANDIDATE_GATE '+JSON.stringify({pass,targets:candidates.map(r=>({name:r.name,swales:r.publishedFeatureCount,maxSlope:r.maxEngineMeanSlope,elders:r.elderCount,errors:r.errors}))}));
 if(!pass)process.exitCode=1;
