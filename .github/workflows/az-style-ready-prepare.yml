@@ -1,0 +1,42 @@
+name: Prepare short 4pct swales with style-definition renderer readiness
+on:
+  push:
+    branches: [repair/arizona-visible-valid-swales-20261113]
+    paths: [.github/workflows/az-style-ready-prepare.yml]
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Preserve all safety conditions; fix only living-swale style readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object index.html)" = "8474081675fdf904af8d805a28617ff673e6a525"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          a='''  function mapReady(){
+            return !!(typeof earthlineMap!=="undefined"&&earthlineMap&&earthlineMap.isStyleLoaded&&earthlineMap.isStyleLoaded());
+          }'''
+          b='''  function mapReady(){
+            // GeoJSON source/layer registration needs a style definition, not complete tile loading.
+            try{
+              return typeof earthlineMap!=="undefined" && !!earthlineMap &&
+                typeof earthlineMap.getStyle==="function" &&
+                Array.isArray(earthlineMap.getStyle()?.layers);
+            }catch(_){return false}
+          }'''
+          assert s.count(a)==1
+          p.write_text(s.replace(a,b))
+          PY
+          test "$(git hash-object index.html)" = "2758a367d56cbcef38f638c588c3a98a9ca1ca0c"
+          git rm .github/workflows/az-style-ready-prepare.yml
+          git config user.name 'Earthline isolated render readiness repair'
+          git config user.email 'info@earthlinedevelopment.org'
+          git add index.html
+          git commit -m 'fix(property): render approved short gentle swales when style definition exists'
+          git push origin HEAD:repair/arizona-visible-valid-swales-20261113
