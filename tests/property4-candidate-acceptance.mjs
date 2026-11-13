@@ -58,7 +58,7 @@ for(const site of cases){
     return {site:t,pub:p,swales:m?.swales?.length,vector:m?.vectorNoBuildCoverage||null,
        tier:document.documentElement.dataset.earthlineAnalysisTier,demSource:m?.demSource,
        gauge:document.querySelector('.earthline-recharge-gauge-label-16488')?.textContent,
-       contours:count('earthline-official-terrain-v2-15776'),recharge:count('earthline-recharge-zones'),
+       contoursAudit:window.earthlineElevationAudit15776?.()||null,recharge:count('earthline-recharge-zones'),
        owner:m?.rendererOwnership15805||null,layerVisibility:{
          contours:layer('earthline-official-contour-major-15776'),elevationLabels:layer('earthline-official-contour-label-15776'),recharge:layer('earthline-recharge-line')
        },generation:m?.searchGen};
@@ -72,7 +72,7 @@ for(const site of cases){
  await ctx.close();
 }
 await browser.close();
-const passed=output.every(o=>!o.failure&&!o.timeout&&o.pub?.committed===true&&o.pub?.safetyVerified===true&&o.gauge==='Recharge Potential'&&!/procedural|generated screening fallback/i.test(String(o.demSource||''))&&o.contours>0&&o.layerVisibility?.contours!=='none'&&o.layerVisibility?.elevationLabels!=='none'&&!(o.errors||[]).some(e=>/Uncaught|ReferenceError/i.test(e)))&&output[0].pub.safeSegments>0;
+const passed=output.every(o=>!o.failure&&!o.timeout&&o.pub?.committed===true&&o.pub?.safetyVerified===true&&o.gauge==='Recharge Potential'&&!/procedural|generated screening fallback/i.test(String(o.demSource||''))&&o.contoursAudit?.sourcePresent===true&&o.contoursAudit?.majorPresent===true&&o.contoursAudit?.labelPresent===true&&o.layerVisibility?.contours!=='none'&&o.layerVisibility?.elevationLabels!=='none'&&!(o.errors||[]).some(e=>/Uncaught|ReferenceError/i.test(e)))&&output[0].pub.safeSegments>0;
 const result={targetBlob,passed,output};
 fs.writeFileSync('artifacts/property4-candidate/result.json',JSON.stringify(result,null,2));
 console.log('PROPERTY4_CANDIDATE_RESULT '+JSON.stringify({passed,sites:output.map(o=>({name:o.site?.name,timeout:o.timeout,swales:o.swales,segments:o.pub?.safeSegments,blocked:o.pub?.blocked,reason:o.pub?.blockReason,gauge:o.gauge}))}));
