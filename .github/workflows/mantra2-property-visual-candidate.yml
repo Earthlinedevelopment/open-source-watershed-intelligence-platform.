@@ -1,0 +1,50 @@
+name: Mantra 2 Property blink and crosshair hint candidate
+on:
+  push:
+    branches: [repair/mantra2-functionality-reset]
+    paths:
+      - tools/mantra2-property-render-stability.py
+      - tools/mantra2-move-map-hint.py
+      - .github/workflows/mantra2-property-visual-candidate.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-isolated-candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify October HTML exactly
+        run: |
+          test "$(git hash-object index.html)" = "0e19fef1d95138e02786cfe470f3a804647dceda"
+          python3 -m py_compile tools/mantra2-property-render-stability.py tools/mantra2-move-map-hint.py
+      - name: Apply two isolated presentation patches
+        run: |
+          python3 tools/mantra2-property-render-stability.py
+          python3 tools/mantra2-move-map-hint.py
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          assert s.count('MANTRA2: Mapbox handles panning published Property texture')==1
+          assert s.count('earthlineMoveMapHintM2')>=1
+          assert s.count('function updateDeclareButton()')==1
+          assert s.count('async function syncTexture(')==1
+          print('MANTRA2_NARROW_PATCH_STATIC_CHECK_PASS')
+          PY
+          sha256sum index.html > mantra2-candidate-sha256.txt
+          git diff -- index.html > mantra2-candidate.diff
+          git diff --numstat -- index.html
+      - name: Upload candidate and exact diff for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mantra2-property-no-blink-move-map-candidate
+          path: |
+            index.html
+            mantra2-candidate.diff
+            mantra2-candidate-sha256.txt
+          retention-days: 30
+          if-no-files-found: warn
