@@ -1,0 +1,24 @@
+name: Earthline clean Property swale kernel
+on:
+  push:
+    branches: [staging/october-stabilization-2026-11-13]
+    paths:
+      - earthline-property-swales.js
+      - tests/property-swale-kernel.test.mjs
+      - .github/workflows/property-swale-kernel.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  acceptance-kernel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Parse standalone engine and execute swale safety tests
+        run: |
+          node --check earthline-property-swales.js
+          node --test tests/property-swale-kernel.test.mjs
