@@ -219,6 +219,10 @@
     ctx.fillStyle='rgba(210,245,185,.32)';ctx.fill();
     ctx.beginPath();ctx.arc(28,29,4,0,Math.PI*2);
     ctx.fillStyle='rgba(8,38,19,.18)';ctx.fill();
+    /* Mantra 6: approved Elder symbol is a round green canopy, brown rim and visible brown trunk center — never a location pin. */
+    ctx.beginPath();ctx.arc(24,25.5,4.5,0,Math.PI*2);
+    ctx.fillStyle='#76502b';ctx.fill();
+    ctx.lineWidth=1.1;ctx.strokeStyle='#d7bd83';ctx.stroke();
     return ctx.getImageData(0,0,48,48);
   }
   function ensureElderPinImages(m){
