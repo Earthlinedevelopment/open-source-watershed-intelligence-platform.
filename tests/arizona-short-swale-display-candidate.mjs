@@ -78,7 +78,14 @@ for(const site of cases){
     const before={layerOn:m?.layers?.swales?.on,analysisReady:m?.analysisReady,terrainReady:m?.terrainReady,
       sourceCount:(typeof EARTHLINE_SWALE_SOURCE!=='undefined'?earthlineMap?.getSource?.(EARTHLINE_SWALE_SOURCE)?._data?.features?.length:null),
       mapActive:(typeof earthlineMapActive==='function'?earthlineMapActive():null),
-      ensureAudit:window.EARTHLINE_SWALE_LAYER_ENSURE_AUDIT_16500||null};
+      ensureAudit:window.EARTHLINE_SWALE_LAYER_ENSURE_AUDIT_16500||null,
+      regionalState:window.earthlineRegional15778?{mode:window.earthlineRegional15778.mode,active:window.earthlineRegional15778.active}:null,
+      lock:m?.propertyResultLock15815?{verified:m.propertyResultLock15815.safetyVerified,safeSegments:m.propertyResultLock15815.safeSegments}:null,
+      safetyAudit:m?.safetyAudit15806?{verified:m.safetyAudit15806.verified,acceptedIntersections:m.safetyAudit15806.acceptedIntersections}:null,
+      authorizedCount:m?.authoritativeSafeSwales15815?.features?.length,
+      living:m?.livingSwaleRenderer15792||null,
+      livingSourceCount:earthlineMap?.getSource?.('earthline-living-swales-15792')?._data?.features?.length,
+      livingVisibility:earthlineMap?.getLayoutProperty?.('earthline-living-swales-life-15792','visibility')};
     const syncResult=(typeof earthlineSyncSwaleLayer==='function'?earthlineSyncSwaleLayer():null);
     return {before,syncResult,after:{sourceCount:(typeof EARTHLINE_SWALE_SOURCE!=='undefined'?earthlineMap?.getSource?.(EARTHLINE_SWALE_SOURCE)?._data?.features?.length:null),
        visibility:(typeof EARTHLINE_SWALE_LAYER!=='undefined'?earthlineMap?.getLayoutProperty?.(EARTHLINE_SWALE_LAYER,'visibility'):null),
