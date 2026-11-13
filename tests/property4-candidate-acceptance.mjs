@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 fs.mkdirSync('artifacts/property4-candidate',{recursive:true});
 const BASE='https://earthlinedevelopment.org/';
-const targetBlob='31d528fa7c72c76f96d40ef3fe9643c4feba48ac';
+const targetBlob='2b38c611630efe4eb7af1915e8225f87cb3aba88';
 const cases=[
  {name:'Iowa',lat:42.13,lng:-93.68},
  {name:'Arizona',lat:34.21593,lng:-111.93665}
@@ -38,8 +38,9 @@ for(const site of cases){
     const map=(typeof earthlineMap!=='undefined'?earthlineMap:null);
     map?.jumpTo?.({center:[t.lng,t.lat],zoom:17});
     window.earthlineSetPropertyTarget16201({lat:t.lat,lng:t.lng,source:'candidate-acceptance'},{openPanel:false});
-    document.getElementById('earthlineDeclareProperty16169').click();
+
   },site);
+  await page.click('#earthlineDeclareProperty16169',{timeout:10000}); // real pointer click, exactly once
   let timeout=false;
   try{await page.waitForFunction(()=>{
     const m=(typeof M!=='undefined'?M:window.M);
@@ -55,7 +56,7 @@ for(const site of cases){
     const count=id=>{let x=source(id);return x?._data?.features?.length??null};
     const layer=id=>{try{return map?.getLayoutProperty?.(id,'visibility')??null}catch{return null}};
     return {site:t,pub:p,swales:m?.swales?.length,vector:m?.vectorNoBuildCoverage||null,
-       tier:document.documentElement.dataset.earthlineAnalysisTier,
+       tier:document.documentElement.dataset.earthlineAnalysisTier,demSource:m?.demSource,
        gauge:document.querySelector('.earthline-recharge-gauge-label-16488')?.textContent,
        contours:count('earthline-official-terrain-v2-15776'),recharge:count('earthline-recharge-zones'),
        owner:m?.rendererOwnership15805||null,layerVisibility:{
@@ -71,7 +72,7 @@ for(const site of cases){
  await ctx.close();
 }
 await browser.close();
-const passed=output.every(o=>!o.failure&&!o.timeout&&o.pub?.committed===true&&o.pub?.safetyVerified===true&&o.gauge==='Recharge Potential'&&o.contours>0&&o.layerVisibility?.contours!=='none'&&o.layerVisibility?.elevationLabels!=='none'&&!(o.errors||[]).some(e=>/Uncaught|ReferenceError/i.test(e)))&&output[0].pub.safeSegments>0;
+const passed=output.every(o=>!o.failure&&!o.timeout&&o.pub?.committed===true&&o.pub?.safetyVerified===true&&o.gauge==='Recharge Potential'&&!/procedural|generated screening fallback/i.test(String(o.demSource||''))&&o.contours>0&&o.layerVisibility?.contours!=='none'&&o.layerVisibility?.elevationLabels!=='none'&&!(o.errors||[]).some(e=>/Uncaught|ReferenceError/i.test(e)))&&output[0].pub.safeSegments>0;
 const result={targetBlob,passed,output};
 fs.writeFileSync('artifacts/property4-candidate/result.json',JSON.stringify(result,null,2));
 console.log('PROPERTY4_CANDIDATE_RESULT '+JSON.stringify({passed,sites:output.map(o=>({name:o.site?.name,timeout:o.timeout,swales:o.swales,segments:o.pub?.safeSegments,blocked:o.pub?.blocked,reason:o.pub?.blockReason,gauge:o.gauge}))}));
