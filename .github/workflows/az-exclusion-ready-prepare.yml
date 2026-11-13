@@ -20,9 +20,11 @@ jobs:
           from pathlib import Path
           p=Path('index.html');s=p.read_text()
           old='  if(!earthlineMapActive())return {ready:false,status:"map-inactive",waitedMs:0};'
-          new='''  // Do not fail immediately when Mapbox is still initializing; existing style poll
-  // waits for relevant exclusion layers then fails closed on timeout.
-  // This prevents a valid first Property click from publishing before style readiness.'''
+          new=chr(10).join([
+            '  // Do not fail immediately when Mapbox is still initializing; existing style poll',
+            '  // waits for relevant exclusion layers then fails closed on timeout.',
+            '  // This prevents a valid first Property click from publishing before style readiness.'
+          ])
           assert s.count(old)==1
           p.write_text(s.replace(old,new))
           PY
