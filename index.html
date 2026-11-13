@@ -20401,7 +20401,9 @@ var prescribeSwales;
   let lastAnimationPaint=0;
 
   function mapReady(){
-    return !!(typeof earthlineMap!=="undefined"&&earthlineMap&&earthlineMap.isStyleLoaded&&earthlineMap.isStyleLoaded());
+    try{return typeof earthlineMap!=="undefined" && !!earthlineMap &&
+      typeof earthlineMap.getStyle==="function" && Array.isArray(earthlineMap.getStyle()?.layers);}
+    catch(_){return false}
   }
   function activeProperty(){
     const s=window.earthlineRegional15778||{};
