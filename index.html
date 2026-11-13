@@ -35714,7 +35714,7 @@ body{display:block!important}
     window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16040=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16030=window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020={build:'EARTHLINE-REGIONAL-FINAL-16050',contourLines,elevationLabels:labels,waterPaths,directionArrows:arrows,waterOwner:'native-mapbox',svgWaterRendered:false,nativeWaterReady:!!nativeWater.ready,swaleLines:swales,swaleGradeCounts:gradeCounts,swaleGradeLabels:gradeLabels.length,topSwaleGradeLabel:gradeLabels[0]||'',buttonText:(document.getElementById('earthlineMapRun16020')||{}).textContent||'',renderedAt:new Date().toISOString()};return labels>0&&waterPaths>0&&nativeWater.ready&&swales>0&&gradeCounts.A>0&&gradeLabels.length>0;
   }
   function schedule(){
-    if(activeTier16168()==="property")return;
+    if(activeTier16168()==="property"){const staleMxxx=document.getElementById("earthlineRegionalVectorOverlay16020");if(staleMxxx&&staleMxxx.childNodes.length)staleMxxx.replaceChildren();return;}
     const current16905=window.EARTHLINE_REGIONAL_VISUAL_DATA_16020||null;
     if(!current16905){
       lastData=null;
@@ -35878,7 +35878,7 @@ body{display:block!important}
     /* 16312: Do NOT observe the overlay subtree. decorateSwales() itself removes and
        re-adds hit-target children, so observing those mutations creates an endless
        self-triggering loop. Decoration is instead tied to finite publish/motion events. */
-    document.addEventListener('earthline:analysis-complete',ev=>{const tier=String(ev?.detail?.tier||ev?.detail?.mode||displayedTier16090()).toLowerCase();if(tier==='regional'||tier==='focus')scheduleDecorate16090();},{passive:true});
+    document.addEventListener('earthline:analysis-complete',ev=>{const tier=String(ev?.detail?.tier||ev?.detail?.mode||displayedTier16090()).toLowerCase();if(tier==='property'){const staleMxxx=document.getElementById('earthlineRegionalVectorOverlay16020');if(staleMxxx&&staleMxxx.childNodes.length)staleMxxx.replaceChildren();}else if(tier==='regional'||tier==='focus')scheduleDecorate16090();},{passive:true});
     try{const mp=window.earthlineMap||earthlineMap||null;if(mp?.on){for(const ev of ['moveend','zoomend'])mp.on(ev,()=>{const tier=displayedTier16090();if(tier==='regional'||tier==='focus')setTimeout(decorateSwales,0);});}}catch(_){}
     setTimeout(decorateSwales,0);setTimeout(decorateSwales,700);setTimeout(decorateSwales,1800);
     document.documentElement.dataset.earthlineRegionalDisplay='16090';
