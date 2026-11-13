@@ -23,17 +23,8 @@ jobs:
           end=s.index('  function contourVisibility15776(){',start)
           old=s[start:end]
           assert 'earthlineMap.isStyleLoaded()' in old
-          new='''  function mapReady15776(){
-            // Source/layer registration should not wait for unrelated map tiles.
-            // The existing addSource/addLayer catch-and-retry remains the readiness gate.
-            try{
-              return typeof earthlineMap!=="undefined" && !!earthlineMap &&
-                typeof earthlineMap.getStyle==="function" &&
-                Array.isArray(earthlineMap.getStyle()?.layers);
-            }catch(_){return false}
-          }
-
-          '''
+          import base64
+          new=base64.b64decode('ICBmdW5jdGlvbiBtYXBSZWFkeTE1Nzc2KCl7CiAgICAvLyBBIHJlYWR5IHN0eWxlIGRlZmluaXRpb24gaXMgc3VmZmljaWVudCB0byBhdHRlbXB0IHNvdXJjZS9sYXllciBpbnN0YWxsYXRpb24uCiAgICAvLyBpc1N0eWxlTG9hZGVkKCkgYWxzbyB3YWl0cyBmb3IgdW5yZWxhdGVkIHRpbGVzIGFuZCBjYW4gc3RheSBmYWxzZSBpbmRlZmluaXRlbHkuCiAgICB0cnl7CiAgICAgIHJldHVybiB0eXBlb2YgZWFydGhsaW5lTWFwIT09InVuZGVmaW5lZCIgJiYgISFlYXJ0aGxpbmVNYXAgJiYKICAgICAgICB0eXBlb2YgZWFydGhsaW5lTWFwLmdldFN0eWxlPT09ImZ1bmN0aW9uIiAmJgogICAgICAgIEFycmF5LmlzQXJyYXkoZWFydGhsaW5lTWFwLmdldFN0eWxlKCk/LmxheWVycyk7CiAgICB9Y2F0Y2goXyl7cmV0dXJuIGZhbHNlfQogIH0KCg==').decode()
           p.write_text(s.replace(old,new))
           PY
           test "$(git hash-object index.html)" = "2b38c611630efe4eb7af1915e8225f87cb3aba88"
