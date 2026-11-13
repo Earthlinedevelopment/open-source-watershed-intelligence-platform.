@@ -6280,6 +6280,7 @@ function earthlineSwaleFromPts(pts,bandIndex,chanThr,isSite,maxS,totalBands){
   /* M210: Property mode = not a Regional Opportunity Tile (same test the engine uses for isRegionalTile15769). */
   const propertyM210=!(M.loc&&(/Regional Opportunity Tile/i.test(String(M.loc.name||""))||(Array.isArray(M.loc.zones)&&M.loc.zones.includes("Regional Tile"))));
   let channelHitsM210=0;
+  const slopesM201=[],ptsM201=[]; /* M201 rule B: per-sample terrain slopes (and their points, for length weighting) */
 
   for(const [px,py] of pts){
     const gx=Math.round(px),gy=Math.round(py);
@@ -6290,6 +6291,7 @@ function earthlineSwaleFromPts(pts,bandIndex,chanThr,isSite,maxS,totalBands){
 
     const spHere=slopePct(gx,gy);
     slopeSum+=spHere;
+    slopesM201.push(spHere);ptsM201.push([px,py]);
     if(propertyM210&&M.acc&&M.acc[idx(gx,gy)]>=chanThr)channelHitsM210++; /* M210 R8 */
 
     const [ggx,ggy]=gradAt(gx,gy);
@@ -6320,6 +6322,22 @@ function earthlineSwaleFromPts(pts,bandIndex,chanThr,isSite,maxS,totalBands){
   const forested=canopy>0.40;
   const avgSlope=slopeSum/n;
   if(avgSlope>maxS)return null;
+  /* M201 rule B (Property only; Regional unchanged): sampled mean terrain slope <= 4% and no 5-sample stretch with a median above 4%. */
+  if(propertyM210){
+    const kM201=slopesM201.length;
+    if(kM201<2)return null;
+    /* length-weighted mean: each sample weighs half of its two adjacent segments */
+    let wsM201=0,wtM201=0;
+    for(let jM201=0;jM201<kM201;jM201++){
+      const pa=ptsM201[Math.max(0,jM201-1)],pb=ptsM201[Math.min(kM201-1,jM201+1)];
+      const q=ptsM201[jM201];const wj=(Math.hypot(q[0]-pa[0],q[1]-pa[1])+Math.hypot(pb[0]-q[0],pb[1]-q[1]))/2;wsM201+=slopesM201[jM201]*wj;wtM201+=wj;
+    }
+    if(!(wtM201>0)||wsM201/wtM201>4)return null;
+    for(let iM201=0;iM201<kM201;iM201++){
+      const aM201=Math.max(0,Math.min(iM201-2,kM201-5)),wM201=slopesM201.slice(aM201,Math.min(kM201,aM201+5)).sort((p,q)=>p-q);
+      if(wM201[Math.floor(wM201.length/2)]>4)return null;
+    }
+  }
 
   const impOn=impOnSum/n;
   const impUp=impUpSum/n;
@@ -38305,3 +38323,34 @@ html[data-earthline-corridor-scale-mxxx="detail"] #earthlineRegionalVectorOverla
 
 <!-- MANTRA3: load the Elder Trees engine (absent from the October build); same tag as November 2d858d5 -->
 <script defer src="earthline-elder-restored-17097.js?v=mantra6-tree-20261113"></script>
+
+<!-- M211: Property steep-ground explanation (North Star §5: refusal is a result; Compendium §9 alternatives). Display only. -->
+<style id="earthline-steep-note-m211">
+#earthlineSteepNoteM211{position:fixed;left:50%;bottom:118px;transform:translateX(-50%);z-index:960;max-width:min(560px,calc(100vw - 32px));box-sizing:border-box;
+ background:rgba(9,22,31,.94);color:#eaf4f7;border:1px solid rgba(214,177,90,.75);border-radius:12px;padding:12px 40px 12px 14px;font:600 13px/1.45 system-ui,sans-serif;box-shadow:0 8px 22px rgba(0,0,0,.35)}
+#earthlineSteepNoteM211 b{color:#e7c56a}#earthlineSteepNoteM211 button{position:absolute;top:8px;right:8px;border:0;background:transparent;color:#eaf4f7;font:700 16px system-ui;cursor:pointer}
+@media(min-width:761px){html.earthline-panel-open-16188 #earthlineSteepNoteM211{left:calc((100vw + var(--el-rail-16188,62px) + var(--el-panel-16188,385px))/2)}}
+@media(max-width:760px){#earthlineSteepNoteM211{bottom:96px;font-size:12px}}
+</style>
+<script id="earthline-steep-note-m211-js">
+(function(){
+  function clear(){const n=document.getElementById('earthlineSteepNoteM211');if(n)n.remove();}
+  document.addEventListener('earthline:analysis-complete',function(ev){
+    clear();
+    try{
+      if(!ev||!ev.detail||ev.detail.tier!=='property')return;
+      if(typeof slopePct!=='function'||typeof GW==='undefined')return;
+      const s=[];for(let y=0;y<GH;y+=2)for(let x=0;x<GW;x+=2){const v=Number(slopePct(x,y));if(Number.isFinite(v))s.push(v);}
+      if(!s.length)return;
+      s.sort((a,b)=>a-b);
+      const median=s[Math.floor(s.length/2)],steepShare=s.filter(v=>v>4).length/s.length;
+      if(steepShare<0.5)return;
+      const pct=Math.round(steepShare*100);
+      const n=document.createElement('div');n.id='earthlineSteepNoteM211';n.setAttribute('role','status');
+      n.innerHTML='<b>Mostly steep ground:</b> about '+pct+'% of this area is steeper than 4% (typical slope '+median.toFixed(1)+'%). Swales are shown only where the ground is 4% or gentler. On the steeper ground the standard techniques are contour stone bunds, contour trenches, or check dams in the drainage lines. <button type="button" aria-label="Close">×</button>';
+      n.querySelector('button').addEventListener('click',clear);
+      document.body.appendChild(n);
+    }catch(e){}
+  });
+})();
+</script>
