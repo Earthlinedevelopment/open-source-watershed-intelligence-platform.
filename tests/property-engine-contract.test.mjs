@@ -11,7 +11,7 @@ const limits=Object.freeze({
   roadBuildingPropertySetbackM:3.05,
   mappedWaterSetbackM:18,
   modeledChannelSetbackM:3,
-  minimumLengthM:12,maximumLengthM:40,
+  minimumLengthM:12,minimumLengthCells:4,maxMinimumLengthM:40,
   maxContourRangeM:0.3,
   maxTortuosity:2.15,
   drawdownHours:48
@@ -25,6 +25,11 @@ const locations=Object.freeze([
   {name:'darling-mine',lat:33.73774,lng:-114.33439}
 ]);
 
+// R4: 40 m caps the minimum qualifying length, not the length of a swale.
+function minimumRequiredLengthM(cellSizeM){
+  if(!Number.isFinite(cellSizeM)||cellSizeM<=0)throw new RangeError('valid cell size required');
+  return Math.min(limits.maxMinimumLengthM,Math.max(limits.minimumLengthM,limits.minimumLengthCells*cellSizeM));
+}
 function median(values){const s=[...values].sort((a,b)=>a-b);return s[Math.floor(s.length/2)];}
 function checkSlope(samples){
   if(!Array.isArray(samples)||samples.length<5||samples.some(x=>!Number.isFinite(x)))return false;
@@ -43,6 +48,13 @@ test('locked numerical Property geometry envelope',()=>{
   assert.equal(limits.roadBuildingPropertySetbackM,3.05);
   assert.equal(limits.drawdownHours,48);
 });
+test('R4 caps only the minimum required length and never rejects long valid swales',()=>{
+  assert.equal(minimumRequiredLengthM(1),12);
+  assert.equal(minimumRequiredLengthM(5),20);
+  assert.equal(minimumRequiredLengthM(30),40);
+  assert.ok(100>minimumRequiredLengthM(30));
+  assert.equal('maximumLengthM' in limits,false);
+});
 test('slope gate rejects 33% and sustained above 4%',()=>{
   assert.equal(checkSlope([33,33,33,33,33]),false);
   assert.equal(checkSlope([4.1,4.1,4.1,1,1]),false);
@@ -59,4 +71,4 @@ test('required published output and safety evidence fields are frozen',()=>{
   assert.equal(new Set(required).size,5);
   assert.equal(new Set(swaleRequired).size,6);
 });
-export { limits,locations,checkSlope };
+export { limits,locations,checkSlope,minimumRequiredLengthM };
