@@ -18710,10 +18710,13 @@ var prescribeSwales;
   const IDS=[MINOR,MAJOR_CASING,MAJOR,LABEL];
 
   function mapReady15776(){
-    return typeof earthlineMap!=="undefined" &&
-      earthlineMap &&
-      earthlineMap.isStyleLoaded &&
-      earthlineMap.isStyleLoaded();
+    // A ready style definition is sufficient to attempt source/layer installation.
+    // isStyleLoaded() also waits for unrelated tiles and can stay false indefinitely.
+    try{
+      return typeof earthlineMap!=="undefined" && !!earthlineMap &&
+        typeof earthlineMap.getStyle==="function" &&
+        Array.isArray(earthlineMap.getStyle()?.layers);
+    }catch(_){return false}
   }
 
   function contourVisibility15776(){
