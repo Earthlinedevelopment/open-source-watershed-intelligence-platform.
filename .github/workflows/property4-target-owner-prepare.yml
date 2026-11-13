@@ -27,6 +27,10 @@ jobs:
           fragment=base64.b64decode('Y29uc3QgZXhpc3Rpbmc9d2luZG93LkVBUlRITElORV9QUk9QRVJUWV9UQVJHRVRfMTYyMDE7CiAgLy8gQSBkZWNsYXJlZCBQcm9wZXJ0eSBydW4gb3ducyBpdHMgZXhwbGljaXQgY29vcmRpbmF0ZXMgdW50aWwgcHVibGljYXRpb24uCiAgLy8gSWdub3JlIHN0YWxlIG1vdmVlbmQgY2FsbGJhY2tzLCBlc3BlY2lhbGx5IE1hcGJveCdzIGludmFsaWQgMMKwLCAxOMKwIGNhbWVyYS4KICBpZihTdHJpbmcoZG9jdW1lbnQuZG9jdW1lbnRFbGVtZW50LmRhdGFzZXQuZWFydGhsaW5lUHJvcGVydHlSdW5TdGF0ZXx8JycpPT09J3J1bm5pbmcnKXJldHVybiB0cnVlOwogIGlmKGV4aXN0aW5nJiZOdW1iZXIuaXNGaW5pdGUoTnVtYmVyKGV4aXN0aW5nLmxuZykpJiZOdW1iZXIuaXNGaW5pdGUoTnVtYmVyKGV4aXN0aW5nLmxhdCkpKXsKICAgIGNvbnN0IGF0PURhdGUucGFyc2UoU3RyaW5nKGV4aXN0aW5nLmF0fHwnJykpOwogICAgY29uc3QgZXhwbGljaXQ9ZXhpc3Rpbmcuc291cmNlIT09J2Nyb3NzaGFpcicmJmV4aXN0aW5nLnNvdXJjZSE9PSdjb3VudHJ5LWNlbnRlcic7CiAgICBpZihleHBsaWNpdCYmTnVtYmVyLmlzRmluaXRlKGF0KSYmRGF0ZS5ub3coKS1hdDw1MDAwKXJldHVybiB0cnVlOwogICAgaWYoTWF0aC5hYnMoTnVtYmVyKGMubG5nKSk8MC4wMDAwMDEmJk1hdGguYWJzKE51bWJlcihjLmxhdCktMTgpPDAuMDAwMDAxJiYKICAgICAgIChNYXRoLmFicyhOdW1iZXIoZXhpc3RpbmcubG5nKSk+MC4wMDAwMDF8fE1hdGguYWJzKE51bWJlcihleGlzdGluZy5sYXQpLTE4KT4wLjAwMDAwMSkpcmV0dXJuIHRydWU7CiAgfQogIA==').decode()
           assert s.count(marker)==1 and s[a:b].startswith('const existing=')
           s=s[:a]+fragment+s[b:]
+          before="  }\\n  \\n  if(existing&&existing.source==='country-center'&&window"
+          after="  }\\n  if(existing&&existing.source==='country-center' &&window"
+          assert before in s
+          s=s.replace(before,after,1)
           p.write_text(s)
           PY
           test "$(git hash-object index.html)" = "84927595f42e0f8a4d3000cc371761909a30af29"
