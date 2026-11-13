@@ -1,0 +1,51 @@
+name: Mantra XXX - Property overlay ownership correction
+on:
+  push:
+    branches: [candidate/mantra-xxx-recovery-no-regress]
+    paths:
+      - scripts/mantra-xxx-property-overlay-handoff.py
+      - .github/workflows/mantra-xxx-property-overlay.yml
+permissions:
+  contents: write
+concurrency:
+  group: earthline-mantra-xxx-overlay-handoff
+  cancel-in-progress: false
+jobs:
+  candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra-xxx-recovery-no-regress
+          fetch-depth: 0
+      - name: Lock tested candidate parent
+        run: |
+          set -euo pipefail
+          test "$(git hash-object index.html)" = "f8a0194bd499e7dedc0c88a11c1be0a4b64faa44"
+      - name: Apply exactly two stale SVG ownership changes
+        run: python3 scripts/mantra-xxx-property-overlay-handoff.py
+      - name: Regression - syntax and no new lifecycle owner
+        shell: bash
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),s=fs.readFileSync('index.html','utf8');
+          let n=0;
+          for(const [i,m] of [...s.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)].entries()){
+            if(/src=|application\/json|type=["']module/i.test(m[1])||!m[2].trim())continue;
+            new vm.Script(m[2],{filename:'inline-'+i+'.js'});n++;
+          }
+          assert(n>=60);
+          for(const mark of ['if(tier===\'property\')','staleMxxx.replaceChildren()','data-action="print"','Earthline is a free, community-focused tool','Slow it. Sink it. Spread it.','How Bioswales Work','EARTHLINE_PROPERTY_RUN_AUDIT_16173'])assert(s.includes(mark),mark);
+          assert(!s.includes('if(activeTier16168()==="property")return;'));
+          console.log('PASS',n,'inline scripts; Region/Property ownership isolated');
+          JS
+      - name: Commit candidate only; live branch untouched
+        run: |
+          set -euo pipefail
+          test "$(git diff --name-only)" = "index.html"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'candidate(mantra-xxx): retire stale Regional SVG at Property publication'
+          git push origin HEAD:candidate/mantra-xxx-recovery-no-regress
