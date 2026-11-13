@@ -1,0 +1,29 @@
+name: Property 4pct pinned candidate live-origin acceptance
+on:
+  push:
+    branches: [repair/property4-gentle-contour-split-20261113]
+    paths: [tests/property4-candidate-acceptance.mjs, .github/workflows/property4-candidate-acceptance.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Confirm exact reviewed HTML
+        run: test "$(git hash-object index.html)" = "31d528fa7c72c76f96d40ef3fe9643c4feba48ac"
+      - name: Browser dependencies
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Connected candidate Property acceptance
+        run: node tests/property4-candidate-acceptance.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: property4-live-origin-acceptance
+          path: artifacts/property4-candidate
+          retention-days: 14
