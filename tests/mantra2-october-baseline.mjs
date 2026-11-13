@@ -25,7 +25,8 @@ for(const test of runs){
    row.identityMatchesOctober=row.receivedHtmlSha256===expectedHash;
    if(!row.identityMatchesOctober)throw Error('LIVE_HTML_DOES_NOT_MATCH_PINNED_OCTOBER; refusing to label measurements as baseline');
    await page.locator('#searchInput').fill(test.search,{timeout:30000});
-   await page.locator('#runBtn').click({timeout:30000});
+   await page.locator('#searchInput').press('Enter',{timeout:30000});
+   row.searchSubmission='Enter from searchInput';
    await page.waitForFunction(()=>!!window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167 || !!window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970 || !!window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020,null,{timeout:80000}).catch(()=>null);
    await page.waitForTimeout(3500);
    if(test.lat!==undefined){
@@ -54,14 +55,19 @@ for(const test of runs){
      const safety=m.safetyAudit15806||null,mask=m.noBuildProvenance15843||null;
      const features=m.authoritativeSafeSwales15815?.features||null;
      const engine=Array.isArray(m.swales)?m.swales:null;
-     let maxTerrainSlope=null,minTerrainSlope=null,slopeSamples=0;
-     if(t.lat!==undefined&&typeof slopePct==='function'&&m.inP){
-       for(let y=2;y<144;y++)for(let x=2;x<208;x++){
-         const i=x+y*210;if(!m.inP[i])continue;
-         const s=Number(slopePct(x,y));if(!Number.isFinite(s))continue;
-         maxTerrainSlope=Math.max(maxTerrainSlope??s,s);minTerrainSlope=Math.min(minTerrainSlope??s,s);slopeSamples++;
-       }
-     }
+     // October's slopePct is closure-private. Only sample data already attached
+     // to published corridors; never imply terrain raster or corridor maxima
+     // have been measured when only a per-swale scalar is available.
+     const published=Array.isArray(features)?features:null;
+     const slopeOf=f=>{
+       const v=f?.slope??f?.properties?.slope;
+       if(v===null||v===undefined||v==='')return null;
+       const value=Number(v);return Number.isFinite(value)?value:null;
+     };
+     const publishedSlopes=published?published.map(slopeOf).filter(v=>v!==null):[];
+     const sampledSwaleMaxSlopePct=publishedSlopes.length?Math.max(...publishedSlopes):null;
+     const sampledSwaleMinSlopePct=publishedSlopes.length?Math.min(...publishedSlopes):null;
+     const sampledSwaleMeanSlopePct=publishedSlopes.length?publishedSlopes.reduce((a,b)=>a+b,0)/publishedSlopes.length:null;
      const pick=(a,k)=>a&&Object.prototype.hasOwnProperty.call(a,k)?a[k]:null;
      return {
        analysisTier:document.documentElement.dataset.earthlineAnalysisTier||null,
@@ -70,7 +76,12 @@ for(const test of runs){
        propertySettled:pick(prop,'settled'),propertyResult:pick(prop,'result'),
        propertyCenter:pick(prop,'center'),publishedSwales:features?.length??null,
        engineSwales:engine?.length??null,
-       terrainMinSlopePct:minTerrainSlope,terrainMaxSlopePct:maxTerrainSlope,terrainSlopeSamples:slopeSamples,
+       publishedSwaleSlopeSampleCount:publishedSlopes.length,
+       publishedSwaleSlopeCount:published?.length??null,
+       publishedSwaleMinSlopePct:sampledSwaleMinSlopePct,
+       publishedSwaleMaxSlopePct:sampledSwaleMaxSlopePct,
+       publishedSwaleMeanSlopePct:sampledSwaleMeanSlopePct,
+       slopeEvidenceNote:publishedSlopes.length?'Per-published-swale scalar; NOT the maximum along a route':'UNKNOWN: neither published swale slope scalars nor necessarily route sampling available',
        routeMaxSlopePct:pick(safety,'routeMaxSlopePct'),
        routeAverageSlopePct:pick(safety,'routeAverageSlopePct'),
        maximumSustainedAbove4Pct:pick(safety,'maximumSustainedAbove4Pct'),
@@ -88,8 +99,11 @@ for(const test of runs){
    row.verdict='MEASURED_PARTIAL_UNTIL_SAFETY_FIELDS_CONFIRMED';
    if(!row.measured||test.lat!==undefined&&row.measured.propertySettled!==true)row.verdict='FAILED_OR_INCOMPLETE';
    if(test.lat!==undefined){
-     const keys=['routeMaxSlopePct','routeAverageSlopePct','roadIntersections','waterIntersections','spacingViolationCount'];
+     const keys=['roadIntersections','waterIntersections','spacingViolationCount'];
      row.missingSafetyMetrics=keys.filter(k=>row.measured[k]===null);
+     if(row.measured.routeMaxSlopePct===null&&row.measured.publishedSwaleMaxSlopePct===null)row.missingSafetyMetrics.push('slope: no route maximum or published swale slope');
+     if(row.measured.routeAverageSlopePct===null)row.missingSafetyMetrics.push('routeAverageSlopePct');
+     if(row.measured.maximumSustainedAbove4Pct===null)row.missingSafetyMetrics.push('maximumSustainedAbove4Pct');
      if(row.missingSafetyMetrics.length)row.verdict='SAFETY_METRICS_UNVERIFIED';
    }
  }catch(e){row.error=String(e);row.verdict='FAILED_OR_UNVERIFIED'}
