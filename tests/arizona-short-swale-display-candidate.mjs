@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 fs.mkdirSync('artifacts/az-short-display',{recursive:true});
 const BASE='https://earthlinedevelopment.org/';
-const targetBlob='133f36605b9a0d58a85eae759580aa9eadeffe7a'; // exact deployed Git blob
+const targetBlob='66eb239436ea5cb4fd6975ab83f52690777ec14f'; // exact deployed Git blob
 const cases=[
  {name:'ArizonaScreenshot1',lat:34.21568,lng:-111.93067},
  {name:'ArizonaScreenshot2',lat:34.21568,lng:-111.93067},
@@ -32,7 +32,7 @@ for(const site of cases){
   const html=await response.body();
   const {createHash}=await import('node:crypto');
   const actualSha=createHash('sha256').update(html).digest('hex');
-  if(actualSha!=='5ab2fdbcc29fabd3d5e61f5876441e2b035868a0bde1d600cacef83969ef4aa1')throw new Error('CANDIDATE HTML SHA MISMATCH '+actualSha);
+  if(actualSha!=='7d1281d937fec75fbb1c035772d2e8c26bcf3880fe4eaab366cf9500debfa642')throw new Error('CANDIDATE HTML SHA MISMATCH '+actualSha);
   await page.waitForFunction(()=>typeof window.earthlineSetPropertyTarget16201==='function'&&typeof window.earthlineDeclarePropertyAtCrosshair16173==='function',{},{timeout:60000});
   await page.waitForSelector('#earthlineDeclareProperty16169',{state:'attached',timeout:60000});
   await page.evaluate(t=>{
