@@ -1,0 +1,46 @@
+name: Mantra XXX - Arizona property and report browser acceptance
+on:
+  push:
+    branches: [candidate/mantra-xxx-recovery-no-regress]
+    paths:
+      - tests/mantra-xxx-regression-browser.mjs
+      - .github/workflows/mantra-xxx-browser-gate.yml
+permissions:
+  contents: read
+concurrency:
+  group: earthline-mantra-xxx-browser-acceptance
+  cancel-in-progress: false
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: candidate/mantra-xxx-recovery-no-regress
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install free-tier test browser
+        shell: bash
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Serve exact candidate on local HTTP through production-origin router
+        shell: bash
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/earthline-mxxx-http.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Arizona regional, two Property sites, idle stability, report and PDF action
+        run: node tests/mantra-xxx-regression-browser.mjs
+      - name: Preserve browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-mantra-xxx-browser-evidence
+          path: |
+            mxxx-browser-results.json
+            mxxx-*.png
+          if-no-files-found: ignore
+          retention-days: 7
