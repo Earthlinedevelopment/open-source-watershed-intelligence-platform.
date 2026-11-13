@@ -26,19 +26,34 @@ for(const loc of locations){
       map.jumpTo({center:[t.lng,t.lat],zoom:17});
       const target={lng:t.lng,lat:t.lat,source:'connected-m210-browser-gate',at:new Date().toISOString()};
       window.earthlineSetPropertyTarget16201(target,{openPanel:false});
-      const result=await Promise.resolve(window.earthlineDeclarePropertyAtCrosshair16173());
+      // Register BEFORE triggering the run: publication can precede promise return.
+      // A test timeout is inconclusive; it does not establish engine failure.
+      const completed=new Promise((resolve,reject)=>{
+        const timer=setTimeout(()=>{document.removeEventListener('earthline:analysis-complete',onComplete);reject(new Error('Property publication event not observed within 180 seconds'));},180000);
+        function onComplete(ev){
+          if(String(ev?.detail?.tier||'').toLowerCase()!=='property')return;
+          clearTimeout(timer);
+          document.removeEventListener('earthline:analysis-complete',onComplete);
+          resolve(ev.detail);
+        }
+        document.addEventListener('earthline:analysis-complete',onComplete);
+      });
+      const declaration=window.earthlineDeclarePropertyAtCrosshair16173();
+      // Do not await the declaration: its promise may outlive the publish event.
+      Promise.resolve(declaration).catch(()=>{});
+      const publication=await completed;
       const audit=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
       const published=window.EARTHLINE_DISPLAYED_RUN_16151||{};
       const m=window.M||(typeof M!=='undefined'?M:null);
       const safe=m?.authoritativeSafeSwales15815?.features;
-      return {location:t,finished:true,result,audit:{
+      return {location:t,finished:true,publication,audit:{
         settled:audit.settled,result:audit.result,error:audit.error,serial:audit.serial,
         corridors:audit.corridors,center:audit.center,
         sourceEvidence:audit.sourceEvidence,renderMode:audit.renderMode
       },published:{tier:published.tier,center:published.center},
       swales:Array.isArray(safe)?safe.length:null,
       target:window.EARTHLINE_PROPERTY_TARGET_16201||null};
-    },loc,{timeout:180000});
+    },loc);
   }catch(e){data.reason=String(e?.message||e)}
   data.consoleErrors=errors;
   try{await page.screenshot({path:'artifacts/m210-live/'+loc.id.toLowerCase()+'.png',fullPage:false,timeout:15000})}catch(e){}
@@ -50,7 +65,7 @@ const summary={commit:'a9d4e04e1c00ca74f6fac1c762b0c370c57ef1fc',
   checkedAt:new Date().toISOString(),results,
   hasZeroSwales:results.some(r=>r.swales===0),
   hasPageErrors:results.some(r=>r.consoleErrors?.length),
-  incomplete:results.some(r=>!r.finished||r.audit?.settled!==true||r.swales===null)};
+  incomplete:results.some(r=>!r.finished||r.publication?.tier!=='property'||r.swales===null)};
 writeFileSync('artifacts/m210-live/report.json',JSON.stringify(summary,null,2));
 console.log('M210_CONNECT_BROWSER_SUMMARY '+JSON.stringify(summary));
 if(summary.hasZeroSwales||summary.hasPageErrors||summary.incomplete)process.exitCode=1;
