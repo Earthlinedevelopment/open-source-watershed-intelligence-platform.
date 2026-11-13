@@ -8,7 +8,7 @@ on:
       - .github/workflows/mantra5-five-runs.yml
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   acceptance:
     runs-on: ubuntu-latest
@@ -30,3 +30,21 @@ jobs:
           path: artifacts/mantra5-five-runs/
           retention-days: 30
           if-no-files-found: warn
+      - name: Record five-run acceptance and fast-forward GitHub Pages only on PASS
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "f898da19a0a13fe68a953226a94bbb323cec5916"
+          test -s artifacts/mantra5-five-runs/results.json
+          mkdir -p docs
+          cp artifacts/mantra5-five-runs/results.json docs/MANTRA5-FIVE-RUN-RESULT.json
+          git config user.name "Earthline Acceptance Gate"
+          git config user.email "info@earthlinedevelopment.org"
+          git add docs/MANTRA5-FIVE-RUN-RESULT.json
+          git commit -m "test(mantra5): record five matching Iowa Property results"
+          live_head="$(git ls-remote origin refs/heads/pages-live | cut -f1)"
+          test "$live_head" = "c7d98bc7da30b93ceaf170d3828eb4dbc8fbaf5a"
+          git push origin HEAD:refs/heads/repair/mantra5-osm-20261113
+          git push origin HEAD:refs/heads/pages-live
+          echo "MANTRA5_LIVE_PROMOTION_SUCCESS $(git rev-parse HEAD)"
