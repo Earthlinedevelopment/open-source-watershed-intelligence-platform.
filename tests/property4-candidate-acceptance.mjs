@@ -19,7 +19,7 @@ for(const site of cases){
  await page.route('**/*',async route=>{
    const u=new URL(route.request().url());
    if(u.origin!==new URL(BASE).origin)return route.continue();
-   const rel=decodeURIComponent(u.pathname).replace(/^\\/+/, '')||'index.html';
+   const rel=decodeURIComponent(u.pathname).replace(/^[/]+/, '')||'index.html';
    const local=path.resolve(process.cwd(),rel);
    if(!local.startsWith(process.cwd()+path.sep))return route.abort();
    if(fs.existsSync(local)&&fs.statSync(local).isFile()){
