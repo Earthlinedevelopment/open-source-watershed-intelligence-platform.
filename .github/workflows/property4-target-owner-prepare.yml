@@ -1,0 +1,38 @@
+name: Prepare pinned Property target ownership fix
+on:
+  push:
+    branches: [repair/property4-gentle-contour-split-20261113]
+    paths: [.github/workflows/property4-target-owner-prepare.yml]
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Prevent stale Mapbox moveend from replacing explicit Property coordinates
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object index.html)" = "1c3ad17464c54cd6c9d8656fb5e3a0a792d776ac"
+          python3 - <<'PY'
+          import base64
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          marker='function syncPropertyTargetFromMap16201(){'
+          start=s.index(marker)
+          a=s.index('const existing=window.EARTHLINE_PROPERTY_TARGET_16201;',start)
+          b=a+len('const existing=window.EARTHLINE_PROPERTY_TARGET_16201;')
+          fragment=base64.b64decode('Y29uc3QgZXhpc3Rpbmc9d2luZG93LkVBUlRITElORV9QUk9QRVJUWV9UQVJHRVRfMTYyMDE7CiAgLy8gQSBkZWNsYXJlZCBQcm9wZXJ0eSBydW4gb3ducyBpdHMgZXhwbGljaXQgY29vcmRpbmF0ZXMgdW50aWwgcHVibGljYXRpb24uCiAgLy8gSWdub3JlIHN0YWxlIG1vdmVlbmQgY2FsbGJhY2tzLCBlc3BlY2lhbGx5IE1hcGJveCdzIGludmFsaWQgMMKwLCAxOMKwIGNhbWVyYS4KICBpZihTdHJpbmcoZG9jdW1lbnQuZG9jdW1lbnRFbGVtZW50LmRhdGFzZXQuZWFydGhsaW5lUHJvcGVydHlSdW5TdGF0ZXx8JycpPT09J3J1bm5pbmcnKXJldHVybiB0cnVlOwogIGlmKGV4aXN0aW5nJiZOdW1iZXIuaXNGaW5pdGUoTnVtYmVyKGV4aXN0aW5nLmxuZykpJiZOdW1iZXIuaXNGaW5pdGUoTnVtYmVyKGV4aXN0aW5nLmxhdCkpKXsKICAgIGNvbnN0IGF0PURhdGUucGFyc2UoU3RyaW5nKGV4aXN0aW5nLmF0fHwnJykpOwogICAgY29uc3QgZXhwbGljaXQ9ZXhpc3Rpbmcuc291cmNlIT09J2Nyb3NzaGFpcicmJmV4aXN0aW5nLnNvdXJjZSE9PSdjb3VudHJ5LWNlbnRlcic7CiAgICBpZihleHBsaWNpdCYmTnVtYmVyLmlzRmluaXRlKGF0KSYmRGF0ZS5ub3coKS1hdDw1MDAwKXJldHVybiB0cnVlOwogICAgaWYoTWF0aC5hYnMoTnVtYmVyKGMubG5nKSk8MC4wMDAwMDEmJk1hdGguYWJzKE51bWJlcihjLmxhdCktMTgpPDAuMDAwMDAxJiYKICAgICAgIChNYXRoLmFicyhOdW1iZXIoZXhpc3RpbmcubG5nKSk+MC4wMDAwMDF8fE1hdGguYWJzKE51bWJlcihleGlzdGluZy5sYXQpLTE4KT4wLjAwMDAwMSkpcmV0dXJuIHRydWU7CiAgfQogIA==').decode()
+          assert s.count(marker)==1 and s[a:b].startswith('const existing=')
+          s=s[:a]+fragment+s[b:]
+          p.write_text(s)
+          PY
+          test "$(git hash-object index.html)" = "84927595f42e0f8a4d3000cc371761909a30af29"
+          git rm .github/workflows/property4-target-owner-prepare.yml
+          git config user.name 'Earthline explicit Property target repair'
+          git config user.email 'info@earthlinedevelopment.org'
+          git add index.html
+          git commit -m 'fix(property): retain explicit target across stale moveend including degenerate camera'
+          git push origin HEAD:repair/property4-gentle-contour-split-20261113
