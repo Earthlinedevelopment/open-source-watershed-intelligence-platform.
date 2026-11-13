@@ -25,6 +25,12 @@ for(let i=0;i<5;i++){
     await page.goto(base+'?mantra5='+i,{waitUntil:'domcontentloaded',timeout:65000});
     await page.locator('#searchInput').fill('Iowa',{timeout:30000});
     await page.locator('#searchInput').press('Enter',{timeout:30000});
+    // Reproduce a normal user leaving the search field before starting Property:
+    // no force-clicks or DOM removal; fail if suggestions still obstruct controls.
+    await page.locator('#searchInput').press('Escape',{timeout:30000});
+    await page.mouse.click(1350,850);
+    row.searchSuggestionsBlocking=await page.locator('#earthlineSearchSuggestions15970.open').isVisible().catch(()=>false);
+    if(row.searchSuggestionsBlocking)throw Error('Iowa search dropdown obstructs Property controls after Escape and outside click');
     await page.waitForFunction(()=>Boolean(window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167 || window.EARTHLINE_REGIONAL_DISPLAY_AUDIT_16020 || window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970),null,{timeout:80000}).catch(()=>null);
     await page.evaluate(t=>{
       const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
