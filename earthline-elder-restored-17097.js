@@ -426,14 +426,15 @@
     const container=m.getContainer?.(),w=container?.clientWidth||0,h=container?.clientHeight||0;
     let visible=[];
     for(const c of coords){
-      try{const p=m.project(c);if(p&&p.x>=85&&p.x<=w-85&&p.y>=95&&p.y<=h-70)visible.push({c,p})}catch(_){}
+      try{const p=m.project(c);if(p&&p.x>=0&&p.x<=w&&p.y>=0&&p.y<=h)visible.push({c,p})}catch(_){}
     }
     if(!visible.length)return;
     // Prefer the highest clearly visible Elder marker, leaving room for the label above it.
     visible.sort((a,b)=>a.p.y-b.p.y);
     try{
       elderInfoPopupM11?.remove();
-      const popup=new mapboxgl.Popup({closeButton:false,closeOnClick:false,anchor:'bottom',offset:18,className:'earthline-elder-info-m11'})
+      const anchor=visible[0].p.x>w*0.68?'bottom-right':(visible[0].p.x<w*0.32?'bottom-left':'bottom');
+      const popup=new mapboxgl.Popup({closeButton:false,closeOnClick:false,anchor,offset:18,className:'earthline-elder-info-m11'})
         .setLngLat(visible[0].c)
         .setHTML('<a href="#swales-explained" style="display:block;padding:6px 9px;border:1px solid #b88a35;border-radius:8px;background:#1c2a25;color:#f4d27a;font:800 12px/1.25 Noto Sans,system-ui,sans-serif;text-decoration:none;white-space:nowrap">&#9432; What are Elder Trees?</a>')
         .addTo(m);
