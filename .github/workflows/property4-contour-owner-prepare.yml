@@ -1,0 +1,46 @@
+name: Fix Property official elevation contour source readiness
+on:
+  push:
+    branches: [repair/property4-gentle-contour-split-20261113]
+    paths: [.github/workflows/property4-contour-owner-prepare.yml]
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Pin prior candidate and correct contour readiness ownership
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object index.html)" = "31d528fa7c72c76f96d40ef3fe9643c4feba48ac"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          old='''  function mapReady15776(){
+            return typeof earthlineMap!=="undefined" &&
+              earthlineMap &&
+              earthlineMap.isStyleLoaded &&
+              earthlineMap.isStyleLoaded();
+          }'''
+          new='''  function mapReady15776(){
+            // Source/layer registration should not wait for unrelated map tiles.
+            // The existing addSource/addLayer catch-and-retry remains the readiness gate.
+            try{
+              return typeof earthlineMap!=="undefined" && !!earthlineMap &&
+                typeof earthlineMap.getStyle==="function" &&
+                Array.isArray(earthlineMap.getStyle()?.layers);
+            }catch(_){return false}
+          }'''
+          assert s.count(old)==1,(s.count(old),'contour context changed')
+          p.write_text(s.replace(old,new))
+          PY
+          test "$(git hash-object index.html)" = "2b38c611630efe4eb7af1915e8225f87cb3aba88"
+          git rm .github/workflows/property4-contour-owner-prepare.yml
+          git config user.name 'Earthline isolated contour repair'
+          git config user.email 'info@earthlinedevelopment.org'
+          git add index.html
+          git commit -m 'fix(property): install official contour source without waiting for unrelated tiles'
+          git push origin HEAD:repair/property4-gentle-contour-split-20261113
