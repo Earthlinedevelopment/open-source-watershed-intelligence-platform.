@@ -73,6 +73,18 @@ for(const site of cases){
          contours:layer('earthline-official-contour-major-15776'),elevationLabels:layer('earthline-official-contour-label-15776'),recharge:layer('earthline-recharge-line')
        },generation:m?.searchGen};
   },site);
+  outcome.syncProbe=await page.evaluate(()=>{
+    const m=(typeof M!=='undefined'?M:window.M);
+    const before={layerOn:m?.layers?.swales?.on,analysisReady:m?.analysisReady,terrainReady:m?.terrainReady,
+      sourceCount:(typeof EARTHLINE_SWALE_SOURCE!=='undefined'?earthlineMap?.getSource?.(EARTHLINE_SWALE_SOURCE)?._data?.features?.length:null),
+      mapActive:(typeof earthlineMapActive==='function'?earthlineMapActive():null),
+      ensureAudit:window.EARTHLINE_SWALE_LAYER_ENSURE_AUDIT_16500||null};
+    const syncResult=(typeof earthlineSyncSwaleLayer==='function'?earthlineSyncSwaleLayer():null);
+    return {before,syncResult,after:{sourceCount:(typeof EARTHLINE_SWALE_SOURCE!=='undefined'?earthlineMap?.getSource?.(EARTHLINE_SWALE_SOURCE)?._data?.features?.length:null),
+       visibility:(typeof EARTHLINE_SWALE_LAYER!=='undefined'?earthlineMap?.getLayoutProperty?.(EARTHLINE_SWALE_LAYER,'visibility'):null),
+       ensureAudit:window.EARTHLINE_SWALE_LAYER_ENSURE_AUDIT_16500||null}};
+  });
+  console.log('ARIZONA_SWALE_SYNC_PROBE '+JSON.stringify(outcome.syncProbe));
   outcome.timeout=timeout;
   outcome.errors=errs;
   await page.screenshot({path:'artifacts/property4-candidate/'+site.name.toLowerCase()+'.png',timeout:20000});
