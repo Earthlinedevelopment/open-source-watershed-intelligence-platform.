@@ -1,3 +1,4 @@
+// Repeat-run scientific acceptance against unchanged pinned HTML; no live changes.
 import {chromium} from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
