@@ -1,0 +1,31 @@
+name: Earthline second Property repeatability evidence
+on:
+  push:
+    branches: [staging/october-stabilization-2026-11-13]
+    paths:
+      - tests/property-second-run.mjs
+      - .github/workflows/property-second-run.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  two-properties:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Compare two consecutive Property publications against targets
+        run: node tests/property-second-run.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: property-second-run-evidence
+          path: artifacts/property-repeat
+          retention-days: 14
