@@ -1,7 +1,7 @@
 import {chromium} from 'playwright';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 const HTML=readFileSync('index.html','utf8');
-const URL='https://earthlinedevelopment.org/';
+const BASE_URL='https://earthlinedevelopment.org/';
 const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
 const errors=[],report={at:new Date().toISOString(),target:{lng:-111.93066,lat:34.21568},errors,pass:false};
 mkdirSync('artifacts/mantra6-swale',{recursive:true});
@@ -14,7 +14,7 @@ await context.route('https://earthlinedevelopment.org/**',async route=>{
 const page=await context.newPage();
 page.on('pageerror',e=>errors.push(String(e)));
 try{
-  await page.goto(URL+'?mantra6=swale-browser',{waitUntil:'domcontentloaded',timeout:60000});
+  await page.goto(BASE_URL+'?mantra6=swale-browser',{waitUntil:'domcontentloaded',timeout:60000});
   await page.locator('#searchInput').waitFor({timeout:30000});
   await page.evaluate(()=>{const input=document.getElementById('searchInput'),run=document.getElementById('runBtn');input.value='Arizona';input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));run.click();});
   await page.waitForFunction(()=>Boolean(window.EARTHLINE_CORRIDOR_PUBLICATION_AUDIT_16167||window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970),null,{timeout:55000});
