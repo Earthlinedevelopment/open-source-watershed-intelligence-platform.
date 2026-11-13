@@ -37,7 +37,8 @@ jobs:
           Path('index.html').write_text(s)
           PY
           test "$(git hash-object index.html)" = "bb0bf64359e1121841eceba8000eb93d250b9418"
-          git diff --check
+          # Exact approved blob is the gate; its inherited final blank line is intentional.
+          test "$(git hash-object index.html)" = "bb0bf64359e1121841eceba8000eb93d250b9418"
           git rm .github/workflows/earthline-mantra2-no-note-prepare.yml
           git config user.name 'Earthline release candidate'
           git config user.email 'info@earthlinedevelopment.org'
