@@ -1,0 +1,32 @@
+name: Mantra 5 Iowa five-run OSM acceptance
+on:
+  push:
+    branches: [repair/mantra5-osm-20261113]
+    paths:
+      - index.html
+      - tests/mantra5-osm-five-runs.mjs
+      - .github/workflows/mantra5-five-runs.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Five independent Iowa Property tests from candidate HTML
+        run: node tests/mantra5-osm-five-runs.mjs
+      - name: Attach logs and screenshots even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mantra5-iowa-five-runs
+          path: artifacts/mantra5-five-runs/
+          retention-days: 30
+          if-no-files-found: warn
