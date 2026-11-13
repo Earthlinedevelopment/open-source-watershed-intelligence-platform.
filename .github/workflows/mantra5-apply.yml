@@ -1,0 +1,43 @@
+name: Mantra 5 pinned OSM safe-source port
+on:
+  push:
+    branches: [repair/mantra5-osm-20261113]
+    paths:
+      - tools/mantra5-osm-port.py
+      - .github/workflows/mantra5-apply.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[mantra5-applied]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Apply pinned port
+        run: python3 tools/mantra5-osm-port.py
+      - name: Static gate and one-file diff
+        shell: bash
+        run: |
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+          node --version
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for a in ("https://api.openstreetmap.org/api/0.6/map?bbox=", "OSM response BBOX incomplete", "complete-osm-zero-mapped-exclusions-screening-only", "if(portableStyleFirst16550&&styleQuerySuccess16516&&bounded.length>0)"):
+              assert s.count(a)==1,a
+          print("MANTRA5_OSM_SOURCE_STATIC_PASS")
+          PY
+          git diff --numstat
+      - name: Commit candidate only
+        shell: bash
+        run: |
+          git config user.name "Earthline Candidate Gate"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix(mantra5): November OSM road-water source and bounded complete-empty screening [mantra5-applied]"
+          git push origin HEAD:repair/mantra5-osm-20261113
