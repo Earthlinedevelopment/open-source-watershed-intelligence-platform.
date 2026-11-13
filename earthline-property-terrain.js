@@ -42,7 +42,7 @@ export function rasterizeNoBuild({width,height,cellSizeM,exclusions,channelIndic
     !Number.isFinite(cellSizeM)||cellSizeM<=0)throw new Error('Invalid exclusion grid');
   if(!exclusions||exclusions.complete!==true ||
     !['features-found','verified-clear','screened-clear'].includes(exclusions.acquisition) ||
-    !Array.isArray(exclusions.roads)||!Array.isArray(exclusions.water))throw new Error('Exclusions unverified');
+    !Array.isArray(exclusions.roads)||!Array.isArray(exclusions.buildings)||!Array.isArray(exclusions.driveways)||!Array.isArray(exclusions.parking)||!Array.isArray(exclusions.water)||!Array.isArray(exclusions.wetlands)||!Array.isArray(exclusions.propertyBoundary))throw new Error('Exclusions unverified');
   const n=width*height,mask=new Uint8Array(n);
   function mark(indices,radius){
     if(!Array.isArray(indices)||indices.some(v=>!Number.isInteger(v)||v<0||v>=n))throw new Error('Bad exclusion cells');
@@ -55,8 +55,9 @@ export function rasterizeNoBuild({width,height,cellSizeM,exclusions,channelIndic
       }
     }
   }
-  mark(exclusions.roads,roadBufferM);
+  for(const group of ['roads','buildings','driveways','parking','propertyBoundary'])mark(exclusions[group],roadBufferM);
   mark(exclusions.water,waterBufferM);
+  mark(exclusions.wetlands,waterBufferM);
   mark(channelIndices,channelsBufferM);
   return mask;
 }
