@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 fs.mkdirSync('artifacts/property4-candidate',{recursive:true});
 const BASE='https://earthlinedevelopment.org/';
-const targetBlob='2b38c611630efe4eb7af1915e8225f87cb3aba88';
+const targetBlob='1c3ad17464c54cd6c9d8656fb5e3a0a792d776ac';
 const cases=[
  {name:'Iowa',lat:42.13,lng:-93.68},
  {name:'Arizona',lat:34.21593,lng:-111.93665}
