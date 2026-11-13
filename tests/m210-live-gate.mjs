@@ -2,7 +2,7 @@
 import {chromium} from 'playwright';
 import {mkdirSync,writeFileSync} from 'node:fs';
 const locations=[
-  {id:'Arizona',lat:34.21527,lng:-111.93335},
+  {id:'Arizona',lat:34.21572,lng:-111.93500},
   {id:'Iowa',lat:42.13000,lng:-93.68000}
 ];
 mkdirSync('artifacts/m210-live',{recursive:true});
@@ -61,7 +61,7 @@ for(const loc of locations){
   await page.close();
 }
 await browser.close();
-const summary={commit:'a9d4e04e1c00ca74f6fac1c762b0c370c57ef1fc',
+const summary={commit:'34fb273d170d3338f167f4366c7ccde4c30e6c31',
   checkedAt:new Date().toISOString(),results,
   hasZeroSwales:results.some(r=>r.swales===0),
   hasPageErrors:results.some(r=>r.consoleErrors?.length),
