@@ -49,7 +49,17 @@ for(const site of cases){
     const layer=id=>{try{return map?.getLayoutProperty?.(id,'visibility')??null}catch{return null}};
     const drawn=id=>{try{return map?.getLayer?.(id)?map.queryRenderedFeatures({layers:[id]}).length:0}catch{return 0}};
     return {site:t,pub:p,swales:m?.swales?.length,vector:m?.vectorNoBuildCoverage||null,
-       generatedGeojson:(typeof earthlineSwaleGeoJSON==='function'?earthlineSwaleGeoJSON().features.length:null),swaleLayerSource:(typeof EARTHLINE_SWALE_SOURCE!=='undefined'?EARTHLINE_SWALE_SOURCE:null),swaleLayerVisibility:(typeof EARTHLINE_SWALE_LAYER!=='undefined'?layer(EARTHLINE_SWALE_LAYER):null),swaleMapFeatureCount:(typeof EARTHLINE_SWALE_SOURCE!=='undefined'?count(EARTHLINE_SWALE_SOURCE):null),slopeStats:(()=>{if(!m?.inP||!m?.dem)return null;let n=0,eligible=0;for(let y=1;y<GH-1;y++)for(let x=1;x<GW-1;x++){if(!m.inP[idx(x,y)])continue;n++;if(slopePct(x,y)<=4)eligible++}return {n,eligible,percent:100*eligible/(n||1)}})(),tier:document.documentElement.dataset.earthlineAnalysisTier,demSource:m?.demSource,integrity:window.EARTHLINE_LOCATION_INTEGRITY_15801||null,
+       pipeline:((m?.swales||[]).map(sw=>{try{
+ const split=earthlineSplitUsableSegments(sw.pts,4);
+ const threshold=Math.max(20,((m.swaleMeta&&m.swaleMeta.targetSpacingM)||30)*0.82);
+ return {id:sw.id,isSite:sw.isSite,rawPts:sw.pts?.length,rawLengthM:earthlinePathLengthM(sw.pts),
+   goodPts:sw.pts?.filter(p=>earthlinePathPointUsable(p[0],p[1],4)).length,
+   rawSlopePcts:sw.pts?.slice(0,20).map(p=>Number(slopePct(Math.round(p[0]),Math.round(p[1])).toFixed(2))),
+   splits:split.map(seg=>{const smooth=earthlineNaturalContourDisplay(seg);
+     const finals=earthlineFinalSafeSegments15771(smooth,4);
+     return {originalM:earthlinePathLengthM(seg),passesVisibilityLength:earthlinePathLengthM(seg)>=threshold||sw.isSite,
+       smoothedLengthM:earthlinePathLengthM(smooth),finalM:finals.map(earthlinePathLengthM)};})};
+ }catch(e){return {error:String(e)}}})),generatedGeojson:(typeof earthlineSwaleGeoJSON==='function'?earthlineSwaleGeoJSON().features.length:null),swaleLayerSource:(typeof EARTHLINE_SWALE_SOURCE!=='undefined'?EARTHLINE_SWALE_SOURCE:null),swaleLayerVisibility:(typeof EARTHLINE_SWALE_LAYER!=='undefined'?layer(EARTHLINE_SWALE_LAYER):null),swaleMapFeatureCount:(typeof EARTHLINE_SWALE_SOURCE!=='undefined'?count(EARTHLINE_SWALE_SOURCE):null),slopeStats:(()=>{if(!m?.inP||!m?.dem)return null;let n=0,eligible=0;for(let y=1;y<GH-1;y++)for(let x=1;x<GW-1;x++){if(!m.inP[idx(x,y)])continue;n++;if(slopePct(x,y)<=4)eligible++}return {n,eligible,percent:100*eligible/(n||1)}})(),tier:document.documentElement.dataset.earthlineAnalysisTier,demSource:m?.demSource,integrity:window.EARTHLINE_LOCATION_INTEGRITY_15801||null,
        gauge:document.querySelector('.earthline-recharge-gauge-label-16488')?.textContent,
        contoursAudit:window.earthlineElevationAudit15776?.()||null,drawnElevationLabels:drawn('earthline-official-contour-label-15776'),recharge:count('earthline-recharge-zones'),
        owner:m?.rendererOwnership15805||null,layerVisibility:{
