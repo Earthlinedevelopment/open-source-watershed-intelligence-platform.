@@ -101,7 +101,7 @@ for(const site of cases){
  await ctx.close();
 }
 await browser.close();
-const passed=output.every(o=>o.generatedGeojson>0&&o.swaleMapFeatureCount>0&&o.swaleLayerVisibility==='visible'&&!o.failure&&!o.timeout&&o.pub?.committed===true&&o.pub?.safetyVerified===true&&o.gauge==='Recharge Potential'&&!/procedural|generated screening fallback/i.test(String(o.demSource||''))&&o.contoursAudit?.sourcePresent===true&&o.contoursAudit?.majorPresent===true&&o.contoursAudit?.labelPresent===true&&o.layerVisibility?.contours!=='none'&&o.layerVisibility?.elevationLabels!=='none'&&!(o.errors||[]).some(e=>/Uncaught|ReferenceError/i.test(e)))&&output.every(o=>o.recharge>0);
+const passed=output.every(o=>o.generatedGeojson>0&&o.syncProbe?.before?.living?.features>0&&o.syncProbe?.before?.living?.visible===true&&o.syncProbe?.before?.livingSourceCount>0&&o.syncProbe?.before?.livingVisibility==='visible'&&!o.failure&&!o.timeout&&o.pub?.committed===true&&o.pub?.safetyVerified===true&&o.gauge==='Recharge Potential'&&!/procedural|generated screening fallback/i.test(String(o.demSource||''))&&o.contoursAudit?.sourcePresent===true&&o.contoursAudit?.majorPresent===true&&o.contoursAudit?.labelPresent===true&&o.layerVisibility?.contours!=='none'&&o.layerVisibility?.elevationLabels!=='none'&&!(o.errors||[]).some(e=>/Uncaught|ReferenceError/i.test(e)))&&output.every(o=>o.recharge>0);
 const result={targetBlob,passed,output};
 fs.writeFileSync('artifacts/property4-candidate/result.json',JSON.stringify(result,null,2));
 console.log('PROPERTY4_CANDIDATE_RESULT '+JSON.stringify({passed,sites:output.map(o=>({name:o.site?.name,timeout:o.timeout,swales:o.swales,segments:o.pub?.safeSegments,blocked:o.pub?.blocked,reason:o.pub?.blockReason,gauge:o.gauge}))}));
