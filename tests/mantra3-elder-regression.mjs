@@ -54,8 +54,22 @@ async function prepare(label){
 }
 async function runProperty(label){
   const prepared=await prepare(label);
+  let cameraWaitError=null;
+  try{
+    await page.waitForFunction(target=>{
+      const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+      const c=m?.getCenter?.();
+      return !!c&&!m.isMoving?.()&&
+        Math.abs(Number(c.lng)-target.lng)<0.0005&&Math.abs(Number(c.lat)-target.lat)<0.0005&&
+        Math.abs(Number(M?.centerLng)-target.lng)<0.0005&&Math.abs(Number(M?.centerLat)-target.lat)<0.0005;
+    },TARGET,{timeout:60000,polling:250});
+    await page.evaluate(target=>window.earthlineSetPropertyTarget16201(
+      {lng:target.lng,lat:target.lat,source:'mantra3-camera-settled'},
+      {openPanel:false}
+    ),TARGET);
+  }catch(e){cameraWaitError=String(e).slice(0,400)}
   const before=await snapshot('before '+label);
-  if(!prepared.ok)return {label,prepared,before,pass:false};
+  if(!prepared.ok||cameraWaitError)return {label,prepared,cameraWaitError,before,pass:false};
   await page.evaluate(()=>{void window.earthlineDeclarePropertyAtCrosshair16169();});
   let waitError=null;
   try{
