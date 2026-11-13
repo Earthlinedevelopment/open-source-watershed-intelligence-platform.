@@ -30,7 +30,7 @@ for(const site of cases){
   const html=await response.body();
   const {createHash}=await import('node:crypto');
   const actualSha=createHash('sha256').update(html).digest('hex');
-  if(actualSha!=='PLACEHOLDER')throw new Error('CANDIDATE HTML SHA MISMATCH '+actualSha);
+  if(actualSha!=='cad72163fe5df8b5456291594081542d0b365c18a84f06e6075c1e399c02c462')throw new Error('CANDIDATE HTML SHA MISMATCH '+actualSha);
   await page.waitForFunction(()=>typeof window.earthlineSetPropertyTarget16201==='function'&&typeof window.earthlineDeclarePropertyAtCrosshair16173==='function',{},{timeout:60000});
   await page.waitForSelector('#earthlineDeclareProperty16169',{state:'attached',timeout:60000});
   await page.evaluate(t=>{
