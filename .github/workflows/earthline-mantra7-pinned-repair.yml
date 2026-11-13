@@ -1,0 +1,53 @@
+name: Mantra 7 isolated swale stability and Elder label repair
+on:
+  push:
+    branches:
+      - repair/mantra7-swale-stability-elder-label-20261113
+permissions:
+  contents: write
+jobs:
+  pinned-patch:
+    if: ${{ !contains(github.event.head_commit.message, '[mantra7-applied]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply Mantra 7 pinned display-only patch
+        run: python3 tools/mantra7-swale-stability-elder-tooltip.py
+      - name: Fail closed on syntax, scope, and diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          node --check earthline-elder-restored-17097.js
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          text=Path('index.html').read_text()
+          scripts=list(re.finditer(r'<script\b[^>]*>(.*?)</script\s*>',text,re.S|re.I))
+          for i,needle in enumerate(['async function syncTexture(', 'function syncSafePropertyFallback16221(', 'function applyTierStyling(']):
+              owners=[m.group(1) for m in scripts if needle in m.group(1)]
+              assert len(owners)==1, 'STOP: script owner not unique for '+needle
+              Path('/tmp/mantra7-owner-'+str(i)+'.js').write_text(owners[0])
+          assert 'sourceReuploaded:changedM7' in text
+          assert 'const update=(ev)' in text
+          print('MANTRA7_THREE_OWNERS_EXTRACTED')
+          PY
+          for f in /tmp/mantra7-owner-{0,1,2}.js; do node --check "$f"; done
+          printf 'Changed files:\n'
+          git diff --name-only
+          test "$(git diff --name-only | sort)" = "$(printf 'earthline-elder-restored-17097.js\nindex.html\n' | sort)"
+      - name: Commit only to isolated repair branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Mantra 7 Pinned Repair"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html earthline-elder-restored-17097.js
+          git commit -m "fix(mantra7): stabilize swale presentation and transient ELDER TREE labels [mantra7-applied]"
+          git push origin HEAD:repair/mantra7-swale-stability-elder-label-20261113
