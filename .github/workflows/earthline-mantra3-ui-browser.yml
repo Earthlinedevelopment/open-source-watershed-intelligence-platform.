@@ -1,0 +1,30 @@
+name: Mantra 3 Property presentation acceptance
+on:
+  push:
+    branches:
+      - repair/mantra3-october-elder-ui-20261113
+    paths:
+      - tests/mantra3-ui-regression.mjs
+      - .github/workflows/earthline-mantra3-ui-browser.yml
+permissions:
+  contents: read
+jobs:
+  presentation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node tests/mantra3-ui-regression.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra3-ui-browser-evidence
+          path: mantra3-ui-browser-result.json
+          retention-days: 7
+          if-no-files-found: warn
