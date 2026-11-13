@@ -192,6 +192,31 @@ async function detect(bbox,{displayPerTile=24,maxPerTile=240}={}){
     candidatePool:pool
   };
 }
+/* M119: One authoritative CHMv2 detection per bbox/options.
+   Pre-warm and Property analysis share the same calculation; different AOIs
+   are serialized because Pyodide uses a shared in-memory filesystem. */
+const detectionFlights=new Map();
+let detectionQueue=Promise.resolve();
+function sharedDetectionM119(bbox,options={}){
+  const opts={
+    displayPerTile:options?.displayPerTile??24,
+    maxPerTile:options?.maxPerTile??240
+  };
+  const normalized=Array.isArray(bbox)?bbox.map(Number):bbox;
+  const key=JSON.stringify([normalized,opts.displayPerTile,opts.maxPerTile]);
+  if(detectionFlights.has(key))return detectionFlights.get(key);
+  const run=detectionQueue.then(()=>detect(normalized,opts));
+  detectionQueue=run.catch(()=>{});
+  detectionFlights.set(key,run);
+  run.catch(()=>{if(detectionFlights.get(key)===run)detectionFlights.delete(key)});
+  // Bound completed-result retention; never cancel in-flight calculations.
+  while(detectionFlights.size>3){
+    const oldest=detectionFlights.keys().next().value;
+    if(oldest===key)break;
+    detectionFlights.delete(oldest);
+  }
+  return run;
+}
 self.onmessage=async(e)=>{
   const id=e.data?.id;
   try{
@@ -201,7 +226,7 @@ self.onmessage=async(e)=>{
       self.postMessage({id,ok:true,warm:true,elapsedMs:performance.now()-t0});
       return;
     }
-    const result=await detect(e.data?.bbox,e.data?.options||{});
+    const result=await sharedDetectionM119(e.data?.bbox,e.data?.options||{});
     self.postMessage({id,ok:true,result});
   }catch(err){
     self.postMessage({id,ok:false,warm:e.data?.warm===true,error:String(err?.stack||err?.message||err)});

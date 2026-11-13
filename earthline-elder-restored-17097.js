@@ -64,21 +64,36 @@
     if(state.loading)return state.loading;
     state.loading=(async()=>{
       const manifest=await fetch(MANIFEST,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('Elder Tree manifest '+r.status);return r.json()});
-      const all=[];
-      for(const d of (manifest.datasets||[])){
-        try{
-          const fc=await fetch(d.path,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(String(r.status));return r.json()});
-          for(const f of (fc.features||[])){
-            if(f?.geometry?.type!=='Point')continue;
-            const copy={type:'Feature',geometry:f.geometry,properties:Object.assign({},f.properties||{},{
-              elder_dataset_id:d.id||'',
-              elder_dataset_label:d.label||d.id||'',
-              elder_coverage_complete:d.coverage_complete===true
-            })};
-            all.push(copy);
+      /* M127 Elder I/O only: fetch independent evidence datasets concurrently
+         (up to four), then publish in manifest order. No evidence/count changes. */
+      const all=[],datasets=manifest.datasets||[];
+      const responses=new Array(datasets.length);
+      const slots=Math.min(4,datasets.length);
+      await Promise.all(Array.from({length:slots},async(_,slot)=>{
+        for(let i=slot;i<datasets.length;i+=slots){
+          const d=datasets[i];
+          try{
+            const fc=await fetch(d.path,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(String(r.status));return r.json()});
+            responses[i]={features:fc.features||[]};
+          }catch(err){
+            responses[i]={error:String(err&&err.message||err)};
           }
-        }catch(err){
-          (manifest.load_errors||(manifest.load_errors=[])).push({dataset:d.id||d.path,error:String(err&&err.message||err)});
+        }
+      }));
+      for(let i=0;i<datasets.length;i++){
+        const d=datasets[i],record=responses[i]||{};
+        if(record.error){
+          (manifest.load_errors||(manifest.load_errors=[])).push({dataset:d.id||d.path,error:record.error});
+          continue;
+        }
+        for(const f of (record.features||[])){
+          if(f?.geometry?.type!=='Point')continue;
+          const copy={type:'Feature',geometry:f.geometry,properties:Object.assign({},f.properties||{},{
+            elder_dataset_id:d.id||'',
+            elder_dataset_label:d.label||d.id||'',
+            elder_coverage_complete:d.coverage_complete===true
+          })};
+          all.push(copy);
         }
       }
       state.manifest=manifest;state.all=all;state.loaded=true;
@@ -187,22 +202,24 @@
     }
     return b?state.all.filter(f=>inBounds(f,b)):[];
   }
+  /* M129: round brown trunk ring and green canopy, sourced points only.
+     Marker geometry and colors affect presentation, never Elder evidence counts. */
+  /* M164: clear round, brown-rimmed green Elder tree symbols; evidence tiers keep their colors. */
   function elderPinImage(fill){
-    const canvas=document.createElement('canvas');canvas.width=40;canvas.height=48;
+    const canvas=document.createElement('canvas');canvas.width=48;canvas.height=48;
     const ctx=canvas.getContext('2d');if(!ctx)return null;
-    ctx.clearRect(0,0,40,48);
-    ctx.beginPath();
-    ctx.moveTo(20,46);
-    ctx.bezierCurveTo(17,40,6,30,6,19);
-    ctx.bezierCurveTo(6,10,12,4,20,4);
-    ctx.bezierCurveTo(28,4,34,10,34,19);
-    ctx.bezierCurveTo(34,30,23,40,20,46);
-    ctx.closePath();
+    ctx.clearRect(0,0,48,48);
+    ctx.beginPath();ctx.arc(24,24,20.5,0,Math.PI*2);
+    ctx.fillStyle='#76502b';ctx.fill();
+    ctx.lineWidth=2;ctx.strokeStyle='#d7bd83';ctx.stroke();
+    ctx.beginPath();ctx.arc(24,24,15.7,0,Math.PI*2);
     ctx.fillStyle=fill;ctx.fill();
-    ctx.lineWidth=2.2;ctx.strokeStyle='#ffffff';ctx.stroke();
-    ctx.beginPath();ctx.arc(20,18,6.2,0,Math.PI*2);ctx.fillStyle='#ffffff';ctx.fill();
-    ctx.beginPath();ctx.arc(20,18,3.4,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();
-    return ctx.getImageData(0,0,40,48);
+    ctx.lineWidth=1.3;ctx.strokeStyle='#163b24';ctx.stroke();
+    ctx.beginPath();ctx.arc(19,18,5.8,0,Math.PI*2);
+    ctx.fillStyle='rgba(210,245,185,.32)';ctx.fill();
+    ctx.beginPath();ctx.arc(28,29,4,0,Math.PI*2);
+    ctx.fillStyle='rgba(8,38,19,.18)';ctx.fill();
+    return ctx.getImageData(0,0,48,48);
   }
   function ensureElderPinImages(m){
     const pins=[
@@ -235,11 +252,24 @@
               ['any',['==',['get','source_class'],'LIDAR'],['==',['get','record_class'],'LIDAR_CONFIRMED_ELDER_TREE_CANDIDATE']],'earthline-elder-pin-lidar',
               'earthline-elder-pin-modeled'
             ],
-            'icon-size':['interpolate',['linear'],['zoom'],6,0.55,10,0.72,14,0.9],
-            'icon-anchor':'bottom',
+            /* M96: candidates must be legible on satellite imagery; labels never
+               imply that an unverified modeled tree is known to be old. */
+            'icon-size':['interpolate',['linear'],['zoom'],6,0.55,10,0.72,14,0.96,17,1.48,20,1.65],
+            'icon-anchor':'center',
             'icon-allow-overlap':true,
             'icon-ignore-placement':true,
+            /* Evidence is available in the interactive popup; repeated text
+               labels obscured Property swales and are deliberately suppressed. */
+            'text-field':'',
+            'text-size':0,
+            'text-allow-overlap':false,
+            'text-ignore-placement':false,
             'visibility':'visible'
+          },
+          paint:{
+            'text-color':'#f7fff6',
+            'text-halo-color':'#12452d',
+            'text-halo-width':2.2
           }
         });
         m.on('click',LAYER,e=>{
@@ -270,7 +300,8 @@
     const wrap=document.querySelector('.earthline-recharge-gauge-wrap-16488');if(!wrap)return false;
     let el=document.getElementById('earthlineElderTreesGauge17097');
     if(!el){el=document.createElement('div');el.id='earthlineElderTreesGauge17097';el.style.cssText='margin-top:3px;color:#2f5b3c;font:900 10.5px/1.25 "Noto Sans",system-ui,sans-serif;text-align:center;letter-spacing:.1px';wrap.appendChild(el)}
-    el.textContent='Elder Trees: '+summary.evidenceLabel+(summary.coverageKnown&&summary.partial?' · current Earthline coverage':'');
+    const pending=elderTierM94()==='property'&&window.EARTHLINE_ELDER_TREE_LAST_17097?.state==='property-pending';
+    el.textContent=pending?'Elder Trees: Finding trees…':'Elder Trees: '+summary.evidenceLabel+(summary.coverageKnown&&summary.partial?' · current Earthline coverage':'');
     return true;
   }
   function propertyCard(summary){
@@ -398,8 +429,9 @@
   function propertyBounds17166(){
     try{
       const target=window.EARTHLINE_PROPERTY_TARGET_16201||null;
-      const lng=Number(target?.lng),lat=Number(target?.lat);
-      if(Number.isFinite(lng)&&Number.isFinite(lat)){
+      const hasTarget=target&&target.lng!==null&&target.lng!==undefined&&target.lng!==''&&target.lat!==null&&target.lat!==undefined&&target.lat!=='';
+      const lng=hasTarget?Number(target.lng):NaN,lat=hasTarget?Number(target.lat):NaN;
+      if(Number.isFinite(lng)&&Number.isFinite(lat)&&Math.abs(lng)<=180&&Math.abs(lat)<=90){
         const areaM2=20*4046.8564224,wM=Math.sqrt(areaM2*1.15),hM=areaM2/wM;
         const dLat=hM/(2*111320),dLng=wM/(2*111320*Math.max(.05,Math.cos(lat*Math.PI/180)));
         return [lng-dLng,lat-dLat,lng+dLng,lat+dLat];
@@ -420,7 +452,9 @@
   function propertyRunIdentity17166(b){
     const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
     const d=window.EARTHLINE_PROPERTY_DECLARATION_16169||null;
-    const lng=Number(t?.lng??d?.center?.lng),lat=Number(t?.lat??d?.center?.lat);
+    const rawLng=t?.lng??d?.center?.lng,rawLat=t?.lat??d?.center?.lat;
+    const lng=rawLng===null||rawLng===undefined||rawLng===''?NaN:Number(rawLng);
+    const lat=rawLat===null||rawLat===undefined||rawLat===''?NaN:Number(rawLat);
     return [
       Number.isFinite(lng)?lng.toFixed(6):'',
       Number.isFinite(lat)?lat.toFixed(6):'',
@@ -477,57 +511,102 @@
       return await promise;
     }catch(_){return null}
   } /* EARTHLINE_ELDER_IO_ONLY_PREFETCH_17211 */
+  let regionalRefreshEpochM94=0;
+  let deferredMapRetryM94=null;
+  function elderTierM94(){return String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()}
+  function deferMapRetryM94(identity){
+    const m=map();
+    if(!m||typeof m.once!=='function')return false;
+    const key=identity||'regional';
+    if(deferredMapRetryM94?.map===m&&deferredMapRetryM94.key===key)return true;
+    const retry={map:m,key};deferredMapRetryM94=retry;
+    m.once('style.load',()=>{
+      if(deferredMapRetryM94!==retry)return;
+      deferredMapRetryM94=null;
+      if(identity){
+        if(elderTierM94()==='property'&&propertyRunIdentity17166(propertyBounds17166())===identity)void startProperty17166();
+      }else if(elderTierM94()!=='property')void refresh();
+    });
+    return true;
+  }
   async function startProperty17166(){
+    ++regionalRefreshEpochM94; /* Invalidate any older asynchronous Regional refresh. */
+    let runIdentity='';
     try{
-      await load();
-      const b=propertyBounds17166(),runIdentity=propertyRunIdentity17166(b);
+      /* M164: on-demand Property detection must not wait for all global Elder datasets.
+         Manifest/other-region evidence continues in parallel; same worker and final result. */
+      if(!state.loaded)void load().catch(()=>{});
+      const b=propertyBounds17166();runIdentity=propertyRunIdentity17166(b);
       if(!b||!runIdentity)return null;
       const pending17389=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
       if(!(pending17389?.state==='property-pending'&&pending17389?.propertyRunIdentity===runIdentity&&pending17389?.visibleAt)){
         publishPropertyProvisional17389(b,runIdentity);
       }
       const dynamic=await dynamicPropertyEvidence(true); /* EARTHLINE_ELDER_GOVERNED_COMPUTE_17211 */
-      if(!dynamic||propertyRunIdentity17166(propertyBounds17166())!==runIdentity)return null;
+      if(!dynamic&&elderTierM94()==='property'&&propertyRunIdentity17166(propertyBounds17166())===runIdentity){
+        window.EARTHLINE_ELDER_TREE_LAST_17097={state:'failed',error:'no tree-finder result',propertyRunIdentity:runIdentity,featureCount:0,at:new Date().toISOString()};
+        const g198=document.getElementById('earthlineElderTreesGauge17097');if(g198)g198.textContent='Elder Trees: not available for this run'; /* M198 */
+        return null;
+      }
+      if(!dynamic||elderTierM94()!=='property'||propertyRunIdentity17166(propertyBounds17166())!==runIdentity)return null;
       state.active=dynamic.features||[];
       const coverage={known:true,datasetIds:['dynamic-property-17130'],complete:false,dynamic:true,candidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0)};
       state.lastSummary=summarize(state.active,coverage);
-      publishMap(state.active);refreshSurfaces();
+      const mapPublished=publishMap(state.active);
+      if(!mapPublished){
+        deferMapRetryM94(runIdentity);
+        window.EARTHLINE_ELDER_TREE_LAST_17097={state:'publication-pending',propertyRunIdentity:runIdentity,featureCount:state.active.length,mapPublished:false,at:new Date().toISOString()};
+        return null;
+      }
       window.EARTHLINE_ELDER_TREE_LAST_17097={
-        state:'committed',propertyRunIdentity:runIdentity,
+        state:'committed',mapPublished:true,propertyRunIdentity:runIdentity,
         summary:state.lastSummary,featureCount:state.active.length,
         dynamicCandidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0),
         dynamicError:null,workerTimings:dynamic?.earthline?.worker_timings_ms||null,at:new Date().toISOString()
       };
+      refreshSurfaces(); /* M198: refresh after the state is committed so "Finding trees…" clears. */
       return state.lastSummary;
     }catch(err){
+      if(elderTierM94()!=='property'||(runIdentity&&propertyRunIdentity17166(propertyBounds17166())!==runIdentity))return null;
       window.EARTHLINE_ELDER_TREE_LAST_17097={state:'failed',error:String(err&&err.message||err),featureCount:0,at:new Date().toISOString()};
+      const g198=document.getElementById('earthlineElderTreesGauge17097');if(g198)g198.textContent='Elder Trees: not available for this run'; /* M198: explicit failure state */
       return null;
     }
   }
   async function refresh(){
+    if(elderTierM94()==='property')return startProperty17166();
+    const epoch=++regionalRefreshEpochM94;
     try{
       const pending17166=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
       if(pending17166?.state==='property-pending'&&state.dynamic.promise)return pending17166.summary||null;
       await load();
+      if(epoch!==regionalRefreshEpochM94||elderTierM94()==='property')return null;
       const pendingAfterLoad17166=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
       if(pendingAfterLoad17166?.state==='property-pending'&&state.dynamic.promise)return pendingAfterLoad17166.summary||null;
       let coverage=activeCoverage(); /* EARTHLINE_ELDER_PROPERTY_PENDING_REFRESH_GUARD_17203 */
       const dynamic=await dynamicPropertyEvidence(false);
+      if(epoch!==regionalRefreshEpochM94||elderTierM94()==='property')return null;
       if(dynamic){
         state.active=dynamic.features||[];
         coverage={known:true,datasetIds:['dynamic-property-17130'],complete:false,dynamic:true,candidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0)};
       }else state.active=activeFeatures();
       state.lastSummary=summarize(state.active,coverage);
-      publishMap(state.active);
+      const mapPublished=publishMap(state.active);
+      if(!mapPublished){
+        deferMapRetryM94('');
+        window.EARTHLINE_ELDER_TREE_LAST_17097={state:'publication-pending',propertyRunIdentity:'',featureCount:state.active.length,mapPublished:false,at:new Date().toISOString()};
+        return null;
+      }
       refreshSurfaces();
       window.EARTHLINE_ELDER_TREE_LAST_17097={
-        state:'committed',propertyRunIdentity:String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property'?propertyRunIdentity17166(coverageQueryBounds()):'',
+        state:'committed',mapPublished:true,propertyRunIdentity:'',
         summary:state.lastSummary,featureCount:state.active.length,
         dynamicCandidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0),
         dynamicError:state.dynamic.error||null,workerTimings:dynamic?.earthline?.worker_timings_ms||null,at:new Date().toISOString()
       };
       return state.lastSummary;
     }catch(err){
+      if(epoch!==regionalRefreshEpochM94||elderTierM94()==='property')return null;
       window.EARTHLINE_ELDER_TREE_LAST_17097={state:'failed',error:String(err&&err.message||err),at:new Date().toISOString()};
       return null;
     }
@@ -561,14 +640,17 @@
     const coverage={known:datasets.length>0,datasetIds:datasets.map(d=>d.id||d.path||''),complete:false};
     const features=state.all.filter(f=>inBounds(f,b));
     state.active=features;state.lastSummary=summarize(features,coverage);
-    publishMap(features);refreshSurfaces();
-    const visibleAt=new Date().toISOString();
+    const mapPublished=publishMap(features);
+    if(!mapPublished)deferMapRetryM94(identity);
+    refreshSurfaces();
+    const visibleAt=mapPublished?new Date().toISOString():null;
     window.EARTHLINE_ELDER_TREE_LAST_17097={
       state:'property-pending',propertyRunIdentity:identity,
       summary:state.lastSummary,featureCount:features.length,
       dynamicCandidatePoolCount:0,dynamicError:null,
-      provisional:true,visibleAt,at:visibleAt
+      provisional:true,mapPublished,visibleAt,at:new Date().toISOString()
     };
+    gaugeLine(state.lastSummary); /* Pending search must remain visible until the worker commits. */
     return true;
   }
   function beginPropertyElderState17216(){
@@ -577,7 +659,7 @@
     if(!publishPropertyProvisional17389(b,identity)){
       state.active=[];state.lastSummary=null;publishMap([]);
       const gauge=document.getElementById('earthlineElderTreesGauge17097');
-      if(gauge)gauge.textContent='Elder Trees: analyzing Property canopy…';
+      if(gauge)gauge.textContent='Elder Trees: Finding trees…';
       window.EARTHLINE_ELDER_TREE_LAST_17097={
         state:'property-pending',propertyRunIdentity:identity,
         summary:null,featureCount:0,dynamicCandidatePoolCount:0,dynamicError:null,
