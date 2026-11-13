@@ -24,16 +24,16 @@ jobs:
           old=s[start:end]
           assert 'earthlineMap.isStyleLoaded()' in old
           new='''  function mapReady15776(){
-    // Source/layer registration should not wait for unrelated map tiles.
-    // The existing addSource/addLayer catch-and-retry remains the readiness gate.
-    try{
-      return typeof earthlineMap!=="undefined" && !!earthlineMap &&
-        typeof earthlineMap.getStyle==="function" &&
-        Array.isArray(earthlineMap.getStyle()?.layers);
-    }catch(_){return false}
-  }
+            // Source/layer registration should not wait for unrelated map tiles.
+            // The existing addSource/addLayer catch-and-retry remains the readiness gate.
+            try{
+              return typeof earthlineMap!=="undefined" && !!earthlineMap &&
+                typeof earthlineMap.getStyle==="function" &&
+                Array.isArray(earthlineMap.getStyle()?.layers);
+            }catch(_){return false}
+          }
 
-'''
+          '''
           p.write_text(s.replace(old,new))
           PY
           test "$(git hash-object index.html)" = "2b38c611630efe4eb7af1915e8225f87cb3aba88"
