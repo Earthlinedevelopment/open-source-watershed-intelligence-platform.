@@ -1,0 +1,24 @@
+name: Mantra2 one-press Property diagnostic
+on:
+  push:
+    branches: [staging/october-stabilization-2026-11-13]
+    paths: [tests/mantra2-onepress-property.mjs, .github/workflows/mantra2-onepress-property.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  onepress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node tests/mantra2-onepress-property.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mantra2-onepress-property
+          path: artifacts/mantra2-onepress
