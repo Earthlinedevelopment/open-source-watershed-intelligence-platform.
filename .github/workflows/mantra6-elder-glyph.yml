@@ -1,0 +1,52 @@
+name: Mantra 6 Elder tree glyph and fresh loader candidate
+on:
+  push:
+    branches: [repair/mantra6-elder-glyph-20261113]
+    paths:
+      - earthline-elder-restored-17097.js
+      - tools/mantra6-elder-loader-pin.py
+      - .github/workflows/mantra6-elder-glyph.yml
+permissions:
+  contents: write
+jobs:
+  isolated-glyph:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check JavaScript and preserve exactly three Elder classes
+        run: |
+          set -euo pipefail
+          node --check earthline-elder-restored-17097.js
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('earthline-elder-restored-17097.js').read_text()
+          assert s.count('function elderPinImage(fill)')==1
+          for cls in ('verified','lidar','modeled'):
+            assert s.count('earthline-elder-tree-m6-'+cls)==2
+          for banned in ('earthline-elder-pin-verified','earthline-elder-pin-lidar','earthline-elder-pin-modeled'):
+            assert banned not in s
+          for color in ('#174d2a','#2f7d48','#4f9b62','#76502b'):
+            assert color in s
+          assert 'ctx.moveTo(24,35)' in s and 'ctx.lineTo(18,22)' in s
+          print('MANTRA6_ELDER_GLYPH_STATIC_PASS')
+          PY
+      - name: Apply exact Elder cache-bust to candidate homepage
+        run: python3 tools/mantra6-elder-loader-pin.py
+      - name: Ensure zero other homepage changes
+        run: |
+          set -euo pipefail
+          git diff --check
+          test "$(git diff --name-only)" = 'index.html'
+          test "$(git diff --numstat -- index.html | cut -f1,2)" = "$(printf '1\t1')"
+          grep -q 'earthline-elder-restored-17097.js?v=mantra6-tree-20261113' index.html
+      - name: Commit ISOLATED candidate only — never production
+        run: |
+          set -euo pipefail
+          git config user.name 'Earthline Candidate Gate'
+          git config user.email 'info@earthlinedevelopment.org'
+          git add index.html
+          git commit -m 'candidate(mantra6): pin fresh approved Elder tree glyph loader [NOT PRODUCTION]'
+          git push origin HEAD:refs/heads/repair/mantra6-elder-glyph-20261113
