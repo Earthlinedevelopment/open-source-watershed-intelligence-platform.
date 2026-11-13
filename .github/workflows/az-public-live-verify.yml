@@ -1,0 +1,25 @@
+name: Verify live Arizona visible bioswales after release
+on:
+  push:
+    branches: [repair/arizona-visible-valid-swales-20261113]
+    paths: [tests/arizona-short-swale-public-live.mjs, .github/workflows/az-public-live-verify.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  public:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node tests/arizona-short-swale-public-live.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-az-public-visible-short-swales
+          path: artifacts/az-public-swales
+          retention-days: 14
