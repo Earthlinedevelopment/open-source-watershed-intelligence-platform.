@@ -3735,7 +3735,9 @@ function earthlineProcessMappedFeature(roadMask,buildingMask,f){
   return touched;
 }
 async function earthlineWaitForMappedExclusionStyle15862B(myGen=M.searchGen,timeoutMs=5000){
-  if(!earthlineMapActive())return {ready:false,status:"map-inactive",waitedMs:0};
+  // Do not fail immediately when Mapbox is still initializing; existing style poll
+  // waits for relevant exclusion layers then fails closed on timeout.
+  // This prevents a valid first Property click from publishing before style readiness.
   const started=performance.now();
   /* EARTHLINE 16467 — performance only. Exclusion processing does not need the
      entire Mapbox style (imagery, glyphs, unrelated sources) to settle. It needs
@@ -4327,7 +4329,7 @@ function earthlineRechargeGeoJSON(){
   return {type:"FeatureCollection",features};
 }
 function earthlineEnsureRechargeLayers(){
-  if(!earthlineMapActive()){
+  if(!(earthlineMap&&earthlineMap.getStyle&&Array.isArray(earthlineMap.getStyle()?.layers))){
     window.EARTHLINE_RECHARGE_LAYER_ENSURE_AUDIT_16500={ok:false,reason:"map-inactive",at:new Date().toISOString()};
     return false;
   }
@@ -4376,7 +4378,7 @@ function earthlineEnsureRechargeLayers(){
   }
 }
 function earthlineSyncRechargeLayer(show=true){
-  if(!earthlineMapActive()||!earthlineEnsureRechargeLayers())return false;
+  if(!(earthlineMap&&earthlineMap.getStyle&&Array.isArray(earthlineMap.getStyle()?.layers))||!earthlineEnsureRechargeLayers())return false;
   const data=earthlineRechargeGeoJSON();
   const src=earthlineMap.getSource(EARTHLINE_RECHARGE_SOURCE);
   if(src&&src.setData)src.setData(data);
@@ -4511,7 +4513,7 @@ function earthlineSwaleGeoJSON(){
       const rawLen=earthlinePathLengthM(seg);
       // Suppress isolated raster fragments. The underlying candidate remains in the report,
       // but the map shows only field-legible corridors unless it is the central site candidate.
-      if(rawLen<minVisibleM&&!s.isSite)continue;
+      if(rawLen<earthlineMinimumSwaleLengthM15768())continue;
       const displaySeg=earthlineNaturalContourDisplay(seg);
       for(const safeDisplay of earthlineFinalSafeSegments15771(displaySeg,4)){
         if(!safeDisplay||safeDisplay.length<2)continue;
@@ -20401,7 +20403,9 @@ var prescribeSwales;
   let lastAnimationPaint=0;
 
   function mapReady(){
-    return !!(typeof earthlineMap!=="undefined"&&earthlineMap&&earthlineMap.isStyleLoaded&&earthlineMap.isStyleLoaded());
+    try{return typeof earthlineMap!=="undefined" && !!earthlineMap &&
+      typeof earthlineMap.getStyle==="function" && Array.isArray(earthlineMap.getStyle()?.layers);}
+    catch(_){return false}
   }
   function activeProperty(){
     const s=window.earthlineRegional15778||{};
