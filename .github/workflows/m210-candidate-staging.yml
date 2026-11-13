@@ -1,0 +1,49 @@
+name: Materialize exact approved M210 candidate in staging
+on:
+  push:
+    branches: [staging/october-stabilization-2026-11-13]
+    paths:
+      - scripts/apply-approved-m210.mjs
+      - .github/workflows/m210-candidate-staging.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify exact approved candidate and parse all inline scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/apply-approved-m210.mjs
+          node scripts/apply-approved-m210.mjs
+          git diff --check
+          node - <<'NODE'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert');
+          const html=fs.readFileSync('index.html','utf8');
+          let n=0;
+          for(const match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)){
+            if(/\bsrc\s*=/.test(match[1])||/\btype\s*=\s*['"](?:module|application\/json|importmap)/i.test(match[1])||!match[2].trim())continue;
+            new vm.Script(match[2]);n++;
+          }
+          assert.ok(n>=60,'expected complete inline script inventory');
+          console.log('Valid inline scripts:',n);
+          NODE
+      - name: Publish tested candidate ONLY to staging
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline staged M210 validation"
+          git config user.email "info@earthlinedevelopment.org"
+          test "$(git hash-object index.html)" = "a46d094cbdc37ecdc49f53a784bdd870c800627a"
+          git add index.html
+          git commit -m "candidate(m210): exact validated Property wash split and minimum length"
+          git push origin HEAD:staging/october-stabilization-2026-11-13
