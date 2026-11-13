@@ -217,16 +217,16 @@
     // Preserve the approved brown circular trunk rim and distinct green crown.
     ctx.beginPath();ctx.arc(24,24,20.5,0,Math.PI*2);
     ctx.fillStyle='#76502b';ctx.fill();
-    ctx.lineWidth=2;ctx.strokeStyle='#d7bd83';ctx.stroke();
+    ctx.lineWidth=3.8;ctx.strokeStyle='#d5a13b';ctx.stroke(); // warm ochre-gold ring, distinct on satellite
     ctx.beginPath();ctx.arc(24,24,16,0,Math.PI*2);
     ctx.fillStyle=fill;ctx.fill();
     ctx.lineWidth=1.1;ctx.strokeStyle='#163b24';ctx.stroke();
     // Leaf clusters make the canopy read as a tree rather than a flat disk.
-    ctx.fillStyle='rgba(181,223,143,.42)';
+    ctx.fillStyle='rgba(225,190,102,.70)'; // earthy yellow foliage accents
     for(const [x,y,r] of [[17,17,4],[23,13,4.3],[30,18,4],[16,25,3.4],[32,27,3.6]])
       {ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
     // A visibly branched brown trunk, large enough to survive Mapbox scaling.
-    ctx.strokeStyle='#e8ca91';ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=5.6;
+    ctx.strokeStyle='#e8c05c';ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=5.6;
     ctx.beginPath();ctx.moveTo(24,35);ctx.lineTo(24,23);ctx.moveTo(24,28);ctx.lineTo(18,22);ctx.moveTo(24,26);ctx.lineTo(30,20);ctx.stroke();
     ctx.strokeStyle='#684021';ctx.lineWidth=3.7;
     ctx.beginPath();ctx.moveTo(24,35);ctx.lineTo(24,23);ctx.moveTo(24,28);ctx.lineTo(18,22);ctx.moveTo(24,26);ctx.lineTo(30,20);ctx.stroke();
@@ -414,23 +414,32 @@
     frame.addEventListener('load',apply,{once:true});
     return false;
   }
-  /* One introductory Elder help link per page visit; removed after ten seconds. */
-  let elderInfoShownM11=false;
+  /* Elder map help: anchored to a visible icon for each new Property publication.
+     The previous once-per-visit flag could expire before the user saw the map. */
+  let elderInfoLastRunM11='',elderInfoPopupM11=null;
   function showElderInfoLinkM11(){
-    if(elderInfoShownM11)return;
-    const m=window.earthlineMap;
-    const pts=(Array.isArray(state.active)?state.active:[])
-      .map(f=>f?.geometry?.coordinates)
-      .filter(c=>Array.isArray(c)&&Number.isFinite(c[0])&&Number.isFinite(c[1]));
-    if(!m||!pts.length||typeof mapboxgl==='undefined')return;
-    const top=pts.reduce((a,b)=>b[1]>a[1]?b:a);
+    const m=map(),list=Array.isArray(state.active)?state.active:[];
+    if(!m||!list.length||typeof mapboxgl==='undefined'||typeof m.project!=='function')return;
+    const run=String(window.EARTHLINE_ELDER_TREE_LAST_17097?.runIdentity||propertyRunIdentity17166(propertyBounds17166()));
+    if(run===elderInfoLastRunM11)return;
+    const coords=list.map(f=>f?.geometry?.coordinates).filter(c=>Array.isArray(c)&&Number.isFinite(c[0])&&Number.isFinite(c[1]));
+    const container=m.getContainer?.(),w=container?.clientWidth||0,h=container?.clientHeight||0;
+    let visible=[];
+    for(const c of coords){
+      try{const p=m.project(c);if(p&&p.x>=85&&p.x<=w-85&&p.y>=95&&p.y<=h-70)visible.push({c,p})}catch(_){}
+    }
+    if(!visible.length)return;
+    // Prefer the highest clearly visible Elder marker, leaving room for the label above it.
+    visible.sort((a,b)=>a.p.y-b.p.y);
     try{
+      elderInfoPopupM11?.remove();
       const popup=new mapboxgl.Popup({closeButton:false,closeOnClick:false,anchor:'bottom',offset:18,className:'earthline-elder-info-m11'})
-        .setLngLat(top)
-        .setHTML('<a href="#swales-explained" style="font:800 11px/1.2 system-ui,sans-serif;color:#245e39;text-decoration:none;white-space:nowrap">&#9432; What are Elder Trees?</a>')
+        .setLngLat(visible[0].c)
+        .setHTML('<a href="#swales-explained" style="display:block;padding:6px 9px;border:1px solid #b88a35;border-radius:8px;background:#1c2a25;color:#f4d27a;font:800 12px/1.25 Noto Sans,system-ui,sans-serif;text-decoration:none;white-space:nowrap">&#9432; What are Elder Trees?</a>')
         .addTo(m);
-      elderInfoShownM11=true;
-      setTimeout(()=>{try{popup.remove()}catch(_){}},10000);
+      elderInfoPopupM11=popup;
+      elderInfoLastRunM11=run;
+      setTimeout(()=>{try{popup.remove();if(elderInfoPopupM11===popup)elderInfoPopupM11=null}catch(_){}},10000);
     }catch(_){}
   }
   function refreshSurfaces(){
