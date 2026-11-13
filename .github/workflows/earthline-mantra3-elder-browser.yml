@@ -1,0 +1,32 @@
+name: Mantra 3 Elder Property browser acceptance
+on:
+  push:
+    branches:
+      - repair/mantra3-october-elder-ui-20261113
+    paths:
+      - tests/mantra3-elder-regression.mjs
+      - .github/workflows/earthline-mantra3-elder-browser.yml
+permissions:
+  contents: read
+jobs:
+  elder-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Prepare headless Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Test isolated repaired October page at original production origin without deployment
+        run: node tests/mantra3-elder-regression.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra3-elder-browser-evidence
+          path: mantra3-browser-result.json
+          if-no-files-found: warn
+          retention-days: 7
