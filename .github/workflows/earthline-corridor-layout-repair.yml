@@ -1,0 +1,51 @@
+name: Earthline corridor detail owner repair (staging only)
+on:
+  push:
+    branches: [staging/october-stabilization-2026-11-13]
+    paths:
+      - scripts/repair-corridor-detail-layout.mjs
+      - .github/workflows/earthline-corridor-layout-repair.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Assert baseline and apply owner repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object index.html)" = "70a7a63b085b7f34eed51df1668a4316347029a5"
+          node --check scripts/repair-corridor-detail-layout.mjs
+          node scripts/repair-corridor-detail-layout.mjs
+          git diff --check
+          node - <<'NODE'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert');
+          const html=fs.readFileSync('index.html','utf8');
+          let checked=0;
+          for(const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)){
+            if(/\bsrc\s*=/.test(m[1])||/\btype\s*=\s*['"](?:application\/json|importmap|module)/i.test(m[1])||!m[2].trim())continue;
+            new vm.Script(m[2]);checked++;
+          }
+          assert(checked>0);
+          assert(html.includes('html:has(#earthlineCorridorDetail16149.open)'));
+          assert(html.includes('data-action="zoom">ZOOM TO THIS LOCATION</button>'));
+          console.log('PASS inline scripts:',checked);
+          NODE
+      - name: Commit corrected staging index only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline staging layout validation"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix(layout): keep corridor zoom footer visible and hide obsolete left controls"
+          git push origin HEAD:staging/october-stabilization-2026-11-13
