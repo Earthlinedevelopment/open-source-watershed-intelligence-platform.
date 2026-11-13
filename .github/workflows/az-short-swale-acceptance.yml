@@ -1,0 +1,29 @@
+name: Arizona exact short swale candidate acceptance
+on:
+  push:
+    branches: [repair/arizona-visible-valid-swales-20261113]
+    paths: [tests/arizona-short-swale-display-candidate.mjs, .github/workflows/az-short-swale-acceptance.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Confirm exact HTML candidate
+        run: test "$(git hash-object index.html)" = "8474081675fdf904af8d805a28617ff673e6a525"
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node tests/arizona-short-swale-display-candidate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-arizona-valid-swale-visible
+          path: |
+            artifacts/az-short-display
+            artifacts/property4-candidate
+          retention-days: 14
