@@ -3735,7 +3735,9 @@ function earthlineProcessMappedFeature(roadMask,buildingMask,f){
   return touched;
 }
 async function earthlineWaitForMappedExclusionStyle15862B(myGen=M.searchGen,timeoutMs=5000){
-  if(!earthlineMapActive())return {ready:false,status:"map-inactive",waitedMs:0};
+  // Do not fail immediately when Mapbox is still initializing; existing style poll
+  // waits for relevant exclusion layers then fails closed on timeout.
+  // This prevents a valid first Property click from publishing before style readiness.
   const started=performance.now();
   /* EARTHLINE 16467 — performance only. Exclusion processing does not need the
      entire Mapbox style (imagery, glyphs, unrelated sources) to settle. It needs
