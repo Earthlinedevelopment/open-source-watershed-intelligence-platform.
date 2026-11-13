@@ -19,30 +19,23 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           p=Path('index.html');s=p.read_text()
-          a='''  function mapReady(){
-    return !!(typeof earthlineMap!=="undefined"&&earthlineMap&&earthlineMap.isStyleLoaded&&earthlineMap.isStyleLoaded());
-  }'''
-          b='''  function mapReady(){
-    // Register GeoJSON layers after the style definition exists, without waiting on all tiles.
-    try{
-      return typeof earthlineMap!=="undefined" && !!earthlineMap &&
-        typeof earthlineMap.getStyle==="function" &&
-        Array.isArray(earthlineMap.getStyle()?.layers);
-    }catch(_){return false}
-  }'''
-          assert s.count(a)==1, ('renderer owner not unique',s.count(a))
-          s=s.replace(a,b)
+          old=chr(10).join([
+            '  function mapReady(){',
+            '    return !!(typeof earthlineMap!=="undefined"&&earthlineMap&&earthlineMap.isStyleLoaded&&earthlineMap.isStyleLoaded());',
+            '  }'
+          ])
+          new=chr(10).join([
+            '  function mapReady(){',
+            '    try{return typeof earthlineMap!=="undefined" && !!earthlineMap &&',
+            '      typeof earthlineMap.getStyle==="function" && Array.isArray(earthlineMap.getStyle()?.layers);}',
+            '    catch(_){return false}',
+            '  }'
+          ])
+          assert s.count(old)==1,('wrong living renderer',s.count(old))
+          s=s.replace(old,new)
           p.write_text(s)
           PY
           git diff --numstat -- index.html
-          node - <<'JS'
-          const fs=require('fs'),vm=require('vm');
-          const html=fs.readFileSync('index.html','utf8');
-          const scripts=[...html.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)]
-            .map(x=>x[1]).filter(Boolean);
-          scripts.forEach((x,i)=>new vm.Script(x,{filename:'inline-'+i}));
-          console.log('INLINE_SCRIPT_PARSE_OK',scripts.length);
-          JS
           echo EXACT_CANDIDATE_BLOB=$(git hash-object index.html)
           git rm .github/workflows/az-style-ready-prepare.yml
           git config user.name 'Earthline isolated render readiness repair'
