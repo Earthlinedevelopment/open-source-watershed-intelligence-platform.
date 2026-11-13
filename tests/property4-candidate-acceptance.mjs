@@ -55,10 +55,11 @@ for(const site of cases){
     const source=id=>{try{return map?.getSource?.(id)}catch{return null}};
     const count=id=>{let x=source(id);return x?._data?.features?.length??null};
     const layer=id=>{try{return map?.getLayoutProperty?.(id,'visibility')??null}catch{return null}};
+    const drawn=id=>{try{return map?.getLayer?.(id)?map.queryRenderedFeatures({layers:[id]}).length:0}catch{return 0}};
     return {site:t,pub:p,swales:m?.swales?.length,vector:m?.vectorNoBuildCoverage||null,
        tier:document.documentElement.dataset.earthlineAnalysisTier,demSource:m?.demSource,
        gauge:document.querySelector('.earthline-recharge-gauge-label-16488')?.textContent,
-       contoursAudit:window.earthlineElevationAudit15776?.()||null,recharge:count('earthline-recharge-zones'),
+       contoursAudit:window.earthlineElevationAudit15776?.()||null,drawnElevationLabels:drawn('earthline-official-contour-label-15776'),recharge:count('earthline-recharge-zones'),
        owner:m?.rendererOwnership15805||null,layerVisibility:{
          contours:layer('earthline-official-contour-major-15776'),elevationLabels:layer('earthline-official-contour-label-15776'),recharge:layer('earthline-recharge-line')
        },generation:m?.searchGen};
@@ -72,7 +73,7 @@ for(const site of cases){
  await ctx.close();
 }
 await browser.close();
-const passed=output.every(o=>!o.failure&&!o.timeout&&o.pub?.committed===true&&o.pub?.safetyVerified===true&&o.gauge==='Recharge Potential'&&!/procedural|generated screening fallback/i.test(String(o.demSource||''))&&o.contoursAudit?.sourcePresent===true&&o.contoursAudit?.majorPresent===true&&o.contoursAudit?.labelPresent===true&&o.layerVisibility?.contours!=='none'&&o.layerVisibility?.elevationLabels!=='none'&&!(o.errors||[]).some(e=>/Uncaught|ReferenceError/i.test(e)))&&output[0].pub.safeSegments>0;
+const passed=output.every(o=>!o.failure&&!o.timeout&&o.pub?.committed===true&&o.pub?.safetyVerified===true&&o.gauge==='Recharge Potential'&&!/procedural|generated screening fallback/i.test(String(o.demSource||''))&&o.contoursAudit?.sourcePresent===true&&o.contoursAudit?.majorPresent===true&&o.contoursAudit?.labelPresent===true&&o.layerVisibility?.contours!=='none'&&o.layerVisibility?.elevationLabels!=='none'&&!(o.errors||[]).some(e=>/Uncaught|ReferenceError/i.test(e)))&&output[0].pub.safeSegments>0&&output[1].drawnElevationLabels>0&&output.every(o=>o.recharge>0);
 const result={targetBlob,passed,output};
 fs.writeFileSync('artifacts/property4-candidate/result.json',JSON.stringify(result,null,2));
 console.log('PROPERTY4_CANDIDATE_RESULT '+JSON.stringify({passed,sites:output.map(o=>({name:o.site?.name,timeout:o.timeout,swales:o.swales,segments:o.pub?.safeSegments,blocked:o.pub?.blocked,reason:o.pub?.blockReason,gauge:o.gauge}))}));
