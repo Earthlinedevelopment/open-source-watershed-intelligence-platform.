@@ -85,7 +85,8 @@ for(const site of cases){
       authorizedCount:m?.authoritativeSafeSwales15815?.features?.length,
       living:m?.livingSwaleRenderer15792||null,
       livingSourceCount:earthlineMap?.getSource?.('earthline-living-swales-15792')?._data?.features?.length,
-      livingVisibility:earthlineMap?.getLayoutProperty?.('earthline-living-swales-life-15792','visibility')};
+      livingVisibility:earthlineMap?.getLayoutProperty?.('earthline-living-swales-life-15792','visibility'),
+      livingDrawnCount:(()=>{try{return earthlineMap?.queryRenderedFeatures?.({layers:['earthline-living-swales-life-15792']})?.length||0}catch{return 0}})()};
     const syncResult=(typeof earthlineSyncSwaleLayer==='function'?earthlineSyncSwaleLayer():null);
     return {before,syncResult,after:{sourceCount:(typeof EARTHLINE_SWALE_SOURCE!=='undefined'?earthlineMap?.getSource?.(EARTHLINE_SWALE_SOURCE)?._data?.features?.length:null),
        visibility:(typeof EARTHLINE_SWALE_LAYER!=='undefined'?earthlineMap?.getLayoutProperty?.(EARTHLINE_SWALE_LAYER,'visibility'):null),
@@ -101,7 +102,7 @@ for(const site of cases){
  await ctx.close();
 }
 await browser.close();
-const passed=output.every(o=>o.generatedGeojson>0&&o.syncProbe?.before?.living?.features>0&&o.syncProbe?.before?.living?.visible===true&&o.syncProbe?.before?.livingSourceCount>0&&o.syncProbe?.before?.livingVisibility==='visible'&&!o.failure&&!o.timeout&&o.pub?.committed===true&&o.pub?.safetyVerified===true&&o.gauge==='Recharge Potential'&&!/procedural|generated screening fallback/i.test(String(o.demSource||''))&&o.contoursAudit?.sourcePresent===true&&o.contoursAudit?.majorPresent===true&&o.contoursAudit?.labelPresent===true&&o.layerVisibility?.contours!=='none'&&o.layerVisibility?.elevationLabels!=='none'&&!(o.errors||[]).some(e=>/Uncaught|ReferenceError/i.test(e)))&&output.every(o=>o.recharge>0);
+const passed=output.every(o=>o.generatedGeojson>0&&o.syncProbe?.before?.living?.features>0&&o.syncProbe?.before?.living?.visible===true&&o.syncProbe?.before?.livingSourceCount>0&&o.syncProbe?.before?.livingVisibility==='visible'&&o.syncProbe?.before?.livingDrawnCount>0&&!o.failure&&!o.timeout&&o.pub?.committed===true&&o.pub?.safetyVerified===true&&o.gauge==='Recharge Potential'&&!/procedural|generated screening fallback/i.test(String(o.demSource||''))&&o.contoursAudit?.sourcePresent===true&&o.contoursAudit?.majorPresent===true&&o.contoursAudit?.labelPresent===true&&o.layerVisibility?.contours!=='none'&&o.layerVisibility?.elevationLabels!=='none'&&!(o.errors||[]).some(e=>/Uncaught|ReferenceError/i.test(e)))&&output.every(o=>o.recharge>0);
 const result={targetBlob,passed,output};
 fs.writeFileSync('artifacts/property4-candidate/result.json',JSON.stringify(result,null,2));
 console.log('PROPERTY4_CANDIDATE_RESULT '+JSON.stringify({passed,sites:output.map(o=>({name:o.site?.name,timeout:o.timeout,swales:o.swales,segments:o.pub?.safeSegments,blocked:o.pub?.blocked,reason:o.pub?.blockReason,gauge:o.gauge}))}));
