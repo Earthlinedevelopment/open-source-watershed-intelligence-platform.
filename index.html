@@ -6138,15 +6138,20 @@ function earthlineSplitUsableSegments(pts,maxS){
   let cur=[];
   const minM=earthlineMinimumSwaleLengthM15768(); // physical 12–40 m corridor-length threshold
   let prev=null;
+  /* M210 R8: in Property mode, a modelled channel or wash is a no-build line like a road: split the contour there. */
+  const propertySplitM210=!(M.loc&&(/Regional Opportunity Tile/i.test(String(M.loc.name||""))||(Array.isArray(M.loc.zones)&&M.loc.zones.includes("Regional Tile"))));
+  const chanThrM210=(propertySplitM210&&M.acc&&typeof streamThreshold==='function')?streamThreshold()*3.2:Infinity;
+  const onChannelM210=(x,y)=>{const gx=Math.round(x),gy=Math.round(y);return gx>=0&&gy>=0&&gx<GW&&gy<GH&&M.acc[idx(gx,gy)]>=chanThrM210;};
   for(const p of (pts||[])){
     // Check the actual line between vertices, not only the vertices. This prevents a smoothed
     // swale from visually crossing a narrow driveway/roof between sampled points.
-    let ok=earthlinePathPointUsable(p[0],p[1],maxS);
+    let ok=earthlinePathPointUsable(p[0],p[1],maxS)&&!onChannelM210(p[0],p[1]);
     if(ok&&prev){
       const steps=Math.max(1,Math.ceil(Math.hypot(p[0]-prev[0],p[1]-prev[1])*2));
       for(let k=1;k<steps;k++){
         const t=k/steps;
-        if(!earthlinePathPointUsable(prev[0]+(p[0]-prev[0])*t,prev[1]+(p[1]-prev[1])*t,maxS)){ok=false;break;}
+        const qxM210=prev[0]+(p[0]-prev[0])*t,qyM210=prev[1]+(p[1]-prev[1])*t;
+        if(!earthlinePathPointUsable(qxM210,qyM210,maxS)||onChannelM210(qxM210,qyM210)){ok=false;break;}
       }
     }
     if(ok)cur.push(p);
@@ -6272,6 +6277,9 @@ function earthlineSwaleFromPts(pts,bandIndex,chanThr,isSite,maxS,totalBands){
      and hashing thousands of numbers for every candidate. Capture geometry, accumulation
      values, channel threshold, scoring and candidate ordering are unchanged. */
   const captureToken16455=earthlineCaptureToken16455();
+  /* M210: Property mode = not a Regional Opportunity Tile (same test the engine uses for isRegionalTile15769). */
+  const propertyM210=!(M.loc&&(/Regional Opportunity Tile/i.test(String(M.loc.name||""))||(Array.isArray(M.loc.zones)&&M.loc.zones.includes("Regional Tile"))));
+  let channelHitsM210=0;
 
   for(const [px,py] of pts){
     const gx=Math.round(px),gy=Math.round(py);
@@ -6282,6 +6290,7 @@ function earthlineSwaleFromPts(pts,bandIndex,chanThr,isSite,maxS,totalBands){
 
     const spHere=slopePct(gx,gy);
     slopeSum+=spHere;
+    if(propertyM210&&M.acc&&M.acc[idx(gx,gy)]>=chanThr)channelHitsM210++; /* M210 R8 */
 
     const [ggx,ggy]=gradAt(gx,gy);
     const gm=Math.hypot(ggx,ggy)||1;
@@ -6317,7 +6326,8 @@ function earthlineSwaleFromPts(pts,bandIndex,chanThr,isSite,maxS,totalBands){
   const lenM=earthlineSegmentLengthM(pts);
   if(!earthlineSwaleGeometryAcceptable(pts,lenM))return null;
   // Prefer substantial, buildable segments over tiny contour fragments.
-  if(!isSite && lenM<earthlineMinimumSwaleLengthM15768())return null;
+  if((!isSite||propertyM210) && lenM<earthlineMinimumSwaleLengthM15768())return null; /* M210 R4: Property swales get the minimum length too */
+  if(propertyM210&&channelHitsM210>0)return null; /* M210 R8: a Property swale never sits on or crosses a modelled channel or wash */
 
   let slopeScore;
   if(avgSlope<1.5)slopeScore=0.84;
