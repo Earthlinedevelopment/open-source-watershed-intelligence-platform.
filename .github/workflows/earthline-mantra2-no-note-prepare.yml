@@ -1,0 +1,45 @@
+name: Prepare Mantra2 Property no-note potential candidate
+on:
+  push:
+    branches: [release/mantra2-4pct-no-note-display]
+    paths:
+      - .github/workflows/earthline-mantra2-no-note-prepare.yml
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Pinned baseline, apply only slope and overlay visibility + gauge label
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object index.html)" = "a46d094cbdc37ecdc49f53a784bdd870c800627a"
+          git show 34fb273d170d3338f167f4366c7ccde4c30e6c31:index.html > /tmp/earthline-approved-4pct.html
+          test "$(git hash-object /tmp/earthline-approved-4pct.html)" = "e2c423928433e264c4c8f2540d4c2e7fd01ed9ac"
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/earthline-approved-4pct.html').read_text()
+          start=s.index('<!-- M211: Property steep-ground explanation')
+          end=s.index('</script>',start)+len('</script>')
+          s=s[:start]+s[end:]
+          old='return !earthlineLargeAreaMode()&&!earthlinePlanningMode()&&!!M.analysisReady&&Array.isArray(M.swales)&&M.swales.length>0;'
+          new='return !earthlineLargeAreaMode()&&!earthlinePlanningMode()&&!!M.analysisReady&&Array.isArray(M.swales);'
+          assert s.count(old)==1
+          s=s.replace(old,new)
+          assert 'earthlineSteepNoteM211' not in s and 'Mostly steep ground' not in s
+          assert s.count('Recharge Suitability')==6
+          s=s.replace('Recharge Suitability','Recharge Potential').replace('Recharge suitability</div>','Recharge potential</div>')
+          Path('index.html').write_text(s)
+          PY
+          test "$(git hash-object index.html)" = "bb0bf64359e1121841eceba8000eb93d250b9418"
+          git diff --check
+          git rm .github/workflows/earthline-mantra2-no-note-prepare.yml
+          git config user.name 'Earthline release candidate'
+          git config user.email 'info@earthlinedevelopment.org'
+          git add index.html
+          git commit -m 'fix(property): approved 4pct no message, preserve detail layers, gauge Potential'
+          git push origin HEAD:release/mantra2-4pct-no-note-display
