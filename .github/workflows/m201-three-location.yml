@@ -1,0 +1,33 @@
+name: M201 three-location public-versus-candidate controls
+on:
+  push:
+    branches: [m201-rule-b-october-isolated]
+    paths:
+      - .github/workflows/m201-three-location.yml
+      - tests/m201-rule-b-three-location.mjs
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm pinned candidate blob
+        run: test "$(git hash-object index.html)" = "f0c851fe763789d04a2f7cd95645110250e5cdb4"
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run Vermont Iowa Arizona against public and isolated candidate
+        run: node tests/m201-rule-b-three-location.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m201-three-location-comparison
+          path: artifacts/m201
+          retention-days: 14
