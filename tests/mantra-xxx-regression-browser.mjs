@@ -102,6 +102,7 @@ try{
     rows.push(p);
     await page.screenshot({path:'mxxx-'+t.label.replaceAll(' ','-').toLowerCase()+'.png'});
     if(p.tier!=='property'||p.settled!==true||p.success!==true||p.count<1)failures.push(t.label+': property did not publish visible safe swales');
+    if(p.svgCores!==0)failures.push(t.label+': stale Regional SVG still visible in Property ('+p.svgCores+')');
     if(p.mutations>2)failures.push(t.label+': blinking proxy '+p.mutations+' overlay replacements while idle');
   }
   const report=await page.evaluate(()=>{
