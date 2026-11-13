@@ -1,0 +1,33 @@
+name: Mantra 2 October live measured baseline
+on:
+  push:
+    branches: [repair/mantra2-functionality-reset]
+    paths:
+      - tests/mantra2-october-baseline.mjs
+      - .github/workflows/mantra2-october-baseline.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run October live pinned baseline
+        run: node tests/mantra2-october-baseline.mjs
+      - name: Preserve measurements and screenshots regardless of outcome
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mantra2-october-baseline
+          path: artifacts/mantra2-october-baseline/
+          retention-days: 30
+          if-no-files-found: warn
