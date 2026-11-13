@@ -1,0 +1,34 @@
+name: Build exact Arizona safe short swale display repair
+on:
+  push:
+    branches: [repair/arizona-visible-valid-swales-20261113]
+    paths: [.github/workflows/earthline-arizona-swale-display-prepare.yml]
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Preserve safety gates, remove only redundant length cutoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object index.html)" = "84927595f42e0f8a4d3000cc371761909a30af29"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          old='if(rawLen<minVisibleM&&!s.isSite)continue;'
+          new='if(rawLen<earthlineMinimumSwaleLengthM15768())continue;'
+          assert s.count(old)==1
+          s=s.replace(old,new)
+          p.write_text(s)
+          PY
+          test "$(git hash-object index.html)" = "8474081675fdf904af8d805a28617ff673e6a525"
+          git rm .github/workflows/earthline-arizona-swale-display-prepare.yml
+          git config user.name 'Earthline safe visible swale repair'
+          git config user.email 'info@earthlinedevelopment.org'
+          git add index.html
+          git commit -m 'fix(property): display valid gentle swales above actual safety minimum'
+          git push origin HEAD:repair/arizona-visible-valid-swales-20261113
