@@ -8,7 +8,7 @@ on:
       - .github/workflows/mantra5-five-runs.yml
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 jobs:
   acceptance:
     runs-on: ubuntu-latest
@@ -30,21 +30,11 @@ jobs:
           path: artifacts/mantra5-five-runs/
           retention-days: 30
           if-no-files-found: warn
-      - name: Record five-run acceptance and fast-forward GitHub Pages only on PASS
+      - name: Record five-run verdict without production promotion
         if: success()
         shell: bash
         run: |
           set -euo pipefail
           git merge-base --is-ancestor "ee4367e056f431b5ff2d169fa18e7039866efd5d" HEAD
           test -s artifacts/mantra5-five-runs/results.json
-          mkdir -p docs
-          cp artifacts/mantra5-five-runs/results.json docs/MANTRA5-FIVE-RUN-RESULT.json
-          git config user.name "Earthline Acceptance Gate"
-          git config user.email "info@earthlinedevelopment.org"
-          git add docs/MANTRA5-FIVE-RUN-RESULT.json
-          git commit -m "test(mantra5): record five matching Iowa Property results"
-          live_head="$(git ls-remote origin refs/heads/pages-live | cut -f1)"
-          test "$live_head" = "c7d98bc7da30b93ceaf170d3828eb4dbc8fbaf5a"
-          git push origin HEAD:refs/heads/repair/mantra5-osm-20261113
-          git push origin HEAD:refs/heads/pages-live
-          echo "MANTRA5_LIVE_PROMOTION_SUCCESS $(git rev-parse HEAD)"
+          node -e "const r=require('./artifacts/mantra5-five-runs/results.json'); if(r.length!==5||!r.every(x=>x.conclusion==='COMPLETE'))process.exit(1);console.log('MANTRA6_CANDIDATE_ACCEPTANCE_ONLY; NO DEPLOY',r.map(x=>x.measured.publishedSwales))"
