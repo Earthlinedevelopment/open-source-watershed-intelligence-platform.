@@ -4329,7 +4329,7 @@ function earthlineRechargeGeoJSON(){
   return {type:"FeatureCollection",features};
 }
 function earthlineEnsureRechargeLayers(){
-  if(!earthlineMapActive()){
+  if(!(earthlineMap&&earthlineMap.getStyle&&Array.isArray(earthlineMap.getStyle()?.layers))){
     window.EARTHLINE_RECHARGE_LAYER_ENSURE_AUDIT_16500={ok:false,reason:"map-inactive",at:new Date().toISOString()};
     return false;
   }
@@ -4378,7 +4378,7 @@ function earthlineEnsureRechargeLayers(){
   }
 }
 function earthlineSyncRechargeLayer(show=true){
-  if(!earthlineMapActive()||!earthlineEnsureRechargeLayers())return false;
+  if(!(earthlineMap&&earthlineMap.getStyle&&Array.isArray(earthlineMap.getStyle()?.layers))||!earthlineEnsureRechargeLayers())return false;
   const data=earthlineRechargeGeoJSON();
   const src=earthlineMap.getSource(EARTHLINE_RECHARGE_SOURCE);
   if(src&&src.setData)src.setData(data);
