@@ -1,0 +1,30 @@
+name: Mantra 6 swale connected camera acceptance
+on:
+  push:
+    branches: [repair/mantra6-swale-stability-20261113]
+    paths:
+      - tests/mantra6-swale-browser.mjs
+      - .github/workflows/mantra6-swale-browser.yml
+permissions:
+  contents: read
+jobs:
+  property-map-camera:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Test five map pans on candidate Property swale renderer
+        run: node tests/mantra6-swale-browser.mjs
+      - name: Retain exact results and screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mantra6-swale-camera-evidence
+          path: artifacts/mantra6-swale/
+          retention-days: 30
+          if-no-files-found: warn
