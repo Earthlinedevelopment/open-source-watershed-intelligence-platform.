@@ -9,6 +9,9 @@
   const SOURCE='earthline-elder-trees-17097';
   const LAYER='earthline-elder-tree-points-17097';
   const state={loaded:false,loading:null,manifest:null,all:[],active:[],lastSummary:null,dynamic:{worker:null,seq:0,pending:new Map(),key:'',result:null,promise:null,error:null,warmPromise:null,warmed:false,tileWarmKey:'',tileWarmPromise:null}};
+  /* M7 temporary Elder Tree hover label; existing click details retain evidence distinctions. */
+  let elderHoverPopupM7=null,elderHoverBoundM7=false;
+  function dismissElderHoverM7(){try{elderHoverPopupM7?.remove()}catch(_){}elderHoverPopupM7=null}
 
   function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
@@ -281,18 +284,31 @@
           }
         });
         m.on('click',LAYER,e=>{
+          dismissElderHoverM7();
           const f=e?.features?.[0];if(!f)return;
           const p=f.properties||{},coords=f.geometry?.coordinates||[],verified=isVerified(p),conf=elderConfidence(p);
           const title=verified?'VERIFIED ELDER TREE':classify(p);
           const confidence=verified?'Verified external/field evidence':(conf==null?'Confidence not available':'Elder Tree Confidence '+conf+'%');
           const h=Number(p.height_m);
-          const body='<div style="font:700 13px/1.25 system-ui,sans-serif;color:#17323d">'+esc(title)+'</div>'+
+          const body='<div style="font:900 12px/1.2 system-ui,sans-serif;color:#245e39">ELDER TREE</div>'+
+            '<div style="margin-top:4px;font:700 13px/1.25 system-ui,sans-serif;color:#17323d">'+esc(title)+'</div>'+
             '<div style="margin-top:5px;font:800 12px/1.2 system-ui,sans-serif;color:#2f6f46">'+esc(confidence)+'</div>'+
             (Number.isFinite(h)?'<div style="margin-top:4px;font:600 11px/1.35 system-ui,sans-serif">Canopy height: '+esc(h.toFixed(1))+' m</div>':'')+
             '<div style="margin-top:4px;font:500 10px/1.35 system-ui,sans-serif;color:#526159">'+esc(p.source_name||'Earthline Elder Tree evidence')+'</div>'+
             (!verified?'<div style="margin-top:6px;font:500 9.5px/1.35 system-ui,sans-serif;color:#6e766a">Elder Tree Confidence is the tree’s local structural-evidence percentile compared with other detected tree/canopy structures in the same analyzed source area; it is not a probability of age or ancient/veteran status.</div>':'');
           try{new mapboxgl.Popup({closeButton:true,closeOnClick:true,offset:8}).setLngLat(coords).setHTML(body).addTo(m)}catch(_){}
         });
+      }
+      if(!elderHoverBoundM7){
+        elderHoverBoundM7=true;
+        m.on('mouseenter',LAYER,e=>{
+          const pt=e?.features?.[0]?.geometry?.coordinates;
+          if(!Array.isArray(pt)||pt.length<2)return;
+          dismissElderHoverM7();
+          try{elderHoverPopupM7=new mapboxgl.Popup({closeButton:false,closeOnClick:false,offset:12,className:'earthline-elder-hover-m7'}).setLngLat(pt).setHTML('<span style="font:900 11px/1.2 Noto Sans,system-ui,sans-serif;color:#245e39;letter-spacing:.4px">ELDER TREE</span>').addTo(m)}catch(_){dismissElderHoverM7()}
+        });
+        m.on('mouseleave',LAYER,dismissElderHoverM7);
+        m.on('movestart',dismissElderHoverM7);
       }
       try{
         if(m.getLayer?.(LAYER)){

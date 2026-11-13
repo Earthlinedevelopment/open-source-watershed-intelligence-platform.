@@ -33719,6 +33719,8 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
   };
   const SAFE_EMPTY_16221={type:'FeatureCollection',features:[]};
   const safeLayerTimers16221=new Set();
+  /* Mantra 7 display-only: no reupload or reordering of verified swales on camera motion. */
+  let lastSafeSourceM7=null,lastSafeFCM7=null,lastSafeKeyM7='',lastSafeClearedM7=null;
   function model(){try{return M||null}catch(_){return null}}
   function map(){try{return window.earthlineMap||earthlineMap||null}catch(_){return window.earthlineMap||null}}
   function button(){return document.getElementById('earthlineDeclareProperty16169')}
@@ -33947,7 +33949,7 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
   function setSafeLayerVisibility16221(on){
     const mp=map();
     for(const id of Object.values(SAFE_LAYERS_16221)){
-      try{if(mp?.getLayer?.(id))mp.setLayoutProperty(id,'visibility',on?'visible':'none')}catch(_){ }
+      try{if(mp?.getLayer?.(id)){const next=on?'visible':'none';if((mp.getLayoutProperty?.(id,'visibility')||'visible')!==next)mp.setLayoutProperty(id,'visibility',next)}}catch(_){ }
     }
   }
   /* EARTHLINE 16521 — presentation-only retirement + bounded same-generation
@@ -34016,7 +34018,8 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
 
   function clearSafePropertyFallback16221(reason='clear'){
     const mp=map();
-    try{const src=mp?.getSource?.(SAFE_SOURCE_16221);if(src?.setData)src.setData(SAFE_EMPTY_16221)}catch(_){ }
+    try{const src=mp?.getSource?.(SAFE_SOURCE_16221);if(src?.setData&&(src!==lastSafeClearedM7||(Array.isArray(src._data?.features)&&src._data.features.length>0)))src.setData(SAFE_EMPTY_16221);lastSafeClearedM7=src||null}catch(_){ }
+    lastSafeSourceM7=null;lastSafeFCM7=null;lastSafeKeyM7='';
     setSafeLayerVisibility16221(false);
     window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active:false,verified:false,count:0,visible:false,at:new Date().toISOString()};
     return true;
@@ -34050,13 +34053,14 @@ html.earthline-map-only-16169 #earthlineMapOnlyExit16169{display:flex;align-item
     if(!mp||!active||count<1){clearSafePropertyFallback16221(reason+':inactive-or-empty');return {ok:count===0&&active,count,visible:false,active,error:!mp?'map unavailable':(!active?'property display inactive':'verified zero-corridor result')}}
     const ensured=ensureSafePropertyLayers16221();
     if(!ensured.ok){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,sourceReady:!!ensured.sourceReady,layersReady:!!ensured.layersReady,errors:ensured.errors||[],error:ensured.error||null,at:new Date().toISOString()};return {ok:false,count,visible:false,active,...ensured}}
-    try{const src=mp.getSource(SAFE_SOURCE_16221);if(!src?.setData)throw new Error('safe source setData unavailable');src.setData(fc)}catch(error){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,error:String(error?.message||error),at:new Date().toISOString()};return {ok:false,count,visible:false,active,error:String(error?.message||error)}}
+    let changedM7=false;
+    try{const src=mp.getSource(SAFE_SOURCE_16221);if(!src?.setData)throw new Error('safe source setData unavailable');const md=model()||{},key=String(md.searchGen??'')+'|'+String(md.propertyPublication15816?.searchGen??'');changedM7=src!==lastSafeSourceM7||fc!==lastSafeFCM7||key!==lastSafeKeyM7||(Array.isArray(src._data?.features)&&src._data.features.length===0);if(changedM7){src.setData(fc);lastSafeSourceM7=src;lastSafeFCM7=fc;lastSafeKeyM7=key;lastSafeClearedM7=null;for(const id of Object.values(SAFE_LAYERS_16221)){if(mp.getLayer?.(id)&&mp.getPaintProperty?.(id,'line-opacity')===0)mp.setPaintProperty(id,'line-opacity',.98)}}}catch(error){window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221={build:BUILD,reason,active,verified:true,count,visible:false,error:String(error?.message||error),at:new Date().toISOString()};return {ok:false,count,visible:false,active,error:String(error?.message||error)}}
     setSafeLayerVisibility16221(true);
     const moved=[];
-    for(const id of Object.values(SAFE_LAYERS_16221)){try{if(mp.getLayer?.(id)){mp.moveLayer?.(id);moved.push(id)}}catch(_){ }}
+    if(changedM7)for(const id of Object.values(SAFE_LAYERS_16221)){try{if(mp.getLayer?.(id)){mp.moveLayer?.(id);moved.push(id)}}catch(_){ }}
     const visibleLayers=Object.values(SAFE_LAYERS_16221).filter(id=>{try{return !!mp.getLayer?.(id)&&mp.getLayoutProperty?.(id,'visibility')!=='none'}catch(_){return false}});
     const ok=visibleLayers.length===Object.keys(SAFE_LAYERS_16221).length;
-    const audit={build:BUILD,reason,active,verified:true,count,sourceReady:true,layersReady:true,visible:ok,visibleLayers,moved,geometrySource:'M.authoritativeSafeSwales15815',safetyGate:'propertyPublication15816 + propertyResultLock15815 + safetyAudit15806 + searchGen match',at:new Date().toISOString()};
+    const audit={build:BUILD,reason,active,verified:true,count,sourceReady:true,layersReady:true,visible:ok,visibleLayers,moved,sourceReuploaded:changedM7,geometrySource:'M.authoritativeSafeSwales15815',safetyGate:'propertyPublication15816 + propertyResultLock15815 + safetyAudit15806 + searchGen match',at:new Date().toISOString()};
     window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221=audit;
     /* EARTHLINE 16289 — self-heal a scientifically verified Property result if
        Mapbox became presentation-ready only after the governed promise settled.
@@ -37264,7 +37268,7 @@ html[data-earthline-analysis-tier="focus"] #earthlineRegionalVectorOverlay16020 
   function syncFullscreen(){const on=!!document.querySelector('.center.fs');document.documentElement.classList.toggle('earthline-map-expanded-16166',on);const b=document.getElementById('fsBtn');if(b){b.setAttribute('aria-pressed',String(on));b.title=on?'Exit expanded map':'Expand map'}}
   function ensureBuild(){/* Visible build ownership belongs to the terminal 16171 startup controller. */}
   function audit(){const m=map(),cur=m?.getCanvas?.()?.style?.cursor||'',containerClass=m?.getCanvasContainer?.()?.className||'';return {build:BUILD,tier:tier(),expanded:document.documentElement.classList.contains('earthline-map-expanded-16166'),fullscreenButtonVisible:getComputedStyle(document.getElementById('fsBtn')).display!=='none',mapboxCanvasCursor:cur||'Mapbox default',canvasContainerClass:String(containerClass),rendering:window.EARTHLINE_SWALE_RENDERING_AUDIT_16166||null,contour:window.EARTHLINE_CONTOUR_VALIDITY_AUDIT_16166||null}}
-  function install(){if(installed)return;installed=true;ensureBuild();syncFullscreen();const c=document.querySelector('.center');if(c)new MutationObserver(()=>{syncFullscreen();setTimeout(()=>map()?.resize?.(),0)}).observe(c,{attributes:true,attributeFilter:['class']});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.querySelector('.center.fs')){e.preventDefault();if(typeof setFullscreen==='function')setFullscreen(false);else document.querySelector('.center')?.classList.remove('fs');syncFullscreen()}},true);const m=map();if(m?.on){const update=()=>requestAnimationFrame(()=>{ensureBuild();applyTierStyling();syncFullscreen()});for(const ev of ['style.load','zoomend','moveend','resize'])m.on(ev,update);for(const ev of ['styledata','idle'])m.on(ev,()=>{});styleOwner=m}setTimeout(applyTierStyling,0);setTimeout(applyTierStyling,500);setTimeout(applyTierStyling,1600);window.earthlineExpandMap16166=on=>{if(typeof setFullscreen==='function')setFullscreen(on!==false);else document.querySelector('.center')?.classList.toggle('fs',on!==false);syncFullscreen();return true};window.earthlineVisualAudit16166=audit;const prior=window.EARTHLINE_ARTIFACT_MANIFEST_16162?.required||window.EARTHLINE_ARTIFACT_MANIFEST_16153?.required||[];window.EARTHLINE_ARTIFACT_MANIFEST_16167=window.EARTHLINE_ARTIFACT_MANIFEST_16166={build:BUILD,required:[...new Set([...prior,'authoritative expand-map control with Escape restore','Mapbox-owned grab and grabbing cursor behavior','focus bioswale cross-section: casing, berm, ditch, planted crown and survey centerline','property bioswale canopy rhythm and drafted survey line','focus corridor longitudinal contour validation with 5 m tolerance','regional corridor generation is not erased by the focus-only 5 m tolerance','slowly spinning search orb and phase-specific Vermont loading status','regional and focus location pills remain visible and clickable above bioswale cross-section layers'])]}}
+  function install(){if(installed)return;installed=true;ensureBuild();syncFullscreen();const c=document.querySelector('.center');if(c)new MutationObserver(()=>{syncFullscreen();setTimeout(()=>map()?.resize?.(),0)}).observe(c,{attributes:true,attributeFilter:['class']});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.querySelector('.center.fs')){e.preventDefault();if(typeof setFullscreen==='function')setFullscreen(false);else document.querySelector('.center')?.classList.remove('fs');syncFullscreen()}},true);const m=map();if(m?.on){const update=(ev)=>requestAnimationFrame(()=>{ensureBuild();const t=tier();if(ev==='style.load'||ev==='resize'||t!==lastTier||(t==='property'&&!map()?.getLayer?.(PROPERTY.ditch)))applyTierStyling();syncFullscreen()});for(const ev of ['style.load','zoomend','moveend','resize'])m.on(ev,()=>update(ev));for(const ev of ['styledata','idle'])m.on(ev,()=>{});styleOwner=m}setTimeout(applyTierStyling,0);setTimeout(applyTierStyling,500);setTimeout(applyTierStyling,1600);window.earthlineExpandMap16166=on=>{if(typeof setFullscreen==='function')setFullscreen(on!==false);else document.querySelector('.center')?.classList.toggle('fs',on!==false);syncFullscreen();return true};window.earthlineVisualAudit16166=audit;const prior=window.EARTHLINE_ARTIFACT_MANIFEST_16162?.required||window.EARTHLINE_ARTIFACT_MANIFEST_16153?.required||[];window.EARTHLINE_ARTIFACT_MANIFEST_16167=window.EARTHLINE_ARTIFACT_MANIFEST_16166={build:BUILD,required:[...new Set([...prior,'authoritative expand-map control with Escape restore','Mapbox-owned grab and grabbing cursor behavior','focus bioswale cross-section: casing, berm, ditch, planted crown and survey centerline','property bioswale canopy rhythm and drafted survey line','focus corridor longitudinal contour validation with 5 m tolerance','regional corridor generation is not erased by the focus-only 5 m tolerance','slowly spinning search orb and phase-specific Vermont loading status','regional and focus location pills remain visible and clickable above bioswale cross-section layers'])]}}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
 
