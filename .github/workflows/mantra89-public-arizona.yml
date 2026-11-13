@@ -21,6 +21,8 @@ jobs:
         with:
           node-version: '22'
       - name: Wait for published hotfix HTML
+        id: publication
+        continue-on-error: true
         run: |
           set -e
           for i in $(seq 1 18); do
@@ -46,3 +48,10 @@ jobs:
           name: mantra89-public-arizona-evidence
           path: artifacts/arizona-controls
           retention-days: 14
+      - name: Enforce public deployment provenance
+        if: always()
+        run: |
+          if [ '${{ steps.publication.outcome }}' != 'success' ]; then
+            echo 'FAIL CLOSED: Public origin did not serve the required Arizona boundary fix; browser diagnostics do not override provenance.'
+            exit 1
+          fi
