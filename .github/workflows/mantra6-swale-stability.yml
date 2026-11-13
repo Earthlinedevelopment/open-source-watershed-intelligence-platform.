@@ -1,0 +1,40 @@
+name: Mantra 6 swale renderer idempotence candidate
+on:
+  push:
+    branches: [repair/mantra6-swale-stability-20261113]
+    paths:
+      - tools/mantra6-swale-idempotent.py
+      - tests/mantra6-swale-idempotent.test.mjs
+      - .github/workflows/mantra6-swale-stability.yml
+permissions:
+  contents: write
+jobs:
+  test-and-commit-isolated-candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply two exact presentation-only hunks
+        run: python3 tools/mantra6-swale-idempotent.py
+      - name: Unit regression for native Mapbox no-blink style writes
+        run: node tests/mantra6-swale-idempotent.test.mjs
+      - name: Verify confined diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          test "$(git diff --name-only | wc -l)" -eq 1
+          test "$(git diff --name-only)" = "index.html"
+          git diff --numstat -- index.html
+      - name: Record candidate only — NEVER deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline Candidate Gate"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "candidate(mantra6): exact no-redundant-render swale repair [NOT PRODUCTION]"
+          git push origin HEAD:refs/heads/repair/mantra6-swale-stability-20261113
+          echo "MANTRA6_ISOLATED_CANDIDATE_READY $(git rev-parse HEAD)"
