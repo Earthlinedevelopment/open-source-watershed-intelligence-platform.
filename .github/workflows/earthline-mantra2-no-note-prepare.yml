@@ -18,7 +18,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git hash-object index.html)" = "a46d094cbdc37ecdc49f53a784bdd870c800627a"
-          git show 34fb273d170d3338f167f4366c7ccde4c30e6c31:index.html > /tmp/earthline-approved-4pct.html
+          git fetch origin release/approved-4pct-e2c423
+          git show FETCH_HEAD:index.html > /tmp/earthline-approved-4pct.html
           test "$(git hash-object /tmp/earthline-approved-4pct.html)" = "e2c423928433e264c4c8f2540d4c2e7fd01ed9ac"
           python3 - <<'PY'
           from pathlib import Path
