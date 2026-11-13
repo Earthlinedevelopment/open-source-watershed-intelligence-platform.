@@ -205,31 +205,35 @@
   /* M129: round brown trunk ring and green canopy, sourced points only.
      Marker geometry and colors affect presentation, never Elder evidence counts. */
   /* M164: clear round, brown-rimmed green Elder tree symbols; evidence tiers keep their colors. */
+  /* Mantra 6: restore a readable TREE, not a location pin or featureless green disk.
+     Evidence classes keep their original three green colors. Image geometry only. */
   function elderPinImage(fill){
     const canvas=document.createElement('canvas');canvas.width=48;canvas.height=48;
     const ctx=canvas.getContext('2d');if(!ctx)return null;
     ctx.clearRect(0,0,48,48);
+    // Preserve the approved brown circular trunk rim and distinct green crown.
     ctx.beginPath();ctx.arc(24,24,20.5,0,Math.PI*2);
     ctx.fillStyle='#76502b';ctx.fill();
     ctx.lineWidth=2;ctx.strokeStyle='#d7bd83';ctx.stroke();
-    ctx.beginPath();ctx.arc(24,24,15.7,0,Math.PI*2);
+    ctx.beginPath();ctx.arc(24,24,16,0,Math.PI*2);
     ctx.fillStyle=fill;ctx.fill();
-    ctx.lineWidth=1.3;ctx.strokeStyle='#163b24';ctx.stroke();
-    ctx.beginPath();ctx.arc(19,18,5.8,0,Math.PI*2);
-    ctx.fillStyle='rgba(210,245,185,.32)';ctx.fill();
-    ctx.beginPath();ctx.arc(28,29,4,0,Math.PI*2);
-    ctx.fillStyle='rgba(8,38,19,.18)';ctx.fill();
-    /* Mantra 6: approved Elder symbol is a round green canopy, brown rim and visible brown trunk center — never a location pin. */
-    ctx.beginPath();ctx.arc(24,25.5,4.5,0,Math.PI*2);
-    ctx.fillStyle='#76502b';ctx.fill();
-    ctx.lineWidth=1.1;ctx.strokeStyle='#d7bd83';ctx.stroke();
+    ctx.lineWidth=1.1;ctx.strokeStyle='#163b24';ctx.stroke();
+    // Leaf clusters make the canopy read as a tree rather than a flat disk.
+    ctx.fillStyle='rgba(181,223,143,.42)';
+    for(const [x,y,r] of [[17,17,4],[23,13,4.3],[30,18,4],[16,25,3.4],[32,27,3.6]])
+      {ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
+    // A visibly branched brown trunk, large enough to survive Mapbox scaling.
+    ctx.strokeStyle='#e8ca91';ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=5.6;
+    ctx.beginPath();ctx.moveTo(24,35);ctx.lineTo(24,23);ctx.moveTo(24,28);ctx.lineTo(18,22);ctx.moveTo(24,26);ctx.lineTo(30,20);ctx.stroke();
+    ctx.strokeStyle='#684021';ctx.lineWidth=3.7;
+    ctx.beginPath();ctx.moveTo(24,35);ctx.lineTo(24,23);ctx.moveTo(24,28);ctx.lineTo(18,22);ctx.moveTo(24,26);ctx.lineTo(30,20);ctx.stroke();
     return ctx.getImageData(0,0,48,48);
   }
   function ensureElderPinImages(m){
     const pins=[
-      ['earthline-elder-pin-verified','#174d2a'],
-      ['earthline-elder-pin-lidar','#2f7d48'],
-      ['earthline-elder-pin-modeled','#4f9b62']
+      ['earthline-elder-tree-m6-verified','#174d2a'],
+      ['earthline-elder-tree-m6-lidar','#2f7d48'],
+      ['earthline-elder-tree-m6-modeled','#4f9b62']
     ];
     for(const [name,color] of pins){
       if(m.hasImage?.(name))continue;
@@ -252,9 +256,9 @@
           id:LAYER,type:'symbol',source:SOURCE,
           layout:{
             'icon-image':['case',
-              ['any',['==',['get','record_class'],'VERIFIED_ELDER_TREE'],['==',['get','record_class'],'VERIFIED_EXTERNAL_TREE']],'earthline-elder-pin-verified',
-              ['any',['==',['get','source_class'],'LIDAR'],['==',['get','record_class'],'LIDAR_CONFIRMED_ELDER_TREE_CANDIDATE']],'earthline-elder-pin-lidar',
-              'earthline-elder-pin-modeled'
+              ['any',['==',['get','record_class'],'VERIFIED_ELDER_TREE'],['==',['get','record_class'],'VERIFIED_EXTERNAL_TREE']],'earthline-elder-tree-m6-verified',
+              ['any',['==',['get','source_class'],'LIDAR'],['==',['get','record_class'],'LIDAR_CONFIRMED_ELDER_TREE_CANDIDATE']],'earthline-elder-tree-m6-lidar',
+              'earthline-elder-tree-m6-modeled'
             ],
             /* M96: candidates must be legible on satellite imagery; labels never
                imply that an unverified modeled tree is known to be old. */
