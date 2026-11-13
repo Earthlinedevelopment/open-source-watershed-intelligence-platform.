@@ -19,10 +19,10 @@ for(const loc of locations){
     await page.goto('https://earthlinedevelopment.org/',{waitUntil:'domcontentloaded',timeout:90000});
     await page.waitForFunction(()=>typeof window.earthlineSetPropertyTarget16201==='function' &&
       typeof window.earthlineDeclarePropertyAtCrosshair16173==='function' &&
-      !!window.earthlineMap?.getStyle?.(),null,{timeout:90000});
+      !!(typeof earthlineMap!=='undefined' && earthlineMap?.getStyle?.()),null,{timeout:180000});
     data=await page.evaluate(async(t)=>{
       const toNum=v=>Number(v);
-      const map=window.earthlineMap;
+      const map=(typeof earthlineMap!=='undefined'?earthlineMap:window.earthlineMap);
       map.jumpTo({center:[t.lng,t.lat],zoom:17});
       const target={lng:t.lng,lat:t.lat,source:'connected-m210-browser-gate',at:new Date().toISOString()};
       window.earthlineSetPropertyTarget16201(target,{openPanel:false});
