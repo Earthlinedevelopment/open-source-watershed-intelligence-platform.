@@ -1,0 +1,50 @@
+name: M210 connected live Arizona and Iowa regression
+on:
+  push:
+    branches: [staging/october-stabilization-2026-11-13]
+    paths:
+      - tests/m210-live-gate.mjs
+      - .github/workflows/m210-live-gate.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  property-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Read-only live Property acceptance (report even on failed runs)
+        id: check
+        continue-on-error: true
+        run: node tests/m210-live-gate.mjs
+      - name: Upload screenshots and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m210-arizona-iowa-live-acceptance
+          path: artifacts/m210-live
+          retention-days: 14
+      - name: Make compact run report accessible in staging
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f artifacts/m210-live/report.json || echo '{"error":"browser did not produce report"}' > artifacts/m210-live/report.json
+          mkdir -p validation
+          cp artifacts/m210-live/report.json validation/m210-live-gate.json
+          git config user.name 'Earthline M210 connected acceptance'
+          git config user.email 'info@earthlinedevelopment.org'
+          git add validation/m210-live-gate.json
+          git commit -m 'test(m210): record connected Arizona/Iowa browser findings' || true
+          git push origin HEAD:staging/october-stabilization-2026-11-13
+      - name: Report failing acceptance
+        if: steps.check.outcome == 'failure'
+        run: exit 1
