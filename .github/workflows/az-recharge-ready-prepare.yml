@@ -1,0 +1,35 @@
+name: Prepare recharge source on style-ready map
+on:
+  push:
+    branches: [repair/arizona-visible-valid-swales-20261113]
+    paths: [.github/workflows/az-recharge-ready-prepare.yml]
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Enable unchanged recharge geometry once map style is queryable
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object index.html)" = "133f36605b9a0d58a85eae759580aa9eadeffe7a"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          a='function earthlineEnsureRechargeLayers(){'+chr(10)+'  if(!earthlineMapActive()){'
+          b='function earthlineEnsureRechargeLayers(){'+chr(10)+'  if(!(earthlineMap&&earthlineMap.getStyle&&Array.isArray(earthlineMap.getStyle()?.layers))){'
+          c='function earthlineSyncRechargeLayer(show=true){'+chr(10)+'  if(!earthlineMapActive()||!earthlineEnsureRechargeLayers())return false;'
+          d='function earthlineSyncRechargeLayer(show=true){'+chr(10)+'  if(!(earthlineMap&&earthlineMap.getStyle&&Array.isArray(earthlineMap.getStyle()?.layers))||!earthlineEnsureRechargeLayers())return false;'
+          assert s.count(a)==1 and s.count(c)==1
+          p.write_text(s.replace(a,b).replace(c,d))
+          PY
+          test "$(git hash-object index.html)" = "66eb239436ea5cb4fd6975ab83f52690777ec14f"
+          git rm .github/workflows/az-recharge-ready-prepare.yml
+          git config user.name 'Earthline property layer safety'
+          git config user.email 'info@earthlinedevelopment.org'
+          git add index.html
+          git commit -m 'fix(property): restore recharge targets on style-ready map during early load'
+          git push origin HEAD:repair/arizona-visible-valid-swales-20261113
