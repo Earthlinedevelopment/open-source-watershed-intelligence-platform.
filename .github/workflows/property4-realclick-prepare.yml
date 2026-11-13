@@ -1,0 +1,35 @@
+name: Prepare exact single-press Property candidate
+on:
+  push:
+    branches: [repair/property4-gentle-contour-split-20261113]
+    paths: [.github/workflows/property4-realclick-prepare.yml]
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Patch exact existing click owner, preserve all science gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object index.html)" = "2b38c611630efe4eb7af1915e8225f87cb3aba88"
+          python3 - <<'PY'
+          import base64
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          a="b.addEventListener('pointerdown',e=>e.stopPropagation(),true);"
+          assert s.count(a)==1
+          b=base64.b64decode('Yi5hZGRFdmVudExpc3RlbmVyKCdwb2ludGVyZG93bicsZT0+ZS5zdG9wUHJvcGFnYXRpb24oKSx0cnVlKTsKICAgICAgLyogTTI6IGxhdW5jaCBmcm9tIHBoeXNpY2FsIHBvaW50ZXJkb3duIHNvIERPTSByZXBhcmVudGluZyBiZXR3ZWVuIGRvd24vdXAKICAgICAgICAgY2Fubm90IGxvc2UgdGhlIGZpcnN0IFByb3BlcnR5IHByZXNzLiBTdXBwcmVzcyBpdHMgc3ludGhldGljIGZvbGxvdy11cCBjbGljazsKICAgICAgICAga2V5Ym9hcmQtdHJpZ2dlcmVkIGNsaWNrIGNvbnRpbnVlcyB0aHJvdWdoIHRoZSBleGlzdGluZyBvd25lci4gKi8KICAgICAgYi5hZGRFdmVudExpc3RlbmVyKCdwb2ludGVyZG93bicsZT0+ewogICAgICAgIGlmKGUucG9pbnRlclR5cGU9PT0nbW91c2UnJiZlLmJ1dHRvbiE9PTApcmV0dXJuOwogICAgICAgIGlmKGIuZGF0YXNldC5idXN5PT09JzEnfHxiLmRhdGFzZXQudGVybWluYWxSdW5uaW5nPT09JzEnKXJldHVybjsKICAgICAgICBiLmRhdGFzZXQuZWFydGhsaW5lUG9pbnRlckxhdW5jaEF0PVN0cmluZyhEYXRlLm5vdygpKTsKICAgICAgICB2b2lkIFByb21pc2UucmVzb2x2ZShkZWNsYXJlUHJvcGVydHkoZSkpLmNhdGNoKGVycj0+Y29uc29sZS5lcnJvcignW0VhcnRobGluZV0gUHJvcGVydHkgcG9pbnRlciBsYXVuY2gnLGVycikpOwogICAgICB9LHRydWUpOwogICAgICBiLmFkZEV2ZW50TGlzdGVuZXIoJ2NsaWNrJyxlPT57CiAgICAgICAgaWYoRGF0ZS5ub3coKS1OdW1iZXIoYi5kYXRhc2V0LmVhcnRobGluZVBvaW50ZXJMYXVuY2hBdHx8MCk8MTUwMCl7CiAgICAgICAgICBlLnByZXZlbnREZWZhdWx0KCk7ZS5zdG9wSW1tZWRpYXRlUHJvcGFnYXRpb24oKTsKICAgICAgICB9CiAgICAgIH0sdHJ1ZSk7CiAgICAgIA==').decode()
+          s=s.replace(a,b)
+          p.write_text(s)
+          PY
+          test "$(git hash-object index.html)" = "1c3ad17464c54cd6c9d8656fb5e3a0a792d776ac"
+          git rm .github/workflows/property4-realclick-prepare.yml
+          git config user.name 'Earthline Property one-press candidate'
+          git config user.email 'info@earthlinedevelopment.org'
+          git add index.html
+          git commit -m 'fix(property): launch once from real pointerdown despite button reparenting'
+          git push origin HEAD:repair/property4-gentle-contour-split-20261113
