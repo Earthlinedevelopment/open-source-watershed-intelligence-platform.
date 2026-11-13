@@ -1,0 +1,58 @@
+name: M201 isolated October Rule B verification
+on:
+  push:
+    branches: [m201-rule-b-october-isolated]
+    paths:
+      - .github/workflows/m201-isolated-rule-b.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify exact October source and apply approved patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_COMMIT=ec2f3924e23fda12dd304a98a38d9a4778bf7b7f
+          EXPECTED_BLOB=f0c851fe763789d04a2f7cd95645110250e5cdb4
+          BASE_BLOB=$(git rev-parse "$SOURCE_COMMIT:index.html")
+          WORK_BLOB=$(git hash-object index.html)
+          echo "October baseline index blob: $BASE_BLOB"
+          test "$BASE_BLOB" = "$WORK_BLOB"
+          git apply --check patches/Earthline-M201-4pct-rule-B-october.patch
+          git apply patches/Earthline-M201-4pct-rule-B-october.patch
+          ACTUAL_BLOB=$(git hash-object index.html)
+          echo "M201 candidate blob: $ACTUAL_BLOB"
+          if [ "$ACTUAL_BLOB" != "$EXPECTED_BLOB" ]; then
+            echo "::error::Exact expected M201 blob mismatch; fail closed"
+            exit 1
+          fi
+          git diff --check
+          git diff --stat
+          node - <<'NODE'
+          const fs=require('fs'),vm=require('vm');
+          const html=fs.readFileSync('index.html','utf8');
+          const sections=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
+          let checked=0;
+          for(const m of sections){
+            if(/\bsrc\s*=/.test(m[1])||/\btype\s*=\s*['"](?:application\/json|importmap)/i.test(m[1])||!m[2].trim())continue;
+            try{new vm.Script(m[2]);checked++;}catch(e){console.error('Script '+(checked+1)+' failed: '+e.message);process.exit(1)}
+          }
+          console.log('Parsed inline scripts:',checked);
+          NODE
+      - name: Commit only verified candidate on isolated branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object index.html)" = "f0c851fe763789d04a2f7cd95645110250e5cdb4"
+          git config user.name "Earthline M201 validation"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "candidate(m201): apply exactly verified October Property 4 percent Rule B"
+          git push origin HEAD:m201-rule-b-october-isolated
