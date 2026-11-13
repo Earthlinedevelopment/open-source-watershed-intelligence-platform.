@@ -6272,6 +6272,7 @@ function earthlineSwaleFromPts(pts,bandIndex,chanThr,isSite,maxS,totalBands){
      and hashing thousands of numbers for every candidate. Capture geometry, accumulation
      values, channel threshold, scoring and candidate ordering are unchanged. */
   const captureToken16455=earthlineCaptureToken16455();
+  const slopesM201=[]; /* M201 rule B: per-sample terrain slopes for the Property 4% test */
 
   for(const [px,py] of pts){
     const gx=Math.round(px),gy=Math.round(py);
@@ -6282,6 +6283,7 @@ function earthlineSwaleFromPts(pts,bandIndex,chanThr,isSite,maxS,totalBands){
 
     const spHere=slopePct(gx,gy);
     slopeSum+=spHere;
+    slopesM201.push(spHere);
 
     const [ggx,ggy]=gradAt(gx,gy);
     const gm=Math.hypot(ggx,ggy)||1;
@@ -6311,6 +6313,19 @@ function earthlineSwaleFromPts(pts,bandIndex,chanThr,isSite,maxS,totalBands){
   const forested=canopy>0.40;
   const avgSlope=slopeSum/n;
   if(avgSlope>maxS)return null;
+  /* M201 rule B (Property only; Regional unchanged): the sampled mean terrain slope must be 4% or less and no
+     5-sample stretch may have a median above 4% (3 of any 5 consecutive samples above 4% rejects the swale).
+     Isolated 1-2 sample bumps (rock, trunk, bank edge) do not reject; sustained slopes above 4% always do. */
+  const regionalM201=!!(M.loc&&(/Regional Opportunity Tile/i.test(String(M.loc.name||""))||(Array.isArray(M.loc.zones)&&M.loc.zones.includes("Regional Tile"))));
+  if(!regionalM201){
+    const kM201=slopesM201.length;
+    if(kM201<2)return null;
+    if(slopesM201.reduce((t,v)=>t+v,0)/kM201>4)return null;
+    for(let iM201=0;iM201<kM201;iM201++){
+      const aM201=Math.max(0,Math.min(iM201-2,kM201-5)),wM201=slopesM201.slice(aM201,Math.min(kM201,aM201+5)).sort((p,q)=>p-q);
+      if(wM201[Math.floor(wM201.length/2)]>4)return null;
+    }
+  }
 
   const impOn=impOnSum/n;
   const impUp=impUpSum/n;
