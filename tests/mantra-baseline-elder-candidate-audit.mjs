@@ -81,10 +81,13 @@ async function runTarget(target,index){
   await page.waitForFunction(()=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};return a.settled===true&&String(document.documentElement.dataset.earthlinePropertyRunState||'')!=='running';},null,{timeout:45000,polling:120});
   // Elder CHMv2 worker is separate from property publication. Await matching terminal result.
   let elderWaitError=null;
-  try{await page.waitForFunction(target=>{
+  try{await page.waitForFunction(()=>{
     const e=window.EARTHLINE_ELDER_TREE_LAST_17097||{};
-    return String(e.propertyRunIdentity||'').startsWith(target.lng.toFixed(6)+'|'+target.lat.toFixed(6)+'|')&&['committed','failed'].includes(e.state);
-  },target,{timeout:60000,polling:200});}catch(e){elderWaitError=String(e);}
+    const current=window.EARTHLINE_PROPERTY_DECLARATION_16169?.center||null;
+    if(!current)return false;
+    const identity=Number(current.lng).toFixed(6)+'|'+Number(current.lat).toFixed(6)+'|';
+    return String(e.propertyRunIdentity||'').startsWith(identity)&&['committed','failed'].includes(e.state);
+  },null,{timeout:20000,polling:200});}catch(e){elderWaitError=String(e);}
 
   const snap=await page.evaluate(target=>{
     const md=(typeof M!=='undefined'&&M)||window.M||null;
@@ -131,7 +134,7 @@ async function runTarget(target,index){
     const pts=features.map(f=>{const coords=f.geometry?.coordinates;let pt=null;try{pt=map?.project?.(coords);}catch(_){}return {coords,point:pt&&{x:pt.x,y:pt.y}}});
     return {count:features.length,paint,pts,safeCount:safe.length,trackedSlopeValues:slopeValues.length,maxTrackedSlope:slopeValues.length?Math.max(...slopeValues):null,sampleSlopeKeys};
   });
-  console.log('ELDER_STAGING_LAYER_AUDIT '+JSON.stringify({target:target.name,probe,elderWaitError,actualCenter:snap.audit?.center,actualTarget:await page.evaluate(()=>window.EARTHLINE_PROPERTY_TARGET_16201),publicationToken:snap.publication?.runToken,elderIdentity:snap.elder?.propertyRunIdentity,blueAudit:await page.evaluate(()=>window.EARTHLINE_BLUE_SWALES_AUDIT_17501||null)}));
+  console.log('ELDER_STAGING_LAYER_AUDIT '+JSON.stringify({target:target.name,probe,elderWaitError,actualCenter:snap.audit?.center,actualTarget:await page.evaluate(()=>window.EARTHLINE_PROPERTY_TARGET_16201),publicationToken:snap.publication?.runToken,elderIdentity:snap.elder?.propertyRunIdentity,blueAudit:await page.evaluate(()=>window.EARTHLINE_BLUE_SWALES_AUDIT_17501||null),launchAudit:await page.evaluate(()=>window.EARTHLINE_PROPERTY_LAUNCH_AUDIT_16322?.slice(-8)||[]),buttonState:await page.evaluate(()=>{const b=document.getElementById('earthlineDeclareProperty16169');return {onclick:String(b?.onclick||'').slice(0,250),disabled:!!b?.disabled,busy:b?.dataset?.busy,terminal:b?.dataset?.terminalRunning,state:document.documentElement.dataset.earthlinePropertyRunState}})}));
   let hover=false,click=false;
   for(const rec of probe.pts){
     const pt=rec.point;
