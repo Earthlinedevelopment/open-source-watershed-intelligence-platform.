@@ -390,6 +390,18 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
       m.setLayoutProperty(WATER,'visibility','visible');
       m.setLayoutProperty(MIRROR,'visibility','visible');
       m.moveLayer(WATER);m.moveLayer(MIRROR);
+      // Keep the long recharge label legible near left/right Property bounds.
+      // Only native symbol positioning changes; recharge polygons are untouched.
+      try{
+        const label=m.getLayer?.('earthline-recharge-label');
+        if(label?.type==='symbol'){
+          m.setLayoutProperty('earthline-recharge-label','text-max-width',10);
+          m.setLayoutProperty('earthline-recharge-label','text-variable-anchor',['left','right','top','bottom']);
+          m.setLayoutProperty('earthline-recharge-label','text-justify','auto');
+          m.setLayoutProperty('earthline-recharge-label','text-padding',8);
+          window.EARTHLINE_RECHARGE_LABEL_AUDIT_17502={applied:true,geometryChanged:false,at:new Date().toISOString()};
+        }
+      }catch(error){window.EARTHLINE_RECHARGE_LABEL_AUDIT_17502={applied:false,error:String(error?.message||error)}}
       window.EARTHLINE_BLUE_SWALES_AUDIT_17501={applied:true,reason,
         authoritativeSource:SOURCE,geometryChanged:false,verified:true,
         stripes:2,at:new Date().toISOString()};
