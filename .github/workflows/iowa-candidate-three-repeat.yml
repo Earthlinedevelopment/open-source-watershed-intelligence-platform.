@@ -1,0 +1,25 @@
+name: Iowa production-origin candidate three-repeat analysis
+on:
+  push:
+    branches: [repair/exclude-own-swale-water-layers-20261114]
+    paths: [.github/workflows/iowa-candidate-three-repeat.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  iowa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node tests/iowa-candidate-three-repeat.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iowa-candidate-repeat-evidence
+          path: artifacts/iowa-production-candidate
+          retention-days: 14
