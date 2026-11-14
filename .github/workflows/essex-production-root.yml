@@ -1,0 +1,25 @@
+name: Production ROOT Essex repeatability gate
+on:
+  push:
+    branches: [repair/restore-approved-copy-elder-20261114]
+    paths: [.github/workflows/essex-production-root.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  actual_public:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node tests/essex-production-root-triple-repeat.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: essex-production-root-screen-evidence
+          path: artifacts/essex-root-repeat
+          retention-days: 14
