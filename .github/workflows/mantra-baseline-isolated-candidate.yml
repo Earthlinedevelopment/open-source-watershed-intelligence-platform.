@@ -1,0 +1,39 @@
+name: Mantra Baseline Isolated Candidate Gate
+on:
+  push:
+    branches:
+      - repair/mantra-baseline-improvements-20261115
+    paths:
+      - earthline-elder-restored-17097.js
+      - tests/mantra-baseline-elder-candidate-audit.mjs
+      - .github/workflows/mantra-baseline-isolated-candidate.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  elder-property-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify staged JavaScript syntax
+        run: |
+          node --check earthline-elder-restored-17097.js
+          node --check tests/mantra-baseline-elder-candidate-audit.mjs
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Test staged Elder icon and popup against public production
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+        run: node tests/mantra-baseline-elder-candidate-audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mantra-baseline-elder-candidate-evidence
+          path: artifacts/arizona-controls
+          retention-days: 14
