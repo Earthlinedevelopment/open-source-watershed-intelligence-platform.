@@ -1,0 +1,40 @@
+name: Gate Earthline self-water exclusion candidate
+on:
+  push:
+    branches: [repair/exclude-own-swale-water-layers-20261114]
+    paths: [.github/workflows/gate-own-swale-water-candidate.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  repeatability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Exact file-only code-diff gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import subprocess
+          from pathlib import Path
+          parent=subprocess.check_output(['git','show','aeab9ad44c757dc01c3cffe2589c6fa555e9b7eb:index.html']).decode()
+          current=Path('index.html').read_text()
+          needle='return (style&&style.layers||[]).filter(l=>{\n        const tag=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();'
+          replacement='return (style&&style.layers||[]).filter(l=>{\n        /* EARTHLINE SELF-WATER EXCLUSION FIX: blue water inside an already-published bioswale is NOT mapped hydrography. */\n        if(l.id==="earthline-living-swales-water-15792"||l.id==="earthline-property-safe-water-16221")return false;\n        const tag=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();'
+          assert parent.count(needle)==1
+          assert current==parent.replace(needle,replacement,1),'Unexpected edits outside two display-layer exclusion conditions'
+          print('EXACT PATCH PASS: original source unchanged except exclusion of precisely two own-swale water layers')
+          PY
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node tests/own-swale-water-candidate-gate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: own-swale-water-five-plus-two-candidate
+          path: artifacts/own-swale-water-candidate
+          retention-days: 14
