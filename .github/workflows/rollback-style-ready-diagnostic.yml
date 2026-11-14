@@ -1,0 +1,25 @@
+name: Read-only rollback Mapbox first-click diagnosis
+on:
+  push:
+    branches: [repair/restore-approved-copy-elder-20261114]
+    paths: [.github/workflows/rollback-style-ready-diagnostic.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node tests/rollback-style-ready-diagnostic.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rollback-map-style-readiness-screenshots
+          path: artifacts/rollback-style-ready-diagnostic
+          retention-days: 14
