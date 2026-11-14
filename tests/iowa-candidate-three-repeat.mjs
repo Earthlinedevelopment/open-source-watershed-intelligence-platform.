@@ -1,0 +1,134 @@
+import {createHash} from 'node:crypto';
+import {readFileSync} from 'node:fs';
+import {chromium} from 'playwright';
+import {mkdirSync,writeFileSync} from 'node:fs';
+
+const URL='https://earthlinedevelopment.org/';
+const TARGETS=[
+ {name:'IowaRepeat1',lng:-93.68,lat:42.13},
+ {name:'IowaRepeat2',lng:-93.68,lat:42.13},
+ {name:'IowaRepeat3',lng:-93.68,lat:42.13}
+];
+const browser=await chromium.launch({headless:true});
+const page=await browser.newPage({viewport:{width:1600,height:950}});
+const pageErrors=[],badResponses=[];
+page.on('pageerror',e=>pageErrors.push(String(e)));
+page.on('console',m=>{if(m.type()==='error')pageErrors.push(m.text())});
+page.on('response',r=>{if(r.status()>=400)badResponses.push({status:r.status(),url:r.url()})});
+mkdirSync('artifacts/iowa-production-candidate',{recursive:true});
+
+const candidateHtml=readFileSync('index.html','utf8');
+if(!candidateHtml.includes('EARTHLINE SELF-WATER EXCLUSION FIX'))throw new Error('Candidate patch missing');
+let injectedCount=0;
+await page.route('**/*',route=>{
+  const req=route.request(),u=new globalThis.URL(req.url());
+  if(req.isNavigationRequest()&&req.resourceType()==='document'&&u.origin==='https://earthlinedevelopment.org'&&u.pathname==='/'){
+    injectedCount++;
+    return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:candidateHtml});
+  }
+  return route.continue();
+});
+const response=await page.goto(URL+'?root_property_control='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+if(injectedCount!==1||response?.status()!==200||new globalThis.URL(page.url()).pathname!=='/')throw new Error('Not the actual production root URL');
+await page.waitForSelector('#searchInput',{timeout:30000});
+await page.waitForFunction(()=>typeof window.earthlineSelectedSiteFromCenter==='function'&&typeof window.applyLocation==='function'&&typeof window.earthlineDeclarePropertyAtCrosshair16169==='function',null,{timeout:35000});
+console.log('ROOT_URL_VERIFIED '+JSON.stringify({url:page.url(),status:response.status()}));
+
+async function runTarget(target,index){
+  const errorStart=pageErrors.length;
+  const prep=await page.evaluate(async target=>{
+    if(typeof M==='undefined')return {ok:false,reason:'M unavailable'};
+    const site=window.earthlineSelectedSiteFromCenter?.(M?.loc||null,target.lng,target.lat,20);
+    if(!site)return {ok:false,reason:'site unavailable'};
+    const applied=await window.applyLocation?.(site,null,M.searchGen,{analyzeNow:false,preserveMapView:false});
+    if(!applied)return {ok:false,reason:'applyLocation rejected site'};
+    await new Promise(r=>setTimeout(r,800));
+    const set=window.earthlineSetPropertyTarget16201?.({lng:target.lng,lat:target.lat,source:'mantra85-arizona-control'},{openPanel:false});
+    return {ok:!!set};
+  },target);
+  if(!prep.ok)throw new Error(target.name+' prep failed: '+prep.reason);
+  const started=Date.now();
+  const out=await page.evaluate(async()=>await window.earthlineDeclarePropertyAtCrosshair16169?.());
+  await page.waitForFunction(()=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};return a.settled===true&&String(document.documentElement.dataset.earthlinePropertyRunState||'')!=='running';},null,{timeout:45000,polling:120});
+  await page.waitForTimeout(900);
+  const snap=await page.evaluate(target=>{
+    const md=(typeof M!=='undefined'&&M)||window.M||null;
+    const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
+    const p=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null;
+    const safe=window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null;
+    const e=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+    const d=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+    const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap||null;
+    const naturalIds=['earthline-property-swale-footprint-16174','earthline-property-swale-natural-casing-16174','earthline-property-swale-natural-up-16174','earthline-property-swale-natural-flip-16174','earthline-property-swale-neutral-16177','earthline-swale-planting-shadow-15806','earthline-swale-planting-layer-15806'];
+    const safeIds=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'];
+    const vis=id=>{try{return map?.getLayer?.(id)?map.getLayoutProperty(id,'visibility')||'visible':'missing'}catch(_){return 'error'}};
+    return {
+      target,
+      audit:a,publication:p,safeVisibility:safe,elder:e,
+      displayedTier:String(d?.tier||d?.mode||''),
+      modelCenter:{lng:Number(md?.centerLng),lat:Number(md?.centerLat)},
+      safeCount:Number(md?.authoritativeSafeSwales15815?.features?.length||0),
+      engineCount:Number(md?.swales?.length||0),
+      safeGeometry:(md?.authoritativeSafeSwales15815?.features||[]).map(f=>f?.geometry?.coordinates||null),
+      exclusionStyleLayers:(()=>{
+        const ls=map?.getStyle?.()?.layers||[];
+        return ls.filter(l=>['line','fill','fill-extrusion'].includes(String(l.type||''))&&/road|street|motorway|trunk|primary|secondary|tertiary|residential|service|drive|driveway|track|path|bridge|tunnel|transportation|rail|building|structure|house|parking|landuse|commercial|industrial|retail|river|stream|canal|waterway|water|lake|reservoir|wetland/.test(((l.id||'')+' '+(l['source-layer']||'')).toLowerCase())).map(l=>{
+          let count=-1;try{count=map.queryRenderedFeatures({layers:[l.id]}).length}catch{}
+          return {id:l.id,source:l.source,sourceLayer:l['source-layer'],type:l.type,count};
+        });
+      })(),
+
+      lifecycle:{
+        searchGen:md?.searchGen,
+        terrainMode:md?.terrainMode,
+        mapZoom:map?.getZoom?.(),
+        modelLoc:md?.loc?.name,
+        pipeline:{
+          rawEngineCount:md?.rawPropertyEngineSwales16176?.length,
+          authoritativeEngineCount:md?.authoritativePropertyEngineSwales15816?.engineCount,
+          swaleSubstage:md?.swaleSubstage16321,
+          safety:md?.safetyAudit15806,
+          noBuildCoverage:md?.vectorNoBuildCoverage,
+          swaleDiagnostics:md?.swaleDiagnostics,
+          flowFirstPlacement:md?.flowFirstPlacement15836,
+          safeGeometryCount:md?.authoritativeSafeSwales15815?.features?.length
+        },
+
+        publication:md?.propertyPublication15816,
+        resultLock:md?.propertyResultLock15815,
+        safetyAudit:md?.safetyAudit15806,
+        terrainFields:Object.fromEntries(Object.keys(md||{}).filter(k=>/terrain|dem|elev|slope|flow|raster|sample|swale|groundwater|coverage/i.test(k)).slice(0,90).map(k=>{
+          const v=md[k];return [k,typeof v==='number'||typeof v==='boolean'||typeof v==='string'?v:Array.isArray(v)?'array('+v.length+')':v&&typeof v==='object'?'object('+Object.keys(v).slice(0,8).join(',')+')':typeof v]
+        })),
+        globalAudits:Object.keys(window).filter(k=>/^EARTHLINE_/.test(k)&&/DEM|TERRAIN|PROPERTY_RUN|FLOW|SWALE_GENERATION/i.test(k)).slice(0,35)
+      },
+
+      naturalLayers:Object.fromEntries(naturalIds.map(id=>[id,vis(id)])),
+      safeLayers:Object.fromEntries(safeIds.map(id=>[id,vis(id)])),
+      tierNotice:String(document.getElementById('earthlineTierNotice16173')?.textContent||''),
+      status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||'')
+    };
+  },target);
+  await page.screenshot({path:`artifacts/iowa-production-candidate/reference-${index+1}.png`,fullPage:false});
+  const centerPass=Math.abs(Number(snap.audit?.center?.lng)-target.lng)<1e-5&&Math.abs(Number(snap.audit?.center?.lat)-target.lat)<1e-5;
+  const safePass=snap.audit?.settled===true&&snap.audit?.result===true&&snap.publication?.published===true&&snap.safeCount>0&&snap.safeVisibility?.visible===true&&Number(snap.safeVisibility?.count||0)===snap.safeCount;
+  const elderPass=true; // record Elder separately, do not require it to assess core Property
+  const tierPass=snap.displayedTier==='property';
+  const newErrors=pageErrors.slice(errorStart);
+  const ancillaryAnrErrors=newErrors.filter(error=>
+    /anrmaps\\.vermont\\.gov|ERR_FAILED|__earthlineVtInfra16458/i.test(error));
+  const unclassifiedErrors=newErrors.filter(error=>!ancillaryAnrErrors.includes(error));
+  const geoHash=createHash('sha256').update(JSON.stringify(snap.safeGeometry)).digest('hex');
+  const corePass=centerPass&&safePass&&tierPass&&unclassifiedErrors.length===0;
+  const contextPass=ancillaryAnrErrors.length===0;
+  return {name:target.name,elapsedMs:Date.now()-started,out,centerPass,safePass,elderPass,tierPass,corePass,contextPass,ancillaryAnrErrors,unclassifiedErrors,newErrors,geoHash,snap,pass:corePass};
+}
+const rows=[];
+for(let i=0;i<TARGETS.length;i++) rows.push(await runTarget(TARGETS[i],i));
+const replacementPass=rows.length===3&&rows.every((v,i)=>i===0||v.snap.publication?.runToken!==rows[i-1].snap.publication?.runToken);
+const iowaStable=new Set(rows.map(r=>r.geoHash)).size===1;
+const report={at:new Date().toISOString(),url:URL,candidate:true,injectedCount,rows,replacementPass,iowaStable,pageErrors,badResponses,pass:rows.every(r=>r.pass)&&replacementPass&&iowaStable};
+writeFileSync('artifacts/iowa-production-candidate/results.json',JSON.stringify(report,null,2));
+console.log('IOWA_CANDIDATE_RERUN '+JSON.stringify({pass:report.pass,replacementPass,iowaStable,injectedCount,rows:rows.map(r=>({name:r.name,core:r.corePass,ms:r.elapsedMs,swales:r.snap.safeCount,rawEngine:r.snap.lifecycle?.pipeline?.rawEngineCount,terrain:r.snap.lifecycle?.terrainFields,swaleDiagnostics:r.snap.lifecycle?.pipeline?.swaleDiagnostics,substage:r.snap.lifecycle?.pipeline?.swaleSubstage,noBuild:r.snap.lifecycle?.pipeline?.noBuildCoverage,safety:r.snap.lifecycle?.pipeline?.safety?.filter,hash:r.geoHash,status:r.snap.status,errors:r.newErrors.slice(0,2)}))}));
+await browser.close();
+if(!report.pass)process.exitCode=1;
