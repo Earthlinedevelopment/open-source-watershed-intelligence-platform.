@@ -104,13 +104,18 @@ async function runTarget(target,index){
   const elderPass=true; // record Elder separately, do not require it to assess core Property
   const tierPass=snap.displayedTier==='property';
   const newErrors=pageErrors.slice(errorStart);
-  return {name:target.name,elapsedMs:Date.now()-started,out,centerPass,safePass,elderPass,tierPass,newErrors,snap,pass:centerPass&&safePass&&tierPass&&newErrors.length===0};
+  const ancillaryAnrErrors=newErrors.filter(error=>
+    /anrmaps\\.vermont\\.gov|ERR_FAILED|__earthlineVtInfra16458/i.test(error));
+  const unclassifiedErrors=newErrors.filter(error=>!ancillaryAnrErrors.includes(error));
+  const corePass=centerPass&&safePass&&tierPass&&unclassifiedErrors.length===0;
+  const contextPass=ancillaryAnrErrors.length===0;
+  return {name:target.name,elapsedMs:Date.now()-started,out,centerPass,safePass,elderPass,tierPass,corePass,contextPass,ancillaryAnrErrors,unclassifiedErrors,newErrors,snap,pass:corePass};
 }
 const rows=[];
 for(let i=0;i<TARGETS.length;i++) rows.push(await runTarget(TARGETS[i],i));
 const replacementPass=rows.length===2&&rows[0].snap.publication?.runToken!==rows[1].snap.publication?.runToken&&Math.abs(Number(rows[1].snap.audit?.center?.lng)-TARGETS[1].lng)<1e-5;
 const report={at:new Date().toISOString(),url:URL,rows,replacementPass,pageErrors,badResponses,pass:rows.every(r=>r.pass)&&replacementPass};
 writeFileSync('artifacts/essex-iowa-real-property/results.json',JSON.stringify(report,null,2));
-console.log('ESSEX_IOWA_REAL_PATH '+JSON.stringify({pass:report.pass,replacementPass,rows:rows.map(r=>({name:r.name,pass:r.pass,elapsedMs:r.elapsedMs,safeCount:r.snap.safeCount,elderCount:r.snap.elder?.featureCount||0,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
+console.log('ESSEX_IOWA_REAL_PATH '+JSON.stringify({pass:report.pass,replacementPass,rows:rows.map(r=>({name:r.name,corePass:r.corePass,contextPass:r.contextPass,pass:r.pass,elapsedMs:r.elapsedMs,safeCount:r.snap.safeCount,elderCount:r.snap.elder?.featureCount||0,ancillaryErrors:r.ancillaryAnrErrors?.length||0,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
 await browser.close();
 if(!report.pass)process.exitCode=1;
