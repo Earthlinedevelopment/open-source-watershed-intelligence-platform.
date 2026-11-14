@@ -1,0 +1,22 @@
+name: Trace exclusion layer classifier exact
+on:
+  push:
+    branches: [repair/restore-approved-copy-elder-20261114]
+    paths: [.github/workflows/trace-exclusion-classifier.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for term in ['function relevantStyleLayers(', 'function featureClass(', 'function relevantStyleLayers15788(', 'function featureClass15788(']:
+            p=s.find(term,1699788)
+            print('TERM',term,'START',p)
+            if p>=0: print('SOURCE',repr(s[p:p+3700]))
+          PY
