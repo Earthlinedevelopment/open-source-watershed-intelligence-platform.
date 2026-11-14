@@ -1,0 +1,25 @@
+name: Trace post-engine safe swale publication owners
+on:
+  push:
+    branches: [repair/restore-approved-copy-elder-20261114]
+    paths: [.github/workflows/trace-postengine-safe-publication.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text()
+          patterns=[r'M\.swales\s*=\s*\[\]',r'M\.swales\s*=',r'M\.authoritativeSafeSwales15815\s*=',r'M\.authoritativePropertySwales15800\s*=',r'no qualifying bioswale corridors',r'VERIFIED ZERO-CORRIDOR RESULT']
+          for pat in patterns:
+            matches=list(re.finditer(pat,s,re.I))
+            print('=== '+pat+' TOTAL '+str(len(matches)))
+            for m in matches[:18]:
+              print('CTX '+str(m.start())+' '+repr(s[max(0,m.start()-300):m.start()+600]))
+          PY
