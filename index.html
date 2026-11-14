@@ -12135,6 +12135,8 @@ async function directGeocode(q){
       }
       const style=earthlineMap.getStyle()||{};
       const layers=(style.layers||[]).filter(l=>{
+        /* Self-water display is not authoritative mapped water or a Property no-build source. */
+        if(l.id==="earthline-living-swales-water-15792"||l.id==="earthline-property-safe-water-16221")return false;
         const id=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();
         const lineLike=l.type==="line";
         const areaLike=l.type==="fill"||l.type==="fill-extrusion";
