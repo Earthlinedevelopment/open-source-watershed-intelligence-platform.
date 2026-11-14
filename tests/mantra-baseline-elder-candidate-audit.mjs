@@ -75,7 +75,13 @@ async function runTarget(target,index){
   const started=Date.now();
   const out=await page.evaluate(async()=>await window.earthlineDeclarePropertyAtCrosshair16169?.());
   await page.waitForFunction(()=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};return a.settled===true&&String(document.documentElement.dataset.earthlinePropertyRunState||'')!=='running';},null,{timeout:45000,polling:120});
-  await page.waitForTimeout(900);
+  // Elder CHMv2 worker is separate from property publication. Await matching terminal result.
+  let elderWaitError=null;
+  try{await page.waitForFunction(target=>{
+    const e=window.EARTHLINE_ELDER_TREE_LAST_17097||{};
+    return String(e.propertyRunIdentity||'').startsWith(target.lng.toFixed(6)+'|'+target.lat.toFixed(6)+'|')&&['committed','failed'].includes(e.state);
+  },target,{timeout:60000,polling:200});}catch(e){elderWaitError=String(e);}
+
   const snap=await page.evaluate(target=>{
     const md=(typeof M!=='undefined'&&M)||window.M||null;
     const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
@@ -105,14 +111,38 @@ async function runTarget(target,index){
   const safePass=snap.audit?.settled===true&&snap.audit?.result===true&&snap.publication?.published===true&&snap.safeCount>0&&snap.safeVisibility?.visible===true&&Number(snap.safeVisibility?.count||0)===snap.safeCount;
   const elderPass=snap.elder?.state==='committed'&&Number(snap.elder?.featureCount||0)>0&&String(snap.elder?.propertyRunIdentity||'').startsWith(target.lng.toFixed(6)+'|'+target.lat.toFixed(6)+'|');
   const tierPass=snap.displayedTier==='property';
+  const probe=await page.evaluate(()=>{
+    const map=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+    const tree=window.EARTHLINE_ELDER_TREES_V1_17097,features=tree?.features?.()||[];
+    const ids=['earthline-property-safe-water-16221','earthline-property-safe-life-16221','earthline-property-swale-natural-up-16174','earthline-property-swale-natural-casing-16174'];
+    const paint=ids.map(id=>{const layer=map?.getLayer?.(id);return {id,type:layer?.type||'missing',paint:layer?.paint||null,layout:layer?.layout||null}});
+    const pts=features.map(f=>{const coords=f.geometry?.coordinates;let pt=null;try{pt=map?.project?.(coords);}catch(_){}return {coords,point:pt&&{x:pt.x,y:pt.y}}});
+    return {count:features.length,paint,pts};
+  });
+  console.log('ELDER_STAGING_LAYER_AUDIT '+JSON.stringify({target:target.name,probe,elderWaitError}));
+  let hover=false,click=false;
+  for(const rec of probe.pts){
+    const pt=rec.point;
+    if(!pt||pt.x<20||pt.y<20||pt.x>1550||pt.y>900)continue;
+    const rect=await page.locator('.mapboxgl-canvas').first().boundingBox();
+    if(!rect)break;
+    await page.mouse.move(rect.x+pt.x,rect.y+pt.y);
+    await page.waitForTimeout(500);
+    hover=await page.locator('.earthline-elder-hover-m7').filter({hasText:'ELDER TREE RESEARCH'}).count()>0;
+    await page.mouse.click(rect.x+pt.x,rect.y+pt.y);
+    await page.waitForTimeout(400);
+    click=await page.locator('.mapboxgl-popup').filter({hasText:'Elder Tree Confidence'}).count()>0;
+    if(hover&&click)break;
+  }
+  console.log('ELDER_STAGING_INTERACTION '+JSON.stringify({target:target.name,hover,click}));
   const newErrors=pageErrors.slice(errorStart);
-  return {name:target.name,elapsedMs:Date.now()-started,out,centerPass,safePass,elderPass,elderWaitError,tierPass,newErrors,snap,probe,hover,click,pass:!elderWaitError&&centerPass&&safePass&&elderPass&&tierPass&&newErrors.length===0};
+  return {name:target.name,elapsedMs:Date.now()-started,out,centerPass,safePass,elderPass,elderWaitError,tierPass,newErrors,snap,probe,hover,click,pass:!elderWaitError&&centerPass&&safePass&&elderPass&&tierPass&&hover&&click&&newErrors.length===0};
 }
 const rows=[];
 for(let i=0;i<TARGETS.length;i++) rows.push(await runTarget(TARGETS[i],i));
 const replacementPass=rows.length===2&&rows[0].snap.publication?.runToken!==rows[1].snap.publication?.runToken&&Math.abs(Number(rows[1].snap.audit?.center?.lng)-TARGETS[1].lng)<1e-5;
 const report={at:new Date().toISOString(),url:URL,rows,replacementPass,pageErrors,badResponses,pass:rows.every(r=>r.pass)&&replacementPass};
 writeFileSync('artifacts/arizona-controls/results.json',JSON.stringify(report,null,2));
-console.log('ARIZONA_CONTROL '+JSON.stringify({pass:report.pass,replacementPass,rows:rows.map(r=>({name:r.name,pass:r.pass,elapsedMs:r.elapsedMs,safeCount:r.snap.safeCount,elderCount:r.snap.elder?.featureCount||0,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
+console.log('ARIZONA_CONTROL '+JSON.stringify({pass:report.pass,replacementPass,rows:rows.map(r=>({name:r.name,pass:r.pass,elapsedMs:r.elapsedMs,safeCount:r.snap.safeCount,elderCount:r.snap.elder?.featureCount||0,hover:r.hover,click:r.click,elderWaitError:r.elderWaitError,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
 await browser.close();
 if(!report.pass)process.exitCode=1;
