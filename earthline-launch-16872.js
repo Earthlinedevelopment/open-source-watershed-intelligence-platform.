@@ -424,3 +424,30 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   },{passive:true});
   window.EARTHLINE_BLUE_SWALES_17501={apply,schedule,source:SOURCE,geometryChanged:false};
 })();
+
+/* EARTHLINE 17503: One authoritative click dispatch for the already existing
+   20-acre Property button. Previous texture/panel owners repeatedly replace
+   button.onclick, sometimes leaving the next Property selection unlaunched.
+   Capture the real click once; never synthesize a second press or run.
+   The existing governed controller alone owns exclusions and publication. */
+(function earthlineSinglePropertyButtonOwner17503(){
+  document.addEventListener('click',event=>{
+    const b=event.target?.closest?.('#earthlineDeclareProperty16169');
+    if(!b||b.disabled)return;
+    const controller=window.earthlineDeclarePropertyAtCrosshair16173;
+    if(typeof controller!=='function')return;
+    if(document.documentElement.dataset.earthlinePropertyRunState==='running')return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+    const target=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+    const audit={at:new Date().toISOString(),target:target&&{lng:target.lng,lat:target.lat},
+      controller:'earthlineDeclarePropertyAtCrosshair16173',route:'single-real-click'};
+    window.EARTHLINE_PROPERTY_BUTTON_AUDIT_17503=audit;
+    try{
+      Promise.resolve(controller(event)).then(ok=>{audit.returned=ok!==false;audit.finishedAt=new Date().toISOString()},err=>{
+        audit.error=String(err?.message||err);audit.finishedAt=new Date().toISOString();
+      });
+    }catch(error){audit.error=String(error?.message||error)}
+  },true);
+})();
