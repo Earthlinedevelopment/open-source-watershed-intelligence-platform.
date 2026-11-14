@@ -75,6 +75,7 @@ async function runTarget(target,index){
   },target);
   if(!prep.ok)throw new Error(target.name+' prep failed: '+prep.reason);
   const started=Date.now();
+  // Use only one real click. The window-capture owner must receive each click, without synthetic retries.
   // Use the actual visible 20-acre button, not an internal function: first-press acceptance.
   await page.locator('#earthlineDeclareProperty16169').click({timeout:20000});
   const out='one-visible-button-press';
