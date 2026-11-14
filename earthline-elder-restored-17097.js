@@ -10,7 +10,7 @@
   const LAYER='earthline-elder-tree-points-17097';
   const state={loaded:false,loading:null,manifest:null,all:[],active:[],lastSummary:null,dynamic:{worker:null,seq:0,pending:new Map(),key:'',result:null,promise:null,error:null,warmPromise:null,warmed:false,tileWarmKey:'',tileWarmPromise:null}};
   /* M7 temporary Elder Tree hover label; existing click details retain evidence distinctions. */
-  let elderHoverPopupM7=null,elderHoverBoundM7=false;
+  let elderHoverPopupM7=null,elderHoverBoundM7=false,elderClickBoundMapM14=null;
   function dismissElderHoverM7(){try{elderHoverPopupM7?.remove()}catch(_){}elderHoverPopupM7=null}
 
   function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
@@ -283,6 +283,8 @@
             'text-halo-width':2.2
           }
         });
+      // An existing Elder source/layer may survive a new Property run: bind the popup regardless of layer creation.
+      if(elderClickBoundMapM14!==m){
         m.on('click',LAYER,e=>{
           dismissElderHoverM7();
           const f=e?.features?.[0];if(!f)return;
@@ -298,6 +300,7 @@
             (!verified?'<div style="margin-top:6px;font:500 9.5px/1.35 system-ui,sans-serif;color:#6e766a">Elder Tree Confidence is the tree’s local structural-evidence percentile compared with other detected tree/canopy structures in the same analyzed source area; it is not a probability of age or ancient/veteran status.</div>':'');
           try{new mapboxgl.Popup({closeButton:true,closeOnClick:true,offset:8}).setLngLat(coords).setHTML(body).addTo(m)}catch(_){}
         });
+        elderClickBoundMapM14=m;
       }
       if(!elderHoverBoundM7){
         elderHoverBoundM7=true;
