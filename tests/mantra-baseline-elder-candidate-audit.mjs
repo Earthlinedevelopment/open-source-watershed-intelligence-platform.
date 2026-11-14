@@ -128,11 +128,42 @@ async function runTarget(target,index){
     });
     const safe=(typeof M!=='undefined'?M:null)?.authoritativeSafeSwales15815?.features||[];
     const slopes=safe.map(f=>f.properties||{});
+    // Independent terrain check: never infer <=4% from absent feature metadata.
+    let terrainSlopeAudit={available:false,reason:'terrain or slope sampling owner unavailable'};
+    try{
+      if(typeof slopePct==='function'&&typeof earthlineLngLatToGrid==='function'&&safe.length){
+        let count=0,max=-Infinity,invalid=0,over4=0,violatingCorridors=0;
+        for(const feature of safe){
+          const geo=feature?.geometry||{};
+          const parts=geo.type==='LineString'?[geo.coordinates]:geo.type==='MultiLineString'?geo.coordinates:[];
+          let corridorViolated=false;
+          for(const coords of parts){
+            for(let i=1;i<coords.length;i++){
+              const a=earthlineLngLatToGrid(Number(coords[i-1][0]),Number(coords[i-1][1]));
+              const b=earthlineLngLatToGrid(Number(coords[i][0]),Number(coords[i][1]));
+              const n=Math.max(1,Math.ceil(Math.hypot(Number(b[0])-Number(a[0]),Number(b[1])-Number(a[1]))*2));
+              for(let q=0;q<=n;q++){
+                const x=Number(a[0])+(Number(b[0])-Number(a[0]))*q/n;
+                const y=Number(a[1])+(Number(b[1])-Number(a[1]))*q/n;
+                const v=Number(slopePct(x,y));
+                if(!Number.isFinite(v)){invalid++;continue;}
+                count++;max=Math.max(max,v);
+                if(v>4.0001){over4++;corridorViolated=true;}
+              }
+            }
+          }
+          if(corridorViolated)violatingCorridors++;
+        }
+        terrainSlopeAudit={available:count>0,sampledPoints:count,invalidPoints:invalid,
+          over4Points:over4,violatingCorridors,totalCorridors:safe.length,
+          maxSampledSlopePct:count?Number(max.toFixed(3)):null,criterion:'sampled corridor terrain <=4%'};
+      }
+    }catch(e){terrainSlopeAudit={available:false,error:String(e)}}
     const sampleSlopeKeys=slopes.slice(0,3).map(p=>Object.fromEntries(Object.entries(p).filter(([k])=>/slope|gradient|grade/i.test(k))));
     const slopeValues=slopes.flatMap(p=>Object.entries(p).filter(([k,v])=>/slope_pct|slope_percent|max_slope_pct/i.test(k)&&Number.isFinite(Number(v))).map(([,v])=>Number(v)));
 
     const pts=features.map(f=>{const coords=f.geometry?.coordinates;let pt=null;try{pt=map?.project?.(coords);}catch(_){}return {coords,point:pt&&{x:pt.x,y:pt.y}}});
-    return {count:features.length,paint,pts,safeCount:safe.length,trackedSlopeValues:slopeValues.length,maxTrackedSlope:slopeValues.length?Math.max(...slopeValues):null,sampleSlopeKeys};
+    return {count:features.length,paint,pts,safeCount:safe.length,trackedSlopeValues:slopeValues.length,maxTrackedSlope:slopeValues.length?Math.max(...slopeValues):null,terrainSlopeAudit,sampleSlopeKeys};
   });
   console.log('ELDER_STAGING_LAYER_AUDIT '+JSON.stringify({target:target.name,probe,elderWaitError,actualCenter:snap.audit?.center,actualTarget:await page.evaluate(()=>window.EARTHLINE_PROPERTY_TARGET_16201),publicationToken:snap.publication?.runToken,elderIdentity:snap.elder?.propertyRunIdentity,blueAudit:await page.evaluate(()=>window.EARTHLINE_BLUE_SWALES_AUDIT_17501||null),launchAudit:await page.evaluate(()=>window.EARTHLINE_PROPERTY_LAUNCH_AUDIT_16322?.slice(-8)||[]),buttonState:await page.evaluate(()=>{const b=document.getElementById('earthlineDeclareProperty16169');return {onclick:String(b?.onclick||'').slice(0,250),disabled:!!b?.disabled,busy:b?.dataset?.busy,terminal:b?.dataset?.terminalRunning,state:document.documentElement.dataset.earthlinePropertyRunState}})}));
   let hover=false,click=false;
