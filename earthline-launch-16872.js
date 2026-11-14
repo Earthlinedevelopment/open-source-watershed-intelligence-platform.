@@ -354,3 +354,46 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   document.addEventListener('earthline:analysis-start',e=>{const t=String(e?.detail?.tier||e?.detail?.mode||'').toLowerCase();if(t.includes('property'))remove()},{passive:true});
   window.EARTHLINE_CROSSHAIR_MOVE_HINT_17093={state:'ready',show,remove,oncePerPageLoad:true,dismissOnCorridorDetail:true};
 })();
+
+
+/* MANTRA PROPERTY AQUIFER VISIBILITY CANDIDATE — no source/geometry creation.
+   Missing sources/layers remain diagnostic failures, not fabricated evidence. */
+(function installPropertyAquiferVisibilityCandidate(){
+  'use strict';
+  if(window.EARTHLINE_PROPERTY_AQUIFER_VISIBILITY_CANDIDATE)return;
+  window.EARTHLINE_PROPERTY_AQUIFER_VISIBILITY_CANDIDATE={installed:true,last:null};
+  const ids=['el-live-aquifer-fill-15970','el-live-aquifer-line-15970'];
+  function inspectAndRestore(){
+    const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||window.EARTHLINE_DISPLAYED_RUN_16147||null;
+    const tier=String(displayed?.tier||displayed?.mode||'').toLowerCase();
+    const docTier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
+    if(tier!=='property'||docTier!=='property')return;
+    const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+    if(!m||typeof m.getLayer!=='function'||typeof m.getSource!=='function')return;
+    const layers=[];
+    for(const id of ids){
+      try{
+        const layer=m.getLayer(id);
+        if(!layer){layers.push({id,status:'missing-layer'});continue;}
+        const sourceId=layer.source;
+        if(!sourceId||!m.getSource(sourceId)){
+          layers.push({id,sourceId,status:'missing-source'});continue;
+        }
+        const visibility=m.getLayoutProperty(id,'visibility');
+        if(visibility==='none')m.setLayoutProperty(id,'visibility','visible');
+        layers.push({id,sourceId,status:visibility==='none'?'restored':'present'});
+      }catch(err){layers.push({id,status:'error',message:String(err)});}
+    }
+    window.EARTHLINE_PROPERTY_AQUIFER_VISIBILITY_CANDIDATE.last={
+      runToken:String(displayed?.runToken||''),
+      observedAt:new Date().toISOString(),
+      layers,
+      complete:layers.every(x=>x.status==='present'||x.status==='restored')
+    };
+  }
+  document.addEventListener('earthline:analysis-complete',()=>{
+    inspectAndRestore();
+    setTimeout(inspectAndRestore,250);
+    setTimeout(inspectAndRestore,1200);
+  },{passive:true});
+})();
