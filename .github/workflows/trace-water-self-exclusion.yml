@@ -1,0 +1,24 @@
+name: Trace water exclusion style-layer contamination
+on:
+  push:
+    branches: [repair/restore-approved-copy-elder-20261114]
+    paths: [.github/workflows/trace-water-self-exclusion.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  locate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for pat in ('BUILD-CHECK-15788','queriedFeatures','waterHits','earthlineFilterSafe','queryRenderedFeatures','exclusionFeatures:{road'):
+            ms=list(re.finditer(re.escape(pat),s))
+            print('=== SYMBOL',pat,'TOTAL',len(ms))
+            for m in ms[:8]:
+              print('CTX',m.start(),repr(s[max(0,m.start()-1300):m.start()+2100]))
+          PY
