@@ -217,16 +217,16 @@
     // Preserve the approved brown circular trunk rim and distinct green crown.
     ctx.beginPath();ctx.arc(24,24,20.5,0,Math.PI*2);
     ctx.fillStyle='#76502b';ctx.fill();
-    ctx.lineWidth=3.8;ctx.strokeStyle='#d5a13b';ctx.stroke(); // warm ochre-gold ring, distinct on satellite
+    ctx.lineWidth=2;ctx.strokeStyle='#d7bd83';ctx.stroke(); // original approved brown-and-green Elder symbol
     ctx.beginPath();ctx.arc(24,24,16,0,Math.PI*2);
     ctx.fillStyle=fill;ctx.fill();
     ctx.lineWidth=1.1;ctx.strokeStyle='#163b24';ctx.stroke();
     // Leaf clusters make the canopy read as a tree rather than a flat disk.
-    ctx.fillStyle='rgba(225,190,102,.70)'; // earthy yellow foliage accents
+    ctx.fillStyle='rgba(181,223,143,.42)'; // restore original green foliage accents
     for(const [x,y,r] of [[17,17,4],[23,13,4.3],[30,18,4],[16,25,3.4],[32,27,3.6]])
       {ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
     // A visibly branched brown trunk, large enough to survive Mapbox scaling.
-    ctx.strokeStyle='#e8c05c';ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=5.6;
+    ctx.strokeStyle='#e8ca91';ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=5.6;
     ctx.beginPath();ctx.moveTo(24,35);ctx.lineTo(24,23);ctx.moveTo(24,28);ctx.lineTo(18,22);ctx.moveTo(24,26);ctx.lineTo(30,20);ctx.stroke();
     ctx.strokeStyle='#684021';ctx.lineWidth=3.7;
     ctx.beginPath();ctx.moveTo(24,35);ctx.lineTo(24,23);ctx.moveTo(24,28);ctx.lineTo(18,22);ctx.moveTo(24,26);ctx.lineTo(30,20);ctx.stroke();
@@ -234,9 +234,9 @@
   }
   function ensureElderPinImages(m){
     const pins=[
-      ['earthline-elder-tree-m6-verified','#174d2a'],
-      ['earthline-elder-tree-m6-lidar','#2f7d48'],
-      ['earthline-elder-tree-m6-modeled','#4f9b62']
+      ['earthline-elder-tree-m15-verified','#174d2a'],
+      ['earthline-elder-tree-m15-lidar','#2f7d48'],
+      ['earthline-elder-tree-m15-modeled','#4f9b62']
     ];
     for(const [name,color] of pins){
       if(m.hasImage?.(name))continue;
@@ -259,9 +259,9 @@
           id:LAYER,type:'symbol',source:SOURCE,
           layout:{
             'icon-image':['case',
-              ['any',['==',['get','record_class'],'VERIFIED_ELDER_TREE'],['==',['get','record_class'],'VERIFIED_EXTERNAL_TREE']],'earthline-elder-tree-m6-verified',
-              ['any',['==',['get','source_class'],'LIDAR'],['==',['get','record_class'],'LIDAR_CONFIRMED_ELDER_TREE_CANDIDATE']],'earthline-elder-tree-m6-lidar',
-              'earthline-elder-tree-m6-modeled'
+              ['any',['==',['get','record_class'],'VERIFIED_ELDER_TREE'],['==',['get','record_class'],'VERIFIED_EXTERNAL_TREE']],'earthline-elder-tree-m15-verified',
+              ['any',['==',['get','source_class'],'LIDAR'],['==',['get','record_class'],'LIDAR_CONFIRMED_ELDER_TREE_CANDIDATE']],'earthline-elder-tree-m15-lidar',
+              'earthline-elder-tree-m15-modeled'
             ],
             /* M96: candidates must be legible on satellite imagery; labels never
                imply that an unverified modeled tree is known to be old. */
@@ -306,10 +306,18 @@
       if(!elderHoverBoundM7){
         elderHoverBoundM7=true;
         m.on('mouseenter',LAYER,e=>{
-          const pt=e?.features?.[0]?.geometry?.coordinates;
+          const f=e?.features?.[0],pt=f?.geometry?.coordinates,p=f?.properties||{};
           if(!Array.isArray(pt)||pt.length<2)return;
           dismissElderHoverM7();
-          try{elderHoverPopupM7=new mapboxgl.Popup({closeButton:false,closeOnClick:false,offset:12,className:'earthline-elder-hover-m7'}).setLngLat(pt).setHTML('<span style="font:900 11px/1.2 Noto Sans,system-ui,sans-serif;color:#245e39;letter-spacing:.4px">ELDER TREE</span>').addTo(m)}catch(_){dismissElderHoverM7()}
+          const confidence=elderConfidence(p),height=Number(p.height_m),verified=isVerified(p);
+          const html='<div style="font:800 12px/1.3 Noto Sans,system-ui,sans-serif;color:#245e39">ELDER TREE RESEARCH</div>'+
+            '<div style="margin-top:4px;font:700 11px/1.35 Noto Sans,system-ui,sans-serif">'+esc(classify(p))+'</div>'+
+            '<div style="margin-top:4px;font:600 11px/1.3 Noto Sans,system-ui,sans-serif">'+
+              (verified?'Verified external/field evidence':confidence==null?'Elder Tree Confidence: not available':'Elder Tree Confidence: '+esc(confidence)+'%')+'</div>'+
+            (Number.isFinite(height)?'<div style="margin-top:3px;font:500 10px/1.3 Noto Sans,system-ui,sans-serif">Canopy height: '+esc(height.toFixed(1))+' m</div>':'')+
+            '<div style="margin-top:3px;font:500 10px/1.3 Noto Sans,system-ui,sans-serif">Source: '+esc(p.source_name||p.elder_dataset_label||'Earthline Elder evidence')+'</div>'+
+            '<div style="margin-top:5px;font:500 10px/1.3 Noto Sans,system-ui,sans-serif">Modeled candidates are not verified ancient trees. Confidence is a relative structural-evidence percentile, not an age probability.</div>';
+          try{elderHoverPopupM7=new mapboxgl.Popup({closeButton:false,closeOnClick:false,offset:12,className:'earthline-elder-hover-m7'}).setLngLat(pt).setHTML(html).addTo(m)}catch(_){dismissElderHoverM7()}
         });
         m.on('mouseleave',LAYER,dismissElderHoverM7);
         m.on('movestart',dismissElderHoverM7);
