@@ -73,7 +73,9 @@ async function runTarget(target,index){
   },target);
   if(!prep.ok)throw new Error(target.name+' prep failed: '+prep.reason);
   const started=Date.now();
-  const out=await page.evaluate(async()=>await window.earthlineDeclarePropertyAtCrosshair16169?.());
+  // Use the actual visible 20-acre button, not an internal function: first-press acceptance.
+  await page.locator('#earthlineDeclareProperty16169').click({timeout:20000});
+  const out='one-visible-button-press';
   await page.waitForFunction(()=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};return a.settled===true&&String(document.documentElement.dataset.earthlinePropertyRunState||'')!=='running';},null,{timeout:45000,polling:120});
   // Elder CHMv2 worker is separate from property publication. Await matching terminal result.
   let elderWaitError=null;
@@ -115,9 +117,17 @@ async function runTarget(target,index){
     const map=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
     const tree=window.EARTHLINE_ELDER_TREES_V1_17097,features=tree?.features?.()||[];
     const ids=['earthline-property-safe-water-16221','earthline-property-safe-life-16221','earthline-property-swale-natural-up-16174','earthline-property-swale-natural-casing-16174'];
-    const paint=ids.map(id=>{const layer=map?.getLayer?.(id);return {id,type:layer?.type||'missing',paint:layer?.paint||null,layout:layer?.layout||null}});
+    const paint=ids.map(id=>{
+      const layer=map?.getLayer?.(id),keys=['line-color','line-opacity','line-width','line-offset','line-dasharray'];
+      return {id,type:layer?.type||'missing',properties:Object.fromEntries(keys.map(k=>{let v=null;try{v=map?.getPaintProperty?.(id,k)??null}catch(_){}return [k,v]}))};
+    });
+    const safe=(typeof M!=='undefined'?M:null)?.authoritativeSafeSwales15815?.features||[];
+    const slopes=safe.map(f=>f.properties||{});
+    const sampleSlopeKeys=slopes.slice(0,3).map(p=>Object.fromEntries(Object.entries(p).filter(([k])=>/slope|gradient|grade/i.test(k))));
+    const slopeValues=slopes.flatMap(p=>Object.entries(p).filter(([k,v])=>/slope_pct|slope_percent|max_slope_pct/i.test(k)&&Number.isFinite(Number(v))).map(([,v])=>Number(v)));
+
     const pts=features.map(f=>{const coords=f.geometry?.coordinates;let pt=null;try{pt=map?.project?.(coords);}catch(_){}return {coords,point:pt&&{x:pt.x,y:pt.y}}});
-    return {count:features.length,paint,pts};
+    return {count:features.length,paint,pts,safeCount:safe.length,trackedSlopeValues:slopeValues.length,maxTrackedSlope:slopeValues.length?Math.max(...slopeValues):null,sampleSlopeKeys};
   });
   console.log('ELDER_STAGING_LAYER_AUDIT '+JSON.stringify({target:target.name,probe,elderWaitError}));
   let hover=false,click=false;
