@@ -1,0 +1,25 @@
+name: Diagnose Vermont ancillary request ownership
+on:
+  push:
+    branches: [repair/restore-approved-copy-elder-20261114]
+    paths: [.github/workflows/diagnose-vt-anr-owner.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text()
+          patterns=['OPENDATA_ANR_WATER_SP_NOCACHE_v2','OPENDATA_ANR_GEOLOGIC_SP_NOCACHE_v2','MAP_ANR_ANRATLASGEOLOGY_WM_NOCACHE','__earthlineVtInfra16458','earthlineVtInfra16458','anrmaps.vermont.gov']
+          for pat in patterns:
+            print('=== SYMBOL '+pat)
+            for m in list(re.finditer(re.escape(pat),s))[:6]:
+              print('LOCATION',m.start(),'CONTEXT',repr(s[max(0,m.start()-650):m.start()+900]))
+            print('TOTAL',s.count(pat))
+          PY
