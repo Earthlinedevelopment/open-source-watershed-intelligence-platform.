@@ -11,6 +11,8 @@ const page=await browser.newPage({viewport:{width:1600,height:950}});
 const pageErrors=[],badResponses=[];
 const stagedElder=readFileSync('earthline-elder-restored-17097.js');
 await page.route('**/earthline-elder-restored-17097.js*',route=>route.fulfill({status:200,contentType:'application/javascript',body:stagedElder}));
+const stagedLaunch=readFileSync('earthline-launch-16872.js');
+await page.route('**/earthline-launch-16872.js*',route=>route.fulfill({status:200,contentType:'application/javascript',body:stagedLaunch}));
 page.on('pageerror',e=>pageErrors.push(String(e)));
 page.on('console',m=>{if(m.type()==='error')pageErrors.push(m.text())});
 page.on('response',r=>{if(r.status()>=400)badResponses.push({status:r.status(),url:r.url()})});
@@ -129,7 +131,7 @@ async function runTarget(target,index){
     const pts=features.map(f=>{const coords=f.geometry?.coordinates;let pt=null;try{pt=map?.project?.(coords);}catch(_){}return {coords,point:pt&&{x:pt.x,y:pt.y}}});
     return {count:features.length,paint,pts,safeCount:safe.length,trackedSlopeValues:slopeValues.length,maxTrackedSlope:slopeValues.length?Math.max(...slopeValues):null,sampleSlopeKeys};
   });
-  console.log('ELDER_STAGING_LAYER_AUDIT '+JSON.stringify({target:target.name,probe,elderWaitError}));
+  console.log('ELDER_STAGING_LAYER_AUDIT '+JSON.stringify({target:target.name,probe,elderWaitError,actualCenter:snap.audit?.center,actualTarget:await page.evaluate(()=>window.EARTHLINE_PROPERTY_TARGET_16201),publicationToken:snap.publication?.runToken,elderIdentity:snap.elder?.propertyRunIdentity,blueAudit:await page.evaluate(()=>window.EARTHLINE_BLUE_SWALES_AUDIT_17501||null)}));
   let hover=false,click=false;
   for(const rec of probe.pts){
     const pt=rec.point;
