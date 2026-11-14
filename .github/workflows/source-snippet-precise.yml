@@ -1,0 +1,19 @@
+name: Narrow source owner snippet
+on:
+  push:
+    branches: [repair/exclude-own-swale-water-layers-20261114]
+    paths: [.github/workflows/source-snippet-precise.yml]
+permissions: {contents: read}
+jobs:
+  excerpt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          print('EARTHLINE_UPSTREAM_EXCERPT',repr(s[1335250:1337050]))
+          print('EARTHLINE_CLASSIFIER_EXCERPT',repr(s[879115:879720]))
+          PY
