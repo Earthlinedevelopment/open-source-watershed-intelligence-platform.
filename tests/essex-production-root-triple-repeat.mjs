@@ -17,7 +17,7 @@ page.on('response',r=>{if(r.status()>=400)badResponses.push({status:r.status(),u
 mkdirSync('artifacts/essex-root-repeat',{recursive:true});
 
 const response=await page.goto(URL+'?root_property_control='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
-if(response?.status()!==200||new URL(page.url()).pathname!=='/')throw new Error('Not the actual production root URL');
+if(response?.status()!==200||new globalThis.URL(page.url()).pathname!=='/')throw new Error('Not the actual production root URL');
 await page.waitForSelector('#searchInput',{timeout:30000});
 await page.waitForFunction(()=>typeof window.earthlineSelectedSiteFromCenter==='function'&&typeof window.applyLocation==='function'&&typeof window.earthlineDeclarePropertyAtCrosshair16169==='function',null,{timeout:35000});
 console.log('ROOT_URL_VERIFIED '+JSON.stringify({url:page.url(),status:response.status()}));
