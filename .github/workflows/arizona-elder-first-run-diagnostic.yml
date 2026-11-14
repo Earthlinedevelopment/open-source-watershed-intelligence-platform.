@@ -1,0 +1,35 @@
+name: Arizona Elder First Run Isolated Diagnostic
+on:
+  push:
+    branches:
+      - repair/arizona-elder-first-run-gate-20261114
+    paths:
+      - tests/mantra89-arizona-controls.mjs
+      - .github/workflows/arizona-elder-first-run-diagnostic.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-live-without-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      EARTHLINE_URL: https://earthlinedevelopment.org/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser test dependencies
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Test public production with corrected Elder wait
+        run: node tests/mantra89-arizona-controls.mjs
+      - name: Preserve evidence on success or failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arizona-elder-first-run-diagnostic
+          path: artifacts/arizona-controls
+          retention-days: 14
