@@ -58,6 +58,14 @@ async function runTarget(target,index){
       safeCount:Number(md?.authoritativeSafeSwales15815?.features?.length||0),
       engineCount:Number(md?.swales?.length||0),
       safeGeometry:(md?.authoritativeSafeSwales15815?.features||[]).map(f=>f?.geometry?.coordinates||null),
+      exclusionStyleLayers:(()=>{
+        const ls=map?.getStyle?.()?.layers||[];
+        return ls.filter(l=>['line','fill','fill-extrusion'].includes(String(l.type||''))&&/road|street|motorway|trunk|primary|secondary|tertiary|residential|service|drive|driveway|track|path|bridge|tunnel|transportation|rail|building|structure|house|parking|landuse|commercial|industrial|retail|river|stream|canal|waterway|water|lake|reservoir|wetland/.test(((l.id||'')+' '+(l['source-layer']||'')).toLowerCase())).map(l=>{
+          let count=-1;try{count=map.queryRenderedFeatures({layers:[l.id]}).length}catch{}
+          return {id:l.id,source:l.source,sourceLayer:l['source-layer'],type:l.type,count};
+        });
+      })(),
+
       lifecycle:{
         searchGen:md?.searchGen,
         terrainMode:md?.terrainMode,
@@ -108,6 +116,6 @@ for(let i=0;i<TARGETS.length;i++) rows.push(await runTarget(TARGETS[i],i));
 const replacementPass=rows.length===3&&rows[0].snap.publication?.runToken!==rows[1].snap.publication?.runToken&&rows[1].snap.publication?.runToken!==rows[2].snap.publication?.runToken;
 const report={at:new Date().toISOString(),url:URL,rows,replacementPass,pageErrors,badResponses,pass:rows.every(r=>r.pass)&&replacementPass&&new Set(rows.map(r=>r.geoHash)).size===1};
 writeFileSync('artifacts/essex-root-repeat/results.json',JSON.stringify(report,null,2));
-console.log('ESSEX_PRODUCTION_ROOT_REPEAT '+JSON.stringify({pass:report.pass,replacementPass,rows:rows.map(r=>({name:r.name,geoHash:r.geoHash,corePass:r.corePass,contextPass:r.contextPass,pass:r.pass,elapsedMs:r.elapsedMs,safeCount:r.snap.safeCount,elderCount:r.snap.elder?.featureCount||0,engineCount:r.snap.engineCount,pipeline:r.snap.lifecycle?.pipeline,lifecycle:{searchGen:r.snap.lifecycle?.searchGen,terrainStamp:r.snap.lifecycle?.terrainFields?.terrainStamp,demReady:r.snap.lifecycle?.terrainFields?.demReady,terrainReady:r.snap.lifecycle?.terrainFields?.terrainReady},analysisAudit:{settled:r.snap.audit?.settled,result:r.snap.audit?.result,corridors:r.snap.audit?.corridors,reason:r.snap.audit?.reason,runToken:r.snap.audit?.runToken,center:r.snap.audit?.center},publication:{published:r.snap.publication?.published,reason:r.snap.publication?.reason,runToken:r.snap.publication?.runToken},safeVisibility:r.snap.safeVisibility,out:String(r.out).slice(0,180),status:r.snap.status,tierNotice:r.snap.tierNotice,ancillaryErrors:r.ancillaryAnrErrors?.length||0,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
+console.log('ESSEX_PRODUCTION_ROOT_REPEAT '+JSON.stringify({pass:report.pass,replacementPass,rows:rows.map(r=>({name:r.name,geoHash:r.geoHash,corePass:r.corePass,contextPass:r.contextPass,pass:r.pass,elapsedMs:r.elapsedMs,safeCount:r.snap.safeCount,elderCount:r.snap.elder?.featureCount||0,engineCount:r.snap.engineCount,styleLayers:r.snap.exclusionStyleLayers,pipeline:r.snap.lifecycle?.pipeline,lifecycle:{searchGen:r.snap.lifecycle?.searchGen,terrainStamp:r.snap.lifecycle?.terrainFields?.terrainStamp,demReady:r.snap.lifecycle?.terrainFields?.demReady,terrainReady:r.snap.lifecycle?.terrainFields?.terrainReady},analysisAudit:{settled:r.snap.audit?.settled,result:r.snap.audit?.result,corridors:r.snap.audit?.corridors,reason:r.snap.audit?.reason,runToken:r.snap.audit?.runToken,center:r.snap.audit?.center},publication:{published:r.snap.publication?.published,reason:r.snap.publication?.reason,runToken:r.snap.publication?.runToken},safeVisibility:r.snap.safeVisibility,out:String(r.out).slice(0,180),status:r.snap.status,tierNotice:r.snap.tierNotice,ancillaryErrors:r.ancillaryAnrErrors?.length||0,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
 await browser.close();
 if(!report.pass)process.exitCode=1;
