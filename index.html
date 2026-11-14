@@ -19447,6 +19447,8 @@ var prescribeSwales;
     try{
       const style=earthlineMap&&earthlineMap.getStyle&&earthlineMap.getStyle();
       return (style&&style.layers||[]).filter(l=>{
+        /* EARTHLINE SELF-WATER EXCLUSION FIX: blue water inside an already-published bioswale is NOT mapped hydrography. */
+        if(l.id==="earthline-living-swales-water-15792"||l.id==="earthline-property-safe-water-16221")return false;
         const tag=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();
         const type=String(l.type||"").toLowerCase();
         if(!["line","fill","fill-extrusion"].includes(type))return false;
