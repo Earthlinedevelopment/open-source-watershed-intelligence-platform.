@@ -1,0 +1,23 @@
+name: Trace upstream Property no-build layer collection
+on:
+  push:
+    branches: [repair/exclude-own-swale-water-layers-20261114]
+    paths: [.github/workflows/trace-upstream-owner.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text()
+          for pat in ('function earthlineMappedFeatureClass15862J', 'function earthlineBuildVectorNoBuildMask', 'M.vectorNoBuildCoverage=', 'queryRenderedFeatures(queryBox', 'const layerIds=', 'sourceFeatureCount=all.length','featureClass.relevant'):
+            ms=list(re.finditer(re.escape(pat),s))
+            print('TERM',pat,'TOTAL',len(ms))
+            for m in ms[:5]:print('EXCERPT',m.start(),repr(s[max(0,m.start()-600):m.start()+2600]))
+          PY
