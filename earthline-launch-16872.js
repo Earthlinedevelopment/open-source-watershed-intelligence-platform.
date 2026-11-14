@@ -431,7 +431,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
    Capture the real click once; never synthesize a second press or run.
    The existing governed controller alone owns exclusions and publication. */
 (function earthlineSinglePropertyButtonOwner17503(){
-  document.addEventListener('click',event=>{
+  window.addEventListener('click',event=>{
     const b=event.target?.closest?.('#earthlineDeclareProperty16169');
     if(!b||b.disabled)return;
     const controller=window.earthlineDeclarePropertyAtCrosshair16173;
