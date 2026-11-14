@@ -10,8 +10,8 @@
   const LAYER='earthline-elder-tree-points-17097';
   const state={loaded:false,loading:null,manifest:null,all:[],active:[],lastSummary:null,dynamic:{worker:null,seq:0,pending:new Map(),key:'',result:null,promise:null,error:null,warmPromise:null,warmed:false,tileWarmKey:'',tileWarmPromise:null}};
   /* M7 temporary Elder Tree hover label; existing click details retain evidence distinctions. */
-  let elderHoverPopupM7=null,elderHoverBoundM7=false,elderClickBoundMapM14=null;
-  function dismissElderHoverM7(){try{elderHoverPopupM7?.remove()}catch(_){}elderHoverPopupM7=null}
+  let elderHoverPopupM7=null,elderHoverBoundMapM15=null,elderHoverKeyM15='',elderClickBoundMapM14=null;
+  function dismissElderHoverM7(){try{elderHoverPopupM7?.remove()}catch(_){}elderHoverPopupM7=null;elderHoverKeyM15=''}
 
   function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
@@ -303,11 +303,13 @@
         });
         elderClickBoundMapM14=m;
       }
-      if(!elderHoverBoundM7){
-        elderHoverBoundM7=true;
-        m.on('mouseenter',LAYER,e=>{
+      // Both enter and movement must refresh Elder research on successive Property runs.
+      if(elderHoverBoundMapM15!==m){
+        const showResearchM15=e=>{
           const f=e?.features?.[0],pt=f?.geometry?.coordinates,p=f?.properties||{};
           if(!Array.isArray(pt)||pt.length<2)return;
+          const key=pt.map(x=>Number(x).toFixed(9)).join(',');
+          if(elderHoverPopupM7&&elderHoverKeyM15===key)return;
           dismissElderHoverM7();
           const confidence=elderConfidence(p),height=Number(p.height_m),verified=isVerified(p);
           const html='<div style="font:800 12px/1.3 Noto Sans,system-ui,sans-serif;color:#245e39">ELDER TREE RESEARCH</div>'+
@@ -317,10 +319,17 @@
             (Number.isFinite(height)?'<div style="margin-top:3px;font:500 10px/1.3 Noto Sans,system-ui,sans-serif">Canopy height: '+esc(height.toFixed(1))+' m</div>':'')+
             '<div style="margin-top:3px;font:500 10px/1.3 Noto Sans,system-ui,sans-serif">Source: '+esc(p.source_name||p.elder_dataset_label||'Earthline Elder evidence')+'</div>'+
             '<div style="margin-top:5px;font:500 10px/1.3 Noto Sans,system-ui,sans-serif">Modeled candidates are not verified ancient trees. Confidence is a relative structural-evidence percentile, not an age probability.</div>';
-          try{elderHoverPopupM7=new mapboxgl.Popup({closeButton:false,closeOnClick:false,offset:12,className:'earthline-elder-hover-m7'}).setLngLat(pt).setHTML(html).addTo(m)}catch(_){dismissElderHoverM7()}
-        });
+          try{
+            elderHoverPopupM7=new mapboxgl.Popup({closeButton:false,closeOnClick:false,offset:12,className:'earthline-elder-hover-m7'}).setLngLat(pt).setHTML(html).addTo(m);
+            elderHoverPopupM7.getElement?.()?.style?.setProperty?.('pointer-events','none');
+            elderHoverKeyM15=key;
+          }catch(_){dismissElderHoverM7()}
+        };
+        m.on('mouseenter',LAYER,showResearchM15);
+        m.on('mousemove',LAYER,showResearchM15);
         m.on('mouseleave',LAYER,dismissElderHoverM7);
         m.on('movestart',dismissElderHoverM7);
+        elderHoverBoundMapM15=m;
       }
       try{
         if(m.getLayer?.(LAYER)){
