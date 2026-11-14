@@ -1,0 +1,25 @@
+name: Essex and Iowa public Property acceptance
+on:
+  push:
+    branches: [repair/arizona-visible-valid-swales-20261113]
+    paths: [tests/essex-and-iowa-public-live-acceptance.mjs, .github/workflows/essex-iowa-live-acceptance.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  controls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node tests/essex-and-iowa-public-live-acceptance.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-essex-iowa-live-control
+          path: artifacts/essex-live-control
+          retention-days: 14
