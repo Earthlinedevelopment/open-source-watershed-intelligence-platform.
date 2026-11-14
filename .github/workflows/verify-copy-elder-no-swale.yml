@@ -1,0 +1,41 @@
+name: Verify staged wording/Elder without swale engine changes
+on:
+  push:
+    branches: [repair/restore-approved-copy-elder-20261114]
+    paths: [.github/workflows/verify-copy-elder-no-swale.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Enforce exact patch surface against live rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          base='e3543166be62376c6d59f5a97c646f708ddb6e8c'
+          def old(p):return subprocess.check_output(['git','show',base+':'+p]).decode()
+          html=Path('index.html').read_text()
+          elder=Path('earthline-elder-restored-17097.js').read_text()
+          assert html==old('index.html').replace('Recharge Suitability','Recharge Potential')
+          assert old('index.html').count('Recharge Suitability')==6
+          assert 'Recharge Suitability' not in html
+          previous=old('earthline-elder-restored-17097.js')
+          updated=previous.replace("let elderInfoLastRunM11='',elderInfoPopupM11=null;","let elderInfoLastRunM11='',elderInfoPopupM11=null,elderInfoShownM11=false;").replace("if(run===elderInfoLastRunM11)return;","if(elderInfoShownM11||run===elderInfoLastRunM11)return;").replace("elderInfoLastRunM11=run;","elderInfoLastRunM11=run;elderInfoShownM11=true;")
+          assert updated==elder
+          assert "&#9432; What are Elder Trees?" in elder
+          assert "},10000)" in elder
+          assert "M11: half-size Elder symbols" in elder
+          assert "icon-size" in elder
+          assert 'function showElderInfoLinkM11' in elder
+          print('PASS: exact 6-label replacement; original swale engine byte-identical; only 3 Elder help guard edits')
+          PY
+          node --check earthline-elder-restored-17097.js
+          echo 'PASS: Elder JavaScript syntax'
