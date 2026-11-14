@@ -354,3 +354,61 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   document.addEventListener('earthline:analysis-start',e=>{const t=String(e?.detail?.tier||e?.detail?.mode||'').toLowerCase();if(t.includes('property'))remove()},{passive:true});
   window.EARTHLINE_CROSSHAIR_MOVE_HINT_17093={state:'ready',show,remove,oncePerPageLoad:true,dismissOnCorridorDetail:true};
 })();
+
+/* EARTHLINE 17501 — approved two dotted blue Property swale strips.
+   Presentation only, using the existing authoritative exclusion-verified safe
+   FeatureCollection. Never changes hydrology, geometry, slope, masks or ranking. */
+(function installEarthlineBlueSwales17501(){
+  const SOURCE='earthline-property-safe-visible-16221';
+  const WATER='earthline-property-safe-water-16221';
+  const MIRROR='earthline-property-safe-water-opposite-17501';
+  let serial=0;
+  const width=['interpolate',['linear'],['zoom'],14,2.8,17,5.1,20,8.4];
+  const offset=['interpolate',['linear'],['zoom'],14,1.6,17,3.6,20,5.5];
+  const opposite=['interpolate',['linear'],['zoom'],14,-1.6,17,-3.6,20,-5.5];
+  function apply(reason){
+    const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+    const md=(typeof M!=='undefined'&&M)||window.M||null;
+    const displayed=window.EARTHLINE_DISPLAYED_RUN_16151||null;
+    const verified=md?.propertyPublication15816?.committed===true&&
+      md?.propertyPublication15816?.safetyVerified===true&&
+      md?.propertyResultLock15815?.safetyVerified===true&&md?.safetyAudit15806?.verified===true;
+    const source=m?.getSource?.(SOURCE),layer=m?.getLayer?.(WATER);
+    if(!verified||displayed?.tier!=='property'||!source||layer?.type!=='line')return false;
+    try{
+      if(!m.getLayer?.(MIRROR)){
+        m.addLayer({id:MIRROR,type:'line',source:SOURCE,
+          layout:{'line-cap':'round','line-join':'round','visibility':'visible'},
+          paint:{'line-color':'#20b9ff','line-opacity':.99,'line-width':width,
+            'line-offset':opposite,'line-dasharray':[.8,.36]}});
+      }
+      m.setPaintProperty(WATER,'line-color','#068fff');
+      m.setPaintProperty(WATER,'line-width',width);
+      m.setPaintProperty(WATER,'line-offset',offset);
+      m.setPaintProperty(WATER,'line-dasharray',[.8,.36]);
+      m.setPaintProperty(WATER,'line-opacity',.99);
+      m.setLayoutProperty(WATER,'visibility','visible');
+      m.setLayoutProperty(MIRROR,'visibility','visible');
+      m.moveLayer(WATER);m.moveLayer(MIRROR);
+      window.EARTHLINE_BLUE_SWALES_AUDIT_17501={applied:true,reason,
+        authoritativeSource:SOURCE,geometryChanged:false,verified:true,
+        stripes:2,at:new Date().toISOString()};
+      return true;
+    }catch(error){
+      window.EARTHLINE_BLUE_SWALES_AUDIT_17501={applied:false,reason,
+        error:String(error?.message||error),at:new Date().toISOString()};
+      return false;
+    }
+  }
+  function schedule(){
+    const token=++serial;
+    for(const delay of [0,120,400,900,1900,3300]){
+      setTimeout(()=>{if(token!==serial)return;apply('verified-property-'+delay);},delay);
+    }
+  }
+  document.addEventListener('earthline:analysis-complete',e=>{
+    const tier=String(e?.detail?.tier||e?.detail?.mode||'').toLowerCase();
+    if(tier==='property')schedule();else ++serial;
+  },{passive:true});
+  window.EARTHLINE_BLUE_SWALES_17501={apply,schedule,source:SOURCE,geometryChanged:false};
+})();
