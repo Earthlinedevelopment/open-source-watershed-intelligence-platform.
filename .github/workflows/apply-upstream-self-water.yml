@@ -17,9 +17,9 @@ jobs:
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text()
-          needle='filter(l=>{\n        const id=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();'
+          needle='const layers=(style.layers||[]).filter(l=>{\n        const id=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();'
           assert s.count(needle)==1,s.count(needle)
-          replacement='filter(l=>{\n        /* Self-water display is not authoritative mapped water or a Property no-build source. */\n        if(l.id==="earthline-living-swales-water-15792"||l.id==="earthline-property-safe-water-16221")return false;\n        const id=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();'
+          replacement='const layers=(style.layers||[]).filter(l=>{\n        /* Self-water display is not authoritative mapped water or a Property no-build source. */\n        if(l.id==="earthline-living-swales-water-15792"||l.id==="earthline-property-safe-water-16221")return false;\n        const id=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();'
           s=s.replace(needle,replacement,1)
           assert s.count("Self-water display is not authoritative") == 1
           p.write_text(s)
