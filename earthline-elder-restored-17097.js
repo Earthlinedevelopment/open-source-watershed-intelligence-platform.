@@ -283,6 +283,7 @@
             'text-halo-width':2.2
           }
         });
+      }
       // An existing Elder source/layer may survive a new Property run: bind the popup regardless of layer creation.
       if(elderClickBoundMapM14!==m){
         m.on('click',LAYER,e=>{
