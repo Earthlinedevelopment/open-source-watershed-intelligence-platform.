@@ -26,8 +26,8 @@ jobs:
           needle='return (style&&style.layers||[]).filter(l=>{\n        const tag=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();'
           replacement='return (style&&style.layers||[]).filter(l=>{\n        /* EARTHLINE SELF-WATER EXCLUSION FIX: blue water inside an already-published bioswale is NOT mapped hydrography. */\n        if(l.id==="earthline-living-swales-water-15792"||l.id==="earthline-property-safe-water-16221")return false;\n        const tag=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();'
           assert parent.count(needle)==1
-          upstream='const layers=(style.layers||[]).filter(l=>{\\n        const id=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();'
-          upstream_fix='const layers=(style.layers||[]).filter(l=>{\\n        /* Self-water display is not authoritative mapped water or a Property no-build source. */\\n        if(l.id==="earthline-living-swales-water-15792"||l.id==="earthline-property-safe-water-16221")return false;\\n        const id=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();'
+          upstream='const layers=(style.layers||[]).filter(l=>{\n        const id=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();'
+          upstream_fix='const layers=(style.layers||[]).filter(l=>{\n        /* Self-water display is not authoritative mapped water or a Property no-build source. */\n        if(l.id==="earthline-living-swales-water-15792"||l.id==="earthline-property-safe-water-16221")return false;\n        const id=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();'
           assert parent.count(upstream)==1
           expected=parent.replace(needle,replacement,1).replace(upstream,upstream_fix,1)
           assert current==expected,'Unexpected edits outside the two exact self-water exclusion filters'
