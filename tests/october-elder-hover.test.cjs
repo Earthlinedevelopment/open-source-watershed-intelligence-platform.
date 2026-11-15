@@ -1,0 +1,10 @@
+const fs=require('node:fs'),assert=require('node:assert/strict');
+const s=fs.readFileSync('earthline-elder-restored-17097.js','utf8');
+assert(s.includes("const p=f.properties||{},label=classify(p);"));
+assert(s.includes("'+esc(label)+'</span>"));
+assert(!s.includes("letter-spacing:.4px\">ELDER TREE</span>"));
+assert(s.includes("m.on('click',LAYER,e=>"));
+assert(s.includes("m.on('mouseleave',LAYER,dismissElderHoverM7)"));
+assert(s.includes("function elderPinImage(fill)"));
+assert(s.includes("'icon-image':['case'"));
+console.log('PASS: evidence-specific hover, click details, image registration and cleanup preserved');
