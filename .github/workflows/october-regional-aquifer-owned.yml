@@ -1,0 +1,89 @@
+name: October Regional aquifer owned publication (isolated)
+on:
+  push:
+    branches:
+      - fix/october-regional-aquifer-owned-20261114
+    paths:
+      - 'tools/connect-october-regional-aquifer-owner.py'
+      - '.github/workflows/october-regional-aquifer-owned.yml'
+      - 'engine-next/core/source-owner.mjs'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Seven-repeat pure source-owner test
+        run: |
+          node --check engine-next/core/source-owner.mjs
+          node --input-type=module - <<'JS'
+          import {SourceOwner} from './engine-next/core/source-owner.mjs';
+          import assert from 'node:assert/strict';
+          const owner=new SourceOwner('regional-aquifer');
+          const geo=(i)=>({type:'FeatureCollection',features:[{type:'Feature',geometry:{type:'Point',coordinates:[i,0]},properties:{}}]});
+          for(let i=0;i<7;i++){
+            const t=owner.begin({extentKey:'iowa-extent',runId:'run-'+i});
+            assert(owner.accept(t,geo(i),'official-map').ok);
+            const next=owner.begin({extentKey:'iowa-extent',runId:'retry-'+i});
+            const carry=owner.provisional(next,'source timeout');
+            assert(carry.ok&&carry.status==='provisional-carryover');
+            assert(!owner.accept(t,geo(999),'stale').ok);
+            assert(owner.accept(next,geo(i),'official-map').ok);
+          }
+          const other=owner.begin({extentKey:'different-extent',runId:'different'});
+          assert(!owner.provisional(other,'source timeout').ok);
+          assert(!owner.accept(other,{type:'FeatureCollection',features:[]},'official').ok);
+          console.log('PASS: seven owner cycles and negative guards');
+          JS
+      - name: Apply exact owner integration
+        run: python3 tools/connect-october-regional-aquifer-owner.py
+      - name: Syntax check all inline scripts and frozen change scope
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import subprocess
+          class Extract(HTMLParser):
+              def __init__(self):super().__init__();self.scripts=[];self.active=None
+              def handle_starttag(self,tag,attrs):
+                  if tag=='script':
+                      d=dict(attrs)
+                      self.active=[] if not d.get('src') else None
+                      self.module=d.get('type')=='module'
+              def handle_data(self,data):
+                  if self.active is not None:self.active.append(data)
+              def handle_endtag(self,tag):
+                  if tag=='script' and self.active is not None:
+                      self.scripts.append((''.join(self.active),self.module))
+                      self.active=None
+          e=Extract();e.feed(Path('index.html').read_text())
+          checked=0
+          for script,module in e.scripts:
+              if not script.strip():continue
+              cmd=['node','--check','--input-type=module' if module else '--input-type=commonjs']
+              p=subprocess.run(cmd,input=script,text=True,capture_output=True)
+              if p.returncode:raise RuntimeError(f'inline script {checked+1}: {p.stderr[:1000]}')
+              checked+=1
+          assert checked>20,checked
+          assert 'regionalAquiferOwnerM14.accept(' in Path('index.html').read_text()
+          print('PASS: inline JavaScript syntax',checked,'scripts')
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+      - name: Commit staged-only HTML
+        shell: bash
+        run: |
+          git config user.name "earthline-staging-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "stage(october): run-owned Regional aquifers with exact-extent fallback"
+          git push origin HEAD:fix/october-regional-aquifer-owned-20261114
