@@ -318,6 +318,10 @@
         }
         m.triggerRepaint?.();
       }catch(_){}
+      /* The icons themselves are the reliable publication signal. Show the
+         existing one-per-visit help as soon as icons are published, rather
+         than depending solely on late analysis-complete callbacks. */
+      if(features.length&&m.getLayer?.(LAYER))queueMicrotask(showElderInfoLinkM11);
       return !!m.getLayer?.(LAYER);
     }catch(_){return false}
   }
