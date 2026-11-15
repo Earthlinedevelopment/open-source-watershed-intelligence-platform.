@@ -29,6 +29,8 @@ change("""        addPath(sg,pts,{stroke:light,'stroke-width':String((grade==='A
             'stroke-linecap':'round','stroke-linejoin':'round','stroke-dasharray':'1.3 5',
             'data-swale-index':String(swales)});
         }""","regional-double-blue")
+change("Earthline’s three-word principle describes the sequence:",
+       "At Earthline, we follow the principle:","swales-explained-attribution")
 assert "earthline-swale-water-strip-blue-1" in s
 assert "earthline-regional-swale-blue-strip-" in s
 p.write_text(s,encoding="utf-8")
