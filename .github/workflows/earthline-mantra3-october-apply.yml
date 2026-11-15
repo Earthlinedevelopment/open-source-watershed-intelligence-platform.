@@ -4,7 +4,7 @@ on:
     branches:
       - repair/mantra3-october-elder-ui-20261113
 permissions:
-  contents: write
+  contents: read
 jobs:
   apply:
     if: ${{ !contains(github.event.head_commit.message, '[mantra3-applied]') }}
@@ -23,11 +23,3 @@ jobs:
           node --input-type=module --check < earthline-elder-worker-17129.js
           test "$(git diff --name-only)" = "index.html"
           git diff --stat
-      - name: Commit ONLY to isolated repair branch
-        shell: bash
-        run: |
-          git config user.name "Earthline Candidate Gate"
-          git config user.email "info@earthlinedevelopment.org"
-          git add index.html
-          git commit -m "fix(mantra3): restore Elder loader and apply two pinned UI fixes [mantra3-applied]"
-          git push origin HEAD:repair/mantra3-october-elder-ui-20261113
