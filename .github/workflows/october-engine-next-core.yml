@@ -1,0 +1,22 @@
+name: Earthline vNext isolated engine core
+on:
+  push:
+    branches:
+      - refactor/october-engine-foundation-20261114
+    paths:
+      - engine-next/**
+      - tests/source-owner-next.test.mjs
+      - .github/workflows/october-engine-next-core.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check engine-next/core/source-owner.mjs
+      - run: node tests/source-owner-next.test.mjs
