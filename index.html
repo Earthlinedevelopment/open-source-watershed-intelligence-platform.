@@ -29099,6 +29099,22 @@ body { overflow-x:hidden!important; }
     const el=ensureStatusPanel();if(!el)return;el.dataset.kind=kind;el.textContent=String(message||'');
     window.EARTHLINE_LOADING_AUDIT_16167=Object.assign({},window.EARTHLINE_LOADING_AUDIT_16167||{},{phase:String(message||''),kind,updatedAt:new Date().toISOString()});
   }
+
+  /* Mantra aquifer persistence: accepted aquifer context is bound to its exact extent. */
+  function aquiferSameExtentM14(hash){
+    const a=window.EARTHLINE_ACCEPTED_REGIONAL_AQUIFER_AUDIT_16373||null;
+    const g=window.EARTHLINE_ACCEPTED_REGIONAL_AQUIFER_GEOJSON_16373||null;
+    return !!(hash&&a&&a.boundsHash===hash&&g&&Array.isArray(g.features)&&g.features.length);
+  }
+  function aquiferRestoreM14(token,hash,reason){
+    if(!isCurrentRun(token)||!aquiferSameExtentM14(hash))return 0;
+    const source=window.EARTHLINE_ACCEPTED_REGIONAL_AQUIFER_GEOJSON_16373,m=map();
+    if(!m?.getSource?.(IDS.aquifer))return 0;
+    const data={type:'FeatureCollection',features:source.features.map(f=>({...f,properties:{...(f.properties||{}),earthline_context_carried_over:true,earthline_context_status:'Carried over from previous run'}}))};
+    setGeo(m,IDS.aquifer,data);
+    window.EARTHLINE_REGIONAL_AQUIFER_CARRYOVER_M14={runToken:String(token),boundsHash:hash,featureCount:data.features.length,status:'Carried over from previous run',reason:String(reason),at:new Date().toISOString()};
+    return data.features.length;
+  }
   function guardedSetGeo(token,m,id,data,sourceId){
     if(!isCurrentRun(token)){recordRun('write_discarded',token,{sourceId:sourceId||id,source:id,discardReason:'superseded_run'});return false;}
     setGeo(m,id,data);
@@ -29109,7 +29125,7 @@ body { overflow-x:hidden!important; }
         window.EARTHLINE_ACCEPTED_REGIONAL_AQUIFER_GEOJSON_16373=JSON.parse(JSON.stringify(data));
         window.EARTHLINE_ACCEPTED_REGIONAL_AQUIFER_AUDIT_16373={
           build:'EARTHLINE 16373',runToken:String(token||''),sourceId:String(sourceId||id),
-          features:data.features.length,acceptedAt:new Date().toISOString()
+          features:data.features.length,boundsHash:(window.EARTHLINE_REGIONAL_AQUIFER_PENDING_EXTENT_M14?.runToken===String(token)?window.EARTHLINE_REGIONAL_AQUIFER_PENDING_EXTENT_M14.boundsHash:null),acceptedAt:new Date().toISOString()
         };
       }catch(_){}
     }
@@ -29125,9 +29141,10 @@ body { overflow-x:hidden!important; }
     ensureLayers();
     const acceptedAqAudit=window.EARTHLINE_ACCEPTED_REGIONAL_AQUIFER_AUDIT_16373||null;
     const acceptedAq=window.EARTHLINE_ACCEPTED_REGIONAL_AQUIFER_GEOJSON_16373||null;
-    const aquifers=(acceptedAqAudit&&String(acceptedAqAudit.runToken||'')===String(token||'')&&acceptedAq&&Array.isArray(acceptedAq.features))
-      ?acceptedAq
-      :(visualData.aquifers||EMPTY);
+    const currentAq=acceptedAqAudit&&String(acceptedAqAudit.runToken||'')===String(token||'')&&acceptedAq&&Array.isArray(acceptedAq.features)?acceptedAq:null;
+    const carryAq=!currentAq&&aquiferSameExtentM14(visualData.boundsHash)?acceptedAq:null;
+    const aquifers=currentAq||carryAq||visualData.aquifers||EMPTY;
+    if(carryAq)window.EARTHLINE_REGIONAL_AQUIFER_CARRYOVER_M14={runToken:String(token),boundsHash:visualData.boundsHash,featureCount:carryAq.features.length,status:'Carried over from previous run',reason:'same-extent core publication before groundwater response',at:new Date().toISOString()};
     const writes=[
       [IDS.contours,visualData.contours||EMPTY,'regional-contours-final'],
       [IDS.flows,visualData.flows||EMPTY,'regional-flows-final'],
@@ -29135,6 +29152,7 @@ body { overflow-x:hidden!important; }
       [IDS.aquifer,aquifers,'regional-aquifers-final']
     ];
     for(const [id,data,sourceId] of writes){
+      if(id===IDS.aquifer&&carryAq){setGeo(m,id,data);continue;}
       if(!guardedSetGeo(token,m,id,data,sourceId))return false;
     }
     const ordered=[IDS.aquiferFill,IDS.aquiferLine,IDS.contourLine,IDS.flowCasing,IDS.flowLine,IDS.contourLabel,IDS.flowArrow,IDS.swaleHalo,IDS.swaleLine];
@@ -29453,7 +29471,7 @@ body { overflow-x:hidden!important; }
     try{if(m.getLayer(IDS.aquiferLabel))m.moveLayer(IDS.aquiferLabel);}catch(_){}
     return true;
   }
-  function clearLive(){const m=map();if(!m)return;for(const id of [IDS.basin,IDS.aquifer,IDS.contours,IDS.flows,IDS.swales])setGeo(m,id,EMPTY);}
+  function clearLive(preserveAquifer=false){const m=map();if(!m)return;for(const id of [IDS.basin,IDS.aquifer,IDS.contours,IDS.flows,IDS.swales]){if(id===IDS.aquifer&&preserveAquifer)continue;setGeo(m,id,EMPTY);}}
   function hideUnapproved(){
     document.getElementById('earthlineVisualHierarchy15804')?.remove();
     document.getElementById('earthlineBoundaryPanel15827')?.remove();
@@ -31001,11 +31019,12 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
           regionalAquiferSource='Mapped U.S. aquifer geometry unavailable in the installed regional datasets';
           regionalAquiferBoundaryClass='absence of a polygon is not absence of groundwater';
           recordRun('source_unavailable',runToken,{sourceId:'usgs-principal+karst-regional-context',error:String(usgsError&&usgsError.message||usgsError)});
-          return 0;
+          return aquiferRestoreM14(runToken,boundsHash(b),'USGS principal and karst requests failed');
         }
       }
     }
-    return loadIGRACAquifers(b,runToken);
+    try{return await loadIGRACAquifers(b,runToken);}
+    catch(error){if(!isCurrentRun(runToken))return 0;recordRun('source_unavailable',runToken,{sourceId:'igrac-whymap-continental-overview',error:String(error&&error.message||error)});return aquiferRestoreM14(runToken,boundsHash(b),'IGRAC request failed');}
   }
   async function sourceReady(id,ms=15000,runToken){const m=map(),end=Date.now()+ms;while(Date.now()<end){if(runToken&&!isCurrentRun(runToken))return false;try{if(m.isSourceLoaded&&m.isSourceLoaded(id))return true;}catch(_){}await wait(200);}return false;}
   async function settleRenderedScientificLayers(m,expectedAquiferCount,ms=6500,runToken){
@@ -32010,6 +32029,8 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     const phaseMark16198=(name,started)=>{phase16198[name]=Math.round(performance.now()-started);};
     const focusMode=!!(loc&&loc.focusMode===true);
     const b=analysisBounds(loc),bHash=boundsHash(b);
+    window.EARTHLINE_REGIONAL_AQUIFER_PENDING_EXTENT_M14={runToken:String(runToken),boundsHash:bHash,bounds:b.slice(),at:new Date().toISOString()};
+    window.EARTHLINE_REGIONAL_AQUIFER_CARRYOVER_M14=null;
     const vermontRequest=typeof window.earthlineIsVermontRequest16178==='function'&&window.earthlineIsVermontRequest16178(q,loc);
     const jurisdictionCapability16539=!focusMode&&!vermontRequest?earthlineAdministrativeCapability16539(loc):null;
     const activePackage16556=window.EARTHLINE_ACTIVE_JURISDICTION_PACKAGE_16556||null;
@@ -32038,7 +32059,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
 
     const mapStarted16198=performance.now();
     const m=await waitMap(6000);phaseMark16198('mapReadyMs',mapStarted16198);if(!isCurrentRun(runToken))return false;
-    clearLive();ensureLayers();
+    clearLive(aquiferSameExtentM14(bHash));ensureLayers();
     setRasterOpacity(m,IDS.groundwaterLayer,0);setRasterOpacity(m,IDS.graceLayer,0);setRasterOpacity(m,IDS.aquiferRasterLayer,0);
 
     const cameraStarted16198=performance.now();
@@ -32992,7 +33013,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     }
     if(swaleCount>0&&overlayAudit&&Number(overlayAudit.swaleLines||0)===0){
       try{
-        clearLive();
+        clearLive(aquiferSameExtentM14(bHash));
         window.EARTHLINE_REGIONAL_VISUAL_DATA_16020=null;
         document.getElementById('earthlineRegionalVectorOverlay16020')?.replaceChildren();
         document.getElementById('earthlineRegionalCorridorTabs16323')?.remove();
@@ -33001,7 +33022,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     }
     if(swaleCount>0&&!overlayAudit){
       try{
-        clearLive();
+        clearLive(aquiferSameExtentM14(bHash));
         window.EARTHLINE_REGIONAL_VISUAL_DATA_16020=null;
         const overlay16336=document.getElementById('earthlineRegionalVectorOverlay16020');
         if(overlay16336)overlay16336.replaceChildren();
@@ -33138,7 +33159,8 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
         const basinResult16198=settled16198[0].status==='fulfilled'?settled16198[0].value:null;
         const aquiferResult16198=settled16198[1].status==='fulfilled'?settled16198[1].value:null;
         const basinCount16198=typeof basinResult16198==='number'?basinResult16198:0;
-        const aquiferCount16198=typeof aquiferResult16198==='number'?aquiferResult16198:0;
+        let aquiferCount16198=typeof aquiferResult16198==='number'?aquiferResult16198:0;
+        if(!focusMode&&aquiferCount16198===0)aquiferCount16198=aquiferRestoreM14(runToken,bHash,'optional aquifer context failed or timed out');
         const groundwaterReady16198=settled16198[2].status==='fulfilled'&&settled16198[2].value===true;
         const graceReady16198=settled16198[3].status==='fulfilled'&&settled16198[3].value===true;
         if(graceReady16198)setRasterOpacity(m,IDS.graceLayer,0.18);
@@ -33190,7 +33212,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
             if(m.getLayer(IDS.swaleLine))m.moveLayer(IDS.swaleLine);
           }catch(_){}
         }
-        if(!propertyOwnsDisplay16726)setRunStatus((focusMode?'Focus screening published. ':(isVermont?'Vermont screening published. ':'Regional screening published. '))+(failures16198.length?'Unavailable context: '+failures16198.join(', ')+'. ':'Watershed and groundwater context updated. ')+swaleNote+(!focusMode?earthlineLandValidityStatus16584():''),'published');
+        if(!propertyOwnsDisplay16726)setRunStatus((focusMode?'Focus screening published. ':(isVermont?'Vermont screening published. ':'Regional screening published. '))+(window.EARTHLINE_REGIONAL_AQUIFER_CARRYOVER_M14?.runToken===String(runToken)?'Aquifer context carried over from previous run for this exact extent. ':'')+(failures16198.length?'Unavailable context: '+failures16198.join(', ')+'. ':'Watershed and groundwater context updated. ')+swaleNote+(!focusMode?earthlineLandValidityStatus16584():''),'published');
       }catch(error16198){
         if(isCurrentRun(runToken)){
           window.EARTHLINE_REGIONAL_CONTEXT_16198={build:'EARTHLINE 16198',runToken,error:String(error16198&&error16198.message||error16198),at:new Date().toISOString()};
@@ -33389,7 +33411,7 @@ window.EARTHLINE_SWALE_GENERATION_AUDIT_16167=generationAudit;
     }catch(err){
       if(!isCurrentRun(runToken)){recordRun('superseded_run_settled',runToken,{error:String(err&&err.message||err)});return false;}
       try{
-        clearLive();
+        clearLive(window.EARTHLINE_REGIONAL_AQUIFER_PENDING_EXTENT_M14?.runToken===String(runToken)&&aquiferSameExtentM14(window.EARTHLINE_REGIONAL_AQUIFER_PENDING_EXTENT_M14.boundsHash));
         window.EARTHLINE_REGIONAL_VISUAL_DATA_16020=null;
         document.getElementById('earthlineRegionalVectorOverlay16020')?.replaceChildren();
         document.getElementById('earthlineRegionalCorridorTabs16323')?.remove();
