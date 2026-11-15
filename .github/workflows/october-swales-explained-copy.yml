@@ -1,0 +1,43 @@
+name: October sitewide principle attribution correction
+on:
+  push:
+    branches:
+      - fix/october-swales-explained-copy-20261114
+    paths:
+      - tools/fix-swales-explained-attribution.py
+      - .github/workflows/october-swales-explained-copy.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  surgical-copy-change:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Replace exact attribution across active site
+        run: python3 tools/fix-swales-explained-attribution.py
+      - name: Verify changes remain text-only
+        shell: bash
+        run: |
+          git diff --check
+          git diff --name-only
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          files=subprocess.check_output(['git','diff','--name-only'],text=True).splitlines()
+          assert files and all(Path(p).suffix in {'.html','.htm','.js','.mjs','.json','.css'} for p in files)
+          for p in files:
+              t=Path(p).read_text(encoding='utf-8')
+              assert 'At Earthline, we follow the principle:' in t
+          print('PASS: only active text assets changed')
+          PY
+      - name: Commit exact site copy updates to isolated branch
+        shell: bash
+        run: |
+          git config user.name "earthline-staging-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -u
+          git commit -m "fix(copy): remove Earthline ownership claim sitewide"
+          git push origin HEAD:fix/october-swales-explained-copy-20261114
