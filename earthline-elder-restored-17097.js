@@ -414,37 +414,29 @@
     frame.addEventListener('load',apply,{once:true});
     return false;
   }
-  /* Elder map help: anchored to a visible icon for each new Property publication.
-     The previous once-per-visit flag could expire before the user saw the map. */
+  /* Elder map help: one visible, ten-second information callout per visit.
+     Use the map DOM container: Mapbox Popup can be clipped or hidden by
+     the map's overlay stack, even when Elder icons are successfully published. */
   let elderInfoLastRunM11='',elderInfoPopupM11=null,elderInfoShownM11=false;
   function showElderInfoLinkM11(){
     const m=map(),list=Array.isArray(state.active)?state.active:[];
-    if(!m||!list.length||typeof mapboxgl==='undefined'||typeof m.project!=='function')return;
-    const run=String(window.EARTHLINE_ELDER_TREE_LAST_17097?.runIdentity||propertyRunIdentity17166(propertyBounds17166()));
-    if(elderInfoShownM11||run===elderInfoLastRunM11)return;
-    const coords=list.map(f=>f?.geometry?.coordinates).filter(c=>Array.isArray(c)&&Number.isFinite(c[0])&&Number.isFinite(c[1]));
-    const container=m.getContainer?.(),w=container?.clientWidth||0,h=container?.clientHeight||0;
-    let visible=[];
-    for(const c of coords){
-      try{const p=m.project(c);if(p&&p.x>=0&&p.x<=w&&p.y>=0&&p.y<=h)visible.push({c,p})}catch(_){}
-    }
-    if(!visible.length){
-      // The Elder layer can publish before the map settles at the Property view.
-      // Retry once after the camera finishes, without changing any marker or map logic.
-      try{m.once('idle',showElderInfoLinkM11)}catch(_){}
-      return;
-    }
-    // Prefer the highest clearly visible Elder marker, leaving room for the label above it.
-    visible.sort((a,b)=>a.p.y-b.p.y);
+    if(!m||!list.length||elderInfoShownM11)return;
+    const container=m.getContainer?.();
+    if(!container)return;
+    const run=String(window.EARTHLINE_ELDER_TREE_LAST_17097?.runIdentity||
+      window.EARTHLINE_ELDER_TREE_LAST_17097?.propertyRunIdentity||'regional');
+    if(run===elderInfoLastRunM11)return;
     try{
       elderInfoPopupM11?.remove();
-      const anchor=visible[0].p.x>w*0.68?'bottom-right':(visible[0].p.x<w*0.32?'bottom-left':'bottom');
-      const popup=new mapboxgl.Popup({closeButton:false,closeOnClick:false,anchor,offset:18,className:'earthline-elder-info-m11'})
-        .setLngLat(visible[0].c)
-        .setHTML('<a href="#swales-explained" style="display:block;padding:6px 9px;border:1px solid #b88a35;border-radius:8px;background:#1c2a25;color:#f4d27a;font:800 12px/1.25 Noto Sans,system-ui,sans-serif;text-decoration:none;white-space:nowrap">&#9432; What are Elder Trees?</a>')
-        .addTo(m);
+      const popup=document.createElement('div');
+      popup.className='earthline-elder-info-m11';
+      popup.setAttribute('role','status');
+      popup.style.cssText='position:absolute;top:18px;right:18px;z-index:2147483000;pointer-events:auto;max-width:calc(100% - 36px)';
+      popup.innerHTML='<a href="#swales-explained" style="display:block;padding:9px 13px;border:1px solid #b88a35;border-radius:8px;background:#1c2a25;color:#f4d27a;font:800 12px/1.25 Noto Sans,system-ui,sans-serif;text-decoration:none;white-space:nowrap;box-shadow:0 3px 12px rgba(0,0,0,.35)">&#9432; What are Elder Trees?</a>';
+      container.appendChild(popup);
       elderInfoPopupM11=popup;
-      elderInfoLastRunM11=run;elderInfoShownM11=true;
+      elderInfoLastRunM11=run;
+      elderInfoShownM11=true;
       setTimeout(()=>{try{popup.remove();if(elderInfoPopupM11===popup)elderInfoPopupM11=null}catch(_){}},10000);
     }catch(_){}
   }
