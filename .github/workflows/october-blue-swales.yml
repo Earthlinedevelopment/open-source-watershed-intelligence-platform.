@@ -1,0 +1,78 @@
+name: October approved map presentation validation
+on:
+  push:
+    branches:
+      - fix/october-regional-aquifer-owned-20261114
+    paths:
+      - 'tools/apply-october-blue-swales.py'
+      - '.github/workflows/october-blue-swales.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify run-owner integration already applied
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          assert s.count('function regionalAquiferCarryM14(')==1
+          assert s.count('regionalAquiferOwnerM14.accept(')==1
+          assert s.count('clearLive(!!regionalAquiferCarryM14(')==3
+          PY
+      - name: Apply requested presentation changes
+        run: python3 tools/apply-october-blue-swales.py
+      - name: Verify syntax, two strips, no scientific changes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          import subprocess
+          s=Path('index.html').read_text()
+          assert s.count("earthline-swale-water-strip-blue-1")==1
+          assert s.count("earthline-regional-swale-blue-strip-")==1
+          assert "At Earthline, we follow the principle:" in s
+          assert "Earthline’s three-word principle describes the sequence:" not in s
+          assert s.count("regionalAquiferOwnerM14.accept(")==1
+          class P(HTMLParser):
+              def __init__(self):super().__init__();self.active=None;self.module=False;self.items=[]
+              def handle_starttag(self,tag,attrs):
+                  if tag=='script':
+                      d=dict(attrs);self.active=[] if not d.get('src') else None
+                      self.module=d.get('type')=='module'
+              def handle_data(self,data):
+                  if self.active is not None:self.active.append(data)
+              def handle_endtag(self,tag):
+                  if tag=='script' and self.active is not None:
+                      self.items.append((''.join(self.active),self.module));self.active=None
+          p=P();p.feed(s);checked=0
+          for script,module in p.items:
+              if not script.strip():continue
+              cmd=['node','--check','--input-type=module' if module else '--input-type=commonjs']
+              r=subprocess.run(cmd,input=script,text=True,capture_output=True)
+              if r.returncode:raise RuntimeError(r.stderr[:1000])
+              checked+=1
+          assert checked>20
+          print('PASS',checked,'inline script syntax checks')
+          PY
+          node --check earthline-elder-restored-17097.js
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+      - name: Save isolated presentation update
+        shell: bash
+        run: |
+          git config user.name "earthline-staging-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "stage(october): two blue strips and corrected Earthline principle"
+          git push origin HEAD:fix/october-regional-aquifer-owned-20261114
