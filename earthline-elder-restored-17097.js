@@ -665,6 +665,7 @@
         dynamicCandidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0),
         dynamicError:state.dynamic.error||null,workerTimings:dynamic?.earthline?.worker_timings_ms||null,at:new Date().toISOString()
       };
+      showElderInfoLinkM11();
       return state.lastSummary;
     }catch(err){
       if(epoch!==regionalRefreshEpochM94||elderTierM94()==='property')return null;
