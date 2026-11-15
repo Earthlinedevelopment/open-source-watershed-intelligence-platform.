@@ -1,0 +1,26 @@
+name: October Property aquifer regression (isolated)
+on:
+  push:
+    branches:
+      - candidate/mantra-property-aquifer-visibility-20261114
+    paths:
+      - 'earthline-launch-16872.js'
+      - 'tests/property-aquifer-visibility-october.test.cjs'
+      - '.github/workflows/october-property-aquifer-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate isolated seven-run Property aquifer guard
+        run: node tests/property-aquifer-visibility-october.test.cjs
+      - name: Confirm candidate only
+        run: |
+          test "${GITHUB_REF_NAME}" = "candidate/mantra-property-aquifer-visibility-20261114"
+          git diff --check
