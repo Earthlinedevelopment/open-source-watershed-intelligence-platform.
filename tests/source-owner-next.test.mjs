@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import {SourceOwner} from '../engine-next/core/source-owner.mjs';
+const geo=(id)=>({type:'FeatureCollection',features:[{type:'Feature',geometry:{type:'Point',coordinates:[-72,43]},properties:{id}}]});
+const owner=new SourceOwner('regional-aquifer');
+for(let i=1;i<=7;i++){
+  const a=owner.begin({extentKey:'VT/Rutland/extent-1',runId:'regional-'+i});
+  const accepted=owner.accept(a,geo(i),'authoritative-groundwater-source');
+  assert.equal(accepted.ok,true);
+  assert.equal(accepted.status,'current');
+  const p=owner.begin({extentKey:'VT/Rutland/extent-1',runId:'regional-retry-'+i});
+  const carry=owner.provisional(p,'source timeout');
+  assert.equal(carry.ok,true);
+  assert.equal(carry.status,'provisional-carryover');
+  assert.equal(carry.fromRunId,'regional-'+i);
+  assert.equal(owner.accept(a,geo(999),'stale-data').ok,false,'old owner may not publish');
+  assert.equal(owner.accept(p,geo(i+100),'authoritative-groundwater-source').ok,true);
+}
+const other=owner.begin({extentKey:'VT/Essex/different-extent',runId:'new-location'});
+assert.deepEqual(owner.provisional(other,'network unavailable'),{ok:false,reason:'no-same-extent-evidence'});
+assert.equal(owner.accept(other,{type:'FeatureCollection',features:[]},'api').ok,false);
+assert.equal(owner.accept(other,geo(5),'').ok,false);
+assert.equal(owner.accept(other,{type:'FeatureCollection',features:[{type:'Feature',geometry:null}]},'api').ok,false);
+const original=geo(42);
+const ok=owner.accept(other,original,'groundwater-source');
+assert.equal(ok.ok,true);
+original.features[0].properties.id=-1;
+ok.data.features[0].properties.id=-2;
+const later=owner.begin({extentKey:'VT/Essex/different-extent',runId:'repeat'});
+assert.equal(owner.provisional(later,'network timeout').data.features[0].properties.id,42,'accepted data stays immutable');
+assert(owner.audit.some(x=>x.reason==='stale-run'));
+console.log('PASS 7 repeat cycles, stale owner, extent isolation, empty evidence, provenance, invalid features, defensive copies');
