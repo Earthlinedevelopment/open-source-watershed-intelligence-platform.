@@ -435,6 +435,23 @@
       popup.style.cssText='position:absolute;top:18px;right:18px;z-index:2147483000;pointer-events:auto;max-width:calc(100% - 36px)';
       popup.innerHTML='<a href="#swales-explained" style="display:block;padding:9px 13px;border:1px solid #b88a35;border-radius:8px;background:#1c2a25;color:#f4d27a;font:800 12px/1.25 Noto Sans,system-ui,sans-serif;text-decoration:none;white-space:nowrap;box-shadow:0 3px 12px rgba(0,0,0,.35)">&#9432; What are Elder Trees?</a>';
       container.appendChild(popup);
+      /* Position above the highest on-screen Elder icon. Keep the prior corner
+         placement when project() is unavailable or no icon is on screen. */
+      try{
+        const w=container.clientWidth,h=container.clientHeight;
+        const visible=list.map(f=>{
+          const c=f?.geometry?.coordinates;
+          if(!Array.isArray(c)||c.length<2)return null;
+          const p=m.project?.(c);
+          return p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.x<=w&&p.y>=0&&p.y<=h?p:null;
+        }).filter(Boolean).sort((a,b)=>a.y-b.y);
+        if(visible.length){
+          const p=visible[0],width=popup.offsetWidth||200,height=popup.offsetHeight||36;
+          const left=Math.max(8,Math.min(w-width-8,p.x-width/2));
+          const top=Math.max(8,Math.min(h-height-8,p.y-height-14));
+          popup.style.left=left+'px';popup.style.top=top+'px';popup.style.right='auto';
+        }
+      }catch(_){}
       elderInfoPopupM11=popup;
       elderInfoLastRunM11=run;
       elderInfoShownM11=true;
