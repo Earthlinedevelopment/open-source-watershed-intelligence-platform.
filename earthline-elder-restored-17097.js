@@ -428,7 +428,12 @@
     for(const c of coords){
       try{const p=m.project(c);if(p&&p.x>=0&&p.x<=w&&p.y>=0&&p.y<=h)visible.push({c,p})}catch(_){}
     }
-    if(!visible.length)return;
+    if(!visible.length){
+      // The Elder layer can publish before the map settles at the Property view.
+      // Retry once after the camera finishes, without changing any marker or map logic.
+      try{m.once('idle',showElderInfoLinkM11)}catch(_){}
+      return;
+    }
     // Prefer the highest clearly visible Elder marker, leaving room for the label above it.
     visible.sort((a,b)=>a.p.y-b.p.y);
     try{
@@ -619,6 +624,8 @@
       };
       refreshSurfaces(); /* M198: refresh after the state is committed so "Finding trees…" clears. */
       showElderInfoLinkM11();
+      // Mapbox marker placement may finish after Elder publication. Retry at map idle.
+      try{map()?.once('idle',showElderInfoLinkM11)}catch(_){}
       return state.lastSummary;
     }catch(err){
       if(elderTierM94()!=='property'||(runIdentity&&propertyRunIdentity17166(propertyBounds17166())!==runIdentity))return null;
