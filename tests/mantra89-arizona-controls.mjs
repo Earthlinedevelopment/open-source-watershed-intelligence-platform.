@@ -73,7 +73,17 @@ async function runTarget(target,index){
   const started=Date.now();
   const out=await page.evaluate(async()=>await window.earthlineDeclarePropertyAtCrosshair16169?.());
   await page.waitForFunction(()=>{const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};return a.settled===true&&String(document.documentElement.dataset.earthlinePropertyRunState||'')!=='running';},null,{timeout:45000,polling:120});
-  await page.waitForTimeout(900);
+  // The separately scheduled CHMv2 worker can finish after Property publication.
+  // Wait for a terminal result belonging to this exact target, not a previous Property.
+  let elderWaitError=null;
+  try{
+    await page.waitForFunction(target=>{
+      const e=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+      const identity=target.lng.toFixed(6)+'|'+target.lat.toFixed(6)+'|';
+      if(!String(e?.propertyRunIdentity||'').startsWith(identity))return false;
+      return e.state==='committed'||e.state==='failed';
+    },target,{timeout:60000,polling:200});
+  }catch(err){elderWaitError=String(err);}
   const snap=await page.evaluate(target=>{
     const md=(typeof M!=='undefined'&&M)||window.M||null;
     const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null;
@@ -104,13 +114,13 @@ async function runTarget(target,index){
   const elderPass=snap.elder?.state==='committed'&&Number(snap.elder?.featureCount||0)>0&&String(snap.elder?.propertyRunIdentity||'').startsWith(target.lng.toFixed(6)+'|'+target.lat.toFixed(6)+'|');
   const tierPass=snap.displayedTier==='property';
   const newErrors=pageErrors.slice(errorStart);
-  return {name:target.name,elapsedMs:Date.now()-started,out,centerPass,safePass,elderPass,tierPass,newErrors,snap,pass:centerPass&&safePass&&elderPass&&tierPass&&newErrors.length===0};
+  return {name:target.name,elapsedMs:Date.now()-started,out,centerPass,safePass,elderPass,elderWaitError,tierPass,newErrors,snap,pass:!elderWaitError&&centerPass&&safePass&&elderPass&&tierPass&&newErrors.length===0};
 }
 const rows=[];
 for(let i=0;i<TARGETS.length;i++) rows.push(await runTarget(TARGETS[i],i));
 const replacementPass=rows.length===2&&rows[0].snap.publication?.runToken!==rows[1].snap.publication?.runToken&&Math.abs(Number(rows[1].snap.audit?.center?.lng)-TARGETS[1].lng)<1e-5;
 const report={at:new Date().toISOString(),url:URL,rows,replacementPass,pageErrors,badResponses,pass:rows.every(r=>r.pass)&&replacementPass};
 writeFileSync('artifacts/arizona-controls/results.json',JSON.stringify(report,null,2));
-console.log('ARIZONA_CONTROL '+JSON.stringify({pass:report.pass,replacementPass,rows:rows.map(r=>({name:r.name,pass:r.pass,elapsedMs:r.elapsedMs,safeCount:r.snap.safeCount,elderCount:r.snap.elder?.featureCount||0,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
+console.log('ARIZONA_CONTROL '+JSON.stringify({pass:report.pass,replacementPass,rows:rows.map(r=>({name:r.name,pass:r.pass,elapsedMs:r.elapsedMs,safeCount:r.snap.safeCount,elderCount:r.snap.elder?.featureCount||0,elderState:r.snap.elder?.state||null,elderError:r.snap.elder?.error||r.snap.elder?.dynamicError||null,elderWaitError:r.elderWaitError,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
 await browser.close();
 if(!report.pass)process.exitCode=1;
