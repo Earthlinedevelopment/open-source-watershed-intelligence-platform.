@@ -265,7 +265,7 @@
             ],
             /* M96: candidates must be legible on satellite imagery; labels never
                imply that an unverified modeled tree is known to be old. */
-            'icon-size':['interpolate',['linear'],['zoom'],6,0.275,10,0.36,14,0.48,17,0.74,20,0.825], /* M11: half-size Elder symbols */
+            'icon-size':['interpolate',['linear'],['zoom'],6,0.36,10,0.48,14,0.62,17,0.92,20,1.0], /* Elder visibility: larger approved symbols; same evidence classes */
             'icon-anchor':'center',
             'icon-allow-overlap':true,
             'icon-ignore-placement':true,
@@ -295,7 +295,8 @@
             '<div style="margin-top:5px;font:800 12px/1.2 system-ui,sans-serif;color:#2f6f46">'+esc(confidence)+'</div>'+
             (Number.isFinite(h)?'<div style="margin-top:4px;font:600 11px/1.35 system-ui,sans-serif">Canopy height: '+esc(h.toFixed(1))+' m</div>':'')+
             '<div style="margin-top:4px;font:500 10px/1.35 system-ui,sans-serif;color:#526159">'+esc(p.source_name||'Earthline Elder Tree evidence')+'</div>'+
-            (!verified?'<div style="margin-top:6px;font:500 9.5px/1.35 system-ui,sans-serif;color:#6e766a">Elder Tree Confidence is the tree’s local structural-evidence percentile compared with other detected tree/canopy structures in the same analyzed source area; it is not a probability of age or ancient/veteran status.</div>':'');
+            (!verified?'<div style="margin-top:6px;font:500 9.5px/1.35 system-ui,sans-serif;color:#6e766a">Elder Tree Confidence is the tree’s local structural-evidence percentile compared with other detected tree/canopy structures in the same analyzed source area; it is not a probability of age or ancient/veteran status.</div>':'')+
+            '<div style="margin-top:9px;padding:8px 9px;border:1px solid #b88a35;border-radius:6px;background:#f4f6ee;color:#213f2e;font:550 11px/1.5 Noto Sans,system-ui,sans-serif"><strong>What are Elder Trees?</strong> Long-lived trees can support forest structure, roots and soil moisture. Earthline distinguishes externally verified Elder Trees from remotely modeled candidates; a candidate icon does not establish a tree’s age.<div style="margin-top:5px"><a href="#swales-explained" style="font-weight:800;color:#215a3f">Learn more about Elder Trees</a></div></div>';
           try{new mapboxgl.Popup({closeButton:true,closeOnClick:true,offset:8}).setLngLat(coords).setHTML(body).addTo(m)}catch(_){}
         });
       }
