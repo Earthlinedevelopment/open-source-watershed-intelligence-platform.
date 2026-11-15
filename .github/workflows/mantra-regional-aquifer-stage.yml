@@ -1,0 +1,44 @@
+name: Mantra regional aquifer staging patch
+on:
+  push:
+    branches:
+      - candidate/mantra-regional-aquifer-persistence-20261114
+    paths:
+      - 'tools/mantra-regional-aquifer-persistence-20261114.py'
+      - '.github/workflows/mantra-regional-aquifer-stage.yml'
+permissions:
+  contents: write
+jobs:
+  apply-on-isolated-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Apply exact anchored patch
+        run: python3 tools/mantra-regional-aquifer-persistence-20261114.py
+      - name: Verify diff and lockouts
+        shell: bash
+        run: |
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          s=Path('index.html').read_text()
+          assert 'function aquiferSameExtentM14(hash)' in s
+          assert s.count('function aquiferRestoreM14(')==1
+          assert s.count('clearLive(aquiferSameExtentM14(bHash))')==3
+          assert "earthline_context_carried_over:true" in s
+          assert "Carried over from previous run" in s
+          for path in subprocess.check_output(['git','diff','--name-only'],text=True).splitlines():
+              assert path=='index.html',f'unexpected modified path: {path}'
+          print('static staging checks passed')
+          PY
+      - name: Commit to staging only
+        shell: bash
+        run: |
+          git config user.name "earthline-staging-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "stage: aquifer persistence same-extent guards and service fallback"
+          git push origin HEAD:candidate/mantra-regional-aquifer-persistence-20261114
