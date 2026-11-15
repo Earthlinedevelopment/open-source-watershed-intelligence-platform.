@@ -302,10 +302,11 @@
       if(!elderHoverBoundM7){
         elderHoverBoundM7=true;
         m.on('mouseenter',LAYER,e=>{
-          const pt=e?.features?.[0]?.geometry?.coordinates;
+          const f=e?.features?.[0],pt=f?.geometry?.coordinates;
           if(!Array.isArray(pt)||pt.length<2)return;
+          const p=f.properties||{},label=classify(p);
           dismissElderHoverM7();
-          try{elderHoverPopupM7=new mapboxgl.Popup({closeButton:false,closeOnClick:false,offset:12,className:'earthline-elder-hover-m7'}).setLngLat(pt).setHTML('<span style="font:900 11px/1.2 Noto Sans,system-ui,sans-serif;color:#245e39;letter-spacing:.4px">ELDER TREE</span>').addTo(m)}catch(_){dismissElderHoverM7()}
+          try{elderHoverPopupM7=new mapboxgl.Popup({closeButton:false,closeOnClick:false,offset:12,className:'earthline-elder-hover-m7'}).setLngLat(pt).setHTML('<span style="font:800 11px/1.25 Noto Sans,system-ui,sans-serif;color:#245e39;letter-spacing:.2px">'+esc(label)+'</span>').addTo(m)}catch(_){dismissElderHoverM7()}
         });
         m.on('mouseleave',LAYER,dismissElderHoverM7);
         m.on('movestart',dismissElderHoverM7);
