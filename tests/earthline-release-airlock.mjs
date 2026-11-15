@@ -99,8 +99,11 @@ async function region(query){
  if(!Number.isFinite(maxLength)||maxLength>4005)fails.push('invalid or overlong source corridor');
  if(!Number.isFinite(maxSlope)||maxSlope>4.0001||slopes.some(x=>!Number.isFinite(x)||x<0))
    fails.push('slope >4% or unverified');
- if(snap.unsafe!==null&&snap.unsafe!==0)fails.push('unsafe mapped segment');
- if(snap.outside!==null&&snap.outside!==0)fails.push('out-of-jurisdiction swale');
+ // Fail closed: absent safety evidence is not proof of safe corridors.
+ if(!Number.isInteger(snap.unsafe)||snap.unsafe!==0)
+   fails.push(snap.unsafe===null?'missing mapped-water safety audit':'unsafe mapped segment');
+ if(!Number.isInteger(snap.outside)||snap.outside!==0)
+   fails.push(snap.outside===null?'missing jurisdiction boundary audit':'out-of-jurisdiction swale');
  const row={query,sha256,runWallMs:Date.now()-t,coreMs:snap.coreMs,waterPaths:snap.flowPaths,
    count:snap.swales,maxLengthM:maxLength,maxSlope,unsafe:snap.unsafe,outside:snap.outside,
    errors:errors.slice(-5),fails,pass:fails.length===0};
