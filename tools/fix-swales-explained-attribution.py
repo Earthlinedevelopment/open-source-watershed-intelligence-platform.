@@ -28,7 +28,9 @@ for path in sorted(root.rglob("*")):
         review.append({"path":str(path),"text":match.group()})
 print(json.dumps({"updated":updated,"remaining_attribution_phrases":review},indent=2))
 if not updated:
-    raise SystemExit("STOP: original wording not found. No assumptions or writes to production.")
+    active=Path("index.html").read_text(encoding="utf-8")
+    if replacement not in active or needle.search(active):
+        raise SystemExit("STOP: expected updated wording missing from active page.")
 if review:
     raise SystemExit("STOP: possible additional ownership claims need inspection.")
 print("PASS: exact misattribution corrected in active website files.")
