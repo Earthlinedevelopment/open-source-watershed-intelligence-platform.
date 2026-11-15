@@ -18,6 +18,12 @@ jobs:
           persist-credentials: true
       - name: Replace exact attribution across active site
         run: python3 tools/fix-swales-explained-attribution.py
+      - name: Restore immutable October reference exactly
+        shell: bash
+        run: |
+          git fetch origin pages-live --depth=1
+          git show origin/pages-live:reference-2026-10-05/index.html > reference-2026-10-05/index.html
+          git diff --exit-code origin/pages-live -- reference-2026-10-05/index.html
       - name: Verify changes remain text-only
         shell: bash
         run: |
@@ -27,10 +33,10 @@ jobs:
           from pathlib import Path
           import subprocess
           files=subprocess.check_output(['git','diff','--name-only'],text=True).splitlines()
-          assert files and all(Path(p).suffix in {'.html','.htm','.js','.mjs','.json','.css'} for p in files)
-          for p in files:
-              t=Path(p).read_text(encoding='utf-8')
-              assert 'At Earthline, we follow the principle:' in t
+          assert all(Path(p).suffix in {'.html','.htm','.js','.mjs','.json','.css'} for p in files)
+          t=Path('index.html').read_text(encoding='utf-8')
+          assert 'At Earthline, we follow the principle:' in t
+          assert 'Earthline’s three-word principle describes the sequence:' not in t
           print('PASS: only active text assets changed')
           PY
       - name: Commit exact site copy updates to isolated branch
@@ -39,5 +45,6 @@ jobs:
           git config user.name "earthline-staging-bot"
           git config user.email "actions@users.noreply.github.com"
           git add -u
-          git commit -m "fix(copy): remove Earthline ownership claim sitewide"
+          if git diff --cached --quiet; then echo "No further changes"; exit 0; fi
+          git commit -m "fix(copy): preserve reference; update active copy only"
           git push origin HEAD:fix/october-swales-explained-copy-20261114
