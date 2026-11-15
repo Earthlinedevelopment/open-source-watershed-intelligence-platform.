@@ -9,7 +9,7 @@ import json
 
 root=Path(".")
 extensions={".html",".htm",".js",".mjs",".json",".css"}
-exclude_dirs={".git","node_modules",".earthline-tests","archive","archives","backup","backups","tests","test","candidate-mantra92"}
+exclude_dirs={".git","node_modules",".earthline-tests","archive","archives","backup","backups","tests","test","candidate-mantra92","reference-2026-10-05"}
 needle=re.compile(r"Earthline(?:’|'|&rsquo;|&#8217;|&#x2019;)s\s+three[- ]word\s+principle\s+describes\s+the\s+sequence\s*:",re.IGNORECASE)
 replacement="At Earthline, we follow the principle:"
 other=re.compile(r"Earthline(?:’|'|&rsquo;|&#8217;|&#x2019;)s\s+(?:three[- ]word\s+)?principle\b",re.IGNORECASE)
