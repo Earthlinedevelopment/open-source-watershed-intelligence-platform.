@@ -79,6 +79,7 @@ change("    const b=analysisBounds(loc),bHash=boundsHash(b);","""    const b=ana
       const moduleM14=await import('./engine-next/core/source-owner.mjs');
       regionalAquiferOwnerM14=new moduleM14.SourceOwner('regional-aquifer');
     }
+    if(!isCurrentRun(runToken))return false;
     regionalAquiferTokenM14=regionalAquiferOwnerM14.begin({extentKey:bHash,runId:String(runToken)});
     window.EARTHLINE_REGIONAL_AQUIFER_CARRYOVER_M14=null;""","begin-regional-owner")
 change("    clearLive();ensureLayers();","    const keepAquiferM14=!!regionalAquiferCarryM14(runToken,'same extent; Regional run starting');\n    clearLive(keepAquiferM14);ensureLayers();","initial-selective-clear")
