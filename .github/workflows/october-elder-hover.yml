@@ -1,0 +1,22 @@
+name: October Elder hover regression
+on:
+  push:
+    branches:
+      - fix/october-elder-hover-20261114
+    paths:
+      - earthline-elder-restored-17097.js
+      - tests/october-elder-hover.test.cjs
+      - .github/workflows/october-elder-hover.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  elder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check earthline-elder-restored-17097.js
+      - run: node tests/october-elder-hover.test.cjs
