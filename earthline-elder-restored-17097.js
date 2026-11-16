@@ -415,44 +415,36 @@
     frame.addEventListener('load',apply,{once:true});
     return false;
   }
-  /* Elder map help: one visible, ten-second information callout per visit.
-     Use the map DOM container: Mapbox Popup can be clipped or hidden by
-     the map's overlay stack, even when Elder icons are successfully published. */
-  let elderInfoLastRunM11='',elderInfoPopupM11=null,elderInfoShownM11=false;
+  /* Elder information is an ephemeral map-anchored callout, never a permanent top-right toolbar. */
+  let elderInfoPopupM11=null,elderInfoShownM11=false;
   function showElderInfoLinkM11(){
+    if(elderInfoShownM11)return;
     const m=map(),list=Array.isArray(state.active)?state.active:[];
     if(!m||!list.length)return;
-    const container=m.getContainer?.();
-    if(!container)return;
-    if(elderInfoPopupM11?.isConnected&&elderInfoPopupM11.parentNode===container)return;
+    const container=m.getContainer?.();if(!container)return;
+    const width=container.clientWidth,height=container.clientHeight;
+    let top=null;
+    for(const feature of list){
+      const ll=feature?.geometry?.coordinates;
+      if(!Array.isArray(ll)||ll.length<2)continue;
+      let p;try{p=m.project(ll)}catch(_){continue}
+      if(!p||p.x<60||p.x>width-60||p.y<90||p.y>height-40)continue;
+      if(!top||p.y<top.y)top={x:p.x,y:p.y};
+    }
+    if(!top)return;
     try{
       elderInfoPopupM11?.remove();
-      const popup=document.createElement('div');
-      popup.className='earthline-elder-info-m11';
-      popup.style.cssText='position:absolute;top:18px;right:18px;z-index:2147483000;pointer-events:auto;max-width:calc(100% - 36px)';
-      const button=document.createElement('button');
-      button.type='button';
-      button.textContent='ⓘ What are Elder Trees?';
-      button.setAttribute('aria-label','Information about Elder Tree map icons');
-      button.setAttribute('aria-expanded','false');
-      button.style.cssText='display:block;padding:9px 13px;border:1px solid #b88a35;border-radius:8px;background:#1c2a25;color:#f4d27a;font:800 12px/1.25 Noto Sans,system-ui,sans-serif;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.35)';
-      const detail=document.createElement('div');
-      detail.hidden=true;
-      detail.setAttribute('role','region');
-      detail.setAttribute('aria-label','Elder Tree icon explanation');
-      detail.style.cssText='max-width:290px;padding:10px 12px;border-radius:8px;border:1px solid #b88a35;background:#fffdf7;color:#243d31;font:550 12px/1.45 Noto Sans,system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.3)';
-      detail.textContent='Elder Tree icons distinguish externally verified trees from remotely modeled candidates. Candidate symbols do not establish tree age. Select an individual tree marker for its evidence and source.';
-      button.addEventListener('click',event=>{
-        event.stopPropagation();
-        detail.hidden=!detail.hidden;
-        button.setAttribute('aria-expanded',String(!detail.hidden));
-      });
-      popup.append(button,detail);
-      container.appendChild(popup);
-      elderInfoPopupM11=popup;
-      elderInfoLastRunM11=String(window.EARTHLINE_ELDER_TREE_LAST_17097?.runIdentity||
-        window.EARTHLINE_ELDER_TREE_LAST_17097?.propertyRunIdentity||'regional');
-      elderInfoShownM11=true;
+      const el=document.createElement('div');
+      el.className='earthline-elder-info-m11';
+      el.setAttribute('role','status');
+      el.setAttribute('aria-label','Elder Trees information');
+      el.textContent='ELDER TREES: Green tree symbols distinguish verified records from modeled candidates. Select a tree for evidence and source; a candidate does not establish age.';
+      el.style.cssText='position:absolute;z-index:2147483000;pointer-events:none;max-width:260px;padding:10px 12px;border:1px solid #b88a35;border-radius:9px;background:#152a25;color:#f4df9c;font:700 12px/1.4 Noto Sans,system-ui,sans-serif;box-shadow:0 5px 18px rgba(0,0,0,.45);transform:translate(-50%,-100%)';
+      el.style.left=Math.max(140,Math.min(width-140,top.x))+'px';
+      el.style.top=Math.max(76,top.y-20)+'px';
+      container.appendChild(el);
+      elderInfoPopupM11=el;elderInfoShownM11=true;
+      setTimeout(()=>{if(elderInfoPopupM11===el)elderInfoPopupM11=null;el.remove()},10000);
     }catch(_){}
   }
   function refreshSurfaces(){
