@@ -22,7 +22,14 @@ try {
     return !!window.earthlineSetPropertyTarget16201?.({lng:target.lng,lat:target.lat,source:'elder-info-test'},{openPanel:false});
   },target);
   if(!prep)throw Error('Property location preparation failed');
-  await page.evaluate(async()=>await window.earthlineDeclarePropertyAtCrosshair16169?.());
+  // Real user activation: one physical click of the visible 20-acre Property button.
+  // Do not substitute an internal Property function call for the interaction being tested.
+  const propertyButton=page.locator('#earthlineDeclareProperty16169');
+  await propertyButton.waitFor({state:'visible',timeout:20000});
+  if(await propertyButton.isDisabled())throw Error('Property button disabled before first physical click');
+  await propertyButton.click({timeout:15000});
+  await page.waitForFunction(()=>document.documentElement.dataset.earthlineAnalysisTier==='property' ||
+    !!window.EARTHLINE_PROPERTY_PUBLICATION_15816?.state,null,{timeout:60000});
   await page.waitForFunction(()=>window.EARTHLINE_ELDER_TREE_LAST_17097?.state==='committed'&&Number(window.EARTHLINE_ELDER_TREE_LAST_17097?.featureCount||0)>0,null,{timeout:100000});
   const info=page.locator('.earthline-elder-info-m11');
   await info.waitFor({state:'visible',timeout:15000});
