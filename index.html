@@ -21893,6 +21893,29 @@ var prescribeSwales;
       ]){
         if(earthlineMap.getLayer(id16414))earthlineMap.moveLayer(id16414);
       }
+      /* Show accepted swale strokes over aquifer polygons; restore recharge
+         and well evidence above swales. Display order only, no science edits. */
+      const swaleFrontM2026 = property ? [
+        "earthline-living-swales-glow-15792",
+        "earthline-living-swales-earth-15792",
+        "earthline-living-swales-life-15792",
+        "earthline-property-swale-canopy-16166",
+        "earthline-property-swale-survey-16166",
+        "earthline-property-swale-ditch-16166",
+        "earthline-living-swales-water-15792"
+      ] : [
+        "earthline-ranked-swale-soil-15777",
+        "earthline-ranked-swale-plant-15777",
+        "earthline-ranked-swale-water-15777"
+      ];
+      for (const layerIdM2026 of swaleFrontM2026)
+        if (earthlineMap.getLayer(layerIdM2026)) earthlineMap.moveLayer(layerIdM2026);
+      for (const layerIdM2026 of [
+        "earthline-recharge-line",
+        "earthline-recharge-highlight",
+        "earthline-recharge-label",
+        "earthline-aquifer-wells-16398"
+      ]) if (earthlineMap.getLayer(layerIdM2026)) earthlineMap.moveLayer(layerIdM2026);
       /* 16492: all aquifer language is the final annotation pass. Geometry stays
          in its governed order; only text is moved above every analytical layer. */
       for(const id16492 of [

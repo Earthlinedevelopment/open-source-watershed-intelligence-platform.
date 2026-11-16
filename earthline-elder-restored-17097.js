@@ -265,7 +265,7 @@
             ],
             /* M96: candidates must be legible on satellite imagery; labels never
                imply that an unverified modeled tree is known to be old. */
-            'icon-size':['interpolate',['linear'],['zoom'],6,0.36,10,0.48,14,0.62,17,0.92,20,1.0], /* Elder visibility: larger approved symbols; same evidence classes */
+            'icon-size':['interpolate',['linear'],['zoom'],6,0.44,10,0.58,14,0.75,17,1.08,20,1.18], /* Elder visibility: larger approved symbols; same evidence classes */
             'icon-anchor':'center',
             'icon-allow-overlap':true,
             'icon-ignore-placement':true,
@@ -435,7 +435,7 @@
       button.textContent='ⓘ What are Elder Trees?';
       button.setAttribute('aria-label','Information about Elder Tree map icons');
       button.setAttribute('aria-expanded','false');
-      button.style.cssText='display:block;padding:9px 13px;border:1px solid #b88a35;border-radius:8px;background:#1c2a25;color:#f4d27a;font:800 12px/1.25 Noto Sans,system-ui,sans-serif;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.35)';
+      button.style.cssText='display:block;padding:10px 14px;border:2px solid #e7bd59;border-radius:9px;background:#132b22;color:#ffdf84;font:800 13px/1.25 Noto Sans,system-ui,sans-serif;cursor:pointer;box-shadow:0 3px 14px rgba(0,0,0,.5)';
       const detail=document.createElement('div');
       detail.hidden=true;
       detail.setAttribute('role','region');
