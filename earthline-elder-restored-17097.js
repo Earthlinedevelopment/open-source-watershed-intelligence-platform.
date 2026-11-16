@@ -755,7 +755,8 @@
     document.addEventListener('pointerdown',e=>{
       const b=e.target?.closest?.('#earthlineDeclareProperty16169');
       if(!b||b.disabled)return;
-      schedulePropertyPrime17212();
+      /* Do not mutate Elder UI during physical Property-button activation. */
+      try{void prewarmDynamicWorker()}catch(_){} 
     },true);
     document.addEventListener('click',click,false);
     window.addEventListener('hashchange',hash,false);
