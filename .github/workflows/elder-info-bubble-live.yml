@@ -1,0 +1,25 @@
+name: Elder info bubble isolated live-origin visual gate
+on:
+  push:
+    branches: [repair/elder-info-bubble-20261115]
+    paths:
+      - tests/elder-info-bubble-live.mjs
+      - .github/workflows/elder-info-bubble-live.yml
+permissions:
+  contents: read
+jobs:
+  elder-icon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          node --check earthline-elder-restored-17097.js
+          node --check tests/elder-info-bubble-live.mjs
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Verify icon persists and toggles information bubble in real map
+        run: node tests/elder-info-bubble-live.mjs
