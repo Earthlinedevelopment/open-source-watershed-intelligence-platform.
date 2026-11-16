@@ -1,9 +1,11 @@
 name: Elder info bubble isolated live-origin visual gate
 on:
   push:
-    branches: [repair/elder-info-bubble-20261115]
+    branches: [repair/elder-info-bubble-20261115, repair/elder-anchor-onevisit-20261116]
     paths:
       - tests/elder-info-bubble-live.mjs
+      - earthline-elder-restored-17097.js
+      - earthline-launch-16872.js
       - .github/workflows/elder-info-bubble-live.yml
 permissions:
   contents: read
@@ -18,8 +20,9 @@ jobs:
           node-version: '22'
       - run: |
           node --check earthline-elder-restored-17097.js
+          node --check earthline-launch-16872.js
           node --check tests/elder-info-bubble-live.mjs
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Verify icon persists and toggles information bubble in real map
+      - name: Verify anchored Elder help and one physical Property click
         run: node tests/elder-info-bubble-live.mjs
