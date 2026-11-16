@@ -265,7 +265,7 @@
             ],
             /* M96: candidates must be legible on satellite imagery; labels never
                imply that an unverified modeled tree is known to be old. */
-            'icon-size':['interpolate',['linear'],['zoom'],6,0.36,10,0.48,14,0.62,17,0.92,20,1.0], /* Elder visibility: larger approved symbols; same evidence classes */
+            'icon-size':['interpolate',['linear'],['zoom'],6,0.18,10,0.24,14,0.31,17,0.46,20,0.50], /* Elder visibility: larger approved symbols; same evidence classes */
             'icon-anchor':'center',
             'icon-allow-overlap':true,
             'icon-ignore-placement':true,
