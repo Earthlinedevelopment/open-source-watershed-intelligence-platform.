@@ -5,6 +5,9 @@ const ctx = await browser.newContext({viewport:{width:1600,height:950}});
 const page=await ctx.newPage();
 const errors=[];
 page.on('pageerror',e=>errors.push(String(e)));
+await page.route('**/earthline-launch-16872.js*',async route=>{
+  await route.fulfill({status:200,contentType:'application/javascript',body:readFileSync('earthline-launch-16872.js')});
+});
 await page.route('**/earthline-elder-restored-17097.js*', async route=>{
   await route.fulfill({status:200, contentType:'application/javascript',body:readFileSync('earthline-elder-restored-17097.js')});
 });
