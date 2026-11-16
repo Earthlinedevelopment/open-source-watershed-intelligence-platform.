@@ -27,9 +27,20 @@ try {
   const propertyButton=page.locator('#earthlineDeclareProperty16169');
   await propertyButton.waitFor({state:'visible',timeout:20000});
   if(await propertyButton.isDisabled())throw Error('Property button disabled before first physical click');
+  await page.evaluate(()=>{
+    const original=window.earthlineDeclarePropertyAtCrosshair16173;
+    if(typeof original!=='function')throw Error('Governed Property owner missing');
+    window.EARTHLINE_ONE_PRESS_CALL_COUNT=0;
+    window.earthlineDeclarePropertyAtCrosshair16173=function(...args){
+      window.EARTHLINE_ONE_PRESS_CALL_COUNT++;
+      return original.apply(this,args);
+    };
+  });
   await propertyButton.click({timeout:15000});
-  await page.waitForFunction(()=>document.documentElement.dataset.earthlineAnalysisTier==='property' ||
-    !!window.EARTHLINE_PROPERTY_PUBLICATION_15816?.state,null,{timeout:60000});
+  await page.waitForTimeout(500);
+  const launches=await page.evaluate(()=>window.EARTHLINE_ONE_PRESS_CALL_COUNT);
+  if(launches!==1)throw Error('One physical press launched '+launches+' Property runs (expected exactly one)');
+  await page.waitForFunction(()=>window.M?.propertyPublication15816?.committed===true,null,{timeout:90000});
   await page.waitForFunction(()=>window.EARTHLINE_ELDER_TREE_LAST_17097?.state==='committed'&&Number(window.EARTHLINE_ELDER_TREE_LAST_17097?.featureCount||0)>0,null,{timeout:100000});
   const info=page.locator('.earthline-elder-info-m11');
   await info.waitFor({state:'visible',timeout:15000});
