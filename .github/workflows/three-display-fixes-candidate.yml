@@ -1,0 +1,56 @@
+name: Earthline three display fixes isolated candidate
+on:
+  push:
+    branches: [repair/three-visual-fixes-20261115]
+    paths:
+      - .github/workflows/three-display-fixes-candidate.yml
+permissions:
+  contents: write
+jobs:
+  build-candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/three-visual-fixes-20261115
+          fetch-depth: 0
+      - name: Exact production identity and bounded display patch
+        run: |
+          python3 tools/patch-three-display-layer-order-20261115.py
+          git diff --check
+          test "$(git diff --name-only)" = "index.html"
+          grep -q 'swaleFrontM2026' index.html
+      - name: JavaScript parse gates
+        run: |
+          node --check earthline-elder-restored-17097.js
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import subprocess,tempfile
+          class P(HTMLParser):
+              def __init__(self): super().__init__(); self.capture=False;self.buff=[];self.scripts=[]
+              def handle_starttag(self,tag,attrs):
+                  if tag=='script':
+                      a=dict(attrs);self.capture=not a.get('src') and a.get('type','text/javascript') not in ('application/json','application/ld+json')
+                      self.buff=[]
+              def handle_data(self,data):
+                  if self.capture:self.buff.append(data)
+              def handle_endtag(self,tag):
+                  if tag=='script' and self.capture:
+                      self.scripts.append(''.join(self.buff));self.capture=False
+          p=P();p.feed(Path('index.html').read_text())
+          with tempfile.TemporaryDirectory() as td:
+              for i,script in enumerate(p.scripts):
+                  f=Path(td)/f'{i}.js';f.write_text(script)
+                  z=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
+                  if z.returncode:raise SystemExit(f'inline JS {i} syntax FAIL: {z.stderr[:500]}')
+          print('Inline JS syntax PASS:',len(p.scripts))
+          PY
+      - name: Commit isolated candidate only
+        run: |
+          git config user.name "Earthline candidate bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix(ui): render verified swales above aquifer polygon fills"
+          git push origin HEAD:repair/three-visual-fixes-20261115
