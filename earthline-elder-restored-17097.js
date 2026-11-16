@@ -744,7 +744,7 @@
   } /* EARTHLINE_ELDER_IMMEDIATE_PROPERTY_START_17386 */
   function install(){
     wrapCorridor();
-    document.addEventListener('pointerdown',e=>{
+    document.addEventListener('click',e=>{
       const b=e.target?.closest?.('#earthlineDeclareProperty16169');
       if(!b||b.disabled)return;
       schedulePropertyPrime17212();
