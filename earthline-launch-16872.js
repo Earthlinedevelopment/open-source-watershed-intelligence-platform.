@@ -354,3 +354,29 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   document.addEventListener('earthline:analysis-start',e=>{const t=String(e?.detail?.tier||e?.detail?.mode||'').toLowerCase();if(t.includes('property'))remove()},{passive:true});
   window.EARTHLINE_CROSSHAIR_MOVE_HINT_17093={state:'ready',show,remove,oncePerPageLoad:true,dismissOnCorridorDetail:true};
 })();
+
+/* EARTHLINE_SEARCH_POSITION_20261116 — keep approved logo first, search directly below it, and the gauge below search. */
+(function(){
+  'use strict';
+  function liftSearch(){
+    const host=document.getElementById('earthlinePanelBrand16201');
+    const logo=host?.querySelector(':scope > .brand');
+    const search=document.getElementById('earthlineSearchSection16188');
+    if(!host||!logo||!search)return false;
+    if(search.parentElement===host&&search.previousElementSibling===logo)return true;
+    logo.insertAdjacentElement('afterend',search);
+    search.style.width='100%';
+    search.style.boxSizing='border-box';
+    search.style.padding='10px 0 12px';
+    return true;
+  }
+  function install(){
+    liftSearch();
+    [100,450,1200,2400].forEach(ms=>setTimeout(liftSearch,ms));
+    document.addEventListener('earthline:analysis-complete',liftSearch,{passive:true});
+    document.addEventListener('earthline:analysis-start',liftSearch,{passive:true});
+    window.EARTHLINE_SEARCH_POSITION_20261116={liftSearch};
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
+})();
