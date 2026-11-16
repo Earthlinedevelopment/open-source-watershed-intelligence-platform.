@@ -1,0 +1,22 @@
+name: Verify live published Elder info bubble 96f512
+on:
+  push:
+    branches: [verify/elder-bubble-live-96f512-20261115]
+    paths: [.github/workflows/elder-info-bubble-production-96f512.yml]
+permissions:
+  contents: read
+jobs:
+  verify-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          node --check tests/elder-info-bubble-production-96f512.mjs
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Test actual public Elder icon bubble, no candidate interception
+        run: node tests/elder-info-bubble-production-96f512.mjs
