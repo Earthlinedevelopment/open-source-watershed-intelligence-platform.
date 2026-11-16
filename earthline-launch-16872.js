@@ -280,6 +280,36 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
 })();
 
 
+/* EARTHLINE_PROPERTY_FIRST_PRESS_20261116
+   Activation bridge only: the existing governed Property function remains the
+   sole analysis owner. Pointer-up survives DOM reconciliation losing click.
+   Suppress the ensuing synthesized click to prevent double analysis.
+   Keyboard and assistive click remain on the original button owner. */
+(function installEarthlinePropertyFirstPress20261116(){
+  if(window.EARTHLINE_PROPERTY_FIRST_PRESS_20261116)return;
+  const tag='earthlineDeclareProperty16169';
+  let lastButton=null,lastAt=0;
+  document.addEventListener('pointerup',ev=>{
+    const button=ev.target?.closest?.('#'+tag);
+    if(!button||button.disabled||ev.button!==0)return;
+    if(ev.pointerType==='touch'&&ev.isPrimary===false)return;
+    const now=Date.now();
+    if(lastButton===button&&now-lastAt<900)return;
+    const owner=window.earthlineDeclarePropertyAtCrosshair16173;
+    if(typeof owner!=='function')return; // let ordinary click use existing owner
+    lastButton=button;lastAt=now;
+    try{void Promise.resolve(owner(ev)).catch(err=>console.error('[Earthline Property first press]',err))}
+    catch(err){console.error('[Earthline Property first press]',err)}
+  },true);
+  document.addEventListener('click',ev=>{
+    const button=ev.target?.closest?.('#'+tag);
+    if(!button||button!==lastButton||ev.detail===0)return;
+    if(Date.now()-lastAt>=1200)return;
+    ev.preventDefault();ev.stopImmediatePropagation();
+  },true);
+  window.EARTHLINE_PROPERTY_FIRST_PRESS_20261116={state:'ready',mode:'delegated-pointerup',governedOwner:'earthlineDeclarePropertyAtCrosshair16173'};
+})();
+
 /* EARTHLINE_CROSSHAIR_MOVE_HINT_17093
    Temporary V1 launch guidance only.
    Shows once per page load after the first Regional publication.
