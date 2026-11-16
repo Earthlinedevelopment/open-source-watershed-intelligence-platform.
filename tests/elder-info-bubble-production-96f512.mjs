@@ -29,6 +29,23 @@ try {
   if(!await page.locator('[aria-label="Elder Tree icon explanation"]').isVisible())throw Error('Explanation missing');
   await btn.click();
   if(await btn.getAttribute('aria-expanded')!=='false')throw Error('Bubble did not close');
+  const marker = await page.evaluate(()=>{
+    const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+    const fs=window.EARTHLINE_ELDER_TREES_V1_17097?.features?.()||[];
+    if(!m)return null;
+    for(const f of fs){
+      const ll=f?.geometry?.coordinates;
+      if(!Array.isArray(ll)||ll.length<2)continue;
+      const px=m.project(ll);
+      if(px.x>60&&px.y>60&&px.x<1540&&px.y<890)return {x:px.x,y:px.y};
+    }
+    return null;
+  });
+  if(!marker)throw Error('No Elder marker projected into visible map for popup test');
+  await page.mouse.click(marker.x,marker.y);
+  await page.waitForSelector('.mapboxgl-popup-content',{timeout:6000});
+  const markerText=await page.locator('.mapboxgl-popup-content').first().innerText();
+  if(!markerText.includes('ELDER TREE'))throw Error('Individual Elder marker popup missing explanatory content');
   console.log('EARTHLINE_ELDER_INFO_BUBBLE_PASS',JSON.stringify({features:await page.evaluate(()=>window.EARTHLINE_ELDER_TREE_LAST_17097?.featureCount),errors}));
   if(errors.length)throw Error('Browser JavaScript errors: '+errors.slice(0,5).join('; '));
 }finally {await browser.close();}
