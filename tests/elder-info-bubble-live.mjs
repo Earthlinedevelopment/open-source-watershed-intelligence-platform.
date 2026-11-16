@@ -24,15 +24,17 @@ try {
   if(!prep)throw Error('Property location preparation failed');
   await page.evaluate(async()=>await window.earthlineDeclarePropertyAtCrosshair16169?.());
   await page.waitForFunction(()=>window.EARTHLINE_ELDER_TREE_LAST_17097?.state==='committed'&&Number(window.EARTHLINE_ELDER_TREE_LAST_17097?.featureCount||0)>0,null,{timeout:100000});
-  await page.waitForSelector('.earthline-elder-info-m11 button',{timeout:15000});
-  await page.waitForTimeout(11000); // Previously broken after ten-second auto-dismissal.
-  const btn=page.locator('.earthline-elder-info-m11 button');
-  if(!await btn.isVisible())throw Error('Information control vanished after 10 seconds');
-  await btn.click();
-  if(await btn.getAttribute('aria-expanded')!=='true')throw Error('Bubble did not open');
-  if(!await page.locator('[aria-label="Elder Tree icon explanation"]').isVisible())throw Error('Explanation missing');
-  await btn.click();
-  if(await btn.getAttribute('aria-expanded')!=='false')throw Error('Bubble did not close');
+  const info=page.locator('.earthline-elder-info-m11');
+  await info.waitFor({state:'visible',timeout:15000});
+  const link=info.locator('a[href="#swales-explained"]');
+  if(!await link.isVisible())throw Error('Icon-anchored Swales Explained link missing');
+  if((await link.innerText()).trim()!=='ⓘ What are Elder Trees?')throw Error('Help wording changed');
+  const loc=await info.boundingBox();
+  if(!loc||loc.x>1500||loc.y>900)throw Error('Elder help outside visible viewport');
+  await page.waitForTimeout(11000);
+  if(await info.count())throw Error('10-second Elder help did not disappear');
+  await page.evaluate(()=>window.EARTHLINE_ELDER_TREES_V1_17097?.refresh?.());
+  if(await info.count())throw Error('Elder help appeared more than once per visit');
   console.log('EARTHLINE_ELDER_INFO_BUBBLE_PASS',JSON.stringify({features:await page.evaluate(()=>window.EARTHLINE_ELDER_TREE_LAST_17097?.featureCount),errors}));
   if(errors.length)throw Error('Browser JavaScript errors: '+errors.slice(0,5).join('; '));
 }finally {await browser.close();}
