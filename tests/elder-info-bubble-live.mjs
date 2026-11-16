@@ -40,7 +40,7 @@ try {
   await page.waitForTimeout(500);
   const launches=await page.evaluate(()=>window.EARTHLINE_ONE_PRESS_CALL_COUNT);
   if(launches!==1)throw Error('One physical press launched '+launches+' Property runs (expected exactly one)');
-  await page.waitForFunction(()=>window.M?.propertyPublication15816?.committed===true,null,{timeout:90000});
+  await page.waitForFunction(()=>typeof M!=='undefined'&&M?.propertyPublication15816?.committed===true,null,{timeout:90000});
   await page.waitForFunction(()=>window.EARTHLINE_ELDER_TREE_LAST_17097?.state==='committed'&&Number(window.EARTHLINE_ELDER_TREE_LAST_17097?.featureCount||0)>0,null,{timeout:100000});
   const info=page.locator('.earthline-elder-info-m11');
   await info.waitFor({state:'visible',timeout:15000});
