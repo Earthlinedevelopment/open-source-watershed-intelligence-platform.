@@ -415,44 +415,44 @@
     frame.addEventListener('load',apply,{once:true});
     return false;
   }
-  /* Elder map help: one visible, ten-second information callout per visit.
-     Use the map DOM container: Mapbox Popup can be clipped or hidden by
-     the map's overlay stack, even when Elder icons are successfully published. */
-  let elderInfoLastRunM11='',elderInfoPopupM11=null,elderInfoShownM11=false;
+  /* Elder help: one brief explanation above the highest visible Elder symbol,
+     never a fixed-position toolbar or compass overlay. Once per page visit. */
+  let elderInfoPopupM11=null,elderInfoShownM11=false;
   function showElderInfoLinkM11(){
+    if(elderInfoShownM11)return;
     const m=map(),list=Array.isArray(state.active)?state.active:[];
     if(!m||!list.length)return;
-    const container=m.getContainer?.();
-    if(!container)return;
-    if(elderInfoPopupM11?.isConnected&&elderInfoPopupM11.parentNode===container)return;
+    const container=m.getContainer?.(),project=m.project?.bind(m);
+    if(!container||!project)return;
+    const rect=container.getBoundingClientRect();
+    if(rect.width<180||rect.height<150)return;
+    let highest=null;
+    for(const f of list){
+      const c=f?.geometry?.coordinates;
+      if(!Array.isArray(c)||c.length<2)continue;
+      const point=project(c);
+      if(!Number.isFinite(point?.x)||!Number.isFinite(point?.y))continue;
+      if(point.x<18||point.x>rect.width-18||point.y<36||point.y>rect.height-18)continue;
+      if(!highest||point.y<highest.y)highest=point;
+    }
+    if(!highest)return;
     try{
-      elderInfoPopupM11?.remove();
       const popup=document.createElement('div');
       popup.className='earthline-elder-info-m11';
-      popup.style.cssText='position:absolute;top:18px;right:18px;z-index:2147483000;pointer-events:auto;max-width:calc(100% - 36px)';
-      const button=document.createElement('button');
-      button.type='button';
-      button.textContent='ⓘ What are Elder Trees?';
-      button.setAttribute('aria-label','Information about Elder Tree map icons');
-      button.setAttribute('aria-expanded','false');
-      button.style.cssText='display:block;padding:9px 13px;border:1px solid #b88a35;border-radius:8px;background:#1c2a25;color:#f4d27a;font:800 12px/1.25 Noto Sans,system-ui,sans-serif;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.35)';
-      const detail=document.createElement('div');
-      detail.hidden=true;
-      detail.setAttribute('role','region');
-      detail.setAttribute('aria-label','Elder Tree icon explanation');
-      detail.style.cssText='max-width:290px;padding:10px 12px;border-radius:8px;border:1px solid #b88a35;background:#fffdf7;color:#243d31;font:550 12px/1.45 Noto Sans,system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.3)';
-      detail.textContent='Elder Tree icons distinguish externally verified trees from remotely modeled candidates. Candidate symbols do not establish tree age. Select an individual tree marker for its evidence and source.';
-      button.addEventListener('click',event=>{
-        event.stopPropagation();
-        detail.hidden=!detail.hidden;
-        button.setAttribute('aria-expanded',String(!detail.hidden));
-      });
-      popup.append(button,detail);
+      popup.setAttribute('role','note');
+      popup.style.cssText='position:absolute;z-index:120;pointer-events:auto;max-width:240px;padding:8px 10px;border:1px solid #b88a35;border-radius:8px;background:#fffdf7;color:#243d31;font:600 12px/1.35 Noto Sans,system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.3);text-align:center';
+      const link=document.createElement('a');
+      link.href='#swales-explained';
+      link.textContent='ⓘ What are Elder Trees?';
+      link.style.cssText='color:#215a3f;text-decoration:underline;font-weight:800';
+      popup.appendChild(link);
       container.appendChild(popup);
+      const popupWidth=popup.offsetWidth,popupHeight=popup.offsetHeight;
+      popup.style.left=Math.max(8,Math.min(rect.width-popupWidth-8,highest.x-popupWidth/2))+'px';
+      popup.style.top=Math.max(8,highest.y-popupHeight-12)+'px';
       elderInfoPopupM11=popup;
-      elderInfoLastRunM11=String(window.EARTHLINE_ELDER_TREE_LAST_17097?.runIdentity||
-        window.EARTHLINE_ELDER_TREE_LAST_17097?.propertyRunIdentity||'regional');
       elderInfoShownM11=true;
+      setTimeout(()=>{try{popup.remove()}catch(_){}if(elderInfoPopupM11===popup)elderInfoPopupM11=null},10000);
     }catch(_){}
   }
   function refreshSurfaces(){
