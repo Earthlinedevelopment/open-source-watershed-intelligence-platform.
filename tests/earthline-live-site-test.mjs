@@ -15,11 +15,11 @@ const PROFILES={
 };
 const REGIONAL=['Vermont','Arizona','Iowa'];
 const PROPERTY=[
-  {name:'iowa-farmland',q:'42.13000, -93.68000'},
-  {name:'iowa-creek',   q:'41.95748, -93.38977'},
-  {name:'vermont',      q:'43.88279, -72.45147'},
-  {name:'arizona',      q:'34.21572, -111.93073'},
-  {name:'darling-mine', q:'33.73774, -114.33439'},
+  {name:'iowa-farmland',q:'42.13000, -93.68000',at:[-93.68000,42.13000]},
+  {name:'iowa-creek',   q:'41.95748, -93.38977',at:[-93.38977,41.95748]},
+  {name:'vermont',      q:'43.88279, -72.45147',at:[-72.45147,43.88279]},
+  {name:'arizona',      q:'34.21572, -111.93073',at:[-111.93073,34.21572]},
+  {name:'darling-mine', q:'33.73774, -114.33439',at:[-114.33439,33.73774]},
   {name:'essex',        q:'61 Sleepy Hollow Road, Essex, Vermont'},
 ];
 const OUT='live-test-results/'+PROFILE;
@@ -63,16 +63,19 @@ function snap(){
     center:m?{lat:Number(m.centerLat),lng:Number(m.centerLng)}:null,
     analysisReady:!!(m&&m.analysisReady),
     engineSwales:m&&Array.isArray(m.swales)?m.swales.length:null,
+    engineSlopes:m&&Array.isArray(m.swales)?m.swales.map(w=>Number(w&&(w.slope??w.slope_pct??w.meanSlope))).filter(Number.isFinite).map(v=>Math.round(v*10)/10):[],
     shownSwales:swales.length,swales,
     rechargeTargets:m&&Array.isArray(m.rechZones)?m.rechZones.length:null,
     regionalSwaleFeatures:srcCount('el-live-swales-15970'),
     aquiferFeatures:srcCount('el-live-aquifer-15970'),
     elder,
     propertyAudit:audit?{settled:audit.settled??null,result:audit.result??null,error:audit.error?String(audit.error).slice(0,300):null}:null,
+    statusText:(()=>{try{return Array.from(document.querySelectorAll('[id*="Status"],[id*="status"],[id*="Notice"]')).filter(e=>!/^(STYLE|SCRIPT)$/.test(e.tagName)&&e.getBoundingClientRect().width>1).map(e=>e.textContent.trim().replace(/\s+/g,' ')).filter(Boolean).join(' | ').slice(0,500);}catch(_){return null;}})(),
     regionalError:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970?String(window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970).slice(0,300):null,
     layout:{screen:[innerWidth,innerHeight],pageWiderThanScreen:de.scrollWidth>innerWidth+2,
       searchBox:vis('searchInput'),runButton:vis('runBtn'),propertyButton:vis('earthlineDeclareProperty16169'),
-      mapCanvas:!!document.querySelector('.mapboxgl-canvas')},
+      mapCanvas:!!document.querySelector('.mapboxgl-canvas'),
+      searchDirectlyBelowLogo:(()=>{const h=document.getElementById('earthlinePanelBrand16201'),l=h&&h.querySelector(':scope > .brand'),q=document.getElementById('earthlineSearchSection16188');return !!(h&&l&&q&&q.parentElement===h&&q.previousElementSibling===l);})()},
   };
 }
 async function typeAndRun(page,q){
@@ -82,15 +85,15 @@ async function typeAndRun(page,q){
 }
 // Watches the aquifer layer while a Regional run is in progress: counts every time it goes from filled to empty.
 async function watchAquifer(page,ms){
-  let last=null,blanks=0,max=0,samples=0;const end=Date.now()+ms;
+  let last=null,blanks=0,max=0,samples=0,seenEmpty=false,refilled=false,midRun=0;const end=Date.now()+ms;
   while(Date.now()<end){
     let n=null;try{n=await page.evaluate(()=>{try{const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;
       const s=map&&map.getSource&&map.getSource('el-live-aquifer-15970');const d=s&&(s._data||(s.serialize&&s.serialize().data));
       return d&&Array.isArray(d.features)?d.features.length:null;}catch(_){return null;}});}catch(_){}
-    samples++;if(n!=null){if(last>0&&n===0)blanks++;if(n>max)max=n;last=n;}
+    samples++;if(n!=null){if(last>0&&n===0){blanks++;if(refilled)midRun++;}if(n===0)seenEmpty=true;if(n>0&&(seenEmpty||last===null||last===0))refilled=true;if(n>max)max=n;last=n;}
     await sleep(250);
   }
-  return {samples,maxFeatures:max,timesWentBlank:blanks,endedWith:last};
+  return {samples,maxFeatures:max,timesWentBlank:blanks,blankedAfterRefillThisRun:midRun,endedWith:last};
 }
 async function open(browser){
   const ctx=await browser.newContext(prof.ctx);const page=await ctx.newPage();const errors=[];
@@ -110,8 +113,10 @@ async function regional(browser,q){
     for(const run of [1,2]){
       const t0=Date.now();await typeAndRun(h.page,q);
       const watch=await watchAquifer(h.page,run===1?45000:30000);
+      let finished=false;const f0=Date.now();
+      while(Date.now()-f0<105000){finished=await h.page.evaluate(()=>{const b=document.getElementById('runBtn');return !!b&&!/deriving|loading|running/i.test(b.textContent||'');});if(finished)break;await sleep(1000);}
       const s=await h.page.evaluate(snap);
-      row['run'+run]={seconds:Math.round((Date.now()-t0)/100)/10,aquiferWatch:watch,
+      row['run'+run]={seconds:Math.round((Date.now()-t0)/100)/10,finished,aquiferWatch:watch,
         tier:s.tier,location:s.location,regionalSwaleFeatures:s.regionalSwaleFeatures,aquiferFeatures:s.aquiferFeatures,
         elder:s.elder,regionalError:s.regionalError,layout:s.layout};
       await shot(h.page,'regional-'+q.toLowerCase()+'-run'+run);
@@ -121,9 +126,9 @@ async function regional(browser,q){
   if(h)await h.ctx.close().catch(()=>{});
   rows.push(row);console.log('EARTHLINE_LIVE_TEST '+JSON.stringify(row));
 }
-async function propertyOnce(page){
+async function propertyOnce(page,pressNow){
   // After the search: if the site shows the Property button, press it (as a visitor would); then wait for Property to settle.
-  const t0=Date.now();let pressed=false,timedOut=false;
+  const t0=Date.now();let pressed=false,timedOut=false,clickKind=null;
   const end=Date.now()+75000;
   while(Date.now()<end){
     const st=await page.evaluate(()=>{const b=document.getElementById('earthlineDeclareProperty16169');
@@ -133,8 +138,9 @@ async function propertyOnce(page){
         ready:(typeof M!=='undefined'&&M&&M.analysisReady&&de.dataset.earthlineAnalysisTier==='property')};});
     if(pressed&&st.settled&&st.state!=='running')break;
     if(!pressed&&st.ready&&st.state!=='running'&&Date.now()-t0>6000)break; // site went straight to Property
-    if(!pressed&&st.button&&(st.readyClass||Date.now()-t0>20000)){ // wait for the site to offer Property; after 20 s press anyway and record it
-      await page.evaluate(()=>document.getElementById('earthlineDeclareProperty16169').click());pressed=true;}
+    if(!pressed&&st.button&&(pressNow||st.readyClass||Date.now()-t0>20000)){ // wait for the site to offer Property; after 20 s press anyway and record it
+      try{await page.click('#earthlineDeclareProperty16169',{timeout:5000});clickKind='real click';}catch(_){await page.evaluate(()=>document.getElementById('earthlineDeclareProperty16169').click());clickKind='real click failed, scripted click used';}
+      pressed=true;}
     await sleep(300);
   }
   if(Date.now()>=end)timedOut=true;
@@ -144,10 +150,10 @@ async function propertyOnce(page){
   const e0=Date.now();let elder=s.elder;
   while(!elder&&Date.now()-e0<60000){await sleep(2000);elder=await page.evaluate(()=>{const e=window.EARTHLINE_ELDER_TREE_LAST_17097;
     if(!e)return null;const o={};for(const k of Object.keys(e)){const v=e[k];o[k]=Array.isArray(v)?('array:'+v.length):(v&&typeof v==='object'?'object':v);}return o;});}
-  const sl=s.swales.filter(x=>Number.isFinite(x.slopePct)).map(x=>x.slopePct),ln=s.swales.filter(x=>Number.isFinite(x.lengthM)).map(x=>x.lengthM);
-  return {seconds:Math.round((Date.now()-t0)/100)/10,propertyButtonPressed:pressed,timedOut,
+  const sl=(s.engineSlopes&&s.engineSlopes.length)?s.engineSlopes:s.swales.filter(x=>Number.isFinite(x.slopePct)).map(x=>x.slopePct),ln=s.swales.filter(x=>Number.isFinite(x.lengthM)).map(x=>x.lengthM);
+  return {seconds:Math.round((Date.now()-t0)/100)/10,propertyButtonPressed:pressed,clickKind,timedOut,
     tier:s.tier,location:s.location,center:s.center,analysisReady:s.analysisReady,
-    engineSwales:s.engineSwales,shownSwales:s.shownSwales,
+    engineSwales:s.engineSwales,shownSwales:s.shownSwales,slopesMeasured:sl.length,statusText:s.statusText,
     steepestSwalePct:sl.length?Math.max(...sl):null,swalesOver4pct:sl.filter(v=>v>4.0001).length,
     shortestSwaleM:ln.length?Math.min(...ln):null,longestSwaleM:ln.length?Math.max(...ln):null,
     rechargeTargets:s.rechargeTargets,elder,elderWaitSeconds:Math.round((Date.now()-e0)/1000),
@@ -158,8 +164,13 @@ async function property(browser,site){
   try{
     h=await open(browser);
     for(const run of [1,2]){ // run 1 = first click on a fresh page; run 2 = same search again on the same page
-      await typeAndRun(h.page,site.q);
-      row['run'+run]=await propertyOnce(h.page);
+      if(site.at){ // move the map so the crosshair sits on the coordinate, as a visitor does by dragging
+        row.reachedBy='map moved to coordinate';
+        await h.page.evaluate(c=>{const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;
+          if(!map)throw Error('map not available');map.jumpTo({center:c,zoom:17});},site.at);
+        await sleep(5000);
+      }else{row.reachedBy='address typed in search';await typeAndRun(h.page,site.q);}
+      row['run'+run]=await propertyOnce(h.page,!!site.at);
       await shot(h.page,'property-'+site.name+'-run'+run);
     }
     const a=row.run1,b=row.run2;
@@ -170,11 +181,36 @@ async function property(browser,site){
   rows.push(row);console.log('EARTHLINE_LIVE_TEST '+JSON.stringify(Object.assign({},row,{run1:row.run1&&Object.assign({},row.run1,{swales:undefined}),run2:row.run2&&Object.assign({},row.run2,{swales:undefined})})));
 }
 
+async function waitRegionalDone(page,ms){const f0=Date.now();
+  while(Date.now()-f0<ms){const ok=await page.evaluate(()=>{const b=document.getElementById('runBtn');return !!b&&!/deriving|loading|running/i.test(b.textContent||'');});if(ok)return true;await sleep(1000);}return false;}
+async function lifecycle(browser,q){
+  const row={kind:'lifecycle',query:q,profile:PROFILE,steps:[]};const t=Date.now();let h=null;
+  try{
+    h=await open(browser);
+    for(const round of [1,2]){
+      await typeAndRun(h.page,q);const watch=await watchAquifer(h.page,20000);const finished=await waitRegionalDone(h.page,130000);await sleep(2000);
+      const r=await h.page.evaluate(snap);
+      row.steps.push({step:'regional '+round,finished,tier:r.tier,regionalSwaleFeatures:r.regionalSwaleFeatures,aquiferFeatures:r.aquiferFeatures,blankedAfterRefillThisRun:watch.blankedAfterRefillThisRun,regionalError:r.regionalError});
+      await shot(h.page,'lifecycle-'+q.toLowerCase()+'-regional'+round);
+      const pr=await propertyOnce(h.page,false);
+      row.steps.push({step:'property '+round,seconds:pr.seconds,clickKind:pr.clickKind,timedOut:pr.timedOut,tier:pr.tier,analysisReady:pr.analysisReady,engineSwales:pr.engineSwales,shownSwales:pr.shownSwales,steepestSwalePct:pr.steepestSwalePct,swalesOver4pct:pr.swalesOver4pct,rechargeTargets:pr.rechargeTargets,elder:pr.elder,propertyAudit:pr.propertyAudit,center:pr.center,swales:pr.swales});
+      await shot(h.page,'lifecycle-'+q.toLowerCase()+'-property'+round);
+    }
+    const P=row.steps.filter(x=>x.step.startsWith('property')),R=row.steps.filter(x=>x.step.startsWith('regional'));
+    row.propertySameBothRounds=P.length===2&&JSON.stringify(P[0].swales)===JSON.stringify(P[1].swales);
+    row.regionalSameBothRounds=R.length===2&&R[0].regionalSwaleFeatures===R[1].regionalSwaleFeatures&&R[0].aquiferFeatures===R[1].aquiferFeatures;
+    for(const x of P)x.swales=undefined;
+  }catch(e){row.couldNotRun=String(e).slice(0,400);}
+  row.pageErrors=h?h.errors.slice(0,15):[];row.totalSeconds=Math.round((Date.now()-t)/1000);
+  if(h)await h.ctx.close().catch(()=>{});
+  rows.push(row);console.log('EARTHLINE_LIVE_TEST '+JSON.stringify(row));
+}
 let browser=null,launchError=null;
 try{browser=await prof.engine.launch({headless:true});}catch(e){launchError=String(e).slice(0,400);}
 if(browser){
   for(const q of REGIONAL)await regional(browser,q);
   for(const s of PROPERTY)await property(browser,s);
+  for(const q of ['Arizona','Vermont'])await lifecycle(browser,q);
   await browser.close().catch(()=>{});
 }
 const result={profile:PROFILE,url:BASE,testedAt:new Date().toISOString(),launchError,rows};
