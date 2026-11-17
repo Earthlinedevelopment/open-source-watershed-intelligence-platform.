@@ -780,8 +780,35 @@
     },0);
     return true;
   } /* EARTHLINE_ELDER_IMMEDIATE_PROPERTY_START_17386 */
+  /* M17: one-click Property action binding.
+     Two legacy UI owners reassign the button's onclick independently.
+     Dispatch the click exactly once to the existing governed scientific
+     controller, retaining all existing safety and publication gates.
+     Capture listener stops the older competing onclick handlers; it does
+     not synthesize a second click or change the Property target. */
+  function installSinglePressPropertyM17(){
+    if(window.EARTHLINE_SINGLE_PRESS_PROPERTY_M17)return;
+    window.EARTHLINE_SINGLE_PRESS_PROPERTY_M17={installed:true,events:0,invoked:0,blocked:0};
+    document.addEventListener('click',e=>{
+      const btn=e.target?.closest?.('#earthlineDeclareProperty16169');
+      if(!btn)return;
+      const fn=window.earthlineDeclarePropertyAtCrosshair16173;
+      if(typeof fn!=='function')return; // older owner still reports a missing controller
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const audit=window.EARTHLINE_SINGLE_PRESS_PROPERTY_M17;
+      audit.events++;
+      if(btn.disabled||document.documentElement.dataset.earthlinePropertyRunState==='running'){
+        audit.blocked++;return;
+      }
+      audit.invoked++;
+      try{Promise.resolve(fn(e)).catch(err=>{audit.lastError=String(err)})}
+      catch(err){audit.lastError=String(err)}
+    },true);
+  }
   function install(){
     installElderPopupStyle();
+    installSinglePressPropertyM17();
     hideLanguageRailControl();
     showElderInfoLinkM11();
     wrapCorridor();
