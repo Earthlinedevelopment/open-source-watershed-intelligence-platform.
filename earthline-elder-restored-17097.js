@@ -146,7 +146,7 @@
     return {
       known:covered.length>0,
       datasetIds:covered.map(d=>d.id||d.path||''),
-      complete:covered.length>0&&covered.every(d=>d.coverage_complete===true)
+      complete:covered.length>0&&covered.every(d=>d.coverage_complete===true)&&!covered.some(d=>(state.manifest?.load_errors||[]).some(e=>String(e.dataset)===String(d.id||d.path)))
     };
   }
   function summarize(features,coverage=activeCoverage()){
