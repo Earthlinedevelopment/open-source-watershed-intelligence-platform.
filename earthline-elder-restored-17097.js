@@ -300,8 +300,9 @@
                imply that an unverified modeled tree is known to be old. */
             'icon-size':['interpolate',['linear'],['zoom'],6,0.36,10,0.48,14,0.62,17,0.92,20,1.0], /* Elder visibility: larger approved symbols; same evidence classes */
             'icon-anchor':'center',
-            'icon-allow-overlap':true,
-            'icon-ignore-placement':true,
+            // Presentation-only collision control: preserve all evidence and source records.
+            'icon-allow-overlap':false,
+            'icon-ignore-placement':false,
             /* Evidence is available in the interactive popup; repeated text
                labels obscured Property swales and are deliberately suppressed. */
             'text-field':'',
