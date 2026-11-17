@@ -281,10 +281,9 @@
             'text-halo-width':2.2
           }
         });
-        m.on('click',LAYER,e=>{
-          dismissElderHoverM7();
-          const f=e?.features?.[0];if(!f)return;
-          const p=f.properties||{},coords=f.geometry?.coordinates||[],verified=isVerified(p),conf=elderConfidence(p);
+        /* Elder information is user-triggered only: full message on hover, click or tap. */
+        function elderMessageForFeature(f){
+          const p=f.properties||{},verified=isVerified(p),conf=elderConfidence(p);
           const title=verified?'VERIFIED ELDER TREE':classify(p);
           const confidence=verified?'Verified external/field evidence':(conf==null?'Confidence not available':'Elder Tree Confidence '+conf+'%');
           const h=Number(p.height_m);
@@ -295,17 +294,26 @@
             '<div style="margin-top:4px;font:500 10px/1.35 system-ui,sans-serif;color:#526159">'+esc(p.source_name||'Earthline Elder Tree evidence')+'</div>'+
             (!verified?'<div style="margin-top:6px;font:500 9.5px/1.35 system-ui,sans-serif;color:#6e766a">Elder Tree Confidence is the tree’s local structural-evidence percentile compared with other detected tree/canopy structures in the same analyzed source area; it is not a probability of age or ancient/veteran status.</div>':'')+
             '<div style="margin-top:9px;padding:8px 9px;border:1px solid #b88a35;border-radius:6px;background:#f4f6ee;color:#213f2e;font:550 11px/1.5 Noto Sans,system-ui,sans-serif"><strong>What are Elder Trees?</strong> Long-lived trees can support forest structure, roots and soil moisture. Earthline distinguishes externally verified Elder Trees from remotely modeled candidates; a candidate icon does not establish a tree’s age.<div style="margin-top:5px"><a href="#swales-explained" style="font-weight:800;color:#215a3f">Learn more about Elder Trees</a></div></div>';
-          try{new mapboxgl.Popup({closeButton:true,closeOnClick:true,offset:8}).setLngLat(coords).setHTML(body).addTo(m)}catch(_){}
-        });
+
+          return body;
+        }
+        function showElderTreePopup(e,persistent){
+          const f=e?.features?.[0],coords=f?.geometry?.coordinates;
+          if(!f||!Array.isArray(coords)||coords.length<2)return;
+          dismissElderHoverM7();
+          try{
+            const popup=new mapboxgl.Popup({
+              closeButton:!!persistent,closeOnClick:!!persistent,
+              offset:12,className:'earthline-elder-triggered-popup'
+            }).setLngLat(coords).setHTML(elderMessageForFeature(f)).addTo(m);
+            if(!persistent)elderHoverPopupM7=popup;
+          }catch(_){dismissElderHoverM7()}
+        }
+        m.on('click',LAYER,e=>showElderTreePopup(e,true));
       }
       if(!elderHoverBoundM7){
         elderHoverBoundM7=true;
-        m.on('mouseenter',LAYER,e=>{
-          const pt=e?.features?.[0]?.geometry?.coordinates;
-          if(!Array.isArray(pt)||pt.length<2)return;
-          dismissElderHoverM7();
-          try{elderHoverPopupM7=new mapboxgl.Popup({closeButton:false,closeOnClick:false,offset:12,className:'earthline-elder-hover-m7'}).setLngLat(pt).setHTML('<span style="font:900 11px/1.2 Noto Sans,system-ui,sans-serif;color:#245e39;letter-spacing:.4px">ELDER TREE</span>').addTo(m)}catch(_){dismissElderHoverM7()}
-        });
+        m.on('mouseenter',LAYER,e=>showElderTreePopup(e,false));
         m.on('mouseleave',LAYER,dismissElderHoverM7);
         m.on('movestart',dismissElderHoverM7);
       }
@@ -413,43 +421,16 @@
     frame.addEventListener('load',apply,{once:true});
     return false;
   }
-  /* Elder information is an ephemeral map-anchored callout, never a permanent top-right toolbar. */
-  let elderInfoPopupM11=null,elderInfoShownM11=false;
+  /* No automatic Elder info message. Icon hover / click owns the popup. */
   function showElderInfoLinkM11(){
-    // The onboarding note belongs to Property detail, never Regional search.
-    if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()!=='property'){
-      try{elderInfoPopupM11?.remove()}catch(_){}
-      elderInfoPopupM11=null;
-      return;
-    }
-    if(elderInfoShownM11)return;
-    const m=map(),list=Array.isArray(state.active)?state.active:[];
-    if(!m||!list.length)return;
-    const container=m.getContainer?.();if(!container)return;
-    const width=container.clientWidth,height=container.clientHeight;
-    let top=null;
-    for(const feature of list){
-      const ll=feature?.geometry?.coordinates;
-      if(!Array.isArray(ll)||ll.length<2)continue;
-      let p;try{p=m.project(ll)}catch(_){continue}
-      if(!p||p.x<60||p.x>width-60||p.y<90||p.y>height-40)continue;
-      if(!top||p.y<top.y)top={x:p.x,y:p.y};
-    }
-    if(!top)return;
-    try{
-      elderInfoPopupM11?.remove();
-      const el=document.createElement('div');
-      el.className='earthline-elder-info-m11';
-      el.setAttribute('role','status');
-      el.setAttribute('aria-label','Elder Trees information');
-      el.textContent='ELDER TREES: Green tree symbols distinguish verified records from modeled candidates. Select a tree for evidence and source; a candidate does not establish age.';
-      el.style.cssText='position:absolute;z-index:2147483000;pointer-events:none;max-width:260px;padding:10px 12px;border:1px solid #b88a35;border-radius:9px;background:#152a25;color:#f4df9c;font:700 12px/1.4 Noto Sans,system-ui,sans-serif;box-shadow:0 5px 18px rgba(0,0,0,.45);transform:translate(-50%,-100%)';
-      el.style.left=Math.max(140,Math.min(width-140,top.x))+'px';
-      el.style.top=Math.max(76,top.y-20)+'px';
-      container.appendChild(el);
-      elderInfoPopupM11=el;elderInfoShownM11=true;
-      setTimeout(()=>{if(elderInfoPopupM11===el)elderInfoPopupM11=null;el.remove()},10000);
-    }catch(_){}
+    document.querySelectorAll('.earthline-elder-info-m11').forEach(el=>el.remove());
+  }
+  function installElderPopupStyle(){
+    if(document.getElementById('earthlineElderTriggeredPopupStyle'))return;
+    const css=document.createElement('style');
+    css.id='earthlineElderTriggeredPopupStyle';
+    css.textContent='.earthline-elder-triggered-popup .mapboxgl-popup-content{background:#ffffff !important;opacity:1 !important;color:#17323d !important;border:2px solid #b88a35 !important;border-radius:9px !important;box-shadow:0 6px 22px rgba(0,0,0,.65) !important;max-height:55vh;overflow-y:auto;min-width:225px;max-width:min(320px,85vw);padding:13px 15px !important}.earthline-elder-triggered-popup .mapboxgl-popup-tip{border-top-color:#ffffff !important;border-bottom-color:#ffffff !important}.earthline-elder-triggered-popup{opacity:1 !important;z-index:100 !important}';
+    document.head.appendChild(css);
   }
   function refreshSurfaces(){
     const s=state.lastSummary||summarize(state.active);
@@ -747,6 +728,8 @@
     return true;
   } /* EARTHLINE_ELDER_IMMEDIATE_PROPERTY_START_17386 */
   function install(){
+    installElderPopupStyle();
+    showElderInfoLinkM11();
     wrapCorridor();
     document.addEventListener('click',e=>{
       const b=e.target?.closest?.('#earthlineDeclareProperty16169');
