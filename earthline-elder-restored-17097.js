@@ -10,7 +10,7 @@
   const LAYER='earthline-elder-tree-points-17097';
   const state={loaded:false,loading:null,manifest:null,all:[],active:[],lastSummary:null,dynamic:{worker:null,seq:0,pending:new Map(),key:'',result:null,promise:null,error:null,warmPromise:null,warmed:false,tileWarmKey:'',tileWarmPromise:null}};
   /* M7 temporary Elder Tree hover label; existing click details retain evidence distinctions. */
-  let elderHoverPopupM7=null,elderHoverBoundM7=false;
+  let elderHoverPopupM7=null,elderDetailPopupM17=null,elderHoverBoundM7=false;
   function dismissElderHoverM7(){try{elderHoverPopupM7?.remove()}catch(_){}elderHoverPopupM7=null}
 
   function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
@@ -272,12 +272,36 @@
           const f=e?.features?.[0],coords=f?.geometry?.coordinates;
           if(!f||!Array.isArray(coords)||coords.length<2)return;
           dismissElderHoverM7();
+          if(persistent){
+            try{elderDetailPopupM17?.remove()}catch(_){}
+            elderDetailPopupM17=null;
+            // Fixed document-level panel: cannot be obscured by any map SVG,
+            // property water path, contour, recharge or Elder marker layer.
+            const panel=document.createElement('aside');
+            panel.className='earthline-elder-top-panel-m17';
+            panel.setAttribute('role','dialog');
+            panel.setAttribute('aria-label','Elder Tree evidence');
+            panel.style.cssText='position:fixed!important;top:14px;right:18px;z-index:2147483647!important;width:min(300px,calc(100vw - 32px));max-height:min(65vh,510px);overflow:auto;box-sizing:border-box;background:#fff!important;opacity:1!important;border:2px solid #b88a35;border-radius:10px;box-shadow:0 12px 36px rgba(0,0,0,.65);padding:35px 15px 15px;color:#17323d;font-family:"Noto Sans",system-ui,sans-serif;font-size:12px;line-height:1.45;pointer-events:auto';
+            const close=document.createElement('button');
+            close.type='button';close.setAttribute('aria-label','Close Elder Tree evidence');
+            close.textContent='×';close.style.cssText='position:absolute;right:8px;top:5px;border:0;background:transparent;color:#17323d;font-size:25px;cursor:pointer;padding:0 7px';
+            close.addEventListener('click',()=>{panel.remove();if(elderDetailPopupM17===panel)elderDetailPopupM17=null});
+            const body=document.createElement('div');
+            body.innerHTML=elderMessageForFeature(f);
+            panel.append(close,body);
+            document.body.appendChild(panel);
+            elderDetailPopupM17=panel;
+            return;
+          }
           try{
-            const popup=new mapboxgl.Popup({
-              closeButton:!!persistent,closeOnClick:!!persistent,
-              offset:12,className:'earthline-elder-triggered-popup'
-            }).setLngLat(coords).setHTML(elderMessageForFeature(f)).addTo(m);
-            if(!persistent)elderHoverPopupM7=popup;
+            const html='<strong>'+esc(classify(f.properties||{}))+'</strong><div>Click for Elder Tree evidence</div>';
+            const p=m.project?.(coords),w=m.getCanvas?.()?.clientWidth||0;
+            const anchor=p&&w&&p.x>w*0.65?'right':p&&p.x<w*0.35?'left':'bottom';
+            elderHoverPopupM7=new mapboxgl.Popup({
+              closeButton:false,closeOnClick:false,
+              offset:14,maxWidth:'205px',anchor,
+              className:'earthline-elder-triggered-popup earthline-elder-hover-popup'
+            }).setLngLat(coords).setHTML(html).addTo(m);
           }catch(_){dismissElderHoverM7()}
         }
       if(!m.getLayer?.(LAYER)){
@@ -293,8 +317,9 @@
                imply that an unverified modeled tree is known to be old. */
             'icon-size':['interpolate',['linear'],['zoom'],6,0.36,10,0.48,14,0.62,17,0.92,20,1.0], /* Elder visibility: larger approved symbols; same evidence classes */
             'icon-anchor':'center',
-            'icon-allow-overlap':true,
-            'icon-ignore-placement':true,
+            // Presentation-only collision control: preserve all evidence and source records.
+            'icon-allow-overlap':false,
+            'icon-ignore-placement':false,
             /* Evidence is available in the interactive popup; repeated text
                labels obscured Property swales and are deliberately suppressed. */
             'text-field':'',
@@ -429,8 +454,36 @@
     if(document.getElementById('earthlineElderTriggeredPopupStyle'))return;
     const css=document.createElement('style');
     css.id='earthlineElderTriggeredPopupStyle';
-    css.textContent='.earthline-elder-triggered-popup .mapboxgl-popup-content{background:#ffffff !important;opacity:1 !important;color:#17323d !important;border:2px solid #b88a35 !important;border-radius:9px !important;box-shadow:0 6px 22px rgba(0,0,0,.65) !important;max-height:55vh;overflow-y:auto;min-width:225px;max-width:min(320px,85vw);padding:13px 15px !important}.earthline-elder-triggered-popup .mapboxgl-popup-tip{border-top-color:#ffffff !important;border-bottom-color:#ffffff !important}.earthline-elder-triggered-popup{opacity:1 !important;z-index:100 !important}';
+    css.textContent='.earthline-elder-triggered-popup{opacity:1 !important;z-index:110 !important;pointer-events:auto}.earthline-elder-triggered-popup .mapboxgl-popup-content{background:#fff !important;opacity:1 !important;color:#17323d !important;border:1px solid #b88a35 !important;border-radius:8px !important;box-shadow:0 8px 24px rgba(0,0,0,.42) !important;box-sizing:border-box;max-height:min(42vh,360px);overflow-y:auto;min-width:0;max-width:min(292px,75vw);padding:12px 14px !important;font-family:"Noto Sans",system-ui,sans-serif !important}.earthline-elder-hover-popup .mapboxgl-popup-content{font-size:11px !important;max-width:205px !important;padding:7px 10px !important;line-height:1.4}.earthline-elder-hover-popup .mapboxgl-popup-content div{margin-top:3px;color:#526159}.earthline-elder-triggered-popup .mapboxgl-popup-tip{border-top-color:#fff !important;border-bottom-color:#fff !important}';
     document.head.appendChild(css);
+  }
+  /* Hide the existing toolbar language switcher; preserve translation functionality.
+     Restrict matching to a narrow rail control, never the full sidebar. */
+  function hideLanguageRailControl(){
+    // Identify the narrow LANGUAGE/Eng rail group by its own visible label.
+    // Keep translation code/data present; hide the rail control only.
+    const nodes=document.querySelectorAll('label,span,div,small,b,strong');
+    for(const el of nodes){
+      const directText=[...el.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent.trim().toUpperCase()).join(' ');
+      if(directText!=='LANGUAGE'&&el.textContent?.trim().toUpperCase()!=='LANGUAGE')continue;
+      const er=el.getBoundingClientRect();
+      if(er.width>130||er.left>115||er.top>650)continue;
+      let chosen=null;
+      for(let parent=el,i=0;parent&&i<6;parent=parent.parentElement,i++){
+        const r=parent.getBoundingClientRect();
+        if(r.width>125||r.left>125||r.height>155)break;
+        if(parent.querySelector('select,[role="combobox"],button,[aria-label*="language" i]')){
+          chosen=parent;
+          break;
+        }
+      }
+      if(!chosen)continue;
+      chosen.hidden=true;
+      chosen.setAttribute('aria-hidden','true');
+      chosen.style.setProperty('display','none','important');
+      return true;
+    }
+    return false;
   }
   function refreshSurfaces(){
     const s=state.lastSummary||summarize(state.active);
@@ -727,8 +780,36 @@
     },0);
     return true;
   } /* EARTHLINE_ELDER_IMMEDIATE_PROPERTY_START_17386 */
+  /* M17: one-click Property action binding.
+     Two legacy UI owners reassign the button's onclick independently.
+     Dispatch the click exactly once to the existing governed scientific
+     controller, retaining all existing safety and publication gates.
+     Capture listener stops the older competing onclick handlers; it does
+     not synthesize a second click or change the Property target. */
+  function installSinglePressPropertyM17(){
+    if(window.EARTHLINE_SINGLE_PRESS_PROPERTY_M17)return;
+    window.EARTHLINE_SINGLE_PRESS_PROPERTY_M17={installed:true,events:0,invoked:0,blocked:0};
+    document.addEventListener('click',e=>{
+      const btn=e.target?.closest?.('#earthlineDeclareProperty16169');
+      if(!btn)return;
+      const fn=window.earthlineDeclarePropertyAtCrosshair16173;
+      if(typeof fn!=='function')return; // older owner still reports a missing controller
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const audit=window.EARTHLINE_SINGLE_PRESS_PROPERTY_M17;
+      audit.events++;
+      if(btn.disabled||document.documentElement.dataset.earthlinePropertyRunState==='running'){
+        audit.blocked++;return;
+      }
+      audit.invoked++;
+      try{Promise.resolve(fn(e)).catch(err=>{audit.lastError=String(err)})}
+      catch(err){audit.lastError=String(err)}
+    },true);
+  }
   function install(){
     installElderPopupStyle();
+    installSinglePressPropertyM17();
+    hideLanguageRailControl();
     showElderInfoLinkM11();
     wrapCorridor();
     document.addEventListener('click',e=>{
