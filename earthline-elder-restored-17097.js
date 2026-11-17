@@ -418,6 +418,12 @@
   /* Elder information is an ephemeral map-anchored callout, never a permanent top-right toolbar. */
   let elderInfoPopupM11=null,elderInfoShownM11=false;
   function showElderInfoLinkM11(){
+    // The onboarding note belongs to Property detail, never Regional search.
+    if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()!=='property'){
+      try{elderInfoPopupM11?.remove()}catch(_){}
+      elderInfoPopupM11=null;
+      return;
+    }
     if(elderInfoShownM11)return;
     const m=map(),list=Array.isArray(state.active)?state.active:[];
     if(!m||!list.length)return;
