@@ -252,6 +252,34 @@
         m.addSource(SOURCE,{type:'geojson',data:fc});
         src=m.getSource?.(SOURCE);
       }
+        /* Elder information is user-triggered only: full message on hover, click or tap. */
+        function elderMessageForFeature(f){
+          const p=f.properties||{},verified=isVerified(p),conf=elderConfidence(p);
+          const title=verified?'VERIFIED ELDER TREE':classify(p);
+          const confidence=verified?'Verified external/field evidence':(conf==null?'Confidence not available':'Elder Tree Confidence '+conf+'%');
+          const h=Number(p.height_m);
+          const body='<div style="font:900 12px/1.2 system-ui,sans-serif;color:#245e39">ELDER TREE</div>'+
+            '<div style="margin-top:4px;font:700 13px/1.25 system-ui,sans-serif;color:#17323d">'+esc(title)+'</div>'+
+            '<div style="margin-top:5px;font:800 12px/1.2 system-ui,sans-serif;color:#2f6f46">'+esc(confidence)+'</div>'+
+            (Number.isFinite(h)?'<div style="margin-top:4px;font:600 11px/1.35 system-ui,sans-serif">Canopy height: '+esc(h.toFixed(1))+' m</div>':'')+
+            '<div style="margin-top:4px;font:500 10px/1.35 system-ui,sans-serif;color:#526159">'+esc(p.source_name||'Earthline Elder Tree evidence')+'</div>'+
+            (!verified?'<div style="margin-top:6px;font:500 9.5px/1.35 system-ui,sans-serif;color:#6e766a">Elder Tree Confidence is the tree’s local structural-evidence percentile compared with other detected tree/canopy structures in the same analyzed source area; it is not a probability of age or ancient/veteran status.</div>':'')+
+            '<div style="margin-top:9px;padding:8px 9px;border:1px solid #b88a35;border-radius:6px;background:#f4f6ee;color:#213f2e;font:550 11px/1.5 Noto Sans,system-ui,sans-serif"><strong>What are Elder Trees?</strong> Long-lived trees can support forest structure, roots and soil moisture. Earthline distinguishes externally verified Elder Trees from remotely modeled candidates; a candidate icon does not establish a tree’s age.<div style="margin-top:5px"><a href="#swales-explained" style="font-weight:800;color:#215a3f">Learn more about Elder Trees</a></div></div>';
+
+          return body;
+        }
+        function showElderTreePopup(e,persistent){
+          const f=e?.features?.[0],coords=f?.geometry?.coordinates;
+          if(!f||!Array.isArray(coords)||coords.length<2)return;
+          dismissElderHoverM7();
+          try{
+            const popup=new mapboxgl.Popup({
+              closeButton:!!persistent,closeOnClick:!!persistent,
+              offset:12,className:'earthline-elder-triggered-popup'
+            }).setLngLat(coords).setHTML(elderMessageForFeature(f)).addTo(m);
+            if(!persistent)elderHoverPopupM7=popup;
+          }catch(_){dismissElderHoverM7()}
+        }
       if(!m.getLayer?.(LAYER)){
         m.addLayer({
           id:LAYER,type:'symbol',source:SOURCE,
@@ -281,34 +309,6 @@
             'text-halo-width':2.2
           }
         });
-        /* Elder information is user-triggered only: full message on hover, click or tap. */
-        function elderMessageForFeature(f){
-          const p=f.properties||{},verified=isVerified(p),conf=elderConfidence(p);
-          const title=verified?'VERIFIED ELDER TREE':classify(p);
-          const confidence=verified?'Verified external/field evidence':(conf==null?'Confidence not available':'Elder Tree Confidence '+conf+'%');
-          const h=Number(p.height_m);
-          const body='<div style="font:900 12px/1.2 system-ui,sans-serif;color:#245e39">ELDER TREE</div>'+
-            '<div style="margin-top:4px;font:700 13px/1.25 system-ui,sans-serif;color:#17323d">'+esc(title)+'</div>'+
-            '<div style="margin-top:5px;font:800 12px/1.2 system-ui,sans-serif;color:#2f6f46">'+esc(confidence)+'</div>'+
-            (Number.isFinite(h)?'<div style="margin-top:4px;font:600 11px/1.35 system-ui,sans-serif">Canopy height: '+esc(h.toFixed(1))+' m</div>':'')+
-            '<div style="margin-top:4px;font:500 10px/1.35 system-ui,sans-serif;color:#526159">'+esc(p.source_name||'Earthline Elder Tree evidence')+'</div>'+
-            (!verified?'<div style="margin-top:6px;font:500 9.5px/1.35 system-ui,sans-serif;color:#6e766a">Elder Tree Confidence is the tree’s local structural-evidence percentile compared with other detected tree/canopy structures in the same analyzed source area; it is not a probability of age or ancient/veteran status.</div>':'')+
-            '<div style="margin-top:9px;padding:8px 9px;border:1px solid #b88a35;border-radius:6px;background:#f4f6ee;color:#213f2e;font:550 11px/1.5 Noto Sans,system-ui,sans-serif"><strong>What are Elder Trees?</strong> Long-lived trees can support forest structure, roots and soil moisture. Earthline distinguishes externally verified Elder Trees from remotely modeled candidates; a candidate icon does not establish a tree’s age.<div style="margin-top:5px"><a href="#swales-explained" style="font-weight:800;color:#215a3f">Learn more about Elder Trees</a></div></div>';
-
-          return body;
-        }
-        function showElderTreePopup(e,persistent){
-          const f=e?.features?.[0],coords=f?.geometry?.coordinates;
-          if(!f||!Array.isArray(coords)||coords.length<2)return;
-          dismissElderHoverM7();
-          try{
-            const popup=new mapboxgl.Popup({
-              closeButton:!!persistent,closeOnClick:!!persistent,
-              offset:12,className:'earthline-elder-triggered-popup'
-            }).setLngLat(coords).setHTML(elderMessageForFeature(f)).addTo(m);
-            if(!persistent)elderHoverPopupM7=popup;
-          }catch(_){dismissElderHoverM7()}
-        }
         m.on('click',LAYER,e=>showElderTreePopup(e,true));
       }
       if(!elderHoverBoundM7){
