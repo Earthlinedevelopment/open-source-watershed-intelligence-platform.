@@ -273,10 +273,16 @@
           if(!f||!Array.isArray(coords)||coords.length<2)return;
           dismissElderHoverM7();
           try{
+            // Keep the original Elder icon and evidence; show the long explanation only on click.
+            const html=persistent?elderMessageForFeature(f):
+              '<strong>'+esc(classify(f.properties||{}))+'</strong><div>Click for Elder Tree evidence</div>';
+            const p=m.project?.(coords),w=m.getCanvas?.()?.clientWidth||0;
+            const anchor=p&&w&&p.x>w*0.65?'right':p&&p.x<w*0.35?'left':'bottom';
             const popup=new mapboxgl.Popup({
               closeButton:!!persistent,closeOnClick:!!persistent,
-              offset:12,className:'earthline-elder-triggered-popup'
-            }).setLngLat(coords).setHTML(elderMessageForFeature(f)).addTo(m);
+              offset:14,maxWidth:persistent?'292px':'205px',
+              anchor,className:'earthline-elder-triggered-popup'+(persistent?' earthline-elder-detail-popup':' earthline-elder-hover-popup')
+            }).setLngLat(coords).setHTML(html).addTo(m);
             if(!persistent)elderHoverPopupM7=popup;
           }catch(_){dismissElderHoverM7()}
         }
@@ -429,8 +435,30 @@
     if(document.getElementById('earthlineElderTriggeredPopupStyle'))return;
     const css=document.createElement('style');
     css.id='earthlineElderTriggeredPopupStyle';
-    css.textContent='.earthline-elder-triggered-popup .mapboxgl-popup-content{background:#ffffff !important;opacity:1 !important;color:#17323d !important;border:2px solid #b88a35 !important;border-radius:9px !important;box-shadow:0 6px 22px rgba(0,0,0,.65) !important;max-height:55vh;overflow-y:auto;min-width:225px;max-width:min(320px,85vw);padding:13px 15px !important}.earthline-elder-triggered-popup .mapboxgl-popup-tip{border-top-color:#ffffff !important;border-bottom-color:#ffffff !important}.earthline-elder-triggered-popup{opacity:1 !important;z-index:100 !important}';
+    css.textContent='.earthline-elder-triggered-popup{opacity:1 !important;z-index:110 !important;pointer-events:auto}.earthline-elder-triggered-popup .mapboxgl-popup-content{background:#fff !important;opacity:1 !important;color:#17323d !important;border:1px solid #b88a35 !important;border-radius:8px !important;box-shadow:0 8px 24px rgba(0,0,0,.42) !important;box-sizing:border-box;max-height:min(42vh,360px);overflow-y:auto;min-width:0;max-width:min(292px,75vw);padding:12px 14px !important;font-family:"Noto Sans",system-ui,sans-serif !important}.earthline-elder-hover-popup .mapboxgl-popup-content{font-size:11px !important;max-width:205px !important;padding:7px 10px !important;line-height:1.4}.earthline-elder-hover-popup .mapboxgl-popup-content div{margin-top:3px;color:#526159}.earthline-elder-triggered-popup .mapboxgl-popup-tip{border-top-color:#fff !important;border-bottom-color:#fff !important}';
     document.head.appendChild(css);
+  }
+  /* Hide the existing toolbar language switcher; preserve translation functionality.
+     Restrict matching to a narrow rail control, never the full sidebar. */
+  function hideLanguageRailControl(){
+    for(const el of document.querySelectorAll('label,span,div,small')){
+      if(el.children.length&&el.textContent?.trim().toUpperCase()!=='LANGUAGE')continue;
+      if(el.textContent?.trim().toUpperCase()!=='LANGUAGE')continue;
+      const r=el.getBoundingClientRect();
+      if(r.width>115||r.left>110||r.height>40)continue;
+      let node=el;
+      for(let i=0;i<4&&node.parentElement;i++){
+        const next=node.parentElement,nr=next.getBoundingClientRect();
+        if(nr.width>120||nr.height>135||nr.left>115)break;
+        node=next;
+        if(node.querySelector('select,[role="combobox"],button'))break;
+      }
+      if(node!==el&&node.querySelector('select,[role="combobox"],button')){
+        node.hidden=true;node.style.setProperty('display','none','important');
+        return true;
+      }
+    }
+    return false;
   }
   function refreshSurfaces(){
     const s=state.lastSummary||summarize(state.active);
@@ -729,6 +757,7 @@
   } /* EARTHLINE_ELDER_IMMEDIATE_PROPERTY_START_17386 */
   function install(){
     installElderPopupStyle();
+    hideLanguageRailControl();
     showElderInfoLinkM11();
     wrapCorridor();
     document.addEventListener('click',e=>{
