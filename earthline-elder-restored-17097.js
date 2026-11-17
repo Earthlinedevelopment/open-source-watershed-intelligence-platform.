@@ -425,6 +425,8 @@
       return;
     }
     if(elderInfoShownM11)return;
+    // Never cover search suggestions or typed search results.
+    if(document.activeElement?.id==='searchInput')return;
     const m=map(),list=Array.isArray(state.active)?state.active:[];
     if(!m||!list.length)return;
     const container=m.getContainer?.();if(!container)return;
@@ -445,9 +447,17 @@
       el.setAttribute('role','status');
       el.setAttribute('aria-label','Elder Trees information');
       el.textContent='ELDER TREES: Green tree symbols distinguish verified records from modeled candidates. Select a tree for evidence and source; a candidate does not establish age.';
-      el.style.cssText='position:absolute;z-index:2147483000;pointer-events:none;max-width:260px;padding:10px 12px;border:1px solid #b88a35;border-radius:9px;background:#152a25;color:#f4df9c;font:700 12px/1.4 Noto Sans,system-ui,sans-serif;box-shadow:0 5px 18px rgba(0,0,0,.45);transform:translate(-50%,-100%)';
-      el.style.left=Math.max(140,Math.min(width-140,top.x))+'px';
-      el.style.top=Math.max(76,top.y-20)+'px';
+      el.style.cssText='position:absolute;z-index:20;pointer-events:none;box-sizing:border-box;max-width:260px;padding:10px 12px;border:1px solid #b88a35;border-radius:9px;background:#152a25;color:#f4df9c;font:700 12px/1.45 Noto Sans,system-ui,sans-serif;box-shadow:0 5px 18px rgba(0,0,0,.45);transform:translate(-50%,-100%)';
+      // Keep the whole note outside the search pane and inside the map viewport.
+      const mapRect=container.getBoundingClientRect();
+      const searchRect=document.getElementById('earthlineSearchSection16188')?.getBoundingClientRect();
+      const clearance=searchRect&&searchRect.right>mapRect.left&&searchRect.left<mapRect.right?Math.max(0,searchRect.right-mapRect.left+16):0;
+      const cardWidth=Math.min(260,Math.max(0,width-24));
+      const left=Math.max(clearance+cardWidth/2,Math.min(width-cardWidth/2-12,top.x));
+      if(cardWidth<160||left+cardWidth/2>width-8)return; // No safe room: suppress rather than cover search.
+      el.style.width=cardWidth+'px';
+      el.style.left=left+'px';
+      el.style.top=Math.max(160,Math.min(height-28,top.y-20))+'px';
       container.appendChild(el);
       elderInfoPopupM11=el;elderInfoShownM11=true;
       setTimeout(()=>{if(elderInfoPopupM11===el)elderInfoPopupM11=null;el.remove()},10000);
