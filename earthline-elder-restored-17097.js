@@ -272,19 +272,36 @@
           const f=e?.features?.[0],coords=f?.geometry?.coordinates;
           if(!f||!Array.isArray(coords)||coords.length<2)return;
           dismissElderHoverM7();
-          if(persistent){try{elderDetailPopupM17?.remove()}catch(_){}elderDetailPopupM17=null}
+          if(persistent){
+            try{elderDetailPopupM17?.remove()}catch(_){}
+            elderDetailPopupM17=null;
+            // Fixed document-level panel: cannot be obscured by any map SVG,
+            // property water path, contour, recharge or Elder marker layer.
+            const panel=document.createElement('aside');
+            panel.className='earthline-elder-top-panel-m17';
+            panel.setAttribute('role','dialog');
+            panel.setAttribute('aria-label','Elder Tree evidence');
+            panel.style.cssText='position:fixed!important;top:14px;right:18px;z-index:2147483647!important;width:min(300px,calc(100vw - 32px));max-height:min(65vh,510px);overflow:auto;box-sizing:border-box;background:#fff!important;opacity:1!important;border:2px solid #b88a35;border-radius:10px;box-shadow:0 12px 36px rgba(0,0,0,.65);padding:35px 15px 15px;color:#17323d;font-family:"Noto Sans",system-ui,sans-serif;font-size:12px;line-height:1.45;pointer-events:auto';
+            const close=document.createElement('button');
+            close.type='button';close.setAttribute('aria-label','Close Elder Tree evidence');
+            close.textContent='×';close.style.cssText='position:absolute;right:8px;top:5px;border:0;background:transparent;color:#17323d;font-size:25px;cursor:pointer;padding:0 7px';
+            close.addEventListener('click',()=>{panel.remove();if(elderDetailPopupM17===panel)elderDetailPopupM17=null});
+            const body=document.createElement('div');
+            body.innerHTML=elderMessageForFeature(f);
+            panel.append(close,body);
+            document.body.appendChild(panel);
+            elderDetailPopupM17=panel;
+            return;
+          }
           try{
-            // Keep the original Elder icon and evidence; show the long explanation only on click.
-            const html=persistent?elderMessageForFeature(f):
-              '<strong>'+esc(classify(f.properties||{}))+'</strong><div>Click for Elder Tree evidence</div>';
+            const html='<strong>'+esc(classify(f.properties||{}))+'</strong><div>Click for Elder Tree evidence</div>';
             const p=m.project?.(coords),w=m.getCanvas?.()?.clientWidth||0;
             const anchor=p&&w&&p.x>w*0.65?'right':p&&p.x<w*0.35?'left':'bottom';
-            const popup=new mapboxgl.Popup({
-              closeButton:!!persistent,closeOnClick:!!persistent,
-              offset:14,maxWidth:persistent?'292px':'205px',
-              anchor,className:'earthline-elder-triggered-popup'+(persistent?' earthline-elder-detail-popup':' earthline-elder-hover-popup')
+            elderHoverPopupM7=new mapboxgl.Popup({
+              closeButton:false,closeOnClick:false,
+              offset:14,maxWidth:'205px',anchor,
+              className:'earthline-elder-triggered-popup earthline-elder-hover-popup'
             }).setLngLat(coords).setHTML(html).addTo(m);
-            if(persistent)elderDetailPopupM17=popup;else elderHoverPopupM7=popup;
           }catch(_){dismissElderHoverM7()}
         }
       if(!m.getLayer?.(LAYER)){
@@ -443,22 +460,28 @@
   /* Hide the existing toolbar language switcher; preserve translation functionality.
      Restrict matching to a narrow rail control, never the full sidebar. */
   function hideLanguageRailControl(){
-    for(const el of document.querySelectorAll('label,span,div,small')){
-      if(el.children.length&&el.textContent?.trim().toUpperCase()!=='LANGUAGE')continue;
-      if(el.textContent?.trim().toUpperCase()!=='LANGUAGE')continue;
-      const r=el.getBoundingClientRect();
-      if(r.width>115||r.left>110||r.height>40)continue;
-      let node=el;
-      for(let i=0;i<4&&node.parentElement;i++){
-        const next=node.parentElement,nr=next.getBoundingClientRect();
-        if(nr.width>120||nr.height>135||nr.left>115)break;
-        node=next;
-        if(node.querySelector('select,[role="combobox"],button'))break;
+    // Identify the narrow LANGUAGE/Eng rail group by its own visible label.
+    // Keep translation code/data present; hide the rail control only.
+    const nodes=document.querySelectorAll('label,span,div,small,b,strong');
+    for(const el of nodes){
+      const directText=[...el.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent.trim().toUpperCase()).join(' ');
+      if(directText!=='LANGUAGE'&&el.textContent?.trim().toUpperCase()!=='LANGUAGE')continue;
+      const er=el.getBoundingClientRect();
+      if(er.width>130||er.left>115||er.top>650)continue;
+      let chosen=null;
+      for(let parent=el,i=0;parent&&i<6;parent=parent.parentElement,i++){
+        const r=parent.getBoundingClientRect();
+        if(r.width>125||r.left>125||r.height>155)break;
+        if(parent.querySelector('select,[role="combobox"],button,[aria-label*="language" i]')){
+          chosen=parent;
+          break;
+        }
       }
-      if(node!==el&&node.querySelector('select,[role="combobox"],button')){
-        node.hidden=true;node.style.setProperty('display','none','important');
-        return true;
-      }
+      if(!chosen)continue;
+      chosen.hidden=true;
+      chosen.setAttribute('aria-hidden','true');
+      chosen.style.setProperty('display','none','important');
+      return true;
     }
     return false;
   }
