@@ -235,7 +235,7 @@ finally{
  result.checks.pairedReport=matching&&!!b.report&&!!result.report&&
   b.report.open===result.report.open;
  // Candidate must pass after trusted typing; production must reproduce the failure.
- result.checks.dropdown=!!result.dropdown?.pass&&b.dropdown?.pass===true;
+ result.checks.dropdown=!!result.dropdown?.pass&&b.dropdown?.pass===false;
  result.passed=Object.values(result.checks).every(Boolean)&&!result.failure;
  result.finishedAt=new Date().toISOString();
  await writeFile(out+'/results.json',JSON.stringify(result,null,2));
