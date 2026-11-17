@@ -10,7 +10,7 @@
   const LAYER='earthline-elder-tree-points-17097';
   const state={loaded:false,loading:null,manifest:null,all:[],active:[],lastSummary:null,dynamic:{worker:null,seq:0,pending:new Map(),key:'',result:null,promise:null,error:null,warmPromise:null,warmed:false,tileWarmKey:'',tileWarmPromise:null}};
   /* M7 temporary Elder Tree hover label; existing click details retain evidence distinctions. */
-  let elderHoverPopupM7=null,elderHoverBoundM7=false;
+  let elderHoverPopupM7=null,elderDetailPopupM17=null,elderHoverBoundM7=false;
   function dismissElderHoverM7(){try{elderHoverPopupM7?.remove()}catch(_){}elderHoverPopupM7=null}
 
   function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
@@ -272,6 +272,7 @@
           const f=e?.features?.[0],coords=f?.geometry?.coordinates;
           if(!f||!Array.isArray(coords)||coords.length<2)return;
           dismissElderHoverM7();
+          if(persistent){try{elderDetailPopupM17?.remove()}catch(_){}elderDetailPopupM17=null}
           try{
             // Keep the original Elder icon and evidence; show the long explanation only on click.
             const html=persistent?elderMessageForFeature(f):
@@ -283,7 +284,7 @@
               offset:14,maxWidth:persistent?'292px':'205px',
               anchor,className:'earthline-elder-triggered-popup'+(persistent?' earthline-elder-detail-popup':' earthline-elder-hover-popup')
             }).setLngLat(coords).setHTML(html).addTo(m);
-            if(!persistent)elderHoverPopupM7=popup;
+            if(persistent)elderDetailPopupM17=popup;else elderHoverPopupM7=popup;
           }catch(_){dismissElderHoverM7()}
         }
       if(!m.getLayer?.(LAYER)){
