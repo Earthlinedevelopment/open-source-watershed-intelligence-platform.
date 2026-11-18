@@ -188,8 +188,8 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
     refine_none_count=0
     refined_outside_bbox_count=0
     dedupe_rejected_count=0
-    below_bar_count=0
     refined_count=0
+    below_bar_count=0
     rejection_samples=[]
     for rank,(sc,r,c,cohort) in enumerate(ranked,1):
         ref=refine_candidate(r,c)
