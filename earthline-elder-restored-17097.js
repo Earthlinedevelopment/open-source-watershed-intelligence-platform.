@@ -808,3 +808,18 @@
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
+
+/* EARTHLINE 2026-11-18: Remove the unwanted floating swale GPS/icon pop-up only.
+   No changes to swale geometry, click targets, site boundary, map layers, or hydrology. */
+(function removeSwaleHoverPopup20261118(){
+  function remove(){
+    const popup=document.getElementById('earthlineSwaleGpsTooltip16070');
+    if(popup)popup.remove();
+  }
+  const style=document.createElement('style');
+  style.id='earthline-remove-swale-hover-popup-20261118';
+  style.textContent='#earthlineSwaleGpsTooltip16070{display:none!important}';
+  (document.head||document.documentElement).appendChild(style);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',remove,{once:true});
+  else remove();
+})();
