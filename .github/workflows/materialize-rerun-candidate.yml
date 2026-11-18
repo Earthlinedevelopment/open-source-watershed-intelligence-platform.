@@ -1,0 +1,87 @@
+name: Materialize exact uploaded rerun ZIP and test candidate
+on:
+  push:
+    branches: [candidate/property-rerun-fix-20261117]
+    paths: ['.github/workflows/materialize-rerun-candidate.yml']
+permissions:
+  contents: write
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      candidate_sha: ${{ steps.commit.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reconstruct and verify the uploaded ZIP before extracting
+        shell: bash
+        run: |
+          cat candidate-input/property-rerun-zip.part-*.b64 | base64 --decode > /tmp/earthline-property-rerun.zip
+          echo 'b2ac7d0e6837eaacb21e22a98e5010a8236e011ffd73e8a3006b66087e0c5b5f  /tmp/earthline-property-rerun.zip' | sha256sum --check
+          python3 - <<'PY'
+          import hashlib, pathlib, zipfile
+          z='/tmp/earthline-property-rerun.zip'
+          expected={
+            'index.html':'ae0421c7a659f6b8e86e',
+            'tests/earthline-live-site-test.mjs':'a9694d90e832f52d11f0',
+            '.github/workflows/earthline-candidate-test.yml':'c838c6752b82297e03c0',
+          }
+          with zipfile.ZipFile(z) as archive:
+              names={i.filename for i in archive.infolist() if not i.is_dir()}
+              assert names==set(expected), f'Unexpected ZIP files: {names}'
+              for name,short in expected.items():
+                  body=archive.read(name)
+                  digest=hashlib.sha256(body).hexdigest()
+                  assert digest.startswith(short), f'Checksum mismatch: {name}'
+                  target=pathlib.Path(name)
+                  target.parent.mkdir(parents=True,exist_ok=True)
+                  target.write_bytes(body)
+          wf=pathlib.Path('.github/workflows/earthline-candidate-test.yml')
+          old='branches: [candidate/property-rerun-fix]'
+          assert old in wf.read_text(), 'Expected branch trigger missing'
+          wf.write_text(wf.read_text().replace(old,'branches: [candidate/property-rerun-fix-20261117]'))
+          print('Verified candidate files extracted; only CI branch selector changed.')
+          PY
+          node --check tests/earthline-live-site-test.mjs
+      - name: Commit isolated candidate and remove transport files
+        id: commit
+        shell: bash
+        run: |
+          git config user.name earthline-candidate-bot
+          git config user.email earthline-candidate-bot@users.noreply.github.com
+          git add index.html tests/earthline-live-site-test.mjs .github/workflows/earthline-candidate-test.yml
+          git rm -r -- candidate-input
+          git commit -m "test(property): exact zipped candidate and connected-browser harness"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          git push origin HEAD:refs/heads/candidate/property-rerun-fix-20261117
+  browser:
+    needs: stage
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [desktop-chrome, android]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.stage.outputs.candidate_sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Browser exercise of pinned candidate on real HTTPS data services
+        env:
+          EARTHLINE_PROFILE: ${{ matrix.profile }}
+          EARTHLINE_PINNED: '1'
+        run: node tests/earthline-live-site-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: property-rerun-${{ matrix.profile }}
+          path: candidate-test-results/
+          retention-days: 14
