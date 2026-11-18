@@ -3,9 +3,14 @@ import json, math
 import numpy as np
 from scipy import ndimage
 
-METHOD="earthline-elder-tree-aoi-chmv2-v0.8-screen-fallback-refinement"
+METHOD="earthline-elder-tree-aoi-chmv2-v0.9-min-height-emergence"
 CURRENT_ELDER_TARGET_PER_HA=15.0
 FUTURE_ELDER_RATIO=2.5
+# Elder Tree candidate bar (approved Nov 17, 2026): a candidate must be at least this tall AND stand at least
+# this far above the median canopy height of its surroundings (18 m radius). Numbers are PROPOSED defaults
+# pending Jonathan's confirmation; they keep 96-100% of the published regional Elder points (Alaska 81%).
+ELDER_MIN_HEIGHT_M=8.0
+ELDER_MIN_EMERGENCE_M=3.0
 
 def hav(a,b):
     lon1,lat1=a;lon2,lat2=b;R=6371008.8
@@ -184,6 +189,7 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
     refined_outside_bbox_count=0
     dedupe_rejected_count=0
     refined_count=0
+    below_bar_count=0
     rejection_samples=[]
     for rank,(sc,r,c,cohort) in enumerate(ranked,1):
         ref=refine_candidate(r,c)
@@ -209,6 +215,10 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
         else:
             refined_count+=1
         structural,lon,lat,h,emerg,area,openf=ref
+        if not (h>=ELDER_MIN_HEIGHT_M and emerg>=ELDER_MIN_EMERGENCE_M):
+            below_bar_count+=1
+            if len(rejection_samples)<8: rejection_samples.append({"rank":rank,"reason":"below-elder-bar","height_m":round(float(h),2),"emergent_height_m":round(float(emerg),2),"cohort":cohort})
+            continue
         if not (minlon<=lon<=maxlon and minlat<=lat<=maxlat):
             refined_outside_bbox_count+=1
             if len(rejection_samples)<8: rejection_samples.append({"rank":rank,"reason":"refined-outside-bbox","screen_row":int(r),"screen_col":int(c),"lon":float(lon),"lat":float(lat),"cohort":cohort})
@@ -263,6 +273,9 @@ def detect_from_files(screen_path,oh,ow,native_path,nh,nw,meta_json,max_per_tile
       "refine_none_count":refine_none_count,
       "refined_outside_bbox_count":refined_outside_bbox_count,
       "dedupe_rejected_count":dedupe_rejected_count,
+      "below_elder_bar_count":below_bar_count,
+      "elder_min_height_m":ELDER_MIN_HEIGHT_M,
+      "elder_min_emergence_m":ELDER_MIN_EMERGENCE_M,
       "final_feature_count":len(feats),
       "rejection_samples":rejection_samples
     }
