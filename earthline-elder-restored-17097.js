@@ -264,30 +264,31 @@
             (!verified?'<div style="margin-top:4px;font:500 10px/1.35 Noto Sans,system-ui,sans-serif;color:#526159">Modeled tree; age not verified.</div>':'');
         }
         function popupPlacementOutsideProperty(coords){
-          const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
-          const md=(typeof M!=='undefined'&&M)||window.M||null;
-          const polygon=md?.analysisBoundaryLngLat;
-          if(tier!=='property'||!Array.isArray(polygon)||polygon.length<3)return {lngLat:coords,anchor:'bottom'};
-          const pts=polygon.map(p=>{
-            if(!Array.isArray(p)||p.length<2)return null;
-            const projected=m.project(p);
-            return Number.isFinite(projected?.x)&&Number.isFinite(projected?.y)?projected:null;
-          }).filter(Boolean);
-          if(pts.length<3)return {lngLat:coords,anchor:'bottom'};
-          const minX=Math.min(...pts.map(p=>p.x)),maxX=Math.max(...pts.map(p=>p.x));
-          const minY=Math.min(...pts.map(p=>p.y)),maxY=Math.max(...pts.map(p=>p.y));
-          const width=m.getContainer().clientWidth,height=m.getContainer().clientHeight;
-          const margin=16,popupWidth=205;
-          const rightRoom=width-maxX,leftRoom=minX;
-          const y=Math.max(90,Math.min(height-30,(minY+maxY)/2));
-          let x,anchor;
-          if(rightRoom>=popupWidth+margin+8){x=maxX+margin;anchor='bottom-left'}
-          else if(leftRoom>=popupWidth+margin+8){x=minX-margin;anchor='bottom-right'}
-          else{
-            /* Keep it compact rather than positioning over the parcel. */
-            return null;
-          }
-          return {lngLat:m.unproject([x,y]),anchor};
+          /* A placement failure must NEVER suppress the Elder Tree popup. */
+          const fallback={lngLat:coords,anchor:'bottom',offset:12};
+          try{
+            const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
+            const md=(typeof M!=='undefined'&&M)||window.M||null;
+            const polygon=md?.analysisBoundaryLngLat;
+            if(tier!=='property'||!Array.isArray(polygon)||polygon.length<3)return fallback;
+            const pts=polygon.map(p=>{
+              if(!Array.isArray(p)||p.length<2)return null;
+              const q=m.project(p);
+              return Number.isFinite(q?.x)&&Number.isFinite(q?.y)?q:null;
+            }).filter(Boolean);
+            if(pts.length<3)return fallback;
+            const minX=Math.min(...pts.map(p=>p.x)),maxX=Math.max(...pts.map(p=>p.x));
+            const minY=Math.min(...pts.map(p=>p.y)),maxY=Math.max(...pts.map(p=>p.y));
+            const width=m.getContainer().clientWidth,height=m.getContainer().clientHeight;
+            const gap=14,popupW=205,popupH=105;
+            const cy=Math.max(8,Math.min(height-popupH-8,(minY+maxY)/2-popupH/2));
+            const cx=Math.max(popupW/2+8,Math.min(width-popupW/2-8,(minX+maxX)/2));
+            if(width-maxX>=popupW+gap+8)return {lngLat:m.unproject([maxX+gap,cy]),anchor:'top-left',offset:0};
+            if(minX>=popupW+gap+8)return {lngLat:m.unproject([minX-gap,cy]),anchor:'top-right',offset:0};
+            if(minY>=popupH+gap+8)return {lngLat:m.unproject([cx,minY-gap]),anchor:'bottom',offset:0};
+            if(height-maxY>=popupH+gap+8)return {lngLat:m.unproject([cx,maxY+gap]),anchor:'top',offset:0};
+          }catch(_){}
+          return fallback;
         }
         function showElderTreePopup(e,persistent){
           const f=e?.features?.[0],coords=f?.geometry?.coordinates;
@@ -295,10 +296,9 @@
           dismissElderHoverM7();
           try{
             const placement=popupPlacementOutsideProperty(coords);
-            if(!placement)return;
             const popup=new mapboxgl.Popup({
               closeButton:!!persistent,closeOnClick:!!persistent,
-              offset:0,anchor:placement.anchor,maxWidth:'205px',
+              offset:placement.offset??0,anchor:placement.anchor,maxWidth:'205px',
               className:'earthline-elder-triggered-popup'
             }).setLngLat(placement.lngLat).setHTML(elderMessageForFeature(f)).addTo(m);
             if(!persistent)elderHoverPopupM7=popup;
