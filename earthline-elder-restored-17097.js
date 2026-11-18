@@ -253,30 +253,54 @@
         src=m.getSource?.(SOURCE);
       }
         /* Elder information is user-triggered only: full message on hover, click or tap. */
+        /* Compact Elder Tree label. Place its popup outside the property polygon
+           when the map has enough room; never cover the 20-acre analysis. */
         function elderMessageForFeature(f){
           const p=f.properties||{},verified=isVerified(p),conf=elderConfidence(p);
-          const title=verified?'VERIFIED ELDER TREE':classify(p);
-          const confidence=verified?'Verified external/field evidence':(conf==null?'Confidence not available':'Elder Tree Confidence '+conf+'%');
-          const h=Number(p.height_m);
-          const body='<div style="font:900 12px/1.2 system-ui,sans-serif;color:#245e39">ELDER TREE</div>'+
-            '<div style="margin-top:4px;font:700 13px/1.25 system-ui,sans-serif;color:#17323d">'+esc(title)+'</div>'+
-            '<div style="margin-top:5px;font:800 12px/1.2 system-ui,sans-serif;color:#2f6f46">'+esc(confidence)+'</div>'+
-            (Number.isFinite(h)?'<div style="margin-top:4px;font:600 11px/1.35 system-ui,sans-serif">Canopy height: '+esc(h.toFixed(1))+' m</div>':'')+
-            '<div style="margin-top:4px;font:500 10px/1.35 system-ui,sans-serif;color:#526159">'+esc(p.source_name||'Earthline Elder Tree evidence')+'</div>'+
-            (!verified?'<div style="margin-top:6px;font:500 9.5px/1.35 system-ui,sans-serif;color:#6e766a">Elder Tree Confidence is the tree’s local structural-evidence percentile compared with other detected tree/canopy structures in the same analyzed source area; it is not a probability of age or ancient/veteran status.</div>':'')+
-            '<div style="margin-top:9px;padding:8px 9px;border:1px solid #b88a35;border-radius:6px;background:#f4f6ee;color:#213f2e;font:550 11px/1.5 Noto Sans,system-ui,sans-serif"><strong>What are Elder Trees?</strong> Long-lived trees can support forest structure, roots and soil moisture. Earthline distinguishes externally verified Elder Trees from remotely modeled candidates; a candidate icon does not establish a tree’s age.<div style="margin-top:5px"><a href="#swales-explained" style="font-weight:800;color:#215a3f">Learn more about Elder Trees</a></div></div>';
-
-          return body;
+          const title=verified?'VERIFIED ELDER TREE':'ELDER TREE CANDIDATE';
+          const confidence=verified?'Field verified':(conf==null?'Confidence unavailable':'Confidence '+conf+'%');
+          return '<div style="font:800 12px/1.3 Noto Sans,system-ui,sans-serif;color:#173b2a">'+esc(title)+'</div>'+
+            '<div style="margin-top:4px;font:600 11px/1.35 Noto Sans,system-ui,sans-serif;color:#315843">'+esc(confidence)+'</div>'+
+            (!verified?'<div style="margin-top:4px;font:500 10px/1.35 Noto Sans,system-ui,sans-serif;color:#526159">Modeled tree; age not verified.</div>':'');
+        }
+        function popupPlacementOutsideProperty(coords){
+          const tier=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase();
+          const md=(typeof M!=='undefined'&&M)||window.M||null;
+          const polygon=md?.analysisBoundaryLngLat;
+          if(tier!=='property'||!Array.isArray(polygon)||polygon.length<3)return {lngLat:coords,anchor:'bottom'};
+          const pts=polygon.map(p=>{
+            if(!Array.isArray(p)||p.length<2)return null;
+            const projected=m.project(p);
+            return Number.isFinite(projected?.x)&&Number.isFinite(projected?.y)?projected:null;
+          }).filter(Boolean);
+          if(pts.length<3)return {lngLat:coords,anchor:'bottom'};
+          const minX=Math.min(...pts.map(p=>p.x)),maxX=Math.max(...pts.map(p=>p.x));
+          const minY=Math.min(...pts.map(p=>p.y)),maxY=Math.max(...pts.map(p=>p.y));
+          const width=m.getContainer().clientWidth,height=m.getContainer().clientHeight;
+          const margin=16,popupWidth=205;
+          const rightRoom=width-maxX,leftRoom=minX;
+          const y=Math.max(90,Math.min(height-30,(minY+maxY)/2));
+          let x,anchor;
+          if(rightRoom>=popupWidth+margin+8){x=maxX+margin;anchor='bottom-left'}
+          else if(leftRoom>=popupWidth+margin+8){x=minX-margin;anchor='bottom-right'}
+          else{
+            /* Keep it compact rather than positioning over the parcel. */
+            return null;
+          }
+          return {lngLat:m.unproject([x,y]),anchor};
         }
         function showElderTreePopup(e,persistent){
           const f=e?.features?.[0],coords=f?.geometry?.coordinates;
           if(!f||!Array.isArray(coords)||coords.length<2)return;
           dismissElderHoverM7();
           try{
+            const placement=popupPlacementOutsideProperty(coords);
+            if(!placement)return;
             const popup=new mapboxgl.Popup({
               closeButton:!!persistent,closeOnClick:!!persistent,
-              offset:12,className:'earthline-elder-triggered-popup'
-            }).setLngLat(coords).setHTML(elderMessageForFeature(f)).addTo(m);
+              offset:0,anchor:placement.anchor,maxWidth:'205px',
+              className:'earthline-elder-triggered-popup'
+            }).setLngLat(placement.lngLat).setHTML(elderMessageForFeature(f)).addTo(m);
             if(!persistent)elderHoverPopupM7=popup;
           }catch(_){dismissElderHoverM7()}
         }
