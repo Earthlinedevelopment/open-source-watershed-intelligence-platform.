@@ -59,5 +59,78 @@ once(a5, '''earthlineSwaleGeoJSON=function(){
       }catch(_){}
       return filter(base()||{type:"FeatureCollection",features:[]});
     };''')
+# 6. The old dashboard installs globe-reset callbacks on map load, style.load,
+#    and delayed timers (100, 500, 1400 ms). A search can move the map before
+#    these callbacks fire; do not ever reset an already navigated Property map.
+#    Preserve the original idle startup globe exactly once. No swale science edits.
+a6 = 'function initRealGlobe16233(){const m=panelMap16188();if(!m)return false;'
+b6 = '''let earthlineStartupGlobeSettled16601=false;
+  function initRealGlobe16233(){
+    const m=panelMap16188();
+    if(!m||earthlineStartupGlobeSettled16601)return false;
+    // All callbacks share one owner, even when a late search means startup is skipped.
+    earthlineStartupGlobeSettled16601=true;
+    let moved=false;
+    try{
+      const c=m.getCenter?.(),z=Number(m.getZoom?.());
+      if(c&&Number.isFinite(Number(c.lng))&&Number.isFinite(Number(c.lat))){
+        const lng=Number(c.lng),lat=Number(c.lat);
+        const initial=Math.abs(lng+102)<2&&Math.abs(lat-20)<2;
+        const alreadyGlobe=Math.abs(lng)<2&&Math.abs(lat-18)<2;
+        moved=!initial&&!alreadyGlobe;
+      }
+      if(Number.isFinite(z)&&z>3.4)moved=true;
+    }catch(_){}
+    const searchActive=!!(
+      (M&&Number(M.searchGen||0)>0)||
+      String((document.getElementById("searchInput")||{}).value||"").trim()||
+      window.EARTHLINE_PROPERTY_TARGET_16201||
+      (document.documentElement.dataset.earthlineAnalysisTier==="property")||
+      moved
+    );
+    if(searchActive)return false;'''
+once(a6,b6)
+
+# 7. Existing Status / report owner must use the SAME run-scoped acquisition
+#    evidence that the candidate engine used, not the old on-screen vector query.
+#    This replaces the evidence() owner; it does not append another status UI.
+a7 = '''  function evidence(){
+    const m=model(),c=m&&m.vectorNoBuildCoverage||null;if(!c)return null;'''
+b7 = '''  function evidence(){
+    const m=model(),eng=m&&m.propertySwaleEngine16600||null;
+    if(eng&&Number(eng.searchGen)===Number(m.searchGen)){
+      const a=eng.acquisition||{};
+      const sourceTier=String(a.sourceTier||"");
+      const acquisitionResult=String(a.status||"failed");
+      const valid=eng.verified===true&&
+        (sourceTier==="authoritative-local"||sourceTier==="open-data")&&
+        (acquisitionResult==="features-found"||acquisitionResult==="screened-clear"||acquisitionResult==="clear");
+      if(!valid)return Object.freeze({
+        build:BUILD,sourceTier,acquisitionResult:"failed",kind:"failed",
+        label:"EXCLUSION DATA QUERY FAILED · OUTPUT BLOCKED",
+        detail:"The clean Property engine could not complete its required road, building and water check: "+String(eng.code||"unverified")+". No verified swales may publish.",
+        exclusionVerified:false,publicationAllowed:false,sourceFeatureCount:0,processedFeatureCount:0
+      });
+      const authoritative=sourceTier==="authoritative-local"&&a.vermontVerified===true;
+      const kind=authoritative?"authoritative":"open-data";
+      const label=authoritative?"AUTHORITATIVE LOCAL DATA":
+        (acquisitionResult==="screened-clear"?"OPEN-DATA SCREENING · NO MAPPED EXCLUSIONS RETURNED · FIELD VERIFICATION REQUIRED":
+        "OPEN-DATA SCREENING · FIELD VERIFICATION REQUIRED");
+      const detail=authoritative
+        ?"Authoritative Vermont E911 / VCGI road, driveway and building evidence was applied to this Property prescription."
+        :(acquisitionResult==="screened-clear"
+          ?"Road, building and water sources were queried successfully, but no mapped exclusions were found. Coverage may be incomplete; field verification is required before siting."
+          :"Available road, building and water geometry was applied to the clean engine's verified Property screening. Coverage may be incomplete; field verification is required before siting.");
+      const counts=a.counts||{};
+      const sourceFeatureCount=Object.keys(counts).reduce((sum,key)=>sum+(Number(counts[key])||0),0);
+      return Object.freeze({
+        build:BUILD,sourceTier,acquisitionResult,kind,label,detail,
+        exclusionVerified:authoritative,publicationAllowed:true,
+        sourceFeatureCount,processedFeatureCount:Number(eng.audit&&eng.audit.checked||0)
+      });
+    }
+    const c=m&&m.vectorNoBuildCoverage||null;if(!c)return null;'''
+once(a7,b7)
+
 open(dst, 'w', encoding='utf-8').write(s)
 print('wrote', dst, 'sha256', hashlib.sha256(s.encode('utf-8')).hexdigest(), 'bytes', len(s.encode('utf-8')))

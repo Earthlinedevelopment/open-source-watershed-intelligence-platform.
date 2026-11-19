@@ -137,14 +137,18 @@
     const cov16600=out.evidence.coverage||{},slopeShare16600=cov16600.insideCells?(Number(cov16600.slopeOver4Total||0)/cov16600.insideCells):0;
     M.prescriptionZeroReason15870=corridors.length?null:((slopeShare16600>=0.5||slopeSide>=excludeSide)?"no-suitable-slope-corridors":"all-candidates-excluded");
     if(corridors.length)M.prescriptionHalt15870=null;
+    /* Final publication counts are the audit/lock product, not the pre-audit proposal.
+       Preserve raw engine count for diagnostics, but never claim raw proposals were drawn. */
+    const finalMessage16601=String(out.message||"").replace(/\b\d+\s+proposed swale alignments\b/,
+      String(corridors.length)+" proposed swale alignments");
     M.propertySwaleEngine16600={
       build:"EARTHLINE 16600",searchGen:Number(myGen),verified:true,
-      engineVersion:E.VERSION,bridgeVersion:B.VERSION,determinismHash:out.determinismHash,message:out.message,
+      engineVersion:E.VERSION,bridgeVersion:B.VERSION,determinismHash:out.determinismHash,message:finalMessage16601,
       acquisition:{status:acq.status,sourceTier:acq.sourceTier,counts:acq.counts,tiles:acq.tiles,zoom:acq.zoom,vermontApplicable:vermont,vermontVerified,
         extraVermontFeatures:extras.vermontFeatureCount,manualNoBuild:extras.manualCount,source:"mapbox-streets-v8 vector tiles (direct fetch, fixed zoom 15)"},
       rejections:rej,coverage:out.evidence.coverage,evidence:out.evidence,params,
       audit:{checked:audit.checked,rejected:audit.rejected,minClearanceM:audit.minClearanceM,counts:audit.counts},
-      engineSwales:out.swales.length,publishedSwales:corridors.length,
+      rawEngineSwales:out.swales.length,engineSwales:corridors.length,publishedSwales:corridors.length,
       features:orderedFeatures,
       timing:{acquireAndRunMs:Math.round(performance.now()-t0),totalMs:Math.round(performance.now()-started)},
       at:new Date().toISOString()

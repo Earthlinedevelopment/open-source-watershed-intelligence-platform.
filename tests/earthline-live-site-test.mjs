@@ -299,8 +299,20 @@ async function property(browser,site){
       if(site.at){ // move the map so the crosshair sits on the coordinate, as a visitor does by dragging
         row.reachedBy='map moved to coordinate';
         await h.page.evaluate(c=>{const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;
-          if(!map)throw Error('map not available');map.jumpTo({center:c,zoom:17});},site.at);
+          if(!map)throw Error('map not available');
+          // A real map drag releases the country-center lock then commits the
+          // new crosshair/Property target. Scripted jumpTo alone skips dragend.
+          window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;
+          map.jumpTo({center:c,zoom:17});
+          map.fire?.('dragend');
+        },site.at);
         await sleep(5000);
+        row['targetBeforeRun'+run]=await h.page.evaluate(()=>{
+          const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+          const c=m?.getCenter?.()||null,t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+          return {camera:c?{lng:c.lng,lat:c.lat}:null,
+            target:t?{lng:t.lng,lat:t.lat,source:t.source,code:t.code}:null};
+        });
       }else{row.reachedBy='address typed in search';await typeAndRun(h.page,site.q);}
       row['run'+run]=await propertyOnce(h.page,!!site.at);
       const R=row['run'+run];

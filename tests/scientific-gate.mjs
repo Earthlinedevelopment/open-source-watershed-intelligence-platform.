@@ -26,6 +26,20 @@ for(const p of browsers){
    const a=runs[n],t='run '+(n+1);
    if(!a){fail(p,site,t+': missing result');continue;}
    if(a.tier!=='property'||a.propertyAudit?.result!==true)fail(p,site,t+': Property result not successfully published');
+   // Compare to independent user-requested numeric coordinates, not solely the
+   // page's camera-vs-own-anchor check (both can be consistently wrong).
+   const requested=String(row.query||'').match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+   if(requested){
+     const lat=Number(requested[1]),lng=Number(requested[2]);
+     const c=a.center||null,selected=row['targetBeforeRun'+(n+1)]?.target||null;
+     if(!c||!Number.isFinite(c.lat)||!Number.isFinite(c.lng)||
+        Math.abs(c.lat-lat)>0.0003||Math.abs(c.lng-lng)>0.0003)
+       fail(p,site,t+': camera differs from requested Property coordinates '+JSON.stringify(c));
+     if(row.reachedBy==='map moved to coordinate'&&(!selected||
+        Math.abs(selected.lat-lat)>0.0003||Math.abs(selected.lng-lng)>0.0003))
+       fail(p,site,t+': saved Property target differs from requested crosshair '+JSON.stringify(selected));
+   }
+
    // Final Elder state and identity are required before the test can claim stability.
    const elder=a.elderFinal;
    if(!elder||!['committed','failed'].includes(elder.state))

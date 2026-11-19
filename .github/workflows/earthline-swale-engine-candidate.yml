@@ -26,12 +26,14 @@ jobs:
           fi
           got=$(sha256sum index.html | cut -d' ' -f1)
           echo "index.html sha256: $got"
-          [ "$got" = "626583a1e478767e498ca2da442277af0e99aa364ff16d5e3e60a4fdceecefae" ] || { echo "index.html is neither the b71c5b2 original nor the expected candidate"; exit 1; }
+          [ "$got" = "eb0c30666dc87b71f695aeffa3304ac87624d08d7dc0ec9a0d33087abef551d4" ] || { echo "index.html is neither the b71c5b2 original nor the expected candidate"; exit 1; }
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
       - name: Engine tests (R1-R13)
         run: node tests/engine-tests.js
+      - name: Cross-module candidate scientific contract
+        run: node tests/v14-integration-contract.mjs
       - name: Elder worker recovery and approved-popup JS contract
         run: node tests/elder-worker-recovery.mjs
       - name: Fixture tile is rebuilt by the independent encoder, then decoder and audit tests
@@ -69,7 +71,7 @@ jobs:
           fi
           got=$(sha256sum index.html | cut -d' ' -f1)
           echo "index.html sha256: $got"
-          [ "$got" = "626583a1e478767e498ca2da442277af0e99aa364ff16d5e3e60a4fdceecefae" ] || { echo "index.html is neither the b71c5b2 original nor the expected candidate"; exit 1; }
+          [ "$got" = "eb0c30666dc87b71f695aeffa3304ac87624d08d7dc0ec9a0d33087abef551d4" ] || { echo "index.html is neither the b71c5b2 original nor the expected candidate"; exit 1; }
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
