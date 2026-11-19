@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+"""Builds the swale-engine candidate index.html from the LIVE page b71c5b2 (index.html sha256 4bad128f...4322).
+Usage: python3 tools/apply-swale-engine-candidate.py <path-to-b71c5b2-index.html> <output-index.html>
+Five anchored insertions, each asserted to match exactly once. Nothing else in the page changes."""
+import hashlib, sys, os, re
+src, dst = sys.argv[1], sys.argv[2]
+root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_SHA = '4bad128f0e1342c222cc2d25e05e0527d086280f4ca8cd24b0597ae0f37e4322'
+s = open(src, encoding='utf-8').read()
+got = hashlib.sha256(s.encode('utf-8')).hexdigest()
+if got != BASE_SHA:
+    sys.exit('BASE MISMATCH: %s != %s (start from index.html at b71c5b2)' % (got, BASE_SHA))
+def sha8(p): return hashlib.sha256(open(os.path.join(root, p), 'rb').read()).hexdigest()[:8]
+adapter = open(os.path.join(root, 'tools/adapter-16600.js'), encoding='utf-8').read()
+lock = open(os.path.join(root, 'tools/lock-16600.js'), encoding='utf-8').read()
+def once(a, b):
+    global s
+    n = s.count(a)
+    if n != 1: sys.exit('ANCHOR COUNT %d (need 1): %s' % (n, a[:80]))
+    s = s.replace(a, b)
+
+# 1. load the engine and the bridge right after Mapbox GL (synchronous, so they exist before any Property run)
+a1 = '<script crossorigin="anonymous" src="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.js"></script>'
+once(a1, a1 + '\n<script src="earthline-property-swales.js?v=' + sha8('earthline-property-swales.js') + '"></script>'
+          '\n<script src="earthline-property-swale-bridge.js?v=' + sha8('earthline-property-swale-bridge.js') + '"></script>')
+
+# 2. connection code, placed immediately before the prescriber so it shares its scope
+a2 = '  async function prescribeSwales15778(myGen=M.searchGen){'
+once(a2, adapter + '\n' + a2)
+
+# 3. the branch: Property runs use the clean engine; Regional tiles keep the existing path untouched
+a3 = '    // BUILD-CHECK-15769 — deterministic performance budget.'
+once(a3, '''    /* EARTHLINE 16600 — single connection point. Property: clean swale engine (R1-R13). Regional tiles: unchanged path below. */
+    {
+      const regionalTile16600=!!(M.loc&&(/Regional Opportunity Tile/i.test(String(M.loc.name||""))||(Array.isArray(M.loc.zones)&&M.loc.zones.includes("Regional Tile"))));
+      if(!regionalTile16600)return await earthlineRunCleanSwaleEngine16600(myGen,started);
+    }
+
+''' + a3)
+
+# 4. replace the layered Property lock for engine results (the original lock stays for anything else)
+a4 = '  function earthlineLockPropertyResult15815(force=false){\n'
+once(a4, lock + a4 + '''    {
+      const eng16600=M&&M.propertySwaleEngine16600||null;
+      if(eng16600&&eng16600.verified===true&&Number(eng16600.searchGen)===Number(M.searchGen))return earthlineCommitEngineLock16600(eng16600);
+    }
+''')
+# 5. display: the published engine result is drawn as published. The layered display vetoes (on-screen layer queries and
+#    queryRenderedFeatures regex checks) wrap earthlineSwaleGeoJSON() three deep; for a verified engine result they are bypassed,
+#    for everything else (Regional, unverified runs) the existing chain is unchanged.
+a5 = 'earthlineSwaleGeoJSON=function(){return filter(base()||{type:"FeatureCollection",features:[]});};'
+once(a5, '''earthlineSwaleGeoJSON=function(){
+      /* EARTHLINE 16600 — a verified clean-engine result is returned exactly as published (no display clipping against on-screen layers). */
+      try{
+        const eng16600=M&&M.propertySwaleEngine16600;
+        if(eng16600&&eng16600.verified===true&&Number(eng16600.searchGen)===Number(M.searchGen)&&
+           M.propertyResultLock15815&&M.propertyResultLock15815.safetyVerified===true&&
+           M.authoritativeSafeSwales15815&&Array.isArray(M.authoritativeSafeSwales15815.features))return M.authoritativeSafeSwales15815;
+      }catch(_){}
+      return filter(base()||{type:"FeatureCollection",features:[]});
+    };''')
+open(dst, 'w', encoding='utf-8').write(s)
+print('wrote', dst, 'sha256', hashlib.sha256(s.encode('utf-8')).hexdigest(), 'bytes', len(s.encode('utf-8')))
