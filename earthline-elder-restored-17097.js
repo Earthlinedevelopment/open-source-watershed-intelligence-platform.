@@ -258,37 +258,30 @@
           const p=f.properties||{},verified=isVerified(p),conf=elderConfidence(p);
           const title=verified?'VERIFIED ELDER TREE':'ELDER TREE CANDIDATE';
           const confidence=verified?'Field verified':(conf==null?'Confidence unavailable':'Confidence '+conf+'%');
-          return '<div style="font:800 9px/1.15 Noto Sans,system-ui,sans-serif;color:#173b2a;overflow-wrap:anywhere;padding-right:8px">'+esc(title)+'</div>'+
-            '<div style="margin-top:2px;font:600 8px/1.15 Noto Sans,system-ui,sans-serif;color:#315843">'+esc(confidence)+'</div>'+
-            (!verified?'<div style="margin-top:2px;font:500 8px/1.15 Noto Sans,system-ui,sans-serif;color:#526159">Modeled tree; age not verified.</div>':'');
+          return '<div style="font:800 8px/1.13 Noto Sans,system-ui,sans-serif;color:#173b2a;overflow-wrap:anywhere;white-space:normal;padding-right:9px">'+esc(title)+'</div>'+
+            '<div style="margin-top:2px;font:600 7px/1.12 Noto Sans,system-ui,sans-serif;color:#315843;white-space:normal">'+esc(confidence)+'</div>'+
+            (!verified?'<div style="margin-top:2px;font:500 7px/1.12 Noto Sans,system-ui,sans-serif;color:#526159;white-space:normal">Modeled tree; age not verified.</div>':'');
         }
         function popupPlacementInsideProperty(coords){
           try{
             const md=(typeof M!=='undefined'&&M)||window.M||null;
-            const isProperty=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property';
-            if(!isProperty)return null;
+            if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()!=='property')return null;
             const polygon=md?.analysisBoundaryLngLat;
-            /* Never place against a guessed boundary: absent property geometry means no popup. */
             if(!Array.isArray(polygon)||polygon.length<3)return null;
             const pts=polygon.map(p=>{
               if(!Array.isArray(p)||p.length<2)return null;
-              const q=m.project(p);
-              return Number.isFinite(q?.x)&&Number.isFinite(q?.y)?q:null;
+              const q=m.project(p);return Number.isFinite(q?.x)&&Number.isFinite(q?.y)?q:null;
             }).filter(Boolean);
             if(pts.length<3)return null;
-            const selected=m.project(coords);
-            const minX=Math.min(...pts.map(p=>p.x)),maxX=Math.max(...pts.map(p=>p.x));
+            const q=m.project(coords),minX=Math.min(...pts.map(p=>p.x)),maxX=Math.max(...pts.map(p=>p.x));
             const minY=Math.min(...pts.map(p=>p.y)),maxY=Math.max(...pts.map(p=>p.y));
-            /* Only tree points inside the visible 20-acre boundary may open the label. */
-            if(selected.x<minX||selected.x>maxX||selected.y<minY||selected.y>maxY)return null;
-            const width=m.getContainer().clientWidth,height=m.getContainer().clientHeight;
-            const popupW=145,popupH=76,pad=9;
-            const left=Math.max(minX+pad,0+pad),right=Math.min(maxX-pad,width-pad)-popupW;
-            const top=Math.max(minY+pad,0+pad),bottom=Math.min(maxY-pad,height-pad)-popupH;
-            if(right<left||bottom<top)return null;
-            const x=Math.min(right,Math.max(left,selected.x-popupW/2));
-            const y=Math.min(bottom,Math.max(top,selected.y-popupH-12));
-            return {lngLat:m.unproject([x,y]),anchor:'top-left',offset:0};
+            if(q.x<minX||q.x>maxX||q.y<minY||q.y>maxY)return null;
+            const vw=m.getContainer().clientWidth,vh=m.getContainer().clientHeight;
+            const w=118,h=80,pad=10;
+            const l=Math.max(minX+pad,pad),r=Math.min(maxX-pad,vw-pad)-w;
+            const t=Math.max(minY+pad,pad),bot=Math.min(maxY-pad,vh-pad)-h;
+            if(l>r||t>bot)return null;
+            return {lngLat:m.unproject([Math.min(r,Math.max(l,q.x-w/2)),Math.min(bot,Math.max(t,q.y-h-8))]),anchor:'top-left',offset:0};
           }catch(_){return null}
         }
         function showElderTreePopup(e,persistent){
@@ -298,29 +291,29 @@
           try{
             const placement=popupPlacementInsideProperty(coords);
             if(!placement)return;
-            const popup=new mapboxgl.Popup({
-              closeButton:!!persistent,closeOnClick:!!persistent,
-              offset:0,anchor:'top-left',maxWidth:'145px',
-              className:'earthline-elder-triggered-popup',
-              focusAfterOpen:false
+            const popup=new mapboxgl.Popup({closeButton:!!persistent,closeOnClick:!!persistent,
+              offset:0,anchor:'top-left',maxWidth:'118px',className:'earthline-elder-triggered-popup',focusAfterOpen:false
             }).setLngLat(placement.lngLat).setHTML(elderMessageForFeature(f)).addTo(m);
             const element=popup.getElement?.();
             if(element){
-              element.style.setProperty('width','145px','important');
-              element.style.setProperty('max-width','145px','important');
+              /* The site's older popup stylesheet overrides BOTH the shell and the content. */
+              const st=document.getElementById('earthline-elder-compact-popup-20261119')||document.createElement('style');
+              st.id='earthline-elder-compact-popup-20261119';
+              st.textContent='.mapboxgl-popup.earthline-elder-triggered-popup{width:118px!important;min-width:0!important;max-width:118px!important;box-sizing:border-box!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;} .mapboxgl-popup.earthline-elder-triggered-popup .mapboxgl-popup-content{width:118px!important;min-width:0!important;max-width:118px!important;box-sizing:border-box!important;padding:5px 7px!important;white-space:normal!important;overflow-wrap:anywhere!important;} .mapboxgl-popup.earthline-elder-triggered-popup .mapboxgl-popup-close-button{font-size:10px!important;width:13px!important;height:13px!important;line-height:13px!important;padding:0!important;right:2px!important;top:2px!important;} .mapboxgl-popup.earthline-elder-triggered-popup .mapboxgl-popup-tip{display:none!important;}';
+              if(!st.isConnected)document.head.appendChild(st);
+              element.style.setProperty('width','118px','important');
               element.style.setProperty('min-width','0','important');
+              element.style.setProperty('max-width','118px','important');
+              element.style.setProperty('box-sizing','border-box','important');
+              element.style.setProperty('background','transparent','important');
+              element.style.setProperty('box-shadow','none','important');
               const inner=element.querySelector('.mapboxgl-popup-content');
               if(inner){
-                inner.style.setProperty('width','145px','important');
+                inner.style.setProperty('width','118px','important');
+                inner.style.setProperty('min-width','0','important');
+                inner.style.setProperty('max-width','118px','important');
                 inner.style.setProperty('box-sizing','border-box','important');
-                inner.style.setProperty('padding','6px 8px','important');
-                inner.style.setProperty('max-width','145px','important');
-              }
-              const close=element.querySelector('.mapboxgl-popup-close-button');
-              if(close){
-                close.style.setProperty('font-size','11px','important');
-                close.style.setProperty('width','14px','important');
-                close.style.setProperty('height','14px','important');
+                inner.style.setProperty('padding','5px 7px','important');
               }
             }
             if(!persistent)elderHoverPopupM7=popup;
