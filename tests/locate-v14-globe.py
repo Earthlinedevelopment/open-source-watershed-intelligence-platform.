@@ -33,3 +33,13 @@ while True:
  if m<0:break
  print("offset",m,"context",s[max(0,m-900):m+1100].replace("\n"," "))
  p=m+1
+
+print("\n=== SCIENTIFIC STATUS/COUNT TEXT ===")
+for token in ["publication must remain blocked","publication blocked","No qualifying swales","proposed swale alignments","exclusion evidence","exclusionVerified"]:
+ print("\nSEARCH",token)
+ start=0
+ for hit in range(15):
+  p=s.lower().find(token.lower(),start)
+  if p<0:break
+  print("offset",p,"line",s.count("\n",0,p)+1,s[max(0,p-400):p+480].replace("\n"," "))
+  start=p+len(token)
