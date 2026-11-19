@@ -1,0 +1,40 @@
+name: Firefox Mesa WebGL diagnostic
+on:
+  push:
+    branches: [diagnose/firefox-webgl-20261119]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  firefox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      EARTHLINE_PROFILE: desktop-firefox
+      EARTHLINE_HEADFUL: '1'
+      LIBGL_ALWAYS_SOFTWARE: '1'
+      MOZ_WEBRENDER: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Rebuild exact swale candidate
+        run: |
+          python3 tools/apply-swale-engine-candidate.py index.html /tmp/candidate.html
+          cp /tmp/candidate.html index.html
+          printf '%s\n' 'eb0c30666dc87b71f695aeffa3304ac87624d08d7dc0ec9a0d33087abef551d4  index.html' | sha256sum -c
+      - name: Install Firefox and software OpenGL
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libosmesa6 libgl1-mesa-dri xvfb
+          npm install --no-save playwright
+          npx playwright install --with-deps firefox
+      - name: Verify actual WebGL and Earthline globe in Firefox under Xvfb
+        run: xvfb-run -a node tests/earthline-startup-diagnostic.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: firefox-mesa-startup
+          path: startup-diagnostic/
+          retention-days: 7
