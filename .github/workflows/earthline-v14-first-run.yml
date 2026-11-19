@@ -1,0 +1,76 @@
+name: Earthline v1.4 first-run globe regression
+on:
+  push:
+    branches: [diagnose/v14-globe-root-20261120]
+    paths:
+      - 'tools/apply-swale-engine-candidate.py'
+      - 'tests/v14-first-run-camera-gate.mjs'
+      - '.github/workflows/earthline-v14-first-run.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    name: camera gate ${{ matrix.profile }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [desktop-chrome, desktop-safari, iphone]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Rebuild candidate exact base, record hash, assert one-shot globe
+        run: |
+          python3 tools/apply-swale-engine-candidate.py index.html /tmp/v14.html
+          cp /tmp/v14.html index.html
+          sha256sum index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          assert s.count('let earthlineStartupGlobeSettled16601=false')==1
+          assert s.count('if(!m||earthlineStartupGlobeSettled16601)return false')==1
+          assert s.count('initRealGlobe16233()') >= 1
+          print('CAMERA_GUARD_PROVEN')
+          PY
+      - name: Install browser and decoder
+        run: |
+          npm install --no-save playwright @mapbox/vector-tile@1.3.1 pbf@3.2.1
+          npx playwright install --with-deps chromium webkit
+      - name: Test two photographed Property sites, first and repeat run
+        env:
+          EARTHLINE_PROFILE: ${{ matrix.profile }}
+          EARTHLINE_PINNED: '1'
+          EARTHLINE_PINNED_EXTRA: earthline-property-swales.js,earthline-property-swale-bridge.js,earthline-elder-restored-17097.js,earthline-elder-worker-17129.js
+          EARTHLINE_RESULTS_DIR: v14-camera-results
+          EARTHLINE_SITES: newyork-your-screenshot-1,arkansas-your-screenshot-1
+          EARTHLINE_SKIP_REGIONAL: '1'
+          EARTHLINE_FAIL_CLOSED: '0'
+          EARTHLINE_SKIP_LIFECYCLE: '1'
+        run: node tests/earthline-live-site-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v14-camera-${{ matrix.profile }}
+          path: v14-camera-results/
+          retention-days: 7
+  gate:
+    name: verify first-run camera and Elder
+    runs-on: ubuntu-latest
+    needs: browser
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          path: v14-camera-results
+          pattern: v14-camera-*
+          merge-multiple: true
+      - name: Strict first-run location and Elder identity assertions
+        run: node tests/v14-first-run-camera-gate.mjs
