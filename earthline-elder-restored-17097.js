@@ -258,7 +258,7 @@
           const p=f.properties||{},verified=isVerified(p),conf=elderConfidence(p);
           const title=verified?'VERIFIED ELDER TREE':'ELDER TREE CANDIDATE';
           const confidence=verified?'Field verified':(conf==null?'Confidence unavailable':'Confidence '+conf+'%');
-          return '<div style="font-family:Noto Sans,system-ui,sans-serif!important;font-size:11px!important;font-weight:800!important;line-height:1.12!important;color:#173b2a;overflow-wrap:anywhere;white-space:normal;padding-right:9px">'+esc(title)+'</div>'+
+          return '<div style="font-family:Noto Sans,system-ui,sans-serif!important;font-size:11px!important;font-weight:800!important;line-height:1.12!important;color:#173b2a;overflow-wrap:anywhere;white-space:normal;padding-right:20px">'+esc(title)+'</div>'+
             '<div style="margin-top:2px;font-family:Noto Sans,system-ui,sans-serif!important;font-size:10px!important;font-weight:600!important;line-height:1.15!important;color:#315843;white-space:normal">'+esc(confidence)+'</div>'+
             (!verified?'<div style="margin-top:2px;font-family:Noto Sans,system-ui,sans-serif!important;font-size:10px!important;font-weight:500!important;line-height:1.15!important;color:#526159;white-space:normal">Modeled tree; age not verified.</div>':'');
         }
@@ -299,12 +299,13 @@
               /* The site's older popup stylesheet overrides BOTH the shell and the content. */
               const st=document.getElementById('earthline-elder-compact-popup-20261119')||document.createElement('style');
               st.id='earthline-elder-compact-popup-20261119';
-              st.textContent='.mapboxgl-popup.earthline-elder-triggered-popup{width:118px!important;min-width:0!important;max-width:118px!important;box-sizing:border-box!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;} .mapboxgl-popup.earthline-elder-triggered-popup .mapboxgl-popup-content{width:118px!important;min-width:0!important;max-width:118px!important;box-sizing:border-box!important;padding:5px 7px!important;white-space:normal!important;overflow-wrap:anywhere!important;} .mapboxgl-popup.earthline-elder-triggered-popup .mapboxgl-popup-close-button{font-size:10px!important;width:13px!important;height:13px!important;line-height:13px!important;padding:0!important;right:2px!important;top:2px!important;} .mapboxgl-popup.earthline-elder-triggered-popup .mapboxgl-popup-tip{display:none!important;}';
+              st.textContent='.mapboxgl-popup.earthline-elder-triggered-popup{width:118px!important;min-width:0!important;max-width:118px!important;box-sizing:border-box!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;} .mapboxgl-popup.earthline-elder-triggered-popup .mapboxgl-popup-content{width:118px!important;min-width:0!important;max-width:118px!important;box-sizing:border-box!important;padding:5px 7px!important;white-space:normal!important;overflow-wrap:anywhere!important;} .mapboxgl-popup.earthline-elder-triggered-popup .mapboxgl-popup-close-button{font-size:10px!important;width:13px!important;height:13px!important;line-height:13px!important;padding:0!important;right:2px!important;top:2px!important;} .mapboxgl-popup.earthline-elder-triggered-popup .mapboxgl-popup-tip{display:none!important;} .mapboxgl-popup.earthline-elder-triggered-popup{z-index:2147483000!important;visibility:visible!important;pointer-events:auto!important;} .mapboxgl-popup.earthline-elder-triggered-popup .mapboxgl-popup-content{max-height:none!important;overflow:visible!important;text-overflow:clip!important;} .mapboxgl-popup.earthline-elder-triggered-popup .mapboxgl-popup-content>div{overflow:visible!important;text-overflow:clip!important;white-space:normal!important;}';
               if(!st.isConnected)document.head.appendChild(st);
               element.style.setProperty('width','118px','important');
               element.style.setProperty('min-width','0','important');
               element.style.setProperty('max-width','118px','important');
               element.style.setProperty('box-sizing','border-box','important');
+              element.style.setProperty('z-index','2147483000','important');
               element.style.setProperty('background','transparent','important');
               element.style.setProperty('box-shadow','none','important');
               const inner=element.querySelector('.mapboxgl-popup-content');
