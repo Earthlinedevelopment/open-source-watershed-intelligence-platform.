@@ -13,14 +13,10 @@ const PROFILES={
   'iphone':         {engine:webkit,  ctx:{...devices['iPhone 14']}},
   'android':        {engine:chromium,ctx:{...devices['Pixel 7']}},
 };
-const REGIONAL=['Vermont','Arizona','Iowa'];
+const REGIONAL=['New York'];
 const PROPERTY=[
-  {name:'iowa-farmland',q:'42.13000, -93.68000',at:[-93.68000,42.13000]},
-  {name:'iowa-creek',   q:'41.95748, -93.38977',at:[-93.38977,41.95748]},
-  {name:'vermont',      q:'43.88279, -72.45147',at:[-72.45147,43.88279]},
-  {name:'arizona',      q:'34.21572, -111.93073',at:[-111.93073,34.21572]},
-  {name:'darling-mine', q:'33.73774, -114.33439',at:[-114.33439,33.73774]},
-  {name:'essex',        q:'61 Sleepy Hollow Road, Essex, Vermont'},
+  {name:'new-york-hudson-valley',q:'41.93000, -73.90000',at:[-73.90000,41.93000]},
+  {name:'new-york-southern',q:'41.07000, -73.94000',at:[-73.94000,41.07000]},
 ];
 const OUT='live-test-results/'+PROFILE;
 mkdirSync(OUT,{recursive:true});
