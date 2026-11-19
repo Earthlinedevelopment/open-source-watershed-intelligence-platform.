@@ -1,0 +1,40 @@
+name: Earthline startup Mapbox diagnostic
+on:
+  push:
+    branches: [diagnose/mapbox-startup-20261119]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  startup:
+    name: startup ${{ matrix.profile }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [desktop-chrome, desktop-firefox, desktop-safari]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build exact candidate without publishing
+        run: |
+          python3 tools/apply-swale-engine-candidate.py index.html /tmp/candidate.html
+          cp /tmp/candidate.html index.html
+          printf '%s\n' 'eb0c30666dc87b71f695aeffa3304ac87624d08d7dc0ec9a0d33087abef551d4  index.html' | sha256sum -c
+      - name: Install browser engines
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium firefox webkit
+      - name: Trace idle globe and WebGL
+        env:
+          EARTHLINE_PROFILE: ${{ matrix.profile }}
+        run: node tests/earthline-startup-diagnostic.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: startup-${{ matrix.profile }}
+          path: startup-diagnostic/
+          retention-days: 7
