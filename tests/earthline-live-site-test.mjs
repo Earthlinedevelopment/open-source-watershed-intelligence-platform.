@@ -13,12 +13,11 @@ const PROFILES={
   'iphone':         {engine:webkit,  ctx:{...devices['iPhone 14']}},
   'android':        {engine:chromium,ctx:{...devices['Pixel 7']}},
 };
-const REGIONAL=['New York'];
+const REGIONAL=[];
 const PROPERTY=[
   {name:'ny-42-78781-75-76996',q:'42.78781, -75.76996',at:[-75.76996,42.78781]},
-  {name:'ny-chapin-rd-42-78860-75-77379',q:'42.78860, -75.77379',at:[-75.77379,42.78860]},
 ];
-const OUT='ny-test-results/'+PROFILE;
+const OUT='elder-ny-results/'+PROFILE;
 mkdirSync(OUT,{recursive:true});
 const prof=PROFILES[PROFILE];
 if(!prof){console.error('unknown profile '+PROFILE);process.exit(2);}
@@ -94,6 +93,8 @@ async function watchAquifer(page,ms){
 async function open(browser){
   const ctx=await browser.newContext(prof.ctx);const page=await ctx.newPage();const errors=[];
   page.on('pageerror',e=>errors.push('pageerror: '+String(e).slice(0,300)));
+  page.on('requestfailed',req=>{if(/chmv2|pyodide|jsdelivr|earthline-elder/.test(req.url()))errors.push('requestfailed: '+req.url().slice(0,220)+' '+String(req.failure()?.errorText||''));});
+  page.on('response',resp=>{if(resp.status()>=400&&/chmv2|pyodide|jsdelivr|earthline-elder/.test(resp.url()))errors.push('HTTP '+resp.status()+': '+resp.url().slice(0,220));});
   page.on('console',m=>{if(m.type()==='error')errors.push('console: '+m.text().slice(0,300));});
   await page.goto(BASE+'?livetest='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForSelector('#searchInput',{timeout:30000,state:'attached'});
@@ -142,17 +143,37 @@ async function propertyOnce(page,pressNow){
   if(Date.now()>=end)timedOut=true;
   await sleep(2500); // let the map finish drawing
   const s=await page.evaluate(snap);
-  // Elders load slower: give them up to 60 more seconds, then record what is there.
-  const e0=Date.now();let elder=s.elder;
-  while(!elder&&Date.now()-e0<60000){await sleep(2000);elder=await page.evaluate(()=>{const e=window.EARTHLINE_ELDER_TREE_LAST_17097;
-    if(!e)return null;const o={};for(const k of Object.keys(e)){const v=e[k];o[k]=Array.isArray(v)?('array:'+v.length):(v&&typeof v==='object'?'object':v);}return o;});}
+  // Wait for Elder worker completion, not merely a non-null provisional/pending state.
+  const e0=Date.now();let elder=null,elderDiagnostic=null;
+  const elderTimeline=[];
+  while(Date.now()-e0<120000){
+    elderDiagnostic=await page.evaluate(()=>{
+      const e=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+      const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+      const src=m?.getSource?.('earthline-elder-trees-17097');
+      const d=src?._data||(src?.serialize?.().data);
+      const featureCount=Array.isArray(d?.features)?d.features.length:null;
+      const api=window.EARTHLINE_ELDER_TREES_V1_17097;
+      const summary=api?.summary?.()||null;
+      return {state:e?.state||null,error:e?.error||null,propertyRunIdentity:e?.propertyRunIdentity||null,
+        featureCount:e?.featureCount??null,workerResults:e?.dynamicCandidatePoolCount??null,
+        mapPublished:e?.mapPublished??null,sourceFeatures:featureCount,
+        gauge:document.getElementById('earthlineElderTreesGauge17097')?.textContent||null,
+        summaryTotal:summary?.total??null,coverageKnown:summary?.coverageKnown??null};
+    });
+    if(elderTimeline.length===0||JSON.stringify(elderTimeline.at(-1).status)!==JSON.stringify(elderDiagnostic))
+      elderTimeline.push({elapsedSeconds:Math.round((Date.now()-e0)/1000),status:elderDiagnostic});
+    if(['committed','failed','publication-pending'].includes(elderDiagnostic?.state))break;
+    await sleep(3000);
+  }
+  elder=await page.evaluate(()=>window.EARTHLINE_ELDER_TREE_LAST_17097||null);
   const sl=(s.engineSlopes&&s.engineSlopes.length)?s.engineSlopes:s.swales.filter(x=>Number.isFinite(x.slopePct)).map(x=>x.slopePct),ln=s.swales.filter(x=>Number.isFinite(x.lengthM)).map(x=>x.lengthM);
   return {seconds:Math.round((Date.now()-t0)/100)/10,propertyButtonPressed:pressed,clickKind,timedOut,
     tier:s.tier,location:s.location,center:s.center,analysisReady:s.analysisReady,
     engineSwales:s.engineSwales,shownSwales:s.shownSwales,slopesMeasured:sl.length,statusText:s.statusText,
     steepestSwalePct:sl.length?Math.max(...sl):null,swalesOver4pct:sl.filter(v=>v>4.0001).length,
     shortestSwaleM:ln.length?Math.min(...ln):null,longestSwaleM:ln.length?Math.max(...ln):null,
-    rechargeTargets:s.rechargeTargets,elder,elderWaitSeconds:Math.round((Date.now()-e0)/1000),
+    rechargeTargets:s.rechargeTargets,elder,elderDiagnostic,elderTimeline,elderWaitSeconds:Math.round((Date.now()-e0)/1000),
     propertyAudit:s.propertyAudit,layout:s.layout,swales:s.swales};
 }
 async function property(browser,site){
@@ -206,7 +227,7 @@ try{browser=await prof.engine.launch({headless:true});}catch(e){launchError=Stri
 if(browser){
   for(const q of REGIONAL)await regional(browser,q);
   for(const s of PROPERTY)await property(browser,s);
-  for(const q of ['New York'])await lifecycle(browser,q);
+  // Scoped to one New York Property so final Elder worker status is observable.
   await browser.close().catch(()=>{});
 }
 const result={profile:PROFILE,url:BASE,testedAt:new Date().toISOString(),launchError,rows};
