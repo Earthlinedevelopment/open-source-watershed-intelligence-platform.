@@ -1,0 +1,38 @@
+name: Earthline v1.4 isolated integration contract
+on:
+  push:
+    branches: [diagnose/v14-globe-root-20261120]
+    paths:
+      - '.github/workflows/earthline-v14-contract.yml'
+      - 'tests/v14-integration-contract.mjs'
+      - 'tools/adapter-16600.js'
+      - 'tools/apply-swale-engine-candidate.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Rebuild same candidate from exact unchanged live base
+        run: |
+          python3 tools/apply-swale-engine-candidate.py index.html /tmp/earthline-v14.html
+          cp /tmp/earthline-v14.html index.html
+          sha256sum index.html tools/adapter-16600.js tools/apply-swale-engine-candidate.py
+      - name: Verify single globe owner, counts, verified status and fail-closed
+        run: node tests/v14-integration-contract.mjs
+      - name: Verify engine, bridge, and wiring
+        run: |
+          python3 tests/make-mvt-fixture.py
+          node tests/engine-tests.js
+          node tests/bridge-tests.js
+          node tests/adapter-harness.js
+      - name: Verify transient Elder recovery
+        run: node tests/elder-worker-recovery.mjs
