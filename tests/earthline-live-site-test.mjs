@@ -13,12 +13,11 @@ const PROFILES={
   'iphone':         {engine:webkit,  ctx:{...devices['iPhone 14']}},
   'android':        {engine:chromium,ctx:{...devices['Pixel 7']}},
 };
-const REGIONAL=['New York'];
+const REGIONAL=['Iowa'];
 const PROPERTY=[
-  {name:'ny-42-78781-75-76996',q:'42.78781, -75.76996',at:[-75.76996,42.78781]},
-  {name:'ny-chapin-rd-42-78860-75-77379',q:'42.78860, -75.77379',at:[-75.77379,42.78860]},
+ {name:'iowa-creek-41-95748-93-38977',q:'41.95748, -93.38977',at:[-93.38977,41.95748]}
 ];
-const OUT='ny-test-results/'+PROFILE;
+const OUT='iowa-creek-results/'+PROFILE;
 mkdirSync(OUT,{recursive:true});
 const prof=PROFILES[PROFILE];
 if(!prof){console.error('unknown profile '+PROFILE);process.exit(2);}
@@ -206,9 +205,30 @@ try{browser=await prof.engine.launch({headless:true});}catch(e){launchError=Stri
 if(browser){
   for(const q of REGIONAL)await regional(browser,q);
   for(const s of PROPERTY)await property(browser,s);
-  for(const q of ['New York'])await lifecycle(browser,q);
+  for(const q of ['Iowa'])await lifecycle(browser,q);
   await browser.close().catch(()=>{});
 }
 const result={profile:PROFILE,url:BASE,testedAt:new Date().toISOString(),launchError,rows};
 writeFileSync(OUT+'/results.json',JSON.stringify(result,null,1));
+const failures=[];
+for(const row of rows){
+ if(row.couldNotRun)failures.push((row.site||row.query)+': could not run');
+ if(row.kind==='property'){
+  for(const n of [1,2]){
+   const r=row['run'+n];
+   if(!r||r.tier!=='property'||r.propertyAudit?.result!==true)
+    failures.push(row.site+': run '+n+' did not publish a successful Property result');
+   if((r?.swalesOver4pct||0)>0)
+    failures.push(row.site+': run '+n+' has '+r.swalesOver4pct+' engine slopes >4%');
+   if((r?.engineSwales||0)!==(r?.shownSwales||0))
+    failures.push(row.site+': run '+n+' engine/display count differs');
+  }
+  if(row.sameResultBothRuns!==true)failures.push(row.site+': Property repeat differs');
+ }
+ if(row.kind==='lifecycle'&&row.propertySameBothRounds!==true)
+  failures.push(row.query+': Regional/Property repeat differs');
+}
+writeFileSync(OUT+'/hard-gate.json',JSON.stringify({profile:PROFILE,failed:failures.length>0,failures},null,2));
+console.log('EARTHLINE_IOWA_CREEK_HARD_GATE '+JSON.stringify({profile:PROFILE,failures}));
+if(failures.length)process.exitCode=1;
 console.log('EARTHLINE_LIVE_TEST_DONE '+PROFILE+' rows='+rows.length+(launchError?' launchError':''));
