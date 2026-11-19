@@ -27,5 +27,9 @@ for token in ["m.jumpTo({center:[0,18],zoom:1.25", "earthlineMap.on(\"load\",()=
     print(s[max(0,i-2400):min(len(s),i+2300)])
 
 print("\n=== initRealGlobe16233 all callers ===")
-for m in re.finditer(r'initRealGlobe16233\\s*\\(',s):
- print('offset',m.start(),'line',s.count('\\n',0,m.start())+1,'context',s[max(0,m.start()-850):m.start()+900].replace('\\n',' '))
+p=0
+while True:
+ m=s.find("initRealGlobe16233(",p)
+ if m<0:break
+ print("offset",m,"context",s[max(0,m-900):m+1100].replace("\n"," "))
+ p=m+1
