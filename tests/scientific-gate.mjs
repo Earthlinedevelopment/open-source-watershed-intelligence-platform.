@@ -37,7 +37,7 @@ for(const p of browsers){
        (Number.isFinite(elder.sourceFeatures)&&elder.sourceFeatures!==elder.featureCount)))
      fail(p,site,t+': Elder committed without matching visible map evidence');
    const loc=String(elder?.propertyRunIdentity||'').split('|');
-   const match=String(row.query||'').match(/^\\s*(-?\\d+(?:\\.\\d+)?)\\s*,\\s*(-?\\d+(?:\\.\\d+)?)\\s*$/);
+   const match=String(row.query||'').match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
    if(match&&elder){
      const latitude=Number(match[1]),longitude=Number(match[2]);
      if(!Number.isFinite(Number(loc[0]))||!Number.isFinite(Number(loc[1]))||
