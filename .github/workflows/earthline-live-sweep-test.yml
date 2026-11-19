@@ -1,0 +1,247 @@
+# Read-only sweep of the PUBLIC Earthline site. Does not touch pages-live or any other deployed branch.
+# Phase 1: primary states (Iowa, Arkansas, Nebraska, Vermont, Arizona, New York) on all five browser profiles.
+# Phase 2: all 50 states (Regional + Property on the top corridor) on Chrome desktop and Android.
+# Phase 3: all 195 countries (Regional) on Chrome desktop.
+# Results, screenshots and SUMMARY.md are pushed to: live-sweep-primary, live-sweep-states, live-sweep-countries.
+name: Earthline live sweep test
+on:
+  push:
+    branches: [live-sweep]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  primary:
+    name: primary ${{ matrix.profile }} ${{ matrix.state }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [desktop-chrome, desktop-firefox, desktop-safari, iphone, android]
+        state: [Iowa, Arkansas, Nebraska, Vermont, Arizona, New York]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browsers
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium firefox webkit
+      - name: Record the live build at the start of this job
+        run: |
+          mkdir -p live-test-results
+          {
+            echo "job started (UTC): $(date -u)"
+            for f in "" earthline-elder-restored-17097.js earthline-elder-worker-17129.js tools/elder_trees/chmv2_array_detector_17129.py; do
+              echo "sha256 /$f: $(curl -fsS --max-time 60 "https://earthlinedevelopment.org/$f" | sha256sum | cut -d' ' -f1)"
+            done
+            echo "pages-live head: $(git ls-remote https://github.com/${{ github.repository }} refs/heads/pages-live | cut -f1)"
+          } > "live-test-results/BUILD-AT-START-${{ strategy.job-index }}.txt"
+      - name: Test the live site
+        env:
+          EARTHLINE_PROFILE: ${{ matrix.profile }}
+          SWEEP: primary
+          ONLY: ${{ matrix.state }}
+        run: node tests/earthline-live-sweep-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: primary-${{ strategy.job-index }}
+          path: live-test-results/
+          retention-days: 14
+  publish-primary:
+    name: publish primary
+    needs: primary
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/download-artifact@v4
+        with:
+          path: collected
+          pattern: primary-*
+          merge-multiple: true
+      - name: Summarise and push
+        run: |
+          mkdir -p collected
+          {
+            echo "Tested at (UTC): $(date -u)"
+            echo "Live URL: https://earthlinedevelopment.org/"
+            echo "Live index.html sha256: $(curl -fsS --max-time 60 https://earthlinedevelopment.org/ | sha256sum | cut -d' ' -f1)"
+            for f in earthline-elder-restored-17097.js earthline-elder-worker-17129.js tools/elder_trees/chmv2_array_detector_17129.py; do
+              echo "Live /$f sha256: $(curl -fsS --max-time 60 "https://earthlinedevelopment.org/$f" | sha256sum | cut -d' ' -f1)"
+            done
+            echo "Live index.html bytes: $(curl -fsS --max-time 60 https://earthlinedevelopment.org/ | wc -c)"
+            echo "pages-live head: $(git ls-remote https://github.com/${{ github.repository }} refs/heads/pages-live | cut -f1)"
+            echo "Workflow run: ${{ github.run_id }}"
+          } > collected/BUILD.txt
+          node tests/summarize-sweep.mjs collected
+          cd collected
+          git init -q -b live-sweep-primary
+          git config user.name "earthline-live-sweep"
+          git config user.email "live-sweep@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Live sweep: primary states, run ${{ github.run_id }}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" live-sweep-primary
+  states:
+    name: states ${{ matrix.profile }} shard ${{ matrix.shard }}
+    needs: publish-primary
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [desktop-chrome, android]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browsers
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Record the live build at the start of this job
+        run: |
+          mkdir -p live-test-results
+          {
+            echo "job started (UTC): $(date -u)"
+            for f in "" earthline-elder-restored-17097.js earthline-elder-worker-17129.js tools/elder_trees/chmv2_array_detector_17129.py; do
+              echo "sha256 /$f: $(curl -fsS --max-time 60 "https://earthlinedevelopment.org/$f" | sha256sum | cut -d' ' -f1)"
+            done
+            echo "pages-live head: $(git ls-remote https://github.com/${{ github.repository }} refs/heads/pages-live | cut -f1)"
+          } > "live-test-results/BUILD-AT-START-${{ strategy.job-index }}.txt"
+      - name: Test the live site
+        env:
+          EARTHLINE_PROFILE: ${{ matrix.profile }}
+          SWEEP: states
+          SHARD: ${{ matrix.shard }}
+          NSHARDS: '10'
+        run: node tests/earthline-live-sweep-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: states-${{ strategy.job-index }}
+          path: live-test-results/
+          retention-days: 14
+  publish-states:
+    name: publish states
+    needs: states
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/download-artifact@v4
+        with:
+          path: collected
+          pattern: states-*
+          merge-multiple: true
+      - name: Summarise and push
+        run: |
+          mkdir -p collected
+          {
+            echo "Tested at (UTC): $(date -u)"
+            echo "Live URL: https://earthlinedevelopment.org/"
+            echo "Live index.html sha256: $(curl -fsS --max-time 60 https://earthlinedevelopment.org/ | sha256sum | cut -d' ' -f1)"
+            for f in earthline-elder-restored-17097.js earthline-elder-worker-17129.js tools/elder_trees/chmv2_array_detector_17129.py; do
+              echo "Live /$f sha256: $(curl -fsS --max-time 60 "https://earthlinedevelopment.org/$f" | sha256sum | cut -d' ' -f1)"
+            done
+            echo "pages-live head: $(git ls-remote https://github.com/${{ github.repository }} refs/heads/pages-live | cut -f1)"
+            echo "Workflow run: ${{ github.run_id }}"
+          } > collected/BUILD.txt
+          node tests/summarize-sweep.mjs collected
+          cd collected
+          git init -q -b live-sweep-states
+          git config user.name "earthline-live-sweep"
+          git config user.email "live-sweep@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Live sweep: all 50 states, run ${{ github.run_id }}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" live-sweep-states
+  countries:
+    name: countries shard ${{ matrix.shard }}
+    needs: publish-states
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browsers
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Record the live build at the start of this job
+        run: |
+          mkdir -p live-test-results
+          {
+            echo "job started (UTC): $(date -u)"
+            for f in "" earthline-elder-restored-17097.js earthline-elder-worker-17129.js tools/elder_trees/chmv2_array_detector_17129.py; do
+              echo "sha256 /$f: $(curl -fsS --max-time 60 "https://earthlinedevelopment.org/$f" | sha256sum | cut -d' ' -f1)"
+            done
+            echo "pages-live head: $(git ls-remote https://github.com/${{ github.repository }} refs/heads/pages-live | cut -f1)"
+          } > "live-test-results/BUILD-AT-START-${{ strategy.job-index }}.txt"
+      - name: Test the live site
+        env:
+          EARTHLINE_PROFILE: desktop-chrome
+          SWEEP: countries
+          SHARD: ${{ matrix.shard }}
+          NSHARDS: '20'
+        run: node tests/earthline-live-sweep-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: countries-${{ strategy.job-index }}
+          path: live-test-results/
+          retention-days: 14
+  publish-countries:
+    name: publish countries
+    needs: countries
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/download-artifact@v4
+        with:
+          path: collected
+          pattern: countries-*
+          merge-multiple: true
+      - name: Summarise and push
+        run: |
+          mkdir -p collected
+          {
+            echo "Tested at (UTC): $(date -u)"
+            echo "Live URL: https://earthlinedevelopment.org/"
+            echo "Live index.html sha256: $(curl -fsS --max-time 60 https://earthlinedevelopment.org/ | sha256sum | cut -d' ' -f1)"
+            for f in earthline-elder-restored-17097.js earthline-elder-worker-17129.js tools/elder_trees/chmv2_array_detector_17129.py; do
+              echo "Live /$f sha256: $(curl -fsS --max-time 60 "https://earthlinedevelopment.org/$f" | sha256sum | cut -d' ' -f1)"
+            done
+            echo "pages-live head: $(git ls-remote https://github.com/${{ github.repository }} refs/heads/pages-live | cut -f1)"
+            echo "Workflow run: ${{ github.run_id }}"
+          } > collected/BUILD.txt
+          node tests/summarize-sweep.mjs collected
+          cd collected
+          git init -q -b live-sweep-countries
+          git config user.name "earthline-live-sweep"
+          git config user.email "live-sweep@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Live sweep: all countries, run ${{ github.run_id }}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" live-sweep-countries
