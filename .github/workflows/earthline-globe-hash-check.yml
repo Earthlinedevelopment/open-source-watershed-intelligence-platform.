@@ -1,0 +1,27 @@
+name: Verify single globe camera and rebuilt candidate hashes
+on:
+  push:
+    branches: [diagnose/three-pass-release-20261119]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  hash:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build candidate from accepted base and verify single startup owner
+        run: |
+          python3 tools/apply-swale-engine-candidate.py index.html /tmp/next.html
+          sha256sum /tmp/next.html tools/apply-swale-engine-candidate.py tools/adapter-16600.js
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/next.html').read_text()
+          begin=s.index('function initRealGlobe16233(){')
+          end=s.index('function ensureRegionalCorridorTabs16323(',begin)
+          globe=s[begin:end]
+          assert 'center:[0,18]' not in globe, 'secondary globe camera remains'
+          assert 'core Mapbox owns the idle globe camera' in globe
+          assert globe.count('earthlineStartupGlobeSettled16601')>=2
+          print('GLOBE_SINGLE_OWNER_PROVEN',len(s.encode()))
+          PY
