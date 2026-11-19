@@ -18,7 +18,7 @@ const PROPERTY=[
   {name:'new-york-hudson-valley',q:'41.93000, -73.90000',at:[-73.90000,41.93000]},
   {name:'new-york-southern',q:'41.07000, -73.94000',at:[-73.94000,41.07000]},
 ];
-const OUT='live-test-results/'+PROFILE;
+const OUT='ny-test-results/'+PROFILE;
 mkdirSync(OUT,{recursive:true});
 const prof=PROFILES[PROFILE];
 if(!prof){console.error('unknown profile '+PROFILE);process.exit(2);}
