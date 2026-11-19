@@ -624,9 +624,20 @@
       if(!(pending17389?.state==='property-pending'&&pending17389?.propertyRunIdentity===runIdentity&&pending17389?.visibleAt)){
         publishPropertyProvisional17389(b,runIdentity);
       }
-      const dynamic=await dynamicPropertyEvidence(true); /* EARTHLINE_ELDER_GOVERNED_COMPUTE_17211 */
+      let dynamic=await dynamicPropertyEvidence(true); /* EARTHLINE_ELDER_GOVERNED_COMPUTE_17211 */
+      /* Transient worker/CDN errors can remove all Elder candidates on an
+         otherwise-valid Property run. Retry ONCE, for the same run identity,
+         without publishing synthetic or stale candidate trees. */
+      if(!dynamic&&elderTierM94()==='property'&&
+         propertyRunIdentity17166(propertyBounds17166())===runIdentity){
+        const firstError=state.dynamic.error||'first tree-finder attempt unavailable';
+        dynamic=await dynamicPropertyEvidence(true);
+        if(!dynamic&&elderTierM94()==='property'&&
+           propertyRunIdentity17166(propertyBounds17166())===runIdentity)
+          state.dynamic.error=firstError+'; retry: '+(state.dynamic.error||'unavailable');
+      }
       if(!dynamic&&elderTierM94()==='property'&&propertyRunIdentity17166(propertyBounds17166())===runIdentity){
-        window.EARTHLINE_ELDER_TREE_LAST_17097={state:'failed',error:'no tree-finder result',propertyRunIdentity:runIdentity,featureCount:0,at:new Date().toISOString()};
+        window.EARTHLINE_ELDER_TREE_LAST_17097={state:'failed',error:state.dynamic.error||'no tree-finder result',propertyRunIdentity:runIdentity,featureCount:0,at:new Date().toISOString()};
         const g198=document.getElementById('earthlineElderTreesGauge17097');if(g198)g198.textContent='Elder Trees: not available for this run'; /* M198 */
         return null;
       }
