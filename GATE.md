@@ -1,141 +1,54 @@
 # Earthline candidate scientific release gate
 
-**FAIL — DO NOT PROMOTE CANDIDATE**
+**FAIL Round 1/3 — DO NOT PROMOTE CANDIDATE**
 
-Browsers required: 5; valid sites seen: 13; failures: 85
+Commit: bdffc25d1454364959e507b7be437739562238d5 | Run: 44633176153 | Candidate page SHA-256: 65b13f509f4f929b164b136426e6ada6545e48a8b9699408530eee9dec0cb6c9 | Round: 1/3
 
-- **desktop-firefox / arkansas-your-screenshot-1:** Could not run: Error: page.evaluate: map not available
-@debugger eval code line 370 > eval:2:25
-evaluate@debugger eval code:372:16
-@debugger eval code:1:44
-@debugger eval code:1:62
+Browsers required: 5; valid sites seen: 13; failures: 45
 
-- **desktop-firefox / arkansas-your-screenshot-2:** Could not run: Error: page.evaluate: map not available
-@debugger eval code line 370 > eval:2:25
-evaluate@debugger eval code:372:16
-@debugger eval code:1:44
-@debugger eval code:1:62
-
-- **desktop-firefox / newyork-your-screenshot-1:** Could not run: Error: page.evaluate: map not available
-@debugger eval code line 370 > eval:2:25
-evaluate@debugger eval code:372:16
-@debugger eval code:1:44
-@debugger eval code:1:62
-
-- **desktop-firefox / newyork-your-screenshot-2:** Could not run: Error: page.evaluate: map not available
-@debugger eval code line 370 > eval:2:25
-evaluate@debugger eval code:372:16
-@debugger eval code:1:44
-@debugger eval code:1:62
-
-- **desktop-firefox / iowa-farmland:** Could not run: Error: page.evaluate: map not available
-@debugger eval code line 370 > eval:2:25
-evaluate@debugger eval code:372:16
-@debugger eval code:1:44
-@debugger eval code:1:62
-
-- **desktop-firefox / iowa-creek:** Could not run: Error: page.evaluate: map not available
-@debugger eval code line 370 > eval:2:25
-evaluate@debugger eval code:372:16
-@debugger eval code:1:44
-@debugger eval code:1:62
-
-- **desktop-firefox / vermont:** Could not run: Error: page.evaluate: map not available
-@debugger eval code line 370 > eval:2:25
-evaluate@debugger eval code:372:16
-@debugger eval code:1:44
-@debugger eval code:1:62
-
-- **desktop-firefox / arizona:** Could not run: Error: page.evaluate: map not available
-@debugger eval code line 370 > eval:2:25
-evaluate@debugger eval code:372:16
-@debugger eval code:1:44
-@debugger eval code:1:62
-
-- **desktop-firefox / darling-mine:** Could not run: Error: page.evaluate: map not available
-@debugger eval code line 370 > eval:2:25
-evaluate@debugger eval code:372:16
-@debugger eval code:1:44
-@debugger eval code:1:62
-
-- **desktop-firefox / iowa-farmland:** Could not run: Error: page.evaluate: can't access property "jumpTo", map is undefined
-@debugger eval code line 370 > eval:1:86
-evaluate@debugger eval code:372:16
-@debugger eval code:1:44
-@debugger eval code:1:62
-
-- **desktop-firefox / arkansas-your-screenshot-1:** Two Property runs disagree
-- **desktop-firefox / arkansas-your-screenshot-1:** Engine input/result hash changed on repeat
-- **desktop-firefox / arkansas-your-screenshot-1:** Swale IDs differ on repeat
-- **desktop-firefox / arkansas-your-screenshot-1:** Drawn swale counts differ from published counts
-- **desktop-firefox / arkansas-your-screenshot-1:** run 1: missing result
-- **desktop-firefox / arkansas-your-screenshot-1:** run 2: missing result
-- **desktop-firefox / arkansas-your-screenshot-2:** Two Property runs disagree
-- **desktop-firefox / arkansas-your-screenshot-2:** Engine input/result hash changed on repeat
-- **desktop-firefox / arkansas-your-screenshot-2:** Swale IDs differ on repeat
-- **desktop-firefox / arkansas-your-screenshot-2:** Drawn swale counts differ from published counts
-- **desktop-firefox / arkansas-your-screenshot-2:** run 1: missing result
-- **desktop-firefox / arkansas-your-screenshot-2:** run 2: missing result
-- **desktop-firefox / newyork-your-screenshot-1:** Two Property runs disagree
-- **desktop-firefox / newyork-your-screenshot-1:** Engine input/result hash changed on repeat
-- **desktop-firefox / newyork-your-screenshot-1:** Swale IDs differ on repeat
-- **desktop-firefox / newyork-your-screenshot-1:** Drawn swale counts differ from published counts
-- **desktop-firefox / newyork-your-screenshot-1:** run 1: missing result
-- **desktop-firefox / newyork-your-screenshot-1:** run 2: missing result
-- **desktop-firefox / newyork-your-screenshot-2:** Two Property runs disagree
-- **desktop-firefox / newyork-your-screenshot-2:** Engine input/result hash changed on repeat
-- **desktop-firefox / newyork-your-screenshot-2:** Swale IDs differ on repeat
-- **desktop-firefox / newyork-your-screenshot-2:** Drawn swale counts differ from published counts
-- **desktop-firefox / newyork-your-screenshot-2:** run 1: missing result
-- **desktop-firefox / newyork-your-screenshot-2:** run 2: missing result
-- **desktop-firefox / iowa-farmland:** Two Property runs disagree
-- **desktop-firefox / iowa-farmland:** Engine input/result hash changed on repeat
-- **desktop-firefox / iowa-farmland:** Swale IDs differ on repeat
-- **desktop-firefox / iowa-farmland:** Drawn swale counts differ from published counts
-- **desktop-firefox / iowa-farmland:** run 1: missing result
-- **desktop-firefox / iowa-farmland:** run 2: missing result
-- **desktop-firefox / iowa-creek:** Two Property runs disagree
-- **desktop-firefox / iowa-creek:** Engine input/result hash changed on repeat
-- **desktop-firefox / iowa-creek:** Swale IDs differ on repeat
-- **desktop-firefox / iowa-creek:** Drawn swale counts differ from published counts
-- **desktop-firefox / iowa-creek:** run 1: missing result
-- **desktop-firefox / iowa-creek:** run 2: missing result
-- **desktop-firefox / vermont:** Two Property runs disagree
-- **desktop-firefox / vermont:** Engine input/result hash changed on repeat
-- **desktop-firefox / vermont:** Swale IDs differ on repeat
-- **desktop-firefox / vermont:** Drawn swale counts differ from published counts
-- **desktop-firefox / vermont:** run 1: missing result
-- **desktop-firefox / vermont:** run 2: missing result
-- **desktop-firefox / arizona:** Two Property runs disagree
-- **desktop-firefox / arizona:** Engine input/result hash changed on repeat
-- **desktop-firefox / arizona:** Swale IDs differ on repeat
-- **desktop-firefox / arizona:** Drawn swale counts differ from published counts
-- **desktop-firefox / arizona:** run 1: missing result
-- **desktop-firefox / arizona:** run 2: missing result
-- **desktop-firefox / darling-mine:** Two Property runs disagree
-- **desktop-firefox / darling-mine:** Engine input/result hash changed on repeat
-- **desktop-firefox / darling-mine:** Swale IDs differ on repeat
-- **desktop-firefox / darling-mine:** Drawn swale counts differ from published counts
-- **desktop-firefox / darling-mine:** run 1: missing result
-- **desktop-firefox / darling-mine:** run 2: missing result
-- **desktop-firefox / essex:** Engine input/result hash changed on repeat
-- **desktop-firefox / essex:** Swale IDs differ on repeat
-- **desktop-firefox / essex:** Drawn swale counts differ from published counts
-- **desktop-firefox / essex:** run 1: Property result not successfully published
-- **desktop-firefox / essex:** run 1: Elder worker never reached a final state
-- **desktop-firefox / essex:** run 2: Property result not successfully published
-- **desktop-firefox / essex:** run 2: Elder worker never reached a final state
+- **desktop-chrome / arkansas-your-screenshot-2:** run 1: verified engine did not provide an auditable swale-count message
+- **desktop-chrome / arkansas-your-screenshot-2:** run 2: verified engine did not provide an auditable swale-count message
+- **desktop-chrome / vermont:** run 1: verified engine did not provide an auditable swale-count message
+- **desktop-chrome / vermont:** run 2: verified engine did not provide an auditable swale-count message
+- **desktop-chrome / darling-mine:** run 1: verified engine did not provide an auditable swale-count message
+- **desktop-chrome / darling-mine:** run 2: verified engine did not provide an auditable swale-count message
+- **desktop-chrome / arkansas-delta-farmland:** run 1: verified engine did not provide an auditable swale-count message
+- **desktop-chrome / arkansas-delta-farmland:** run 2: verified engine did not provide an auditable swale-count message
+- **desktop-firefox / arkansas-your-screenshot-2:** run 1: verified engine did not provide an auditable swale-count message
+- **desktop-firefox / arkansas-your-screenshot-2:** run 2: verified engine did not provide an auditable swale-count message
+- **desktop-firefox / vermont:** run 1: verified engine did not provide an auditable swale-count message
+- **desktop-firefox / vermont:** run 2: verified engine did not provide an auditable swale-count message
+- **desktop-firefox / darling-mine:** run 1: verified engine did not provide an auditable swale-count message
+- **desktop-firefox / darling-mine:** run 2: verified engine did not provide an auditable swale-count message
+- **desktop-safari / arkansas-your-screenshot-2:** run 1: verified engine did not provide an auditable swale-count message
+- **desktop-safari / arkansas-your-screenshot-2:** run 2: verified engine did not provide an auditable swale-count message
+- **desktop-safari / iowa-farmland:** Two Property runs disagree
+- **desktop-safari / iowa-farmland:** Engine input/result hash changed on repeat
+- **desktop-safari / iowa-farmland:** Swale IDs differ on repeat
+- **desktop-safari / iowa-farmland:** Drawn swale counts differ from published counts
+- **desktop-safari / iowa-farmland:** run 1: Property result not successfully published
+- **desktop-safari / iowa-farmland:** run 1: camera differs from requested Property coordinates {"lat":40.6412,"lng":-105.2237}
+- **desktop-safari / iowa-farmland:** run 1: Elder worker never reached a final state
+- **desktop-safari / iowa-farmland:** run 1: Elder result belongs to wrong Property coordinates unknown
+- **desktop-safari / vermont:** run 1: verified engine did not provide an auditable swale-count message
+- **desktop-safari / vermont:** run 2: verified engine did not provide an auditable swale-count message
+- **desktop-safari / darling-mine:** run 1: verified engine did not provide an auditable swale-count message
+- **desktop-safari / darling-mine:** run 2: verified engine did not provide an auditable swale-count message
 - **iphone / workflow:** Missing browser results
-- **cross-browser / arkansas-your-screenshot-1:** Only 3 of 5 profiles produced valid Property output
-- **cross-browser / arkansas-your-screenshot-2:** Only 3 of 5 profiles produced valid Property output
-- **cross-browser / newyork-your-screenshot-1:** Only 3 of 5 profiles produced valid Property output
-- **cross-browser / newyork-your-screenshot-2:** Only 3 of 5 profiles produced valid Property output
+- **android / arkansas-your-screenshot-2:** run 1: verified engine did not provide an auditable swale-count message
+- **android / arkansas-your-screenshot-2:** run 2: verified engine did not provide an auditable swale-count message
+- **android / vermont:** run 1: verified engine did not provide an auditable swale-count message
+- **android / vermont:** run 2: verified engine did not provide an auditable swale-count message
+- **android / darling-mine:** run 1: verified engine did not provide an auditable swale-count message
+- **android / darling-mine:** run 2: verified engine did not provide an auditable swale-count message
+- **cross-browser / arkansas-your-screenshot-1:** Only 4 of 5 profiles produced valid Property output
+- **cross-browser / arkansas-your-screenshot-2:** Only 4 of 5 profiles produced valid Property output
+- **cross-browser / newyork-your-screenshot-1:** Only 4 of 5 profiles produced valid Property output
+- **cross-browser / newyork-your-screenshot-2:** Only 4 of 5 profiles produced valid Property output
 - **cross-browser / iowa-farmland:** Only 3 of 5 profiles produced valid Property output
-- **cross-browser / iowa-creek:** Only 3 of 5 profiles produced valid Property output
-- **cross-browser / vermont:** Only 3 of 5 profiles produced valid Property output
-- **cross-browser / arizona:** Only 3 of 5 profiles produced valid Property output
-- **cross-browser / darling-mine:** Only 3 of 5 profiles produced valid Property output
-- **cross-browser / essex:** Only 3 of 5 profiles produced valid Property output
-- **cross-browser / arkansas-delta-farmland:** Only 1 of 5 profiles produced valid Property output
-- **cross-browser / nebraska-farmland:** Only 1 of 5 profiles produced valid Property output
-- **cross-browser / iowa-minnesota-line:** Only 1 of 5 profiles produced valid Property output
+- **cross-browser / iowa-creek:** Only 4 of 5 profiles produced valid Property output
+- **cross-browser / vermont:** Only 4 of 5 profiles produced valid Property output
+- **cross-browser / arizona:** Only 4 of 5 profiles produced valid Property output
+- **cross-browser / darling-mine:** Only 4 of 5 profiles produced valid Property output
+- **cross-browser / essex:** Only 4 of 5 profiles produced valid Property output
+Browser matrix: failure; unit: success
