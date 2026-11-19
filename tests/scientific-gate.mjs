@@ -28,7 +28,7 @@ for(const p of browsers){
    if(a.tier!=='property'||a.propertyAudit?.result!==true)fail(p,site,t+': Property result not successfully published');
    // Compare to independent user-requested numeric coordinates, not solely the
    // page's camera-vs-own-anchor check (both can be consistently wrong).
-   const requested=String(row.query||'').match(/^\\s*(-?\\d+(?:\\.\\d+)?)\\s*,\\s*(-?\\d+(?:\\.\\d+)?)\\s*$/);
+   const requested=String(row.query||'').match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
    if(requested){
      const lat=Number(requested[1]),lng=Number(requested[2]);
      const c=a.center||null,selected=row['targetBeforeRun'+(n+1)]?.target||null;
