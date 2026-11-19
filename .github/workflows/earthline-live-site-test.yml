@@ -1,9 +1,9 @@
 # Read-only test of the public Earthline site on desktop and phone browsers.
-# Does not touch pages-live. Results and screenshots are pushed to the branch "live-test-results".
-name: Earthline live site test
+# Does not touch pages-live. Results and screenshots are pushed to the branch "ny-test-results".
+name: Earthline New York isolation test
 on:
   push:
-    branches: [live-test]
+    branches: [diagnose/new-york-swales-20261119]
   workflow_dispatch:
 permissions:
   contents: write
@@ -32,8 +32,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: live-test-${{ matrix.profile }}
-          path: live-test-results/
+          name: ny-test-${{ matrix.profile }}
+          path: ny-test-results/
           retention-days: 14
   publish:
     name: Publish results
@@ -45,13 +45,13 @@ jobs:
         with:
           path: collected
           merge-multiple: true
-      - name: Push results to the live-test-results branch
+      - name: Push results to the ny-test-results branch
         run: |
           cd collected
-          git init -q -b live-test-results
+          git init -q -b ny-test-results
           git config user.name "earthline-live-test"
-          git config user.email "live-test@users.noreply.github.com"
+          git config user.email "ny-test@users.noreply.github.com"
           date -u > TESTED-AT.txt
           git add -A
           git commit -q -m "Live site test results ${{ github.run_id }}"
-          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" live-test-results
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" ny-test-results
