@@ -1,9 +1,9 @@
 # Read-only test of the public Earthline site on desktop and phone browsers.
-# Does not touch pages-live. Results and screenshots are pushed to the branch "ny-test-results".
-name: Earthline New York isolation test
+# Does not touch pages-live. Results and screenshots are pushed to the branch "elder-ny-results".
+name: Earthline Elder Tree NY root-cause diagnostic
 on:
   push:
-    branches: [diagnose/new-york-swales-20261119]
+    branches: [diagnose/elder-ny-missing-20261120]
   workflow_dispatch:
 permissions:
   contents: write
@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [desktop-chrome, desktop-firefox, desktop-safari, iphone, android]
+        profile: [desktop-chrome, desktop-safari]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -32,8 +32,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ny-test-${{ matrix.profile }}
-          path: ny-test-results/
+          name: elder-ny-${{ matrix.profile }}
+          path: elder-ny-results/
           retention-days: 14
   publish:
     name: Publish results
@@ -45,13 +45,13 @@ jobs:
         with:
           path: collected
           merge-multiple: true
-      - name: Push results to the ny-test-results branch
+      - name: Push results to the elder-ny-results branch
         run: |
           cd collected
-          git init -q -b ny-test-results
+          git init -q -b elder-ny-results
           git config user.name "earthline-live-test"
-          git config user.email "ny-test@users.noreply.github.com"
+          git config user.email "elder-ny@users.noreply.github.com"
           date -u > TESTED-AT.txt
           git add -A
           git commit -q -m "Live site test results ${{ github.run_id }}"
-          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" ny-test-results
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" elder-ny-results
