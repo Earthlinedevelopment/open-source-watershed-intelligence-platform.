@@ -9,7 +9,7 @@ const safe=x=>String(x).replace(/(access_token|apikey|token|key)=([^&\s]+)/gi,'$
 const report={profile,errors:[],samples:[],checkedAt:new Date().toISOString()};
 let browser,ctx,page;
 try{
- browser=await engine.launch({headless:true});ctx=await browser.newContext({viewport:{width:1440,height:900}});page=await ctx.newPage();
+ browser=await engine.launch({headless:process.env.EARTHLINE_HEADFUL!=='1',firefoxUserPrefs:{'webgl.force-enabled':true,'webgl.disabled':false,'gfx.webrender.all':true,'webgl.enable-webgl2':true}});ctx=await browser.newContext({viewport:{width:1440,height:900}});page=await ctx.newPage();
  await ctx.route('**/*',route=>{let u;try{u=new URL(route.request().url())}catch{return route.continue()}
   if(u.origin===origin&&(u.pathname==='/'||u.pathname==='/index.html')&&route.request().resourceType()==='document')return route.fulfill({status:200,contentType:'text/html',body:html});
   if(u.origin===origin&&extra[u.pathname])return route.fulfill({status:200,contentType:'text/javascript',body:extra[u.pathname]});
