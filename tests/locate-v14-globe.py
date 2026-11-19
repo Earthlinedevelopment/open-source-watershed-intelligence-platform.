@@ -43,3 +43,19 @@ for token in ["publication must remain blocked","publication blocked","No qualif
   if p<0:break
   print("offset",p,"line",s.count("\n",0,p)+1,s[max(0,p-400):p+480].replace("\n"," "))
   start=p+len(token)
+
+print("\n=== STATUS OWNER EXACT SOURCE ===")
+needle='function evidence(){'
+p=s.rfind(needle,0,5055000)
+print('evidence offset',p)
+if p>=0:print(s[p:p+5000])
+print("\n=== STATUS OWNER CALL SITES ===")
+p=5050000
+for q in ['evidence()','function render','function update','EARTHLINE_EXCLUSION_EVIDENCE']:
+ pos=0; hits=[]
+ while True:
+  z=s.find(q,pos)
+  if z<0:break
+  if z>5030000:hits.append(z)
+  pos=z+1
+ print(q,len(hits),[(i,s[max(0,i-110):i+260].replace("\n"," ")) for i in hits[:12]])
