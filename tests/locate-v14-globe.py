@@ -25,3 +25,7 @@ for token in ["m.jumpTo({center:[0,18],zoom:1.25", "earthlineMap.on(\"load\",()=
   print("\\nTOKEN",repr(token),"offset",i,"line",s.count("\\n",0,i)+1 if i>=0 else -1)
   if i>=0:
     print(s[max(0,i-2400):min(len(s),i+2300)])
+
+print("\n=== initRealGlobe16233 all callers ===")
+for m in re.finditer(r'initRealGlobe16233\\s*\\(',s):
+ print('offset',m.start(),'line',s.count('\\n',0,m.start())+1,'context',s[max(0,m.start()-850):m.start()+900].replace('\\n',' '))
