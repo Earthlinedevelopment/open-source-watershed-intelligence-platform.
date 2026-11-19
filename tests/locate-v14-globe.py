@@ -18,3 +18,10 @@ for pattern in patterns:
  for m in hits[:20]:
   start=max(0,m.start()-250);end=min(len(s),m.end()+420)
   print('--- @',m.start(),'line',s.count('\n',0,m.start())+1,'---',re.sub(r'\s+',' ',s[start:end])[:680])
+
+print("\\n=== STARTUP CAMERA EXACT SOURCES ===")
+for token in ["m.jumpTo({center:[0,18],zoom:1.25", "earthlineMap.on(\"load\",()=>", "function earthlineSettleGlobeSplash16171", "function earthlineEnterGlobe", "function earthlineShowGlobe", "function earthlineSetGlobe"]:
+  i=s.find(token)
+  print("\\nTOKEN",repr(token),"offset",i,"line",s.count("\\n",0,i)+1 if i>=0 else -1)
+  if i>=0:
+    print(s[max(0,i-2400):min(len(s),i+2300)])
