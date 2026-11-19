@@ -53,6 +53,7 @@ const prof=PROFILES[PROFILE];
 if(!prof){console.error('unknown profile '+PROFILE);process.exit(2);}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const rows=[];
+let firstArrivalGlobeAudit=null;
 
 // Runs inside the page: one snapshot of everything a visitor would be looking at.
 function snap(){
@@ -214,6 +215,23 @@ async function open(browser){
   await page.goto(BASE+'?livetest='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForSelector('#searchInput',{timeout:30000,state:'attached'});
   await sleep(4000);
+  // Evidence of an ordinary visitor arriving WITHOUT clicking Search or Property.
+  if(firstArrivalGlobeAudit===null){
+    const capture=()=>page.evaluate(()=>{
+      const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+      const c=m?.getCenter?.();
+      const target=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+      return {mapPresent:!!m,center:c?{lat:c.lat,lng:c.lng}:null,
+        zoom:m?.getZoom?.()??null,projection:m?.getProjection?.()?.name||null,
+        target:target?{lat:target.lat,lng:target.lng,source:target.source}:null,
+        baseGlobe:!!document.getElementById('mapboxBase')?.classList.contains('globe-overview')};
+    });
+    const first=await capture();
+    await sleep(5000);
+    const settled=await capture();
+    firstArrivalGlobeAudit={at4s:first,at9s:settled};
+    await shot(page,'startup-globe-before-search');
+  }
   return {ctx,page,errors};
 }
 async function shot(page,name){try{await page.screenshot({path:OUT+'/'+name+'.png'});}catch(_){}}
@@ -373,7 +391,7 @@ async function lifecycle(browser,q){
   rows.push(row);console.log('EARTHLINE_LIVE_TEST '+JSON.stringify(row));
 }
 let browser=null,launchError=null;
-try{browser=await prof.engine.launch({headless:true});}catch(e){launchError=String(e).slice(0,400);}
+try{browser=await prof.engine.launch(PROFILE==='desktop-firefox'&&process.env.EARTHLINE_HEADFUL==='1'?{headless:false,firefoxUserPrefs:{'webgl.force-enabled':true,'webgl.disabled':false,'gfx.webrender.all':true,'webgl.enable-webgl2':true}}:{headless:true});}catch(e){launchError=String(e).slice(0,400);}
 if(browser){
   for(const q of REGIONAL)await regional(browser,q);
   const want=s=>!SITE_FILTER.length||SITE_FILTER.includes(s.name);
@@ -384,6 +402,6 @@ if(browser){
   if(process.env.EARTHLINE_SKIP_LIFECYCLE!=='1')for(const q of ['Arizona','Vermont'])await lifecycle(browser,q);
   await browser.close().catch(()=>{});
 }
-const result={profile:PROFILE,candidateMode:PINNED,candidateIndexSha256:PINNED_SHA,candidateExtraFiles:Object.keys(EXTRA),url:BASE,testedAt:new Date().toISOString(),launchError,rows};
+const result={profile:PROFILE,candidateMode:PINNED,candidateIndexSha256:PINNED_SHA,candidateExtraFiles:Object.keys(EXTRA),url:BASE,testedAt:new Date().toISOString(),launchError,startupGlobe:firstArrivalGlobeAudit,rows};
 writeFileSync(OUT+'/results.json',JSON.stringify(result,null,1));
 console.log('EARTHLINE_LIVE_TEST_DONE '+PROFILE+' rows='+rows.length+(launchError?' launchError':''));
