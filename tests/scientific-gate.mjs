@@ -94,14 +94,26 @@ for(const p of browsers){
  }
  summaries.push({browser:p,propertyCount:properties.length});
 }
-for(const [site,values] of bySite){
+// Exactly ten shared benchmark properties run on all five profiles. Three
+// additional regional-coverage sites run on Chrome only and are checked there,
+// not incorrectly demanded from other browsers.
+const commonSites=[
+ 'arkansas-your-screenshot-1','arkansas-your-screenshot-2',
+ 'newyork-your-screenshot-1','newyork-your-screenshot-2',
+ 'iowa-farmland','iowa-creek','vermont','arizona','darling-mine','essex'
+];
+for(const site of commonSites){
+ const values=bySite.get(site)||[];
  if(values.length!==browsers.length)fail('cross-browser',site,'Only '+values.length+' of '+browsers.length+' profiles produced valid Property output');
+ if(!values.length)continue;
  const base=values[0];
  for(const v of values.slice(1))if(v.shown!==base.shown||JSON.stringify(v.ids)!==JSON.stringify(base.ids))
    fail('cross-browser',site,`${v.browser} has ${v.shown} swales vs ${base.browser} ${base.shown} / different IDs`);
 }
 const uniqueSites=new Set([...bySite.keys()]);
-if(uniqueSites.size<10)fail('cross-browser','coverage','Only '+uniqueSites.size+' common sites (<10)');
+if(commonSites.some(site=>!bySite.has(site)))fail('cross-browser','coverage','One or more mandatory shared sites missing');
+if((summaries.find(x=>x.browser==='desktop-chrome')?.propertyCount||0)<13)
+ fail('desktop-chrome','coverage','Three additional Chrome-only state-coverage properties missing');
 const output={passed:failures.length===0,profiles:browsers.length,sites:uniqueSites.size,summaries,failures};
 writeFileSync(join(root,'GATE.json'),JSON.stringify(output,null,2)+'\n');
 const md=['# Earthline candidate scientific release gate','',output.passed?'**PASS — candidate eligible for further release review**':'**FAIL — DO NOT PROMOTE CANDIDATE**','',`Browsers required: ${browsers.length}; valid sites seen: ${uniqueSites.size}; failures: ${failures.length}`,'',...failures.map(f=>'- **'+f.browser+' / '+f.site+':** '+f.reason),''];
