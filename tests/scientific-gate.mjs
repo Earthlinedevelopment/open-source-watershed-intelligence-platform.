@@ -12,6 +12,20 @@ for(const p of browsers){
  let result;
  try{result=JSON.parse(readFileSync(file,'utf8'));}catch(e){fail(p,'workflow','Unreadable results: '+e.message);continue;}
  if(result.launchError)fail(p,'workflow','Browser launch error: '+result.launchError);
+
+ // Independent provenance and ordinary-visitor startup acceptance.
+ const expectedHash=process.env.EARTHLINE_EXPECTED_INDEX_SHA||'';
+ if(result.candidateMode!==true)fail(p,'provenance','Browser did not load the pinned candidate');
+ if(expectedHash&&result.candidateIndexSha256!==expectedHash)
+   fail(p,'provenance','Candidate page hash '+String(result.candidateIndexSha256)+' != '+expectedHash);
+ for(const label of ['at4s','at9s']){
+   const a=result.startupGlobe?.[label];
+   if(!a?.mapPresent||a.projection!=='globe'||!Number.isFinite(a.zoom)||a.zoom>3.4||
+      !Number.isFinite(a.center?.lat)||!Number.isFinite(a.center?.lng)||
+      Math.abs(a.center.lat-20)>0.005||Math.abs(a.center.lng+102)>0.005)
+     fail(p,'startup','Idle globe at '+label+' is not the one stable [-102,20] camera: '+JSON.stringify(a||null));
+ }
+
  const properties=(result.rows||[]).filter(x=>x.kind==='property');
  if(properties.length<10)fail(p,'workflow','Incomplete property coverage: '+properties.length+' (<10)');
  for(const row of result.rows||[])if(row.couldNotRun)fail(p,row.site||row.query||'workflow','Could not run: '+row.couldNotRun);
@@ -59,6 +73,14 @@ for(const p of browsers){
        fail(p,site,t+': Elder result belongs to wrong Property coordinates '+(elder.propertyRunIdentity||'unknown'));
    }
 
+
+   // Reviewer-visible count must match final geometry, not pre-audit proposals.
+   const swaleMessage=String(a.engine16600?.message||'');
+   const claimed=swaleMessage.match(/\b(\d+)\s+proposed swale alignments\b/i);
+   if(a.engine16600?.verified===true&&!claimed)
+     fail(p,site,t+': verified engine did not provide an auditable swale-count message');
+   if(claimed&&Number(claimed[1])!==a.shownSwales)
+     fail(p,site,t+': message claims '+claimed[1]+' swales but rendered '+a.shownSwales);
    if(!Number.isFinite(a.engineSwales)||!Number.isFinite(a.shownSwales))fail(p,site,t+': missing swale count');
    else if(a.engineSwales!==a.shownSwales)fail(p,site,t+': '+a.engineSwales+' engine vs '+a.shownSwales+' displayed');
    if((a.swalesOver4pct||0)>0)fail(p,site,t+': '+a.swalesOver4pct+' slopes exceed 4%');
@@ -80,17 +102,29 @@ for(const p of browsers){
  }
  summaries.push({browser:p,propertyCount:properties.length});
 }
-for(const [site,values] of bySite){
+// Exactly ten shared benchmark properties run on all five profiles. Three
+// additional regional-coverage sites run on Chrome only and are checked there,
+// not incorrectly demanded from other browsers.
+const commonSites=[
+ 'arkansas-your-screenshot-1','arkansas-your-screenshot-2',
+ 'newyork-your-screenshot-1','newyork-your-screenshot-2',
+ 'iowa-farmland','iowa-creek','vermont','arizona','darling-mine','essex'
+];
+for(const site of commonSites){
+ const values=bySite.get(site)||[];
  if(values.length!==browsers.length)fail('cross-browser',site,'Only '+values.length+' of '+browsers.length+' profiles produced valid Property output');
+ if(!values.length)continue;
  const base=values[0];
  for(const v of values.slice(1))if(v.shown!==base.shown||JSON.stringify(v.ids)!==JSON.stringify(base.ids))
    fail('cross-browser',site,`${v.browser} has ${v.shown} swales vs ${base.browser} ${base.shown} / different IDs`);
 }
 const uniqueSites=new Set([...bySite.keys()]);
-if(uniqueSites.size<10)fail('cross-browser','coverage','Only '+uniqueSites.size+' common sites (<10)');
-const output={passed:failures.length===0,profiles:browsers.length,sites:uniqueSites.size,summaries,failures};
+if(commonSites.some(site=>!bySite.has(site)))fail('cross-browser','coverage','One or more mandatory shared sites missing');
+if((summaries.find(x=>x.browser==='desktop-chrome')?.propertyCount||0)<13)
+ fail('desktop-chrome','coverage','Three additional Chrome-only state-coverage properties missing');
+const output={passed:failures.length===0,runId:process.env.GITHUB_RUN_ID||null,commit:process.env.GITHUB_SHA||null,round:Number(process.env.EARTHLINE_GATE_ROUND||0),candidateIndexSha256:process.env.EARTHLINE_EXPECTED_INDEX_SHA||null,profiles:browsers.length,sites:uniqueSites.size,summaries,failures};
 writeFileSync(join(root,'GATE.json'),JSON.stringify(output,null,2)+'\n');
-const md=['# Earthline candidate scientific release gate','',output.passed?'**PASS — candidate eligible for further release review**':'**FAIL — DO NOT PROMOTE CANDIDATE**','',`Browsers required: ${browsers.length}; valid sites seen: ${uniqueSites.size}; failures: ${failures.length}`,'',...failures.map(f=>'- **'+f.browser+' / '+f.site+':** '+f.reason),''];
+const md=['# Earthline candidate scientific release gate','',output.passed?'**PASS Round '+output.round+'/3 — NOT YET AUTHORIZED FOR PRODUCTION**':'**FAIL Round '+output.round+'/3 — DO NOT PROMOTE CANDIDATE**','',`Commit: ${output.commit} | Run: ${output.runId} | Candidate page SHA-256: ${output.candidateIndexSha256} | Round: ${output.round}/3`, '',`Browsers required: ${browsers.length}; valid sites seen: ${uniqueSites.size}; failures: ${failures.length}`,'',...failures.map(f=>'- **'+f.browser+' / '+f.site+':** '+f.reason),''];
 writeFileSync(join(root,'GATE.md'),md.join('\n'));
 console.log('EARTHLINE_SCIENTIFIC_GATE '+JSON.stringify({passed:output.passed,failures:failures.length,sites:output.sites}));
 if(failures.length)process.exitCode=1;

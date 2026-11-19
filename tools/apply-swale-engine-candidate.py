@@ -132,5 +132,11 @@ b7 = '''  function evidence(){
     const c=m&&m.vectorNoBuildCoverage||null;if(!c)return null;'''
 once(a7,b7)
 
+# 8. One startup globe camera owner. The later panel-globe initializer must
+#    not move the map a second time; core Mapbox startup already uses [-102,20].
+#    Keep projection and fog intact, and preserve the user-approved globe.
+a8 = """try{if(typeof m.jumpTo==='function')m.jumpTo({center:[0,18],zoom:1.25,bearing:0,pitch:0})}catch(error){console.warn('[Earthline 16233] Globe camera unavailable',error)}"""
+once(a8, """/* EARTHLINE 16602: core Mapbox owns the idle globe camera; no secondary jump. */""")
+
 open(dst, 'w', encoding='utf-8').write(s)
 print('wrote', dst, 'sha256', hashlib.sha256(s.encode('utf-8')).hexdigest(), 'bytes', len(s.encode('utf-8')))
