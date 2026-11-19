@@ -91,5 +91,46 @@ b6 = '''let earthlineStartupGlobeSettled16601=false;
     if(searchActive)return false;'''
 once(a6,b6)
 
+# 7. Existing Status / report owner must use the SAME run-scoped acquisition
+#    evidence that the candidate engine used, not the old on-screen vector query.
+#    This replaces the evidence() owner; it does not append another status UI.
+a7 = '''  function evidence(){
+    const m=model(),c=m&&m.vectorNoBuildCoverage||null;if(!c)return null;'''
+b7 = '''  function evidence(){
+    const m=model(),eng=m&&m.propertySwaleEngine16600||null;
+    if(eng&&Number(eng.searchGen)===Number(m.searchGen)){
+      const a=eng.acquisition||{};
+      const sourceTier=String(a.sourceTier||"");
+      const acquisitionResult=String(a.status||"failed");
+      const valid=eng.verified===true&&
+        (sourceTier==="authoritative-local"||sourceTier==="open-data")&&
+        (acquisitionResult==="features-found"||acquisitionResult==="screened-clear"||acquisitionResult==="clear");
+      if(!valid)return Object.freeze({
+        build:BUILD,sourceTier,acquisitionResult:"failed",kind:"failed",
+        label:"EXCLUSION DATA QUERY FAILED · OUTPUT BLOCKED",
+        detail:"The clean Property engine could not complete its required road, building and water check: "+String(eng.code||"unverified")+". No verified swales may publish.",
+        exclusionVerified:false,publicationAllowed:false,sourceFeatureCount:0,processedFeatureCount:0
+      });
+      const authoritative=sourceTier==="authoritative-local"&&a.vermontVerified===true;
+      const kind=authoritative?"authoritative":"open-data";
+      const label=authoritative?"AUTHORITATIVE LOCAL DATA":
+        (acquisitionResult==="screened-clear"?"OPEN-DATA SCREENING · NO MAPPED EXCLUSIONS RETURNED · FIELD VERIFICATION REQUIRED":
+        "OPEN-DATA SCREENING · FIELD VERIFICATION REQUIRED");
+      const detail=authoritative
+        ?"Authoritative Vermont E911 / VCGI road, driveway and building evidence was applied to this Property prescription."
+        :(acquisitionResult==="screened-clear"
+          ?"Road, building and water sources were queried successfully, but no mapped exclusions were found. Coverage may be incomplete; field verification is required before siting."
+          :"Available road, building and water geometry was applied to the clean engine's verified Property screening. Coverage may be incomplete; field verification is required before siting.");
+      const counts=a.counts||{};
+      const sourceFeatureCount=Object.keys(counts).reduce((sum,key)=>sum+(Number(counts[key])||0),0);
+      return Object.freeze({
+        build:BUILD,sourceTier,acquisitionResult,kind,label,detail,
+        exclusionVerified:authoritative,publicationAllowed:true,
+        sourceFeatureCount,processedFeatureCount:Number(eng.audit&&eng.audit.checked||0)
+      });
+    }
+    const c=m&&m.vectorNoBuildCoverage||null;if(!c)return null;'''
+once(a7,b7)
+
 open(dst, 'w', encoding='utf-8').write(s)
 print('wrote', dst, 'sha256', hashlib.sha256(s.encode('utf-8')).hexdigest(), 'bytes', len(s.encode('utf-8')))
