@@ -59,3 +59,14 @@ for q in ['evidence()','function render','function update','EARTHLINE_EXCLUSION_
   if z>5030000:hits.append(z)
   pos=z+1
  print(q,len(hits),[(i,s[max(0,i-110):i+260].replace("\n"," ")) for i in hits[:12]])
+
+print("\n=== CANDIDATE V14 REPRODUCIBLE CHECKSUMS ===")
+import subprocess, tempfile
+with tempfile.TemporaryDirectory() as temp:
+ out=str(Path(temp)/'candidate-v14.html')
+ p=subprocess.run(['python3','tools/apply-swale-engine-candidate.py','index.html',out],text=True,capture_output=True)
+ print('buildExit',p.returncode,'stdout',p.stdout,'stderr',p.stderr)
+ if p.returncode:raise RuntimeError('Candidate v14 builder failed')
+ for item in [out,'tools/adapter-16600.js','tools/apply-swale-engine-candidate.py','earthline-property-swales.js','earthline-property-swale-bridge.js']:
+  data=Path(item).read_bytes()
+  print('SHA256',hashlib.sha256(data).hexdigest(),'BYTES',len(data),'FILE',item)
