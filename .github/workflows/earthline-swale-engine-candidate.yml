@@ -117,6 +117,14 @@ jobs:
           mkdir -p collected
           result=0
           node tests/scientific-gate.mjs collected || result=$?
+          if [ ! -f collected/GATE.md ]; then
+            result=1
+            printf '# EARTHLINE SCIENTIFIC GATE ENGINE ERROR\n\n**FAIL — DO NOT PROMOTE**\n\nThe gate script did not produce a report.\n' > collected/GATE.md
+          fi
+          if [ ! -f collected/GATE.json ]; then
+            result=1
+            printf '{"passed":false,"error":"gate-script-did-not-complete"}\n' > collected/GATE.json
+          fi
           if [ "$TEST_MATRIX_STATUS" != 'success' ] || [ "$UNIT_STATUS" != 'success' ]; then
             result=1
             echo "Browser matrix: $TEST_MATRIX_STATUS; unit: $UNIT_STATUS" >> collected/GATE.md
@@ -237,6 +245,14 @@ jobs:
           mkdir -p collected
           result=0
           node tests/scientific-gate.mjs collected || result=$?
+          if [ ! -f collected/GATE.md ]; then
+            result=1
+            printf '# EARTHLINE SCIENTIFIC GATE ENGINE ERROR\n\n**FAIL — DO NOT PROMOTE**\n\nThe gate script did not produce a report.\n' > collected/GATE.md
+          fi
+          if [ ! -f collected/GATE.json ]; then
+            result=1
+            printf '{"passed":false,"error":"gate-script-did-not-complete"}\n' > collected/GATE.json
+          fi
           if [ "$TEST_MATRIX_STATUS" != 'success' ] || [ "$UNIT_STATUS" != 'success' ]; then
             result=1
             echo "Browser matrix: $TEST_MATRIX_STATUS; unit: $UNIT_STATUS" >> collected/GATE.md
@@ -357,6 +373,14 @@ jobs:
           mkdir -p collected
           result=0
           node tests/scientific-gate.mjs collected || result=$?
+          if [ ! -f collected/GATE.md ]; then
+            result=1
+            printf '# EARTHLINE SCIENTIFIC GATE ENGINE ERROR\n\n**FAIL — DO NOT PROMOTE**\n\nThe gate script did not produce a report.\n' > collected/GATE.md
+          fi
+          if [ ! -f collected/GATE.json ]; then
+            result=1
+            printf '{"passed":false,"error":"gate-script-did-not-complete"}\n' > collected/GATE.json
+          fi
           if [ "$TEST_MATRIX_STATUS" != 'success' ] || [ "$UNIT_STATUS" != 'success' ]; then
             result=1
             echo "Browser matrix: $TEST_MATRIX_STATUS; unit: $UNIT_STATUS" >> collected/GATE.md
