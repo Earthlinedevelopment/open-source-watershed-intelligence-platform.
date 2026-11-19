@@ -15,8 +15,8 @@ const PROFILES={
 };
 const REGIONAL=['New York'];
 const PROPERTY=[
-  {name:'new-york-hudson-valley',q:'41.93000, -73.90000',at:[-73.90000,41.93000]},
-  {name:'new-york-southern',q:'41.07000, -73.94000',at:[-73.94000,41.07000]},
+  {name:'ny-42-78781-75-76996',q:'42.78781, -75.76996',at:[-75.76996,42.78781]},
+  {name:'ny-chapin-rd-42-78860-75-77379',q:'42.78860, -75.77379',at:[-75.77379,42.78860]},
 ];
 const OUT='ny-test-results/'+PROFILE;
 mkdirSync(OUT,{recursive:true});
