@@ -1,0 +1,88 @@
+# NEW YORK FIRST. Read-only test of the PUBLIC Earthline site for New York only, on all five browser profiles.
+# Starts when files are pushed to the branch "live-sweep-ny". Does not touch pages-live. Results: branch "live-sweep-ny-results".
+# Tests: Regional x2, Property x2 at five NY sites (Lake George shore, Hudson Valley farmland, Catskills steep wooded,
+# Finger Lakes farmland, Long Island flat), Regional -> Property -> Regional -> Property, geometry audit, and a check of every
+# Regional corridor vertex against the New York state outline the page ships.
+name: Earthline live sweep NEW YORK
+on:
+  push:
+    branches: [live-sweep-ny]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  ny:
+    name: New York ${{ matrix.profile }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [desktop-chrome, desktop-firefox, desktop-safari, iphone, android]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install browsers
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium firefox webkit
+      - name: Record the live build at the start of this job
+        run: |
+          mkdir -p live-test-results
+          {
+            echo "job started (UTC): $(date -u)"
+            for f in "" earthline-elder-restored-17097.js earthline-elder-worker-17129.js tools/elder_trees/chmv2_array_detector_17129.py; do
+              echo "sha256 /$f: $(curl -fsS --max-time 60 "https://earthlinedevelopment.org/$f" | sha256sum | cut -d' ' -f1)"
+            done
+            echo "pages-live head: $(git ls-remote https://github.com/${{ github.repository }} refs/heads/pages-live | cut -f1)"
+          } > "live-test-results/BUILD-AT-START-${{ strategy.job-index }}.txt"
+      - name: Test the live site (New York)
+        env:
+          EARTHLINE_PROFILE: ${{ matrix.profile }}
+          SWEEP: primary
+          ONLY: New York
+        run: node tests/earthline-live-sweep-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ny-${{ strategy.job-index }}
+          path: live-test-results/
+          retention-days: 14
+  publish:
+    name: publish New York results
+    needs: ny
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/download-artifact@v4
+        with:
+          path: collected
+          pattern: ny-*
+          merge-multiple: true
+      - name: Summarise and push
+        run: |
+          mkdir -p collected
+          {
+            echo "Tested at (UTC): $(date -u)"
+            echo "Live URL: https://earthlinedevelopment.org/"
+            echo "Live index.html sha256: $(curl -fsS --max-time 60 https://earthlinedevelopment.org/ | sha256sum | cut -d' ' -f1)"
+            for f in earthline-elder-restored-17097.js earthline-elder-worker-17129.js tools/elder_trees/chmv2_array_detector_17129.py; do
+              echo "Live /$f sha256: $(curl -fsS --max-time 60 "https://earthlinedevelopment.org/$f" | sha256sum | cut -d' ' -f1)"
+            done
+            echo "pages-live head: $(git ls-remote https://github.com/${{ github.repository }} refs/heads/pages-live | cut -f1)"
+            echo "Workflow run: ${{ github.run_id }}"
+          } > collected/BUILD.txt
+          node tests/summarize-sweep.mjs collected
+          cd collected
+          git init -q -b live-sweep-ny-results
+          git config user.name "earthline-live-sweep"
+          git config user.email "live-sweep@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Live sweep: New York, run ${{ github.run_id }}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" live-sweep-ny-results
