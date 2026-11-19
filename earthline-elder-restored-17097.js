@@ -258,9 +258,9 @@
           const p=f.properties||{},verified=isVerified(p),conf=elderConfidence(p);
           const title=verified?'VERIFIED ELDER TREE':'ELDER TREE CANDIDATE';
           const confidence=verified?'Field verified':(conf==null?'Confidence unavailable':'Confidence '+conf+'%');
-          return '<div style="font:800 8px/1.13 Noto Sans,system-ui,sans-serif;color:#173b2a;overflow-wrap:anywhere;white-space:normal;padding-right:9px">'+esc(title)+'</div>'+
-            '<div style="margin-top:2px;font:600 7px/1.12 Noto Sans,system-ui,sans-serif;color:#315843;white-space:normal">'+esc(confidence)+'</div>'+
-            (!verified?'<div style="margin-top:2px;font:500 7px/1.12 Noto Sans,system-ui,sans-serif;color:#526159;white-space:normal">Modeled tree; age not verified.</div>':'');
+          return '<div style="font:800 10px/1.13 Noto Sans,system-ui,sans-serif;color:#173b2a;overflow-wrap:anywhere;white-space:normal;padding-right:9px">'+esc(title)+'</div>'+
+            '<div style="margin-top:2px;font:600 9px/1.12 Noto Sans,system-ui,sans-serif;color:#315843;white-space:normal">'+esc(confidence)+'</div>'+
+            (!verified?'<div style="margin-top:2px;font:500 9px/1.12 Noto Sans,system-ui,sans-serif;color:#526159;white-space:normal">Modeled tree; age not verified.</div>':'');
         }
         function popupPlacementInsideProperty(coords){
           try{
