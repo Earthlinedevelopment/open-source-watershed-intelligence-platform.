@@ -17,6 +17,11 @@ for(const profile of profiles){
   const row=r.rows?.find(x=>x.kind==='property'&&x.site===site);
   if(!row){issues.push(profile+'/'+site+': missing Property run');continue;}
   for(const n of [1,2]){
+   const selected=row['targetBeforeRun'+n];
+   const target=selected?.target;
+   if(!target||!Number.isFinite(target.lat)||!Number.isFinite(target.lng)||
+       Math.abs(target.lat-want[0])>0.0003||Math.abs(target.lng-want[1])>0.0003)
+     issues.push(profile+'/'+site+'/'+n+': STALE PROPERTY TARGET '+JSON.stringify(selected||null));
    const run=row['run'+n],c=run?.center;
    if(!c||!Number.isFinite(c.lat)||!Number.isFinite(c.lng)||
        Math.abs(c.lat-want[0])>0.0003||Math.abs(c.lng-want[1])>0.0003)
