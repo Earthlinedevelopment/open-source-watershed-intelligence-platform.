@@ -253,74 +253,74 @@
         src=m.getSource?.(SOURCE);
       }
         /* Elder information is user-triggered only: full message on hover, click or tap. */
-        /* Compact Elder Tree label. Place its popup outside the property polygon
-           when the map has enough room; never cover the 20-acre analysis. */
+        /* Elder detail only on explicit tree interactions; parcel-contained UI. */
         function elderMessageForFeature(f){
           const p=f.properties||{},verified=isVerified(p),conf=elderConfidence(p);
           const title=verified?'VERIFIED ELDER TREE':'ELDER TREE CANDIDATE';
           const confidence=verified?'Field verified':(conf==null?'Confidence unavailable':'Confidence '+conf+'%');
-          return '<div style="font:800 12px/1.3 Noto Sans,system-ui,sans-serif;color:#173b2a">'+esc(title)+'</div>'+
-            '<div style="margin-top:4px;font:600 11px/1.35 Noto Sans,system-ui,sans-serif;color:#315843">'+esc(confidence)+'</div>'+
-            (!verified?'<div style="margin-top:4px;font:500 10px/1.35 Noto Sans,system-ui,sans-serif;color:#526159">Modeled tree; age not verified.</div>':'');
+          return '<div style="font:800 9px/1.15 Noto Sans,system-ui,sans-serif;color:#173b2a;overflow-wrap:anywhere;padding-right:8px">'+esc(title)+'</div>'+
+            '<div style="margin-top:2px;font:600 8px/1.15 Noto Sans,system-ui,sans-serif;color:#315843">'+esc(confidence)+'</div>'+
+            (!verified?'<div style="margin-top:2px;font:500 8px/1.15 Noto Sans,system-ui,sans-serif;color:#526159">Modeled tree; age not verified.</div>':'');
         }
-        function popupPlacementOutsideProperty(coords){
-          const fallback={lngLat:coords,anchor:'bottom',offset:12};
+        function popupPlacementInsideProperty(coords){
           try{
             const md=(typeof M!=='undefined'&&M)||window.M||null;
+            const isProperty=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property';
+            if(!isProperty)return null;
             const polygon=md?.analysisBoundaryLngLat;
-            let pts=Array.isArray(polygon)?polygon.map(p=>{
+            /* Never place against a guessed boundary: absent property geometry means no popup. */
+            if(!Array.isArray(polygon)||polygon.length<3)return null;
+            const pts=polygon.map(p=>{
               if(!Array.isArray(p)||p.length<2)return null;
               const q=m.project(p);
               return Number.isFinite(q?.x)&&Number.isFinite(q?.y)?q:null;
-            }).filter(Boolean):[];
-            /* When the boundary is not exposed, use the selected 20-acre
-               center and the 20-acre square's half-width as a safe estimate. */
-            if(pts.length<3){
-              const loc=window.EARTHLINE_PROPERTY_TARGET_16201||md?.loc;
-              const lng=Number(loc?.lng),lat=Number(loc?.lat);
-              const propertyVisible=String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property';
-              if(propertyVisible&&Number.isFinite(lng)&&Number.isFinite(lat)){
-                const half=170,dy=half/111320,dx=half/(111320*Math.max(.05,Math.cos(lat*Math.PI/180)));
-                pts=[[lng-dx,lat-dy],[lng+dx,lat-dy],[lng+dx,lat+dy],[lng-dx,lat+dy]].map(p=>m.project(p));
-              }
-            }
-            if(pts.length<3)return fallback;
+            }).filter(Boolean);
+            if(pts.length<3)return null;
+            const selected=m.project(coords);
             const minX=Math.min(...pts.map(p=>p.x)),maxX=Math.max(...pts.map(p=>p.x));
             const minY=Math.min(...pts.map(p=>p.y)),maxY=Math.max(...pts.map(p=>p.y));
+            /* Only tree points inside the visible 20-acre boundary may open the label. */
+            if(selected.x<minX||selected.x>maxX||selected.y<minY||selected.y>maxY)return null;
             const width=m.getContainer().clientWidth,height=m.getContainer().clientHeight;
-            const gap=12,popupW=205,popupH=105;
-            const cy=Math.max(8,Math.min(height-popupH-8,(minY+maxY)/2-popupH/2));
-            const cx=Math.max(popupW/2+8,Math.min(width-popupW/2-8,(minX+maxX)/2));
-            if(width-maxX>=popupW+gap+8)return {lngLat:m.unproject([maxX+gap,cy]),anchor:'top-left',offset:0};
-            if(minX>=popupW+gap+8)return {lngLat:m.unproject([minX-gap,cy]),anchor:'top-right',offset:0};
-            if(minY>=popupH+gap+8)return {lngLat:m.unproject([cx,minY-gap]),anchor:'bottom',offset:0};
-            if(height-maxY>=popupH+gap+8)return {lngLat:m.unproject([cx,maxY+gap]),anchor:'top',offset:0};
-          }catch(_){}
-          return fallback;
+            const popupW=145,popupH=76,pad=9;
+            const left=Math.max(minX+pad,0+pad),right=Math.min(maxX-pad,width-pad)-popupW;
+            const top=Math.max(minY+pad,0+pad),bottom=Math.min(maxY-pad,height-pad)-popupH;
+            if(right<left||bottom<top)return null;
+            const x=Math.min(right,Math.max(left,selected.x-popupW/2));
+            const y=Math.min(bottom,Math.max(top,selected.y-popupH-12));
+            return {lngLat:m.unproject([x,y]),anchor:'top-left',offset:0};
+          }catch(_){return null}
         }
         function showElderTreePopup(e,persistent){
           const f=e?.features?.[0],coords=f?.geometry?.coordinates;
           if(!f||!Array.isArray(coords)||coords.length<2)return;
           dismissElderHoverM7();
           try{
-            const placement=popupPlacementOutsideProperty(coords);
+            const placement=popupPlacementInsideProperty(coords);
+            if(!placement)return;
             const popup=new mapboxgl.Popup({
               closeButton:!!persistent,closeOnClick:!!persistent,
-              offset:placement.offset??0,anchor:placement.anchor,maxWidth:'205px',
-              className:'earthline-elder-triggered-popup'
+              offset:0,anchor:'top-left',maxWidth:'145px',
+              className:'earthline-elder-triggered-popup',
+              focusAfterOpen:false
             }).setLngLat(placement.lngLat).setHTML(elderMessageForFeature(f)).addTo(m);
-            /* Explicitly cap the actual popup; existing site CSS overrides Mapbox maxWidth. */
             const element=popup.getElement?.();
             if(element){
-              element.style.setProperty('width','205px','important');
-              element.style.setProperty('max-width','205px','important');
+              element.style.setProperty('width','145px','important');
+              element.style.setProperty('max-width','145px','important');
               element.style.setProperty('min-width','0','important');
               const inner=element.querySelector('.mapboxgl-popup-content');
               if(inner){
-                inner.style.setProperty('width','205px','important');
+                inner.style.setProperty('width','145px','important');
                 inner.style.setProperty('box-sizing','border-box','important');
-                inner.style.setProperty('padding','10px 12px','important');
-                inner.style.setProperty('max-width','205px','important');
+                inner.style.setProperty('padding','6px 8px','important');
+                inner.style.setProperty('max-width','145px','important');
+              }
+              const close=element.querySelector('.mapboxgl-popup-close-button');
+              if(close){
+                close.style.setProperty('font-size','11px','important');
+                close.style.setProperty('width','14px','important');
+                close.style.setProperty('height','14px','important');
               }
             }
             if(!persistent)elderHoverPopupM7=popup;
