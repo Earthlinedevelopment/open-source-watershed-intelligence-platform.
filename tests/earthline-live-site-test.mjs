@@ -203,7 +203,8 @@ async function watchAquifer(page,ms){
 async function open(browser){
   const ctx=await browser.newContext(prof.ctx);const page=await ctx.newPage();const errors=[];
   if(PINNED){const origin=new URL(BASE).origin;
-    await page.route('**/*',route=>{let u;try{u=new URL(route.request().url());}catch(_){return route.continue();}
+    // Route at context scope so Worker script loads use the candidate Elder code too.
+    await ctx.route('**/*',route=>{let u;try{u=new URL(route.request().url());}catch(_){return route.continue();}
       if(u.origin===origin&&(u.pathname==='/'||u.pathname==='/index.html')&&route.request().resourceType()==='document')
         return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:PINNED_HTML});
       if(u.origin===origin&&EXTRA[u.pathname])return route.fulfill({status:200,contentType:u.pathname.endsWith('.py')?'text/x-python; charset=utf-8':u.pathname.endsWith('.js')?'application/javascript; charset=utf-8':'application/octet-stream',body:EXTRA[u.pathname]});
@@ -258,17 +259,36 @@ async function propertyOnce(page,pressNow){
   await sleep(2500); // let the map finish drawing
   const s=await page.evaluate(snap);
   let geometry=null;try{geometry=await page.evaluate(geometryAudit);}catch(e){geometry={ok:false,error:String(e).slice(0,160)};}
-  // Elders load slower: give them up to 60 more seconds, then record what is there.
-  const e0=Date.now();let elder=s.elder;
-  while(!elder&&Date.now()-e0<60000){await sleep(2000);elder=await page.evaluate(()=>{const e=window.EARTHLINE_ELDER_TREE_LAST_17097;
-    if(!e)return null;const o={};for(const k of Object.keys(e)){const v=e[k];o[k]=Array.isArray(v)?('array:'+v.length):(v&&typeof v==='object'?'object':v);}return o;});}
+  // Wait for terminal Elder outcome; a truthy "property-pending" snapshot is NOT a result.
+  const e0=Date.now();let elder=s.elder,elderFinal=null;
+  while(Date.now()-e0<90000){
+    elderFinal=await page.evaluate(()=>{
+      const e=window.EARTHLINE_ELDER_TREE_LAST_17097||null;
+      const m=window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null);
+      let sourceFeatures=null;
+      try{const src=m?.getSource?.('earthline-elder-trees-17097');
+        const data=src?._data||(src?.serialize?.().data);
+        if(Array.isArray(data?.features))sourceFeatures=data.features.length;
+      }catch(_){}
+      return {state:e?.state||null,error:e?.error||null,
+        propertyRunIdentity:e?.propertyRunIdentity||null,
+        featureCount:e?.featureCount??null,
+        poolCount:e?.dynamicCandidatePoolCount??null,
+        mapPublished:e?.mapPublished??null,sourceFeatures,
+        gauge:document.getElementById('earthlineElderTreesGauge17097')?.textContent||null,
+        candidateCount:e?.summary?.candidates??null};
+    });
+    if(['committed','failed'].includes(elderFinal?.state))break;
+    await sleep(2000);
+  }
+  elder=elderFinal;
   const sl=(s.engineSlopes&&s.engineSlopes.length)?s.engineSlopes:s.swales.filter(x=>Number.isFinite(x.slopePct)).map(x=>x.slopePct),ln=s.swales.filter(x=>Number.isFinite(x.lengthM)).map(x=>x.lengthM);
   return {seconds:Math.round((Date.now()-t0)/100)/10,propertyButtonPressed:pressed,clickKind,timedOut,
     tier:s.tier,location:s.location,center:s.center,analysisReady:s.analysisReady,
     engineSwales:s.engineSwales,shownSwales:s.shownSwales,slopesMeasured:sl.length,statusText:s.statusText,
     steepestSwalePct:sl.length?Math.max(...sl):null,swalesOver4pct:sl.filter(v=>v>4.0001).length,
     shortestSwaleM:ln.length?Math.min(...ln):null,longestSwaleM:ln.length?Math.max(...ln):null,
-    rechargeTargets:s.rechargeTargets,elder,elderWaitSeconds:Math.round((Date.now()-e0)/1000),
+    rechargeTargets:s.rechargeTargets,elder,elderFinal,elderWaitSeconds:Math.round((Date.now()-e0)/1000),
     propertyAudit:s.propertyAudit,integrity:s.integrity,propertyFailure:s.propertyFailure,layout:s.layout,swales:s.swales,engine16600:s.engine16600,closestPairM:s.closestPairM,drawnLivingSwales:s.drawnLivingSwales,drawnTexture:s.drawnTexture,drawnLegacy:s.drawnLegacy,geometry};
 }
 async function property(browser,site){

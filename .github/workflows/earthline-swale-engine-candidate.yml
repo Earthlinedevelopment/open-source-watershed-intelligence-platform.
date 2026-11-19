@@ -32,6 +32,8 @@ jobs:
           node-version: '20'
       - name: Engine tests (R1-R13)
         run: node tests/engine-tests.js
+      - name: Elder worker recovery and approved-popup JS contract
+        run: node tests/elder-worker-recovery.mjs
       - name: Fixture tile is rebuilt by the independent encoder, then decoder and audit tests
         run: |
           python3 tests/make-mvt-fixture.py
@@ -79,7 +81,7 @@ jobs:
         env:
           EARTHLINE_PROFILE: ${{ matrix.profile }}
           EARTHLINE_PINNED: '1'
-          EARTHLINE_PINNED_EXTRA: earthline-property-swales.js,earthline-property-swale-bridge.js
+          EARTHLINE_PINNED_EXTRA: earthline-property-swales.js,earthline-property-swale-bridge.js,earthline-elder-restored-17097.js,earthline-elder-worker-17129.js
           EARTHLINE_RESULTS_DIR: swale-candidate-results
           EARTHLINE_COVERAGE: ${{ matrix.profile == 'desktop-chrome' && '1' || '0' }}
         run: node tests/earthline-live-site-test.mjs

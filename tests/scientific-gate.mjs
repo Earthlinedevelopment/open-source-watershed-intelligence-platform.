@@ -26,6 +26,25 @@ for(const p of browsers){
    const a=runs[n],t='run '+(n+1);
    if(!a){fail(p,site,t+': missing result');continue;}
    if(a.tier!=='property'||a.propertyAudit?.result!==true)fail(p,site,t+': Property result not successfully published');
+   // Final Elder state and identity are required before the test can claim stability.
+   const elder=a.elderFinal;
+   if(!elder||!['committed','failed'].includes(elder.state))
+     fail(p,site,t+': Elder worker never reached a final state');
+   else if(elder.state==='failed'&&!String(elder.error||'').trim())
+     fail(p,site,t+': Elder worker refused without naming the failure');
+   else if(elder.state==='committed'&&(elder.mapPublished!==true||
+       !Number.isFinite(elder.featureCount)||
+       (Number.isFinite(elder.sourceFeatures)&&elder.sourceFeatures!==elder.featureCount)))
+     fail(p,site,t+': Elder committed without matching visible map evidence');
+   const loc=String(elder?.propertyRunIdentity||'').split('|');
+   const match=String(row.query||'').match(/^\\s*(-?\\d+(?:\\.\\d+)?)\\s*,\\s*(-?\\d+(?:\\.\\d+)?)\\s*$/);
+   if(match&&elder){
+     const latitude=Number(match[1]),longitude=Number(match[2]);
+     if(!Number.isFinite(Number(loc[0]))||!Number.isFinite(Number(loc[1]))||
+       Math.abs(Number(loc[0])-longitude)>0.0002||Math.abs(Number(loc[1])-latitude)>0.0002)
+       fail(p,site,t+': Elder result belongs to wrong Property coordinates '+(elder.propertyRunIdentity||'unknown'));
+   }
+
    if(!Number.isFinite(a.engineSwales)||!Number.isFinite(a.shownSwales))fail(p,site,t+': missing swale count');
    else if(a.engineSwales!==a.shownSwales)fail(p,site,t+': '+a.engineSwales+' engine vs '+a.shownSwales+' displayed');
    if((a.swalesOver4pct||0)>0)fail(p,site,t+': '+a.swalesOver4pct+' slopes exceed 4%');
