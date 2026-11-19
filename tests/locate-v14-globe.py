@@ -70,3 +70,12 @@ with tempfile.TemporaryDirectory() as temp:
  for item in [out,'tools/adapter-16600.js','tools/apply-swale-engine-candidate.py','earthline-property-swales.js','earthline-property-swale-bridge.js']:
   data=Path(item).read_bytes()
   print('SHA256',hashlib.sha256(data).hexdigest(),'BYTES',len(data),'FILE',item)
+
+print("\n=== PROPERTY TARGET AND CAMERA OWNERS ===")
+for token in ['function syncPropertyTargetFromMap16201','function setPropertyTarget16201','earthlineDeclarePropertyAtCrosshair16173','Poudre Foothills Parcel','function earthlineSetSearchCameraLock']:
+ p=0
+ for k in range(8):
+  i=s.find(token,p)
+  if i<0:break
+  print("\nTOKEN",repr(token),"offset",i,"context",s[max(0,i-900):i+4200])
+  p=i+len(token)
