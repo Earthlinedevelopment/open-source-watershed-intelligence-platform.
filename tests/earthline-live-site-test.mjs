@@ -206,7 +206,7 @@ try{browser=await prof.engine.launch({headless:true});}catch(e){launchError=Stri
 if(browser){
   for(const q of REGIONAL)await regional(browser,q);
   for(const s of PROPERTY)await property(browser,s);
-  for(const q of ['Arizona','Vermont'])await lifecycle(browser,q);
+  for(const q of ['New York'])await lifecycle(browser,q);
   await browser.close().catch(()=>{});
 }
 const result={profile:PROFILE,url:BASE,testedAt:new Date().toISOString(),launchError,rows};
