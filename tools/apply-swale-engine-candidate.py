@@ -59,5 +59,37 @@ once(a5, '''earthlineSwaleGeoJSON=function(){
       }catch(_){}
       return filter(base()||{type:"FeatureCollection",features:[]});
     };''')
+# 6. The old dashboard installs globe-reset callbacks on map load, style.load,
+#    and delayed timers (100, 500, 1400 ms). A search can move the map before
+#    these callbacks fire; do not ever reset an already navigated Property map.
+#    Preserve the original idle startup globe exactly once. No swale science edits.
+a6 = 'function initRealGlobe16233(){const m=panelMap16188();if(!m)return false;'
+b6 = '''let earthlineStartupGlobeSettled16601=false;
+  function initRealGlobe16233(){
+    const m=panelMap16188();
+    if(!m||earthlineStartupGlobeSettled16601)return false;
+    // All callbacks share one owner, even when a late search means startup is skipped.
+    earthlineStartupGlobeSettled16601=true;
+    let moved=false;
+    try{
+      const c=m.getCenter?.(),z=Number(m.getZoom?.());
+      if(c&&Number.isFinite(Number(c.lng))&&Number.isFinite(Number(c.lat))){
+        const lng=Number(c.lng),lat=Number(c.lat);
+        const initial=Math.abs(lng+102)<2&&Math.abs(lat-20)<2;
+        const alreadyGlobe=Math.abs(lng)<2&&Math.abs(lat-18)<2;
+        moved=!initial&&!alreadyGlobe;
+      }
+      if(Number.isFinite(z)&&z>3.4)moved=true;
+    }catch(_){}
+    const searchActive=!!(
+      (M&&Number(M.searchGen||0)>0)||
+      String((document.getElementById("searchInput")||{}).value||"").trim()||
+      window.EARTHLINE_PROPERTY_TARGET_16201||
+      (document.documentElement.dataset.earthlineAnalysisTier==="property")||
+      moved
+    );
+    if(searchActive)return false;'''
+once(a6,b6)
+
 open(dst, 'w', encoding='utf-8').write(s)
 print('wrote', dst, 'sha256', hashlib.sha256(s.encode('utf-8')).hexdigest(), 'bytes', len(s.encode('utf-8')))
