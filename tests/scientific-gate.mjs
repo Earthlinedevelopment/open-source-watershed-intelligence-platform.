@@ -12,6 +12,20 @@ for(const p of browsers){
  let result;
  try{result=JSON.parse(readFileSync(file,'utf8'));}catch(e){fail(p,'workflow','Unreadable results: '+e.message);continue;}
  if(result.launchError)fail(p,'workflow','Browser launch error: '+result.launchError);
+
+ // Independent provenance and ordinary-visitor startup acceptance.
+ const expectedHash=process.env.EARTHLINE_EXPECTED_INDEX_SHA||'';
+ if(result.candidateMode!==true)fail(p,'provenance','Browser did not load the pinned candidate');
+ if(expectedHash&&result.candidateIndexSha256!==expectedHash)
+   fail(p,'provenance','Candidate page hash '+String(result.candidateIndexSha256)+' != '+expectedHash);
+ for(const label of ['at4s','at9s']){
+   const a=result.startupGlobe?.[label];
+   if(!a?.mapPresent||a.projection!=='globe'||!Number.isFinite(a.zoom)||a.zoom>3.4||
+      !Number.isFinite(a.center?.lat)||!Number.isFinite(a.center?.lng)||
+      Math.abs(a.center.lat-20)>0.005||Math.abs(a.center.lng+102)>0.005)
+     fail(p,'startup','Idle globe at '+label+' is not the one stable [-102,20] camera: '+JSON.stringify(a||null));
+ }
+
  const properties=(result.rows||[]).filter(x=>x.kind==='property');
  if(properties.length<10)fail(p,'workflow','Incomplete property coverage: '+properties.length+' (<10)');
  for(const row of result.rows||[])if(row.couldNotRun)fail(p,row.site||row.query||'workflow','Could not run: '+row.couldNotRun);
