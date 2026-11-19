@@ -114,9 +114,9 @@ const uniqueSites=new Set([...bySite.keys()]);
 if(commonSites.some(site=>!bySite.has(site)))fail('cross-browser','coverage','One or more mandatory shared sites missing');
 if((summaries.find(x=>x.browser==='desktop-chrome')?.propertyCount||0)<13)
  fail('desktop-chrome','coverage','Three additional Chrome-only state-coverage properties missing');
-const output={passed:failures.length===0,profiles:browsers.length,sites:uniqueSites.size,summaries,failures};
+const output={passed:failures.length===0,runId:process.env.GITHUB_RUN_ID||null,commit:process.env.GITHUB_SHA||null,round:Number(process.env.EARTHLINE_GATE_ROUND||0),candidateIndexSha256:process.env.EARTHLINE_EXPECTED_INDEX_SHA||null,profiles:browsers.length,sites:uniqueSites.size,summaries,failures};
 writeFileSync(join(root,'GATE.json'),JSON.stringify(output,null,2)+'\n');
-const md=['# Earthline candidate scientific release gate','',output.passed?'**PASS — candidate eligible for further release review**':'**FAIL — DO NOT PROMOTE CANDIDATE**','',`Browsers required: ${browsers.length}; valid sites seen: ${uniqueSites.size}; failures: ${failures.length}`,'',...failures.map(f=>'- **'+f.browser+' / '+f.site+':** '+f.reason),''];
+const md=['# Earthline candidate scientific release gate','',output.passed?'**PASS Round '+output.round+'/3 — NOT YET AUTHORIZED FOR PRODUCTION**':'**FAIL Round '+output.round+'/3 — DO NOT PROMOTE CANDIDATE**','',`Commit: ${output.commit} | Run: ${output.runId} | Candidate page SHA-256: ${output.candidateIndexSha256} | Round: ${output.round}/3`, '',`Browsers required: ${browsers.length}; valid sites seen: ${uniqueSites.size}; failures: ${failures.length}`,'',...failures.map(f=>'- **'+f.browser+' / '+f.site+':** '+f.reason),''];
 writeFileSync(join(root,'GATE.md'),md.join('\n'));
 console.log('EARTHLINE_SCIENTIFIC_GATE '+JSON.stringify({passed:output.passed,failures:failures.length,sites:output.sites}));
 if(failures.length)process.exitCode=1;
