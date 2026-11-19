@@ -73,6 +73,14 @@ for(const p of browsers){
        fail(p,site,t+': Elder result belongs to wrong Property coordinates '+(elder.propertyRunIdentity||'unknown'));
    }
 
+
+   // Reviewer-visible count must match final geometry, not pre-audit proposals.
+   const swaleMessage=String(a.engine16600?.message||'');
+   const claimed=swaleMessage.match(/\b(\d+)\s+proposed swale alignments\b/i);
+   if(a.engine16600?.verified===true&&!claimed)
+     fail(p,site,t+': verified engine did not provide an auditable swale-count message');
+   if(claimed&&Number(claimed[1])!==a.shownSwales)
+     fail(p,site,t+': message claims '+claimed[1]+' swales but rendered '+a.shownSwales);
    if(!Number.isFinite(a.engineSwales)||!Number.isFinite(a.shownSwales))fail(p,site,t+': missing swale count');
    else if(a.engineSwales!==a.shownSwales)fail(p,site,t+': '+a.engineSwales+' engine vs '+a.shownSwales+' displayed');
    if((a.swalesOver4pct||0)>0)fail(p,site,t+': '+a.swalesOver4pct+' slopes exceed 4%');
