@@ -25,3 +25,57 @@ jobs:
           assert globe.count('earthlineStartupGlobeSettled16601')>=2
           print('GLOBE_SINGLE_OWNER_PROVEN',len(s.encode()))
           PY
+          cp /tmp/next.html index.html
+          sha256sum -c SHA256SUMS.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static release integration and Elder recovery contracts
+        run: |
+          python3 tests/make-mvt-fixture.py
+          node tests/engine-tests.js
+          node tests/bridge-tests.js
+          node tests/adapter-harness.js
+          node tests/v14-integration-contract.mjs
+          node tests/elder-worker-recovery.mjs
+
+  firefox-smoke:
+    needs: hash
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      EARTHLINE_PROFILE: desktop-firefox
+      EARTHLINE_HEADFUL: '1'
+      LIBGL_ALWAYS_SOFTWARE: '1'
+      MOZ_WEBRENDER: '1'
+      EARTHLINE_PINNED: '1'
+      EARTHLINE_PINNED_EXTRA: earthline-property-swales.js,earthline-property-swale-bridge.js,earthline-elder-restored-17097.js,earthline-elder-worker-17129.js
+      EARTHLINE_RESULTS_DIR: firefox-release-smoke
+      EARTHLINE_SITES: newyork-your-screenshot-1,arkansas-your-screenshot-1
+      EARTHLINE_SKIP_REGIONAL: '1'
+      EARTHLINE_FAIL_CLOSED: '0'
+      EARTHLINE_SKIP_LIFECYCLE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Rebuild exact candidate
+        run: |
+          python3 tools/apply-swale-engine-candidate.py index.html /tmp/candidate.html
+          cp /tmp/candidate.html index.html
+          sha256sum -c SHA256SUMS.txt
+      - name: Install WebGL and Playwright Firefox
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb libosmesa6 libgl1-mesa-dri
+          npm install --no-save playwright @mapbox/vector-tile@1.3.1 pbf@3.2.1
+          npx playwright install --with-deps firefox
+      - name: Prove both first-run parcels in Firefox with a real map
+        run: xvfb-run -a node tests/earthline-live-site-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: firefox-release-smoke
+          path: firefox-release-smoke/
+          retention-days: 7
