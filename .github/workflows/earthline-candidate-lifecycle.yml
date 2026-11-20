@@ -1,0 +1,57 @@
+# Independent lifecycle acceptance, separate from the three-round Property science gate.
+# Four small jobs avoid losing 10-Property iPhone evidence to later lengthy lifecycle checks.
+name: Earthline independent lifecycle regression
+on:
+  push:
+    branches: [candidate/swale-engine]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lifecycle:
+    name: lifecycle ${{ matrix.profile }} / ${{ matrix.region }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [desktop-chrome, iphone]
+        region: [Arizona, Vermont]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify exact candidate page before browser work
+        run: |
+          python3 tools/apply-swale-engine-candidate.py index.html /tmp/candidate.html
+          cp /tmp/candidate.html index.html
+          sha256sum -c SHA256SUMS.txt
+      - name: Install Chromium and WebKit
+        run: |
+          npm install --no-save playwright @mapbox/vector-tile@1.3.1 pbf@3.2.1
+          npx playwright install --with-deps chromium webkit
+      - name: Run only the selected Regional -> Property -> Regional -> Property cycle
+        env:
+          EARTHLINE_PROFILE: ${{ matrix.profile }}
+          EARTHLINE_LIFECYCLE_REGION: ${{ matrix.region }}
+          EARTHLINE_PINNED: '1'
+          EARTHLINE_PINNED_EXTRA: earthline-property-swales.js,earthline-property-swale-bridge.js,earthline-elder-restored-17097.js,earthline-elder-worker-17129.js
+          EARTHLINE_RESULTS_DIR: lifecycle-results
+          EARTHLINE_SKIP_REGIONAL: '1'
+          EARTHLINE_SITES: __lifecycle_only__
+          EARTHLINE_FAIL_CLOSED: '0'
+          EARTHLINE_EXPECTED_INDEX_SHA: c97a1ad5c38bff7f23d7c07b63e75a88dda8a4f2ad7c6caf3c5d75ecd14ef088
+        run: node tests/earthline-live-site-test.mjs
+      - name: Evaluate isolated lifecycle gate
+        env:
+          EARTHLINE_PROFILE: ${{ matrix.profile }}
+          EARTHLINE_LIFECYCLE_REGION: ${{ matrix.region }}
+          EARTHLINE_EXPECTED_INDEX_SHA: c97a1ad5c38bff7f23d7c07b63e75a88dda8a4f2ad7c6caf3c5d75ecd14ef088
+        run: node tests/lifecycle-gate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lifecycle-${{ matrix.profile }}-${{ matrix.region }}
+          path: lifecycle-results/
+          retention-days: 30
