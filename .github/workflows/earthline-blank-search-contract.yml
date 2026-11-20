@@ -1,0 +1,37 @@
+name: Earthline blank search fail-closed contract
+on:
+  push:
+    branches: [diagnose/blank-search-and-iphone-checkpoints-20261120]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build exactly from frozen live parent; capture resulting SHA
+        run: |
+          python3 tools/apply-swale-engine-candidate.py index.html /tmp/blank-fixed.html
+          cp /tmp/blank-fixed.html index.html
+          sha256sum index.html tools/apply-swale-engine-candidate.py
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          assert 'loc=M.loc||GAZ[0]' not in s
+          assert s.count('Enter a place or move the crosshair first.')==2
+          print('EMPTY_QUERY_FALLBACK_REMOVED')
+          PY
+      - name: Exercise real search and run-analysis function guards
+        run: node tests/v14-integration-contract.mjs
+      - name: Verify engine, bridge and Elder recovery unaffected
+        run: |
+          python3 tests/make-mvt-fixture.py
+          node tests/engine-tests.js
+          node tests/bridge-tests.js
+          node tests/adapter-harness.js
+          node tests/elder-worker-recovery.mjs
