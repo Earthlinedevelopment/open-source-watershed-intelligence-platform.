@@ -77,8 +77,11 @@ for(const p of browsers){
    // Reviewer-visible count must match final geometry, not pre-audit proposals.
    const swaleMessage=String(a.engine16600?.message||'');
    const claimed=swaleMessage.match(/\b(\d+)\s+proposed swale alignments\b/i);
-   if(a.engine16600?.verified===true&&!claimed)
-     fail(p,site,t+': verified engine did not provide an auditable swale-count message');
+   if(a.engine16600?.verified===true&&a.shownSwales===0&&
+      !/^No qualifying swales on this property\b/i.test(swaleMessage))
+     fail(p,site,t+': zero-swale Property did not provide an explicit refusal');
+   if(a.engine16600?.verified===true&&a.shownSwales>0&&!claimed)
+     fail(p,site,t+': verified positive-swale engine did not provide an auditable count');
    if(claimed&&Number(claimed[1])!==a.shownSwales)
      fail(p,site,t+': message claims '+claimed[1]+' swales but rendered '+a.shownSwales);
    if(!Number.isFinite(a.engineSwales)||!Number.isFinite(a.shownSwales))fail(p,site,t+': missing swale count');
