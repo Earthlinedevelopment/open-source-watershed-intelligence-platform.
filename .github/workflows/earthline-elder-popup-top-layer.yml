@@ -1,0 +1,32 @@
+name: Earthline Elder popup stacking regression
+on:
+  push:
+    branches: [fix/elder-popup-top-layer-20261120]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  stacking:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify unchanged approved popup content and JS syntax
+        run: |
+          node --check earthline-elder-restored-17097.js
+          node --check tests/elder-popup-top-layer.mjs
+      - name: Install browser engines
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium webkit
+      - name: Test popup above blocking water overlay in Chromium and Safari engine
+        run: node tests/elder-popup-top-layer.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: elder-popup-overlays
+          path: elder-popup-test/
+          retention-days: 7
