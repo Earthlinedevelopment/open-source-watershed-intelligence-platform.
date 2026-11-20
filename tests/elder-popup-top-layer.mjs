@@ -43,6 +43,7 @@ for(const [name,type] of [['chromium',chromium],['webkit',webkit]]){
   point={x:270,y:150};
   (listeners.move||[]).forEach(fn=>fn());
   const movedRect=popupEl.getBoundingClientRect();
+  const portaledToBody=portal?.parentElement===document.body;
   const fixedOvermap=window.getComputedStyle(portal).position==='fixed';
   let closeWorks=false;
   popupEl.querySelector('button').addEventListener('click',()=>{closeWorks=true});
@@ -50,7 +51,7 @@ for(const [name,type] of [['chromium',chromium],['webkit',webkit]]){
   popupEl.remove();
   (listeners['popup-close']||[]).forEach(fn=>fn());
   return {before,lifted,portal:!!portal,topmost:after===popupEl||popupEl.contains(after),
-   portaledToBody:portal?.parentElement===document.body,
+   portaledToBody,
    approvedContentUnchanged:popupEl.textContent===initialTitle,
    width:Math.round(initialRect.width),height:Math.round(initialRect.height),
    deltaX:Math.round(movedRect.left-initialRect.left),deltaY:Math.round(movedRect.top-initialRect.top),
