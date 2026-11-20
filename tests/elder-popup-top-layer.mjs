@@ -43,6 +43,7 @@ for(const [name,type] of [['chromium',chromium],['webkit',webkit]]){
   point={x:270,y:150};
   (listeners.move||[]).forEach(fn=>fn());
   const movedRect=popupEl.getBoundingClientRect();
+  const fixedOvermap=window.getComputedStyle(portal).position==='fixed';
   let closeWorks=false;
   popupEl.querySelector('button').addEventListener('click',()=>{closeWorks=true});
   popupEl.querySelector('button').click();
@@ -53,7 +54,7 @@ for(const [name,type] of [['chromium',chromium],['webkit',webkit]]){
    approvedContentUnchanged:popupEl.textContent===initialTitle,
    width:Math.round(initialRect.width),height:Math.round(initialRect.height),
    deltaX:Math.round(movedRect.left-initialRect.left),deltaY:Math.round(movedRect.top-initialRect.top),
-   fixedOvermap:window.getComputedStyle(portal).position==='fixed',closeWorks,
+   fixedOvermap,closeWorks,
    cleaned:!document.getElementById('earthlineElderPopupTopLayer17097'),
    listenerCleaned:(listeners.move||[]).length===0};
  });
