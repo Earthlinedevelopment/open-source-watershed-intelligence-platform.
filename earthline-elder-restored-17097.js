@@ -284,6 +284,50 @@
             return {lngLat:m.unproject([Math.min(r,Math.max(l,q.x-w/2)),Math.min(bot,Math.max(t,q.y-h-8))]),anchor:'top-left',offset:0};
           }catch(_){return null}
         }
+        /* EARTHLINE ELDER TOP-LAYER 2026-11-20
+           Mapbox's popup lives inside the map's stacking context. Satellite
+           annotations may be sibling DOM overlays above that context; no
+           z-index applied inside Mapbox can cross that ancestor boundary.
+           Move ONLY the existing popup DOM (not a clone) into a top-level
+           viewport portal. Preserve every approved popup size, color and word.
+           Update its pixel position when the map moves. */
+        function liftElderPopupAboveMap17097(popup, mapInstance){
+          const element=popup?.getElement?.();
+          if(!element||!mapInstance)return false;
+          let portal=document.getElementById('earthlineElderPopupTopLayer17097');
+          if(!portal){
+            portal=document.createElement('div');
+            portal.id='earthlineElderPopupTopLayer17097';
+            portal.style.cssText='position:fixed!important;inset:0!important;z-index:2147483647!important;pointer-events:none!important;overflow:visible!important;';
+            document.body.appendChild(portal);
+          }
+          portal.appendChild(element);
+          element.style.setProperty('position','absolute','important');
+          element.style.setProperty('transform','none','important');
+          element.style.setProperty('pointer-events','auto','important');
+          const sync=()=>{
+            if(!element.isConnected)return;
+            try{
+              const point=mapInstance.project(popup.getLngLat());
+              const rect=mapInstance.getContainer().getBoundingClientRect();
+              if(!Number.isFinite(point?.x)||!Number.isFinite(point?.y))return;
+              element.style.setProperty('left',(rect.left+point.x)+'px','important');
+              element.style.setProperty('top',(rect.top+point.y)+'px','important');
+            }catch(_){}
+          };
+          mapInstance.on('move',sync);
+          mapInstance.on('resize',sync);
+          window.addEventListener('resize',sync);
+          window.addEventListener('scroll',sync,true);
+          popup.on('close',()=>{
+            try{mapInstance.off('move',sync);mapInstance.off('resize',sync)}catch(_){}
+            window.removeEventListener('resize',sync);
+            window.removeEventListener('scroll',sync,true);
+            if(!portal.children.length)portal.remove();
+          });
+          sync();
+          return true;
+        }
         function showElderTreePopup(e,persistent){
           const f=e?.features?.[0],coords=f?.geometry?.coordinates;
           if(!f||!Array.isArray(coords)||coords.length<2)return;
@@ -317,6 +361,7 @@
                 inner.style.setProperty('padding','5px 7px','important');
               }
             }
+            liftElderPopupAboveMap17097(popup,m);
             if(!persistent)elderHoverPopupM7=popup;
           }catch(_){dismissElderHoverM7()}
         }
