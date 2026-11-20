@@ -54,10 +54,10 @@ if(!prof){console.error('unknown profile '+PROFILE);process.exit(2);}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const rows=[];
 let firstArrivalGlobeAudit=null;
-function saveCheckpoint(){
+function saveCheckpoint(error=null){
   const result={profile:PROFILE,candidateMode:PINNED,candidateIndexSha256:PINNED_SHA,
     candidateExtraFiles:Object.keys(EXTRA),url:BASE,testedAt:new Date().toISOString(),
-    launchError:null,startupGlobe:firstArrivalGlobeAudit,rows};
+    launchError:error,startupGlobe:firstArrivalGlobeAudit,rows};
   const tmp=OUT+'/results.json.tmp';
   writeFileSync(tmp,JSON.stringify(result,null,1));
   renameSync(tmp,OUT+'/results.json');
@@ -407,9 +407,8 @@ if(browser){
   for(const s of PROPERTY.filter(want))await property(browser,s);
   if(process.env.EARTHLINE_COVERAGE==='1')for(const s of COVERAGE.filter(want))await property(browser,s);
   if(process.env.EARTHLINE_FAIL_CLOSED!=='0')await failClosed(browser);
-  if(process.env.EARTHLINE_SKIP_LIFECYCLE!=='1')for(const q of ['Arizona','Vermont'])await lifecycle(browser,q);
+  if(process.env.EARTHLINE_SKIP_LIFECYCLE!=='1')for(const q of (process.env.EARTHLINE_LIFECYCLE_REGION?[process.env.EARTHLINE_LIFECYCLE_REGION]:['Arizona','Vermont']))await lifecycle(browser,q);
   await browser.close().catch(()=>{});
 }
-const result={profile:PROFILE,candidateMode:PINNED,candidateIndexSha256:PINNED_SHA,candidateExtraFiles:Object.keys(EXTRA),url:BASE,testedAt:new Date().toISOString(),launchError,startupGlobe:firstArrivalGlobeAudit,rows};
-saveCheckpoint();
+saveCheckpoint(launchError);
 console.log('EARTHLINE_LIVE_TEST_DONE '+PROFILE+' rows='+rows.length+(launchError?' launchError':''));
