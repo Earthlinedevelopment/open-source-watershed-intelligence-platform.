@@ -2,7 +2,7 @@
 // by the candidate in this checkout (nothing is published). Changes nothing on the live site.
 // Usage: EARTHLINE_PROFILE=desktop-chrome node tests/earthline-live-site-test.mjs
 import {chromium,firefox,webkit,devices} from 'playwright';
-import {mkdirSync,writeFileSync,readFileSync} from 'node:fs';
+import {mkdirSync,writeFileSync,readFileSync,renameSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {geometryAudit} from './geometry-audit.mjs';
 import {createRequire} from 'node:module';
@@ -54,6 +54,14 @@ if(!prof){console.error('unknown profile '+PROFILE);process.exit(2);}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const rows=[];
 let firstArrivalGlobeAudit=null;
+function saveCheckpoint(error=null){
+  const result={profile:PROFILE,candidateMode:PINNED,candidateIndexSha256:PINNED_SHA,
+    candidateExtraFiles:Object.keys(EXTRA),url:BASE,testedAt:new Date().toISOString(),
+    launchError:error,startupGlobe:firstArrivalGlobeAudit,rows};
+  const tmp=OUT+'/results.json.tmp';
+  writeFileSync(tmp,JSON.stringify(result,null,1));
+  renameSync(tmp,OUT+'/results.json');
+}
 
 // Runs inside the page: one snapshot of everything a visitor would be looking at.
 function snap(){
@@ -254,7 +262,7 @@ async function regional(browser,q){
   }catch(e){row.couldNotRun=String(e).slice(0,400);}
   row.pageErrors=h?h.errors.slice(0,15):[];row.totalSeconds=Math.round((Date.now()-t)/1000);
   if(h)await h.ctx.close().catch(()=>{});
-  rows.push(row);console.log('EARTHLINE_LIVE_TEST '+JSON.stringify(row));
+  rows.push(row);saveCheckpoint();console.log('EARTHLINE_LIVE_TEST '+JSON.stringify(row));
 }
 async function propertyOnce(page,pressNow){
   // After the search: if the site shows the Property button, press it (as a visitor would); then wait for Property to settle.
@@ -347,7 +355,7 @@ async function property(browser,site){
   }catch(e){row.couldNotRun=String(e).slice(0,400);}
   row.pageErrors=h?h.errors.slice(0,15):[];row.totalSeconds=Math.round((Date.now()-t)/1000);
   if(h)await h.ctx.close().catch(()=>{});
-  rows.push(row);console.log('EARTHLINE_LIVE_TEST '+JSON.stringify(Object.assign({},row,{run1:row.run1&&Object.assign({},row.run1,{swales:undefined}),run2:row.run2&&Object.assign({},row.run2,{swales:undefined})})));
+  rows.push(row);saveCheckpoint();console.log('EARTHLINE_LIVE_TEST '+JSON.stringify(Object.assign({},row,{run1:row.run1&&Object.assign({},row.run1,{swales:undefined}),run2:row.run2&&Object.assign({},row.run2,{swales:undefined})})));
 }
 
 
@@ -364,7 +372,7 @@ async function failClosed(browser){
   }catch(e){row.couldNotRun=String(e).slice(0,400);}
   row.pageErrors=h?h.errors.slice(0,15):[];row.totalSeconds=Math.round((Date.now()-t)/1000);
   if(h)await h.ctx.close().catch(()=>{});
-  rows.push(row);console.log('EARTHLINE_LIVE_TEST '+JSON.stringify(Object.assign({},row,{run:row.run&&Object.assign({},row.run,{swales:undefined})})));
+  rows.push(row);saveCheckpoint();console.log('EARTHLINE_LIVE_TEST '+JSON.stringify(Object.assign({},row,{run:row.run&&Object.assign({},row.run,{swales:undefined})})));
 }
 async function waitRegionalDone(page,ms){const f0=Date.now();
   while(Date.now()-f0<ms){const ok=await page.evaluate(()=>{const b=document.getElementById('runBtn');return !!b&&!/deriving|loading|running/i.test(b.textContent||'');});if(ok)return true;await sleep(1000);}return false;}
@@ -388,7 +396,7 @@ async function lifecycle(browser,q){
   }catch(e){row.couldNotRun=String(e).slice(0,400);}
   row.pageErrors=h?h.errors.slice(0,15):[];row.totalSeconds=Math.round((Date.now()-t)/1000);
   if(h)await h.ctx.close().catch(()=>{});
-  rows.push(row);console.log('EARTHLINE_LIVE_TEST '+JSON.stringify(row));
+  rows.push(row);saveCheckpoint();console.log('EARTHLINE_LIVE_TEST '+JSON.stringify(row));
 }
 let browser=null,launchError=null;
 try{browser=await prof.engine.launch(PROFILE==='desktop-firefox'&&process.env.EARTHLINE_HEADFUL==='1'?{headless:false,firefoxUserPrefs:{'webgl.force-enabled':true,'webgl.disabled':false,'gfx.webrender.all':true,'webgl.enable-webgl2':true}}:{headless:true});}catch(e){launchError=String(e).slice(0,400);}
@@ -399,9 +407,8 @@ if(browser){
   for(const s of PROPERTY.filter(want))await property(browser,s);
   if(process.env.EARTHLINE_COVERAGE==='1')for(const s of COVERAGE.filter(want))await property(browser,s);
   if(process.env.EARTHLINE_FAIL_CLOSED!=='0')await failClosed(browser);
-  if(process.env.EARTHLINE_SKIP_LIFECYCLE!=='1')for(const q of ['Arizona','Vermont'])await lifecycle(browser,q);
+  if(process.env.EARTHLINE_SKIP_LIFECYCLE!=='1')for(const q of (process.env.EARTHLINE_LIFECYCLE_REGION?[process.env.EARTHLINE_LIFECYCLE_REGION]:['Arizona','Vermont']))await lifecycle(browser,q);
   await browser.close().catch(()=>{});
 }
-const result={profile:PROFILE,candidateMode:PINNED,candidateIndexSha256:PINNED_SHA,candidateExtraFiles:Object.keys(EXTRA),url:BASE,testedAt:new Date().toISOString(),launchError,startupGlobe:firstArrivalGlobeAudit,rows};
-writeFileSync(OUT+'/results.json',JSON.stringify(result,null,1));
+saveCheckpoint(launchError);
 console.log('EARTHLINE_LIVE_TEST_DONE '+PROFILE+' rows='+rows.length+(launchError?' launchError':''));

@@ -38,4 +38,31 @@ m.propertySwaleEngine16600={searchGen:9,verified:true,acquisition:{sourceTier:'o
 x=evidence();
 assert.equal(x.publicationAllowed,true,'verified empty exclusion response is allowed');
 assert(/no mapped exclusions/i.test(x.label),'screened-clear is labeled');
+// Refuse blank Search Orb and Run Analysis before touching the demo site.
+{
+ const from=html.indexOf('async function runSearch(options={})');
+ const to=html.indexOf('// BUILD-CHECK-15774',from);
+ assert(from>0&&to>from,'find runSearch in rebuilt page');
+ const section=html.slice(from,to);
+ assert(!section.includes('loc=M.loc||GAZ[0]'),'no default demo fallback');
+ const doc={getElementById:()=>({value:'   '})};
+ const demo={name:'Poudre Foothills Parcel',lat:40.6412,lng:-105.2237};
+ const model={loc:demo,searchGen:0,analysisReady:true},notices=[];
+ const search=new Function('document','M','earthlineNotice',
+   section+';return runSearch;')(doc,model,msg=>notices.push(msg));
+ assert.equal(await search(),false,'blank search must refuse');
+ assert.equal(model.searchGen,0,'search generation unchanged');
+ assert.equal(model.loc,demo,'no default-site side effects');
+ assert(notices.at(-1)?.includes('Enter a place'),'clear visitor instruction');
+
+ const start=html.indexOf('async function earthlineRunAnalysis(options={})');
+ const end=html.indexOf('document.getElementById("runBtn").addEventListener("click",earthlineRunAnalysis);',start);
+ assert(start>0&&end>start,'find Run Analysis handler');
+ const analyze=new Function('document','M','earthlineNotice','earthlineAnalysisIsBusy15686',
+   'let EARTHLINE_ACTIVE_ANALYSIS_15685=0;'+html.slice(start,end)+';return earthlineRunAnalysis;')(
+   doc,model,msg=>notices.push(msg),()=>false);
+ assert.equal(await analyze(),false,'blank Run Analysis must refuse');
+ assert.equal(model.searchGen,0,'no generation started');
+ assert.equal(model.loc,demo,'no implicit demo analysis');
+}
 console.log('V14_CONTRACT_PASS globe one-shot, final counts, status precedence and fail closed');

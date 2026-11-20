@@ -138,5 +138,33 @@ once(a7,b7)
 a8 = """try{if(typeof m.jumpTo==='function')m.jumpTo({center:[0,18],zoom:1.25,bearing:0,pitch:0})}catch(error){console.warn('[Earthline 16233] Globe camera unavailable',error)}"""
 once(a8, """/* EARTHLINE 16602: core Mapbox owns the idle globe camera; no secondary jump. */""")
 
+# 9. A blank search must NEVER substitute the built-in Poudre demo parcel.
+a9 = '''  const blankRequest=!q.trim();
+  // The primary action must always do useful work. With a blank field, use the
+  // current/default Earthline location directly and skip an unnecessary geocoder call.
+  let loc=null;
+  if(blankRequest){
+    loc=M.loc||GAZ[0];
+    q=loc.fullName||((loc.name||"")+(loc.sub?", "+loc.sub:""));
+    if(input)input.value=q;
+  }'''
+b9 = '''  // Empty text is not consent to analyze the demonstration parcel.
+  if(!String(q||"").trim()){
+    earthlineNotice("Enter a place or move the crosshair first.");
+    return false;
+  }
+  let loc=null;'''
+once(a9,b9)
+
+# 10. Run Analysis also bypasses runSearch; prevent its own default demo run.
+#     Guard before incrementing generation, setting busy, or touching terrain.
+a10 = 'async function earthlineRunAnalysis(options={}){'
+b10 = '''async function earthlineRunAnalysis(options={}){
+  if(!String((document.getElementById("searchInput")||{}).value||"").trim()){
+    earthlineNotice("Enter a place or move the crosshair first.");
+    return false;
+  }'''
+once(a10,b10)
+
 open(dst, 'w', encoding='utf-8').write(s)
 print('wrote', dst, 'sha256', hashlib.sha256(s.encode('utf-8')).hexdigest(), 'bytes', len(s.encode('utf-8')))
