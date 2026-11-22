@@ -1,0 +1,38 @@
+name: R15 USDA canopy georeferenced source probe — read-only
+on:
+  push:
+    branches: [test/r15-usfs-canopy-source-probe-20261122]
+permissions:
+  contents: read
+jobs:
+  usfs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe official USFS image service real NY parcel, public CORS
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,urllib.parse,urllib.request,traceback
+          base="https://imagery.geoplatform.gov/iipp/rest/services/Vegetation/USFS_EDW_NLCD_TCC_CONUS/ImageServer"
+          points=[[-75.76996,42.78781],[-75.7705,42.7886],[-75.7712,42.7892],[-75.7690,42.7883],[-75.7699,42.7875],[-75.7699,42.7890]]
+          cases=[
+            ("point",{"geometryType":"esriGeometryPoint","geometry":json.dumps({"x":points[0][0],"y":points[0][1],"spatialReference":{"wkid":4326}})}),
+            ("multi",{"geometryType":"esriGeometryMultipoint","geometry":json.dumps({"points":points,"spatialReference":{"wkid":4326}})})
+          ]
+          for name,extra in cases:
+            q={"f":"json",**extra}
+            url=base+"/getSamples?"+urllib.parse.urlencode(q)
+            print("REQUEST",name,url[:210])
+            try:
+              req=urllib.request.Request(url,headers={"Origin":"https://earthlinedevelopment.org","User-Agent":"Earthline/1.0"})
+              with urllib.request.urlopen(req,timeout=30) as resp:
+                b=resp.read();print("RESULT",name,"http",resp.status,"origin",resp.headers.get("Access-Control-Allow-Origin"),"len",len(b),"json",b[:2500].decode(errors='replace'))
+                data=json.loads(b)
+                if data.get("error"):raise Exception(data["error"])
+                if not data.get("samples"):raise Exception("no samples")
+                if name=="multi" and len(data["samples"])<4:raise Exception("too few multipoint samples")
+            except Exception as e:
+              print("FAIL",name,repr(e));traceback.print_exc();raise
+          print("USFS_GEOREFERENCED_CANOPY_SAMPLE_PASS")
+          PY
