@@ -1,0 +1,39 @@
+name: Earthline single Property renderer trial — no production writes
+on:
+  push:
+    branches: [candidate/earthline-single-visual-renderer-20261122]
+permissions:
+  contents: read
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [chrome, safari]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Rebuild one-edit SHA-locked candidate
+        run: |
+          python3 tools/candidate-single-renderer-20261122.py index.html /tmp/earthline-one-owner.html
+          cp /tmp/earthline-one-owner.html index.html
+          printf '%s  %s\n' 96c60d7c43124354de071f1751f40882297328f1f5a100259730c54c413745d2 index.html | sha256sum --check
+      - name: Install browsers
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium webkit
+      - name: Verify actual published swales are bright and identical on both Property runs
+        env:
+          EARTHLINE_PROFILE: ${{ matrix.profile }}
+        run: node tests/single-renderer-visual-gate.mjs
+      - name: Archive both renders and source diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-renderer-${{ matrix.profile }}
+          path: single-renderer-results/${{ matrix.profile }}/
+          retention-days: 7
