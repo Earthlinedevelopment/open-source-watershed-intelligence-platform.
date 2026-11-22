@@ -6,7 +6,7 @@ const ctx=await browser.newContext({viewport:{width:1440,height:900}});
 const page=await ctx.newPage();
 const html=readFileSync('index.html');
 const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
-await ctx.route('**/*', route=>{
+if(process.env.EARTHLINE_LIVE!=='1')await ctx.route('**/*', route=>{
  let u;try{u=new URL(route.request().url())}catch(_){return route.continue()}
  if(u.origin==='https://earthlinedevelopment.org'&&(u.pathname==='/'||u.pathname==='/index.html')&&route.request().resourceType()==='document')
    return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html});
