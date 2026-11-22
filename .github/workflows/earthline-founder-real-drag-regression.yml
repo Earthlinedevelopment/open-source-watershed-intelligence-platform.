@@ -1,0 +1,45 @@
+name: Earthline founder path real map drag diagnostic — read only
+on:
+  push:
+    branches: [test/earthline-founder-real-drag-regression-20261122]
+permissions:
+  contents: read
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, safari]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify public rollback actually served
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in 1 2 3 4 5 6; do
+            curl -fsSL -H 'Cache-Control: no-cache' --max-time 30 "https://earthlinedevelopment.org/?founder_rollback_verifier=$i" -o /tmp/earthline-home
+            sha="$(sha256sum /tmp/earthline-home | cut -d' ' -f1)"
+            echo "PUBLIC_SHA256=$sha"
+            if [ "$sha" = "c97a1ad5c38bff7f23d7c07b63e75a88dda8a4f2ad7c6caf3c5d75ecd14ef088" ]; then exit 0; fi
+            sleep 8
+          done
+          exit 1
+      - name: Install browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium webkit
+      - name: Execute founder's real map-drag and regional-to-property journey twice
+        env:
+          EARTHLINE_PROFILE: ${{ matrix.browser }}
+        run: node tests/earthline-founder-real-drag-regression.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: founder-drag-${{ matrix.browser }}
+          path: founder-regression/${{ matrix.browser }}/
+          retention-days: 7
