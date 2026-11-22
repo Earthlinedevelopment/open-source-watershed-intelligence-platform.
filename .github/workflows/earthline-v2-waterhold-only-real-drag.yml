@@ -1,0 +1,42 @@
+name: Earthline water line safety hold — real drag Chrome/Safari
+on:
+  push:
+    branches: [candidate/earthline-v2-waterhold-only-20261122]
+permissions:
+  contents: read
+jobs:
+  water-hold-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [chrome, safari]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build SHA-locked presentation-only HTML
+        shell: bash
+        run: |
+          python3 tools/earthline-waterhold-only-20261122.py index.html /tmp/hold.html
+          cp /tmp/hold.html index.html
+          sha256sum index.html earthline-waterpath-hold.js
+          printf '%s  %s\n' 9e2d6621ec4db517a400935493a6b78cb05d133371fbdf6230a65d657c4a81f8 index.html | sha256sum --check
+          printf '%s  %s\n' 97b0ca243d172c13f47a9152503b07d9c931f8dd68fc58e87196fe2a15d4b278 earthline-waterpath-hold.js | sha256sum --check
+          node --check earthline-waterpath-hold.js
+      - name: Install browsers
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium webkit
+      - name: Actual visitor search NY, mouse drag, Property twice — verify water hidden and swales visible
+        env:
+          EARTHLINE_PROFILE: ${{ matrix.profile }}
+        run: node tests/earthline-v2-waterhold-only-real-drag.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: waterhold-only-${{ matrix.profile }}
+          path: founder-regression/${{ matrix.profile }}/
+          retention-days: 7
