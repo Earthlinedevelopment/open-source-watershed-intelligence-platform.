@@ -1,0 +1,48 @@
+name: EARTHLINE R15 USFS canopy source integrated New York browser gate — NO DEPLOY
+on:
+  push:
+    branches: [test/r15-usfs-canopy-source-probe-20261122]
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [chrome, safari]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify test-only candidate derives from current LIVE HTML
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(sha256sum index.html | cut -d' ' -f1)" = '79eac56ac6610176eaa4b38946eca2666b50792a580b8e3bbe39166648c2b13b'
+          test "$(sha256sum earthline-property-swales.js | cut -d' ' -f1)" = '92b3e42d65a9428e5049a9ba07159ea7f1ee6907c017c9fbba8e4ced666c736f'
+          python3 tools/build-r15-candidate.py index.html earthline-property-swales.js /tmp/r15-base.html
+          test "$(sha256sum /tmp/r15-base.html | cut -d' ' -f1)" = '53b667b330ed1edd5c4dde3e0fa9a279615649e4506b8750d62c7ee0f26ff335'
+          python3 tools/build_r15_usfs_candidate.py /tmp/r15-base.html /tmp/r15-usfs.html
+          test "$(sha256sum /tmp/r15-usfs.html | cut -d' ' -f1)" = 'f38873c0564dc241b99fe8f4e210a7f020eb8314e7e7e55f5bd798a3fd1747da'
+          cp /tmp/r15-usfs.html index.html
+          node --check earthline-usfs-canopy-r15.js
+          node --check earthline-property-swales.js
+      - name: Recheck full R15 engine unit tests
+        run: node tests/engine-tests-r15.js
+      - name: Install Chrome and Safari WebKit
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium webkit
+      - name: Real NY state search, physical mouse drag and Property twice; assert georeferenced forest mask
+        env:
+          EARTHLINE_PROFILE: ${{ matrix.profile }}
+        run: node tests/r15-usfs-ny-real-drag.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r15-usfs-ny-${{ matrix.profile }}
+          path: founder-regression/${{ matrix.profile }}/
+          retention-days: 7
