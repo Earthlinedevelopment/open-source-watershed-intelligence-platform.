@@ -28,7 +28,15 @@ try {
      map.fire?.('dragend');
    });
    await sleep(5000);
-   // Mirror the proven connected test: wait for the actual Property declaration readiness before a real click.
+   const pre=await page.evaluate(()=>{
+     const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;
+     const t=window.EARTHLINE_PROPERTY_TARGET_16201||null;
+     const c=m?.getCenter?.();
+     return {camera:c?{lng:c.lng,lat:c.lat}:null,target:t?{lng:t.lng,lat:t.lat,source:t.source}:null,
+       zoom:m?.getZoom?.(),projection:m?.getProjection?.()?.name||null};
+   });
+   console.log('EARTHLINE_BEFORE_PROPERTY_CLICK '+JSON.stringify({profile,run,pre}));
+   // Mirror the proven connected test: wait for actual Property declaration readiness before a real click.
    let pressed=false;const started=Date.now();
    while(Date.now()-started<45000&&!pressed){
      const state=await page.evaluate(()=>{
@@ -54,7 +62,7 @@ try {
      const info=id=>{const l=map.getLayer(id);if(!l)return {id,present:false};let rendered=null;try{rendered=map.queryRenderedFeatures({layers:[id]}).length}catch(e){rendered=-1}return {id,present:true,visibility:map.getLayoutProperty(id,'visibility')||'visible',opacity:map.getPaintProperty(id,'line-opacity'),rendered};};
      const r=window.__EARTHLINE_SWALE_ENGINE_HOOK_16600?.result?.();
      const audit=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
-     return {tier:document.documentElement.dataset.earthlineAnalysisTier,ready:!!m?.analysisReady,modelSwales:m?.swales?.length,engineVerified:r?.verified,engineSwales:r?.engineSwales,engineHash:r?.determinismHash,
+     return {center:map.getCenter(),target:window.EARTHLINE_PROPERTY_TARGET_16201||null,tier:document.documentElement.dataset.earthlineAnalysisTier,ready:!!m?.analysisReady,modelSwales:m?.swales?.length,engineVerified:r?.verified,engineSwales:r?.engineSwales,engineHash:r?.determinismHash,
        propertyRenderMode:audit.renderMode||null,sourceStateFingerprint:audit.sourceEvidence?.sourceStateFingerprint||null,scientificInputFingerprint:audit.sourceEvidence?.scientificInputFingerprint||null,sourceHashes:audit.sourceEvidence?.sourceHashes||null,terrainStamp:m?.terrainStamp||null,terrainReady:m?.terrainReady,demReady:m?.demReady,cellM:m?.cellM,safe:safe.map(info),natural:natural.map(info),sourceCount:map.getSource('earthline-property-safe-visible-16221')?._data?.features?.length||null};
    });
    rows.push(row);
@@ -63,7 +71,8 @@ try {
  }
  writeFileSync(out+'/results.json',JSON.stringify({profile,rows,errors},null,2));
  const a=rows[0],b=rows[1];
- const verified=a?.engineVerified&&b?.engineVerified&&a?.modelSwales===23&&b?.modelSwales===23&&a?.engineHash&&a.engineHash===b.engineHash;
+ const atNY=x=>Math.abs(x?.center?.lat-42.78781)<0.001&&Math.abs(x?.center?.lng+75.76996)<0.001&&Math.abs(x?.target?.lat-42.78781)<0.001&&Math.abs(x?.target?.lng+75.76996)<0.001;
+ const verified=a?.engineVerified&&b?.engineVerified&&a?.modelSwales===23&&b?.modelSwales===23&&a?.engineHash&&a.engineHash===b.engineHash&&atNY(a)&&atNY(b);
  const displayGood=rows.every(x=>x.safe.length===4&&x.safe.every(l=>l.present&&l.visibility!=='none'&&Number(l.opacity)>=0.9&&l.rendered>0)&&x.natural.every(l=>!l.present||l.visibility==='none'));
  if(!verified||!displayGood||errors.length)throw Error('VISUAL RELEASE GATE FAIL '+JSON.stringify({verified,displayGood,errors}));
  console.log('EARTHLINE_SINGLE_RENDERER_VISUAL_GATE_PASS');
