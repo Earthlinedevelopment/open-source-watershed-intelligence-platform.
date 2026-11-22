@@ -1,0 +1,40 @@
+name: Earthline real mouse-drag Chrome Safari verified renderer release
+on:
+  push:
+    branches: [release/earthline-real-drag-verified-renderer-20261122]
+permissions:
+  contents: write
+concurrency:
+  group: earthline-one-line-property-renderer
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Confirm production SHA and apply tested display-only anchor
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin '+refs/heads/pages-live:refs/remotes/origin/pages-live' '+refs/heads/candidate/earthline-real-drag-safe-only-20261122:refs/remotes/origin/candidate/earthline-real-drag-safe-only-20261122'
+          LIVE="$(git rev-parse origin/pages-live)"
+          test "$LIVE" = '4152a352ba9e53fe391557a95b0e5aa92657de05' || { echo 'FAIL CLOSED: live branch changed'; exit 1; }
+          git checkout -B guarded-live-commit "$LIVE"
+          test "$(sha256sum index.html | cut -d' ' -f1)" = 'c97a1ad5c38bff7f23d7c07b63e75a88dda8a4f2ad7c6caf3c5d75ecd14ef088'
+          git show 'origin/candidate/earthline-real-drag-safe-only-20261122:tools/safe-renderer-only-20261122.py' > /tmp/earthline-safe-renderer.py
+          python3 /tmp/earthline-safe-renderer.py index.html /tmp/earthline-index-safe.html
+          cp /tmp/earthline-index-safe.html index.html
+          printf '%s  %s\n' 96c60d7c43124354de071f1751f40882297328f1f5a100259730c54c413745d2 index.html | sha256sum --check
+          git add -- index.html
+          test "$(git diff --cached --name-only)" = 'index.html'
+          git config user.name 'Earthline release gate'
+          git config user.email 'earthline-release@users.noreply.github.com'
+          git commit -m 'Use one verified visible swale renderer; real drag Chrome and Safari accepted'
+          git fetch origin '+refs/heads/pages-live:refs/remotes/origin/pages-live'
+          test "$(git rev-parse origin/pages-live)" = "$LIVE" || exit 1
+          git push origin HEAD:pages-live
+          echo 'EARTHLINE SINGLE-OWNER SWALE RENDERER PROMOTED'
