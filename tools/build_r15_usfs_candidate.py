@@ -6,7 +6,7 @@ expected='53b667b330ed1edd5c4dde3e0fa9a279615649e4506b8750d62c7ee0f26ff335'
 actual=sha256(b).hexdigest()
 assert actual==expected,(actual,expected)
 old=b'<script src="earthline-property-swales.js?v=92b3e42d"></script>\n'
-new=old+b'<script src="earthline-usfs-canopy-r15.js?v=ac3d22e5"></script>\n'
+new=old+b'<script src="earthline-usfs-canopy-r15.js?v=aa8535b6"></script>\n'
 assert b.count(old)==1 and new not in b
 b=b.replace(old,new,1)
 old=b'''    /* intact closed forest ranks last, never removed */
