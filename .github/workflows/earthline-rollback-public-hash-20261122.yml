@@ -1,0 +1,21 @@
+name: Verify emergency rollback is public over HTTPS
+on:
+  push:
+    branches: [test/verify-emergency-rollback-public-20261122]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Confirm public Earthline restored page
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error --max-time 40 --header 'Cache-Control: no-cache' 'https://earthlinedevelopment.org/?rollbackcheck=20261122-0152' -o /tmp/earthline-public-rollback.html
+          echo 'Public rollback HTML SHA256:'
+          sha256sum /tmp/earthline-public-rollback.html
+          printf '%s  %s\n' 'c97a1ad5c38bff7f23d7c07b63e75a88dda8a4f2ad7c6caf3c5d75ecd14ef088' '/tmp/earthline-public-rollback.html' | sha256sum --check
+          if grep -Fq 'earthline-waterpath-hold.js' /tmp/earthline-public-rollback.html; then echo 'ERROR: bad V2 script present'; exit 1; fi
+          echo 'SUCCESS: PUBLIC EXACT RESTORED SHA, NO V2 HOLD'
