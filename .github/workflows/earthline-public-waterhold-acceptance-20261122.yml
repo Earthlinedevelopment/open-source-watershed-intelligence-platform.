@@ -1,0 +1,50 @@
+name: PUBLIC verify modeled-water hold + visible swales
+on:
+  push:
+    branches: [test/earthline-public-waterhold-after-deploy-20261122]
+permissions:
+  contents: read
+jobs:
+  public:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [chrome, safari]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify actual public document and script bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          pass=0
+          for i in 1 2 3 4 5 6 7; do
+            curl -fsSL --max-time 30 -H 'Cache-Control: no-cache' "https://earthlinedevelopment.org/?after_waterhold=20261122-$i" -o /tmp/earthline-public.html || true
+            curl -fsSL --max-time 30 -H 'Cache-Control: no-cache' "https://earthlinedevelopment.org/earthline-waterpath-hold.js?v=e7b955e5&verify=$i" -o /tmp/earthline-waterhold.js || true
+            html="$(sha256sum /tmp/earthline-public.html 2>/dev/null | cut -d' ' -f1 || true)"
+            script="$(sha256sum /tmp/earthline-waterhold.js 2>/dev/null | cut -d' ' -f1 || true)"
+            echo "PUBLIC_HTML_SHA256=$html PUBLIC_WATERHOLD_SHA256=$script"
+            if [ "$html" = '79eac56ac6610176eaa4b38946eca2666b50792a580b8e3bbe39166648c2b13b' ] && [ "$script" = 'e7b955e5c1ce0492b2c0a4876127be97e7bd6fbe406cd3d829f65a59d8510744' ]; then pass=1; break; fi
+            sleep 7
+          done
+          test "$pass" = '1'
+          echo "PUBLIC EXACT V2 WATER HOLD DELIVERED"
+      - name: Install supported browsers
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium webkit
+      - name: Real public NY state search, mouse drag, Property twice; water hidden and swales visible
+        env:
+          EARTHLINE_PROFILE: ${{ matrix.profile }}
+          EARTHLINE_LIVE: '1'
+        run: node tests/earthline-v2-waterhold-only-real-drag.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-water-hold-${{ matrix.profile }}
+          path: founder-regression/${{ matrix.profile }}/
+          retention-days: 7
