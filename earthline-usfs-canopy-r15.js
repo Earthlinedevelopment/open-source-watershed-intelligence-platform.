@@ -9,6 +9,17 @@
   const THRESHOLD_PCT = 35; // conservative closed/wooded canopy screening only
   const SPACING_M = 15; // subsamples 30m source to protect raster edges
   const CHUNK = 20;
+  const MASK_CACHE = new Map(); // successful verified georeferenced masks only, bounded
+  function reportMask(mask,inside,sampleCount){
+    let flaggedCells=0,flaggedInside=0,openInside=0;
+    for(let k=0;k<mask.length;k++){
+      if(mask[k]){flaggedCells++;if(inside[k])flaggedInside++;}
+      else if(inside[k])openInside++;
+    }
+    return {ok:true,mask,evidence:{source:SOURCE,url:URL,sourceResolutionM:30,sampleSpacingM:SPACING_M,
+      thresholdPct:THRESHOLD_PCT,sampleCount,flaggedCells,flaggedInside,
+      openInside,insideSharePct:inside.length?+(100*flaggedInside/(flaggedInside+openInside||1)).toFixed(1):null}};
+  }
   function createPoints({frame,w,h,cellM}) {
     const step=Math.max(1,Math.round(SPACING_M/cellM));
     const xs=[],ys=[];
@@ -56,6 +67,10 @@
     if(typeof fetchFn!=='function')return invalid('canopy-fetch-unavailable');
     try {
       const grid=createPoints({frame,w,h,cellM});
+      const a=frame.toLngLat(0,0),b=frame.toLngLat(w-1,h-1);
+      const key=JSON.stringify([w,h,cellM,a.map(v=>+v.toFixed(7)),b.map(v=>+v.toFixed(7)),THRESHOLD_PCT]);
+      const cached=MASK_CACHE.get(key);
+      if(cached)return reportMask(cached.mask.slice(),inside,cached.sampleCount);
       const result=new Array(grid.points.length);
       const controller=new AbortController();
       const stop=setTimeout(()=>controller.abort(),20000);
@@ -77,19 +92,15 @@
         }
       }finally{clearTimeout(stop)}
       if(result.some(v=>!Number.isFinite(v)))return invalid('canopy-samples-incomplete');
-      const mask=new Uint8Array(w*h),open=new Uint8Array(w*h);
-      let flaggedCells=0,flaggedInside=0,openInside=0;
+      const mask=new Uint8Array(w*h);
       for(let y=0;y<h;y++)for(let x=0;x<w;x++){
         const k=y*w+x,i=nearest(grid.xs,x),j=nearest(grid.ys,y);
         const pct=result[j*grid.xs.length+i];
-        if(pct>=THRESHOLD_PCT){mask[k]=1;flaggedCells++;if(inside[k])flaggedInside++;}
-        else{open[k]=1;if(inside[k])openInside++;}
+        if(pct>=THRESHOLD_PCT)mask[k]=1;
       }
-      // A valid all-forest parcel or all-open parcel is not automatically a service failure.
-      // The independent real-browser gate checks expected forest evidence at NY.
-      return {ok:true,mask,evidence:{source:SOURCE,url:URL,sourceResolutionM:30,sampleSpacingM:SPACING_M,
-        thresholdPct:THRESHOLD_PCT,sampleCount:grid.points.length,flaggedCells,flaggedInside,
-        openInside,insideSharePct:inside.length?+(100*flaggedInside/(flaggedInside+openInside||1)).toFixed(1):null}};
+      MASK_CACHE.set(key,{mask:mask.slice(),sampleCount:grid.points.length});
+      if(MASK_CACHE.size>8)MASK_CACHE.delete(MASK_CACHE.keys().next().value);
+      return reportMask(mask,inside,grid.points.length);
     } catch(error){return invalid(String(error?.message||error))}
   }
   root.EarthlineUSFSCanopyR15=Object.freeze({VERSION:'usfs-tcc-1.0.0',load,source:SOURCE});
