@@ -10,21 +10,21 @@ page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE:'+m.text().slic
 try{
   await page.goto('https://earthlinedevelopment.org/?earthline_visual_rollback=20261122',{waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForSelector('#searchInput',{state:'attached',timeout:30000});
-  await page.waitForFunction(()=>Boolean(window.earthlineMap),{timeout:30000});
+  await page.waitForFunction(()=>Boolean(window.earthlineMap||(typeof earthlineMap!=='undefined'&&earthlineMap)),{timeout:30000});
   await page.waitForTimeout(8000);
   await page.evaluate(()=>{
-    const m=window.earthlineMap;
+    const m=window.earthlineMap||(typeof earthlineMap!=='undefined'&&earthlineMap);
     window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;
     m.jumpTo({center:[-75.76996,42.78781],zoom:17});
     m.fire('dragend');
   });
   await page.waitForTimeout(5000);
   await page.click('#earthlineDeclareProperty16169',{timeout:20000});
-  await page.waitForFunction(()=>Boolean(window.M?.analysisReady&&document.documentElement.dataset.earthlineAnalysisTier==='property'),{timeout:90000});
+  await page.waitForFunction(()=>Boolean(((typeof M!=='undefined'&&M)||window.M)?.analysisReady&&document.documentElement.dataset.earthlineAnalysisTier==='property'),{timeout:90000});
   await page.waitForTimeout(3500);
   await page.screenshot({path:out+'/newyork-property-after-rollback.png',fullPage:false});
   const state=await page.evaluate(()=>{
-    const map=window.earthlineMap,M=window.M||null;
+    const map=window.earthlineMap||(typeof earthlineMap!=='undefined'&&earthlineMap),md=(typeof M!=='undefined'&&M)||window.M||null;
     const style=map?.getStyle?.()||{},layers=(style.layers||[]),c=map.getCenter();
     const getComputed=id=>{const e=document.getElementById(id);if(!e)return null;const z=getComputedStyle(e);return {display:z.display,visibility:z.visibility,opacity:z.opacity,childCount:e.children.length}};
     const srcCount=id=>{try{const src=map.getSource(id);const d=src?._data||(src?.serialize?.().data);return {count:Array.isArray(d?.features)?d.features.length:null,type:d?.type||null};}catch(e){return {err:String(e)}}};
@@ -40,7 +40,7 @@ try{
     const hasSwales=swaleLayers.filter(x=>/swale|bioswale|corridor/i.test(x.id));
     const water=swaleLayers.filter(x=>/water|flow/i.test(x.id));
     return {url:location.href,center:{lng:c.lng,lat:c.lat},zoom:map.getZoom(),tier:document.documentElement.dataset.earthlineAnalysisTier,
-      analysisReady:!!M?.analysisReady,internalSwales:M?.swales?.length,
+      analysisReady:!!md?.analysisReady,internalSwales:md?.swales?.length,
       engineResult:window.__EARTHLINE_SWALE_ENGINE_HOOK_16600?.result?.(),
       swaleLayers:hasSwales,waterLayers:water,hold:window.EARTHLINE_WATERPATH_HOLD||null,
       propertyWaterOverlay:getComputed('earthlinePropertyWaterOverlay15824'),
