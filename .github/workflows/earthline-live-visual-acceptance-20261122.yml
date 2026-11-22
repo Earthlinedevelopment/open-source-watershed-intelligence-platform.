@@ -1,0 +1,48 @@
+name: Earthline LIVE camera/swale acceptance — Chrome Safari
+on:
+  push:
+    branches: [test/earthline-live-visual-20261122]
+permissions:
+  contents: read
+jobs:
+  public:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [chrome, safari]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify public HTTPS serves exact approved candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in 1 2 3 4 5 6 7 8; do
+            curl -fsSL --max-time 30 -H 'Cache-Control: no-cache' "https://earthlinedevelopment.org/?earthline_camera_swale_release=20261122-$i" -o /tmp/earthline-live-public.html || true
+            got="$(sha256sum /tmp/earthline-live-public.html 2>/dev/null | cut -d' ' -f1 || true)"
+            echo "PUBLIC_SHA256=$got"
+            if [ "$got" = 'b50b72077839628c08673851793863a6baa290ef23b9c8482cb60b61400308b8' ]; then ok=1; break; fi
+            sleep 8
+          done
+          test "$ok" = 1 || { echo 'FAIL: public site did not serve the release'; exit 1; }
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium webkit
+      - name: Verify real public New York Property twice; target and layers must match
+        env:
+          EARTHLINE_PROFILE: ${{ matrix.profile }}
+          EARTHLINE_LIVE: '1'
+        run: node tests/single-renderer-visual-gate.mjs
+      - name: Save visible screenshots and evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-public-swales-${{ matrix.profile }}
+          path: single-renderer-results/${{ matrix.profile }}/
+          retention-days: 7
