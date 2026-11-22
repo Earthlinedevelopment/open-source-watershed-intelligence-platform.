@@ -28,7 +28,7 @@ try{
     const style=map?.getStyle?.()||{},layers=(style.layers||[]),c=map.getCenter();
     const getComputed=id=>{const e=document.getElementById(id);if(!e)return null;const z=getComputedStyle(e);return {display:z.display,visibility:z.visibility,opacity:z.opacity,childCount:e.children.length}};
     const srcCount=id=>{try{const src=map.getSource(id);const d=src?._data||(src?.serialize?.().data);return {count:Array.isArray(d?.features)?d.features.length:null,type:d?.type||null};}catch(e){return {err:String(e)}}};
-    const swaleLayers=layers.filter(l=>/swale|bioswale|corridor|water|flow|recharge/i.test(l.id)).map(l=>{
+    const swaleLayers=layers.filter(l=>/swale|bioswale|corridor|water|flow|recharge|property-safe/i.test(l.id)).map(l=>{
       let rendered=null,renderError=null,visibility=null;
       try{visibility=map.getLayoutProperty(l.id,'visibility')||'visible';}catch(e){visibility='error:'+String(e)}
       if(l.type==='line'||l.type==='fill'||l.type==='symbol'||l.type==='circle'){
