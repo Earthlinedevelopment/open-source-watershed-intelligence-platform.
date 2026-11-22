@@ -1,0 +1,38 @@
+name: Earthline actual mouse-drag safe renderer isolated gate
+on:
+  push:
+    branches: [candidate/earthline-real-drag-safe-only-20261122]
+permissions:
+  contents: read
+jobs:
+  real-drag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [chrome, safari]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build byte-verified one-anchor presentation candidate
+        run: |
+          python3 tools/safe-renderer-only-20261122.py index.html /tmp/earthline-candidate.html
+          cp /tmp/earthline-candidate.html index.html
+          printf '%s  %s\n' 96c60d7c43124354de071f1751f40882297328f1f5a100259730c54c413745d2 index.html | sha256sum --check
+      - name: Install Chrome and Safari/WebKit
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium webkit
+      - name: Physically drag live map after NY search, run Property twice
+        env:
+          EARTHLINE_PROFILE: ${{ matrix.profile }}
+        run: node tests/earthline-real-drag-safe-candidate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: real-drag-candidate-${{ matrix.profile }}
+          path: founder-regression/${{ matrix.profile }}/
+          retention-days: 7
