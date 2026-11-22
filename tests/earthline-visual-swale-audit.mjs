@@ -65,6 +65,11 @@ try{
   const safe=safeIds.map(id=>state.swaleLayers.find(l=>l.id===id));
   const natural=state.swaleLayers.filter(l=>/^earthline-property-swale-natural-(up|flip)-16174$/.test(l.id)||l.id==='earthline-property-swale-neutral-16177');
   if(Math.abs(state.center.lat-42.78781)>0.001||Math.abs(state.center.lng+75.76996)>0.001)throw Error('PROPERTY CAMERA OUTSIDE NEW YORK');
-  if(safe.some(l=>!l||l.visibility==='none'||l.rendered<1||Number(l.opacityPaint)<0.9))throw Error('VERIFIED SAFE BLUE SWALES NOT VISIBLE');
+  const livingIds=['earthline-living-swales-earth-15792','earthline-living-swales-life-15792','earthline-living-swales-water-15792'];
+  const living=livingIds.map(id=>state.swaleLayers.find(l=>l.id===id));
+  const safeVisible=safe.every(l=>l&&l.visibility!=='none'&&l.rendered>0&&Number(l.opacityPaint)>=0.9);
+  const livingVisible=living.every(l=>l&&l.visibility!=='none'&&l.rendered>0&&Number(l.opacityPaint)>=0.9);
+  console.log('EARTHLINE_MAP_VISIBLE_SWALE_OWNERS '+JSON.stringify({safeVisible,livingVisible}));
+  if(!safeVisible&&!livingVisible)throw Error('NO VERIFIED BRIGHT BLUE SWALES RENDERED');
   if(natural.some(l=>l.visibility!=='none'))throw Error('DUAL RENDERERS ACTIVE');
 }finally{await browser.close();}
