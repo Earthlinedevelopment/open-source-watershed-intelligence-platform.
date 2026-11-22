@@ -38,6 +38,16 @@ jobs:
         run: |
           npm install --no-save playwright @mapbox/vector-tile@1.3.1 pbf@3.2.1
           npx playwright install --with-deps chromium webkit
+      - name: Inspect actually rendered swale map layers
+        if: matrix.profile == 'desktop-chrome'
+        run: node tests/earthline-visual-swale-audit.mjs
+      - name: Upload visual swale audit screenshot and JSON
+        if: always() && matrix.profile == 'desktop-chrome'
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthline-rollback-visual-map
+          path: visual-swale-audit/
+          retention-days: 7
       - name: Run REAL production New York Property twice
         env:
           EARTHLINE_PROFILE: ${{ matrix.profile }}
