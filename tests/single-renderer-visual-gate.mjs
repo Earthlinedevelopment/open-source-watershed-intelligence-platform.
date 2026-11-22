@@ -20,6 +20,35 @@ try {
  await page.waitForSelector('#searchInput',{timeout:30000});
  await page.waitForFunction(()=>Boolean((typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap),null,{timeout:45000});
  await sleep(7000);
+ const scenario=process.env.EARTHLINE_REGION_SCENARIO||'finished';
+ await page.evaluate(()=>{
+   const i=document.getElementById('searchInput'),b=document.getElementById('runBtn');
+   if(!i||!b)throw Error('Missing New York regional search controls');
+   i.value='NEW YORK state';
+   i.dispatchEvent(new Event('input',{bubbles:true}));
+   i.dispatchEvent(new Event('change',{bubbles:true}));
+   b.click();
+ });
+ if(scenario==='finished'){
+   let ready=false;const start=Date.now();
+   while(Date.now()-start<90000){
+     ready=await page.evaluate(()=>{
+       const b=document.getElementById('runBtn'),de=document.documentElement;
+       return !!b&&!/running|deriving|loading|analy/i.test(String(b.textContent||''))&&
+          !/running/i.test(String(de.dataset.earthlineRunState||''));
+     });
+     if(ready&&Date.now()-start>8000)break;
+     await sleep(750);
+   }
+   if(!ready)throw Error('New York regional search did not settle');
+   await sleep(2000);
+ }else if(scenario==='midrun'){
+   await sleep(15000);
+ }else throw Error('unknown regional scenario '+scenario);
+ console.log('EARTHLINE_SEARCH_SEQUENCE_PRE_PROPERTY '+JSON.stringify({profile,scenario,region:await page.evaluate(()=>{
+   const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;
+   const d=document.documentElement;return {center:m?.getCenter?.(),tier:d.dataset.earthlineAnalysisTier,runState:d.dataset.earthlineRunState}
+ })}));
  for(let run=1;run<=2;run++){
    await page.evaluate(()=>{
      const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;
