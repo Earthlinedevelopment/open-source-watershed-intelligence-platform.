@@ -6,7 +6,7 @@ const browser=await engine.launch({headless:true});
 const ctx=await browser.newContext({viewport:{width:1800,height:820}});
 const page=await ctx.newPage();
 const pinned=readFileSync('index.html');
-await ctx.route('**/*',route=>{let u;try{u=new URL(route.request().url())}catch(_){return route.continue()};if(u.origin==='https://earthlinedevelopment.org'&&u.pathname==='/earthline-waterpath-hold.js')return route.fulfill({status:200,contentType:'text/javascript',body:readFileSync('earthline-waterpath-hold.js')});if(u.origin==='https://earthlinedevelopment.org'&&(u.pathname==='/'||u.pathname==='/index.html')&&route.request().resourceType()==='document')return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:pinned});return route.continue()});
+if(process.env.EARTHLINE_LIVE!=='1')await ctx.route('**/*',route=>{let u;try{u=new URL(route.request().url())}catch(_){return route.continue()};if(u.origin==='https://earthlinedevelopment.org'&&u.pathname==='/earthline-waterpath-hold.js')return route.fulfill({status:200,contentType:'text/javascript',body:readFileSync('earthline-waterpath-hold.js')});if(u.origin==='https://earthlinedevelopment.org'&&(u.pathname==='/'||u.pathname==='/index.html')&&route.request().resourceType()==='document')return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:pinned});return route.continue()});
 const out='founder-regression/'+profile;mkdirSync(out,{recursive:true});
 const problems=[],records=[];
 page.on('pageerror',e=>problems.push('PAGE: '+String(e)));
