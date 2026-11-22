@@ -1,0 +1,27 @@
+name: Diagnose exact map camera owner after real New York drag
+on:
+  push:
+    branches: [diagnose/earthline-camera-owner-20261122]
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chrome
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Trace every programmatic camera change and mouse drag
+        run: node tests/trace-camera-owner-20261122.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: camera-owner-20261122
+          path: camera-owner-results/
+          retention-days: 7
