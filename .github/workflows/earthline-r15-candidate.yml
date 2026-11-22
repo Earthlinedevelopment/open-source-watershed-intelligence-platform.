@@ -1,0 +1,45 @@
+name: Earthline R15 candidate gate (no swales under tree canopy) — pre-deploy, no production writes
+on:
+  push:
+    branches: [test/candidate-R15]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  r15:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Engine unit tests (R1-R15), offline
+        run: |
+          mkdir -p /tmp/unit/tests && cp earthline-property-swales.js earthline-property-swale-bridge.js /tmp/unit/ 2>/dev/null || true
+          cp tests/engine-tests-r15.js /tmp/unit/tests/engine-tests.js
+          cd /tmp/unit && node tests/engine-tests.js | tee /tmp/unit-out.txt
+          ! grep -q '^FAIL' /tmp/unit-out.txt
+      - name: Build candidate page (live 96c60d7c + engine 1.2.0 cache tag only)
+        run: |
+          python3 tools/build-r15-candidate.py index.html earthline-property-swales.js /tmp/candidate-index.html
+          echo "EARTHLINE_INDEX_FILE=/tmp/candidate-index.html" >> "$GITHUB_ENV"
+          echo "EARTHLINE_ENGINE_FILE=$GITHUB_WORKSPACE/earthline-property-swales.js" >> "$GITHUB_ENV"
+          echo "EARTHLINE_EXPECT_R15=1" >> "$GITHUB_ENV"
+          sha256sum /tmp/candidate-index.html earthline-property-swales.js
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Click-path audit on the CANDIDATE (real site data, candidate page + engine served in place)
+        id: run
+        continue-on-error: true
+        run: node tests/earthline-user-sequence-audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r15-audit
+          path: user-sequence-audit/
+      - name: Enforce
+        if: steps.run.outcome == 'failure'
+        run: exit 1
