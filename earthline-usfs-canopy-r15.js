@@ -8,7 +8,7 @@
   const SOURCE = 'USDA Forest Service NLCD Tree Canopy Cover, 30m (Earthline CORS relay)';
   const THRESHOLD_PCT = 35; // conservative closed/wooded canopy screening only
   const SPACING_M = 15; // subsamples 30m source to protect raster edges
-  const CHUNK = 65;
+  const CHUNK = 20;
   function createPoints({frame,w,h,cellM}) {
     const step=Math.max(1,Math.round(SPACING_M/cellM));
     const xs=[],ys=[];
