@@ -1,0 +1,56 @@
+name: Earthline approved Option A water-path hold only
+on:
+  push:
+    branches: [release/earthline-hide-invalid-water-20261122]
+permissions:
+  contents: write
+concurrency:
+  group: earthline-20261122-public-waterhold
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Exact SHA two-file display-only release
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE="$(git rev-parse HEAD)"
+          git fetch origin '+refs/heads/pages-live:refs/remotes/origin/pages-live'
+          BASE="$(git rev-parse origin/pages-live)"
+          test "$BASE" = '23a07b04526ad3c3852ca3432652b4b8a321b1de' || { echo "FAIL CLOSED changed live head $BASE"; exit 1; }
+          git checkout -B guarded-water-hold "$BASE"
+          test "$(sha256sum index.html | cut -d' ' -f1)" = '96c60d7c43124354de071f1751f40882297328f1f5a100259730c54c413745d2'
+          git show "$SOURCE:earthline-waterpath-hold.js" > earthline-waterpath-hold.js
+          test "$(sha256sum earthline-waterpath-hold.js | cut -d' ' -f1)" = 'e7b955e5c1ce0492b2c0a4876127be97e7bd6fbe406cd3d829f65a59d8510744'
+          python3 - <<'PY'
+          from pathlib import Path
+          from hashlib import sha256
+          p=Path('index.html')
+          b=p.read_bytes()
+          anchor=b'<script src="earthline-property-swale-bridge.js?v=37ac5f9b"></script>\n'
+          extra=b'<script defer src="earthline-waterpath-hold.js?v=e7b955e5"></script>\n'
+          assert b.count(anchor)==1 and extra not in b,"FAIL CLOSED anchor wrong"
+          updated=b.replace(anchor,anchor+extra,1)
+          actual=sha256(updated).hexdigest()
+          assert actual=='79eac56ac6610176eaa4b38946eca2666b50792a580b8e3bbe39166648c2b13b',actual
+          p.write_bytes(updated)
+          print('EXACT TWO-FILE RELEASE VERIFIED',actual)
+          PY
+          node --check earthline-waterpath-hold.js
+          git add -- index.html earthline-waterpath-hold.js
+          printf '%s\n' earthline-waterpath-hold.js index.html > /tmp/expected
+          git diff --cached --name-only > /tmp/actual
+          diff -u /tmp/expected /tmp/actual
+          git config user.name 'Earthline approved release'
+          git config user.email 'earthline-release@users.noreply.github.com'
+          git commit -m 'Hide unverified modeled water lines; preserve tested swale engine and display'
+          git fetch origin '+refs/heads/pages-live:refs/remotes/origin/pages-live'
+          test "$(git rev-parse origin/pages-live)" = "$BASE" || { echo 'FAIL CLOSED: branch changed during deploy'; exit 1; }
+          git push origin HEAD:pages-live
+          echo 'EARTHLINE WATER HOLD LIVE COMMIT SUCCESS'
