@@ -61,5 +61,10 @@ try{
   writeFileSync(out+'/diagnostic.json',JSON.stringify({summary,state},null,2));
   console.log('EARTHLINE_VISUAL_SWALE_ROLLBACK '+JSON.stringify(summary).slice(0,40000));
   if(!state.analysisReady || !state.engineResult?.verified || state.internalSwales!==23 || errors.length)throw Error('Engine state or page errors fail');
-  if(state.swaleLayers.length===0||state.swaleLayers.every(x=>x.rendered===0||x.visibility==='none'))throw Error('NO VISIBLE SWALE MAP FEATURES');
+  const safeIds=['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'];
+  const safe=safeIds.map(id=>state.swaleLayers.find(l=>l.id===id));
+  const natural=state.swaleLayers.filter(l=>/^earthline-property-swale-natural-(up|flip)-16174$/.test(l.id)||l.id==='earthline-property-swale-neutral-16177');
+  if(Math.abs(state.center.lat-42.78781)>0.001||Math.abs(state.center.lng+75.76996)>0.001)throw Error('PROPERTY CAMERA OUTSIDE NEW YORK');
+  if(safe.some(l=>!l||l.visibility==='none'||l.rendered<1||Number(l.opacityPaint)<0.9))throw Error('VERIFIED SAFE BLUE SWALES NOT VISIBLE');
+  if(natural.some(l=>l.visibility!=='none'))throw Error('DUAL RENDERERS ACTIVE');
 }finally{await browser.close();}
