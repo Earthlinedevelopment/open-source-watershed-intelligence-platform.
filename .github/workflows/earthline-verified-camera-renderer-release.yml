@@ -1,0 +1,46 @@
+name: Earthline verified safe swale renderer plus camera target release
+on:
+  push:
+    branches: [release/earthline-camera-renderer-20261122]
+permissions:
+  contents: write
+concurrency:
+  group: earthline-production-camera-renderer-20261122
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Apply ONLY tested exact 3-anchor source patch to production and publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin '+refs/heads/pages-live:refs/remotes/origin/pages-live' '+refs/heads/candidate/earthline-single-visual-renderer-20261122:refs/remotes/origin/candidate/earthline-single-visual-renderer-20261122'
+          BASE="$(git rev-parse origin/pages-live)"
+          test "$BASE" = "899dbc6b26fc06c77e5d6db331c310b2e87d456c" || { echo "FAIL CLOSED: unexpected live head: $BASE"; exit 1; }
+          git checkout -B earthline-release-current "$BASE"
+          test "$(sha256sum index.html | cut -d' ' -f1)" = "c97a1ad5c38bff7f23d7c07b63e75a88dda8a4f2ad7c6caf3c5d75ecd14ef088"
+          git show 'origin/candidate/earthline-single-visual-renderer-20261122:tools/candidate-single-renderer-20261122.py' > /tmp/earthline-verified-camera-patch.py
+          python3 /tmp/earthline-verified-camera-patch.py index.html /tmp/earthline-patched.html
+          cp /tmp/earthline-patched.html index.html
+          printf '%s  %s\n' 'b50b72077839628c08673851793863a6baa290ef23b9c8482cb60b61400308b8' 'index.html' | sha256sum --check
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          assert "m.on('moveend',()=>{if(!window.EARTHLINE_PROPERTY_TARGET_16201)syncPropertyTargetFromMap16201();positionSuggestions16233()});" in s
+          assert "const show=!(model()?.propertySwaleEngine16600?.verified===true)&&centers.length>0" in s
+          PY
+          git add -- index.html
+          test "$(git diff --cached --name-only)" = 'index.html'
+          git config user.name 'Earthline guarded release'
+          git config user.email 'earthline-release@users.noreply.github.com'
+          git commit -m 'Fix Property target camera reset and make verified blue swales visible'
+          git fetch origin '+refs/heads/pages-live:refs/remotes/origin/pages-live'
+          test "$(git rev-parse origin/pages-live)" = "$BASE" || { echo 'FAIL CLOSED: live moved during deploy'; exit 1; }
+          git push origin HEAD:pages-live
+          echo 'EARTHLINE CAMERA-AND-RENDERER EXACT PATCH RELEASED'
