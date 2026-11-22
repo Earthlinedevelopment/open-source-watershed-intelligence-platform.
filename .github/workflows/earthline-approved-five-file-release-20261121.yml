@@ -1,0 +1,62 @@
+name: Earthline approved five-file guarded release
+on:
+  push:
+    branches:
+      - ops/earthline-five-file-guarded-20261121
+permissions:
+  contents: write
+concurrency:
+  group: earthline-five-file-release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reproduce exact tested page and validate isolated five-file scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin             '+refs/heads/pages-live:refs/remotes/origin/pages-live'             '+refs/heads/candidate/swale-engine:refs/remotes/origin/candidate/swale-engine'             '+refs/heads/fix/elder-popup-top-layer-20261120:refs/remotes/origin/fix/elder-popup-top-layer-20261120'
+          BASE_LIVE="$(git rev-parse origin/pages-live)"
+          printf '%s\n' "$BASE_LIVE" > /tmp/earthline-live-parent
+          git checkout -B earthline-release-build "$BASE_LIVE"
+          test "$(sha256sum index.html | cut -d' ' -f1)" = "4bad128f0e1342c222cc2d25e05e0527d086280f4ca8cd24b0597ae0f37e4322"
+          mkdir -p tools tests
+          for file in earthline-property-swales.js earthline-property-swale-bridge.js tools/adapter-16600.js tools/lock-16600.js tools/apply-swale-engine-candidate.py tests/engine-tests.js tests/bridge-tests.js tests/adapter-harness.js tests/elder-worker-recovery.mjs tests/v14-integration-contract.mjs; do
+            git show "origin/candidate/swale-engine:$file" > "$file"
+          done
+          git show 'origin/candidate/swale-engine:earthline-elder-worker-17129.js' > earthline-elder-worker-17129.js
+          git show 'origin/fix/elder-popup-top-layer-20261120:earthline-elder-restored-17097.js' > earthline-elder-restored-17097.js
+          python3 tools/apply-swale-engine-candidate.py index.html /tmp/earthline-generated-index.html
+          mv /tmp/earthline-generated-index.html index.html
+          printf '%s  %s\n' 'c97a1ad5c38bff7f23d7c07b63e75a88dda8a4f2ad7c6caf3c5d75ecd14ef088' 'index.html' | sha256sum --check --status
+          printf '%s  %s\n' '83fe88cf454b0d9198090664ceaf4ea6a3d0e50043e710e41928de43572ef9f7' 'earthline-property-swales.js' | sha256sum --check --status
+          printf '%s  %s\n' '37ac5f9b80785bc9cd23f92fd287271d93d6df25a242d6c2d70a5225d5c27ab6' 'earthline-property-swale-bridge.js' | sha256sum --check --status
+          node --check earthline-property-swales.js
+          node --check earthline-property-swale-bridge.js
+          node --check earthline-elder-restored-17097.js
+          node --check earthline-elder-worker-17129.js
+          node tests/engine-tests.js
+          node tests/bridge-tests.js
+          node tests/adapter-harness.js
+          node tests/elder-worker-recovery.mjs
+          node tests/v14-integration-contract.mjs
+          git add -- index.html earthline-property-swales.js earthline-property-swale-bridge.js earthline-elder-restored-17097.js earthline-elder-worker-17129.js
+          printf '%s\n' 'earthline-elder-restored-17097.js' 'earthline-elder-worker-17129.js' 'earthline-property-swale-bridge.js' 'earthline-property-swales.js' 'index.html' > /tmp/earthline-expected-files
+          git diff --cached --name-only > /tmp/earthline-staged-files
+          diff -u /tmp/earthline-expected-files /tmp/earthline-staged-files
+          git config user.name 'Earthline release verification'
+          git config user.email 'earthline-release@users.noreply.github.com'
+          git commit -m 'Earthline: release verified clean Property swale engine and Elder recovery'
+          git fetch origin '+refs/heads/pages-live:refs/remotes/origin/pages-live'
+          test "$(git rev-parse origin/pages-live)" = "$BASE_LIVE"
+          git push origin HEAD:pages-live
+          echo "EARTHLINE FIVE-FILE RELEASE COMMITTED"
