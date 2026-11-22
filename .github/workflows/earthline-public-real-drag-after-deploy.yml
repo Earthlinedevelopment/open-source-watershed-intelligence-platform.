@@ -1,0 +1,47 @@
+name: PUBLIC Earthline NY real-drag safe renderer verification
+on:
+  push:
+    branches: [test/earthline-public-real-drag-renderer-20261122]
+permissions:
+  contents: read
+jobs:
+  public:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [chrome, safari]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Exact public delivery gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in 1 2 3 4 5 6; do
+            curl -fsSL --max-time 30 -H 'Cache-Control: no-cache' "https://earthlinedevelopment.org/?verified_safe_renderer=20261122-$i" -o /tmp/earthline-public || true
+            hash="$(sha256sum /tmp/earthline-public 2>/dev/null | cut -d' ' -f1 || true)"
+            echo "PUBLIC_HTML_SHA256=$hash"
+            if [ "$hash" = "96c60d7c43124354de071f1751f40882297328f1f5a100259730c54c413745d2" ]; then ok=1; break; fi
+            sleep 7
+          done
+          test "$ok" = 1
+      - name: Install real browsers
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium webkit
+      - name: Real visitor New York search physical drag Property twice against public HTTPS
+        env:
+          EARTHLINE_PROFILE: ${{ matrix.profile }}
+          EARTHLINE_LIVE: '1'
+        run: node tests/earthline-real-drag-safe-candidate.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-real-drag-swales-${{ matrix.profile }}
+          path: founder-regression/${{ matrix.profile }}/
+          retention-days: 7
