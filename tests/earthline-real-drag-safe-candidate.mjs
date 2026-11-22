@@ -35,7 +35,12 @@ async function info(label){
       analysisReady:!!m?.analysisReady,modelSwales:m?.swales?.length,
       swalesLayerOn:m?.layers?.swales?.on,
       engineVerified:eng?.verified,engineCount:eng?.engineSwales,engineHash:eng?.determinismHash,
-      safeLayers:layerInfo.filter(x=>/safe.*16221/.test(x.id)),
+      safeLayers:['earthline-property-safe-casing-16221','earthline-property-safe-earth-16221','earthline-property-safe-life-16221','earthline-property-safe-water-16221'].map(id=>{
+        const exists=!!map?.getLayer?.(id);let rendered=0,visibility=null,opacity=null;
+        if(exists){try{rendered=map.queryRenderedFeatures({layers:[id]}).length}catch(e){rendered=-1}
+          try{visibility=map.getLayoutProperty(id,'visibility')||'visible';opacity=map.getPaintProperty(id,'line-opacity')}catch(_){}}
+        return {id,exists,rendered,visibility,opacity}
+      }),
       naturalLayers:layerInfo.filter(x=>/natural|neutral-16177/.test(x.id)),
       totalRendered:layerInfo.reduce((n,x)=>n+(x.rendered>0?x.rendered:0),0),
       propertyAudit:{stage:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.stage,renderMode:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.renderMode},propertySafety:window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null
@@ -94,7 +99,7 @@ try{
     await page.screenshot({path:out+'/property-'+n+'.png'});
     const near=point=>point&&Math.abs(point.lat-42.78781)<0.001&&Math.abs(point.lng+75.76996)<0.001;
     if(!near(result.center)||!near(result.target)||!result.engineVerified||!(result.engineCount>0)||
-       !result.swalesLayerOn||!result.totalRendered||result.safeLayers.filter(l=>l.rendered>0).length<4)
+       !result.swalesLayerOn||result.safeLayers.filter(l=>l.exists&&l.visibility!=='none'&&l.rendered>0&&Number(l.opacity)>.8).length<4)
       throw Error('RENDER OR TARGET BAD ON RUN '+n+' '+JSON.stringify(result));
   }
   const a=records.find(x=>x.label==='property-result-1')?.data,b=records.find(x=>x.label==='property-result-2')?.data;
