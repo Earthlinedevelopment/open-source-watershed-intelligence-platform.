@@ -1115,7 +1115,8 @@ One repair only: retain BUILD-CHECK-15803 diagnostic data but remove automatic d
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&amp;display=swap" rel="stylesheet"/>
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.css" rel="stylesheet"/>
 <script crossorigin="anonymous" src="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.js"></script>
-<script src="earthline-property-swales.js?v=83fe88cf"></script>
+<script src="earthline-property-swales.js?v=92b3e42d"></script>
+<script src="earthline-usfs-canopy-r15.js?v=a3c8a3db"></script>
 <script src="earthline-property-swale-bridge.js?v=37ac5f9b"></script>
 <script defer src="earthline-waterpath-hold.js?v=e7b955e5"></script>
 <style>
@@ -13129,9 +13130,20 @@ var prescribeSwales;
     const thr=Number(streamThreshold());
     const channelThresholdCells=Math.max(3,thr*3.0);
     const channelMask=new Uint8Array(N);if(M.pond)for(let i=0;i<N;i++)if(M.pond[i])channelMask[i]=1;
-    /* intact closed forest ranks last, never removed */
-    let landcover=null;
-    try{if(typeof _canopyData!=="undefined"&&_canopyData){landcover=new Uint8Array(N);for(let y=0;y<GH;y++)for(let x=0;x<GW;x++)if(canopyAt(x,y)>0.40)landcover[idx(x,y)]=1;}}catch(_){landcover=null;}
+    /* R15 CANDIDATE ONLY: georeferenced, independent USDA Forest Service TCC 30m data.
+       Do not substitute absent Mapbox satellite canvas. Missing coverage => fail closed. */
+    let landcover=null,canopyProvenance16600=null;
+    const canopySource16600=window.EarthlineUSFSCanopyR15;
+    if(!canopySource16600||typeof canopySource16600.load!=="function"){
+      fail("r15-canopy-source-module-unavailable",{source:"USDA Forest Service TCC 30m"});return false;
+    }
+    const canopyResult16600=await canopySource16600.load({frame,w:GW,h:GH,cellM,inside});
+    if(earthlineIsStale(myGen))return false;
+    if(!canopyResult16600.ok||!canopyResult16600.mask||canopyResult16600.mask.length!==N){
+      fail("r15-canopy-evidence-unavailable",{reason:canopyResult16600.reason||"incomplete",source:canopyResult16600.source||"USFS TCC"});return false;
+    }
+    landcover=canopyResult16600.mask;
+    canopyProvenance16600=canopyResult16600.evidence;
     earthlineRecordTerrainHandoff15791("clean-engine-inputs",myGen);
     const t0=performance.now();
     const extras=earthlineEngineExtras16600(frame);
@@ -13191,7 +13203,7 @@ var prescribeSwales;
       engineVersion:E.VERSION,bridgeVersion:B.VERSION,determinismHash:out.determinismHash,message:finalMessage16601,
       acquisition:{status:acq.status,sourceTier:acq.sourceTier,counts:acq.counts,tiles:acq.tiles,zoom:acq.zoom,vermontApplicable:vermont,vermontVerified,
         extraVermontFeatures:extras.vermontFeatureCount,manualNoBuild:extras.manualCount,source:"mapbox-streets-v8 vector tiles (direct fetch, fixed zoom 15)"},
-      rejections:rej,coverage:out.evidence.coverage,evidence:out.evidence,params,
+      rejections:rej,coverage:out.evidence.coverage,evidence:Object.assign({},out.evidence,{canopyProvenance:canopyProvenance16600}),params,
       audit:{checked:audit.checked,rejected:audit.rejected,minClearanceM:audit.minClearanceM,counts:audit.counts},
       rawEngineSwales:out.swales.length,engineSwales:corridors.length,publishedSwales:corridors.length,
       features:orderedFeatures,

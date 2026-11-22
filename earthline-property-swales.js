@@ -1,10 +1,10 @@
-/* Earthline Property Swale Engine v1.1.1
-   One authoritative implementation of the Property swale rules R1-R13 plus R14 (PROPOSED, needs owner approval: terrain relief gate)
+/* Earthline Property Swale Engine v1.2.0
+   One authoritative implementation of the Property swale rules R1-R13 plus R14 and R15 (both PROPOSED, need owner approval: R14 terrain relief gate; R15 no swales under closed tree canopy, because the elevation data there is the treetop surface, not the ground)
    (governing/EARTHLINE-PROPERTY-SWALE-ENGINE-SPEC.md). Pure function: no map, page or viewport input.
    Same inputs -> same output. Works in the browser (window.EarthlinePropertySwales) and in Node (module.exports). */
 (function(root){
 'use strict';
-const VERSION='1.1.1';
+const VERSION='1.2.0';
 const LIMITS=Object.freeze({
   slopeMaxPct:4,            // R2, R3
   slopeMinPct:0.2,          // R12
@@ -25,6 +25,7 @@ const LIMITS=Object.freeze({
   contourStepM:0.05,
   gapSamplesAllowed:2,
   preferredSlopePct:[3.0,4.0],
+  canopyMarginCells:1,      // R15 (PROPOSED - needs owner approval; input.excludeClosedCanopy:false turns it off): cells flagged closed canopy in input.landcover, plus this margin, are not buildable
   minReliefM:1.0            // R14 (PROPOSED - needs owner approval; input.minReliefM overrides, 0 turns it off): elevation relief across the property (5th-95th percentile) must exceed what the elevation data can resolve, else no swales are published
 });
 // Hydrologic soil group infiltration (mm/h) and the geometry factor that reproduces the Compendium table
@@ -141,14 +142,17 @@ function run(input){
   const noLine=dilate(outside,w,h,rc(LIMITS.builtSetbackM));
   const noWater=dilate(ex.water,w,h,rc(LIMITS.waterSetbackM));
   const noChan=dilate(channel,w,h,rc(LIMITS.channelSetbackM));
-  const cellReason=i=>outside[i]?'R9':noLine[i]?'R6':noBuilt[i]?'R6':noWater[i]?'R7':noChan[i]?'R8':null;
-  const cov={insideCells:0,slopeOver4Total:0,excluded:{line:0,built:0,water:0,channel:0,slopeOver4:0},buildableCells:0};
+  const canopyIn=(input.landcover&&input.landcover.length===n&&input.excludeClosedCanopy!==false)?input.landcover:null; // R15
+  const noCanopy=canopyIn?dilate(canopyIn,w,h,LIMITS.canopyMarginCells):null;
+  const cellReason=i=>outside[i]?'R9':noLine[i]?'R6':noBuilt[i]?'R6':noWater[i]?'R7':noChan[i]?'R8':(noCanopy&&noCanopy[i])?'R15':null;
+  const cov={insideCells:0,slopeOver4Total:0,excluded:{line:0,built:0,water:0,channel:0,canopy:0,slopeOver4:0},buildableCells:0};
   for(let i=0;i<n;i++){if(!inside[i])continue;cov.insideCells++;
     if(noLine[i])cov.excluded.line++;else if(noBuilt[i])cov.excluded.built++;else if(noWater[i])cov.excluded.water++;else if(noChan[i])cov.excluded.channel++;
+    else if(noCanopy&&noCanopy[i])cov.excluded.canopy++;
     else if(slope[i]>LIMITS.slopeMaxPct)cov.excluded.slopeOver4++;else cov.buildableCells++;
     if(slope[i]>LIMITS.slopeMaxPct)cov.slopeOver4Total++;}
   cov.insideAreaM2=Math.round(cov.insideCells*cellM*cellM);cov.buildablePct=cov.insideCells?+(100*cov.buildableCells/cov.insideCells).toFixed(1):0;
-  const rej={R1:0,R2:0,R3:0,R4:0,R5:0,R6:0,R7:0,R8:0,R9:0,R11:0,R12:0,R13:0,R14:0};
+  const rej={R1:0,R2:0,R3:0,R4:0,R5:0,R6:0,R7:0,R8:0,R9:0,R11:0,R12:0,R13:0,R14:0,R15:0};
   const minLenM=Math.min(LIMITS.minLengthCapM,Math.max(LIMITS.minLengthFloorM,LIMITS.minLengthCellFactor*cellM));
   const dd=drawdownFor(input.soilGroup);
   let lo=Infinity,hi=-Infinity;for(let i=0;i<n;i++)if(inside[i]){if(elev[i]<lo)lo=elev[i];if(elev[i]>hi)hi=elev[i];}
@@ -224,10 +228,12 @@ function run(input){
   const gateRefused=reliefM<minReliefM; // R14
   const swales=gateRefused?[]:swalesAll;if(gateRefused)rej.R14=1;
   const tier=ex.status==='screened-clear'?' · no mapped roads, buildings or water found · check on the ground before digging':'';
+  let canopyInside=0;if(canopyIn)for(let i=0;i<n;i++)if(inside[i]&&canopyIn[i])canopyInside++;
+  const canopyShare=(canopyIn&&cov.insideCells)?canopyInside/cov.insideCells:0;
   const message=gateRefused?('No qualifying swales on this property · terrain relief '+reliefM.toFixed(2)+' m is below the '+minReliefM+' m needed to tell real slope from elevation-data noise · R14'):swales.length?swales.length+' proposed swale alignments · slope ≤ 4% · screening result, not design'+tier
-    :'No qualifying swales on this property · '+Object.entries(rej).filter(e=>e[1]).map(e=>e[0]+' '+e[1]).join(' · ');
+    :'No qualifying swales on this property'+(Object.values(rej).some(v=>v)?' · '+Object.entries(rej).filter(e=>e[1]).map(e=>e[0]+' '+e[1]).join(' · '):'')+((rej.R15||canopyShare>=0.25)?' · tree canopy covers '+Math.round(100*canopyShare)+'% of this property; the elevation data under trees is the treetop surface, so the ground there cannot be measured · R15':'');
   const out={status:{sourceTier:ex.sourceTier||'none',acquisition:ex.status},message,swales,rejections:rej,
-    evidence:Object.assign(ev,{terrain:{reliefM:+reliefM.toFixed(3),p05M:+p05El.toFixed(3),p95M:+p95El.toFixed(3),minReliefM,gate:gateRefused?'refused':'pass',swalesSuppressedByGate:gateRefused?swalesAll.length:0},elevationSource:input.elevationSource||'unspecified',cellM,grid:[w,h],channelAreaM2:Math.round(areaThresholdCells*cellM*cellM),channelThresholdCells:areaThresholdCells,accumulationSource:pageAcc?'supplied':'engine-d8',channelCells:{own:ownChannelCells,withPageMask:channel.reduce((a,b)=>a+b,0)},coverage:cov,
+    evidence:Object.assign(ev,{terrain:{reliefM:+reliefM.toFixed(3),p05M:+p05El.toFixed(3),p95M:+p95El.toFixed(3),minReliefM,gate:gateRefused?'refused':'pass',swalesSuppressedByGate:gateRefused?swalesAll.length:0},elevationSource:input.elevationSource||'unspecified',cellM,grid:[w,h],channelAreaM2:Math.round(areaThresholdCells*cellM*cellM),channelThresholdCells:areaThresholdCells,accumulationSource:pageAcc?'supplied':'engine-d8',canopy:{rule:'R15',applied:!!canopyIn,marginCells:LIMITS.canopyMarginCells,flaggedCells:canopyIn?canopyIn.reduce((x,y)=>x+(y?1:0),0):0,insideSharePct:+(100*canopyShare).toFixed(1),excludedBuildableCells:cov.excluded.canopy},channelCells:{own:ownChannelCells,withPageMask:channel.reduce((a,b)=>a+b,0)},coverage:cov,
       soilGroup:input.soilGroup||null,minLengthM:minLenM,candidates:cand.length,passedRules:passed.length,accepted:swales.length})};
   out.determinismHash=fnv1a(JSON.stringify([out.swales.map(s=>s.properties.id+s.geometry.coordinates.join(';')),out.rejections]));
   return out;
