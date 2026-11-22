@@ -1,0 +1,32 @@
+name: Earthline user click-path audit (real public site)
+on:
+  push:
+    branches: [test/user-sequence-audit]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run the founder's exact click path
+        id: run
+        continue-on-error: true
+        run: node tests/earthline-user-sequence-audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: user-sequence-audit
+          path: user-sequence-audit/
+      - name: Enforce
+        if: steps.run.outcome == 'failure'
+        run: exit 1
