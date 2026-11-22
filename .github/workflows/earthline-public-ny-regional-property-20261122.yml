@@ -1,0 +1,43 @@
+name: Earthline public New York Region to Property lifecycle gate
+on:
+  push:
+    branches: [test/earthline-public-ny-search-property-20261122]
+permissions:
+  contents: read
+jobs:
+  user-path:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [chrome, safari]
+        scenario: [finished, midrun]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm exact live release SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 35 "https://earthlinedevelopment.org/?verify=20261122-userpath" -o /tmp/earthline-public
+          printf '%s  %s\n' b50b72077839628c08673851793863a6baa290ef23b9c8482cb60b61400308b8 /tmp/earthline-public | sha256sum --check
+      - name: Install supported browsers
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium webkit
+      - name: Run REAL public New York state search then property twice
+        env:
+          EARTHLINE_PROFILE: ${{ matrix.profile }}
+          EARTHLINE_LIVE: '1'
+          EARTHLINE_REGION_SCENARIO: ${{ matrix.scenario }}
+        run: node tests/single-renderer-visual-gate.mjs
+      - name: Preserve all screenshots and failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ny-region-to-property-${{ matrix.profile }}-${{ matrix.scenario }}
+          path: single-renderer-results/${{ matrix.profile }}/
+          retention-days: 7
