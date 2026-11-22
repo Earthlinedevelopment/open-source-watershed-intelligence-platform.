@@ -1,71 +1,35 @@
-name: Deploy Earthline V2 exact uploaded release
+name: Earthline V2 read-only public HTTPS delivery verification
 on:
   push:
     branches:
       - release/earthline-v2-waterpath-hold-20261121
 permissions:
-  contents: write
-concurrency:
-  group: earthline-v2-release
-  cancel-in-progress: false
+  contents: read
 jobs:
-  deploy:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: true
-      - name: Verify six-file V2 manifest and deploy ONLY delta
+      - name: Verify exact public HTML and water-path hold through HTTPS
         shell: bash
         run: |
           set -euo pipefail
-          SRC_SHA="$(git rev-parse HEAD)"
-          git fetch origin '+refs/heads/pages-live:refs/remotes/origin/pages-live'
-          LIVE_SHA="$(git rev-parse origin/pages-live)"
-          git checkout -B earthline-v2-deploy "$LIVE_SHA"
-          printf 'Initial live %s\n' "$LIVE_SHA"
-          test "$(sha256sum index.html | cut -d' ' -f1)" = 'c97a1ad5c38bff7f23d7c07b63e75a88dda8a4f2ad7c6caf3c5d75ecd14ef088'
-          for entry in \
-            '83fe88cf454b0d9198090664ceaf4ea6a3d0e50043e710e41928de43572ef9f7 earthline-property-swales.js' \
-            '37ac5f9b80785bc9cd23f92fd287271d93d6df25a242d6c2d70a5225d5c27ab6 earthline-property-swale-bridge.js' \
-            '2c755c26ff4f65c0b6948c15118a6e526a574b9016087b79e86ddc52a7a44926 earthline-elder-restored-17097.js' \
-            'cea459e8737cb39580639f000fa33910c11dd55952eeec0fa852e5dc4c37ffea earthline-elder-worker-17129.js'; do
-            exp="${entry%% *}"; file="${entry#* }"
-            printf '%s  %s\n' "$exp" "$file" | sha256sum --check --status
+          want_index='0a2026ec9b228bfc3300a8d1c626775dee9315ea1e58b55900522484c628131e'
+          want_script='97b0ca243d172c13f47a9152503b07d9c931f8dd68fc58e87196fe2a15d4b278'
+          pass=0
+          for i in 1 2 3 4 5; do
+            url="https://earthlinedevelopment.org/?earthline_v2_verify=20261121-$i"
+            script="https://earthlinedevelopment.org/earthline-waterpath-hold.js?v=97b0ca24&verify=$i"
+            curl -fLsS --max-time 35 -H 'Cache-Control: no-cache' "$url" -o /tmp/earthline-public-index || true
+            curl -fLsS --max-time 35 -H 'Cache-Control: no-cache' "$script" -o /tmp/earthline-public-hold || true
+            found_index="$(sha256sum /tmp/earthline-public-index 2>/dev/null | cut -d' ' -f1 || true)"
+            found_script="$(sha256sum /tmp/earthline-public-hold 2>/dev/null | cut -d' ' -f1 || true)"
+            echo "HTTPS attempt $i: index=$found_index hold=$found_script"
+            if [ "$found_index" = "$want_index" ] && [ "$found_script" = "$want_script" ]; then
+              echo 'EARTHLINE V2 PUBLIC HTTPS DELIVERED: BOTH SHA-256 HASHES VERIFIED'
+              pass=1
+              break
+            fi
+            sleep 12
           done
-          git show "$SRC_SHA:earthline-waterpath-hold.js" > earthline-waterpath-hold.js
-          printf '%s  %s\n' '97b0ca243d172c13f47a9152503b07d9c931f8dd68fc58e87196fe2a15d4b278' 'earthline-waterpath-hold.js' | sha256sum --check --status
-          python3 - <<'PY'
-          import hashlib
-          from pathlib import Path
-          p=Path('index.html')
-          s=p.read_bytes()
-          anchor=b'<script src="earthline-property-swale-bridge.js?v=37ac5f9b"></script>\n'
-          insertion=b'<script defer src="earthline-waterpath-hold.js?v=97b0ca24"></script>\n'
-          assert s.count(anchor)==1, f'Unexpected script anchor count: {s.count(anchor)}'
-          assert insertion not in s, 'V2 already present'
-          updated=s.replace(anchor,anchor+insertion,1)
-          digest=hashlib.sha256(updated).hexdigest()
-          expected='0a2026ec9b228bfc3300a8d1c626775dee9315ea1e58b55900522484c628131e'
-          assert digest==expected, f'V2 SHA-256 mismatch: {digest} != {expected}'
-          p.write_bytes(updated)
-          print('V2 HTML exact SHA-256 verified:',digest)
-          PY
-          node --check earthline-property-swales.js
-          node --check earthline-property-swale-bridge.js
-          node --check earthline-elder-restored-17097.js
-          node --check earthline-elder-worker-17129.js
-          node --check earthline-waterpath-hold.js
-          git add -- index.html earthline-waterpath-hold.js
-          printf '%s\n' earthline-waterpath-hold.js index.html > /tmp/expected-files
-          git diff --cached --name-only > /tmp/actual-files
-          diff -u /tmp/expected-files /tmp/actual-files
-          git config user.name 'Earthline verified release'
-          git config user.email 'earthline-release@users.noreply.github.com'
-          git commit -m 'Release v2: clean swales, Elder recovery, and water-path hold'
-          git fetch origin '+refs/heads/pages-live:refs/remotes/origin/pages-live'
-          test "$(git rev-parse origin/pages-live)" = "$LIVE_SHA" || { echo 'FAIL CLOSED: live changed during release'; exit 1; }
-          git push origin HEAD:pages-live
-          echo 'V2 EXACT SIX-FILE RELEASE DEPLOYED TO pages-live'
+          test "$pass" = 1
