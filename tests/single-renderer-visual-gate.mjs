@@ -55,7 +55,7 @@ try {
      const r=window.__EARTHLINE_SWALE_ENGINE_HOOK_16600?.result?.();
      const audit=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||{};
      return {tier:document.documentElement.dataset.earthlineAnalysisTier,ready:!!m?.analysisReady,modelSwales:m?.swales?.length,engineVerified:r?.verified,engineSwales:r?.engineSwales,engineHash:r?.determinismHash,
-       propertyRenderMode:audit.renderMode||null,safe:safe.map(info),natural:natural.map(info),sourceCount:map.getSource('earthline-property-safe-visible-16221')?._data?.features?.length||null};
+       propertyRenderMode:audit.renderMode||null,sourceStateFingerprint:audit.sourceEvidence?.sourceStateFingerprint||null,scientificInputFingerprint:audit.sourceEvidence?.scientificInputFingerprint||null,sourceHashes:audit.sourceEvidence?.sourceHashes||null,terrainStamp:m?.terrainStamp||null,terrainReady:m?.terrainReady,demReady:m?.demReady,cellM:m?.cellM,safe:safe.map(info),natural:natural.map(info),sourceCount:map.getSource('earthline-property-safe-visible-16221')?._data?.features?.length||null};
    });
    rows.push(row);
    await page.screenshot({path:out+'/run'+run+'.png'});
