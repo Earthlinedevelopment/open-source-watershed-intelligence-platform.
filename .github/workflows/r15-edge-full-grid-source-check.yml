@@ -1,0 +1,46 @@
+name: R15 Edge canopy full NY grid browser speed and integrity check
+on:
+  push:
+    branches: [test/r15-edge-canopy-function-only-20261122]
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save playwright
+      - name: Load canopy mask on 20 acre NY property at current full model grid density
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          import {readFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox']});
+          const p=await browser.newPage();
+          const errors=[],calls=[];
+          p.on('pageerror',e=>errors.push(String(e)));
+          p.on('requestfailed',r=>{if(r.url().includes('canopy-r15'))calls.push({url:r.url(),failed:r.failure()?.errorText})});
+          p.on('response',r=>{if(r.url().includes('canopy-r15'))calls.push({status:r.status(),url:r.url()})});
+          await p.route('https://earthlinedevelopment.org/**',r=>r.request().resourceType()==='document'?r.fulfill({status:200,contentType:'text/html',body:'<html><body>Earthline 20-acre canopy test</body></html>'}):r.continue());
+          await p.goto('https://earthlinedevelopment.org/canopy-test',{waitUntil:'domcontentloaded'});
+          await p.addScriptTag({content:readFileSync('earthline-usfs-canopy-r15.js','utf8')});
+          for(const round of [1,2]){
+            const row=await p.evaluate(async ()=>{
+              const center=[-75.76996,42.78781],w=144,h=115,cellM=2.2,degLat=111320,degLng=111320*Math.cos(center[1]*Math.PI/180);
+              const frame={toLngLat:(x,y)=>[center[0]+(x-w/2)*cellM/degLng,center[1]-(y-h/2)*cellM/degLat]};
+              const inside=new Uint8Array(w*h);
+              for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(((x-w/2)/(w/2))**2+((y-h/2)/(h/2))**2<1)inside[y*w+x]=1;
+              const start=performance.now();
+              const r=await window.EarthlineUSFSCanopyR15.load({frame,w,h,cellM,inside});
+              return {ok:r.ok,reason:r.reason||null,ms:Math.round(performance.now()-start),evidence:r.evidence||null,maskHash:r.mask?Array.from(r.mask).reduce((h,c)=>((h^c)*16777619)>>>0,2166136261):null};
+            });
+            console.log('R15_FULL_GRID_CANOPY',JSON.stringify({round,...row}));
+            if(!row.ok||!(row.evidence?.flaggedInside>0)||!(row.evidence?.openInside>0)||row.ms>21000)throw Error('FAIL CLOSED grid canopy unavailable '+JSON.stringify(row));
+          }
+          console.log('R15_20ACRE_CANOPY_SOURCE_PASS',JSON.stringify({requests:calls,errors}));
+          await browser.close();
+          JS
