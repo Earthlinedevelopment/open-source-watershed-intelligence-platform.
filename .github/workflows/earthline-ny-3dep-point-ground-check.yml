@@ -1,0 +1,43 @@
+name: Earthline real NY meadow USGS 3DEP bare earth point slope audit
+on:
+  push:
+    branches: [test/earthline-ny-3dep-ground-check-20261122]
+permissions:
+  contents: read
+jobs:
+  bare-earth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Independent USGS EPQS 3DEP nine-point meadow grade comparison
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import urllib.request,urllib.parse,concurrent.futures,json,math
+          center=(-75.76996,42.78781)
+          # A conservative 3x3 regular 44m x 40m transect entirely within the open meadow.
+          offsets=[(-0.00032,-0.00030),(-0.00032,0),(-0.00032,0.00030),
+                   (0,-0.00030),(0,0),(0,0.00030),
+                   (0.00032,-0.00030),(0.00032,0),(0.00032,0.00030)]
+          pts=[(center[0]+dx,center[1]+dy) for dx,dy in offsets]
+          def query(q):
+            lng,lat=q
+            url='https://epqs.nationalmap.gov/v1/json?'+urllib.parse.urlencode({'x':lng,'y':lat,'wkid':4326,'units':'Meters','includeDate':'false'})
+            try:
+              with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'Earthline-3DEP-validation/1.0'}),timeout=22) as r:return {'point':[lng,lat],'status':r.status,'result':json.load(r)}
+            except Exception as e:return {'point':[lng,lat],'error':str(e)}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool: vals=list(pool.map(query,pts))
+          for i,v in enumerate(vals):print('USGS_3DEP_POINT',json.dumps({'index':i,**v})[:1350])
+          def getz(v):
+            data=v.get('result',{});return float(data.get('value',data.get('USGS_Elevation_Point_Query_Service',{}).get('Elevation_Query',{}).get('Elevation',float('nan'))))
+          try:
+            z=[getz(v) for v in vals]
+            assert all(math.isfinite(v) and v>-1000 for v in z)
+            latM=111320*0.00030;lngM=111320*math.cos(math.radians(center[1]))*0.00032
+            a,b,c,d,e,f,g,h,i=z
+            westEast=100*abs(h-b)/(2*lngM)
+            southNorth=100*abs(f-d)/(2*latM)
+            central=math.hypot(westEast,southNorth)
+            print('USGS_3DEP_CENTER_SLOPE',json.dumps({'center':center,'points':9,'slope_pct_est':round(central,2),'ew_pct':round(westEast,2),'ns_pct':round(southNorth,2),'elevation_center_m':e,'raw_values':z}))
+          except Exception as err:print('USGS_3DEP_POINT_DATA_INCOMPLETE',str(err))
+          PY
