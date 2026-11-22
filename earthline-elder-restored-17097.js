@@ -262,25 +262,31 @@
             '<div style="margin-top:2px;font-family:Noto Sans,system-ui,sans-serif!important;font-size:10px!important;font-weight:600!important;line-height:1.15!important;color:#315843;white-space:normal">'+esc(confidence)+'</div>'+
             (!verified?'<div style="margin-top:2px;font-family:Noto Sans,system-ui,sans-serif!important;font-size:10px!important;font-weight:500!important;line-height:1.15!important;color:#526159;white-space:normal">Modeled tree; age not verified.</div>':'');
         }
+        /* M LIVE POPUP FIX: missing/stale Property metadata must not make icon interaction inert.
+           Prefer the actual property boundary when available, otherwise clamp within the map viewport. */
         function popupPlacementInsideProperty(coords){
           try{
-            const md=(typeof M!=='undefined'&&M)||window.M||null;
-            if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()!=='property')return null;
-            const polygon=md?.analysisBoundaryLngLat;
-            if(!Array.isArray(polygon)||polygon.length<3)return null;
-            const pts=polygon.map(p=>{
-              if(!Array.isArray(p)||p.length<2)return null;
-              const q=m.project(p);return Number.isFinite(q?.x)&&Number.isFinite(q?.y)?q:null;
-            }).filter(Boolean);
-            if(pts.length<3)return null;
-            const q=m.project(coords),minX=Math.min(...pts.map(p=>p.x)),maxX=Math.max(...pts.map(p=>p.x));
-            const minY=Math.min(...pts.map(p=>p.y)),maxY=Math.max(...pts.map(p=>p.y));
-            if(q.x<minX||q.x>maxX||q.y<minY||q.y>maxY)return null;
+            const q=m.project(coords);
+            if(!Number.isFinite(q?.x)||!Number.isFinite(q?.y))return null;
             const vw=m.getContainer().clientWidth,vh=m.getContainer().clientHeight;
-            const w=118,h=80,pad=10;
-            const l=Math.max(minX+pad,pad),r=Math.min(maxX-pad,vw-pad)-w;
-            const t=Math.max(minY+pad,pad),bot=Math.min(maxY-pad,vh-pad)-h;
+            const w=118,h=92,pad=10;
+            let l=pad,r=vw-pad-w,t=pad,bot=vh-pad-h;
             if(l>r||t>bot)return null;
+            const md=(typeof M!=='undefined'&&M)||window.M||null;
+            const polygon=md?.analysisBoundaryLngLat;
+            if(Array.isArray(polygon)&&polygon.length>=3){
+              const pts=polygon.map(p=>{
+                if(!Array.isArray(p)||p.length<2)return null;
+                const v=m.project(p);return Number.isFinite(v?.x)&&Number.isFinite(v?.y)?v:null;
+              }).filter(Boolean);
+              if(pts.length>=3){
+                const pl=Math.min(...pts.map(p=>p.x)),pr=Math.max(...pts.map(p=>p.x));
+                const pt=Math.min(...pts.map(p=>p.y)),pb=Math.max(...pts.map(p=>p.y));
+                const il=Math.max(l,pl+pad),ir=Math.min(r,pr-pad-w);
+                const it=Math.max(t,pt+pad),ib=Math.min(bot,pb-pad-h);
+                if(il<=ir&&it<=ib){l=il;r=ir;t=it;bot=ib}
+              }
+            }
             return {lngLat:m.unproject([Math.min(r,Math.max(l,q.x-w/2)),Math.min(bot,Math.max(t,q.y-h-8))]),anchor:'top-left',offset:0};
           }catch(_){return null}
         }
