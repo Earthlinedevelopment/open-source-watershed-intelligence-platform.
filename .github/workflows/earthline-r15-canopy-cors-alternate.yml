@@ -1,0 +1,43 @@
+name: Earthline real-browser alternate tree canopy service CORS audit
+on:
+  push:
+    branches: [test/earthline-usfs-browser-cors-20261122]
+permissions:
+  contents: read
+jobs:
+  cors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save playwright
+      - name: Probe alternative official public geospatial endpoints from Earth's actual origin
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox']});
+          const page=await browser.newPage();
+          await page.route('https://earthlinedevelopment.org/**',route=>route.request().resourceType()==='document'?route.fulfill({status:200,contentType:'text/html',body:'<!DOCTYPE html><html><body>Canopy transport audit</body></html>'}):route.continue());
+          await page.goto('https://earthlinedevelopment.org/audit',{waitUntil:'domcontentloaded'});
+          const endpoints=[
+            ['MRLC-WMS','https://www.mrlc.gov/geoserver/wms?service=WMS&version=1.3.0&request=GetCapabilities'],
+            ['MRLC-display','https://www.mrlc.gov/geoserver/mrlc_display/wms?service=WMS&version=1.3.0&request=GetCapabilities'],
+            ['ForestServiceREST','https://apps.fs.usda.gov/fsgisx01/rest/services/RDW_LandscapeAndWildlife?f=pjson'],
+            ['ESRI-tiles','https://tiles.arcgis.com/tiles/ze0XBzU1FXj94DJq/arcgis/rest/services/NLCD_2016_Tree_Canopy_Cover/MapServer?f=pjson'],
+            ['USFS-image','https://imagery.geoplatform.gov/iipp/rest/services/Vegetation/USFS_EDW_NLCD_TCC_CONUS/ImageServer?f=json'],
+          ];
+          for(const [name,url] of endpoints){
+            const res=await page.evaluate(async url=>{
+              try{const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),12000);
+                const r=await fetch(url,{mode:'cors',credentials:'omit',signal:ctrl.signal});
+                clearTimeout(timer);const data=await r.text();
+                return {status:r.status,ok:r.ok,ctype:r.headers.get('content-type'),length:data.length,head:data.slice(0,100)};
+              }catch(e){return {error:String(e)}}
+            },url);
+            console.log('CANOPY_BROWSER_ALTERNATE',JSON.stringify({name,...res}));
+          }
+          await browser.close();
+          JS
