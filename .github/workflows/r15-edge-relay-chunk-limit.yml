@@ -1,0 +1,30 @@
+name: R15 canopy relay max batch diagnostic
+on:
+  push:
+    branches: [test/r15-supabase-canopy-relay-check-20261122]
+permissions:
+  contents: read
+jobs:
+  chunks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Probe 1 6 12 20 30 40 65 point batches
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,urllib.error,time
+          url='https://ccucaqwbdsskcwxxbqiz.supabase.co/functions/v1/earthline-canopy-r15-probe'
+          for n in (1,6,12,20,30,40,65):
+            points=[[-75.771+(i%13)*0.00025,42.787+int(i/13)*0.00025] for i in range(n)]
+            req=urllib.request.Request(url,method='POST',headers={'Content-Type':'application/json','Origin':'https://earthlinedevelopment.org'},data=json.dumps({'points':points}).encode())
+            t=time.monotonic()
+            try:
+              with urllib.request.urlopen(req,timeout=15) as res:
+                body=res.read().decode(); j=json.loads(body)
+                print('CANOPY_BATCH_TEST',json.dumps({'n':n,'status':res.status,'ms':int((time.monotonic()-t)*1000),'count':len(j.get('values',[])),'source':j.get('source'),'head':body[:110]}))
+            except urllib.error.HTTPError as e:
+              print('CANOPY_BATCH_TEST',json.dumps({'n':n,'status':e.code,'ms':int((time.monotonic()-t)*1000),'errorBody':e.read().decode()[:250]}))
+            except Exception as e:
+              print('CANOPY_BATCH_TEST',json.dumps({'n':n,'error':str(e),'ms':int((time.monotonic()-t)*1000)}))
+          PY
