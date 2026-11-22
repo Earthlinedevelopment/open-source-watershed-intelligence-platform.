@@ -1,0 +1,39 @@
+name: Earthline MRLC 2021 canopy numeric GetFeatureInfo browser gate
+on:
+  push:
+    branches: [test/earthline-usfs-browser-cors-20261122]
+permissions:
+  contents: read
+jobs:
+  pixel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save playwright
+      - name: Verify official 2021 USFS canopy numeric values read from Earthline origin
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox']});
+          const page=await browser.newPage();
+          await page.route('https://earthlinedevelopment.org/**',r=>r.request().resourceType()==='document'?r.fulfill({status:200,contentType:'text/html',body:'<!doctype html><html><body>MRLC canopy numeric test</body></html>'}):r.continue());
+          await page.goto('https://earthlinedevelopment.org/audit');
+          const points=[[-75.76996,42.78781],[-75.7705,42.7886],[-75.7712,42.7892],[-75.769,42.7883],[-75.7699,42.7875],[-75.7699,42.789]];
+          for(const [lng,lat] of points){
+            const v=await page.evaluate(async ({lng,lat})=>{
+              const base='https://www.mrlc.gov/geoserver/mrlc_display/wms';
+              const layer='nlcd_tcc_conus_2021_v2021-4';
+              const p=new URLSearchParams({service:'WMS',version:'1.1.1',request:'GetFeatureInfo',layers:layer,query_layers:layer,styles:'',format:'image/png',info_format:'application/json',srs:'EPSG:4326',bbox:`${lng-0.001},${lat-0.001},${lng+0.001},${lat+0.001}`,width:'201',height:'201',x:'100',y:'100',feature_count:'1'});
+              try{const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),12000);
+                const r=await fetch(base+'?'+p,{mode:'cors',credentials:'omit',signal:controller.signal});clearTimeout(timeout);const t=await r.text();
+                return {status:r.status,ctype:r.headers.get('content-type'),body:t.slice(0,1000)}
+              }catch(e){return {error:String(e)}}
+            },{lng,lat});
+            console.log('MRLC_2021_CANOPY_NUMERIC',JSON.stringify({lng,lat,...v}));
+          }
+          await browser.close();
+          JS
