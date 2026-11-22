@@ -33,7 +33,7 @@ async function open(){
   page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE:'+m.text().slice(0,200));});
   await page.goto(URL+'?seq='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForSelector('#searchInput',{state:'attached',timeout:30000});
-  await page.waitForFunction(()=>Boolean(window.earthlineMap),{timeout:30000});
+  await page.waitForFunction(()=>Boolean((typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap),null,{timeout:30000});
   await sleep(8000);
   return {ctx,page,errors};
 }
@@ -45,7 +45,7 @@ async function typeAndRun(page,q){
 async function regionalDone(page,ms){const end=Date.now()+ms;
   while(Date.now()<end){const ok=await page.evaluate(()=>{const b=document.getElementById('runBtn');return !!b&&!/deriving|loading|running|analy/i.test(b.textContent||'');});if(ok)return true;await sleep(1000);}return false;}
 async function moveCrosshair(page){
-  await page.evaluate(c=>{const m=window.earthlineMap;window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;m.jumpTo({center:c,zoom:16.42});m.fire('dragend');},CROSS);
+  await page.evaluate(c=>{const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;m.jumpTo({center:c,zoom:16.42});m.fire('dragend');},CROSS);
   await sleep(5000);
 }
 async function pressProperty(page){
@@ -80,7 +80,7 @@ async function waitProperty(page,ms){
 }
 async function measure(page){
   return await page.evaluate(()=>{
-    const map=window.earthlineMap,de=document.documentElement;
+    const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap,de=document.documentElement;
     const m=(typeof M!=='undefined'&&M)||window.M||null;
     const layers=(map.getStyle().layers||[]);
     const rows=layers.filter(l=>/swale|bioswale|corridor|property-safe/i.test(l.id)).map(l=>{
@@ -126,7 +126,7 @@ async function scenario(name,fn){
 }
 try{
   await scenario('S3-real-mouse-drag-then-property',async page=>{const s={};
-    await page.evaluate(c=>{const m=window.earthlineMap;window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;m.jumpTo({center:c,zoom:16.42});},CROSS);await sleep(3000);
+    await page.evaluate(c=>{const m=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;window.EARTHLINE_COUNTRY_TARGET_LOCK_16845=false;m.jumpTo({center:c,zoom:16.42});},CROSS);await sleep(3000);
     await realDrag(page);s.press=await pressProperty(page);s.ready=await waitProperty(page,90000);await sleep(3500);return s;});
   await scenario('S4-typed-address-no-drag-then-property',async page=>{const s={};await typeAndRun(page,process.env.EARTHLINE_ADDRESS||'Earlville, New York');s.regionalFinished=await regionalDone(page,150000);await sleep(4000);
     s.press=await pressProperty(page);s.ready=await waitProperty(page,90000);await sleep(3500);return s;});
