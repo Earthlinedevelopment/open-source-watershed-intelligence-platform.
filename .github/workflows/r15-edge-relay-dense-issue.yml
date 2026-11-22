@@ -1,0 +1,35 @@
+name: Earthline canopy relay dense grid error body audit
+on:
+  push:
+    branches: [test/r15-supabase-canopy-relay-check-20261122]
+permissions:
+  contents: read
+jobs:
+  dense:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Compare 65-point 20-acre dense strips against sparse canopy controls
+        run: |
+          python3 - <<'PY'
+          import urllib.request,urllib.error,json,math,time
+          url='https://ccucaqwbdsskcwxxbqiz.supabase.co/functions/v1/earthline-canopy-r15-probe'
+          base=[-75.76996,42.78781];w=144;h=115;cell=2.2
+          xs=list(range(0,w,7))+[w-1];ys=list(range(0,h,7))+[h-1]
+          points=[]
+          for y in ys:
+            for x in xs:
+              points.append([round(base[0]+(x-w/2)*cell/(111320*math.cos(math.radians(base[1]))),7),
+                             round(base[1]-(y-h/2)*cell/111320,7)])
+          print('POINTS',len(points),'FIRST',points[:2],'LAST',points[-2:])
+          for title,pts in [('full_first65',points[:65]),('full_second65',points[65:130]),('full_first20',points[:20]),('center65',points[160:225])]:
+            req=urllib.request.Request(url,data=json.dumps({'points':pts}).encode(),method='POST',headers={'Content-Type':'application/json','Origin':'https://earthlinedevelopment.org'})
+            try:
+              with urllib.request.urlopen(req,timeout=20) as resp:
+                body=resp.read().decode()
+                print('DENSE_RELAY',title,resp.status,body[:700])
+            except urllib.error.HTTPError as e:
+              print('DENSE_RELAY',title,e.code,e.read().decode()[:1200])
+            except Exception as e:
+              print('DENSE_RELAY',title,'EXCEPTION',str(e))
+          PY
