@@ -1,0 +1,52 @@
+name: Earthline R15 official canopy coverage guarded three-file release
+on:
+  push:
+    branches: [release/earthline-r15-canopy-guarded-20261122]
+permissions:
+  contents: write
+concurrency:
+  group: earthline-r15-canopy-production-20261122
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Verify EXACT browser accepted R15 source, page hash and promote only three approved files
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE="$(git rev-parse HEAD)"
+          git fetch origin '+refs/heads/pages-live:refs/remotes/origin/pages-live'
+          BASE="$(git rev-parse origin/pages-live)"
+          test "$BASE" = '67503f620b000cff41a4ef7c86d311661e2ce563' || { echo "FAIL CLOSED: live unexpectedly changed $BASE"; exit 1; }
+          git checkout -B guarded-r15-prod "$BASE"
+          test "$(sha256sum index.html | cut -d' ' -f1)" = '79eac56ac6610176eaa4b38946eca2666b50792a580b8e3bbe39166648c2b13b'
+          git show "$SOURCE:earthline-property-swales.js" > earthline-property-swales.js
+          git show "$SOURCE:earthline-usfs-canopy-r15.js" > earthline-usfs-canopy-r15.js
+          git show "$SOURCE:tools/build-r15-candidate.py" > /tmp/earthline-r15-builder.py
+          git show "$SOURCE:tools/build_r15_usfs_candidate.py" > /tmp/earthline-r15-canopy-builder.py
+          test "$(sha256sum earthline-property-swales.js | cut -d' ' -f1)" = '92b3e42d65a9428e5049a9ba07159ea7f1ee6907c017c9fbba8e4ced666c736f'
+          test "$(sha256sum earthline-usfs-canopy-r15.js | cut -d' ' -f1)" = 'a3c8a3dba1060387fa1bc66ee240917cbd7e35689dd7fa75a9bcd9fed5088df7'
+          node --check earthline-property-swales.js
+          node --check earthline-usfs-canopy-r15.js
+          python3 /tmp/earthline-r15-builder.py index.html earthline-property-swales.js /tmp/earthline-r15-base.html
+          test "$(sha256sum /tmp/earthline-r15-base.html | cut -d' ' -f1)" = '53b667b330ed1edd5c4dde3e0fa9a279615649e4506b8750d62c7ee0f26ff335'
+          python3 /tmp/earthline-r15-canopy-builder.py /tmp/earthline-r15-base.html /tmp/earthline-r15-verified.html
+          test "$(sha256sum /tmp/earthline-r15-verified.html | cut -d' ' -f1)" = 'e0171632f433e40d1f820f7bf6e8a6cd0c4e15ca03d2f1c4dd07097acf863787'
+          cp /tmp/earthline-r15-verified.html index.html
+          git add -- index.html earthline-property-swales.js earthline-usfs-canopy-r15.js
+          git diff --cached --name-only > /tmp/earthline-changed
+          printf '%s\n' earthline-property-swales.js earthline-usfs-canopy-r15.js index.html > /tmp/earthline-exact
+          diff -u /tmp/earthline-exact /tmp/earthline-changed
+          git config user.name 'Earthline guarded canopy release'
+          git config user.email 'earthline-release@users.noreply.github.com'
+          git commit -m 'R15: prevent verified forest swales using sourced canopy mask, preserve 4% and water hold'
+          git fetch origin '+refs/heads/pages-live:refs/remotes/origin/pages-live'
+          test "$(git rev-parse origin/pages-live)" = "$BASE" || { echo "FAIL CLOSED: simultaneous production change"; exit 1; }
+          git push origin HEAD:pages-live
+          echo 'EARTHLINE_R15_CANOPY_RELEASE_COMMITTED'
