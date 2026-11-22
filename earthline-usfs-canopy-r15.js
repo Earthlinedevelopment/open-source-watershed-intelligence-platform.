@@ -62,10 +62,18 @@
       try {
         const groups=[];
         for(let i=0;i<grid.points.length;i+=CHUNK)groups.push([i,grid.points.slice(i,i+CHUNK)]);
-        for(let z=0;z<groups.length;z+=4){
-          const slices=groups.slice(z,z+4);
-          const returned=await Promise.all(slices.map(([,p])=>fetchGroup(p,controller.signal,fetchFn)));
-          for(let i=0;i<slices.length;i++)for(let j=0;j<returned[i].length;j++)result[slices[i][0]+j]=returned[i][j];
+        // Official raster service rate-limits simultaneous large geospatial requests.
+        // Sequential batches with bounded retry avoid 503 bursts without weakening R15.
+        for(const [offset,points] of groups){
+          let returned=null;
+          for(let attempt=0;attempt<3;attempt++){
+            try{returned=await fetchGroup(points,controller.signal,fetchFn);break;}
+            catch(error){
+              if(controller.signal.aborted||attempt===2)throw error;
+              await new Promise(resolve=>setTimeout(resolve,250*(attempt+1)));
+            }
+          }
+          for(let j=0;j<returned.length;j++)result[offset+j]=returned[j];
         }
       }finally{clearTimeout(stop)}
       if(result.some(v=>!Number.isFinite(v)))return invalid('canopy-samples-incomplete');
