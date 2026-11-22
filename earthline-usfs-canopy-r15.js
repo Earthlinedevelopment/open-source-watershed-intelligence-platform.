@@ -4,8 +4,8 @@
    If data acquisition fails, the caller MUST refuse to publish swales. */
 (function (root) {
   'use strict';
-  const URL = 'https://imagery.geoplatform.gov/iipp/rest/services/Vegetation/USFS_EDW_NLCD_TCC_CONUS/ImageServer/getSamples';
-  const SOURCE = 'USDA Forest Service NLCD Tree Canopy Cover, ImageServer, 30m';
+  const URL = 'https://ccucaqwbdsskcwxxbqiz.supabase.co/functions/v1/earthline-canopy-r15-probe';
+  const SOURCE = 'USDA Forest Service NLCD Tree Canopy Cover, 30m (Earthline CORS relay)';
   const THRESHOLD_PCT = 35; // conservative closed/wooded canopy screening only
   const SPACING_M = 15; // subsamples 30m source to protect raster edges
   const CHUNK = 65;
@@ -25,22 +25,18 @@
     return {xs,ys,points};
   }
   async function fetchGroup(points,signal,fetchFn) {
-    const params=new URLSearchParams();
-    params.set('f','json');params.set('geometryType','esriGeometryMultipoint');
-    params.set('geometry',JSON.stringify({points:points.map(p=>[+p.lng.toFixed(7),+p.lat.toFixed(7)]),spatialReference:{wkid:4326}}));
-    const response=await fetchFn(URL+'?'+params.toString(),{mode:'cors',cache:'no-store',signal,credentials:'omit'});
-    if(!response.ok)throw Error('canopy-service-http-'+response.status);
+    const response=await fetchFn(URL,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({points:points.map(p=>[+p.lng.toFixed(7),+p.lat.toFixed(7)])}),
+      mode:'cors',cache:'no-store',credentials:'omit',signal
+    });
+    if(!response.ok)throw Error('canopy-relay-http-'+response.status);
     const json=await response.json();
-    if(json.error)throw Error('canopy-service-error-'+(json.error.message||'unknown'));
-    if(!Array.isArray(json.samples)||json.samples.length!==points.length)throw Error('canopy-service-coverage-incomplete');
-    const out=new Array(points.length).fill(NaN);
-    for(const sample of json.samples){
-      const k=Number(sample.locationId),v=Number(sample.value);
-      if(!Number.isInteger(k)||k<0||k>=out.length||!Number.isFinite(v)||v<0||v>100)throw Error('canopy-service-invalid-data');
-      if(Number.isFinite(out[k]))throw Error('canopy-service-duplicate-sample');
-      out[k]=v;
-    }
-    if(out.some(v=>!Number.isFinite(v)))throw Error('canopy-service-missing-sample');
+    if(!Array.isArray(json.values)||json.values.length!==points.length||
+       json.source!=='USDA Forest Service NLCD Tree Canopy Cover 30m'||json.resolutionM!==30)
+      throw Error('canopy-relay-source-or-coverage-unverified');
+    const out=json.values.map(Number);
+    if(out.some(v=>!Number.isFinite(v)||v<0||v>100))throw Error('canopy-relay-invalid-data');
     return out;
   }
   function nearest(xs,v) {
