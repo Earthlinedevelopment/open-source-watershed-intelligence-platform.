@@ -1,0 +1,40 @@
+name: R15 independent quick forest-mask integration — pre-deploy only
+on:
+  push:
+    branches: [test/r15-fast-real-drag-20261122]
+permissions:
+  contents: read
+jobs:
+  fast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [chrome, safari]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm R15 engine matches uploaded package and adapt current live HTML
+        run: |
+          test "$(sha256sum earthline-property-swales.js | cut -d' ' -f1)" = '92b3e42d65a9428e5049a9ba07159ea7f1ee6907c017c9fbba8e4ced666c736f'
+          python3 tools/build-r15-candidate.py index.html earthline-property-swales.js /tmp/earthline-r15.html
+          test "$(sha256sum /tmp/earthline-r15.html | cut -d' ' -f1)" = '53b667b330ed1edd5c4dde3e0fa9a279615649e4506b8750d62c7ee0f26ff335'
+          cp /tmp/earthline-r15.html index.html
+          node --check earthline-property-swales.js
+      - name: Install Chrome and Safari/WebKit
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium webkit
+      - name: Real NY state search and mouse drag Property twice, enforce canopy mask
+        env:
+          EARTHLINE_PROFILE: ${{ matrix.profile }}
+        run: node tests/r15-fast-real-drag.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r15-fast-${{ matrix.profile }}
+          path: founder-regression/${{ matrix.profile }}/
+          retention-days: 7
