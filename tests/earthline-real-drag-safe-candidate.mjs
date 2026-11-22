@@ -43,7 +43,23 @@ async function info(label){
       }),
       naturalLayers:layerInfo.filter(x=>/natural|neutral-16177/.test(x.id)),
       totalRendered:layerInfo.reduce((n,x)=>n+(x.rendered>0?x.rendered:0),0),
-      propertyAudit:{stage:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.stage,renderMode:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.renderMode},propertySafety:window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null
+      propertyAudit:{stage:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.stage,renderMode:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173?.renderMode},propertySafety:window.EARTHLINE_PROPERTY_SAFE_VISIBILITY_AUDIT_16221||null,
+      scientificCoverage:eng?.evidence?.coverage||null,
+      scientificRejections:eng?.rejections||null,
+      terrainZones:(()=>{
+        const c=m?.propertySwaleEngineContext16600,E=window.EarthlinePropertySwales;
+        if(!c||!E?._internal?.slopePct)return null;
+        const [w,h]=c.params.grid,sp=E._internal.slopePct(c.elev,w,h,c.params.cellM),inside=c.inside;
+        const groups={all:[0,0,0,0],middle:[0,0,0,0],north:[0,0,0,0],south:[0,0,0,0],east:[0,0,0,0],west:[0,0,0,0]};
+        for(let i=0;i<inside.length;i++){if(!inside[i])continue;
+          const x=i%w,y=Math.floor(i/w),rx=x/w,ry=y/h,which=['all'];
+          if(rx>.3&&rx<.7&&ry>.3&&ry<.7)which.push('middle');
+          if(ry<.35)which.push('north');if(ry>.65)which.push('south');
+          if(rx<.35)which.push('west');if(rx>.65)which.push('east');
+          for(const g of which){groups[g][0]++;if(sp[i]>4)groups[g][1]++;if(sp[i]<.2)groups[g][2]++;if(c.landcover?.[i])groups[g][3]++;}
+        }
+        return Object.fromEntries(Object.entries(groups).map(([k,v])=>[k,{inside:v[0],slopeOver4:v[1],slopeUnder0_2:v[2],forest:v[3],slopeOver4Pct:v[0]?Math.round(1000*v[1]/v[0])/10:null}]));
+      })()
     };
   });
   records.push({label,data});console.log('EARTHLINE_FOUNDER_REGRESSION '+JSON.stringify({profile,label,...data}));
