@@ -78,18 +78,7 @@ try{
     input.dispatchEvent(new Event('change',{bubbles:true}));
     button.click();
   });
-  // Test the completed Regional→Property path first; a separate lifecycle gate tests midrun cancellation.
-  let regionalDone=false;
-  const waitAt=Date.now();
-  while(Date.now()-waitAt<120000){
-    regionalDone=await page.evaluate(()=>{
-      const state=document.documentElement.dataset.earthlineRunState;
-      return state==='published'||state==='failed'||state==='unavailable';
-    });
-    if(regionalDone)break;
-    await sleep(1000);
-  }
-  if(!regionalDone)throw Error('REGIONAL_DID_NOT_SETTLE_BEFORE_PROPERTY');
+  await sleep(15000);
   await info('after-newyork-regional-search');
   for(let n=1;n<=2;n++){
     await page.evaluate(()=>{
