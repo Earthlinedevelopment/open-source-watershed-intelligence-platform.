@@ -1,0 +1,43 @@
+name: R15 Supabase canopy relay true browser cross origin verification
+on:
+  push:
+    branches: [test/r15-supabase-canopy-relay-check-20261122]
+permissions:
+  contents: read
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test Edge Function with actual canopy field and CORS
+        run: |
+          set -euo pipefail
+          curl -sSL --fail --max-time 25 -H 'Origin: https://earthlinedevelopment.org' -H 'Content-Type: application/json' \
+             -d '{"points":[[-75.76996,42.78781],[-75.7705,42.7886],[-75.7712,42.7892],[-75.769,42.7883],[-75.7699,42.7875],[-75.7699,42.789]]}' \
+             'https://ccucaqwbdsskcwxxbqiz.supabase.co/functions/v1/earthline-canopy-r15-probe' | tee /tmp/proxy.json
+          python3 - <<'PY'
+          import json
+          j=json.load(open('/tmp/proxy.json'));print('CANOPY_EDGE_SAMPLE',j)
+          assert j.get('values')==[0,79,83,69,24,88],j
+          print('CANOPY_EDGE_SERVER_PASS')
+          PY
+          npm install --no-save playwright
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox']});
+          const page=await browser.newPage();
+          await page.route('https://earthlinedevelopment.org/**',route=>route.request().resourceType()==='document'?route.fulfill({status:200,contentType:'text/html',body:'<html><body>Canopy relay CORS verification</body></html>'}):route.continue());
+          await page.goto('https://earthlinedevelopment.org/canopy-relay-test',{waitUntil:'domcontentloaded'});
+          const value=await page.evaluate(async ()=>{
+            const response=await fetch('https://ccucaqwbdsskcwxxbqiz.supabase.co/functions/v1/earthline-canopy-r15-probe',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'omit',body:JSON.stringify({points:[[-75.76996,42.78781],[-75.7705,42.7886],[-75.7712,42.7892]]})});
+            return {status:response.status,body:await response.json()};
+          });
+          console.log('CANOPY_EDGE_BROWSER_RESULT',JSON.stringify(value));
+          if(value.status!==200||JSON.stringify(value.body.values)!=='[0,79,83]')throw Error('Canopy relay not browser-usable');
+          console.log('CANOPY_EDGE_BROWSER_PASS');
+          await browser.close();
+          JS
