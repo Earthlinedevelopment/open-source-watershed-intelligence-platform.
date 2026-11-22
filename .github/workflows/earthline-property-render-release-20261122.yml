@@ -1,0 +1,41 @@
+name: Earthline verified camera and visible swale hotfix to live
+on:
+  push:
+    branches:
+      - release/earthline-property-visibility-hotfix-20261122
+permissions:
+  contents: write
+concurrency:
+  group: earthline-property-render-release
+  cancel-in-progress: false
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Deploy exact browser-tested HTML, fail closed on any mismatch
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC_SHA="$(git rev-parse HEAD)"
+          git fetch origin '+refs/heads/pages-live:refs/remotes/origin/pages-live'
+          LIVE_SHA="$(git rev-parse origin/pages-live)"
+          test "$LIVE_SHA" = "899dbc6b26fc06c77e5d6db331c310b2e87d456c"
+          git checkout -B earthline-tested-hotfix "$LIVE_SHA"
+          printf '%s  %s\n' 'c97a1ad5c38bff7f23d7c07b63e75a88dda8a4f2ad7c6caf3c5d75ecd14ef088' index.html | sha256sum --check
+          git show "$SRC_SHA:tools/candidate-single-renderer-20261122.py" > /tmp/earthline-tested-patch.py
+          python3 /tmp/earthline-tested-patch.py index.html /tmp/earthline-tested-index.html
+          mv /tmp/earthline-tested-index.html index.html
+          printf '%s  %s\n' 'b50b72077839628c08673851793863a6baa290ef23b9c8482cb60b61400308b8' index.html | sha256sum --check
+          git add -- index.html
+          test "$(git diff --cached --name-only)" = "index.html"
+          git config user.name 'Earthline verified release'
+          git config user.email 'earthline-release@users.noreply.github.com'
+          git commit -m 'Fix Property target lifecycle and always show verified swales'
+          git fetch origin '+refs/heads/pages-live:refs/remotes/origin/pages-live'
+          test "$(git rev-parse origin/pages-live)" = "$LIVE_SHA"
+          git push origin HEAD:pages-live
+          echo 'EARTHLINE_PROPERTY_HOTFIX_DEPLOYED'
