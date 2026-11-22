@@ -13,8 +13,12 @@ if data.count(b"m.on('moveend',()=>{syncPropertyTargetFromMap16201();positionSug
     raise SystemExit('FAIL CLOSED: camera target owner mismatch')
 changed=data.replace(a,b).replace(
     b"m.on('moveend',()=>{syncPropertyTargetFromMap16201();positionSuggestions16233()});",
-    b"m.on('moveend',()=>{positionSuggestions16233()});")
-want='d1467aa8731a814cae768806c334295ecf99bdba724454869670609e6067ff7c'
+    b"m.on('moveend',()=>{if(!window.EARTHLINE_PROPERTY_TARGET_16201)syncPropertyTargetFromMap16201();positionSuggestions16233()});")
+drag=b"if(!t||!c||!Number.isFinite(Number(c.lng))||!Number.isFinite(Number(c.lat)))return;if(t.code||t.source==='country-center')"
+newdrag=b"if(!c||!Number.isFinite(Number(c.lng))||!Number.isFinite(Number(c.lat)))return;if(t&&(t.code||t.source==='country-center'))"
+if data.count(drag)!=1: raise SystemExit('FAIL CLOSED: drag target seeding anchor mismatch')
+changed=changed.replace(drag,newdrag)
+want='b50b72077839628c08673851793863a6baa290ef23b9c8482cb60b61400308b8'
 got=hashlib.sha256(changed).hexdigest()
 if got!=want:raise SystemExit('FAIL CLOSED: candidate hash mismatch '+got)
 dst.write_bytes(changed)
