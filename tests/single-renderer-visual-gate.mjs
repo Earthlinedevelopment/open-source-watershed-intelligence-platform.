@@ -28,7 +28,22 @@ try {
      map.fire?.('dragend');
    });
    await sleep(5000);
-   await page.click('#earthlineDeclareProperty16169',{timeout:25000});
+   // Mirror the proven connected test: wait for the actual Property declaration readiness before a real click.
+   let pressed=false;const started=Date.now();
+   while(Date.now()-started<45000&&!pressed){
+     const state=await page.evaluate(()=>{
+       const b=document.getElementById('earthlineDeclareProperty16169'),de=document.documentElement;
+       return {button:!!b&&getComputedStyle(b).display!=='none'&&!b.disabled&&b.getBoundingClientRect().width>1,
+         readyClass:de.classList.contains('earthline-property-ready-16188'),tier:de.dataset.earthlineAnalysisTier,
+         propertyState:de.dataset.earthlinePropertyRunState};
+     });
+     if(state.button&&(state.readyClass||Date.now()-started>20000)){
+       await page.click('#earthlineDeclareProperty16169',{timeout:5000});
+       pressed=true;break;
+     }
+     await sleep(350);
+   }
+   if(!pressed)throw Error('Property button did not become available');
    await page.waitForFunction(()=>{const m=(typeof M!=='undefined'&&M)||window.M;return !!m?.analysisReady&&document.documentElement.dataset.earthlineAnalysisTier==='property';},null,{timeout:90000});
    await sleep(3500);
    const row=await page.evaluate(()=>{
@@ -52,4 +67,22 @@ try {
  const displayGood=rows.every(x=>x.safe.length===4&&x.safe.every(l=>l.present&&l.visibility!=='none'&&Number(l.opacity)>=0.9&&l.rendered>0)&&x.natural.every(l=>!l.present||l.visibility==='none'));
  if(!verified||!displayGood||errors.length)throw Error('VISUAL RELEASE GATE FAIL '+JSON.stringify({verified,displayGood,errors}));
  console.log('EARTHLINE_SINGLE_RENDERER_VISUAL_GATE_PASS');
+} catch(error) {
+  try{
+    const state=await page.evaluate(()=>{
+      const m=(typeof M!=='undefined'&&M)||window.M;
+      const b=document.getElementById('earthlineDeclareProperty16169');
+      const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;
+      return {tier:document.documentElement.dataset.earthlineAnalysisTier,
+        runState:document.documentElement.dataset.earthlinePropertyRunState,
+        analysisReady:m?.analysisReady,swales:m?.swales?.length,
+        pageError:m?.propertyRunFailure16539||null,
+        center:map?.getCenter?.(),propertyButton:!!b,propertyButtonVisible:b?getComputedStyle(b).display:null,
+        propertyAudit:window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null};
+    });
+    console.error('EARTHLINE_SAFARI_FIRST_RUN_DIAGNOSTIC '+JSON.stringify({state,errors,reason:String(error)}));
+    writeFileSync(out+'/failure.json',JSON.stringify({state,errors,reason:String(error)},null,2));
+    await page.screenshot({path:out+'/failure.png'});
+  }catch(_){}
+  throw error;
 } finally {await browser.close()}
