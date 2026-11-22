@@ -1,0 +1,43 @@
+name: USDA 3DEP Tree Canopy browser transport probe
+on:
+  push:
+    branches: [test/earthline-usfs-browser-cors-20261122]
+permissions:
+  contents: read
+jobs:
+  browser-cors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright API only; use preinstalled Google Chrome
+        run: npm install --no-save playwright
+      - name: Check actual CORS with tiny and big getSamples geometry in Chrome
+        run: |
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox']});
+          const page=await browser.newPage();
+          page.on('console',m=>console.log('CHROME_CONSOLE',m.text().slice(0,1400)));
+          page.on('requestfailed',r=>console.log('REQ_FAILED',r.url().slice(0,210),r.failure()?.errorText));
+          page.on('response',r=>{if(r.url().includes('getSamples'))console.log('RESPONSE',r.status(),r.headers()['access-control-allow-origin']||'',r.url().length)});
+          await page.route('https://earthlinedevelopment.org/**',route=>{
+            if(route.request().resourceType()==='document')return route.fulfill({status:200,contentType:'text/html',body:'<html><body>Earthline CORS probe</body></html>'});
+            return route.continue();
+          });
+          await page.goto('https://earthlinedevelopment.org/r15-browser-probe',{waitUntil:'domcontentloaded'});
+          console.log('ORIGIN',await page.evaluate(()=>location.origin));
+          for(const n of [6,25,65]){
+            const res=await page.evaluate(async n=>{
+              const base='https://imagery.geoplatform.gov/iipp/rest/services/Vegetation/USFS_EDW_NLCD_TCC_CONUS/ImageServer/getSamples';
+              const pts=[];for(let i=0;i<n;i++)pts.push([-75.771+(i%10)*0.00025,42.787+(Math.floor(i/10))*0.00025]);
+              const params=new URLSearchParams({f:'json',geometryType:'esriGeometryMultipoint',geometry:JSON.stringify({points:pts,spatialReference:{wkid:4326}})});
+              try{const r=await fetch(base+'?'+params.toString(),{mode:'cors',cache:'no-store',credentials:'omit'});const text=await r.text();return {n,ok:r.ok,status:r.status,len:text.length,sample:text.slice(0,230),headers:{origin:r.headers.get('access-control-allow-origin')}};}catch(e){return {n,error:String(e)};}
+            },n);
+            console.log('CANOPY_CORS_RESULT',JSON.stringify(res));
+          }
+          await browser.close();
+          JS
