@@ -4,7 +4,7 @@ on:
     branches: [test/forensic-ny]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   inspect:
     runs-on: ubuntu-latest
@@ -21,7 +21,7 @@ jobs:
       - name: Measure property A B and A-to-B
         shell: bash
         run: |
-          node --input-type=module <<'JS'
+          node --input-type=module <<'JS' | tee /tmp/earthline-forensic-raw.log
           import {chromium} from 'playwright';
           const browser=await chromium.launch({headless:true});
           const url='https://earthlinedevelopment.org/?earthline_forensic=20261122';
@@ -63,3 +63,20 @@ jobs:
           try{await page.goto(url,{waitUntil:'domcontentloaded',timeout:60000});await property(page,locations.A,'C-first-A');await property(page,locations.B,'C-second-B');}finally{await page.close();}
           await browser.close();
           JS
+
+      - name: Save diagnostic output to isolated results branch
+        if: always()
+        shell: bash
+        run: |
+          set -e
+          mkdir -p /tmp/earthline-evidence
+          cp /tmp/earthline-forensic-raw.log /tmp/earthline-evidence/raw.log 2>/dev/null || echo 'Browser script did not produce output' > /tmp/earthline-evidence/raw.log
+          date -u > /tmp/earthline-evidence/tested-at.txt
+          git config user.name earthline-forensic
+          git config user.email forensic@earthline.invalid
+          git checkout --orphan forensic-ny-results
+          git rm -rf . >/dev/null 2>&1 || true
+          cp /tmp/earthline-evidence/* .
+          git add -A
+          git commit -m "read-only browser evidence $GITHUB_RUN_ID"
+          git push --force origin HEAD:refs/heads/forensic-ny-results
