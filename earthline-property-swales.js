@@ -25,7 +25,7 @@ const LIMITS=Object.freeze({
   contourStepM:0.05,
   gapSamplesAllowed:2,
   preferredSlopePct:[3.0,4.0],
-  minReliefM:1.0            // R14 (PROPOSED - needs owner approval; input.minReliefM overrides, 0 turns it off): elevation relief across the property (5th-95th percentile) must exceed what the elevation data can resolve, else no swales are published
+  minReliefM:0              // R14 unapproved whole-parcel relief gate disabled by default; require separately validated elevation uncertainty before re-enabling
 });
 // Hydrologic soil group infiltration (mm/h) and the geometry factor that reproduces the Compendium table
 // (A 0.5 m -> 32.7 h, B -> 54.5 h, C -> 124.3 h, D -> 345.2 h).
