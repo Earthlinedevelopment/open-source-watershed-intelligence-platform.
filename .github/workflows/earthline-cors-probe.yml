@@ -1,0 +1,38 @@
+name: "Earthline CORS probe: can the browser read the free data services"
+on:
+  push:
+    branches: [test/cors-probe]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run the probe
+        run: node tests/cors-probe.mjs | tee /tmp/cors-probe.log
+      - name: Save the result to an isolated results branch
+        if: always()
+        shell: bash
+        run: |
+          set -e
+          mkdir -p /tmp/evidence
+          cp /tmp/cors-probe.log /tmp/evidence/raw.log 2>/dev/null || echo 'probe produced no output' > /tmp/evidence/raw.log
+          date -u > /tmp/evidence/tested-at.txt
+          git config user.name earthline-probe
+          git config user.email probe@earthline.invalid
+          git checkout --orphan cors-probe-results
+          git rm -rf . >/dev/null 2>&1 || true
+          cp /tmp/evidence/* .
+          git add -A
+          git commit -m "CORS probe result $GITHUB_RUN_ID"
+          git push --force origin HEAD:refs/heads/cors-probe-results
