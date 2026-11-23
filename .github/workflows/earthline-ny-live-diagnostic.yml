@@ -1,0 +1,65 @@
+name: Earthline NY read-only live browser diagnostic
+on:
+  push:
+    branches: [test/forensic-ny]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Measure property A B and A-to-B
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const url='https://earthlinedevelopment.org/?earthline_forensic=20261122';
+          const locations={A:[-75.76995,42.78781],B:[-75.77639,42.78824]};
+          async function property(page,coord,label){
+            const errors=[];
+            page.on('pageerror',e=>errors.push(String(e).slice(0,200)));
+            const start=Date.now();
+            let clicked=false;
+            try {
+              await page.waitForFunction(()=>!!(window.earthlineMap||(typeof earthlineMap!=='undefined'&&earthlineMap)),null,{timeout:45000});
+              await page.evaluate(c=>{const m=window.earthlineMap||(typeof earthlineMap!=='undefined'&&earthlineMap);m.jumpTo({center:c,zoom:16.42});m.fire('dragend');},coord);
+              await page.waitForTimeout(5000);
+              const btn=page.locator('#earthlineDeclareProperty16169');
+              await btn.waitFor({state:'visible',timeout:45000});
+              await btn.click({timeout:6000});
+              clicked=true;
+              let snapshot={};
+              for(let i=0;i<120;i++){
+                snapshot=await page.evaluate(()=>{
+                  const m=typeof M!=='undefined'?M:null;
+                  const hook=window.__EARTHLINE_SWALE_ENGINE_HOOK_16600;
+                  const result=hook&&hook.result?hook.result():null;
+                  const tree=document.getElementById('earthlineElderTreesGauge17097');
+                  return {tier:document.documentElement.dataset.earthlineAnalysisTier||null,runState:document.documentElement.dataset.earthlinePropertyRunState||null,swales:m&&Array.isArray(m.swales)?m.swales.length:null,engine:result?{message:result.message,rejections:result.rejections,engineSwales:result.engineSwales,publishedSwales:result.publishedSwales,coverage:result.coverage}:null,elder:tree?tree.textContent.trim():null};
+                });
+                if(snapshot.tier==='property'&&snapshot.runState!=='running'&&snapshot.swales!==null)break;
+                await page.waitForTimeout(1000);
+              }
+              console.log('EARTHLINE_FORENSIC '+JSON.stringify({label,clicked,elapsedMs:Date.now()-start,snapshot,errors:errors.slice(0,5)}));
+              await page.screenshot({path:'/tmp/'+label+'.png',fullPage:true});
+            }catch(e){console.log('EARTHLINE_FORENSIC '+JSON.stringify({label,clicked,elapsedMs:Date.now()-start,error:String(e),errors:errors.slice(0,5)}));}
+          }
+          for(const label of ['A','B']){
+            const page=await browser.newPage({viewport:{width:1600,height:900}});
+            try{await page.goto(url,{waitUntil:'domcontentloaded',timeout:60000});await property(page,locations[label],label+'-fresh');}finally{await page.close();}
+          }
+          const page=await browser.newPage({viewport:{width:1600,height:900}});
+          try{await page.goto(url,{waitUntil:'domcontentloaded',timeout:60000});await property(page,locations.A,'C-first-A');await property(page,locations.B,'C-second-B');}finally{await page.close();}
+          await browser.close();
+          JS
