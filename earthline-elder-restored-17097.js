@@ -262,25 +262,31 @@
             '<div style="margin-top:2px;font-family:Noto Sans,system-ui,sans-serif!important;font-size:10px!important;font-weight:600!important;line-height:1.15!important;color:#315843;white-space:normal">'+esc(confidence)+'</div>'+
             (!verified?'<div style="margin-top:2px;font-family:Noto Sans,system-ui,sans-serif!important;font-size:10px!important;font-weight:500!important;line-height:1.15!important;color:#526159;white-space:normal">Modeled tree; age not verified.</div>':'');
         }
+        /* M LIVE POPUP FIX: missing/stale Property metadata must not make icon interaction inert.
+           Prefer the actual property boundary when available, otherwise clamp within the map viewport. */
         function popupPlacementInsideProperty(coords){
           try{
-            const md=(typeof M!=='undefined'&&M)||window.M||null;
-            if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()!=='property')return null;
-            const polygon=md?.analysisBoundaryLngLat;
-            if(!Array.isArray(polygon)||polygon.length<3)return null;
-            const pts=polygon.map(p=>{
-              if(!Array.isArray(p)||p.length<2)return null;
-              const q=m.project(p);return Number.isFinite(q?.x)&&Number.isFinite(q?.y)?q:null;
-            }).filter(Boolean);
-            if(pts.length<3)return null;
-            const q=m.project(coords),minX=Math.min(...pts.map(p=>p.x)),maxX=Math.max(...pts.map(p=>p.x));
-            const minY=Math.min(...pts.map(p=>p.y)),maxY=Math.max(...pts.map(p=>p.y));
-            if(q.x<minX||q.x>maxX||q.y<minY||q.y>maxY)return null;
+            const q=m.project(coords);
+            if(!Number.isFinite(q?.x)||!Number.isFinite(q?.y))return null;
             const vw=m.getContainer().clientWidth,vh=m.getContainer().clientHeight;
-            const w=118,h=80,pad=10;
-            const l=Math.max(minX+pad,pad),r=Math.min(maxX-pad,vw-pad)-w;
-            const t=Math.max(minY+pad,pad),bot=Math.min(maxY-pad,vh-pad)-h;
+            const w=118,h=92,pad=10;
+            let l=pad,r=vw-pad-w,t=pad,bot=vh-pad-h;
             if(l>r||t>bot)return null;
+            const md=(typeof M!=='undefined'&&M)||window.M||null;
+            const polygon=md?.analysisBoundaryLngLat;
+            if(Array.isArray(polygon)&&polygon.length>=3){
+              const pts=polygon.map(p=>{
+                if(!Array.isArray(p)||p.length<2)return null;
+                const v=m.project(p);return Number.isFinite(v?.x)&&Number.isFinite(v?.y)?v:null;
+              }).filter(Boolean);
+              if(pts.length>=3){
+                const pl=Math.min(...pts.map(p=>p.x)),pr=Math.max(...pts.map(p=>p.x));
+                const pt=Math.min(...pts.map(p=>p.y)),pb=Math.max(...pts.map(p=>p.y));
+                const il=Math.max(l,pl+pad),ir=Math.min(r,pr-pad-w);
+                const it=Math.max(t,pt+pad),ib=Math.min(bot,pb-pad-h);
+                if(il<=ir&&it<=ib){l=il;r=ir;t=it;bot=ib}
+              }
+            }
             return {lngLat:m.unproject([Math.min(r,Math.max(l,q.x-w/2)),Math.min(bot,Math.max(t,q.y-h-8))]),anchor:'top-left',offset:0};
           }catch(_){return null}
         }
@@ -317,22 +323,6 @@
                 inner.style.setProperty('padding','5px 7px','important');
               }
             }
-            /* EARTHLINE ELDER POPUP STACKING 20261121 — the Property water paths are drawn in a separate SVG overlay
-               (#earthlinePropertyWaterOverlay15824, z-index 7) that sits ABOVE the whole Mapbox container (#mapboxBase, z-index 1).
-               A popup inside #mapboxBase can never rise above that overlay, whatever its own z-index, which is why the cyan lines
-               crossed the popup text. Both elements fill .map-area exactly, so the popup is moved into .map-area itself: same
-               position, same size and look, now above the overlay. Mapbox keeps updating its transform as the map moves. */
-            try{
-              const el20261121=popup.getElement?.(),host20261121=document.querySelector('.map-area'),c20261121=m.getContainer?.();
-              if(el20261121&&host20261121&&c20261121&&host20261121.contains(c20261121)){
-                const hr=host20261121.getBoundingClientRect(),cr=c20261121.getBoundingClientRect();
-                if(Math.abs(hr.left-cr.left)<1&&Math.abs(hr.top-cr.top)<1&&Math.abs(hr.width-cr.width)<1&&Math.abs(hr.height-cr.height)<1){
-                  host20261121.appendChild(el20261121);
-                  el20261121.style.setProperty('z-index','2147483000','important');
-                  window.EARTHLINE_ELDER_POPUP_STACKING_20261121={reparented:true,at:new Date().toISOString()};
-                }else window.EARTHLINE_ELDER_POPUP_STACKING_20261121={reparented:false,reason:'map container does not fill .map-area',at:new Date().toISOString()};
-              }
-            }catch(_){}
             if(!persistent)elderHoverPopupM7=popup;
           }catch(_){dismissElderHoverM7()}
         }
@@ -640,20 +630,9 @@
       if(!(pending17389?.state==='property-pending'&&pending17389?.propertyRunIdentity===runIdentity&&pending17389?.visibleAt)){
         publishPropertyProvisional17389(b,runIdentity);
       }
-      let dynamic=await dynamicPropertyEvidence(true); /* EARTHLINE_ELDER_GOVERNED_COMPUTE_17211 */
-      /* Transient worker/CDN errors can remove all Elder candidates on an
-         otherwise-valid Property run. Retry ONCE, for the same run identity,
-         without publishing synthetic or stale candidate trees. */
-      if(!dynamic&&elderTierM94()==='property'&&
-         propertyRunIdentity17166(propertyBounds17166())===runIdentity){
-        const firstError=state.dynamic.error||'first tree-finder attempt unavailable';
-        dynamic=await dynamicPropertyEvidence(true);
-        if(!dynamic&&elderTierM94()==='property'&&
-           propertyRunIdentity17166(propertyBounds17166())===runIdentity)
-          state.dynamic.error=firstError+'; retry: '+(state.dynamic.error||'unavailable');
-      }
+      const dynamic=await dynamicPropertyEvidence(true); /* EARTHLINE_ELDER_GOVERNED_COMPUTE_17211 */
       if(!dynamic&&elderTierM94()==='property'&&propertyRunIdentity17166(propertyBounds17166())===runIdentity){
-        window.EARTHLINE_ELDER_TREE_LAST_17097={state:'failed',error:state.dynamic.error||'no tree-finder result',propertyRunIdentity:runIdentity,featureCount:0,at:new Date().toISOString()};
+        window.EARTHLINE_ELDER_TREE_LAST_17097={state:'failed',error:'no tree-finder result',propertyRunIdentity:runIdentity,featureCount:0,at:new Date().toISOString()};
         const g198=document.getElementById('earthlineElderTreesGauge17097');if(g198)g198.textContent='Elder Trees: not available for this run'; /* M198 */
         return null;
       }

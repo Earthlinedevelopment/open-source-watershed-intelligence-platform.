@@ -51,12 +51,7 @@ async function ensurePy(){
     await py.runPythonAsync(await src.text());
     return py;
   })();
-  /* A transient CDN / package failure must not poison all later Property runs.
-     Keep the same in-flight promise for concurrent callers, but clear it only if
-     that exact initialization failed. Never fabricate tree evidence. */
-  const attempt=pyReady;
-  try{return await attempt;}
-  catch(err){if(pyReady===attempt)pyReady=null;throw err;}
+  return pyReady;
 }
 function f32(values){
   if(values instanceof Float32Array)return values;
