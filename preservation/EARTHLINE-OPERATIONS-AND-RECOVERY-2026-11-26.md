@@ -1,3 +1,5 @@
+> **HISTORICAL R1 FALLBACK ONLY — NOT CURRENT PRODUCTION.** The current version was restored to `dde749c431e3e0938d3d00dedfca067905f81b95`. Read [EARTHLINE-CURRENT-LOCKDOWN-2026-11-26.md](EARTHLINE-CURRENT-LOCKDOWN-2026-11-26.md) and use `backup-earthline-current.ps1` instead. This R1 file documents an earlier recovery candidate and includes scientifically weaker legacy 33% slope gates.
+
 # EARTHLINE — OWNER'S INDEPENDENT OPERATIONS & RECOVERY GUIDE
 **Preservation date:** 2026-11-26. **Purpose:** operate and recover Earthline without ChatGPT, Claude, or any other AI assistant.
 
