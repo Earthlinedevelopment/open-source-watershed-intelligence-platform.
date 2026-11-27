@@ -1,0 +1,54 @@
+name: Earthline mobile map panel candidate repair
+on:
+  push:
+    branches:
+      - repair/mobile-map-panel-20261127
+    paths:
+      - .github/workflows/earthline-mobile-map-panel-candidate.yml
+permissions:
+  contents: write
+jobs:
+  patch-on-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/mobile-map-panel-20261127
+      - name: Apply two guarded mobile-only panel corrections
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          src=p.read_text(encoding="utf-8")
+          edits=[
+            (
+              "bindPropertyTargetMove16201();setPanel16188(true);reconcilePanel16188();",
+              "bindPropertyTargetMove16201();setPanel16188(!window.matchMedia('(max-width:760px)').matches);reconcilePanel16188();"
+            ),
+            (
+              "setTimeout(reconcilePanel16188,80);for(const delay of [250,650,1200,2200,4000])",
+              "setTimeout(reconcilePanel16188,80);if(window.matchMedia('(max-width:760px)').matches)setTimeout(()=>setPanel16188(false),80);for(const delay of [250,650,1200,2200,4000])"
+            )
+          ]
+          out=src
+          for before,after in edits:
+            assert src.count(before)==1, "Source differs from audited commit; aborting"
+            out=out.replace(before,after,1)
+          assert out!=src
+          assert out.count("function setPanel16188(open)")==1
+          assert out.count("earthline-property-swales.js?v=cccbd90f")==1
+          assert out.count("Slow it. <span class=\\"sink\\">Sink it.</span> Spread it.")>=1 or "Slow it." in out
+          p.write_text(out,encoding="utf-8")
+          print("PASS: guarded source changes; map interaction, swale engine, aquifer, logo and desktop panel unchanged")
+          PY
+      - name: Record audited candidate only
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m "Repair phone panel initial and post-analysis map visibility"
+          git push origin HEAD:repair/mobile-map-panel-20261127
