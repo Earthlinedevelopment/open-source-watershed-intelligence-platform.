@@ -7,7 +7,7 @@
 const VERSION='1.1.1';
 const LIMITS=Object.freeze({
   slopeMaxPct:4,            // R2, R3
-  slopeMinPct:0.2,          // R12
+  slopeMinPct:0,            // R12: qualifying open land includes flat terrain (owner: slopes <=4%)
   windowSamples:5,          // R3
   contourRangeM:0.3,        // R1
   minLengthFloorM:12,       // R4: max(12 m, 4 cells), capped at 40 m
