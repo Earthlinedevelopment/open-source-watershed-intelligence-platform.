@@ -25,7 +25,7 @@ const LIMITS=Object.freeze({
   contourStepM:0.05,
   gapSamplesAllowed:2,
   preferredSlopePct:[3.0,4.0],
-  minReliefM:1.0            // R14 (PROPOSED - needs owner approval; input.minReliefM overrides, 0 turns it off): elevation relief across the property (5th-95th percentile) must exceed what the elevation data can resolve, else no swales are published
+  minReliefM:0              // R14 unapproved whole-parcel relief gate disabled by default; require separately validated elevation uncertainty before re-enabling
 });
 // Hydrologic soil group infiltration (mm/h) and the geometry factor that reproduces the Compendium table
 // (A 0.5 m -> 32.7 h, B -> 54.5 h, C -> 124.3 h, D -> 345.2 h).
@@ -141,14 +141,16 @@ function run(input){
   const noLine=dilate(outside,w,h,rc(LIMITS.builtSetbackM));
   const noWater=dilate(ex.water,w,h,rc(LIMITS.waterSetbackM));
   const noChan=dilate(channel,w,h,rc(LIMITS.channelSetbackM));
-  const cellReason=i=>outside[i]?'R9':noLine[i]?'R6':noBuilt[i]?'R6':noWater[i]?'R7':noChan[i]?'R8':null;
+  // Exclude verified closed-canopy cells when the caller supplies a landcover mask; no relay or new data fetch.
+  const canopy=(input.landcover&&input.landcover.length===n)?input.landcover:null;
+  const cellReason=i=>outside[i]?'R9':noLine[i]?'R6':noBuilt[i]?'R6':noWater[i]?'R7':noChan[i]?'R8':(canopy&&canopy[i])?'R15':null;
   const cov={insideCells:0,slopeOver4Total:0,excluded:{line:0,built:0,water:0,channel:0,slopeOver4:0},buildableCells:0};
   for(let i=0;i<n;i++){if(!inside[i])continue;cov.insideCells++;
     if(noLine[i])cov.excluded.line++;else if(noBuilt[i])cov.excluded.built++;else if(noWater[i])cov.excluded.water++;else if(noChan[i])cov.excluded.channel++;
     else if(slope[i]>LIMITS.slopeMaxPct)cov.excluded.slopeOver4++;else cov.buildableCells++;
     if(slope[i]>LIMITS.slopeMaxPct)cov.slopeOver4Total++;}
   cov.insideAreaM2=Math.round(cov.insideCells*cellM*cellM);cov.buildablePct=cov.insideCells?+(100*cov.buildableCells/cov.insideCells).toFixed(1):0;
-  const rej={R1:0,R2:0,R3:0,R4:0,R5:0,R6:0,R7:0,R8:0,R9:0,R11:0,R12:0,R13:0,R14:0};
+  const rej={R1:0,R2:0,R3:0,R4:0,R5:0,R6:0,R7:0,R8:0,R9:0,R11:0,R12:0,R13:0,R14:0,R15:0};
   const minLenM=Math.min(LIMITS.minLengthCapM,Math.max(LIMITS.minLengthFloorM,LIMITS.minLengthCellFactor*cellM));
   const dd=drawdownFor(input.soilGroup);
   let lo=Infinity,hi=-Infinity;for(let i=0;i<n;i++)if(inside[i]){if(elev[i]<lo)lo=elev[i];if(elev[i]>hi)hi=elev[i];}
@@ -194,7 +196,7 @@ function run(input){
   }
   // R5 + ranking: preferred slope band first, cleared ground before intact forest, then water captured; ties by geometry
   passed.forEach(c=>c.key=c.pts.map(p=>p[0].toFixed(3)+','+p[1].toFixed(3)).join(';'));
-  passed.sort((a,b)=>(b.pref-a.pref)||(a.forest>0.5)-(b.forest>0.5)||(b.capture-a.capture)||(a.key<b.key?-1:1));
+  passed.sort((a,b)=>((a.forest>0.5)-(b.forest>0.5))||(b.pref-a.pref)||(b.capture-a.capture)||(a.key<b.key?-1:1));
   const accepted=[],minSpacingCells=LIMITS.spacingMinM/cellM;
   // spatial hash of accepted points (bucket = minimum spacing): same answer as comparing every pair, without the O(n²) cost
   const bucket=new Map(),bk=(x,y)=>Math.floor(x/minSpacingCells)+','+Math.floor(y/minSpacingCells);
