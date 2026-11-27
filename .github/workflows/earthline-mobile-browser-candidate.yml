@@ -1,0 +1,37 @@
+name: Earthline candidate phone and swale verification
+on:
+  push:
+    branches:
+      - repair/mobile-map-panel-20261127
+    paths:
+      - .github/workflows/earthline-mobile-browser-candidate.yml
+permissions:
+  contents: read
+jobs:
+  swale-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check engine syntax
+        run: node --check earthline-property-swales.js
+      - name: Run synthetic low-relief swale and determinism controls
+        run: node tests/property-swales-relief-regression.cjs
+  panel-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check browser test syntax
+        run: node --check tests/mobile-panel-candidate-smoke.mjs
+      - name: Install browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Exercise phone and desktop controls with pinned candidate assets
+        run: node tests/mobile-panel-candidate-smoke.mjs
