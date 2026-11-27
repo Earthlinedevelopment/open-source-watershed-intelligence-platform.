@@ -20,7 +20,7 @@ try {
         const u=new URL(route.request().url());
         if(u.origin!==origin)return route.continue();
         let rel;
-        try{rel=decodeURIComponent(u.pathname).replace(/^\\/+/, '')}catch{return route.abort()}
+        try{rel=decodeURIComponent(u.pathname).slice(1)}catch{return route.abort()}
         if(!rel)rel='index.html';
         const f=path.resolve(root,rel);
         if(!f.startsWith(root+path.sep)||!existsSync(f)||!statSync(f).isFile())return route.continue();
