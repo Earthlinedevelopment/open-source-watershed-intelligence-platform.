@@ -105,10 +105,10 @@ async function region(query){
  // The Regional product is explicitly coarse SCREENING, not an engineered Property swale.
  // Parcel-grade <=4% slope/4km acceptance remains mandatory in the independent
  // authoritative Property safety gate, and is not asserted for Regional opportunities.
- if(!features.length||!features.every(f=>f.featureType==='swale-opportunity'&&
+ const screeningOnly=features.length>0&&features.every(f=>f.featureType==='swale-opportunity'&&
       f.validationClass==='regional-screening-not-enforced'&&
-      /property run is required before placement/i.test(String(f.screeningText||''))))
-   fails.push('Regional candidates are missing their mandatory screening-only classification/disclaimer');
+      /property run is required before placement/i.test(String(f.screeningText||'')));
+ if(!screeningOnly)fails.push('Regional candidates are missing their mandatory screening-only classification/disclaimer');
  if(!Number.isFinite(maxLength)||maxLength<=0||lengths.some(v=>!Number.isFinite(v)||v<=0))
    fails.push('invalid regional screening geometry');
  if(!Number.isFinite(maxSlope)||slopes.some(x=>!Number.isFinite(x)||x<0))
@@ -121,7 +121,7 @@ async function region(query){
  if(!Number.isInteger(snap.outside)||snap.outside!==0)
    fails.push(snap.outside===null?'missing jurisdiction boundary audit':'out-of-jurisdiction swale');
  const row={query,sha256,runWallMs:Date.now()-t,coreMs:snap.coreMs,waterPaths:snap.flowPaths,
-   count:snap.swales,maxLengthM:maxLength,maxSlope,screeningOnly:true,boundaryProof:snap.boundaryProof,
+   count:snap.swales,maxLengthM:maxLength,maxSlope,screeningOnly,boundaryProof:snap.boundaryProof,
    unsafe:snap.unsafe,outside:snap.outside,warnings,
    errors:errors.slice(-5),fails,pass:fails.length===0};
  rows.push(row);console.log('EARTHLINE_RELEASE_AIRLOCK '+JSON.stringify(row));
