@@ -3,6 +3,7 @@ import {mkdirSync,writeFileSync,readFileSync,existsSync,statSync} from 'node:fs'
 import path from 'node:path';
 
 const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
+// Test the exact owner's Property cold start against candidate-pinned HTML and data assets.
 const TARGETS=[
   // Owner's 2026-11-28 screenshot: crosshair 42.78737, -75.77471, 20 acres.
   {name:'owner-screenshot-property',lng:-75.77471,lat:42.78737},
