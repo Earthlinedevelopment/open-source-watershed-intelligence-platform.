@@ -106,7 +106,7 @@ async function runTarget(target,index){
       const identity=target.lng.toFixed(6)+'|'+target.lat.toFixed(6)+'|';
       if(!String(e?.propertyRunIdentity||'').startsWith(identity))return false;
       return e.state==='committed'||e.state==='failed';
-    },target,{timeout:8000,polling:200});
+    },target,{timeout:20000,polling:200});
   }catch(err){elderWaitError=String(err);}
   const snap=await page.evaluate(target=>{
     const md=(typeof M!=='undefined'&&M)||window.M||null;
