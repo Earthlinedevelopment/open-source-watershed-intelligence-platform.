@@ -1,0 +1,24 @@
+name: Earthline Elder worker recovery contract
+on:
+  push:
+    branches: [fix/elder-worker-recovery-20261120]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  recovery:
+    name: transient-error recovery and Property safety
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run deterministic recovery tests
+        run: node tests/elder-worker-recovery.mjs
+      - name: Verify scope and preserve unchanged live scientific code
+        run: |
+          git diff --exit-code origin/pages-live -- index.html
+          git diff --exit-code origin/pages-live -- earthline-property-swales.js 2>/dev/null || true
