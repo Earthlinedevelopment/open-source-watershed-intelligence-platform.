@@ -1,0 +1,20 @@
+name: Earthline Elder transient retry safety
+on:
+  push:
+    branches: [repair/elder-transient-retry-20261128, pages-live]
+    paths:
+      - earthline-elder-restored-17097.js
+      - tests/elder-transient-retry-20261128.mjs
+      - .github/workflows/elder-transient-retry-20261128.yml
+permissions:
+  contents: read
+jobs:
+  elder-retry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard one retry, live target ownership, and failure honesty
+        run: node tests/elder-transient-retry-20261128.mjs
+      - name: JavaScript syntax
+        run: node --check earthline-elder-restored-17097.js
