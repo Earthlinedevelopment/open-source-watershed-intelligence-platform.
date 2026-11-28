@@ -1,0 +1,35 @@
+name: Earthline final exclusion source ownership regression
+on:
+  push:
+    branches: [repair/exclusion-index-20261128, pages-live]
+    paths:
+      - index.html
+      - tests/exclusion-index-source-owner-20261128.mjs
+      - tools/repair-final-exclusion-index-20261128.py
+      - .github/workflows/exclusion-index-source-owner-20261128.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  source-owner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Apply precise patch to isolated repair branch
+        if: github.ref_name == 'repair/exclusion-index-20261128'
+        run: python3 tools/repair-final-exclusion-index-20261128.py
+      - name: Verify physical exclusion safety and prevent generated overlay contamination
+        run: node tests/exclusion-index-source-owner-20261128.mjs
+      - name: Commit repair only after regression assertions pass
+        if: github.ref_name == 'repair/exclusion-index-20261128'
+        run: |
+          if ! git diff --quiet -- index.html; then
+            git config user.name 'Earthline Recovery Test'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add index.html
+            git commit -m 'fix(property): isolate final clearance index from generated Earthline overlays'
+            git push origin HEAD:repair/exclusion-index-20261128
+          fi
