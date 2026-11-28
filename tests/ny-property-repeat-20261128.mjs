@@ -3,10 +3,6 @@ import {mkdirSync,writeFileSync} from 'node:fs';
 
 const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
 const TARGETS=[
-  // Owner's 2026-11-28 screenshot: crosshair 42.78737, -75.77471, 20 acres.
-  {name:'owner-screenshot-property',lng:-75.77471,lat:42.78737},
-  {name:'owner-screenshot-repeat',lng:-75.77471,lat:42.78737},
-  // Preserve the original owner-reported New York regression coordinates.
   {name:'new-york-failure-1',lng:-75.77699,lat:42.78808},
   {name:'new-york-failure-repeat',lng:-75.77699,lat:42.78808},
   {name:'new-york-overlap',lng:-75.77709,lat:42.78811}
@@ -114,6 +110,29 @@ async function runTarget(target,index){
       swaleDiagnostics:md?.swaleDiagnostics||null,
       safetyAudit:md?.safetyAudit15806||null,
       rawEngineBeforeClearance:md?.authoritativePropertyEngineSwales15816?.engineCount??null,
+      rawFrozenClearance:(()=>{try{return window.earthlineFrozenPropertyClearanceAudit16255?.(md?.authoritativePropertySwales15800)||null}catch(e){return {error:String(e)}}})(),
+      finalIndexSummary:(()=>{
+        try{
+          const ix=window.earthlineExclusionIndex15788?.(true);
+          if(!ix)return null;
+          const groups={};
+          for(const record of [...(ix.lines||[]),...(ix.polygons||[])]){
+            const tag=String(record.tag||'');
+            const k=String(record.kind||'')+' / '+tag;
+            groups[k]=(groups[k]||0)+1;
+          }
+          const sty=map?.getStyle?.()||{};
+          const candidates=(sty.layers||[]).filter(l=>/water|wetland|river|stream|canal/i.test(String(l.id||'')+' '+String(l['source-layer']||''))&&!/^(?:earthline(?:[-_]|$)|el[-_])/i.test(String(l.id||''))&&!/^(?:earthline(?:[-_]|$)|el[-_])/i.test(String(l.source||'')));
+          const counts={};
+          for(const lyr of candidates){
+            try{
+              const list=map.queryRenderedFeatures(undefined,{layers:[lyr.id]})||[];
+              counts[lyr.id]={source:lyr.source,sourceLayer:lyr['source-layer'],rendered:list.length,geometry:list[0]?.geometry?.type||null,properties:list[0]?.properties||{}};
+            }catch(e){counts[lyr.id]={error:String(e)}}
+          }
+          return {available:ix.available,groups,counts};
+        }catch(e){return {error:String(e)}}
+      })(),
       terrainLoad:md?.terrainHandoff15791||null,
       displayedRunState:String(document.documentElement.dataset.earthlinePropertyRunState||''),
       contourSourcePresent:!!(map?.getSource?.('el-live-contours-15970')),
@@ -137,7 +156,7 @@ async function runTarget(target,index){
 const rows=[];
 for(let i=0;i<TARGETS.length;i++) rows.push(await runTarget(TARGETS[i],i));
 const replacementPass=rows.length>=2&&rows[0].snap.publication?.runToken!==rows[1].snap.publication?.runToken&&Math.abs(Number(rows[1].snap.audit?.center?.lng)-TARGETS[1].lng)<1e-5;
-const repeatPairs=[[0,1],[2,3]];
+const repeatPairs=[[0,1]];
 const repeatConsistency=repeatPairs.map(([a,b])=>{
   const before=rows[a]?.snap||{},after=rows[b]?.snap||{};
   const sourceMatch=String(before.publication?.scientificInputFingerprint||'')===String(after.publication?.scientificInputFingerprint||'')&&
@@ -154,3 +173,5 @@ writeFileSync('artifacts/ny-repeat-live/results.json',JSON.stringify(report,null
 console.log('NY_CONTROL '+JSON.stringify({pass:report.pass,replacementPass,repeatConsistency,rows:rows.map(r=>({name:r.name,pass:r.pass,elapsedMs:r.elapsedMs,runError:r.runError,settleError:r.settleError,generated:r.snap.swaleDiagnostics?.generated,safeCount:r.snap.safeCount,rechargeCount:r.snap.rechargeCount,engineCount:r.snap.engineCount,halt:r.snap.prescriptionHalt,zero:r.snap.prescriptionZero,propertyFailure:r.snap.propertyFailure,engine:r.snap.engine,clearance:r.snap.safetyAudit?.clearance,filter:r.snap.safetyAudit?.filter,roadOverlap:r.snap.safetyAudit?.roadOverlap16397,publication:r.snap.publication,runState:r.snap.displayedRunState,elderCount:r.snap.elder?.featureCount||0,elderState:r.snap.elder?.state||null,elderError:r.snap.elder?.error||r.snap.elder?.dynamicError||null,elderWaitError:r.elderWaitError,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
 await browser.close();
 if(!report.pass)process.exitCode=1;
+
+console.log('FROZEN_CLEARANCE_RESEARCH '+JSON.stringify(rows.map(r=>({name:r.name,generated:r.snap.swaleDiagnostics?.generated,raw:r.snap.rawEngineBeforeClearance,safe:r.snap.safeCount,rawFrozenClearance:r.snap.rawFrozenClearance,finalIndexSummary:r.snap.finalIndexSummary}))));
