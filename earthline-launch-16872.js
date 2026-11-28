@@ -333,6 +333,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   cursor:pointer!important;
   white-space:nowrap!important;
 }
+html[data-earthline-analysis-tier="property"] #earthlineCrosshairMoveHint17093{display:none!important}
 @media(max-width:760px){
   #earthlineCrosshairMoveHint17093{
     top:calc(50% - 48px)!important;
@@ -345,7 +346,7 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   }catch(_){}
   document.addEventListener('earthline:analysis-complete',e=>{
     const raw=String(e?.detail?.tier||e?.detail?.mode||'regional').toLowerCase();
-    if(!raw.includes('property'))show();
+    if(raw.includes('property')||String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()==='property')remove();else show();
   },{passive:true});
   document.addEventListener('click',e=>{
     const target=e.target?.closest?.('[aria-label^="Open details for A"],[aria-label^="Open details for B"],[aria-label^="Open details for C"],.earthline-swale-hit-16070,.earthline-swale-label-16149');
