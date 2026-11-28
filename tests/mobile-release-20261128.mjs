@@ -72,7 +72,7 @@ try{
   await page.waitForSelector('#earthlineRailSearch16188',{timeout:30000});
   await page.waitForTimeout(1800);
   await checkpoint('01-phone-startup',s=>s.viewport<=760&&!s.open&&s.panelRight<=80);
-  await page.locator('#earthlineRailSearch16188').click();
+  await page.locator('#earthlineRailSearch16188').tap();
   await page.waitForFunction(()=>document.documentElement.classList.contains('earthline-panel-open-16188'));
   await checkpoint('02-rail-opens',s=>s.open);
   await page.evaluate(()=>{
@@ -98,7 +98,7 @@ try{
     return {ok:!!set,disabled:document.getElementById('earthlineDeclareProperty16169')?.disabled};
   });
   if(!prep.ok||prep.disabled)throw Error('Property prepare failed: '+JSON.stringify(prep));
-  await page.locator('#earthlineRailSearch16188').click();
+  await page.locator('#earthlineRailSearch16188').tap();
   await page.waitForFunction(()=>document.documentElement.classList.contains('earthline-panel-open-16188'));
   await page.waitForFunction(()=>document.getElementById('earthlinePanel16188')?.getBoundingClientRect().right>=innerWidth-3,null,{timeout:8000,polling:100});
   await page.waitForTimeout(750); // verify settled sidebar and 44px mobile touch target
@@ -130,7 +130,7 @@ try{
     },true);
     b?.addEventListener('click',e=>window.__earthlineMobileClickTrace.push({event:'click',phase:'button-capture',disabled:b.disabled}),true);
   });
-  await page.locator('#earthlineDeclareProperty16169').click({timeout:20000});
+  await page.locator('#earthlineDeclareProperty16169').tap({timeout:20000});
   await page.waitForTimeout(1500);
   const propertyLaunched=await checkpoint('05-property-action-result',s=>s.propertyState==='running'||!!s.propertyAudit||!!s.propertyPublication);
   if(!propertyLaunched)throw Error('Property button click did not launch the governed Property owner');
