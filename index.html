@@ -12125,6 +12125,13 @@ async function directGeocode(q){
       }
       const style=earthlineMap.getStyle()||{};
       const layers=(style.layers||[]).filter(l=>{
+        /* Earthline 2026-11-28: generated Property swales and display water paths
+           must not become road/water exclusions on the next Property run.
+           This keeps every actual mapped road, building, waterway and buffer. */
+        const ownedLayer=String(l&&l.id||'');
+        const ownedSource=String(l&&l.source||'');
+        if(/^(?:earthline(?:[-_]|$)|el[-_])/i.test(ownedLayer)||
+           /^(?:earthline(?:[-_]|$)|el[-_])/i.test(ownedSource))return false;
         const id=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();
         const lineLike=l.type==="line";
         const areaLike=l.type==="fill"||l.type==="fill-extrusion";
