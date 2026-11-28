@@ -1,0 +1,33 @@
+name: Earthline NY exact failed parcel repeat diagnostic
+on:
+  push:
+    branches: [pages-live]
+    paths:
+      - tests/ny-property-repeat-20261128.mjs
+      - .github/workflows/ny-property-repeat-20261128.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exact-ny-parcel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser for exact parcel
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Diagnose three consecutive runs at New York owner-reported site
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+        run: node tests/ny-property-repeat-20261128.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-ny-exact-parcel-diagnostics
+          path: artifacts/ny-repeat-live
+          retention-days: 14
