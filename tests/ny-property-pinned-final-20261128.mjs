@@ -26,7 +26,7 @@ const LIVE_ORIGIN=new URL(URL).origin;
 await page.route('**/*',async route=>{
   const u=new URL(route.request().url());
   if(u.origin!==LIVE_ORIGIN)return route.continue();
-  let rel=decodeURIComponent(u.pathname).replace(/^\\/+/, '');
+  let rel=decodeURIComponent(u.pathname).replace(/^[/]+/, '');
   if(!rel)rel='index.html';
   const local=path.resolve(ROOT,rel);
   if(local!==ROOT&&!local.startsWith(ROOT+path.sep))return route.abort();
