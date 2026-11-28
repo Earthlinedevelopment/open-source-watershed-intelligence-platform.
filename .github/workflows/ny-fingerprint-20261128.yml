@@ -1,0 +1,32 @@
+name: Earthline cold-first Property fingerprint diagnosis
+on:
+  push:
+    branches: [diagnostic/source-fingerprint-delta-20261128]
+    paths:
+      - tests/ny-property-repeat-20261128.mjs
+      - .github/workflows/ny-fingerprint-20261128.yml
+permissions:
+  contents: read
+jobs:
+  fingerprint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install real Chrome
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Inspect two identical real public Property runs
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+        run: node tests/ny-property-repeat-20261128.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-ny-fingerprint-diagnosis
+          path: artifacts/ny-repeat-live
+          retention-days: 7
