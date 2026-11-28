@@ -18,8 +18,10 @@ jobs:
           node-version: '22'
       - name: Apply two approved mobile panel changes to exact parent
         run: python3 tools/earthline-mobile-panel-patch-20261128.py
-      - name: Remove one-shot updater from proposed release
-        run: git rm .github/workflows/earthline-one-shot-mobile-patch.yml
+      - name: Retire spent one-time production writer and temporary updater
+        run: |
+          git rm .github/workflows/earthline-one-shot-mobile-patch.yml
+          git rm .github/workflows/earthline-refresh-swale-cache-20261126.yml
       - name: Validate exact candidate
         run: |
           git diff --check
