@@ -4,6 +4,7 @@ on:
     branches: [pages-live]
     paths:
       - index.html
+      - earthline-launch-16872.js
       - tests/mantra89-arizona-controls.mjs
       - .github/workflows/mantra89-public-arizona.yml
   workflow_dispatch:
@@ -20,21 +21,26 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Wait for published hotfix HTML
+      - name: Wait for exact public HTML and launch JavaScript
         id: publication
         continue-on-error: true
         run: |
           set -e
+          expected_sha=$(sha256sum index.html | cut -d' ' -f1)
+          expected_launch_sha=$(sha256sum earthline-launch-16872.js | cut -d' ' -f1)
           for i in $(seq 1 18); do
             status=$(curl -Ls --max-time 20 -H 'Cache-Control: no-cache' -o /tmp/earthline_live.html -w '%{http_code}' "https://earthlinedevelopment.org/?m89_publish=${GITHUB_SHA}_${i}" || true)
-            if [ "$status" = "200" ] && grep -Fq 'rawLatM89' /tmp/earthline_live.html; then
-              echo 'Verified corrected state-boundary code on public origin'
+            launch_status=$(curl -Ls --max-time 20 -H 'Cache-Control: no-cache' -o /tmp/earthline_launch.js -w '%{http_code}' "https://earthlinedevelopment.org/earthline-launch-16872.js?m89_publish=${GITHUB_SHA}_${i}" || true)
+            live_sha=$(sha256sum /tmp/earthline_live.html 2>/dev/null | cut -d' ' -f1 || true)
+            live_launch_sha=$(sha256sum /tmp/earthline_launch.js 2>/dev/null | cut -d' ' -f1 || true)
+            if [ "$status" = "200" ] && [ "$launch_status" = "200" ] && [ "$live_sha" = "$expected_sha" ] && [ "$live_launch_sha" = "$expected_launch_sha" ]; then
+              echo "Verified public HTML SHA-256 $live_sha and launch JS SHA-256 $live_launch_sha match candidate"
               exit 0
             fi
-            echo "Public origin has not served current fix yet (HTTP $status, attempt $i)"
+            echo "Public origin mismatch HTML($status $live_sha expected $expected_sha), launch JS($launch_status $live_launch_sha expected $expected_launch_sha); attempt $i"
             sleep 10
           done
-          echo 'Public homepage did not serve corrected boundary owner'
+          echo 'Public HTML or launch JS did not match tested candidate by SHA-256'
           exit 1
       - name: Install Chromium
         run: |
@@ -52,6 +58,6 @@ jobs:
         if: always()
         run: |
           if [ '${{ steps.publication.outcome }}' != 'success' ]; then
-            echo 'FAIL CLOSED: Public origin did not serve the required Arizona boundary fix; browser diagnostics do not override provenance.'
+            echo 'FAIL CLOSED: Public origin did not serve the exact tested HTML and launch JS; browser diagnostics do not override provenance.'
             exit 1
           fi
