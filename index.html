@@ -3735,8 +3735,20 @@ function earthlineProcessMappedFeature(roadMask,buildingMask,f){
   return touched;
 }
 async function earthlineWaitForMappedExclusionStyle15862B(myGen=M.searchGen,timeoutMs=5000){
-  if(!earthlineMapActive())return {ready:false,status:"map-inactive",waitedMs:0};
   const started=performance.now();
+  /* Cold Property starts can reach the exclusion owner before Mapbox fires its
+     initial load flag. Waiting for that flag is not permission to omit mapped
+     evidence. Preserve the existing source checks and fail closed on timeout. */
+  if(!earthlineMapActive()){
+    const maxWaitMs=Math.max(500,Math.min(6000,Number(timeoutMs)||5000));
+    while(!earthlineMapActive()&&performance.now()-started<maxWaitMs){
+      if(typeof earthlineIsStale==="function"&&earthlineIsStale(myGen))
+        return {ready:false,status:"stale-before-map-initialization",waitedMs:Math.round(performance.now()-started)};
+      await new Promise(r=>setTimeout(r,100));
+    }
+    if(!earthlineMapActive())
+      return {ready:false,status:"map-initialization-timeout",waitedMs:Math.round(performance.now()-started)};
+  }
   /* EARTHLINE 16467 — performance only. Exclusion processing does not need the
      entire Mapbox style (imagery, glyphs, unrelated sources) to settle. It needs
      the exact road/building/water style layers used by vectorNoBuild15778 and the

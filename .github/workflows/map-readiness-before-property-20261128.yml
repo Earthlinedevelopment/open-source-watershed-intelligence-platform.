@@ -1,0 +1,32 @@
+name: Earthline cold Property map-source readiness
+on:
+  push:
+    branches: [repair/map-readiness-before-property-20261128, pages-live]
+    paths:
+      - index.html
+      - tests/map-readiness-before-property-20261128.mjs
+      - .github/workflows/map-readiness-before-property-20261128.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  cold-map:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch only isolated branch
+        if: github.ref_name == 'repair/map-readiness-before-property-20261128'
+        run: python3 tools/repair-cold-map-readiness-20261128.py
+      - name: Assert readiness, timeout, and stale safety
+        run: node tests/map-readiness-before-property-20261128.mjs
+      - name: Commit approved repair only after tests pass
+        if: github.ref_name == 'repair/map-readiness-before-property-20261128'
+        run: |
+          if ! git diff --quiet -- index.html; then
+            git config user.name 'Earthline Recovery Test'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add index.html
+            git commit -m 'fix(property): wait for cold Mapbox startup before exclusion-source check'
+            git push origin HEAD:repair/map-readiness-before-property-20261128
+          fi
