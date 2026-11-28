@@ -1,0 +1,44 @@
+name: Earthline NY three Property public release acceptance
+on:
+  push:
+    branches: [repair/ny-property-exclusion-owner-20261128]
+    paths:
+      - .github/workflows/ny-property-public-acceptance-20261128.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  actual-public-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm served production repair before browser testing
+        run: |
+          for i in $(seq 1 20); do
+            status=$(curl -Ls --max-time 20 -H 'Cache-Control: no-cache' -o /tmp/earthline_release.html -w '%{http_code}' "https://earthlinedevelopment.org/?ny_release=${GITHUB_SHA}_${i}" || true)
+            if [ "$status" = "200" ] && grep -Fq 'Earthline 2026-11-28: generated Property swales' /tmp/earthline_release.html; then
+              echo 'Confirmed repaired HTML on actual public site'
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'FAIL: corrected exclusion selector not served by production origin'
+          exit 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run exact New York parcel twice and overlapping Property once on live domain
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+        run: node tests/ny-property-acceptance-20261128.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-ny-actual-public-release-evidence
+          path: artifacts/ny-repair-acceptance
+          retention-days: 14
