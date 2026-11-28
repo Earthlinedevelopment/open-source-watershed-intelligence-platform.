@@ -359,3 +359,35 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   },{capture:true,passive:true});
   window.EARTHLINE_CROSSHAIR_MOVE_HINT_17093={state:'ready',show,remove,oncePerPageLoad:true,dismissOnCorridorDetail:true};
 })();
+
+// Keep the phone's map usable without changing desktop panel navigation.
+// Search on the left rail still opens the panel at the user's request.
+(function earthlinePhoneMapVisibility20261128(){
+  if(window.EARTHLINE_PHONE_MAP_VISIBILITY_20261128)return;
+  let manuallyOpened=false;
+  const phone=()=>window.innerWidth<=760;
+  function collapse(){
+    if(!phone()||manuallyOpened)return;
+    const root=document.documentElement;
+    if(root.classList.contains('earthline-panel-open-16188')){
+      root.classList.remove('earthline-panel-open-16188');
+      document.getElementById('earthlineRailSearch16188')?.classList.remove('active');
+      setTimeout(()=>{try{(window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null))?.resize?.()}catch(_){}},240);
+    }
+  }
+  document.addEventListener('click',e=>{
+    if(e.target?.closest?.('#earthlineRailSearch16188'))manuallyOpened=true;
+    if(e.target?.closest?.('#earthlinePanelClose16188'))manuallyOpened=false;
+  },true);
+  document.addEventListener('earthline:analysis-complete',e=>{
+    const tier=String(e?.detail?.tier||e?.detail?.mode||'').toLowerCase();
+    if(phone()&&(tier==='property'||tier==='regional')){
+      manuallyOpened=false;
+      setTimeout(collapse,0);
+    }
+  },{passive:true});
+  const onReady=()=>setTimeout(collapse,100);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',onReady,{once:true});
+  else onReady();
+  window.EARTHLINE_PHONE_MAP_VISIBILITY_20261128={collapse,phone,version:'2026-11-28'};
+})();
