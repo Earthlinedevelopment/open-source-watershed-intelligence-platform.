@@ -19109,6 +19109,11 @@ var prescribeSwales;
       const stamp=layers.length+"|"+layers.map(l=>l.id||"").join("|");
       if(exclusionLayerCache15787.stamp===stamp)return exclusionLayerCache15787.ids;
       const ids=layers.filter(l=>{
+        // Rendered Earthline water paths and bioswales are outputs, not infrastructure.
+        const ownedLayer=String(l&&l.id||'');
+        const ownedSource=String(l&&l.source||'');
+        if(/^(?:earthline(?:[-_]|$)|el[-_])/i.test(ownedLayer)||
+           /^(?:earthline(?:[-_]|$)|el[-_])/i.test(ownedSource))return false;
         const tag=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();
         return (l.type==="line"&&/road|street|motorway|trunk|primary|secondary|tertiary|residential|service|drive|driveway|track|path|bridge|tunnel|transportation/.test(tag))||
                (l.type==="fill"&&/building|structure|house|parking/.test(tag));
@@ -19444,6 +19449,11 @@ var prescribeSwales;
     try{
       const style=earthlineMap&&earthlineMap.getStyle&&earthlineMap.getStyle();
       return (style&&style.layers||[]).filter(l=>{
+        // Only external mapped features may veto a scientifically generated corridor.
+        const ownedLayer=String(l&&l.id||'');
+        const ownedSource=String(l&&l.source||'');
+        if(/^(?:earthline(?:[-_]|$)|el[-_])/i.test(ownedLayer)||
+           /^(?:earthline(?:[-_]|$)|el[-_])/i.test(ownedSource))return false;
         const tag=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();
         const type=String(l.type||"").toLowerCase();
         if(!["line","fill","fill-extrusion"].includes(type))return false;
