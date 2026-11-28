@@ -1,0 +1,51 @@
+name: Earthline pinned all-50 Regional screening acceptance
+on:
+  push:
+    branches: [fix/final-mobile-panel-release-proof-20261128]
+    paths:
+      - .github/workflows/earthline-50-state-candidate.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  state-screening:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    strategy:
+      fail-fast: false
+      matrix:
+        group:
+          - "Alabama|Alaska|Arizona|Arkansas|California"
+          - "Colorado|Connecticut|Delaware|Florida|Georgia"
+          - "Hawaii|Idaho|Illinois|Indiana|Iowa"
+          - "Kansas|Kentucky|Louisiana|Maine|Maryland"
+          - "Massachusetts|Michigan|Minnesota|Mississippi|Missouri"
+          - "Montana|Nebraska|Nevada|New Hampshire|New Jersey"
+          - "New Mexico|New York|North Carolina|North Dakota|Ohio"
+          - "Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina"
+          - "South Dakota|Tennessee|Texas|Utah|Vermont"
+          - "Virginia|Washington|West Virginia|Wisconsin|Wyoming"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pin scientific candidate HTML and JavaScript
+        run: |
+          git rev-parse HEAD
+          sha256sum index.html earthline-launch-16872.js
+          node --check tests/earthline-release-airlock.mjs
+      - name: Install Chromium for true remote-data browser proof
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Check five Regional state profiles from immutable source
+        env:
+          EARTHLINE_STATES: ${{ matrix.group }}
+        run: node tests/earthline-release-airlock.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ format('earthline-state-group-{0}', strategy.job-index) }}
+          path: artifacts/release-airlock
+          retention-days: 14
