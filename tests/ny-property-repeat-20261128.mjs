@@ -87,7 +87,7 @@ async function runTarget(target,index){
       const identity=target.lng.toFixed(6)+'|'+target.lat.toFixed(6)+'|';
       if(!String(e?.propertyRunIdentity||'').startsWith(identity))return false;
       return e.state==='committed'||e.state==='failed';
-    },target,{timeout:8000,polling:200});
+    },target,{timeout:30000,polling:200});
   }catch(err){elderWaitError=String(err);}
   const snap=await page.evaluate(target=>{
     const md=(typeof M!=='undefined'&&M)||window.M||null;
@@ -112,6 +112,8 @@ async function runTarget(target,index){
       maskProvenance:md?.noBuildProvenance15843?{source:md.noBuildProvenance15843.source,searchGen:md.noBuildProvenance15843.searchGen}:null,
       rechargeCount:Number(md?.rechZones?.length||0),
       swaleDiagnostics:md?.swaleDiagnostics||null,
+      safetyAudit:md?.safetyAudit15806||null,
+      rawEngineBeforeClearance:md?.authoritativePropertyEngineSwales15816?.engineCount??null,
       terrainLoad:md?.terrainHandoff15791||null,
       displayedRunState:String(document.documentElement.dataset.earthlinePropertyRunState||''),
       contourSourcePresent:!!(map?.getSource?.('el-live-contours-15970')),
@@ -135,8 +137,20 @@ async function runTarget(target,index){
 const rows=[];
 for(let i=0;i<TARGETS.length;i++) rows.push(await runTarget(TARGETS[i],i));
 const replacementPass=rows.length>=2&&rows[0].snap.publication?.runToken!==rows[1].snap.publication?.runToken&&Math.abs(Number(rows[1].snap.audit?.center?.lng)-TARGETS[1].lng)<1e-5;
-const report={at:new Date().toISOString(),url:URL,rows,replacementPass,pageErrors,badResponses,pass:rows.every(r=>r.pass)&&replacementPass};
+const repeatPairs=[[0,1],[2,3]];
+const repeatConsistency=repeatPairs.map(([a,b])=>{
+  const before=rows[a]?.snap||{},after=rows[b]?.snap||{};
+  const sourceMatch=String(before.publication?.scientificInputFingerprint||'')===String(after.publication?.scientificInputFingerprint||'')&&
+    String(before.publication?.sourceStateFingerprint||'')===String(after.publication?.sourceStateFingerprint||'');
+  const countsMatch=before.safeCount===after.safeCount&&before.engineCount===after.engineCount;
+  return {pair:[rows[a]?.name,rows[b]?.name],sourceMatch,countsMatch,
+    before:{generated:before.swaleDiagnostics?.generated,safe:before.safeCount,filter:before.safetyAudit?.filter,roadOverlap:before.safetyAudit?.roadOverlap16397},
+    after:{generated:after.swaleDiagnostics?.generated,safe:after.safeCount,filter:after.safetyAudit?.filter,roadOverlap:after.safetyAudit?.roadOverlap16397},
+    pass:sourceMatch&&countsMatch};
+});
+const report={at:new Date().toISOString(),url:URL,rows,repeatConsistency,replacementPass,pageErrors,badResponses,
+  pass:rows.every(r=>r.pass)&&replacementPass&&repeatConsistency.every(r=>r.pass)};
 writeFileSync('artifacts/ny-repeat-live/results.json',JSON.stringify(report,null,2));
-console.log('NY_CONTROL '+JSON.stringify({pass:report.pass,replacementPass,rows:rows.map(r=>({name:r.name,pass:r.pass,elapsedMs:r.elapsedMs,runError:r.runError,settleError:r.settleError,safeCount:r.snap.safeCount,rechargeCount:r.snap.rechargeCount,engineCount:r.snap.engineCount,halt:r.snap.prescriptionHalt,zero:r.snap.prescriptionZero,propertyFailure:r.snap.propertyFailure,engine:r.snap.engine,publication:r.snap.publication,runState:r.snap.displayedRunState,elderCount:r.snap.elder?.featureCount||0,elderState:r.snap.elder?.state||null,elderError:r.snap.elder?.error||r.snap.elder?.dynamicError||null,elderWaitError:r.elderWaitError,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
+console.log('NY_CONTROL '+JSON.stringify({pass:report.pass,replacementPass,repeatConsistency,rows:rows.map(r=>({name:r.name,pass:r.pass,elapsedMs:r.elapsedMs,runError:r.runError,settleError:r.settleError,generated:r.snap.swaleDiagnostics?.generated,safeCount:r.snap.safeCount,rechargeCount:r.snap.rechargeCount,engineCount:r.snap.engineCount,halt:r.snap.prescriptionHalt,zero:r.snap.prescriptionZero,propertyFailure:r.snap.propertyFailure,engine:r.snap.engine,clearance:r.snap.safetyAudit?.clearance,filter:r.snap.safetyAudit?.filter,roadOverlap:r.snap.safetyAudit?.roadOverlap16397,publication:r.snap.publication,runState:r.snap.displayedRunState,elderCount:r.snap.elder?.featureCount||0,elderState:r.snap.elder?.state||null,elderError:r.snap.elder?.error||r.snap.elder?.dynamicError||null,elderWaitError:r.elderWaitError,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
 await browser.close();
 if(!report.pass)process.exitCode=1;
