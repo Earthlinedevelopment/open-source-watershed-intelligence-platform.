@@ -1,0 +1,32 @@
+name: Earthline NY fixed-source clearance diagnosis
+on:
+  push:
+    branches: [repair/frozen-clearance-20261128]
+    paths:
+      - tests/ny-property-repeat-20261128.mjs
+      - .github/workflows/ny-frozen-clearance-research-20261128.yml
+permissions:
+  contents: read
+jobs:
+  frozen-clearance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install real browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Inspect stable Property mask versus changing public water features
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+        run: node tests/ny-property-repeat-20261128.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-ny-frozen-clearance-research
+          path: artifacts/ny-repeat-live
+          retention-days: 7
