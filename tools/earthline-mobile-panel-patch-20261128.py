@@ -29,3 +29,4 @@ page.write_text(after, encoding='utf-8')
 print('EARTHLINE_MOBILE_PATCH before_sha256=' + hashlib.sha256(before.encode()).hexdigest())
 print('EARTHLINE_MOBILE_PATCH after_sha256=' + hashlib.sha256(after.encode()).hexdigest())
 print('EARTHLINE_MOBILE_PATCH groups=2; scientific owners unchanged')
+# Re-run candidate-only verification after retiring spent one-time production writer.
