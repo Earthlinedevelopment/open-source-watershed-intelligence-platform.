@@ -44,6 +44,7 @@ const state=()=>page.evaluate(()=>{
     safeCount:Number((typeof M!=='undefined'&&M?.authoritativeSafeSwales15815?.features?.length)||0),
     mapLoaded:!!map?.loaded?.(),mapCenter:map?.getCenter?.()||null,
     propertyState:el.dataset.earthlinePropertyRunState||null,runState:el.dataset.earthlineRunState||null,
+    crosshairHintVisible:(()=>{const hint=document.getElementById('earthlineCrosshairMoveHint17093');return !!hint&&getComputedStyle(hint).display!=='none'&&hint.getBoundingClientRect().width>0})(),
     propertyLaunchAudit:(window.EARTHLINE_PROPERTY_LAUNCH_AUDIT_16322||[]).slice(-8),
     waterBodyGate:window.EARTHLINE_PROPERTY_WATER_BODY_GATE_16529||null,
     mobileClickTrace:window.__earthlineMobileClickTrace||[],
@@ -139,7 +140,7 @@ try{
     return a?.settled===true&&p?.published===true&&document.documentElement.dataset.earthlineAnalysisTier==='property'&&document.documentElement.dataset.earthlinePropertyRunState!=='running';
   },null,{timeout:75000,polling:220});
   await page.waitForFunction(()=>!document.documentElement.classList.contains('earthline-panel-open-16188'),null,{timeout:7000,polling:150});
-  await checkpoint('06-property-exposes-map',s=>!s.open&&s.tier==='property'&&s.safeCount>0&&s.propertyAudit?.result===true&&s.safeVisibility?.visible===true);
+  await checkpoint('06-property-exposes-map',s=>!s.open&&s.tier==='property'&&s.safeCount>0&&s.propertyAudit?.result===true&&s.safeVisibility?.visible===true&&!s.crosshairHintVisible);
 }catch(e){
   report.exception=String(e);
   report.failureSnapshot=await state().catch(error=>({error:String(error)}));
