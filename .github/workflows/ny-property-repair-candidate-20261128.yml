@@ -1,0 +1,72 @@
+name: Earthline NY repeat Property repair acceptance
+on:
+  push:
+    branches: [repair/ny-property-exclusion-owner-20261128]
+    paths:
+      - .github/workflows/ny-property-repair-candidate-20261128.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  local-acceptance-and-stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scope the correction to generated Earthline overlay sources
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          owner=s.find('async function vectorNoBuild15778')
+          assert owner>0, 'property exclusion owner missing'
+          needle='const layers=(style.layers||[]).filter(l=>{'
+          pos=s.find(needle,owner)
+          assert owner<pos<owner+9000, 'source layer selector changed'
+          replacement="""const layers=(style.layers||[]).filter(l=>{
+                  /* Earthline 2026-11-28: generated Property swales and display water paths
+                     must not become road/water exclusions on the next Property run.
+                     This keeps every actual mapped road, building, waterway and buffer. */
+                  const ownedLayer=String(l&&l.id||'');
+                  const ownedSource=String(l&&l.source||'');
+                  if(/^(?:earthline(?:[-_]|$)|el[-_])/i.test(ownedLayer)||
+                     /^(?:earthline(?:[-_]|$)|el[-_])/i.test(ownedSource))return false;"""
+          s=s[:pos]+replacement+s[pos+len(needle):]
+          assert s.count('Earthline 2026-11-28: generated Property swales')==1
+          p.write_text(s)
+          print('PATCH APPLIED: one vectorNoBuild15778 selector only')
+          PY
+          git diff --check
+          git diff --stat
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Test three consecutive New York Property analyses before release
+        env:
+          EARTHLINE_URL: http://127.0.0.1:8765/
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/earthline-http.log 2>&1 &
+          for i in $(seq 1 20); do
+            if curl -fsS -o /dev/null http://127.0.0.1:8765/; then break; fi
+            sleep 1
+          done
+          node tests/ny-property-acceptance-20261128.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ny-property-repair-candidate-evidence
+          path: artifacts/ny-repair-acceptance
+          retention-days: 14
+      - name: Commit passing repair to isolated branch only
+        run: |
+          git config user.name 'Earthline CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && { echo 'No HTML change'; exit 1; }
+          git commit -m 'fix(property): prevent generated Earthline overlays from becoming next-run exclusions'
+          git push origin HEAD:repair/ny-property-exclusion-owner-20261128
