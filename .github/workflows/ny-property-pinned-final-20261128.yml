@@ -1,0 +1,39 @@
+name: Earthline candidate-pinned New York Property repeat
+on:
+  pull_request:
+    branches: [pages-live]
+    paths:
+      - index.html
+      - earthline-launch-16872.js
+      - tests/ny-property-pinned-final-20261128.mjs
+      - .github/workflows/ny-property-pinned-final-20261128.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  new-york-pinned:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compile candidate Property test and UI module
+        run: |
+          node --check tests/ny-property-pinned-final-20261128.mjs
+          node --check earthline-launch-16872.js
+      - name: Install browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Test exact screenshot and nearby New York repeated Property
+        env:
+          EARTHLINE_URL: https://earthlinedevelopment.org/
+        run: node tests/ny-property-pinned-final-20261128.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-candidate-pinned-ny-repeat
+          path: artifacts/ny-repeat-live
+          retention-days: 14
