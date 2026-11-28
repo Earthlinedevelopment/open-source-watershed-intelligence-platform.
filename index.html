@@ -19444,6 +19444,13 @@ var prescribeSwales;
     try{
       const style=earthlineMap&&earthlineMap.getStyle&&earthlineMap.getStyle();
       return (style&&style.layers||[]).filter(l=>{
+        /* Generated swales and modeled water are map OUTPUT, never exclusion INPUT.
+           The primary map-vector exclusion pass already makes this distinction.
+           Mirror that exact source-owner rule in the final 15788 clearance pass. */
+        const ownedLayer=String(l&&l.id||'');
+        const ownedSource=String(l&&l.source||'');
+        if(/^(?:earthline(?:[-_]|$)|el[-_])/i.test(ownedLayer)||
+           /^(?:earthline(?:[-_]|$)|el[-_])/i.test(ownedSource))return false;
         const tag=((l.id||"")+" "+(l["source-layer"]||"")).toLowerCase();
         const type=String(l.type||"").toLowerCase();
         if(!["line","fill","fill-extrusion"].includes(type))return false;
