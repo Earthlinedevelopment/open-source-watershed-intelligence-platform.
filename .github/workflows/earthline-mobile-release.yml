@@ -1,0 +1,37 @@
+name: Earthline mobile Regional and Property release acceptance
+on:
+  pull_request:
+    branches: [pages-live]
+    paths:
+      - index.html
+      - tests/mobile-release-20261128.mjs
+      - .github/workflows/earthline-mobile-release.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  phone-real-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Record exact pinned release candidate
+        run: |
+          git rev-parse HEAD
+          sha256sum index.html
+          node --check tests/mobile-release-20261128.mjs
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Test actual phone UI, Vermont Regional, Property and map exposure
+        run: node tests/mobile-release-20261128.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-mobile-candidate-evidence
+          path: artifacts/mobile-release
+          retention-days: 14
