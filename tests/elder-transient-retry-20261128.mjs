@@ -16,7 +16,7 @@ async function run(outcomes,{supersede=false}={}){
   const state={loaded:true,dynamic:{error:null},active:[],lastSummary:null};
   const window={EARTHLINE_ELDER_TREE_LAST_17097:{state:'property-pending',propertyRunIdentity:identity,visibleAt:'yes'}};
   const ctx={
-    state,window,document:{getElementById:()=>null},
+    state,window,regionalRefreshEpochM94:0,document:{getElementById:()=>null},
     propertyBounds17166:()=>[0,0,1,1],
     propertyRunIdentity17166:()=>identity,
     elderTierM94:()=> 'property',
