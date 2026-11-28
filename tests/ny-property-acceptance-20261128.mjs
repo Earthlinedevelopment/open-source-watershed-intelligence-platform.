@@ -9,6 +9,17 @@ const TARGETS=[
 ];
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1600,height:950}});
+const localOrigin=process.env.EARTHLINE_LOCAL_PROXY_ORIGIN||'';
+if(localOrigin){
+  // Browser URL/Referer remains the approved https://earthlinedevelopment.org
+  // while this read-only route serves candidate HTML/assets from localhost.
+  await page.route('https://earthlinedevelopment.org/**',async route=>{
+    const original=new URL(route.request().url());
+    const target=localOrigin+original.pathname+original.search;
+    const response=await route.fetch({url:target});
+    await route.fulfill({response});
+  });
+}
 const pageErrors=[],badResponses=[];
 page.on('pageerror',e=>pageErrors.push(String(e)));
 page.on('console',m=>{if(m.type()==='error')pageErrors.push(m.text())});
