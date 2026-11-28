@@ -100,7 +100,7 @@ try{
   await page.locator('#earthlineRailSearch16188').click();
   await page.waitForFunction(()=>document.documentElement.classList.contains('earthline-panel-open-16188'));
   await page.waitForFunction(()=>document.getElementById('earthlinePanel16188')?.getBoundingClientRect().right>=innerWidth-3,null,{timeout:8000,polling:100});
-  await page.waitForTimeout(550); // the real touch control must settle after sidebar animation
+  await page.waitForTimeout(650); // verify settled sidebar before touching the stable Property button
   await checkpoint('04-property-button-available',s=>s.open&&s.panelRight>=s.viewport-3);
   await page.evaluate(()=>{
     const b=document.getElementById('earthlineDeclareProperty16169'),r=b?.getBoundingClientRect();
