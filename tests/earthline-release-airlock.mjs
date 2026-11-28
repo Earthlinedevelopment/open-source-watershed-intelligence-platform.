@@ -12,8 +12,62 @@ const html=readFileSync(path.join(ROOT,'index.html'));
 const sha256=createHash('sha256').update(html).digest('hex');
 const critical=['Arizona','New Mexico','Colorado','Texas','California','Vermont','New York'];
 const extended=['Arkansas','Iowa','Nebraska','Oklahoma','Alaska'];
-const cases=process.env.EARTHLINE_EXTENDED==='1'?critical.concat(extended):critical;
-const ids={Arizona:'us-az','New Mexico':'us-nm',Colorado:'us-co',Texas:'us-tx',California:'us-ca',Vermont:'us-vt','New York':'us-ny',Arkansas:'us-ar',Iowa:'us-ia',Nebraska:'us-ne',Oklahoma:'us-ok',Alaska:'us-ak'};
+const ids={
+  "Alabama":"us-al",
+  "Alaska":"us-ak",
+  "Arizona":"us-az",
+  "Arkansas":"us-ar",
+  "California":"us-ca",
+  "Colorado":"us-co",
+  "Connecticut":"us-ct",
+  "Delaware":"us-de",
+  "Florida":"us-fl",
+  "Georgia":"us-ga",
+  "Hawaii":"us-hi",
+  "Idaho":"us-id",
+  "Illinois":"us-il",
+  "Indiana":"us-in",
+  "Iowa":"us-ia",
+  "Kansas":"us-ks",
+  "Kentucky":"us-ky",
+  "Louisiana":"us-la",
+  "Maine":"us-me",
+  "Maryland":"us-md",
+  "Massachusetts":"us-ma",
+  "Michigan":"us-mi",
+  "Minnesota":"us-mn",
+  "Mississippi":"us-ms",
+  "Missouri":"us-mo",
+  "Montana":"us-mt",
+  "Nebraska":"us-ne",
+  "Nevada":"us-nv",
+  "New Hampshire":"us-nh",
+  "New Jersey":"us-nj",
+  "New Mexico":"us-nm",
+  "New York":"us-ny",
+  "North Carolina":"us-nc",
+  "North Dakota":"us-nd",
+  "Ohio":"us-oh",
+  "Oklahoma":"us-ok",
+  "Oregon":"us-or",
+  "Pennsylvania":"us-pa",
+  "Rhode Island":"us-ri",
+  "South Carolina":"us-sc",
+  "South Dakota":"us-sd",
+  "Tennessee":"us-tn",
+  "Texas":"us-tx",
+  "Utah":"us-ut",
+  "Vermont":"us-vt",
+  "Virginia":"us-va",
+  "Washington":"us-wa",
+  "West Virginia":"us-wv",
+  "Wisconsin":"us-wi",
+  "Wyoming":"us-wy"
+};
+const requested=String(process.env.EARTHLINE_STATES||'').split('|').map(x=>x.trim()).filter(Boolean);
+if(requested.length&&(new Set(requested).size!==requested.length||requested.some(x=>!ids[x])))
+  throw new Error('Invalid or duplicate official US state in EARTHLINE_STATES');
+const cases=requested.length?requested:(process.env.EARTHLINE_EXTENDED==='1'?critical.concat(extended):critical);
 mkdirSync('artifacts/release-airlock',{recursive:true});
 const browser=await chromium.launch({headless:true});
 const rows=[];
