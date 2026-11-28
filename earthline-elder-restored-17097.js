@@ -9,9 +9,6 @@
   const SOURCE='earthline-elder-trees-17097';
   const LAYER='earthline-elder-tree-points-17097';
   const state={loaded:false,loading:null,manifest:null,all:[],active:[],lastSummary:null,dynamic:{worker:null,seq:0,pending:new Map(),key:'',result:null,promise:null,error:null,warmPromise:null,warmed:false,tileWarmKey:'',tileWarmPromise:null}};
-  /* M7 temporary Elder Tree hover label; existing click details retain evidence distinctions. */
-  let elderHoverPopupM7=null,elderHoverBoundM7=false;
-  function dismissElderHoverM7(){try{elderHoverPopupM7?.remove()}catch(_){}elderHoverPopupM7=null}
 
   function map(){try{return window.earthlineMap||(typeof earthlineMap!=='undefined'?earthlineMap:null)}catch(_){return null}}
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
@@ -208,8 +205,6 @@
   /* M129: round brown trunk ring and green canopy, sourced points only.
      Marker geometry and colors affect presentation, never Elder evidence counts. */
   /* M164: clear round, brown-rimmed green Elder tree symbols; evidence tiers keep their colors. */
-  /* Mantra 6: restore a readable TREE, not a location pin or featureless green disk.
-     Evidence classes keep their original three green colors. Image geometry only. */
   function elderPinImage(fill){
     const canvas=document.createElement('canvas');canvas.width=48;canvas.height=48;
     const ctx=canvas.getContext('2d');if(!ctx)return null;
@@ -232,9 +227,9 @@
   }
   function ensureElderPinImages(m){
     const pins=[
-      ['earthline-elder-tree-m6-verified','#174d2a'],
-      ['earthline-elder-tree-m6-lidar','#2f7d48'],
-      ['earthline-elder-tree-m6-modeled','#4f9b62']
+      ['earthline-elder-pin-verified','#174d2a'],
+      ['earthline-elder-pin-lidar','#2f7d48'],
+      ['earthline-elder-pin-modeled','#4f9b62']
     ];
     for(const [name,color] of pins){
       if(m.hasImage?.(name))continue;
@@ -252,102 +247,18 @@
         m.addSource(SOURCE,{type:'geojson',data:fc});
         src=m.getSource?.(SOURCE);
       }
-        /* Elder information is user-triggered only: full message on hover, click or tap. */
-        /* Elder detail only on explicit tree interactions; parcel-contained UI. */
-        function elderMessageForFeature(f){
-          const p=f.properties||{},verified=isVerified(p),conf=elderConfidence(p);
-          const title=verified?'VERIFIED ELDER TREE':'ELDER TREE CANDIDATE';
-          const confidence=verified?'Field verified':(conf==null?'Confidence unavailable':'Confidence '+conf+'%');
-          return '<div style="font-family:Noto Sans,system-ui,sans-serif!important;font-size:11px!important;font-weight:800!important;line-height:1.12!important;color:#173b2a;overflow-wrap:anywhere;white-space:normal;padding-right:20px">'+esc(title)+'</div>'+
-            '<div style="margin-top:2px;font-family:Noto Sans,system-ui,sans-serif!important;font-size:10px!important;font-weight:600!important;line-height:1.15!important;color:#315843;white-space:normal">'+esc(confidence)+'</div>'+
-            (!verified?'<div style="margin-top:2px;font-family:Noto Sans,system-ui,sans-serif!important;font-size:10px!important;font-weight:500!important;line-height:1.15!important;color:#526159;white-space:normal">Modeled tree; age not verified.</div>':'');
-        }
-        function popupPlacementInsideProperty(coords){
-          try{
-            const md=(typeof M!=='undefined'&&M)||window.M||null;
-            if(String(document.documentElement.dataset.earthlineAnalysisTier||'').toLowerCase()!=='property')return null;
-            const polygon=md?.analysisBoundaryLngLat;
-            if(!Array.isArray(polygon)||polygon.length<3)return null;
-            const pts=polygon.map(p=>{
-              if(!Array.isArray(p)||p.length<2)return null;
-              const q=m.project(p);return Number.isFinite(q?.x)&&Number.isFinite(q?.y)?q:null;
-            }).filter(Boolean);
-            if(pts.length<3)return null;
-            const q=m.project(coords),minX=Math.min(...pts.map(p=>p.x)),maxX=Math.max(...pts.map(p=>p.x));
-            const minY=Math.min(...pts.map(p=>p.y)),maxY=Math.max(...pts.map(p=>p.y));
-            if(q.x<minX||q.x>maxX||q.y<minY||q.y>maxY)return null;
-            const vw=m.getContainer().clientWidth,vh=m.getContainer().clientHeight;
-            const w=118,h=80,pad=10;
-            const l=Math.max(minX+pad,pad),r=Math.min(maxX-pad,vw-pad)-w;
-            const t=Math.max(minY+pad,pad),bot=Math.min(maxY-pad,vh-pad)-h;
-            if(l>r||t>bot)return null;
-            return {lngLat:m.unproject([Math.min(r,Math.max(l,q.x-w/2)),Math.min(bot,Math.max(t,q.y-h-8))]),anchor:'top-left',offset:0};
-          }catch(_){return null}
-        }
-        function showElderTreePopup(e,persistent){
-          const f=e?.features?.[0],coords=f?.geometry?.coordinates;
-          if(!f||!Array.isArray(coords)||coords.length<2)return;
-          dismissElderHoverM7();
-          try{
-            const placement=popupPlacementInsideProperty(coords);
-            if(!placement)return;
-            const popup=new mapboxgl.Popup({closeButton:!!persistent,closeOnClick:!!persistent,
-              offset:0,anchor:'top-left',maxWidth:'118px',className:'earthline-elder-triggered-popup',focusAfterOpen:false
-            }).setLngLat(placement.lngLat).setHTML(elderMessageForFeature(f)).addTo(m);
-            const element=popup.getElement?.();
-            if(element){
-              /* The site's older popup stylesheet overrides BOTH the shell and the content. */
-              const st=document.getElementById('earthline-elder-compact-popup-20261119')||document.createElement('style');
-              st.id='earthline-elder-compact-popup-20261119';
-              st.textContent='.mapboxgl-popup.earthline-elder-triggered-popup{width:118px!important;min-width:0!important;max-width:118px!important;box-sizing:border-box!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;} .mapboxgl-popup.earthline-elder-triggered-popup .mapboxgl-popup-content{width:118px!important;min-width:0!important;max-width:118px!important;box-sizing:border-box!important;padding:5px 7px!important;white-space:normal!important;overflow-wrap:anywhere!important;} .mapboxgl-popup.earthline-elder-triggered-popup .mapboxgl-popup-close-button{font-size:10px!important;width:13px!important;height:13px!important;line-height:13px!important;padding:0!important;right:2px!important;top:2px!important;} .mapboxgl-popup.earthline-elder-triggered-popup .mapboxgl-popup-tip{display:none!important;} .mapboxgl-popup.earthline-elder-triggered-popup{z-index:2147483000!important;visibility:visible!important;pointer-events:auto!important;} .mapboxgl-popup.earthline-elder-triggered-popup .mapboxgl-popup-content{max-height:none!important;overflow:visible!important;text-overflow:clip!important;} .mapboxgl-popup.earthline-elder-triggered-popup .mapboxgl-popup-content>div{overflow:visible!important;text-overflow:clip!important;white-space:normal!important;}';
-              if(!st.isConnected)document.head.appendChild(st);
-              element.style.setProperty('width','118px','important');
-              element.style.setProperty('min-width','0','important');
-              element.style.setProperty('max-width','118px','important');
-              element.style.setProperty('box-sizing','border-box','important');
-              element.style.setProperty('z-index','2147483000','important');
-              element.style.setProperty('background','transparent','important');
-              element.style.setProperty('box-shadow','none','important');
-              const inner=element.querySelector('.mapboxgl-popup-content');
-              if(inner){
-                inner.style.setProperty('width','118px','important');
-                inner.style.setProperty('min-width','0','important');
-                inner.style.setProperty('max-width','118px','important');
-                inner.style.setProperty('box-sizing','border-box','important');
-                inner.style.setProperty('padding','5px 7px','important');
-              }
-            }
-            /* EARTHLINE ELDER POPUP STACKING 20261121 — the Property water paths are drawn in a separate SVG overlay
-               (#earthlinePropertyWaterOverlay15824, z-index 7) that sits ABOVE the whole Mapbox container (#mapboxBase, z-index 1).
-               A popup inside #mapboxBase can never rise above that overlay, whatever its own z-index, which is why the cyan lines
-               crossed the popup text. Both elements fill .map-area exactly, so the popup is moved into .map-area itself: same
-               position, same size and look, now above the overlay. Mapbox keeps updating its transform as the map moves. */
-            try{
-              const el20261121=popup.getElement?.(),host20261121=document.querySelector('.map-area'),c20261121=m.getContainer?.();
-              if(el20261121&&host20261121&&c20261121&&host20261121.contains(c20261121)){
-                const hr=host20261121.getBoundingClientRect(),cr=c20261121.getBoundingClientRect();
-                if(Math.abs(hr.left-cr.left)<1&&Math.abs(hr.top-cr.top)<1&&Math.abs(hr.width-cr.width)<1&&Math.abs(hr.height-cr.height)<1){
-                  host20261121.appendChild(el20261121);
-                  el20261121.style.setProperty('z-index','2147483000','important');
-                  window.EARTHLINE_ELDER_POPUP_STACKING_20261121={reparented:true,at:new Date().toISOString()};
-                }else window.EARTHLINE_ELDER_POPUP_STACKING_20261121={reparented:false,reason:'map container does not fill .map-area',at:new Date().toISOString()};
-              }
-            }catch(_){}
-            if(!persistent)elderHoverPopupM7=popup;
-          }catch(_){dismissElderHoverM7()}
-        }
       if(!m.getLayer?.(LAYER)){
         m.addLayer({
           id:LAYER,type:'symbol',source:SOURCE,
           layout:{
             'icon-image':['case',
-              ['any',['==',['get','record_class'],'VERIFIED_ELDER_TREE'],['==',['get','record_class'],'VERIFIED_EXTERNAL_TREE']],'earthline-elder-tree-m6-verified',
-              ['any',['==',['get','source_class'],'LIDAR'],['==',['get','record_class'],'LIDAR_CONFIRMED_ELDER_TREE_CANDIDATE']],'earthline-elder-tree-m6-lidar',
-              'earthline-elder-tree-m6-modeled'
+              ['any',['==',['get','record_class'],'VERIFIED_ELDER_TREE'],['==',['get','record_class'],'VERIFIED_EXTERNAL_TREE']],'earthline-elder-pin-verified',
+              ['any',['==',['get','source_class'],'LIDAR'],['==',['get','record_class'],'LIDAR_CONFIRMED_ELDER_TREE_CANDIDATE']],'earthline-elder-pin-lidar',
+              'earthline-elder-pin-modeled'
             ],
             /* M96: candidates must be legible on satellite imagery; labels never
                imply that an unverified modeled tree is known to be old. */
-            'icon-size':['interpolate',['linear'],['zoom'],6,0.36,10,0.48,14,0.62,17,0.92,20,1.0], /* Elder visibility: larger approved symbols; same evidence classes */
+            'icon-size':['interpolate',['linear'],['zoom'],6,0.55,10,0.72,14,0.96,17,1.48,20,1.65],
             'icon-anchor':'center',
             'icon-allow-overlap':true,
             'icon-ignore-placement':true,
@@ -365,13 +276,19 @@
             'text-halo-width':2.2
           }
         });
-        m.on('click',LAYER,e=>showElderTreePopup(e,true));
-      }
-      if(!elderHoverBoundM7){
-        elderHoverBoundM7=true;
-        m.on('mouseenter',LAYER,e=>showElderTreePopup(e,false));
-        m.on('mouseleave',LAYER,dismissElderHoverM7);
-        m.on('movestart',dismissElderHoverM7);
+        m.on('click',LAYER,e=>{
+          const f=e?.features?.[0];if(!f)return;
+          const p=f.properties||{},coords=f.geometry?.coordinates||[],verified=isVerified(p),conf=elderConfidence(p);
+          const title=verified?'VERIFIED ELDER TREE':classify(p);
+          const confidence=verified?'Verified external/field evidence':(conf==null?'Confidence not available':'Elder Tree Confidence '+conf+'%');
+          const h=Number(p.height_m);
+          const body='<div style="font:700 13px/1.25 system-ui,sans-serif;color:#17323d">'+esc(title)+'</div>'+
+            '<div style="margin-top:5px;font:800 12px/1.2 system-ui,sans-serif;color:#2f6f46">'+esc(confidence)+'</div>'+
+            (Number.isFinite(h)?'<div style="margin-top:4px;font:600 11px/1.35 system-ui,sans-serif">Canopy height: '+esc(h.toFixed(1))+' m</div>':'')+
+            '<div style="margin-top:4px;font:500 10px/1.35 system-ui,sans-serif;color:#526159">'+esc(p.source_name||'Earthline Elder Tree evidence')+'</div>'+
+            (!verified?'<div style="margin-top:6px;font:500 9.5px/1.35 system-ui,sans-serif;color:#6e766a">Elder Tree Confidence is the tree’s local structural-evidence percentile compared with other detected tree/canopy structures in the same analyzed source area; it is not a probability of age or ancient/veteran status.</div>':'');
+          try{new mapboxgl.Popup({closeButton:true,closeOnClick:true,offset:8}).setLngLat(coords).setHTML(body).addTo(m)}catch(_){}
+        });
       }
       try{
         if(m.getLayer?.(LAYER)){
@@ -476,17 +393,6 @@
     if(apply())return true;
     frame.addEventListener('load',apply,{once:true});
     return false;
-  }
-  /* No automatic Elder info message. Icon hover / click owns the popup. */
-  function showElderInfoLinkM11(){
-    document.querySelectorAll('.earthline-elder-info-m11').forEach(el=>el.remove());
-  }
-  function installElderPopupStyle(){
-    if(document.getElementById('earthlineElderTriggeredPopupStyle'))return;
-    const css=document.createElement('style');
-    css.id='earthlineElderTriggeredPopupStyle';
-    css.textContent='.earthline-elder-triggered-popup .mapboxgl-popup-content{background:#ffffff !important;opacity:1 !important;color:#17323d !important;border:2px solid #b88a35 !important;border-radius:9px !important;box-shadow:0 6px 22px rgba(0,0,0,.65) !important;max-height:55vh;overflow-y:auto;min-width:225px;max-width:min(320px,85vw);padding:13px 15px !important}.earthline-elder-triggered-popup .mapboxgl-popup-tip{border-top-color:#ffffff !important;border-bottom-color:#ffffff !important}.earthline-elder-triggered-popup{opacity:1 !important;z-index:100 !important}';
-    document.head.appendChild(css);
   }
   function refreshSurfaces(){
     const s=state.lastSummary||summarize(state.active);
@@ -640,20 +546,9 @@
       if(!(pending17389?.state==='property-pending'&&pending17389?.propertyRunIdentity===runIdentity&&pending17389?.visibleAt)){
         publishPropertyProvisional17389(b,runIdentity);
       }
-      let dynamic=await dynamicPropertyEvidence(true); /* EARTHLINE_ELDER_GOVERNED_COMPUTE_17211 */
-      /* Transient worker/CDN errors can remove all Elder candidates on an
-         otherwise-valid Property run. Retry ONCE, for the same run identity,
-         without publishing synthetic or stale candidate trees. */
-      if(!dynamic&&elderTierM94()==='property'&&
-         propertyRunIdentity17166(propertyBounds17166())===runIdentity){
-        const firstError=state.dynamic.error||'first tree-finder attempt unavailable';
-        dynamic=await dynamicPropertyEvidence(true);
-        if(!dynamic&&elderTierM94()==='property'&&
-           propertyRunIdentity17166(propertyBounds17166())===runIdentity)
-          state.dynamic.error=firstError+'; retry: '+(state.dynamic.error||'unavailable');
-      }
+      const dynamic=await dynamicPropertyEvidence(true); /* EARTHLINE_ELDER_GOVERNED_COMPUTE_17211 */
       if(!dynamic&&elderTierM94()==='property'&&propertyRunIdentity17166(propertyBounds17166())===runIdentity){
-        window.EARTHLINE_ELDER_TREE_LAST_17097={state:'failed',error:state.dynamic.error||'no tree-finder result',propertyRunIdentity:runIdentity,featureCount:0,at:new Date().toISOString()};
+        window.EARTHLINE_ELDER_TREE_LAST_17097={state:'failed',error:'no tree-finder result',propertyRunIdentity:runIdentity,featureCount:0,at:new Date().toISOString()};
         const g198=document.getElementById('earthlineElderTreesGauge17097');if(g198)g198.textContent='Elder Trees: not available for this run'; /* M198 */
         return null;
       }
@@ -674,9 +569,6 @@
         dynamicError:null,workerTimings:dynamic?.earthline?.worker_timings_ms||null,at:new Date().toISOString()
       };
       refreshSurfaces(); /* M198: refresh after the state is committed so "Finding trees…" clears. */
-      showElderInfoLinkM11();
-      // Mapbox marker placement may finish after Elder publication. Retry at map idle.
-      try{map()?.once('idle',showElderInfoLinkM11)}catch(_){}
       return state.lastSummary;
     }catch(err){
       if(elderTierM94()!=='property'||(runIdentity&&propertyRunIdentity17166(propertyBounds17166())!==runIdentity))return null;
@@ -716,7 +608,6 @@
         dynamicCandidatePoolCount:Number(dynamic?.earthline?.candidate_pool_count||0),
         dynamicError:state.dynamic.error||null,workerTimings:dynamic?.earthline?.worker_timings_ms||null,at:new Date().toISOString()
       };
-      showElderInfoLinkM11();
       return state.lastSummary;
     }catch(err){
       if(epoch!==regionalRefreshEpochM94||elderTierM94()==='property')return null;
@@ -795,10 +686,8 @@
     return true;
   } /* EARTHLINE_ELDER_IMMEDIATE_PROPERTY_START_17386 */
   function install(){
-    installElderPopupStyle();
-    showElderInfoLinkM11();
     wrapCorridor();
-    document.addEventListener('click',e=>{
+    document.addEventListener('pointerdown',e=>{
       const b=e.target?.closest?.('#earthlineDeclareProperty16169');
       if(!b||b.disabled)return;
       schedulePropertyPrime17212();
@@ -828,19 +717,4 @@
     });
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
-})();
-
-/* EARTHLINE 2026-11-18: Remove the unwanted floating swale GPS/icon pop-up only.
-   No changes to swale geometry, click targets, site boundary, map layers, or hydrology. */
-(function removeSwaleHoverPopup20261118(){
-  function remove(){
-    const popup=document.getElementById('earthlineSwaleGpsTooltip16070');
-    if(popup)popup.remove();
-  }
-  const style=document.createElement('style');
-  style.id='earthline-remove-swale-hover-popup-20261118';
-  style.textContent='#earthlineSwaleGpsTooltip16070{display:none!important}';
-  (document.head||document.documentElement).appendChild(style);
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',remove,{once:true});
-  else remove();
 })();

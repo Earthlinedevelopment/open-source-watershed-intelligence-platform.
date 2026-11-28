@@ -354,4 +354,3 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   document.addEventListener('earthline:analysis-start',e=>{const t=String(e?.detail?.tier||e?.detail?.mode||'').toLowerCase();if(t.includes('property'))remove()},{passive:true});
   window.EARTHLINE_CROSSHAIR_MOVE_HINT_17093={state:'ready',show,remove,oncePerPageLoad:true,dismissOnCorridorDetail:true};
 })();
-
