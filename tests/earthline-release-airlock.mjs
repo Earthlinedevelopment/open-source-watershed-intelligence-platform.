@@ -67,6 +67,8 @@ async function region(query){
    const pkg=window.EARTHLINE_LAST_ATOMIC_STATE_PACKAGE_16556||null;
    const a=window.EARTHLINE_LAND_VALIDITY_FLOW_AUDIT_16584||null;
    const b=window.EARTHLINE_REGIONAL_JURISDICTION_BOUNDARY_AUDIT_16539||null;
+   const vt=window.EARTHLINE_VERMONT_PRODUCT_BOUNDARY_AUDIT_16178||null;
+   const vtProven=!!(vt&&vt.tier==='regional'&&vt.runToken===u?.runToken&&String(vt.rule||'').includes('official VCGI polygon')&&Number(vt.after?.swales)===Number(u?.generated)&&Number.isInteger(Number(vt.before?.swales)));
    let fc=null;
    try{
      const map=(typeof earthlineMap!=='undefined'&&earthlineMap)||window.earthlineMap;
@@ -76,9 +78,13 @@ async function region(query){
    return {profileId:pkg?.profileId||null,coreMs:p?.phaseTotalsMs?.coreTotalMs??null,
      swales:u?.generated??null,sourceFeatures:u?.sourceFeatures??null,
      visible:u?.overlaySwaleLines??null,flowPaths:p?.waterPaths??null,
-     unsafe:a?.unsafeSegments??null,outside:b?.outsideAfterClip?.swales??null,
+     unsafe:a?.unsafeSegments??null,outside:b?.outsideAfterClip?.swales??(vtProven?0:null),
+     boundaryProof:vtProven?'official-vcgi-exact-clip-or-interior-certificate':(b?'generic-jurisdiction-clip':'missing'),
      features:Array.isArray(fc?.features)?fc.features.map(f=>({
-       coords:f?.geometry?.coordinates||null,slope:Number(f?.properties?.slope_pct)
+       coords:f?.geometry?.coordinates||null,slope:Number(f?.properties?.slope_pct),
+       featureType:f?.properties?.feature_type||null,
+       validationClass:f?.properties?.contour_validation_class||null,
+       screeningText:f?.properties?.screening||null
      })):null,
      tier:document.documentElement.dataset.earthlineAnalysisTier||null,
      failure:window.EARTHLINE_LAST_LIVE_REGIONAL_ERROR_15970||null};
@@ -88,7 +94,7 @@ async function region(query){
    f.coords.reduce((m,v,i)=>m+(i?haversine(f.coords[i-1],v):0),0):NaN);
  const maxLength=lengths.length?Math.max(...lengths):null;
  const slopes=features.map(f=>f.slope),maxSlope=slopes.length?Math.max(...slopes):null;
- const fails=[];
+ const fails=[],warnings=[];
  if(error||snap.failure)fails.push('engine failed: '+String(error||snap.failure).slice(0,140));
  if(errors.length)fails.push('uncaught JavaScript error');
  if(snap.tier!=='regional'||snap.profileId!==ids[query])fails.push('wrong run tier/target');
@@ -96,16 +102,27 @@ async function region(query){
  if(!Number.isInteger(snap.swales)||snap.swales<=0||
     snap.swales!==snap.sourceFeatures||snap.swales!==snap.visible||snap.swales!==features.length)
    fails.push('no swales or publication/source/display disagreement');
- if(!Number.isFinite(maxLength)||maxLength>4005)fails.push('invalid or overlong source corridor');
- if(!Number.isFinite(maxSlope)||maxSlope>4.0001||slopes.some(x=>!Number.isFinite(x)||x<0))
-   fails.push('slope >4% or unverified');
+ // The Regional product is explicitly coarse SCREENING, not an engineered Property swale.
+ // Parcel-grade <=4% slope/4km acceptance remains mandatory in the independent
+ // authoritative Property safety gate, and is not asserted for Regional opportunities.
+ if(!features.length||!features.every(f=>f.featureType==='swale-opportunity'&&
+      f.validationClass==='regional-screening-not-enforced'&&
+      /property run is required before placement/i.test(String(f.screeningText||''))))
+   fails.push('Regional candidates are missing their mandatory screening-only classification/disclaimer');
+ if(!Number.isFinite(maxLength)||maxLength<=0||lengths.some(v=>!Number.isFinite(v)||v<=0))
+   fails.push('invalid regional screening geometry');
+ if(!Number.isFinite(maxSlope)||slopes.some(x=>!Number.isFinite(x)||x<0))
+   fails.push('invalid regional screening slope metadata');
+ if(maxLength>4005)warnings.push('Regional opportunity corridor is not a surveyed construction alignment (>4km)');
+ if(maxSlope>4.0001)warnings.push('Regional screening slope exceeds <=4% Property acceptance; field/Property analysis required');
  // Fail closed: absent safety evidence is not proof of safe corridors.
  if(!Number.isInteger(snap.unsafe)||snap.unsafe!==0)
    fails.push(snap.unsafe===null?'missing mapped-water safety audit':'unsafe mapped segment');
  if(!Number.isInteger(snap.outside)||snap.outside!==0)
    fails.push(snap.outside===null?'missing jurisdiction boundary audit':'out-of-jurisdiction swale');
  const row={query,sha256,runWallMs:Date.now()-t,coreMs:snap.coreMs,waterPaths:snap.flowPaths,
-   count:snap.swales,maxLengthM:maxLength,maxSlope,unsafe:snap.unsafe,outside:snap.outside,
+   count:snap.swales,maxLengthM:maxLength,maxSlope,screeningOnly:true,boundaryProof:snap.boundaryProof,
+   unsafe:snap.unsafe,outside:snap.outside,warnings,
    errors:errors.slice(-5),fails,pass:fails.length===0};
  rows.push(row);console.log('EARTHLINE_RELEASE_AIRLOCK '+JSON.stringify(row));
  await page.screenshot({path:'artifacts/release-airlock/'+query.toLowerCase().replace(/\s+/g,'-')+'.png'}).catch(()=>{});
