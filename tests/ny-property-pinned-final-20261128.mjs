@@ -22,9 +22,9 @@ mkdirSync('artifacts/ny-repeat-live',{recursive:true});
 
 
 const ROOT=process.cwd();
-const LIVE_ORIGIN=new URL(URL).origin;
+const LIVE_ORIGIN=new globalThis.URL(URL).origin;
 await page.route('**/*',async route=>{
-  const u=new URL(route.request().url());
+  const u=new globalThis.URL(route.request().url());
   if(u.origin!==LIVE_ORIGIN)return route.continue();
   let rel=decodeURIComponent(u.pathname).replace(/^[/]+/, '');
   if(!rel)rel='index.html';
