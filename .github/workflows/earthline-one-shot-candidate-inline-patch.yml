@@ -1,0 +1,32 @@
+name: Earthline candidate-only inline exclusion patch
+on:
+  push:
+    branches: [repair/final-mobile-map-and-hint-20261128]
+    paths:
+      - tools/earthline-exclusion-self-layer-20261128.py
+      - .github/workflows/earthline-one-shot-candidate-inline-patch.yml
+permissions:
+  contents: write
+jobs:
+  apply-on-candidate-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Patch only two old exclusion-style scans in checked-out candidate
+        run: python3 tools/earthline-exclusion-self-layer-20261128.py
+      - name: Commit revised candidate and retire temporary writer
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline candidate patch"
+          git config user.email "info@earthlinedevelopment.org"
+          git rm .github/workflows/earthline-one-shot-candidate-inline-patch.yml
+          git rm tools/earthline-exclusion-self-layer-20261128.py
+          git add index.html
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m "fix(property): exclude generated display layers in both post-generation safety scans"
+          git push origin HEAD:repair/final-mobile-map-and-hint-20261128
