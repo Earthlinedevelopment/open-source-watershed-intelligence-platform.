@@ -355,3 +355,51 @@ body:has(#earthlineSwalesPage16125.open) #earthlineLaunchMerch16872{
   window.EARTHLINE_CROSSHAIR_MOVE_HINT_17093={state:'ready',show,remove,oncePerPageLoad:true,dismissOnCorridorDetail:true};
 })();
 
+
+/* EARTHLINE 2026-11-20 — sourced beaver-dam restoration example in the existing
+   How Bioswales Work / Swales Explained beaver section. Editorial only:
+   no map, swale, report, Elder popup, hydrology or numerical analysis changes. */
+(function addScottRiverBeaverEvidence20261120(){
+  'use strict';
+  const pageSelector='#earthlineSwalesPage16125 iframe';
+  const noteId='earthlineScottRiverBeaverEvidence20261120';
+  function apply(){
+    const frame=document.querySelector(pageSelector);
+    if(!frame)return false;
+    if(frame.dataset.earthlineScottRiverBeaverListener!=='yes'){
+      frame.dataset.earthlineScottRiverBeaverListener='yes';
+      frame.addEventListener('load',apply);
+    }
+    let doc;
+    try{doc=frame.contentDocument;}catch(_){return true;}
+    if(!doc||!doc.querySelector('main'))return true;
+    if(doc.getElementById(noteId))return true;
+    const main=doc.querySelector('main');
+    const heading=[...main.querySelectorAll('h2,h3')].find(h=>
+      /how healthy landscapes already slow water|this landscape used to do this by itself/i.test(h.textContent||''));
+    if(!heading)return true;
+    const note=doc.createElement('div');
+    note.id=noteId;
+    note.style.cssText='margin:18px 0 24px;';
+    note.innerHTML=
+      '<p><strong>California restoration example — artificial beaver dams.</strong> In the Scott River watershed, restoration teams built beaver dam analogues using wooden posts and interwoven branches in Sugar Creek and French Creek. These structures slowed streamflow and helped re-establish the wetlands and cool, slow-water habitat once maintained by beavers.</p>'+
+      '<p>Researchers reported approximately <strong>9,000 m² of restored habitat</strong> supporting the potential for more than 8,500 young salmon. In French Creek, measured juvenile coho salmon survival increased from <strong>8% before the dams to 60% afterward</strong>. Beavers sometimes strengthened and extended the human-built structures. These are specific project findings, not a guaranteed result at other sites.</p>'+
+      '<p><strong>How this relates to bioswales:</strong> Beaver dams and their analogues slow and store water <em>within stream corridors</em>, while contour-following bioswales intercept runoff <em>on suitable hillslopes</em>. Both can help keep water in a watershed longer, but they are not interchangeable: channel structures require separate hydrologic, ecological, safety, and permitting review.</p>'+
+      '<p><small>Sources: <a href="https://www.discoverwildlife.com/animal-facts/artificial-beaver-dams-california" target="_blank" rel="noopener noreferrer">Discover Wildlife (2 September 2026)</a> and <a href="https://www.fisheries.noaa.gov/feature-story/start-beaver-dams-transform-parched-california-creeks-salmon-havens-new-research-finds" target="_blank" rel="noopener noreferrer">NOAA Fisheries (9 September 2026)</a>.</small></p>';
+    let next=heading.nextElementSibling;
+    while(next && next.tagName!=='H2' && next.tagName!=='H3')next=next.nextElementSibling;
+    if(next&&next.parentNode===heading.parentNode)next.parentNode.insertBefore(note,next);
+    else heading.parentNode.appendChild(note);
+    doc.documentElement.dataset.earthlineScottRiverBeaverEvidence='2026-11-20';
+    return true;
+  }
+  function install(){
+    if(document.querySelector(pageSelector)){apply();return;}
+    const observer=new MutationObserver(()=>{
+      if(document.querySelector(pageSelector)){observer.disconnect();apply();}
+    });
+    observer.observe(document.body,{childList:true});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
+})();
