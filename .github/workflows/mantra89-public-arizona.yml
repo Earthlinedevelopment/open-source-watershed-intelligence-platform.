@@ -25,16 +25,18 @@ jobs:
         continue-on-error: true
         run: |
           set -e
+          expected_sha=$(sha256sum index.html | cut -d' ' -f1)
           for i in $(seq 1 18); do
             status=$(curl -Ls --max-time 20 -H 'Cache-Control: no-cache' -o /tmp/earthline_live.html -w '%{http_code}' "https://earthlinedevelopment.org/?m89_publish=${GITHUB_SHA}_${i}" || true)
-            if [ "$status" = "200" ] && grep -Fq 'rawLatM89' /tmp/earthline_live.html; then
-              echo 'Verified corrected state-boundary code on public origin'
+            live_sha=$(sha256sum /tmp/earthline_live.html 2>/dev/null | cut -d' ' -f1 || true)
+            if [ "$status" = "200" ] && [ "$live_sha" = "$expected_sha" ]; then
+              echo "Verified public homepage SHA-256 $live_sha matches candidate"
               exit 0
             fi
-            echo "Public origin has not served current fix yet (HTTP $status, attempt $i)"
+            echo "Public origin checksum mismatch (HTTP $status; expected $expected_sha; received $live_sha; attempt $i)"
             sleep 10
           done
-          echo 'Public homepage did not serve corrected boundary owner'
+          echo 'Public homepage did not match the tested candidate by SHA-256'
           exit 1
       - name: Install Chromium
         run: |
