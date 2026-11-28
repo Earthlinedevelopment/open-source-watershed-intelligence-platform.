@@ -16951,9 +16951,21 @@ var prescribeSwales;
     let safetyError=null;
     let collection=earthlineEmptyPropertyFC16176();
     const failures=[];
+    /* Portable (open-data) Property science has already frozen the actual source
+       evidence, no-build mask and input hash for this run. Do not re-screen those
+       candidates using whatever unrelated Mapbox tiles the camera currently has
+       rendered. Each proposed line still MUST pass the full frozen-mask audit.
+       Authoritative-local (Vermont) keeps the existing exact-geometry filter. */
+    const portableEvidence16544=!!(M&&M.vectorNoBuildCoverage&&
+      M.vectorNoBuildCoverage.publicationAllowed===true&&
+      M.vectorNoBuildCoverage.sourceTier!=="authoritative-local");
 
     try{
-      if(typeof window.earthlineFilterCorridors15788!=="function"){
+      if(portableEvidence16544){
+        filtered={collection:raw,stats:{build:"EARTHLINE 2026-11-28",indexAvailable:false,
+          sourceOwner:"frozen-scientific-input",inputCandidates:raw.features.length,
+          outputSegments:raw.features.length,noBuildRejected:0}};
+      }else if(typeof window.earthlineFilterCorridors15788!=="function"){
         failures.push("corridor-filter-unavailable");
       }else{
         filtered=window.earthlineFilterCorridors15788(raw,true);
@@ -16971,10 +16983,12 @@ var prescribeSwales;
       );
       if(!candidate)failures.push("corridor-filter-result-invalid");
 
-      if(typeof window.earthlineAuditCorridorClearance15806!=="function"){
-        failures.push("clearance-audit-unavailable");
-      }else if(candidate){
-        audit=window.earthlineAuditCorridorClearance15806(candidate,false);
+      if(!portableEvidence16544){
+        if(typeof window.earthlineAuditCorridorClearance15806!=="function"){
+          failures.push("clearance-audit-unavailable");
+        }else if(candidate){
+          audit=window.earthlineAuditCorridorClearance15806(candidate,false);
+        }
       }
       const audited=(
         audit&&audit.collection&&
@@ -16994,9 +17008,6 @@ var prescribeSwales;
          frozen mask even when an optional map-style index happens to be available.
          This prevents a camera/style presentation index from vetoing a completed
          portable four-variable Property run. */
-      const portableEvidence16544=!!(M&&M.vectorNoBuildCoverage&&
-        M.vectorNoBuildCoverage.publicationAllowed===true&&
-        M.vectorNoBuildCoverage.sourceTier!=="authoritative-local");
       const frozenClearance16255=(candidate&&vectorVerified&&finalMaskAvailable&&(!filterIndexAvailable||portableEvidence16544))
         ?earthlineFrozenPropertyClearanceAudit16255(candidate):null;
       const frozenClearanceVerified16255=!!(frozenClearance16255&&frozenClearance16255.verified===true);
