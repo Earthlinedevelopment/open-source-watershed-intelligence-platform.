@@ -3,6 +3,10 @@ import {mkdirSync,writeFileSync} from 'node:fs';
 
 const URL=process.env.EARTHLINE_URL||'https://earthlinedevelopment.org/';
 const TARGETS=[
+  // Owner's 2026-11-28 screenshot: crosshair 42.78737, -75.77471, 20 acres.
+  {name:'owner-screenshot-property',lng:-75.77471,lat:42.78737},
+  {name:'owner-screenshot-repeat',lng:-75.77471,lat:42.78737},
+  // Preserve the original owner-reported New York regression coordinates.
   {name:'new-york-failure-1',lng:-75.77699,lat:42.78808},
   {name:'new-york-failure-repeat',lng:-75.77699,lat:42.78808},
   {name:'new-york-overlap',lng:-75.77709,lat:42.78811}
