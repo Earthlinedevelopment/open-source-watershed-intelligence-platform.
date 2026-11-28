@@ -14,7 +14,7 @@ if(localOrigin){
   // Browser URL/Referer remains the approved https://earthlinedevelopment.org
   // while this read-only route serves candidate HTML/assets from localhost.
   await page.route('https://earthlinedevelopment.org/**',async route=>{
-    const original=new URL(route.request().url());
+    const original=new globalThis.URL(route.request().url());
     const target=localOrigin+original.pathname+original.search;
     const response=await route.fetch({url:target});
     await route.fulfill({response});
