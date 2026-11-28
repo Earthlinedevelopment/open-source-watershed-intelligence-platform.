@@ -1,0 +1,29 @@
+name: Earthline candidate-only cold style fix (self-removing)
+on:
+  push:
+    branches: [repair/final-mobile-map-and-hint-20261128]
+    paths:
+      - tools/earthline-cold-map-style-readiness-20261128.py
+      - .github/workflows/earthline-candidate-cold-style-one-shot.yml
+permissions:
+  contents: write
+jobs:
+  apply-only-on-staged-candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply one exact bounded-readiness correction
+        run: python3 tools/earthline-cold-map-style-readiness-20261128.py
+      - name: Commit edited HTML and retire temporary patcher
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline candidate patch"
+          git config user.email "info@earthlinedevelopment.org"
+          git rm .github/workflows/earthline-candidate-cold-style-one-shot.yml
+          git rm tools/earthline-cold-map-style-readiness-20261128.py
+          git add index.html
+          git diff --cached --check
+          git commit -m "fix(property): bounded wait for cold Mapbox exclusion evidence, preserve fail-closed"
+          git push origin HEAD:repair/final-mobile-map-and-hint-20261128
