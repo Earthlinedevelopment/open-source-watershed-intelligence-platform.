@@ -546,7 +546,14 @@
       if(!(pending17389?.state==='property-pending'&&pending17389?.propertyRunIdentity===runIdentity&&pending17389?.visibleAt)){
         publishPropertyProvisional17389(b,runIdentity);
       }
-      const dynamic=await dynamicPropertyEvidence(true); /* EARTHLINE_ELDER_GOVERNED_COMPUTE_17211 */
+      let dynamic=await dynamicPropertyEvidence(true); /* EARTHLINE_ELDER_GOVERNED_COMPUTE_17211 */
+      /* Retry exactly once after a genuine worker error, for this same Property.
+         Rejected network/COG requests have already been removed from the worker
+         flight cache. Never retry a superseded target or alter Elder science. */
+      if(!dynamic&&state.dynamic.error&&elderTierM94()==='property'&&
+         propertyRunIdentity17166(propertyBounds17166())===runIdentity){
+        dynamic=await dynamicPropertyEvidence(true);
+      }
       if(!dynamic&&elderTierM94()==='property'&&propertyRunIdentity17166(propertyBounds17166())===runIdentity){
         window.EARTHLINE_ELDER_TREE_LAST_17097={state:'failed',error:'no tree-finder result',propertyRunIdentity:runIdentity,featureCount:0,at:new Date().toISOString()};
         const g198=document.getElementById('earthlineElderTreesGauge17097');if(g198)g198.textContent='Elder Trees: not available for this run'; /* M198 */
