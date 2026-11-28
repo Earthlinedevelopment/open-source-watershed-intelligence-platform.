@@ -128,7 +128,7 @@ async function runTarget(target,index){
       prescriptionZero:md?.prescriptionZeroReason15870||null,
       propertyFailure:md?.propertyRunFailure16539||null,
       engine:md?.propertySwaleEngine16600||null,
-      maskProvenance:md?.noBuildProvenance15843?{source:md.noBuildProvenance15843.source,searchGen:md.noBuildProvenance15843.searchGen}:null,
+      maskProvenance:md?.noBuildProvenance15843?{sourceStateFingerprint:md.noBuildProvenance15843.sourceStateFingerprint,scientificInputFingerprint:md.noBuildProvenance15843.scientificInputFingerprint,sourceHashes:md.noBuildProvenance15843.sourceHashes,vectorStyleReady:md.noBuildProvenance15843.vectorStyleReady,vectorLayerCount:md.noBuildProvenance15843.vectorLayerCount,vectorSourceFeatureCount:md.noBuildProvenance15843.vectorSourceFeatureCount,vectorProcessedFeatureCount:md.noBuildProvenance15843.vectorProcessedFeatureCount,satelliteCanvasAvailable:md.noBuildProvenance15843.satelliteCanvasAvailable,imperviousRasterAvailable:md.noBuildProvenance15843.imperviousRasterAvailable}:null,
       rechargeCount:Number(md?.rechZones?.length||0),
       swaleDiagnostics:md?.swaleDiagnostics||null,
       safetyAudit:md?.safetyAudit15806||null,
@@ -155,8 +155,22 @@ async function runTarget(target,index){
 const rows=[];
 for(let i=0;i<TARGETS.length;i++) rows.push(await runTarget(TARGETS[i],i));
 const replacementPass=rows.length>=2&&rows[0].snap.publication?.runToken!==rows[1].snap.publication?.runToken&&Math.abs(Number(rows[1].snap.audit?.center?.lng)-TARGETS[1].lng)<1e-5;
-const deterministicPairs=[[0,1],[2,3]].map(([a,b])=>({a:rows[a].name,b:rows[b].name,countEqual:rows[a].snap.safeCount===rows[b].snap.safeCount,inputEqual:rows[a].snap.publication?.scientificInputFingerprint===rows[b].snap.publication?.scientificInputFingerprint,maskEqual:rows[a].snap.publication?.noBuildMaskHash===rows[b].snap.publication?.noBuildMaskHash}));
-const deterministicPass=deterministicPairs.every(p=>p.countEqual&&p.inputEqual&&p.maskEqual);
+// Compare actual cell/terrain/flow/safety arrays, not metadata such as loaded
+// style layer counts. A differing source-state fingerprint remains reported.
+const physicalHashKeys=['noBuildMaskHash','hardCoreMaskHash','vectorNoBuildMaskHash','imperviousRasterHash','vectorCoreMaskHash','imperviousCoreMaskHash','waterCoreMaskHash','manualMaskHash','elevationGridHash','flowDirectionHash','flowAccumulationHash','parcelMaskHash','pondMaskHash'];
+const deterministicPairs=[[0,1],[2,3]].map(([a,b])=>{
+  const x=rows[a].snap,y=rows[b].snap;
+  const xx=x.maskProvenance?.sourceHashes,yy=y.maskProvenance?.sourceHashes;
+  const physicalHashesPresent=!!xx&&!!yy&&physicalHashKeys.every(k=>(xx[k]===null||typeof xx[k]==='string')&&(yy[k]===null||typeof yy[k]==='string'));
+  const physicalHashesEqual=physicalHashesPresent&&physicalHashKeys.every(k=>xx[k]===yy[k]);
+  return {a:rows[a].name,b:rows[b].name,countEqual:x.safeCount===y.safeCount,
+    inputFingerprintEqual:x.publication?.scientificInputFingerprint===y.publication?.scientificInputFingerprint,
+    sourceStateFingerprintEqual:x.publication?.sourceStateFingerprint===y.publication?.sourceStateFingerprint,
+    maskEqual:x.publication?.noBuildMaskHash===y.publication?.noBuildMaskHash,
+    physicalHashesPresent,physicalHashesEqual,
+    physicalHashDifferences:physicalHashKeys.filter(k=>xx&&yy&&xx[k]!==yy[k])};
+});
+const deterministicPass=deterministicPairs.every(p=>p.countEqual&&p.maskEqual&&p.physicalHashesPresent&&p.physicalHashesEqual);
 const report={at:new Date().toISOString(),url:URL,rows,replacementPass,deterministicPairs,deterministicPass,pageErrors,badResponses,pass:rows.every(r=>r.pass)&&replacementPass&&deterministicPass};
 writeFileSync('artifacts/ny-repeat-live/results.json',JSON.stringify(report,null,2));
 console.log('NY_CONTROL '+JSON.stringify({pass:report.pass,replacementPass,deterministicPass,deterministicPairs,rows:rows.map(r=>({name:r.name,pass:r.pass,elapsedMs:r.elapsedMs,runError:r.runError,settleError:r.settleError,safeCount:r.snap.safeCount,rechargeCount:r.snap.rechargeCount,engineCount:r.snap.engineCount,halt:r.snap.prescriptionHalt,zero:r.snap.prescriptionZero,propertyFailure:r.snap.propertyFailure,engine:r.snap.engine,publication:r.snap.publication,runState:r.snap.displayedRunState,elderCount:r.snap.elder?.featureCount||0,elderState:r.snap.elder?.state||null,elderError:r.snap.elder?.error||r.snap.elder?.dynamicError||null,elderWaitError:r.elderWaitError,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
