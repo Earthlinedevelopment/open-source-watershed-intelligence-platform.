@@ -17,7 +17,7 @@ await page.route('**/*',async route=>{
   const url=new URL(route.request().url());
   if(url.origin!==new URL(BASE).origin)return route.continue();
   let rel;
-  try{rel=decodeURIComponent(url.pathname).replace(/^\\/+/, '')}catch{return route.abort()}
+  try{rel=decodeURIComponent(url.pathname).slice(1)}catch{return route.abort()}
   if(!rel)rel='index.html';
   const local=path.resolve(ROOT,rel);
   if(local!==ROOT&&!local.startsWith(ROOT+path.sep))return route.abort();
