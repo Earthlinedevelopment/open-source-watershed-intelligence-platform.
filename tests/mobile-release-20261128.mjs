@@ -47,9 +47,10 @@ const state=()=>page.evaluate(()=>{
     propertyLaunchAudit:(window.EARTHLINE_PROPERTY_LAUNCH_AUDIT_16322||[]).slice(-8),
     waterBodyGate:window.EARTHLINE_PROPERTY_WATER_BODY_GATE_16529||null,
     mobileClickTrace:window.__earthlineMobileClickTrace||[],
+    mobileMutations:window.__earthlineMobileMutations||[],
     initialButtonHandler:window.__earthlineMobileButtonState||null,
     propertyTimeout:window.EARTHLINE_PROPERTY_TIMEOUT_AUDIT_16178||null,
-    propertyPrefetch:window.EARTHLINE_PROPERTY_PREFETCH_AUDIT_16263||null,
+    propertyPrefetch:window.EARTHLINE_PROPERTY_PREFETCH_AUDIT_16263?{ok:window.EARTHLINE_PROPERTY_PREFETCH_AUDIT_16263.ok,cacheHit:window.EARTHLINE_PROPERTY_PREFETCH_AUDIT_16263.cacheHit,driveways:window.EARTHLINE_PROPERTY_PREFETCH_AUDIT_16263.driveways?.features?.length,buildings:window.EARTHLINE_PROPERTY_PREFETCH_AUDIT_16263.buildings?.features?.length}:null,
     propertyPhaseTrace:(window.EARTHLINE_PROPERTY_PHASE_TRACE_16319||[]).slice(-14),
     currentStage:typeof M!=='undefined'?M.currentStage||null:null,
     lastTiming:typeof M!=='undefined'?M.lastTiming||null:null,
@@ -105,6 +106,14 @@ try{
   await page.evaluate(()=>{
     const b=document.getElementById('earthlineDeclareProperty16169'),r=b?.getBoundingClientRect();
     window.__earthlineMobileClickTrace=[];
+    window.__earthlineMobileMutations=[];
+    let firstTarget=null,firstButton=null;
+    const snapTarget=target=>({connected:!!target?.isConnected,stillWithinButton:!!target&&b.contains(target),sameButton:document.getElementById('earthlineDeclareProperty16169')===b,buttonConnected:b.isConnected,buttonParent:b.parentElement?.id||null,buttonText:b.textContent?.slice(0,90),buttonRect:(()=>{const r=b.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}})(),scrollTop:document.getElementById('earthlinePanelBody16188')?.scrollTop||0});
+    const addMutation=(label,m)=>{const rows=window.__earthlineMobileMutations;if(rows.length>=110)return;
+       rows.push({label,type:m.type,added:[...m.addedNodes||[]].map(x=>x.nodeName+'#'+(x.id||'')).slice(0,8),removed:[...m.removedNodes||[]].map(x=>x.nodeName+'#'+(x.id||'')).slice(0,8),current:snapTarget(firstTarget)});
+    };
+    new MutationObserver(mm=>{for(const m of mm)addMutation('button-subtree',m)}).observe(b,{subtree:true,childList:true});
+    new MutationObserver(mm=>{for(const m of mm)if([...m.removedNodes||[],...m.addedNodes||[]].some(x=>x===b))addMutation('button-reparent',m)}).observe(document.body,{subtree:true,childList:true});
     window.__earthlineMobileButtonState={
       onclick:String(b?.onclick).slice(0,260),
       clickOwner:b?.dataset.earthlinePropertyClickOwner16546||null,
@@ -116,7 +125,8 @@ try{
     };
     for(const event of ['pointerdown','pointerup','pointercancel','click'])document.addEventListener(event,e=>{
       const node=e.target?.closest?.('#earthlineDeclareProperty16169')||null;
-      window.__earthlineMobileClickTrace.push({event,phase:'document-capture',insideButton:!!node,targetId:e.target?.id||null,targetTag:e.target?.tagName||null,disabled:b.disabled});
+      if(event==='pointerdown'){firstTarget=e.target;firstButton=b}
+      window.__earthlineMobileClickTrace.push({event,phase:'document-capture',insideButton:!!node,targetId:e.target?.id||null,targetTag:e.target?.tagName||null,disabled:b.disabled,originalTarget:snapTarget(firstTarget),targetAtPoint:document.elementFromPoint(e.clientX||0,e.clientY||0)?.id||document.elementFromPoint(e.clientX||0,e.clientY||0)?.tagName||null});
     },true);
     b?.addEventListener('click',e=>window.__earthlineMobileClickTrace.push({event:'click',phase:'button-capture',disabled:b.disabled}),true);
   });
