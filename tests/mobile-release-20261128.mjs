@@ -43,6 +43,14 @@ const state=()=>page.evaluate(()=>{
     regionalRunToken:pub?.runToken||null,propertyAudit:a,propertyPublication:p,safeVisibility:safe,
     safeCount:Number((typeof M!=='undefined'&&M?.authoritativeSafeSwales15815?.features?.length)||0),
     mapLoaded:!!map?.loaded?.(),mapCenter:map?.getCenter?.()||null,
+    propertyState:el.dataset.earthlinePropertyRunState||null,runState:el.dataset.earthlineRunState||null,
+    propertyTimeout:window.EARTHLINE_PROPERTY_TIMEOUT_AUDIT_16178||null,
+    propertyPrefetch:window.EARTHLINE_PROPERTY_PREFETCH_AUDIT_16263||null,
+    propertyPhaseTrace:(window.EARTHLINE_PROPERTY_PHASE_TRACE_16319||[]).slice(-14),
+    currentStage:typeof M!=='undefined'?M.currentStage||null:null,
+    lastTiming:typeof M!=='undefined'?M.lastTiming||null:null,
+    propertyFailure:typeof M!=='undefined'?M.propertyFailure||null:null,
+    button:{busy:document.getElementById('earthlineDeclareProperty16169')?.dataset.busy||null,disabled:document.getElementById('earthlineDeclareProperty16169')?.disabled||false},
     status:String(document.getElementById('earthlineVermontStatus16147')?.textContent||'').slice(0,300)};
 });
 const report={candidateSha256:expected,origin:BASE,viewport:'390x844 touch',stages:[],errors,badResponses,pass:false};
@@ -89,17 +97,22 @@ try{
   await page.waitForFunction(()=>document.documentElement.classList.contains('earthline-panel-open-16188'));
   await checkpoint('04-property-button-available',s=>s.open);
   await page.locator('#earthlineDeclareProperty16169').click({timeout:20000});
+  await page.waitForTimeout(1250);
+  await checkpoint('05-property-action-result',s=>s.propertyState==='running'||!!s.propertyAudit||!!s.propertyPublication);
   await page.waitForFunction(()=>{
     const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,p=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null;
     return a?.settled===true&&p?.published===true&&document.documentElement.dataset.earthlineAnalysisTier==='property'&&document.documentElement.dataset.earthlinePropertyRunState!=='running';
   },null,{timeout:75000,polling:220});
   await page.waitForFunction(()=>!document.documentElement.classList.contains('earthline-panel-open-16188'),null,{timeout:7000,polling:150});
-  await checkpoint('05-property-exposes-map',s=>!s.open&&s.tier==='property'&&s.safeCount>0&&s.propertyAudit?.result===true&&s.safeVisibility?.visible===true);
+  await checkpoint('06-property-exposes-map',s=>!s.open&&s.tier==='property'&&s.safeCount>0&&s.propertyAudit?.result===true&&s.safeVisibility?.visible===true);
 }catch(e){
   report.exception=String(e);
+  report.failureSnapshot=await state().catch(error=>({error:String(error)}));
+  await page.screenshot({path:'artifacts/mobile-release/99-failure.png'}).catch(()=>{});
   console.error('EARTHLINE_MOBILE_EXCEPTION '+String(e));
+  console.error('EARTHLINE_MOBILE_FAILURE_STATE '+JSON.stringify(report.failureSnapshot).slice(0,11000));
 }finally{
-  report.pass=report.stages.length===5&&report.stages.every(s=>s.pass)&&errors.length===0&&!report.exception;
+  report.pass=report.stages.length===6&&report.stages.every(s=>s.pass)&&errors.length===0&&!report.exception;
   writeFileSync('artifacts/mobile-release/results.json',JSON.stringify(report,null,2));
   console.log('EARTHLINE_MOBILE_SUMMARY '+JSON.stringify({pass:report.pass,candidateSha256:expected,stages:report.stages.map(s=>({name:s.name,pass:s.pass})),exception:report.exception||null,errors:errors.slice(0,8),badResponses:badResponses.slice(0,8)}));
   await browser.close();
