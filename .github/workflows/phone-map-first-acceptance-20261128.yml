@@ -1,0 +1,32 @@
+name: Earthline phone map-first acceptance
+on:
+  push:
+    branches: [repair/phone-map-first-20261128, pages-live]
+    paths:
+      - earthline-launch-16872.js
+      - tests/earthline-phone-smoke-final-20261128.mjs
+      - .github/workflows/phone-map-first-acceptance-20261128.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  phone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chrome for phone input and map visibility
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Test map-first phone open, close, Property return, and hint dismissal
+        run: node tests/earthline-phone-smoke-final-20261128.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earthline-phone-map-first
+          path: artifacts/phone-final
+          retention-days: 7
