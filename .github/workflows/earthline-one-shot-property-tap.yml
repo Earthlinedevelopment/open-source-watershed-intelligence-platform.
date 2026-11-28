@@ -1,0 +1,32 @@
+name: Earthline candidate phone property touch target
+on:
+  push:
+    branches: [fix/final-mobile-panel-release-proof-20261128]
+    paths: [tools/earthline-mobile-property-target-patch.py]
+permissions:
+  contents: write
+jobs:
+  candidate-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Enlarge existing phone-only Property touch target
+        run: python3 tools/earthline-mobile-property-target-patch.py
+      - name: Retire temporary updater
+        run: git rm .github/workflows/earthline-one-shot-property-tap.yml
+      - name: Verify candidate syntax and safety
+        run: |
+          git diff --check
+          python3 tools/earthline-release-airlock-static.py
+      - name: Commit to candidate only
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline candidate repair"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix(mobile): stabilize existing Property action touch target"
+          git push origin HEAD:refs/heads/fix/final-mobile-panel-release-proof-20261128
