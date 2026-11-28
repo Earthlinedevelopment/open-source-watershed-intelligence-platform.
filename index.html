@@ -3090,7 +3090,7 @@ const swaleDetailScale=()=>!earthlineLargeAreaMode()&&!earthlinePlanningMode()&&
 // the user zooms out. Zoom level controls when analysis may START, not whether completed
 // results are allowed to remain on the map.
 function earthlinePropertyAnalysisVisible(){
-  return !earthlineLargeAreaMode()&&!earthlinePlanningMode()&&!!M.analysisReady&&Array.isArray(M.swales)&&M.swales.length>0;
+  return !earthlineLargeAreaMode()&&!earthlinePlanningMode()&&!!M.analysisReady&&Array.isArray(M.swales);
 }
 const analysisZoom=()=>Math.min(M.viewZoom,17);
 function mppAt(z,lat){return 156573.03392*Math.cos(lat*Math.PI/180)/Math.pow(2,z)/2;}
@@ -6283,6 +6283,7 @@ function earthlineSwaleFromPts(pts,bandIndex,chanThr,isSite,maxS,totalBands){
   /* M210: Property mode = not a Regional Opportunity Tile (same test the engine uses for isRegionalTile15769). */
   const propertyM210=!(M.loc&&(/Regional Opportunity Tile/i.test(String(M.loc.name||""))||(Array.isArray(M.loc.zones)&&M.loc.zones.includes("Regional Tile"))));
   let channelHitsM210=0;
+  const slopesM201=[],ptsM201=[]; /* M201 rule B: per-sample terrain slopes (and their points, for length weighting) */
 
   for(const [px,py] of pts){
     const gx=Math.round(px),gy=Math.round(py);
@@ -6293,6 +6294,7 @@ function earthlineSwaleFromPts(pts,bandIndex,chanThr,isSite,maxS,totalBands){
 
     const spHere=slopePct(gx,gy);
     slopeSum+=spHere;
+    slopesM201.push(spHere);ptsM201.push([px,py]);
     if(propertyM210&&M.acc&&M.acc[idx(gx,gy)]>=chanThr)channelHitsM210++; /* M210 R8 */
 
     const [ggx,ggy]=gradAt(gx,gy);
@@ -6323,6 +6325,22 @@ function earthlineSwaleFromPts(pts,bandIndex,chanThr,isSite,maxS,totalBands){
   const forested=canopy>0.40;
   const avgSlope=slopeSum/n;
   if(avgSlope>maxS)return null;
+  /* M201 rule B (Property only; Regional unchanged): sampled mean terrain slope <= 4% and no 5-sample stretch with a median above 4%. */
+  if(propertyM210){
+    const kM201=slopesM201.length;
+    if(kM201<2)return null;
+    /* length-weighted mean: each sample weighs half of its two adjacent segments */
+    let wsM201=0,wtM201=0;
+    for(let jM201=0;jM201<kM201;jM201++){
+      const pa=ptsM201[Math.max(0,jM201-1)],pb=ptsM201[Math.min(kM201-1,jM201+1)];
+      const q=ptsM201[jM201];const wj=(Math.hypot(q[0]-pa[0],q[1]-pa[1])+Math.hypot(pb[0]-q[0],pb[1]-q[1]))/2;wsM201+=slopesM201[jM201]*wj;wtM201+=wj;
+    }
+    if(!(wtM201>0)||wsM201/wtM201>4)return null;
+    for(let iM201=0;iM201<kM201;iM201++){
+      const aM201=Math.max(0,Math.min(iM201-2,kM201-5)),wM201=slopesM201.slice(aM201,Math.min(kM201,aM201+5)).sort((p,q)=>p-q);
+      if(wM201[Math.floor(wM201.length/2)]>4)return null;
+    }
+  }
 
   const impOn=impOnSum/n;
   const impUp=impUpSum/n;
@@ -22091,7 +22109,7 @@ var prescribeSwales;
       (
         M&&M.propertyPublication15816&&
         M.propertyPublication15816.committed===true&&
-        Number(M.propertyPublication15816.rawGeographicSegments||0)>0
+        M.propertyPublication15816.safetyVerified===true
       )
     );
     const flowOn=propertyCommitted&&(
@@ -38412,7 +38430,7 @@ function sourceRows16492(){const t=tier(),d=displayed(),m=model(),gw=groundwater
 function formulaNote16492(){const rain=currentRain(),need=rain==null?null:Math.max(0,Math.min(1,(45-rain)/40)),mult=need==null?null:(.82+need*.33);return 'Earthline base = Aquifer × 0.30 + Soil × 0.20 + Slope × 0.18 + Flow × 0.17 + (50 × 0.15). '+(mult==null?'The climate multiplier is applied when annual rainfall is available.':'Climate multiplier = 0.82 + need × 0.33 = '+mult.toFixed(3)+' for '+(Math.round(rain*10)/10)+' in annual rainfall.')}
 function ensureDataModal(){let modal=document.getElementById('earthlineRechargeDataModal16488');if(modal)return modal;modal=document.createElement('div');modal.id='earthlineRechargeDataModal16488';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','Recharge Potential Data');modal.innerHTML='<div id="earthlineRechargeDataShell16488"><button type="button" id="earthlineRechargeDataClose16488" aria-label="Close Recharge Potential Data">×</button><div id="earthlineRechargeDataContent16488"></div></div>';document.body.appendChild(modal);modal.querySelector('#earthlineRechargeDataClose16488').addEventListener('click',closeData);modal.addEventListener('pointerdown',e=>{if(e.target===modal)closeData()});return modal}
 function esc(v){return String(v==null?'':v).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]))}
-function renderData(){const modal=ensureDataModal(),content=modal.querySelector('#earthlineRechargeDataContent16488'),score=currentScore(),q=score==null?null:Math.round(score),rain=currentRain(),rows=drivers(),sources=sourceRows16492();content.innerHTML='<div class="earthline-data-eyebrow16488">DATA · Recharge suitability</div><div class="earthline-data-title16488">'+esc(dataTitle16492())+'</div><div class="earthline-data-score16488">'+(q==null?'—':q)+'<span class="earthline-data-scoreof16492">/ 100</span></div><div class="earthline-data-band16488">'+esc(band(q))+' recharge suitability</div><div class="earthline-data-note16492">Modelled — not a measured infiltration rate. SCORE 0–100 is the mean of per-cell Earthline recharge suitability scores. Base weights are Aquifer 0.30, Soil 0.20, Slope 0.18, Flow 0.17, plus a 0.15 climate-need term centered at 50 before the rainfall multiplier. Rows are explanatory means from the same inputs; they are not a second independent calculation.</div><div class="earthline-data-rain16488">Average yearly rainfall: <strong>'+(rain==null?'—':(Math.round(rain*10)/10)+' in')+'</strong></div>'+rows.map(r=>'<div class="earthline-data-driver16488'+(r.weak?' weak':'')+'"><div class="earthline-data-driverhead16488"><span>'+esc(r.name)+' <span class="earthline-data-driverdetail16488">· '+esc(r.basis||'')+'</span></span><strong>'+esc(Math.round(Number(r.value)||0))+' <span class="earthline-data-driverdetail16488">× '+Number(r.weight||0).toFixed(2)+'</span></strong></div><div class="earthline-data-track16488"><div class="earthline-data-fill16488" style="width:'+Math.max(0,Math.min(100,Number(r.value)||0))+'%"></div></div><div class="earthline-data-row-source16492">'+esc(r.source||'')+'</div></div>').join('')+'<div class="earthline-data-formula16492">'+esc(formulaNote16492())+'</div><div class="earthline-data-coverage16492">'+esc(coverageNote16492())+'</div><div class="earthline-data-source16488">'+sources.map(s=>'<b>'+esc(s.label)+'</b>'+(s.scale?' · '+esc(s.scale):'')+(s.vintage?' · '+esc(s.vintage):'')).join('<br>')+'</div>';return modal}
+function renderData(){const modal=ensureDataModal(),content=modal.querySelector('#earthlineRechargeDataContent16488'),score=currentScore(),q=score==null?null:Math.round(score),rain=currentRain(),rows=drivers(),sources=sourceRows16492();content.innerHTML='<div class="earthline-data-eyebrow16488">DATA · Recharge potential</div><div class="earthline-data-title16488">'+esc(dataTitle16492())+'</div><div class="earthline-data-score16488">'+(q==null?'—':q)+'<span class="earthline-data-scoreof16492">/ 100</span></div><div class="earthline-data-band16488">'+esc(band(q))+' recharge suitability</div><div class="earthline-data-note16492">Modelled — not a measured infiltration rate. SCORE 0–100 is the mean of per-cell Earthline recharge suitability scores. Base weights are Aquifer 0.30, Soil 0.20, Slope 0.18, Flow 0.17, plus a 0.15 climate-need term centered at 50 before the rainfall multiplier. Rows are explanatory means from the same inputs; they are not a second independent calculation.</div><div class="earthline-data-rain16488">Average yearly rainfall: <strong>'+(rain==null?'—':(Math.round(rain*10)/10)+' in')+'</strong></div>'+rows.map(r=>'<div class="earthline-data-driver16488'+(r.weak?' weak':'')+'"><div class="earthline-data-driverhead16488"><span>'+esc(r.name)+' <span class="earthline-data-driverdetail16488">· '+esc(r.basis||'')+'</span></span><strong>'+esc(Math.round(Number(r.value)||0))+' <span class="earthline-data-driverdetail16488">× '+Number(r.weight||0).toFixed(2)+'</span></strong></div><div class="earthline-data-track16488"><div class="earthline-data-fill16488" style="width:'+Math.max(0,Math.min(100,Number(r.value)||0))+'%"></div></div><div class="earthline-data-row-source16492">'+esc(r.source||'')+'</div></div>').join('')+'<div class="earthline-data-formula16492">'+esc(formulaNote16492())+'</div><div class="earthline-data-coverage16492">'+esc(coverageNote16492())+'</div><div class="earthline-data-source16488">'+sources.map(s=>'<b>'+esc(s.label)+'</b>'+(s.scale?' · '+esc(s.scale):'')+(s.vintage?' · '+esc(s.vintage):'')).join('<br>')+'</div>';return modal}
 function openData(){renderData().classList.add('open')}
 function closeData(){document.getElementById('earthlineRechargeDataModal16488')?.classList.remove('open')}
 function ensureContactButton16512(){const rail=document.getElementById('earthlineRail16188');if(!rail)return null;let b=document.getElementById('earthlineRailContact16512');if(b)return b;b=document.createElement('div');b.id='earthlineRailContact16512';b.className='el-rail-control-16188';b.setAttribute('role','button');b.setAttribute('tabindex','0');b.setAttribute('aria-label','Contact Earthline');b.title='Contact Earthline';b.innerHTML='<span class="earthline-contact-glyph-16512" aria-hidden="true">✉</span><span class="earthline-contact-label-16512">CONTACT</span>';const language=document.getElementById('earthlineLanguageWrap16488');if(language)rail.insertBefore(b,language);else rail.appendChild(b);const activate=e=>{if(e&&e.type==='keydown'&&!['Enter',' '].includes(e.key))return;if(e)e.preventDefault();window.location.href='mailto:info@earthlinedevelopment.org?subject=Earthline%20Inquiry'};b.addEventListener('click',activate);b.addEventListener('keydown',activate);return b}
@@ -38604,3 +38622,5 @@ html[data-earthline-corridor-scale-mxxx="detail"] #earthlineRegionalVectorOverla
 
 <!-- MANTRA3: load the Elder Trees engine (absent from the October build); same tag as November 2d858d5 -->
 <script defer src="earthline-elder-restored-17097.js?v=mantra6-tree-20261113"></script>
+
+
