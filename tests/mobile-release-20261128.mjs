@@ -99,7 +99,9 @@ try{
   if(!prep.ok||prep.disabled)throw Error('Property prepare failed: '+JSON.stringify(prep));
   await page.locator('#earthlineRailSearch16188').click();
   await page.waitForFunction(()=>document.documentElement.classList.contains('earthline-panel-open-16188'));
-  await checkpoint('04-property-button-available',s=>s.open);
+  await page.waitForFunction(()=>document.getElementById('earthlinePanel16188')?.getBoundingClientRect().right>=innerWidth-3,null,{timeout:8000,polling:100});
+  await page.waitForTimeout(550); // the real touch control must settle after sidebar animation
+  await checkpoint('04-property-button-available',s=>s.open&&s.panelRight>=s.viewport-3);
   await page.evaluate(()=>{
     const b=document.getElementById('earthlineDeclareProperty16169'),r=b?.getBoundingClientRect();
     window.__earthlineMobileClickTrace=[];
@@ -112,8 +114,9 @@ try{
       topAtButtonCenter:r&&document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.id||null,
       governed:typeof window.earthlineDeclarePropertyAtCrosshair16173
     };
-    for(const event of ['pointerdown','pointerup','click'])document.addEventListener(event,e=>{
-      if(e.target?.closest?.('#earthlineDeclareProperty16169'))window.__earthlineMobileClickTrace.push({event,phase:'document-capture',target:e.target.id,disabled:b.disabled});
+    for(const event of ['pointerdown','pointerup','pointercancel','click'])document.addEventListener(event,e=>{
+      const node=e.target?.closest?.('#earthlineDeclareProperty16169')||null;
+      window.__earthlineMobileClickTrace.push({event,phase:'document-capture',insideButton:!!node,targetId:e.target?.id||null,targetTag:e.target?.tagName||null,disabled:b.disabled});
     },true);
     b?.addEventListener('click',e=>window.__earthlineMobileClickTrace.push({event:'click',phase:'button-capture',disabled:b.disabled}),true);
   });
