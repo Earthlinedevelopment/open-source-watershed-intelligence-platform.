@@ -44,6 +44,10 @@ const state=()=>page.evaluate(()=>{
     safeCount:Number((typeof M!=='undefined'&&M?.authoritativeSafeSwales15815?.features?.length)||0),
     mapLoaded:!!map?.loaded?.(),mapCenter:map?.getCenter?.()||null,
     propertyState:el.dataset.earthlinePropertyRunState||null,runState:el.dataset.earthlineRunState||null,
+    propertyLaunchAudit:(window.EARTHLINE_PROPERTY_LAUNCH_AUDIT_16322||[]).slice(-8),
+    waterBodyGate:window.EARTHLINE_PROPERTY_WATER_BODY_GATE_16529||null,
+    mobileClickTrace:window.__earthlineMobileClickTrace||[],
+    initialButtonHandler:window.__earthlineMobileButtonState||null,
     propertyTimeout:window.EARTHLINE_PROPERTY_TIMEOUT_AUDIT_16178||null,
     propertyPrefetch:window.EARTHLINE_PROPERTY_PREFETCH_AUDIT_16263||null,
     propertyPhaseTrace:(window.EARTHLINE_PROPERTY_PHASE_TRACE_16319||[]).slice(-14),
@@ -96,9 +100,27 @@ try{
   await page.locator('#earthlineRailSearch16188').click();
   await page.waitForFunction(()=>document.documentElement.classList.contains('earthline-panel-open-16188'));
   await checkpoint('04-property-button-available',s=>s.open);
+  await page.evaluate(()=>{
+    const b=document.getElementById('earthlineDeclareProperty16169'),r=b?.getBoundingClientRect();
+    window.__earthlineMobileClickTrace=[];
+    window.__earthlineMobileButtonState={
+      onclick:String(b?.onclick).slice(0,260),
+      clickOwner:b?.dataset.earthlinePropertyClickOwner16546||null,
+      disabled:b?.disabled,ready:document.documentElement.classList.contains('earthline-property-ready-16188'),
+      visibleClass:b?.classList.contains('visible'),style:getComputedStyle(b).display,
+      pointerEvents:getComputedStyle(b).pointerEvents,rect:r&&{x:r.x,y:r.y,width:r.width,height:r.height},
+      topAtButtonCenter:r&&document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.id||null,
+      governed:typeof window.earthlineDeclarePropertyAtCrosshair16173
+    };
+    for(const event of ['pointerdown','pointerup','click'])document.addEventListener(event,e=>{
+      if(e.target?.closest?.('#earthlineDeclareProperty16169'))window.__earthlineMobileClickTrace.push({event,phase:'document-capture',target:e.target.id,disabled:b.disabled});
+    },true);
+    b?.addEventListener('click',e=>window.__earthlineMobileClickTrace.push({event:'click',phase:'button-capture',disabled:b.disabled}),true);
+  });
   await page.locator('#earthlineDeclareProperty16169').click({timeout:20000});
-  await page.waitForTimeout(1250);
-  await checkpoint('05-property-action-result',s=>s.propertyState==='running'||!!s.propertyAudit||!!s.propertyPublication);
+  await page.waitForTimeout(1500);
+  const propertyLaunched=await checkpoint('05-property-action-result',s=>s.propertyState==='running'||!!s.propertyAudit||!!s.propertyPublication);
+  if(!propertyLaunched)throw Error('Property button click did not launch the governed Property owner');
   await page.waitForFunction(()=>{
     const a=window.EARTHLINE_PROPERTY_RUN_AUDIT_16173||null,p=window.EARTHLINE_PROPERTY_PUBLICATION_AUDIT_16220||null;
     return a?.settled===true&&p?.published===true&&document.documentElement.dataset.earthlineAnalysisTier==='property'&&document.documentElement.dataset.earthlinePropertyRunState!=='running';
