@@ -1,0 +1,34 @@
+name: Earthline isolated candidate mobile repair (one-time)
+on:
+  push:
+    branches:
+      - fix/final-mobile-panel-release-proof-20261128
+    paths:
+      - tools/earthline-mobile-panel-patch-20261128.py
+permissions:
+  contents: write
+jobs:
+  repair-candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply two approved mobile panel changes to exact parent
+        run: python3 tools/earthline-mobile-panel-patch-20261128.py
+      - name: Remove one-shot updater from proposed release
+        run: git rm .github/workflows/earthline-one-shot-mobile-patch.yml
+      - name: Validate exact candidate
+        run: |
+          git diff --check
+          python3 tools/earthline-release-airlock-static.py
+      - name: Commit only to isolated candidate branch
+        run: |
+          set -euo pipefail
+          git config user.name "Earthline candidate repair"
+          git config user.email "info@earthlinedevelopment.org"
+          git add index.html
+          git commit -m "fix(mobile): keep map unobstructed on phone at startup and after publish"
+          git push origin HEAD:refs/heads/fix/final-mobile-panel-release-proof-20261128
