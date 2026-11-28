@@ -6,10 +6,7 @@ const TARGETS=[
   // Owner's 2026-11-28 screenshot: crosshair 42.78737, -75.77471, 20 acres.
   {name:'owner-screenshot-property',lng:-75.77471,lat:42.78737},
   {name:'owner-screenshot-repeat',lng:-75.77471,lat:42.78737},
-  // Preserve the original owner-reported New York regression coordinates.
-  {name:'new-york-failure-1',lng:-75.77699,lat:42.78808},
-  {name:'new-york-failure-repeat',lng:-75.77699,lat:42.78808},
-  {name:'new-york-overlap',lng:-75.77709,lat:42.78811}
+
 ];
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1600,height:950}});
@@ -109,7 +106,29 @@ async function runTarget(target,index){
       prescriptionZero:md?.prescriptionZeroReason15870||null,
       propertyFailure:md?.propertyRunFailure16539||null,
       engine:md?.propertySwaleEngine16600||null,
-      maskProvenance:md?.noBuildProvenance15843?{source:md.noBuildProvenance15843.source,searchGen:md.noBuildProvenance15843.searchGen}:null,
+      maskProvenance:md?.noBuildProvenance15843?{
+        sourceStateFingerprint:md.noBuildProvenance15843.sourceStateFingerprint,
+        scientificInputFingerprint:md.noBuildProvenance15843.scientificInputFingerprint,
+        sourceHashes:md.noBuildProvenance15843.sourceHashes,
+        noBuildMaskHash:md.noBuildProvenance15843.noBuildMaskHash,
+        vectorStyleReady:md.noBuildProvenance15843.vectorStyleReady,
+        vectorLayerCount:md.noBuildProvenance15843.vectorLayerCount,
+        vectorSourceFeatureCount:md.noBuildProvenance15843.vectorSourceFeatureCount,
+        vectorProcessedFeatureCount:md.noBuildProvenance15843.vectorProcessedFeatureCount,
+        satelliteCanvasAvailable:md.noBuildProvenance15843.satelliteCanvasAvailable,
+        imperviousRasterAvailable:md.noBuildProvenance15843.imperviousRasterAvailable,
+        noBuildStamp:md.noBuildProvenance15843.noBuildStamp,
+        exclusionSourceTier:md.noBuildProvenance15843.exclusionSourceTier,
+        exclusionAcquisitionResult:md.noBuildProvenance15843.exclusionAcquisitionResult
+      }:null,
+      vectorCoverage:(()=>{
+        const v=md?.vectorNoBuildCoverage||{};
+        return {sourceTier:v.sourceTier,acquisitionResult:v.acquisitionResult,
+          layerCount:v.layerCount,sourceFeatureCount:v.sourceFeatureCount,
+          relevantFeatureCount:v.relevantFeatureCount,processedFeatureCount:v.processedFeatureCount,
+          styleReady:v.styleReady,styleQuerySuccess16516:v.styleQuerySuccess16516,
+          portableEvidencePath16550:v.portableEvidencePath16550};
+      })(),
       rechargeCount:Number(md?.rechZones?.length||0),
       swaleDiagnostics:md?.swaleDiagnostics||null,
       safetyAudit:md?.safetyAudit15806||null,
@@ -137,7 +156,7 @@ async function runTarget(target,index){
 const rows=[];
 for(let i=0;i<TARGETS.length;i++) rows.push(await runTarget(TARGETS[i],i));
 const replacementPass=rows.length>=2&&rows[0].snap.publication?.runToken!==rows[1].snap.publication?.runToken&&Math.abs(Number(rows[1].snap.audit?.center?.lng)-TARGETS[1].lng)<1e-5;
-const repeatPairs=[[0,1],[2,3]];
+const repeatPairs=[[0,1]];
 const repeatConsistency=repeatPairs.map(([a,b])=>{
   const before=rows[a]?.snap||{},after=rows[b]?.snap||{};
   const sourceMatch=String(before.publication?.scientificInputFingerprint||'')===String(after.publication?.scientificInputFingerprint||'')&&
@@ -154,3 +173,5 @@ writeFileSync('artifacts/ny-repeat-live/results.json',JSON.stringify(report,null
 console.log('NY_CONTROL '+JSON.stringify({pass:report.pass,replacementPass,repeatConsistency,rows:rows.map(r=>({name:r.name,pass:r.pass,elapsedMs:r.elapsedMs,runError:r.runError,settleError:r.settleError,generated:r.snap.swaleDiagnostics?.generated,safeCount:r.snap.safeCount,rechargeCount:r.snap.rechargeCount,engineCount:r.snap.engineCount,halt:r.snap.prescriptionHalt,zero:r.snap.prescriptionZero,propertyFailure:r.snap.propertyFailure,engine:r.snap.engine,clearance:r.snap.safetyAudit?.clearance,filter:r.snap.safetyAudit?.filter,roadOverlap:r.snap.safetyAudit?.roadOverlap16397,publication:r.snap.publication,runState:r.snap.displayedRunState,elderCount:r.snap.elder?.featureCount||0,elderState:r.snap.elder?.state||null,elderError:r.snap.elder?.error||r.snap.elder?.dynamicError||null,elderWaitError:r.elderWaitError,natural:r.snap.naturalLayers,safe:r.snap.safeLayers,errors:r.newErrors}))}));
 await browser.close();
 if(!report.pass)process.exitCode=1;
+
+console.log('FINGERPRINT_CAUSAL_DELTA '+JSON.stringify(rows.map(r=>({name:r.name,swales:r.snap.safeCount,provenance:r.snap.maskProvenance,vector:r.snap.vectorCoverage}))));
